@@ -1,0 +1,21 @@
+(library
+ (name dune_patch_tests)
+ (inline_tests)
+ (modules dune_patch_tests)
+ (libraries
+  dune_tests_common
+  stdune
+  fiber
+  dune_patch
+  dune_engine
+  dune_util
+  test_scheduler
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  base
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

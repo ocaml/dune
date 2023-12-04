@@ -8,7 +8,7 @@ A ``menhir`` stanza is available to support the Menhir parser generator.
 To use Menhir in a Dune project, the language version should be selected in the
 ``dune-project`` file. For example:
 
-.. code:: scheme
+.. code:: dune
 
   (using menhir 2.0)
 
@@ -19,7 +19,7 @@ latest Menhir version once a Menhir stanza is used anywhere.
 The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`)
 is:
 
-.. code:: scheme
+.. code:: dune
 
     (menhir
      (modules <parser1> <parser2> ...)

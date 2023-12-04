@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=0e1b2044c8d1ff187c27cec3e46d9cde14892650
+version=07eb8988452ad51a09d0ab7379d73a87674aba6e
 
 set -e -o pipefail
 
@@ -20,6 +20,7 @@ mkdir -p csexp/src
 SRC=$TMP/csexp
 
 cp -v $SRC/src/csexp.{ml,mli} csexp/src
+cp -v $SRC/LICENSE.md csexp/
 
 git checkout csexp/src/dune
 git add -A .

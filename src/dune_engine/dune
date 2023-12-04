@@ -6,17 +6,15 @@
   unix
   csexp
   stdune
+  dune_config
   dune_console
   dyn
   fiber
-  incremental_cycles
-  dag
   memo
-  ocaml
-  dune_re
+  dune_async_io
   threads.posix
-  opam_file_format
-  dune_lang
+  predicate_lang
+  dune_sexp
   dune_cache
   dune_cache_storage
   dune_glob
@@ -25,19 +23,18 @@
   dune_action_plugin
   dune_util
   build_path_prefix_map
-  dune_section
+  dune_output_truncation
   csexp_rpc
   dune_rpc_private
   dune_rpc_server
-  thread_worker
+  dune_rpc_client
+  dune_thread_pool
   spawn
   ocamlc_loc
   dune_file_watcher
   dune_filesystem_stubs
-  ocaml_inotify
   dune_digest
-  dune_metrics
-  async_inotify_for_dune)
+  dune_metrics)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation
   (backend bisect_ppx)))

@@ -1,0 +1,4 @@
+(library
+ (name main)
+ (preprocess
+  (staged_pps ppx_suffix)))

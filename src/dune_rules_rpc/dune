@@ -1,0 +1,15 @@
+(library
+ (name dune_rules_rpc)
+ (synopsis "rpc functionality that depends on dune's public rules")
+ (libraries
+  stdune
+  fiber
+  memo
+  dune_lang
+  dune_engine
+  dune_rpc_impl
+  dune_rpc_private
+  dune_rpc_server
+  dune_rules)
+ (instrumentation
+  (backend bisect_ppx)))

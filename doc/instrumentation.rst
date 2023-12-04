@@ -18,7 +18,7 @@ libraries and executables for which the user has requested instrumentation.
 To request instrumentation, one must add the following field to a library or
 executable stanza:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name ...)
@@ -31,7 +31,7 @@ The backend ``<name>`` can be passed into arguments using ``<args>``.
 This field can be repeated multiple times in order to support various
 backends. For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -56,7 +56,7 @@ no plan to add support for them in the future.
 - ``(deps <deps-conf list>)`` specifies extra instrumentation dependencies, for
   instance, if it reads a generated file. The dependencies are only applied
   when the instrumentation is actually enabled. The specification of
-  dependencies is described in the :ref:`deps-field` section.
+  dependencies is described in :doc:`concepts/dependency-spec`.
 
 Enabling/Disabling Instrumentation
 ==================================
@@ -86,16 +86,16 @@ It's also possible to enable instrumentation backends via the
 To enable an instrumentation backend globally, type the following in your
 ``dune-workspace`` file:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.13)
    (instrument_with bisect_ppx)
 
 or for each context individually:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.13)
    (context default)
    (context (default (name coverage) (instrument_with bisect_ppx)))
    (context (default (name profiling) (instrument_with landmarks)))
@@ -116,7 +116,7 @@ Currently, Dune will only support ``ppx`` instrumentation tools, and the
 instrumentation library must specify the ``ppx`` rewriters that instruments the
 code. This can be done as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     ...

@@ -162,7 +162,8 @@ Testsuite for the %{libexec...} and %{libexec-private...} variable.
   > EOF
 
   $ touch external/external_library.opam
-  $ ( cd external && ../sdune build @install && ../sdune install --prefix install | dune_cmd sanitize)
+  $ ( cd external && ../sdune build @install \
+  > && ../sdune install --prefix install --display short | dune_cmd sanitize)
   Installing install/lib/external_library/META
   Installing install/lib/external_library/dune-package
   Installing install/lib/external_library/extlib.a

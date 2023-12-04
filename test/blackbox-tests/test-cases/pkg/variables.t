@@ -1,0 +1,62 @@
+Test that we can set variables
+
+  $ . ./helpers.sh
+
+  $ make_lockdir
+  $ cat >dune.lock/test.pkg <<EOF
+  > (build
+  >  (system "\| cat >test.config <<EOF
+  >          "\| opam-version: "2.0"
+  >          "\| variables {
+  >          "\|   abool: true
+  >          "\|   astring: "foobar"
+  >          "\|   somestrings: ["foo" "bar"]
+  >          "\| }
+  >          "\| EOF
+  >  ))
+  > EOF
+
+  $ cat >dune.lock/usetest.pkg <<EOF
+  > (deps test)
+  > (build
+  >  (progn
+  >   (system "\| echo %{pkg:test:abool}
+  >           "\| echo %{pkg:test:astring}
+  >           "\| echo %{pkg:test:somestrings}
+  >   )
+  >   (run mkdir -p %{prefix})))
+  > EOF
+
+  $ build_pkg usetest
+  true
+  foobar
+  foo bar
+
+  $ show_pkg_cookie test
+  { files = map {}
+  ; variables =
+      [ ("abool", Bool true)
+      ; ("astring", String "foobar")
+      ; ("somestrings", Strings [ "foo"; "bar" ])
+      ]
+  }
+
+Now we demonstrate we get a proper error from invalid .config files:
+
+  $ cat >dune.lock/test.pkg <<EOF
+  > (build
+  >  (system "\| cat >test.config <<EOF
+  >          "\| this is dummy text
+  >          "\| EOF
+  >  ))
+  > EOF
+
+  $ build_pkg test 2>&1 | sed 's/File .*:/File $REDACTED:/'
+  Error:
+  File $REDACTED:
+  1 | this is dummy text
+           ^^
+  Error parsing test.config
+  Reason: Parse error
+  -> required by _build/_private/default/.pkg/test/target/cookie
+  -> required by - package usetest

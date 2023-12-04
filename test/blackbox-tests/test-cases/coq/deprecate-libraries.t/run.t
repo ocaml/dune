@@ -10,6 +10,8 @@ The libraries field is deprecated
   > EOF
 
   $ dune build
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   File "dune", line 7, characters 1-20:
   7 |  (libraries bar.foo))
        ^^^^^^^^^^^^^^^^^^^
@@ -29,6 +31,8 @@ Having both a libraries and plugins field is an error
   > EOF
 
   $ dune build
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   File "dune", line 7, characters 1-20:
   7 |  (libraries bar.foo)
        ^^^^^^^^^^^^^^^^^^^

@@ -1,7 +1,7 @@
 Dune supports installing a subset of the sections in the .install file. This is
 particularly useful if one wants to install binaries:
   $ dune build @install
-  $ dune install --dry-run --prefix ./ --sections bin,man
+  $ dune install --dry-run --prefix ./ --sections bin,man --display short
   Removing (if it exists) bin/foo
   Installing bin/foo
   Creating directory bin
@@ -13,7 +13,7 @@ particularly useful if one wants to install binaries:
 
 Now let's install with the above command with one less section:
 
-  $ dune install --dry-run --prefix ./ --sections bin
+  $ dune install --dry-run --prefix ./ --sections bin --display short
   Removing (if it exists) bin/foo
   Installing bin/foo
   Creating directory bin

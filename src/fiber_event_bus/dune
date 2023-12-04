@@ -1,0 +1,6 @@
+(library
+ (name fiber_event_bus)
+ (libraries fiber stdune)
+ (synopsis "Internal Dune library, do not use!")
+ (instrumentation
+  (backend bisect_ppx)))

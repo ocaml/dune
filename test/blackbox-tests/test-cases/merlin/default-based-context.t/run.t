@@ -35,7 +35,8 @@ If Merlin field is absent, default context is chosen
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
 
 If Merlin field is present, this context is chosen
 
@@ -72,4 +73,5 @@ If Merlin field is present, this context is chosen
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

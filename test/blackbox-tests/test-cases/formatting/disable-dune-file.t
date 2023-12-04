@@ -25,3 +25,14 @@ dune file.
   File "dune", line 1, characters 0-0:
   Error: Files _build/default/dune and _build/default/.formatted/dune differ.
   [1]
+
+Disable foramtting in the root directory using context settings
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 3.11)
+  > (env
+  >  (_
+  >   (formatting disabled)))
+  > EOF
+
+  $ dune build @fmt

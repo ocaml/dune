@@ -3,6 +3,7 @@ _build
 _boot
 _perf
 _coverage
+__pycache__
 *.install
 
 # vim swap files

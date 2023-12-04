@@ -51,8 +51,8 @@ Now switch the mode to standard. Dune reports an error about multiple rules for
 
   $ dune build result
   Error: Multiple rules generated for _build/default/promoted:
-  - file present in source tree
   - dune:1
+  - file present in source tree
   Hint: rm -f promoted
   [1]
 

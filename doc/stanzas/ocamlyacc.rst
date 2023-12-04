@@ -5,7 +5,7 @@ ocamlyacc
 
 ``(ocamlyacc <names>)`` is essentially a shorthand for:
 
-.. code:: lisp
+.. code:: dune
 
     (rule
      (targets <name>.ml <name>.mli)
@@ -15,7 +15,7 @@ ocamlyacc
 
 To use a different rule mode, use the long form:
 
-.. code:: scheme
+.. code:: dune
 
     (ocamlyacc
      (modules <names>)

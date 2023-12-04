@@ -1,4 +1,3 @@
-open! Stdune
 open Import
 
 let all : _ Cmdliner.Cmd.t list =
@@ -17,28 +16,32 @@ let all : _ Cmdliner.Cmd.t list =
     ; Print_rules.command
     ; Utop.command
     ; Promotion.promote
-    ; Printenv.command
+    ; command_alias Printenv.command Printenv.term "printenv"
     ; Help.command
     ; Format_dune_file.command
     ; Upgrade.command
     ; Cache.command
-    ; Describe.command
     ; Top.command
     ; Ocaml_merlin.command
     ; Shutdown.command
     ; Diagnostics.command
+    ; Monitor.command
     ]
   in
   let groups =
     [ Ocaml_cmd.group
     ; Coq.group
+    ; Describe.group
+    ; Describe.Show.group
     ; Rpc.group
     ; Internal.group
     ; Init.group
     ; Promotion.group
+    ; Pkg.group
     ]
   in
   terms @ groups
+;;
 
 (* Short reminders for the most used and useful commands *)
 let common_commands_synopsis =
@@ -50,14 +53,18 @@ let common_commands_synopsis =
     ; "install"
     ; "init project NAME [PATH] [--libs=l1,l2 --ppx=p1,p2 --inline-tests]"
     ]
+;;
 
 let info =
   let doc = "composable build system for OCaml" in
-  Cmd.info "dune" ~doc ~envs:Common.envs
+  Cmd.info
+    "dune"
+    ~doc
+    ~envs:Common.envs
     ~version:
       (match Build_info.V1.version () with
-      | None -> "n/a"
-      | Some v -> Build_info.V1.Version.to_string v)
+       | None -> "n/a"
+       | Some v -> Build_info.V1.Version.to_string v)
     ~man:
       [ `Blocks common_commands_synopsis
       ; `S "DESCRIPTION"
@@ -76,31 +83,34 @@ let info =
             |}
       ; `Blocks Common.help_secs
       ; Common.examples
-          [ ("Initialise a new project named `foo'", "dune init project foo")
-          ; ("Build all targets in the current source tree", "dune build")
-          ; ("Run the executable named `bar'", "dune exec bar")
-          ; ("Run all tests in the current source tree", "dune runtest")
-          ; ("Install all components defined in the project", "dune install")
-          ; ("Remove all build artefacts", "dune clean")
+          [ "Initialise a new project named `foo'", "dune init project foo"
+          ; "Build all targets in the current source tree", "dune build"
+          ; "Run the executable named `bar'", "dune exec bar"
+          ; "Run all tests in the current source tree", "dune runtest"
+          ; "Install all components defined in the project", "dune install"
+          ; "Remove all build artefacts", "dune clean"
           ]
       ]
+;;
 
 let cmd = Cmd.group info all
 
 let exit_and_flush code =
   Console.finish ();
-  exit code
+  exit (Exit_code.code code)
+;;
 
 let () =
   Dune_rules.Colors.setup_err_formatter_colors ();
   try
     match Cmd.eval_value cmd ~catch:false with
-    | Ok _ -> exit_and_flush 0
-    | Error _ -> exit_and_flush 1
+    | Ok _ -> exit_and_flush Success
+    | Error _ -> exit_and_flush Error
   with
-  | Scheduler.Run.Shutdown.E Requested -> exit_and_flush 0
-  | Scheduler.Run.Shutdown.E (Signal _) -> exit_and_flush 130
+  | Scheduler.Run.Shutdown.E Requested -> exit_and_flush Success
+  | Scheduler.Run.Shutdown.E (Signal _) -> exit_and_flush Signal
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune_util.Report_error.report exn;
-    exit_and_flush 1
+    exit_and_flush Error
+;;

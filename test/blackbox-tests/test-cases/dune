@@ -1,6 +1,13 @@
 (env
  (_
-  (binaries ../utils/dune_cmd.exe ../utils/dunepp.exe)))
+  (env-vars
+   (DUNE_CONFIG__BACKGROUND_SANDBOXES disabled)
+   (DUNE_CONFIG__BACKGROUND_DIGESTS disabled))
+  (binaries
+   ../utils/dune_cmd.exe
+   ../utils/dunepp.exe
+   ../utils/melc_stdlib_prefix.exe
+   ../utils/refmt.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -67,37 +74,18 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
-(subdir
- odoc
- (cram
-  ;; XXX (package odoc) doesn't seem to work for some reason
-  (deps %{bin:odoc})
-  (enabled_if
-   (<> %{ocaml_version} 4.02.3))))
-
 (cram
  (applies_to output-obj)
  (enabled_if
   (and
-   (and
-    (<> %{ocaml-config:system} macosx)
-    (<> %{ocaml-config:system} win))
-   (>= %{ocaml_version} 4.06.0))))
+   (<> %{ocaml-config:system} macosx)
+   (<> %{ocaml-config:system} win))))
 
 (cram
  (applies_to ppx-rewriter)
- (enabled_if
-  (<> %{ocaml_version} 4.02.3)))
-
-(cram
- (applies_to toplevel-stanza)
- (enabled_if
-  (>= %{ocaml_version} 4.05.0)))
-
-(cram
- (applies_to wrapped-transition)
- (enabled_if
-  (>= %{ocaml_version} 4.06.0)))
+ (deps
+  (package ppxlib)
+  %{bin:ocamlfind}))
 
 (subdir
  cram
@@ -120,11 +108,6 @@
   (name test)))
 
 (subdir
- actions
- (cram
-  (deps ../watching/helpers.sh bin/sub_process.exe)))
-
-(subdir
  cram
  (cram
   (applies_to hg-access)
@@ -136,12 +119,6 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to github6607)
- (deps
-  (package stdune)
-  (package ppx_expect)))
-
-(cram
  (applies_to link-time-transitive-deps)
  (deps
   (package dune-build-info)))
@@ -149,3 +126,13 @@
 (cram
  (applies_to version-corruption)
  (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
+
+(cram
+ (applies_to github8041)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace} %{bin:head}))
+
+(cram
+ (applies_to reason)
+ (deps %{bin:refmt}))

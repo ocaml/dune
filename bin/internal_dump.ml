@@ -9,18 +9,16 @@ let man =
       {|Dump the contents of a file stored in Dune's persistent database in a human readable format.|}
   ; `Blocks Common.help_secs
   ]
+;;
 
 let info = Cmd.info "dump" ~doc ~man
 
 let term =
-  let+ common = Common.term
-  and+ file =
-    Arg.(required & pos 0 (some Arg.path) None & Arg.info [] ~docv:"FILE")
-  in
-  let _config = Common.init common in
-  let (Persistent.T ((module D), data)) =
-    Persistent.load_exn (Arg.Path.path file)
-  in
+  let+ builder = Common.Builder.term
+  and+ file = Arg.(required & pos 0 (some Arg.path) None & Arg.info [] ~docv:"FILE") in
+  let _common, _config = Common.init builder in
+  let (Persistent.T ((module D), data)) = Persistent.load_exn (Arg.Path.path file) in
   Console.print [ Dyn.pp (D.to_dyn data) ]
+;;
 
 let command = Cmd.v info term

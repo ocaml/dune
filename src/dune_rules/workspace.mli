@@ -2,6 +2,18 @@
 
 open Import
 
+module Lock_dir : sig
+  type t =
+    { path : Path.Source.t
+    ; version_preference : Dune_pkg.Version_preference.t option
+    ; solver_env : Dune_pkg.Solver_env.t option
+    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    }
+
+  val equal : t -> t -> bool
+  val to_dyn : t -> Dyn.t
+end
+
 module Context : sig
   module Target : sig
     type t =
@@ -16,18 +28,18 @@ module Context : sig
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
-      ; env : Dune_env.Stanza.t
+      ; env : Dune_env.t option
       ; toolchain : Context_name.t option
       ; name : Context_name.t
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-            (** By default Dune builds and installs dynamically linked foreign
-                archives (usually named [dll*.so]). It is possible to disable
-                this by setting [disable_dynamically_linked_foreign_archives] to
-                [true] in the workspace file, in which case bytecode executables
-                will be built with all foreign archives statically linked into
-                the runtime system. *)
+      (** By default Dune builds and installs dynamically linked foreign
+          archives (usually named [dll*.so]). It is possible to disable
+          this by setting [disable_dynamically_linked_foreign_archives] to
+          [true] in the workspace file, in which case bytecode executables
+          will be built with all foreign archives statically linked into
+          the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
       ; merlin : bool
@@ -37,15 +49,17 @@ module Context : sig
   module Opam : sig
     type t =
       { base : Common.t
-            (** Either a switch name or a path to a local switch. This argument
-                is left opaque as we leave to opam to interpret it. *)
-      ; switch : string
-      ; root : string option
+      (** Either a switch name or a path to a local switch. This argument
+          is left opaque as we leave to opam to interpret it. *)
+      ; switch : Opam_switch.t
       }
   end
 
   module Default : sig
-    type t = Common.t
+    type t =
+      { base : Common.t
+      ; lock_dir : Path.Source.t option
+      }
   end
 
   type t =
@@ -53,14 +67,11 @@ module Context : sig
     | Opam of Opam.t
 
   val loc : t -> Loc.t
-
   val name : t -> Context_name.t
-
-  val env : t -> Dune_env.Stanza.t
-
+  val env : t -> Dune_env.t option
   val host_context : t -> Context_name.t option
-
   val to_dyn : t -> Dyn.t
+  val base : t -> Common.t
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,
@@ -76,15 +87,16 @@ end
 type t = private
   { merlin_context : Context_name.t option
   ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t
+  ; env : Dune_env.t option
   ; config : Dune_config.t
+  ; repos : Dune_pkg.Pkg_workspace.Repository.t list
+  ; lock_dirs : Lock_dir.t list
   }
 
 val equal : t -> t -> bool
-
 val to_dyn : t -> Dyn.t
-
 val hash : t -> int
+val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
 
 module Clflags : sig
   type t =
@@ -111,8 +123,7 @@ val workspace_config : unit -> Dune_config.t Memo.t
 
 (** Update the execution parameters according to what is written in the
     [dune-workspace] file. *)
-val update_execution_parameters :
-  t -> Execution_parameters.t -> Execution_parameters.t
+val update_execution_parameters : t -> Execution_parameters.t -> Execution_parameters.t
 
 (** All the build contexts defined in the workspace. *)
 val build_contexts : t -> Build_context.t list

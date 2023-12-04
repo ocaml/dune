@@ -10,60 +10,123 @@
 #include <AvailabilityMacros.h>
 #endif
 
-#if defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 100700
+#if defined(__APPLE__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
+#include <pthread.h>
 
-typedef struct dune_runloop {
-  CFRunLoopRef runloop;
+// We use a condvar/mutex pair to allow the code calling
+// `dune_fsevents_dispatch_queue_wait_until_stopped` to be signaled by either
+//
+// - An exception raised by the callback passed to the dispatch queue
+// - Explicitly stopping via `dune_fsevents_stop`
+//
+// Since a dispatch queue uses an internal pool of threads, we need some
+// synchronization around updating `v_exn`.
+typedef struct dune_dispatch_queue {
+  dispatch_queue_t dq;
+  pthread_cond_t dq_finished;
+  pthread_mutex_t dq_lock;
+  uint32_t fsevent_streams;
   value v_exn;
-} dune_runloop;
+} dune_dispatch_queue;
 
 typedef struct dune_fsevents_t {
-  dune_runloop *runloop;
+  dune_dispatch_queue *dq;
   value v_callback;
   FSEventStreamRef stream;
 } dune_fsevents_t;
 
-#define Runloop_val(v) (*((dune_runloop **)Data_custom_val(v)))
+#define Dispatch_queue_val(v) (*((dune_dispatch_queue **)Data_custom_val(v)))
 
-void dune_fsevents_runloop_finalize(value v_runloop) {
-  dune_runloop *runloop = Runloop_val(v_runloop);
-  caml_stat_free(runloop);
+void dune_fsevents_dispatch_queue_finalize(value v_dq) {
+  dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
+  if (dq->dq)
+    dispatch_release(dq->dq);
+  pthread_cond_destroy(&dq->dq_finished);
+  pthread_mutex_destroy(&dq->dq_lock);
+  caml_stat_free(dq);
 }
 
-static struct custom_operations dune_fsevents_runloop_ops = {
-    "dune.fsevents.runloop",    dune_fsevents_runloop_finalize,
-    custom_compare_default,     custom_hash_default,
-    custom_serialize_default,   custom_deserialize_default,
-    custom_compare_ext_default, custom_fixed_length_default};
+static struct custom_operations dune_fsevents_dispatch_queue_ops = {
+    "build.dune.fsevents.dispatch_queue", dune_fsevents_dispatch_queue_finalize,
+    custom_compare_default,               custom_hash_default,
+    custom_serialize_default,             custom_deserialize_default,
+    custom_compare_ext_default,           custom_fixed_length_default};
 
-CAMLprim value dune_fsevents_runloop_current(value v_unit) {
+#define Fsevents_val(v) (*((dune_fsevents_t **)Data_custom_val(v)))
+
+static void dune_fsevents_t_finalize(value v_t) {
+  dune_fsevents_t *t = Fsevents_val(v_t);
+  caml_remove_global_root(&t->v_callback);
+  caml_stat_free(t);
+}
+
+static struct custom_operations dune_fsevents_t_ops = {
+    "build.dune.fsevents.fsevents_t", dune_fsevents_t_finalize,
+    custom_compare_default,           custom_hash_default,
+    custom_serialize_default,         custom_deserialize_default,
+    custom_compare_ext_default,       custom_fixed_length_default};
+
+CAMLprim value dune_fsevents_dispatch_queue_create(value v_unit) {
   CAMLparam1(v_unit);
-  dune_runloop *rl;
-  rl = caml_stat_alloc(sizeof(dune_runloop));
-  rl->runloop = CFRunLoopGetCurrent();
-  rl->v_exn = Val_unit;
-  caml_register_global_root(&rl->v_exn);
-  value v_runloop = caml_alloc_custom(&dune_fsevents_runloop_ops,
-                                      sizeof(dune_runloop *), 0, 1);
-  Runloop_val(v_runloop) = rl;
-  CAMLreturn(v_runloop);
+  CAMLlocal1(v_dq);
+  dune_dispatch_queue *dq;
+  dq = caml_stat_alloc(sizeof(dune_dispatch_queue));
+  pthread_mutex_init(&dq->dq_lock, NULL);
+  pthread_cond_init(&dq->dq_finished, NULL);
+  dq->dq = dispatch_queue_create("build.dune.fsevents", DISPATCH_QUEUE_SERIAL);
+  dq->fsevent_streams = 0;
+  dq->v_exn = Val_unit;
+  caml_register_global_root(&dq->v_exn);
+  v_dq = caml_alloc_custom(&dune_fsevents_dispatch_queue_ops,
+                           sizeof(dune_dispatch_queue *), 0, 1);
+  Dispatch_queue_val(v_dq) = dq;
+  CAMLreturn(v_dq);
 }
 
-CAMLprim value dune_fsevents_runloop_run(value v_runloop) {
-  CAMLparam1(v_runloop);
+CAMLprim value dune_fsevents_dispatch_queue_wait_until_stopped(value v_dq) {
+  CAMLparam1(v_dq);
   CAMLlocal1(v_exn);
-  dune_runloop *runloop = Runloop_val(v_runloop);
+  dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
   caml_release_runtime_system();
-  CFRunLoopRun();
+  pthread_mutex_lock(&dq->dq_lock);
+  pthread_cond_wait(&dq->dq_finished, &dq->dq_lock);
+  v_exn = dq->v_exn;
+  pthread_mutex_unlock(&dq->dq_lock);
   caml_acquire_runtime_system();
-  caml_remove_global_root(&runloop->v_exn);
-  v_exn = runloop->v_exn;
-  if (v_exn != Val_unit)
+  caml_remove_global_root(&dq->v_exn);
+  if (v_exn != Val_unit) {
     caml_raise(v_exn);
+  }
   CAMLreturn(Val_unit);
+}
+
+// The thread-local storage key `register_thread` is intended to ensure that
+// every thread that runs the `fsevents` callback only calls
+// `caml_c_thread_register` and `caml_c_thread_unregister` once.
+//
+// macOS often reuses the same background thread for a serial dispatch queue,
+// so this reduces the number of times `caml_c_thread_register` is called.
+static pthread_key_t register_thread;
+static pthread_once_t register_thread_once = PTHREAD_ONCE_INIT;
+
+static void destroy_register_thread(__attribute__((unused)) void *value) {
+  caml_c_thread_unregister();
+}
+
+static void make_register_thread() {
+  pthread_key_create(&register_thread, destroy_register_thread);
+}
+
+static void set_register_thread() {
+  pthread_once(&register_thread_once, make_register_thread);
+  if (pthread_getspecific(register_thread) == NULL) {
+    caml_c_thread_register();
+    // Since the value doesn't matter, use a reference to `register_thread`
+    pthread_setspecific(register_thread, &register_thread);
+  }
 }
 
 static FSEventStreamEventFlags interesting_flags =
@@ -76,6 +139,7 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
                                    CFArrayRef eventPaths,
                                    const FSEventStreamEventFlags eventFlags[],
                                    const FSEventStreamEventId eventIds[]) {
+  set_register_thread();
   caml_acquire_runtime_system();
   CAMLparam0();
   CAMLlocal5(v_events_xs, v_events_x, v_flags, v_id, v_event);
@@ -121,10 +185,16 @@ static void dune_fsevents_callback(const FSEventStreamRef streamRef,
     Store_field(v_events_x, 1, v_events_xs);
     v_events_xs = v_events_x;
   }
+  dune_dispatch_queue *dq = t->dq;
   v_res = caml_callback_exn(t->v_callback, v_events_xs);
   if (Is_exception_result(v_res)) {
-    t->runloop->v_exn = Extract_exception(v_res);
-    CFRunLoopStop(t->runloop->runloop);
+    v_res = Extract_exception(v_res);
+    caml_release_runtime_system();
+    pthread_mutex_lock(&dq->dq_lock);
+    dq->v_exn = v_res;
+    pthread_cond_broadcast(&dq->dq_finished);
+    pthread_mutex_unlock(&dq->dq_lock);
+    caml_acquire_runtime_system();
   }
   CAMLdrop;
   caml_release_runtime_system();
@@ -152,7 +222,7 @@ CFMutableArrayRef paths_of_list(value v_paths) {
 CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
                                     value v_callback) {
   CAMLparam3(v_paths, v_latency, v_callback);
-  CAMLlocal1(path);
+  CAMLlocal1(v_t);
 
   CFMutableArrayRef paths = paths_of_list(v_paths);
 
@@ -173,17 +243,19 @@ CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
       &context, paths, kFSEventStreamEventIdSinceNow, Double_val(v_latency),
       flags);
   CFRelease(paths);
+  t->dq = NULL;
   caml_register_global_root(&t->v_callback);
   t->v_callback = v_callback;
   t->stream = stream;
 
-  CAMLreturn(caml_copy_nativeint((intnat)t));
+  v_t = caml_alloc_custom(&dune_fsevents_t_ops, sizeof(dune_fsevents_t *), 0, 1);
+  Fsevents_val(v_t) = t;
+  CAMLreturn(v_t);
 }
 
 CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
   CAMLparam2(v_t, v_paths);
-  CAMLlocal1(path);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
+  dune_fsevents_t *t = Fsevents_val(v_t);
   CFMutableArrayRef paths = paths_of_list(v_paths);
 
   bool ret = FSEventStreamSetExclusionPaths(t->stream, paths);
@@ -195,13 +267,17 @@ CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
   CAMLreturn(Val_unit);
 }
 
-CAMLprim value dune_fsevents_start(value v_t, value v_runloop) {
-  CAMLparam2(v_t, v_runloop);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  dune_runloop *runloop = Runloop_val(v_runloop);
-  t->runloop = runloop;
-  FSEventStreamScheduleWithRunLoop(t->stream, runloop->runloop,
-                                   kCFRunLoopDefaultMode);
+CAMLprim value dune_fsevents_start(value v_t, value v_dq) {
+  CAMLparam2(v_t, v_dq);
+  dune_fsevents_t *t = Fsevents_val(v_t);
+  dune_dispatch_queue *dq = Dispatch_queue_val(v_dq);
+  t->dq = dq;
+  caml_release_runtime_system();
+  pthread_mutex_lock(&dq->dq_lock);
+  dq->fsevent_streams++;
+  pthread_mutex_unlock(&dq->dq_lock);
+  caml_acquire_runtime_system();
+  FSEventStreamSetDispatchQueue(t->stream, dq->dq);
   bool res = FSEventStreamStart(t->stream);
   if (!res) {
     /* the docs say this is impossible anyway */
@@ -212,32 +288,30 @@ CAMLprim value dune_fsevents_start(value v_t, value v_runloop) {
 
 CAMLprim value dune_fsevents_stop(value v_t) {
   CAMLparam1(v_t);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
+  dune_fsevents_t *t = Fsevents_val(v_t);
+  dune_dispatch_queue *dq = t->dq;
+  if (dq == NULL) {
+    // already stopped
+    CAMLreturn(Val_unit);
+  }
   FSEventStreamStop(t->stream);
   FSEventStreamInvalidate(t->stream);
   FSEventStreamRelease(t->stream);
-  caml_remove_global_root(&t->v_callback);
-  caml_stat_free(t);
-  CAMLreturn(Val_unit);
-}
-
-CAMLprim value dune_fsevents_runloop_get(value v_t) {
-  CAMLparam1(v_t);
-  CAMLlocal2(v_some, v_runloop);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
-  if (t->runloop == NULL) {
-    CAMLreturn(Val_int(0));
-  } else {
-    v_runloop = caml_copy_nativeint((intnat)t->runloop);
-    v_some = caml_alloc_small(1, 0);
-    Store_field(v_some, 0, v_runloop);
-    CAMLreturn(v_some);
+  caml_release_runtime_system();
+  pthread_mutex_lock(&dq->dq_lock);
+  dq->fsevent_streams--;
+  if (dq->fsevent_streams == 0) {
+    pthread_cond_broadcast(&dq->dq_finished);
   }
+  pthread_mutex_unlock(&dq->dq_lock);
+  caml_acquire_runtime_system();
+  t->dq = NULL;
+  CAMLreturn(Val_unit);
 }
 
 CAMLprim value dune_fsevents_flush_async(value v_t) {
   CAMLparam1(v_t);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
+  dune_fsevents_t *t = Fsevents_val(v_t);
   CAMLlocal1(v_event);
   uint64_t id = FSEventStreamFlushAsync(t->stream);
   v_event = caml_copy_int64(id);
@@ -246,7 +320,7 @@ CAMLprim value dune_fsevents_flush_async(value v_t) {
 
 CAMLprim value dune_fsevents_flush_sync(value v_t) {
   CAMLparam1(v_t);
-  dune_fsevents_t *t = (dune_fsevents_t *)Nativeint_val(v_t);
+  dune_fsevents_t *t = Fsevents_val(v_t);
   caml_release_runtime_system();
   FSEventStreamFlushSync(t->stream);
   caml_acquire_runtime_system();
@@ -343,60 +417,59 @@ static char *unavailable_message =
 #endif
 
 CAMLprim value dune_fsevents_stop(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_start(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_create(value v_paths, value v_latency,
                                     value v_callback) {
+  (void)v_paths;
+  (void)v_latency;
+  (void)v_callback;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_set_exclusion_paths(value v_t, value v_paths) {
+  (void)v_t;
+  (void)v_paths;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_flush_async(value v_t) {
-
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_kind(value v_flags) {
-
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_action(value v_flags) {
-
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 CAMLprim value dune_fsevents_raw(value v_flags) {
+  (void)v_flags;
   caml_failwith(unavailable_message);
 }
 
 CAMLprim value dune_fsevents_flush_sync(value v_t) {
+  (void)v_t;
   caml_failwith(unavailable_message);
 }
 
-CAMLprim value dune_fsevents_destroy(value v_t) {
+CAMLprim value dune_fsevents_dispatch_queue_create(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
-
-CAMLprim value dune_fsevents_break(value v_t) {
+CAMLprim value dune_fsevents_dispatch_queue_wait_until_stopped(value v_unit) {
+  (void)v_unit;
   caml_failwith(unavailable_message);
 }
-
-CAMLprim value dune_fsevents_loop(value v_t) {
-  caml_failwith(unavailable_message);
-}
-
-CAMLprim value dune_fsevents_runloop_current(value v_unit) {
-  caml_failwith(unavailable_message);
-}
-CAMLprim value dune_fsevents_runloop_run(value v_unit) {
-  caml_failwith(unavailable_message);
-}
-CAMLprim value dune_fsevents_available(value unit) {
-  CAMLparam1(unit);
+CAMLprim value dune_fsevents_available(value v_unit) {
+  CAMLparam1(v_unit);
   CAMLreturn(Val_false);
 }
 

@@ -1,0 +1,10 @@
+(executable
+ (name gen_flags))
+
+(rule
+ (deps
+  (:script gen_flags.ml))
+ (action
+  (with-stdout-to
+   sexp
+   (run ./gen_flags.exe %{system}))))

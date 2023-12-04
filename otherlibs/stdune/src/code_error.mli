@@ -9,9 +9,6 @@ type t =
 exception E of t
 
 val to_dyn_without_loc : t -> Dyn.t
-
 val to_dyn : t -> Dyn.t
-
 val create : ?loc:Loc0.t -> string -> (string * Dyn.t) list -> t
-
 val raise : ?loc:Loc0.t -> string -> (string * Dyn.t) list -> _

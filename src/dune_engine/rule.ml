@@ -10,12 +10,13 @@ module Info = struct
   let of_loc_opt = function
     | None -> Internal
     | Some loc -> From_dune_file loc
+  ;;
 
   let to_dyn : t -> Dyn.t = function
     | From_dune_file loc -> Dyn.Variant ("From_dune_file", [ Loc.to_dyn loc ])
     | Internal -> Dyn.Variant ("Internal", [])
-    | Source_file_copy p ->
-      Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
+    | Source_file_copy p -> Dyn.Variant ("Source_file_copy", [ Path.Source.to_dyn p ])
+  ;;
 end
 
 module Promote = struct
@@ -52,7 +53,6 @@ module Id = Id.Make ()
 module T = struct
   type t =
     { id : Id.t
-    ; context : Build_context.t option
     ; targets : Targets.Validated.t
     ; action : Action.Full.t Action_builder.t
     ; mode : Mode.t
@@ -62,22 +62,16 @@ module T = struct
     }
 
   let compare a b = Id.compare a.id b.id
-
   let equal a b = Id.equal a.id b.id
-
   let hash t = Id.hash t.id
-
   let loc t = t.loc
-
-  let to_dyn t : Dyn.t =
-    Record [ ("id", Id.to_dyn t.id); ("info", Info.to_dyn t.info) ]
+  let to_dyn t : Dyn.t = Record [ "id", Id.to_dyn t.id; "info", Info.to_dyn t.info ]
 end
 
 include T
 include Comparable.Make (T)
 
-let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
-    action =
+let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with
@@ -85,23 +79,26 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
       let pp = [ Pp.text message ] @ extra_pp in
       User_error.raise ~loc pp
     | Internal | Source_file_copy _ ->
-      Code_error.raise message
-        [ ("info", Info.to_dyn info); ("targets", Targets.to_dyn targets) ]
+      Code_error.raise
+        message
+        [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]
   in
   (* CR-someday amokhov: Since [dir] and [targets] are produced together and are
      logically related, we could make [dir] a field of [Targets.Validated.t]. *)
   let dir, targets =
     match Targets.validate targets with
-    | Valid { parent_dir; targets } -> (parent_dir, targets)
+    | Valid { parent_dir; targets } -> parent_dir, targets
     | No_targets -> report_error "Rule has no targets specified"
     | Inconsistent_parent_dir ->
       (* user written actions have their own validation step that also works
          with the target inference mechanism *)
-      Code_error.raise "Rule has targets in different directories."
-        [ ("targets", Targets.to_dyn targets) ]
+      Code_error.raise
+        "Rule has targets in different directories."
+        [ "targets", Targets.to_dyn targets ]
     | File_and_directory_target_with_the_same_name path ->
       report_error
-        (sprintf "%S is declared as both a file and a directory target."
+        (sprintf
+           "%S is declared as both a file and a directory target."
            (Dpath.describe_target path))
   in
   let loc =
@@ -113,17 +110,18 @@ let make ?(mode = Mode.Standard) ~context ?(info = Info.Internal) ~targets
            (Path.build (Path.Build.relative dir "_unknown_")))
     | Source_file_copy p -> Loc.in_file (Path.source p)
   in
-  { id = Id.gen (); targets; context; action; mode; info; loc; dir }
+  { id = Id.gen (); targets; action; mode; info; loc; dir }
+;;
 
 let set_action t action =
   let action = Action_builder.memoize "Rule.set_action" action in
   { t with action }
+;;
 
 module Anonymous_action = struct
   type t =
-    { context : Build_context.t option
-    ; action : Action.Full.t
-    ; loc : Loc.t option
+    { action : Action.Full.t
+    ; loc : Loc.t
     ; dir : Path.Build.t
     ; alias : Alias.Name.t option
     }

@@ -19,6 +19,10 @@ module Status : sig
 
   (** For local libraries, return the project they are part of *)
   val project : t -> Dune_project.t option
+
+  (** [relative_to_package t name] return the path of [name] relative to the
+      package determined by [t]. If there's no package, return [None] *)
+  val relative_to_package : t -> Lib_name.t -> Path.Local.t option
 end
 
 (** For values like modules that need to be evaluated to be fetched *)
@@ -26,6 +30,12 @@ module Source : sig
   type 'a t =
     | Local
     | External of 'a
+end
+
+module File_deps : sig
+  type 'a t =
+    | Local of Loc.t * Dep_conf.t list
+    | External of 'a list
 end
 
 module Enabled_status : sig
@@ -47,7 +57,6 @@ module Special_builtin_support : sig
 
   module Configurator : sig
     type api_version = V1
-
     type t = { api_version : api_version }
   end
 
@@ -80,7 +89,6 @@ end
 type 'path t
 
 val name : _ t -> Lib_name.t
-
 val loc : _ t -> Loc.t
 
 (** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
@@ -113,60 +121,37 @@ val eval_native_archives_exn : 'path t -> modules:Modules.t option -> 'path list
 val foreign_dll_files : 'path t -> 'path list
 
 val foreign_objects : 'path t -> 'path list Source.t
+val public_headers : 'path t -> 'path File_deps.t
 
 (** The library has a module that must be linked at the end. This is used for
     the [Std_exit] module of the stdlib. *)
 val exit_module : _ t -> Module_name.t option
 
 val instrumentation_backend : _ t -> (Loc.t * Lib_name.t) option
-
 val plugins : 'path t -> 'path list Mode.Dict.t
-
 val src_dir : 'path t -> 'path
-
 val status : _ t -> Status.t
-
 val default_implementation : _ t -> (Loc.t * Lib_name.t) option
-
 val kind : _ t -> Lib_kind.t
-
 val synopsis : _ t -> string option
-
 val jsoo_runtime : 'path t -> 'path list
-
+val melange_runtime_deps : 'path t -> 'path File_deps.t
 val obj_dir : 'path t -> 'path Obj_dir.t
-
 val virtual_ : _ t -> Modules.t Source.t option
-
-val entry_modules : _ t -> Module_name.t list Or_exn.t Source.t
-
+val entry_modules : _ t -> (Module_name.t list, User_message.t) result Source.t
 val main_module_name : _ t -> Main_module_name.t
-
 val wrapped : _ t -> Wrapped.t Inherited.t option
-
-val special_builtin_support : _ t -> Special_builtin_support.t option
-
+val special_builtin_support : _ t -> (Loc.t * Special_builtin_support.t) option
 val modes : _ t -> Lib_mode.Map.Set.t
-
 val modules : _ t -> Modules.t option Source.t
-
 val implements : _ t -> (Loc.t * Lib_name.t) option
-
 val requires : _ t -> Lib_dep.t list
-
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
-
-val preprocess :
-  _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
-
+val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
-
 val enabled : _ t -> Enabled_status.t
-
 val orig_src_dir : 'path t -> 'path option
-
-val version : _ t -> string option
-
+val version : _ t -> Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
 
 (** Directory where the source files for the library are located. Returns the
@@ -174,19 +159,15 @@ val dune_version : _ t -> Dune_lang.Syntax.Version.t option
 val best_src_dir : 'path t -> 'path
 
 type external_ = Path.t t
-
 type local = Path.Build.t t
 
 val user_written_deps : _ t -> Lib_dep.t list
-
 val of_local : local -> external_
-
 val as_local_exn : external_ -> local
+val set_version : 'a t -> Package_version.t option -> 'a t
 
-val set_version : 'a t -> string option -> 'a t
-
-val for_dune_package :
-     Path.t t
+val for_dune_package
+  :  Path.t t
   -> name:Lib_name.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
   -> requires:Lib_dep.t list
@@ -195,6 +176,8 @@ val for_dune_package :
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> melange_runtime_deps:Path.t list
+  -> public_headers:Path.t list
   -> modules:Modules.t
   -> Path.t t
 
@@ -204,8 +187,8 @@ type 'a path =
   | Local : Path.Build.t path
   | External : Path.t path
 
-val create :
-     loc:Loc.t
+val create
+  :  loc:Loc.t
   -> path_kind:'a path
   -> name:Lib_name.t
   -> kind:Lib_kind.t
@@ -213,12 +196,13 @@ val create :
   -> src_dir:'a
   -> orig_src_dir:'a option
   -> obj_dir:'a Obj_dir.t
-  -> version:string option
+  -> version:Package_version.t option
   -> synopsis:string option
   -> main_module_name:Main_module_name.t
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> requires:Lib_dep.t list
   -> foreign_objects:'a list Source.t
+  -> public_headers:'a File_deps.t
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
@@ -231,19 +215,18 @@ val create :
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option
-  -> entry_modules:Module_name.t list Or_exn.t Source.t
+  -> entry_modules:(Module_name.t list, User_message.t) result Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Lib_mode.Map.Set.t
   -> modules:Modules.t option Source.t
   -> wrapped:Wrapped.t Inherited.t option
-  -> special_builtin_support:Special_builtin_support.t option
+  -> special_builtin_support:(Loc.t * Special_builtin_support.t) option
   -> exit_module:Module_name.t option
   -> instrumentation_backend:(Loc.t * Lib_name.t) option
+  -> melange_runtime_deps:'a File_deps.t
   -> 'a t
 
 val package : _ t -> Package.Name.t option
-
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
-
 val equal : 'a t -> 'a t -> bool

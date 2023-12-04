@@ -10,7 +10,5 @@ type t = private
   }
 
 val annot : t list User_message.Annots.Key.t
-
 val make : main:User_message.t -> related:User_message.t list -> t
-
 val parse_output : dir:Path.t -> string -> t list

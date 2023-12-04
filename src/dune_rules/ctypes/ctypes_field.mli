@@ -64,21 +64,13 @@ type t =
 type Stanza.t += T of t
 
 val decode : t Dune_lang.Decoder.t
-
 val syntax : Dune_lang.Syntax.t
-
 val ml_of_module_name : Module_name.t -> string
-
 val non_installable_modules : t -> Module_name.t list
-
 val generated_ml_and_c_files : t -> string list
-
 val c_generated_functions_module : t -> Function_description.t -> Module_name.t
-
 val c_generated_types_module : t -> Module_name.t
-
 val type_gen_script : t -> string
-
 val c_generated_functions_cout_c : t -> Function_description.t -> string
-
 val function_gen_script : t -> Function_description.t -> string
+val has_stubs : t option -> bool

@@ -161,7 +161,6 @@ let rec to_fmt ppf t =
   Render.render ppf t ~tag_handler:(fun ppf _tag t -> to_fmt ppf t)
 
 let nop = Nop
-
 let seq a b = Seq (a, b)
 
 let concat ?(sep = Nop) = function
@@ -182,34 +181,22 @@ let concat_mapi ?(sep = Nop) l ~f =
   | l -> Concat (sep, List.mapi l ~f)
 
 let box ?(indent = 0) t = Box (indent, t)
-
 let vbox ?(indent = 0) t = Vbox (indent, t)
-
 let hbox t = Hbox t
-
 let hvbox ?(indent = 0) t = Hvbox (indent, t)
-
 let hovbox ?(indent = 0) t = Hovbox (indent, t)
-
 let verbatim x = Verbatim x
-
 let char x = Char x
-
 let custom_break ~fits ~breaks = Break (fits, breaks)
 
 let break ~nspaces ~shift =
   custom_break ~fits:("", nspaces, "") ~breaks:("", shift, "")
 
 let space = break ~nspaces:1 ~shift:0
-
 let cut = break ~nspaces:0 ~shift:0
-
 let newline = Newline
-
 let text s = Text s
-
 let textf fmt = Printf.ksprintf text fmt
-
 let tag tag t = Tag (tag, t)
 
 let enumerate l ~f =
@@ -225,9 +212,9 @@ let chain l ~f =
               (seq
                  (verbatim
                     (if i = 0 then
-                      "   "
-                    else
-                      "-> "))
+                       "   "
+                     else
+                       "-> "))
                  (f x)))))
 
 module O = struct
@@ -235,3 +222,85 @@ module O = struct
 end
 
 let of_fmt f x = Format (fun ppf -> f ppf x)
+
+let compare =
+  let compare_both (type a b) (f : a -> a -> int) (g : b -> b -> int) (a, b)
+      (c, d) =
+    let r = f a c in
+    if r <> 0 then
+      r
+    else
+      g b d
+  in
+  (* Due to 4.08 lower bound, we need to define this here. *)
+  let rec compare_list a b ~cmp:f : int =
+    match (a, b) with
+    | [], [] -> 0
+    | [], _ :: _ -> -1
+    | _ :: _, [] -> 1
+    | x :: a, y :: b -> (
+      match (f x y : int) with
+      | 0 -> compare_list a b ~cmp:f
+      | ne -> ne)
+  in
+  fun compare_tag ->
+    let rec compare x y =
+      match (x, y) with
+      | Nop, Nop -> 0
+      | Nop, _ -> -1
+      | _, Nop -> 1
+      | Seq (a, b), Seq (c, d) -> compare_both compare compare (a, b) (c, d)
+      | Seq _, _ -> -1
+      | _, Seq _ -> 1
+      | Concat (a, b), Concat (c, d) ->
+        compare_both compare (compare_list ~cmp:compare) (a, b) (c, d)
+      | Concat _, _ -> -1
+      | _, Concat _ -> 1
+      | Box (a, b), Box (c, d) -> compare_both Int.compare compare (a, b) (c, d)
+      | Box _, _ -> -1
+      | _, Box _ -> 1
+      | Vbox (a, b), Vbox (c, d) ->
+        compare_both Int.compare compare (a, b) (c, d)
+      | Vbox _, _ -> -1
+      | _, Vbox _ -> 1
+      | Hbox a, Hbox b -> compare a b
+      | Hbox _, _ -> -1
+      | _, Hbox _ -> 1
+      | Hvbox (a, b), Hvbox (c, d) ->
+        compare_both Int.compare compare (a, b) (c, d)
+      | Hvbox _, _ -> -1
+      | _, Hvbox _ -> 1
+      | Hovbox (a, b), Hovbox (c, d) ->
+        compare_both Int.compare compare (a, b) (c, d)
+      | Hovbox _, _ -> -1
+      | _, Hovbox _ -> 1
+      | Verbatim a, Verbatim b -> String.compare a b
+      | Verbatim _, _ -> -1
+      | _, Verbatim _ -> 1
+      | Char a, Char b -> Char.compare a b
+      | Char _, _ -> -1
+      | _, Char _ -> 1
+      | Break (a, b), Break (c, d) ->
+        let compare (x, y, z) (a, b, c) =
+          compare_both String.compare
+            (compare_both Int.compare String.compare)
+            (x, (y, z))
+            (a, (b, c))
+        in
+        compare_both compare compare (a, b) (c, d)
+      | Break _, _ -> -1
+      | _, Break _ -> 1
+      | Newline, Newline -> 0
+      | Newline, _ -> -1
+      | _, Newline -> 1
+      | Text a, Text b -> String.compare a b
+      | Text _, _ -> -1
+      | _, Text _ -> 1
+      | Tag (a, b), Tag (c, d) -> compare_both compare_tag compare (a, b) (c, d)
+      | Format _, Format _ ->
+        raise
+          (Invalid_argument "[Pp.of_fmt] values not supported in [Pp.compare]")
+      | Format _, _ -> -1
+      | _, Format _ -> 1
+    in
+    compare

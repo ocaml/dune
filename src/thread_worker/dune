@@ -1,5 +1,0 @@
-(library
- (name thread_worker)
- (libraries stdune threads.posix)
- (instrumentation
-  (backend bisect_ppx)))

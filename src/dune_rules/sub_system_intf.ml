@@ -10,8 +10,8 @@ module type S = sig
   type t
 
   (** Create an instance of the sub-system *)
-  val instantiate :
-       resolve:(Loc.t * Lib_name.t -> Lib.t Resolve.Memo.t)
+  val instantiate
+    :  resolve:(Loc.t * Lib_name.t -> Lib.t Resolve.Memo.t)
     -> get:(loc:Loc.t -> Lib.t -> t option Memo.t)
     -> Lib.t
     -> Info.t
@@ -60,8 +60,8 @@ module type Registered_backend = sig
       The returned list is sorted by order of dependencies. It is not allowed to
       have two different backend that are completely independent, i.e. none of
       them is in the transitive closure of the other one. *)
-  val select_extensible_backends :
-       ?written_by_user:t list
+  val select_extensible_backends
+    :  ?written_by_user:t list
     -> extends:(t -> t list Resolve.t)
     -> Lib.t list
     -> (t list, Selection_error.t) result Resolve.Memo.t
@@ -70,8 +70,8 @@ module type Registered_backend = sig
       scanning the dependencies.
 
       A backend can replace other backends *)
-  val select_replaceable_backend :
-       ?written_by_user:t list
+  val select_replaceable_backend
+    :  ?written_by_user:t list
     -> replaces:(t -> t list Resolve.t)
     -> Lib.t list
     -> (t, Selection_error.t) result Resolve.t Memo.t
@@ -105,8 +105,8 @@ module type End_point = sig
     val backends : t -> (Loc.t * Lib_name.t) list option
   end
 
-  val gen_rules :
-       Library_compilation_context.t
+  val gen_rules
+    :  Library_compilation_context.t
     -> info:Info.t
     -> backends:Backend.t list
     -> unit Memo.t

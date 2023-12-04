@@ -14,7 +14,7 @@ empty by default.
 
 Example:
 
-.. code:: scheme
+.. code:: dune
 
    ;; dune files in fixtures_* dirs are ignored
    (data_only_dirs fixtures_*)

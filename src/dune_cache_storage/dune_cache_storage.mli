@@ -14,9 +14,9 @@ module Store_result : sig
     | Stored
     | Already_present
     | Error of exn
-        (** [Error _] can happen due to genuine problems (cannot parse internal
-            cache files) or harmless ones (race with a concurrent change to the
-            cache). *)
+    (** [Error _] can happen due to genuine problems (cannot parse internal
+        cache files) or harmless ones (race with a concurrent change to the
+        cache). *)
     | Will_not_store_due_to_non_determinism of Sexp.t
 
   (** We consider [Will_not_store_due_to_non_determinism] as an error of higher
@@ -106,8 +106,10 @@ module Metadata : sig
 
   module Versioned : sig
     (** Same as the unversioned function but supports old metadata versions. *)
-    val restore :
-      Version.Metadata.t -> rule_or_action_digest:Digest.t -> t Restore_result.t
+    val restore
+      :  Version.Metadata.t
+      -> rule_or_action_digest:Digest.t
+      -> t Restore_result.t
   end
 end
 
@@ -116,22 +118,22 @@ end
     completes or raises. The base name of the temporary file is formed by
     concatenating the [prefix] (which is set to "dune" by default), then a
     suitably chosen integer number, then [suffix]. *)
-val with_temp_file :
-     ?prefix:string
+val with_temp_file
+  :  ?prefix:string
   -> suffix:string
   -> (Path.t Or_exn.t -> 'a Fiber.t)
   -> 'a Fiber.t
 
 (** Like [with_temp_file] but creates a directory in [Layout.temp_dir]. *)
-val with_temp_dir :
-     ?prefix:string
+val with_temp_dir
+  :  ?prefix:string
   -> suffix:string
   -> (Path.t Or_exn.t -> 'a Fiber.t)
   -> 'a Fiber.t
 
 module Raw_value : sig
-  val store_unchecked :
-       mode:Mode.t
+  val store_unchecked
+    :  mode:Mode.t
     -> content:string
     -> content_digest:Digest.t
     -> Util.Write_result.t

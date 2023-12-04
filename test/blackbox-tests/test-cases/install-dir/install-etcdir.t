@@ -7,7 +7,7 @@
   > EOF
   $ dune build @install
   $ mkdir install etcdir
-  $ dune install --dry-run --prefix ./install --etcdir $PWD/etcdir 2>&1 | grep etcdir
+  $ dune install --dry-run --prefix ./install --etcdir $PWD/etcdir --display short 2>&1 | grep etcdir
   Removing (if it exists) $TESTCASE_ROOT/etcdir/foo/configfile
   Installing $TESTCASE_ROOT/etcdir/foo/configfile
   Creating directory $TESTCASE_ROOT/etcdir/foo

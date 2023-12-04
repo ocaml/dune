@@ -3,7 +3,7 @@ Test dependency on installed package
   $ mkdir -p lib-a lib-a/sub b prefix
 
   $ cat > lib-a/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name a))
   > (using melange 0.1)
   > EOF
@@ -26,7 +26,7 @@ Test dependency on installed package
   Entering directory 'lib-a'
   Leaving directory 'lib-a'
 
-  $ dune install --root lib-a --prefix $PWD/prefix
+  $ dune install --root lib-a --prefix $PWD/prefix --display short
   Installing $TESTCASE_ROOT/prefix/lib/a/META
   Installing $TESTCASE_ROOT/prefix/lib/a/a.ml
   Installing $TESTCASE_ROOT/prefix/lib/a/dune-package
@@ -43,7 +43,7 @@ Test dependency on installed package
   Installing $TESTCASE_ROOT/prefix/lib/a/sub/sub.ml
 
   $ cat >b/dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -51,24 +51,22 @@ Test dependency on installed package
   > (melange.emit
   >  (target dist)
   >  (alias dist)
-  >  (libraries a)
-  >  (module_system commonjs))
+  >  (libraries a))
   > EOF
 
   $ cat > b/bar.ml <<EOF
   > let x = Js.log A.Foo.x
   > EOF
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build --root b @dist --display=short 2>&1 | grep -v melange
   Entering directory 'b'
           melc dist/node_modules/a/a.js
           melc dist/node_modules/a/foo.js
           melc dist/node_modules/a/sub/sub.js
-          melc .dist.mobjs/melange/melange__Bar.{cmi,cmj,cmt}
           melc dist/bar.js
   Leaving directory 'b'
 
-  $ find b/_build/default/dist | sort
+  $ find b/_build/default/dist | grep -v melange | sort
   b/_build/default/dist
   b/_build/default/dist/bar.js
   b/_build/default/dist/node_modules

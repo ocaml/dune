@@ -5,6 +5,7 @@ module Module_system : sig
     | Es6
     | CommonJs
 
+  val default : t * Filename.Extension.t
   val to_string : t -> string
 end
 
@@ -14,9 +15,7 @@ module Cm_kind : sig
     | Cmj
 
   val source : t -> Ocaml.Ml_kind.t
-
   val ext : t -> string
-
   val to_dyn : t -> Dyn.t
 
   module Map : sig

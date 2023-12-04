@@ -6,7 +6,7 @@ deprecated_library_name
 The ``deprecated_library_name`` stanza enables redirecting an old deprecated
 name after a library has been renamed. It's syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (deprecated_library_name
      (old_public_name <name>)

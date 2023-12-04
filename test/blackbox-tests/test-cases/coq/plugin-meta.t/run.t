@@ -10,6 +10,8 @@ The META file for plugins is built before calling coqdep
   > EOF
 
   $ dune build .bar.theory.d
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
   $ ls _build/install/default/lib/bar
   META
 

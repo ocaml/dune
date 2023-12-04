@@ -1,6 +1,6 @@
-open Dune_rules
 open! Stdune
 open Dune_tests_common
+module Ocamlobjinfo = Dune_rules.For_tests.Ocamlobjinfo
 
 let () = init ()
 
@@ -76,6 +76,7 @@ Apply functions: 3 2
 Send functions:
 Force link: no
 |ocamlobjinfo}
+;;
 
 let parse s = Ocamlobjinfo.parse s |> Ocamlobjinfo.to_dyn |> print_dyn
 
@@ -147,3 +148,4 @@ let%expect_test _ =
       }
 }
 |}]
+;;

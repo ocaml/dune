@@ -27,7 +27,7 @@ Consider this example:
 
 With the following ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (executable (name foo) (modes js))
 
@@ -45,7 +45,7 @@ executable targets.
 If you're using the Js_of_ocaml syntax extension, you must remember to add the
 appropriate PPX in the ``preprocess`` field:
 
-.. code:: scheme
+.. code:: dune
 
   (executable
    (name foo)

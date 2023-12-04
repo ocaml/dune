@@ -6,7 +6,11 @@ let latest_lang_version =
     (let+ () = Term.const () in
      print_endline
        (Dune_lang.Syntax.greatest_supported_version Stanza.syntax
-       |> Dune_lang.Syntax.Version.to_string))
+        |> Dune_lang.Syntax.Version.to_string))
+;;
 
 let group =
-  Cmd.group (Cmd.info "internal") [ Internal_dump.command; latest_lang_version ]
+  Cmd.group
+    (Cmd.info "internal")
+    [ Internal_dump.command; latest_lang_version; Internal_action_runner.group ]
+;;

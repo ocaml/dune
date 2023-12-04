@@ -4,47 +4,56 @@ module Graph = Dune_graph.Graph
 
 module Scheduler = struct
   let t = Test_scheduler.create ()
-
   let yield () = Test_scheduler.yield t
-
   let run f = Test_scheduler.run t f
 end
 
 (* to run a computation *)
 let run m = Scheduler.run (Memo.run m)
 
-let run_memo f v = try run (Memo.exec f v) with Memo.Error.E _ -> ()
+let run_memo f v =
+  try run (Memo.exec f v) with
+  | Memo.Error.E _ -> ()
+;;
 
 let a = Memo.create "A" ~input:(module Unit) (fun () -> Memo.return ())
 
 let b =
-  Memo.create "B"
+  Memo.create
+    "B"
     ~input:(module Unit)
     (fun () ->
       let+ () = Memo.exec a () in
       ())
+;;
 
 let c =
-  Memo.create "C"
+  Memo.create
+    "C"
     ~input:(module Unit)
     (fun () ->
       let+ () = Memo.exec a () in
       ())
+;;
 
 let d =
-  Memo.create "D"
+  Memo.create
+    "D"
     ~input:(module Unit)
     (fun () ->
       let* () = Memo.exec b () in
       let+ () = Memo.exec c () in
       ())
+;;
 
 let e =
-  Memo.create "E"
+  Memo.create
+    "E"
     ~input:(module Unit)
     (fun () ->
       let* () = Memo.exec d () in
       failwith "Oops, error!")
+;;
 
 let () = run_memo e ()
 
@@ -70,6 +79,7 @@ let%expect_test _ =
     </edges>
     </graph>
     </gexf> |}]
+;;
 
 let%expect_test _ =
   let graph = Scheduler.run (Memo.dump_cached_graph (Memo.cell d ())) in
@@ -82,12 +92,13 @@ let%expect_test _ =
     n_2 -> n_3
     n_4 -> n_3
     } |}]
+;;
 
 let%expect_test _ =
-  let graph =
-    Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell d ()))
-  in
-  Graph.For_tests.print graph ~format:Graph.File_format.Gexf
+  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell d ())) in
+  Graph.For_tests.print
+    graph
+    ~format:Graph.File_format.Gexf
     ~opaque_attributes:(Int.Set.singleton 0);
   [%expect
     {|
@@ -127,12 +138,13 @@ let%expect_test _ =
     </edges>
     </graph>
     </gexf> |}]
+;;
 
 let%expect_test _ =
-  let graph =
-    Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell e ()))
-  in
-  Graph.For_tests.print graph ~format:Graph.File_format.Gexf
+  let graph = Scheduler.run (Memo.dump_cached_graph ~time_nodes:true (Memo.cell e ())) in
+  Graph.For_tests.print
+    graph
+    ~format:Graph.File_format.Gexf
     ~opaque_attributes:(Int.Set.singleton 0);
   [%expect
     {|
@@ -178,3 +190,4 @@ let%expect_test _ =
     </edges>
     </graph>
     </gexf> |}]
+;;

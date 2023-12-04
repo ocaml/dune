@@ -1,0 +1,28 @@
+(cram
+ (deps opam-vars)
+ (applies_to opam-var-os))
+
+(data_only_dirs fake_opam_root)
+
+; Without this, no copying rules will be setup for the .opam-switch directory
+
+(subdir
+ fake_opam_root/default
+ (dirs :standard .opam-switch))
+
+; We trick opam into thinking it has a config file with fake_opam_root so that we can
+; access the os variables without having to do opam init
+
+(rule
+ (target opam-vars)
+ (deps
+  (source_tree fake_opam_root))
+ (action
+  (with-stdout-to
+   %{target}
+   (progn
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root arch)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-distribution)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-family)
+    (run %{bin:opam} --cli 2.1 var --root fake_opam_root os-version)))))

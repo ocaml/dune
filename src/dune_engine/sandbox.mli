@@ -10,25 +10,25 @@ val dir : t -> Path.Build.t
 val map_path : t -> Path.Build.t -> Path.Build.t
 
 (** Create a new sandbox and copy or link dependencies inside it. *)
-val create :
-     mode:Sandbox_mode.some
+val create
+  :  mode:Sandbox_mode.some
   -> dune_stats:Dune_stats.t option
   -> rule_loc:Loc.t
   -> deps:Dep.Facts.t
   -> rule_dir:Path.Build.t
   -> rule_digest:Digest.t
   -> expand_aliases:bool
-  -> t
+  -> t Fiber.t
 
 (** Move all targets created by the action from the sandbox to the build
     directory, skipping the files for which [should_be_skipped] returns [true].
 
     Expands [targets] with the set of files discovered in directory targets. *)
-val move_targets_to_build_dir :
-     t
+val move_targets_to_build_dir
+  :  t
   -> loc:Loc.t
   -> should_be_skipped:(Path.Build.t -> bool)
   -> targets:Targets.Validated.t
-  -> unit Targets.Produced.t
+  -> unit Targets.Produced.t Fiber.t
 
-val destroy : t -> unit
+val destroy : t -> unit Fiber.t

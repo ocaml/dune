@@ -6,68 +6,53 @@ include module type of struct
   with type t := t
 
 val equal : t -> t -> bool
-
 val compare : t -> t -> Ordering.t
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
-
 val break : t -> pos:int -> t * t
-
 val is_empty : t -> bool
-
 val of_list : char list -> t
-
 val is_prefix : t -> prefix:t -> bool
-
 val is_suffix : t -> suffix:t -> bool
-
 val take : t -> int -> t
-
 val drop : t -> int -> t
-
 val split_n : t -> int -> t * t
-
 val drop_prefix : t -> prefix:t -> t option
-
 val drop_prefix_if_exists : t -> prefix:t -> t
-
 val drop_suffix : t -> suffix:t -> t option
-
 val drop_suffix_if_exists : t -> suffix:t -> t
+
+(** [drop_prefix_and_suffix t ~prefix ~suffix] Will attempt to remove [prefix]
+    from the prefix and [suffix] from the suffix of [t]. Return [Some _] only
+    if the [suffix] and [prefix] were present. *)
+val drop_prefix_and_suffix : t -> prefix:t -> suffix:t -> t option
+
+module Caseless : sig
+  (** Case-insensitive matching semantics. *)
+
+  val drop_prefix : t -> prefix:t -> t option
+  val drop_prefix_if_exists : t -> prefix:t -> t
+  val drop_suffix : t -> suffix:t -> t option
+  val drop_suffix_if_exists : t -> suffix:t -> t
+end
 
 (** These only change ASCII characters *)
 val capitalize : t -> t
 
 val uncapitalize : t -> t
-
 val uppercase : t -> t
-
 val lowercase : t -> t
-
 val index : t -> char -> int option
-
 val index_from : t -> int -> char -> int option
-
 val rindex : t -> char -> int option
-
 val rindex_from : t -> int -> char -> int option
-
 val extract_words : t -> is_word_char:(char -> bool) -> t list
-
 val extract_comma_space_separated_words : t -> t list
-
 val extract_blank_separated_words : t -> t list
-
 val lsplit2 : t -> on:char -> (t * t) option
-
 val lsplit2_exn : t -> on:char -> t * t
-
 val rsplit2 : t -> on:char -> (t * t) option
-
 val split : t -> on:char -> t list
-
 val split_lines : t -> t list
 
 (** Escape ONLY one character. {!escape} also escapes '\n',... and transforms
@@ -78,11 +63,8 @@ val escape_only : char -> t -> t
 val longest : string list -> int
 
 val longest_map : 'a list -> f:('a -> string) -> int
-
 val longest_prefix : t list -> t
-
 val exists : t -> f:(char -> bool) -> bool
-
 val for_all : t -> f:(char -> bool) -> bool
 
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
@@ -111,7 +93,6 @@ val findi : string -> f:(char -> bool) -> int option
 val rfindi : string -> f:(char -> bool) -> int option
 
 include Comparable_intf.S with type key := t
-
 module Table : Hashtbl.S with type key = t
 
 (** Whether the string needs quoting if it is part of a shell command *)
@@ -121,4 +102,9 @@ val need_quoting : string -> bool
     [true] *)
 val quote_for_shell : string -> string
 
+(** [quote_list_for_shell l] is
+    [List.map l ~f:quote_for_shell |> concat ~sep:" "] *)
+val quote_list_for_shell : string list -> string
+
 val filter_map : string -> f:(char -> char option) -> string
+val contains_double_underscore : string -> bool

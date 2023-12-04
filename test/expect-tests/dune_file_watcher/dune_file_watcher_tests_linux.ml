@@ -13,28 +13,29 @@ let%expect_test _ =
         ; thread_safe_send_emit_events_job =
             (fun job ->
               critical_section mutex ~f:(fun () ->
-                  let events = job () in
-                  events_buffer := !events_buffer @ events))
+                let events = job () in
+                events_buffer := !events_buffer @ events))
         }
+      ~watch_exclusions:[]
       ()
   in
   let try_to_get_events () =
     critical_section mutex ~f:(fun () ->
-        match !events_buffer with
-        | [] -> None
-        | list ->
-          events_buffer := [];
-          Some
-            (List.map list ~f:(function
-              | Dune_file_watcher.Event.Sync _ -> assert false
-              | Queue_overflow -> assert false
-              | Fs_memo_event e -> e
-              | Watcher_terminated -> assert false)))
+      match !events_buffer with
+      | [] -> None
+      | list ->
+        events_buffer := [];
+        Some
+          (List.map list ~f:(function
+            | Dune_file_watcher.Event.Sync _ -> assert false
+            | Queue_overflow -> assert false
+            | Fs_memo_event e -> e
+            | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   (match Dune_file_watcher.add_watch watcher (Path.of_string ".") with
-  | Error _ -> assert false
-  | Ok () -> ());
+   | Error _ -> assert false
+   | Ok () -> ());
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;
   Stdio.Out_channel.write_all "x" ~data:"x";
   print_events 2;
@@ -53,8 +54,8 @@ let%expect_test _ =
 |}];
   let (_ : _) = Fpath.mkdir_p "d/w" in
   (match Dune_file_watcher.add_watch watcher (Path.of_string "d/w") with
-  | Error _ -> assert false
-  | Ok () -> ());
+   | Error _ -> assert false
+   | Ok () -> ());
   Stdio.Out_channel.write_all "d/w/x" ~data:"x";
   print_events 3;
   [%expect
@@ -70,3 +71,4 @@ let%expect_test _ =
   { path = In_source_tree "d/w/y"; kind = "Created" }
   { path = In_source_tree "d/w/y"; kind = "File_changed" }
 |}]
+;;

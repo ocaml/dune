@@ -7,9 +7,7 @@ module Version_error : sig
   type t
 
   val payload : t -> Csexp.t option
-
   val message : t -> string
-
   val to_dyn : t -> Dyn.t
 
   exception E of t
@@ -32,16 +30,19 @@ module type S = sig
 
     val handle_request : 'state t -> 'state -> Request.t -> Response.t fiber
 
-    val handle_notification :
-      'state t -> 'state -> Call.t -> (unit, Response.Error.t) result fiber
+    val handle_notification
+      :  'state t
+      -> 'state
+      -> Call.t
+      -> (unit, Response.Error.t) result fiber
 
-    val prepare_request :
-         'a t
+    val prepare_request
+      :  'a t
       -> ('req, 'resp) Decl.Request.witness
       -> (('req, 'resp) Staged.request, Version_error.t) result
 
-    val prepare_notification :
-         'a t
+    val prepare_notification
+      :  'a t
       -> 'payload Decl.Notification.witness
       -> ('payload Staged.notification, Version_error.t) result
   end
@@ -49,16 +50,14 @@ module type S = sig
   module Builder : sig
     type 'state t
 
-    val to_handler :
-         'state t
+    val to_handler
+      :  'state t
       -> session_version:('state -> Version.t)
       -> menu:Menu.t
       -> 'state Handler.t
 
     val create : unit -> 'state t
-
-    val registered_procedures :
-      'a t -> (Method.Name.t * Method.Version.t list) list
+    val registered_procedures : 'a t -> (Method.Name.t * Method.Version.t list) list
 
     (** A *declaration* of a procedure is a claim that this side of the session
         is able to *initiate* that procedure. Correspondingly, *implementing* a
@@ -77,14 +76,14 @@ module type S = sig
 
     val declare_request : 'state t -> ('req, 'resp) Decl.request -> unit
 
-    val implement_notification :
-         'state t
+    val implement_notification
+      :  'state t
       -> 'payload Decl.notification
       -> ('state -> 'payload -> unit fiber)
       -> unit
 
-    val implement_request :
-         'state t
+    val implement_request
+      :  'state t
       -> ('req, 'resp) Decl.request
       -> ('state -> 'req -> 'resp fiber)
       -> unit

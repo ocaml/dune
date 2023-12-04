@@ -12,14 +12,13 @@ module Origin : sig
     | Melange of Melange_stanzas.Emit.t
 
   val loc : t -> Loc.t
+  val to_dyn : t -> Dyn.t
 end
 
 module Artifacts : sig
   type t
 
-  val lookup_module :
-    t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
-
+  val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
   val lookup_library : t -> Lib_name.t -> Lib_info.local option
 end
 
@@ -28,10 +27,9 @@ type t
 val artifacts : t -> Artifacts.t Memo.t
 
 type for_ =
-  | Library of Lib_name.t  (** Library name *)
+  | Library of Lib_name.t (** Library name *)
   | Exe of
-      { first_exe : string
-            (** Name of first executable appearing in executables stanza *)
+      { first_exe : string (** Name of first executable appearing in executables stanza *)
       }
   | Melange of { target : string }
 
@@ -41,7 +39,7 @@ val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
 val modules : t -> for_:for_ -> Modules.t
 
 (** Find out the origin of the stanza for a given module *)
-val find_origin : t -> Module_name.t -> Origin.t option
+val find_origin : t -> Module_name.Path.t -> Origin.t option
 
 val empty : t
 
@@ -52,13 +50,16 @@ val empty : t
     all virtual modules are implemented - make sure that we construct [Module.t]
     with the correct [kind] *)
 
-val make :
-     Dune_file.t
+val include_subdirs : t -> Dune_file.Include_subdirs.t
+
+val make
+  :  Stanza.t list
   -> dir:Path.Build.t
-  -> scope:Scope.t
-  -> lib_config:Lib_config.t
+  -> libs:Lib.DB.t Memo.t
+  -> project:Dune_project.t
+  -> lib_config:Lib_config.t Memo.t
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
-  -> dirs:(Path.Build.t * string list * String.Set.t) list
+  -> dirs:Source_file_dir.t list
   -> t Memo.t

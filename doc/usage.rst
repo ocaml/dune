@@ -47,7 +47,7 @@ To add a new executable to a ``dune`` file in the current directory
 
 This will add the following stanza to the ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable
      (name main)
@@ -67,7 +67,7 @@ Run the following command to create a new directory ``src``, initialized as a li
 This will ensure the file ``./src/dune`` contains the below stanza (creating
 the file and directory, if necessary):
 
-.. code:: scheme
+.. code:: dune
 
     (library
      (public_name mylib)
@@ -144,7 +144,7 @@ Interpretation of Targets
 
 This section describes how Dune interprets the targets provided on
 the command line. When no targets are specified, Dune builds the
-``default`` alias, see :ref:`default-alias` for more details.
+:ref:`default alias <default-alias>`.
 
 Resolution
 ----------
@@ -176,114 +176,8 @@ targets upon starting:
     - _build/4.03.0/bin/prog.exe
     - _build/4.04.0/bin/prog.exe
 
-Aliases
--------
-
-Targets starting with a ``@`` are interpreted as :term:`aliases <alias>`. For
-instance ``@src/runtest`` means the alias ``runtest`` in all descendants of
-``src`` in all build contexts where it is defined. If you want to refer to a
-target starting with a ``@``, simply write: ``./@foo``.
-
-To build and run the tests for a particular build context, use
-``@_build/default/runtest`` instead.
-
-For instance:
-
--  ``dune build @_build/foo/runtest`` only runs the tests for
-   the ``foo`` build context
--  ``dune build @runtest`` will run the tests for all build contexts
-
-You can also build an alias non-recursively by using ``@@`` instead of
-``@``. For instance, to run tests only from the current directory, use:
-
-.. code::
-
-   dune build @@runtest
-
-Please note: it's not currently possible to build a target directly if that target
-lives in a directory that starts with the ``@`` character. In the rare cases
-where you need to do that, you can declare an alias like so:
-
-.. code:: scheme
-
-    (alias
-     (name foo)
-     (deps @foo/some.exe))
-
-``@foo/some.exe`` can then be built with:
-
-.. code::
-
-   dune build @foo
-
-
-.. _default-alias:
-
-Default Alias
--------------
-
-When no targets are given to ``dune build``, it builds the special ``default``
-:term:`alias`. Effectively ``dune build`` is equivalent to:
-
-.. code::
-
-   dune build @@default
-
-When a directory doesn't explicitly define what the ``default`` alias
-means via an :ref:`alias-stanza` stanza, the following implicit
-definition is assumed:
-
-.. code::
-
-   (alias
-    (name default)
-    (deps (alias_rec all)))
-
-Which means that by default ``dune build`` will build everything that
-is installable.
-
-When using a directory as a target, it will be interpreted as building the
-default target in the directory. The directory must exist in the source tree.
-
-.. code::
-
-   dune build dir
-
-Is equivalent to:
-
-.. code::
-
-   dune build @@dir/default
-
-.. _builtin-aliases:
-
-Built-in Aliases
-----------------
-
-There are a few :term:`aliases <alias>` that Dune automatically creates for the
-user:
-
-* ``default`` includes all the targets that Dune will build if a
-  target isn't specified, i.e., ``$ dune build``. By default, this is set to the
-  ``all`` alias. Note that for Dune 1.x, this was initially set to the ``install`` alias.
-
-* ``runtest`` runs all the tests, building them if
-  necessary.
-
-* ``install`` builds all public artifacts that will be installed.
-
-* ``doc`` builds documentation for public libraries.
-
-* ``doc-private`` builds documentation for all libraries, both public & private.
-
-* ``lint`` runs linting tools.
-
-* ``all`` builds all available targets in a directory and also builds installable artifacts
-  defined in that directory.
-
-* ``check`` builds the minimal set of targets required for
-  tooling support. Essentially, this is ``.cmi``, ``.cmt``, and ``.cmti`` files and
-  Merlin configurations.
+If a target starts with the ``@`` sign, it is interpreted as an :term:`alias`.
+See :doc:`reference/aliases`.
 
 Variables for Artifacts
 -----------------------
@@ -371,7 +265,7 @@ to return the toplevel directives needed to evaluate the module:
 .. code:: bash
 
    $ utop
-   # use_output "dune top-module path/to/module.ml";;
+   # use_output "dune ocaml top-module path/to/module.ml";;
 
 Requirements & Limitations
 --------------------------

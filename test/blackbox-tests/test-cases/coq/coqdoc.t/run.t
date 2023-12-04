@@ -1,5 +1,7 @@
 We build the coqdoc html target:
   $ dune build basic.html/
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 
 Now we inspect it:
   $ ls _build/default/basic.html
@@ -11,6 +13,8 @@ Now we inspect it:
 
 We build the coqdoc latex target:
   $ dune build basic.tex/
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 
 Now we inspect it:
   $ ls _build/default/basic.tex
@@ -21,6 +25,8 @@ Now we inspect it:
 Next from a clean build we make sure that @all does *not* build any doc targets:
   $ dune clean
   $ dune build @all
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 Note that this currently works due to a bug in @all detecting directory targets.
   $ ls _build/default
   META.base

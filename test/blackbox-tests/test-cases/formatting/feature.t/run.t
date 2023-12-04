@@ -184,10 +184,10 @@ But a helpful message is displayed.
 
 Sometimes, the suggestion is to just remove the configuration.
 
-  $ echo '(using fmt 1.2)' >> lang2/default/dune-project
+  $ echo '(using fmt 1.2)' >> lang2/partial/dune-project
   $ dune build @lang2/partial/fmt
-  File "lang2/default/dune-project", line 2, characters 0-15:
-  2 | (using fmt 1.2)
+  File "lang2/partial/dune-project", line 5, characters 0-15:
+  5 | (using fmt 1.2)
       ^^^^^^^^^^^^^^^
   Error: Starting with (lang dune 2.0), formatting is enabled by default.
   To port it to the new syntax, you can delete this part.

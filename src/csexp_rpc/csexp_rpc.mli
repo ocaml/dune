@@ -15,41 +15,15 @@
 
 open Stdune
 
-module type Worker = sig
-  (** [Csexp_rpc] relies on background threads for all blocking operations.
-
-      This is the signature for all the operation it needs for such background
-      threads. *)
-
-  (** A worker doing tasks in a background thread *)
-  type t
-
-  (** Create a worker doing tasks in a new background thread *)
-  val create : unit -> t Fiber.t
-
-  (** Stop the worker. Tasks that aren't yet started will not be completed. *)
-  val stop : t -> unit
-
-  (** [task t ~f] enqueue task [f] for worker [t] *)
-  val task :
-       t
-    -> f:(unit -> 'a)
-    -> ('a, [ `Exn of Exn_with_backtrace.t | `Stopped ]) result Fiber.t
-end
-
-(** Hack until we move [Dune_engine.Scheduler] into own library *)
-val worker : (module Worker) Fdecl.t
-
 module Session : sig
   (** Rpc session backed by two threads. One thread for reading, and another for
       writing *)
   type t
 
-  val create : socket:bool -> in_channel -> out_channel -> t Fiber.t
+  val close : t -> unit Fiber.t
 
-  (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
-     session if [x = None ] *)
-  val write : t -> Sexp.t list option -> unit Fiber.t
+  (** [write t xs] writes the s-expressions [xs]. *)
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)
@@ -60,12 +34,9 @@ module Client : sig
   (** RPC Client *)
   type t
 
-  val create : Unix.sockaddr -> t Fiber.t
-
+  val create : Unix.sockaddr -> t
   val stop : t -> unit
-
   val connect_exn : t -> Session.t Fiber.t
-
   val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
@@ -73,15 +44,17 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> (t, [ `Already_in_use ]) result
+  val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
   (** [ready t] returns a fiber that completes when clients can start connecting
       to the server *)
   val ready : t -> unit Fiber.t
 
-  val stop : t -> unit
-
+  val stop : t -> unit Fiber.t
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
+  val listening_address : t -> Unix.sockaddr list
+end
 
-  val listening_address : t -> Unix.sockaddr
+module Private : sig
+  module Io_buffer : module type of Io_buffer
 end

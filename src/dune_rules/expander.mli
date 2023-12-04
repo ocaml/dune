@@ -5,37 +5,33 @@ open Import
 type t
 
 val scope : t -> Scope.t
-
 val dir : t -> Path.Build.t
-
 val context : t -> Context.t
 
-val make :
-     scope:Scope.t
+val make_root
+  :  scope:Scope.t
   -> scope_host:Scope.t
   -> context:Context.t
-  -> lib_artifacts:Artifacts.Public_libs.t
-  -> lib_artifacts_host:Artifacts.Public_libs.t
-  -> bin_artifacts_host:Artifacts.Bin.t
-  -> t Memo.t
+  -> env:Env.t
+  -> lib_artifacts:Lib.DB.t
+  -> lib_artifacts_host:Lib.DB.t
+  -> artifacts_host:Artifacts.t
+  -> t
 
-val set_foreign_flags :
-     t
-  -> f:
-       (   dir:Path.Build.t
-        -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
+val set_foreign_flags
+  :  t
+  -> f:(dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
-
 val set_dir : t -> dir:Path.Build.t -> t
+val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
+val set_artifacts : t -> artifacts_host:Artifacts.t -> t
 
-val set_scope : t -> scope:Scope.t -> t
-
-val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
-
-val set_lookup_ml_sources :
-  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) -> t
+val set_lookup_ml_sources
+  :  t
+  -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t)
+  -> t
 
 module Expanding_what : sig
   type t =
@@ -43,9 +39,9 @@ module Expanding_what : sig
     | Deps_like_field
     | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
-        (** [what] describe what the action is. It should be a plural and is
-            inserted in a sentence as follow: "<what> are not allowed to have
-            targets" *)
+    (** [what] describe what the action is. It should be a plural and is
+        inserted in a sentence as follow: "<what> are not allowed to have
+        targets" *)
 end
 
 (** Used to improve error messages and handing special cases, such as:
@@ -71,19 +67,16 @@ end
 type value = Value.t list Deps.t
 
 val add_bindings_full : t -> bindings:value Pform.Map.t -> t
-
 val extend_env : t -> env:Env.t -> t
 
-val expand :
-     t
+val expand
+  :  t
   -> mode:'a String_with_vars.Mode.t
   -> String_with_vars.t
   -> 'a Action_builder.t
 
 val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
-
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
-
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 
 module No_deps : sig
@@ -91,12 +84,8 @@ module No_deps : sig
       dependencies, such as [%{dep:...}] *)
 
   val expand_pform : t -> Value.t list Memo.t String_with_vars.expander
-
-  val expand :
-    t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a Memo.t
-
+  val expand : t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a Memo.t
   val expand_path : t -> String_with_vars.t -> Path.t Memo.t
-
   val expand_str : t -> String_with_vars.t -> string Memo.t
 end
 
@@ -104,40 +93,40 @@ module With_deps_if_necessary : sig
   (** Same as [expand_xxx] but stay in the [Memo] monad if possible. *)
 
   val expand_path : t -> String_with_vars.t -> Path.t list Deps.t
-
   val expand_str : t -> String_with_vars.t -> string Deps.t
 end
 
 module With_reduced_var_set : sig
-  val expand_str :
-    context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string Memo.t
+  val expand_str
+    :  context:Context.t
+    -> dir:Path.Build.t
+    -> String_with_vars.t
+    -> string Memo.t
 
-  val expand_str_partial :
-       context:Context.t
+  val expand_str_partial
+    :  context:Context.t
     -> dir:Path.Build.t
     -> String_with_vars.t
     -> String_with_vars.t Memo.t
 
-  val eval_blang :
-    context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
+  val eval_blang : context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
     inside [Action_builder.t] because such forms may contain the form (:include
     ..) which needs files to be built. *)
-val expand_and_eval_set :
-     t
+val expand_and_eval_set
+  :  t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list Action_builder.t
   -> string list Action_builder.t
 
 val eval_blang : t -> Blang.t -> bool Memo.t
-
 val map_exe : t -> Path.t -> Path.t
+val artifacts : t -> Artifacts.t
 
-val artifacts : t -> Artifacts.Bin.t
-
-val expand_locks :
-  base:[ `Of_expander | `This of Path.t ] -> t -> Locks.t -> Path.t list Memo.t
-
-val sites : t -> Sites.t
+val expand_locks
+  :  base:[ `Of_expander | `This of Path.t ]
+  -> t
+  -> Locks.t
+  -> Path.t list Action_builder.t

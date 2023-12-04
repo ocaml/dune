@@ -1,15 +1,23 @@
 (** Initialize dune components *)
 
-open! Stdune
+open Import
 
 (** The context in which the initialization is executed *)
 module Init_context : sig
   type t =
     { dir : Path.t
-    ; project : Dune_engine.Dune_project.t
+    ; project : Dune_project.t
     }
 
   val make : string option -> t Memo.t
+end
+
+module Public_name : sig
+  type t
+
+  val to_string : t -> string
+  val of_string_user_error : Loc.t * string -> (t, User_message.t) result
+  val of_name_exn : Dune_lang.Atom.t -> t
 end
 
 (** A [Component.t] is a set of files that can be built or included as part of a
@@ -26,21 +34,15 @@ module Component : sig
         }
     end
 
-    type public_name =
-      | Use_name
-      | Public_name of Dune_lang.Atom.t
-
-    val public_name_to_string : public_name -> string
-
     (** Options for executable components *)
     module Executable : sig
-      type t = { public : public_name option }
+      type t = { public : Public_name.t option }
     end
 
     (** Options for library components *)
     module Library : sig
       type t =
-        { public : public_name option
+        { public : Public_name.t option
         ; inline_tests : bool
         }
     end
@@ -60,7 +62,6 @@ module Component : sig
           | Lib
 
         val of_string : string -> t option
-
         val commands : (string * t) list
       end
 

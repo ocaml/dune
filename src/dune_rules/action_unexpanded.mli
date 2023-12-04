@@ -16,13 +16,11 @@ val remove_locs : t -> t
     and targets, and verifies invariants such as:
 
     - All the targets are in [targets_dir]
-    - The [targets] mode is respected
-
-    [foreign_flags] has to be passed because it depends on [Super_context].
-    Fetching it directly would introduce a dependency cycle. *)
-val expand :
-     t
+    - The [targets] mode is respected *)
+val expand
+  :  t
   -> loc:Loc.t
+  -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
   -> targets_dir:Path.Build.t
   -> targets:Path.Build.t Targets_spec.t
@@ -31,9 +29,10 @@ val expand :
 
 (** [what] as the same meaning as the argument of
     [Expander.Expanding_what.User_action_without_targets] *)
-val expand_no_targets :
-     t
+val expand_no_targets
+  :  t
   -> loc:Loc.t
+  -> chdir:Path.Build.t
   -> deps:Dep_conf.t Bindings.t
   -> expander:Expander.t
   -> what:string

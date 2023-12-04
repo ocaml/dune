@@ -5,34 +5,39 @@ module Pps_and_flags = struct
   let decode =
     let+ loc = loc
     and+ l, flags =
-      until_keyword "--" ~before:String_with_vars.decode
+      until_keyword
+        "--"
+        ~before:String_with_vars.decode
         ~after:(repeat String_with_vars.decode)
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let pps, more_flags =
       List.partition_map l ~f:(fun s ->
-          match String_with_vars.is_prefix ~prefix:"-" s with
-          | Yes -> Right s
-          | No | Unknown _ -> (
-            let loc = String_with_vars.loc s in
-            match String_with_vars.text_only s with
-            | None ->
-              User_error.raise ~loc
-                [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt))))
+        match String_with_vars.is_prefix ~prefix:"-" s with
+        | Yes -> Right s
+        | No | Unknown _ ->
+          let loc = String_with_vars.loc s in
+          (match String_with_vars.text_only s with
+           | None ->
+             User_error.raise ~loc [ Pp.text "No variables allowed in ppx library names" ]
+           | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt))))
     in
     let all_flags = more_flags @ Option.value flags ~default:[] in
-    if syntax_version < (1, 10) then
+    if syntax_version < (1, 10)
+    then
       List.iter
         ~f:(fun flag ->
-          if String_with_vars.has_pforms flag then
+          if String_with_vars.has_pforms flag
+          then
             Dune_lang.Syntax.Error.since
               (String_with_vars.loc flag)
-              Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
+              Stanza.syntax
+              (1, 10)
+              ~what:"Using variables in pps flags")
         all_flags;
-    if pps = [] then
-      User_error.raise ~loc
-        [ Pp.text "You must specify at least one ppx rewriter." ];
-    (pps, all_flags)
+    if pps = []
+    then User_error.raise ~loc [ Pp.text "You must specify at least one ppx rewriter." ];
+    pps, all_flags
+  ;;
 end
 
 module Pps = struct
@@ -44,17 +49,18 @@ module Pps = struct
     }
 
   let equal f t { loc; pps; flags; staged } =
-    Loc.equal t.loc loc && List.equal f t.pps pps
+    Loc.equal t.loc loc
+    && List.equal f t.pps pps
     && List.equal String_with_vars.equal_no_loc t.flags flags
     && Bool.equal t.staged staged
+  ;;
 
   let compare_no_locs compare_pps { pps; flags; staged; loc = _ } t =
     let open Ordering.O in
     let= () = Bool.compare staged t.staged in
-    let= () =
-      List.compare flags t.flags ~compare:String_with_vars.compare_no_loc
-    in
+    let= () = List.compare flags t.flags ~compare:String_with_vars.compare_no_loc in
     List.compare pps t.pps ~compare:compare_pps
+  ;;
 end
 
 type 'a t =
@@ -64,18 +70,20 @@ type 'a t =
   | Future_syntax of Loc.t
 
 let equal f x y =
-  match (x, y) with
+  match x, y with
   | No_preprocessing, No_preprocessing -> true
   | Action (x, y), Action (x', y') ->
     Tuple.T2.equal Loc.equal Dune_lang.Action.equal (x, y) (x', y')
   | Pps x, Pps y -> Pps.equal f x y
   | Future_syntax x, Future_syntax y -> Loc.equal x y
   | _, _ -> false
+;;
 
 let map t ~f =
   match t with
   | Pps t -> Pps { t with pps = List.map t.pps ~f }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
+;;
 
 let filter_map t ~f =
   match t with
@@ -83,6 +91,7 @@ let filter_map t ~f =
     let pps = List.filter_map t.pps ~f in
     if pps = [] then No_preprocessing else Pps { t with pps }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
+;;
 
 let filter_map_resolve t ~f =
   let open Resolve.Memo.O in
@@ -90,15 +99,17 @@ let filter_map_resolve t ~f =
   | Pps t ->
     let+ pps = Resolve.Memo.List.filter_map t.pps ~f in
     let pps, flags = List.split pps in
-    if pps = [] then No_preprocessing
+    if pps = []
+    then No_preprocessing
     else Pps { t with pps; flags = t.flags @ List.flatten flags }
-  | (No_preprocessing | Action _ | Future_syntax _) as t ->
-    Resolve.Memo.return t
+  | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.Memo.return t
+;;
 
 let fold_resolve t ~init ~f =
   match t with
   | Pps t -> Resolve.Memo.List.fold_left t.pps ~init ~f
   | No_preprocessing | Action _ | Future_syntax _ -> Resolve.Memo.return init
+;;
 
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
@@ -120,15 +131,16 @@ end
 
 let decode =
   sum
-    [ ("no_preprocessing", return No_preprocessing)
+    [ "no_preprocessing", return No_preprocessing
     ; ( "action"
       , let+ loc, x =
           located
-            (update_var String_with_vars.decoding_env_key
+            (update_var
+               String_with_vars.decoding_env_key
                ~f:(fun env ->
                  let env = Option.value_exn env in
                  Some (Pform.Env.lt_renamed_input_file env))
-               Dune_lang.Action.decode)
+               Dune_lang.Action.decode_dune_file)
         in
         Action (loc, x) )
     ; ( "pps"
@@ -145,14 +157,17 @@ let decode =
         and+ loc = loc in
         Future_syntax loc )
     ]
+;;
 
 let loc = function
   | No_preprocessing -> None
   | Action (loc, _) | Pps { loc; _ } | Future_syntax loc -> Some loc
+;;
 
 let pps = function
   | Pps { pps; _ } -> pps
   | _ -> []
+;;
 
 module Without_future_syntax = struct
   type 'a t =
@@ -169,20 +184,27 @@ module Pp_flag_consumer = struct
     | Merlin
 end
 
-let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
-    'a Without_future_syntax.t =
+let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v
+  : 'a Without_future_syntax.t
+  =
   match t with
   | No_preprocessing -> No_preprocessing
   | Action (loc, action) -> Action (loc, action)
   | Pps pps -> Pps pps
   | Future_syntax loc ->
-    if Ocaml.Version.supports_let_syntax v then No_preprocessing
+    if Ocaml.Version.supports_let_syntax v
+    then No_preprocessing
     else
       Action
         ( loc
-        , Run
-            ( String_with_vars.make_pform loc (Macro (Bin, "ocaml-syntax-shims"))
-            , (match for_ with
+        , Dune_lang.Action.run
+            (String_with_vars.make_pform
+               loc
+               (Macro
+                  { Pform.Macro_invocation.macro = Bin
+                  ; payload = Pform.Payload.of_args [ "ocaml-syntax-shims" ]
+                  }))
+            ((match for_ with
               | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
               | Merlin ->
                 (* We generate a text file instead of AST. That gives you less
@@ -196,61 +218,56 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
                    Hopefully this will be fixed in merlin before that becomes a
                    necessity. *)
                 [])
-              @ [ String_with_vars.make_pform loc (Var Input_file) ] ) )
+             @ [ String_with_vars.make_pform loc (Var Input_file) ]) )
+;;
 
 module Per_module = struct
   module Per_module = Module_name.Per_item
 
   type 'a preprocess = 'a t
-
   type 'a t = 'a preprocess Per_module.t
 
   let equal f x y = Per_module.equal (equal f) x y
-
   let decode = Per_module.decode decode ~default:No_preprocessing
-
   let no_preprocessing () = Per_module.for_all No_preprocessing
-
   let find module_name t = Per_module.get t module_name
-
   let default () = Per_module.for_all No_preprocessing
 
   let pps t =
     Per_module.fold t ~init:Lib_name.Map.empty ~f:(fun pp acc ->
-        List.fold_left (pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
-            Lib_name.Map.set acc pp loc))
+      List.fold_left (pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
+        Lib_name.Map.set acc pp loc))
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
+  ;;
 
   (* Any dummy module name works here *)
   let dummy_name = Module_name.of_string "A"
 
   let single_preprocess t =
-    if Per_module.is_constant t then Per_module.get t dummy_name
-    else No_preprocessing
+    if Per_module.is_constant t then Per_module.get t dummy_name else No_preprocessing
+  ;;
 
   let add_instrumentation t ~loc ~flags ~deps libname =
     Per_module.map t ~f:(fun pp ->
-        match pp with
-        | No_preprocessing ->
-          let pps =
-            [ With_instrumentation.Instrumentation_backend
-                { libname; deps; flags }
-            ]
-          in
-          Pps { loc; pps; flags = []; staged = false }
-        | Pps ({ pps; _ } as t) ->
-          let pps =
-            With_instrumentation.Instrumentation_backend
-              { libname; deps; flags }
-            :: pps
-          in
-          Pps { t with pps }
-        | Action (loc, _) | Future_syntax loc ->
-          User_error.raise ~loc
-            [ Pp.text
-                "Preprocessing with actions and future syntax cannot be used \
-                 in conjunction with (instrumentation ...)"
-            ])
+      match pp with
+      | No_preprocessing ->
+        let pps =
+          [ With_instrumentation.Instrumentation_backend { libname; deps; flags } ]
+        in
+        Pps { loc; pps; flags = []; staged = false }
+      | Pps ({ pps; _ } as t) ->
+        let pps =
+          With_instrumentation.Instrumentation_backend { libname; deps; flags } :: pps
+        in
+        Pps { t with pps }
+      | Action (loc, _) | Future_syntax loc ->
+        User_error.raise
+          ~loc
+          [ Pp.text
+              "Preprocessing with actions and future syntax cannot be used in \
+               conjunction with (instrumentation ...)"
+          ])
+  ;;
 
   let without_instrumentation t =
     let f = function
@@ -258,32 +275,38 @@ module Per_module = struct
       | Instrumentation_backend _ -> None
     in
     Per_module.map t ~f:(filter_map ~f)
+  ;;
+
+  module Resolve_traversals = Per_module.Make_monad_traversals (Resolve.Memo)
 
   let with_instrumentation t ~instrumentation_backend =
     let f = function
-      | With_instrumentation.Ordinary libname ->
-        Resolve.Memo.return (Some (libname, []))
+      | With_instrumentation.Ordinary libname -> Resolve.Memo.return (Some (libname, []))
       | Instrumentation_backend { libname; flags; _ } ->
         Resolve.Memo.map
           (instrumentation_backend libname)
-          ~f:(Option.map ~f:(fun backend -> (backend, flags)))
+          ~f:(Option.map ~f:(fun backend -> backend, flags))
     in
-    Per_module.map_resolve t ~f:(filter_map_resolve ~f)
+    Resolve_traversals.map t ~f:(filter_map_resolve ~f)
+  ;;
 
   let instrumentation_deps t ~instrumentation_backend =
     let open Resolve.Memo.O in
     let f = function
       | With_instrumentation.Ordinary _ -> Resolve.Memo.return []
-      | Instrumentation_backend { libname; deps; flags = _ } -> (
-        instrumentation_backend libname >>| function
-        | Some _ -> deps
-        | None -> [])
+      | Instrumentation_backend { libname; deps; flags = _ } ->
+        instrumentation_backend libname
+        >>| (function
+         | Some _ -> deps
+         | None -> [])
     in
-    Per_module.fold_resolve t ~init:[] ~f:(fun t init ->
-        let f acc t =
-          let+ x = f t in
-          x :: acc
-        in
-        fold_resolve t ~init ~f)
-    >>| List.rev >>| List.flatten
+    Resolve_traversals.fold t ~init:[] ~f:(fun t init ->
+      let f acc t =
+        let+ x = f t in
+        x :: acc
+      in
+      fold_resolve t ~init ~f)
+    >>| List.rev
+    >>| List.flatten
+  ;;
 end

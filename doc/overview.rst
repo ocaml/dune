@@ -39,8 +39,9 @@ provides a few additional ones that separate it from the crowd:
 -  Release directly from any revision: Dune needs no setup stage. To release
    your project, simply point to a specific Git tag (named revision). Of course,
    you can add some release steps if you'd like, but it isn't necessary. For
-   more information, please refer to `dune-release
-   <https://github.com/tarides/dune-release>`_.
+   more information, please refer to dune-release_.
+
+.. _dune-release: https://github.com/tarides/dune-release
 
 The first section below defines some terms used in this manual. The second
 section specifies the Dune metadata format, and the third one describes how to
@@ -87,7 +88,7 @@ Terminology
      from this directory. Moreover, scopes are separate from your project's
      dependencies. The scope also determines where private items are visible.
      Private items include libraries or binaries that will not be installed.
-     See :ref:`scopes` for more details.
+     See :doc:`concepts/scopes` for more details.
 
    build context
      A specific configuration written in a :ref:`dune-workspace` file, which
@@ -107,10 +108,7 @@ Terminology
      A build target that doesn't produce any file and has configurable
      dependencies. Targets starting with ``@`` on the command line are
      interpreted as aliases (e.g., ``dune build @src/runtest``). Aliases are
-     per-directory. However, asking to build an alias in a given directory will
-     also trigger alias construction in all children directories recursively.
-     If no target is specified, Dune builds the ``default`` alias. Dune defines
-     several :ref:`builtin-aliases`.
+     per-directory. See :doc:`reference/aliases`.
 
    environment
      Determines the default values of various parameters, such as the
@@ -127,6 +125,19 @@ Terminology
      -  ``release`` which is the profile used for opam releases
      -  ``dev`` which is the default profile when none is set explicitly, it has
         stricter warnings than the ``release`` one
+
+   dialect
+     An alternative frontend to OCaml (such as ReasonML). It is described
+     by a pair of file extensions, one corresponding to interfaces and one to
+     implementations. It can use the standard OCaml syntax, or it can specify an
+     action to convert from a custom syntax to a binary OCaml abstract syntax
+     tree. It can also specify a custom formatter.
+
+   placeholder substitution
+     A build step in which placeholders such as ``%%VERSION%%`` in source files
+     are replaced by concrete values such as ``1.2.3``. It is performed by
+     :ref:`dune-subst` for development versions and dune-release_ for
+     releases.
 
 Project Layout
 ==============

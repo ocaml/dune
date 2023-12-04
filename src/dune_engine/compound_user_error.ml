@@ -16,13 +16,15 @@ end = struct
   let create ~main ~related =
     let () =
       List.iter related ~f:(fun (related : User_message.t) ->
-          match related.loc with
-          | Some _ -> ()
-          | None ->
-            Code_error.raise "related messages must have locations"
-              [ ("related", String (User_message.to_string related)) ])
+        match related.loc with
+        | Some _ -> ()
+        | None ->
+          Code_error.raise
+            "related messages must have locations"
+            [ "related", String (User_message.to_string related) ])
     in
     { main; related }
+  ;;
 end
 
 include T
@@ -30,13 +32,12 @@ include T
 let to_dyn { main; related } =
   let open Dyn in
   record
-    [ ("main", string (User_message.to_string main))
-    ; ("related", (list string) (List.map related ~f:User_message.to_string))
+    [ "main", string (User_message.to_string main)
+    ; "related", (list string) (List.map related ~f:User_message.to_string)
     ]
+;;
 
-let annot =
-  User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
-
+let annot = User_message.Annots.Key.create ~name:"compound-user-error" (Dyn.list to_dyn)
 let make ~main ~related = create ~main ~related
 
 let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Loc.t =
@@ -46,28 +47,29 @@ let make_loc ~dir { Ocamlc_loc.path; chars; lines } : Loc.t =
   in
   let pos_lnum_start, pos_lnum_stop =
     match lines with
-    | Single i -> (i, i)
-    | Range (i, j) -> (i, j)
+    | Single i -> i, i
+    | Range (i, j) -> i, j
   in
   let pos_cnum_start, pos_cnum_stop =
     match chars with
-    | None -> (0, 0)
-    | Some (x, y) -> (x, y)
+    | None -> 0, 0
+    | Some (x, y) -> x, y
   in
   let pos = { Lexing.pos_fname; pos_lnum = 0; pos_bol = 0; pos_cnum = 0 } in
-  { Loc.start =
-      { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start }
-  ; Loc.stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop }
-  }
+  let start = { pos with pos_lnum = pos_lnum_start; pos_cnum = pos_cnum_start } in
+  let stop = { pos with pos_lnum = pos_lnum_stop; pos_cnum = pos_cnum_stop } in
+  Loc.create ~start ~stop
+;;
 
 let parse_output ~dir s =
   Ocamlc_loc.parse s
   |> List.map ~f:(fun (report : Ocamlc_loc.report) ->
-         let make_message (loc, message) =
-           let loc = make_loc ~dir loc in
-           let message = Pp.verbatim message in
-           User_message.make ~loc [ message ]
-         in
-         let main = make_message (report.loc, report.message) in
-         let related = List.map report.related ~f:make_message in
-         make ~main ~related)
+    let make_message (loc, message) =
+      let loc = make_loc ~dir loc in
+      let message = Pp.verbatim message in
+      User_message.make ~loc [ message ]
+    in
+    let main = make_message (report.loc, report.message) in
+    let related = List.map report.related ~f:make_message in
+    make ~main ~related)
+;;

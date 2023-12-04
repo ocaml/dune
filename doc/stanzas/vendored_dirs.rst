@@ -12,7 +12,7 @@ such directories as containing vendored code.
 
 Example:
 
-.. code:: scheme
+.. code:: dune
 
    (vendored_dirs vendor)
 

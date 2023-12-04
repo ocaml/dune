@@ -1,3 +1,1 @@
-open Import
-
-include Build_config.Rule_generator
+include Import.Build_config.Gen_rules.Generator

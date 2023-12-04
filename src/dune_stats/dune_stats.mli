@@ -12,13 +12,13 @@ type dst =
       ; flush : unit -> unit
       }
 
-val create : dst -> t
-
+val global : unit -> t option
+val set_global : t -> unit
+val create : extended_build_job_info:bool -> dst -> t
 val emit : t -> Chrome_trace.Event.t -> unit
-
 val record_gc_and_fd : t -> unit
-
 val close : t -> unit
+val extended_build_job_info : t -> bool
 
 type event
 
@@ -29,9 +29,7 @@ type event_data =
   }
 
 val start : t option -> (unit -> event_data) -> event option
-
 val finish : event option -> unit
-
 val flush : t -> unit
 
 module Private : sig

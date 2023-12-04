@@ -1,0 +1,15 @@
+prefix=replaceme
+# pos-config can be relocatable relative to the .pc file if 
+# the folder it is in is named pkgconfig 
+# and --define-prefix is passed as arg
+# for /foo/bar/pkgconfig/libexample.pc 
+# prefix will be the grandparant folder /foo/
+exec_prefix=${prefix}/libexample
+libdir=${prefix}/libexample
+includedir=${prefix}/libexample
+Name: libexample
+Description: An example library for testing dune ctypes
+Requires:
+Version: 1.00.00
+Libs: -L${prefix}/libexample -lexample
+Cflags: -I${prefix}/libexample

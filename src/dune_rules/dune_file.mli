@@ -12,14 +12,6 @@ type for_ =
   | Executable
   | Library of Wrapped.t option
 
-module Lib_deps : sig
-  type nonrec t = Lib_dep.t list
-
-  val of_pps : Lib_name.t list -> t
-
-  val decode : for_ -> t Dune_lang.Decoder.t
-end
-
 module Buildable : sig
   type t =
     { loc : Loc.t
@@ -61,8 +53,8 @@ module Public_lib : sig
   (** Package it is part of *)
   val package : t -> Package.t
 
-  val make :
-       allow_deprecated_names:bool
+  val make
+    :  allow_deprecated_names:bool
     -> Dune_project.t
     -> Loc.t * Lib_name.t
     -> (t, User_message.t) result
@@ -72,12 +64,10 @@ module Mode_conf : sig
   type t =
     | Byte
     | Native
-    | Best  (** [Native] if available and [Byte] if not *)
+    | Best (** [Native] if available and [Byte] if not *)
 
   val decode : t Dune_lang.Decoder.t
-
   val compare : t -> t -> Ordering.t
-
   val to_dyn : t -> Dyn.t
 
   module Kind : sig
@@ -100,7 +90,6 @@ module Mode_conf : sig
     type nonrec t = Kind.t option Map.t
 
     val of_list : (mode_conf * Kind.t) list -> t
-
     val decode : t Dune_lang.Decoder.t
 
     module Details : sig
@@ -108,7 +97,6 @@ module Mode_conf : sig
     end
 
     val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
-
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end
 
@@ -128,11 +116,9 @@ module Mode_conf : sig
 
     module Set : sig
       type mode_conf := t
-
       type nonrec t = Kind.t option Map.t
 
       val of_list : (mode_conf * Kind.t) list -> t
-
       val decode : t Dune_lang.Decoder.t
 
       module Details : sig
@@ -140,7 +126,6 @@ module Mode_conf : sig
       end
 
       val eval_detailed : t -> has_native:bool -> Details.t Lib_mode.Map.t
-
       val eval : t -> has_native:bool -> Lib_mode.Map.Set.t
     end
   end
@@ -155,15 +140,16 @@ module Library : sig
     { name : Loc.t * Lib_name.Local.t
     ; visibility : visibility
     ; synopsis : string option
-    ; install_c_headers : string list
+    ; install_c_headers : (Loc.t * string) list
+    ; public_headers : Loc.t * Dep_conf.t list
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Lib.Set.t
     ; kind : Lib_kind.t
-          (* TODO: It may be worth remaming [c_library_flags] to
-             [link_time_flags_for_c_compiler] and [library_flags] to
-             [link_time_flags_for_ocaml_compiler], both here and in the Dune
-             language, to make it easier to understand the purpose of various
-             flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
+        (* TODO: It may be worth remaming [c_library_flags] to
+           [link_time_flags_for_c_compiler] and [library_flags] to
+           [link_time_flags_for_ocaml_compiler], both here and in the Dune
+           language, to make it easier to understand the purpose of various
+           flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
@@ -179,13 +165,15 @@ module Library : sig
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
+    ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
-  val sub_dir : t -> string option
+  type Stanza.t += T of t
 
+  val sub_dir : t -> string option
   val package : t -> Package.t option
 
   (** Check if the library has any foreign stubs or archives. *)
@@ -203,8 +191,8 @@ module Library : sig
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
       is the directory the library is declared in. Only files relevant to the
       [for_mode] selection will be returned. *)
-  val foreign_lib_files :
-       t
+  val foreign_lib_files
+    :  t
     -> dir:Path.Build.t
     -> ext_lib:string
     -> for_mode:Mode.Select.t
@@ -215,17 +203,16 @@ module Library : sig
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t
-
   val is_virtual : t -> bool
-
   val is_impl : t -> bool
-
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
-
   val main_module_name : t -> Lib_info.Main_module_name.t
 
-  val to_lib_info :
-    t -> dir:Path.Build.t -> lib_config:Lib_config.t -> Lib_info.local Memo.t
+  val to_lib_info
+    :  t
+    -> dir:Path.Build.t
+    -> lib_config:Lib_config.t
+    -> Lib_info.local Memo.t
 end
 
 module Plugin : sig
@@ -233,45 +220,24 @@ module Plugin : sig
     { package : Package.t
     ; name : Package.Name.t
     ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Section.Site.t)
+    ; site : Loc.t * (Package.Name.t * Site.t)
     ; optional : bool
     }
+
+  type Stanza.t += T of t
 end
 
 module Install_conf : sig
-  module File_entry : sig
-    type t
-
-    val to_file_bindings_unexpanded :
-         t list
-      -> expand_str:(String_with_vars.t -> string Memo.t)
-      -> dir:Path.Build.t
-      -> File_binding.Unexpanded.t list Memo.t
-  end
-
-  module Dir_entry : sig
-    type t
-  end
-
   type t =
-    { section : Install.Section_with_site.t
-    ; files : File_entry.t list
-    ; dirs : Dir_entry.t list
+    { section : Section_with_site.t
+    ; files : Install_entry.File.t list
+    ; dirs : Install_entry.Dir.t list
+    ; source_trees : Install_entry.Dir.t list
     ; package : Package.t
     ; enabled_if : Blang.t
     }
 
-  val expand_files :
-       t
-    -> expand_str:(String_with_vars.t -> string Memo.t)
-    -> dir:Path.Build.t
-    -> File_binding.Expanded.t list Memo.t
-
-  val expand_dirs :
-       t
-    -> expand_str:(String_with_vars.t -> string Memo.t)
-    -> dir:Path.Build.t
-    -> File_binding.Expanded.t list Memo.t
+  type Stanza.t += T of t
 end
 
 module Executables : sig
@@ -286,22 +252,20 @@ module Executables : sig
     include Dune_lang.Conv.S with type t := t
 
     val exe : t
-
     val object_ : t
-
     val shared_object : t
-
     val byte : t
-
     val native : t
-
     val js : t
-
     val compare : t -> t -> Ordering.t
-
     val to_dyn : t -> Dyn.t
 
-    val extension : t -> loc:Loc.t -> ext_obj:string -> ext_dll:string -> string
+    val extension
+      :  t
+      -> loc:Loc.t
+      -> ext_obj:Filename.Extension.t
+      -> ext_dll:Filename.Extension.t
+      -> string
 
     module Map : Map.S with type key = t
   end
@@ -323,6 +287,8 @@ module Executables : sig
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 
+  type Stanza.t += T of t
+
   (** Check if the executables have any foreign stubs or archives. *)
   val has_foreign : t -> bool
 
@@ -341,6 +307,8 @@ module Copy_files : sig
     ; files : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
+
+  type Stanza.t += T of t
 end
 
 module Rule : sig
@@ -356,6 +324,8 @@ module Rule : sig
     ; aliases : Alias.Name.t list
     ; package : Package.t option
     }
+
+  type Stanza.t += T of t
 end
 
 module Alias_conf : sig
@@ -368,6 +338,8 @@ module Alias_conf : sig
     ; enabled_if : Blang.t
     ; loc : Loc.t
     }
+
+  type Stanza.t += T of t
 end
 
 module Documentation : sig
@@ -376,6 +348,8 @@ module Documentation : sig
     ; package : Package.t
     ; mld_files : Ordered_set_lang.t
     }
+
+  type Stanza.t += T of t
 end
 
 module Tests : sig
@@ -385,8 +359,11 @@ module Tests : sig
     ; package : Package.t option
     ; deps : Dep_conf.t Bindings.t
     ; enabled_if : Blang.t
+    ; build_if : Blang.t
     ; action : Dune_lang.Action.t option
     }
+
+  type Stanza.t += T of t
 end
 
 module Toplevel : sig
@@ -396,6 +373,8 @@ module Toplevel : sig
     ; loc : Loc.t
     ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
+
+  type Stanza.t += T of t
 end
 
 module Include_subdirs : sig
@@ -406,6 +385,9 @@ module Include_subdirs : sig
   type t =
     | No
     | Include of qualification
+
+  type stanza = Loc.t * t
+  type Stanza.t += T of stanza
 end
 
 (** The purpose of [Library_redirect] stanza is to create a redirection from an
@@ -429,6 +411,7 @@ module Library_redirect : sig
 
   module Local : sig
     type nonrec t = (Loc.t * Lib_name.Local.t) t
+    type Stanza.t += T of t
 
     val of_private_lib : Library.t -> t option
   end
@@ -444,25 +427,10 @@ module Deprecated_library_name : sig
   end
 
   type t = Old_name.t Library_redirect.t
+  type Stanza.t += T of t
 
   val old_public_name : t -> Lib_name.t
 end
-
-type Stanza.t +=
-  | Library of Library.t
-  | Foreign_library of Foreign.Library.t
-  | Executables of Executables.t
-  | Rule of Rule.t
-  | Install of Install_conf.t
-  | Alias of Alias_conf.t
-  | Copy_files of Copy_files.t
-  | Documentation of Documentation.t
-  | Tests of Tests.t
-  | Include_subdirs of Loc.t * Include_subdirs.t
-  | Toplevel of Toplevel.t
-  | Library_redirect of Library_redirect.Local.t
-  | Deprecated_library_name of Deprecated_library_name.t
-  | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option
 
@@ -479,24 +447,21 @@ type t =
   }
 
 val equal : t -> t -> bool
-
 val hash : t -> int
-
 val to_dyn : t -> Dyn.t
 
-val parse :
-     Dune_lang.Ast.t list
+val parse
+  :  Dune_lang.Ast.t list
   -> dir:Path.Source.t
   -> file:Path.Source.t option
   -> project:Dune_project.t
   -> t Memo.t
 
-val fold_stanzas :
-  t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
+val fold_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc
 
 module Memo_fold : sig
-  val fold_stanzas :
-       t list
+  val fold_stanzas
+    :  t list
     -> init:'acc
     -> f:(t -> Stanza.t -> 'acc -> 'acc Memo.t)
     -> 'acc Memo.t

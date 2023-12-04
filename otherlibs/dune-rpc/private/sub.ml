@@ -8,7 +8,7 @@ type 'a t =
 let of_procedure p =
   let open Procedures.Poll in
   { poll = (poll p).decl; cancel = (cancel p).decl }
+;;
 
 let poll t = t.poll
-
 let poll_cancel t = t.cancel

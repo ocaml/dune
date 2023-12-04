@@ -10,6 +10,6 @@ Make sure no byte folders are included.
 
 Test resulting file
 
-  $ dune build @melange
+  $ dune build @mel
   $ node ./_build/default/multilib/c.js
   done

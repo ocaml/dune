@@ -6,7 +6,7 @@ type t =
   ; sourceroot : bool
   ; relocatable : bool
   ; sites : (Loc.t * Package.Name.t) list
-  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
+  ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Site.t))) list
   }
 
 let decode =
@@ -16,13 +16,16 @@ let decode =
      and+ module_ = field "module" Module_name.decode
      and+ sourceroot = field_b "sourceroot"
      and+ relocatable = field_b "relocatable"
-     and+ sites =
-       field "sites" ~default:[] (repeat (located Package.Name.decode))
+     and+ sites = field "sites" ~default:[] (repeat (located Package.Name.decode))
      and+ plugins =
-       field "plugins" ~default:[]
-         (repeat
-            (located (pair Package.Name.decode (located Section.Site.decode))))
+       field
+         "plugins"
+         ~default:[]
+         (repeat (located (pair Package.Name.decode (located Site.decode))))
      in
      { loc; module_; sourceroot; relocatable; sites; plugins })
+;;
 
-type Stanza.t += T of t
+include Stanza.Make (struct
+    type nonrec t = t
+  end)

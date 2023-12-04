@@ -6,7 +6,7 @@ Example using melange.emit, copy_files and include_subdirs
   > EOF
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -15,15 +15,16 @@ Example using melange.emit, copy_files and include_subdirs
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target app)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (preprocess (pps melange.ppx))
+  >  (emit_stdlib false)
+  >  (alias mel))
   > 
   > (subdir
   >  app
   >  (copy_files
   >   (files %{project_root}/assets/file.txt))
   >  (alias
-  >   (name melange)
+  >   (name mel)
   >   (deps file.txt)))
   > EOF
 
@@ -37,7 +38,7 @@ Example using melange.emit, copy_files and include_subdirs
   $ output_dir=_build/default/src/app
   $ src=$output_dir/src/main.js
   $ asset=$output_dir/file.txt
-  $ dune build @melange
+  $ dune build @mel
   $ dune build $asset
   $ node $src
   hello from file
@@ -46,7 +47,7 @@ Now add include_subdirs unqualified to show issue
 
   $ echo "(include_subdirs unqualified)" >> src/dune
 
-  $ dune build @melange
+  $ dune build @mel
   $ dune build $asset
   $ node $src
   hello from file

@@ -1,0 +1,13 @@
+(library
+ (name build_info)
+ (public_name dune-build-info)
+ (modules_without_implementation build_info_data)
+ (special_builtin_support
+  (build_info
+   (data_module build_info_data)
+   (api_version 1)))
+ (instrumentation
+  (backend bisect_ppx)))
+
+(documentation
+ (package dune-build-info))

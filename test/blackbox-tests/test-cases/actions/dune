@@ -1,0 +1,7 @@
+(cram
+ (deps ../watching/helpers.sh bin/sub_process.exe))
+
+(cram
+ (applies_to concurrent)
+ (enabled_if
+  (<> %{system} macosx)))

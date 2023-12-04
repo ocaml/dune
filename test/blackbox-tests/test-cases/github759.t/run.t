@@ -10,7 +10,7 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
   $ rm -f .merlin
   $ dune build foo.cma --profile release
@@ -22,7 +22,7 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
@@ -34,4 +34,4 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))

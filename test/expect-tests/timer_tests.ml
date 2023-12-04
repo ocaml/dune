@@ -8,7 +8,9 @@ let config =
   ; stats = None
   ; insignificant_changes = `React
   ; signal_watcher = `No
+  ; watch_exclusions = []
   }
+;;
 
 let%expect_test "create and wait for timer" =
   Scheduler.Run.go
@@ -22,6 +24,7 @@ let%expect_test "create and wait for timer" =
       assert (now () -. start >= duration);
       print_endline "timer finished successfully");
   [%expect {| timer finished successfully |}]
+;;
 
 let%expect_test "multiple timers" =
   Scheduler.Run.go
@@ -30,12 +33,13 @@ let%expect_test "multiple timers" =
     (fun () ->
       [ 0.3; 0.2; 0.1 ]
       |> Fiber.parallel_iter ~f:(fun duration ->
-             let+ () = Scheduler.sleep duration in
-             printfn "finished %0.2f" duration));
+        let+ () = Scheduler.sleep duration in
+        printfn "finished %0.2f" duration));
   [%expect {|
     finished 0.10
     finished 0.20
     finished 0.30 |}]
+;;
 
 let%expect_test "run process with timeout" =
   Scheduler.Run.go
@@ -44,9 +48,7 @@ let%expect_test "run process with timeout" =
     (fun () ->
       let pid =
         let prog =
-          let path =
-            Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path
-          in
+          let path = Env.get Env.initial "PATH" |> Option.value_exn |> Bin.parse_path in
           Bin.which ~path "sleep" |> Option.value_exn |> Path.to_string
         in
         Spawn.spawn ~prog ~argv:[ prog; "100000" ] () |> Pid.of_int
@@ -55,3 +57,4 @@ let%expect_test "run process with timeout" =
       print_endline "sleep timed out");
   [%expect {|
     sleep timed out |}]
+;;

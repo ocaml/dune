@@ -1,6 +1,4 @@
-[@@@alert
-unstable "The API of this library is not stable and may change without notice."]
-
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
 (** Output trace data to a file in Chrome's trace_event format. This format is
@@ -21,6 +19,7 @@ module Json : sig
     | `List of t list
     | `Bool of bool
     | `Assoc of (string * t) list
+    | `Null
     ]
 end
 
@@ -49,14 +48,13 @@ module Event : sig
     type t
 
     val of_float_seconds : float -> t
-
     val to_float_seconds : t -> float
   end
 
   type common_fields
 
-  val common_fields :
-       ?tts:Timestamp.t
+  val common_fields
+    :  ?tts:Timestamp.t
     -> ?cname:string
     -> ?cat:string list
     -> ?pid:int
@@ -68,7 +66,6 @@ module Event : sig
     -> common_fields
 
   val ts : common_fields -> Timestamp.t
-
   val set_ts : common_fields -> Timestamp.t -> common_fields
 
   type args = (string * Json.t) list
@@ -82,10 +79,7 @@ module Event : sig
     | End
 
   val async : ?scope:string -> ?args:args -> Id.t -> async -> common_fields -> t
-
-  val complete :
-    ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common_fields -> t
-
+  val complete : ?tdur:Timestamp.t -> ?args:args -> dur:Timestamp.t -> common_fields -> t
   val to_json : t -> Json.t
 
   (** The scope of an instant event. The scopes below come from the standard
@@ -104,8 +98,8 @@ module Output_object : sig
 
   type t
 
-  val create :
-       ?displayTimeUnit:[ `Ms | `Ns ]
+  val create
+    :  ?displayTimeUnit:[ `Ms | `Ns ]
     -> ?extra_fields:(string * Json.t) list
     -> ?stackFrames:(Id.t * Stack_frame.t) list
     -> traceEvents:Event.t list

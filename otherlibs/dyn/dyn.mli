@@ -24,13 +24,9 @@ type t =
   | Set of t list
 
 val equal : t -> t -> bool
-
 val compare : t -> t -> Ordering.t
-
 val hash : t -> int
-
 val pp : t -> _ Pp.t
-
 val to_string : t -> string
 
 (** {1 Constructors} *)
@@ -38,35 +34,19 @@ val to_string : t -> string
 type 'a builder = 'a -> t
 
 val unit : unit builder
-
 val char : char builder
-
 val string : string builder
-
 val int : int builder
-
 val int32 : int32 builder
-
 val int64 : int64 builder
-
 val nativeint : nativeint builder
-
 val float : float builder
-
 val bool : bool builder
-
 val pair : 'a builder -> 'b builder -> ('a * 'b) builder
-
 val triple : 'a builder -> 'b builder -> 'c builder -> ('a * 'b * 'c) builder
-
 val list : 'a builder -> 'a list builder
-
 val array : 'a builder -> 'a array builder
-
 val option : 'a builder -> 'a option builder
-
 val opaque : _ builder
-
 val record : (string * t) list -> t
-
 val variant : string -> t list -> t

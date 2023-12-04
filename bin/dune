@@ -9,33 +9,46 @@
  (libraries
   memo
   ocaml
+  ocaml_config
   dune_lang
+  predicate_lang
   fiber
+  fiber_event_bus
   stdune
   dune_console
   unix
+  install
+  dune_findlib
   dune_metrics
   dune_digest
   dune_cache
   dune_cache_storage
   dune_graph
   dune_rules
+  dune_vcs
   dune_engine
   dune_util
   dune_upgrader
+  dune_pkg
+  dune_pkg_outdated
   cmdliner
   threads
   ; Kept to keep implicit_transitive_deps false working in 4.x
   threads.posix
   build_info
   dune_config
+  dune_config_file
   chrome_trace
   dune_stats
   csexp
   csexp_rpc
   dune_rpc_impl
+  dune_rules_rpc
   dune_rpc_private
-  spawn)
+  dune_rpc_client
+  spawn
+  opam_format
+  xdg)
  (bootstrap_info bootstrap-info))
 
 ; Installing the dune binary depends on the kind of build:

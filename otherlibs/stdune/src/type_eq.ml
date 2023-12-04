@@ -9,7 +9,6 @@ module Id = struct
 
   module type T = sig
     type a
-
     type _ w += W : a w
   end
 
@@ -21,16 +20,18 @@ module Id = struct
     match M1.W with
     | M2.W -> true
     | _ -> false
+  ;;
 
   let create (type a) () : a t =
     (module struct
       type nonrec a = a
-
       type _ w += W : a w
     end)
+  ;;
 
   let same (type a b) ((module M1) : a t) ((module M2) : b t) =
     match M1.W with
     | M2.W -> Some (T : (a, b) eq)
     | _ -> None
+  ;;
 end

@@ -23,18 +23,19 @@
     {[
       add_rule
         (let open Action_builder.O in
-        let* libs = Resolve.read requires in
-        gen_action libs)
+         let* libs = Resolve.read requires in
+         gen_action libs)
     ]}
 
     or:
 
     {[
-      Command.run prog
+      Command.run
+        prog
         [ Resolve.args
             (let open Resolve.O in
-            let+ libs = Resolve.args requires in
-            Command.Args.S [ gen_args libs ])
+             let+ libs = Resolve.args requires in
+             Command.Args.S [ gen_args libs ])
         ]
     ]}
 
@@ -49,7 +50,7 @@
 
     {[
       let open Memo.O in
-      let* libs = Resolve.get libs in
+      let* libs = Resolve.read_memo libs in
       gen_rules libs
     ]}
 
@@ -97,18 +98,14 @@ type 'a t
 include Monad.S with type 'a t := 'a t
 
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
 val hash : ('a -> int) -> 'a t -> int
-
 val to_dyn : ('a -> Dyn.t) -> 'a t Dyn.builder
-
-val of_result : ('a, exn) result -> 'a t
+val of_result : ('a, User_message.t) result -> 'a t
 
 type error
 
 val to_result : 'a t -> ('a, error) result
-
-val of_error : error -> 'a t
+val raise_error_with_stack_trace : error -> 'a
 
 (** Read a [Resolve.t] value inside the action builder monad. *)
 val read : 'a t -> 'a Action_builder.t
@@ -135,20 +132,19 @@ val is_error : 'a t -> bool
 val fail : User_message.t -> _ t
 
 (** Similar to [Memo.push_stack_frame]. *)
-val push_stack_frame :
-  human_readable_description:(unit -> User_message.Style.t Pp.t) -> 'a t -> 'a t
+val push_stack_frame
+  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> 'a t
+  -> 'a t
 
 val all : 'a t list -> 'a list t
 
 module List : sig
+  val all : 'a t list -> 'a list t
   val map : 'a list -> f:('a -> 'b t) -> 'b list t
-
   val filter_map : 'a list -> f:('a -> 'b option t) -> 'b list t
-
   val concat_map : 'a list -> f:('a -> 'b list t) -> 'b list t
-
   val iter : 'a list -> f:('a -> unit t) -> unit t
-
   val fold_left : 'a list -> f:('acc -> 'a -> 'acc t) -> init:'acc -> 'acc t
 end
 
@@ -158,22 +154,19 @@ end
 
 module Memo : sig
   type 'a resolve := 'a t
-
   type 'a t = 'a resolve Memo.t
 
   val all : 'a t list -> 'a list t
 
   include Monad.S with type 'a t := 'a t
 
-  val push_stack_frame :
-       human_readable_description:(unit -> User_message.Style.t Pp.t)
+  val push_stack_frame
+    :  human_readable_description:(unit -> User_message.Style.t Pp.t)
     -> (unit -> 'a t)
     -> 'a t
 
   val lift_memo : 'a Memo.t -> 'a t
-
   val lift : 'a resolve -> 'a t
-
   val is_ok : 'a t -> bool Memo.t
 
   (** [is_ok t] is the same as [Result.is_error (peek t)] *)
@@ -196,8 +189,7 @@ module Memo : sig
   val args : Command.Args.without_targets Command.Args.t t -> 'a Command.Args.t
 
   val fail : User_message.t -> _ t
-
-  val of_result : ('a, exn) result -> 'a t
+  val of_result : ('a, User_message.t) result -> 'a t
 
   (** Read the value immediately, ignoring actual errors. *)
   val peek : 'a t -> ('a, unit) result Memo.t

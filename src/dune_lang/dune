@@ -5,10 +5,12 @@
   stdune
   dune_glob
   dune_rpc_private
-  dune_util
-  memo
   ocaml
+  dune_util
+  dyn
   ordering
+  predicate_lang
+  dune_section
   (re_export dune_sexp))
  (instrumentation
   (backend bisect_ppx)))

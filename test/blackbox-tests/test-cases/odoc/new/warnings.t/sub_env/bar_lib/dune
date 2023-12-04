@@ -1,0 +1,4 @@
+(library
+ (name bar)
+ (public_name bar_lib)
+ (modules_without_implementation bar))

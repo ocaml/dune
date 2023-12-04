@@ -2,6 +2,9 @@
 
 val report_errors_config : Report_errors_config.t ref
 
+(** Stop the build upon encountering an error. *)
+val stop_on_first_error : bool ref
+
 (** Capture the output of sub-commands *)
 val capture_outputs : bool ref
 
@@ -38,14 +41,6 @@ val force : bool ref
 
 (** Always show full command on error *)
 val always_show_command_line : bool ref
-
-type on_missing_dune_project_file =
-  | Error
-  | Warn
-  | Ignore
-
-(** Desired behavior when dune project file is absent *)
-val on_missing_dune_project_file : on_missing_dune_project_file ref
 
 (** The display mode *)
 val display : Display.t ref

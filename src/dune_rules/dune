@@ -9,9 +9,10 @@
   memo
   ocaml
   dune_re
+  predicate_lang
   dune_console
   dune_digest
-  opam_file_format
+  install
   dune_lang
   dune_glob
   ocaml_config
@@ -22,10 +23,20 @@
   dune_util
   dune_meta_parser
   dune_section
+  opam_format
   dune_cache
+  dune_pkg
+  opam_core
   build_path_prefix_map
   dune_engine
+  dune_vcs
   dune_config
+  dune_config_file
+  dune_shared_cache
+  dune_findlib
+  dune_patch
+  scheme
+  fs
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

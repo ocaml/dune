@@ -5,10 +5,16 @@
   (names dune_flock))
  (libraries
   stdune
+  dune_stats
+  chrome_trace
   xdg
+  dyn
+  ordering
+  pp
   dune_console
   build_path_prefix_map
   dune_sexp
+  dune_config
   memo
   (re_export unix))
  (instrumentation

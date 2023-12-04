@@ -6,9 +6,7 @@ module File_format : sig
     | Dot
     | Summary
 
-  val conv :
-    (string -> (t, [> `Msg of string ]) result)
-    * (Format.formatter -> t -> unit)
+  val conv : (string -> (t, [> `Msg of string ]) result) * (Format.formatter -> t -> unit)
 end
 
 module Attribute : sig
@@ -43,8 +41,7 @@ val empty : t
     attributes is a map from attribute names to values. This function will fail
     if an attribute is provided with the same name but different kind of value
     to a previously provided attribute in the graph *)
-val add_node :
-  ?label:string -> t -> id:int -> attributes:Attribute.t String.Map.t -> t
+val add_node : ?label:string -> t -> id:int -> attributes:Attribute.t String.Map.t -> t
 
 (** Add an edge between node with src_id and node with dst_id *)
 val add_edge : t -> src_id:int -> dst_id:int -> t

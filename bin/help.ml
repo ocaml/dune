@@ -1,4 +1,3 @@
-open Stdune
 open Import
 
 let config =
@@ -43,7 +42,7 @@ let config =
              , {|This is the default, Dune shows and update a
                status line as build goals are being completed.|}
              )
-           ; ("quiet", {|Only display errors.|})
+           ; "quiet", {|Only display errors.|}
            ; ( "short"
              , {|Print one line per command being executed, with the
                binary name on the left and the reason it is being executed for
@@ -80,14 +79,14 @@ specification, or fall back on the hard-coded default. See $(b,man dune-build)
  for the description of individual modes.|}
     ; Common.footer
     ] )
+;;
 
 type what =
   | Man of Manpage.t
   | List_topics
 
-let commands = [ ("config", Man config); ("topics", List_topics) ]
-
-let doc = "Additional Dune help"
+let commands = [ "config", Man config; "topics", List_topics ]
+let doc = "Additional Dune help."
 
 let man =
   [ `S "DESCRIPTION"
@@ -96,19 +95,19 @@ let man =
             The following topics are available:|}
   ; `Blocks
       (List.concat_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> []
-           | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
+         match what with
+         | List_topics -> []
+         | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
   ; Common.footer
   ]
+;;
 
 let info = Cmd.info "help" ~doc ~man ~envs:Common.envs
 
 let term =
   Term.ret
   @@ let+ man_format = Arg.man_format
-     and+ what =
-       Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
+     and+ what = Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
      and+ () = Common.build_info in
      match what with
      | None -> `Help (man_format, Some "help")
@@ -117,11 +116,13 @@ let term =
        `Ok ()
      | Some List_topics ->
        List.filter_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> None
-           | _ -> Some s)
+         match what with
+         | List_topics -> None
+         | _ -> Some s)
        |> List.sort ~compare:String.compare
-       |> String.concat ~sep:"\n" |> print_endline;
+       |> String.concat ~sep:"\n"
+       |> print_endline;
        `Ok ()
+;;
 
 let command = Cmd.v info term

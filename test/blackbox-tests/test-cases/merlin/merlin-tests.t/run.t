@@ -3,20 +3,27 @@
   $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
   $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
 
+We're going create a fake findlib library for use:
+
+  $ mkdir -p _findlib/publicfoo
+  $ cat >_findlib/publicfoo/META <<EOF
+  > EOF
+  $ export OCAMLPATH="$PWD/_findlib:$OCAMLPATH"
+
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml merlin dump-config $PWD/exe
   X
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/exe)
    (S
@@ -24,7 +31,7 @@ CRAM sanitization
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
@@ -43,7 +50,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   File
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -60,16 +67,16 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   Foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -80,16 +87,16 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
   Privmod
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
-   (B lib/findlib)
-   (B /OCAMLC_WHERE)
+   (B
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S lib/findlib)
-   (S /OCAMLC_WHERE)
+   (S
+    $TESTCASE_ROOT/_findlib/publicfoo)
    (S
     $TESTCASE_ROOT/lib)
    (S
@@ -101,7 +108,7 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
   $ dune ocaml merlin dump-config $PWD/lib | grep ppx > /dev/null
@@ -121,7 +128,7 @@ Make sure pp flag is correct and variables are expanded
     (-pp
      "$TESTCASE_ROOT/_build/default/pp/pp.exe
      -nothing"))
-   (FLG (-w -40)))
+   (FLG (-w -40 -g)))
 
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
@@ -139,7 +146,8 @@ Check hash of executables names if more than one
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
   Y
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -153,4 +161,5 @@ Check hash of executables names if more than one
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

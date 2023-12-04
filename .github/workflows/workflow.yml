@@ -1,9 +1,12 @@
 name: CI
 
 on:
-  - push
-  - pull_request
-  - workflow_dispatch
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  merge_group:
 
 concurrency:
   group: "${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}"
@@ -30,11 +33,15 @@ jobs:
         ocaml-compiler:
           - 4.14.x
         include:
-          # OCaml 5:
-          - ocaml-compiler: 5.0.x
+          # OCaml trunk:
+          - ocaml-compiler: ocaml-variants.5.2.0+trunk
             os: ubuntu-latest
             skip_test: true
-          - ocaml-compiler: 5.0.x
+          # OCaml 5:
+          - ocaml-compiler: 5.1.x
+            os: ubuntu-latest
+            skip_test: true
+          - ocaml-compiler: 5.1.x
             os: macos-latest
             skip_test: true
           # OCaml 4:
@@ -56,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
@@ -78,7 +85,7 @@ jobs:
       - run: opam install ./dune.opam --deps-only --with-test
 
       - name: Install system deps on macOS
-        run: brew install coreutils
+        run: brew install coreutils pkg-config file
         if: ${{ matrix.os == 'macos-latest' }}
 
       # dune doesn't have any additional dependencies so we can build it right
@@ -109,36 +116,6 @@ jobs:
       - name: Build configurator
         run: opam install ./dune-configurator.opam
         if: ${{ matrix.configurator == true }}
-
-  dkml-4_12_1:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - gh_os: windows-2019
-            abi_pattern: win32-windows_x86
-            dkml_host_abi: windows_x86
-          - gh_os: windows-2019
-            abi_pattern: win32-windows_x86_64
-            dkml_host_abi: windows_x86_64
-    runs-on: ${{ matrix.gh_os }}
-    name: MSVC 4.12.1 / ${{ matrix.dkml_host_abi }}
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup DKML on a Windows host
-        if: startsWith(matrix.dkml_host_abi, 'windows_')
-        uses: ./ci/setup-dkml/gh-windows-4.12.1/pre
-
-      - name: Build and test the package on Windows host
-        if: startsWith(matrix.dkml_host_abi, 'windows_')
-        shell: msys2 {0}
-        run: ci/build-test.sh
-
-      - name: Teardown DKML on a Windows host
-        if: startsWith(matrix.dkml_host_abi, 'windows_')
-        uses: ./ci/setup-dkml/gh-windows-4.12.1/post
 
   dkml-current:
     strategy:
@@ -181,7 +158,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v18
+      - uses: cachix/install-nix-action@v22
       - run: nix build
 
   fmt:
@@ -219,7 +196,8 @@ jobs:
       - name: Install deps on Unix
         run: |
           opam install . --deps-only
-          opam exec -- make coverage-deps dev-deps
+          opam exec -- make dev-deps
+          opam exec -- make coverage-deps
       - run: opam exec -- make test-coverage
         continue-on-error: true
         env:
@@ -235,7 +213,7 @@ jobs:
       - run: nix develop .#doc -c make doc
 
   coq:
-    name: Coq 8.16.0
+    name: Coq 8.16.1
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -249,9 +227,43 @@ jobs:
           dune-cache: true
 
       - name: Install Coq
-        run: opam install coq.8.16.0 coq-native
+        run: opam install coq.8.16.1 coq-native
 
       - run: opam exec -- make test-coq
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
+
+  monorepo_benchmark_test:
+    name: Build monorepo benchmark docker image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - uses: whoan/docker-build-with-cache-action@v6
+        with:
+          image_name: monorepobenchmark
+          dockerfile: bench/monorepo/bench.Dockerfile
+          push_image_and_stages: on:push
+          username: ocamldune
+          password: "${{ secrets.DOCKER_HUB_PASSWORD }}"
+
+  create-local-opam-switch:
+    name: Create local opam switch
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+        ocaml-compiler:
+          - 5
+          - 4.14
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+      - uses: actions/checkout@v3
+      - run: opam switch create . -y

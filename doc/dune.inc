@@ -1,5 +1,14 @@
 
 (rule
+ (with-stdout-to dune-printenv.1
+  (run dune printenv --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-printenv.1))
+
+(rule
  (with-stdout-to dune-promote.1
   (run dune promote --help=groff)))
 
@@ -153,6 +162,15 @@
  (files   dune-internal.1))
 
 (rule
+ (with-stdout-to dune-monitor.1
+  (run dune monitor --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-monitor.1))
+
+(rule
  (with-stdout-to dune-ocaml.1
   (run dune ocaml --help=groff)))
 
@@ -171,13 +189,13 @@
  (files   dune-ocaml-merlin.1))
 
 (rule
- (with-stdout-to dune-printenv.1
-  (run dune printenv --help=groff)))
+ (with-stdout-to dune-pkg.1
+  (run dune pkg --help=groff)))
 
 (install
  (section man)
  (package dune)
- (files   dune-printenv.1))
+ (files   dune-pkg.1))
 
 (rule
  (with-stdout-to dune-promotion.1
@@ -214,6 +232,15 @@
  (section man)
  (package dune)
  (files   dune-runtest.1))
+
+(rule
+ (with-stdout-to dune-show.1
+  (run dune show --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-show.1))
 
 (rule
  (with-stdout-to dune-shutdown.1

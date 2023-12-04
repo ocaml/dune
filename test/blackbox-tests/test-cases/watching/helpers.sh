@@ -22,7 +22,16 @@ with_timeout () {
 
 stop_dune () {
     with_timeout dune shutdown;
-    wait $DUNE_PID;
+    # On Linux, we may run into a bash pid aliasing bug that causes wait to
+    # reject the pid. Therefore we use tail to wait instead.
+    if [ "$(uname -s)" = "Linux" ]
+    then
+        # wait for all child processes
+        tail --pid=$DUNE_PID -f /dev/null;
+    else
+        # wait for dune to exit
+        wait $DUNE_PID;
+    fi
     cat .#dune-output;
 }
 

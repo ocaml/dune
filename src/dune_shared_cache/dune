@@ -1,0 +1,12 @@
+(library
+ (name dune_shared_cache)
+ (libraries
+  stdune
+  dune_engine
+  dune_console
+  dune_util
+  dune_config
+  dune_cache
+  dune_cache_storage
+  dune_digest
+  fiber))

@@ -10,7 +10,7 @@ Then we install the backend and check that the "inline_tests.backend"
 field is properly generated in the installed `dune-package` file:
 
   $ dune build dune-file/foo.install
-  $ dune install foo --prefix _install 2> /dev/null
+  $ dune install foo --prefix _install
   $ grep -A8 inline_tests.backend _install/lib/foo/dune-package
    (inline_tests.backend
     (runner_libraries str)

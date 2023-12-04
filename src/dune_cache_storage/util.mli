@@ -17,20 +17,6 @@ end
     function returns [Ok] instead of [Already_present]. *)
 val write_atomically : mode:Mode.t -> content:string -> Path.t -> Write_result.t
 
-(** A primitive for atomically adding entries to the cache. The behaviour
-    differs depending on the [mode]:
-
-    - [Hardlink]: If [dst] already exists, return [Already_present]. Otherwise,
-      create a hard link [dst] pointing to [src].
-
-    - [Copy]: If [dst] already exists, return [Already_present]. Otherwise,
-      rename [src] to [dst]. If [dst] is created after the file existence check
-      but before renaming, [dst] will be silently overwritten. *)
-val add_atomically : mode:Mode.t -> src:Path.t -> dst:Path.t -> Write_result.t
-
-(** Create a hard link or copy depending on the [mode]. *)
-val link_or_copy : mode:Mode.t -> src:Path.t -> dst:Path.t -> unit
-
 (** The functions in this module are bare wrappers that assume that the "target
     directory" (whatever that means for a given function) already exists. If the
     wrapped function fails, then the "target directory" is created, and the

@@ -1,7 +1,7 @@
 (library
  (name dune_sexp)
  (synopsis "[Internal] S-expression library")
- (libraries dune_digest stdune)
+ (libraries stdune)
  (instrumentation
   (backend bisect_ppx)))
 

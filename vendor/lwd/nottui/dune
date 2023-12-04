@@ -1,0 +1,4 @@
+(library
+ (name dune_nottui)
+ (wrapped false)
+ (libraries dune_lwd dune_notty dune_notty_unix))

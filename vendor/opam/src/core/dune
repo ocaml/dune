@@ -1,0 +1,8 @@
+(library
+ (name opam_core)
+ (synopsis "OCaml Package Manager core internal stdlib")
+ (foreign_stubs
+  (language c)
+  (names custom_opamStubs))
+ (libraries dune_re unix sha dune_uutf)
+ (wrapped false))

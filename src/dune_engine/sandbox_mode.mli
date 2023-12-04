@@ -34,7 +34,6 @@ type some =
 type t = some option
 
 val compare : t -> t -> Ordering.t
-
 val equal : t -> t -> bool
 
 module Dict : sig
@@ -49,16 +48,13 @@ module Dict : sig
     }
 
   val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
-
   val of_func : (key -> 'a) -> 'a t
-
   val get : 'a t -> key -> 'a
 end
 
 module Set : sig
-  type key = t
-
-  type t = bool Dict.t
+  type key := t
+  type t
 
   val singleton : key -> t
 
@@ -66,17 +62,11 @@ module Set : sig
   val patch_back_source_tree_only : t
 
   val is_patch_back_source_tree_only : t -> bool
-
   val equal : t -> t -> bool
-
   val compare : t -> t -> Ordering.t
-
   val of_func : (key -> bool) -> t
-
   val mem : t -> key -> bool
-
   val inter : t -> t -> t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -86,17 +76,10 @@ end
 val all_except_patch_back_source_tree : t list
 
 val all : t list
-
 val none : t
-
 val symlink : t
-
 val copy : t
-
 val hardlink : t
-
-val decode : t Dune_lang.Decoder.t
-
+val decode : t Dune_sexp.Decoder.t
 val to_string : t -> string
-
 val to_dyn : t -> Dyn.t

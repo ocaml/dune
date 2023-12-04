@@ -12,231 +12,348 @@ parameters. The first line of ``dune-project`` must be a ``lang`` stanza with no
 extra whitespace or comments. The ``lang`` stanza controls the names and
 contents of all configuration files read by Dune and looks like:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.13)
 
 Additionally, they can contains the following stanzas.
 
 accept_alternative_dune_file_name
 ---------------------------------
 
-Since Dune 3.0, it's possible to use the alternative filename ``dune-file``
-instead of ``dune`` to specify the build. This may be useful to avoid problems
-with ``dune`` files that have the executable permission in a directory in the
-``PATH``, which can unwittingly happen in Windows.
+.. dune:stanza:: accept_alternative_dune_file_name
 
-The feature must be enabled explicitly by adding the following field to
-``dune-project``:
+   .. versionadded:: 3.0
 
-.. code:: scheme
+   Specify that the alternative filename ``dune-file`` is accepted in addition
+   to ``dune``.
 
-   (accept_alternative_dune_file_name)
+   This may be useful to avoid problems with ``dune`` files that have the
+   executable permission in a directory in the ``PATH``, which can unwittingly
+   happen on Windows.
 
-Note that ``dune`` continues to be accepted even after enabling this option, but
-if a file named ``dune-file`` is found in a directory, it will take precedence
-over ``dune``.
+   Note that ``dune`` continues to be accepted even after enabling this option,
+   but if a file named ``dune-file`` is found in a directory, it will take
+   precedence over ``dune``.
 
 cram
 ----
 
-Enable or disable Cram-style tests for the project. See :ref:`cram-tests` for
-details.
+.. dune:stanza:: cram
+   :param: <status>
 
-.. code:: scheme
+   Define whether Cram-style tests are enabled for the project.
 
-   (cram <status>)
+   `<status>` can be either ``enable`` or ``disable``. The default is
+   ``enable`` starting from the language version 3.0.
 
-Where status is either ``enable`` or ``disable``.
+   .. seealso:: :ref:`cram-tests`
 
 .. _dialect:
 
 dialect
 -------
 
-A dialect is an alternative frontend to OCaml (such as ReasonML). It's described
-by a pair of file extensions, one corresponding to interfaces and one to
-implementations.
+.. dune:stanza:: dialect
 
-A dialect can use the standard OCaml syntax, or it can specify an action to
-convert from a custom syntax to a binary OCaml abstract syntax tree.
+   Declare a new :term:`dialect`.
 
-Similarly, a dialect can specify a custom formatter to implement the ``@fmt``
-alias, see :ref:`formatting-main`.
+   .. dune:field:: name
+      :param: <name>
 
-When not using a custom syntax or formatting action, a dialect is nothing but a
-way to specify custom file extensions for OCaml code.
+      The name of the dialect being defined. It must be unique in a given
+      project.
 
-.. code:: scheme
+      This field is required.
 
-    (dialect
-     (name <name>)
-     (implementation
-      (extension <string>)
-      <optional fields>)
-     (interface
-      (extension <string>)
-      <optional fields>))
+   .. dune:field:: implementation
 
-``<name>`` is the name of the dialect being defined. It must be unique in a
-given project.
+      Details related to the implementation files (corresponding to `*.ml`).
 
-For interfaces and implementations, ``(extension <string>)`` specifies the file
-extension used for this dialect. The extension string must not contain any dots
-and be unique in a given project (so that a given extension can be mapped back
-to a corresponding dialect).
+      .. versionchanged:: 3.9 This field is made optional.
 
-``<optional fields>`` are:
+      .. dune:field:: extension
+         :param: <string>
 
-- Run ``(preprocess <action>)`` to produce a valid OCaml abstract syntax tree.
-  It's expected to read the file given in the variable named ``input-file`` and
-  output a *binary* abstract syntax tree on its standard output. See
-  :ref:`preprocessing-actions` for more information.
+         Specify the file extension used for this dialect.
 
-  If the field isn't present, it's assumed that the corresponding source code is
-  already valid OCaml code and can be passed to the OCaml compiler as-is.
+         The extension string must not start with a period and be unique in a
+         given project (so that a given extension can be mapped back to a
+         corresponding dialect). In Dune 3.9 and later, the extension string may
+         contain periods (e.g., `cppo.ml`).
 
+         This field is required.
 
-- Run ``(format <action>)`` to format source code for this dialect. The action
-  is expected to read the file given in the variable named ``input-file`` and
-  output the formatted source code on its standard output. For more information.
-  See :ref:`formatting-main` for more information.
+      .. dune:field:: preprocess
+         :param: <action>
 
-  If the field is not present, then ``(preprocess <action>)`` is also not
-  present (so that the dialect consists of valid OCaml code). In that case, the
-  dialect will be formatted as any other OCaml code by default. Otherwise no
-  special formatting will be done.
+         Run `<action>` to produce a valid OCaml abstract syntax tree.
+
+         This action is expected to read the file given in the variable named
+         ``%{input-file}`` and output a *binary* abstract syntax tree on its
+         standard output.
+
+         If the field is not present, it is assumed that the corresponding
+         source code is already valid OCaml code and can be passed to the OCaml
+         compiler as-is.
+
+         .. seealso:: :ref:`preprocessing-actions`
+
+      .. dune:field:: format
+         :param: <action>
+
+         Run `<action>` to format source code for this dialect.
+
+         The action is expected to read the file given in the variable named
+         ``%{input-file}`` and output the formatted source code on its standard
+         output.
+
+         If the field is not present, the behaviour depends on the presence of
+         ``(preprocess)``: if it is also not present (that is, the dialect
+         consists of valid OCaml code), then the dialect will be formatted as
+         any other OCaml code. Otherwise no special formatting will be done.
+
+         .. seealso:: :doc:`howto/formatting`
+
+   .. dune:field:: interface
+
+      Details related to the interface files (corresponding to `*.mli`).
+
+      This field supports the same sub-fields as ``implementation``.
+
+      .. versionchanged:: 3.9 This field is made optional.
 
 .. _executables_implicit_empty_intf:
 
 executables_implicit_empty_intf
 -------------------------------
 
-By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
-...)`` stanzas are compiled with the interface file provided (e.g., ``.mli`` or
-``rei``). Since these modules cannot be used as library dependencies, it's
-common to give them empty interface files to strengthen the compiler's ability
-to detect unused values in these modules.
+.. dune:stanza:: executables_implicit_empty_intf
 
-Starting from Dune 2.9, an option is available to automatically generate empty
-interface files for executables and tests that don't already have them:
+   .. versionadded:: 2.9
 
-.. code:: scheme
+   Automatically generate empty interface files for executables and tests that
+   do not already have them.
 
-    (executables_implicit_empty_intf true)
+   By default, executables defined via ``(executables(s) ...)`` or ``(test(s)
+   ...)`` stanzas are compiled with the interface file provided (e.g., ``.mli``
+   or ``rei``). Since these modules cannot be used as library dependencies,
+   it is common to give them empty interface files to strengthen the compiler's
+   ability to detect unused values in these modules.
 
-This option is enabled by default starting with Dune lang 3.0, so empty
-interface files are no longer needed.
+   This option, when enabled, will generate an empty `*.mli` file.
+
+   Example:
+
+   .. code:: dune
+
+       (executables_implicit_empty_intf true)
+
+   This option is enabled by default starting with Dune lang 3.0.
 
 expand_aliases_in_sandbox
 -------------------------
 
-When a sandboxed action depends on an alias, copy the expansion of the alias
-inside the sandbox. For instance, in the following example:
+.. dune:stanza:: expand_aliases_in_sandbox
 
-.. code:: scheme
+   When a sandboxed action depends on an alias, copy the expansion of the alias
+   inside the sandbox. For instance, in the following example:
 
-    (alias
-     (name foo)
-     (deps ../x))
+   .. code:: dune
 
-    (cram
-     (deps (alias foo)))
+      (alias
+       (name foo)
+       (deps ../x))
 
-File `x` will be visible inside the Cram test if and only if this option is
-enabled. This option is a better default in general; however, it currently
-causes Cram tests to run noticeably slower. So it is disabled by default until
-the performance issue with Cram test is fixed.
+      (cram
+       (deps (alias foo)))
+
+   File `x` will be visible inside the Cram test if and only if this option is
+   enabled. This option is a better default in general; however, it currently
+   causes Cram tests to run noticeably slower. So it is disabled by default
+   until the performance issue with Cram test is fixed.
 
 .. _explicit-js-mode:
 
 explicit_js_mode
 ----------------
 
-Traditionally, JavaScript targets were defined for every bytecode executable.
-This wasn't very precise and didn't interact well with the ``@all`` alias.
+.. dune:stanza:: explicit_js_mode
 
-You can opt out of this behavior by using:
+   Do not implicitly add ``js`` to the ``(modes ...)`` field of executables.
 
-.. code:: scheme
+   In projects that use dune lang 1.x, JavaScript targets are defined for every
+   bytecode executable. This is not very precise and does not interact well
+   with the ``@all`` alias.
 
-    (explicit_js_mode)
+   It is possible to opt out of this behavior by using:
 
-When this mode is enabled, an explicit ``js`` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger the JavaScript
-compilation. Explicit JS targets declared like this will be attached to the
-``@all`` alias.
+   .. code:: dune
 
-Starting with Dune 2.0, this behavior is the default, and there is no way to
-disable it.
+       (explicit_js_mode)
+
+   When this is enabled, an explicit ``js`` mode needs to be added to the
+   ``(modes ...)`` field of executables in order to trigger the JavaScript
+   compilation. Explicit JS targets declared like this will be attached to the
+   ``@all`` alias.
+
+   Starting with Dune 2.0, this behavior is the default, and there is no way to
+   disable it.
 
 .. _formatting:
 
 formatting
 ----------
 
-Starting in Dune 2.0, :ref:`formatting-main` is automatically enabled. This can
-be controlled by using
+.. dune:stanza:: formatting
 
-.. code:: scheme
+   .. versionadded:: 2.0
 
-    (formatting <setting>)
+   Control automatic formatting. Several forms are accepted:
 
-where ``<setting>`` is one of:
+   - To disable automatic formatting completely (equivalent to the behaviour in
+     language 1.x):
 
-- ``disabled``, meaning that automatic formatting is disabled
+     .. code:: dune
 
-- ``(enabled_for <languages>)`` can be used to restrict the languages that are
-  considered for formatting.
+        (formatting disabled)
+
+   - To restrict the languages that are considered for formatting:
+
+     .. code:: dune
+
+        (formatting
+         (enabled_for <languages>))
+
+     The list of `<languages>` can be either ``dune`` (formatting of dune
+     files) or a :term:`dialect` name.
+
+   .. seealso:: :doc:`howto/formatting`
 
 .. _generate_opam_files:
 
 generate_opam_files
 -------------------
 
-Dune is able to use metadata specified in the ``dune-project`` file to generate
-``.opam`` files (see :ref:`opam-generation`). To enable this integration, add
-the following field to the ``dune-project`` file:
+.. dune:stanza:: generate_opam_files
 
-.. code:: scheme
+   Use metadata specified in the ``dune-project`` file to generate ``.opam``
+   files.
 
-   (generate_opam_files true)
+   To enable this integration, add the following field to the ``dune-project``
+   file:
+
+   .. code:: dune
+
+      (generate_opam_files)
+
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
 
-- ``(license <names>)`` - specifies the license of the project, ideally as an
-  identifier from the `SPDX License List <https://spdx.org/licenses/>`__.
-  Multiple licenses may be specified.
+.. dune:stanza:: license
+   :param: <strings>
 
-- ``(authors <author> ..)`` - authors as inline strings
+   Specify the license of the project, ideally as an identifier from the `SPDX
+   License List <https://spdx.org/licenses/>`__.
 
-- ``(maintainers <maintainer> ..)`` - maintainers as inline strings
+   Example:
 
-- ``(source <source>)`` - specifies where the source for the package can be
-  found. It can be specified as ``(uri <uri>)`` or using shortcuts for some
-  hosting services:
+   .. code:: dune
 
-.. list-table::
+      (license MIT)
 
-  * - Service
-    - Syntax
-  * - `Github <https://github.com>`_
-    - ``(github user/repo)``
-  * - `Bitbucket <https://bitbucket.org>`_
-    - ``(bitbucket user/repo)``
-  * - `Gitlab <https://gitlab.com>`_
-    - ``(gitlab user/repo)``
-  * - `Sourcehut <https://sr.ht>`_
-    - ``(sourcehut user/repo)``
+   Multiple licenses may be specified.
 
-- ``(bug_reports <url>)`` - where to report bugs. If a hosting service is used
-  in ``(source)``, a default value is provided.
+.. dune:stanza:: authors
+   :param: <strings>
 
-- ``(homepage <url>)`` - the homepage of the project. If a hosting service is
-  used in ``(source)``, a default value is provided.
+   Specify authors.
 
-- ``(documentation <url>)`` - where the documentation is hosted
+   Example:
+
+   .. code:: dune
+
+      (authors
+       "Jane Doe <jane.doe@example.com>"
+       "John Doe <john.doe@example.com>")
+
+.. dune:stanza:: maintainers
+   :param: <strings>
+
+   Specify maintainers.
+
+   Example:
+
+   .. code:: dune
+
+      (maintainers
+       "Jane Doe <jane.doe@example.com>"
+       "John Doe <john.doe@example.com>")
+
+.. dune:stanza:: source
+
+   Specify where the source for the package can be found.
+
+   It can be specified as ``(uri <uri>)`` or using shortcuts for some
+   hosting services:
+
+   .. list-table::
+
+     * - Service
+       - Syntax
+     * - `Github <https://github.com>`_
+       - ``(github user/repo)``
+     * - `Bitbucket <https://bitbucket.org>`_
+       - ``(bitbucket user/repo)``
+     * - `Gitlab <https://gitlab.com>`_
+       - ``(gitlab user/repo)``
+     * - `Sourcehut <https://sr.ht>`_
+       - ``(sourcehut user/repo)``
+
+   Examples:
+
+   .. code:: dune
+
+      (source
+       (github ocaml/dune))
+
+   .. code:: dune
+
+      (source
+       (uri https://dev.example.com/project.git))
+
+.. dune:stanza:: bug_reports
+   :param: <url>
+
+   Where bugs should be reported.
+
+   If a hosting service is used in ``(source)``, a default value is provided.
+
+   Example:
+
+   .. code:: dune
+
+      (bug_reports https://dev.example.com/project/issues)
+
+.. dune:stanza:: homepage
+   :param: <url>
+
+   The homepage of the project.
+
+   If a hosting service is used in ``(source)``, a default value is provided.
+
+   Example:
+
+   .. code:: dune
+
+      (bug_reports https://example.com/)
+
+.. dune:stanza:: documentation
+   :param: <url>
+
+   Where the documentation is hosted.
 
 With these fields, every time one calls Dune to execute some rules (either via
 ``dune build``, ``dune runtest``, or something else), the opam files get
@@ -250,84 +367,175 @@ see :ref:`package`.
 implicit_transitive_deps
 ------------------------
 
-By default, Dune allows transitive dependencies of dependencies used when
-compiling OCaml; however, this setting can be controlled per project:
+.. dune:stanza:: implicit_transitive_deps
 
-.. code:: scheme
+   Control whether transitive dependencies are made implicitly visible.
 
-    (implicit_transitive_deps <bool>)
+   By default, Dune allows transitive dependencies of dependencies used when
+   compiling OCaml. However, this can be disabled by specifying:
 
-When set to ``false``, all dependencies directly used by a library or an
-executable must be added in the ``libraries`` field. We recommend users
-experiment with this mode and report any problems.
+   .. code:: dune
 
-Note that you must use ``threads.posix`` instead of ``threads`` when using this
-mode. This isn't an important limitation, as ``threads.vm`` is deprecated
-anyway.
+       (implicit_transitive_deps false)
 
-In some situations, it can be desirable to selectively preserve the behavior of
-transitive dependencies' availability a library's users. For example, if we
-define a library ``foo_more`` that extends ``foo``, we might want ``foo_more``
-users to immediately have ``foo`` available as well. To do this, we must define
-the dependency on ``foo`` as re-exported:
+   Then all dependencies directly used by a library or an executable must be
+   added in the ``libraries`` field.
 
-.. code:: scheme
+   We recommend users experiment with this mode and report any problems.
 
-   (library
-    (name foo_more)
-    (libraries (re_export foo)))
+   Note that you must use ``threads.posix`` instead of ``threads`` when using
+   this mode. This isn't an important limitation, as ``threads.vm`` is
+   deprecated anyway.
+
+   In some situations, it can be desirable to selectively preserve the behavior
+   of transitive dependencies' availability a library's users. For example, if
+   we define a library ``foo_more`` that extends ``foo``, we might want
+   ``foo_more`` users to immediately have ``foo`` available as well. To do
+   this, we must define the dependency on ``foo`` as re-exported:
+
+   .. code:: dune
+
+      (library
+       (name foo_more)
+       (libraries (re_export foo)))
 
 name
 ----
 
-Sets the name of the project. It's used by :ref:`dune subst <dune-subst>` and
-error messages.
+.. dune:stanza:: name
+   :param: <string>
 
-.. code:: scheme
+   Set the name of the project.
 
-    (name <name>)
+   It is used by :ref:`dune subst <dune-subst>` and error messages.
+
+opam_file_location
+------------------
+
+.. dune:stanza:: opam_file_location
+   :param: <location>
+
+   .. versionadded:: 3.8
+
+   Configure where generated ``.opam`` files are located. `<location>` can
+   be one of the following:
+
+   - ``relative_to_project``: the ``.opam`` files are generated in the project
+     root directory. This is the default.
+
+   - ``inside_opam_directory``: the ``.opam`` files are generated in a directory
+     named ``opam`` in the project root directory.
+
+   .. seealso:: :doc:`howto/opam-file-generation`
 
 .. _package:
 
 package
 -------
 
-Package specific information is specified in the ``(package <package-fields>)``
-stanza. It can contain the following fields:
+.. dune:stanza:: package
 
-- ``(name <string>)`` is the name of the package. This must be specified.
+   Define package-specific metadata.
 
-- ``(synopsis <string>)`` is a short package description.
+   .. dune:field:: name
+      :param: <string>
 
-- ``(description <string>)`` is a longer package description.
+      The name of the package.
 
-- ``(depends <dep-specification>)`` are package dependencies.
+      This must be specified.
 
-- ``(conflicts <dep-specification>)`` are package conflicts.
+   .. dune:field:: synopsis
+      :param: <string>
 
-- ``(depopts <dep-specification>)`` are optional package dependencies.
+      A short package description.
 
-- ``(tags <tags>)`` are the list of tags for the package.
+   .. dune:field:: description
+      :param: <string>
 
-- ``(deprecated_package_names <name list>)`` is a list of names that can be used
-  with the :ref:`deprecated-library-name` stanza to migrate legacy libraries
-  from other build systems that don't follow Dune's convention of prefixing the
-  library's public name with the package name.
+      A longer package description.
 
-- ``(license <name>)``, ``(authors <authors>)``, ``(maintainers
-  <maintainers>)``, ``(source <source>)``, ``(bug_reports <url>)``, ``(homepage
-  <url>)``, and ``(documentation <url>)`` are the same (and take precedence
-  over) the corresponding global fields. These fields have been available since
-  Dune 2.0.
+   .. dune:field:: depends
+      :param: <dep-specification>
 
-- ``(sites (<section> <name>) ...)`` define a site named ``<name>`` in the
-  section ``<section>``.
+      Package dependencies, as :token:`~pkg-dep:dep_specification`.
+
+   .. dune:field:: conflicts
+      :param: <dep-specification>
+
+      Package conflicts, as :token:`~pkg-dep:dep_specification`.
+
+   .. dune:field:: depopts
+      :param: <dep-specification>
+
+      Optional package dependencies, as :token:`~pkg-dep:dep_specification`.
+
+   .. dune:field:: tags
+      :param: <tags>
+
+      A list of tags.
+
+   .. dune:field:: deprecated_package_names
+      :param: <name list>
+
+      A list of names that can be used with the :ref:`deprecated-library-name`
+      stanza to migrate legacy libraries from other build systems that do not
+      follow Dune's convention of prefixing the library's public name with the
+      package name.
+
+   .. dune:field:: license
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: authors
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: maintainers
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: source
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: bug_reports
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: homepage
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: documentation
+
+      .. versionadded:: 2.0
+
+      The same as (and takes precedences over) the corresponding global field.
+
+   .. dune:field:: sites
+
+      Define a site.
+
+      ``(sites (<section> <name>) ...)`` defines a site named ``<name>`` in the
+      section ``<section>``.
 
 Adding libraries to different packages is done via the ``public_name`` and
 ``package`` fields. See :ref:`library` section for details.
 
-The list of dependencies :token:`dep_specification` is modelled after opam's own
-language. The syntax is a list of the following elements:
+The list of dependencies :token:`~pkg-dep:dep_specification` is modelled after
+opam's own language. The syntax is a list of the following elements:
 
 .. productionlist:: pkg-dep
    op : '=' | '<' | '>' | '<>' | '>=' | '<='
@@ -341,9 +549,9 @@ language. The syntax is a list of the following elements:
    dep_specification : <dep>+
 
 Filters will expand to any opam variable name if prefixed by ``:``, not just the
-ones listed in :token:`filter`. This also applies to version numbers. For example, to
-generate ``depends: [ pkg { = version } ]``, use ``(depends (pkg (=
-:version)))``.
+ones listed in :token:`~pkg-dep:filter`. This also applies to version numbers.
+For example, to generate ``depends: [ pkg { = version } ]``, use ``(depends
+(pkg (= :version)))``.
 
 Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
 automatically add the associated library or tool as a dependency. They have to
@@ -354,112 +562,148 @@ be added explicitly.
 subst
 -----
 
-Starting in Dune 3.0, :ref:`dune-subst` can be explicitly disabled or enabled.
-By default it is enabled and controlled by using:
+.. dune:stanza:: subst
+   :param: <bool>
 
-.. code:: scheme
+   .. versionadded: 3.0
 
-    (subst <setting>)
+   Control whether :ref:`dune-subst` is enabled for this project.
 
-where ``<setting>`` is one of:
-
-- ``disabled``, meaning that any call of `dune subst` in this project is
-  forbidden and will result in an error.
-
-- ``enabled``, allowing substitutions explicitly. This is the default.
+   - ``(subst disabled)``, means that any call of ``dune subst`` in this
+     project is forbidden and will result in an error. This line will be
+     omitted from the build instructions when generating opam files.
+   - ``(subst enabled)`` allows substitutions explicitly. This is the default.
 
 .. _always-add-cflags:
 
 use_standard_c_and_cxx_flags
 ----------------------------
 
-Since Dune 2.8, it's possible to deactivate the systematic prepending of flags
-coming from ``ocamlc -config`` to the C compiler command line. This is done
-adding the following field to the ``dune-project`` file:
+.. dune:stanza:: use_standard_c_and_cxx_flags
 
-.. code:: scheme
+   .. versionadded:: 2.8
 
-    (use_standard_c_and_cxx_flags true)
+   Control how flags coming from ``ocamlc -config`` are passed to the C
+   compiler command line.
 
-In this mode, Dune will populate the ``:standard`` set of C flags with the
-content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
-completed or overridden using the :ref:`ordered-set-language`. The value
-``true`` is the default for Dune 3.0.
+   Historically, they have been systematically prepended without a way to
+   override them.
+
+   If the following is passed, the mechanism is slightly altered:
+
+   .. code:: dune
+
+       (use_standard_c_and_cxx_flags)
+
+   In this mode, Dune will populate the ``:standard`` set of C flags with the
+   content of ``ocamlc_cflags`` and  ``ocamlc_cppflags``. These flags can be
+   completed or overridden using the :doc:`reference/ordered-set-language`.
+
+   This is the default in the language version 3.0.
 
 .. _using:
 
 using
 -----
 
-The language of configuration files read by Dune can be extended to support
-additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``). This is done by
-adding a line in the ``dune-project`` file, such as:
+.. dune:stanza:: using
+   :param: <plugin> <version>
 
-.. code:: scheme
+   Enable a dune language extension.
 
-    (using <plugin> <version>)
+   The language of configuration files read by Dune can be extended to support
+   additional stanzas (e.g., ``menhir``, ``coq.theory``, ``mdx``).
 
-Here, ``<plugin>`` is the name of the plugin that defines this stanza and
-``<version>`` describes the configuration language's version. Note that this
-version has nothing to do with the version of the associated tool or library. In
-particular, adding a ``using`` stanza will not result in a build dependency in
-the generated ``.opam`` file. See :ref:`generate_opam_files
-<generate_opam_files>`.
+   `<plugin>` is the name of the plugin that defines this stanza and
+   `<version>` describes the configuration language's version. Note that this
+   version has nothing to do with the version of the associated tool or
+   library. In particular, adding a ``using`` stanza will not result in a build
+   dependency in the generated ``.opam`` file. See :ref:`generate_opam_files
+   <generate_opam_files>`.
+
+   Example:
+
+   .. code:: dune
+
+      (using mdx 0.3)
 
 version
 -------
 
-Sets the version of the project:
+.. dune:stanza:: version
+   :param: <version>
 
-.. code:: scheme
+   Set the version of the project.
 
-    (version <version>)
+   Example:
+
+   .. code:: dune
+
+      (version 1.2.3)
 
 .. _wrapped-executables:
 
 wrapped_executables
 -------------------
 
-Executables are made of compilation units whose names may collide with
-libraries' compilation units. To avoid this possibility, Dune prefixes these
-compilation unit names with ``Dune__exe__``. This is entirely transparent to
-users except when such executables are debugged. In which case, the mangled
-names will be visible in the debugger.
+.. dune:stanza:: wrapped_executables
+   :param: <bool>
 
-Starting from Dune 1.11, an option is available to turn on/off name mangling for
-executables on a per-project basis:
+   .. versionadded:: 1.11
 
-.. code:: scheme
+   Control wrapping of modules in executables.
 
-    (wrapped_executables <bool>)
+   Executables are made of compilation units whose names may collide with
+   libraries' compilation units. To avoid this possibility, Dune prefixes
+   these compilation unit names with ``Dune__exe__``. This is entirely
+   transparent to users except when such executables are debugged. In which
+   case, the mangled names will be visible in the debugger.
 
-Starting with Dune 2.0, Dune mangles compilation units of executables by
-default. However, this can still be turned off using ``(wrapped_executables
-false)``
+   - with ``(wrapped_executables false)``, the original names are used.
+   - with ``(wrapped_executables true)``, the names are mangled.
+
+   Starting in language version 2.0, the default value is ``true``.
 
 .. _map-workspace-root:
 
 map_workspace_root
 -------------------
 
-.. versionadded:: 3.7
+.. dune:stanza:: map_workspace_root
+   :param: <bool>
 
-The desirable output of tools will not contain references to the
-file system location from which they were built. Starting from Dune 3.0,
-Dune has mapped references to the workspace directory to "/workspace_root".
+   Control references to the file system locations where the project has been
+   built.
 
-An option is available to turn on/off mapping
-of the workspace on a per-project basis:
+   - with ``(map_workspace_root true)``, dune rewrites references to the
+     workspace root to ``/workspace_root``. Note that when this mapping is
+     enabled, the debug information produced by the bytecode compiler is
+     incorrect, as the location information is lost.
 
-.. code:: scheme
+   - with ``(map_workspace_root false)``, the references are not rewritten.
 
-    (map_workspace_root <bool>)
+   The default is ``(map_workspace_root true)``.
 
-This can be turned off using 
-``(map_workspace_root false)``
-Note that when this mapping is enabled, the debug information produced
-by the bytecode compiler is incorrect, as the location information
-is lost.
+   .. versionadded:: 3.0
+        Initial version with the mapping always enabled.
+   .. versionchanged:: 3.7
+        Add a way to disable the mapping.
+
+.. _warnings:
+
+warnings
+--------
+
+.. dune:stanza:: warnings
+
+   .. versionadded:: 3.11
+
+   Configure Dune warnings for the project.
+
+   .. dune:field:: <name>
+      :param: <enabled | disabled>
+
+      Enable or disable the warning <name> for the current project.
 
 .. _dune-files:
 
@@ -469,11 +713,12 @@ dune
 ``dune`` files are the main part of Dune. They are used to describe libraries,
 executables, tests, and everything Dune needs to know about.
 
-The syntax of ``dune`` files is described in :ref:`metadata-format` section.
+The syntax of ``dune`` files is described in
+:doc:`reference/lexical-conventions`.
 
 ``dune`` files are composed of stanzas, as shown below:
 
-.. code:: lisp
+.. code:: dune
 
     (library
      (name mylib)
@@ -538,9 +783,9 @@ simply running:
 The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 ``dune-workspace`` file looks like:
 
-.. code:: scheme
+.. code:: dune
 
-    (lang dune 3.8)
+    (lang dune 3.13)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
@@ -550,7 +795,7 @@ The rest of this section describe the stanzas available.
 Note that an empty ``dune-workspace`` file is interpreted the same as one
 containing exactly:
 
-.. code:: scheme
+.. code:: dune
 
     (lang dune 3.2)
     (context default)
@@ -580,7 +825,7 @@ The ``(context ...)`` stanza declares a build context. The argument can be
 either ``default`` or ``(default)`` for the default build context, or it can be
 the description of an opam switch, as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (context (opam (switch <opam-switch-name>)
                    <optional-fields>))
@@ -614,8 +859,9 @@ the description of an opam switch, as follows:
   this way, its value will be used to resolve workspace binaries, including
   finding the compiler and related tools. These variables will also be passed as
   part of the environment to any program launched by Dune. For each variable,
-  the value is specified using the :ref:`ordered-set-language`. Relative paths
-  are interpreted with respect to the workspace root. See :ref:`finding-root`.
+  the value is specified using the :doc:`reference/ordered-set-language`.
+  Relative paths are interpreted with respect to the workspace root. See
+  :ref:`finding-root`.
 
 - ``(fdo <target_exe>)`` builds this context with feedback-direct optimizations.
   It requires `OCamlFDO <https://github.com/gretay-js/ocamlfdo>`__.
@@ -654,7 +900,7 @@ profile
 The build profile can be selected in the ``dune-workspace`` file by write a
 ``(profile ...)`` stanza. For instance:
 
-.. code:: scheme
+.. code:: dune
 
     (profile release)
 
@@ -692,7 +938,7 @@ action_stdout_on_success
 Specifies how Dune should handle the standard output of actions when they succeed.
 This can be used to reduce the noise of large builds.
 
-.. code:: scheme
+.. code:: dune
 
     (action_stdout_on_success <setting>)
 
@@ -712,7 +958,7 @@ cache
 Specifies whether Dune is allowed to store and fetch build targets from the Dune
 cache.
 
-.. code:: scheme
+.. code:: dune
 
     (cache <setting>)
 
@@ -733,7 +979,7 @@ check, in which Dune will re-execute randomly chosen build rules and compare
 their results with those stored in the cache. If the results differ, the rule is
 not reproducible, and Dune will print out a corresponding warning.
 
-.. code:: scheme
+.. code:: dune
 
     (cache-check-probability <number>)
 
@@ -748,7 +994,7 @@ cache-storage-mode
 
 Specify the mechanism used by the Dune cache for storage.
 
-.. code:: scheme
+.. code:: dune
 
     (cache-storage-mode <setting>)
 
@@ -763,16 +1009,16 @@ where ``<setting>`` is one of:
 - ``copy`` copies entries to the cache. This is less efficient than using hard
   links.
 
-.. _concurrency:
+.. _jobs:
 
-concurrency
------------
+jobs
+----
 
 Maximum number of concurrent jobs Dune is allowed to have.
 
-.. code:: scheme
+.. code:: dune
 
-    (concurrency <setting>)
+    (jobs <setting>)
 
 where ``<setting>`` is one of:
 
@@ -788,7 +1034,7 @@ display
 
 Specify the amount of Dune’s verbosity.
 
-.. code:: scheme
+.. code:: dune
 
     (display <setting>)
 
@@ -813,7 +1059,7 @@ sandboxing_preference
 The preferred sandboxing setting. Individual rules may specify different
 preferences. Dune will try to utilize a setting satisfying both conditions.
 
-.. code:: scheme
+.. code:: dune
 
     (sandboxing_preference <setting> <setting> ...)
 
@@ -834,7 +1080,7 @@ terminal-persistence
 
 Specifies how Dune handles the terminal when a rebuild is triggered in watch mode.
 
-.. code:: scheme
+.. code:: dune
 
     (terminal-persistence <setting>)
 

@@ -1,0 +1,14 @@
+(library
+ (name foo)
+ (private_modules privmod)
+ (modules privmod)
+ (instrumentation
+  (backend hello)))
+
+(library
+ (name bar)
+ (modules file)
+ (instrumentation
+  (backend hello)))
+
+(include_subdirs unqualified)

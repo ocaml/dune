@@ -2,7 +2,7 @@ Example showing melange.emit and copy_files, where the files are copied
 into the melange.emit target folder
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -11,23 +11,21 @@ into the melange.emit target folder
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias mel))
   > EOF
 
   $ touch public/img.png
 
 Builds normally
 
-  $ dune build @melange
+  $ dune build @mel
 
 Now try copying a file
 
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (alias mel))
   > 
   > (subdir
   >  output
@@ -39,7 +37,7 @@ Now try copying a file
 
 It works:
 
-  $ dune build @melange
+  $ dune build @mel
 
 We add a module and it stays working:
 
@@ -47,4 +45,4 @@ We add a module and it stays working:
   > let () = Js.log "foo"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel

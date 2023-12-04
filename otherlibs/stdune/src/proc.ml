@@ -11,17 +11,17 @@ let restore_cwd_and_execve prog argv ~env =
   (* run at_exit before changing the working directory *)
   Stdlib.do_at_exit ();
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);
-  if Sys.win32 then
-    let pid =
-      Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr
-    in
+  if Sys.win32
+  then (
+    let pid = Unix.create_process_env prog argv env Unix.stdin Unix.stdout Unix.stderr in
     match snd (Unix.waitpid [] pid) with
     | WEXITED n -> sys_exit n
     | WSIGNALED _ -> sys_exit 255
-    | WSTOPPED _ -> assert false
+    | WSTOPPED _ -> assert false)
   else (
     ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
     Unix.execve prog argv env)
+;;
 
 module Resource_usage = struct
   type t =
@@ -46,16 +46,29 @@ module Process_info = struct
     }
 end
 
-external stub_wait3 :
-  Unix.wait_flag list -> int * Unix.process_status * float * Resource_usage.t
-  = "dune_wait3"
+external stub_wait4
+  :  int
+  -> Unix.wait_flag list
+  -> int * Unix.process_status * float * Resource_usage.t
+  = "dune_wait4"
 
-let wait flags =
-  if Sys.win32 then Code_error.raise "wait3 not available on windows" []
-  else
-    let pid, status, end_time, resource_usage = stub_wait3 flags in
+type wait =
+  | Any
+  | Pid of Pid.t
+
+let wait wait flags =
+  if Sys.win32
+  then Code_error.raise "wait4 not available on windows" []
+  else (
+    let pid =
+      match wait with
+      | Any -> -1
+      | Pid pid -> Pid.to_int pid
+    in
+    let pid, status, end_time, resource_usage = stub_wait4 pid flags in
     { Process_info.pid = Pid.of_int pid
     ; status
     ; end_time
     ; resource_usage = Some resource_usage
-    }
+    })
+;;

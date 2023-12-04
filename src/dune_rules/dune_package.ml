@@ -1,38 +1,77 @@
 open Import
 
 module Vfile = Dune_lang.Versioned_file.Make (struct
-  type t = unit
-end)
+    type t = unit
+  end)
 
 let fn = "dune-package"
+
+module External_location = struct
+  type t =
+    | Relative_to_stdlib of Path.Local.t
+    | Relative_to_findlib of (Path.t * Path.Local.t)
+    | Absolute of Path.t
+
+  let to_dyn x =
+    let open Dyn in
+    match x with
+    | Relative_to_stdlib p -> variant "Relative_to_stdlib" [ Path.Local.to_dyn p ]
+    | Relative_to_findlib (p1, p2) ->
+      variant "Relative_to_findlib" [ pair Path.to_dyn Path.Local.to_dyn (p1, p2) ]
+    | Absolute p -> variant "Absolute" [ Path.to_dyn p ]
+  ;;
+
+  let compare x y =
+    match x, y with
+    | Relative_to_stdlib x, Relative_to_stdlib y -> Path.Local.compare x y
+    | Relative_to_findlib (x1, x2), Relative_to_findlib (y1, y2) ->
+      let open Ordering.O in
+      let= () = Path.compare x1 y1 in
+      Path.Local.compare x2 y2
+    | Absolute x, Absolute y -> Path.compare x y
+    | Relative_to_stdlib _, _ -> Lt
+    | _, Relative_to_stdlib _ -> Gt
+    | Relative_to_findlib _, Absolute _ -> Lt
+    | Absolute _, Relative_to_findlib _ -> Gt
+  ;;
+
+  let hash = Poly.hash
+end
 
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
     ; main_module_name : Module_name.t option
+    ; external_location : External_location.t option
     }
 
-  let make ~info ~main_module_name =
+  let make ~info ~main_module_name ~external_location =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then Path.relative dir (Path.basename p) else p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name }
+    { info; main_module_name; external_location }
+  ;;
 
-  let of_dune_lib ~info ~main_module_name = make ~info ~main_module_name
+  let of_dune_lib ~info ~main_module_name =
+    make ~info ~main_module_name ~external_location:None
+  ;;
 
-  let of_findlib info = make ~info ~main_module_name:None
+  let of_findlib info external_location =
+    make ~info ~main_module_name:None ~external_location:(Some external_location)
+  ;;
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
+  ;;
 
-  let encode ~package_root { info; main_module_name } =
+  let encode ~package_root ~stublibs { info; main_module_name; external_location = _ } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
-    let path = Dpath.Local.encode ~dir:package_root in
+    let path = Dune_lang.Path.Local.encode ~dir:package_root in
     let paths name f = field_l name path f in
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name sexp (Mode.Dict.List.encode path xs)
@@ -43,11 +82,19 @@ module Lib = struct
     let modes = Lib_info.modes info in
     let synopsis = Lib_info.synopsis info in
     let obj_dir = Lib_info.obj_dir info in
+    let additional_paths (paths : _ Lib_info.File_deps.t) =
+      match paths with
+      | Local _ -> assert false
+      | External paths ->
+        let lib_dir = Obj_dir.dir obj_dir in
+        List.map paths ~f:(fun p -> Path.append_local lib_dir (Path.local_part p))
+    in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
     let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
     let default_implementation = Lib_info.default_implementation info in
     let special_builtin_support = Lib_info.special_builtin_support info in
+    let public_headers = additional_paths (Lib_info.public_headers info) in
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
@@ -62,6 +109,7 @@ module Lib = struct
       | External ms -> ms
       | Local -> None
     in
+    let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
@@ -70,6 +118,14 @@ module Lib = struct
       | Lib_info.Files f -> f
       | Needs_module_info _ ->
         Code_error.raise "caller must set native archives to known value" []
+    in
+    let foreign_dll_files =
+      match stublibs with
+      | None -> []
+      | Some stublibs ->
+        List.map
+          ~f:(fun file -> Path.relative stublibs (Path.basename file))
+          (Lib_info.foreign_dll_files info)
     in
     record_fields
     @@ [ field "name" Lib_name.encode name
@@ -80,35 +136,44 @@ module Lib = struct
        ; mode_paths "archives" archives
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
-       ; field_i "foreign_archives" (Mode.Map.encode path)
+       ; paths "public_headers" public_headers
+       ; field_i
+           "foreign_archives"
+           (Mode.Map.encode path)
            (Lib_info.foreign_archives info)
+       ; paths "foreign_dll_files" foreign_dll_files
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
-       ; field_o "default_implementation" (no_loc Lib_name.encode)
-           default_implementation
+       ; field_o "default_implementation" (no_loc Lib_name.encode) default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
-       ; field_o "special_builtin_support"
-           Lib_info.Special_builtin_support.encode special_builtin_support
-       ; field_o "instrumentation.backend" (no_loc Lib_name.encode)
+       ; paths "melange_runtime_deps" melange_runtime_deps
+       ; field_o
+           "special_builtin_support"
+           Lib_info.Special_builtin_support.encode
+           (Option.map ~f:snd special_builtin_support)
+       ; field_o
+           "instrumentation.backend"
+           (no_loc Lib_name.encode)
            instrumentation_backend
        ]
     @ Sub_system_name.Map.to_list_map sub_systems ~f:(fun name info ->
-          let (module S) = Sub_system_info.get name in
-          match info with
-          | S.T info ->
-            let _ver, sexps = S.encode info in
-            field_l (Sub_system_name.to_string name) sexp sexps
-          | _ -> assert false)
+      let (module S) = Sub_system_info.get name in
+      match info with
+      | S.T info ->
+        let _ver, sexps = S.encode info in
+        field_l (Sub_system_name.to_string name) sexp sexps
+      | _ -> assert false)
+  ;;
 
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
-    let path = Dpath.Local.decode ~dir:base in
+    let path = Dune_lang.Path.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (repeat x) in
     let libs s = field_l s (located Lib_name.decode) in
     let paths s = field_l s path in
@@ -136,39 +201,41 @@ module Lib = struct
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
+       and+ public_headers = paths "public_headers"
        and+ foreign_archives =
-         if lang.version >= (3, 5) then
+         if lang.version >= (3, 5)
+         then
            let+ field_o = field_o "foreign_archives" (Mode.Map.decode path) in
            match field_o with
            | Some archives -> archives
            | None -> Mode.Map.empty
-         else if lang.version >= (2, 0) then
+         else if lang.version >= (2, 0)
+         then
            let+ paths = paths "foreign_archives" in
            Mode.Map.Multi.create_for_all_modes paths
          else
            let+ m = mode_paths "foreign_archives" in
            Mode.Map.Multi.create_for_all_modes m.byte
+       and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
+       and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
-       and+ sub_systems = Sub_system_info.record_parser ()
+       and+ sub_systems = Sub_system_info.record_parser
        and+ orig_src_dir = field_o "orig_src_dir" path
-       and+ modules =
-         let src_dir = Obj_dir.dir obj_dir in
-         field "modules" (Modules.decode ~src_dir)
+       and+ modules = field "modules" (Modules.decode ~src_dir:base)
        and+ special_builtin_support =
-         field_o "special_builtin_support"
+         field_o
+           "special_builtin_support"
            (Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode)
+            >>> located Lib_info.Special_builtin_support.decode)
        and+ instrumentation_backend =
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
        let modes = Lib_mode.Map.Set.of_list modes in
-       let entry_modules =
-         Modules.entry_modules modules |> List.map ~f:Module.name
-       in
+       let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
          let enabled = Lib_info.Enabled_status.Normal in
@@ -180,28 +247,68 @@ module Lib = struct
          let version = None in
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
+         let public_headers = Lib_info.File_deps.External public_headers in
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
          let virtual_ =
            if virtual_ then Some (Lib_info.Source.External modules) else None
          in
-         let wrapped =
-           Some (Lib_info.Inherited.This (Modules.wrapped modules))
-         in
+         let wrapped = Some (Lib_info.Inherited.This (Modules.wrapped modules)) in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modules = Lib_info.Source.External (Some modules) in
-         Lib_info.create ~path_kind:External ~loc ~name ~kind ~status ~src_dir
-           ~orig_src_dir ~obj_dir ~version ~synopsis ~main_module_name
-           ~sub_systems ~requires ~foreign_objects ~plugins ~archives
-           ~ppx_runtime_deps ~foreign_archives
-           ~native_archives:(Files native_archives) ~foreign_dll_files:[]
-           ~jsoo_runtime ~preprocess ~enabled ~virtual_deps ~dune_version
-           ~virtual_ ~entry_modules ~implements ~default_implementation ~modes
-           ~modules ~wrapped ~special_builtin_support ~exit_module:None
+         let melange_runtime_deps = Lib_info.File_deps.External melange_runtime_deps in
+         Lib_info.create
+           ~path_kind:External
+           ~loc
+           ~name
+           ~kind
+           ~status
+           ~src_dir
+           ~orig_src_dir
+           ~obj_dir
+           ~version
+           ~synopsis
+           ~main_module_name
+           ~sub_systems
+           ~requires
+           ~foreign_objects
+           ~public_headers
+           ~plugins
+           ~archives
+           ~ppx_runtime_deps
+           ~foreign_archives
+           ~native_archives:(Files native_archives)
+           ~foreign_dll_files
+           ~jsoo_runtime
+           ~preprocess
+           ~enabled
+           ~virtual_deps
+           ~dune_version
+           ~virtual_
+           ~entry_modules
+           ~implements
+           ~default_implementation
+           ~modes
+           ~modules
+           ~wrapped
+           ~special_builtin_support
+           ~exit_module:None
            ~instrumentation_backend
+           ~melange_runtime_deps
        in
-       { info; main_module_name })
+       let external_location =
+         let opam_dir = Path.parent_exn base in
+         let pkg, components = Lib_name.split name in
+         let local =
+           Path.Local.L.relative
+             (Path.Local.of_string (Package.Name.to_string pkg))
+             components
+         in
+         Some (External_location.Relative_to_findlib (opam_dir, local))
+       in
+       { info; main_module_name; external_location })
+  ;;
 
   let main_module_name t = t.main_module_name
 
@@ -209,15 +316,19 @@ module Lib = struct
     match Lib_info.modules t.info with
     | External modules -> Option.map modules ~f:Modules.wrapped
     | Local -> None
+  ;;
 
   let info dp = dp.info
+  let external_location dp = dp.external_location
 
-  let to_dyn { info; main_module_name } =
+  let to_dyn { info; main_module_name; external_location } =
     let open Dyn in
     record
-      [ ("info", Lib_info.to_dyn Path.to_dyn info)
-      ; ("main_module_name", option Module_name.to_dyn main_module_name)
+      [ "info", Lib_info.to_dyn Path.to_dyn info
+      ; "main_module_name", option Module_name.to_dyn main_module_name
+      ; "external_location", option External_location.to_dyn external_location
       ]
+  ;;
 end
 
 module Deprecated_library_name = struct
@@ -235,6 +346,7 @@ module Deprecated_library_name = struct
            and+ new_public_name = field "new_public_name" Lib_name.decode
            and+ loc = loc in
            { loc; old_public_name; new_public_name })
+  ;;
 
   let encode { loc = _; old_public_name; new_public_name } =
     let open Dune_lang.Encoder in
@@ -242,13 +354,15 @@ module Deprecated_library_name = struct
       [ field "old_public_name" Lib_name.encode old_public_name
       ; field "new_public_name" Lib_name.encode new_public_name
       ]
+  ;;
 
   let to_dyn { loc = _; old_public_name; new_public_name } =
     let open Dyn in
     record
-      [ ("old_public_name", Lib_name.to_dyn old_public_name)
-      ; ("new_public_name", Lib_name.to_dyn new_public_name)
+      [ "old_public_name", Lib_name.to_dyn old_public_name
+      ; "new_public_name", Lib_name.to_dyn new_public_name
       ]
+  ;;
 end
 
 module Entry = struct
@@ -260,14 +374,17 @@ module Entry = struct
   let name = function
     | Library lib | Hidden_library lib -> Lib_info.name (Lib.info lib)
     | Deprecated_library_name d -> d.old_public_name
+  ;;
 
   let version = function
     | Library lib | Hidden_library lib -> Lib_info.version (Lib.info lib)
     | Deprecated_library_name _ -> None
+  ;;
 
   let loc = function
     | Library lib | Hidden_library lib -> Lib_info.loc (Lib.info lib)
     | Deprecated_library_name d -> d.loc
+  ;;
 
   let cstrs ~lang ~dir =
     let open Dune_lang.Decoder in
@@ -278,6 +395,7 @@ module Entry = struct
       , let+ x = Deprecated_library_name.decode in
         Deprecated_library_name x )
     ]
+  ;;
 
   let to_dyn x =
     let open Dyn in
@@ -286,65 +404,91 @@ module Entry = struct
     | Deprecated_library_name lib ->
       variant "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
     | Hidden_library lib -> variant "Hidden_library" [ Lib.to_dyn lib ]
+  ;;
 end
+
+type path = [ `File | `Dir ] * Install.Entry.Dst.t
+
+let decode_path =
+  let open Dune_lang.Decoder in
+  peek_exn
+  >>= function
+  | List _ ->
+    enter
+    @@
+    let* () = keyword "dir" in
+    let+ d = Install.Entry.Dst.decode in
+    `Dir, d
+  | _ ->
+    let+ f = Install.Entry.Dst.decode in
+    `File, f
+;;
+
+let encode_path = function
+  | `File, f -> Install.Entry.Dst.encode f
+  | `Dir, d -> Dune_lang.Encoder.constr "dir" Install.Entry.Dst.encode d
+;;
+
+let path_to_dyn = function
+  | `File, f -> Install.Entry.Dst.to_dyn f
+  | `Dir, d -> Dyn.variant "dir" [ Install.Entry.Dst.to_dyn d ]
+;;
 
 type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
-  ; version : string option
+  ; version : Package_version.t option
   ; sections : Path.t Section.Map.t
-  ; sites : Section.t Section.Site.Map.t
+  ; sites : Section.t Site.Map.t
   ; dir : Path.t
-  ; files : (Section.t * Install.Dst.t list) list
+  ; files : (Section.t * path list) list
   }
 
 let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
-  and+ version = field_o "version" string
+  and+ version = field_o "version" Package_version.decode
   and+ sections =
-    field ~default:[] "sections"
-      (repeat (pair (located Section.decode) (Dpath.Local.decode ~dir)))
+    field
+      ~default:[]
+      "sections"
+      (repeat (pair (located Section.decode) (Dune_lang.Path.Local.decode ~dir)))
   and+ sites =
-    field ~default:[] "sites"
-      (repeat (pair (located Section.Site.decode) Section.decode))
+    field ~default:[] "sites" (repeat (pair (located Site.decode) Section.decode))
   and+ files =
-    field ~default:[] "files"
-      (repeat (pair Install.Section.decode (enter (repeat Install.Dst.decode))))
+    field ~default:[] "files" (repeat (pair Section.decode (enter (repeat decode_path))))
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
-        let e =
-          match (e : Entry.t) with
-          | Library lib ->
-            let info = Lib_info.set_version lib.info version in
-            Entry.Library { lib with info }
-          | _ -> e
-        in
-        (Entry.name e, e))
+      let e =
+        match (e : Entry.t) with
+        | Library lib ->
+          let info = Lib_info.set_version lib.info version in
+          Entry.Library { lib with info }
+        | _ -> e
+      in
+      Entry.name e, e)
     |> Lib_name.Map.of_list
     |> function
     | Ok x -> x
     | Error (name, _e1, e2) ->
-      User_error.raise ~loc:(Entry.loc e2)
-        [ Pp.textf "Library %s is defined for the second time."
-            (Lib_name.to_string name)
+      User_error.raise
+        ~loc:(Entry.loc e2)
+        [ Pp.textf "Library %s is defined for the second time." (Lib_name.to_string name)
         ]
   in
   let section_map of_list_map to_string sections =
-    match of_list_map sections ~f:(fun ((_, k), v) -> (k, v)) with
+    match of_list_map sections ~f:(fun ((_, k), v) -> k, v) with
     | Ok x -> x
     | Error (s, ((loc, _), _), _) ->
-      User_error.raise ~loc
+      User_error.raise
+        ~loc
         [ Pp.textf "The section %s appears multiple times" (to_string s) ]
   in
-  let sections =
-    section_map Section.Map.of_list_map Section.to_string sections
-  in
-  let sites =
-    section_map Section.Site.Map.of_list_map Section.Site.to_string sites
-  in
+  let sections = section_map Section.Map.of_list_map Section.to_string sections in
+  let sites = section_map Site.Map.of_list_map Site.to_string sites in
   { name; version; entries; dir; sections; sites; files }
+;;
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -358,49 +502,52 @@ let prepend_version ~dune_version sexps =
       ]
   ]
   @ sexps
+;;
 
-let encode ~dune_version { entries; name; version; dir; sections; sites; files }
-    =
+let encode ~dune_version { entries; name; version; dir; sections; sites; files } =
   let open Dune_lang.Encoder in
-  let sites = Section.Site.Map.to_list sites in
+  let sites = Site.Map.to_list sites in
   let sexp =
     record_fields
       [ field "name" Package.Name.encode name
-      ; field_o "version" string version
-      ; field_l "sections"
-          (pair Section.encode (Dpath.Local.encode ~dir))
+      ; field_o "version" Package_version.encode version
+      ; field_l
+          "sections"
+          (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
           (Section.Map.to_list sections)
-      ; field_l "sites" (pair Section.Site.encode Section.encode) sites
-      ; field_l "files" (pair Section.encode (list Install.Dst.encode)) files
+      ; field_l "sites" (pair Site.encode Section.encode) sites
+      ; field_l "files" (pair Section.encode (list encode_path)) files
       ]
   in
   let list s = Dune_lang.List s in
   let entries =
+    let stublibs = Section.Map.find sections Stublibs in
     Lib_name.Map.to_list_map entries ~f:(fun _name e ->
-        match e with
-        | Entry.Library lib ->
-          list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
-        | Deprecated_library_name d ->
-          list
-            (Dune_lang.atom "deprecated_library_name"
-            :: Deprecated_library_name.encode d)
-        | Hidden_library lib ->
-          Code_error.raise "Dune_package.encode got Hidden_library"
-            [ ("lib", Lib.to_dyn lib) ])
+      match e with
+      | Entry.Library lib ->
+        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir ~stublibs)
+      | Deprecated_library_name d ->
+        list (Dune_lang.atom "deprecated_library_name" :: Deprecated_library_name.encode d)
+      | Hidden_library lib ->
+        Code_error.raise
+          "Dune_package.encode got Hidden_library"
+          [ "lib", Lib.to_dyn lib ])
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
+;;
 
 let to_dyn { entries; name; version; dir; sections; sites; files } =
   let open Dyn in
   record
-    [ ("entries", list Entry.to_dyn (Lib_name.Map.values entries))
-    ; ("name", Package.Name.to_dyn name)
-    ; ("version", option string version)
-    ; ("dir", Path.to_dyn dir)
-    ; ("sections", Section.Map.to_dyn Path.to_dyn sections)
-    ; ("sites", Section.Site.Map.to_dyn Section.to_dyn sites)
-    ; ("files", (list (pair Section.to_dyn (list Install.Dst.to_dyn))) files)
+    [ "entries", list Entry.to_dyn (Lib_name.Map.values entries)
+    ; "name", Package.Name.to_dyn name
+    ; "version", option Package_version.to_dyn version
+    ; "dir", Path.to_dyn dir
+    ; "sections", Section.Map.to_dyn Path.to_dyn sections
+    ; "sites", Site.Map.to_dyn Section.to_dyn sites
+    ; "files", (list (pair Section.to_dyn (list path_to_dyn))) files
     ]
+;;
 
 module Or_meta = struct
   type nonrec t =
@@ -408,40 +555,61 @@ module Or_meta = struct
     | Dune_package of t
 
   let encode ~dune_version = function
-    | Use_meta ->
-      prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
+    | Use_meta -> prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
     | Dune_package p -> encode ~dune_version p
+  ;;
 
   let decode ~lang ~dir =
     let open Dune_lang.Decoder in
     fields
       (let* use_meta = field_b "use_meta" in
-       if use_meta then return Use_meta
+       if use_meta
+       then return Use_meta
        else
          let+ package = decode ~lang ~dir in
          Dune_package package)
+  ;;
 
   let load file =
     let dir = Path.parent_exn file in
-    Path.as_outside_build_dir_exn file
-    |> Fs_memo.with_lexbuf_from_file ~f:(fun lexbuf ->
-           (* XXX stop catching code errors, invalid args, etc. *)
-           Result.try_with (fun () ->
-               Vfile.parse_contents lexbuf ~f:(fun lang ->
-                   String_with_vars.set_decoding_env
-                     (Pform.Env.initial lang.version)
-                     (decode ~lang ~dir))))
+    Fs.with_lexbuf_from_file file ~f:(fun lexbuf ->
+      match
+        Vfile.parse_contents lexbuf ~f:(fun lang ->
+          String_with_vars.set_decoding_env
+            (Pform.Env.initial lang.version)
+            (decode ~lang ~dir))
+      with
+      | contents -> Ok contents
+      | exception User_error.E message -> Error message
+      | exception Sys_error msg ->
+        Error
+          (User_message.make
+             [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
+             ; Pp.text msg
+             ])
+      | exception End_of_file ->
+        Error
+          (User_message.make
+             [ Pp.textf
+                 "Unexpected end of file when reading %s."
+                 (Path.to_string_maybe_quoted file)
+             ]))
+  ;;
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in
-    Format.fprintf ppf "%a@."
-      (Format.pp_print_list ~pp_sep:Format.pp_print_newline
-         Dune_lang.Deprecated.pp)
+    Format.fprintf
+      ppf
+      "%a@."
+      (Format.pp_print_list ~pp_sep:Format.pp_print_newline (fun fmt lang ->
+         Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
+  ;;
 
   let to_dyn x =
     let open Dyn in
     match x with
     | Use_meta -> variant "Use_meta" []
     | Dune_package t -> variant "Dune_package" [ to_dyn t ]
+  ;;
 end

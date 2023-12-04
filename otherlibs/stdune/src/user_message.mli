@@ -21,10 +21,26 @@ module Style : sig
     | Debug
     | Success
     | Ansi_styles of Ansi_color.Style.t list
+
+  val to_dyn : t -> Dyn.t
+  val compare : t -> t -> Ordering.t
 end
 
 module Annots : sig
-  include Univ_map.S
+  module Key : sig
+    type 'a t
+
+    val create : name:string -> ('a -> Dyn.t) -> 'a t
+  end
+
+  type t
+
+  val to_dyn : t -> Dyn.t
+  val find : t -> 'a Key.t -> 'a option
+  val set : t -> 'a Key.t -> 'a -> t
+  val empty : t
+  val is_empty : t -> bool
+  val singleton : 'a Key.t -> 'a -> t
 
   (** The message has a location embed in the text. *)
   val has_embedded_location : unit Key.t
@@ -53,9 +69,7 @@ type t =
   }
 
 val compare : t -> t -> Ordering.t
-
 val equal : t -> t -> bool
-
 val pp : t -> Style.t Pp.t
 
 module Print_config : sig
@@ -71,8 +85,8 @@ end
     The first paragraph is prefixed with [prefix] inside the box. [prefix]
     should not end with a space as a space is automatically inserted by [make]
     if necessary. *)
-val make :
-     ?loc:Loc0.t
+val make
+  :  ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t
@@ -103,3 +117,6 @@ val has_embedded_location : t -> bool
 (** Returns [true] if the message's annotations contains
     [Annot.Needs_stack_trace]. *)
 val needs_stack_trace : t -> bool
+
+(** Formatting of shell commands *)
+val command : string -> Style.t Pp.t

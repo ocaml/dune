@@ -6,11 +6,9 @@ let () = init ()
 
 let%expect_test "Temp.clear_dir works" =
   let path = Temp.create Dir ~prefix:"dune" ~suffix:"unit_test" in
-  Path.touch (Path.relative path "foo");
+  Io.write_file (Path.relative path "foo") "";
   let print () =
-    Path.readdir_unsorted path
-    |> Result.to_dyn (list string) opaque
-    |> print_dyn
+    Path.readdir_unsorted path |> Result.to_dyn (list string) opaque |> print_dyn
   in
   print ();
   Temp.clear_dir path;
@@ -19,3 +17,4 @@ let%expect_test "Temp.clear_dir works" =
     Ok [ "foo" ]
     Ok []
   |}]
+;;

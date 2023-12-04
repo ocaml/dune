@@ -3,8 +3,8 @@
 
 (** Type of an address *)
 type t =
-  { name : string  (** The transport name *)
-  ; args : (string * string) list  (** Arguments of the address *)
+  { name : string (** The transport name *)
+  ; args : (string * string) list (** Arguments of the address *)
   }
 
 (** {6 To/from string conversion} *)

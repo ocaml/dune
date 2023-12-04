@@ -1,33 +1,23 @@
 open Import
-module Initialize = Dune_rpc.Initialize
-module Public = Dune_rpc.Public
-module Server_notifications = Dune_rpc.Server_notifications
-module Sub = Dune_rpc.Sub
-module Progress = Dune_rpc.Progress
-module Id = Dune_rpc.Id
 module Diagnostic = Dune_rpc.Diagnostic
-module Conv = Dune_rpc.Conv
-module Dep_conf = Dune_rules.Dep_conf
-module Source_tree = Dune_engine.Source_tree
-module Dune_project = Dune_engine.Dune_project
 module Compound_user_error = Dune_engine.Compound_user_error
 
 let absolutize_paths ~dir (loc : Loc.t) =
   let make_path name =
     Path.to_absolute_filename
-      (if Filename.is_relative name then
-       Path.append_local dir (Path.Local.parse_string_exn ~loc name)
-      else Path.of_string name)
+      (if Filename.is_relative name
+       then Path.append_local dir (Path.Local.parse_string_exn ~loc name)
+       else Path.of_string name)
   in
-  { Loc.start = { loc.start with pos_fname = make_path loc.start.pos_fname }
-  ; stop = { loc.stop with pos_fname = make_path loc.stop.pos_fname }
-  }
+  Loc.map_pos loc ~f:(fun (pos : Lexing.position) ->
+    { pos with pos_fname = make_path pos.pos_fname })
+  |> Loc.to_lexbuf_loc
+;;
 
-let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
-    =
- fun m ->
+let diagnostic_of_error : Build_system_error.t -> Dune_rpc_private.Diagnostic.t =
+  fun m ->
   let dir =
-    let dir = Build_system.Error.dir m in
+    let dir = Build_system_error.dir m in
     Option.map dir ~f:Path.drop_optional_build_context_maybe_sandboxed
   in
   let make_loc loc =
@@ -35,21 +25,18 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
     absolutize_paths ~dir loc
   in
   let message, related =
-    match Build_system.Error.description m with
+    match Build_system_error.description m with
     | `Exn e ->
       (* CR-someday jeremiedimino: Use [Report_error.get_user_message] here. *)
-      (User_message.make [ Pp.text (Printexc.to_string e.exn) ], [])
-    | `Diagnostic { Compound_user_error.main = message; related } ->
-      (message, related)
+      User_message.make [ Pp.text (Printexc.to_string e.exn) ], []
+    | `Diagnostic { Compound_user_error.main = message; related } -> message, related
   in
   let loc = Option.map message.loc ~f:make_loc in
-  let make_message pars = Pp.map_tags (Pp.concat pars) ~f:(fun _ -> ()) in
   let id =
-    Build_system.Error.id m |> Build_system.Error.Id.to_int
-    |> Diagnostic.Id.create
+    Build_system_error.id m |> Build_system_error.Id.to_int |> Diagnostic.Id.create
   in
   let promotion =
-    match Build_system.Error.promotion m with
+    match Build_system_error.promotion m with
     | None -> []
     | Some { in_source; in_build } ->
       [ { Diagnostic.Promotion.in_source =
@@ -60,23 +47,37 @@ let diagnostic_of_error : Build_system.Error.t -> Dune_rpc_private.Diagnostic.t
   in
   let related =
     List.map related ~f:(fun (related : User_message.t) ->
-        { Dune_rpc_private.Diagnostic.Related.message =
-            make_message related.paragraphs
-        ; loc = make_loc (Option.value_exn related.loc)
-        })
+      { Dune_rpc_private.Diagnostic.Related.message = Pp.concat related.paragraphs
+      ; loc = make_loc (Option.value_exn related.loc)
+      })
   in
-  { Dune_rpc_private.Diagnostic.severity = None
+  let message =
+    let paragraphs =
+      let paragraphs = message.paragraphs in
+      match message.hints with
+      | [] -> paragraphs
+      | _ ->
+        let open Pp.O in
+        List.append
+          paragraphs
+          (List.map message.hints ~f:(fun hint ->
+             Pp.tag User_message.Style.Hint (Pp.verbatim "Hint:") ++ Pp.space ++ hint))
+    in
+    List.map paragraphs ~f:Pp.box |> Pp.concat ~sep:Pp.cut |> Pp.vbox
+  in
+  { Dune_rpc_private.Diagnostic.severity = Some Dune_rpc_private.Diagnostic.Error
   ; id
   ; targets = []
-  ; message = make_message message.paragraphs
+  ; message
   ; loc
   ; promotion
   ; related
   ; directory = Option.map dir ~f:Path.to_absolute_filename
   }
+;;
 
-let diagnostic_event_of_error_event (e : Build_system.Error.Event.t) :
-    Diagnostic.Event.t =
+let diagnostic_event_of_error_event (e : Build_system_error.Event.t) : Diagnostic.Event.t =
   match e with
   | Remove e -> Remove (diagnostic_of_error e)
   | Add e -> Add (diagnostic_of_error e)
+;;

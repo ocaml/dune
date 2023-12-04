@@ -15,7 +15,7 @@ depends: [
   "base-unix"
   "dyn" {= version}
   "ordering" {= version}
-  "pp" {>= "1.1.0"}
+  "pp" {>= "1.2.0"}
   "csexp" {>= "1.5.0"}
   "odoc" {with-doc}
 ]

@@ -56,3 +56,12 @@ We try to load a module defined in a library with a dependnecy
 
   $ ls _build/default/mydummylib/*.cma
   _build/default/mydummylib/mydummylib.cma
+
+  $ dune ocaml top-module $PWD/foo/foo.ml 2>&1 | head -n7
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+    ("Local.relative: received absolute path",
+    { t = "."
+    ; path =
+        "$TESTCASE_ROOT/foo/foo.ml"
+    })

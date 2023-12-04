@@ -6,7 +6,7 @@ env
 The ``env`` stanza allows one to modify the environment. The syntax is as
 follows:
 
-.. code:: scheme
+.. code:: dune
 
      (env
       (<profile1> <settings1>)
@@ -20,7 +20,7 @@ profile will be used to modify the environment in this directory. You can use
 
 Fields supported in ``<settings>`` are:
 
-- any OCaml flags field. See :ref:`ocaml-flags` for more details.
+- any OCaml flags field. See :doc:`concepts/ocaml-flags` for more details.
 
 - ``(link_flags <flags>)`` specifies flags to OCaml when linking an executable.
   See :ref:`executables stanza <shared-exe-fields>`.
@@ -62,7 +62,7 @@ Fields supported in ``<settings>`` are:
 - ``(odoc <fields>)`` allows passing options to ``odoc``. See
   :ref:`odoc-options` for more details.
 
-- ``(coq (flags <flags>))`` allows passing options to Coq. See :ref:`coq-theory`
+- ``(coq <coq_fields>)`` allow passing options to Coq. See :ref:`coq-env`
   for more details.
 
 - ``(formatting <settings>)`` allows the user to set auto-formatting in the

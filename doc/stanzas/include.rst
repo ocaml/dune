@@ -8,7 +8,7 @@ with promotion, when parts of a ``dune`` file are to be generated.
 
 For instance:
 
-.. code:: scheme
+.. code:: dune
 
     (include dune.inc)
 

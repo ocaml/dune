@@ -1,18 +1,5 @@
 (library
  (name dune_config)
- (libraries
-  stdune
-  xdg
-  dune_console
-  dune_threaded_console
-  dune_lang
-  dune_cache
-  dune_cache_storage
-  dune_engine
-  dune_rpc_private
-  dune_stats
-  dune_util
-  spawn)
- (synopsis "Internal Dune library, do not use!")
- (instrumentation
-  (backend bisect_ppx)))
+ ;; careful with adding dependencies here
+ ;; anything that this library depends on cannot itself be configurable
+ (libraries dyn stdune))

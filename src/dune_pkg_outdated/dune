@@ -1,0 +1,6 @@
+(library
+ (name dune_pkg_outdated)
+ (synopsis "[Internal] Implementation of dune pkg outdated")
+ (libraries stdune dune_lang dune_pkg opam_format fiber)
+ (instrumentation
+  (backend bisect_ppx)))

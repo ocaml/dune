@@ -30,12 +30,13 @@ val files_of : dir:Path.t -> Path.Set.t Memo.t
 val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.t
 
 (** Execute an action. The execution is cached. *)
-val execute_action :
-  observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t
+val execute_action : observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t
 
 (** Execute an action and capture its stdout. The execution is cached. *)
-val execute_action_stdout :
-  observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> string Memo.t
+val execute_action_stdout
+  :  observing_facts:Dep.Facts.t
+  -> Rule.Anonymous_action.t
+  -> string Memo.t
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
@@ -43,9 +44,7 @@ type rule_execution_result =
   }
 
 val execute_rule : Rule.t -> rule_execution_result Memo.t
-
-val dep_on_alias_definition :
-  Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
+val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 
 (** {2 Running the build system} *)
 
@@ -82,56 +81,5 @@ end
 
 val state : State.t Fiber.Svar.t
 
-(** Errors found when building targets. *)
-module Error : sig
-  module Id : sig
-    type t
-
-    module Map : Map.S with type key = t
-
-    val compare : t -> t -> Ordering.t
-
-    val to_int : t -> int
-
-    val to_dyn : t -> Dyn.t
-  end
-
-  type t
-
-  val id : t -> Id.t
-
-  (** the directory where the rule the error is originating from *)
-  val dir : t -> Path.t option
-
-  (** The description of the error. Errors from build rules contain useful
-      metadata that are extracted into [`Diagnostic] *)
-  val description :
-    t -> [ `Exn of Exn_with_backtrace.t | `Diagnostic of Compound_user_error.t ]
-
-  val promotion : t -> Diff_promotion.Annot.t option
-
-  module Event : sig
-    type nonrec t =
-      | Add of t
-      | Remove of t
-  end
-
-  module Set : sig
-    type error := t
-
-    type t
-
-    (** [one_event_diff ~prev ~next] returns the event that constructs [next]
-        from [prev] if [next] is in the successive "generation" of [prev] *)
-    val one_event_diff : prev:t -> next:t -> Event.t option
-
-    val equal : t -> t -> bool
-
-    val current : t -> error Id.Map.t
-
-    val empty : t
-  end
-end
-
 (** The current set of active errors. *)
-val errors : Error.Set.t Fiber.Svar.t
+val errors : Build_system_error.Set.t Fiber.Svar.t

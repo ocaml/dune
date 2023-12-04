@@ -5,5 +5,5 @@ PKG` should be able to build and install only that package, instead of all.
   $ dune install -p pkg1
   Error: The following <package>.install are missing:
   - _build/default/pkg2.install
-  Hint: try running: dune build [-p <pkg>] @install
+  Hint: try running 'dune build [-p <pkg>] @install'
   [1]

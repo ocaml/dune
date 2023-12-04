@@ -2,6 +2,8 @@ Testing a simple composition of theories. We have two theories A and B and B
 depends on A.
 
   $ dune build
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
 
 We inspect the contents of the build directory.
 

@@ -43,91 +43,14 @@ type hardcoded_ocaml_path =
   | Hardcoded of Path.t list
   | Relocatable of Path.t
 
-type conf =
-  { get_vcs : Path.Source.t -> Vcs.t option Memo.t
-  ; get_location : Section.t -> Package.Name.t -> Path.t
-  ; get_config_path : configpath -> Path.t option
-  ; hardcoded_ocaml_path : hardcoded_ocaml_path
-  ; sign_hook : (Path.t -> unit Fiber.t) option Lazy.t
-  }
-
-let mac_codesign_hook ~codesign path =
-  Process.run ~display:!Clflags.display Strict codesign
-    [ "-s"; "-"; Path.to_string path ]
-
-let sign_hook_of_context (context : Context.t) =
-  let config = context.ocaml_config in
-  match (Ocaml_config.system config, Ocaml_config.architecture config) with
-  | "macosx", "arm64" -> (
-    let codesign_name = "codesign" in
-    match Bin.which ~path:context.path codesign_name with
-    | None ->
-      Utils.program_not_found ~loc:None
-        ~hint:"codesign should be part of the macOS installation" codesign_name
-    | Some codesign -> Some (mac_codesign_hook ~codesign))
-  | _ -> None
-
-let conf_of_context (context : Context.t option) =
-  let get_vcs = Source_tree.nearest_vcs in
-  match context with
-  | None ->
-    { get_vcs
-    ; get_location = (fun _ _ -> Code_error.raise "no context available" [])
-    ; get_config_path = (fun _ -> Code_error.raise "no context available" [])
-    ; hardcoded_ocaml_path = Hardcoded []
-    ; sign_hook = lazy None
-    }
-  | Some context ->
-    let get_location = Install.Section.Paths.get_local_location context.name in
-    let get_config_path = function
-      | Sourceroot -> Some (Path.source Path.Source.root)
-      | Stdlib -> Some context.stdlib_dir
-    in
-    let hardcoded_ocaml_path =
-      let install_dir = Local_install_path.dir ~context:context.name in
-      let install_dir = Path.build (Path.Build.relative install_dir "lib") in
-      Hardcoded (install_dir :: context.default_ocamlpath)
-    in
-    let sign_hook = lazy (sign_hook_of_context context) in
-    { get_vcs = Source_tree.nearest_vcs
-    ; get_location
-    ; get_config_path
-    ; hardcoded_ocaml_path
-    ; sign_hook
-    }
-
-let conf_for_install ~relocatable ~default_ocamlpath ~stdlib_dir ~roots ~context
-    =
-  let get_vcs = Source_tree.nearest_vcs in
-  let hardcoded_ocaml_path =
-    match relocatable with
-    | Some prefix -> Relocatable prefix
-    | None -> Hardcoded default_ocamlpath
-  in
-  let get_location section package =
-    let paths = Install.Section.Paths.make ~package ~roots in
-    Install.Section.Paths.get paths section
-  in
-  let get_config_path = function
-    | Sourceroot -> None
-    | Stdlib -> Some stdlib_dir
-  in
-  let sign_hook = lazy (sign_hook_of_context context) in
-  { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
-
-let conf_dummy =
-  { get_vcs = (fun _ -> Memo.return None)
-  ; get_location = (fun _ _ -> Path.root)
-  ; get_config_path = (fun _ -> None)
-  ; hardcoded_ocaml_path = Hardcoded []
-  ; sign_hook = lazy None
-  }
+type status =
+  | Some_substitution
+  | No_substitution
 
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
   | Location (kind, lib_name) ->
-    Dyn.Variant
-      ("Location", [ Section.to_dyn kind; Package.Name.to_dyn lib_name ])
+    Dyn.Variant ("Location", [ Section.to_dyn kind; Package.Name.to_dyn lib_name ])
   | Configpath d ->
     let v =
       match d with
@@ -137,12 +60,135 @@ let to_dyn = function
     Dyn.Variant ("Configpath", [ Dyn.Variant (v, []) ])
   | Hardcoded_ocaml_path -> Dyn.Variant ("Hardcoded_ocaml_path", [])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
+;;
 
-let eval t ~conf =
+module Conf = struct
+  type t =
+    { get_vcs : Path.Source.t -> Vcs.t option Memo.t
+    ; get_location : Section.t -> Package.Name.t -> Path.t
+    ; get_config_path : configpath -> Path.t option Memo.t
+    ; sign_hook : (Path.t -> unit Fiber.t) option Memo.t
+    ; hardcoded_ocaml_path : hardcoded_ocaml_path Memo.t
+    }
+
+  let get_location t = t.get_location
+
+  let mac_codesign_hook ~codesign path =
+    let stdout_to =
+      Process.Io.make_stdout
+        ~output_on_success:Swallow
+        ~output_limit:Execution_parameters.Action_output_limit.default
+    in
+    let stderr_to =
+      Process.Io.make_stderr
+        ~output_on_success:Swallow
+        ~output_limit:Execution_parameters.Action_output_limit.default
+    in
+    Process.run
+      ~stdout_to
+      ~stderr_to
+      ~display:Quiet
+      Strict
+      codesign
+      [ "-f"; "-s"; "-"; Path.to_string path ]
+  ;;
+
+  let sign_hook_of_context (context : Context.t) =
+    let open Memo.O in
+    let+ config =
+      let+ ocaml = Context.ocaml context in
+      ocaml.ocaml_config
+    in
+    match Ocaml_config.system config, Ocaml_config.architecture config with
+    | "macosx", "arm64" ->
+      let codesign_name = "codesign" in
+      (match
+         let path = Context.path context in
+         Bin.which ~path codesign_name
+       with
+       | None ->
+         Utils.program_not_found
+           ~loc:None
+           ~hint:"codesign should be part of the macOS installation"
+           codesign_name
+       | Some codesign -> Some (mac_codesign_hook ~codesign))
+    | _ -> None
+  ;;
+
+  let of_context (context : Context.t) =
+    let open Memo.O in
+    let get_vcs = Source_tree.nearest_vcs in
+    let name = Context.name context in
+    let get_location = Install.Paths.get_local_location name in
+    let get_config_path = function
+      | Sourceroot -> Memo.return @@ Some (Path.source Path.Source.root)
+      | Stdlib ->
+        let+ ocaml = Context.ocaml context in
+        Some ocaml.lib_config.stdlib_dir
+    in
+    let hardcoded_ocaml_path =
+      let install_dir =
+        let install_dir = Install.Context.dir ~context:name in
+        Path.build (Path.Build.relative install_dir "lib")
+      in
+      let+ default_ocamlpath = Context.default_ocamlpath context in
+      Hardcoded (install_dir :: default_ocamlpath)
+    in
+    let sign_hook = sign_hook_of_context context in
+    { get_vcs; get_location; get_config_path; hardcoded_ocaml_path; sign_hook }
+  ;;
+
+  let of_install ~relocatable ~roots ~(context : Context.t) =
+    let open Memo.O in
+    let get_vcs = Source_tree.nearest_vcs in
+    let hardcoded_ocaml_path =
+      match relocatable with
+      | Some prefix -> Memo.return @@ Relocatable prefix
+      | None ->
+        let+ default_ocamlpath = Context.default_ocamlpath context in
+        Hardcoded default_ocamlpath
+    in
+    let get_location section package =
+      let paths = Install.Paths.make ~package ~roots in
+      Install.Paths.get paths section
+    in
+    let get_config_path = function
+      | Sourceroot -> Memo.return None
+      | Stdlib ->
+        let+ ocaml = Context.ocaml context in
+        Some ocaml.lib_config.stdlib_dir
+    in
+    let sign_hook = sign_hook_of_context context in
+    { get_location; get_vcs; get_config_path; hardcoded_ocaml_path; sign_hook }
+  ;;
+
+  let dummy =
+    { get_vcs = (fun _ -> Memo.return None)
+    ; get_location = (fun _ _ -> Path.root)
+    ; get_config_path = (fun _ -> Memo.return None)
+    ; hardcoded_ocaml_path = Memo.return @@ Hardcoded []
+    ; sign_hook = Memo.return None
+    }
+  ;;
+
+  let run_sign_hook t ~has_subst file =
+    match has_subst with
+    | No_substitution -> Fiber.return ()
+    | Some_substitution ->
+      Memo.run t.sign_hook
+      |> Fiber.bind ~f:(function
+        | Some hook -> hook file
+        | None -> Fiber.return ())
+  ;;
+end
+
+let eval t ~(conf : Conf.t) =
   let relocatable path =
     (* return a relative path to the install directory in case of relocatable
        instead of absolute path *)
-    match conf.hardcoded_ocaml_path with
+    let open Memo.O in
+    conf.hardcoded_ocaml_path
+    >>| function
     | Hardcoded _ -> Path.to_absolute_filename path
     | Relocatable install -> Path.reach path ~from:install
   in
@@ -152,26 +198,32 @@ let eval t ~conf =
   | Vcs_describe p ->
     Memo.run
       (let open Memo.O in
-      conf.get_vcs p >>= function
-      | None -> Memo.return ""
-      | Some vcs ->
-        let+ res = Vcs.describe vcs in
-        Option.value res ~default:"")
+       conf.get_vcs p
+       >>= function
+       | None -> Memo.return ""
+       | Some vcs ->
+         let+ res = Vcs.describe vcs in
+         Option.value res ~default:"")
   | Location (name, lib_name) ->
-    Fiber.return (relocatable (conf.get_location name lib_name))
+    conf.get_location name lib_name |> relocatable |> Memo.run
   | Configpath d ->
-    Fiber.return
-      (Option.value ~default:""
-         (let open Option.O in
-         let+ dir = conf.get_config_path d in
-         relocatable dir))
+    let open Memo.O in
+    (let* dir = conf.get_config_path d in
+     match dir with
+     | None -> Memo.return None
+     | Some dir -> relocatable dir >>| Option.some)
+    >>| Option.value ~default:""
+    |> Memo.run
   | Hardcoded_ocaml_path ->
-    Fiber.return
-      (match conf.hardcoded_ocaml_path with
-      | Relocatable _ -> "relocatable"
-      | Hardcoded l ->
-        let l = List.map l ~f:Path.to_absolute_filename in
-        "hardcoded\000" ^ String.concat ~sep:"\000" l)
+    (let open Memo.O in
+     conf.hardcoded_ocaml_path
+     >>| function
+     | Relocatable _ -> "relocatable"
+     | Hardcoded l ->
+       let l = List.map l ~f:Path.to_absolute_filename in
+       "hardcoded\000" ^ String.concat ~sep:"\000" l)
+    |> Memo.run
+;;
 
 let encode_replacement ~len ~repl:s =
   let repl = sprintf "=%u:%s" (String.length s) s in
@@ -179,43 +231,49 @@ let encode_replacement ~len ~repl:s =
   | Lt -> repl ^ String.make (len - String.length repl) ' '
   | Eq -> repl
   | Gt -> String.sub repl ~pos:0 ~len
+;;
 
 let prefix = "%%DUNE_PLACEHOLDER:"
-
 let prefix_len = String.length prefix
-
 let max_len = 65536
 
 let encode ?(min_len = 0) t =
   let suffix =
-    sprintf ":%s%%%%"
+    sprintf
+      ":%s%%%%"
       (match t with
-      | Vcs_describe p ->
-        let s = Path.Source.to_string p in
-        sprintf "vcs-describe:%d:%s" (String.length s) s
-      | Location (kind, name) ->
-        let name = Package.Name.to_string name in
-        sprintf "location:%s:%d:%s" (Section.to_string kind)
-          (String.length name) name
-      | Configpath Sourceroot -> sprintf "configpath:sourceroot:"
-      | Configpath Stdlib -> sprintf "configpath:stdlib:"
-      | Hardcoded_ocaml_path -> sprintf "hardcoded_ocaml_path:"
-      | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s)
+       | Vcs_describe p ->
+         let s = Path.Source.to_string p in
+         sprintf "vcs-describe:%d:%s" (String.length s) s
+       | Location (kind, name) ->
+         let name = Package.Name.to_string name in
+         sprintf "location:%s:%d:%s" (Section.to_string kind) (String.length name) name
+       | Configpath Sourceroot -> sprintf "configpath:sourceroot:"
+       | Configpath Stdlib -> sprintf "configpath:stdlib:"
+       | Hardcoded_ocaml_path -> sprintf "hardcoded_ocaml_path:"
+       | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s)
   in
   let len =
     let len0 = prefix_len + String.length suffix in
-    if len0 + 1 < 10 then len0 + 1
-    else if len0 + 2 < 100 then len0 + 2
-    else if len0 + 3 < 1000 then len0 + 3
-    else if len0 + 4 < 10000 then len0 + 4
+    if len0 + 1 < 10
+    then len0 + 1
+    else if len0 + 2 < 100
+    then len0 + 2
+    else if len0 + 3 < 1000
+    then len0 + 3
+    else if len0 + 4 < 10000
+    then len0 + 4
     else len0 + 5
   in
   let len = max min_len len in
-  if len > max_len then
-    Code_error.raise "Artifact_substitution.encode: too long"
-      [ ("t", to_dyn t); ("min_len", Int min_len); ("len", Int len) ];
+  if len > max_len
+  then
+    Code_error.raise
+      "Artifact_substitution.encode: too long"
+      [ "t", to_dyn t; "min_len", Int min_len; "len", Int len ];
   let s = sprintf "%s%u%s" prefix len suffix in
   s ^ String.make (len - String.length s) '%'
+;;
 
 (* This function is not called very often, so the focus is on readability rather
    than speed. *)
@@ -228,16 +286,16 @@ let decode s =
   in
   let len = String.length s in
   match
-    if
-      len > max_len || len < 4
-      || s.[0] <> '%'
-      || s.[1] <> '%'
-      || s.[len - 2] <> '%'
-      || s.[len - 1] <> '%'
+    if len > max_len
+       || len < 4
+       || s.[0] <> '%'
+       || s.[1] <> '%'
+       || s.[len - 2] <> '%'
+       || s.[len - 1] <> '%'
     then fail ();
     let dune_placeholder, len', rest =
       match String.split (String.sub s ~pos:2 ~len:(len - 4)) ~on:':' with
-      | dune_placeholder :: len' :: rest -> (dune_placeholder, len', rest)
+      | dune_placeholder :: len' :: rest -> dune_placeholder, len', rest
       | _ -> fail ()
     in
     if dune_placeholder <> "DUNE_PLACEHOLDER" then fail ();
@@ -263,12 +321,12 @@ let decode s =
     | "configpath" :: "sourceroot" :: _ -> Configpath Sourceroot
     | "configpath" :: "stdlib" :: _ -> Configpath Stdlib
     | "hardcoded_ocaml_path" :: _ -> Hardcoded_ocaml_path
-    | "repeat" :: repeat :: rest ->
-      Repeat (parse_int repeat, read_string_payload rest)
+    | "repeat" :: repeat :: rest -> Repeat (parse_int repeat, read_string_payload rest)
     | _ -> fail ()
   with
   | exception Exit -> None
   | t -> Option.some_if (encode t ~min_len:len = s) t
+;;
 
 (* Scan a buffer for "%%DUNE_PLACEHOLDER:<len>:" *)
 module Scanner = struct
@@ -324,9 +382,11 @@ module Scanner = struct
 
      Each transition function is written as follow:
 
-     {[ let state ~buf ~pos ~end_of_data ... = if pos < end_of_data then let c =
-     Bytes.unsafe_get buf pos in let pos = pos + 1 in match c with ... else
-     State (...) ]}
+     {[
+       let state ~buf ~pos ~end_of_data ... = if pos < end_of_data then let c =
+       Bytes.unsafe_get buf pos in let pos = pos + 1 in match c with ... else
+       State (...)
+     ]}
 
      i.e. it either inspect the next character and chain the execution to the
      next transition function or immediately return the DFA state if the end of
@@ -336,50 +396,56 @@ module Scanner = struct
      buffer is the less likely case. *)
 
   let rec scan0 ~buf ~pos ~end_of_data =
-    if pos < end_of_data then
+    if pos < end_of_data
+    then (
       let c = Bytes.unsafe_get buf pos in
       let pos = pos + 1 in
       match c with
       | '%' -> scan1 ~buf ~pos ~end_of_data
-      | _ -> scan0 ~buf ~pos ~end_of_data
+      | _ -> scan0 ~buf ~pos ~end_of_data)
     else Scan0
 
   and scan1 ~buf ~pos ~end_of_data =
-    if pos < end_of_data then
+    if pos < end_of_data
+    then (
       let c = Bytes.unsafe_get buf pos in
       let pos = pos + 1 in
       match c with
       | '%' -> scan2 ~buf ~pos ~end_of_data
-      | _ -> scan0 ~buf ~pos ~end_of_data
+      | _ -> scan0 ~buf ~pos ~end_of_data)
     else Scan1
 
   and scan2 ~buf ~pos ~end_of_data =
-    if pos < end_of_data then
+    if pos < end_of_data
+    then (
       let c = Bytes.unsafe_get buf pos in
       let pos = pos + 1 in
       match c with
       | '%' -> scan2 ~buf ~pos ~end_of_data
       | 'D' -> scan_prefix ~buf ~pos ~end_of_data ~placeholder_start:(pos - 3)
-      | _ -> scan0 ~buf ~pos ~end_of_data
+      | _ -> scan0 ~buf ~pos ~end_of_data)
     else Scan2
 
   and scan_prefix ~buf ~pos ~end_of_data ~placeholder_start =
-    if pos < end_of_data then
+    if pos < end_of_data
+    then (
       let pos_in_prefix = pos - placeholder_start in
       let c = Bytes.unsafe_get buf pos in
       let pos = pos + 1 in
       match c with
       | '%' -> scan1 ~buf ~pos ~end_of_data
       | c ->
-        if c = prefix.[pos_in_prefix] then
-          if pos_in_prefix = prefix_len - 1 then
-            scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc:0
+        if c = prefix.[pos_in_prefix]
+        then
+          if pos_in_prefix = prefix_len - 1
+          then scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc:0
           else scan_prefix ~buf ~pos ~end_of_data ~placeholder_start
-        else scan0 ~buf ~pos ~end_of_data
+        else scan0 ~buf ~pos ~end_of_data)
     else Scan_prefix placeholder_start
 
   and scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc =
-    if pos < end_of_data then
+    if pos < end_of_data
+    then (
       let c = Bytes.unsafe_get buf pos in
       let pos = pos + 1 in
       match c with
@@ -387,20 +453,23 @@ module Scanner = struct
       | '0' .. '9' as c ->
         let n = Char.code c - Char.code '0' in
         let acc = (acc * 10) + n in
-        if acc = 0 || acc > max_len then
+        if acc = 0 || acc > max_len
+        then
           (* We don't allow leading zeros in length fields and a length of [0]
              is not possible, so [acc = 0] here correspond to an invalid
              placeholder *)
           scan0 ~buf ~pos ~end_of_data
         else scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc
       | ':' ->
-        if acc < pos - placeholder_start then
+        if acc < pos - placeholder_start
+        then
           (* If the length is too small, then this is surely not a valid
              placeholder *)
           scan0 ~buf ~pos ~end_of_data
         else Scan_placeholder (placeholder_start, acc)
-      | _ -> scan0 ~buf ~pos ~end_of_data
+      | _ -> scan0 ~buf ~pos ~end_of_data)
     else Scan_length (placeholder_start, acc)
+  ;;
 
   let run state ~buf ~pos ~end_of_data =
     match state with
@@ -412,6 +481,7 @@ module Scanner = struct
     | Scan_length (placeholder_start, acc) ->
       scan_length ~buf ~pos ~end_of_data ~placeholder_start ~acc
     | Scan_placeholder _ -> state
+  ;;
 end
 
 let buf_len = max_len
@@ -421,12 +491,8 @@ type mode =
   | Copy of
       { input_file : Path.t
       ; output : bytes -> int -> int -> unit
-      ; conf : conf
+      ; conf : Conf.t
       }
-
-type status =
-  | Some_substitution
-  | No_substitution
 
 (** The copy algorithm works as follow:
 
@@ -484,47 +550,52 @@ let parse ~input ~mode =
        immediately since we know for sure that they are not part of a
        placeholder *)
     (match mode with
-    | Test -> ()
-    | Copy { output; _ } ->
-      if placeholder_start > beginning_of_data then
-        output buf beginning_of_data (placeholder_start - beginning_of_data));
+     | Test -> ()
+     | Copy { output; _ } ->
+       if placeholder_start > beginning_of_data
+       then output buf beginning_of_data (placeholder_start - beginning_of_data));
     let leftover = end_of_data - placeholder_start in
     match scanner_state with
-    | Scan_placeholder (placeholder_start, len) when len <= leftover -> (
+    | Scan_placeholder (placeholder_start, len) when len <= leftover ->
       let placeholder = Bytes.sub_string buf ~pos:placeholder_start ~len in
-      match decode placeholder with
-      | Some t -> (
-        match mode with
-        | Test -> Fiber.return Some_substitution
-        | Copy { output; input_file; conf } ->
-          let* s = eval t ~conf in
-          (if !Clflags.debug_artifact_substitution then
-           let open Pp.O in
-           Console.print
-             [ Pp.textf "Found placeholder in %s:"
-                 (Path.to_string_maybe_quoted input_file)
-             ; Pp.enumerate ~f:Fun.id
-                 [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
-                 ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
-                 ]
-             ]);
-          let s = encode_replacement ~len ~repl:s in
-          output (Bytes.unsafe_of_string s) 0 len;
-          let pos = placeholder_start + len in
-          loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
-            ~status:Some_substitution)
-      | None ->
-        (* Restart just after [prefix] since we know for sure that a placeholder
-           cannot start before that. *)
-        loop Scan0 ~beginning_of_data:placeholder_start
-          ~pos:(placeholder_start + prefix_len)
-          ~end_of_data ~status)
-    | scanner_state -> (
+      (match decode placeholder with
+       | Some t ->
+         (match mode with
+          | Test -> Fiber.return Some_substitution
+          | Copy { output; input_file; conf } ->
+            let* s = eval t ~conf in
+            (if !Clflags.debug_artifact_substitution
+             then
+               let open Pp.O in
+               Console.print
+                 [ Pp.textf
+                     "Found placeholder in %s:"
+                     (Path.to_string_maybe_quoted input_file)
+                 ; Pp.enumerate
+                     ~f:Fun.id
+                     [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
+                     ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
+                     ]
+                 ]);
+            let s = encode_replacement ~len ~repl:s in
+            output (Bytes.unsafe_of_string s) 0 len;
+            let pos = placeholder_start + len in
+            loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data ~status:Some_substitution)
+       | None ->
+         (* Restart just after [prefix] since we know for sure that a placeholder
+            cannot start before that. *)
+         loop
+           Scan0
+           ~beginning_of_data:placeholder_start
+           ~pos:(placeholder_start + prefix_len)
+           ~end_of_data
+           ~status)
+    | scanner_state ->
       (* We reached the end of the buffer: move the leftover data back to the
          beginning of [buf] and refill the buffer *)
-      if leftover > 0 then
-        Bytes.blit ~src:buf ~dst:buf ~src_pos:placeholder_start ~dst_pos:0
-          ~len:leftover;
+      if leftover > 0
+      then
+        Bytes.blit ~src:buf ~dst:buf ~src_pos:placeholder_start ~dst_pos:0 ~len:leftover;
       (* Reset [placeholder_start] to [0] since we moved back the leftover data
          to the beginning of [buf] *)
       let scanner_state : Scanner.state =
@@ -534,34 +605,37 @@ let parse ~input ~mode =
         | Scan_length (_, acc) -> Scan_length (0, acc)
         | Scan_placeholder (_, len) -> Scan_placeholder (0, len)
       in
-      match input buf leftover (buf_len - leftover) with
-      | 0 -> (
-        match scanner_state with
-        | Scan_placeholder _ ->
-          (* There might still be another placeholder after this invalid one
-             with a length that is too long *)
-          loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
-            ~status
-        | _ -> (
-          match mode with
-          | Test -> Fiber.return No_substitution
-          | Copy { output; _ } ->
-            (* Nothing more to read; [leftover] is definitely not the beginning
-               of a placeholder, send it and end the copy *)
-            output buf 0 leftover;
-            Fiber.return status))
-      | n ->
-        loop scanner_state ~beginning_of_data:0 ~pos:leftover
-          ~end_of_data:(leftover + n) ~status)
+      (match input buf leftover (buf_len - leftover) with
+       | 0 ->
+         (match scanner_state with
+          | Scan_placeholder _ ->
+            (* There might still be another placeholder after this invalid one
+               with a length that is too long *)
+            loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover ~status
+          | _ ->
+            (match mode with
+             | Test -> Fiber.return No_substitution
+             | Copy { output; _ } ->
+               (* Nothing more to read; [leftover] is definitely not the beginning
+                  of a placeholder, send it and end the copy *)
+               output buf 0 leftover;
+               Fiber.return status))
+       | n ->
+         loop
+           scanner_state
+           ~beginning_of_data:0
+           ~pos:leftover
+           ~end_of_data:(leftover + n)
+           ~status)
   in
   match input buf 0 buf_len with
   | 0 -> Fiber.return No_substitution
-  | n ->
-    loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
-      ~status:No_substitution
+  | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n ~status:No_substitution
+;;
 
 let copy ~conf ~input_file ~input ~output =
   parse ~input ~mode:(Copy { conf; input_file; output })
+;;
 
 let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
   let open Fiber.O in
@@ -571,14 +645,7 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
       Io.close_both (ic, oc);
       Fiber.return ())
     (fun () -> copy ~conf ~input_file:src ~input:(input ic) ~output:(output oc))
-
-let run_sign_hook conf ~has_subst file =
-  match has_subst with
-  | No_substitution -> Fiber.return ()
-  | Some_substitution -> (
-    match Lazy.force conf.sign_hook with
-    | Some hook -> hook file
-    | None -> Fiber.return ())
+;;
 
 (** This is just an optimisation: skip the renaming if the destination exists
     and has the right digest. The optimisation is useful to avoid unnecessary
@@ -586,16 +653,17 @@ let run_sign_hook conf ~has_subst file =
 let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
   let up_to_date =
     match Path.Untracked.stat dst with
-    | Ok { st_kind; _ } when st_kind = S_DIR -> (
-      match delete_dst_if_it_is_a_directory with
-      | true ->
-        Path.rm_rf dst;
-        false
-      | false ->
-        User_error.raise
-          [ Pp.textf "Cannot copy artifact to %S because it is a directory"
-              (Path.to_string dst)
-          ])
+    | Ok { st_kind; _ } when st_kind = S_DIR ->
+      (match delete_dst_if_it_is_a_directory with
+       | true ->
+         Path.rm_rf dst;
+         false
+       | false ->
+         User_error.raise
+           [ Pp.textf
+               "Cannot copy artifact to %S because it is a directory"
+               (Path.to_string dst)
+           ])
     | Error (_ : Unix_error.Detailed.t) -> false
     | Ok (_ : Unix.stats) ->
       let temp_file_digest = Digest.file src in
@@ -603,9 +671,17 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
       Digest.equal temp_file_digest dst_digest
   in
   if not up_to_date then Path.rename src dst
+;;
 
-let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
-    () =
+let copy_file
+  ~conf
+  ?(executable = false)
+  ?chmod
+  ?(delete_dst_if_it_is_a_directory = false)
+  ~src
+  ~dst
+  ()
+  =
   (* We create a temporary file in the same directory to ensure it's on the same
      partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
      prefix ".#" is used because Dune ignores such files and so creating this
@@ -619,14 +695,17 @@ let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst
     (fun () ->
       let open Fiber.O in
       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
-      let* has_subst =
-        copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file ()
+      let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
+      let+ () =
+        if executable
+        then Conf.run_sign_hook conf ~has_subst temp_file
+        else Fiber.return ()
       in
-      let+ () = run_sign_hook conf ~has_subst temp_file in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;
       Fiber.return ())
+;;
 
 let test_file ~src () =
   let open Fiber.O in
@@ -636,3 +715,4 @@ let test_file ~src () =
       Io.close_in ic;
       Fiber.return ())
     (fun () -> parse ~input:(input ic) ~mode:Test)
+;;

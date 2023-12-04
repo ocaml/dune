@@ -12,7 +12,6 @@ end
 type real = { oc : out_channel option }
 
 let t = Fdecl.create Dyn.opaque
-
 let verbose = ref false
 
 let init ?(file = File.Default) () =
@@ -20,36 +19,49 @@ let init ?(file = File.Default) () =
     match file with
     | No_log_file -> None
     | Out_channel s -> Some s
-    | This path -> Some (Io.open_out path)
+    | This path ->
+      Path.mkdir_p (Path.parent_exn path);
+      Some (Io.open_out path)
     | Default ->
       Path.ensure_build_dir_exists ();
       Some (Io.open_out (Path.relative Path.build_dir "log"))
   in
   Option.iter oc ~f:(fun oc ->
-      Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
-        (String.concat
-           (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
-           ~sep:" ")
-        (match Env.get Env.initial "OCAMLPARAM" with
-        | Some s -> Printf.sprintf "%S" s
-        | None -> "unset"));
+    Printf.fprintf
+      oc
+      "# %s\n# OCAMLPARAM: %s\n%!"
+      (String.quote_list_for_shell (Array.to_list Sys.argv))
+      (match Env.get Env.initial "OCAMLPARAM" with
+       | Some s -> Printf.sprintf "%S" s
+       | None -> "unset"));
   Fdecl.set t (Some { oc })
+;;
 
 let init_disabled () = Fdecl.set t None
-
 let t () = Fdecl.get t
+
+let log_oc oc msg =
+  let s = Format.asprintf "%a@?" Pp.to_fmt (User_message.pp msg) in
+  List.iter (String.split_lines s) ~f:(function
+    | "" -> output_string oc "#\n"
+    | s -> Printf.fprintf oc "# %s\n" s);
+  flush oc
+;;
+
+let log msg =
+  match t () with
+  | None -> ()
+  | Some { oc; _ } ->
+    Option.iter oc ~f:(fun oc -> User_message.make (msg ()) |> log_oc oc)
+;;
 
 let info_user_message msg =
   match t () with
   | None -> ()
   | Some { oc; _ } ->
-    Option.iter oc ~f:(fun oc ->
-        let s = Format.asprintf "%a@?" Pp.to_fmt (User_message.pp msg) in
-        List.iter (String.split_lines s) ~f:(function
-          | "" -> output_string oc "#\n"
-          | s -> Printf.fprintf oc "# %s\n" s);
-        flush oc);
+    Option.iter oc ~f:(fun oc -> log_oc oc msg);
     if !verbose then Console.print_user_message msg
+;;
 
 let info paragraphs = info_user_message (User_message.make paragraphs)
 
@@ -59,14 +71,15 @@ let command ~command_line ~output ~exit_status =
   | Some { oc = Some oc; _ } ->
     Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);
     List.iter (String.split_lines output) ~f:(fun s ->
-        match Ansi_color.strip s with
-        | "" -> output_string oc ">\n"
-        | s -> Printf.fprintf oc "> %s\n" s);
+      match Ansi_color.strip s with
+      | "" -> output_string oc ">\n"
+      | s -> Printf.fprintf oc "> %s\n" s);
     (match (exit_status : Unix.process_status) with
-    | WEXITED 0 -> ()
-    | WEXITED n -> Printf.fprintf oc "[%d]\n" n
-    | WSIGNALED n ->
-      let name = Signal.of_int n |> Signal.name in
-      Printf.fprintf oc "[got signal %s]\n" name
-    | WSTOPPED _ -> assert false);
+     | WEXITED 0 -> ()
+     | WEXITED n -> Printf.fprintf oc "[%d]\n" n
+     | WSIGNALED n ->
+       let name = Signal.of_int n |> Signal.name in
+       Printf.fprintf oc "[got signal %s]\n" name
+     | WSTOPPED _ -> assert false);
     flush oc
+;;

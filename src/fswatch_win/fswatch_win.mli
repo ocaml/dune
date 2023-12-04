@@ -3,13 +3,11 @@
 module Event : sig
   (** The type of events *)
   type action =
-    | Added  (** The file was added. *)
-    | Removed  (** The file was removed. *)
-    | Modified  (** The file was modified. *)
-    | Renamed_old
-        (** The file was renamed. This corresponds to the old name. *)
-    | Renamed_new
-        (** The file was renamed. This corresponds to the new name. *)
+    | Added (** The file was added. *)
+    | Removed (** The file was removed. *)
+    | Modified (** The file was modified. *)
+    | Renamed_old (** The file was renamed. This corresponds to the old name. *)
+    | Renamed_new (** The file was renamed. This corresponds to the new name. *)
 
   type t
 

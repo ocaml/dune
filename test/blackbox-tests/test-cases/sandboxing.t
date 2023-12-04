@@ -105,27 +105,30 @@ If rule fails to generate targets, we give a good error message, even with sandb
   - t
   [1]
 
-If rule is configured to require sandboxing, but clearly needs none,
-we give an error message:
+If rule is configured to require sandboxing, but clearly needs none, we sandbox
+anyway.
 
   $ true > dune
-  $ echo '(rule (target t) (deps (sandbox always)) (action (echo "")))' >> dune
+  $ cat >dune <<EOF
+  > (rule
+  >  (target t)
+  >  (deps (sandbox always))
+  >  (action (write-file t "")))
+  > EOF
   $ dune build t
-  File "dune", line 1, characters 0-60:
-  1 | (rule (target t) (deps (sandbox always)) (action (echo "")))
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Rule dependencies are configured to require sandboxing, but the rule
-  has no actions that could potentially require sandboxing.
-  [1]
 
 If an action [chdir]s to a non-existing directory, it is created.
 
   $ echo '(lang dune 2.6)' > dune-project
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps (sandbox none))
-  >   (action (chdir dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  >  (targets t)
+  >  (deps (sandbox none))
+  >  (action
+  >  (chdir dir
+  >   (progn
+  >    (no-infer (write-file file hi))
+  >    (write-file ../t hi)))))
   > EOF
   $ dune build t
   $ cat _build/default/dir/file
@@ -138,9 +141,14 @@ re-created in the build directory.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps (sandbox always))
-  >   (action (chdir dir (progn (run true) (no-infer (write-file file hi)) (write-file ../t hi)))))
+  >  (targets t)
+  >  (deps (sandbox always))
+  >  (action
+  >   (chdir dir
+  >    (progn
+  >     (run true)
+  >     (no-infer (write-file file hi))
+  >     (write-file ../t hi)))))
   > EOF
   $ dune build t
   $ cat _build/default/dir/file
@@ -153,27 +161,31 @@ Show errors when [chdir]ing outside of the build directory.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps (sandbox none))
-  >   (action (chdir /dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  >  (targets t)
+  >  (deps (sandbox none))
+  >  (action
+  >   (chdir /dir
+  >    (progn
+  >     (no-infer (write-file file hi))
+  >     (write-file ../t hi)))))
   > EOF
   $ dune build t
-  File "dune", line 4, characters 17-21:
-  4 |   (action (chdir /dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
-                       ^^^^
+  File "dune", line 5, characters 9-13:
+  5 |   (chdir /dir
+               ^^^^
   Error: Directory /dir is outside the build directory. This is not allowed.
   [1]
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps (sandbox none))
-  >   (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  >  (targets t)
+  >  (deps (sandbox none))
+  >  (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
   > EOF
   $ dune build t
-  File "dune", line 4, characters 17-26:
-  4 |   (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
-                       ^^^^^^^^^
+  File "dune", line 4, characters 16-25:
+  4 |  (action (chdir ../../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+                      ^^^^^^^^^
   Error: Directory
   $TESTCASE_ROOT/../../dir
   is outside the build directory. This is not allowed.
@@ -181,14 +193,18 @@ Show errors when [chdir]ing outside of the build directory.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps (sandbox none))
-  >   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
+  >  (targets t)
+  >  (deps (sandbox none))
+  >  (action
+  >   (chdir ../dir
+  >    (progn
+  >     (no-infer (write-file file hi))
+  >     (write-file ../t hi)))))
   > EOF
   $ dune build t
-  File "dune", line 4, characters 17-23:
-  4 |   (action (chdir ../dir (progn (no-infer (write-file file hi)) (write-file ../t hi)))))
-                       ^^^^^^
+  File "dune", line 5, characters 9-15:
+  5 |   (chdir ../dir
+               ^^^^^^
   Error: Directory
   $TESTCASE_ROOT/../dir
   is outside the build directory. This is not allowed.
@@ -201,9 +217,9 @@ Sandboxing with hard links correctly resolves (follows) symbolic links.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets t)
-  >   (deps link)
-  >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (targets t)
+  >  (deps link)
+  >  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
 The action observed [link] as a regular file with the right contents.
@@ -261,13 +277,13 @@ Now let's see what happens if the the symbolic link is produced by a rule.
 
   $ cat > dune <<EOF
   > (rule
-  >   (deps file)
-  >   (targets link)
-  >   (action (bash "ln -s file link")))
+  >  (deps file)
+  >  (targets link)
+  >  (action (run ln -s file link)))
   > (rule
-  >   (targets t)
-  >   (deps link)
-  >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (targets t)
+  >  (deps link)
+  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ echo hi again > file
@@ -289,21 +305,21 @@ Test how Dune handles a loop with symbolic links.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets link)
-  >   (action (bash "ln -s link link")))
+  >  (targets link)
+  >  (action (bash "ln -s link link")))
   > (rule
-  >   (targets t)
-  >   (deps link)
-  >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (targets t)
+  >  (deps link)
+  >  (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
 This loop is caught immediately after running the rule that creates it.
 
   $ dune build t --sandbox hardlink
-  File "dune", line 1, characters 0-59:
+  File "dune", line 1, characters 0-57:
   1 | (rule
-  2 |   (targets link)
-  3 |   (action (bash "ln -s link link")))
+  2 |  (targets link)
+  3 |  (action (bash "ln -s link link")))
   Error: Error trying to read targets after a rule was run:
   - link: Cyclic symbolic link
   [1]
@@ -313,13 +329,13 @@ which is circular.
 
   $ cat > dune <<EOF
   > (rule
-  >   (deps $PWD/../link)
-  >   (targets link)
-  >   (action (bash "ln -s $PWD/../link link")))
+  >  (deps $PWD/../link)
+  >  (targets link)
+  >  (action (run ln -s $PWD/../link link)))
   > (rule
-  >   (targets t)
-  >   (deps link)
-  >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (targets t)
+  >  (deps link)
+  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ (cd ..; rm link; ln -s link link)
@@ -329,9 +345,9 @@ dependency.
 
   $ dune build t --sandbox hardlink 2>&1 | grep -v "line 1"
   1 | (rule
-  2 |   (deps $TESTCASE_ROOT/test/../link)
-  3 |   (targets link)
-  4 |   (action (bash "ln -s $TESTCASE_ROOT/test/../link link")))
+  2 |  (deps $TESTCASE_ROOT/test/../link)
+  3 |  (targets link)
+  4 |  (action (run ln -s $TESTCASE_ROOT/test/../link link)))
   Error: File unavailable:
   $TESTCASE_ROOT/test/../link
   Cyclic symbolic link
@@ -340,16 +356,16 @@ So, it seems like we must play dirty to create a symbolic link loop.
 
   $ cat > dune <<EOF
   > (rule
-  >   (targets link)
-  >   (action (bash "ln -s $PWD/../link link")))
+  >  (targets link)
+  >  (action (run ln -s $PWD/../link link)))
   > (rule
-  >   (deps link (sandbox none))
-  >   (targets dirty-rule)
-  >   (action (bash "(cd $PWD/..; rm link; ln -s link link); touch dirty-rule")))
+  >  (deps link (sandbox none))
+  >  (targets dirty-rule)
+  >  (action (system "(cd $PWD/..; rm link; ln -s link link); touch dirty-rule")))
   > (rule
-  >   (targets t)
-  >   (deps link dirty-rule)
-  >   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+  >  (targets t)
+  >  (deps link dirty-rule)
+  >  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
   > EOF
 
   $ (cd ..; rm link; ln -s file link)
@@ -357,11 +373,11 @@ So, it seems like we must play dirty to create a symbolic link loop.
 Finally, we get to see the error message printed out at sandbox creation.
 
   $ dune build t --sandbox hardlink
-  File "dune", line 8, characters 0-106:
+  File "dune", line 8, characters 0-105:
    8 | (rule
-   9 |   (targets t)
-  10 |   (deps link dirty-rule)
-  11 |   (action (bash "cp %{deps} t; dune_cmd stat kind %{deps}")))
+   9 |  (targets t)
+  10 |  (deps link dirty-rule)
+  11 |  (action (system "cp %{deps} t; dune_cmd stat kind %{deps}")))
   Error: Sandbox creation error: cannot resolve symbolic link
   "_build/default/link".
   Reason: Too many indirections; is this a cyclic symbolic link?

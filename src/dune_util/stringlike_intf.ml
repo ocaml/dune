@@ -20,7 +20,6 @@ module type S_base = sig
   val hint_valid : (string -> string) option
 
   val of_string_opt : string -> t option
-
   val to_string : t -> string
 end
 
@@ -33,19 +32,13 @@ module type S = sig
   val of_string : string -> t
 
   val to_string : t -> string
-
   val parse_string_exn : Loc.t * string -> t
-
   val to_dyn : t -> Dyn.t
-
   val of_string_opt : string -> t option
-
   val of_string_user_error : Loc.t * string -> (t, User_message.t) result
 
   (** From&to string conversions, for use with [Cmdliner.Arg.conv] *)
-  val conv :
-    (string -> (t, [> `Msg of string ]) result)
-    * (Format.formatter -> t -> unit)
+  val conv : (string -> (t, [> `Msg of string ]) result) * (Format.formatter -> t -> unit)
 
   include Dune_sexp.Conv.S with type t := t
 

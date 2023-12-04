@@ -1,16 +1,15 @@
 Test (preprocess) field on melange.emit stanza
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (alias melange)
-  >  (module_system commonjs)
+  >  (modules main)
+  >  (alias mel)
   >  (preprocess
   >   (action
   >    (run cat %{input-file}))))
@@ -21,6 +20,6 @@ Test (preprocess) field on melange.emit stanza
   >   print_endline "hello"
   > EOF
 
-  $ dune build @melange
+  $ dune build @mel
   $ node _build/default/output/main.js
   hello

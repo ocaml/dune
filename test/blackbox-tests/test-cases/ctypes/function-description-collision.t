@@ -3,8 +3,8 @@ We create a buildable with a ctypes field that declares a duplicate
 crash.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.0)
-  > (using ctypes 0.1)
+  > (lang dune 3.7)
+  > (using ctypes 0.3)
   > EOF
 
   $ cat > dune << EOF

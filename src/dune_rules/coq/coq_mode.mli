@@ -10,5 +10,6 @@ type t =
   | Legacy
   | VoOnly
   | Native
+  | VosOnly
 
 val decode : coq_syntax:Dune_lang.Syntax.t -> t Dune_lang.Decoder.t

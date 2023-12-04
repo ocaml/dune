@@ -1,7 +1,6 @@
 open Import
-open Stdune
 
-let doc = "Format dune files"
+let doc = "Format dune files."
 
 let man =
   [ `S "DESCRIPTION"
@@ -11,6 +10,7 @@ let man =
            support for example. To reformat a dune project, see the "Automatic
            formatting" section in the manual.|}
   ]
+;;
 
 let info = Cmd.info "format-dune-file" ~doc ~man
 
@@ -26,13 +26,16 @@ let format_file ~version ~input =
   in
   match with_input Dune_lang.Format.parse with
   | Sexps sexps ->
-    Format.fprintf Format.std_formatter "%a%!" Pp.to_fmt
+    Format.fprintf
+      Format.std_formatter
+      "%a%!"
+      Pp.to_fmt
       (Dune_lang.Format.pp_top_sexps ~version sexps)
-  | OCaml_syntax loc -> (
-    match input with
-    | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
-    | Some path ->
-      Io.with_file_in path ~f:(fun ic -> Io.copy_channels ic stdout))
+  | OCaml_syntax loc ->
+    (match input with
+     | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
+     | Some path -> Io.with_file_in path ~f:(fun ic -> Io.copy_channels ic stdout))
+;;
 
 let term =
   let+ path_opt =
@@ -42,12 +45,11 @@ let term =
   and+ version =
     let docv = "VERSION" in
     let doc = "Which version of Dune language to use." in
-    let default =
-      Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax
-    in
+    let default = Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax in
     Arg.(value & opt version default & info [ "dune-version" ] ~docv ~doc)
   in
   let input = Option.map ~f:Arg.Path.path path_opt in
   format_file ~version ~input
+;;
 
 let command = Cmd.v info term

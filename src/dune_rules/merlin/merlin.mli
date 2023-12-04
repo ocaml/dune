@@ -26,9 +26,7 @@ module Processed : sig
   type pp_flag
 
   val pp_kind : pp_flag -> Pp_kind.t
-
   val pp_args : pp_flag -> string
-
   val load_file : Path.t -> (t, string) result
 
   (** [print_file path] reads the configuration at path [path] and print it as a
@@ -42,13 +40,11 @@ module Processed : sig
   val get : t -> file:Path.Build.t -> Sexp.t option
 end
 
-val make :
-     requires:Lib.t list Resolve.t
+val make
+  :  requires:Lib.t list Resolve.t
   -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
-  -> preprocess:
-       Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
-       Resolve.Memo.t
+  -> preprocess:Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
   -> libname:Lib_name.Local.t option
   -> source_dirs:Path.Source.Set.t
   -> modules:Modules.t
@@ -58,18 +54,20 @@ val make :
   -> modes:[ `Lib of Lib_mode.Map.Set.t | `Exe | `Melange_emit ]
   -> t
 
+val more_src_dirs : Dir_contents.t -> source_dirs:Path.Source.t list -> Path.Source.t list
+
 (** Add rules for generating the merlin configuration of a specific stanza
     identified by [ident] in a directory *)
-val add_rules :
-     Super_context.t
+val add_rules
+  :  Super_context.t
   -> dir:Path.Build.t
   -> more_src_dirs:Path.Source.t list
   -> expander:Expander.t
   -> t
   -> unit Memo.t
 
-val pp_config :
-     t
-  -> Super_context.t
+val pp_config
+  :  t
+  -> Context.t
   -> expander:Expander.t
   -> Processed.pp_flag option Module_name.Per_item.t Action_builder.t

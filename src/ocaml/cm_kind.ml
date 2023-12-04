@@ -6,16 +6,15 @@ type t =
   | Cmx
 
 let compare = Poly.compare
-
 let all = [ Cmi; Cmo; Cmx ]
 
 let choose cmi cmo cmx = function
   | Cmi -> cmi
   | Cmo -> cmo
   | Cmx -> cmx
+;;
 
 let ext = choose ".cmi" ".cmo" ".cmx"
-
 let source = choose Ml_kind.Intf Impl Impl
 
 module Dict = struct
@@ -29,10 +28,9 @@ module Dict = struct
     | Cmi -> t.cmi
     | Cmo -> t.cmo
     | Cmx -> t.cmx
+  ;;
 
-  let of_func f =
-    { cmi = f ~cm_kind:Cmi; cmo = f ~cm_kind:Cmo; cmx = f ~cm_kind:Cmx }
-
+  let of_func f = { cmi = f ~cm_kind:Cmi; cmo = f ~cm_kind:Cmo; cmx = f ~cm_kind:Cmx }
   let make_all x = { cmi = x; cmo = x; cmx = x }
 end
 
@@ -42,3 +40,4 @@ let to_dyn =
   | Cmi -> variant "cmi" []
   | Cmo -> variant "cmo" []
   | Cmx -> variant "cmx" []
+;;

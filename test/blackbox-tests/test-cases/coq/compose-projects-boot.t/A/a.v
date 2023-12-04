@@ -1,6 +1,5 @@
 
 
-Print LoadPath.
 Print Prelude.
 
 Require Import mytheory.

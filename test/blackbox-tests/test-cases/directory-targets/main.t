@@ -123,7 +123,7 @@ Print rules:
 
   $ dune rules output
   ((deps ((File (In_build_dir _build/default/src_x))))
-   (targets ((files ()) (directories (default/output))))
+   (targets ((files ()) (directories (_build/default/output))))
    (context default)
    (action
     (chdir
@@ -322,14 +322,6 @@ since the produced directory has the same contents.
   a
   b:
   new-b
-
-There is no shared cache support for directory targets at the moment, which is
-why we rerun the first action.
-
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm _build/default/output/a
-  $ dune build contents
-  running
 
 Check that Dune clears stale files from directory targets.
 

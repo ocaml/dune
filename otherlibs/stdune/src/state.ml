@@ -1,7 +1,8 @@
-module Make (S : sig
-  type t
-end)
-(M : Monad.S) =
+module Make
+    (S : sig
+       type t
+     end)
+    (M : Monad.S) =
 struct
   module T = struct
     type 'a t = S.t -> (S.t * 'a) M.t
@@ -12,19 +13,16 @@ struct
       let open M.O in
       let* s', a = x s in
       (f a) s'
+    ;;
   end
 
   open M.O
   include T
 
-  let lift m s = m >>| fun a -> (s, a)
-
+  let lift m s = m >>| fun a -> s, a
   let modify f s = M.return (f s, ())
-
   let get : S.t T.t = fun s -> M.return (s, s)
-
   let set s _ = M.return (s, ())
-
   let run t s = t s
 
   include Monad.Make (T)

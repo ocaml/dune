@@ -12,6 +12,15 @@ order to keep the project in a good state and pleasant to work on for everybody.
    :local:
    :backlinks: none
 
+Dependencies
+============
+
+To create a directory-local opam switch with the dependencies necessary to build the tests, run:
+
+.. code:: sh
+
+   make dev-switch
+
 Bootstrapping
 =============
 
@@ -26,14 +35,22 @@ invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
 and uses this binary to build everything else. As a convenience, ``dune.exe``
 at the root of the source tree executes this binary.
 
-``$ make dev`` takes care of bootstrapping if needed, but if you want to just
-run the bootstrapping step itself, build the ``dune.exe`` target with
+Running:
+```
+make dev
+```
+bootstraps (if necessary) and runs ``./dune.exe build @install``.
+
+If you want to just run the bootstrapping step itself, build the ``bootstrap``
+phony target with
 
 .. code:: sh
 
-   make dev
+   make bootstrap
 
-Once you've bootstrapped dune, you should be using it to develop dune itself.
+You can always rerun this to bootstrap again.
+
+Once you've bootstrapped Dune, you should be using it to develop Dune itself.
 Here are the most common commands you'll be running:
 
 .. code:: sh
@@ -44,6 +61,13 @@ Here are the most common commands you'll be running:
    $ ./dune.exe runtest
    # run a particular cram foo.t:
    $ ./dune.exe build @foo
+
+Note that tests are currently written for version 4.14.1 of the OCaml compiler.
+Some tests depend on the specific wording of compilation errors which can change
+between compiler versions, so to reliably run the tests make sure that
+`ocaml.4.14.1` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
+the root of the Dune repo contains the current compiler version for which tests
+are written.
 
 Writing Tests
 =============
@@ -89,6 +113,19 @@ For integration tests, we use a system similar to `Cram tests
    line
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
+
+When running dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
+This has the following effects:
+
+* Change the default root detection behaviour to use the current directory
+  rather than the top most ``dune-project`` / ``dune-workspace`` file.
+* Be less verbose when Dune outputs a user message.
+* Error reporting is deterministic by default.
+* Prefer not to use a diff program for displaying diffs.
+
+This list is not exhaustive and may change in the future. In order to find the
+exact behaviour, it is recommended to search for ``INSIDE_DUNE`` in the
+codebase.
 
 Guidelines
 ----------
@@ -145,8 +182,16 @@ nix develop nix/profiles/dune
 This profile might need to be updated from time to time, since the bootstrapped
 version of Dune may become stale. This can be done by running the first command.
 
-You may also use `nix develop .#slim` for a dev environment with less
-dependencies that is faster to build.
+We have the following shells for specific tasks:
+
+- ``nix develop .#slim`` for a dev environment with fewer dependencies that is
+  faster to build.
+- ``nix develop .#slim-melange``: same as above, but additionally includes the
+  ``melange`` and ``mel`` packages
+- Building documentation requires ``nix develop .#doc``.
+- For running the Coq tests, you can use ``nix develop .#coq``. NB: Coq native
+  is not currently installed; this will cause some of the tests to fail. It's
+  currently better to fallback to opam in this case.
 
 Releasing Dune
 ==============
@@ -162,16 +207,16 @@ consists of two steps:
 Major & Feature Releases
 ------------------------
 
-Given a new version `x.y.z`, a major release increments `x`, and a feature
-release increments `y`.  Such a release must be done from the `main` branch.
-Once you publish the release, be sure to publish a release branch named `x.y`.
+Given a new version ``x.y.z``, a major release increments ``x``, and a feature
+release increments ``y``.  Such a release must be done from the ``main`` branch.
+Once you publish the release, be sure to publish a release branch named ``x.y``.
 
 Point Releases
 --------------
 
-Point releases increment the `z` in `x.y.z`. Such releases are done from the
-respective `x.y` branch of the respective feature release. Once released, be
-sure to update `CHANGES` in the `main` branch.
+Point releases increment the ``z`` in ``x.y.z``. Such releases are done from the
+respective ``x.y`` branch of the respective feature release. Once released, be
+sure to update ``CHANGES.md`` in the ``main`` branch.
 
 Adding Stanzas
 ==============
@@ -235,10 +280,10 @@ Dune introduced them.
 
 Such languages must be enabled in the ``dune`` project file separately:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.8)
-   (using coq 0.7)
+   (lang dune 3.13)
+   (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass
 ``~experimental:true``, and that their versions are below 1.0.
@@ -276,14 +321,14 @@ Loading Rules
 -------------
 
 Dune rules are loaded lazily to improve performance. Here's a sketch of the
-algorithm that tries to load the rule that generates some target file `t`.
+algorithm that tries to load the rule that generates some target file ``t``.
 
-- Get the directory that of `t`. Call it `d`.
+- Get the directory that contains ``t``. Call it ``d``.
 
-- Load all rules in `d` into a map from targets in that directory to rules that
-  produce it.
+- Load all rules in ``d`` into a map from targets in that directory to rules
+  that produce it.
 
-- Look up the rule for `t` in this map.
+- Look up the rule for ``t`` in this map.
 
 To adhere to this loading scheme, we must generate our rules as part of the
 callback that creates targets in that directory. See the ``Gen_rules`` module
@@ -294,8 +339,8 @@ Documentation
 
 User documentation lives in the ``./doc`` directory.
 
-In order to build the user documentation, you must install python-sphinx_ and
-sphinx_rtd_theme_.
+In order to build the user documentation, you must install python-sphinx_,
+sphinx_rtd_theme_ and sphinx-copybutton_.
 
 Build the documentation with
 
@@ -303,7 +348,7 @@ Build the documentation with
 
    $ make doc
 
-For automatically updated builds, you can install sphinx-autobuild, and run
+For automatically updated builds, you can install sphinx-autobuild_, and run
 
 .. code:: sh
 
@@ -312,10 +357,109 @@ For automatically updated builds, you can install sphinx-autobuild, and run
 .. _python-sphinx: http://www.sphinx-doc.org/en/master/usage/installation.html
 .. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/stable/
 .. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _sphinx-copybutton: https://sphinx-copybutton.readthedocs.io/en/latest/index.html
 .. _dune-release: https://github.com/ocamllabs/dune-release
 
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
+
+Structure
+---------
+
+For structure, we use the `Diátaxis framework`_. The core idea is that
+documents should fit in one of the following categories:
+
+.. _Diátaxis framework: https://diataxis.fr/
+
+- Tutorials, focused on learning
+- How-to guides, focused on task solving
+- Reference, focused on information
+- Explanations, focused on understanding
+
+Most features do not need a document in each category, but the important part
+is that a single document should not try to be in several categories at once.
+
+ReStructured Text
+-----------------
+
+For code blocks containing Dune files, use ``.. code:: dune`` and indent with 3
+spaces. Use formatting consistent with how Dune formats Dune files (most
+importantly, do not leave orphan closing parentheses).
+
+In a document that only contains Dune code blocks, it is possible to use the
+``.. highlight:: dune`` directive to have ``dune`` be the default lexer, and
+then it is possible to use the ``::`` shortcut to end a line with a single
+``:`` and start a code block. See the source of
+:doc:`reference/lexical-conventions` for an example.
+
+For links, prefer references that use ``:doc:`` (link to a whole document) or
+``:term:`` (link to a definition in the glossary) to ``:ref:``.
+
+Style
+-----
+
+Use American spelling.
+
+Use `Title Case`_ for titles and headings (every word except "little words"
+like of, and, or, etc.).
+
+.. _Title Case: https://apastyle.apa.org/style-grammar-guidelines/capitalization/title-case
+
+For project names, use the following capitalization:
+
+- **Dune** is the project, ``dune`` is the command. Files are called ``dune``
+  files.
+- ``dune-project`` should always be written in monospace.
+- **OCaml**
+- **OCamlFormat**, and ``ocamlformat`` is the command.
+- ``odoc``, always in monospace.
+- **opam**. Can be capitalised as Opam at the beginning of sentences only, as
+  the official name is formatted opam. Even in titles, headers, and subheaders,
+  it should be all lowercase: opam. The command is ``opam``.
+- **esy**. Can be capitalised as Esy.
+- **Nix**. The command is ``nix``.
+- **Js_of_ocaml** can be abbreviated **JSOO**.
+- **MDX**, rather than mdx or Mdx
+- **PPX,** rather than ppx or Ppx; ``ppxlib``
+- **UTop,** rather than utop or Utop.
+
+Vendoring
+=========
+
+Dune vendors some code that it uses internally. This is done to make installing
+dune easy as it requires nothing but an OCaml compiler as well as to prevent
+circular dependencies. Before vendoring, make sure that the license of the code
+allows it to be included in dune.
+
+The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
+create a shell script ``update-<library>.sh``, that will be launched from the
+``vendor/`` folder to download and unpack the source and copy the necessary
+source files into the ``vendor/<library>`` folder. Try to keep the amount of
+source code imported minimal, e.g. leave out ``dune-project`` files, For the
+most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+also include the license if there is such a file in the code to be vendored to
+stay compliant.
+
+As these sources get vendored not as sub-projects but parts of dune, you need
+to deal with ``public_name``. The preferred way is to remove the
+``public_name`` and only use the private name. If that is not possible, the
+library can be renamed into ``dune-private-libs.<library>``.
+
+To deal with the modified ``dune`` files in ``update-<library>.sh`` scripts,
+you can commit the modified files to ``dune`` and make the
+``update-<library>.sh`` script to use ``git checkout`` to restore the ``dune``
+file.
+
+For larger modifications, it is better to fork the upstream project in the
+ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+the changes better visible and easier to update from upstream in the long run
+while keeping our custom patches in sync. The changes to the ``dune`` files are
+to be kept in the Dune repository.
+
+It is preferable to cut out as many dependencies as possible, e.g. ones that
+are only necessary on older OCaml versions or build-time dependencies.
+
+.. _ocaml-dune: https://github.com/ocaml-dune/
 
 General Guidelines
 ==================
@@ -422,7 +566,7 @@ Good:
   no idea what invariant is broken by the ``assert false``. Kindly describe it
   to the reader in the error message.
 
-- Avoid meaningless names like `x`, `a`, `b`, `f`. Try to find a more
+- Avoid meaningless names like ``x``, ``a``, ``b``, ``f``. Try to find a more
   descriptive name or just inline it altogether.
 
 - If a module ``Foo`` has a module type ``Foo.S`` and you'd like to avoid
@@ -434,8 +578,49 @@ Good:
   ``foo``.
 
 - Avoid optional arguments. They increase brevity at the expense of readability
-  and are annoying to grep. Further more, they encourage callers not to think
+  and are annoying to grep. Furthermore, they encourage callers not to think
   at all about these optional arguments even if they often should.
+
+- Avoid qualifying modules when accessing fields of records or constructors.
+  Avoid it altogether if possible, or add a type annotation if
+  necessary.
+
+Bad:
+
+.. code:: ocaml
+
+    let result = A.b () in
+    match result.A.field with
+    | B.Constructor -> ...
+
+Good:
+
+.. code:: ocaml
+
+    let result : A.t = A.b () in
+    match (result.field : B.t) with
+    | Constructor -> ...
+
+- When constructing records, use the qualified names in in the record. Do not
+  open the record. The local open syntax pulls in all kinds of names from the
+  opened module and might shadow the values that you're trying to put into the
+  record, leading to difficult debugging.
+
+Bad; if ``A.value`` exists, it will pick that over ``value``:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = A.{ field = value; other } in
+    ...
+
+Good:
+
+.. code:: ocaml
+
+    let value = 42 in
+    let record = { A.field = value; other } in
+    ...
 
 - Stage functions explicitly with the ``Staged`` module.
 
@@ -534,8 +719,32 @@ Benchmarking
 Dune Bench
 ----------
 
-You can benchmark Dune's performance by running `make bench`. This will run a
-subset of the Duniverse.
+You can benchmark Dune's performance by running ``make bench``. This will run a
+subset of the Duniverse. If you are running the bench locally, make sure that
+you bootstrap since that is the executable that the bench will run.
+
+The bench will build a specially selected portion of the Duniverse once, called
+a "clean build". Afterwards, the build will be run 5 more times and are termed
+the "Null builds".
+
+In each run of the CI, there will be an ``ocaml-benchmarks`` status in the
+sumamry. Clicking ``Details`` will show a bench report.
+
+The report contains the following information:
+
+- The build times for Clean and Null builds.
+- The size of the ``dune.exe`` binary.
+- User CPU times for the Clean and Null builds.
+- System CPU times for the Clean and Null builds.
+- All the garbage collection stats apart from "forced collections" for Clean and
+  Null builds.
+
+Pull requests that add new libraries are likely to increase the size of the dune
+binary.
+
+Performance gains in Dune can be observed in the Clean and Null build times.
+
+Memory usage can be observed in the garbage collection stats.
 
 Inline Benchmarks
 -----------------
@@ -560,3 +769,62 @@ Melange Bench
 We also benchmark a demo Melange project's build time:
 
 https://ocaml.github.io/dune/dev/bench/
+
+Monorepo Benchmark
+------------------
+
+The file bench/monorepo/bench.Dockerfile sets up a Docker container for
+benchmarking Dune building a large monorepo constructed with
+`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
+constructed according to the files in
+https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
+Build the Docker image from the root directory of this repo.
+
+E.g., run
+
+.. code:: sh
+
+   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
+
+The monorepo benchmark Docker image requires ``duniverse`` directory to be mounted
+as a volume. Generate this directory with a script from the
+`ocaml-monorepo-benchmark <https://github.com/ocaml-dune/ocaml-monorepo-benchmark>`_
+repository:
+
+.. code:: sh
+
+   $ git clone https://github.com/ocaml-dune/ocaml-monorepo-benchmark.git
+   $ cd ocaml-monorepo-benchmark
+   $ ./generate-duniverse.sh /tmp
+
+This will create a directory ``/tmp/duniverse``. Then to run the benchmark, run
+the Docker image in a container mounting ``/tmp/duniverse`` as a volume at
+``/home/opam/bench-dir/current-bench-data/duniverse`` (that specific path is a
+requirement of `current-bench <https://github.com/ocurrent/current-bench>`_).
+From within the container the benchmarks can be started by running `make bench`.
+Do all this in a single command with:
+
+.. code:: sh
+
+   $ docker run -it --volume=/tmp/duniverse:/home/opam/bench-dir/current-bench-data/duniverse dune-monorepo-benchmark bash --login -c 'make bench'
+
+The benchmark will print out a JSON string in the format accepted by
+`current-bench <https://github.com/ocurrent/current-bench>`_.
+
+Read more at
+https://github.com/ocaml/dune/blob/main/bench/monorepo/README.md.
+
+Formatting
+==========
+
+When changing the formatting configuration, it is possible to add the
+reformatting commit to the :file:`.git-blame-ignore-revs` file. The commit will
+disappear from blame views. It is also possible to configure ``git`` to have
+the same behavior locally.
+
+It is recommended to edit that file in a second PR, to make sure that the
+referenced commit has not changed.
+
+.. seealso::
+   `GitHub - Ignore commits in the blame view
+   <https://docs.github.com/en/repositories/working-with-files/using-files/viewing-a-file#ignore-commits-in-the-blame-view>`_

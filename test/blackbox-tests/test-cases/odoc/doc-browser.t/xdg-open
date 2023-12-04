@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "open command received args:"
+echo $@

@@ -59,6 +59,7 @@
    (sandbox always)))
  (libraries
   base
+  dune_config_file
   dune_file_watcher
   ppx_expect.config
   ppx_expect.config_types

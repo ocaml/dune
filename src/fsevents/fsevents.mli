@@ -4,12 +4,11 @@
 
 val available : unit -> bool
 
-module RunLoop : sig
+module Dispatch_queue : sig
   type t
 
-  val in_current_thread : unit -> t
-
-  val run_current_thread : t -> (unit, exn) result
+  val create : unit -> t
+  val wait_until_stopped : t -> (unit, exn) result
 end
 
 module Event : sig
@@ -22,7 +21,6 @@ module Event : sig
   type t
 
   val to_dyn_raw : t -> Dyn.t
-
   val to_dyn : t -> Dyn.t
 
   (** [id t] return the id of the event *)
@@ -32,11 +30,11 @@ module Event : sig
   val path : t -> string
 
   type kind =
-    | Dir  (** directory *)
-    | File  (** file event *)
+    | Dir (** directory *)
+    | File (** file event *)
     | Dir_and_descendants
-        (** non-specific directory event. all descendants of this directory are
-            invalidated *)
+    (** non-specific directory event. all descendants of this directory are
+        invalidated *)
 
   val dyn_of_kind : kind -> Dyn.t
 
@@ -49,8 +47,8 @@ module Event : sig
     | Modify (* [path t] guaranteed to exist *)
     | Rename
     | Unknown
-        (** multiple actions merged into one by debouncing or an uninformative
-            "rename". inspect the FS to see what happened *)
+    (** multiple actions merged into one by debouncing or an uninformative
+        "rename". inspect the FS to see what happened *)
 
   val dyn_of_action : action -> Dyn.t
 
@@ -65,14 +63,12 @@ type t
     debouncing based on [latency]. [f] is called for every new event *)
 val create : paths:string list -> latency:float -> f:(Event.t list -> unit) -> t
 
-(** [start t] will start listening for fsevents. Note that the callback will not
-    be called until [loop t] is called. *)
-val start : t -> RunLoop.t -> unit
+(** [start t dq] will start listening for fsevents. *)
+val start : t -> Dispatch_queue.t -> unit
 
-val runloop : t -> RunLoop.t option
+val dispatch_queue : t -> Dispatch_queue.t option
 
-(** [stop t] stop listening to events. Note that this will not make [loop]
-    return until [break] is called. *)
+(** [stop t] stops listening to events. *)
 val stop : t -> unit
 
 (** [flush_sync t] flush all pending events that might be held up by debouncing.

@@ -1,0 +1,13 @@
+(library
+ (name a)
+ (modules))
+
+(executable
+ (name main)
+ (modules a main)
+ (libraries
+  (select
+   a.ml
+   from
+   (a -> a.pre_413.ml)
+   (-> a.unix.ml))))

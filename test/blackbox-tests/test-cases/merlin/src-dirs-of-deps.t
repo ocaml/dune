@@ -41,4 +41,5 @@ library also has more than one src dir.
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

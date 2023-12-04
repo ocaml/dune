@@ -49,4 +49,6 @@ Since 3.0.0, jbuild files are plain ignored:
   3 |  (no_keep_locs))
        ^^^^^^^^^^^^^^
   Warning: no_keep_locs is a no-op. Please delete it.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (no_keep_locs disabled)
   $ rm -f dune

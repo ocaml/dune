@@ -4,11 +4,8 @@ module Ext : sig
   type t = string
 
   val exe : t
-
   val cmo : t
-
   val cma : t
-
   val runtime : t
 end
 
@@ -24,20 +21,16 @@ module Flags : sig
   end
 
   val build_runtime : 'a t -> 'a
-
   val compile : 'a t -> 'a
-
   val link : 'a t -> 'a
-
   val map : f:('a -> 'b) -> 'a t -> 'b t
-
   val standard : Spec.t
 
-  val make :
-       spec:Spec.t
+  val make
+    :  spec:Spec.t
     -> default:string list Action_builder.t t
     -> eval:
-         (   Ordered_set_lang.Unexpanded.t
+         (Ordered_set_lang.Unexpanded.t
           -> standard:string list Action_builder.t
           -> string list Action_builder.t)
     -> string list Action_builder.t t
@@ -52,7 +45,6 @@ module In_buildable : sig
     }
 
   val decode : t Dune_lang.Decoder.t
-
   val default : t
 end
 
@@ -63,7 +55,6 @@ module In_context : sig
     }
 
   val make : dir:Path.Build.t -> In_buildable.t -> t
-
   val default : t
 end
 
@@ -81,13 +72,8 @@ module Env : sig
     }
 
   val map : f:('a -> 'b) -> 'a t -> 'b t
-
-  val equal :
-    Ordered_set_lang.Unexpanded.t t -> Ordered_set_lang.Unexpanded.t t -> bool
-
+  val equal : Ordered_set_lang.Unexpanded.t t -> Ordered_set_lang.Unexpanded.t t -> bool
   val decode : Ordered_set_lang.Unexpanded.t t Dune_lang.Decoder.t
-
   val default : profile:Profile.t -> string list t
-
   val empty : Ordered_set_lang.Unexpanded.t t
 end

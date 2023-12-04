@@ -4,19 +4,12 @@ module Id : sig
   type t
 
   val make : Sexp.t -> t
-
   val sexp : (t, Conv.values) Conv.t
-
   val required_field : (t, Conv.fields) Conv.t
-
   val optional_field : (t option, Conv.fields) Conv.t
-
   val to_dyn : t -> Dyn.t
-
   val hash : t -> int
-
   val equal : t -> t -> bool
-
   val to_sexp : t -> Sexp.t
 
   include Comparable_intf.S with type key := t
@@ -26,7 +19,6 @@ module Version : sig
   type t = int * int
 
   val latest : t
-
   val sexp : t Conv.value
 end
 
@@ -59,9 +51,7 @@ module Call : sig
     }
 
   val to_dyn : t -> Dyn.t
-
   val create : ?params:Sexp.t -> method_:Method.Name.t -> unit -> t
-
   val fields : (t, Conv.fields) Conv.t
 end
 
@@ -79,24 +69,19 @@ module Response : sig
       }
 
     val to_dyn : t -> Dyn.t
-
     val payload : t -> Sexp.t option
-
     val message : t -> string
-
     val kind : t -> kind
 
     exception E of t
 
     val create : ?payload:Sexp.t -> kind:kind -> message:string -> unit -> t
-
     val of_conv : Conv.error -> t
   end
 
   type t = (Sexp.t, Error.t) result
 
   val fields : (Id.t * t, Conv.fields) Conv.t
-
   val to_dyn : t -> Dyn.t
 end
 
@@ -108,7 +93,6 @@ module Protocol : sig
   type t = int
 
   val latest_version : t
-
   val sexp : t Conv.value
 end
 
@@ -121,15 +105,10 @@ module Initialize : sig
       }
 
     val create : id:Id.t -> t
-
     val of_call : Call.t -> version:int * int -> (t, Response.Error.t) result
-
     val dune_version : t -> int * int
-
     val protocol_version : t -> int
-
     val id : t -> Id.t
-
     val to_call : t -> Call.t
   end
 
@@ -137,9 +116,7 @@ module Initialize : sig
     type t
 
     val create : unit -> t
-
     val to_response : t -> Sexp.t
-
     val sexp : t Conv.value
   end
 end
@@ -149,11 +126,8 @@ module Version_negotiation : sig
     type t = private Menu of (Method.Name.t * Method.Version.t list) list
 
     val create : (Method.Name.t * Method.Version.t list) list -> t
-
     val sexp : t Conv.value
-
     val to_call : t -> Call.t
-
     val of_call : Call.t -> version:Version.t -> (t, Response.Error.t) result
   end
 
@@ -161,9 +135,7 @@ module Version_negotiation : sig
     type t = private Selected of (string * int) list
 
     val create : (string * int) list -> t
-
     val to_response : t -> Sexp.t
-
     val sexp : t Conv.value
   end
 end
@@ -176,7 +148,6 @@ module Persistent : sig
       | Close_connection
 
     val sexp : t Conv.value
-
     val to_dyn : t -> Dyn.t
   end
 
@@ -223,8 +194,8 @@ module Decl : sig
   module Request : sig
     type ('req, 'resp) gen = Method.Version.t * ('req, 'resp) Generation.t
 
-    val make_gen :
-         req:'wire_req Conv.value
+    val make_gen
+      :  req:'wire_req Conv.value
       -> resp:'wire_resp Conv.value
       -> upgrade_req:('wire_req -> 'req)
       -> downgrade_req:('req -> 'wire_req)
@@ -233,8 +204,8 @@ module Decl : sig
       -> version:Method.Version.t
       -> ('req, 'resp) gen
 
-    val make_current_gen :
-         req:'req Conv.value
+    val make_current_gen
+      :  req:'req Conv.value
       -> resp:'resp Conv.value
       -> version:Method.Version.t
       -> ('req, 'resp) gen
@@ -246,26 +217,29 @@ module Decl : sig
       ; generations : ('req, 'resp) gen list
       }
 
-    val make :
-         method_:Method.Name.t
+    val make
+      :  method_:Method.Name.t
       -> generations:('req, 'resp) gen list
       -> ('req, 'resp) t
 
+    val print_generations : ('req, 'resp) t -> unit
     val witness : ('a, 'b) t -> ('a, 'b) witness
   end
 
   module Notification : sig
     type 'payload gen = Method.Version.t * ('payload, unit) Generation.t
 
-    val make_gen :
-         conv:'wire Conv.value
+    val make_gen
+      :  conv:'wire Conv.value
       -> upgrade:('wire -> 'model)
       -> downgrade:('model -> 'wire)
       -> version:Method.Version.t
       -> 'model gen
 
-    val make_current_gen :
-      conv:'model Conv.value -> version:Method.Version.t -> 'model gen
+    val make_current_gen
+      :  conv:'model Conv.value
+      -> version:Method.Version.t
+      -> 'model gen
 
     type 'payload witness = ('payload, unit) Generation.t t
 
@@ -274,13 +248,11 @@ module Decl : sig
       ; generations : 'payload gen list
       }
 
-    val make :
-      method_:Method.Name.t -> generations:'payload gen list -> 'payload t
-
+    val make : method_:Method.Name.t -> generations:'payload gen list -> 'payload t
+    val print_generations : 'payload t -> unit
     val witness : 'a t -> 'a witness
   end
 
   type ('a, 'b) request = ('a, 'b) Request.t
-
   type 'a notification = 'a Notification.t
 end

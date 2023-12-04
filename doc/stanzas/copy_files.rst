@@ -6,7 +6,7 @@ directory could be copied to the current directory, if needed.
 
 The syntax is as follows:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files
      <optional-fields>
@@ -23,20 +23,20 @@ details.
   details.
 
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
-  condition is specified using the :ref:`blang`.
+  condition is specified using the :doc:`reference/boolean-language`.
 
 The short form:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files <glob>)
 
 is equivalent to:
 
-.. code:: scheme
+.. code:: dune
 
     (copy_files (files <glob>))
 
 The difference between ``copy_files`` and ``copy_files#`` is the same as the
-difference between the ``copy`` and ``copy#`` actions. See the
-:ref:`user-actions` section for more details.
+difference between the ``copy`` and ``copy#`` actions. See
+:doc:`reference/actions` section for more details.

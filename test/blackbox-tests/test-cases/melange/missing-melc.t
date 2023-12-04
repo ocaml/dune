@@ -1,7 +1,7 @@
 Test cases when melc is not available
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -22,22 +22,15 @@ For melange.emit stanzas, an error is shown
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main_melange)
-  >  (alias melange)
-  >  (module_system commonjs))
+  >  (modules main_melange)
+  >  (alias mel))
   > EOF
 
-  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @melange)
-  File "dune", line 1, characters 0-98:
-  1 | (melange.emit
-  2 |  (target output)
-  3 |  (entries main_melange)
-  4 |  (alias melange)
-  5 |  (module_system commonjs))
+  $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
   Error: Program melc not found in the tree or in PATH
-   (context: default)
-  Hint: opam install melange
-  [1]
+  Error: Program melc not found in the tree or in PATH
+  Error: Program melc not found in the tree or in PATH
+  Error: Program melc not found in the tree or in PATH
 
 For libraries, if no melange.emit stanza is found, build does not fail
 
@@ -80,9 +73,8 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   >  (libraries lib1))
   > (melange.emit
   >  (target output)
-  >  (entries main_melange)
-  >  (libraries lib1)
-  >  (module_system commonjs))
+  >  (modules main_melange)
+  >  (libraries lib1))
   > EOF
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . main_native.bc)

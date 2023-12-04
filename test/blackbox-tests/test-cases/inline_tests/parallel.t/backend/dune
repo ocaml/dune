@@ -1,0 +1,19 @@
+(library
+ (name fake_backend_1)
+ (modules ())
+ (inline_tests.backend
+  (runner_libraries fake_backend_runner)
+  (generate_runner (echo "let () = Fake_backend_runner.run ();;"))
+  (flags "--libname" %{library-name})))
+
+(library
+ (name fake_backend_2)
+ (modules ())
+ (inline_tests.backend
+  (extends fake_backend_1)
+  (list_partitions_flags ("--libname" %{library-name} "--list-partitions"))
+  (flags ("--partition" %{partition}))))
+
+(library
+ (name fake_backend_runner)
+ (modules fake_backend_runner))

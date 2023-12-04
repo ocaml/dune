@@ -1,0 +1,11 @@
+(library
+ (name dune_site_plugins)
+ (public_name dune-site.plugins)
+ (modules_without_implementation dune_site_plugins_data)
+ (special_builtin_support
+  (dune_site
+   (plugins)
+   (data_module dune_site_plugins_data)))
+ (libraries dune-site dune-private-libs.meta_parser dune-site.linker)
+ (instrumentation
+  (backend bisect_ppx)))

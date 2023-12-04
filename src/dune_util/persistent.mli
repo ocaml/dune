@@ -16,10 +16,9 @@ module type Desc = sig
   type t
 
   val name : string
-
   val version : int
-
   val to_dyn : t -> Dyn.t
+  val test_example : unit -> t
 end
 
 type data = private ..
@@ -33,15 +32,12 @@ end
 (** Create a pair of functions to write/read a persistent value to/from a file.
     [D.name] must be unique.
 
-    In the future, we plan to add a command [dune dump <file>] that will
-    pretty-print the contents of any persistent file. This command will use the
-    [D.name] stored in the persistent file to locate the appropriate pretty
-    printer. *)
+    There's the [dune dump <file>] command that can pretty-print the contents of
+    any persistent file. This command can use the [D.name] stored in the
+    persistent file to locate the appropriate pretty printer. *)
 module Make (D : Desc) : sig
   val to_string : D.t -> string
-
   val dump : Path.t -> D.t -> unit
-
   val load : Path.t -> D.t option
 
   type data += T of D.t
@@ -56,3 +52,4 @@ end
 type t = T : (module Desc with type t = 'a) * 'a -> t
 
 val load_exn : Path.t -> t
+val test_examples : unit -> t Seq.t

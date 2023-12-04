@@ -1,0 +1,36 @@
+(library
+ (name dune_pkg_unit_tests)
+ (inline_tests
+  (deps plaintext.md tarball.tar.gz %{bin:git}))
+ (libraries
+  dune_tests_common
+  stdune
+  dune_pkg
+  dune_engine
+  dune_util
+  dune_lang
+  dune_vcs
+  fiber
+  opam_core
+  threads.posix
+  unix
+  base
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))
+
+(rule
+ (target tarball.tar.gz)
+ (deps plaintext.md)
+ (action
+  (run tar -czf %{target} %{deps})))
+
+(alias
+ (name pkg)
+ (deps
+  (alias runtest)))

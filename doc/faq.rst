@@ -80,11 +80,25 @@ non-fatal:
 - You can change the flags used by the ``dev`` profile by adding the following
   stanza to a ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (env
     (dev
       (flags (:standard -warn-error -A))))
+
+How to Turn Specific Errors into Warnings
+=========================================
+
+Dune is strict about warnings by default in that all warnings are treated as
+fatal errors. To change certain errors into warnings for a project, you can add
+the following to ``dune-workspace``:
+
+.. code:: dune
+
+  (env (dev (flags :standard -warn-error -27-32)))
+
+In this example, the warnings 27 (unused-var-strict) and 32
+(unused-value-declaration) are treated as warnings rather than errors.
 
 How to Display the Output of Commands as They Run
 =================================================
@@ -122,3 +136,125 @@ file:
 
 The ``ocaml-print-intf`` program has special support for Dune, so it will
 automatically understand external dependencies.
+
+How Can I Build a Single Library?
+=================================
+
+You might want to do this when you don't have all the dependencies installed to
+compile an entire project, or parts of the project don't build for whatever
+reason. Maybe you want to check if your changes compile or produce build
+artifacts needed by ``ocaml-lsp-server``.
+
+Suppose you have a library defined in ``src/foo/dune``:
+
+.. code:: dune
+
+  (library
+   (public_name my_library)
+   ...)
+
+You can build this library on its own by running the following from the project
+root directory:
+
+.. code:: bash
+
+   $ dune build %{cmxa:src/foo/my_library}
+
+Note that the path (``src/foo`` in the example above) is relative to the current
+directory - not the project root. If the library defines a ``name`` distinct from
+its ``public_name`` then that can be used interchangeably with the ``public_name``
+in this command.
+
+Files and Directories Whose Names Begin with "." (Period) are Ignored by ``source_tree``
+========================================================================================
+
+Dune's default behaviour is to ignore files and directories starting with "."
+when copying directories with ``source_tree``. This is to avoid accidentally
+copying the ``.git`` directory into the ``_build`` directory during a build.
+
+This is a common source of confusion when interoperating with other libraries
+that use hidden directories for configuration, such as Rust. For example
+consider this rule which builds a Rust library contained in a subdirectory
+foo-rs:
+
+.. code:: dune
+
+  (rule
+   (target foo.a)
+   (deps
+    (source_tree foo-rs))
+   (action
+    (progn
+     (chdir
+      foo-rs
+      (run cargo build --release))
+     (run mv foo-rs/target/release/%{target} %{target}))))
+
+The build config for the Rust project will be in a directory
+``foo-rs/.cargo/config.toml``, and by default the ``.cargo`` directory won't
+get copied into the ``_build`` directory and so the Rust project will build
+with an incorrect configuration.
+
+To fix this, create a ``dune`` file at the top level of the Rust project (i.e.,
+``foo-rs/dune``):
+
+.. code:: dune
+
+    (dirs :standard .cargo)
+
+If you're following the standard advice for embedding Rust projects into Dune
+projects then you likely already have a ``dune`` project inside your Rust
+project that looks like:
+
+.. code:: dune
+
+    (dirs :standard \ target)
+    (data_only_dirs vendor)
+
+In this case you can update it to look like this:
+
+.. code:: dune
+
+    (dirs :standard .cargo \ target)
+    (data_only_dirs vendor)
+
+How Can I Write Inline Tests in a Package Without my Users Needing to Install ``ppx_inline_test``?
+==================================================================================================
+
+If you came to OCaml from Rust and noticed that Dune has a feature for running
+inline tests you might be wondering how to do the OCaml equivalent of:
+
+.. code:: rust
+
+   // define a private function
+   fn foo() { ... }
+
+   // test the function right next to its definition
+   #[test]
+   fn test_of_foo() { ... }
+
+That is, writing tests for private functions right next to the definition of
+those functions. The :ref:`inline_tests` documentation describes how to do this
+using the ``ppx_inline_test`` package; however, if you do this in your package,
+then your package must `unconditionally` depend on the ``ppx_inline_test``
+package. Opam has a notion of test-only dependencies (its ``with-test`` flag),
+but you cannot use this with ``ppx_inline_test``. The consequence of this is
+that anyone depending on your package is also transitively depending on
+``ppx_inline_test`` as well as all of its dependencies.
+
+The reason for this is OCaml code with preprocessor directives (such as those
+used for inline tests with ``ppx_inline_test``) is technically not valid OCaml
+code until it has been preprocessed. Unlike the cargo build system used for
+Rust, Dune does not have a preprocessor built into it. Instead, it relies on
+external tools (such as ``ppx_inline_test``) to parse the code and replace any
+preprocessor directives with valid OCaml. Dune doesn't know how to parse OCaml
+code at all so it can't even remove inline tests from the code in cases where
+``ppx_inline_test`` is unavailable.
+
+The blessed workaround for folks who want to use ``ppx_inline_test`` in their
+packages but don't want to add it as a dependency is to create a new
+(unreleased) package which contains all the tests. In the original package,
+expose all the private APIs you intend to test via public modules named
+something foreboding such as ``For_test`` so your users know not to rely on
+their contents and then have the test package define tests that call your
+"private" APIs through the ``For_test`` modules.

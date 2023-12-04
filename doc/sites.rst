@@ -24,9 +24,9 @@ A site is defined in a package :ref:`package` in the ``dune-project`` file. It
 consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 ``etc``) where the site will be installed as a sub-directory.
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.8)
+   (lang dune 3.13)
    (using dune_site 0.1)
    (name mygui)
 
@@ -41,7 +41,7 @@ Here the package ``mygui`` defines a site named ``themes`` that will be located
 in the section ``share``. This package can add files to this ``site`` using the
 :ref:`install stanza<install>`:
 
-.. code:: scheme
+.. code:: dune
 
    (install
     (section (site (mygui themes)))
@@ -54,7 +54,7 @@ Another package ``mygui_material_theme`` can install files inside ``mygui``
 directory for adding a new theme. Inside the scope of ``mygui_material_theme``
 the ``dune`` file contains:
 
-.. code:: scheme
+.. code:: dune
 
    (install
     (section (site mygui themes))
@@ -75,7 +75,7 @@ Getting the Locations of a Site at Runtime
 The executable ``mygui`` will be able to get the locations of the ``themes``
 site using the :ref:`generate sites module stanza<generate_sites_module>`
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name mygui)
@@ -223,9 +223,9 @@ Main Executable (C)
 
 - The ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
-  (lang dune 3.8)
+  (lang dune 3.13)
   (using dune_site 0.1)
   (name app)
 
@@ -236,7 +236,7 @@ Main Executable (C)
 
 - The ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (executable
     (public_name app)
@@ -254,6 +254,12 @@ Main Executable (C)
 
 The generated module `sites` depends here also on the library
 `dune-site.plugins` because the `plugins` optional field is requested.
+
+If the executable being created is an OCaml toplevel, then the
+``libraries`` stanza needs to also include the ``dune-site.toplevel``
+library.  This causes the loading to use the toplevel's normal loading
+mechanism rather than ``Dynload.loadfile`` (which is not allowed in
+toplevels).
 
 - The module ``registration.ml`` of the library ``app.registration``:
 
@@ -277,9 +283,9 @@ The Plugin "plugin1"
 
 - The ``plugin/dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
-  (lang dune 3.8)
+  (lang dune 3.13)
   (using dune_site 0.1)
 
   (generate_opam_files true)
@@ -290,7 +296,7 @@ The Plugin "plugin1"
 
 - The ``plugin/dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (library
     (public_name plugin1.plugin1_impl)

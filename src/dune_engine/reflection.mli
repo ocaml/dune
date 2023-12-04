@@ -10,7 +10,6 @@ module Rule : sig
          variables, universe, glob listings, sandbox requirements *)
       expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t
-    ; context : Build_context.t option
     ; action : Action.t
     }
 end

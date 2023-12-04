@@ -8,7 +8,7 @@ confusing than anything.
   $ echo '(lang dune 1.10)' > dune-project
   $ dune build a
   Error: Multiple rules generated for _build/default/a:
-  - file present in source tree
   - dune:1
+  - file present in source tree
   Hint: rm -f a
   [1]

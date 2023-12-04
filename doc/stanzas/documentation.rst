@@ -7,7 +7,7 @@ Additional manual pages may be attached to packages using the ``documentation``
 stanza. These ``.mld`` files must contain text in the same syntax as OCamldoc
 comments.
 
-.. code-block:: scheme
+.. code-block:: dune
 
   (documentation (<optional-fields>))
 
@@ -18,8 +18,8 @@ Where ``<optional-fields>`` are:
   stanza.
 
 - ``(mld_files <arg>)``: the ``<arg>`` field follows the
-  :ref:`ordered-set-language`. This is a set of extensionless MLD file basenames
-  attached to the package, where ``:standard`` refers to all the ``.mld`` files
-  in the stanza's directory.
+  :doc:`reference/ordered-set-language`. This is a set of extensionless MLD file
+  basenames attached to the package, where ``:standard`` refers to all the
+  ``.mld`` files in the stanza's directory.
 
 For more information, see :ref:`documentation`.

@@ -16,6 +16,9 @@ and ``.mlg`` file preprocessing.
 A *Coq theory* is a collection of ``.v`` files that define Coq modules whose
 names share a common prefix. The module names reflect the directory hierarchy.
 
+Coq theories may be defined using :ref:`coq.theory<coq-theory>` stanzas, or be
+auto-detected by Dune by inspecting Coq's install directories.
+
 A *Coq plugin* is an OCaml :ref:`library` that Coq can load dynamically at
 runtime. Plugins are typically linked with the Coq OCaml API.
 
@@ -31,9 +34,9 @@ be Dune targets of other rules.
 To enable Coq support in a Dune project, specify the :ref:`Coq language
 version<coq-lang>` in the :ref:`dune-project` file. For example, adding
 
-.. code:: scheme
+.. code:: dune
 
-    (using coq 0.7)
+    (using coq 0.8)
 
 to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
 ``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
@@ -47,7 +50,7 @@ coq.theory
 The Coq theory stanza is very similar in form to the OCaml :ref:`library`
 stanza:
 
-.. code:: scheme
+.. code:: dune
 
     (coq.theory
      (name <module_prefix>)
@@ -56,6 +59,7 @@ stanza:
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
+     (coqdoc_flags <coqdoc_flags>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -95,13 +99,18 @@ The semantics of the fields are:
   ``lib/coq/user-contrib/<module_prefix>``, as is customary in the Make-based
   Coq package ecosystem.
 
-  For compatibility, Dune also installs, under the ``user-contrib``
-  prefix, the ``.cmxs`` files that appear in ``<ocaml_plugins>``. This
-  will be dropped in future versions.
+  For compatibility, Dune also installs, under the ``user-contrib`` prefix, the
+  ``.cmxs`` files that appear in ``<ocaml_plugins>``. This will be dropped in
+  future versions.
 
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :ref:`dune-env` for more information.
+
+- ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
+  default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
+  flags are passed separately depending on which mode is targed. See the section
+  on :ref:`documentation using coqdoc<coqdoc>` for more information.
 
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
@@ -114,43 +123,41 @@ The semantics of the fields are:
   plugins. Starting with ``(lang coq 0.6)``, ``<ocaml_plugins>`` must contain
   public library names.
 
-- Your Coq theory can depend on other theories by specifying them in the
-  ``<coq_theories>`` field. Dune then passes to Coq the corresponding flags for
-  everything to compile correctly (this corresponds to the ``-Q`` flag for Coq).
+- Your Coq theory can depend on other theories --- globally installed or defined
+  in the current workspace --- by adding the theories names to the
+  ``<coq_theories>`` field. Then, Dune will ensure that the depended theories
+  are present and correctly registered with Coq.
 
-  You may also depend on theories belonging to another :ref:`dune-project` as
-  long as they share a common scope under another :ref:`dune-project` file or a
-  :ref:`dune-workspace` file.
+  See :ref:`Locating Theories<locating-theories>` for more information on how
+  Coq theories are located by Dune.
 
-  Doing so can be as simple as placing a Coq project within the scope of
-  another. This process is termed *composition*. See the :ref:`interproject
-  composition<example-interproject-theory>` example.
+- If Coq has been configured with ``-native-compiler yes`` or ``ondemand``, Dune
+  will always build the ``cmxs`` files together with the ``vo`` files. This only
+  works on Coq versions after 8.13 in which the option was introduced.
 
-  Interproject composition allows for a fine granularity of dependencies. In
-  practice, this means that Dune will only build the parts of a dependency that
-  are needed. This means that building a project depending on another will not
-  trigger a rebuild of the whole of the latter.
+  You may override this by specifying ``(mode native)`` or ``(mode vo)``.
 
-  Interproject composition has been available since :ref:`Coq lang
-  0.4<coq-lang>`.
+  Before :ref:`Coq lang 0.7<coq-lang>`, the native mode had to be manually
+  specified, and Coq did not use Coq's configuration
 
-  As of today, Dune cannot depend on installed Coq theories. This restriction
-  will be lifted in the future. Note that composition with the Coq standard
-  library is supported, but in this case the ``Coq`` prefix has been made
-  available in a qualified way, since :ref:`Coq lang 0.2<coq-lang>`.
+  Versions of Dune < 3.7.0 would disable native compilation if the ``dev``
+  profile was selected.
 
-  You may still use installed libraries in your Coq project, but there is
-  currently no way for Dune to know about it.
+- If the ``(mode vos)`` field is present, only Coq compiled interface files
+  ``.vos`` will be produced for the theory. This is mainly useful in conjunction
+  with ``dune coq top``, since this makes the compilation of dependencies much
+  faster, at the cost of skipping proof checking. (Appeared in :ref:`Coq lang
+  0.8<coq-lang>`).
 
-- From version :ref:`Coq lang 0.7<coq-lang>` onwards, if Coq has been configured
-  with ``-native-compiler yes`` or ``ondemand``, Dune will always build the
-  ``cmxs`` files together with the ``vo`` files.
-  
-  You may override this by specifying ``(mode native)`` or ``(mode vo)``. Before
-  :ref:`Coq lang 0.7<coq-lang>`, the native mode had to be manually specified.
+Coq Dependencies
+~~~~~~~~~~~~~~~~
 
-  Previous versions of Dune before 3.7 would disable the native rules depending
-  on whether or not the ``dev`` profile was selected.
+When a Coq file ``a.v`` depends on another file ``b.v``, Dune is able to build
+them in the correct order, even if they are in separate theories. Under the
+hood, Dune asks coqdep how to resolve these dependencies, which is why it is
+called once per theory.
+
+.. _coqdoc:
 
 Coq Documentation
 ~~~~~~~~~~~~~~~~~
@@ -162,7 +169,13 @@ A.tex``, respectively (if the :ref:`dune file<dune-files>` for the theory is the
 current directory).
 
 There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
-build the HTML or LaTeX documentation when called.
+build the HTML or LaTeX documentation when called. These will determine whether
+or not Dune passes a ``--html`` or ``--latex`` flag to ``coqdoc``.
+
+Further flags can also be configured using the ``(coqdoc_flags)`` field in the
+``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
+is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
+writing ``(coqdoc_flags :standard --body-only)`` for example.
 
 .. _include-subdirs-coq:
 
@@ -171,7 +184,7 @@ Recursive Qualification of Modules
 
 If you add:
 
-.. code:: scheme
+.. code:: dune
 
     (include_subdirs qualified)
 
@@ -179,6 +192,72 @@ to a :ref:`dune<dune-files>` file, Dune considers all the modules in the
 directory and its subdirectories, adding a prefix to the module name in the
 usual Coq style for subdirectories. For example, file ``A/b/C.v`` becomes the
 module ``A.b.C``.
+
+.. _locating-theories:
+
+How Dune Locates and Builds theories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dune organises it's knowledge about Coq theories in 3 databases:
+
+- Scope database: A Dune *scope* is a part of the project sharing a single
+  common ``dune-project`` file. In a single scope, any theory in the database
+  can depend on any other theory in that database as long as their visibilities
+  are compatible. A public theory for example cannot depend on a private
+  theory.
+
+- Public theory database: The set of all scopes that Dune knows about is termed
+  a *workspace*. Only public theories coming from scopes are added to the
+  database of all public theories in the current workspace.
+
+  The public theory database allows theories to depend on theories that are in a
+  different scope. Thus, you can depend on theories belonging to another
+  :ref:`dune-project` as long as they share a common scope under another
+  :ref:`dune-project` file or a :ref:`dune-workspace` file.
+
+  Doing so is usually as simple as placing a Coq project within the scope of
+  another. This process is termed *composition*. See the :ref:`interproject
+  composition<example-interproject-theory>` example.
+
+  Inter-project composition allows Dune to compute module dependencies using a
+  fine granularity. In practice, this means that Dune will only build the parts
+  of a depended theory that are needed by your project.
+
+  Inter-project composition has been available since :ref:`Coq lang
+  0.4<coq-lang>`.
+
+- Installed theory database: If a theory cannot be found in the list of
+  workspace-public theories, Dune will try to locate the theory in the list of
+  installed locations Coq knows about.
+
+  This list is built using the output of ``coqc --config`` in order  to infer
+  the ``COQLIB`` and ``COQPATH`` environment variables. Each path in ``COQPATH``
+  and ``COQLIB/user-contrib`` is used to build the database of installed
+  theories.
+
+  Note that, for backwards compatibility purposes, installed theories do not
+  have to be installed or built using Dune. Dune tries to infer the name of the
+  theory from the installed layout. This is ambiguous in the sense that a
+  file-system layout of `a/b` will provide theory names ``a`` and ``a.b``.
+
+  Resolving this ambiguity in a backwards-compatible way is not possible, but
+  future versions of Dune Coq support will provide a way to improve this.
+
+  Coq's standard library gets a special status in Dune. The location at
+  ``COQLIB/theories`` will be assigned a entry with the theory name ``Coq``, and
+  added to the dependency list implicitly. This can be disabled with the
+  ``(stdlib no)`` field in the ``coq.theory`` stanza.
+
+  The ``Coq`` prefix can then be used to depend on Coq's stdlib in a regular,
+  qualified way. We recommend setting ``(stdlib no)`` and adding ``(theories
+  Coq)`` explicitly.
+
+  Composition with installed theories has been available since :ref:`Coq lang
+  0.8<coq-lang>`.
+
+The databases above are used to locate a theory dependencies. Note that Dune has
+a complete global view of every file involved in the compilation of your theory
+and will therefore rebuild if any changes are detected.
 
 .. _public-private-theory:
 
@@ -198,7 +277,7 @@ By default, all :ref:`coq-theory` stanzas are considered private by Dune. In
 order to make a private theory into a public theory, the ``(package )`` field
 must be specified.
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name private_theory))
@@ -216,13 +295,13 @@ Limitations
 .. _limitation-mlpack:
 
 - A ``foo.mlpack`` file must the present in directories of locally defined
-  plugins for things to work. ``coqdep`` will recognize a plugin by looking at
-  the existence of an ``.mlpack`` file, as it cannot access (for now) Dune's
-  library database. This is a limitation of ``coqdep``. See the :ref:`example
-  plugin<example plugin>` or the `this template
-  <https://github.com/ejgallego/coq-plugin-template>`_.
+  plugins for things to work. ``coqdep``, which is used internally by Dune, will
+  recognize a plugin by looking at the existence of an ``.mlpack`` file, as it
+  cannot access (for now) Dune's library database. This is a limitation of
+  ``coqdep``. See the :ref:`example plugin<example plugin>` or the `this
+  template <https://github.com/ejgallego/coq-plugin-template>`_.
 
-  This limitation will be lifted soon, as newer ``coqdep`` can use
+  This limitation will be lifted soon, as newer versions of ``coqdep`` can use
   findlib's database to check the existence of OCaml libraries.
 
 .. _coq-lang:
@@ -233,11 +312,16 @@ Coq Language Version
 The Coq lang can be modified by adding the following to a :ref:`dune-project`
 file:
 
-.. code:: scheme
+.. code:: dune
 
-    (using coq 0.7)
+    (using coq 0.8)
 
 The supported Coq language versions (not the version of Coq) are:
+
+- ``0.8``: Support for composition with installed Coq theories;
+  support for ``vos`` builds.
+
+Deprecated experimental Coq language versions are:
 
 - ``0.1``: Basic Coq theory support.
 - ``0.2``: Support for the ``theories`` field and composition of theories in the
@@ -257,10 +341,11 @@ The supported Coq language versions (not the version of Coq) are:
 Coq Language Version 1.0
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Guarantees with respect to stability are not yet provided. However, as the
-development of features progresses, we hope to reach ``1.0`` soon. The ``1.0``
-version of Coq lang will commit to a stable set of functionality. All the
-features below are expected to reach ``1.0`` unchanged or minimally modified.
+Guarantees with respect to stability are not yet provided, but we
+intend that the ``(0.8)`` version of the language becomes ``1.0``.
+The ``1.0`` version of Coq lang will commit to a stable set of
+functionality. All the features below are expected to reach ``1.0``
+unchanged or minimally modified.
 
 .. _coq-extraction:
 
@@ -270,7 +355,7 @@ coq.extraction
 Coq may be instructed to *extract* OCaml sources as part of the compilation
 process by using the ``coq.extraction`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
    (coq.extraction
     (prelude <name>)
@@ -283,8 +368,9 @@ process by using the ``coq.extraction`` stanza:
 - ``(extracted_modules <names>)`` is an exhaustive list of OCaml modules
   extracted.
 
-- ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and ``plugins``. All of
-  these fields have the same meaning as in the ``coq.theory`` stanza.
+- ``<optional-fields>`` are ``flags``, ``stdlib``, ``theories``, and
+  ``plugins``. All of these fields have the same meaning as in the
+  ``coq.theory`` stanza.
 
 The extracted sources can then be used in ``executable`` or ``library`` stanzas
 as any other sources.
@@ -306,7 +392,7 @@ Authors of Coq plugins often need to write ``.mlg`` files to extend the Coq
 grammar. Such files are preprocessed with the ``coqpp`` binary. To help plugin
 authors avoid writing boilerplate, we provide a ``(coq.pp ...)`` stanza:
 
-.. code:: scheme
+.. code:: dune
 
     (coq.pp
      (modules <ordered_set_lang>))
@@ -329,14 +415,14 @@ Simple Project
 Let us start with a simple project. First, make sure we have a
 :ref:`dune-project` file with a :ref:`Coq lang<coq-lang>` stanza present:
 
-.. code:: scheme
+.. code:: dune
 
-  (lang dune 3.8)
-  (using coq 0.7)
+  (lang dune 3.13)
+  (using coq 0.8)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name myTheory))
@@ -360,7 +446,6 @@ Now we run ``dune build``. After this is complete, we get the following files:
   │   ├── default
   │   │   ├── A.glob
   │   │   ├── A.v
-  │   │   ├── A.v.d
   │   │   └── A.vo
   │   └── log
   ├── dune
@@ -389,7 +474,7 @@ Here is an example of a more complicated setup:
 
 Here are the :ref:`dune<dune-files>` files:
 
-.. code:: scheme
+.. code:: dune
 
   ; A/dune
   (include_subdirs qualified)
@@ -474,7 +559,7 @@ theories.
 
 Our :ref:`dune<dune-files>` file in ``CombinedWork`` looks like:
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name Combined)
@@ -485,6 +570,26 @@ As you can see, there are dependencies on all the theories we mentioned.
 All three of the theories we defined before were *private theories*. In order to
 depend on them, we needed to make them *public theories*. See the section on
 :ref:`public-private-theory`.
+
+Composing With Installed Theories
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+We can also compose with theories that are installed. If we wanted to have a
+theory that depends on the Coq theory ``mathcomp.ssreflect`` we can add the
+following to our stanza:
+
+.. code:: dune
+
+  (coq.theory
+   (name my_mathcomp_theory)
+   (theories mathcomp.ssreflect))
+
+Note that ``mathcomp`` on its own would also work, since there would be a
+``matchcomp`` directory in ``user-contrib``, however it would not compose
+locally with a ``coq.theory`` stanza with the ``mathcomp.ssreflect`` name (in
+case one exists). So it is advisable to use the actual theory name. Dune is not
+able to validate theory names that have been installed since they do not include
+their Dune metadata.
 
 Building Documentation
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -499,12 +604,10 @@ following files:
   ├── AA
   │   ├── aa.glob
   │   ├── aa.v
-  │   ├── aa.v.d
   │   └── aa.vo
   ├── AB
   │   ├── ab.glob
   │   ├── ab.v
-  │   ├── ab.v.d
   │   └── ab.vo
   └── A.html
       ├── A.AA.aa.html
@@ -542,10 +645,10 @@ Let us build a simple Coq plugin to demonstrate how Dune can handle this setup.
 Our :ref:`dune-project` will need to have a package for the plugin to sit in,
 otherwise Coq will not be able to find it.
 
-.. code:: scheme
+.. code:: dune
 
-  (lang dune 3.8)
-  (using coq 0.7)
+  (lang dune 3.13)
+  (using coq 0.8)
 
   (package
    (name my-coq-plugin)
@@ -556,7 +659,7 @@ Now we have two directories, ``src/`` and ``theories/`` each with their own
 :ref:`dune file<dune-files>`. Let us begin with the plugin :ref:`dune
 file<dune-files>`:
 
-.. code:: scheme
+.. code:: dune
 
   (library
    (name my_plugin)
@@ -599,7 +702,7 @@ The file for ``theories/`` is a standard :ref:`coq-theory` stanza with an
 included ``libraries`` field allowing Dune to see ``my-coq-plugin.plugin`` as a
 dependency.
 
-.. code:: scheme
+.. code:: dune
 
   (coq.theory
    (name MyPlugin)
@@ -648,6 +751,11 @@ actually passed to the toplevel. These options are computed based on the options
 that would be passed to the Coq compiler if it was invoked on the Coq file
 ``<file>``.
 
+In certain situations, it is desirable to not rebuild dependencies for a ``.v``
+files but still pass the correct flags to the toplevel. For this reason, a
+``--no-build`` flag can be passed to ``dune coq top`` which will skip any
+building of dependencies.
+
 Limitations
 ~~~~~~~~~~~
 
@@ -678,4 +786,21 @@ configuration. These are:
 - ``%{coq:coq_native_compiler_default}`` the output of
   ``COQ_NATIVE_COMPILER_DEFAULT`` from ``coqc -config``.
 
-See :ref:`variables` for more information on variables supported by Dune.
+See :doc:`concepts/variables` for more information on variables supported by
+Dune.
+
+
+.. _coq-env:
+
+Coq Environment Fields
+----------------------
+
+The :ref:`dune-env` stanza has a ``(coq <coq_fields>)`` field with the following
+values for ``<coq_fields>``:
+
+- ``(flags <flags>)``: The default flags passed to ``coqc``. The default value
+  is ``-q``. Values set here become the ``:standard`` value in the
+  ``(coq.theory (flags <flags>))`` field. 
+- ``(coqdoc_flags <flags>)``: The default flags passed to ``coqdoc``. The default
+  value is ``--toc``. Values set here become the ``:standard`` value in the
+  ``(coq.theory (coqdoc_flags <flags>))`` field.

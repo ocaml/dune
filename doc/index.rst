@@ -17,30 +17,70 @@ Welcome to Dune's Documentation!
    overview
    quick-start
    dune-files
-   concepts
    usage
 
 .. toctree::
-   :caption: Reference
-   :maxdepth: 3
+   :caption: How-to Guides
 
-   formatting
-   coq
+   howto/formatting
+   howto/opam-file-generation
    cross-compilation
    foreign-code
-   caching
-   dune-libs
-   rpc
    documentation
    sites
    instrumentation
    jsoo
-   lexical-conventions
-   opam
-   advanced-topics
+   melange
    toplevel-integration
    variants
    tests
+   howto/bundle
+
+.. toctree::
+   :caption: Reference Guides
+   :maxdepth: 3
+
+   reference/lexical-conventions
+   reference/ordered-set-language
+   reference/boolean-language
+   reference/predicate-language
+   reference/library-dependencies
+   reference/actions
+   reference/foreign
+   reference/cli
+   reference/preprocessing-spec
+   reference/packages
+   reference/findlib
+   reference/aliases
+   concepts/scopes
+   concepts/variables
+   concepts/dependency-spec
+   concepts/ocaml-flags
+   concepts/sandboxing
+   concepts/locks
+   concepts/promotion
+   concepts/package-spec
+   coq
+   caching
+   dune-libs
+   rpc
+
+.. toctree::
+   :caption: Explanations
+
+   explanation/preprocessing
+   explanation/ocaml-ecosystem
+   explanation/opam-integration
+
+.. toctree::
+   :caption: Advanced topics
+
+   advanced/findlib-dynamic
+   advanced/profiling-dune
+   advanced/package-version
+   advanced/ocaml-syntax
+   advanced/variables-artifacts
+   advanced/custom-cmxs
 
 .. toctree::
    :caption: Miscellaneous
@@ -48,5 +88,4 @@ Welcome to Dune's Documentation!
 
    faq
    goals
-   known-issues
    hacking

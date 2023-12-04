@@ -8,8 +8,8 @@ Running the Coq Toplevel on a generated file with a dependency.
   > Definition mynat := nat.
   > EOF
   $ cat >dune-project <<EOF
-  > (lang dune 3.0)
-  > (using coq 0.3)
+  > (lang dune 3.8)
+  > (using coq 0.8)
   > EOF
   $ cat >dune <<EOF
   > (coq.theory

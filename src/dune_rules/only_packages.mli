@@ -8,7 +8,7 @@ module Clflags : sig
     | Restrict of
         { names : Package.Name.Set.t
         ; command_line_option : string
-              (** Which of [-p], [--only-packages], ... was passed *)
+        (** Which of [-p], [--only-packages], ... was passed *)
         }
 
   (** This must be called exactly once *)
@@ -25,6 +25,6 @@ val get_mask : unit -> Package.t Package.Name.Map.t option Memo.t
 val packages_of_project : Dune_project.t -> Package.t Package.Name.Map.t Memo.t
 
 (** Apply the package mask to the stanzas in the workspace *)
-val filtered_stanzas : Context.t -> Dune_file.t list Memo.t
+val filtered_stanzas : Context_name.t -> Dune_file.t list Memo.t
 
 val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t

@@ -1,7 +1,7 @@
 Test that we can install melange mode libraries
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.7)
+  > (lang dune 3.8)
   > (package (name foo))
   > (using melange 0.1)
   > EOF
@@ -27,7 +27,7 @@ Test that we can install melange mode libraries
   ]
 
   $ cat ./_build/install/default/lib/foo/dune-package
-  (lang dune 3.8)
+  (lang dune 3.13)
   (name foo)
   (sections (lib .))
   (files
@@ -44,7 +44,7 @@ Test that we can install melange mode libraries
      (visibility public)
      (source (path Foo) (impl (path foo.ml))))))
 
-  $ dune install --prefix prefix
+  $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Installing prefix/lib/foo/foo.ml

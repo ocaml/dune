@@ -5,16 +5,19 @@ let get ~skip =
   let stack = Printexc.get_callstack 16 in
   let len = Printexc.raw_backtrace_length stack in
   let rec loop pos =
-    if pos = len then None
-    else
+    if pos = len
+    then None
+    else (
       match
         Printexc.get_raw_backtrace_slot stack pos
-        |> Printexc.convert_raw_backtrace_slot |> Printexc.Slot.location
+        |> Printexc.convert_raw_backtrace_slot
+        |> Printexc.Slot.location
       with
       | None -> None
       | Some loc ->
-        if List.mem skip loc.filename ~equal:String.equal then loop (pos + 1)
-        else
+        if List.mem skip loc.filename ~equal:String.equal
+        then loop (pos + 1)
+        else (
           let start : Lexing.position =
             { pos_fname = loc.filename
             ; pos_lnum = loc.line_number
@@ -23,6 +26,7 @@ let get ~skip =
             }
           in
           let stop = { start with pos_cnum = loc.end_char } in
-          Some { Loc.start; stop }
+          Some (Loc.create ~start ~stop)))
   in
   loop 0
+;;

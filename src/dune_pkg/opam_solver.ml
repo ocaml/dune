@@ -513,7 +513,8 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
     ; version
-    ; dev = false
+    ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
+      dev = false
     ; source
     ; extra_sources
     }

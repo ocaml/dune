@@ -68,7 +68,10 @@ module Per_context = struct
     let repositories =
       Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
       |> Option.value
-           ~default:[ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
+           ~default:
+             (List.map
+                Workspace.default_repositories
+                ~f:Dune_pkg.Pkg_workspace.Repository.name)
     in
     { lock_dir_path
     ; version_preference =

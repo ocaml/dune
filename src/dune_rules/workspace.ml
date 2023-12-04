@@ -2,6 +2,8 @@ open Import
 open Dune_lang.Decoder
 module Repository = Dune_pkg.Pkg_workspace.Repository
 
+let default_repositories = [ Repository.overlay; Repository.upstream ]
+
 module Lock_dir = struct
   type t =
     { path : Path.Source.t
@@ -42,7 +44,7 @@ module Lock_dir = struct
         ~parse:(fun ~loc string ->
           Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
         ~eq:Dune_pkg.Pkg_workspace.Repository.Name.equal
-        ~standard:[ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
+        ~standard:(List.map default_repositories ~f:Repository.name)
     in
     let decode =
       let+ path =
@@ -693,7 +695,7 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
-       let repos = Repository.default :: List.map ~f:Lazy.force repos in
+       let repos = default_repositories @ List.map ~f:Lazy.force repos in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in
@@ -772,7 +774,7 @@ let default clflags =
   ; contexts = [ Context.default ~x ~profile ~instrument_with ]
   ; env = None
   ; config
-  ; repos = [ Repository.default ]
+  ; repos = default_repositories
   ; lock_dirs = []
   }
 ;;

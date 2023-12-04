@@ -124,7 +124,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
-        { variable_values = [ ("os", String "linux") ]
+        { variable_values = [ ("os", "linux") ]
         ; unset_variables = [ "os-family" ]
         }
     } |}]

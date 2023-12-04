@@ -14,8 +14,9 @@ val get : t -> Variable_name.t -> Variable_value.t option
     existing values of those variables in [a]. *)
 val extend : t -> t -> t
 
-(** A [t] with a single variable "opam-version" set to the version of the opam
-    library dependen on by dune *)
-val with_opam_version_set_to_current : t
+(** A [t] with default values for some variables:
+    - "with-doc" is set to "false"
+    - "opam-version" is set to the version of opam vendored in dune *)
+val with_defaults : t
 
 val pp : t -> 'a Pp.t

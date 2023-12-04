@@ -11,7 +11,7 @@ let context_term ~doc =
 let solver_env ~solver_env_from_current_system ~solver_env_from_context =
   [ solver_env_from_current_system; solver_env_from_context ]
   |> List.filter_opt
-  |> List.fold_left ~init:Solver_env.with_opam_version_set_to_current ~f:Solver_env.extend
+  |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
 ;;
 
 module Version_preference = struct

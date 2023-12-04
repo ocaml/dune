@@ -195,7 +195,12 @@ let rec simplify = function
          let combined_sw = String_with_vars.make ~quoted loc parts in
          Literal combined_sw)
        else Form (loc, Concat (List.map xs ~f:simplify))
-     | When (condition, t) -> Form (loc, When (simplify_blang condition, simplify t))
+     | When (condition, t) ->
+       let simplified_condition = simplify_blang condition in
+       (match (simplified_condition : blang) with
+        | Const true -> t
+        | Const false -> Nil
+        | _ -> Form (loc, When (simplified_condition, simplify t)))
      | If { condition; then_; else_ } ->
        Form
          ( loc
@@ -216,7 +221,12 @@ let rec simplify = function
      | Blang b -> Form (loc, Blang (simplify_blang b)))
 
 and simplify_blang = function
-  | Blang.Const b -> Blang.Const b
+  | Const b -> Const b
+  | Expr (Literal s) as expr ->
+    (match String_with_vars.text_only s with
+     | Some "true" -> Const true
+     | Some "false" -> Const false
+     | _ -> expr)
   | Expr (Form (_, Blang blang)) -> simplify_blang blang
   | Expr s -> Expr (simplify s)
   | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)

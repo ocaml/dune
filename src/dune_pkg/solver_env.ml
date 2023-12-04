@@ -49,11 +49,12 @@ let set t variable_name variable_value =
 let get = Variable_name.Map.find
 let extend a b = Variable_name.Map.superpose b a
 
-let with_opam_version_set_to_current =
-  set
-    empty
-    Variable_name.opam_version
-    (OpamVersion.to_string OpamVersion.current |> Variable_value.string)
+let with_defaults =
+  [ ( Variable_name.opam_version
+    , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
+  ; Variable_name.with_doc, Variable_value.false_
+  ]
+  |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
 ;;
 
 let pp t =

@@ -50,7 +50,11 @@ include Stanza.Make (struct
 let () =
   Dune_project.Extension.register_simple
     syntax
-    (return [ ("menhir", decode >>| fun x -> [ make_stanza x ]) ])
+    (return
+       [ ( "menhir"
+         , let+ stanza = decode in
+           [ make_stanza stanza ] )
+       ])
 ;;
 
 let modules (stanza : t) : string list =

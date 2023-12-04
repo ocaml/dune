@@ -164,5 +164,9 @@ let syntax =
 let () =
   Dune_project.Extension.register_simple
     syntax
-    (return [ ("melange.emit", Emit.decode >>| fun x -> [ Emit.make_stanza x ]) ])
+    (return
+       [ ( "melange.emit"
+         , let+ stanza = Emit.decode in
+           [ Emit.make_stanza stanza ] )
+       ])
 ;;

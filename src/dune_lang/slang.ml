@@ -31,7 +31,9 @@ let decode =
     let decode_form =
       sum
         ~force_parens:true
-        [ ("concat", repeat decode >>| fun x -> Concat x)
+        [ ( "concat"
+          , let+ x = repeat decode in
+            Concat x )
         ; ( "when"
           , let+ condition = Blang.Ast.decode decode
             and+ t = decode in
@@ -41,21 +43,27 @@ let decode =
             and+ then_ = decode
             and+ else_ = decode in
             If { condition; then_; else_ } )
-        ; ("has_undefined_var", decode >>| fun x -> Has_undefined_var x)
+        ; ( "has_undefined_var"
+          , let+ x = decode in
+            Has_undefined_var x )
         ; ( "catch_undefined_var"
           , let+ value = decode
             and+ fallback = decode in
             Catch_undefined_var { value; fallback } )
         ; ( "and_absorb_undefined_var"
-          , repeat (Blang.Ast.decode decode) >>| fun x -> And_absorb_undefined_var x )
+          , let+ x = repeat (Blang.Ast.decode decode) in
+            And_absorb_undefined_var x )
         ; ( "or_absorb_undefined_var"
-          , repeat (Blang.Ast.decode decode) >>| fun x -> Or_absorb_undefined_var x )
+          , let+ x = repeat (Blang.Ast.decode decode) in
+            Or_absorb_undefined_var x )
         ]
     in
     located decode_form
     >>| (fun (loc, x) -> Form (loc, x))
-    <|> (String_with_vars.decode >>| fun x -> Literal x)
-    <|> (located (Blang.Ast.decode decode) >>| fun (loc, x) -> Form (loc, Blang x)))
+    <|> (let+ x = String_with_vars.decode in
+         Literal x)
+    <|> let+ loc, x = located (Blang.Ast.decode decode) in
+        Form (loc, Blang x))
 ;;
 
 let decode_blang = Blang.Ast.decode decode

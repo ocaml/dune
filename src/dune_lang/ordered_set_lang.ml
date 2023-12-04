@@ -102,7 +102,12 @@ module Parse = struct
   let with_include ~elt =
     generic
       ~elt
-      ~inc:(sum [ (":include", String_with_vars.decode >>| fun s -> Include s) ])
+      ~inc:
+        (sum
+           [ ( ":include"
+             , let+ s = String_with_vars.decode in
+               Include s )
+           ])
   ;;
 
   let without_include ~elt =
@@ -240,7 +245,10 @@ module Unexpanded = struct
     let+ context = get_all
     and+ loc, ast =
       located
-        (Parse.with_include ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
+        (Parse.with_include
+           ~elt:
+             (let+ s = String_with_vars.decode in
+              Ast.Element s))
     in
     { ast; loc = Some loc; context }
   ;;

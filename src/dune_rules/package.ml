@@ -193,7 +193,11 @@ module Source_kind = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    sum (("uri", string >>| fun s -> Url s) :: Host.enum (fun x -> Host x))
+    sum
+      (( "uri"
+       , let+ s = string in
+         Url s )
+       :: Host.enum (fun x -> Host x))
   ;;
 end
 

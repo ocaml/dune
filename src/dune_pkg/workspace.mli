@@ -7,7 +7,8 @@ module Repository : sig
   val hash : t -> int
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
-  val default : t
+  val upstream : t
+  val overlay : t
   val decode : t Decoder.t
 
   module Name : sig

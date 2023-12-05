@@ -97,6 +97,7 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
+val default_repositories : Dune_pkg.Pkg_workspace.Repository.t list
 
 module Clflags : sig
   type t =

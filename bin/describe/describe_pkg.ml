@@ -119,8 +119,9 @@ module List_locked_dependencies = struct
 
   let enumerate_lock_dirs_by_path =
     let open Fiber.O in
-    let+ per_contexts = Pkg_common.Per_context.choose ~version_preference_arg:None in
-    List.filter_map per_contexts ~f:(fun { Pkg_common.Per_context.lock_dir_path; _ } ->
+    let+ workspace = Memo.run (Workspace.workspace ()) in
+    let per_contexts = Pkg_common.lock_dirs_of_workspace workspace in
+    List.filter_map per_contexts ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
         try Some (lock_dir_path, Lock_dir.read_disk lock_dir_path) with

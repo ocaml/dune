@@ -16,7 +16,7 @@ constraint.
   > }
 
   $ test "2.0.0"
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: foo.0.0.1 x.dev
   - dune -> (problem)

@@ -34,10 +34,10 @@
   > EOF
 
   $ dune pkg print-solver-env 
-  Solver environment for context change-opam-version:
+  Solver environment for lock directory change-opam-version.lock:
   - opam-version = 42
   - with-doc = false
-  Solver environment for context no-doc:
+  Solver environment for lock directory dune.linux.no-doc.lock:
   - arch = x86_64
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
@@ -46,7 +46,7 @@
   - os-version = 22.04
   - sys-ocaml-version = 5.0
   - with-doc = false
-  Solver environment for context linux:
+  Solver environment for lock directory dune.linux.lock:
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
   - with-doc = false

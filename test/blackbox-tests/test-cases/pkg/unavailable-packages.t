@@ -88,7 +88,7 @@ available on linux.
   $ solve linux-only
   Solution for dune.lock:
   - linux-only.0.0.2
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - linux-only -> (problem)
@@ -111,7 +111,7 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
   $ solve undefined-var
   Solution for dune.lock:
   - undefined-var.0.0.2
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - undefined-var -> (problem)
@@ -123,14 +123,14 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - availability-string -> (problem)

@@ -13,26 +13,32 @@ val solver_env
   -> Dune_pkg.Solver_env.t
 
 module Version_preference : sig
+  type t := Dune_pkg.Version_preference.t
+
   val term : Dune_pkg.Version_preference.t option Term.t
+  val choose : from_arg:t option -> from_context:t option -> t
 end
 
-module Per_context : sig
-  type t =
-    { lock_dir_path : Path.Source.t
-    ; version_preference : Dune_pkg.Version_preference.t
-    ; solver_env : Dune_pkg.Solver_env.t option
-    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
-    ; context_common : Workspace.Context.Common.t
-    ; repos :
-        Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-    ; constraints : Dune_lang.Package_dependency.t list
-    }
+val unset_solver_vars_of_workspace
+  :  Workspace.t
+  -> lock_dir_path:Path.Source.t
+  -> Dune_pkg.Variable_name.Set.t option
 
-  val choose
-    :  version_preference_arg:Dune_pkg.Version_preference.t option
-    -> t list Fiber.t
-end
+val repositories_of_workspace
+  :  Workspace.t
+  -> Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
+
+val lock_dirs_of_workspace : Workspace.t -> Path.Source.t list
+
+val repositories_of_lock_dir
+  :  Workspace.t
+  -> lock_dir_path:Path.Source.t
+  -> Dune_pkg.Pkg_workspace.Repository.Name.t list
+
+val constraints_of_workspace
+  :  Workspace.t
+  -> lock_dir_path:Path.Source.t
+  -> Dune_lang.Package_dependency.t list
 
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t

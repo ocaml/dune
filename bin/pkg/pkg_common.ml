@@ -46,71 +46,42 @@ module Version_preference = struct
   ;;
 end
 
-module Per_context = struct
-  type t =
-    { lock_dir_path : Path.Source.t
-    ; version_preference : Version_preference.t
-    ; solver_env : Dune_pkg.Solver_env.t option
-    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
-    ; context_common : Dune_rules.Workspace.Context.Common.t
-    ; repos :
-        Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-    ; constraints : Dune_lang.Package_dependency.t list
-    }
+let repositories_of_workspace (workspace : Workspace.t) =
+  List.map workspace.repos ~f:(fun repo ->
+    Dune_pkg.Pkg_workspace.Repository.name repo, repo)
+  |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+;;
 
-  let repositories_of_workspace (workspace : Workspace.t) =
-    List.map workspace.repos ~f:(fun repo ->
-      Dune_pkg.Pkg_workspace.Repository.name repo, repo)
-    |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
-  ;;
+let lock_dirs_of_workspace (workspace : Workspace.t) =
+  List.filter_map workspace.contexts ~f:(function
+    | Workspace.Context.Default { lock_dir; base = _ } ->
+      let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
+      Some lock_dir_path
+    | Opam _ -> None)
+;;
 
-  let make_solver workspace context_common ~version_preference_arg ~lock_dir =
-    let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
-    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-    let solver_env = Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env) in
-    let unset_solver_vars =
-      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars)
-    in
-    let version_preference_context =
-      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)
-    in
-    let repositories =
-      Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
-      |> Option.value
-           ~default:
-             (List.map
-                Workspace.default_repositories
-                ~f:Dune_pkg.Pkg_workspace.Repository.name)
-    in
-    let constraints =
-      match lock_dir with
-      | None -> []
-      | Some lock_dir -> lock_dir.constraints
-    in
-    { lock_dir_path
-    ; version_preference =
-        Version_preference.choose
-          ~from_arg:version_preference_arg
-          ~from_context:version_preference_context
-    ; context_common
-    ; solver_env
-    ; unset_solver_vars
-    ; repositories
-    ; repos = repositories_of_workspace workspace
-    ; constraints
-    }
-  ;;
+let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  match lock_dir with
+  | None -> []
+  | Some lock_dir -> lock_dir.constraints
+;;
 
-  let choose ~version_preference_arg =
-    let open Fiber.O in
-    let+ workspace = Memo.run (Workspace.workspace ()) in
-    List.filter_map workspace.contexts ~f:(function
-      | Workspace.Context.Default { lock_dir; base = context_common } ->
-        Some (make_solver workspace context_common ~version_preference_arg ~lock_dir)
-      | Opam _ -> None)
-  ;;
-end
+let repositories_of_lock_dir workspace ~lock_dir_path =
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
+  |> Option.value
+       ~default:
+         (List.map
+            Workspace.default_repositories
+            ~f:Dune_pkg.Pkg_workspace.Repository.name)
+;;
+
+let unset_solver_vars_of_workspace workspace ~lock_dir_path =
+  let open Option.O in
+  let* lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  lock_dir.unset_solver_vars
+;;
 
 let location_of_opam_url url =
   match (url : OpamUrl.t).backend with

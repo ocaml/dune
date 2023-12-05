@@ -31,10 +31,12 @@ Create a workspace config that defines separate build contexts for macos and lin
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.linux.lock)
+  >  (repositories mock)
   >  (solver_env
   >   (os linux)))
   > (lock_dir
   >  (path dune.macos.lock)
+  >  (repositories mock)
   >  (solver_env
   >   (os macos)))
   > (context
@@ -45,10 +47,13 @@ Create a workspace config that defines separate build contexts for macos and lin
   >  (default
   >   (name macos)
   >   (lock_dir dune.macos.lock)))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Now the os-specific dependencies are included on their respective systems.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository --all-contexts
+  $ dune pkg lock --dont-poll-system-solver-variables --all-contexts
   Solution for dune.macos.lock:
   - foo.0.0.1
   - foo-macos.0.0.1

@@ -25,13 +25,21 @@ Define some local packages.
   > (package (name foo) (depends a (b (>= 0.0.2))))
   > (package (name bar) (depends foo c))
   > EOF
+  $ cat >dune-workspace <<EOF
+  > (lang dune 3.11)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
+  > EOF
 
 Without a lockdir this command prints a hint but exits successfully.
   $ dune pkg validate-lockdir
   No lockdirs to validate.
 
 Make the lockdir.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -67,7 +75,7 @@ Remove the file but corrupt the lockdir metadata file.
 
 Regenerate the lockdir and validate the result.
   $ rm -r dune.lock
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -93,7 +101,7 @@ This results in an invalid lockdir due to the missing package.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -124,7 +132,7 @@ Now the lockdir is invalid as it doesn't contain the right version of "b".
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -150,7 +158,7 @@ The lockdir is invalid as the package "b" is now defined both locally and in the
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2
@@ -177,7 +185,7 @@ The lockdir is invalid as it contains unnecessary packages.
   [1]
 
 Regenerate the lockdir and validate the result.
-  $ dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --dont-poll-system-solver-variables
   Solution for dune.lock:
   - a.0.0.1
   - b.0.0.2

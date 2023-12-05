@@ -5,7 +5,11 @@ It's possible to include additional packages or constraints in workspace files:
   $ cat >dune-workspace <<EOF
   > (lang dune 3.11)
   > (lock_dir
-  >  (constraints doesnotexist foo (bar (= 1.0.0))))
+  >  (constraints doesnotexist foo (bar (= 1.0.0)))
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ mkrepo

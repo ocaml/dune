@@ -52,6 +52,7 @@ Make a custom solver env:
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.lock)
+  >  (repositories mock)
   >  (solver_env
   >   (dev false)
   >   (with-doc true)
@@ -60,6 +61,9 @@ Make a custom solver env:
   >  (default
   >   (name default)
   >   (lock_dir dune.lock)))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Run the solver using the new env:

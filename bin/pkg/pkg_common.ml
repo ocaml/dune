@@ -143,32 +143,27 @@ let location_of_opam_url url =
       ]
 ;;
 
-let get_repos repos ~opam_repository_path ~repositories ~update_opam_repositories =
+let get_repos repos ~repositories ~update_opam_repositories =
   let module Repository_id = Dune_pkg.Repository_id in
   let module Opam_repo = Dune_pkg.Opam_repo in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
-  match opam_repository_path with
-  | Some path ->
-    let repo_id = Repository_id.of_path path in
-    Fiber.return @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
-  | None ->
-    repositories
-    |> Fiber.parallel_map ~f:(fun name ->
-      match Repository.Name.Map.find repos name with
-      | None ->
-        (* TODO: have loc for this failure? *)
-        User_error.raise
-          [ Pp.textf "Repository '%s' is not a known repository"
-            @@ Repository.Name.to_string name
-          ]
-      | Some repo ->
-        let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-        (match location_of_opam_url opam_url with
-         | `Git source ->
-           Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
-         | `Path path ->
-           let repo_id = Repository_id.of_path path in
-           Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
+  repositories
+  |> Fiber.parallel_map ~f:(fun name ->
+    match Repository.Name.Map.find repos name with
+    | None ->
+      (* TODO: have loc for this failure? *)
+      User_error.raise
+        [ Pp.textf "Repository '%s' is not a known repository"
+          @@ Repository.Name.to_string name
+        ]
+    | Some repo ->
+      let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+      (match location_of_opam_url opam_url with
+       | `Git source ->
+         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
+       | `Path path ->
+         let repo_id = Repository_id.of_path path in
+         Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
 ;;
 
 let find_local_packages =
@@ -179,31 +174,6 @@ let find_local_packages =
   in
   Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
 ;;
-
-module Opam_repository_path = struct
-  let term =
-    let dune_path =
-      let parser s =
-        s
-        |> Path.External.of_filename_relative_to_initial_cwd
-        |> Path.external_
-        |> Result.ok
-      in
-      let printer pf p = Pp.to_fmt pf (Path.pp p) in
-      Arg.conv (parser, printer)
-    in
-    Arg.(
-      value
-      & opt (some dune_path) None
-      & info
-          [ "opam-repository-path" ]
-          ~docv:"PATH"
-          ~doc:
-            "Path to a local opam repository. This should be a directory containing a \
-             valid opam repository such as the one at \
-             https://github.com/ocaml/opam-repository.")
-  ;;
-end
 
 let pp_packages packages =
   let module Package_version = Dune_pkg.Package_version in

@@ -79,36 +79,29 @@ let init values =
   initialized := true
 ;;
 
-let global_lock =
-  let t = { name = "global_lock"; of_string = Toggle.of_string; value = `Enabled } in
+let make ~name ~of_string ~default =
+  let t = { name; of_string; value = default } in
   register t;
   t
 ;;
 
+let global_lock = make ~name:"global_lock" ~of_string:Toggle.of_string ~default:`Enabled
+
 let cutoffs_that_reduce_concurrency_in_watch_mode =
-  let t =
-    { name = "cutoffs_that_reduce_concurrency_in_watch_mode"
-    ; of_string = Toggle.of_string
-    ; value = `Disabled
-    }
-  in
-  register t;
-  t
+  make
+    ~name:"cutoffs_that_reduce_concurrency_in_watch_mode"
+    ~of_string:Toggle.of_string
+    ~default:`Disabled
 ;;
 
 let copy_file =
-  let t =
-    { name = "copy_file"
-    ; of_string =
-        (function
-          | "portable" -> Ok `Portable
-          | "fast" -> Ok `Best
-          | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
-    ; value = `Best
-    }
-  in
-  register t;
-  t
+  make
+    ~name:"copy_file"
+    ~of_string:(function
+      | "portable" -> Ok `Portable
+      | "fast" -> Ok `Best
+      | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
+    ~default:`Best
 ;;
 
 let background_default =
@@ -118,77 +111,38 @@ let background_default =
 ;;
 
 let background_actions =
-  let t =
-    { name = "background_actions"; of_string = Toggle.of_string; value = `Disabled }
-  in
-  register t;
-  t
+  make ~name:"background_actions" ~of_string:Toggle.of_string ~default:`Disabled
 ;;
 
 let background_digests =
-  let t =
-    { name = "background_digests"
-    ; of_string = Toggle.of_string
-    ; value = background_default
-    }
-  in
-  register t;
-  t
+  make ~name:"background_digests" ~of_string:Toggle.of_string ~default:background_default
 ;;
 
 let background_sandboxes =
-  let t =
-    { name = "background_sandboxes"
-    ; of_string = Toggle.of_string
-    ; value = background_default
-    }
-  in
-  register t;
-  t
-;;
-
-let background_dune_rules =
-  let t =
-    { name = "background_dune_rules"; of_string = Toggle.of_string; value = `Disabled }
-  in
-  register t;
-  t
+  make
+    ~name:"background_sandboxes"
+    ~of_string:Toggle.of_string
+    ~default:background_default
 ;;
 
 let background_file_system_operations_in_rule_execution =
-  let t =
-    { name = "background_file_system_operations_in_rule_execution"
-    ; of_string = Toggle.of_string
-    ; value = `Disabled
-    }
-  in
-  register t;
-  t
+  make
+    ~name:"background_file_system_operations_in_rule_execution"
+    ~of_string:Toggle.of_string
+    ~default:`Disabled
 ;;
 
 let threaded_console =
-  let t =
-    { name = "threaded_console"
-    ; of_string = Toggle.of_string
-    ; value = background_default
-    }
-  in
-  register t;
-  t
+  make ~name:"threaded_console" ~of_string:Toggle.of_string ~default:background_default
 ;;
 
 let threaded_console_frames_per_second =
-  let t =
-    { name = "threaded_console_frames_per_second"
-    ; of_string =
-        (fun x ->
-          match Int.of_string x with
-          | Some x when x > 0 && x <= 1000 -> Ok (`Custom x)
-          | Some _ -> Error (sprintf "value must be between 1 and 1000")
-          | None -> Error (sprintf "could not parse %S as an integer" x))
-    ; value = `Default
-    }
-  in
-  register t;
-  t
+  make
+    ~name:"threaded_console_frames_per_second"
+    ~of_string:(fun x ->
+      match Int.of_string x with
+      | Some x when x > 0 && x <= 1000 -> Ok (`Custom x)
+      | Some _ -> Error (sprintf "value must be between 1 and 1000")
+      | None -> Error (sprintf "could not parse %S as an integer" x))
+    ~default:`Default
 ;;

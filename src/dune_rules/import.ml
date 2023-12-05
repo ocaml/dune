@@ -149,3 +149,11 @@ end
 
 let phys_equal x y = x == y
 let ( == ) = `Use_phys_equal
+
+(** Controls whether we use background threads in the dune rules *)
+let background_dune_rules =
+  Config.make
+    ~name:"background_dune_rules"
+    ~of_string:Config.Toggle.of_string
+    ~default:`Disabled
+;;

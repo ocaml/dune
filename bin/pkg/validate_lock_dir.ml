@@ -11,10 +11,14 @@ let info =
   Cmd.info "validate-lockdir" ~doc ~man
 ;;
 
-let enumerate_lock_dirs_by_path () =
+(* CR-someday alizter: The logic here is a little more complicated than it needs
+   to be and can be simplified. *)
+
+let enumerate_lock_dirs_by_path ~lock_dirs () =
   let open Fiber.O in
   let+ per_contexts =
-    Memo.run (Workspace.workspace ()) >>| Pkg_common.lock_dirs_of_workspace
+    Memo.run (Workspace.workspace ())
+    >>| Pkg_common.Lock_dirs.of_workspace ~chosen_lock_dirs:lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
@@ -24,9 +28,9 @@ let enumerate_lock_dirs_by_path () =
     else None)
 ;;
 
-let validate_lock_dirs () =
+let validate_lock_dirs ~lock_dirs () =
   let open Fiber.O in
-  let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ()
+  let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs ()
   and+ local_packages = Pkg_common.find_local_packages in
   if List.is_empty lock_dirs_by_path
   then Console.print [ Pp.text "No lockdirs to validate." ]
@@ -67,10 +71,11 @@ let validate_lock_dirs () =
 ;;
 
 let term =
-  let+ builder = Common.Builder.term in
+  let+ builder = Common.Builder.term
+  and+ lock_dirs = Pkg_common.Lock_dirs.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config validate_lock_dirs
+  Scheduler.go ~common ~config @@ validate_lock_dirs ~lock_dirs
 ;;
 
 let command = Cmd.v info term

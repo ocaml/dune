@@ -28,8 +28,6 @@ val repositories_of_workspace
   :  Workspace.t
   -> Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
 
-val lock_dirs_of_workspace : Workspace.t -> Path.Source.t list
-
 val repositories_of_lock_dir
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
@@ -48,6 +46,27 @@ val get_repos
 
 val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t
 
-(** [pp_packages lock_dir] returns a list of pretty-printed packages
-    occuring in [lock_dir]. *)
+module Lock_dirs : sig
+  (** [Lock_dirs.term] is a command-line argument that can be used to specify
+      the lock directories to consider. This can then be passed as
+      [~chosen_lock_dirs] to [Lock_dirs.of_workspace].*)
+  val term : Path.Source.t list Term.t
+
+  (** [Lock_dirs.of_workspace workspace ~chosen_lock_dirs] returns the list of
+      lock directories that should be considered for various operations. If
+      [chosen_lock_dirs] is empty, then all lock directories are considered.
+
+      The [workspace] argument is used to determine the list of all lock lock
+      directories.
+
+      A user error is raised if the [chosen_lock_dirs] are not a subset of the
+      lock directories of the workspace. *)
+  val of_workspace
+    :  Workspace.t
+    -> chosen_lock_dirs:Path.Source.t list
+    -> Path.Source.t list
+end
+
+(** [pp_packages lock_dir] returns a list of pretty-printed packages occuring in
+    [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> 'a Pp.t

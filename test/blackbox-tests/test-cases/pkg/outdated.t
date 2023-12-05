@@ -10,7 +10,7 @@
   $ mkpkg bar <<EOF
   > depends: [ "foo" {>= "0.0.1"} ]
   > EOF
-  $ cat > dune-workspace.dev <<EOF
+  $ cat > dune-workspace <<EOF
   > (lang dune 3.11)
   > (lock_dir
   >  (repositories mock))
@@ -27,7 +27,7 @@
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
-  $ solve_project --workspace dune-workspace.dev <<EOF
+  $ solve_project <<EOF
   > (lang dune 3.11)
   > (package
   >  (name baz)
@@ -39,25 +39,41 @@
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
+
 No package should be outdated after a fresh lock.
+
+Default behaviour is to check all lock files in the workspace.
   $ outdated
-  dune.lock is up to date.
-Same for all contexts:
-  $ outdated --workspace dune-workspace.dev
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
 
+Specific lock files can be given as positional arguments.
+  $ outdated dune.lock
+  dune.lock is up to date.
+
+Invalid lock files give an error
+  $ outdated invalid_lock
+  Error: The following directories are not lock directories in this workspace:
+  - invalid_lock
+  This workspace contains the following lock directories:
+  - dune.workspace.lock
+  - dune.lock
+  [1]
+
+Multiple lock files can be given.
+  $ outdated dune.lock dune.workspace.lock
+  - dune.lock is up to date.
+  - dune.workspace.lock is up to date.
+
 Adding a new version of the bar package to the repository.
+
   $ mkpkg bar 0.0.2 <<EOF
   > depends: [ "foo" {>= "0.0.1"} ]
   > EOF
 
 Dune should report the new version of bar as available.
+
   $ outdated
-  1/2 packages in dune.lock are outdated.
-  - bar 0.0.1 < 0.0.2
-Same for all contexts:
-  $ outdated --workspace dune-workspace.dev
   - 1/2 packages in dune.workspace.lock are outdated.
     - bar 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -65,13 +81,9 @@ Same for all contexts:
 
 Now we add a new version of the foo package to the repository.
 Dune should only report the bar package as it is an immediate dependency.
+
   $ mkpkg foo 0.0.2 
   $ outdated
-  2/2 packages in dune.lock are outdated.
-  Showing immediate dependencies, use --transitive to see them all.
-  - bar 0.0.1 < 0.0.2
-Same for all contexts:
-  $ outdated --workspace dune-workspace.dev
   - 2/2 packages in dune.workspace.lock are outdated.
     Showing immediate dependencies, use --transitive to see them all.
     - bar 0.0.1 < 0.0.2
@@ -80,22 +92,16 @@ Same for all contexts:
     - bar 0.0.1 < 0.0.2
 
 If --transitive is also passed then both should be reported.
-  $ outdated --transitive
+
+  $ outdated --transitive dune.lock
   2/2 packages in dune.lock are outdated.
   - bar 0.0.1 < 0.0.2
   - foo 0.0.1 < 0.0.2
-Same for all contexts:
-  $ outdated --transitive --workspace dune-workspace.dev
-  - 2/2 packages in dune.workspace.lock are outdated.
-    - bar 0.0.1 < 0.0.2
-    - foo 0.0.1 < 0.0.2
-  - 2/2 packages in dune.lock are outdated.
-    - bar 0.0.1 < 0.0.2
-    - foo 0.0.1 < 0.0.2
 
 If we remove packages from the repository then we should get a nice error.
+
   $ rm -rf mock-opam-repository/packages/bar
-  $ outdated 
+  $ outdated dune.lock 
   1/2 packages in dune.lock are outdated.
   Showing immediate dependencies, use --transitive to see the rest.
   Error: Some packages could not be found.
@@ -106,7 +112,8 @@ If we remove packages from the repository then we should get a nice error.
   [1]
 
 When printing both successes and failures, any errors should appear afterwards.
-  $ outdated --transitive
+
+  $ outdated dune.lock --transitive
   1/2 packages in dune.lock are outdated.
   - foo 0.0.1 < 0.0.2
   Error: Some packages could not be found.
@@ -116,8 +123,9 @@ When printing both successes and failures, any errors should appear afterwards.
   - None
   [1]
 
-Similarly for all contexts.
-  $ outdated --transitive --workspace dune-workspace.dev
+Similarly for multiple lock files.
+
+  $ outdated --transitive 
   - 1/2 packages in dune.workspace.lock are outdated.
     - foo 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -135,8 +143,9 @@ Similarly for all contexts.
 
 If multiple packages are missing, the error should enumerate them. The errors should
 appear irrespective of being a transitive dependency.
+
   $ rm -r mock-opam-repository/packages/foo
-  $ outdated --transitive 
+  $ outdated --transitive dune.lock 
   dune.lock is up to date.
   Error: Some packages could not be found.
   When checking dune.lock, the following packages:
@@ -146,8 +155,9 @@ appear irrespective of being a transitive dependency.
   - None
   [1]
 
-With multiple contexts, the errors should also be printed for each context.
-  $ outdated --workspace dune-workspace.dev
+With multiple lock files, the errors should also be printed for each of them.
+
+  $ outdated 
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
   Error: Some packages could not be found.

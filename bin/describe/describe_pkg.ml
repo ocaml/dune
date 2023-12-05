@@ -2,21 +2,11 @@ open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 
-module Lock = struct
+module Show_lock = struct
   let term =
-    let+ lock_dir_paths =
-      Arg.(
-        value
-        & pos_all string []
-        & info
-            ~doc:
-              "The paths of the the lock directories to be inspected. Defaults to the \
-               lock directory specified in the default context."
-            ~docv:"LOCKDIRS"
-            [])
-    in
+    let+ lock_dir_paths = Pkg_common.Lock_dirs.term in
     let lock_dir_paths =
-      match List.map lock_dir_paths ~f:Path.Source.of_string with
+      match lock_dir_paths with
       | [] -> [ Lock_dir.default_path ]
       | lock_dir_paths -> lock_dir_paths
     in
@@ -117,11 +107,13 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path =
+  let enumerate_lock_dirs_by_path ~lock_dirs =
     let open Fiber.O in
     let+ workspace = Memo.run (Workspace.workspace ()) in
-    let per_contexts = Pkg_common.lock_dirs_of_workspace workspace in
-    List.filter_map per_contexts ~f:(fun lock_dir_path ->
+    let lock_dirs =
+      Pkg_common.Lock_dirs.of_workspace workspace ~chosen_lock_dirs:lock_dirs
+    in
+    List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
         try Some (lock_dir_path, Lock_dir.read_disk lock_dir_path) with
@@ -136,9 +128,9 @@ module List_locked_dependencies = struct
       else None)
   ;;
 
-  let list_locked_dependencies ~transitive =
+  let list_locked_dependencies ~transitive ~lock_dirs () =
     let open Fiber.O in
-    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path
+    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs
     and+ local_packages = Pkg_common.find_local_packages in
     let pp =
       Pp.concat
@@ -175,10 +167,10 @@ module List_locked_dependencies = struct
             ~doc:
               "Display transitive dependencies (by default only immediate dependencies \
                are displayed)")
-    in
+    and+ lock_dirs = Pkg_common.Lock_dirs.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config @@ fun () -> list_locked_dependencies ~transitive
+    Scheduler.go ~common ~config @@ list_locked_dependencies ~transitive ~lock_dirs
   ;;
 
   let command = Cmd.v info term
@@ -189,5 +181,5 @@ let command =
   let info = Cmd.info ~doc "pkg" in
   Cmd.group
     info
-    [ Lock.command; List_locked_dependencies.command; Dependency_hash.command ]
+    [ Show_lock.command; List_locked_dependencies.command; Dependency_hash.command ]
 ;;

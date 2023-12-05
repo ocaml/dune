@@ -52,14 +52,6 @@ let repositories_of_workspace (workspace : Workspace.t) =
   |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
 ;;
 
-let lock_dirs_of_workspace (workspace : Workspace.t) =
-  List.filter_map workspace.contexts ~f:(function
-    | Workspace.Context.Default { lock_dir; base = _ } ->
-      let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
-      Some lock_dir_path
-    | Opam _ -> None)
-;;
-
 let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
   match lock_dir with
@@ -134,3 +126,50 @@ let pp_packages packages =
     ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
       Pp.verbatim (Package_name.to_string name ^ "." ^ Package_version.to_string version))
 ;;
+
+module Lock_dirs = struct
+  let term =
+    let+ arg =
+      Arg.(
+        value
+        & pos_all string []
+        & info
+            []
+            ~docv:"LOCKDIRS"
+            ~doc:"Lock directories to check for outdated packages. Defaults to dune.lock.")
+    in
+    List.map arg ~f:Path.Source.of_string
+  ;;
+
+  let of_workspace (workspace : Workspace.t) ~chosen_lock_dirs =
+    let workspace_lock_dirs =
+      List.filter_map workspace.contexts ~f:(function
+        | Workspace.Context.Default { lock_dir; base = _ } ->
+          let lock_dir_path =
+            Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path
+          in
+          Some lock_dir_path
+        | Opam _ -> None)
+    in
+    match chosen_lock_dirs with
+    | [] -> workspace_lock_dirs
+    | _ ->
+      let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
+      let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
+      if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
+      then chosen_lock_dirs
+      else (
+        let unknown_lock_dirs =
+          Path.Source.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
+          |> Path.Source.Set.to_list
+        in
+        let f x = Path.pp (Path.source x) in
+        User_error.raise
+          [ Pp.text
+              "The following directories are not lock directories in this workspace:"
+          ; Pp.enumerate unknown_lock_dirs ~f
+          ; Pp.text "This workspace contains the following lock directories:"
+          ; Pp.enumerate workspace_lock_dirs ~f
+          ])
+  ;;
+end

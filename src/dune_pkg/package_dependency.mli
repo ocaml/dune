@@ -2,9 +2,10 @@ open! Stdune
 
 module Constraint : sig
   module Op : sig
-    type t = Dune_lang.Package_constraint.Op.t
+    type t = Dune_lang.Relop.t
 
-    val to_relop : t -> OpamParserTypes.FullPos.relop
+    val to_opam : t -> OpamParserTypes.relop
+    val of_opam : OpamParserTypes.relop -> t
   end
 
   module Value : sig

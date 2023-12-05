@@ -18,5 +18,5 @@ let rec eval (t : Blang.t) ~dir ~f =
   | Compare (op, x, y) ->
     let+ x = String_expander.Memo.expand x ~mode:Many ~dir ~f
     and+ y = String_expander.Memo.expand y ~mode:Many ~dir ~f in
-    Blang.Op.eval op (Value.L.compare_vals ~dir x y)
+    Relop.eval op (Value.L.compare_vals ~dir x y)
 ;;

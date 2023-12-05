@@ -320,15 +320,7 @@ let filter_to_blang ~package ~loc filter =
     | FBool false -> Blang.Ast.false_
     | (FString _ | FIdent _) as slangable -> Blang.Expr (filter_to_slang slangable)
     | FOp (lhs, op, rhs) ->
-      let op =
-        match op with
-        | `Eq -> Blang.Op.Eq
-        | `Neq -> Neq
-        | `Geq -> Gte
-        | `Gt -> Gt
-        | `Leq -> Lte
-        | `Lt -> Lt
-      in
+      let op = Package_dependency.Constraint.Op.of_opam op in
       Blang.Compare (op, filter_to_slang lhs, filter_to_slang rhs)
     | FAnd (lhs, rhs) ->
       Blang.Expr

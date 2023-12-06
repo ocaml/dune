@@ -25,8 +25,4 @@ The select field does not pick up the module sources for the test stanza
 correctly. This is a bug.
 
   $ dune runtest  
-  File "dune", line 3, characters 10-14:
-  3 |  (modules test)
-                ^^^^
-  Error: Module Test doesn't exist.
-  [1]
+  Test: Unix was found!

@@ -31,3 +31,8 @@ let to_dyn { name; constraint_ } =
     ; "constr", Dyn.Option (Option.map ~f:Package_constraint.to_dyn constraint_)
     ]
 ;;
+
+let equal { name; constraint_ } t =
+  Package_name.equal name t.name
+  && Option.equal Package_constraint.equal constraint_ t.constraint_
+;;

@@ -26,6 +26,7 @@ module Per_context : sig
     ; context_common : Workspace.Context.Common.t
     ; repos :
         Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
+    ; constraints : Dune_lang.Package_dependency.t list
     }
 
   val choose

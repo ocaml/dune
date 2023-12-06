@@ -23,6 +23,7 @@ let find_outdated_packages
               ; solver_env = _
               ; context_common = _
               ; repositories
+              ; constraints = _
               }
             ->
             (* updating makes sense when checking for outdated packages *)

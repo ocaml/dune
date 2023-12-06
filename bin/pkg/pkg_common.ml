@@ -50,6 +50,7 @@ module Per_context = struct
     ; context_common : Dune_rules.Workspace.Context.Common.t
     ; repos :
         Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
+    ; constraints : Dune_lang.Package_dependency.t list
     }
 
   let repositories_of_workspace (workspace : Workspace.t) =
@@ -73,6 +74,11 @@ module Per_context = struct
                 Workspace.default_repositories
                 ~f:Dune_pkg.Pkg_workspace.Repository.name)
     in
+    let constraints =
+      match lock_dir with
+      | None -> []
+      | Some lock_dir -> lock_dir.constraints
+    in
     { lock_dir_path
     ; version_preference =
         Version_preference.choose
@@ -82,6 +88,7 @@ module Per_context = struct
     ; solver_env
     ; repositories
     ; repos = repositories_of_workspace workspace
+    ; constraints
     }
   ;;
 

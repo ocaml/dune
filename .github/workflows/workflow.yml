@@ -24,7 +24,7 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - windows-latest
+          #- windows-latest # renable once https://github.com/ocaml/setup-ocaml/issues/731 is fixed
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, opam/dune.opam.template and bootstrap.ml
         #

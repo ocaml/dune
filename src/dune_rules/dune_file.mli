@@ -215,18 +215,6 @@ module Library : sig
     -> Lib_info.local Memo.t
 end
 
-module Plugin : sig
-  type t =
-    { package : Package.t
-    ; name : Package.Name.t
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Site.t)
-    ; optional : bool
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Install_conf : sig
   type t =
     { section : Section_with_site.t

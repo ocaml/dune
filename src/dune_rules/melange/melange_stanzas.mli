@@ -21,7 +21,7 @@ module Emit : sig
     ; dune_version : Dune_lang.Syntax.Version.t
     }
 
-  type Stanza.repr += T of t
+  include Stanza.S with type t := t
 
   val implicit_alias : Alias.Name.t
   val decode : t Dune_lang.Decoder.t

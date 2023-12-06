@@ -395,6 +395,11 @@ then it is possible to use the ``::`` shortcut to end a line with a single
 For links, prefer references that use ``:doc:`` (link to a whole document) or
 ``:term:`` (link to a definition in the glossary) to ``:ref:``.
 
+Use the right lexers:
+- ``dune`` for dune and related files
+- ``opam`` for opam files
+- ``console`` for shell sessions and commands (start with ``$``)
+
 Style
 -----
 

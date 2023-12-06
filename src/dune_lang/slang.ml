@@ -136,12 +136,12 @@ let catch_undefined_var ?(loc = Loc.none) value ~fallback =
   Form (loc, Catch_undefined_var { value; fallback })
 ;;
 
-let and_absorb_undefined_var ?(loc = Loc.none) blangs =
-  Form (loc, And_absorb_undefined_var blangs)
-;;
-
 let or_absorb_undefined_var ?(loc = Loc.none) blangs =
   Form (loc, Or_absorb_undefined_var blangs)
+;;
+
+let and_absorb_undefined_var ?(loc = Loc.none) blangs =
+  Form (loc, And_absorb_undefined_var blangs)
 ;;
 
 let blang ?(loc = Loc.none) t = Form (loc, Blang t)
@@ -215,8 +215,20 @@ let rec simplify = function
          ( loc
          , Catch_undefined_var { value = simplify value; fallback = simplify fallback } )
      | And_absorb_undefined_var blangs ->
-       Form (loc, And_absorb_undefined_var (List.map blangs ~f:simplify_blang))
+       let blangs : blang list =
+         List.concat_map blangs ~f:(fun blang ->
+           match simplify_blang blang with
+           | Expr (Form (_, And_absorb_undefined_var blangs)) -> blangs
+           | blang -> [ blang ])
+       in
+       Form (loc, And_absorb_undefined_var blangs)
      | Or_absorb_undefined_var blangs ->
+       let blangs : blang list =
+         List.concat_map blangs ~f:(fun (blang : blang) ->
+           match simplify_blang blang with
+           | Expr (Form (_, Or_absorb_undefined_var blangs)) -> blangs
+           | blang -> [ blang ])
+       in
        Form (loc, Or_absorb_undefined_var (List.map blangs ~f:simplify_blang))
      | Blang b -> Form (loc, Blang (simplify_blang b)))
 
@@ -232,7 +244,21 @@ and simplify_blang = function
   | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)
   | Not blang -> Not (simplify_blang blang)
   | And [ b ] -> simplify_blang b
-  | And blangs -> And (List.map blangs ~f:simplify_blang)
+  | And blangs ->
+    let blangs =
+      List.concat_map blangs ~f:(fun blang ->
+        match simplify_blang blang with
+        | And xs -> xs
+        | blang -> [ blang ])
+    in
+    And (List.map blangs ~f:simplify_blang)
   | Or [ b ] -> simplify_blang b
-  | Or blangs -> Or (List.map blangs ~f:simplify_blang)
+  | Or blangs ->
+    let blangs =
+      List.concat_map blangs ~f:(fun blang ->
+        match simplify_blang blang with
+        | Or xs -> xs
+        | blang -> [ blang ])
+    in
+    Or (List.map blangs ~f:simplify_blang)
 ;;

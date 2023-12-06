@@ -156,9 +156,7 @@ Package which has boolean where string was expected. This should be caught while
      (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
      (run echo b))
     (when
-     (and_absorb_undefined_var
-      (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
-      %{pkg-self:baz})
+     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar} %{pkg-self:baz})
      (run echo c))
     (when
      (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})

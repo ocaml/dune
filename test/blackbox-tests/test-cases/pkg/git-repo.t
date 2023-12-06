@@ -98,3 +98,40 @@ that by hashing with the checksum that we expected in the OPAM file
 
   $ cmp -s dune.lock/foo.files/$FILES_NAME "$FILES_FOLDER/$FILES_NAME" && echo "The contents match"
   The contents match
+
+The git repos support repo should also be able to handle unusual objects in our
+tree, which can e.g. happen with submodules.
+
+  $ cd mock-opam-repository
+  $ PARENT=$(git rev-parse HEAD)
+
+To make this a bit easier we use some git plumbing commands to reproduce it.
+First we create a commit object in the index and write a tree containing this
+commit (pointing to nowhere):
+
+  $ git update-index --add --cacheinfo 160000,0000000000000000000000000000000000000001,dangling-commit-in-tree
+  $ TREE=$(git write-tree)
+
+Then we create a commit with the tree and our HEAD as a parent commit
+
+  $ CURRENT=$(echo "Added a dangling commit object" | git commit-tree $TREE -p $PARENT)
+
+Then we make this new commit the one that our branch is pointing to.
+
+  $ git reset --hard -q $CURRENT
+
+Thus ls-tree should now also contain a commit object:
+
+  $ git ls-tree -r HEAD | awk '{ printf "%s %s\n",$2,$4; }' | sort
+  blob packages/foo/foo.1.0/opam
+  blob packages/foo/foo.1.1/opam
+  blob packages/foo/foo.1.2/files/hello.txt
+  blob packages/foo/foo.1.2/opam
+  commit dangling-commit-in-tree
+  $ cd ..
+
+With this set up in place, locking should still work as the commit is not
+relevant
+
+  $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock 2> /dev/null && echo "Solution found"
+  [1]

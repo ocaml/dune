@@ -90,12 +90,16 @@ Make a workspace file which sets some of the variables.
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.lock)
+  >  (repositories mock)
   >  (solver_env
   >   (os linux)
   >   (arch arm)))
   > (context
   >  (default
   >   (name default)))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Solve the packages again, this time with the variables set.

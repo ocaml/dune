@@ -38,21 +38,11 @@ end
 
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-  -> opam_repository_path:Path.t option
-  -> opam_repository_url:OpamUrl.t option
   -> repositories:Dune_pkg.Pkg_workspace.Repository.Name.t list
   -> update_opam_repositories:bool
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
 val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t
-
-module Opam_repository_path : sig
-  val term : Path.t option Term.t
-end
-
-module Opam_repository_url : sig
-  val term : OpamUrl.t option Term.t
-end
 
 (** [pp_packages lock_dir] returns a list of pretty-printed packages
     occuring in [lock_dir]. *)

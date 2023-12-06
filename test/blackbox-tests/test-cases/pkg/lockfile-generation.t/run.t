@@ -28,10 +28,18 @@ Generate a `dune-project` file.
   >     "bar" {>= "0.2"}
   > ]
   > EOF
+  > cat >dune-workspace <<EOF
+  > (lang dune 3.8)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
+  > EOF
 
 Run the solver and generate a lock directory.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
@@ -81,7 +89,7 @@ Print the contents of each file in the lockdir:
   
 
 Run the solver again preferring oldest versions of dependencies:
-  $ dune pkg lock --version-preference=oldest --opam-repository-path=mock-opam-repository
+  $ dune pkg lock --version-preference=oldest
   Solution for dune.lock:
   - bar.0.4.0
   - baz.0.1.0
@@ -136,7 +144,7 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
   > EOF
 
 Run the solver again. This time it will fail.
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Error: Unable to solve dependencies in build context: default
   Can't find all required versions.
   Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
@@ -166,7 +174,7 @@ should pick one of them.
 After running this we expact a solution that has either `bar` or `baz` but not
 both.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.5.0
   - bar-or-baz.0.0.1
@@ -190,7 +198,7 @@ patterns that can't be simplified
 After runninng we expect the solution to have quux and either baz or quz as
 well as bar or qux.
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.5.0
   - baz.0.1.0
@@ -210,7 +218,7 @@ in between.
   > depends: [ ("bar" & "quux") | "baz" ]
   > EOF
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.5.0
   - priorities.0.0.1
@@ -237,7 +245,7 @@ versions 1 or 3, as well as making sure it doesn't pick the newest version.
 With versions 1 and 3 negated and version 4 removed via version constraint,
 we'd expect version 2 to be chosen:
 
-  $ dune pkg lock --opam-repository-path=mock-opam-repository
+  $ dune pkg lock
   Solution for dune.lock:
   - negation.0.0.1
   - pkg.2

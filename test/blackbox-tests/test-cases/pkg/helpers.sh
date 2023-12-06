@@ -39,16 +39,53 @@ mkpkg() {
   cat >>$mock_packages/$name/$name.$version/opam
 }
 
+add_mock_repo_if_needed() {
+  if [ ! -e dune-workspace ]
+  then
+      cat >dune-workspace <<EOF
+(lang dune 3.10)
+(lock_dir
+ (repositories mock))
+(repository
+ (name mock)
+ (source "file://$(pwd)/mock-opam-repository"))
+EOF
+  else
+    if ! grep '(name mock)' > /dev/null dune-workspace
+    then
+      # add the repo definition
+      cat >>dune-workspace <<EOF
+(repository
+ (name mock)
+ (source "file://$(pwd)/mock-opam-repository"))
+EOF
+ 
+      # reference the repo
+      if grep -s '(repositories'
+      then
+        sed -i '' -e 's/(repositories \(.*\))/(repositories mock \1)/' dune-workspace
+      else
+        cat >>dune-workspace <<EOF
+(lock_dir
+ (repositories mock))
+EOF
+      fi
+  
+    fi
+  fi
+}
+
 solve_project() {
   cat >dune-project
-  dune pkg lock --dont-poll-system-solver-variables --opam-repository-path=mock-opam-repository $@
+  add_mock_repo_if_needed
+  dune pkg lock --dont-poll-system-solver-variables $@
 }
 
 solve_project_translate_opam_filters() {
   cat >dune-project
+  add_mock_repo_if_needed
   dune pkg lock \
     --dont-poll-system-solver-variables \
-    --opam-repository-path=mock-opam-repository \
     --experimental-translate-opam-filters
 }
 

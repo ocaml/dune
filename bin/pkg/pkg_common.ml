@@ -143,49 +143,27 @@ let location_of_opam_url url =
       ]
 ;;
 
-let get_repos
-  repos
-  ~opam_repository_path
-  ~opam_repository_url
-  ~repositories
-  ~update_opam_repositories
-  =
+let get_repos repos ~repositories ~update_opam_repositories =
   let module Repository_id = Dune_pkg.Repository_id in
   let module Opam_repo = Dune_pkg.Opam_repo in
-  let open Fiber.O in
-  match opam_repository_path, opam_repository_url with
-  | Some _, Some _ ->
-    (* in theory you can set both, but how to prioritize them? *)
-    User_error.raise [ Pp.text "Can't specify both path and URL to an opam-repository" ]
-  | Some path, None ->
-    let repo_id = Repository_id.of_path path in
-    Fiber.return @@ [ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path ]
-  | None, Some (url : OpamUrl.t) ->
-    let+ opam_repo =
-      Opam_repo.of_git_repo
-        ~repo_id:None
-        ~update:update_opam_repositories
-        ~source:url.path
-    in
-    [ opam_repo ]
-  | None, None ->
-    repositories
-    |> Fiber.parallel_map ~f:(fun name ->
-      match Dune_pkg.Pkg_workspace.Repository.Name.Map.find repos name with
-      | None ->
-        (* TODO: have loc for this failure? *)
-        User_error.raise
-          [ Pp.textf "Repository '%s' is not a known repository"
-            @@ Dune_pkg.Pkg_workspace.Repository.Name.to_string name
-          ]
-      | Some repo ->
-        let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
-        (match location_of_opam_url opam_url with
-         | `Git source ->
-           Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
-         | `Path path ->
-           let repo_id = Repository_id.of_path path in
-           Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
+  let module Repository = Dune_pkg.Pkg_workspace.Repository in
+  repositories
+  |> Fiber.parallel_map ~f:(fun name ->
+    match Repository.Name.Map.find repos name with
+    | None ->
+      (* TODO: have loc for this failure? *)
+      User_error.raise
+        [ Pp.textf "Repository '%s' is not a known repository"
+          @@ Repository.Name.to_string name
+        ]
+    | Some repo ->
+      let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+      (match location_of_opam_url opam_url with
+       | `Git source ->
+         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
+       | `Path path ->
+         let repo_id = Repository_id.of_path path in
+         Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
 ;;
 
 let find_local_packages =
@@ -196,52 +174,6 @@ let find_local_packages =
   in
   Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
 ;;
-
-module Opam_repository_path = struct
-  let term =
-    let dune_path =
-      let parser s =
-        s
-        |> Path.External.of_filename_relative_to_initial_cwd
-        |> Path.external_
-        |> Result.ok
-      in
-      let printer pf p = Pp.to_fmt pf (Path.pp p) in
-      Arg.conv (parser, printer)
-    in
-    Arg.(
-      value
-      & opt (some dune_path) None
-      & info
-          [ "opam-repository-path" ]
-          ~docv:"PATH"
-          ~doc:
-            "Path to a local opam repository. This should be a directory containing a \
-             valid opam repository such as the one at \
-             https://github.com/ocaml/opam-repository.")
-  ;;
-end
-
-module Opam_repository_url = struct
-  let term =
-    let parser s =
-      match OpamUrl.parse_opt s with
-      | Some url -> Ok url
-      | None -> Error (`Msg "URL can't be parsed")
-    in
-    let printer pf u = Pp.to_fmt pf (Pp.text (OpamUrl.to_string u)) in
-    let opam_url = Arg.conv (parser, printer) in
-    Arg.(
-      value
-      & opt (some opam_url) None
-      & info
-          [ "opam-repository-url" ]
-          ~docv:"URL"
-          ~doc:
-            "URL of opam repository to download. Can be either a git repository or a \
-             link to the tarball of a repository.")
-  ;;
-end
 
 let pp_packages packages =
   let module Package_version = Dune_pkg.Package_version in

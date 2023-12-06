@@ -1,7 +1,7 @@
   $ . ./helpers.sh
 
   $ outdated () {
-  >  dune pkg outdated --opam-repository-path=mock-opam-repository $@
+  >  dune pkg outdated $@
   > }
 
 `dune pkg outdated` lists the outdated packages in the current project.
@@ -12,12 +12,20 @@
   > EOF
   $ cat > dune-workspace <<EOF
   > (lang dune 3.11)
+  > (lock_dir
+  >  (repositories mock))
+  > (lock_dir
+  >  (path dune.workspace.lock)
+  >  (repositories mock))
   > (context
   >  (default))
   > (context
   >  (default
   >   (name workspace-context)
   >   (lock_dir dune.workspace.lock)))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
   $ solve_project --all-contexts <<EOF
   > (lang dune 3.11)

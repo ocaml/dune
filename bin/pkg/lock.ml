@@ -35,8 +35,6 @@ let check_for_dup_lock_dir_paths ts =
 
 let solve
   per_context
-  ~opam_repository_path
-  ~opam_repository_url
   ~update_opam_repositories
   ~solver_env_from_current_system
   ~experimental_translate_opam_filters
@@ -64,14 +62,7 @@ let solve
          let solver_env =
            solver_env ~solver_env_from_context ~solver_env_from_current_system
          in
-         let* repos =
-           get_repos
-             repos
-             ~opam_repository_path
-             ~opam_repository_url
-             ~repositories
-             ~update_opam_repositories
-         in
+         let* repos = get_repos repos ~repositories ~update_opam_repositories in
          let overlay =
            Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
          in
@@ -130,8 +121,6 @@ let lock
   ~all_contexts
   ~dont_poll_system_solver_variables
   ~version_preference
-  ~opam_repository_path
-  ~opam_repository_url
   ~update_opam_repositories
   ~experimental_translate_opam_filters
   =
@@ -151,8 +140,6 @@ let lock
   in
   solve
     per_context
-    ~opam_repository_path
-    ~opam_repository_url
     ~update_opam_repositories
     ~solver_env_from_current_system
     ~experimental_translate_opam_filters
@@ -160,8 +147,6 @@ let lock
 
 let term =
   let+ builder = Common.Builder.term
-  and+ opam_repository_path = Opam_repository_path.term
-  and+ opam_repository_url = Opam_repository_url.term
   and+ context_name =
     context_term
       ~doc:
@@ -213,8 +198,6 @@ let term =
       ~all_contexts
       ~dont_poll_system_solver_variables
       ~version_preference
-      ~opam_repository_path
-      ~opam_repository_url
       ~update_opam_repositories:(not skip_update)
       ~experimental_translate_opam_filters)
 ;;

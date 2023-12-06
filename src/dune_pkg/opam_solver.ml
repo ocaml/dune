@@ -384,23 +384,27 @@ let simplify_filter solver_env =
     | _ -> None)
 ;;
 
-let filter_needed = function
-  | None -> true
-  | Some f -> OpamFilter.eval_to_bool ~default:true (Fun.const None) f
+let partial_eval_filter = function
+  | None -> `Filter None
+  | Some f ->
+    let env = Fun.const None in
+    (match OpamFilter.eval_to_bool env f with
+     | exception Failure _ -> `Filter (Some f)
+     | b -> if b then `Filter None else `Skip)
 ;;
 
 let opam_commands_to_actions solver_env loc package (commands : OpamTypes.command list) =
   List.filter_map commands ~f:(fun (args, filter) ->
     let filter = Option.map filter ~f:(simplify_filter solver_env) in
-    match filter_needed filter with
-    | false -> None
-    | true ->
+    match partial_eval_filter filter with
+    | `Skip -> None
+    | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun (simple_arg, filter) ->
           let filter = Option.map filter ~f:(simplify_filter solver_env) in
-          match filter_needed filter with
-          | false -> None
-          | true ->
+          match partial_eval_filter filter with
+          | `Skip -> None
+          | `Filter filter ->
             let slang =
               let slang =
                 match simple_arg with

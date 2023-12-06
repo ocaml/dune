@@ -179,12 +179,8 @@ Package which has boolean where string was expected. This should be caught while
     (when
      (< %{pkg-self:version} 1.0)
      (run echo g))
-    (when
-     true
-     (run echo i))
-    (when
-     true
-     (run echo j))
+    (run echo i)
+    (run echo j)
     (when
      %{pkg:foo:installed}
      (run echo k))

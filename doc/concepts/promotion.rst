@@ -16,7 +16,7 @@ However, it is different for the following reason:
 - By default, it will use ``patdiff`` if it is installed. ``patdiff``
   is a better diffing program. You can install it via opam with:
 
-  .. code:: sh
+  .. code:: console
 
      $ opam install patdiff
 

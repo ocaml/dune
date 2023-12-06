@@ -150,9 +150,9 @@ file, the version is obtained by querying the version control
 system. For instance, the following Git command is used in Git
 repositories:
 
-.. code:: bash
+.. code:: console
 
-          git describe --always --dirty --abbrev=7
+   $ git describe --always --dirty --abbrev=7
 
 which produces a human readable version string of the form
 ``<version>-<commits-since-version>-<hash>[-dirty]``.

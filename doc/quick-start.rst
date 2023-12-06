@@ -12,9 +12,9 @@ Install Dune
 
 The best way to install Dune is with opam: 
 
-.. code:: shell
+.. code:: console
 
-    opam install dune
+  $ opam install dune
 
 Then run ``eval $(opam env)`` to update the shell. When creating a new 
 directory or changing directories, run ``eval $(opam env)`` if you 
@@ -38,9 +38,9 @@ Initializing an Executable
 To initialize a project that will build an executable program, run the following
 (replacing ``project_name`` with the name of your project):
 
-.. code:: shell
+.. code:: console
 
-    dune init proj project_name
+  $ dune init proj project_name
 
 This creates a project directory that includes the following contents:
 
@@ -60,27 +60,27 @@ This creates a project directory that includes the following contents:
 
 Now, enter your project's directory:
 
-.. code:: shell
+.. code:: console
 
-   cd project_name
+  $ cd project_name
 
 Then, you can build your project with:
 
-.. code:: shell
+.. code:: console
 
-   dune build
+  $ dune build
 
 You can run your tests with:
 
-.. code:: shell
+.. code:: console
 
-   dune test
+  $ dune test
 
 You can run your program with:
 
-.. code:: shell
+.. code:: console
 
-   dune exec project_name
+  $ dune exec project_name
 
 This simple project will print "Hello World" in your shell.
 
@@ -119,9 +119,9 @@ Initializing a Library
 To initialize a project for an OCaml library, run the following (replacing
 ``project_name`` with the name of your project):
 
-.. code:: shell
+.. code:: console
 
-    dune init proj --kind=lib project_name
+  $ dune init proj --kind=lib project_name
 
 This creates a project directory that includes the following contents:
 
@@ -138,22 +138,21 @@ This creates a project directory that includes the following contents:
 
 Now, enter your project's directory:
 
-.. code:: shell
+.. code:: console
 
-   cd project_name
+  $ cd project_name
 
 Then, you can build your project with:
 
-.. code:: shell
+.. code:: console
 
-   dune build
+  $ dune build
 
 You can run your tests with:
 
-.. code:: shell
+.. code:: console
 
-   dune test
-
+  $ dune test
 
 All of the subcomponents generated are the same as those described in
 :ref:`initializing-an-executable`, with the following exceptions:
@@ -186,9 +185,9 @@ the .ml extension). It will implement the executable stanza in the ``dune`` file
 
 Next, build your new program in a shell using this command:
 
-.. code:: bash
+.. code:: console
 
-    dune build hello_world.exe
+   $ dune build hello_world.exe
 
 This will create a directory called ``_build`` and build the 
 program: ``_build/default/hello_world.exe``. Note that
@@ -199,9 +198,9 @@ Finally, run it with the following command to see that it worked. In
 fact, the executable can both be built and run in a single
 step:
 
-.. code:: bash
+.. code:: console
 
-    dune exec -- ./hello_world.exe
+   $ dune exec -- ./hello_world.exe
 
 Voila! This should print "Hello, world!" in the command line.
 
@@ -244,9 +243,9 @@ This ``hello_world.ml`` file:
 
 And build it with:
 
-.. code:: bash
+.. code:: console
 
-    dune build hello_world.exe
+  $ dune build hello_world.exe
 
 The executable will be built as ``_build/default/hello_world.exe``
 
@@ -274,9 +273,9 @@ This ``hello_world.ml`` file:
 
 And build it with:
 
-.. code:: bash
+.. code:: console
 
-    dune build hello_world.exe
+  $ dune build hello_world.exe
 
 The executable will be built as ``_build/default/hello_world.exe``
 
@@ -321,9 +320,9 @@ This ``hello_world.ml`` file:
 
 And build it with:
 
-.. code:: bash
+.. code:: console
 
-    dune build hello_world.bc
+  $ dune build hello_world.bc
 
 The executable will be built as ``_build/default/hello_world.bc``.
 The executable can be built and run in a single
@@ -478,9 +477,9 @@ Write this in your ``dune`` file:
 
 And run the tests with:
 
-.. code:: bash
+.. code:: console
 
-    dune runtest
+  $ dune runtest
 
 It will run the test program (the main module is ``my_test_program.ml``) and
 error if it exits with a nonzero code.
@@ -490,9 +489,9 @@ to the standard output of the test program and the differences will be
 displayed. It is possible to replace the ``.expected`` file with the last output
 using:
 
-.. code:: bash
+.. code:: console
 
-    dune promote
+  $ dune promote
 
 Building a Custom Toplevel
 ==========================

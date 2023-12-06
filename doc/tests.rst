@@ -34,7 +34,7 @@ Note that in any case, ``dune runtest`` is simply shorthand for building the
 ``runtest`` alias, so you can always ask Dune to run the tests in conjunction
 with other targets by passing ``@runtest`` to ``dune build``. For instance:
 
-.. code:: bash
+.. code:: console
 
    $ dune build @install @runtest
    $ dune build @install @test/runtest
@@ -47,9 +47,9 @@ If you would only like to run a single test for your project, you may use ``dune
 exec`` to run the test executable (for the sake of this example,
 ``project/tests/myTest.ml``):
 
-.. code:: bash
+.. code:: console
 
-   dune exec project/tests/myTest.exe
+  $ dune exec project/tests/myTest.exe
 
 To run :ref:`cram-tests`, you can use the alias that is created for the test.
 The name of the alias corresponds to the name of the test without the ``.t``
@@ -57,7 +57,7 @@ extension. For directory tests, this is the name of the directory without the
 ``.t`` extension. Assuming a ``cram-test.t`` or ``cram-test.t/run.t`` file
 exists, it can be run with:
 
-.. code:: bash
+.. code:: console
 
    $ dune build @cram-test
 
@@ -112,7 +112,7 @@ we have to add an ``inline_tests`` field:
 We can now build and execute this test by running ``dune runtest``. For
 instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    [...]
@@ -192,7 +192,7 @@ Then calling ``dune runtest`` will run these tests, and in case of
 mismatch, Dune will print a diff of the original source file and
 the suggested correction. For instance:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    [...]
@@ -208,14 +208,14 @@ the suggested correction. For instance:
 
 In order to accept the correction, simply run:
 
-.. code:: bash
+.. code:: console
 
    $ dune promote
 
 You can also make Dune automatically accept the correction after
 running the tests by typing:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest --auto-promote
 
@@ -228,9 +228,9 @@ Running a Subset of the Test Suite
 
 You may also run a group of tests located under a directory with:
 
-.. code:: bash
+.. code:: console
 
-   dune runtest mylib/tests
+  $ dune runtest mylib/tests
 
 The above command will run all tests defined in tests and its subdirectories.
 
@@ -506,18 +506,17 @@ expected test.
 This provides a nice way of dealing with the usual *write code*,
 *run*, and *promote* cycle of testing. For instance:
 
-.. code:: bash
+.. code:: console
 
     $ dune runtest
-       [...]
-       -tests.expected
-       +tests.output
-       File "tests.expected", line 1, characters 0-1:
-       -Hello, world!
-       +Good bye!
-       $ dune promote
-    
-       Promoting _build/default/tests.output to tests.expected.
+    [...]
+    -tests.expected
+    +tests.output
+    File "tests.expected", line 1, characters 0-1:
+    -Hello, world!
+    +Good bye!
+    $ dune promote
+    Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs than the standard ``diff``
@@ -546,7 +545,7 @@ File Tests
 
 To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
 
-.. code:: bash
+.. code:: console
 
    Simplest possible Cram test
      $ echo "testing"
@@ -560,14 +559,14 @@ This simple example demonstrates two components of Cram tests:
 
 To run the test and promote the results:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    $ dune promote
 
 We now see the output of the command:
 
-.. code:: bash
+.. code:: console
 
    Simplest possible cram test
      $ echo "testing"
@@ -579,7 +578,7 @@ than what is recorded in the test script.
 
 For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
 
-.. code:: bash
+.. code:: console
 
    We create a test artifact called "foo"
      $ cat >foo <<EOF
@@ -612,16 +611,16 @@ possible to define rules using ``dune`` files in such a directory.
 
 We convert the ``wc`` test above into a directory test ``wc.t``:
 
-.. code:: bash
+.. code:: console
 
    $ ls wc.t
-     run.t foo.txt bar/
+   run.t foo.txt bar/
 
 This defines a directory test ``wc.t`` which must include a ``run.t`` file as
 the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
 access their contents in the test script ``run.t``:
 
-.. code:: bash
+.. code:: console
 
    Testing wc:
      $ wc -l foo | awk '{ print $1 }'
@@ -642,7 +641,7 @@ for two reasons:
 
 We can specify dependencies using the ``deps`` field using the usual syntax:
 
-.. code:: bash
+.. code:: dune
 
    (cram
     (deps ../foo.exe))
@@ -651,7 +650,7 @@ This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
 To apply the stanza to a particular test, it's possible to use ``applies_to``
 field:
 
-.. code::
+.. code:: dune
 
    (cram
     (applies_to * \ foo bar)
@@ -721,7 +720,7 @@ In some situations, Cram tests emit non portable or non-deterministic output. We
 recommend sanitising such outputs using pipes. For example, we can scrub the
 OCaml magic number using ``sed`` as follows:
 
-.. code:: bash
+.. code:: console
 
    $ ocamlc -config | grep "cmi_magic_number:" | sed 's/Caml.*/$SPECIAL_CODE/'
    cmi_magic_number: $SPECIAL_CODE
@@ -735,7 +734,7 @@ default list of paths is:
 To add additional paths to this sanitation mechanism, it's sufficient to modify
 the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
 
-.. code:: bash
+.. code:: console
 
    $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
    $ echo $HOME

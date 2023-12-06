@@ -308,9 +308,9 @@ To understand why this is important, let's consider this ``dune`` file living in
 
 Here the command that will be executed is:
 
-.. code:: bash
+.. code:: console
 
-    ocamllex -o blah.ml blah.mll
+  $ ocamllex -o blah.ml blah.mll
 
 And it will be executed in ``_build/<context>/src/foo``. As a result, if there
 is an error in the generated ``blah.ml`` file, it will be reported as:

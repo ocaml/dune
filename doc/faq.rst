@@ -124,7 +124,7 @@ It is possible to use the ``ocaml-print-intf`` program (available on opam
 through ``$ opam install ocaml-print-intf``) to generate the right ``mli``
 file:
 
-.. code:: bash
+.. code:: console
 
   $ dune exec -- ocaml-print-intf ocaml_print_intf.ml
   val root_from_verbose_output : string list -> string
@@ -156,7 +156,7 @@ Suppose you have a library defined in ``src/foo/dune``:
 You can build this library on its own by running the following from the project
 root directory:
 
-.. code:: bash
+.. code:: console
 
    $ dune build %{cmxa:src/foo/my_library}
 

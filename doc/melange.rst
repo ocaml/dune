@@ -11,7 +11,7 @@ Introduction
 JavaScript. It produces one JavaScript file per OCaml module. Melange can
 be installed with opam:
 
-.. code:: bash
+.. code:: console
 
    $ opam install melange
 
@@ -53,9 +53,9 @@ Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
 
 Finally, add a source file to build:
 
-.. code:: bash
+.. code:: console
 
-  echo 'Js.log "hello from melange"' > hello.ml
+  $ echo 'Js.log "hello from melange"' > hello.ml
 
 After running ``dune build @melange`` or just ``dune build``, Dune
 produces the following file structure:
@@ -73,7 +73,7 @@ produces the following file structure:
 
 The resulting JavaScript can now be run:
 
-.. code:: bash
+.. code:: console
 
    $ node _build/default/output/hello.js
    hello from melange
@@ -115,7 +115,7 @@ be placed. In particular, the folder will be placed under
 The result of building a  ``melange.emit`` stanza will match the file structure
 of the source tree. For example, given the following source tree:
 
-.. code:: bash
+.. code::
 
     ├── dune # (melange.emit (target output) (libraries lib))
     ├── app.ml

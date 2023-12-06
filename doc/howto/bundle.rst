@@ -7,7 +7,7 @@ from other files in your project.
 Folder Structure
 ----------------
 
-.. code:: bash
+.. code:: console
 
     $ tree src
     src

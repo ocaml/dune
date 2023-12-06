@@ -17,9 +17,9 @@ Dependencies
 
 To create a directory-local opam switch with the dependencies necessary to build the tests, run:
 
-.. code:: sh
+.. code:: console
 
-   make dev-switch
+  $ make dev-switch
 
 Bootstrapping
 =============
@@ -44,16 +44,16 @@ bootstraps (if necessary) and runs ``./dune.exe build @install``.
 If you want to just run the bootstrapping step itself, build the ``bootstrap``
 phony target with
 
-.. code:: sh
+.. code:: console
 
-   make bootstrap
+   $ make bootstrap
 
 You can always rerun this to bootstrap again.
 
 Once you've bootstrapped Dune, you should be using it to develop Dune itself.
 Here are the most common commands you'll be running:
 
-.. code:: sh
+.. code:: console
 
    # to make sure everything compiles:
    $ ./dune.exe build @check
@@ -97,7 +97,7 @@ we use the ppx_expect_ framework, where we introduce tests via
 For integration tests, we use a system similar to `Cram tests
 <https://bitheap.org/cram/>`_ for testing shell commands and their behavior:
 
-.. code:: bash
+.. code:: console
 
    $ echo 'Hello, world!'
    Hello, world!
@@ -344,13 +344,13 @@ sphinx_rtd_theme_ and sphinx-copybutton_.
 
 Build the documentation with
 
-.. code:: sh
+.. code:: console
 
    $ make doc
 
 For automatically updated builds, you can install sphinx-autobuild_, and run
 
-.. code:: sh
+.. code:: console
 
    $ make livedoc
 
@@ -782,7 +782,7 @@ Build the Docker image from the root directory of this repo.
 
 E.g., run
 
-.. code:: sh
+.. code:: console
 
    $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
 
@@ -791,7 +791,7 @@ as a volume. Generate this directory with a script from the
 `ocaml-monorepo-benchmark <https://github.com/ocaml-dune/ocaml-monorepo-benchmark>`_
 repository:
 
-.. code:: sh
+.. code:: console
 
    $ git clone https://github.com/ocaml-dune/ocaml-monorepo-benchmark.git
    $ cd ocaml-monorepo-benchmark
@@ -804,7 +804,7 @@ requirement of `current-bench <https://github.com/ocurrent/current-bench>`_).
 From within the container the benchmarks can be started by running `make bench`.
 Do all this in a single command with:
 
-.. code:: sh
+.. code:: console
 
    $ docker run -it --volume=/tmp/duniverse:/home/opam/bench-dir/current-bench-data/duniverse dune-monorepo-benchmark bash --login -c 'make bench'
 

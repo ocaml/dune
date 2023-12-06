@@ -66,14 +66,14 @@ Activating an instrumentation backend can be done via the command line or the
 
 Via the command line, it is done as follows:
 
-.. code:: bash
+.. code:: console
 
    $ dune build --instrument-with <names>
 
 Here ``<names>`` is a comma-separated list of instrumentation backends. For
 example:
 
-.. code:: bash
+.. code:: console
 
    $ dune build --instrument-with bisect_ppx,landmarks
 

@@ -343,7 +343,7 @@ module DB = struct
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
           let build_dir = Context.build_dir context in
-          match stanza with
+          match Stanza.repr stanza with
           | Dune_file.Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
@@ -416,7 +416,7 @@ module DB = struct
     let make_map (build_dir, public_libs, stanzas) =
       let+ libs =
         Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
-          match stanza with
+          match Stanza.repr stanza with
           | Dune_file.Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
               let* scope = find_by_dir (Path.Build.append_source build_dir d.dir) in

@@ -174,7 +174,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
         stanzas
         ~init:([], [], [])
         ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
-          match (stanza : Stanza.t) with
+          match Stanza.repr stanza with
           | Library.T lib ->
             let all =
               eval_foreign_stubs

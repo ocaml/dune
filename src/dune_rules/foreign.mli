@@ -161,7 +161,7 @@ module Library : sig
 
   val decode : t Dune_lang.Decoder.t
 
-  type Stanza.t += T of t
+  include Stanza.S with type t := t
 end
 
 (** A foreign source file that has a [path] and all information of the

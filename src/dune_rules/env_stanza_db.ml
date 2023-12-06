@@ -26,7 +26,8 @@ module Node = struct
     >>| function
     | None -> None
     | Some stanzas ->
-      List.find_map stanzas.stanzas ~f:(function
+      List.find_map stanzas.stanzas ~f:(fun stanza ->
+        match Stanza.repr stanza with
         | Dune_env.T config -> Some config
         | _ -> None)
   ;;

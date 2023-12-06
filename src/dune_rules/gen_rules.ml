@@ -108,7 +108,7 @@ end = struct
     let dir = ctx_dir in
     let toplevel_setup = Toplevel.Stanza.setup in
     let open Dune_file in
-    match stanza with
+    match Stanza.repr stanza with
     | Toplevel.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
@@ -238,7 +238,7 @@ let gen_rules_for_stanzas
       ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander)
   and+ () =
     Memo.parallel_iter stanzas ~f:(fun stanza ->
-      match (stanza : Stanza.t) with
+      match Stanza.repr stanza with
       | Menhir_stanza.T m ->
         Expander.eval_blang expander m.enabled_if
         >>= (function

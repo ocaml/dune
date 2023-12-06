@@ -33,6 +33,8 @@ type t =
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)
 
 let decode =

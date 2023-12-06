@@ -53,7 +53,7 @@ module File = struct
 
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
-      match a, b with
+      match Stanza.repr a, Stanza.repr b with
       | Executables.T a, Executables.T b -> executables_conflict a b
       | Library.T a, Library.T b -> libraries_conflict a b
       | Tests.T a, Tests.T b -> tests_conflict a b

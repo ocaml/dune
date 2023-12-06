@@ -61,7 +61,7 @@ type t =
   ; version : Syntax.Version.t
   }
 
-type Stanza.t += T of t
+type Stanza.repr += T of t
 
 val decode : t Dune_lang.Decoder.t
 val syntax : Dune_lang.Syntax.t

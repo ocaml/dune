@@ -14,7 +14,7 @@ executables. Example:
 This will create a toplevel with the ``str`` library loaded. We may build and
 run this toplevel with:
 
-.. code:: shell
+.. code:: console
 
    $ dune exec ./tt.exe
 

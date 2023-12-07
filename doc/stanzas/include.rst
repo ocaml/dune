@@ -21,7 +21,6 @@ For instance:
 With this ``dune`` file, running Dune as follows will replace the ``dune.inc``
 file in the source tree by the generated one:
 
-.. code:: shell
+.. code:: console
 
     $ dune build @runtest --auto-promote
-

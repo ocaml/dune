@@ -31,20 +31,20 @@ Building Documentation
 To generate documentation using the ``@doc`` alias, all that's required to is
 to build this alias:
 
-::
+.. code:: console
 
   $ dune build @doc
 
 An index page containing links to all the opam packages in your project can be
 found in:
 
-::
+.. code:: console
 
   $ open _build/default/_doc/_html/index.html
 
 Documentation for private libraries may also be built with:
 
-::
+.. code:: console
 
   $ dune build @doc-private
 

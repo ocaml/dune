@@ -46,7 +46,7 @@ Running the Formatters
 Run the ``dune build @fmt`` command. It will format the source files in the
 corresponding project and display the differences:
 
-.. code::
+.. code:: console
 
     $ dune build @fmt
     --- hello.ml
@@ -60,7 +60,7 @@ corresponding project and display the differences:
 Then it's possible to accept the correction by calling ``dune promote`` to
 replace the source files with the corrected versions.
 
-.. code::
+.. code:: console
 
     $ dune promote
     Promoting _build/default/hello.ml.formatted to hello.ml.

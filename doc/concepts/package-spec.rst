@@ -129,7 +129,7 @@ For instance:
 Once ``mypackage`` is installed on the system, the user will be able
 to type the following in their shell:
 
-::
+.. code:: console
 
    $ myprog
 

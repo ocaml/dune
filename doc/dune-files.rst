@@ -776,7 +776,7 @@ You can point Dune to an explicit ``dune-workspace`` file with the
 support, so developers can test that the code builds with all OCaml versions by
 simply running:
 
-.. code:: bash
+.. code:: console
 
     $ dune build --workspace dune-workspace.dev @all @runtest
 

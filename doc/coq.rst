@@ -736,7 +736,7 @@ typically used by editors such as CoqIDE or Proof General to interact with Coq.
 
 The following command:
 
-.. code:: bash
+.. code:: console
 
    $ dune coq top <file> -- <args>
 

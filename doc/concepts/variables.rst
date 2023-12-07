@@ -197,7 +197,7 @@ Forms that expand to a list of items, such as ``%{cc}``, ``%{deps}``,
 If there are two dependencies, ``a`` and ``b``, the produced command
 will be equivalent to the shell command:
 
-.. code:: shell
+.. code:: console
 
     $ foo "a" "b"
 
@@ -210,7 +210,7 @@ you must quote the variable:
 
 which is equivalent to the following shell command:
 
-.. code:: shell
+.. code:: console
 
     $ foo "a b"
 

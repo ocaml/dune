@@ -322,7 +322,7 @@ The Plugin "plugin1"
 Running the Example
 ^^^^^^^^^^^^^^^^^^^
 
-.. code::
+.. code:: console
 
   $ dune build @install && dune exec ./app.exe
   Registration of Plugin1

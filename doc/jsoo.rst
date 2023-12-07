@@ -7,7 +7,7 @@ JavaScript Compilation With Js_of_ocaml
 Js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
 translating OCaml bytecode to JS files. The compiler can be installed with opam:
 
-.. code:: bash
+.. code:: console
 
    $ opam install js_of_ocaml-compiler
 
@@ -21,9 +21,9 @@ libraries/executables to JS.
 To build a JS executable, just define an executable as you would normally.
 Consider this example:
 
-.. code:: bash
+.. code:: console
 
-   echo 'print_endline "hello from js"' > foo.ml
+   $ echo 'print_endline "hello from js"' > foo.ml
 
 With the following ``dune`` file:
 
@@ -33,7 +33,7 @@ With the following ``dune`` file:
 
 And then request the ``.js`` target:
 
-.. code:: bash
+.. code:: console
 
    $ dune build ./foo.bc.js
    $ node _build/default/foo.bc.js

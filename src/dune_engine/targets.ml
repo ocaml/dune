@@ -118,10 +118,49 @@ module Produced = struct
     ; dirs : 'a Filename.Map.t Path.Build.Map.t
     }
 
+  module Error = struct
+    type t =
+      | Missing_dir of Path.Build.t
+      | Unreadable_dir of Path.Build.t * Unix_error.Detailed.t
+      | Unsupported_file of Path.Build.t * File_kind.t
+
+    let message = function
+      | Missing_dir dir ->
+        [ Pp.textf
+            "Rule failed to produce directory %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
+             |> Path.Source.to_string_maybe_quoted)
+        ]
+      | Unreadable_dir (dir, (unix_error, _, _)) ->
+        (* CR-soon amokhov: This case is untested. *)
+        [ Pp.textf
+            "Rule produced unreadable directory %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
+             |> Path.Source.to_string_maybe_quoted)
+        ; Pp.verbatim (Unix.error_message unix_error)
+        ]
+      | Unsupported_file (file, kind) ->
+        (* CR-soon amokhov: This case is untested. *)
+        [ Pp.textf
+            "Rule produced file %S with unrecognised kind %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn file
+             |> Path.Source.to_string_maybe_quoted)
+            (File_kind.to_string kind)
+        ]
+    ;;
+
+    let to_string_hum = function
+      | Missing_dir _ -> "missing directory"
+      | Unreadable_dir (_, unix_error) -> Unix_error.Detailed.to_string_hum unix_error
+      | Unsupported_file _ -> "unsupported file kind"
+    ;;
+  end
+
   let of_validated =
-    let rec collect dir : (unit Filename.Map.t Path.Build.Map.t, _) result =
+    let rec collect dir : (unit Filename.Map.t Path.Build.Map.t, Error.t) result =
       match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
-      | Error e -> Error (`Directory dir, e)
+      | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
+      | Error e -> Error (Unreadable_dir (dir, e))
       | Ok dir_contents ->
         let open Result.O in
         let+ filenames, dirs =
@@ -130,13 +169,17 @@ module Produced = struct
             ~init:(Filename.Map.empty, Path.Build.Map.empty)
             ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
               match (kind : File_kind.t) with
-              | S_REG -> Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
+              (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
+              | S_LNK | S_REG ->
+                Ok (String.Map.add_exn acc_filenames filename (), acc_dirs)
               | S_DIR ->
                 let+ dir = collect (Path.Build.relative dir filename) in
                 acc_filenames, Path.Build.Map.union_exn acc_dirs dir
-              | _ -> Ok (acc_filenames, acc_dirs))
+              | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
         in
-        Path.Build.Map.add_exn dirs dir filenames
+        if not (String.Map.is_empty filenames)
+        then Path.Build.Map.add_exn dirs dir filenames
+        else dirs
     in
     fun (validated : Validated.t) ->
       match Path.Build.Set.to_list_map validated.dirs ~f:collect |> Result.List.all with
@@ -158,47 +201,11 @@ module Produced = struct
     maybe_async (fun () -> of_validated targets)
     >>| function
     | Ok t -> t
-    | Error (`Directory dir, (Unix.ENOENT, _, _)) ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Rule failed to produce directory %S"
-            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
-             |> Path.Source.to_string_maybe_quoted)
-        ]
-    | Error (`Directory dir, (unix_error, _, _)) ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Rule produced unreadable directory %S"
-            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
-             |> Path.Source.to_string_maybe_quoted)
-        ; Pp.verbatim (Unix.error_message unix_error)
-        ]
+    | Error error -> User_error.raise ~loc (Error.message error)
   ;;
 
   let of_file_list_exn list =
     { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }
-  ;;
-
-  let expand_validated_exn (validated : Validated.t) dir_filename_pairs =
-    let files = Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ()) in
-    let dirs =
-      Path.Build.Map.of_list_multi dir_filename_pairs
-      |> Path.Build.Map.map ~f:(Filename.Map.of_list_map_exn ~f:(fun file -> file, ()))
-    in
-    let is_unexpected dir =
-      not
-        (Path.Build.Set.exists validated.dirs ~f:(fun validated_dir ->
-           Path.Build.is_descendant dir ~of_:validated_dir))
-    in
-    Path.Build.Map.iteri dirs ~f:(fun dir _ ->
-      if is_unexpected dir
-      then
-        Code_error.raise
-          "Targets.Produced.expand_validated_exn: Unexpected directory."
-          [ "validated", Validated.to_dyn validated; "dir", Path.Build.to_dyn dir ]);
-    { files; dirs }
   ;;
 
   let all_files { files; dirs } =

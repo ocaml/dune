@@ -76,23 +76,24 @@ module Produced : sig
     ; dirs : 'a Filename.Map.t Path.Build.Map.t
     }
 
+  module Error : sig
+    type t
+
+    val message : t -> 'a Pp.t list
+    val to_string_hum : t -> string
+  end
+
   (** Expand [targets : Validated.t] by recursively traversing directory targets
       and collecting all contained files. *)
-  val of_validated
-    :  Validated.t
-    -> (unit t, [ `Directory of Path.Build.t ] * Unix_error.Detailed.t) result
+  val of_validated : Validated.t -> (unit t, Error.t) result
 
   (** Like [of_validated] but assumes the targets have been just produced by a
-      rule. If some directory targets aren't readable, an error is raised *)
+      rule. If some directory targets aren't readable, an error is raised. *)
   val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t Fiber.t
 
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)
   val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
-
-  (** Add a list of discovered directory-filename pairs to [Validated.t]. Raises
-      a code error on an unexpected directory. *)
-  val expand_validated_exn : Validated.t -> (Path.Build.t * Filename.t) list -> unit t
 
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t

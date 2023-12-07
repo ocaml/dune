@@ -90,26 +90,29 @@ let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 
+(* to avoid Git translating its CLI *)
+let env = Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+
 let run { dir } =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
-  Process.run ~dir ~display ~stdout_to ~stderr_to failure_mode git
+  Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git
 ;;
 
 let run_capture_line { dir } =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_line ~dir ~display failure_mode git
+  Process.run_capture_line ~dir ~display ~env failure_mode git
 ;;
 
 let run_capture_lines { dir } =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_lines ~dir ~display failure_mode git
+  Process.run_capture_lines ~dir ~display ~env failure_mode git
 ;;
 
 let run_capture_zero_separated_lines { dir } =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_zero_separated ~dir ~display failure_mode git
+  Process.run_capture_zero_separated ~dir ~display ~env failure_mode git
 ;;
 
 let show =
@@ -320,7 +323,7 @@ let remote_exists dir ~name =
   let command = [ "remote"; "--verbose" ] in
   let+ lines =
     let git = Lazy.force Vcs.git in
-    Process.run_capture_lines ~dir ~display ~stderr_to Strict git command
+    Process.run_capture_lines ~dir ~display ~stderr_to ~env Strict git command
   in
   lines
   |> List.find ~f:(fun line ->

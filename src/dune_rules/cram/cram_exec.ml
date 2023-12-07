@@ -214,7 +214,7 @@ let read_exit_codes_and_prefix_maps file =
     | None -> ""
     | Some file ->
       (try Io.read_file ~binary:true file with
-       | Sys_error _ ->
+       | Unix.Unix_error (ENOENT, _, _) | Sys_error _ ->
          (* a script where the first command immediately exits might not produce
             the metadata file *)
          "")

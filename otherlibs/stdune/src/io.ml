@@ -79,11 +79,20 @@ let copy_channels =
 ;;
 
 let setup_copy ?(chmod = Fun.id) ~src ~dst () =
-  let ic = Stdlib.open_in_bin src in
+  let fd =
+    try Unix.openfile src [ O_RDONLY; O_CLOEXEC ] 0 with
+    | Unix.Unix_error (ENOENT, _, _) -> raise (Sys_error "Is a directory")
+  in
+  let ic = Unix.in_channel_of_descr fd in
   let oc =
     try
-      let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod in
-      Stdlib.open_out_gen [ Open_wronly; Open_creat; Open_trunc; Open_binary ] perm dst
+      let perm = (Unix.fstat fd).st_perm |> chmod in
+      let out =
+        let out_fd = Unix.openfile dst [ O_CREAT; O_WRONLY; O_TRUNC; O_CLOEXEC ] perm in
+        Unix.out_channel_of_descr out_fd
+      in
+      set_binary_mode_out out true;
+      out
     with
     | exn ->
       close_in ic;
@@ -228,16 +237,23 @@ struct
   type path = Path.t
 
   let open_in ?(binary = true) p =
-    let fn = Path.to_string p in
-    if binary then Stdlib.open_in_bin fn else Stdlib.open_in fn
+    let fd =
+      let p = Path.to_string p in
+      try Unix.openfile p [ O_RDONLY; O_CLOEXEC ] 0 with
+      | Unix.Unix_error (ENOENT, _, _) ->
+        raise (Sys_error ("no such file or directroy " ^ p))
+    in
+    let chan = Unix.in_channel_of_descr fd in
+    set_binary_mode_in chan binary;
+    chan
   ;;
 
   let open_out ?(binary = true) ?(perm = 0o666) p =
     let fn = Path.to_string p in
-    let flags : Stdlib.open_flag list =
-      [ Open_wronly; Open_creat; Open_trunc; (if binary then Open_binary else Open_text) ]
-    in
-    Stdlib.open_out_gen flags perm fn
+    let fd = Unix.openfile fn [ O_TRUNC; O_CREAT; O_WRONLY; O_CLOEXEC ] perm in
+    let chan = Unix.out_channel_of_descr fd in
+    set_binary_mode_out chan binary;
+    chan
   ;;
 
   let with_file_in ?binary fn ~f = Exn.protectx (open_in ?binary fn) ~finally:close_in ~f

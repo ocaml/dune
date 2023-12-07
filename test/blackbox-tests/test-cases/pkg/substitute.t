@@ -65,16 +65,18 @@ Now with variables set
   > We substitute '%%{name}%%' into '%{name}%' and '%%{_:name}%%' into '%{_:name}%'
   > And '%%{version}%%' is set to '%{version}%'
   > There is also some paths set:
-  > '%%{lib}%%' is '%{lib}%'
-  > '%%{libexec}%%' is '%{libexec}%'
-  > '%%{bin}%%' is '%{bin}%'
-  > '%%{sbin}%%' is '%{sbin}%'
-  > '%%{toplevel}%%' is '%{toplevel}%'
-  > '%%{share}%%' is '%{share}%'
-  > '%%{etc}%%' is '%{etc}%'
-  > '%%{doc}%%' is '%{doc}%'
-  > '%%{stublibs}%%' is '%{stublibs}%'
-  > '%%{man}%%' is '%{man}%'
+  > %%{lib}%% is '%{lib}%'
+  > %%{libexec}%% is '%{libexec}%'
+  > %%{bin}%% is '%{bin}%'
+  > %%{sbin}%% is '%{sbin}%'
+  > %%{toplevel}%% is '%{toplevel}%'
+  > %%{share}%% is '%{share}%'
+  > %%{etc}%% is '%{etc}%'
+  > %%{doc}%% is '%{doc}%'
+  > %%{stublibs}%% is '%{stublibs}%'
+  > %%{man}%% is '%{man}%'
+  > %%{with-test}%% is '%{with-test}%'
+  > %%{os}%% is '%{os}%'
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
   > (source (copy $PWD/test-source))
@@ -83,20 +85,22 @@ Now with variables set
   >   (substitute defined.ml.in defined.ml)
   >   (system "cat defined.ml")))
   > EOF
-  $ build_pkg test
+  $ build_pkg test 2>&1 | sed 's/%{os}% is.*/%{os}% is $REDACTED/g'
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
   And '%{version}%' is set to 'dev'
   There is also some paths set:
-  '%{lib}%' is '../target/lib'
-  '%{libexec}%' is '../target/lib'
-  '%{bin}%' is '../target/bin'
-  '%{sbin}%' is '../target/sbin'
-  '%{toplevel}%' is '../target/lib/toplevel'
-  '%{share}%' is '../target/share'
-  '%{etc}%' is '../target/etc'
-  '%{doc}%' is '../target/doc'
-  '%{stublibs}%' is '../target/lib/stublibs'
-  '%{man}%' is '../target/man'
+  %{lib}% is '../target/lib'
+  %{libexec}% is '../target/lib'
+  %{bin}% is '../target/bin'
+  %{sbin}% is '../target/sbin'
+  %{toplevel}% is '../target/lib/toplevel'
+  %{share}% is '../target/share'
+  %{etc}% is '../target/etc'
+  %{doc}% is '../target/doc'
+  %{stublibs}% is '../target/lib/stublibs'
+  %{man}% is '../target/man'
+  %{with-test}% is ''
+  %{os}% is $REDACTED
 
 It is also possible to use variables of your dependencies:
 

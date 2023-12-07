@@ -66,7 +66,7 @@ val validate : t -> Validation_result.t
 val head : t -> Path.Build.t option
 
 val to_dyn : t -> Dyn.t
-val pp : t -> _ Pp.t
+val all : t -> Path.Build.t list
 
 (** The set of targets produced by an action. Each target may be tagged with a
     payload, for example, the target's digest. *)
@@ -87,10 +87,6 @@ module Produced : sig
       and collecting all contained files. *)
   val of_validated : Validated.t -> (unit t, Error.t) result
 
-  (** Like [of_validated] but assumes the targets have been just produced by a
-      rule. If some directory targets aren't readable, an error is raised. *)
-  val produced_after_rule_executed_exn : loc:Loc.t -> Validated.t -> unit t Fiber.t
-
   (** Populates only the [files] field, leaving [dirs] empty. Raises a code
       error if the list contains duplicates. *)
   val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
@@ -107,14 +103,8 @@ module Produced : sig
   val collect_digests
     :  'a t
     -> all_errors:bool
-    -> f:(Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
-    -> ( Digest.t t
-         , (Path.Build.t * Cached_digest.Digest_result.Error.t) Nonempty_list.t )
-         result
+    -> f:(Path.Build.t -> 'a -> (Digest.t, 'e) result)
+    -> (Digest.t t, (Path.Build.t * 'e) Nonempty_list.t) result
 
   val to_dyn : _ t -> Dyn.t
 end
-
-(** will run in a background thread if
-    [background_file_system_operations_in_rule_execution] is set *)
-val maybe_async : (unit -> 'a) -> 'a Fiber.t

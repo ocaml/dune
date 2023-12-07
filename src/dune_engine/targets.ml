@@ -9,15 +9,6 @@ type t =
   ; dirs : Path.Build.Set.t
   }
 
-let maybe_async f =
-  (* It would be nice to do this check only once and return a function, but the
-     type of this function would need to be polymorphic which is forbidden by
-     the relaxed value restriction. *)
-  match Config.(get background_file_system_operations_in_rule_execution) with
-  | `Enabled -> Scheduler.async_exn f
-  | `Disabled -> Fiber.return (f ())
-;;
-
 module File = struct
   let create file = { files = Path.Build.Set.singleton file; dirs = Path.Build.Set.empty }
 end
@@ -59,11 +50,7 @@ let to_dyn { files; dirs } =
   Dyn.Record [ "files", Path.Build.Set.to_dyn files; "dirs", Path.Build.Set.to_dyn dirs ]
 ;;
 
-let pp { files; dirs } =
-  Pp.enumerate
-    (Path.Build.Set.to_list files @ Path.Build.Set.to_list dirs)
-    ~f:(fun target -> Pp.text (Dpath.describe_target target))
-;;
+let all { files; dirs } = Path.Build.Set.to_list files @ Path.Build.Set.to_list dirs
 
 let exists { files; dirs } ~f =
   Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
@@ -196,14 +183,6 @@ module Produced = struct
         Ok { files; dirs }
   ;;
 
-  let produced_after_rule_executed_exn ~loc targets =
-    let open Fiber.O in
-    maybe_async (fun () -> of_validated targets)
-    >>| function
-    | Ok t -> t
-    | Error error -> User_error.raise ~loc (Error.message error)
-  ;;
-
   let of_file_list_exn list =
     { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }
   ;;
@@ -249,37 +228,39 @@ module Produced = struct
     Digest.generic (List.concat all_digests)
   ;;
 
-  (* Dummy digest because we want to continue discoverign all the errors
+  (* Dummy digest because we want to continue discovering all the errors
      and we need some value to return in [mapi]. It will never be returned *)
   let dummy_digest = Digest.generic ""
 
-  exception Short_circuit of (Path.Build.t * Cached_digest.Digest_result.Error.t)
+  exception Short_circuit
 
   let collect_digests
     { files; dirs }
     ~all_errors
-    ~(f : Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
+    ~(f : Path.Build.t -> 'a -> (Digest.t, 'e) result)
     =
     let errors = ref [] in
     let f path a =
       match f path a with
       | Ok s -> s
-      | Error e when all_errors ->
+      | Error e ->
         errors := (path, e) :: !errors;
-        dummy_digest
-      | Error e -> raise_notrace (Short_circuit (path, e))
+        if all_errors then dummy_digest else raise_notrace Short_circuit
     in
-    try
-      let files = Path.Build.Map.mapi files ~f in
-      let dirs =
-        Path.Build.Map.mapi dirs ~f:(fun dir ->
-          Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
-      in
-      match Nonempty_list.of_list !errors with
-      | None -> Ok { files; dirs }
-      | Some list -> Error list
-    with
-    | Short_circuit e -> Error [ e ]
+    let result =
+      try
+        let files = Path.Build.Map.mapi files ~f in
+        let dirs =
+          Path.Build.Map.mapi dirs ~f:(fun dir ->
+            Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
+        in
+        { files; dirs }
+      with
+      | Short_circuit -> { files = Path.Build.Map.empty; dirs = Path.Build.Map.empty }
+    in
+    match Nonempty_list.of_list !errors with
+    | None -> Ok result
+    | Some list -> Error list
   ;;
 
   let to_dyn { files; dirs } =

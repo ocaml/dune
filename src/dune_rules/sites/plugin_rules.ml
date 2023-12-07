@@ -1,5 +1,5 @@
 open Import
-open Dune_file.Plugin
+open Plugin
 open Memo.O
 
 let meta_file ~dir { name; libraries = _; site = _, (pkg, site); _ } =

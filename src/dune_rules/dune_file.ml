@@ -1098,33 +1098,6 @@ module Library = struct
     end)
 end
 
-module Plugin = struct
-  (* CR-rgrinberg: this shouldn't live here *)
-  type t =
-    { package : Package.t
-    ; name : Package.Name.t
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; site : Loc.t * (Package.Name.t * Site.t)
-    ; optional : bool
-    }
-
-  let decode =
-    fields
-      (let+ name = field "name" Package.Name.decode
-       and+ libraries = field "libraries" (repeat (located Lib_name.decode))
-       and+ site = field "site" (located (pair Package.Name.decode Site.decode))
-       and+ package = Stanza_common.Pkg.field ~stanza:"plugin"
-       and+ optional = field_b "optional" in
-       { name; libraries; site; package; optional })
-  ;;
-
-  include Stanza.Make (struct
-      type nonrec t = t
-
-      include Poly
-    end)
-end
-
 module Install_conf = struct
   type t =
     { section : Section_with_site.t
@@ -2363,109 +2336,102 @@ module Stanzas = struct
   type constructors = Stanza.Parser.t list
 
   let stanzas : constructors =
-    [ ( "library"
-      , let+ x = Library.decode in
-        let base = [ Library.make_stanza x ] in
-        match Library_redirect.Local.of_lib x with
-        | None -> base
-        | Some r -> Library_redirect.Local.make_stanza r :: base )
-    ; ( "foreign_library"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
-        and+ x = Foreign.Library.decode in
-        [ Foreign.Library.make_stanza x ] )
-    ; "executable", Executables.single >>| execs
-    ; "executables", Executables.multi >>| execs
-    ; ( "rule"
-      , let+ loc = loc
-        and+ x = Rule.decode in
-        [ Rule.make_stanza { x with loc } ] )
-    ; ( "ocamllex"
-      , let+ loc = loc
-        and+ x = Rule.ocamllex in
-        rules (Rule.ocamllex_to_rule loc x) )
-    ; ( "ocamlyacc"
-      , let+ loc = loc
-        and+ x = Rule.ocamlyacc in
-        rules (Rule.ocamlyacc_to_rule loc x) )
-    ; ( "install"
-      , let+ x = Install_conf.decode in
-        [ Install_conf.make_stanza x ] )
-    ; ( "alias"
-      , let+ x = Alias_conf.decode in
-        [ Alias_conf.make_stanza x ] )
-    ; ( "copy_files"
-      , let+ x = Copy_files.decode in
-        [ Copy_files.make_stanza x ] )
-    ; ( "copy_files#"
-      , let+ x = Copy_files.decode in
-        [ Copy_files.make_stanza { x with add_line_directive = true } ] )
-    ; ( "include"
-      , let+ loc = loc
-        and+ fn = relative_file in
-        [ Include.make_stanza (loc, fn) ] )
-    ; ( "documentation"
-      , let+ d = Documentation.decode in
-        [ Documentation.make_stanza d ] )
-    ; ( "jbuild_version"
-      , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)
-        and+ _ = Jbuild_version.decode in
-        [] )
-    ; ( "tests"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
-        and+ t = Tests.multi in
-        [ Tests.make_stanza t ] )
-    ; ( "test"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
-        and+ t = Tests.single in
-        [ Tests.make_stanza t ] )
-    ; ( "external_variant"
-      , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
-        [] )
-    ; ( "env"
-      , let+ x = Dune_env.decode in
-        [ Dune_env.make_stanza x ] )
-    ; ( "include_subdirs"
-      , let* project = Dune_project.get_exn () in
-        let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
-        and+ t =
-          let enable_qualified = Dune_project.is_extension_set project Coq_stanza.key in
-          Include_subdirs.decode ~enable_qualified
-        and+ loc = loc in
-        [ Include_subdirs.make_stanza (loc, t) ] )
-    ; ( "toplevel"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
-        and+ t = Toplevel.decode in
-        [ Toplevel.make_stanza t ] )
-    ; ( "deprecated_library_name"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
-        and+ t = Deprecated_library_name.decode in
-        [ Deprecated_library_name.make_stanza t ] )
-    ; ( "cram"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
-        and+ t = Cram_stanza.decode
-        and+ project = Dune_project.get_exn ()
-        and+ loc = loc in
-        if not (Dune_project.cram project)
-        then
-          User_warning.emit
-            ~loc
-            ~is_error:(Dune_project.dune_version project >= (3, 0))
-            [ Pp.text "Cram tests are not enabled in this project." ]
-            ~hints:
-              [ Pp.text
-                  "You can enable cram tests by adding (cram enable) to your \
-                   dune-project file."
-              ];
-        [ Cram_stanza.make_stanza t ] )
-    ; ( "generate_sites_module"
-      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
-        and+ t = Generate_sites_module_stanza.decode in
-        [ Generate_sites_module_stanza.make_stanza t ] )
-    ; ( "plugin"
-      , let+ () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1)
-        and+ t = Plugin.decode in
-        [ Plugin.make_stanza t ] )
-    ]
+    Site_stanzas.all
+    @ [ ( "library"
+        , let+ x = Library.decode in
+          let base = [ Library.make_stanza x ] in
+          match Library_redirect.Local.of_lib x with
+          | None -> base
+          | Some r -> Library_redirect.Local.make_stanza r :: base )
+      ; ( "foreign_library"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+          and+ x = Foreign.Library.decode in
+          [ Foreign.Library.make_stanza x ] )
+      ; "executable", Executables.single >>| execs
+      ; "executables", Executables.multi >>| execs
+      ; ( "rule"
+        , let+ loc = loc
+          and+ x = Rule.decode in
+          [ Rule.make_stanza { x with loc } ] )
+      ; ( "ocamllex"
+        , let+ loc = loc
+          and+ x = Rule.ocamllex in
+          rules (Rule.ocamllex_to_rule loc x) )
+      ; ( "ocamlyacc"
+        , let+ loc = loc
+          and+ x = Rule.ocamlyacc in
+          rules (Rule.ocamlyacc_to_rule loc x) )
+      ; ( "install"
+        , let+ x = Install_conf.decode in
+          [ Install_conf.make_stanza x ] )
+      ; ( "alias"
+        , let+ x = Alias_conf.decode in
+          [ Alias_conf.make_stanza x ] )
+      ; ( "copy_files"
+        , let+ x = Copy_files.decode in
+          [ Copy_files.make_stanza x ] )
+      ; ( "copy_files#"
+        , let+ x = Copy_files.decode in
+          [ Copy_files.make_stanza { x with add_line_directive = true } ] )
+      ; ( "include"
+        , let+ loc = loc
+          and+ fn = relative_file in
+          [ Include.make_stanza (loc, fn) ] )
+      ; ( "documentation"
+        , let+ d = Documentation.decode in
+          [ Documentation.make_stanza d ] )
+      ; ( "jbuild_version"
+        , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)
+          and+ _ = Jbuild_version.decode in
+          [] )
+      ; ( "tests"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
+          and+ t = Tests.multi in
+          [ Tests.make_stanza t ] )
+      ; ( "test"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
+          and+ t = Tests.single in
+          [ Tests.make_stanza t ] )
+      ; ( "external_variant"
+        , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
+          [] )
+      ; ( "env"
+        , let+ x = Dune_env.decode in
+          [ Dune_env.make_stanza x ] )
+      ; ( "include_subdirs"
+        , let* project = Dune_project.get_exn () in
+          let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
+          and+ t =
+            let enable_qualified = Dune_project.is_extension_set project Coq_stanza.key in
+            Include_subdirs.decode ~enable_qualified
+          and+ loc = loc in
+          [ Include_subdirs.make_stanza (loc, t) ] )
+      ; ( "toplevel"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
+          and+ t = Toplevel.decode in
+          [ Toplevel.make_stanza t ] )
+      ; ( "deprecated_library_name"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+          and+ t = Deprecated_library_name.decode in
+          [ Deprecated_library_name.make_stanza t ] )
+      ; ( "cram"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
+          and+ t = Cram_stanza.decode
+          and+ project = Dune_project.get_exn ()
+          and+ loc = loc in
+          if not (Dune_project.cram project)
+          then
+            User_warning.emit
+              ~loc
+              ~is_error:(Dune_project.dune_version project >= (3, 0))
+              [ Pp.text "Cram tests are not enabled in this project." ]
+              ~hints:
+                [ Pp.text
+                    "You can enable cram tests by adding (cram enable) to your \
+                     dune-project file."
+                ];
+          [ Cram_stanza.make_stanza t ] )
+      ]
   ;;
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

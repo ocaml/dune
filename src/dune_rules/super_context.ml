@@ -331,8 +331,7 @@ let add_packages_env context ~base stanzas packages =
             match Stanza.repr stanza with
             | Dune_file.Install_conf.T { section = Site { pkg; site; loc }; _ } ->
               add_in_package_sites pkg site loc
-            | Dune_file.Plugin.T { site = loc, (pkg, site); _ } ->
-              add_in_package_sites pkg site loc
+            | Plugin.T { site = loc, (pkg, site); _ } -> add_in_package_sites pkg site loc
             | _ -> Memo.return acc)
       in
       (* Add the site of the local package: it should only useful for making

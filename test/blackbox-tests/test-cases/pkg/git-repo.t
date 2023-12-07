@@ -134,4 +134,4 @@ With this set up in place, locking should still work as the commit is not
 relevant
 
   $ XDG_CACHE_HOME=$PWD/dune-cache dune pkg lock 2> /dev/null && echo "Solution found"
-  [1]
+  Solution found

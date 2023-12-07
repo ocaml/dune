@@ -17,4 +17,4 @@ type t =
 
 include Stanza.S with type t := t
 
-val decode : t Dune_lang.Decoder.t
+val stanza : (string * Stanza.t list Dune_lang.Decoder.t) list

@@ -38,9 +38,25 @@ include Stanza.Make (struct
   end)
 
 let decode =
+  let* () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
+  and+ project = Dune_project.get_exn ()
+  and+ loc = loc in
+  let* () =
+    let+ () = return () in
+    if not (Dune_project.cram project)
+    then
+      User_warning.emit
+        ~loc
+        ~is_error:(Dune_project.dune_version project >= (3, 0))
+        [ Pp.text "Cram tests are not enabled in this project." ]
+        ~hints:
+          [ Pp.text
+              "You can enable cram tests by adding (cram enable) to your dune-project \
+               file."
+          ]
+  in
   fields
-    (let+ loc = loc
-     and+ applies_to = field "applies_to" decode_applies_to ~default:default_applies_to
+    (let+ applies_to = field "applies_to" decode_applies_to ~default:default_applies_to
      and+ alias = field_o "alias" Dune_lang.Alias.decode
      and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
@@ -53,4 +69,11 @@ let decode =
          (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> located bool)
      in
      { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias })
+;;
+
+let stanza =
+  [ ( "cram"
+    , let+ t = decode in
+      List.singleton (make_stanza t) )
+  ]
 ;;

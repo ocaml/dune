@@ -146,12 +146,11 @@ module Workspace_local = struct
     | Error error -> Miss (Error_while_collecting_directory_targets error)
     | Ok targets ->
       (match
-         Targets.Produced.Option.mapi targets ~f:(fun target () ->
-           Cached_digest.build_file ~allow_dirs:true target
-           |> Cached_digest.Digest_result.to_option)
+         Targets.Produced.collect_digests targets ~all_errors:false ~f:(fun target () ->
+           Cached_digest.build_file ~allow_dirs:true target)
        with
-       | Some produced_targets -> Hit produced_targets
-       | None -> Miss Targets_missing)
+       | Ok produced_targets -> Hit produced_targets
+       | Error _ -> Miss Targets_missing)
   ;;
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =

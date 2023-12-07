@@ -249,51 +249,37 @@ module Produced = struct
     Digest.generic (List.concat all_digests)
   ;;
 
-  module Option = struct
-    exception Short_circuit
-
-    let mapi { files; dirs } ~(f : Path.Build.t -> 'a -> 'b option) =
-      let f path a =
-        match f path a with
-        | Some b -> b
-        | None -> raise_notrace Short_circuit
-      in
-      try
-        let files = Path.Build.Map.mapi files ~f in
-        let dirs =
-          Path.Build.Map.mapi dirs ~f:(fun dir ->
-            Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
-        in
-        Some { files; dirs }
-      with
-      | Short_circuit -> None
-    ;;
-  end
-
   (* Dummy digest because we want to continue discoverign all the errors
      and we need some value to return in [mapi]. It will never be returned *)
   let dummy_digest = Digest.generic ""
 
+  exception Short_circuit of (Path.Build.t * Cached_digest.Digest_result.Error.t)
+
   let collect_digests
     { files; dirs }
+    ~all_errors
     ~(f : Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
     =
     let errors = ref [] in
     let f path a =
       match f path a with
       | Ok s -> s
-      | Error e ->
+      | Error e when all_errors ->
         errors := (path, e) :: !errors;
         dummy_digest
+      | Error e -> raise_notrace (Short_circuit (path, e))
     in
-    let files = Path.Build.Map.mapi files ~f in
-    let dirs =
-      Path.Build.Map.mapi dirs ~f:(fun dir ->
-        Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
-    in
-    match Nonempty_list.of_list !errors with
-    | None -> Ok { files; dirs }
-    | Some list -> Error list
+    try
+      let files = Path.Build.Map.mapi files ~f in
+      let dirs =
+        Path.Build.Map.mapi dirs ~f:(fun dir ->
+          Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
+      in
+      match Nonempty_list.of_list !errors with
+      | None -> Ok { files; dirs }
+      | Some list -> Error list
+    with
+    | Short_circuit e -> Error [ e ]
   ;;
 
   let to_dyn { files; dirs } =

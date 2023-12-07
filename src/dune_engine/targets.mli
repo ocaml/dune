@@ -104,12 +104,9 @@ module Produced : sig
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t
 
-  module Option : sig
-    val mapi : 'a t -> f:(Path.Build.t -> 'a -> 'b option) -> 'b t option
-  end
-
   val collect_digests
     :  'a t
+    -> all_errors:bool
     -> f:(Path.Build.t -> 'a -> Cached_digest.Digest_result.t)
     -> ( Digest.t t
          , (Path.Build.t * Cached_digest.Digest_result.Error.t) Nonempty_list.t )

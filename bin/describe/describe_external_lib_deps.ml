@@ -148,7 +148,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
     Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
       let dir = dune_file.dir in
-      match stanza with
+      match Stanza.repr stanza with
       | Dune_rules.Dune_file.Executables.T exes ->
         let* ocaml = Context.ocaml context in
         resolve_libs

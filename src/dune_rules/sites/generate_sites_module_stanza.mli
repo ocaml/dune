@@ -16,4 +16,4 @@ type t =
 
 val decode : t Dune_sexp.Decoder.t
 
-type Stanza.t += T of t
+include Stanza.S with type t := t

@@ -401,9 +401,13 @@ end = struct
   type t = string
 
   let drop_prefix path ~prefix =
-    String.drop_prefix path ~prefix
-    |> Option.map ~f:(fun p ->
-      String.drop_prefix_if_exists ~prefix:"/" p |> Local.of_string)
+    if prefix = path
+    then Some Local.root
+    else (
+      let prefix = prefix ^ "/" in
+      let open Option.O in
+      let+ suffix = String.drop_prefix path ~prefix in
+      Local.of_string suffix)
   ;;
 
   let to_string t = t
@@ -1347,9 +1351,13 @@ let chmod t ~mode = Unix.chmod (to_string t) mode
 let follow_symlink path = Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
 
 let drop_prefix path ~prefix =
-  String.drop_prefix (to_string path) ~prefix:(to_string prefix)
-  |> Option.map ~f:(fun p ->
-    String.drop_prefix_if_exists ~prefix:"/" p |> Local.of_string)
+  if prefix = path
+  then Some Local.root
+  else (
+    let prefix = to_string prefix ^ "/" in
+    let open Option.O in
+    let+ suffix = String.drop_prefix (to_string path) ~prefix in
+    Local.of_string suffix)
 ;;
 
 let drop_prefix_exn t ~prefix =

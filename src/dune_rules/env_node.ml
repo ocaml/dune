@@ -1,13 +1,5 @@
 open Import
 
-module Odoc = struct
-  type warnings = Dune_env.Odoc.warnings =
-    | Fatal
-    | Nonfatal
-
-  type t = { warnings : warnings }
-end
-
 type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
@@ -16,13 +8,9 @@ type t =
   ; link_flags : Link_flags.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
-  ; inline_tests : Dune_env.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Action_builder.t Memo.Lazy.t
-  ; odoc : Odoc.t Action_builder.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t
-  ; format_config : Format_config.t Memo.Lazy.t
-  ; bin_annot : bool Memo.Lazy.t
   }
 
 let scope t = t.scope
@@ -32,18 +20,9 @@ let foreign_flags t = t.foreign_flags
 let link_flags t = Memo.Lazy.force t.link_flags
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
-let inline_tests t = Memo.Lazy.force t.inline_tests
 let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
 let menhir_flags t = Memo.Lazy.force t.menhir_flags |> Action_builder.of_memo_join
-let format_config t = Memo.Lazy.force t.format_config
-
-let set_format_config t format_config =
-  { t with format_config = Memo.Lazy.of_val format_config }
-;;
-
-let odoc t = Memo.Lazy.force t.odoc |> Action_builder.of_memo_join
 let coq_flags t = Memo.Lazy.force t.coq_flags
-let bin_annot t = Memo.Lazy.force t.bin_annot
 
 let expand_str_lazy expander sw =
   match String_with_vars.text_only sw with
@@ -66,7 +45,6 @@ let make
   ~default_context_flags
   ~default_env
   ~default_artifacts
-  ~default_bin_annot
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in
@@ -76,17 +54,6 @@ let make
        | None -> Memo.return root
        | Some t -> Memo.Lazy.force t >>= field)
       >>= extend)
-  in
-  let inherited_if_absent ~field ~root ~f_absent =
-    Memo.lazy_ (fun () ->
-      match root with
-      | Some x -> Memo.return x
-      | None ->
-        (match inherit_from with
-         | None -> f_absent None
-         | Some t ->
-           let* field = Memo.Lazy.force t >>= field in
-           f_absent (Some field)))
   in
   let config_binaries = Option.value config.binaries ~default:[] in
   let local_binaries =
@@ -127,18 +94,6 @@ let make
         ~spec:config.flags
         ~default:flags
         ~eval:(Expander.expand_and_eval_set expander))
-  in
-  let inline_tests =
-    match config with
-    | { inline_tests = Some s; _ } -> Memo.Lazy.of_val s
-    | { inline_tests = None; _ } ->
-      inherited
-        ~field:inline_tests
-        Memo.return
-        ~root:
-          (if Profile.is_inline_test profile
-           then Dune_env.Inline_tests.Enabled
-           else Disabled)
   in
   let js_of_ocaml =
     inherited
@@ -195,22 +150,6 @@ let make
           let+ expander = Memo.Lazy.force expander in
           Expander.expand_and_eval_set expander menhir_flags ~standard:flags)
   in
-  let odoc =
-    let open Odoc in
-    let root =
-      (* DUNE4: Enable for dev profile in the future *)
-      Action_builder.return { warnings = Nonfatal }
-    in
-    inherited
-      ~field:(fun t -> Memo.return (odoc t))
-      ~root
-      (fun warnings ->
-        Memo.return
-        @@
-        let open Action_builder.O in
-        let+ { warnings } = warnings in
-        { warnings = Option.value config.odoc.warnings ~default:warnings })
-  in
   let coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t =
     inherited
       ~field:coq_flags
@@ -231,21 +170,6 @@ let make
          in
          { Coq_flags.coq_flags; coqdoc_flags })
   in
-  let format_config =
-    inherited_if_absent
-      ~field:format_config
-      ~root:config.format_config
-      ~f_absent:(function
-      | Some x -> Memo.return x
-      | None ->
-        Code_error.raise
-          "format config should always have a default value taken from the project root"
-          [])
-  in
-  let bin_annot =
-    inherited ~field:bin_annot ~root:default_bin_annot (fun default ->
-      Memo.return (Option.value ~default config.bin_annot))
-  in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -253,12 +177,8 @@ let make
   ; external_env
   ; artifacts
   ; local_binaries
-  ; inline_tests
   ; js_of_ocaml
   ; menhir_flags
-  ; odoc
   ; coq_flags
-  ; format_config
-  ; bin_annot
   }
 ;;

@@ -31,7 +31,9 @@ let decode =
     let decode_form =
       sum
         ~force_parens:true
-        [ ("concat", repeat decode >>| fun x -> Concat x)
+        [ ( "concat"
+          , let+ x = repeat decode in
+            Concat x )
         ; ( "when"
           , let+ condition = Blang.Ast.decode decode
             and+ t = decode in
@@ -41,21 +43,27 @@ let decode =
             and+ then_ = decode
             and+ else_ = decode in
             If { condition; then_; else_ } )
-        ; ("has_undefined_var", decode >>| fun x -> Has_undefined_var x)
+        ; ( "has_undefined_var"
+          , let+ x = decode in
+            Has_undefined_var x )
         ; ( "catch_undefined_var"
           , let+ value = decode
             and+ fallback = decode in
             Catch_undefined_var { value; fallback } )
         ; ( "and_absorb_undefined_var"
-          , repeat (Blang.Ast.decode decode) >>| fun x -> And_absorb_undefined_var x )
+          , let+ x = repeat (Blang.Ast.decode decode) in
+            And_absorb_undefined_var x )
         ; ( "or_absorb_undefined_var"
-          , repeat (Blang.Ast.decode decode) >>| fun x -> Or_absorb_undefined_var x )
+          , let+ x = repeat (Blang.Ast.decode decode) in
+            Or_absorb_undefined_var x )
         ]
     in
     located decode_form
     >>| (fun (loc, x) -> Form (loc, x))
-    <|> (String_with_vars.decode >>| fun x -> Literal x)
-    <|> (located (Blang.Ast.decode decode) >>| fun (loc, x) -> Form (loc, Blang x)))
+    <|> (let+ x = String_with_vars.decode in
+         Literal x)
+    <|> let+ loc, x = located (Blang.Ast.decode decode) in
+        Form (loc, Blang x))
 ;;
 
 let decode_blang = Blang.Ast.decode decode
@@ -136,12 +144,12 @@ let catch_undefined_var ?(loc = Loc.none) value ~fallback =
   Form (loc, Catch_undefined_var { value; fallback })
 ;;
 
-let and_absorb_undefined_var ?(loc = Loc.none) blangs =
-  Form (loc, And_absorb_undefined_var blangs)
-;;
-
 let or_absorb_undefined_var ?(loc = Loc.none) blangs =
   Form (loc, Or_absorb_undefined_var blangs)
+;;
+
+let and_absorb_undefined_var ?(loc = Loc.none) blangs =
+  Form (loc, And_absorb_undefined_var blangs)
 ;;
 
 let blang ?(loc = Loc.none) t = Form (loc, Blang t)
@@ -215,8 +223,20 @@ let rec simplify = function
          ( loc
          , Catch_undefined_var { value = simplify value; fallback = simplify fallback } )
      | And_absorb_undefined_var blangs ->
-       Form (loc, And_absorb_undefined_var (List.map blangs ~f:simplify_blang))
+       let blangs : blang list =
+         List.concat_map blangs ~f:(fun blang ->
+           match simplify_blang blang with
+           | Expr (Form (_, And_absorb_undefined_var blangs)) -> blangs
+           | blang -> [ blang ])
+       in
+       Form (loc, And_absorb_undefined_var blangs)
      | Or_absorb_undefined_var blangs ->
+       let blangs : blang list =
+         List.concat_map blangs ~f:(fun (blang : blang) ->
+           match simplify_blang blang with
+           | Expr (Form (_, Or_absorb_undefined_var blangs)) -> blangs
+           | blang -> [ blang ])
+       in
        Form (loc, Or_absorb_undefined_var (List.map blangs ~f:simplify_blang))
      | Blang b -> Form (loc, Blang (simplify_blang b)))
 
@@ -232,7 +252,21 @@ and simplify_blang = function
   | Compare (op, lhs, rhs) -> Compare (op, simplify lhs, simplify rhs)
   | Not blang -> Not (simplify_blang blang)
   | And [ b ] -> simplify_blang b
-  | And blangs -> And (List.map blangs ~f:simplify_blang)
+  | And blangs ->
+    let blangs =
+      List.concat_map blangs ~f:(fun blang ->
+        match simplify_blang blang with
+        | And xs -> xs
+        | blang -> [ blang ])
+    in
+    And (List.map blangs ~f:simplify_blang)
   | Or [ b ] -> simplify_blang b
-  | Or blangs -> Or (List.map blangs ~f:simplify_blang)
+  | Or blangs ->
+    let blangs =
+      List.concat_map blangs ~f:(fun blang ->
+        match simplify_blang blang with
+        | Or xs -> xs
+        | blang -> [ blang ])
+    in
+    Or (List.map blangs ~f:simplify_blang)
 ;;

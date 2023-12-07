@@ -279,7 +279,7 @@ end = struct
       in
       let set_dir m = List.map ~f:(fun (cm_kind, p) -> cm_dir m cm_kind, p) in
       let+ modules_impl =
-        let+ bin_annot = Super_context.bin_annot sctx ~dir in
+        let+ bin_annot = Env_stanza_db.bin_annot ~dir in
         List.concat_map installable_modules.impl ~f:(fun m ->
           let cmt_files =
             match bin_annot with
@@ -328,7 +328,7 @@ end = struct
   let keep_if expander ~scope stanza =
     let+ keep =
       let open Dune_file in
-      match (stanza : Stanza.t) with
+      match Stanza.repr stanza with
       | Library.T lib ->
         let* enabled_if = Expander.eval_blang expander lib.enabled_if in
         if enabled_if
@@ -454,7 +454,7 @@ end = struct
     | Some (stanza, package) ->
       let new_entries =
         let open Dune_file in
-        match (stanza : Stanza.t) with
+        match Stanza.repr stanza with
         | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i
         | Library.T lib ->

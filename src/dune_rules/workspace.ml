@@ -2,15 +2,18 @@ open Import
 open Dune_lang.Decoder
 module Repository = Dune_pkg.Pkg_workspace.Repository
 
+let default_repositories = [ Repository.overlay; Repository.upstream ]
+
 module Lock_dir = struct
   type t =
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    ; constraints : Dune_lang.Package_dependency.t list
     }
 
-  let to_dyn { path; version_preference; solver_env; repositories } =
+  let to_dyn { path; version_preference; solver_env; repositories; constraints } =
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; ( "version_preference"
@@ -18,14 +21,15 @@ module Lock_dir = struct
       ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
       ; ( "repositories"
         , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
+      ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
       ]
   ;;
 
-  let hash { path; version_preference; solver_env; repositories } =
-    Poly.hash (path, version_preference, solver_env, repositories)
+  let hash { path; version_preference; solver_env; repositories; constraints } =
+    Poly.hash (path, version_preference, solver_env, repositories, constraints)
   ;;
 
-  let equal { path; version_preference; solver_env; repositories } t =
+  let equal { path; version_preference; solver_env; repositories; constraints } t =
     Path.Source.equal path t.path
     && Option.equal
          Dune_pkg.Version_preference.equal
@@ -33,6 +37,7 @@ module Lock_dir = struct
          t.version_preference
     && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
     && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
+    && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
   ;;
 
   let decode ~dir =
@@ -42,7 +47,7 @@ module Lock_dir = struct
         ~parse:(fun ~loc string ->
           Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
         ~eq:Dune_pkg.Pkg_workspace.Repository.Name.equal
-        ~standard:[ Dune_pkg.Pkg_workspace.Repository.Name.of_string "default" ]
+        ~standard:(List.map default_repositories ~f:Repository.name)
     in
     let decode =
       let+ path =
@@ -51,11 +56,15 @@ module Lock_dir = struct
       and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
-      and+ repositories = Dune_lang.Ordered_set_lang.field "repositories" in
+      and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
+      and+ constraints =
+        field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
+      in
       { path
       ; solver_env
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
+      ; constraints
       }
     in
     fields decode
@@ -693,7 +702,7 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
-       let repos = Repository.default :: List.map ~f:Lazy.force repos in
+       let repos = default_repositories @ List.map ~f:Lazy.force repos in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in
@@ -772,7 +781,7 @@ let default clflags =
   ; contexts = [ Context.default ~x ~profile ~instrument_with ]
   ; env = None
   ; config
-  ; repos = [ Repository.default ]
+  ; repos = default_repositories
   ; lock_dirs = []
   }
 ;;

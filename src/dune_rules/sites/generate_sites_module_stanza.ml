@@ -12,7 +12,8 @@ type t =
 let decode =
   let open Dune_sexp.Decoder in
   fields
-    (let+ loc = loc
+    (let* () = Dune_lang.Syntax.since Site.dune_site_syntax (0, 1) in
+     let+ loc = loc
      and+ module_ = field "module" Module_name.decode
      and+ sourceroot = field_b "sourceroot"
      and+ relocatable = field_b "relocatable"
@@ -28,4 +29,6 @@ let decode =
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)

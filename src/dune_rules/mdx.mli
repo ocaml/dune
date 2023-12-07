@@ -6,7 +6,7 @@ type t
 
 val enabled_if : t -> Blang.t
 
-type Stanza.t += T of t
+include Stanza.S with type t := t
 
 (** Generates the rules to handle the given mdx stanza *)
 val gen_rules

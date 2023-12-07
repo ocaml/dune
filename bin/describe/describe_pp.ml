@@ -61,7 +61,7 @@ let get_pped_file super_context file =
          Option.bind dune_file ~f:(fun dune_file ->
            dune_file.stanzas
            |> List.fold_left ~init:None ~f:(fun acc stanza ->
-             match stanza with
+             match Stanza.repr stanza with
              | Dune_rules.Dune_file.Library.T lib ->
                let preprocess =
                  Dune_rules.Preprocess.Per_module.(

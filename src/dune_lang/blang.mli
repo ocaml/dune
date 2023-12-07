@@ -1,17 +1,4 @@
-open Stdune
 open Dune_sexp
-
-module Op : sig
-  type t =
-    | Eq
-    | Gt
-    | Gte
-    | Lte
-    | Lt
-    | Neq
-
-  val eval : t -> Ordering.t -> bool
-end
 
 (* Note that this type is defined separately from [_ Ast.t] so that its
    constructors are scoped within the [Blang] module, allowing us to construct
@@ -22,7 +9,7 @@ type 'string ast =
   | Expr of 'string
   | And of 'string ast list
   | Or of 'string ast list
-  | Compare of Op.t * 'string * 'string
+  | Compare of Relop.t * 'string * 'string
 
 type t = String_with_vars.t ast
 

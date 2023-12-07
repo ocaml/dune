@@ -102,7 +102,7 @@ end = struct
   let extend_expander t ~dir ~expander_for_artifacts =
     let+ artifacts_host = artifacts_host t ~dir
     and+ bindings =
-      let+ inline_tests = get_node t ~dir >>= Env_node.inline_tests in
+      let+ inline_tests = Env_stanza_db.inline_tests ~dir in
       let str = Dune_env.Inline_tests.to_string inline_tests in
       Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
     in
@@ -129,7 +129,8 @@ end = struct
     @@
     let open Option.O in
     let* stanzas = stanzas in
-    List.find_map stanzas.stanzas ~f:(function
+    List.find_map stanzas.stanzas ~f:(fun stanza ->
+      match Stanza.repr stanza with
       | Dune_env.T config -> Some config
       | _ -> None)
   ;;
@@ -139,11 +140,7 @@ end = struct
     let project = Scope.project scope in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope)
-      then (
-        let format_config = Dune_project.format_config project in
-        Memo.lazy_ (fun () ->
-          let+ default_env = Memo.Lazy.force t.default_env in
-          Env_node.set_format_config default_env format_config))
+      then Memo.lazy_ (fun () -> Memo.Lazy.force t.default_env)
       else (
         match Path.Build.parent dir with
         | None ->
@@ -181,7 +178,6 @@ end = struct
       ~default_context_flags
       ~default_env:t.context_env
       ~default_artifacts:t.artifacts
-      ~default_bin_annot:true
   ;;
 
   (* Here we jump through some hoops to construct [t] as well as create a
@@ -278,7 +274,6 @@ let add_alias_action t alias ~dir ~loc action =
 ;;
 
 let env_node = Env_tree.get_node
-let bin_annot t ~dir = Env_tree.get_node t ~dir >>= Env_node.bin_annot
 
 let resolve_program_memo t ~dir ?hint ~loc bin =
   let* artifacts = Env_tree.artifacts_host t ~dir in
@@ -333,11 +328,10 @@ let add_packages_env context ~base stanzas packages =
                 in
                 add_in_package_section acc pkg_name section
             in
-            match stanza with
+            match Stanza.repr stanza with
             | Dune_file.Install_conf.T { section = Site { pkg; site; loc }; _ } ->
               add_in_package_sites pkg site loc
-            | Dune_file.Plugin.T { site = loc, (pkg, site); _ } ->
-              add_in_package_sites pkg site loc
+            | Plugin.T { site = loc, (pkg, site); _ } -> add_in_package_sites pkg site loc
             | _ -> Memo.return acc)
       in
       (* Add the site of the local package: it should only useful for making
@@ -403,7 +397,6 @@ let make_default_env_node
       ~default_context_flags
       ~default_env:root_env
       ~default_artifacts:artifacts
-      ~default_bin_annot:true
   in
   make
     ~config_stanza:env_nodes.context

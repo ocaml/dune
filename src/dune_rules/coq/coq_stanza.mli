@@ -21,7 +21,7 @@ module Extraction : sig
 
   val ml_target_fnames : t -> string list
 
-  type Stanza.t += T of t
+  include Stanza.S with type t := t
 end
 
 module Theory : sig
@@ -37,7 +37,7 @@ module Theory : sig
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
     }
 
-  type Stanza.t += T of t
+  include Stanza.S with type t := t
 end
 
 module Coqpp : sig
@@ -46,7 +46,7 @@ module Coqpp : sig
     ; loc : Loc.t
     }
 
-  type Stanza.t += T of t
+  include Stanza.S with type t := t
 end
 
 val key : unit Dune_project.Extension.t

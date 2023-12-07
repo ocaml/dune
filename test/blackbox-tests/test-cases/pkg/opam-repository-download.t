@@ -19,15 +19,23 @@ Make a mock repo tarball that will get used by dune to download the package
   $ mkdir fake-xdg-cache
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.8)
+  > (lang dune 3.10)
   > (generate_opam_files true)
   > 
   > (package
   >   (name baz)
   >   (depends bar))
   > EOF
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > EOF
 
-  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock --opam-repository-url=git+file://$(pwd)/mock-opam-repository
+  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -45,11 +53,19 @@ reproducible)
 
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
 
-Now try it with an a path, given it is not a URL, it can't be reproduced on
+Now try it with an a path. Given it is not a git URL, it can't be reproduced on
 other systems and thus shouldn't be included.
 
   $ rm -r dune.lock
-  $ dune pkg lock --opam-repository-path=$(pwd)/mock-opam-repository
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
+  > EOF
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1

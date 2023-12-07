@@ -393,7 +393,9 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
             Resolve.Memo.lift_memo (Lib.DB.available (Scope.libs scope) lib)
           in
           match available with
-          | false -> p >>| fun _ -> assert false
+          | false ->
+            let+ _ = p in
+            assert false
           | true ->
             Resolve.Memo.fail
               (User_error.make

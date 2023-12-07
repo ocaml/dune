@@ -165,7 +165,7 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
     let+ x = eval_rec x ~dir ~f
     and+ y = eval_rec y ~dir ~f in
     Result.bind x ~f:(fun x ->
-      Result.map y ~f:(fun y -> Blang.Op.eval op (Value.L.compare_vals ~dir x y)))
+      Result.map y ~f:(fun y -> Relop.eval op (Value.L.compare_vals ~dir x y)))
 ;;
 
 let eval t ~dir ~f =

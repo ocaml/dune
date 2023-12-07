@@ -35,8 +35,6 @@ let check_for_dup_lock_dir_paths ts =
 
 let solve
   per_context
-  ~opam_repository_path
-  ~opam_repository_url
   ~update_opam_repositories
   ~solver_env_from_current_system
   ~experimental_translate_opam_filters
@@ -57,20 +55,14 @@ let solve
            ; repos
            ; solver_env = solver_env_from_context
            ; context_common = { name = context_name; _ }
+           ; constraints
            ; repositories
            }
          ->
          let solver_env =
            solver_env ~solver_env_from_context ~solver_env_from_current_system
          in
-         let* repos =
-           get_repos
-             repos
-             ~opam_repository_path
-             ~opam_repository_url
-             ~repositories
-             ~update_opam_repositories
-         in
+         let* repos = get_repos repos ~repositories ~update_opam_repositories in
          let overlay =
            Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
          in
@@ -87,7 +79,8 @@ let solve
                  (Package_name.Map.map
                     local_packages
                     ~f:Dune_pkg.Local_package.for_solver)
-               ~experimental_translate_opam_filters)
+               ~experimental_translate_opam_filters
+               ~constraints)
          >>| function
          | Error (`Diagnostic_message message) -> Error (context_name, message)
          | Ok { lock_dir; files; _ } ->
@@ -128,8 +121,6 @@ let lock
   ~all_contexts
   ~dont_poll_system_solver_variables
   ~version_preference
-  ~opam_repository_path
-  ~opam_repository_url
   ~update_opam_repositories
   ~experimental_translate_opam_filters
   =
@@ -149,8 +140,6 @@ let lock
   in
   solve
     per_context
-    ~opam_repository_path
-    ~opam_repository_url
     ~update_opam_repositories
     ~solver_env_from_current_system
     ~experimental_translate_opam_filters
@@ -158,8 +147,6 @@ let lock
 
 let term =
   let+ builder = Common.Builder.term
-  and+ opam_repository_path = Opam_repository_path.term
-  and+ opam_repository_url = Opam_repository_url.term
   and+ context_name =
     context_term
       ~doc:
@@ -211,8 +198,6 @@ let term =
       ~all_contexts
       ~dont_poll_system_solver_variables
       ~version_preference
-      ~opam_repository_path
-      ~opam_repository_url
       ~update_opam_repositories:(not skip_update)
       ~experimental_translate_opam_filters)
 ;;

@@ -23,6 +23,8 @@ module Emit = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let implicit_alias = Alias.Name.of_string "melange"
@@ -162,5 +164,9 @@ let syntax =
 let () =
   Dune_project.Extension.register_simple
     syntax
-    (return [ ("melange.emit", Emit.decode >>| fun x -> [ Emit.T x ]) ])
+    (return
+       [ ( "melange.emit"
+         , let+ stanza = Emit.decode in
+           [ Emit.make_stanza stanza ] )
+       ])
 ;;

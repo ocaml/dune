@@ -7,19 +7,28 @@ module Constraint = struct
   include Dune_lang.Package_constraint
 
   module Op = struct
-    include Op
+    include Dune_lang.Relop
 
-    let to_relop = function
-      | Eq -> nopos `Eq
-      | Gte -> nopos `Geq
-      | Lte -> nopos `Leq
-      | Gt -> nopos `Gt
-      | Lt -> nopos `Lt
-      | Neq -> nopos `Neq
+    let to_opam : t -> OpamParserTypes.relop = function
+      | Eq -> `Eq
+      | Gte -> `Geq
+      | Lte -> `Leq
+      | Gt -> `Gt
+      | Lt -> `Lt
+      | Neq -> `Neq
+    ;;
+
+    let of_opam = function
+      | `Eq -> Eq
+      | `Geq -> Gte
+      | `Leq -> Lte
+      | `Gt -> Gt
+      | `Lt -> Lt
+      | `Neq -> Neq
     ;;
 
     let to_relop_pelem op =
-      let ({ pelem; _ } : OpamParserTypes.FullPos.relop) = to_relop op in
+      let ({ pelem; _ } : OpamParserTypes.FullPos.relop) = nopos (to_opam op) in
       pelem
     ;;
   end
@@ -86,11 +95,11 @@ let opam_constraint t : OpamParserTypes.FullPos.value =
   let rec opam_constraint context = function
     | Constraint.Bvar v -> Constraint.Variable.to_opam v
     | Uop (op, x) ->
-      nopos (Prefix_relop (Constraint.Op.to_relop op, Constraint.Value.to_opam x))
+      nopos (Prefix_relop (nopos @@ Constraint.Op.to_opam op, Constraint.Value.to_opam x))
     | Bop (op, x, y) ->
       nopos
         (Relop
-           ( Constraint.Op.to_relop op
+           ( nopos @@ Constraint.Op.to_opam op
            , Constraint.Value.to_opam x
            , Constraint.Value.to_opam y ))
     | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false

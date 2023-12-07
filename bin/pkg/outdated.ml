@@ -3,14 +3,7 @@ open Pkg_common
 module Lock_dir = Dune_pkg.Lock_dir
 module Opam_repo = Dune_pkg.Opam_repo
 
-let find_outdated_packages
-  ~context_name_arg
-  ~all_contexts_arg
-  ~opam_repository_path
-  ~opam_repository_url
-  ~transitive
-  ()
-  =
+let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
   let open Fiber.O in
   let+ pps, not_founds =
     Per_context.choose ~context_name_arg ~all_contexts_arg ~version_preference_arg:None
@@ -23,16 +16,11 @@ let find_outdated_packages
               ; solver_env = _
               ; context_common = _
               ; repositories
+              ; constraints = _
               }
             ->
             (* updating makes sense when checking for outdated packages *)
-            let* repos =
-              get_repos
-                repos
-                ~opam_repository_path
-                ~opam_repository_url
-                ~repositories
-                ~update_opam_repositories:true
+            let* repos = get_repos repos ~repositories ~update_opam_repositories:true
             and+ local_packages = find_local_packages in
             let lock_dir = Lock_dir.read_disk lock_dir_path in
             let+ results =
@@ -88,8 +76,6 @@ let term =
       value
       & flag
       & info [ "all-contexts" ] ~doc:"Check for outdated packages in all contexts")
-  and+ opam_repository_path = Opam_repository_path.term
-  and+ opam_repository_url = Opam_repository_url.term
   and+ transitive =
     Arg.(
       value
@@ -101,12 +87,7 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config
-  @@ find_outdated_packages
-       ~context_name_arg
-       ~all_contexts_arg
-       ~opam_repository_path
-       ~opam_repository_url
-       ~transitive
+  @@ find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive
 ;;
 
 let info =

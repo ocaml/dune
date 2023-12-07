@@ -62,4 +62,4 @@ val add_error : t -> message:User_message.t -> t
 val add_warning : t -> message:User_message.t -> t
 val fire_hooks : t -> profile:Profile.t -> unit
 
-type Stanza.t += T of t
+include Stanza.S with type t := t

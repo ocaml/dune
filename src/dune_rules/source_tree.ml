@@ -228,10 +228,13 @@ end = struct
             let+ is_directory, file =
               match kind with
               | S_DIR ->
-                File.of_source_path (In_source_dir path)
-                >>| (function
-                 | Ok file -> true, file
-                 | Error _ -> true, File.dummy)
+                let+ file =
+                  File.of_source_path (In_source_dir path)
+                  >>| function
+                  | Ok file -> file
+                  | Error _ -> File.dummy
+                in
+                true, file
               | S_LNK ->
                 Fs_memo.path_stat (In_source_dir path)
                 >>| (function
@@ -289,7 +292,8 @@ end = struct
     let init = Filename.Map.empty
 
     let find t path =
-      Filename.Map.find t (Path.Source.basename path)
+      Path.Source.basename path
+      |> Filename.Map.find t
       |> Option.value ~default:File.Map.empty
     ;;
 
@@ -641,7 +645,6 @@ end = struct
        with
        | None -> Memo.return None
        | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
-         let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
          let* readdir =
            if virtual_
            then Memo.return (Readdir.empty path)
@@ -663,7 +666,10 @@ end = struct
              in
              Option.value project ~default:parent_dir.project
          in
-         let* contents, visited = contents readdir ~dirs_visited ~project ~dir_status in
+         let* contents, visited =
+           let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
+           contents readdir ~dirs_visited ~project ~dir_status
+         in
          let dir = Dir0.create ~project ~path ~status:dir_status ~contents in
          Memo.return (Some { Output.dir; visited }))
   ;;
@@ -780,28 +786,27 @@ module Dir = struct
           else None)
       in
       let+ dir_tests =
-        Memo.parallel_map
-          (Filename.Map.to_list t.contents.sub_dirs)
-          ~f:(fun (name, sub_dir) ->
-            match Cram_test.is_cram_suffix name with
-            | false -> Memo.return None
-            | true ->
-              let+ t = Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn in
-              let contents = t.dir in
-              let dir = contents.path in
-              let fname = Cram_test.fname_in_dir_test in
-              let test =
-                let file = Path.Source.relative dir fname in
-                Cram_test.Dir { file; dir }
-              in
-              let files = contents.contents.files in
-              if Filename.Set.is_empty files
-              then None
-              else
-                Some
-                  (if Filename.Set.mem files fname
-                   then Ok test
-                   else Error (Missing_run_t test)))
+        Filename.Map.to_list t.contents.sub_dirs
+        |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
+          match Cram_test.is_cram_suffix name with
+          | false -> Memo.return None
+          | true ->
+            let+ t = Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn in
+            let contents = t.dir in
+            let dir = contents.path in
+            let fname = Cram_test.fname_in_dir_test in
+            let test =
+              let file = Path.Source.relative dir fname in
+              Cram_test.Dir { file; dir }
+            in
+            let files = contents.contents.files in
+            if Filename.Set.is_empty files
+            then None
+            else
+              Some
+                (if Filename.Set.mem files fname
+                 then Ok test
+                 else Error (Missing_run_t test)))
         >>| List.filter_opt
       in
       file_tests @ dir_tests

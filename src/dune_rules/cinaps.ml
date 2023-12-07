@@ -17,6 +17,8 @@ let cinaps_alias = Alias.Name.of_string name
 
 include Stanza.Make (struct
     type nonrec t = t
+
+    include Poly
   end)
 
 let syntax =
@@ -65,7 +67,11 @@ let () =
   let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple
     syntax
-    (return [ (name, decode >>| fun x -> [ T x ]) ])
+    (return
+       [ ( name
+         , let+ stanza = decode in
+           [ make_stanza stanza ] )
+       ])
 ;;
 
 let gen_rules sctx t ~dir ~scope =

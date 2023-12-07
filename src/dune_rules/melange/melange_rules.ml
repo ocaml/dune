@@ -577,7 +577,8 @@ let rec under_melange_emit_target ~dir =
      | None -> under_melange_emit_target ~dir:parent
      | Some stanzas ->
        (match
-          List.find_map stanzas.stanzas ~f:(function
+          List.find_map stanzas.stanzas ~f:(fun stanza ->
+            match Stanza.repr stanza with
             | Melange_stanzas.Emit.T mel ->
               let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
               Option.some_if (Path.Build.equal target_dir dir) mel
@@ -643,7 +644,8 @@ let setup_emit_js_rules sctx ~dir =
      | None -> Gen_rules.no_rules
      | Some dune_file ->
        let build_dir_only_sub_dirs =
-         List.filter_map dune_file.stanzas ~f:(function
+         List.filter_map dune_file.stanzas ~f:(fun stanza ->
+           match Stanza.repr stanza with
            | Melange_stanzas.Emit.T mel -> Some mel.target
            | _ -> None)
          |> Subdir_set.of_list

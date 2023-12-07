@@ -9,9 +9,13 @@ module New () = Dune_console
 
 module type New_console = module type of Dune_console
 
-(* In order to keep tests accross different backends consistent, we create some generic
-   test scripts here that take the created [Console]. We then test these for each
-   backend. *)
+(* In order to keep tests accross different backends consistent, we create some
+   generic test scripts here that take the created [Console]. We then test these
+   for each backend.
+
+   Remember to always clear any status lines at the end, or else carriage
+   returns will be leaked into the stderr of the inline test runners.
+*)
 
 let test_basic_usage (module Console : New_console) =
   Console.printf "Hello World!";
@@ -57,7 +61,8 @@ let test_status_line_clearing_multiline (module Console : New_console) =
 let test_status_line_overwrite (module Console : New_console) =
   let open Console in
   Status_line.set (Status_line.Constant (Pp.text "Here is a status line"));
-  Status_line.set (Status_line.Constant (Pp.text "Here is another status line"))
+  Status_line.set (Status_line.Constant (Pp.text "Here is another status line"));
+  Status_line.clear ()
 ;;
 
 (* Dumb backend *)
@@ -141,7 +146,7 @@ let%expect_test "Status line clearing." =
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing (module Console);
   escape [%expect.output];
-  [%expect {| 
+  [%expect {|
 Here is a status line\r                     \r
  |}]
 ;;
@@ -154,7 +159,7 @@ let%expect_test "Status line clearing with wrapping." =
   test_status_line_clearing_with_wrapping (module Console);
   escape [%expect.output];
   [%expect
-    {| 
+    {|
 This status line is a problem because of the fact that it is especially long
 and therefore will not be cleared properly.\r                                                                                                                        \r
  |}]
@@ -180,6 +185,6 @@ let%expect_test "Status line overwriting." =
   escape [%expect.output];
   [%expect
     {|
-Here is a status line\r                     \rHere is another status line
+Here is a status line\r                     \rHere is another status line\r                           \r
   |}]
 ;;

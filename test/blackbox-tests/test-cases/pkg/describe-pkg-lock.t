@@ -20,6 +20,14 @@ First we setup a repo.
   >  (default
   >   (name "foo")
   >   (lock_dir foo.lock)))
+  > (lock_dir
+  >  (repositories mock))
+  > (lock_dir
+  >  (path foo.lock)
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Here is the output of solving for multiple contexts:

@@ -15,6 +15,6 @@ type t =
   ; runtest_alias : (Loc.t * bool) option
   }
 
-type Stanza.t += T of t
+include Stanza.S with type t := t
 
-val decode : t Dune_lang.Decoder.t
+val stanza : (string * Stanza.t list Dune_lang.Decoder.t) list

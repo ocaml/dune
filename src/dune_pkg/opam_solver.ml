@@ -48,14 +48,28 @@ module Context_for_dune = struct
          warning, but only once per package. This field will keep track of the
          packages for which we've printed a warning. *)
       mutable available_cache : bool OpamPackage.Map.t
+    ; constraints : OpamTypes.filtered_formula Package_name.Map.t
     }
 
-  let create ~solver_env ~repos ~local_packages ~version_preference ~stats_updater =
+  let create
+    ~solver_env
+    ~repos
+    ~local_packages
+    ~version_preference
+    ~stats_updater
+    ~constraints
+    =
     let dune_version =
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
     let candidates_cache = Table.create (module Package_name) 1 in
+    let constraints =
+      List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
+        constraint_.name, constraint_)
+      |> Package_name.Map.of_list_multi
+      |> Package_name.Map.map ~f:Package_dependency.list_to_opam_filtered_formula
+    in
     { repos
     ; version_preference
     ; local_packages
@@ -64,6 +78,7 @@ module Context_for_dune = struct
     ; stats_updater
     ; candidates_cache
     ; available_cache = OpamPackage.Map.empty
+    ; constraints
     }
   ;;
 
@@ -170,11 +185,20 @@ module Context_for_dune = struct
   ;;
 
   let filter_deps t package filtered_formula =
-    let package_is_local =
-      OpamPackage.name package
-      |> Package_name.of_opam_package_name
-      |> Package_name.Map.mem t.local_packages
+    let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+    let filtered_formula =
+      OpamFormula.map_up_formula
+        (fun formula ->
+          match formula with
+          | Atom (pkg, _) ->
+            let name = Package_name.of_opam_package_name pkg in
+            (match Package_name.Map.find t.constraints name with
+             | None -> formula
+             | Some additional -> OpamFormula.And (formula, additional))
+          | _ -> formula)
+        filtered_formula
     in
+    let package_is_local = Package_name.Map.mem t.local_packages name in
     Resolve_opam_formula.apply_filter
       ~stats_updater:(Some t.stats_updater)
       ~with_test:package_is_local
@@ -320,15 +344,7 @@ let filter_to_blang ~package ~loc filter =
     | FBool false -> Blang.Ast.false_
     | (FString _ | FIdent _) as slangable -> Blang.Expr (filter_to_slang slangable)
     | FOp (lhs, op, rhs) ->
-      let op =
-        match op with
-        | `Eq -> Blang.Op.Eq
-        | `Neq -> Neq
-        | `Geq -> Gte
-        | `Gt -> Gt
-        | `Leq -> Lte
-        | `Lt -> Lt
-      in
+      let op = Package_dependency.Constraint.Op.of_opam op in
       Blang.Compare (op, filter_to_slang lhs, filter_to_slang rhs)
     | FAnd (lhs, rhs) ->
       Blang.Expr
@@ -368,23 +384,27 @@ let simplify_filter solver_env =
     | _ -> None)
 ;;
 
-let filter_needed = function
-  | None -> true
-  | Some f -> OpamFilter.eval_to_bool ~default:true (Fun.const None) f
+let partial_eval_filter = function
+  | None -> `Filter None
+  | Some f ->
+    let env = Fun.const None in
+    (match OpamFilter.eval_to_bool env f with
+     | exception Failure _ -> `Filter (Some f)
+     | b -> if b then `Filter None else `Skip)
 ;;
 
 let opam_commands_to_actions solver_env loc package (commands : OpamTypes.command list) =
   List.filter_map commands ~f:(fun (args, filter) ->
     let filter = Option.map filter ~f:(simplify_filter solver_env) in
-    match filter_needed filter with
-    | false -> None
-    | true ->
+    match partial_eval_filter filter with
+    | `Skip -> None
+    | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun (simple_arg, filter) ->
           let filter = Option.map filter ~f:(simplify_filter solver_env) in
-          match filter_needed filter with
-          | false -> None
-          | true ->
+          match partial_eval_filter filter with
+          | `Skip -> None
+          | `Filter filter ->
             let slang =
               let slang =
                 match simple_arg with
@@ -513,7 +533,8 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
     ; version
-    ; dev = false
+    ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
+      dev = false
     ; source
     ; extra_sources
     }
@@ -592,7 +613,7 @@ let opam_package_to_lock_file_pkg
   kind, { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
 ;;
 
-let solve_package_list ~local_package_names context =
+let solve_package_list packages context =
   let* result =
     Fiber.collect_errors (fun () ->
       (* [Solver.solve] returns [Error] when it's unable to find a solution to
@@ -601,7 +622,7 @@ let solve_package_list ~local_package_names context =
          an unexpected opam exception from crashing dune, we catch all
          exceptions raised by the solver and report them as [User_error]s
          instead. *)
-      Solver.solve context local_package_names)
+      Solver.solve context packages)
     >>| function
     | Ok (Ok res) -> Ok res
     | Ok (Error e) -> Error (`Diagnostics e)
@@ -638,6 +659,7 @@ let solve_lock_dir
   repos
   ~local_packages
   ~experimental_translate_opam_filters
+  ~constraints
   =
   let* solver_result =
     let stats_updater = Solver_stats.Updater.init () in
@@ -649,12 +671,13 @@ let solve_lock_dir
         ~local_packages:
           (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
         ~stats_updater
+        ~constraints
     in
-    solve_package_list
-      context
-      ~local_package_names:
-        (Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
-           Package_name.to_opam_package_name name))
+    let packages =
+      Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
+        Package_name.to_opam_package_name name)
+    in
+    solve_package_list packages context
     >>| Result.map ~f:(fun solution ->
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->

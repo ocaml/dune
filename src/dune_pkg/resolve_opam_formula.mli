@@ -16,7 +16,7 @@ val apply_filter
   -> OpamTypes.formula
 
 module Version_constraint : sig
-  type t = Dune_lang.Package_constraint.Op.t * Package_version.t
+  type t = Dune_lang.Relop.t * Package_version.t
 end
 
 module Unsatisfied_formula_hint : sig

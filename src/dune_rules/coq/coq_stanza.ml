@@ -46,9 +46,11 @@ module Coqpp = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
-  let p = "coq.pp", decode >>| fun x -> [ T x ]
+  let p = "coq.pp", decode >>| fun x -> [ make_stanza x ]
 end
 
 module Buildable = struct
@@ -133,9 +135,11 @@ module Extraction = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
-  let p = "coq.extraction", decode >>| fun x -> [ T x ]
+  let p = "coq.extraction", decode >>| fun x -> [ make_stanza x ]
 end
 
 module Theory = struct
@@ -236,6 +240,8 @@ module Theory = struct
 
   include Stanza.Make (struct
       type nonrec t = t
+
+      include Poly
     end)
 
   let coqlib_warn x =
@@ -248,8 +254,8 @@ module Theory = struct
     x
   ;;
 
-  let coqlib_p = "coqlib", decode >>| fun x -> [ T (coqlib_warn x) ]
-  let p = "coq.theory", decode >>| fun x -> [ T x ]
+  let coqlib_p = "coqlib", decode >>| fun x -> [ make_stanza (coqlib_warn x) ]
+  let p = "coq.theory", decode >>| fun x -> [ make_stanza x ]
 end
 
 let unit_stanzas =

@@ -91,6 +91,7 @@ include struct
   module Visibility = Visibility
   module Dep_conf = Dep_conf
   module Package_version = Package_version
+  module Relop = Relop
 end
 
 include Dune_engine.No_io

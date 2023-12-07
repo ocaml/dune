@@ -11,7 +11,8 @@
 open Import
 
 type t
-type Stanza.t += T of t
+
+include Stanza.S with type t := t
 
 (** Generate the rules to handle this cinaps stanza *)
 val gen_rules : Super_context.t -> t -> dir:Path.Build.t -> scope:Scope.t -> unit Memo.t

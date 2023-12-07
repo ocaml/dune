@@ -66,7 +66,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       >>| Path.Build.Set.of_list
     in
     Memo.List.map d.stanzas ~f:(fun stanza ->
-      match (stanza : Stanza.t) with
+      match Stanza.repr stanza with
       | Dune_file.Install_conf.T { section = Section Bin; files; _ } ->
         binaries_from_install files
       | Dune_file.Executables.T

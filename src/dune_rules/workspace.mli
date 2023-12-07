@@ -8,6 +8,7 @@ module Lock_dir : sig
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    ; constraints : Dune_lang.Package_dependency.t list
     }
 
   val equal : t -> t -> bool
@@ -97,6 +98,7 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
+val default_repositories : Dune_pkg.Pkg_workspace.Repository.t list
 
 module Clflags : sig
   type t =

@@ -92,11 +92,11 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
     if include_stanza
     then Some stanza
     else (
-      match stanza with
+      match Stanza.repr stanza with
       | Dune_file.Library.T l ->
         let open Option.O in
         let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
-        Dune_file.Library_redirect.Local.T redirect
+        Dune_file.Library_redirect.Local.make_stanza redirect
       | _ -> None))
 ;;
 

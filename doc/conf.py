@@ -24,9 +24,11 @@ sys.path.append(os.path.abspath('exts'))
 from sphinx.highlighting import lexers
 from dune_lexer import DuneLexer
 from opam_lexer import OpamLexer
+from cram_lexer import CramLexer
 
 lexers[DuneLexer.name] = DuneLexer(startinline=True)
 lexers[OpamLexer.name] = OpamLexer()
+lexers[CramLexer.name] = CramLexer()
 
 # -- General configuration ------------------------------------------------
 

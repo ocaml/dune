@@ -54,7 +54,8 @@ module Dependency_hash = struct
     with
     | None -> User_error.raise [ Pp.text "No non-local dependencies" ]
     | Some dependency_hash ->
-      print_endline (Local_package.Dependency_hash.to_string dependency_hash)
+      Console.print
+        [ Pp.verbatim (Local_package.Dependency_hash.to_string dependency_hash) ]
   ;;
 
   let term =

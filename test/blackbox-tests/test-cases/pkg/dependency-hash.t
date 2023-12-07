@@ -39,7 +39,7 @@ A single package with a single non-local dependency:
   >  (depends
   >   foo))
   > EOF
-  $ dune describe pkg dependency-hash | tee hash1.txt
+  $ dune describe pkg dependency-hash 2>&1 | tee hash1.txt
   9f76a6d656fe14d54ba74f864e736dc3
 
 Adding another dependency causes the hash to change:
@@ -51,7 +51,7 @@ Adding another dependency causes the hash to change:
   >   foo
   >   bar))
   > EOF
-  $ dune describe pkg dependency-hash | tee hash2.txt
+  $ dune describe pkg dependency-hash 2>&1 | tee hash2.txt
   142f33129a06ccbebd65a0bad3d94857
   $ diff hash1.txt hash2.txt
   1c1
@@ -74,7 +74,7 @@ doesn't change the hash:
   >  (depends
   >   foo))
   > EOF
-  $ dune describe pkg dependency-hash | tee hash3.txt
+  $ dune describe pkg dependency-hash 2>&1 | tee hash3.txt
   142f33129a06ccbebd65a0bad3d94857
   $ diff hash2.txt hash3.txt
 
@@ -91,7 +91,7 @@ Adding a constraint to one of the dependencies causes the hash to change:
   >  (depends
   >   (foo (and :with-test (> 0.1)))))
   > EOF
-  $ dune describe pkg dependency-hash | tee hash4.txt
+  $ dune describe pkg dependency-hash 2>&1 | tee hash4.txt
   ecad1d0d60084711169be48b130c9c52
   $ diff hash3.txt hash4.txt
   1c1
@@ -118,6 +118,6 @@ change the hash:
   >  (depends
   >   (foo (and :with-test (> 0.1)))))
   > EOF
-  $ dune describe pkg dependency-hash | tee hash5.txt
+  $ dune describe pkg dependency-hash 2>&1 | tee hash5.txt
   ecad1d0d60084711169be48b130c9c52
   $ diff hash4.txt hash5.txt

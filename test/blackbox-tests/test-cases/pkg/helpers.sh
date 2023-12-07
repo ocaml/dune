@@ -84,9 +84,7 @@ solve_project() {
 solve_project_translate_opam_filters() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune pkg lock \
-    --dont-poll-system-solver-variables \
-    --experimental-translate-opam-filters
+  dune pkg lock --dont-poll-system-solver-variables
 }
 
 make_lockdir() {

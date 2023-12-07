@@ -568,8 +568,7 @@ module Library = struct
            parsing the ordered set language succeeds, ask the user to upgrade to
            a supported version *)
         try_ Mode_conf.Lib.Set.decode (fun _exn ->
-          Mode_conf.Lib.Set.decode_osl ~stanza_loc project
-          >>| fun _modes ->
+          let+ _modes = Mode_conf.Lib.Set.decode_osl ~stanza_loc project in
           Syntax.Error.since
             stanza_loc
             Stanza.syntax
@@ -1183,8 +1182,7 @@ module Executables = struct
     let has_public_name t = Option.is_some t.public
 
     let public_name ~dash_is_none =
-      located string
-      >>| fun (loc, s) ->
+      let+ loc, s = located string in
       ( loc
       , match s with
         | "-" -> if dash_is_none then None else Some s
@@ -1465,8 +1463,7 @@ module Executables = struct
       include O.Map
 
       let decode =
-        located (repeat (located decode))
-        >>| fun (loc, l) ->
+        let+ loc, l = located (repeat (located decode)) in
         match l with
         | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->

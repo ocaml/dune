@@ -67,7 +67,11 @@ let () =
   let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple
     syntax
-    (return [ (name, decode >>| fun x -> [ make_stanza x ]) ])
+    (return
+       [ ( name
+         , let+ stanza = decode in
+           [ make_stanza stanza ] )
+       ])
 ;;
 
 let gen_rules sctx t ~dir ~scope =

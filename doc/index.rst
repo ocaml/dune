@@ -52,6 +52,7 @@ Welcome to Dune's Documentation!
    reference/packages
    reference/findlib
    reference/aliases
+   reference/cram
    concepts/scopes
    concepts/variables
    concepts/dependency-spec

@@ -1,9 +1,4 @@
-open! Import
-module Package_universe = Dune_pkg.Package_universe
-module Lock_dir = Dune_pkg.Lock_dir
-module Opam_repo = Dune_pkg.Opam_repo
-module Package_version = Dune_pkg.Package_version
-module Opam_solver = Dune_pkg.Opam_solver
+open Import
 
 let info =
   let doc = "Validate that a lockdir contains a solution for local packages" in

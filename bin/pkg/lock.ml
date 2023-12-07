@@ -1,9 +1,4 @@
 open Import
-open Pkg_common
-module Package_version = Dune_pkg.Package_version
-module Opam_repo = Dune_pkg.Opam_repo
-module Repository_id = Dune_pkg.Repository_id
-module Lock_dir = Dune_pkg.Lock_dir
 
 let solve
   workspace
@@ -16,23 +11,23 @@ let solve
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
      lockdir would fail then no side effect takes place. *)
-  (let* local_packages = find_local_packages in
+  (let* local_packages = Pkg_common.find_local_packages in
    let+ solutions =
      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
      |> Fiber.parallel_map ~f:(fun lock_dir_path ->
        let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
        let solver_env =
-         solver_env
+         Pkg_common.solver_env
            ~solver_env_from_context:
              (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
            ~solver_env_from_current_system
            ~unset_solver_vars_from_context:
-             (unset_solver_vars_of_workspace workspace ~lock_dir_path)
+             (Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
        in
        let* repos =
-         get_repos
-           (repositories_of_workspace workspace)
-           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+         Pkg_common.get_repos
+           (Pkg_common.repositories_of_workspace workspace)
+           ~repositories:(Pkg_common.repositories_of_lock_dir workspace ~lock_dir_path)
            ~update_opam_repositories
        in
        let overlay =
@@ -43,7 +38,7 @@ let solve
            Console.Status_line.remove_overlay overlay;
            Fiber.return ())
          (fun () ->
-           Dune_pkg.Opam_solver.solve_lock_dir
+           Opam_solver.solve_lock_dir
              solver_env
              (Pkg_common.Version_preference.choose
                 ~from_arg:version_preference
@@ -52,7 +47,7 @@ let solve
              repos
              ~local_packages:
                (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
-             ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
+             ~constraints:(Pkg_common.constraints_of_workspace workspace ~lock_dir_path))
        >>= function
        | Error (`Diagnostic_message message) ->
          Fiber.return (Error (lock_dir_path, message))
@@ -67,7 +62,7 @@ let solve
              ; (match Package_name.Map.values lock_dir.packages with
                 | [] ->
                   Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
-                | packages -> pp_packages packages)
+                | packages -> Pkg_common.pp_packages packages)
              ]
          in
          let+ lock_dir = Lock_dir.compute_missing_checksums lock_dir in
@@ -101,8 +96,7 @@ let lock
     if dont_poll_system_solver_variables
     then Fiber.return None
     else
-      Dune_pkg.Sys_poll.solver_env_from_current_system
-        ~path:(Env_path.path Stdune.Env.initial)
+      Sys_poll.solver_env_from_current_system ~path:(Env_path.path Stdune.Env.initial)
       >>| Option.some
   in
   solve
@@ -115,7 +109,7 @@ let lock
 
 let term =
   let+ builder = Common.Builder.term
-  and+ version_preference = Version_preference.term
+  and+ version_preference = Pkg_common.Version_preference.term
   and+ dont_poll_system_solver_variables =
     Arg.(
       value

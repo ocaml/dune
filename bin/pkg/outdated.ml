@@ -1,7 +1,4 @@
 open Import
-open Pkg_common
-module Lock_dir = Dune_pkg.Lock_dir
-module Opam_repo = Dune_pkg.Opam_repo
 
 let find_outdated_packages ~transitive ~lock_dirs_arg () =
   let open Fiber.O in
@@ -11,11 +8,11 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
       (* updating makes sense when checking for outdated packages *)
       let* repos =
-        get_repos
-          (repositories_of_workspace workspace)
-          ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+        Pkg_common.get_repos
+          (Pkg_common.repositories_of_workspace workspace)
+          ~repositories:(Pkg_common.repositories_of_lock_dir workspace ~lock_dir_path)
           ~update_opam_repositories:true
-      and+ local_packages = find_local_packages in
+      and+ local_packages = Pkg_common.find_local_packages in
       let lock_dir = Lock_dir.read_disk lock_dir_path in
       let+ results = Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages in
       ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results

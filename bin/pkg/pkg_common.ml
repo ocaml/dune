@@ -1,8 +1,4 @@
 open Import
-module Lock_dir = Dune_pkg.Lock_dir
-module Solver_env = Dune_pkg.Solver_env
-module Variable_name = Dune_pkg.Variable_name
-module Variable_value = Dune_pkg.Variable_value
 
 let solver_env
   ~solver_env_from_current_system
@@ -20,7 +16,7 @@ let solver_env
 ;;
 
 module Version_preference = struct
-  include Dune_pkg.Version_preference
+  include Version_preference
 
   let term =
     let all_strings = List.map all_by_string ~f:fst in
@@ -47,9 +43,8 @@ module Version_preference = struct
 end
 
 let repositories_of_workspace (workspace : Workspace.t) =
-  List.map workspace.repos ~f:(fun repo ->
-    Dune_pkg.Pkg_workspace.Repository.name repo, repo)
-  |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+  List.map workspace.repos ~f:(fun repo -> Pkg_workspace.Repository.name repo, repo)
+  |> Pkg_workspace.Repository.Name.Map.of_list_exn
 ;;
 
 let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
@@ -63,10 +58,7 @@ let repositories_of_lock_dir workspace ~lock_dir_path =
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
   Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
   |> Option.value
-       ~default:
-         (List.map
-            Workspace.default_repositories
-            ~f:Dune_pkg.Pkg_workspace.Repository.name)
+       ~default:(List.map Workspace.default_repositories ~f:Pkg_workspace.Repository.name)
 ;;
 
 let unset_solver_vars_of_workspace workspace ~lock_dir_path =
@@ -88,9 +80,7 @@ let location_of_opam_url url =
 ;;
 
 let get_repos repos ~repositories ~update_opam_repositories =
-  let module Repository_id = Dune_pkg.Repository_id in
-  let module Opam_repo = Dune_pkg.Opam_repo in
-  let module Repository = Dune_pkg.Pkg_workspace.Repository in
+  let module Repository = Pkg_workspace.Repository in
   repositories
   |> Fiber.parallel_map ~f:(fun name ->
     match Repository.Name.Map.find repos name with
@@ -101,7 +91,7 @@ let get_repos repos ~repositories ~update_opam_repositories =
           @@ Repository.Name.to_string name
         ]
     | Some repo ->
-      let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+      let opam_url = Pkg_workspace.Repository.opam_url repo in
       (match location_of_opam_url opam_url with
        | `Git source ->
          Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
@@ -120,7 +110,6 @@ let find_local_packages =
 ;;
 
 let pp_packages packages =
-  let module Package_version = Dune_pkg.Package_version in
   Pp.enumerate
     packages
     ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
@@ -160,9 +149,7 @@ module Lock_dirs_arg = struct
     let workspace_lock_dirs =
       List.filter_map workspace.contexts ~f:(function
         | Workspace.Context.Default { lock_dir; base = _ } ->
-          let lock_dir_path =
-            Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path
-          in
+          let lock_dir_path = Option.value lock_dir ~default:Lock_dir.default_path in
           Some lock_dir_path
         | Opam _ -> None)
     in

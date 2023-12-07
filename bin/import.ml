@@ -65,6 +65,24 @@ include struct
   module Lib_name = Lib_name
   module Package_name = Package_name
   module Package_version = Package_version
+  module Package_dependency = Package_dependency
+end
+
+include struct
+  open Dune_pkg
+  module Local_package = Local_package
+  module Lock_dir = Lock_dir
+  module Opam_repo = Opam_repo
+  module Opam_solver = Opam_solver
+  module Package_universe = Package_universe
+  module Package_version = Package_version
+  module Pkg_workspace = Pkg_workspace
+  module Repository_id = Repository_id
+  module Solver_env = Solver_env
+  module Sys_poll = Sys_poll
+  module Variable_name = Variable_name
+  module Variable_value = Variable_value
+  module Version_preference = Version_preference
 end
 
 module Log = Dune_util.Log

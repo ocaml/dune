@@ -1,6 +1,4 @@
 open Import
-module Lock_dir = Dune_pkg.Lock_dir
-module Local_package = Dune_pkg.Local_package
 
 module Show_lock = struct
   let print_lock lock_dir_arg () =
@@ -73,12 +71,6 @@ module Dependency_hash = struct
 end
 
 module List_locked_dependencies = struct
-  module Package_universe = Dune_pkg.Package_universe
-  module Lock_dir = Dune_pkg.Lock_dir
-  module Opam_repo = Dune_pkg.Opam_repo
-  module Package_version = Dune_pkg.Package_version
-  module Opam_solver = Dune_pkg.Opam_solver
-
   let info =
     let doc = "List the dependencies locked by a lockdir" in
     let man = [ `S "DESCRIPTION"; `P "List the dependencies locked by a lockdir" ] in

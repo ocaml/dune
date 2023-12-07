@@ -3,6 +3,14 @@ include Dune_lang.Package_dependency
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
 
+module Convert_from_opam_error = struct
+  type t =
+    | Can't_convert_opam_filter_to_value of OpamTypes.filter
+    | Can't_convert_opam_filter_to_condition of OpamTypes.filter
+    | Filtered_formula_is_not_a_conjunction_of_atoms of
+        { non_atom : OpamTypes.filtered_formula }
+end
+
 module Constraint = struct
   include Dune_lang.Package_constraint
 
@@ -53,6 +61,16 @@ module Constraint = struct
       | String_literal literal -> OpamTypes.FString literal
       | Variable variable -> Variable.to_opam_filter variable
     ;;
+
+    let of_opam_filter (filter : OpamTypes.filter) =
+      match filter with
+      | FString string -> Ok (Value.String_literal string)
+      | FBool true -> Ok (Value.String_literal "true")
+      | FBool false -> Ok (Value.String_literal "false")
+      | FIdent ([], name, None) ->
+        Ok (Value.Variable { name = OpamVariable.to_string name })
+      | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_value filter)
+    ;;
   end
 
   let rec to_opam_condition = function
@@ -68,6 +86,52 @@ module Constraint = struct
               (Value.to_opam_filter lhs, Op.to_relop_pelem op, Value.to_opam_filter rhs)))
     | And conjunction -> OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
     | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
+  ;;
+
+  let rec of_opam_filter (filter : OpamTypes.filter) =
+    let open Result.O in
+    match filter with
+    | FIdent ([], name, None) -> Ok (Bvar { name = OpamVariable.to_string name })
+    | FOp (lhs, relop, rhs) ->
+      let op = Op.of_opam relop in
+      let+ lhs = Value.of_opam_filter lhs
+      and+ rhs = Value.of_opam_filter rhs in
+      Bop (op, lhs, rhs)
+    | FAnd (lhs, rhs) ->
+      let+ lhs = of_opam_filter lhs
+      and+ rhs = of_opam_filter rhs in
+      And [ lhs; rhs ]
+    | FOr (lhs, rhs) ->
+      let+ lhs = of_opam_filter lhs
+      and+ rhs = of_opam_filter rhs in
+      Or [ lhs; rhs ]
+    | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_condition filter)
+  ;;
+
+  let rec opt_of_opam_condition (condition : OpamTypes.condition) =
+    let open Result.O in
+    match condition with
+    | Empty -> Ok None
+    | Atom (Filter filter) -> of_opam_filter filter >>| Option.some
+    | Atom (Constraint (relop, filter)) ->
+      let op = Op.of_opam relop in
+      let+ value = Value.of_opam_filter filter in
+      Some (Uop (op, value))
+    | Block formula -> opt_of_opam_condition formula
+    | And (lhs, rhs) ->
+      let+ lhs = opt_of_opam_condition lhs
+      and+ rhs = opt_of_opam_condition rhs in
+      (match lhs, rhs with
+       | None, None -> None
+       | Some x, None | None, Some x -> Some x
+       | Some lhs, Some rhs -> Some (And [ lhs; rhs ]))
+    | Or (lhs, rhs) ->
+      let+ lhs = opt_of_opam_condition lhs
+      and+ rhs = opt_of_opam_condition rhs in
+      (match lhs, rhs with
+       | None, None -> None
+       | Some x, None | None, Some x -> Some x
+       | Some lhs, Some rhs -> Some (Or [ lhs; rhs ]))
   ;;
 end
 
@@ -135,4 +199,46 @@ let list_to_opam_filtered_formula ts =
     in
     OpamFormula.Atom (opam_package_name, condition))
   |> OpamFormula.ands
+;;
+
+let list_of_opam_filtered_formula filtered_formula =
+  let open Convert_from_opam_error in
+  let exception E of Convert_from_opam_error.t in
+  try
+    Ok
+      (List.map
+         (OpamFormula.ands_to_list filtered_formula)
+         ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
+           match filtered_formula with
+           | Atom (name, condition) ->
+             let name = Package_name.of_opam_package_name name in
+             (match Constraint.opt_of_opam_condition condition with
+              | Ok constraint_ -> { name; constraint_ }
+              | Error error -> raise (E error))
+           | non_atom ->
+             raise (E (Filtered_formula_is_not_a_conjunction_of_atoms { non_atom }))))
+  with
+  | E e ->
+    let message =
+      match e with
+      | Can't_convert_opam_filter_to_value filter ->
+        let filter_string = OpamFilter.to_string filter in
+        sprintf
+          "Can't convert opam filter '%s' into dune value. Only literal values and \
+           global variables may appear in this position."
+          filter_string
+      | Can't_convert_opam_filter_to_condition filter ->
+        let filter_string = OpamFilter.to_string filter in
+        sprintf
+          "Can't convert opam filter '%s' into dune condition. Only global variables may \
+           appear in this position."
+          filter_string
+      | Filtered_formula_is_not_a_conjunction_of_atoms { non_atom } ->
+        let formula_string = OpamFilter.string_of_filtered_formula non_atom in
+        sprintf
+          "Expected formula to be a conjunction of atoms but encountered non-atom term \
+           '%s'"
+          formula_string
+    in
+    Error (`Message message)
 ;;

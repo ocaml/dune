@@ -563,80 +563,87 @@ let default name dir =
   }
 ;;
 
+let loc_of_opam_pos
+  ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
+    OpamParserTypes.FullPos.pos)
+  =
+  let start =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = start_line
+    ; pos_bol = 0
+    ; pos_cnum = start_column
+    }
+  in
+  let stop =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = stop_line
+    ; pos_bol = 0
+    ; pos_cnum = stop_column
+    }
+  in
+  Loc.create ~start ~stop
+;;
+
 let load_opam_file file name =
-  let loc = Loc.in_file (Path.source file) in
   let open Memo.O in
-  let+ opam =
-    let+ opam =
-      Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
-        try Ok (Opam_file.parse lexbuf) with
-        | User_error.E _ as exn -> Error exn)
-    in
-    match opam with
-    | Ok s -> Some s
-    | Error exn ->
-      User_warning.emit
-        ~loc
-        [ Pp.text
-            "Unable to read opam file. Some information about this package such as its \
-             version will be ignored."
-        ; Pp.textf "Reason: %s" (Printexc.to_string exn)
-        ];
-      None
+  let loc = Loc.in_file (Path.source file) in
+  let+ opam_file_string = Fs_memo.file_contents (In_source_dir file) in
+  let opam_file =
+    try
+      OpamFile.OPAM.read_from_string
+        ~filename:(Path.Source.to_string file |> OpamFilename.of_string |> OpamFile.make)
+        opam_file_string
+    with
+    | OpamPp.Bad_version (_, message) ->
+      User_error.raise
+        [ Pp.textf
+            "Unable to parse opam file %s as local dune package."
+            (Path.Source.to_string file)
+        ; Pp.text message
+        ]
+    | OpamPp.Bad_format (pos, message) ->
+      let loc = Option.map pos ~f:loc_of_opam_pos in
+      User_error.raise ?loc [ Pp.text message ]
   in
-  let open Option.O in
-  let get_one name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
-    match value.pelem with
-    | String s -> Some s
-    | _ -> None
+  let dir = Path.Source.parent_exn file in
+  let convert_filtered_formula filtered_formula =
+    match Dune_pkg.Package_dependency.list_of_opam_filtered_formula filtered_formula with
+    | Ok depends -> depends
+    | Error (`Message message) ->
+      User_error.raise
+        [ Pp.textf
+            "Unable to interpret opam file %s as local dune package."
+            (Path.Source.to_string file)
+        ; Pp.text message
+        ]
   in
-  let get_many name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
-    match value.pelem with
-    | String s -> Some [ s ]
-    | List l ->
-      let+ l =
-        List.fold_left
-          l.pelem
-          ~init:(Some [])
-          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
-            let* acc = acc in
-            match v.pelem with
-            | String s -> Some (s :: acc)
-            | _ -> None)
-      in
-      List.rev l
-    | _ -> None
-  in
-  let id = { Id.name; dir = Path.Source.parent_exn file } in
+  let id = { Id.name; dir } in
   { id
+  ; opam_file = Id.default_opam_file id
   ; loc
-  ; version = get_one "version" |> Option.map ~f:Package_version.of_string
-  ; conflicts = []
-  ; depends = []
-  ; depopts = []
+  ; synopsis = OpamFile.OPAM.synopsis opam_file
+  ; description = OpamFile.OPAM.descr opam_file |> Option.map ~f:OpamFile.Descr.full
+  ; depends = convert_filtered_formula opam_file.depends
+  ; conflicts = convert_filtered_formula opam_file.conflicts
+  ; depopts = convert_filtered_formula opam_file.depopts
   ; info =
-      { maintainers = get_many "maintainer"
-      ; authors = get_many "authors"
-      ; homepage = get_one "homepage"
-      ; bug_reports = get_one "bug-reports"
-      ; documentation = get_one "doc"
-      ; license = get_many "license"
+      { maintainers = Some opam_file.maintainer
+      ; authors = Some (OpamFile.OPAM.author opam_file)
+      ; homepage = List.hd_opt opam_file.homepage
+      ; bug_reports = List.hd_opt opam_file.bug_reports
+      ; documentation = List.hd_opt opam_file.doc
+      ; license = Some opam_file.license
       ; source =
-          (let+ url = get_one "dev-repo" in
-           Source_kind.Url url)
+          Option.map opam_file.url ~f:(fun url ->
+            Source_kind.Url (OpamFile.URL.write_to_string url))
       }
-  ; synopsis = get_one "synopsis"
-  ; description = get_one "description"
+  ; version =
+      Option.map ~f:Dune_pkg.Package_version.of_opam_package_version opam_file.version
   ; has_opam_file = Exists true
-  ; tags = Option.value (get_many "tags") ~default:[]
+  ; tags = opam_file.tags
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
-  ; opam_file = Id.default_opam_file id
   }
 ;;
 

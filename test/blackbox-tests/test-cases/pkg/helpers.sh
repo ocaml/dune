@@ -76,7 +76,7 @@ EOF
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune pkg lock --dont-poll-system-solver-variables $@
+  dune pkg lock $@
 }
 
 make_lockdir() {

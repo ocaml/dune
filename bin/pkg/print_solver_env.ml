@@ -21,16 +21,13 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
     ]
 ;;
 
-let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg =
+let print_solver_env ~lock_dirs_arg =
   let open Fiber.O in
   let+ workspace = Memo.run (Workspace.workspace ())
   and+ solver_env_from_current_system =
-    if dont_poll_system_solver_variables
-    then Fiber.return None
-    else
-      Dune_pkg.Sys_poll.solver_env_from_current_system
-        ~path:(Env_path.path Stdune.Env.initial)
-      >>| Option.some
+    Dune_pkg.Sys_poll.solver_env_from_current_system
+      ~path:(Env_path.path Stdune.Env.initial)
+    >>| Option.some
   in
   let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
   List.iter
@@ -40,24 +37,10 @@ let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ dont_poll_system_solver_variables =
-    Arg.(
-      value
-      & flag
-      & info
-          [ "dont-poll-system-solver-variables" ]
-          ~doc:
-            "Don't derive system solver variables from the current system. Values \
-             assigned to these variables in build contexts will still be used. Note that \
-             Opam filters that depend on unset variables resolve to the value \
-             \"undefined\" which is treated as false. For example if a dependency has a \
-             filter `{os = \"linux\"}` and the variable \"os\" is unset, the dependency \
-             will be excluded. ")
   and+ lock_dirs_arg = Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () ->
-    print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg)
+  Scheduler.go ~common ~config (fun () -> print_solver_env ~lock_dirs_arg)
 ;;
 
 let info =

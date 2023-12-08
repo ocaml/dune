@@ -89,21 +89,13 @@ let solve
     List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 ;;
 
-let lock
-  ~dont_poll_system_solver_variables
-  ~version_preference
-  ~update_opam_repositories
-  ~lock_dirs_arg
-  =
+let lock ~version_preference ~update_opam_repositories ~lock_dirs_arg =
   let open Fiber.O in
   let* workspace = Memo.run (Workspace.workspace ())
   and* solver_env_from_current_system =
-    if dont_poll_system_solver_variables
-    then Fiber.return None
-    else
-      Dune_pkg.Sys_poll.solver_env_from_current_system
-        ~path:(Env_path.path Stdune.Env.initial)
-      >>| Option.some
+    Dune_pkg.Sys_poll.solver_env_from_current_system
+      ~path:(Env_path.path Stdune.Env.initial)
+    >>| Option.some
   in
   solve
     workspace
@@ -116,19 +108,6 @@ let lock
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
-  and+ dont_poll_system_solver_variables =
-    Arg.(
-      value
-      & flag
-      & info
-          [ "dont-poll-system-solver-variables" ]
-          ~doc:
-            "Don't derive system solver variables from the current system. Values \
-             assigned to these variables in build contexts will still be used. Note that \
-             Opam filters that depend on unset variables resolve to the value \
-             \"undefined\" which is treated as false. For example if a dependency has a \
-             filter `{os = \"linux\"}` and the variable \"os\" is unset, the dependency \
-             will be excluded. ")
   and+ skip_update =
     Arg.(
       value
@@ -142,11 +121,7 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
-    lock
-      ~dont_poll_system_solver_variables
-      ~version_preference
-      ~update_opam_repositories:(not skip_update)
-      ~lock_dirs_arg)
+    lock ~version_preference ~update_opam_repositories:(not skip_update) ~lock_dirs_arg)
 ;;
 
 let info =

@@ -227,7 +227,7 @@ module Digest_result = struct
   let equal = Result.equal Digest.equal Error.equal
   let to_option = Result.to_option
   let iter t ~f = Result.iter t ~f
-  let to_dyn = Result.to_dyn Digest.to_dyn Error.to_dyn
+  let to_dyn = Dyn.result Digest.to_dyn Error.to_dyn
 end
 
 let digest_path_with_stats ~allow_dirs path stats =

@@ -177,7 +177,7 @@ module Response = struct
     both id payload
   ;;
 
-  let to_dyn = Result.to_dyn Sexp.to_dyn Error.to_dyn
+  let to_dyn = Dyn.result Sexp.to_dyn Error.to_dyn
 end
 
 module Protocol = struct

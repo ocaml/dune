@@ -1,6 +1,6 @@
 let equal eq x y = Result.equal eq Exn.equal x y
 let hash h = Result.hash h Exn.hash
-let to_dyn f = Result.to_dyn f Exn.to_dyn
+let to_dyn f = Dyn.result f Exn.to_dyn
 
 type 'a t = ('a, exn) Result.t
 

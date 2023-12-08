@@ -31,7 +31,6 @@ val bind : ('a, 'error) t -> f:('a -> ('b, 'error) t) -> ('b, 'error) t
 val ( >>= ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
 val map_error : ('a, 'error1) t -> f:('error1 -> 'error2) -> ('a, 'error2) t
 val to_option : ('a, 'error) t -> 'a option
-val to_dyn : 'a Dyn.builder -> 'error Dyn.builder -> ('a, 'error) t Dyn.builder
 
 (** Produce [Error <message>] *)
 val errorf : ('a, unit, string, (_, string) t) format4 -> 'a

@@ -552,7 +552,7 @@ let print_result arg res =
     "f %d = %a@."
     arg
     Pp.to_fmt
-    (Dyn.pp (Result.to_dyn int (list Exn_with_backtrace.to_dyn) res))
+    (Dyn.pp (Dyn.result int (list Exn_with_backtrace.to_dyn) res))
 ;;
 
 let run_collect_errors f =
@@ -1507,7 +1507,7 @@ let print_exns f =
     | exception exn -> Error [ exn ]
   in
   let open Dyn in
-  Format.printf "%a@." Pp.to_fmt (Dyn.pp (Result.to_dyn unit (list Exn.to_dyn) res))
+  Format.printf "%a@." Pp.to_fmt (Dyn.pp (Dyn.result unit (list Exn.to_dyn) res))
 ;;
 
 let%expect_test "error handling with diamonds" =

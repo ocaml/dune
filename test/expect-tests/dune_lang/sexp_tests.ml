@@ -63,7 +63,7 @@ let parse s =
     | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  print_dyn (Result.to_dyn (Dyn.list Dune_lang.to_dyn) Dyn.string res)
+  print_dyn (Dyn.result (Dyn.list Dune_lang.to_dyn) Dyn.string res)
 ;;
 
 let%expect_test _ =

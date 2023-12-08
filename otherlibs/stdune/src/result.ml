@@ -154,8 +154,3 @@ module Option = struct
     | Some x -> x >>= f
   ;;
 end
-
-let to_dyn ok err = function
-  | Ok e -> Dyn.variant "Ok" [ ok e ]
-  | Error e -> Dyn.variant "Error" [ err e ]
-;;

@@ -788,7 +788,7 @@ let to_dyn
     ; "virtual_", option (Source.to_dyn Modules.to_dyn) virtual_
     ; ( "entry_modules"
       , Source.to_dyn
-          (Result.to_dyn (list Module_name.to_dyn) string)
+          (Dyn.result (list Module_name.to_dyn) string)
           (Source.map entry_modules ~f:(Result.map_error ~f:User_message.to_string)) )
     ; "implements", option (snd Lib_name.to_dyn) implements
     ; "default_implementation", option (snd Lib_name.to_dyn) default_implementation

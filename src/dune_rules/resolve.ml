@@ -32,7 +32,7 @@ let error_hash { message; stack_frames } =
 ;;
 
 let to_dyn f t =
-  Result.to_dyn
+  Dyn.result
     f
     Dyn.string
     (Result.map_error t ~f:(fun x -> User_message.to_string x.message))

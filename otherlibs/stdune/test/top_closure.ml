@@ -6,7 +6,7 @@ let top list ~deps =
   let dyn =
     let res = Top_closure.String.top_closure list ~key:Fun.id ~deps:(deps_of_list deps) in
     let f = Dyn.(list string) in
-    Result.to_dyn f f res
+    Dyn.result f f res
   in
   print_endline (Dyn.to_string dyn)
 ;;

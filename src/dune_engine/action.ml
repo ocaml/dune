@@ -95,7 +95,7 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let to_dyn t = Result.to_dyn Path.to_dyn Not_found.to_dyn t
+  let to_dyn t = Dyn.result Path.to_dyn Not_found.to_dyn t
 
   let ok_exn = function
     | Ok s -> s

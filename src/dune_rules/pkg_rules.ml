@@ -9,6 +9,7 @@ module Sys_vars = struct
     ; os_distribution : string option Memo.Lazy.t
     ; os_family : string option Memo.Lazy.t
     ; arch : string option Memo.Lazy.t
+    ; sys_ocaml_version : string option Memo.Lazy.t
     }
 
   let poll =
@@ -21,6 +22,7 @@ module Sys_vars = struct
     ; os_distribution = sys_poll_memo Sys_poll.os_distribution
     ; os_family = sys_poll_memo Sys_poll.os_family
     ; arch = sys_poll_memo Sys_poll.arch
+    ; sys_ocaml_version = sys_poll_memo Sys_poll.sys_ocaml_version
     }
   ;;
 end
@@ -556,6 +558,8 @@ module Action_expander = struct
       | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
       | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
       | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
+      | Sys_ocaml_version ->
+        sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
       | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]

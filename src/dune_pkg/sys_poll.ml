@@ -196,6 +196,13 @@ let os_family ~path =
   | _ -> os_distribution ~path
 ;;
 
+let sys_ocaml_version ~path =
+  match Bin.which "ocamlc" ~path with
+  | None -> Fiber.return None
+  | Some ocamlc ->
+    Process.run_capture_line ~display:Quiet Strict ocamlc [ "-vnum" ] >>| Option.some
+;;
+
 let solver_env_from_current_system ~path =
   let entry k f =
     let+ v = f ~path in
@@ -210,6 +217,7 @@ let solver_env_from_current_system ~path =
       ; entry Variable_name.os_version os_version
       ; entry Variable_name.os_distribution os_distribution
       ; entry Variable_name.os_family os_family
+      ; entry Variable_name.sys_ocaml_version sys_ocaml_version
       ]
   in
   List.fold_left

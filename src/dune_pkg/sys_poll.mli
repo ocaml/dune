@@ -17,6 +17,9 @@ val os_distribution : path:Path.t list -> string option Fiber.t
 (** Returns the value of [os-family] *)
 val os_family : path:Path.t list -> string option Fiber.t
 
+(** Returns the value of [sys-ocaml-version] *)
+val sys_ocaml_version : path:Path.t list -> string option Fiber.t
+
 (** Returns a solver environment where all the system-dependent values that
     could be retrieved are set *)
 val solver_env_from_current_system : path:Path.t list -> Solver_env.t Fiber.t

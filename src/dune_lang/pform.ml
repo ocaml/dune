@@ -53,6 +53,7 @@ module Var = struct
       | Group
       | Jobs
       | Arch
+      | Sys_ocaml_version
       | Section_dir of Section.t
 
     let compare = Poly.compare
@@ -71,6 +72,7 @@ module Var = struct
       | Group -> variant "Group" []
       | Jobs -> variant "Jobs" []
       | Arch -> variant "Arch" []
+      | Sys_ocaml_version -> variant "Sys_ocaml_version" []
       | Section_dir section ->
         variant "Section_dir" [ string (Section.to_string section) ]
     ;;
@@ -87,6 +89,7 @@ module Var = struct
       | Group -> "group"
       | Jobs -> "jobs"
       | Arch -> "arch"
+      | Sys_ocaml_version -> "sys_ocaml_version"
       | Section_dir section -> Section.to_string section
     ;;
   end
@@ -209,6 +212,7 @@ module Var = struct
        | "group" -> Some (Pkg Group)
        | "jobs" -> Some (Pkg Jobs)
        | "arch" -> Some (Pkg Arch)
+       | "sys-ocaml-version" -> Some (Pkg Sys_ocaml_version)
        | _ -> None)
   ;;
 end
@@ -572,6 +576,7 @@ module Env = struct
         ; "group", Group
         ; "arch", Arch
         ; "jobs", Jobs
+        ; "sys_ocaml_version", Sys_ocaml_version
         ]
         |> List.rev_append
              (List.rev_map Var.Pkg.Section.all ~f:(fun (section, name) ->

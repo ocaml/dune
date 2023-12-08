@@ -198,22 +198,45 @@ Test that if opam filter translation is disabled the output doesn't contain any 
   
   (build
    (progn
-    (run echo a)
-    (run echo b)
-    (run echo c)
-    (run echo d)
-    (run echo e)
-    (run echo f)
-    (run echo b)
-    (run echo g)
-    (run echo h)
+    (when
+     %{pkg-self:foo}
+     (run echo a))
+    (when
+     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+     (run echo b))
+    (when
+     (and_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar} %{pkg-self:baz})
+     (run echo c))
+    (when
+     (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+     (run echo d))
+    (when
+     (or_absorb_undefined_var
+      %{pkg-self:foo}
+      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz}))
+     (run echo e))
+    (when
+     (and_absorb_undefined_var
+      (or_absorb_undefined_var %{pkg-self:foo} %{pkg-self:bar})
+      %{pkg-self:baz})
+     (run echo f))
+    (when
+     (= %{pkg-self:foo} %{pkg-self:bar})
+     (run echo b))
+    (when
+     (< %{pkg-self:version} 1.0)
+     (run echo g))
     (run echo i)
     (run echo j)
-    (run echo k)
-    (run echo l)
-    (run echo m)
-    (run echo n)
-    (run echo o)))
+    (when
+     %{pkg:foo:installed}
+     (run echo k))
+    (when
+     (< %{pkg:foo:version} 0.4)
+     (run echo l))
+    (when
+     (and %{pkg:foo:installed} %{pkg:bar:installed} %{pkg:baz:installed})
+     (run echo m))))
 
   $ solve_translate_opam_filters exercise-term-filters
   Solution for dune.lock:

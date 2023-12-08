@@ -462,25 +462,9 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-let remove_filters_from_command ((command, _filter) : OpamTypes.command)
-  : OpamTypes.command
-  =
-  let command = List.map command ~f:(fun (term, _filter) -> term, None) in
-  command, None
-;;
-
-let remove_filters_from_opam_file opam_file =
-  opam_file
-  |> OpamFile.OPAM.with_build
-       (List.map ~f:remove_filters_from_command (OpamFile.OPAM.build opam_file))
-  |> OpamFile.OPAM.with_install
-       (List.map ~f:remove_filters_from_command (OpamFile.OPAM.install opam_file))
-;;
-
 let opam_package_to_lock_file_pkg
   solver_env
   version_by_package_name
-  ~experimental_translate_opam_filters
   opam_package
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
@@ -495,12 +479,7 @@ let opam_package_to_lock_file_pkg
         .resolved
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
-    let opam_file =
-      let opam_file_with_filters = With_file.opam_file with_file in
-      if experimental_translate_opam_filters
-      then opam_file_with_filters
-      else remove_filters_from_opam_file opam_file_with_filters
-    in
+    let opam_file = With_file.opam_file with_file in
     let loc = Loc.in_file (With_file.file with_file) in
     opam_file, loc
   in
@@ -654,14 +633,7 @@ module Solver_result = struct
     }
 end
 
-let solve_lock_dir
-  solver_env
-  version_preference
-  repos
-  ~local_packages
-  ~experimental_translate_opam_filters
-  ~constraints
-  =
+let solve_lock_dir solver_env version_preference repos ~local_packages ~constraints =
   let* solver_result =
     let stats_updater = Solver_stats.Updater.init () in
     let context =
@@ -701,7 +673,6 @@ let solve_lock_dir
             opam_package_to_lock_file_pkg
               solver_env
               version_by_package_name
-              ~experimental_translate_opam_filters
               opam_package
               ~candidates_cache:context.candidates_cache)
         in

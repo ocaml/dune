@@ -11,6 +11,7 @@ Test that we can set variables
   >          "\|   abool: true
   >          "\|   astring: "foobar"
   >          "\|   somestrings: ["foo" "bar"]
+  >          "\|   version: "1.2.3"
   >          "\| }
   >          "\| EOF
   >  ))
@@ -20,17 +21,21 @@ Test that we can set variables
   > (deps test)
   > (build
   >  (progn
-  >   (system "\| echo %{pkg:test:abool}
-  >           "\| echo %{pkg:test:astring}
-  >           "\| echo %{pkg:test:somestrings}
+  >   (system "\| echo abool: %{pkg:test:abool}
+  >           "\| echo astring: %{pkg:test:astring}
+  >           "\| echo somestrings: %{pkg:test:somestrings}
+  >           "\| echo share path: %{pkg:test:share}
+  >           "\| echo version: %{pkg:test:version}
   >   )
   >   (run mkdir -p %{prefix})))
   > EOF
 
   $ build_pkg usetest
-  true
-  foobar
-  foo bar
+  abool: true
+  astring: foobar
+  somestrings: foo bar
+  share path: ../../test/target/share/test
+  version: 1.2.3
 
   $ show_pkg_cookie test
   { files = map {}
@@ -38,6 +43,7 @@ Test that we can set variables
       [ ("abool", Bool true)
       ; ("astring", String "foobar")
       ; ("somestrings", Strings [ "foo"; "bar" ])
+      ; ("version", String "1.2.3")
       ]
   }
 

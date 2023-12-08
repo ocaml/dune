@@ -153,7 +153,6 @@ COPY --chown=user:users otherlibs otherlibs
 COPY --chown=user:users vendor vendor
 COPY --chown=user:users dune-project dune-project
 COPY --chown=user:users dune-file dune-file
-COPY --chown=user:users opam opam
 RUN . ~/.profile && dune build bin/main.exe --release
 
 # Switch to the benchmark project

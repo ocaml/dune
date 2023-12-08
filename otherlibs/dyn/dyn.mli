@@ -50,3 +50,4 @@ val option : 'a builder -> 'a option builder
 val opaque : _ builder
 val record : (string * t) list -> t
 val variant : string -> t list -> t
+val result : 'a builder -> 'error builder -> ('a, 'error) result builder

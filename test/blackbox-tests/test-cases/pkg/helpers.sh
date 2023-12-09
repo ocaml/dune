@@ -5,7 +5,7 @@ dune="dune"
 pkg_root="_build/_private/default/.pkg"
 
 build_pkg() {
-  $dune build _build/_private/default/.pkg/$1/target/
+  $dune build $pkg_root/$1/target/
 }
 
 show_pkg() {

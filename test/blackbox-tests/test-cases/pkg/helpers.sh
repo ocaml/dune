@@ -20,11 +20,11 @@ show_pkg_cookie() {
   $dune internal dump $pkg_root/$1/target/cookie
 }
 
-mkrepo() {
-  mkdir -p mock-opam-repository
-}
-
 mock_packages="mock-opam-repository/packages"
+
+mkrepo() {
+  mkdir -p $mock_packages
+}
 
 mkpkg() {
   name=$1

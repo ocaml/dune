@@ -658,5 +658,6 @@ let to_local_package t =
   ; dependencies = t.depends
   ; conflicts = t.conflicts
   ; loc = t.loc
+  ; conflict_class = []
   }
 ;;

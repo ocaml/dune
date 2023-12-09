@@ -15,6 +15,8 @@ end
     generate the warning corresponding to [w] *)
 val emit : Warning.t -> Context.t -> (unit -> User_message.t Memo.t) -> unit Memo.t
 
+val emit_project : Warning.t -> Dune_project.t -> User_message.t -> unit
+
 module Bag : sig
   (** A set of warnings collected while parsing the dune language *)
   type t

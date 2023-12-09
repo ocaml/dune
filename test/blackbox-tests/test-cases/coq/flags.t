@@ -19,6 +19,8 @@ Test case: default flags
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -60,6 +62,8 @@ TC: :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -100,6 +104,8 @@ TC: override :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -140,6 +146,8 @@ TC: add to :standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -185,6 +193,8 @@ TC: extend in workspace + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -224,6 +234,8 @@ TC: extend in workspace + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -265,6 +277,8 @@ TC: extend in dune (env) + override standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -306,6 +320,8 @@ TC: extend in dune (env) + standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q -type-in-type -type-in-type
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled
@@ -352,6 +368,8 @@ TC: extend in dune (env) + workspace + standard
   $ dune build foo.vo && tail -n 1 _build/log | ./scrub_coq_args.sh
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   coqc -q -type-in-type -bt
   -w -deprecated-native-compiler-option
   -w -native-compiler-disabled

@@ -114,7 +114,7 @@ module Copyfile = struct
 
   let sendfile_with_fallback =
     let setup_copy ?(chmod = Fun.id) ~src ~dst () =
-      match Unix.openfile src [ O_RDONLY ] 0 with
+      match Unix.openfile src [ O_RDONLY; O_CLOEXEC ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
       | fd_src ->
         (match Unix.fstat fd_src with
@@ -129,7 +129,7 @@ module Copyfile = struct
               let+ fd_dst, src_size =
                 match
                   let dst_perm = chmod src_stat.st_perm in
-                  Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC ] dst_perm
+                  Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] dst_perm
                 with
                 | fd_dst -> Ok (fd_dst, src_stat.st_size)
                 | exception exn ->

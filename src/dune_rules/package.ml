@@ -609,13 +609,7 @@ let load_opam_file file name =
   let convert_filtered_formula filtered_formula =
     match Dune_pkg.Package_dependency.list_of_opam_filtered_formula filtered_formula with
     | Ok depends -> depends
-    | Error (`Message message) ->
-      User_error.raise
-        [ Pp.textf
-            "Unable to interpret opam file %s as local dune package."
-            (Path.Source.to_string file)
-        ; Pp.text message
-        ]
+    | Error (`Message _) -> []
   in
   let id = { Id.name; dir } in
   { id

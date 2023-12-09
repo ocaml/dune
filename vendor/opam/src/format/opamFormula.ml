@@ -146,7 +146,7 @@ let rec map f = function
     match map f x with
     | Empty -> Empty
     | x -> Block x
-
+  
 (* Maps top-down *)
 let rec map_formula f t =
   let t = f t in

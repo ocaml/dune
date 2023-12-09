@@ -13,4 +13,5 @@ Selecting depopts
   >  (depopts bar))
   > EOF
   Solution for dune.lock:
+  - bar.0.0.1
   - foo.0.0.1

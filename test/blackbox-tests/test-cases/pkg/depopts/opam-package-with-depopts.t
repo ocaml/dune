@@ -11,6 +11,7 @@ Make a package with a depopts field
 
   $ solve with-depopts
   Solution for dune.lock:
+  - foo.0.0.1
   - with-depopts.0.0.1
 
 When depopts are supported and selected, the above lock should change and we
@@ -18,6 +19,8 @@ should also be able to see a deps field in the lock file:
 
   $ cat dune.lock/with-depopts.pkg
   (version 0.0.1)
+  
+  (deps foo)
 
 We should also be able to validate the lock directory:
 

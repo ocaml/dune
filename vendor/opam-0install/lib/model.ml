@@ -184,7 +184,6 @@ module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad
             | _, Error _rejection -> None
             | version, Ok opam ->
               let pkg = OpamPackage.create role.name version in
-              (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
               let requires =
                 let make_deps importance xform get =
                   get opam
@@ -193,7 +192,8 @@ module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad
                   |> list_deps ~context ~importance
                 in
                 make_deps `Essential ensure OpamFile.OPAM.depends @
-                make_deps `Restricts prevent OpamFile.OPAM.conflicts
+                make_deps `Restricts prevent OpamFile.OPAM.conflicts @
+                make_deps `Recommended ensure OpamFile.OPAM.depopts
               in
               Some (RealImpl { context; pkg; opam; requires })
           )

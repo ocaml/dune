@@ -28,6 +28,7 @@ however this is not required.
   Solution for dune.lock:
   - bar.0.0.1
   - foo.1
+  - optional.0.0.1
 
 Since the version of "foo" is constrained by "optional", "optional" should be
 excluded from the build plan if the latest version of "foo" is picked.

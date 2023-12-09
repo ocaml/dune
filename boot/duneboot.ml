@@ -445,7 +445,9 @@ end = struct
 
     let open_temp_file () =
       let out = Temp.file "duneboot-" ".output" in
-      let fd = Unix.openfile out [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ] 0o666 in
+      let fd =
+        Unix.openfile out [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE; O_CLOEXEC ] 0o666
+      in
       out, fd
     ;;
 

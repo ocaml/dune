@@ -8,6 +8,7 @@ type t =
   ; dependencies : Package_dependency.t list
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
+  ; depopts : Package_dependency.t list
   ; loc : Loc.t
   }
 
@@ -76,10 +77,11 @@ module For_solver = struct
     { name : Package_name.t
     ; dependencies : Package_dependency.t list
     ; conflicts : Package_dependency.t list
+    ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     }
 
-  let to_opam_file { name; dependencies; conflicts; conflict_class } =
+  let to_opam_file { name; dependencies; conflicts; conflict_class; depopts } =
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
     |> OpamFile.OPAM.with_depends
@@ -88,6 +90,8 @@ module For_solver = struct
          (Package_dependency.list_to_opam_filtered_formula conflicts)
     |> OpamFile.OPAM.with_conflict_class
          (List.map conflict_class ~f:Package_name.to_opam_package_name)
+    |> OpamFile.OPAM.with_depopts
+         (Package_dependency.list_to_opam_filtered_formula depopts)
   ;;
 
   let opam_filtered_dependency_formula { dependencies; _ } =
@@ -103,6 +107,8 @@ module For_solver = struct
   ;;
 end
 
-let for_solver { name; version = _; dependencies; conflicts; conflict_class; loc = _ } =
-  { For_solver.name; dependencies; conflicts; conflict_class }
+let for_solver
+  { name; version = _; dependencies; conflicts; conflict_class; loc = _; depopts }
+  =
+  { For_solver.name; dependencies; conflicts; conflict_class; depopts }
 ;;

@@ -13,6 +13,7 @@ type t =
   ; dependencies : Package_dependency.t list
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
+  ; depopts : Package_dependency.t list
   ; loc : Loc.t
   }
 
@@ -51,6 +52,7 @@ module For_solver : sig
     { name : Package_name.t
     ; dependencies : Package_dependency.t list
     ; conflicts : Package_dependency.t list
+    ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     }
 

@@ -124,6 +124,7 @@ let package_fields
   ; sites = _
   ; opam_file = _
   ; allow_empty = _
+  ; conflict_class = _
   }
   ~project
   =

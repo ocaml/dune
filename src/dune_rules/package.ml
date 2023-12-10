@@ -353,6 +353,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; conflict_class : Name.t list
   ; info : Info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
@@ -390,6 +391,7 @@ let encode
   ; sites
   ; allow_empty
   ; opam_file = _
+  ; conflict_class = _
   }
   =
   let open Dune_lang.Encoder in
@@ -487,6 +489,7 @@ let decode =
        ; sites
        ; allow_empty
        ; opam_file
+       ; conflict_class = []
        }
 ;;
 
@@ -513,6 +516,7 @@ let to_dyn
   ; sites
   ; allow_empty
   ; opam_file = _
+  ; conflict_class = _
   }
   =
   let open Dyn in
@@ -560,6 +564,7 @@ let default name dir =
   ; sites = Site.Map.empty
   ; allow_empty = false
   ; opam_file = Id.default_opam_file id
+  ; conflict_class = []
   }
 ;;
 
@@ -620,6 +625,8 @@ let load_opam_file file name =
   ; depends = convert_filtered_formula opam_file.depends
   ; conflicts = convert_filtered_formula opam_file.conflicts
   ; depopts = convert_filtered_formula opam_file.depopts
+  ; conflict_class =
+      OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
   ; info =
       { maintainers = Some opam_file.maintainer
       ; authors = Some (OpamFile.OPAM.author opam_file)
@@ -660,6 +667,6 @@ let to_local_package t =
   ; conflicts = t.conflicts
   ; depopts = t.depopts
   ; loc = t.loc
-  ; conflict_class = []
+  ; conflict_class = t.conflict_class
   }
 ;;

@@ -37,10 +37,8 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Error: Unable to interpret opam file x.opam as local dune package.
-  Expected formula to be a conjunction of atoms but encountered non-atom term
-  'a | b'
-  [1]
+  Solution for dune.lock:
+  (no dependencies to lock)
 
   $ cat > x.opam <<EOF
   > opam-version: "2.0"
@@ -49,10 +47,8 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Error: Unable to interpret opam file x.opam as local dune package.
-  Can't convert opam filter '"foo"' into dune condition. Only global variables
-  may appear in this position.
-  [1]
+  Solution for dune.lock:
+  (no dependencies to lock)
 
   $ cat > x.opam <<EOF
   > opam-version: "2.0"
@@ -61,7 +57,5 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Error: Unable to interpret opam file x.opam as local dune package.
-  Can't convert opam filter 'foo:bar' into dune value. Only literal values and
-  global variables may appear in this position.
-  [1]
+  Solution for dune.lock:
+  (no dependencies to lock)

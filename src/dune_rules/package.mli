@@ -95,6 +95,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; conflict_class : Name.t list
   ; info : Info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file

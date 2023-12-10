@@ -593,23 +593,6 @@ let load_opam_file file name =
   let open Memo.O in
   let loc = Loc.in_file (Path.source file) in
   let+ opam_file_string = Fs_memo.file_contents (In_source_dir file) in
-  let opam_file =
-    try
-      OpamFile.OPAM.read_from_string
-        ~filename:(Path.Source.to_string file |> OpamFilename.of_string |> OpamFile.make)
-        opam_file_string
-    with
-    | OpamPp.Bad_version (_, message) ->
-      User_error.raise
-        [ Pp.textf
-            "Unable to parse opam file %s as local dune package."
-            (Path.Source.to_string file)
-        ; Pp.text message
-        ]
-    | OpamPp.Bad_format (pos, message) ->
-      let loc = Option.map pos ~f:loc_of_opam_pos in
-      User_error.raise ?loc [ Pp.text message ]
-  in
   let opam =
     let opam =
       let lexbuf =
@@ -662,8 +645,7 @@ let load_opam_file file name =
   { id
   ; opam_file = Id.default_opam_file id
   ; loc
-  ; synopsis = OpamFile.OPAM.synopsis opam_file
-  ; description = OpamFile.OPAM.descr opam_file |> Option.map ~f:OpamFile.Descr.full
+  ; version = get_one "version" |> Option.map ~f:Package_version.of_string
   ; conflicts = []
   ; depends = []
   ; depopts = []
@@ -678,14 +660,14 @@ let load_opam_file file name =
           (let+ url = get_one "dev-repo" in
            Source_kind.Url url)
       }
-  ; version =
-      Option.map ~f:Dune_pkg.Package_version.of_opam_package_version opam_file.version
+  ; synopsis = get_one "synopsis"
+  ; description = get_one "description"
   ; has_opam_file = Exists true
-  ; tags = opam_file.tags
+  ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
-  ; original_opam_file = None
+  ; original_opam_file = Some (file, opam_file_string)
   }
 ;;
 

@@ -15,11 +15,13 @@ dependency.
 Local conflict class defined in a local package:
 
   $ cat >foo.opam <<EOF
+  > opam-version: "2.0"
   > depends: [ "bar" ]
   > conflict-class: "ccc"
   > EOF
 
   $ cat >x.opam <<EOF
+  > opam-version: "2.0"
   > depends: "foo"
   > EOF
 

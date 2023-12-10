@@ -218,8 +218,12 @@ let project =
        let name = Dune_lang.Atom.to_string common.name in
        let root =
          match path with
+         (* If a path is given, we use that for the root during project
+            initialization, creating the path to it if needed. *)
+         | Some path -> path
+         (* Otherwise we will use the project's given name, and create a
+            directory accordingly. *)
          | None -> name
-         | Some path -> Filename.concat path name
        in
        let builder = Builder.set_root common_builder root in
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
@@ -252,8 +256,10 @@ let group =
     ; `P
         {|Run a subcommand with $(b, --help) for for details on it's supported arguments|}
     ; `P
-        {|If the optional $(b,PATH) is provided, the component will be created
-        there. Otherwise, it is created in the current working directory.|}
+        {|If the optional $(b,PATH) is provided, it must be a path to a directory, and
+        the component will be created there. Otherwise, it is created in a child of the
+        current working directory, called $(b, NAME). To initialize a component in the
+        current working directory, use `.` as the $(b,PATH).|}
     ; `P
         {|Any prefix of a $(b,COMMAND)'s name can be supplied in place of
         full name (as illustrated in the synopsis).|}

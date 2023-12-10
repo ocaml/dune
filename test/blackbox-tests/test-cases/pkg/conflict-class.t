@@ -30,8 +30,13 @@ Local conflict class defined in a local package:
   > EOF
 
   $ dune pkg lock
-  Solution for dune.lock:
-  - bar.0.0.1
+  Error: Unable to solve dependencies in build context: default
+  Can't find all required versions.
+  Selected: foo.dev x.dev foo&x
+  - bar -> (problem)
+      Rejected candidates:
+        bar.0.0.1: In same conflict class (ccc) as foo
+  [1]
 
 Now the conflict class comes from the opam repository
 

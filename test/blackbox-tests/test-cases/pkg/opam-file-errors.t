@@ -22,6 +22,12 @@ Handle the case where opam's parser rejects the file.
   > ]
   > EOF
   $ dune pkg lock
+  File "x.opam", line 1, characters 0-0:
+  Warning: Unable to read opam file. Some information about this package such
+  as its version will be ignored.
+  Reason: File "x.opam", line 3, characters 10-11:
+  Error: Parse error
+  
   File "$TESTCASE_ROOT/x.opam", line 3, characters 10-11:
   3 |   "a" { < ("0.1" & "0.2") }
                 ^
@@ -37,8 +43,10 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
-  (no dependencies to lock)
+  File "x.opam", line 1, characters 0-0:
+  Error: Expected formula to be a conjunction of atoms but encountered non-atom
+  term 'a | b'
+  [1]
 
   $ cat > x.opam <<EOF
   > opam-version: "2.0"
@@ -47,8 +55,10 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
-  (no dependencies to lock)
+  File "x.opam", line 1, characters 0-0:
+  Error: Can't convert opam filter '"foo"' into dune condition. Only global
+  variables may appear in this position.
+  [1]
 
   $ cat > x.opam <<EOF
   > opam-version: "2.0"
@@ -57,5 +67,7 @@ specifications that can't be represented by dune's package metadata format.
   > ]
   > EOF
   $ dune pkg lock
-  Solution for dune.lock:
-  (no dependencies to lock)
+  File "x.opam", line 1, characters 0-0:
+  Error: Can't convert opam filter 'foo:bar' into dune value. Only literal
+  values and global variables may appear in this position.
+  [1]

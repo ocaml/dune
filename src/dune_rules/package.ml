@@ -604,6 +604,7 @@ let load_opam_file file name =
     match opam with
     | Ok s -> Some s
     | Error exn ->
+      (* CR-rgrinberg: make it possible to disable this warning *)
       User_warning.emit
         ~loc
         [ Pp.text

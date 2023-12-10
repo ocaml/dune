@@ -361,6 +361,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
+  ; opam_file_conversion_error : exn option
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -392,6 +393,7 @@ let encode
   ; allow_empty
   ; opam_file = _
   ; conflict_class = _
+  ; opam_file_conversion_error = _
   }
   =
   let open Dune_lang.Encoder in
@@ -490,6 +492,7 @@ let decode =
        ; allow_empty
        ; opam_file
        ; conflict_class = []
+       ; opam_file_conversion_error = None
        }
 ;;
 
@@ -517,6 +520,7 @@ let to_dyn
   ; allow_empty
   ; opam_file = _
   ; conflict_class = _
+  ; opam_file_conversion_error = _
   }
   =
   let open Dyn in
@@ -565,6 +569,7 @@ let default name dir =
   ; allow_empty = false
   ; opam_file = Id.default_opam_file id
   ; conflict_class = []
+  ; opam_file_conversion_error = None
   }
 ;;
 
@@ -612,9 +617,33 @@ let load_opam_file file name =
   in
   let dir = Path.Source.parent_exn file in
   let convert_filtered_formula filtered_formula =
-    match Dune_pkg.Package_dependency.list_of_opam_filtered_formula filtered_formula with
-    | Ok depends -> depends
-    | Error (`Message _) -> []
+    Dune_pkg.Package_dependency.list_of_opam_filtered_formula filtered_formula
+  in
+  let depends, conflicts, depopts, opam_file_conversion_error =
+    let depends = convert_filtered_formula (OpamFile.OPAM.depends opam_file) in
+    let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
+    let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
+    let opam_file_conversion_error =
+      match
+        List.filter_map [ depends; conflicts; depopts ] ~f:(function
+          | Error (`Message m) -> Some m
+          | Ok _ -> None)
+      with
+      | [] -> None
+      | errors ->
+        Some
+          (User_error.E
+             (User_error.make
+                ([ Pp.textf
+                     "Errors occured while converting opam file %s to a dune local \
+                      package"
+                     (Path.Source.to_string_maybe_quoted file)
+                 ; Pp.text "errors:"
+                 ]
+                 @ List.map errors ~f:Pp.text)))
+    in
+    let make = Result.value ~default:[] in
+    make depends, make conflicts, make depopts, opam_file_conversion_error
   in
   let id = { Id.name; dir } in
   { id
@@ -622,9 +651,9 @@ let load_opam_file file name =
   ; loc
   ; synopsis = OpamFile.OPAM.synopsis opam_file
   ; description = OpamFile.OPAM.descr opam_file |> Option.map ~f:OpamFile.Descr.full
-  ; depends = convert_filtered_formula opam_file.depends
-  ; conflicts = convert_filtered_formula opam_file.conflicts
-  ; depopts = convert_filtered_formula opam_file.depopts
+  ; depends
+  ; conflicts
+  ; depopts
   ; conflict_class =
       OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
   ; info =
@@ -645,6 +674,7 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
+  ; opam_file_conversion_error
   }
 ;;
 
@@ -661,12 +691,15 @@ let missing_deps (t : t) ~effective_deps =
 ;;
 
 let to_local_package t =
-  { Dune_pkg.Local_package.name = name t
-  ; version = t.version
-  ; dependencies = t.depends
-  ; conflicts = t.conflicts
-  ; depopts = t.depopts
-  ; loc = t.loc
-  ; conflict_class = t.conflict_class
-  }
+  match t.opam_file_conversion_error with
+  | Some e -> raise e
+  | None ->
+    { Dune_pkg.Local_package.name = name t
+    ; version = t.version
+    ; dependencies = t.depends
+    ; conflicts = t.conflicts
+    ; depopts = t.depopts
+    ; loc = t.loc
+    ; conflict_class = t.conflict_class
+    }
 ;;

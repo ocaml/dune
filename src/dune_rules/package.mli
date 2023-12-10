@@ -103,6 +103,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Install.Section.t Site.Map.t
   ; allow_empty : bool
+  ; opam_file_conversion_error : exn option
   }
 
 val equal : t -> t -> bool

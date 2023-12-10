@@ -125,6 +125,7 @@ let package_fields
   ; opam_file = _
   ; allow_empty = _
   ; conflict_class = _
+  ; opam_file_conversion_error = _
   }
   ~project
   =

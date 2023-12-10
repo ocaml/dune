@@ -7,7 +7,9 @@ shouldn't be allowed (for now)
   > (lang dune 3.11)
   > EOF
 
-  $ touch mypkg.opam
+  $ cat > mypkg.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
   $ mkdir dune.lock
   $ cat >dune.lock/lock.dune <<EOF
   > (lang package 0.1)

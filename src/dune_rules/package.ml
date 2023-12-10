@@ -353,7 +353,6 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
-  ; conflict_class : Name.t list
   ; info : Info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
@@ -361,7 +360,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
-  ; opam_file_conversion_error : exn option
+  ; original_opam_file : (Path.Source.t * string) option
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -392,8 +391,7 @@ let encode
   ; sites
   ; allow_empty
   ; opam_file = _
-  ; conflict_class = _
-  ; opam_file_conversion_error = _
+  ; original_opam_file = _
   }
   =
   let open Dune_lang.Encoder in
@@ -491,8 +489,7 @@ let decode =
        ; sites
        ; allow_empty
        ; opam_file
-       ; conflict_class = []
-       ; opam_file_conversion_error = None
+       ; original_opam_file = None
        }
 ;;
 
@@ -519,8 +516,7 @@ let to_dyn
   ; sites
   ; allow_empty
   ; opam_file = _
-  ; conflict_class = _
-  ; opam_file_conversion_error = _
+  ; original_opam_file = _
   }
   =
   let open Dyn in
@@ -568,8 +564,7 @@ let default name dir =
   ; sites = Site.Map.empty
   ; allow_empty = false
   ; opam_file = Id.default_opam_file id
-  ; conflict_class = []
-  ; opam_file_conversion_error = None
+  ; original_opam_file = None
   }
 ;;
 
@@ -615,57 +610,73 @@ let load_opam_file file name =
       let loc = Option.map pos ~f:loc_of_opam_pos in
       User_error.raise ?loc [ Pp.text message ]
   in
-  let dir = Path.Source.parent_exn file in
-  let convert_filtered_formula filtered_formula =
-    Dune_pkg.Package_dependency.list_of_opam_filtered_formula filtered_formula
-  in
-  let depends, conflicts, depopts, opam_file_conversion_error =
-    let depends = convert_filtered_formula (OpamFile.OPAM.depends opam_file) in
-    let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
-    let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
-    let opam_file_conversion_error =
-      match
-        List.filter_map [ depends; conflicts; depopts ] ~f:(function
-          | Error (`Message m) -> Some m
-          | Ok _ -> None)
-      with
-      | [] -> None
-      | errors ->
-        Some
-          (User_error.E
-             (User_error.make
-                ([ Pp.textf
-                     "Errors occured while converting opam file %s to a dune local \
-                      package"
-                     (Path.Source.to_string_maybe_quoted file)
-                 ; Pp.text "errors:"
-                 ]
-                 @ List.map errors ~f:Pp.text)))
+  let opam =
+    let opam =
+      let lexbuf =
+        Lexbuf.from_string opam_file_string ~fname:(Path.Source.to_string file)
+      in
+      try Ok (Opam_file.parse lexbuf) with
+      | User_error.E _ as exn -> Error exn
     in
-    let make = Result.value ~default:[] in
-    make depends, make conflicts, make depopts, opam_file_conversion_error
+    match opam with
+    | Ok s -> Some s
+    | Error exn ->
+      User_warning.emit
+        ~loc
+        [ Pp.text
+            "Unable to read opam file. Some information about this package such as its \
+             version will be ignored."
+        ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+        ];
+      None
   in
+  let open Option.O in
+  let get_one name =
+    let* opam = opam in
+    let* value = Opam_file.get_field opam name in
+    match value.pelem with
+    | String s -> Some s
+    | _ -> None
+  in
+  let get_many name =
+    let* opam = opam in
+    let* value = Opam_file.get_field opam name in
+    match value.pelem with
+    | String s -> Some [ s ]
+    | List l ->
+      let+ l =
+        List.fold_left
+          l.pelem
+          ~init:(Some [])
+          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
+            let* acc = acc in
+            match v.pelem with
+            | String s -> Some (s :: acc)
+            | _ -> None)
+      in
+      List.rev l
+    | _ -> None
+  in
+  let dir = Path.Source.parent_exn file in
   let id = { Id.name; dir } in
   { id
   ; opam_file = Id.default_opam_file id
   ; loc
   ; synopsis = OpamFile.OPAM.synopsis opam_file
   ; description = OpamFile.OPAM.descr opam_file |> Option.map ~f:OpamFile.Descr.full
-  ; depends
-  ; conflicts
-  ; depopts
-  ; conflict_class =
-      OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
+  ; conflicts = []
+  ; depends = []
+  ; depopts = []
   ; info =
-      { maintainers = Some opam_file.maintainer
-      ; authors = Some (OpamFile.OPAM.author opam_file)
-      ; homepage = List.hd_opt opam_file.homepage
-      ; bug_reports = List.hd_opt opam_file.bug_reports
-      ; documentation = List.hd_opt opam_file.doc
-      ; license = Some opam_file.license
+      { maintainers = get_many "maintainer"
+      ; authors = get_many "authors"
+      ; homepage = get_one "homepage"
+      ; bug_reports = get_one "bug-reports"
+      ; documentation = get_one "doc"
+      ; license = get_many "license"
       ; source =
-          Option.map opam_file.url ~f:(fun url ->
-            Source_kind.Url (OpamFile.URL.write_to_string url))
+          (let+ url = get_one "dev-repo" in
+           Source_kind.Url url)
       }
   ; version =
       Option.map ~f:Dune_pkg.Package_version.of_opam_package_version opam_file.version
@@ -674,7 +685,7 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
-  ; opam_file_conversion_error
+  ; original_opam_file = None
   }
 ;;
 
@@ -691,8 +702,42 @@ let missing_deps (t : t) ~effective_deps =
 ;;
 
 let to_local_package t =
-  match t.opam_file_conversion_error with
-  | Some e -> raise e
+  match t.original_opam_file with
+  | Some (file, opam_file_string) ->
+    let opam_file =
+      try
+        OpamFile.OPAM.read_from_string
+          ~filename:(Path.Source.to_string file |> OpamFilename.of_string |> OpamFile.make)
+          opam_file_string
+      with
+      | OpamPp.Bad_version (_, message) ->
+        User_error.raise
+          [ Pp.textf
+              "Unable to parse opam file %s as local dune package."
+              (Path.Source.to_string file)
+          ; Pp.text message
+          ]
+      | OpamPp.Bad_format (pos, message) ->
+        let loc = Option.map pos ~f:loc_of_opam_pos in
+        User_error.raise ?loc [ Pp.text message ]
+    in
+    let convert_filtered_formula filtered_formula =
+      Dune_pkg.Package_dependency.list_of_opam_filtered_formula t.loc filtered_formula
+    in
+    let dependencies = convert_filtered_formula (OpamFile.OPAM.depends opam_file) in
+    let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
+    let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
+    let conflict_class =
+      OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
+    in
+    { Dune_pkg.Local_package.name = name t
+    ; version = t.version
+    ; dependencies
+    ; conflicts
+    ; depopts
+    ; loc = t.loc
+    ; conflict_class
+    }
   | None ->
     { Dune_pkg.Local_package.name = name t
     ; version = t.version
@@ -700,6 +745,6 @@ let to_local_package t =
     ; conflicts = t.conflicts
     ; depopts = t.depopts
     ; loc = t.loc
-    ; conflict_class = t.conflict_class
+    ; conflict_class = []
     }
 ;;

@@ -201,22 +201,19 @@ let list_to_opam_filtered_formula ts =
   |> OpamFormula.ands
 ;;
 
-let list_of_opam_filtered_formula filtered_formula =
-  let open Convert_from_opam_error in
+let list_of_opam_filtered_formula loc filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    Ok
-      (List.map
-         (OpamFormula.ands_to_list filtered_formula)
-         ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
-           match filtered_formula with
-           | Atom (name, condition) ->
-             let name = Package_name.of_opam_package_name name in
-             (match Constraint.opt_of_opam_condition condition with
-              | Ok constraint_ -> { name; constraint_ }
-              | Error error -> raise (E error))
-           | non_atom ->
-             raise (E (Filtered_formula_is_not_a_conjunction_of_atoms { non_atom }))))
+    OpamFormula.ands_to_list filtered_formula
+    |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
+      match filtered_formula with
+      | Atom (name, condition) ->
+        let name = Package_name.of_opam_package_name name in
+        (match Constraint.opt_of_opam_condition condition with
+         | Ok constraint_ -> { name; constraint_ }
+         | Error error -> raise (E error))
+      | non_atom ->
+        raise (E (Filtered_formula_is_not_a_conjunction_of_atoms { non_atom })))
   with
   | E e ->
     let message =
@@ -240,5 +237,5 @@ let list_of_opam_filtered_formula filtered_formula =
            '%s'"
           formula_string
     in
-    Error (`Message message)
+    User_error.raise ~loc [ Pp.text message ]
 ;;

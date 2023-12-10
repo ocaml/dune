@@ -95,7 +95,6 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
-  ; conflict_class : Name.t list
   ; info : Info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
@@ -103,7 +102,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Install.Section.t Site.Map.t
   ; allow_empty : bool
-  ; opam_file_conversion_error : exn option
+  ; original_opam_file : (Path.Source.t * string) option
   }
 
 val equal : t -> t -> bool

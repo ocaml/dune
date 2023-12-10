@@ -7,16 +7,18 @@ let substitute_variables_in_filter
   (opam_filter : OpamTypes.filter)
   : OpamTypes.filter
   =
-  OpamFilter.map_up
-    (function
-      | FIdent ([], variable, None) as filter ->
-        let variable_name = Variable_name.of_opam variable in
+  OpamFilter.partial_eval
+    (fun variable ->
+      match OpamVariable.Full.scope variable with
+      | Self | Package _ -> None
+      | Global ->
+        let variable_name =
+          OpamVariable.Full.variable variable |> Variable_name.of_opam
+        in
         Option.iter stats_updater ~f:(fun stats_updater ->
           Solver_stats.Updater.expand_variable stats_updater variable_name);
-        (match Solver_env.get solver_env variable_name with
-         | None -> filter
-         | Some value -> Variable_value.to_opam_filter value)
-      | other -> other)
+        Solver_env.get solver_env variable_name
+        |> Option.map ~f:Variable_value.to_opam_variable_contents)
     opam_filter
 ;;
 

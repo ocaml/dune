@@ -1,5 +1,3 @@
-export DUNE_PKG_OVERRIDE_OCAML=1
-
 dune="dune"
 
 pkg_root="_build/_private/default/.pkg"

@@ -545,7 +545,7 @@ File Tests
 
 To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
 
-.. code:: console
+.. code:: cram
 
    Simplest possible Cram test
      $ echo "testing"
@@ -566,7 +566,7 @@ To run the test and promote the results:
 
 We now see the output of the command:
 
-.. code:: console
+.. code:: cram
 
    Simplest possible cram test
      $ echo "testing"
@@ -578,7 +578,7 @@ than what is recorded in the test script.
 
 For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
 
-.. code:: console
+.. code:: cram
 
    We create a test artifact called "foo"
      $ cat >foo <<EOF
@@ -620,7 +620,7 @@ This defines a directory test ``wc.t`` which must include a ``run.t`` file as
 the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
 access their contents in the test script ``run.t``:
 
-.. code:: console
+.. code:: cram
 
    Testing wc:
      $ wc -l foo | awk '{ print $1 }'

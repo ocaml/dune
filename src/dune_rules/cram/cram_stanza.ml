@@ -66,7 +66,7 @@ let decode =
      and+ runtest_alias =
        field_o
          "runtest_alias"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> located bool)
+         (Dune_lang.Syntax.since Stanza.syntax (3, 12) >>> located bool)
      in
      { loc; alias; deps; enabled_if; locks; applies_to; package; runtest_alias })
 ;;

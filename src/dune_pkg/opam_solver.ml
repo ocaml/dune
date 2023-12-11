@@ -21,6 +21,18 @@ module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
   end
 end
 
+let add_self_to_filter_env package env variable =
+  match OpamVariable.Full.scope variable with
+  | Self | Package _ -> env variable
+  | Global ->
+    let var_name = Variable_name.of_opam (OpamVariable.Full.variable variable) in
+    if Variable_name.(equal var_name name)
+    then Some (OpamVariable.S (OpamPackage.Name.to_string (OpamPackage.name package)))
+    else if Variable_name.(equal var_name version)
+    then Some (S (OpamPackage.Version.to_string (OpamPackage.version package)))
+    else env variable
+;;
+
 module Context_for_dune = struct
   type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
@@ -114,9 +126,12 @@ module Context_for_dune = struct
         let available = OpamFile.OPAM.available opam in
         match
           let available_vars_resolved =
-            Resolve_opam_formula.substitute_variables_in_filter
-              ~stats_updater:(Some t.stats_updater)
-              t.solver_env
+            OpamFilter.partial_eval
+              (add_self_to_filter_env
+                 package
+                 (Solver_stats.Updater.wrap_env
+                    t.stats_updater
+                    (Solver_env.to_env t.solver_env)))
               available
           in
           eval_to_bool available_vars_resolved
@@ -200,9 +215,10 @@ module Context_for_dune = struct
     in
     let package_is_local = Package_name.Map.mem t.local_packages name in
     Resolve_opam_formula.apply_filter
-      ~stats_updater:(Some t.stats_updater)
+      (add_self_to_filter_env
+         package
+         (Solver_stats.Updater.wrap_env t.stats_updater (Solver_env.to_env t.solver_env)))
       ~with_test:package_is_local
-      t.solver_env
       filtered_formula
   ;;
 end
@@ -522,9 +538,8 @@ let opam_package_to_lock_file_pkg
   let deps =
     match
       Resolve_opam_formula.filtered_formula_to_package_names
-        ~stats_updater:None
         ~with_test:false
-        solver_env
+        (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
         version_by_package_name
         opam_file.depends
     with

@@ -24,3 +24,5 @@ val opam_version : t
 val with_test : t
 val with_doc : t
 val sys_ocaml_version : t
+val name : t
+val version : t

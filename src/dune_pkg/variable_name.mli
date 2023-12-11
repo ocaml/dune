@@ -23,3 +23,4 @@ val os_family : t
 val opam_version : t
 val with_test : t
 val with_doc : t
+val sys_ocaml_version : t

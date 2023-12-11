@@ -32,6 +32,7 @@ module Var : sig
       | Group
       | Jobs
       | Arch
+      | Sys_ocaml_version
       | Section_dir of Section.t
 
     val compare : t -> t -> Ordering.t

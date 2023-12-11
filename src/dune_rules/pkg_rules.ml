@@ -13,9 +13,11 @@ module Sys_vars = struct
     }
 
   let poll =
-    let path = Env_path.path Stdune.Env.initial in
+    let path = lazy (Env_path.path (Global.env ())) in
     let sys_poll_memo key =
-      Memo.lazy_ (fun () -> Memo.of_reproducible_fiber @@ key ~path)
+      Memo.lazy_ (fun () ->
+        let path = Lazy.force path in
+        Memo.of_reproducible_fiber @@ key ~path)
     in
     { os = sys_poll_memo Sys_poll.os
     ; os_version = sys_poll_memo Sys_poll.os_version
@@ -363,14 +365,14 @@ module Pkg = struct
       in
       Env.extend Env.empty ~vars
     in
-    (* TODO: Run actions in a constrained environment. [Env.initial] is the
+    (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
        variables may affect builds in unintended ways and make builds less
        reproducible. However other environment variables must be set in order
        for build actions to run successfully, such as $PATH on systems where the
        shell's default $PATH variable doesn't include the location of standard
        programs or build tools (e.g. NixOS). *)
-    Env_path.extend_env_concat_path Env.initial package_env
+    Env_path.extend_env_concat_path (Global.env ()) package_env
   ;;
 end
 
@@ -631,7 +633,7 @@ module Action_expander = struct
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
         let+ make =
-          let path = Env_path.path Env.initial in
+          let path = Env_path.path (Global.env ()) in
           Make_prog.which loc context ~path
         in
         Ok [ Value.Path make ]
@@ -914,7 +916,7 @@ module DB = struct
       let+ all = Lock_dir.get context in
       let system_provided =
         let ocaml =
-          match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
+          match Env.mem (Global.env ()) ~var:"DUNE_PKG_OVERRIDE_OCAML" with
           | false -> Package.Name.Set.empty
           | true ->
             Package.Name.Set.singleton

@@ -897,8 +897,6 @@ module Action_expander = struct
   ;;
 end
 
-let ocaml_package_name = Package.Name.of_string "ocaml"
-
 module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
@@ -914,19 +912,7 @@ module DB = struct
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
       let+ all = Lock_dir.get context in
-      let system_provided =
-        let ocaml =
-          match Env.mem (Global.env ()) ~var:"DUNE_PKG_OVERRIDE_OCAML" with
-          | false -> Package.Name.Set.empty
-          | true ->
-            Package.Name.Set.singleton
-              (match all.ocaml with
-               | None -> ocaml_package_name
-               | Some (_, name) -> name)
-        in
-        Package.Name.Set.union dune ocaml
-      in
-      { all = all.packages; system_provided }
+      { all = all.packages; system_provided = dune }
   ;;
 end
 
@@ -1608,7 +1594,7 @@ let ocaml_toolchain context =
   let+ pkg =
     let* db = DB.get context in
     match lock_dir.ocaml with
-    | None -> Resolve.resolve db context (Loc.none, ocaml_package_name)
+    | None -> Memo.return `System_provided
     | Some ocaml -> Resolve.resolve db context ocaml
   in
   match pkg with

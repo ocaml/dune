@@ -77,7 +77,7 @@ Now we finally make the OCaml package for testing through the lock file:
   > (lang package 0.1)
   > (ocaml mycaml)
   > EOF
-  $ cat >dune.lock/mycaml.dune <<EOF
+  $ cat >dune.lock/mycaml.pkg <<EOF
   > (source (copy $PWD/mycamlsources))
   > (build
   >  (system "\| cat >mycaml.install <<EOF
@@ -107,4 +107,4 @@ Now we finally make the OCaml package for testing through the lock file:
 This should display the ocaml from the lock file rather than shadowsystemocaml
 
   $ dune build @foo
-  $TESTCASE_ROOT/shadowsystemocaml/ocamlc
+  $TESTCASE_ROOT/_build/_private/default/.pkg/mycaml/target/bin/ocamlc

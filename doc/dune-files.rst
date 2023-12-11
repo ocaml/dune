@@ -735,6 +735,7 @@ The following sections describe the available stanzas and their meanings.
 .. include:: stanzas/cinaps.rst
 .. include:: stanzas/copy_files.rst
 .. include:: stanzas/coq_theory.rst
+.. include:: stanzas/cram.rst
 .. include:: stanzas/data_only_dirs.rst
 .. include:: stanzas/deprecated_library_name.rst
 .. include:: stanzas/dirs.rst

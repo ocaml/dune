@@ -1616,11 +1616,13 @@ let ocaml_toolchain context =
       let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
       let open Action_builder.O in
       let* cookie = cookie in
+      (* TODO we should use the closure of [pkg] *)
       let binaries =
         Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
       in
-      let env = Pkg.exported_env pkg in
-      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
+      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+      let path = Env_path.path (Global.env ()) in
+      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;

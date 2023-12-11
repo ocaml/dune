@@ -14,6 +14,7 @@ let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
               ; version_preference = _
               ; repos
               ; solver_env = _
+              ; unset_solver_vars = _
               ; context_common = _
               ; repositories
               ; constraints = _

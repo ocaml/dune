@@ -8,10 +8,19 @@ let context_term ~doc =
   Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
 ;;
 
-let solver_env ~solver_env_from_current_system ~solver_env_from_context =
-  [ solver_env_from_current_system; solver_env_from_context ]
-  |> List.filter_opt
-  |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+let solver_env
+  ~solver_env_from_current_system
+  ~solver_env_from_context
+  ~unset_solver_vars_from_context
+  =
+  let solver_env =
+    [ solver_env_from_current_system; solver_env_from_context ]
+    |> List.filter_opt
+    |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+  in
+  match unset_solver_vars_from_context with
+  | None -> solver_env
+  | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
 ;;
 
 module Version_preference = struct
@@ -46,6 +55,7 @@ module Per_context = struct
     { lock_dir_path : Path.Source.t
     ; version_preference : Version_preference.t
     ; solver_env : Dune_pkg.Solver_env.t option
+    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Dune_rules.Workspace.Context.Common.t
     ; repos :
@@ -63,6 +73,9 @@ module Per_context = struct
     let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
     let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
     let solver_env = Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env) in
+    let unset_solver_vars =
+      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars)
+    in
     let version_preference_context =
       Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)
     in
@@ -86,6 +99,7 @@ module Per_context = struct
           ~from_context:version_preference_context
     ; context_common
     ; solver_env
+    ; unset_solver_vars
     ; repositories
     ; repos = repositories_of_workspace workspace
     ; constraints

@@ -115,3 +115,7 @@ val transitive_dependency_closure
   :  t
   -> Package_name.Set.t
   -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
+
+(** Attempt to download and compute checksums for packages that have source
+    archive urls but no checksum. *)
+val compute_missing_checksums : t -> t Fiber.t

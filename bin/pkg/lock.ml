@@ -75,8 +75,9 @@ let solve per_context ~update_opam_repositories ~solver_env_from_current_system 
                     local_packages
                     ~f:Dune_pkg.Local_package.for_solver)
                ~constraints)
-         >>| function
-         | Error (`Diagnostic_message message) -> Error (context_name, message)
+         >>= function
+         | Error (`Diagnostic_message message) ->
+           Fiber.return (Error (context_name, message))
          | Ok { lock_dir; files; _ } ->
            let summary_message =
              User_message.make
@@ -92,6 +93,7 @@ let solve per_context ~update_opam_repositories ~solver_env_from_current_system 
                   | packages -> pp_packages packages)
                ]
            in
+           let+ lock_dir = Lock_dir.compute_missing_checksums lock_dir in
            Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message))
    in
    Result.List.all solutions)

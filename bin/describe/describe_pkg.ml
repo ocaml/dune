@@ -3,12 +3,11 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 
 module Show_lock = struct
-  let term =
-    let+ lock_dir_paths = Pkg_common.Lock_dirs.term in
-    let lock_dir_paths =
-      match lock_dir_paths with
-      | [] -> [ Lock_dir.default_path ]
-      | lock_dir_paths -> lock_dir_paths
+  let print_lock lock_dir_arg () =
+    let open Fiber.O in
+    let+ lock_dir_paths =
+      Memo.run (Workspace.workspace ())
+      >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
     in
     Console.print
     @@ List.map lock_dir_paths ~f:(fun lock_dir_path ->
@@ -21,6 +20,14 @@ module Show_lock = struct
             (Package_name.Map.to_list_map ~f:(fun _ pkg -> pkg) lock_dir.packages)
         ]
       |> Pp.vbox)
+  ;;
+
+  let term =
+    let+ builder = Common.Builder.term
+    and+ lock_dir_arg = Pkg_common.Lock_dirs_arg.term in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
+    Scheduler.go ~common ~config @@ print_lock lock_dir_arg
   ;;
 
   let command =
@@ -110,9 +117,7 @@ module List_locked_dependencies = struct
   let enumerate_lock_dirs_by_path ~lock_dirs =
     let open Fiber.O in
     let+ workspace = Memo.run (Workspace.workspace ()) in
-    let lock_dirs =
-      Pkg_common.Lock_dirs.of_workspace workspace ~chosen_lock_dirs:lock_dirs
-    in
+    let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
@@ -167,7 +172,7 @@ module List_locked_dependencies = struct
             ~doc:
               "Display transitive dependencies (by default only immediate dependencies \
                are displayed)")
-    and+ lock_dirs = Pkg_common.Lock_dirs.term in
+    and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
     Scheduler.go ~common ~config @@ list_locked_dependencies ~transitive ~lock_dirs

@@ -21,7 +21,7 @@ let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock
     ]
 ;;
 
-let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs =
+let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg =
   let open Fiber.O in
   let+ workspace = Memo.run (Workspace.workspace ())
   and+ solver_env_from_current_system =
@@ -32,7 +32,7 @@ let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs =
         ~path:(Env_path.path Stdune.Env.initial)
       >>| Option.some
   in
-  let lock_dirs = Lock_dirs.of_workspace workspace ~chosen_lock_dirs:lock_dirs in
+  let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
   List.iter
     lock_dirs
     ~f:(print_solver_env_for_lock_dir workspace ~solver_env_from_current_system)
@@ -53,11 +53,11 @@ let term =
              \"undefined\" which is treated as false. For example if a dependency has a \
              filter `{os = \"linux\"}` and the variable \"os\" is unset, the dependency \
              will be excluded. ")
-  and+ lock_dirs = Lock_dirs.term in
+  and+ lock_dirs_arg = Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
-    print_solver_env ~dont_poll_system_solver_variables ~lock_dirs)
+    print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg)
 ;;
 
 let info =

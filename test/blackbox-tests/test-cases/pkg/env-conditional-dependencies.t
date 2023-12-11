@@ -53,7 +53,7 @@ Create a workspace config that defines separate build contexts for macos and lin
   > EOF
 
 Now the os-specific dependencies are included on their respective systems.
-  $ dune pkg lock --dont-poll-system-solver-variables 
+  $ dune pkg lock --all 
   Solution for dune.macos.lock:
   - foo.0.0.1
   - foo-macos.0.0.1

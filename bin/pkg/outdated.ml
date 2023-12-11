@@ -3,11 +3,11 @@ open Pkg_common
 module Lock_dir = Dune_pkg.Lock_dir
 module Opam_repo = Dune_pkg.Opam_repo
 
-let find_outdated_packages ~transitive ~lock_dirs () =
+let find_outdated_packages ~transitive ~lock_dirs_arg () =
   let open Fiber.O in
   let+ pps, not_founds =
     let* workspace = Memo.run (Workspace.workspace ()) in
-    Lock_dirs.of_workspace workspace ~chosen_lock_dirs:lock_dirs
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
       (* updating makes sense when checking for outdated packages *)
       let* repos =
@@ -69,10 +69,10 @@ let term =
       & info
           [ "transitive" ]
           ~doc:"Check for outdated packages in transitive dependencies")
-  and+ lock_dirs = Lock_dirs.term in
+  and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config @@ find_outdated_packages ~transitive ~lock_dirs
+  Scheduler.go ~common ~config @@ find_outdated_packages ~transitive ~lock_dirs_arg
 ;;
 
 let info =

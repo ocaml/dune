@@ -127,21 +127,36 @@ let pp_packages packages =
       Pp.verbatim (Package_name.to_string name ^ "." ^ Package_version.to_string version))
 ;;
 
-module Lock_dirs = struct
+module Lock_dirs_arg = struct
+  type t =
+    | All
+    | Selected of Path.Source.t list
+
   let term =
-    let+ arg =
-      Arg.(
-        value
-        & pos_all string []
-        & info
-            []
-            ~docv:"LOCKDIRS"
-            ~doc:"Lock directories to check for outdated packages. Defaults to dune.lock.")
-    in
-    List.map arg ~f:Path.Source.of_string
+    Common.one_of
+      (let+ arg =
+         Arg.(
+           value
+           & pos_all string []
+           & info
+               []
+               ~docv:"LOCKDIRS"
+               ~doc:
+                 "Lock directories to check for outdated packages. Defaults to dune.lock.")
+       in
+       Selected (List.map arg ~f:Path.Source.of_string))
+      (let+ _all =
+         Arg.(
+           value
+           & flag
+           & info
+               [ "all" ]
+               ~doc:"Check all lock directories in the workspace for outdated packages.")
+       in
+       All)
   ;;
 
-  let of_workspace (workspace : Workspace.t) ~chosen_lock_dirs =
+  let lock_dirs_of_workspace t (workspace : Workspace.t) =
     let workspace_lock_dirs =
       List.filter_map workspace.contexts ~f:(function
         | Workspace.Context.Default { lock_dir; base = _ } ->
@@ -151,9 +166,10 @@ module Lock_dirs = struct
           Some lock_dir_path
         | Opam _ -> None)
     in
-    match chosen_lock_dirs with
-    | [] -> workspace_lock_dirs
-    | _ ->
+    match t with
+    | All -> workspace_lock_dirs
+    | Selected [] -> [ Lock_dir.default_path ]
+    | Selected chosen_lock_dirs ->
       let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
       let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
       if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set

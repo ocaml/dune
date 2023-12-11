@@ -27,7 +27,7 @@
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
-  $ solve_project <<EOF
+  $ solve_project --all <<EOF
   > (lang dune 3.11)
   > (package
   >  (name baz)
@@ -42,8 +42,12 @@
 
 No package should be outdated after a fresh lock.
 
-Default behaviour is to check all lock files in the workspace.
+Default behaviour is to check the default lock file.
   $ outdated
+  dune.lock is up to date.
+
+All lock file can be check by passing --all
+  $ outdated --all
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
 
@@ -73,7 +77,7 @@ Adding a new version of the bar package to the repository.
 
 Dune should report the new version of bar as available.
 
-  $ outdated
+  $ outdated --all
   - 1/2 packages in dune.workspace.lock are outdated.
     - bar 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -83,7 +87,7 @@ Now we add a new version of the foo package to the repository.
 Dune should only report the bar package as it is an immediate dependency.
 
   $ mkpkg foo 0.0.2 
-  $ outdated
+  $ outdated --all
   - 2/2 packages in dune.workspace.lock are outdated.
     Showing immediate dependencies, use --transitive to see them all.
     - bar 0.0.1 < 0.0.2
@@ -125,7 +129,7 @@ When printing both successes and failures, any errors should appear afterwards.
 
 Similarly for multiple lock files.
 
-  $ outdated --transitive 
+  $ outdated --transitive --all
   - 1/2 packages in dune.workspace.lock are outdated.
     - foo 0.0.1 < 0.0.2
   - 1/2 packages in dune.lock are outdated.
@@ -157,7 +161,7 @@ appear irrespective of being a transitive dependency.
 
 With multiple lock files, the errors should also be printed for each of them.
 
-  $ outdated 
+  $ outdated --all 
   - dune.workspace.lock is up to date.
   - dune.lock is up to date.
   Error: Some packages could not be found.

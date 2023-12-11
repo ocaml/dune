@@ -18,7 +18,7 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
   let open Fiber.O in
   let+ per_contexts =
     Memo.run (Workspace.workspace ())
-    >>| Pkg_common.Lock_dirs.of_workspace ~chosen_lock_dirs:lock_dirs
+    >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
@@ -72,7 +72,7 @@ let validate_lock_dirs ~lock_dirs () =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ lock_dirs = Pkg_common.Lock_dirs.term in
+  and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config @@ validate_lock_dirs ~lock_dirs

@@ -10,7 +10,7 @@ let solve
   ~update_opam_repositories
   ~solver_env_from_current_system
   ~version_preference
-  ~lock_dirs
+  ~lock_dirs_arg
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -18,7 +18,7 @@ let solve
      lockdir would fail then no side effect takes place. *)
   (let* local_packages = find_local_packages in
    let+ solutions =
-     Lock_dirs.of_workspace workspace ~chosen_lock_dirs:lock_dirs
+     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
      |> Fiber.parallel_map ~f:(fun lock_dir_path ->
        let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
        let solver_env =
@@ -93,7 +93,7 @@ let lock
   ~dont_poll_system_solver_variables
   ~version_preference
   ~update_opam_repositories
-  ~lock_dirs
+  ~lock_dirs_arg
   =
   let open Fiber.O in
   let* workspace = Memo.run (Workspace.workspace ())
@@ -110,7 +110,7 @@ let lock
     ~update_opam_repositories
     ~solver_env_from_current_system
     ~version_preference
-    ~lock_dirs
+    ~lock_dirs_arg
 ;;
 
 let term =
@@ -138,7 +138,7 @@ let term =
           ~doc:
             "Do not fetch updates of opam repositories, will use the cached opam \
              metadata. This allows offline use if the repositories are cached locally.")
-  and+ lock_dirs = Lock_dirs.term in
+  and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
@@ -146,7 +146,7 @@ let term =
       ~dont_poll_system_solver_variables
       ~version_preference
       ~update_opam_repositories:(not skip_update)
-      ~lock_dirs)
+      ~lock_dirs_arg)
 ;;
 
 let info =

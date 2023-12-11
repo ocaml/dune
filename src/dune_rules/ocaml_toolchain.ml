@@ -128,14 +128,16 @@ let of_env_with_findlib name env findlib_config ~which =
   make name ~env ~get_ocaml_tool ~which
 ;;
 
-let of_binaries name env binaries =
+let of_binaries ~path name env binaries =
   let which =
     let map =
       Path.Set.to_list binaries
       |> Filename.Map.of_list_map_exn ~f:(fun binary -> Path.basename binary, binary)
     in
     fun basename ->
-      Which.candidates basename |> List.find_map ~f:(Filename.Map.find map) |> Memo.return
+      match Which.candidates basename |> List.find_map ~f:(Filename.Map.find map) with
+      | Some s -> Memo.return (Some s)
+      | None -> Which.which ~path basename
   in
   let get_ocaml_tool ~dir:_ prog = which prog in
   make name ~env ~get_ocaml_tool ~which

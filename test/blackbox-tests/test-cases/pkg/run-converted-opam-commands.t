@@ -68,7 +68,7 @@ Generate a mock opam repository
   > EOF
 
   $ build_single_package() {
-  > solve_project_translate_opam_filters <<EOF
+  > solve_project <<EOF
   > (lang dune 3.11)
   > (package
   >  (name x)

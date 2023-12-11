@@ -24,7 +24,7 @@ Declare a package which refers to some variables:
   > EOF
 
 Solve the package using the default solver env:
-  $ solve_translate_opam_filters a
+  $ solve a
   Solution for dune.lock:
   - a.0.0.1
   $ cat dune.lock/a.pkg
@@ -67,7 +67,7 @@ Make a custom solver env:
   > EOF
 
 Run the solver using the new env:
-  $ solve_translate_opam_filters a
+  $ solve a
   Solution for dune.lock:
   - a.0.0.1
   $ cat dune.lock/a.pkg

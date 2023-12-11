@@ -5,7 +5,7 @@ dune="dune"
 pkg_root="_build/_private/default/.pkg"
 
 build_pkg() {
-  $dune build _build/_private/default/.pkg/$1/target/
+  $dune build $pkg_root/$1/target/
 }
 
 show_pkg() {
@@ -20,11 +20,11 @@ show_pkg_cookie() {
   $dune internal dump $pkg_root/$1/target/cookie
 }
 
-mkrepo() {
-  mkdir -p mock-opam-repository
-}
-
 mock_packages="mock-opam-repository/packages"
+
+mkrepo() {
+  mkdir -p $mock_packages
+}
 
 mkpkg() {
   name=$1
@@ -81,14 +81,6 @@ solve_project() {
   dune pkg lock --dont-poll-system-solver-variables $@
 }
 
-solve_project_translate_opam_filters() {
-  cat >dune-project
-  add_mock_repo_if_needed
-  dune pkg lock \
-    --dont-poll-system-solver-variables \
-    --experimental-translate-opam-filters
-}
-
 make_lockdir() {
   mkdir dune.lock
   cat >dune.lock/lock.dune <<EOF
@@ -109,8 +101,4 @@ EOF
 
 solve() {
   make_project $@ | solve_project
-}
-
-solve_translate_opam_filters() {
-  make_project $@ | solve_project_translate_opam_filters
 }

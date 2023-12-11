@@ -33,12 +33,7 @@ let check_for_dup_lock_dir_paths ts =
            (Loc.to_file_colon_line c.loc))))
 ;;
 
-let solve
-  per_context
-  ~update_opam_repositories
-  ~solver_env_from_current_system
-  ~experimental_translate_opam_filters
-  =
+let solve per_context ~update_opam_repositories ~solver_env_from_current_system =
   let open Fiber.O in
   check_for_dup_lock_dir_paths per_context;
   (* a list of thunks that will perform all the file IO side
@@ -79,7 +74,6 @@ let solve
                  (Package_name.Map.map
                     local_packages
                     ~f:Dune_pkg.Local_package.for_solver)
-               ~experimental_translate_opam_filters
                ~constraints)
          >>| function
          | Error (`Diagnostic_message message) -> Error (context_name, message)
@@ -122,7 +116,6 @@ let lock
   ~dont_poll_system_solver_variables
   ~version_preference
   ~update_opam_repositories
-  ~experimental_translate_opam_filters
   =
   let open Fiber.O in
   let* per_context =
@@ -138,11 +131,7 @@ let lock
         ~path:(Env_path.path Stdune.Env.initial)
       >>| Option.some
   in
-  solve
-    per_context
-    ~update_opam_repositories
-    ~solver_env_from_current_system
-    ~experimental_translate_opam_filters
+  solve per_context ~update_opam_repositories ~solver_env_from_current_system
 ;;
 
 let term =
@@ -169,17 +158,6 @@ let term =
              \"undefined\" which is treated as false. For example if a dependency has a \
              filter `{os = \"linux\"}` and the variable \"os\" is unset, the dependency \
              will be excluded. ")
-  and+ experimental_translate_opam_filters =
-    Arg.(
-      value
-      & flag
-      & info
-          [ "experimental-translate-opam-filters" ]
-          ~doc:
-            "Translate Opam filters into Dune's \"Slang\" DSL. This will eventually be \
-             enabled by default but is currently opt-in as we expect to make major \
-             changes to it in the future. Without this flag all conditional commands and \
-             terms in Opam files are included unconditionally.")
   and+ skip_update =
     Arg.(
       value
@@ -198,8 +176,7 @@ let term =
       ~all_contexts
       ~dont_poll_system_solver_variables
       ~version_preference
-      ~update_opam_repositories:(not skip_update)
-      ~experimental_translate_opam_filters)
+      ~update_opam_repositories:(not skip_update))
 ;;
 
 let info =

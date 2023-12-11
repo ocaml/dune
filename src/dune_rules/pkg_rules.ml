@@ -9,18 +9,22 @@ module Sys_vars = struct
     ; os_distribution : string option Memo.Lazy.t
     ; os_family : string option Memo.Lazy.t
     ; arch : string option Memo.Lazy.t
+    ; sys_ocaml_version : string option Memo.Lazy.t
     }
 
   let poll =
-    let path = Env_path.path Stdune.Env.initial in
+    let path = lazy (Env_path.path (Global.env ())) in
     let sys_poll_memo key =
-      Memo.lazy_ (fun () -> Memo.of_reproducible_fiber @@ key ~path)
+      Memo.lazy_ (fun () ->
+        let path = Lazy.force path in
+        Memo.of_reproducible_fiber @@ key ~path)
     in
     { os = sys_poll_memo Sys_poll.os
     ; os_version = sys_poll_memo Sys_poll.os_version
     ; os_distribution = sys_poll_memo Sys_poll.os_distribution
     ; os_family = sys_poll_memo Sys_poll.os_family
     ; arch = sys_poll_memo Sys_poll.arch
+    ; sys_ocaml_version = sys_poll_memo Sys_poll.sys_ocaml_version
     }
   ;;
 end
@@ -361,14 +365,14 @@ module Pkg = struct
       in
       Env.extend Env.empty ~vars
     in
-    (* TODO: Run actions in a constrained environment. [Env.initial] is the
+    (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
        variables may affect builds in unintended ways and make builds less
        reproducible. However other environment variables must be set in order
        for build actions to run successfully, such as $PATH on systems where the
        shell's default $PATH variable doesn't include the location of standard
        programs or build tools (e.g. NixOS). *)
-    Env_path.extend_env_concat_path Env.initial package_env
+    Env_path.extend_env_concat_path (Global.env ()) package_env
   ;;
 end
 
@@ -556,6 +560,8 @@ module Action_expander = struct
       | Os_version -> sys_poll_var (fun { os_version; _ } -> os_version)
       | Os_distribution -> sys_poll_var (fun { os_distribution; _ } -> os_distribution)
       | Os_family -> sys_poll_var (fun { os_family; _ } -> os_family)
+      | Sys_ocaml_version ->
+        sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
       | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
@@ -627,7 +633,7 @@ module Action_expander = struct
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
         let+ make =
-          let path = Env_path.path Env.initial in
+          let path = Env_path.path (Global.env ()) in
           Make_prog.which loc context ~path
         in
         Ok [ Value.Path make ]
@@ -910,7 +916,7 @@ module DB = struct
       let+ all = Lock_dir.get context in
       let system_provided =
         let ocaml =
-          match Env.mem Env.initial ~var:"DUNE_PKG_OVERRIDE_OCAML" with
+          match Env.mem (Global.env ()) ~var:"DUNE_PKG_OVERRIDE_OCAML" with
           | false -> Package.Name.Set.empty
           | true ->
             Package.Name.Set.singleton
@@ -1612,11 +1618,13 @@ let ocaml_toolchain context =
       let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
       let open Action_builder.O in
       let* cookie = cookie in
+      (* TODO we should use the closure of [pkg] *)
       let binaries =
         Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
       in
-      let env = Pkg.exported_env pkg in
-      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries context env binaries
+      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+      let path = Env_path.path (Global.env ()) in
+      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;

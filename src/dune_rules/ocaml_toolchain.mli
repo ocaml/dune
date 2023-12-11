@@ -24,7 +24,7 @@ val of_env_with_findlib
   -> which:(Filename.t -> Path.t option Memo.t)
   -> t Memo.t
 
-val of_binaries : Context_name.t -> Env.t -> Path.Set.t -> t Memo.t
+val of_binaries : path:Path.t list -> Context_name.t -> Env.t -> Path.Set.t -> t Memo.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Ocaml.Mode.t -> Action.Prog.t

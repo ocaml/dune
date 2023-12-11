@@ -150,3 +150,8 @@ let variant s args = Variant (s, args)
 let hash = Stdlib.Hashtbl.hash
 let compare x y = Ordering.of_int (compare x y)
 let equal x y = x = y
+
+let result ok err = function
+  | Ok e -> variant "Ok" [ ok e ]
+  | Error e -> variant "Error" [ err e ]
+;;

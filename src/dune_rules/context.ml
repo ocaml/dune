@@ -566,7 +566,6 @@ module Group = struct
     val instantiate : Context_name.t -> t Memo.t
   end = struct
     let instantiate_impl name : t Memo.t =
-      let env = Global.env () in
       let* workspace = Workspace.workspace () in
       let context =
         List.find_exn workspace.contexts ~f:(fun ctx ->
@@ -602,7 +601,7 @@ module Group = struct
           match builder.findlib_toolchain with
           | Some _ -> builder
           | None ->
-            (match Env.get env "OCAMLFIND_TOOLCHAIN" with
+            (match Env.get builder.env "OCAMLFIND_TOOLCHAIN" with
              | None -> builder
              | Some name ->
                { builder with

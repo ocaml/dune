@@ -286,23 +286,6 @@ module Copy_files : sig
   include Stanza.S with type t := t
 end
 
-module Rule : sig
-  type t =
-    { targets : String_with_vars.t Targets_spec.t
-    ; deps : Dep_conf.t Bindings.t
-    ; action : Loc.t * Dune_lang.Action.t
-    ; mode : Rule.Mode.t
-    ; patch_back_source_tree : bool
-    ; locks : Locks.t
-    ; loc : Loc.t
-    ; enabled_if : Blang.t
-    ; aliases : Alias.Name.t list
-    ; package : Package.t option
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Documentation : sig
   type t =
     { loc : Loc.t

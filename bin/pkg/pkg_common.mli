@@ -11,6 +11,7 @@ val context_term : doc:string -> Context_name.t option Term.t
 val solver_env
   :  solver_env_from_current_system:Dune_pkg.Solver_env.t option
   -> solver_env_from_context:Dune_pkg.Solver_env.t option
+  -> unset_solver_vars_from_context:Dune_pkg.Variable_name.Set.t option
   -> Dune_pkg.Solver_env.t
 
 module Version_preference : sig
@@ -22,6 +23,7 @@ module Per_context : sig
     { lock_dir_path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t
     ; solver_env : Dune_pkg.Solver_env.t option
+    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; context_common : Workspace.Context.Common.t
     ; repos :

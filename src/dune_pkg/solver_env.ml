@@ -67,3 +67,10 @@ let pp t =
         (Variable_name.to_string variable)
         (String.maybe_quoted (Variable_value.to_string value)))
 ;;
+
+let unset = Variable_name.Map.remove
+
+let unset_multi t variable_names =
+  Variable_name.Set.fold variable_names ~init:t ~f:(fun variable_name t ->
+    unset t variable_name)
+;;

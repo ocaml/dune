@@ -4,11 +4,17 @@ open Pkg_common
 let print_solver_env_for_one_context
   ~solver_env_from_current_system
   { Per_context.solver_env = solver_env_from_context
+  ; unset_solver_vars = unset_solver_vars_from_context
   ; context_common = { name = context_name; _ }
   ; _
   }
   =
-  let solver_env = solver_env ~solver_env_from_current_system ~solver_env_from_context in
+  let solver_env =
+    solver_env
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context
+  in
   Console.print
     [ Pp.textf
         "Solver environment for context %s:"

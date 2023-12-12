@@ -49,13 +49,17 @@ let solve per_context ~update_opam_repositories ~solver_env_from_current_system 
            ; version_preference
            ; repos
            ; solver_env = solver_env_from_context
+           ; unset_solver_vars = unset_solver_vars_from_context
            ; context_common = { name = context_name; _ }
            ; constraints
            ; repositories
            }
          ->
          let solver_env =
-           solver_env ~solver_env_from_context ~solver_env_from_current_system
+           solver_env
+             ~solver_env_from_context
+             ~solver_env_from_current_system
+             ~unset_solver_vars_from_context
          in
          let* repos = get_repos repos ~repositories ~update_opam_repositories in
          let overlay =

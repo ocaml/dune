@@ -429,6 +429,7 @@ let decode =
     | Ok x -> x
     | Error (name, (loc1, _), (loc2, _)) ->
       User_error.raise
+        ~loc:loc1
         [ Pp.textf "%s %s is declared twice:" error_msg (to_string name)
         ; Pp.textf "- %s" (print_value loc1)
         ; Pp.textf "- %s" (print_value loc2)

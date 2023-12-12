@@ -26,9 +26,8 @@ val create
     Expands [targets] with the set of files discovered in directory targets. *)
 val move_targets_to_build_dir
   :  t
-  -> loc:Loc.t
   -> should_be_skipped:(Path.Build.t -> bool)
   -> targets:Targets.Validated.t
-  -> unit Targets.Produced.t Fiber.t
+  -> unit Fiber.t
 
 val destroy : t -> unit Fiber.t

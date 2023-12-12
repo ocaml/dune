@@ -2,23 +2,12 @@ open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
 
-module Lock = struct
-  let term =
+module Show_lock = struct
+  let print_lock lock_dir_arg () =
+    let open Fiber.O in
     let+ lock_dir_paths =
-      Arg.(
-        value
-        & pos_all string []
-        & info
-            ~doc:
-              "The paths of the the lock directories to be inspected. Defaults to the \
-               lock directory specified in the default context."
-            ~docv:"LOCKDIRS"
-            [])
-    in
-    let lock_dir_paths =
-      match List.map lock_dir_paths ~f:Path.Source.of_string with
-      | [] -> [ Lock_dir.default_path ]
-      | lock_dir_paths -> lock_dir_paths
+      Memo.run (Workspace.workspace ())
+      >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dir_arg
     in
     Console.print
     @@ List.map lock_dir_paths ~f:(fun lock_dir_path ->
@@ -31,6 +20,14 @@ module Lock = struct
             (Package_name.Map.to_list_map ~f:(fun _ pkg -> pkg) lock_dir.packages)
         ]
       |> Pp.vbox)
+  ;;
+
+  let term =
+    let+ builder = Common.Builder.term
+    and+ lock_dir_arg = Pkg_common.Lock_dirs_arg.term in
+    let builder = Common.Builder.forbid_builds builder in
+    let common, config = Common.init builder in
+    Scheduler.go ~common ~config @@ print_lock lock_dir_arg
   ;;
 
   let command =
@@ -117,15 +114,11 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg =
+  let enumerate_lock_dirs_by_path ~lock_dirs =
     let open Fiber.O in
-    let+ per_contexts =
-      Pkg_common.Per_context.choose
-        ~context_name_arg
-        ~all_contexts_arg
-        ~version_preference_arg:None
-    in
-    List.filter_map per_contexts ~f:(fun { Pkg_common.Per_context.lock_dir_path; _ } ->
+    let+ workspace = Memo.run (Workspace.workspace ()) in
+    let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
+    List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
         try Some (lock_dir_path, Lock_dir.read_disk lock_dir_path) with
@@ -140,10 +133,9 @@ module List_locked_dependencies = struct
       else None)
   ;;
 
-  let list_locked_dependencies ~context_name_arg ~all_contexts_arg ~transitive =
+  let list_locked_dependencies ~transitive ~lock_dirs () =
     let open Fiber.O in
-    let+ lock_dirs_by_path =
-      enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg
+    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs
     and+ local_packages = Pkg_common.find_local_packages in
     let pp =
       Pp.concat
@@ -171,12 +163,6 @@ module List_locked_dependencies = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ context_name =
-      Pkg_common.context_term
-        ~doc:"Print information about the lockdir associated with this context"
-    and+ all_contexts =
-      Arg.(
-        value & flag & info [ "all-contexts" ] ~doc:"Print information about all lockdirs")
     and+ transitive =
       Arg.(
         value
@@ -186,15 +172,10 @@ module List_locked_dependencies = struct
             ~doc:
               "Display transitive dependencies (by default only immediate dependencies \
                are displayed)")
-    in
+    and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config
-    @@ fun () ->
-    list_locked_dependencies
-      ~context_name_arg:context_name
-      ~all_contexts_arg:all_contexts
-      ~transitive
+    Scheduler.go ~common ~config @@ list_locked_dependencies ~transitive ~lock_dirs
   ;;
 
   let command = Cmd.v info term
@@ -205,5 +186,5 @@ let command =
   let info = Cmd.info ~doc "pkg" in
   Cmd.group
     info
-    [ Lock.command; List_locked_dependencies.command; Dependency_hash.command ]
+    [ Show_lock.command; List_locked_dependencies.command; Dependency_hash.command ]
 ;;

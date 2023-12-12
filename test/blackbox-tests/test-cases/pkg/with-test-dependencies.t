@@ -55,7 +55,7 @@ Test dependencies of test dependencies are excluded:
 
 Conflicting packages can't be co-installed:
   $ solve foo conflicts-with-foo
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
@@ -65,7 +65,7 @@ Conflicting packages can't be co-installed:
 
 Conflicting packages in transitive dependencies can't be co-installed:
   $ solve depends-on-foo conflicts-with-foo
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)

@@ -11,15 +11,16 @@ let info =
   Cmd.info "validate-lockdir" ~doc ~man
 ;;
 
-let enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg =
+(* CR-someday alizter: The logic here is a little more complicated than it needs
+   to be and can be simplified. *)
+
+let enumerate_lock_dirs_by_path ~lock_dirs () =
   let open Fiber.O in
   let+ per_contexts =
-    Pkg_common.Per_context.choose
-      ~context_name_arg
-      ~all_contexts_arg
-      ~version_preference_arg:None
+    Memo.run (Workspace.workspace ())
+    >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
-  List.filter_map per_contexts ~f:(fun { Pkg_common.Per_context.lock_dir_path; _ } ->
+  List.filter_map per_contexts ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
     then (
       try Some (Ok (lock_dir_path, Lock_dir.read_disk lock_dir_path)) with
@@ -27,9 +28,9 @@ let enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg =
     else None)
 ;;
 
-let validate_lock_dirs ~context_name_arg ~all_contexts_arg =
+let validate_lock_dirs ~lock_dirs () =
   let open Fiber.O in
-  let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~context_name_arg ~all_contexts_arg
+  let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs ()
   and+ local_packages = Pkg_common.find_local_packages in
   if List.is_empty lock_dirs_by_path
   then Console.print [ Pp.text "No lockdirs to validate." ]
@@ -71,16 +72,10 @@ let validate_lock_dirs ~context_name_arg ~all_contexts_arg =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name =
-    Pkg_common.context_term ~doc:"Validate the lockdir associated with this context"
-  and+ all_contexts =
-    Arg.(value & flag & info [ "all-contexts" ] ~doc:"Validate all lockdirs")
-  in
+  and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
-  @@ fun () ->
-  validate_lock_dirs ~context_name_arg:context_name ~all_contexts_arg:all_contexts
+  Scheduler.go ~common ~config @@ validate_lock_dirs ~lock_dirs
 ;;
 
 let command = Cmd.v info term

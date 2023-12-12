@@ -2,7 +2,7 @@ open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
-let install_stanza_rules ~ctx_dir ~expander (install_conf : Dune_file.Install_conf.t) =
+let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
   let action =
     (* XXX we're evaluating these stanzas here and [Install_rules]. Seems a bit
        sad to do that *)

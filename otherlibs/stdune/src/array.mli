@@ -18,4 +18,6 @@ module Immutable : sig
   val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
   val exists : 'a t -> f:('a -> bool) -> bool
   val length : _ t -> int
+  val to_list_map : 'a t -> f:('a -> 'b) -> 'b list
+  val of_list_map : 'a list -> f:('a -> 'b) -> 'b t
 end

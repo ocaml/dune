@@ -279,7 +279,8 @@ let scan_files_entries path =
        Fpath.traverse_files
          ~dir:(Path.to_string path)
          ~init:[]
-         ~f:(fun ~dir filename acc ->
+         ~on_dir:(fun ~dir:_ _ acc -> acc)
+         ~on_file:(fun ~dir filename acc ->
            let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
            local_path :: acc)
      with

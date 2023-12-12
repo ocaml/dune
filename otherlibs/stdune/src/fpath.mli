@@ -45,5 +45,6 @@ val is_root : string -> bool
 val traverse_files
   :  dir:string
   -> init:'acc
-  -> f:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> 'acc

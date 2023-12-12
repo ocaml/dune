@@ -161,7 +161,7 @@ let rm_rf fn =
 ;;
 
 let traverse_files =
-  let rec loop root stack acc f =
+  let rec loop root stack acc on_file on_dir =
     match stack with
     | [] -> acc
     | dir :: dirs ->
@@ -172,18 +172,18 @@ let traverse_files =
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
              match (kind : Unix.file_kind) with
-             | S_DIR -> Filename.concat dir fname :: stack, acc
-             | S_REG -> stack, f ~dir fname acc
+             | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
+             | S_REG -> stack, on_file ~dir fname acc
              | S_LNK ->
                let path = Filename.concat dir_path fname in
                (match (Unix.stat path).st_kind with
                 | exception Unix.Unix_error (Unix.ENOENT, _, _) -> stack, acc
                 | S_DIR -> Filename.concat dir fname :: stack, acc
-                | S_REG -> stack, f ~dir fname acc
+                | S_REG -> stack, on_file ~dir fname acc
                 | _ -> stack, acc)
              | _ -> stack, acc)
          in
-         loop root stack acc f)
+         loop root stack acc on_file on_dir)
   in
-  fun ~dir ~init ~f -> loop dir [ "" ] init f
+  fun ~dir ~init ~on_file ~on_dir -> loop dir [ "" ] init on_file on_dir
 ;;

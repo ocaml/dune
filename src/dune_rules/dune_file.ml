@@ -1723,44 +1723,6 @@ module Tests = struct
   let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
 
-module Toplevel = struct
-  type t =
-    { name : string
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; loc : Loc.t
-    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
-    }
-
-  include Stanza.Make (struct
-      type nonrec t = t
-
-      include Poly
-    end)
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ loc = loc
-       and+ name = field "name" string
-       and+ libraries = field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-       and+ pps =
-         field
-           "preprocess"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> Preprocess.decode)
-           ~default:Preprocess.No_preprocessing
-       in
-       match pps with
-       | Preprocess.Pps _ | No_preprocessing -> { name; libraries; loc; pps }
-       | Action (loc, _) | Future_syntax loc ->
-         User_error.raise
-           ~loc
-           [ Pp.text
-               "Toplevel does not currently support action or future_syntax \
-                preprocessing."
-           ])
-  ;;
-end
-
 module Documentation = struct
   type t =
     { loc : Loc.t
@@ -2004,8 +1966,8 @@ module Stanzas = struct
             [ Include_subdirs.make_stanza (loc, t) ] )
         ; ( "toplevel"
           , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
-            and+ t = Toplevel.decode in
-            [ Toplevel.make_stanza t ] )
+            and+ t = Toplevel_stanza.decode in
+            [ Toplevel_stanza.make_stanza t ] )
         ; ( "deprecated_library_name"
           , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
             and+ t = Deprecated_library_name.decode in

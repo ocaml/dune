@@ -109,7 +109,7 @@ end = struct
     let toplevel_setup = Toplevel.Stanza.setup in
     let open Dune_file in
     match Stanza.repr stanza with
-    | Toplevel.T toplevel ->
+    | Toplevel_stanza.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->

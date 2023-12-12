@@ -297,17 +297,6 @@ module Tests : sig
   include Stanza.S with type t := t
 end
 
-module Toplevel : sig
-  type t =
-    { name : string
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; loc : Loc.t
-    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Include_subdirs : sig
   type qualification =
     | Unqualified

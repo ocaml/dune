@@ -209,7 +209,7 @@ Test that on older versions of dune we don't get warnings in this case:
   ]
   etc: [
     "_build/install/default/etc/b" {"../b"}
-    "_build/install/default/etc/baz/baz.txt" {"../baz/baz.txt"}
+    "_build/install/default/etc/baz/b.txt" {"../baz/b.txt"}
   ]
 
 Test that we don't get the warning if a vendored project starts an install dst

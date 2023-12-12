@@ -38,17 +38,23 @@ module Remote : sig
 
   val default_branch : t -> string
   val rev_of_name : t -> name:string -> At_rev.t option Fiber.t
+  val rev_of_ref : t -> ref:string -> At_rev.t option Fiber.t
   val rev_of_repository_id : t -> Repository_id.t -> At_rev.t option Fiber.t
 end
 
 val content_of_files : t -> File.t list -> string list Fiber.t
 val load_or_create : dir:Path.t -> t Fiber.t
 
-(** [add_repo t ~source] idempotently registers a git repo to the rev store.
+(** [add_repo t ~source ~branch] idempotently registers a git repo to the rev store.
     [source] is any URL that is supported by [git remote add].
 
     This only adds the remote metadata, to get a remote you need to either
     use [Remote.update] if you want to fetch from the remote (thus potentially
     triggering network IO) or if you are sure the [t] already contains all
     required revisions (e.g. from a previous run) then use [don't_update]. *)
-val add_repo : t -> source:string -> Remote.uninit Fiber.t
+val add_repo : t -> source:string -> branch:string option -> Remote.uninit Fiber.t
+
+(** [mem t ~rev] returns whether the revision [rev] is part of the repository *)
+val mem : t -> rev:string -> bool Fiber.t
+
+val ref_type : t -> source:string -> ref:string -> [ `Head | `Tag ] option Fiber.t

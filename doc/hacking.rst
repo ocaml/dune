@@ -399,6 +399,7 @@ Use the right lexers:
 - ``dune`` for dune and related files
 - ``opam`` for opam files
 - ``console`` for shell sessions and commands (start with ``$``)
+- ``cram`` for cram tests
 
 Style
 -----

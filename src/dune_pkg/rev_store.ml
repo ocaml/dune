@@ -115,6 +115,47 @@ let run_capture_zero_separated_lines { dir } =
   Process.run_capture_zero_separated ~dir ~display ~env failure_mode git
 ;;
 
+let mem { dir } ~rev =
+  let git = Lazy.force Vcs.git in
+  let failure_mode = Vcs.git_accept () in
+  let stderr_to = make_stderr () in
+  let stdout_to = make_stdout () in
+  let command = [ "rev-parse"; rev ] in
+  let+ res =
+    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git command
+  in
+  match res with
+  | Ok () -> true
+  | Error _ -> false
+;;
+
+let ref_type =
+  let hash = Re.(rep1 alnum) in
+  let re =
+    Re.(
+      compile
+      @@ seq
+           [ bol
+           ; hash
+           ; rep1 space
+           ; str "refs/"
+           ; group (alt [ str "heads"; str "tags" ])
+           ; str "/"
+           ])
+  in
+  fun t ~source ~ref ->
+    let command = [ "ls-remote"; source; ref ] in
+    let+ hits = run_capture_lines t command in
+    List.find_map hits ~f:(fun line ->
+      match Re.exec_opt re line with
+      | None -> None
+      | Some m ->
+        (match Re.Group.get m 1 with
+         | "heads" -> Some `Head
+         | "tags" -> Some `Tag
+         | _ -> None))
+;;
+
 let show =
   let show { dir } revs_and_paths =
     let git = Lazy.force Vcs.git in
@@ -307,7 +348,13 @@ module Remote = struct
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
     let revision = Rev rev in
     let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.repo; revision = Rev rev; files_at_rev }
+    Some { At_rev.repo; revision; files_at_rev }
+  ;;
+
+  let rev_of_ref { repo; handle = _; default_branch = _ } ~ref =
+    let revision = Rev ref in
+    let+ files_at_rev = files_at_rev repo revision in
+    Some { At_rev.repo; revision; files_at_rev }
   ;;
 
   let rev_of_repository_id { repo; handle = _; default_branch = _ } repo_id =
@@ -374,15 +421,24 @@ let read_head_branch =
     inspect lines
 ;;
 
-let add_repo ({ dir } as t) ~source =
-  (* TODO add this directly using .git/config *)
-  let handle = source |> Dune_digest.string |> Dune_digest.to_string in
+let remote_add t ~branch ~handle ~source =
+  run t [ "remote"; "add"; "--track"; branch; handle; source ]
+;;
+
+let add_repo ({ dir } as t) ~source ~branch =
+  let decoded_remote =
+    match branch with
+    | None -> source
+    | Some branch -> sprintf "%s %s" source branch
+  in
+  let handle = decoded_remote |> Dune_digest.string |> Dune_digest.to_string in
   let lock = lock_path t in
   with_flock lock ~f:(fun () ->
     let* exists = remote_exists dir ~name:handle in
     let+ default_branch =
-      match exists with
-      | true ->
+      match exists, branch with
+      | true, Some branch -> Fiber.return branch
+      | true, None ->
         let+ head_branch = read_head_branch t handle in
         (match head_branch with
          | Some head_branch -> head_branch
@@ -391,9 +447,12 @@ let add_repo ({ dir } as t) ~source =
            Code_error.raise
              (sprintf "Could not load default branch of repository '%s'" source)
              [ "source", Dyn.string source; "handle", Dyn.string handle ])
-      | false ->
+      | false, Some branch ->
+        let+ () = remote_add t ~branch ~handle ~source in
+        branch
+      | false, None ->
         let* head_branch = query_head_branch t source in
-        let head_branch =
+        let branch =
           match head_branch with
           | Some head_branch -> head_branch
           | None ->
@@ -406,8 +465,8 @@ let add_repo ({ dir } as t) ~source =
               [ Pp.textf "Could not determine default branch of repository at '%s'" source
               ]
         in
-        let+ () = run t [ "remote"; "add"; "--track"; head_branch; handle; source ] in
-        head_branch
+        let+ () = remote_add t ~branch ~handle ~source in
+        branch
     in
     { Remote.repo = t; handle; default_branch })
 ;;

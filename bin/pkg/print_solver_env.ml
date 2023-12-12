@@ -1,34 +1,29 @@
 open Import
 open Pkg_common
 
-let print_solver_env_for_one_context
-  ~solver_env_from_current_system
-  { Per_context.solver_env = solver_env_from_context
-  ; context_common = { name = context_name; _ }
-  ; _
-  }
-  =
-  let solver_env = solver_env ~solver_env_from_current_system ~solver_env_from_context in
+let print_solver_env_for_lock_dir workspace ~solver_env_from_current_system lock_dir_path =
+  let solver_env_from_context =
+    Option.bind (Workspace.find_lock_dir workspace lock_dir_path) ~f:(fun lock_dir ->
+      lock_dir.solver_env)
+  in
+  let solver_env =
+    solver_env
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context:
+        (Pkg_common.unset_solver_vars_of_workspace workspace ~lock_dir_path)
+  in
   Console.print
     [ Pp.textf
-        "Solver environment for context %s:"
-        (String.maybe_quoted @@ Dune_engine.Context_name.to_string context_name)
+        "Solver environment for lock directory %s:"
+        (Path.Source.to_string_maybe_quoted lock_dir_path)
     ; Dune_pkg.Solver_env.pp solver_env
     ]
 ;;
 
-let print_solver_env
-  ~context_name
-  ~all_contexts
-  ~version_preference
-  ~dont_poll_system_solver_variables
-  =
+let print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg =
   let open Fiber.O in
-  let+ per_context =
-    Per_context.choose
-      ~context_name_arg:context_name
-      ~all_contexts_arg:all_contexts
-      ~version_preference_arg:version_preference
+  let+ workspace = Memo.run (Workspace.workspace ())
   and+ solver_env_from_current_system =
     if dont_poll_system_solver_variables
     then Fiber.return None
@@ -37,22 +32,14 @@ let print_solver_env
         ~path:(Env_path.path Stdune.Env.initial)
       >>| Option.some
   in
+  let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in
   List.iter
-    per_context
-    ~f:(print_solver_env_for_one_context ~solver_env_from_current_system)
+    lock_dirs
+    ~f:(print_solver_env_for_lock_dir workspace ~solver_env_from_current_system)
 ;;
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name =
-    context_term
-      ~doc:
-        "Generate the lockdir associated with this context (the default context will be \
-         used if this is omitted)"
-  and+ all_contexts =
-    Arg.(
-      value & flag & info [ "all-contexts" ] ~doc:"Generate the lockdir for all contexts")
-  and+ version_preference = Version_preference.term
   and+ dont_poll_system_solver_variables =
     Arg.(
       value
@@ -66,15 +53,11 @@ let term =
              \"undefined\" which is treated as false. For example if a dependency has a \
              filter `{os = \"linux\"}` and the variable \"os\" is unset, the dependency \
              will be excluded. ")
-  in
+  and+ lock_dirs_arg = Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
-    print_solver_env
-      ~context_name
-      ~all_contexts
-      ~version_preference
-      ~dont_poll_system_solver_variables)
+    print_solver_env ~dont_poll_system_solver_variables ~lock_dirs_arg)
 ;;
 
 let info =

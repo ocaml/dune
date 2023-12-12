@@ -4,14 +4,19 @@ module Solver_env = Dune_pkg.Solver_env
 module Variable_name = Dune_pkg.Variable_name
 module Variable_value = Dune_pkg.Variable_value
 
-let context_term ~doc =
-  Arg.(value & opt (some Arg.context_name) None & info [ "context" ] ~docv:"CONTEXT" ~doc)
-;;
-
-let solver_env ~solver_env_from_current_system ~solver_env_from_context =
-  [ solver_env_from_current_system; solver_env_from_context ]
-  |> List.filter_opt
-  |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+let solver_env
+  ~solver_env_from_current_system
+  ~solver_env_from_context
+  ~unset_solver_vars_from_context
+  =
+  let solver_env =
+    [ solver_env_from_current_system; solver_env_from_context ]
+    |> List.filter_opt
+    |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+  in
+  match unset_solver_vars_from_context with
+  | None -> solver_env
+  | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
 ;;
 
 module Version_preference = struct
@@ -41,101 +46,40 @@ module Version_preference = struct
   ;;
 end
 
-module Per_context = struct
-  type t =
-    { lock_dir_path : Path.Source.t
-    ; version_preference : Version_preference.t
-    ; solver_env : Dune_pkg.Solver_env.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
-    ; context_common : Dune_rules.Workspace.Context.Common.t
-    ; repos :
-        Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-    ; constraints : Dune_lang.Package_dependency.t list
-    }
+let repositories_of_workspace (workspace : Workspace.t) =
+  List.map workspace.repos ~f:(fun repo ->
+    Dune_pkg.Pkg_workspace.Repository.name repo, repo)
+  |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+;;
 
-  let repositories_of_workspace (workspace : Workspace.t) =
-    List.map workspace.repos ~f:(fun repo ->
-      Dune_pkg.Pkg_workspace.Repository.name repo, repo)
-    |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
-  ;;
+let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  match lock_dir with
+  | None -> []
+  | Some lock_dir -> lock_dir.constraints
+;;
 
-  let make_solver workspace context_common ~version_preference_arg ~lock_dir =
-    let lock_dir_path = Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path in
-    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-    let solver_env = Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env) in
-    let version_preference_context =
-      Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)
-    in
-    let repositories =
-      Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
-      |> Option.value
-           ~default:
-             (List.map
-                Workspace.default_repositories
-                ~f:Dune_pkg.Pkg_workspace.Repository.name)
-    in
-    let constraints =
-      match lock_dir with
-      | None -> []
-      | Some lock_dir -> lock_dir.constraints
-    in
-    { lock_dir_path
-    ; version_preference =
-        Version_preference.choose
-          ~from_arg:version_preference_arg
-          ~from_context:version_preference_context
-    ; context_common
-    ; solver_env
-    ; repositories
-    ; repos = repositories_of_workspace workspace
-    ; constraints
-    }
-  ;;
+let repositories_of_lock_dir workspace ~lock_dir_path =
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
+  |> Option.value
+       ~default:
+         (List.map
+            Workspace.default_repositories
+            ~f:Dune_pkg.Pkg_workspace.Repository.name)
+;;
 
-  let choose ~context_name_arg ~all_contexts_arg ~version_preference_arg =
-    let open Fiber.O in
-    match context_name_arg, all_contexts_arg with
-    | Some _, true ->
-      User_error.raise [ Pp.text "--context and --all-contexts are mutually exclusive" ]
-    | context_name_opt, false ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      let context_name =
-        Option.value context_name_opt ~default:Dune_engine.Context_name.default
-      in
-      let context =
-        (* TODO this doesn't work for target contexts defined by cross compilation *)
-        List.find workspace.contexts ~f:(fun context ->
-          Dune_engine.Context_name.equal (Workspace.Context.name context) context_name)
-      in
-      (match context with
-       | None ->
-         User_error.raise
-           [ Pp.textf
-               "Unknown build context: %s"
-               (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
-           ]
-       | Some (Default { lock_dir; base = context_common; _ }) ->
-         [ make_solver workspace context_common ~version_preference_arg ~lock_dir ]
-       | Some (Opam _) ->
-         User_error.raise
-           [ Pp.textf
-               "Unexpected opam build context: %s"
-               (Dune_engine.Context_name.to_string context_name |> String.maybe_quoted)
-           ])
-    | None, true ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
-      List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default { lock_dir; base = context_common } ->
-          Some (make_solver workspace context_common ~version_preference_arg ~lock_dir)
-        | Opam _ -> None)
-  ;;
-end
+let unset_solver_vars_of_workspace workspace ~lock_dir_path =
+  let open Option.O in
+  let* lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  lock_dir.unset_solver_vars
+;;
 
 let location_of_opam_url url =
   match (url : OpamUrl.t).backend with
   | `rsync -> `Path (Path.of_string url.path)
   (* contrary to OPAM we also attempt to load HTTP sources via git *)
-  | `git | `http -> `Git (OpamUrl.base_url url)
+  | `git | `http -> `Git
   | `darcs | `hg ->
     User_error.raise
       ~hints:[ Pp.text "Specify either a file path or git repo via SSH/HTTPS" ]
@@ -144,6 +88,7 @@ let location_of_opam_url url =
 ;;
 
 let get_repos repos ~repositories ~update_opam_repositories =
+  let open Fiber.O in
   let module Repository_id = Dune_pkg.Repository_id in
   let module Opam_repo = Dune_pkg.Opam_repo in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
@@ -159,8 +104,9 @@ let get_repos repos ~repositories ~update_opam_repositories =
     | Some repo ->
       let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
       (match location_of_opam_url opam_url with
-       | `Git source ->
-         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories ~source
+       | `Git ->
+         let* source = Opam_repo.Source.of_opam_url opam_url in
+         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories source
        | `Path path ->
          let repo_id = Repository_id.of_path path in
          Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
@@ -182,3 +128,66 @@ let pp_packages packages =
     ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
       Pp.verbatim (Package_name.to_string name ^ "." ^ Package_version.to_string version))
 ;;
+
+module Lock_dirs_arg = struct
+  type t =
+    | All
+    | Selected of Path.Source.t list
+
+  let term =
+    Common.one_of
+      (let+ arg =
+         Arg.(
+           value
+           & pos_all string []
+           & info
+               []
+               ~docv:"LOCKDIRS"
+               ~doc:
+                 "Lock directories to check for outdated packages. Defaults to dune.lock.")
+       in
+       Selected (List.map arg ~f:Path.Source.of_string))
+      (let+ _all =
+         Arg.(
+           value
+           & flag
+           & info
+               [ "all" ]
+               ~doc:"Check all lock directories in the workspace for outdated packages.")
+       in
+       All)
+  ;;
+
+  let lock_dirs_of_workspace t (workspace : Workspace.t) =
+    let workspace_lock_dirs =
+      List.filter_map workspace.contexts ~f:(function
+        | Workspace.Context.Default { lock_dir; base = _ } ->
+          let lock_dir_path =
+            Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path
+          in
+          Some lock_dir_path
+        | Opam _ -> None)
+    in
+    match t with
+    | All -> workspace_lock_dirs
+    | Selected [] -> [ Lock_dir.default_path ]
+    | Selected chosen_lock_dirs ->
+      let workspace_lock_dirs_set = Path.Source.Set.of_list workspace_lock_dirs in
+      let chosen_lock_dirs_set = Path.Source.Set.of_list chosen_lock_dirs in
+      if Path.Source.Set.is_subset chosen_lock_dirs_set ~of_:workspace_lock_dirs_set
+      then chosen_lock_dirs
+      else (
+        let unknown_lock_dirs =
+          Path.Source.Set.diff chosen_lock_dirs_set workspace_lock_dirs_set
+          |> Path.Source.Set.to_list
+        in
+        let f x = Path.pp (Path.source x) in
+        User_error.raise
+          [ Pp.text
+              "The following directories are not lock directories in this workspace:"
+          ; Pp.enumerate unknown_lock_dirs ~f
+          ; Pp.text "This workspace contains the following lock directories:"
+          ; Pp.enumerate workspace_lock_dirs ~f
+          ])
+  ;;
+end

@@ -15,6 +15,15 @@ module Updater = struct
     let { expanded_variables } = !t in
     t := { expanded_variables = Variable_name.Set.add expanded_variables variable }
   ;;
+
+  let wrap_env t env variable =
+    (match OpamVariable.Full.scope variable with
+     | Self | Package _ -> ()
+     | Global ->
+       let variable_name = OpamVariable.Full.variable variable |> Variable_name.of_opam in
+       expand_variable t variable_name);
+    env variable
+  ;;
 end
 
 module Expanded_variable_bindings = struct

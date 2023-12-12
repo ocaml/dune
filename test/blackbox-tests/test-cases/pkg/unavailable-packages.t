@@ -14,7 +14,8 @@ Set up two build contexts: a default one for linux and another for macos.
   >  (repositories mock)
   >  (solver_env
   >   (os macos)))
-  > (context (default))
+  > (context
+  >  (default)) 
   > (context
   >  (default
   >   (name macos)
@@ -23,13 +24,11 @@ Set up two build contexts: a default one for linux and another for macos.
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
-
-!! Do not delete this one for the one in helpers.sh as it passes --context !!
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --dont-poll-system-solver-variables --context=default
-  >   dune pkg lock --dont-poll-system-solver-variables --context=macos
+  >   dune pkg lock --dont-poll-system-solver-variables dune.lock
+  >   dune pkg lock --dont-poll-system-solver-variables dune.macos.lock
   > }
 
 A package which is only available on linux:
@@ -82,7 +81,7 @@ available on linux.
   $ solve linux-only
   Solution for dune.lock:
   - linux-only.0.0.2
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - linux-only -> (problem)
@@ -105,7 +104,7 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
   $ solve undefined-var
   Solution for dune.lock:
   - undefined-var.0.0.2
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - undefined-var -> (problem)
@@ -117,14 +116,14 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
-  Error: Unable to solve dependencies in build context: macos
+  Error: Unable to solve dependencies for dune.macos.lock:
   Can't find all required versions.
   Selected: x.dev
   - availability-string -> (problem)

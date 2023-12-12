@@ -46,6 +46,61 @@ module Source = struct
         ]
   ;;
 
+  let fetch_and_hash_archive url =
+    let open Fiber.O in
+    let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:"archive" in
+    Fiber.finalize ~finally:(fun () ->
+      Temp.destroy Dir temp_dir;
+      Fiber.return ())
+    @@ fun () ->
+    let target = Path.relative temp_dir "archive" in
+    Fetch.fetch ~unpack:false ~checksum:None ~target (OpamUrl.of_string url)
+    >>| function
+    | Ok () -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
+    | Error (Checksum_mismatch _) ->
+      Code_error.raise "Checksum mismatch when no checksum was provided" []
+    | Error (Unavailable message_opt) ->
+      let message =
+        match message_opt with
+        | Some message -> message
+        | None ->
+          User_message.make [ Pp.textf "Failed to retrieve source archive from: %s" url ]
+      in
+      User_warning.emit_message message;
+      None
+  ;;
+
+  let compute_missing_checksum_of_fetch
+    ({ url = url_loc, url; checksum } as fetch)
+    package_name
+    =
+    let open Fiber.O in
+    match checksum with
+    | Some _ -> Fiber.return fetch
+    | None ->
+      User_message.print
+        (User_message.make
+           [ Pp.textf
+               "Package %S has source archive which lacks a checksum."
+               (Package_name.to_string package_name)
+           ; Pp.textf "The source archive will be downloaded from: %s" url
+           ; Pp.text "Dune will compute its own checksum for this source archive."
+           ]);
+      fetch_and_hash_archive url
+      >>| Option.map ~f:(fun checksum ->
+        { url = url_loc, url; checksum = Some (Loc.none, checksum) })
+      >>| Option.value ~default:fetch
+  ;;
+
+  let compute_missing_checksum t package_name =
+    let open Fiber.O in
+    match t with
+    | External_copy _ -> Fiber.return t
+    | Fetch fetch ->
+      let+ fetch = compute_missing_checksum_of_fetch fetch package_name in
+      Fetch fetch
+  ;;
+
   module Fields = struct
     let copy = "copy"
     let fetch = "fetch"
@@ -180,6 +235,16 @@ module Pkg = struct
       ; ( "exported_env"
         , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
       ]
+  ;;
+
+  let compute_missing_checksum t =
+    let open Fiber.O in
+    let+ source =
+      match t.info.source with
+      | Some source -> Source.compute_missing_checksum source t.info.name >>| Option.some
+      | None -> Fiber.return None
+    in
+    { t with info = { t.info with source } }
   ;;
 
   module Fields = struct
@@ -798,3 +863,33 @@ let transitive_dependency_closure t start =
     in
     Ok (loop start)
 ;;
+
+let compute_missing_checksums t =
+  let open Fiber.O in
+  let+ packages =
+    Package_name.Map.to_list t.packages
+    |> List.map ~f:(fun (name, pkg) ->
+      let+ pkg = Pkg.compute_missing_checksum pkg in
+      name, pkg)
+    |> Fiber.all_concurrently
+    >>| Package_name.Map.of_list_exn
+  in
+  { t with packages }
+;;
+
+module Private = struct
+  let used_with_commit ~commit xs =
+    List.map xs ~f:(fun serializable ->
+      Opam_repo.Serializable.Private.with_commit ~commit serializable)
+  ;;
+
+  let repos_with_commit ~commit ({ Repositories.used; _ } as repos) =
+    let used = Option.map used ~f:(used_with_commit ~commit) in
+    { repos with used }
+  ;;
+
+  let with_commit ~commit ({ repos; _ } as lock_dir) =
+    let repos = repos_with_commit ~commit repos in
+    { lock_dir with repos }
+  ;;
+end

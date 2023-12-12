@@ -502,6 +502,93 @@ module Substitute = struct
   ;;
 end
 
+module Run_with_path = struct
+  module Spec = struct
+    type 'path chunk =
+      | String of string
+      | Path of 'path
+
+    type 'path arg = 'path chunk Array.Immutable.t
+
+    type ('path, 'target) t =
+      { prog : Action.Prog.t
+      ; args : 'path arg Array.Immutable.t
+      }
+
+    let name = "run-with-path"
+    let version = 1
+
+    let map_arg arg ~f =
+      Array.Immutable.map arg ~f:(function
+        | String _ as s -> s
+        | Path p -> Path (f p))
+    ;;
+
+    let bimap t f _g = { t with args = Array.Immutable.map t.args ~f:(map_arg ~f) }
+    let is_useful_to ~memoize:_ = true
+
+    let encode { prog; args } path _ : Dune_lang.t =
+      let prog =
+        Dune_lang.atom_or_quoted_string
+        @@
+        match prog with
+        | Ok p -> Path.reach p ~from:Path.root
+        | Error e -> e.program
+      in
+      let args =
+        Array.Immutable.to_list_map args ~f:(fun x ->
+          Dune_lang.List
+            (Array.Immutable.to_list_map x ~f:(function
+              | String s -> Dune_lang.atom_or_quoted_string s
+              | Path p -> path p)))
+      in
+      List ([ Dune_lang.atom_or_quoted_string name; prog ] @ args)
+    ;;
+
+    let action { prog; args } ~(ectx : Action.Ext.context) ~(eenv : Action.Ext.env) =
+      let open Fiber.O in
+      match prog with
+      | Error e -> Action.Prog.Not_found.raise e
+      | Ok prog ->
+        let args =
+          Array.Immutable.to_list_map args ~f:(fun arg ->
+            Array.Immutable.to_list_map arg ~f:(function
+              | String s -> s
+              | Path p -> Path.to_absolute_filename p)
+            |> String.concat ~sep:"")
+        in
+        let metadata = Process.create_metadata ~purpose:ectx.purpose () in
+        Process.run
+          (Accept eenv.exit_codes)
+          prog
+          args
+          ~display:!Clflags.display
+          ~metadata
+          ~stdout_to:eenv.stdout_to
+          ~stderr_to:eenv.stderr_to
+          ~stdin_from:eenv.stdin_from
+          ~dir:eenv.working_dir
+          ~env:eenv.env
+        >>= (function
+         | Error _ -> Fiber.return ()
+         | Ok () -> Fiber.return ())
+    ;;
+  end
+
+  let action prog args =
+    let module M = struct
+      type path = Path.t
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = { Spec.prog; args }
+    end
+    in
+    Action.Extension (module M)
+  ;;
+end
+
 module Action_expander = struct
   module Expander = struct
     include Expander0
@@ -738,10 +825,25 @@ module Action_expander = struct
          User_error.raise
            ?loc
            [ Pp.text "\"run\" action must have at least one argument" ]
-       | (prog_loc, prog) :: args ->
-         let+ exe = Expander.expand_exe_value expander prog ~loc:prog_loc in
-         let args = Value.L.to_strings (List.map ~f:snd args) ~dir in
-         Action.Run (exe, Array.Immutable.of_list args))
+       | (prog_loc, `Concat prog) :: args ->
+         let+ exe =
+           let prog =
+             match prog with
+             | [ Path prog ] -> Value.Path prog
+             | [ Dir prog ] -> Value.Dir prog
+             | prog ->
+               String (List.map prog ~f:(Value.to_string ~dir) |> String.concat ~sep:"")
+           in
+           Expander.expand_exe_value expander prog ~loc:prog_loc
+         in
+         let args =
+           Array.Immutable.of_list_map args ~f:(fun (_, `Concat arg) ->
+             Array.Immutable.of_list_map arg ~f:(fun (arg : Value.t) ->
+               match arg with
+               | String s -> Run_with_path.Spec.String s
+               | Path p | Dir p -> Path p))
+         in
+         Run_with_path.action exe args)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
@@ -897,8 +999,6 @@ module Action_expander = struct
   ;;
 end
 
-let ocaml_package_name = Package.Name.of_string "ocaml"
-
 module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
@@ -914,19 +1014,7 @@ module DB = struct
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
       let+ all = Lock_dir.get context in
-      let system_provided =
-        let ocaml =
-          match Env.mem (Global.env ()) ~var:"DUNE_PKG_OVERRIDE_OCAML" with
-          | false -> Package.Name.Set.empty
-          | true ->
-            Package.Name.Set.singleton
-              (match all.ocaml with
-               | None -> ocaml_package_name
-               | Some (_, name) -> name)
-        in
-        Package.Name.Set.union dune ocaml
-      in
-      { all = all.packages; system_provided }
+      { all = all.packages; system_provided = dune }
   ;;
 end
 
@@ -1608,7 +1696,7 @@ let ocaml_toolchain context =
   let+ pkg =
     let* db = DB.get context in
     match lock_dir.ocaml with
-    | None -> Resolve.resolve db context (Loc.none, ocaml_package_name)
+    | None -> Memo.return `System_provided
     | Some ocaml -> Resolve.resolve db context ocaml
   in
   match pkg with

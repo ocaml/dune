@@ -13,5 +13,8 @@ val to_opam_hash : t -> OpamHash.t
 (** [of_opam_hash h] converts [h] from the representation used by OPAM to Dune's *)
 val of_opam_hash : OpamHash.t -> t
 
+(** Convert an MD5 [Dune_digest.t] into OPAM's checksum representation *)
+val of_dune_digest : Dune_digest.t -> t
+
 val pp : t -> 'a Pp.t
 val equal : t -> t -> bool

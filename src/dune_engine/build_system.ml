@@ -307,6 +307,15 @@ end = struct
         ; attached_to_alias : bool
         }
 
+  let maybe_async_rule_file_op f =
+    (* It would be nice to do this check only once and return a function, but the
+       type of this function would need to be polymorphic which is forbidden by
+       the relaxed value restriction. *)
+    match Config.(get background_file_system_operations_in_rule_execution) with
+    | `Enabled -> Scheduler.async_exn f
+    | `Disabled -> Fiber.return (f ())
+  ;;
+
   let execute_action_for_rule
     ~rule_kind
     ~rule_digest
@@ -363,7 +372,7 @@ end = struct
         else Action.progn [ action; Action.write_file stamp_file "" ]
     in
     let* () =
-      Targets.maybe_async (fun () ->
+      maybe_async_rule_file_op (fun () ->
         Action.chdirs action
         |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
     in
@@ -405,9 +414,9 @@ end = struct
             | Some runner -> Action_runner.exec_action runner input
           in
           let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-          let+ produced_targets =
+          let* () =
             match sandbox with
-            | None -> Targets.Produced.produced_after_rule_executed_exn ~loc targets
+            | None -> Fiber.return ()
             | Some sandbox ->
               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
@@ -416,9 +425,14 @@ end = struct
                 | Normal_rule -> fun (_ : Path.Build.t) -> false
                 | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
               in
-              Sandbox.move_targets_to_build_dir sandbox ~loc ~should_be_skipped ~targets
+              Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
           in
-          { Exec_result.produced_targets; action_exec_result }))
+          let+ produced_targets =
+            maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
+          in
+          match produced_targets with
+          | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+          | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
   ;;
 
   let promote_targets ~rule_mode ~dir ~targets ~promote_source =
@@ -467,7 +481,7 @@ end = struct
     wrap_fiber (fun () ->
       let open Fiber.O in
       report_evaluated_rule_exn config;
-      let* () = Targets.maybe_async (fun () -> Path.mkdir_p (Path.build dir)) in
+      let* () = maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build dir)) in
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
         select_sandbox_mode
@@ -535,7 +549,7 @@ end = struct
             Path.Build.Set.iter targets.dirs ~f:Cached_digest.remove
           in
           let* () =
-            Targets.maybe_async (fun () ->
+            maybe_async_rule_file_op (fun () ->
               Path.Build.Set.iter targets.files ~f:Path.Build.unlink_no_err;
               Path.Build.Set.iter targets.dirs ~f:(fun dir -> Path.rm_rf (Path.build dir)))
           in

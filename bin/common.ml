@@ -47,8 +47,6 @@ let debug_backtraces =
 
 let default_build_dir = "_build"
 
-(* Allow options from term1 or exclusively options from term2. If the user
-   passes options from both terms, an error is reported. *)
 let one_of term1 term2 =
   Term.ret
   @@ let+ x, args1 = Term.with_used_args term1

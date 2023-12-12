@@ -545,7 +545,7 @@ File Tests
 
 To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
 
-.. code:: console
+.. code:: cram
 
    Simplest possible Cram test
      $ echo "testing"
@@ -566,7 +566,7 @@ To run the test and promote the results:
 
 We now see the output of the command:
 
-.. code:: console
+.. code:: cram
 
    Simplest possible cram test
      $ echo "testing"
@@ -578,7 +578,7 @@ than what is recorded in the test script.
 
 For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
 
-.. code:: console
+.. code:: cram
 
    We create a test artifact called "foo"
      $ cat >foo <<EOF
@@ -620,7 +620,7 @@ This defines a directory test ``wc.t`` which must include a ``run.t`` file as
 the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
 access their contents in the test script ``run.t``:
 
-.. code:: console
+.. code:: cram
 
    Testing wc:
      $ wc -l foo | awk '{ print $1 }'
@@ -628,59 +628,7 @@ access their contents in the test script ``run.t``:
      $ wc -l $(ls bar) | awk '{ print $1 }'
      1231
 
-
-Test Options
-------------
-
-When testing binaries, it's important to to specify a dependency on the binary
-for two reasons:
-
-- Dune must know to re-run the test when a dependency changes
-- The dependencies must be specified to guarantee that they're visible to the
-  test when running it.
-
-We can specify dependencies using the ``deps`` field using the usual syntax:
-
-.. code:: dune
-
-   (cram
-    (deps ../foo.exe))
-    
-This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
-To apply the stanza to a particular test, it's possible to use ``applies_to``
-field:
-
-.. code:: dune
-
-   (cram
-    (applies_to * \ foo bar)
-    (deps ../foo.exe))
-
-We use the :doc:`reference/predicate-language` to apply this stanza to all tests
-in this directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field
-also accepts the special value ``:whole_subtree`` in order to apply the options
-to all tests in all subdirectories (recursively). This is useful to apply
-common options to an entire test suite.
-
-The ``cram`` stanza accepts the following fields:
-
-- ``enabled_if`` - controls whether the tests are enabled
-- ``alias`` - alias that can be used to run the test. In addition to the user
-  alias, every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
-  own ``@foo`` alias to make it convenient to run individually.
-- ``(locks (<lock-names>))`` specify that the tests must be run while
-  holding the following locks. See :doc:`concepts/locks` for more details.
-- ``deps`` - dependencies of the test
-- ``(package <package-name>)`` - attach the tests selected by this stanza to the
-  specified package
-- ``(runtest_alias <true|false>)`` - when set to ``false``, do not add the
-  tests to the ``runtest`` alias. The default is to add every cram test to
-  ``runtest``, but this is not always desired.
-
-A single test may be configured by more than one ``cram`` stanza. In such cases,
-the values from all applicable ``cram`` stanzas are merged together to get the
-final values for all the fields.
-
+.. seealso:: :ref:`(cram) stanza reference <cram-stanza>`
 
 Testing an OCaml Program
 ------------------------

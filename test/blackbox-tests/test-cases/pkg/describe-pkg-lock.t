@@ -31,7 +31,7 @@ First we setup a repo.
   > EOF
 
 Here is the output of solving for multiple contexts:
-  $ solve_project --all-contexts <<EOF
+  $ solve_project --all <<EOF
   > (lang dune 3.11)
   > (package
   >  (name x)

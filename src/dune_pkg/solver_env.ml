@@ -67,3 +67,18 @@ let pp t =
         (Variable_name.to_string variable)
         (String.maybe_quoted (Variable_value.to_string value)))
 ;;
+
+let unset = Variable_name.Map.remove
+
+let unset_multi t variable_names =
+  Variable_name.Set.fold variable_names ~init:t ~f:(fun variable_name t ->
+    unset t variable_name)
+;;
+
+let to_env t variable =
+  match OpamVariable.Full.scope variable with
+  | Self | Package _ -> None
+  | Global ->
+    let variable_name = OpamVariable.Full.variable variable |> Variable_name.of_opam in
+    get t variable_name |> Option.map ~f:Variable_value.to_opam_variable_contents
+;;

@@ -21,6 +21,7 @@ include (
 
 let to_opam_hash v = v
 let of_opam_hash v = v
+let of_dune_digest dune_digest = OpamHash.md5 (Dune_digest.to_string dune_digest)
 
 let pp v =
   let s = to_string v in

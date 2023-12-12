@@ -26,8 +26,13 @@
   (alias runtest-js)))
 
 (cram
- (applies_to windows-diff)
+ (applies_to windows-diff windows-opam-generation)
  (alias runtest-windows))
+
+(cram
+ (applies_to windows-opam-generation)
+ (enabled_if
+  (= %{system} win64)))
 
 ; DISABLED TESTS
 

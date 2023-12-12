@@ -10,6 +10,7 @@ Tests for error messages while reading package metadata from opam files
 Empty files are not allowed as they lack the format version.
   $ touch x.opam
   $ dune pkg lock
+  File "x.opam", line 1, characters 0-0:
   Error: Unable to parse opam file x.opam as local dune package.
   unsupported or missing file format version; should be 2.0 or older
   [1]

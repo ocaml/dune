@@ -9,6 +9,7 @@ module Updater : sig
   val init : unit -> t
   val snapshot : t -> stats
   val expand_variable : t -> Variable_name.t -> unit
+  val wrap_env : t -> OpamFilter.env -> OpamFilter.env
 end
 
 module Expanded_variable_bindings : sig

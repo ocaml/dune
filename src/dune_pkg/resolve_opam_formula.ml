@@ -1,43 +1,17 @@
 open! Import
 module Relop = Dune_lang.Relop
 
-let substitute_variables_in_filter
-  ~stats_updater
-  (solver_env : Solver_env.t)
-  (opam_filter : OpamTypes.filter)
-  : OpamTypes.filter
-  =
-  OpamFilter.partial_eval
-    (fun variable ->
-      match OpamVariable.Full.scope variable with
-      | Self | Package _ -> None
-      | Global ->
-        let variable_name =
-          OpamVariable.Full.variable variable |> Variable_name.of_opam
-        in
-        Option.iter stats_updater ~f:(fun stats_updater ->
-          Solver_stats.Updater.expand_variable stats_updater variable_name);
-        Solver_env.get solver_env variable_name
-        |> Option.map ~f:Variable_value.to_opam_variable_contents)
-    opam_filter
-;;
-
-let apply_filter
-  ~stats_updater
-  ~with_test
-  (solver_env : Solver_env.t)
-  (opam_filtered_formula : OpamTypes.filtered_formula)
+let apply_filter env ~with_test (opam_filtered_formula : OpamTypes.filtered_formula)
   : OpamTypes.formula
   =
-  let map_filters ~f =
-    OpamFilter.gen_filter_formula
-      (OpamFormula.partial_eval (function
-        | OpamTypes.Filter flt -> `Formula (Atom (OpamTypes.Filter (f flt)))
-        | Constraint _ as constraint_ -> `Formula (Atom constraint_)))
-  in
-  map_filters
+  OpamFilter.gen_filter_formula
+    (OpamFormula.partial_eval (function
+      | OpamTypes.Filter flt ->
+        `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
+      | Constraint (relop, filter) ->
+        let filter = OpamFilter.partial_eval env filter in
+        `Formula (Atom (Constraint (relop, filter)))))
     opam_filtered_formula
-    ~f:(substitute_variables_in_filter ~stats_updater solver_env)
   |> OpamFilter.filter_deps
        ~build:true
        ~post:false
@@ -160,14 +134,6 @@ let formula_to_package_names version_by_package_name opam_formula =
          Package_name.of_opam_package_name opam_package_name))
 ;;
 
-let filtered_formula_to_package_names
-  ~stats_updater
-  ~with_test
-  solver_env
-  version_by_package_name
-  formula
-  =
-  formula_to_package_names
-    version_by_package_name
-    (apply_filter ~stats_updater ~with_test solver_env formula)
+let filtered_formula_to_package_names env ~with_test version_by_package_name formula =
+  formula_to_package_names version_by_package_name (apply_filter ~with_test env formula)
 ;;

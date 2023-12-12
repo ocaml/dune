@@ -22,5 +22,5 @@ The version of foo that should be selected is 1.0.0
   >  (depends foo))
   > EOF
   Solution for dune.lock:
-  - bar.2.0.0
+  - bar.1.0.0
   - foo.1.0.0

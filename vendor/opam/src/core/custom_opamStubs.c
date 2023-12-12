@@ -7,6 +7,7 @@
 #include <caml/osdeps.h>
 #include <caml/alloc.h>
 #include <Windows.h>
+#include <Shlobj.h>
 
 typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS2) (HANDLE, USHORT *, USHORT *);
 
@@ -78,6 +79,26 @@ CAMLprim value OPAMW_GetArchitecture(value unit)
     return get_PE_cpu_architecture(NativeMachine);
 }
 
+/*
+ * Somewhat against my better judgement, wrap SHGetFolderPath rather than
+ * SHGetKnownFolderPath to maintain XP compatibility. OPAM already requires
+ * Windows Vista+ because of GetCurrentConsoleFontEx, but there may be a
+  for that for XP lusers.
+ */
+CAMLprim value OPAMW_SHGetFolderPath(value nFolder, value dwFlags)
+{
+  WCHAR szPath[MAX_PATH];
+
+  if (SUCCEEDED(SHGetFolderPathW(NULL,
+                                Int_val(nFolder),
+                                NULL,
+                                Int_val(dwFlags),
+                                szPath)))
+    return caml_copy_string_of_utf16(szPath);
+  else
+    caml_failwith("OPAMW_SHGetFolderPath");
+}
+
 #else
 
 static char * unavailable_message =
@@ -93,6 +114,13 @@ CAMLprim value OPAMW_GetWindowsVersion(value unit)
 CAMLprim value OPAMW_GetArchitecture(value unit)
 {
   (void)unit;
+  caml_failwith(unavailable_message);
+}
+
+CAMLprim value OPAMW_SHGetFolderPath(value nFolder, value dwFlags)
+{
+  (void)nFolder;
+  (void)dwFlags;
   caml_failwith(unavailable_message);
 }
 

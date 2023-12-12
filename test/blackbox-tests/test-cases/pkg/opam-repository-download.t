@@ -73,8 +73,35 @@ other systems and thus shouldn't be included.
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null || echo "not found"
   not found
 
+We also test that it is possible to specify a specific commit when locking a
+repo, in this case the one from an older revision. So we create a new package
+in the repo and make sure it locks the older version.
 
-The repository can also be injected via the dune-workspace file
+  $ mkpkg foo 0.1.0 <<EOF
+  > EOF
+  $ cd mock-opam-repository
+  $ git add -A
+  $ git commit -m "new release of foo" --quiet
+  $ NEW_REPO_HASH=$(git rev-parse HEAD)
+  $ cd ..
+
+  $ rm -r dune.lock
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (lock_dir
+  >  (repositories mock))
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"))
+  > EOF
+  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
+  Solution for dune.lock:
+  - bar.0.0.1
+  - foo.0.0.1
+  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
+
+If we specify no branch however, it should be using the latest commit in the
+repository and thus the new foo package.
 
   $ cat > dune-workspace <<EOF
   > (lang dune 3.10)
@@ -83,17 +110,13 @@ The repository can also be injected via the dune-workspace file
   >  (source "git+file://$(pwd)/mock-opam-repository"))
   > (lock_dir
   >  (repositories foo))
-  > (context
-  >  (default
-  >   (name default)))
   > EOF
   $ mkdir dune-workspace-cache
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
-  - foo.0.0.1
-
-  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
+  - foo.0.1.0
+  $ grep "git_hash $NEW_REPO_HASH" dune.lock/lock.dune > /dev/null
 
 A new package is released in the repo:
 
@@ -108,6 +131,15 @@ A new package is released in the repo:
 Since we have a working cached copy we get the old version of `bar` if we opt
 out of the auto update.
 
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories mock))
+  > EOF
+
 To be safe it doesn't access the repo, we make sure to move the mock-repo away
 
   $ mv mock-opam-repository elsewhere
@@ -118,7 +150,7 @@ So now the test should work as it can't access the repo:
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock --skip-update
   Solution for dune.lock:
   - bar.0.0.1
-  - foo.0.0.1
+  - foo.0.1.0
 
 But it will also get the new version of bar if we attempt to lock again (having
 restored the repo to where it was before)
@@ -128,4 +160,4 @@ restored the repo to where it was before)
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
   - bar.1.0.0
-  - foo.0.0.1
+  - foo.0.1.0

@@ -155,7 +155,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
        None)
 ;;
 
-let copy_files sctx ~dir ~expander ~src_dir (def : Dune_file.Copy_files.t) =
+let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
   let* glob_in_src =
     let+ src_glob = Expander.No_deps.expand_str expander def.files in
@@ -255,7 +255,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Dune_file.Copy_files.t) =
   targets
 ;;
 
-let copy_files sctx ~dir ~expander ~src_dir (def : Dune_file.Copy_files.t) =
+let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   Expander.eval_blang expander def.enabled_if
   >>= function
   | true -> copy_files sctx ~dir ~expander ~src_dir def

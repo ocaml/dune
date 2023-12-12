@@ -27,8 +27,8 @@ Set up two build contexts: a default one for linux and another for macos.
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
   $ solve_project() {
   >   cat >dune-project
-  >   dune pkg lock --dont-poll-system-solver-variables dune.lock
-  >   dune pkg lock --dont-poll-system-solver-variables dune.macos.lock
+  >   dune pkg lock dune.lock
+  >   dune pkg lock dune.macos.lock
   > }
 
 A package which is only available on linux:

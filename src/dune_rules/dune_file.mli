@@ -215,19 +215,6 @@ module Library : sig
     -> Lib_info.local Memo.t
 end
 
-module Install_conf : sig
-  type t =
-    { section : Section_with_site.t
-    ; files : Install_entry.File.t list
-    ; dirs : Install_entry.Dir.t list
-    ; source_trees : Install_entry.Dir.t list
-    ; package : Package.t
-    ; enabled_if : Blang.t
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Executables : sig
   module Link_mode : sig
     type t =

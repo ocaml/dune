@@ -41,3 +41,9 @@ val clear_dir : string -> clear_dir_result
 val rm_rf : string -> unit
 
 val is_root : string -> bool
+
+val traverse_files
+  :  dir:string
+  -> init:'acc
+  -> f:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> 'acc

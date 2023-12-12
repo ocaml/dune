@@ -159,3 +159,31 @@ let rm_rf fn =
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
   | _ -> unlink fn
 ;;
+
+let traverse_files =
+  let rec loop root stack acc f =
+    match stack with
+    | [] -> acc
+    | dir :: dirs ->
+      let dir_path = Filename.concat root dir in
+      (match Dune_filesystem_stubs.read_directory_with_kinds dir_path with
+       | Error e -> Dune_filesystem_stubs.Unix_error.Detailed.raise e
+       | Ok entries ->
+         let stack, acc =
+           List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
+             match (kind : Unix.file_kind) with
+             | S_DIR -> Filename.concat dir fname :: stack, acc
+             | S_REG -> stack, f ~dir fname acc
+             | S_LNK ->
+               let path = Filename.concat dir_path fname in
+               (match (Unix.stat path).st_kind with
+                | exception Unix.Unix_error (Unix.ENOENT, _, _) -> stack, acc
+                | S_DIR -> Filename.concat dir fname :: stack, acc
+                | S_REG -> stack, f ~dir fname acc
+                | _ -> stack, acc)
+             | _ -> stack, acc)
+         in
+         loop root stack acc f)
+  in
+  fun ~dir ~init ~f -> loop dir [ "" ] init f
+;;

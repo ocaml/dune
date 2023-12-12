@@ -904,58 +904,6 @@ let symlink_source_dir ~dir ~dst =
     suffix, dst, Action_builder.symlink ~src ~dst)
 ;;
 
-module Copy_dir = struct
-  module Spec = struct
-    type ('path, 'target) t = 'path * 'target
-
-    let name = "copy-dir"
-    let version = 1
-    let bimap (src, dst) f g = f src, g dst
-    let is_useful_to ~memoize = memoize
-
-    let encode (src, dst) f g =
-      Dune_sexp.List [ Dune_sexp.atom_or_quoted_string name; f src; g dst ]
-    ;;
-
-    let action (src, dst) ~ectx:_ ~eenv:_ =
-      let all =
-        Fpath.traverse_files
-          ~dir:(Path.to_string src)
-          ~init:[]
-          ~on_file:(fun ~dir fname acc -> `File (Filename.concat dir fname) :: acc)
-          ~on_dir:(fun ~dir fname acc -> `Dir (Filename.concat dir fname) :: acc)
-      in
-      List.iter all ~f:(fun p ->
-        let dir, file =
-          match p with
-          | `Dir p -> p, None
-          | `File p -> Filename.dirname p, Some p
-        in
-        (* CR-rgrinberg: too many unnecesasry stat and mkdir calls here *)
-        let perms = (Path.Untracked.stat_exn (Path.relative src dir)).st_perm in
-        Path.mkdir_p ~perms (Path.build (Path.Build.relative dst dir));
-        Option.iter file ~f:(fun f ->
-          let src = Path.relative src f in
-          let dst = Path.build @@ Path.Build.relative dst f in
-          Io.copy_file ~src ~dst ()));
-      Fiber.return ()
-    ;;
-  end
-
-  let action ~src ~dst =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = src, dst
-    end
-    in
-    Action.Extension (module M)
-  ;;
-end
-
 let symlink_installed_artifacts_to_build_install
   sctx
   (entries : Install.Entry.Sourced.t list)
@@ -1001,20 +949,11 @@ let symlink_installed_artifacts_to_build_install
         { s with entry }
       in
       let action =
-        match kind with
-        | `File -> Action_builder.symlink ~src ~dst
-        | `Directory ->
-          let action =
-            let open Action_builder.O in
-            let+ () = Action_builder.dep (Dep.file src) in
-            Copy_dir.action ~src ~dst |> Action.Full.make
-          in
-          Action_builder.with_targets
-            action
-            ~targets:
-              (Targets.create
-                 ~dirs:(Path.Build.Set.singleton dst)
-                 ~files:Path.Build.Set.empty)
+        (match kind with
+         | `File -> Action_builder.symlink
+         | `Directory -> Action_builder.symlink_dir)
+          ~src
+          ~dst
       in
       Memo.return [ entry, rule action ])
 ;;

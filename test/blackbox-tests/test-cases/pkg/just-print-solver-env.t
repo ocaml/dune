@@ -1,16 +1,10 @@
-Print the solver env when no dune-workspace is present
-  $ dune pkg print-solver-env --dont-poll-system-solver-variables
-  Solver environment for context default:
-  - opam-version = 2.2.0~alpha-vendored
-  - with-doc = false
-
-Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (lock_dir
   >  (path dune.linux.lock)
   >  (solver_env
-  >   (os linux)))
+  >   (os linux))
+  >  (unset_solver_vars arch os-distribution os-family os-version sys-ocaml-version))
   > (lock_dir
   >  (path dune.linux.no-doc.lock)
   >  (solver_env
@@ -18,11 +12,13 @@ Add some build contexts with different environments
   >   (os linux)
   >   (os-family ubuntu)
   >   (os-distribution ubuntu)
-  >   (os-version 22.04)))
+  >   (os-version 22.04)
+  >   (sys-ocaml-version 5.0)))
   > (lock_dir
   >  (path change-opam-version.lock)
   >  (solver_env
-  >   (opam-version 42)))
+  >   (opam-version 42))
+  >  (unset_solver_vars arch os os-distribution os-family os-version sys-ocaml-version))
   > (context
   >  (default
   >   (name linux)
@@ -37,19 +33,20 @@ Add some build contexts with different environments
   >   (lock_dir change-opam-version.lock)))
   > EOF
 
-  $ dune pkg print-solver-env --all-contexts --dont-poll-system-solver-variables
-  Solver environment for context change-opam-version:
+  $ dune pkg print-solver-env --all
+  Solver environment for lock directory change-opam-version.lock:
   - opam-version = 42
   - with-doc = false
-  Solver environment for context no-doc:
+  Solver environment for lock directory dune.linux.no-doc.lock:
   - arch = x86_64
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
   - os-distribution = ubuntu
   - os-family = ubuntu
   - os-version = 22.04
+  - sys-ocaml-version = 5.0
   - with-doc = false
-  Solver environment for context linux:
+  Solver environment for lock directory dune.linux.lock:
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
   - with-doc = false

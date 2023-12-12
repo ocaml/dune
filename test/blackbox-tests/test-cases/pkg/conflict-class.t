@@ -30,7 +30,7 @@ Local conflict class defined in a local package:
   > EOF
 
   $ dune pkg lock
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: foo.dev x.dev foo&x
   - bar -> (problem)
@@ -48,7 +48,7 @@ Now the conflict class comes from the opam repository
   $ rm foo.opam
 
   $ dune pkg lock
-  Error: Unable to solve dependencies in build context: default
+  Error: Unable to solve dependencies for dune.lock:
   Can't find all required versions.
   Selected: foo.0.0.1 x.dev
   - bar -> (problem)

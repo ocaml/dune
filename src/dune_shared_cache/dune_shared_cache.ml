@@ -208,8 +208,10 @@ struct
       Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
     in
     match
-      Targets.Produced.collect_digests produced_targets ~f:(fun target () ->
-        compute_digest target)
+      Targets.Produced.collect_digests
+        produced_targets
+        ~all_errors:true
+        ~f:(fun target () -> compute_digest target)
     with
     | Ok result -> result
     | Error errors ->

@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+open Memo.O
 
 type expander =
   String_with_vars.t
@@ -12,25 +13,20 @@ type error =
       ; variable_name : Dune_pkg.Variable_name.t
       }
 
-let rec eval_rec (t : Slang.t) ~dir ~f =
-  let open Memo.O in
+let rec eval_rec (t : Slang.t) ~dir ~f : (Value.t list list, _) result Memo.t =
   match t with
   | Nil -> Memo.return (Ok [])
   | Literal sw ->
     f sw ~dir
     >>| Result.map_error ~f:(function `Undefined_pkg_var variable_name ->
       Undefined_pkg_var { literal = sw; variable_name })
+    >>| Result.map ~f:List.singleton
   | Form (_loc, form) ->
     (match form with
      | Concat xs ->
-       let+ evaluated = Memo.List.map xs ~f:(eval_rec ~dir ~f) >>| Result.List.all in
-       Result.map evaluated ~f:(fun evaluated ->
-         let without_nils = List.concat evaluated in
-         (* XXX if any of the arguments were [Value.Path]s this will convert them
-            into [Value.String]s *)
-         [ Value.String
-             (List.map ~f:(Value.to_string ~dir) without_nils |> String.concat ~sep:"")
-         ])
+       Memo.List.map xs ~f:(eval_rec ~dir ~f)
+       >>| Result.List.all
+       >>| Result.map ~f:(fun x -> List.concat x |> List.concat |> List.singleton)
      | When (condition, t) ->
        let* condition = eval_blang_rec condition ~dir ~f in
        (match condition with
@@ -47,8 +43,8 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
        let+ result = eval_rec t ~dir ~f in
        Ok
          (match result with
-          | Ok _ -> [ Value.false_ ]
-          | Error (Undefined_pkg_var _) -> [ Value.true_ ])
+          | Ok _ -> [ [ Value.false_ ] ]
+          | Error (Undefined_pkg_var _) -> [ [ Value.true_ ] ])
      | Catch_undefined_var { value; fallback } ->
        let* value = eval_rec value ~dir ~f in
        (match value with
@@ -64,9 +60,9 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
               (* Propagate the first error rather than the last *)
               if Result.is_ok acc then loop e xs else loop acc xs
             | Ok true -> loop acc xs
-            | Ok false -> Memo.return (Ok [ Value.false_ ]))
+            | Ok false -> Memo.return (Ok [ [ Value.false_ ] ]))
        in
-       loop (Ok [ Value.true_ ]) blangs
+       loop (Ok [ [ Value.true_ ] ]) blangs
      | Or_absorb_undefined_var blangs ->
        let rec loop acc = function
          | [] -> Memo.return acc
@@ -77,19 +73,23 @@ let rec eval_rec (t : Slang.t) ~dir ~f =
               (* Propagate the first error rather than the last *)
               if Result.is_ok acc then loop e xs else loop acc xs
             | Ok false -> loop acc xs
-            | Ok true -> Memo.return (Ok [ Value.true_ ]))
+            | Ok true -> Memo.return (Ok [ [ Value.true_ ] ]))
        in
-       loop (Ok [ Value.false_ ]) blangs
+       loop (Ok [ [ Value.false_ ] ]) blangs
      | Blang b ->
        let+ result = eval_blang_rec b ~dir ~f in
        Result.map result ~f:(function
-         | true -> [ Value.true_ ]
-         | false -> [ Value.false_ ]))
+         | true -> [ [ Value.true_ ] ]
+         | false -> [ [ Value.false_ ] ]))
 
 and eval_to_bool (t : Slang.t) ~dir ~f =
-  let open Memo.O in
   let+ result = eval_rec t ~dir ~f in
-  Result.map result ~f:(function
+  Result.map result ~f:(fun result ->
+    let result =
+      List.map result ~f:(fun r ->
+        Value.String (List.map r ~f:(Value.to_string ~dir) |> String.concat ~sep:""))
+    in
+    match result with
     | [ x ] when Value.(equal true_ x) -> true
     | [ x ] when Value.(equal false_ x) -> false
     | [ Value.String other ] ->
@@ -128,7 +128,6 @@ and eval_to_bool (t : Slang.t) ~dir ~f =
         ])
 
 and eval_blang_rec (t : Slang.blang) ~dir ~f =
-  let open Memo.O in
   match t with
   | Const x -> Memo.return (Ok x)
   | Expr s -> eval_to_bool s ~dir ~f
@@ -165,13 +164,13 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
     let+ x = eval_rec x ~dir ~f
     and+ y = eval_rec y ~dir ~f in
     Result.bind x ~f:(fun x ->
-      Result.map y ~f:(fun y -> Relop.eval op (Value.L.compare_vals ~dir x y)))
+      Result.map y ~f:(fun y ->
+        Relop.eval op (List.compare ~compare:(Value.L.compare_vals ~dir) x y)))
 ;;
 
-let eval t ~dir ~f =
-  let open Memo.O in
-  let+ result = eval_rec t ~dir ~f in
-  match result with
+let eval t ~dir ~f : Value.t list list Memo.t =
+  eval_rec t ~dir ~f
+  >>| function
   | Ok value -> value
   | Error (Undefined_pkg_var { literal; variable_name }) ->
     User_error.raise
@@ -183,14 +182,11 @@ let eval t ~dir ~f =
 ;;
 
 let eval_multi_located ts ~dir ~f =
-  let open Memo.O in
   Memo.List.concat_map ts ~f:(fun t ->
-    let+ values = eval t ~dir ~f in
-    List.map values ~f:(fun value -> Slang.loc t, value))
+    eval t ~dir ~f >>| List.map ~f:(fun value -> Slang.loc t, `Concat value))
 ;;
 
 let eval_blang blang ~dir ~f =
-  let open Memo.O in
   let+ result = eval_blang_rec blang ~dir ~f in
   match result with
   | Ok value -> value

@@ -1,17 +1,9 @@
 open! Import
 
-(** Update a filter by substituting variables from a [Solver_env.t] *)
-val substitute_variables_in_filter
-  :  stats_updater:Solver_stats.Updater.t option
-  -> Solver_env.t
-  -> OpamTypes.filter
-  -> OpamTypes.filter
-
 (** Evaluate the filters in a filtered formula returning the resulting formula. *)
 val apply_filter
-  :  stats_updater:Solver_stats.Updater.t option
+  :  OpamFilter.env
   -> with_test:bool
-  -> Solver_env.t
   -> OpamTypes.filtered_formula
   -> OpamTypes.formula
 
@@ -56,9 +48,8 @@ val formula_to_package_names
     and evaluates its filters to produce a formula which is then resolved to a
     list of package names. *)
 val filtered_formula_to_package_names
-  :  stats_updater:Solver_stats.Updater.t option
+  :  OpamFilter.env
   -> with_test:bool
-  -> Solver_env.t
   -> Package_version.t Package_name.Map.t
   -> OpamTypes.filtered_formula
   -> (Package_name.t list, unsatisfied_formula) result

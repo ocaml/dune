@@ -51,9 +51,8 @@ let concrete_dependencies_of_local_package_with_test t local_package_name =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   Local_package.(for_solver local_package |> For_solver.opam_filtered_dependency_formula)
   |> Resolve_opam_formula.filtered_formula_to_package_names
-       ~stats_updater:None
        ~with_test:true
-       t.solver_env
+       (Solver_env.to_env t.solver_env)
        t.version_by_package_name
   |> Result.map_error ~f:(function
     | `Formula_could_not_be_satisfied unsatisfied_formula_hints ->
@@ -219,9 +218,8 @@ let concrete_dependencies_of_local_package_without_test t local_package_name =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   Local_package.(for_solver local_package |> For_solver.opam_filtered_dependency_formula)
   |> Resolve_opam_formula.filtered_formula_to_package_names
-       ~stats_updater:None
        ~with_test:false
-       t.solver_env
+       (Solver_env.to_env t.solver_env)
        t.version_by_package_name
   |> function
   | Ok x -> x

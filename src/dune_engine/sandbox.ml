@@ -244,53 +244,6 @@ let rename_optional_file ~src ~dst =
      | () -> ())
 ;;
 
-(* Recursively collect regular files from [src] to [dst] and return the set of
-   of files collected. *)
-let collect_dir_recursively ~loc ~src_dir ~dst_dir =
-  let rec loop ~src_dir ~dst_dir =
-    match
-      Dune_filesystem_stubs.read_directory_with_kinds (Path.Build.to_string src_dir)
-    with
-    | Ok files ->
-      List.map files ~f:(fun (file, kind) ->
-        match (kind : File_kind.t) with
-        | S_LNK
-          (* TODO symlinks outside of the sandbox are going to be broken,
-             but users shouldn't be doing this anyway. *)
-        | S_REG -> Appendable_list.singleton (dst_dir, file)
-        | S_DIR ->
-          loop
-            ~src_dir:(Path.Build.relative src_dir file)
-            ~dst_dir:(Path.Build.relative dst_dir file)
-        | _ ->
-          User_error.raise
-            ~loc
-            [ Pp.textf
-                "Rule produced a file with unrecognised kind %S"
-                (File_kind.to_string kind)
-            ])
-      |> Appendable_list.concat
-    | Error (ENOENT, _, _) ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Rule failed to produce directory %S"
-            (Path.Build.drop_build_context_maybe_sandboxed_exn src_dir
-             |> Path.Source.to_string_maybe_quoted)
-        ]
-    | Error (unix_error, _, _) ->
-      User_error.raise
-        ~loc
-        [ Pp.textf
-            "Rule produced unreadable directory %S"
-            (Path.Build.drop_build_context_maybe_sandboxed_exn src_dir
-             |> Path.Source.to_string_maybe_quoted)
-        ; Pp.verbatim (Unix.error_message unix_error)
-        ]
-  in
-  loop ~src_dir ~dst_dir
-;;
-
 let apply_changes_to_source_tree t ~old_snapshot =
   let new_snapshot = snapshot t in
   (* Same as promotion: make the file writable when copying to the source
@@ -329,8 +282,8 @@ let hint_delete_dir =
   ]
 ;;
 
-let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Validated.t)
-  : unit Targets.Produced.t Fiber.t
+let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated.t)
+  : unit Fiber.t
   =
   maybe_async (fun () ->
     Option.iter t.snapshot ~f:(fun old_snapshot ->
@@ -338,36 +291,30 @@ let move_targets_to_build_dir t ~loc ~should_be_skipped ~(targets : Targets.Vali
     Path.Build.Set.iter targets.files ~f:(fun target ->
       if not (should_be_skipped target)
       then rename_optional_file ~src:(map_path t target) ~dst:target);
-    let discovered_targets =
-      Path.Build.Set.to_list_map targets.dirs ~f:(fun target ->
-        let src_dir = map_path t target in
-        let files = collect_dir_recursively ~loc ~src_dir ~dst_dir:target in
-        (match Path.Untracked.stat (Path.build target) with
-         | Error (Unix.ENOENT, _, _) -> ()
-         | Error e ->
-           User_error.raise
-             ~hints:hint_delete_dir
-             [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
-             ; Pp.text "reason:"
-             ; Pp.text (Unix_error.Detailed.to_string_hum e)
-             ]
-         | Ok { Unix.st_kind; _ } ->
-           (* We clean up all targets (including directory targets) before
-              running an action, so this branch should be unreachable unless
-              the rule somehow escaped the sandbox *)
-           User_error.raise
-             ~hints:hint_delete_dir
-             [ Pp.textf
-                 "Target %s of kind %S already exists in the build directory"
-                 (Path.Build.to_string_maybe_quoted target)
-                 (File_kind.to_string_hum st_kind)
-             ]);
-        Path.rename (Path.build src_dir) (Path.build target);
-        files)
-      |> Appendable_list.concat
-      |> Appendable_list.to_list
-    in
-    Targets.Produced.expand_validated_exn targets discovered_targets)
+    Path.Build.Set.iter targets.dirs ~f:(fun target ->
+      let src_dir = map_path t target in
+      (match Path.Untracked.stat (Path.build target) with
+       | Error (Unix.ENOENT, _, _) -> ()
+       | Error e ->
+         User_error.raise
+           ~hints:hint_delete_dir
+           [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
+           ; Pp.text "reason:"
+           ; Pp.text (Unix_error.Detailed.to_string_hum e)
+           ]
+       | Ok { Unix.st_kind; _ } ->
+         (* We clean up all targets (including directory targets) before
+            running an action, so this branch should be unreachable unless
+            the rule somehow escaped the sandbox *)
+         User_error.raise
+           ~hints:hint_delete_dir
+           [ Pp.textf
+               "Target %s of kind %S already exists in the build directory"
+               (Path.Build.to_string_maybe_quoted target)
+               (File_kind.to_string_hum st_kind)
+           ]);
+      if Path.Untracked.exists (Path.build src_dir)
+      then Path.rename (Path.build src_dir) (Path.build target)))
 ;;
 
 let failed_to_delete_sandbox dir reason =

@@ -3,35 +3,27 @@ open Pkg_common
 module Lock_dir = Dune_pkg.Lock_dir
 module Opam_repo = Dune_pkg.Opam_repo
 
-let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
+let find_outdated_packages ~transitive ~lock_dirs_arg () =
   let open Fiber.O in
   let+ pps, not_founds =
-    Per_context.choose ~context_name_arg ~all_contexts_arg ~version_preference_arg:None
-    >>= Fiber.parallel_map
-          ~f:
-            (fun
-              { Per_context.lock_dir_path
-              ; version_preference = _
-              ; repos
-              ; solver_env = _
-              ; context_common = _
-              ; repositories
-              ; constraints = _
-              }
-            ->
-            (* updating makes sense when checking for outdated packages *)
-            let* repos = get_repos repos ~repositories ~update_opam_repositories:true
-            and+ local_packages = find_local_packages in
-            let lock_dir = Lock_dir.read_disk lock_dir_path in
-            let+ results =
-              Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages
-            in
-            ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results
-            , ( Dune_pkg_outdated.packages_that_were_not_found results
-                |> Package_name.Set.of_list
-                |> Package_name.Set.to_list
-              , lock_dir_path
-              , repos ) ))
+    let* workspace = Memo.run (Workspace.workspace ()) in
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+    |> Fiber.parallel_map ~f:(fun lock_dir_path ->
+      (* updating makes sense when checking for outdated packages *)
+      let* repos =
+        get_repos
+          (repositories_of_workspace workspace)
+          ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+          ~update_opam_repositories:true
+      and+ local_packages = find_local_packages in
+      let lock_dir = Lock_dir.read_disk lock_dir_path in
+      let+ results = Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages in
+      ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results
+      , ( Dune_pkg_outdated.packages_that_were_not_found results
+          |> Package_name.Set.of_list
+          |> Package_name.Set.to_list
+        , lock_dir_path
+        , repos ) ))
     >>| List.split
   in
   (match pps with
@@ -70,12 +62,6 @@ let find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive () =
 
 let term =
   let+ builder = Common.Builder.term
-  and+ context_name_arg = context_term ~doc:"Check for outdated packages in this context"
-  and+ all_contexts_arg =
-    Arg.(
-      value
-      & flag
-      & info [ "all-contexts" ] ~doc:"Check for outdated packages in all contexts")
   and+ transitive =
     Arg.(
       value
@@ -83,11 +69,10 @@ let term =
       & info
           [ "transitive" ]
           ~doc:"Check for outdated packages in transitive dependencies")
-  in
+  and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
-  @@ find_outdated_packages ~context_name_arg ~all_contexts_arg ~transitive
+  Scheduler.go ~common ~config @@ find_outdated_packages ~transitive ~lock_dirs_arg
 ;;
 
 let info =

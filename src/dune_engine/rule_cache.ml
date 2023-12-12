@@ -108,7 +108,7 @@ module Workspace_local = struct
       | Targets_missing
       | Dynamic_deps_changed
       | Always_rerun
-      | Error_while_collecting_directory_targets of Unix_error.Detailed.t
+      | Error_while_collecting_directory_targets of Targets.Produced.Error.t
 
     let report ~head_target reason =
       let reason =
@@ -123,10 +123,10 @@ module Workspace_local = struct
         | Targets_changed -> "target changed in build dir"
         | Always_rerun -> "not trying to use the cache"
         | Dynamic_deps_changed -> "dynamic dependencies changed"
-        | Error_while_collecting_directory_targets unix_error ->
+        | Error_while_collecting_directory_targets error ->
           sprintf
             "error while collecting directory targets: %s"
-            (Unix_error.Detailed.to_string_hum unix_error)
+            (Targets.Produced.Error.to_string_hum error)
       in
       Console.print_user_message
         (User_message.make
@@ -143,15 +143,14 @@ module Workspace_local = struct
     : (Digest.t Targets.Produced.t, Miss_reason.t) Result.t
     =
     match Targets.Produced.of_validated targets with
-    | Error (_, unix_error) -> Miss (Error_while_collecting_directory_targets unix_error)
+    | Error error -> Miss (Error_while_collecting_directory_targets error)
     | Ok targets ->
       (match
-         Targets.Produced.Option.mapi targets ~f:(fun target () ->
-           Cached_digest.build_file ~allow_dirs:true target
-           |> Cached_digest.Digest_result.to_option)
+         Targets.Produced.collect_digests targets ~all_errors:false ~f:(fun target () ->
+           Cached_digest.build_file ~allow_dirs:true target)
        with
-       | Some produced_targets -> Hit produced_targets
-       | None -> Miss Targets_missing)
+       | Ok produced_targets -> Hit produced_targets
+       | Error _ -> Miss Targets_missing)
   ;;
 
   let lookup_impl ~rule_digest ~targets ~env ~build_deps =

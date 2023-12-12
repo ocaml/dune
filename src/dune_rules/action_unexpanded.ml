@@ -5,6 +5,11 @@ open Import
 let ( let+! ) = Memo.O.( let+ )
 let ( let*! ) = Memo.O.( let* )
 
+let pp_targets targets =
+  Pp.enumerate (Targets.all targets) ~f:(fun target ->
+    Pp.text (Dpath.describe_target target))
+;;
+
 let validate_target_dir ~targets_dir ~loc targets path =
   if Path.Build.(parent_exn path <> targets_dir)
   then
@@ -13,7 +18,7 @@ let validate_target_dir ~targets_dir ~loc targets path =
       [ Pp.text
           "This action has targets in a different directory than the current one, this \
            is not allowed by dune at the moment:"
-      ; Targets.pp targets
+      ; pp_targets targets
       ]
 ;;
 
@@ -567,7 +572,7 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
           "%s must not have targets, however I inferred that these files will be created \
            by this action:"
           (String.capitalize what)
-      ; Targets.pp targets
+      ; pp_targets targets
       ];
   let+ () = deps_builder
   and+ action = build in

@@ -47,17 +47,17 @@ opam-var-unsupported.t
     (run echo %{toplevel})
     (run echo %{stublibs})))
 
-  $ build_pkg testpkg
+  $ build_pkg testpkg 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
   dune
-  .
-  ../target
-  ../target/lib
-  ../target/lib
-  ../target/bin
-  ../target/sbin
-  ../target/share
-  ../target/doc
-  ../target/etc
-  ../target/man
-  ../target/lib/toplevel
-  ../target/lib/stublibs
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/source
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/bin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/sbin
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/share
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/doc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/etc
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/man
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib/toplevel
+  .sandbox/$SANDBOX/_private/default/.pkg/testpkg/target/lib/stublibs

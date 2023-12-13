@@ -243,7 +243,9 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
       let+ at_rev =
         match source.commit with
         | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-        | _ ->
+        | Some (Branch name) | Some (Tag name) ->
+          Rev_store.Remote.rev_of_name remote ~name
+        | None ->
           let name = Rev_store.Remote.default_branch remote in
           Rev_store.Remote.rev_of_name remote ~name
       in

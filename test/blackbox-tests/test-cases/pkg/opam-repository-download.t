@@ -188,7 +188,39 @@ sure that the default branch differs from `bar-2`).
 Locking that branch should work and pick `bar.2.0.0`:
 
   $ rm -r dune.lock
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.2.0.0
+  - foo.0.1.0
+
+We want to make sure tagging a specific tag works as well, so we tag the
+current state as `1.0`, add a new package (that `1.0` does not include) on top
+of the main branch.
+
+  $ mkpkg bar 3.0.0 <<EOF
+  > depends: [ "foo" ]
+  > EOF
+  $ cd mock-opam-repository
+  $ git tag 1.0
+  $ git add -A
+  $ git commit -m "bar.3.0.0" --quiet
+  $ cd ..
+
+The repo should be using the `1.0` tag, as we don't want `bar.3.0.0`.
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository#1.0"))
+  > (lock_dir
+  >  (repositories mock))
+  > EOF
+
+So we should get `bar.1.0.0` when locking.
+
+  $ rm -r dune.lock
+  $ dune pkg lock
+  Solution for dune.lock:
+  - bar.1.0.0
   - foo.0.1.0

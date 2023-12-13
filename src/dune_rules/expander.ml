@@ -653,34 +653,7 @@ let expand_pform_macro
       |> strings)
   | Coq_config ->
     Need_full_expander
-      (fun t ->
-        Without
-          (let open Memo.O in
-           let* coqc = Artifacts.binary t.artifacts_host ~loc:None "coqc" in
-           let+ t = Coq_config.make ~coqc in
-           match t with
-           | Error msg ->
-             User_error.raise
-               ~loc:(Dune_lang.Template.Pform.loc source)
-               [ Pp.textf "Could not expand %%{coq:%s} as running coqc --config failed." s
-               ; msg
-               ]
-               ~hints:
-                 [ Pp.textf
-                     "coqc --config requires the coq-stdlib package in order to function \
-                      properly."
-                 ]
-           | Ok t ->
-             (match Coq_config.by_name t s with
-              | None ->
-                User_error.raise
-                  ~loc:(Dune_lang.Template.Pform.loc source)
-                  [ Pp.textf "Unknown Coq configuration variable %S" s ]
-              | Some v ->
-                (match v with
-                 | Int x -> string (string_of_int x)
-                 | String x -> string x
-                 | Path x -> Value.L.paths [ x ]))))
+      (fun t -> Without (Coq_config.expand source macro_invocation t.artifacts_host))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

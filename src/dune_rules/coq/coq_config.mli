@@ -47,3 +47,9 @@ end
     - coqcorelib
     - coq_native_compiler_default *)
 val by_name : t -> string -> Value.t Option.t
+
+val expand
+  :  Dune_lang.Template.Pform.t
+  -> Pform.Macro_invocation.t
+  -> Artifacts.t
+  -> Dune_lang.Value.t list Memo.t

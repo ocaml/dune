@@ -108,6 +108,7 @@ module Produced = struct
   module Error = struct
     type t =
       | Missing_dir of Path.Build.t
+      | Empty_dir of Path.Build.t
       | Unreadable_dir of Path.Build.t * Unix_error.Detailed.t
       | Unsupported_file of Path.Build.t * File_kind.t
 
@@ -115,6 +116,13 @@ module Produced = struct
       | Missing_dir dir ->
         [ Pp.textf
             "Rule failed to produce directory %S"
+            (Path.Build.drop_build_context_maybe_sandboxed_exn dir
+             |> Path.Source.to_string_maybe_quoted)
+        ]
+      | Empty_dir dir ->
+        [ Pp.textf
+            "Rule produced directory %S that contains no files nor non-empty \
+             subdirectories"
             (Path.Build.drop_build_context_maybe_sandboxed_exn dir
              |> Path.Source.to_string_maybe_quoted)
         ]
@@ -138,6 +146,7 @@ module Produced = struct
 
     let to_string_hum = function
       | Missing_dir _ -> "missing directory"
+      | Empty_dir _ -> "empty directory"
       | Unreadable_dir (_, unix_error) -> Unix_error.Detailed.to_string_hum unix_error
       | Unsupported_file _ -> "unsupported file kind"
     ;;
@@ -168,8 +177,13 @@ module Produced = struct
         then Path.Build.Map.add_exn dirs dir filenames
         else dirs
     in
+    let directory dir =
+      let open Result.O in
+      let* files = collect dir in
+      if Path.Build.Map.is_empty files then Error (Empty_dir dir) else Ok files
+    in
     fun (validated : Validated.t) ->
-      match Path.Build.Set.to_list_map validated.dirs ~f:collect |> Result.List.all with
+      match Path.Build.Set.to_list_map validated.dirs ~f:directory |> Result.List.all with
       | Error _ as error -> error
       | Ok dirs ->
         let files =

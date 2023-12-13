@@ -13,11 +13,14 @@ Testing the coqdoc flags field of the env stanza.
   > (coq.theory
   >  (name a))
   > EOF
+  $ cat > foo.v <<EOF
+  > Definition a := 42.
+  > EOF
 
   $ dune build @doc
 
   $ tail _build/log -n 1 | ./scrub_coq_args.sh | sed 's/.*coq/coq/' 
   coqdoc
   coq/theories Coq
-  -R . a --toc -toc-depth 2 --html -d
-  a.html
+  -R . a --toc -toc-depth 2 --html -d a.html
+  foo.v

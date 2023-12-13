@@ -11,9 +11,7 @@ val install_context : Dune_engine.Build_context.t
 (** Local installation directory: [<build-dir>/install/<context-name>]. *)
 val dir : context:Context_name.t -> Path.Build.t
 
-val lib_root : context:Context_name.t -> Path.Build.t
 val bin_dir : context:Context_name.t -> Path.Build.t
-val man_dir : context:Context_name.t -> Path.Build.t
 val lib_dir : context:Context_name.t -> package:Package_name.t -> Path.Build.t
 val of_path : Path.Build.t -> Context_name.t option
 

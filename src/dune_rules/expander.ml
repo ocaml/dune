@@ -226,8 +226,7 @@ type nonrec expansion_result =
   | Direct of value
   | Need_full_expander of (t -> value)
 
-let static v = Direct (Without (Memo.return v))
-let static' v = Direct (Without v)
+let static v = Direct (Without v)
 
 let[@inline never] invalid_use_of_target_variable
   t
@@ -461,7 +460,7 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   let ocaml = Context.ocaml context in
   match var with
   | Pkg _ -> assert false
-  | Nothing -> static []
+  | Nothing -> static (Memo.return [])
   | User_var _
   | Deps
   | Input_file
@@ -483,34 +482,38 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Targets ->
     Need_full_expander
       (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
-  | Profile -> Context.profile context |> Profile.to_string |> string |> static
-  | Workspace_root -> static [ Value.Dir (Path.build (Context.build_dir context)) ]
-  | Context_name -> static (string (Context_name.to_string (Context.name context)))
+  | Profile ->
+    Context.profile context |> Profile.to_string |> string |> Memo.return |> static
+  | Workspace_root ->
+    [ Value.Dir (Path.build (Context.build_dir context)) ] |> Memo.return |> static
+  | Context_name ->
+    Context.name context |> Context_name.to_string |> string |> Memo.return |> static
   | Ocaml ->
-    static'
+    static
     @@ let+ ocaml = ocaml in
        get_prog ocaml.ocaml
   | Ocaml_bin_dir ->
-    static'
+    static
     @@ let+ ocaml = ocaml in
        [ Value.Dir ocaml.bin_dir ]
   | Ocamlc ->
-    static'
+    static
     @@ let+ ocaml = ocaml in
        path ocaml.ocamlc
   | Ocamlopt ->
-    static'
+    static
     @@ let+ ocaml = ocaml in
        get_prog ocaml.ocamlopt
   | Make -> Direct (Without (make (Dune_lang.Template.Pform.loc source) context))
   | Dev_null ->
     Path.to_string Dev_null.path
     |> string
+    |> Memo.return
     |> static (* why don't we expand this as a path? *)
   | Ocaml_stdlib_dir | Ext_obj | Ext_lib | Ext_dll | Ccomp_type ->
     (let+ ocaml = ocaml in
      lib_config_var var ocaml.lib_config)
-    |> static'
+    |> static
   | Ext_exe
   | Cpp
   | Pa_cpp
@@ -524,28 +527,28 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Model ->
     (let+ ocaml = ocaml in
      ocaml_config_var var ocaml.ocaml_config)
-    |> static'
+    |> static
   | Ignoring_promoted_rules ->
-    static (string (string_of_bool !Clflags.ignore_promoted_rules))
+    string_of_bool !Clflags.ignore_promoted_rules |> string |> Memo.return |> static
   | Project_root ->
     Need_full_expander
       (fun t -> Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
   | Cc -> Need_full_expander (fun t -> With (cc t).c)
   | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
   | Toolchain ->
-    static
-    @@ string
-    @@
-      (match Context.findlib_toolchain context with
-      | Some toolchain -> Context_name.to_string toolchain
-      | None ->
-        let loc = Dune_lang.Template.Pform.loc source in
-        User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ])
+    (match Context.findlib_toolchain context with
+     | Some toolchain -> Context_name.to_string toolchain
+     | None ->
+       let loc = Dune_lang.Template.Pform.loc source in
+       User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ])
+    |> string
+    |> Memo.return
+    |> static
 ;;
 
 let ocaml_config_macro source macro_invocation context =
   let s = Pform.Macro_invocation.Args.whole macro_invocation in
-  static'
+  static
   @@
   let open Memo.O in
   let+ ocaml_config =

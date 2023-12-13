@@ -87,9 +87,11 @@ module Produced : sig
       and collecting all contained files. *)
   val of_validated : Validated.t -> (unit t, Error.t) result
 
-  (** Populates only the [files] field, leaving [dirs] empty. Raises a code
-      error if the list contains duplicates. *)
-  val of_file_list_exn : (Path.Build.t * Digest.t) list -> Digest.t t
+  (** Populates only the [files] field, leaving [dirs] empty. *)
+  val of_files : Path.Build.t -> 'a Filename.Map.t -> 'a t
+
+  (* Drop all directory targets, leaving only file targets. *)
+  val drop_dirs : 'a t -> 'a t
 
   (** Union of [t.files] and all files in [t.dirs]. *)
   val all_files : 'a t -> 'a Path.Build.Map.t
@@ -97,14 +99,19 @@ module Produced : sig
   (** Like [all_files] but returns a [Seq.t] for efficient traversal. *)
   val all_files_seq : 'a t -> (Path.Build.t * 'a) Seq.t
 
+  val exists : 'a t -> f:('a -> bool) -> bool
+  val foldi : 'a t -> init:'acc -> f:(Path.Build.t -> 'a -> 'acc -> 'acc) -> 'acc
+  val iteri : 'a t -> f:(Path.Build.t -> 'a -> unit) -> unit
+  val parallel_map : 'a t -> f:(Path.Build.t -> 'a -> 'b Fiber.t) -> 'b t Fiber.t
+
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t
 
-  val collect_digests
+  val map_with_errors
     :  'a t
     -> all_errors:bool
-    -> f:(Path.Build.t -> 'a -> (Digest.t, 'e) result)
-    -> (Digest.t t, (Path.Build.t * 'e) Nonempty_list.t) result
+    -> f:(Path.Build.t -> 'a -> ('b, 'e) result)
+    -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result
 
   val to_dyn : _ t -> Dyn.t
 end

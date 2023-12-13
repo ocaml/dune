@@ -197,8 +197,12 @@ module Produced = struct
         Ok { files; dirs }
   ;;
 
-  let of_file_list_exn list =
-    { files = Path.Build.Map.of_list_exn list; dirs = Path.Build.Map.empty }
+  let of_files dir files =
+    { files =
+        Filename.Map.foldi files ~init:Path.Build.Map.empty ~f:(fun file value files ->
+          Path.Build.Map.add_exn files (Path.Build.relative dir file) value)
+    ; dirs = Path.Build.Map.empty
+    }
   ;;
 
   let all_files { files; dirs } =
@@ -223,6 +227,8 @@ module Produced = struct
     Path.Build.Map.union ~f:disallow_duplicates files files_in_dirs
   ;;
 
+  let drop_dirs { files; dirs = _ } = { files; dirs = Path.Build.Map.empty }
+
   let all_files_seq t =
     Seq.append
       (Path.Build.Map.to_seq t.files)
@@ -234,6 +240,40 @@ module Produced = struct
               Path.Build.relative dir filename, payload))))
   ;;
 
+  let exists { files; dirs } ~f =
+    Path.Build.Map.exists files ~f || Path.Build.Map.exists dirs ~f:(String.Map.exists ~f)
+  ;;
+
+  let foldi { files; dirs } ~init ~f =
+    let acc = Path.Build.Map.foldi files ~init ~f in
+    Path.Build.Map.foldi dirs ~init:acc ~f:(fun dir filenames acc ->
+      String.Map.foldi filenames ~init:acc ~f:(fun filename payload acc ->
+        f (Path.Build.relative dir filename) payload acc))
+  ;;
+
+  let iteri { files; dirs } ~f =
+    Path.Build.Map.iteri files ~f;
+    Path.Build.Map.iteri dirs ~f:(fun dir filenames ->
+      String.Map.iteri filenames ~f:(fun filename payload ->
+        f (Path.Build.relative dir filename) payload))
+  ;;
+
+  module Path_traversal = Fiber.Make_map_traversals (Path.Build.Map)
+  module Filename_traversal = Fiber.Make_map_traversals (String.Map)
+
+  let parallel_map { files; dirs } ~f =
+    let open Fiber.O in
+    let+ files, dirs =
+      Fiber.fork_and_join
+        (fun () -> Path_traversal.parallel_map files ~f)
+        (fun () ->
+          Path_traversal.parallel_map dirs ~f:(fun dir files ->
+            Filename_traversal.parallel_map files ~f:(fun file payload ->
+              f (Path.Build.relative dir file) payload)))
+    in
+    { files; dirs }
+  ;;
+
   let digest { files; dirs } =
     let all_digests =
       Path.Build.Map.values files
@@ -242,31 +282,28 @@ module Produced = struct
     Digest.generic (List.concat all_digests)
   ;;
 
-  (* Dummy digest because we want to continue discovering all the errors
-     and we need some value to return in [mapi]. It will never be returned *)
-  let dummy_digest = Digest.generic ""
-
   exception Short_circuit
 
-  let collect_digests
+  let map_with_errors
     { files; dirs }
     ~all_errors
-    ~(f : Path.Build.t -> 'a -> (Digest.t, 'e) result)
+    ~(f : Path.Build.t -> 'a -> ('b, 'e) result)
     =
     let errors = ref [] in
     let f path a =
       match f path a with
-      | Ok s -> s
+      | Ok s -> Some s
       | Error e ->
         errors := (path, e) :: !errors;
-        if all_errors then dummy_digest else raise_notrace Short_circuit
+        if all_errors then None else raise_notrace Short_circuit
     in
     let result =
       try
-        let files = Path.Build.Map.mapi files ~f in
+        let files = Path.Build.Map.filter_mapi files ~f in
         let dirs =
           Path.Build.Map.mapi dirs ~f:(fun dir ->
-            Filename.Map.mapi ~f:(fun filename -> f (Path.Build.relative dir filename)))
+            Filename.Map.filter_mapi ~f:(fun filename ->
+              f (Path.Build.relative dir filename)))
         in
         { files; dirs }
       with

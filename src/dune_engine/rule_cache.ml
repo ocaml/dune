@@ -146,7 +146,7 @@ module Workspace_local = struct
     | Error error -> Miss (Error_while_collecting_directory_targets error)
     | Ok targets ->
       (match
-         Targets.Produced.collect_digests targets ~all_errors:false ~f:(fun target () ->
+         Targets.Produced.map_with_errors targets ~all_errors:false ~f:(fun target () ->
            Cached_digest.build_file ~allow_dirs:true target)
        with
        | Ok produced_targets -> Hit produced_targets

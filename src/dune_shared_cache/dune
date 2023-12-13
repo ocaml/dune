@@ -9,4 +9,5 @@
   dune_cache
   dune_cache_storage
   dune_digest
+  dune_targets
   fiber))

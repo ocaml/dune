@@ -18,6 +18,7 @@
   dune_cache
   dune_cache_storage
   dune_glob
+  dune_targets
   chrome_trace
   dune_stats
   dune_action_plugin

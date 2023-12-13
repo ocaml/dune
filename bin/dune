@@ -27,6 +27,7 @@
   dune_rules
   dune_vcs
   dune_engine
+  dune_targets
   dune_util
   dune_upgrader
   dune_pkg

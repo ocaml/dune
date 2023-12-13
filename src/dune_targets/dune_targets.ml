@@ -154,7 +154,7 @@ module Produced = struct
 
   let of_validated =
     let rec collect dir : (unit Filename.Map.t Path.Build.Map.t, Error.t) result =
-      match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
+      match Path.readdir_unsorted_with_kinds (Path.build dir) with
       | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
       | Error e -> Error (Unreadable_dir (dir, e))
       | Ok dir_contents ->

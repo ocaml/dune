@@ -125,7 +125,7 @@ A new package is released in the repo:
   > EOF
   $ cd mock-opam-repository
   $ git add -A
-  $ git commit -m "bar.0.1.0" --quiet
+  $ git commit -m "bar.1.0.0" --quiet
   $ cd ..
 
 Since we have a working cached copy we get the old version of `bar` if we opt
@@ -160,4 +160,35 @@ restored the repo to where it was before)
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
   Solution for dune.lock:
   - bar.1.0.0
+  - foo.0.1.0
+
+We also want to make sure that branches work, so we add `bar.2.0.0` as a new
+package on a `bar-2` branch (and switch back to the default branch, to make
+sure that the default branch differs from `bar-2`).
+
+  $ mkpkg bar 2.0.0 <<EOF
+  > depends: [ "foo" ]
+  > EOF
+  $ cd mock-opam-repository
+  $ git switch --quiet -c bar-2
+  $ git add -A
+  $ git commit -m "bar.2.0.0" --quiet
+  $ git switch --quiet -
+  $ cd ..
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository#bar-2"))
+  > (lock_dir
+  >  (repositories mock))
+  > EOF
+
+Locking that branch should work and pick `bar.2.0.0`:
+
+  $ rm -r dune.lock
+  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  Solution for dune.lock:
+  - bar.2.0.0
   - foo.0.1.0

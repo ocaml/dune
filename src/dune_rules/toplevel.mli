@@ -35,6 +35,6 @@ module Stanza : sig
   val setup
     :  sctx:Super_context.t
     -> dir:Path.Build.t
-    -> toplevel:Dune_file.Toplevel.t
+    -> toplevel:Toplevel_stanza.t
     -> unit Memo.t
 end

@@ -30,7 +30,7 @@ module Source = struct
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
-  let of_stanza ~dir ~(toplevel : Dune_file.Toplevel.t) =
+  let of_stanza ~dir ~(toplevel : Toplevel_stanza.t) =
     { dir = Path.Build.relative dir (toplevel_dir_prefix ^ toplevel.name)
     ; name = toplevel.name
     ; loc = toplevel.loc
@@ -174,7 +174,7 @@ let print_toplevel_init_file { include_paths; files_to_load; uses; pp; ppx; code
 ;;
 
 module Stanza = struct
-  let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
+  let setup ~sctx ~dir ~(toplevel : Toplevel_stanza.t) =
     let open Memo.O in
     let source = Source.of_stanza ~dir ~toplevel in
     let* expander = Super_context.expander sctx ~dir in

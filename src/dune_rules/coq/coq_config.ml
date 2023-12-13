@@ -265,3 +265,30 @@ let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default } na
       "Unknown name was requested from coq_config"
       [ "name", Dyn.string name ]
 ;;
+
+let expand source macro artifacts_host =
+  let s = Pform.Macro_invocation.Args.whole macro in
+  let open Memo.O in
+  let* coqc = Artifacts.binary artifacts_host ~loc:None "coqc" in
+  let+ t = make ~coqc in
+  match t with
+  | Error msg ->
+    User_error.raise
+      ~loc:(Dune_lang.Template.Pform.loc source)
+      [ Pp.textf "Could not expand %%{coq:%s} as running coqc --config failed." s; msg ]
+      ~hints:
+        [ Pp.textf
+            "coqc --config requires the coq-stdlib package in order to function properly."
+        ]
+  | Ok t ->
+    (match by_name t s with
+     | None ->
+       User_error.raise
+         ~loc:(Dune_lang.Template.Pform.loc source)
+         [ Pp.textf "Unknown Coq configuration variable %S" s ]
+     | Some v ->
+       (match v with
+        | Int x -> [ Dune_lang.Value.String (string_of_int x) ]
+        | String x -> [ String x ]
+        | Path x -> Dune_lang.Value.L.paths [ x ]))
+;;

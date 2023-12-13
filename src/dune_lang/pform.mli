@@ -92,6 +92,8 @@ module Var : sig
   (** Translate a global variable from an opam file into the equivalent dune
       pform variable. *)
   val of_opam_global_variable_name : string -> t option
+
+  module Map : Map.S with type key = t
 end
 
 module Artifact : sig
@@ -132,6 +134,8 @@ module Macro : sig
 
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
 end
 
 module Macro_invocation : sig

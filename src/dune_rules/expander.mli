@@ -10,28 +10,14 @@ val context : t -> Context.t
 
 val make_root
   :  scope:Scope.t
-  -> scope_host:Scope.t
   -> context:Context.t
   -> env:Env.t
-  -> lib_artifacts:Lib.DB.t
-  -> lib_artifacts_host:Lib.DB.t
   -> artifacts_host:Artifacts.t
-  -> t
-
-val set_foreign_flags
-  :  t
-  -> f:(dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
-val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
 val set_artifacts : t -> artifacts_host:Artifacts.t -> t
-
-val set_lookup_ml_sources
-  :  t
-  -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t)
-  -> t
 
 module Expanding_what : sig
   type t =
@@ -96,19 +82,14 @@ module With_deps_if_necessary : sig
 end
 
 module With_reduced_var_set : sig
-  val expand_str
-    :  context:Context.t
-    -> dir:Path.Build.t
-    -> String_with_vars.t
-    -> string Memo.t
+  val expand_str : dir:Path.Build.t -> String_with_vars.t -> string Memo.t
 
   val expand_str_partial
-    :  context:Context.t
-    -> dir:Path.Build.t
+    :  dir:Path.Build.t
     -> String_with_vars.t
     -> String_with_vars.t Memo.t
 
-  val eval_blang : context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
+  val eval_blang : dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible

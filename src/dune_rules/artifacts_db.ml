@@ -37,9 +37,9 @@ let available_exes ~dir (exes : Dune_file.Executables.t) =
 let get_installed_binaries ~(context : Context.t) stanzas =
   let open Memo.O in
   let install_dir = Install.Context.bin_dir ~context:(Context.name context) in
-  let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
+  let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~dir sw in
   let expand_str_partial ~dir sw =
-    Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
+    Expander.With_reduced_var_set.expand_str_partial ~dir sw
   in
   Memo.List.map stanzas ~f:(fun (d : Dune_file.t) ->
     let dir = Path.Build.append_source (Context.build_dir context) d.dir in
@@ -72,7 +72,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
           ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
         let* available =
           let* enabled_if =
-            Expander.With_reduced_var_set.eval_blang ~context ~dir exes.enabled_if
+            Expander.With_reduced_var_set.eval_blang ~dir exes.enabled_if
           in
           match enabled_if with
           | false -> Memo.return false

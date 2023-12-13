@@ -195,6 +195,13 @@ module Var = struct
        | Pkg pkg -> Pkg.to_dyn pkg)
   ;;
 
+  module Map = Map.Make (struct
+      type nonrec t = t
+
+      let to_dyn = to_dyn
+      let compare = compare
+    end)
+
   let of_opam_global_variable_name name =
     match Pkg.Section.of_string name with
     | Some section_dir -> Some (Pkg (Pkg.Section_dir section_dir))
@@ -353,6 +360,13 @@ module Macro = struct
     | Pkg -> variant "Pkg" []
     | Pkg_self -> variant "Pkg_self" []
   ;;
+
+  module Map = Map.Make (struct
+      type nonrec t = t
+
+      let to_dyn = to_dyn
+      let compare = compare
+    end)
 
   let encode = function
     | Exe -> Ok "exe"
@@ -622,7 +636,11 @@ module Env = struct
          ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
          ; "ocaml-config", macro Ocaml_config
          ; "env", since ~version:(1, 4) Macro.Env
-         ; "coq", macro Coq_config
+         ; ( "coq"
+           , macro Coq_config
+             (* CR-rgrinberg: this macro is lacking the information
+                for when it was introduced. Also, it should require the Coq
+                syntax to be enabled to even parse *) )
          ]
          @ List.map ~f:artifact Artifact.all)
     in

@@ -27,6 +27,7 @@ val context : t -> Context.t
 val context_env : t -> Env.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
+val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
 
 val add_rule
   :  t

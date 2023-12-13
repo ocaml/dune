@@ -178,7 +178,6 @@ let expand_path_from_root (root : Workspace_root.t) sctx sv =
       (String.concat ~sep:Filename.dir_sep root.to_cwd)
   in
   let* expander = Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir) in
-  let expander = Dune_rules.Dir_contents.add_sources_to_expander sctx expander in
   let+ s = Dune_rules.Expander.expand_str expander sv in
   root.reach_from_root_prefix ^ s
 ;;

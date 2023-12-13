@@ -1150,3 +1150,5 @@ let deps_of ~dir ~use_stdlib ~wrapper_name ~mode ~coq_lang_version coq_module =
   in
   deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module
 ;;
+
+let () = Coq_expand.linkme

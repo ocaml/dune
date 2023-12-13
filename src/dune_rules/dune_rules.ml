@@ -77,3 +77,8 @@ module Coq = struct
   module Coq_lib = Coq_lib
   module Coq_flags = Coq_flags
 end
+
+let () = Expander_context.linkme
+let () = Expander_scope.linkme
+let () = Expander_foreign_flags.linkme
+let () = Expander_artifacts.linkme

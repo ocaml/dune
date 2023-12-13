@@ -79,24 +79,8 @@ end = struct
 
   let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
 
-  let scope_host ~scope (context : Context.t) =
-    match Context.for_host context with
-    | None -> Memo.return scope
-    | Some host ->
-      let* dir =
-        let root = Scope.root scope in
-        let src = Path.Build.drop_build_context_exn root in
-        let+ host = host in
-        Path.Build.append_source (Context.build_dir host) src
-      in
-      Scope.DB.find_by_dir dir
-  ;;
-
-  let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
-    let+ scope_host = scope_host ~scope (Expander.context root_expander) in
-    Expander.extend_env root_expander ~env:external_env
-    |> Expander.set_scope ~scope ~scope_host
-    |> Expander.set_dir ~dir
+  let expander_for_artifacts ~external_env ~root_expander ~dir =
+    Expander.extend_env root_expander ~env:external_env |> Expander.set_dir ~dir
   ;;
 
   let extend_expander t ~dir ~expander_for_artifacts =
@@ -111,15 +95,11 @@ end = struct
   ;;
 
   let expander t ~dir =
-    let* node = get_node t ~dir
-    and+ external_env = external_env t ~dir in
-    let* expander_for_artifacts =
-      let scope = Env_node.scope node in
-      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
+    let* external_env = external_env t ~dir in
+    let expander_for_artifacts =
+      expander_for_artifacts ~external_env ~root_expander:t.root_expander ~dir
     in
-    let+ expander = extend_expander t ~dir ~expander_for_artifacts in
-    Expander.set_foreign_flags expander ~f:(fun ~dir ->
-      get_node t ~dir >>| Env_node.foreign_flags)
+    extend_expander t ~dir ~expander_for_artifacts
   ;;
 
   let get_env_stanza ~dir =
@@ -157,8 +137,8 @@ end = struct
     in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
-        let* external_env = external_env t ~dir in
-        expander_for_artifacts ~scope ~root_expander:t.root_expander ~external_env ~dir)
+        let+ external_env = external_env t ~dir in
+        expander_for_artifacts ~root_expander:t.root_expander ~external_env ~dir)
     in
     let expander =
       Memo.lazy_ (fun () ->
@@ -233,6 +213,7 @@ let hash t = Context.hash (Env_tree.context t)
 let to_dyn_concise t = Context.to_dyn_concise (Env_tree.context t)
 let to_dyn t = Context.to_dyn (Env_tree.context t)
 let expander t ~dir = Env_tree.expander t ~dir
+let artifacts_host = Env_tree.artifacts_host
 
 open Memo.O
 
@@ -446,30 +427,15 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       (make_root_env context ~host)
       (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
   in
-  let public_libs = Scope.DB.public_libs context in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
-    let artifacts_host, public_libs_host, context_host =
+    let* artifacts_host =
       match Context.for_host context with
-      | None -> artifacts, public_libs, Memo.return context
-      | Some host ->
-        let artifacts = host >>= Artifacts_db.get in
-        let public_libs = host >>= Scope.DB.public_libs in
-        artifacts, public_libs, host
+      | None -> artifacts
+      | Some host -> host >>= Artifacts_db.get
     in
-    let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
-    and+ public_libs = public_libs
-    and+ artifacts_host = artifacts_host
-    and+ public_libs_host = public_libs_host
-    and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
-    Expander.make_root
-      ~scope
-      ~scope_host
-      ~context
-      ~env:expander_env
-      ~lib_artifacts:public_libs
-      ~artifacts_host
-      ~lib_artifacts_host:public_libs_host
+    let+ scope = Scope.DB.find_by_dir (Context.build_dir context) in
+    Expander.make_root ~scope ~context ~env:expander_env ~artifacts_host
   and+ artifacts = artifacts
   and+ root_env =
     add_packages_env (Context.name context) ~base:expander_env stanzas packages

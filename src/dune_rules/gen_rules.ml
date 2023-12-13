@@ -310,10 +310,7 @@ let gen_format_and_cram_rules sctx ~expander ~dir source_dir =
 let gen_rules_source_only sctx ~dir source_dir =
   Rules.collect_unit (fun () ->
     let* sctx = sctx in
-    let* expander =
-      let+ expander = Super_context.expander sctx ~dir in
-      Dir_contents.add_sources_to_expander sctx expander
-    in
+    let* expander = Super_context.expander sctx ~dir in
     let+ () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
     and+ () =
       define_all_alias ~dir ~js_targets:[] ~project:(Source_tree.Dir.project source_dir)
@@ -324,10 +321,7 @@ let gen_rules_source_only sctx ~dir source_dir =
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : (Loc.t * Compilation_context.t) list Memo.t
   =
-  let* expander =
-    let+ expander = Super_context.expander sctx ~dir in
-    Dir_contents.add_sources_to_expander sctx expander
-  in
+  let* expander = Super_context.expander sctx ~dir in
   let* () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
   and+ stanzas =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)

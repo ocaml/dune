@@ -269,14 +269,17 @@ struct
              | [] -> []
              | _ ->
                [ Pp.textf "Rule failed to generate the following targets:"
-               ; Pp.enumerate ~f:Path.pp (List.rev_map ~f:Path.build missing)
+               ; List.sort missing ~compare:Path.Build.compare
+                 |> List.map ~f:Path.build
+                 |> Pp.enumerate ~f:Path.pp
                ])
             @
             match errors with
             | [] -> []
             | _ ->
               [ Pp.textf "Error trying to read targets after a rule was run:"
-              ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
+              ; List.sort errors ~compare:(fun x y -> Path.Build.compare (fst x) (fst y))
+                |> Pp.enumerate ~f:(fun (target, error) ->
                   Pp.concat ~sep:(Pp.verbatim ": ") [ Path.pp (Path.build target); error ])
               ]))
   ;;

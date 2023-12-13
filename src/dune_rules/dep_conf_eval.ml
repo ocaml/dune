@@ -269,7 +269,7 @@ and named_paths_builder ~expander l =
          with
          | Some x ->
            let open Memo.O in
-           let x = Memo.lazy_ (fun () -> Memo.all x) in
+           let x = Memo.lazy_ (fun () -> Memo.all_concurrently x) in
            let bindings =
              Pform.Map.set
                bindings

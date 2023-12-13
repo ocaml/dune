@@ -541,7 +541,7 @@ end = struct
           stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza
         in
         named_entries :: acc)
-      |> Memo.all
+      |> Memo.all_concurrently
     in
     List.fold_left l ~init ~f:(fun acc named_entries ->
       match named_entries with

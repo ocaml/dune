@@ -69,6 +69,7 @@ val add_alias_action
 val resolve_program
   :  t
   -> dir:Path.Build.t
+  -> ?where:Artifacts.where
   -> ?hint:string
   -> loc:Loc.t option
   -> string
@@ -78,6 +79,7 @@ val resolve_program
 val resolve_program_memo
   :  t
   -> dir:Path.Build.t
+  -> ?where:Artifacts.where
   -> ?hint:string
   -> loc:Loc.t option
   -> string

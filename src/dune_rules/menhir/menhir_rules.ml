@@ -119,7 +119,13 @@ module Run (P : PARAMS) = struct
   (* Rule generation. *)
 
   let menhir_binary =
-    Super_context.resolve_program sctx ~dir "menhir" ~loc:None ~hint:"opam install menhir"
+    Super_context.resolve_program
+      sctx
+      ~dir
+      ~where:Original_path
+      "menhir"
+      ~loc:None
+      ~hint:"opam install menhir"
   ;;
 
   (* Reminder (from command.mli):

@@ -35,6 +35,7 @@ let ocamlfdo_binary sctx dir =
   Super_context.resolve_program
     sctx
     ~dir
+    ~where:Original_path
     ~loc:None
     "ocamlfdo"
     ~hint:"opam install ocamlfdo"

@@ -127,6 +127,7 @@ let gen_rules sctx t ~dir ~scope =
          Super_context.resolve_program
            sctx
            ~dir
+           ~where:Original_path
            ~loc:(Some loc)
            name
            ~hint:"opam install cinaps"

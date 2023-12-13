@@ -54,7 +54,6 @@ type t =
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
-  ; c_compiler : string Memo.t
   ; context : Context.t
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) option
   ; foreign_flags :
@@ -201,7 +200,10 @@ let cc t =
     let+ cc =
       let* cc = Action_builder.of_memo @@ t.foreign_flags ~dir:t.dir in
       Foreign_language.Dict.get cc language
-    and+ c_compiler = Action_builder.of_memo t.c_compiler in
+    and+ c_compiler =
+      let+ ocaml = Action_builder.of_memo @@ Context.ocaml t.context in
+      Ocaml_config.c_compiler ocaml.ocaml_config
+    in
     strings (c_compiler :: cc)
   in
   { Foreign_language.Dict.c = make C; cxx = make Cxx }
@@ -777,11 +779,6 @@ let make_root
   ~lib_artifacts_host
   ~artifacts_host
   =
-  let c_compiler =
-    let open Memo.O in
-    let+ ocaml = Context.ocaml context in
-    Ocaml_config.c_compiler ocaml.ocaml_config
-  in
   { dir = Context.build_dir context
   ; env
   ; local_env = Env.Var.Map.empty
@@ -791,7 +788,6 @@ let make_root
   ; lib_artifacts
   ; lib_artifacts_host
   ; artifacts_host
-  ; c_compiler
   ; context
   ; lookup_artifacts = None
   ; foreign_flags =

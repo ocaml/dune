@@ -543,6 +543,46 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
         User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ])
 ;;
 
+let ocaml_config_macro source macro_invocation context =
+  let s = Pform.Macro_invocation.Args.whole macro_invocation in
+  static'
+  @@
+  let open Memo.O in
+  let+ ocaml_config =
+    let+ ocaml = Context.ocaml context in
+    ocaml.ocaml_config
+  in
+  match Ocaml_config.by_name ocaml_config s with
+  | None ->
+    User_error.raise
+      ~loc:(Dune_lang.Template.Pform.loc source)
+      [ Pp.textf "Unknown ocaml configuration variable %S" s ]
+  | Some v ->
+    (match v with
+     | Bool x -> string (string_of_bool x)
+     | Int x -> string (string_of_int x)
+     | String x -> string x
+     | Words x -> strings x
+     | Prog_and_args x -> strings (x.prog :: x.args))
+;;
+
+let env_macro t source macro_invocation =
+  match Pform.Macro_invocation.Args.whole macro_invocation |> String.rsplit2 ~on:'=' with
+  | None ->
+    User_error.raise
+      ~loc:source.Dune_lang.Template.Pform.loc
+      [ Pp.textf
+          "%s must always come with a default value."
+          (Dune_lang.Template.Pform.describe source)
+      ]
+      ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
+  | Some (var, default) ->
+    (match Env.Var.Map.find t.local_env var with
+     | Some v -> Deps.With (v >>| string)
+     | None ->
+       Deps.Without (Env.get t.env var |> Option.value ~default |> string |> Memo.return))
+;;
+
 let expand_pform_macro
   (context : Context.t)
   ~dir
@@ -553,46 +593,8 @@ let expand_pform_macro
   match macro_invocation.macro with
   | Pkg -> Code_error.raise "pkg forms aren't possible here" []
   | Pkg_self -> Code_error.raise "pkg-self forms aren't possible here" []
-  | Ocaml_config ->
-    static'
-    @@
-    let open Memo.O in
-    let+ ocaml_config =
-      let+ ocaml = Context.ocaml context in
-      ocaml.ocaml_config
-    in
-    (match Ocaml_config.by_name ocaml_config s with
-     | None ->
-       User_error.raise
-         ~loc:(Dune_lang.Template.Pform.loc source)
-         [ Pp.textf "Unknown ocaml configuration variable %S" s ]
-     | Some v ->
-       (match v with
-        | Bool x -> string (string_of_bool x)
-        | Int x -> string (string_of_int x)
-        | String x -> string x
-        | Words x -> strings x
-        | Prog_and_args x -> strings (x.prog :: x.args)))
-  | Env ->
-    Need_full_expander
-      (fun t ->
-        match String.rsplit2 s ~on:'=' with
-        | None ->
-          User_error.raise
-            ~loc:source.Dune_lang.Template.Pform.loc
-            [ Pp.textf
-                "%s must always come with a default value."
-                (Dune_lang.Template.Pform.describe source)
-            ]
-            ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
-        | Some (var, default) ->
-          (match Env.Var.Map.find t.local_env var with
-           | Some v ->
-             With
-               (let+ v = v in
-                string v)
-           | None ->
-             Without (Memo.return (string (Option.value ~default (Env.get t.env var))))))
+  | Ocaml_config -> ocaml_config_macro source macro_invocation context
+  | Env -> Need_full_expander (fun t -> env_macro t source macro_invocation)
   | Version -> Need_full_expander (fun t -> Without (expand_version t ~source s))
   | Artifact a -> Need_full_expander (fun t -> With (expand_artifact ~source t a s))
   | Path_no_dep ->

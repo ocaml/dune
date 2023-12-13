@@ -59,8 +59,8 @@ let dep_on_alias_rec alias ~loc =
       }
   | Some _ ->
     let name = Dune_engine.Alias.name alias in
-    let+ alias_status = Alias_rec.dep_on_alias_rec name (Alias.dir alias) in
-    (match alias_status with
+    Alias_rec.dep_on_alias_rec name (Alias.dir alias)
+    >>| (function
      | Defined -> ()
      | Not_defined ->
        if not (Alias.is_standard name)
@@ -78,10 +78,10 @@ let dep_on_alias_rec alias ~loc =
 let relative d s = Path.build (Path.Build.relative d s)
 
 let expand_include ~expander s =
-  let path = relative (Expander.dir expander) s in
-  let+ ast = Action_builder.read_sexp path in
-  match ast with
-  | Dune_lang.Ast.List (_loc, asts) ->
+  relative (Expander.dir expander) s
+  |> Action_builder.read_sexp
+  >>| function
+  | List (_loc, asts) ->
     let dep_parser =
       Dune_lang.Syntax.set
         Stanza.syntax
@@ -147,22 +147,21 @@ let package loc pkg (context : Build_context.t) ~dune_version =
                 ])
         }
     else
-      let* files =
-        (let open Memo.O in
-         Memo.parallel_map pkg.files ~f:(fun (s, l) ->
-           let dir = Section.Map.find_exn pkg.sections s in
-           Memo.parallel_map l ~f:(fun (kind, d) ->
-             let path = Path.relative dir (Install.Entry.Dst.to_string d) in
-             match kind with
-             | `File -> Memo.return [ path ]
-             | `Dir ->
-               let path = Path.as_outside_build_dir_exn path in
-               dir_contents ~loc path >>| List.rev_map ~f:Path.outside_build_dir)
-           >>| List.concat)
+      (let open Memo.O in
+       Memo.parallel_map pkg.files ~f:(fun (s, l) ->
+         let dir = Section.Map.find_exn pkg.sections s in
+         Memo.parallel_map l ~f:(fun (kind, d) ->
+           let path = Path.relative dir (Install.Entry.Dst.to_string d) in
+           match kind with
+           | `File -> Memo.return [ path ]
+           | `Dir ->
+             Path.as_outside_build_dir_exn path
+             |> dir_contents ~loc
+             >>| List.rev_map ~f:Path.outside_build_dir)
          >>| List.concat)
-        |> Action_builder.of_memo
-      in
-      Action_builder.paths files
+       >>| List.concat)
+      |> Action_builder.of_memo
+      >>= Action_builder.paths
   | None ->
     Action_builder.fail
       { fail =
@@ -269,19 +268,16 @@ and named_paths_builder ~expander l =
          with
          | Some x ->
            let open Memo.O in
-           let x = Memo.lazy_ (fun () -> Memo.all_concurrently x) in
+           let x = Memo.lazy_ (fun () -> Memo.all_concurrently x >>| List.concat) in
            let bindings =
              Pform.Map.set
                bindings
                (Var (User_var name))
-               (Expander.Deps.Without
-                  (let+ paths = Memo.Lazy.force x in
-                   Value.L.paths (List.concat paths)))
+               (Expander.Deps.Without (Memo.Lazy.force x >>| Value.L.paths))
            in
            let x =
              let open Action_builder.O in
              let* x = Action_builder.of_memo (Memo.Lazy.force x) in
-             let x = List.concat x in
              let+ () = Action_builder.paths x in
              x
            in
@@ -297,26 +293,23 @@ and named_paths_builder ~expander l =
              Pform.Map.set
                bindings
                (Var (User_var name))
-               (Expander.Deps.With
-                  (let+ paths = x in
-                   Value.L.paths paths))
+               (Expander.Deps.With (x >>| Value.L.paths))
            in
            x :: builders, bindings))
   in
-  let builder =
-    let+ l = Action_builder.all (List.rev builders) in
-    List.concat l
-  in
+  let builder = List.rev builders |> Action_builder.all >>| List.concat in
   builder, bindings
 ;;
 
 let named ~expander l =
   let builder, bindings = named_paths_builder ~expander l in
   let builder =
-    let+ paths = builder in
-    Value.L.paths paths
+    let builder =
+      let+ paths = builder in
+      Value.L.paths paths
+    in
+    Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder
   in
-  let builder = Action_builder.memoize ~cutoff:(List.equal Value.equal) "deps" builder in
   let bindings = Pform.Map.set bindings (Var Deps) (Expander.Deps.With builder) in
   let expander = Expander.add_bindings_full expander ~bindings in
   ( Action_builder.ignore builder

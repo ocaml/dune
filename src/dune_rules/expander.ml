@@ -873,11 +873,6 @@ module With_deps_if_necessary = struct
     List.map vs ~f:(fun v ->
       Value.to_path_in_build_or_external v ~error_loc:(String_with_vars.loc sw) ~dir:t.dir)
   ;;
-
-  let expand_str t sw =
-    let+ v = expand t ~mode:Single sw in
-    Value.to_string v ~dir:(Path.build t.dir)
-  ;;
 end
 
 module With_reduced_var_set = struct

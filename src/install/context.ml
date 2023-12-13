@@ -12,7 +12,6 @@ let dir ~context =
 
 let lib_root ~context = Path.Build.relative (dir ~context) "lib"
 let bin_dir ~context = Path.Build.relative (dir ~context) "bin"
-let man_dir ~context = Path.Build.relative (dir ~context) "man"
 
 let lib_dir ~context ~package =
   Path.Build.relative (lib_root ~context) (Package_name.to_string package)

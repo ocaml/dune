@@ -28,7 +28,7 @@ val copy_files
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> src_dir:Path.Source.t
-  -> Dune_file.Copy_files.t
+  -> Copy_files.t
   -> Path.Set.t Memo.t
 
 (** Interpret an [(alias ...)] stanza. *)

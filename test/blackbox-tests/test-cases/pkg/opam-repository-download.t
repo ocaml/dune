@@ -17,6 +17,7 @@ Make a mock repo tarball that will get used by dune to download the package
   $ REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
   $ mkdir fake-xdg-cache
+  $ export XDG_CACHE_HOME=$(pwd)/fake-xdg-cache
 
   $ cat > dune-project <<EOF
   > (lang dune 3.10)
@@ -35,7 +36,7 @@ Make a mock repo tarball that will get used by dune to download the package
   >  (source "git+file://$(pwd)/mock-opam-repository"))
   > EOF
 
-  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -94,7 +95,7 @@ in the repo and make sure it locks the older version.
   >  (name mock)
   >  (source "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"))
   > EOF
-  $ XDG_CACHE_HOME=$(pwd)/fake-xdg-cache dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
@@ -111,8 +112,7 @@ repository and thus the new foo package.
   > (lock_dir
   >  (repositories foo))
   > EOF
-  $ mkdir dune-workspace-cache
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -147,7 +147,7 @@ To be safe it doesn't access the repo, we make sure to move the mock-repo away
 So now the test should work as it can't access the repo:
 
   $ rm -r dune.lock
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock --skip-update
+  $ dune pkg lock --skip-update
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -157,7 +157,7 @@ restored the repo to where it was before)
 
   $ mv elsewhere mock-opam-repository
   $ rm -r dune.lock
-  $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache dune pkg lock
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.1.0.0
   - foo.0.1.0

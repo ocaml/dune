@@ -324,7 +324,7 @@ module Remote = struct
   type uninit = t
 
   let update ({ repo; handle; default_branch = _ } as t) =
-    let+ () = run repo [ "fetch"; handle; "--no-tags" ] in
+    let+ () = run repo [ "fetch"; handle ] in
     t
   ;;
 
@@ -422,7 +422,15 @@ let read_head_branch =
 ;;
 
 let remote_add t ~branch ~handle ~source =
-  run t [ "remote"; "add"; "--track"; branch; handle; source ]
+  let* () = run t [ "remote"; "add"; "--track"; branch; handle; source ] in
+  (* add a refspec to fetch the remotes' tags into <handle>/<tag> namespace *)
+  run
+    t
+    [ "config"
+    ; "--add"
+    ; sprintf "remote.%s.fetch" handle
+    ; sprintf "+refs/tags/*:refs/tags/%s/*" handle
+    ]
 ;;
 
 let add_repo ({ dir } as t) ~source ~branch =

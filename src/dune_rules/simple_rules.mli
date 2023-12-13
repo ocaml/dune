@@ -1,7 +1,6 @@
 (** Simple rules: user, copy_files, alias *)
 
 open Import
-open Dune_file
 
 module Alias_rules : sig
   val add
@@ -20,7 +19,7 @@ val user_rule
   -> ?extra_bindings:Value.t list Pform.Map.t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> Rule.t
+  -> Rule_conf.t
   -> Targets.Validated.t option Memo.t
 
 (** Interpret a [(copy_files ...)] stanza and return the targets it produces. *)

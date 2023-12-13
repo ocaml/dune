@@ -1,7 +1,7 @@
 Control the default runtest alias for cram tests
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.12)
   > EOF
 
   $ cat >dune <<EOF

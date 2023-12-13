@@ -1,3 +1,4 @@
+Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (lock_dir

@@ -215,19 +215,6 @@ module Library : sig
     -> Lib_info.local Memo.t
 end
 
-module Install_conf : sig
-  type t =
-    { section : Section_with_site.t
-    ; files : Install_entry.File.t list
-    ; dirs : Install_entry.Dir.t list
-    ; source_trees : Install_entry.Dir.t list
-    ; package : Package.t
-    ; enabled_if : Blang.t
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Executables : sig
   module Link_mode : sig
     type t =
@@ -286,50 +273,6 @@ module Executables : sig
   val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 end
 
-module Copy_files : sig
-  type t =
-    { add_line_directive : bool
-    ; alias : Alias.Name.t option
-    ; mode : Rule.Mode.t
-    ; enabled_if : Blang.t
-    ; files : String_with_vars.t
-    ; syntax_version : Dune_lang.Syntax.Version.t
-    }
-
-  include Stanza.S with type t := t
-end
-
-module Rule : sig
-  type t =
-    { targets : String_with_vars.t Targets_spec.t
-    ; deps : Dep_conf.t Bindings.t
-    ; action : Loc.t * Dune_lang.Action.t
-    ; mode : Rule.Mode.t
-    ; patch_back_source_tree : bool
-    ; locks : Locks.t
-    ; loc : Loc.t
-    ; enabled_if : Blang.t
-    ; aliases : Alias.Name.t list
-    ; package : Package.t option
-    }
-
-  include Stanza.S with type t := t
-end
-
-module Alias_conf : sig
-  type t =
-    { name : Alias.Name.t
-    ; deps : Dep_conf.t Bindings.t
-    ; action : (Loc.t * Dune_lang.Action.t) option
-    ; locks : Locks.t
-    ; package : Package.t option
-    ; enabled_if : Blang.t
-    ; loc : Loc.t
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Documentation : sig
   type t =
     { loc : Loc.t
@@ -349,17 +292,6 @@ module Tests : sig
     ; enabled_if : Blang.t
     ; build_if : Blang.t
     ; action : Dune_lang.Action.t option
-    }
-
-  include Stanza.S with type t := t
-end
-
-module Toplevel : sig
-  type t =
-    { name : string
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; loc : Loc.t
-    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
 
   include Stanza.S with type t := t

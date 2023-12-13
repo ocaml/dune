@@ -695,6 +695,7 @@ let to_local_package t =
       with
       | OpamPp.Bad_version (_, message) ->
         User_error.raise
+          ~loc:(Loc.in_file (Path.source file))
           [ Pp.textf
               "Unable to parse opam file %s as local dune package."
               (Path.Source.to_string file)

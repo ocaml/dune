@@ -387,7 +387,7 @@ end = struct
       String.is_prefix fn ~prefix)
   ;;
 
-  let entries_of_install_stanza ~dir ~expander ~package_db (i : Dune_file.Install_conf.t) =
+  let entries_of_install_stanza ~dir ~expander ~package_db (i : Install_conf.t) =
     let expand_str = Expander.No_deps.expand_str expander in
     let make_entry =
       let section = Package_db.section_of_site package_db in

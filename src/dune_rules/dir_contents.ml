@@ -195,7 +195,7 @@ end = struct
           | Coq_stanza.Extraction.T s ->
             Memo.return (Coq_stanza.Extraction.ml_target_fnames s)
           | Menhir_stanza.T menhir -> Memo.return (Menhir_stanza.targets menhir)
-          | Rule.T rule ->
+          | Rule_conf.T rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
             >>| (function
              | None -> []

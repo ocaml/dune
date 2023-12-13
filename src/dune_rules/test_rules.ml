@@ -71,8 +71,9 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           | `exe | `bc -> Memo.return Alias0.runtest
         in
         let add_alias ~loc ~action ~locks =
+          (* CR-rgrinberg: why are we going through the stanza api? *)
           let alias =
-            { Dune_file.Alias_conf.name = runtest_alias
+            { Alias_conf.name = runtest_alias
             ; locks
             ; package = t.package
             ; deps =
@@ -93,7 +94,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         | `Regular -> add_alias ~loc ~action:run_action ~locks:[]
         | `Expect diff ->
           let rule =
-            { Dune_file.Rule.targets = Infer
+            { Rule_conf.targets = Infer
             ; deps = t.deps
             ; action =
                 ( loc

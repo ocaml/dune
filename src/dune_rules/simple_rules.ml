@@ -1,5 +1,4 @@
 open Import
-open Dune_file
 open Memo.O
 
 module Alias_rules = struct
@@ -43,7 +42,7 @@ type rule_kind =
   | Aliases_with_targets of Alias.Name.t list * Path.Build.t
   | No_alias
 
-let rule_kind ~(rule : Rule.t) ~(action : _ Action_builder.With_targets.t) =
+let rule_kind ~(rule : Rule_conf.t) ~(action : _ Action_builder.With_targets.t) =
   match rule.aliases with
   | [] -> No_alias
   | aliases ->
@@ -63,7 +62,7 @@ let interpret_and_add_locks ~expander locks action =
 let add_user_rule
   sctx
   ~dir
-  ~(rule : Rule.t)
+  ~(rule : Rule_conf.t)
   ~(action : _ Action_builder.With_targets.t)
   ~expander
   =
@@ -74,7 +73,7 @@ let add_user_rule
   Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
 ;;
 
-let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
+let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
   Expander.eval_blang expander rule.enabled_if
   >>= function
   | false ->

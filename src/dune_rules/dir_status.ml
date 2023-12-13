@@ -92,7 +92,7 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
 let extract_directory_targets ~dir stanzas =
   Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
     match Stanza.repr stanza with
-    | Rule.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
+    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
       List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
         let loc = String_with_vars.loc target in
         match (kind : Targets_spec.Kind.t) with

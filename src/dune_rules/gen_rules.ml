@@ -2,7 +2,7 @@ open Import
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
-let install_stanza_rules ~ctx_dir ~expander (install_conf : Dune_file.Install_conf.t) =
+let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
   let action =
     (* XXX we're evaluating these stanzas here and [Install_rules]. Seems a bit
        sad to do that *)
@@ -109,7 +109,7 @@ end = struct
     let toplevel_setup = Toplevel.Stanza.setup in
     let open Dune_file in
     match Stanza.repr stanza with
-    | Toplevel.T toplevel ->
+    | Toplevel_stanza.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->

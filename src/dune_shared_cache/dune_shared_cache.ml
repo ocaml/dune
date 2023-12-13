@@ -63,13 +63,13 @@ struct
     let+ () = download ~rule_digest in
     let key () = shared_cache_key_string_for_log ~rule_digest ~head_target in
     match Dune_cache.Local.restore_artifacts ~mode ~rule_digest ~target_dir with
-    | Restored res ->
+    | Restored artifacts ->
       (* it's a small departure from the general "debug cache" semantics that
          we're also printing successes, but it can be useful to see successes
          too if the goal is to understand when and how the file in the build
          directory appeared *)
       if debug_shared_cache then Log.info [ Pp.textf "cache restore success %s" (key ()) ];
-      Result.Hit (Targets.Produced.of_file_list_exn res)
+      Result.Hit artifacts
     | Not_found_in_cache -> Result.Miss Miss_reason.Not_found_in_cache
     | Error exn -> Miss (Error (Printexc.to_string exn))
   ;;
@@ -119,7 +119,7 @@ struct
   (* If this function fails to store the rule to the shared cache, it returns
      [None] because we don't want this to be a catastrophic error. We simply log
      this incident and continue without saving the rule to the shared cache. *)
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~file_targets
+  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~targets
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
@@ -135,36 +135,35 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      List.iter targets_and_digests ~f:(fun (target, digest) ->
-        Cached_digest.set target digest);
-      Some (Targets.Produced.of_file_list_exn targets_and_digests)
+      Targets.Produced.iteri targets_and_digests ~f:Cached_digest.set
     in
     match
-      Path.Build.Map.to_list_map file_targets ~f:(fun target () ->
-        Dune_cache.Local.Target.create target)
-      |> Option.List.all
+      (* CR-soon rleshchinskiy: Don't drop directory targets here. *)
+      Targets.Produced.drop_dirs targets
+      |> Targets.Produced.map_with_errors ~all_errors:false ~f:(fun target () ->
+        match Dune_cache.Local.Target.create target with
+        | Some t -> Ok t
+        | None -> Error ())
     with
-    | None -> Fiber.return None
-    | Some targets ->
+    | Error _ -> Fiber.return None
+    | Ok targets ->
       let compute_digest ~executable path =
         let digest () = Digest.file_with_executable_bit ~executable path in
         match Config.(get background_digests) with
-        | `Disabled -> Fiber.return (Stdune.Result.try_with digest)
-        | `Enabled ->
-          Scheduler.async digest
-          >>| (function
-           | Ok _ as s -> s
-           | Error exn -> Error exn.exn)
+        | `Disabled -> Fiber.return (digest ())
+        | `Enabled -> Scheduler.async_exn digest
       in
       Dune_cache.Local.store_artifacts ~mode ~rule_digest ~compute_digest targets
       >>= (function
        | Stored targets_and_digests ->
          let+ () = upload ~rule_digest in
          Log.info [ Pp.textf "cache store success [%s]" hex ];
-         update_cached_digests ~targets_and_digests
+         update_cached_digests ~targets_and_digests;
+         Some targets_and_digests
        | Already_present targets_and_digests ->
          Log.info [ Pp.textf "cache store skipped [%s]: already present" hex ];
-         Fiber.return (update_cached_digests ~targets_and_digests)
+         update_cached_digests ~targets_and_digests;
+         Fiber.return (Some targets_and_digests)
        | Error (Unix.Unix_error (Unix.EXDEV, "link", file)) ->
          (* We cannot hardlink across partitions so we kindly let the user know
             that they should use copy cache instead. *)
@@ -208,7 +207,7 @@ struct
       Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
     in
     match
-      Targets.Produced.collect_digests
+      Targets.Produced.map_with_errors
         produced_targets
         ~all_errors:true
         ~f:(fun target () -> compute_digest target)
@@ -270,14 +269,17 @@ struct
              | [] -> []
              | _ ->
                [ Pp.textf "Rule failed to generate the following targets:"
-               ; Pp.enumerate ~f:Path.pp (List.rev_map ~f:Path.build missing)
+               ; List.sort missing ~compare:Path.Build.compare
+                 |> List.map ~f:Path.build
+                 |> Pp.enumerate ~f:Path.pp
                ])
             @
             match errors with
             | [] -> []
             | _ ->
               [ Pp.textf "Error trying to read targets after a rule was run:"
-              ; Pp.enumerate (List.rev errors) ~f:(fun (target, error) ->
+              ; List.sort errors ~compare:(fun x y -> Path.Build.compare (fst x) (fst y))
+                |> Pp.enumerate ~f:(fun (target, error) ->
                   Pp.concat ~sep:(Pp.verbatim ": ") [ Path.pp (Path.build target); error ])
               ]))
   ;;
@@ -296,11 +298,7 @@ struct
       when can_go_in_shared_cache ->
       let open Fiber.O in
       let+ produced_targets_with_digests =
-        try_to_store_to_shared_cache
-          ~mode
-          ~rule_digest
-          ~file_targets:produced_targets.files
-          ~action
+        try_to_store_to_shared_cache ~mode ~rule_digest ~targets:produced_targets ~action
       in
       (match produced_targets_with_digests with
        | Some produced_targets_with_digests -> produced_targets_with_digests

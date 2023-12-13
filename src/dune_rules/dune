@@ -26,6 +26,7 @@
   opam_format
   dune_cache
   dune_pkg
+  dune_targets
   opam_core
   build_path_prefix_map
   dune_engine

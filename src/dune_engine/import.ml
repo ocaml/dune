@@ -10,6 +10,7 @@ module type Stringlike = Dune_util.Stringlike
 module Persistent = Dune_util.Persistent
 module Execution_env = Dune_util.Execution_env
 module Glob = Dune_glob.V1
+module Targets = Dune_targets
 include No_io
 include Dune_config
 

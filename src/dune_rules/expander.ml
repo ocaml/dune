@@ -422,15 +422,14 @@ let make loc context =
 ;;
 
 let lib_config_var (var : Pform.Var.t) (lib_config : Lib_config.t) =
-  string
-  @@
-  match var with
-  | Ocaml_stdlib_dir -> Path.to_string lib_config.stdlib_dir
-  | Ext_obj -> lib_config.ext_obj
-  | Ext_lib -> lib_config.ext_lib
-  | Ext_dll -> lib_config.ext_dll
-  | Ccomp_type -> Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type
-  | _ -> Code_error.raise "not a Lib_config.t variable" [ "var", Pform.Var.to_dyn var ]
+  [ (match var with
+     | Ocaml_stdlib_dir -> Value.Dir lib_config.stdlib_dir
+     | Ext_obj -> String lib_config.ext_obj
+     | Ext_lib -> String lib_config.ext_lib
+     | Ext_dll -> String lib_config.ext_dll
+     | Ccomp_type -> String (Ocaml_config.Ccomp_type.to_string lib_config.ccomp_type)
+     | _ -> Code_error.raise "not a Lib_config.t variable" [ "var", Pform.Var.to_dyn var ])
+  ]
 ;;
 
 let ocaml_config_var (var : Pform.Var.t) (ocaml_config : Ocaml_config.t) =

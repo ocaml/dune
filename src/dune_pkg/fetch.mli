@@ -18,3 +18,9 @@ val fetch
   -> target:Path.t
   -> OpamUrl.t
   -> (unit, failure) result Fiber.t
+
+val fetch_git
+  :  Rev_store.t
+  -> target:Path.t
+  -> Opam_repo.Source.t
+  -> (unit, failure) result Fiber.t

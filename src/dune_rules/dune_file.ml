@@ -611,6 +611,10 @@ module Library = struct
     ; melange_runtime_deps : Loc.t * Dep_conf.t list
     }
 
+  let no_keep_locs =
+    Warning.make ~default:(fun _ -> `Enabled) ~name:"no_keep_locs" ~since:(3, 11)
+  ;;
+
   let decode =
     fields
       (let* stanza_loc = loc in
@@ -647,7 +651,7 @@ module Library = struct
        and+ () =
          let check =
            let* loc = loc in
-           Warning_emit.Bag.decode Warning.no_keep_locs (fun () ->
+           Warning_emit.Bag.decode no_keep_locs (fun () ->
              let is_error = dune_version >= (2, 0) in
              let message =
                User_message.make

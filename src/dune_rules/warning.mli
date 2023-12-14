@@ -4,6 +4,14 @@ open Import
 
 type t
 
+val make
+  :  default:(Syntax.Version.t -> Config.Toggle.t)
+  -> name:string
+  -> since:Syntax.Version.t
+  -> t
+
+val name : t -> string
+
 module Settings : sig
   (** Settings to disable/enable specific warnings in a project *)
 
@@ -15,11 +23,3 @@ module Settings : sig
   val decode : t Dune_sexp.Decoder.t
   val active : t -> warning -> Syntax.Version.t -> Config.Toggle.t
 end
-
-val name : t -> string
-
-(** Warn whenever [(name <name>)]) is missing from the [dune-project] file *)
-val missing_project_name : t
-
-val escaping_paths_in_install_stanza : t
-val no_keep_locs : t

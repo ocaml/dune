@@ -62,6 +62,9 @@ let iter { files; dirs } ~file ~dir =
 ;;
 
 module Validated = struct
+  (* CR-soon amokhov: Represent these path sets more efficiently, e.g., by a map from the
+     parent directory to the corresponding [Filename.Set.t] so that [target_names_in_dir]
+     could be implemented without traversing the whole set. *)
   type nonrec t = t =
     { files : Path.Build.Set.t
     ; dirs : Path.Build.Set.t
@@ -70,6 +73,22 @@ module Validated = struct
   let to_dyn = to_dyn
   let head = head_exn
   let unvalidate t = t
+
+  let target_names_in_dir ~dir paths =
+    Path.Build.Set.to_list paths
+    |> List.filter_map ~f:(fun path ->
+      (* Root can't be a target, so this can't raise. *)
+      match Path.Build.equal dir (Path.Build.parent_exn path) with
+      | false -> None
+      | true ->
+        (* CR-someday amokhov: Add [Path.Build.split] and use it here to avoid repeating
+           the same work in [Path.Build.parent_exn] and [Path.Build.basename]. *)
+        Some (Path.Build.basename path))
+    |> Filename.Set.of_list
+  ;;
+
+  let filenames { files; dirs = _ } ~dir = target_names_in_dir ~dir files
+  let dirnames { files = _; dirs } ~dir = target_names_in_dir ~dir dirs
 end
 
 module Validation_result = struct

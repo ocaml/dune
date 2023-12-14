@@ -20,9 +20,11 @@ module Loaded : sig
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
+  (* CR-someday amokhov: Switch to [Filename_set.Source.t] and [Filename_set.External.t]
+     or something similar to avoid handling filename sets unanchored to their directory. *)
   type t =
-    | Source of { files : Path.Source.Set.t }
-    | External of { files : Path.External.Set.t }
+    | Source of { filenames : Filename.Set.t }
+    | External of { filenames : Filename.Set.t }
     | Build of build
     | Build_under_directory_target of { directory_target_ancestor : Path.Build.t }
 

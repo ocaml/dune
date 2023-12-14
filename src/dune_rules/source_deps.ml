@@ -16,7 +16,7 @@ let files dir =
       Map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all ~f:(fun dir ->
         let path = Path.append_source prefix_with @@ Source_tree.Dir.path dir in
         let files =
-          Source_tree.Dir.files dir
+          Source_tree.Dir.filenames dir
           |> String.Set.to_list
           |> Path.Set.of_list_map ~f:(fun fn -> Path.relative path fn)
         in

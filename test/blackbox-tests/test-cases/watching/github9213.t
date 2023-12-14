@@ -1,6 +1,7 @@
   $ . ./helpers.sh
 
-This test demonstrates a bug where rules are being duplicated between rebuilds.
+This test demonstrates a fixed bug where rules for .install are being duplicated between
+rebuilds.
 
   $ cat > dune-project << EOF
   > (lang dune 3.11)

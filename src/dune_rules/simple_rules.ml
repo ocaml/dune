@@ -224,10 +224,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
      do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
     Memo.parallel_iter_set
-      (module Path.Set)
+      (module Filename.Set)
       files
-      ~f:(fun file_src ->
-        let basename = Path.basename file_src in
+      ~f:(fun basename ->
+        let file_src = Path.relative src_in_build basename in
         let file_dst = Path.Build.relative dir basename in
         let context = Super_context.context sctx in
         Super_context.add_rule
@@ -242,10 +242,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
              ~dst:file_dst))
   in
   let targets =
-    Path.Set.map files ~f:(fun file_src ->
-      let basename = Path.basename file_src in
+    Filename.Set.to_list_map files ~f:(fun basename ->
       let file_dst = Path.Build.relative dir basename in
       Path.build file_dst)
+    |> Path.Set.of_list
   in
   let+ () =
     Memo.Option.iter def.alias ~f:(fun alias ->

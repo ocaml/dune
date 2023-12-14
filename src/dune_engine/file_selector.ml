@@ -58,3 +58,7 @@ let test t path =
     ~standard:Predicate_lang.false_
     (Path.basename path)
 ;;
+
+let test_basename t ~basename =
+  Predicate_lang.Glob.test t.predicate ~standard:Predicate_lang.false_ basename
+;;

@@ -46,7 +46,12 @@ end = struct
     Memo.parallel_map (Dep.Set.to_list deps) ~f:(fun (dep : Dep.t) ->
       match dep with
       | File p -> Memo.return (Path.Set.singleton p)
-      | File_selector g -> Build_system.eval_pred g
+      | File_selector g ->
+        let+ filenames = Build_system.eval_pred g in
+        (* Alas, we can't use filename sets here because we end up putting paths coming
+           from different directories together. *)
+        Filename.Set.to_list_map filenames ~f:(Path.relative (File_selector.dir g))
+        |> Path.Set.of_list
       | Alias a -> Expand.alias a
       | Env _ | Universe -> Memo.return Path.Set.empty)
     >>| Path.Set.union_all

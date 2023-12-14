@@ -15,14 +15,20 @@ val file_exists : Path.t -> bool Memo.t
 (** Build a set of dependencies and return learned facts about them. *)
 val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
 
+(* CR-soon amokhov: Make [eval_pred] return a [Filename_set.t] anchored to the right [dir]
+   instead of [Filename.Set.t], once [Filename_set.t] is moved to Stdune. *)
+
 (** [eval_pred glob] returns the list of files in [File_selector.dir glob] that
     matches [File_selector.predicate glob]. The list of files includes the list
     of file targets. Currently, this function ignores directory targets, which
     is a limitation we'd like to remove in future. *)
-val eval_pred : File_selector.t -> Path.Set.t Memo.t
+val eval_pred : File_selector.t -> Filename.Set.t Memo.t
 
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
 val files_of : dir:Path.t -> Path.Set.t Memo.t
+
+(* CR-someday amokhov: Make [build_pred] return something like [Dep.Fact.Filename_set.t]
+   which is anchored to the [File_selector]'s directory. *)
 
 (** Like [eval_pred] but also builds the resulting set of files. This function
     doesn't have [eval_pred]'s limitation about directory targets and takes them

@@ -97,6 +97,19 @@ module Fact = struct
     let equal a b = Digest.equal a.digest b.digest
     let paths t = t.files
 
+    let filenames_exn t ~expected_parent =
+      Filename.Set.of_list_map (Path.Map.keys t.files) ~f:(fun path ->
+        match Path.parent path with
+        | Some actual_parent when Path.equal expected_parent actual_parent ->
+          Path.basename path
+        | actual_parent ->
+          Code_error.raise
+            "Unexpected parent directory in Dep.Fact.Files.filenames_exn"
+            [ "expected_parent", Path.to_dyn expected_parent
+            ; "actual_parent", Dyn.option Path.to_dyn actual_parent
+            ])
+    ;;
+
     let make ~files ~dirs =
       { files
       ; dirs

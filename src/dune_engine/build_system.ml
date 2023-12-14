@@ -147,7 +147,7 @@ module type Rec = sig
     -> string Memo.t
 
   module Pred : sig
-    val eval : File_selector.t -> Path.Set.t Memo.t
+    val eval : File_selector.t -> Filename.Set.t Memo.t
     val build : File_selector.t -> Dep.Fact.Files.t Memo.t
   end
 end
@@ -890,11 +890,12 @@ end = struct
       Load_rules.load_dir ~dir
       >>= function
       | External _ | Source _ | Build _ ->
-        let* paths = Pred.eval g in
+        let* filenames = Pred.eval g in
         let+ files =
-          Memo.parallel_map (Path.Set.to_list paths) ~f:(fun p ->
-            let+ d = build_file p in
-            p, d)
+          Memo.parallel_map (Filename.Set.to_list filenames) ~f:(fun filename ->
+            let path = Path.relative dir filename in
+            let+ digest = build_file path in
+            path, digest)
         in
         Dep.Fact.Files.make ~files:(Path.Map.of_list_exn files) ~dirs:Path.Map.empty
       | Build_under_directory_target _ ->
@@ -913,15 +914,23 @@ end = struct
 
     let eval_impl g =
       let dir = File_selector.dir g in
+      (* CR-soon amokhov: Change [Load_rules.load_dir] to return [Filename_set.t]s to save
+         a bunch of set/list operations and reduce code duplication. *)
       Load_rules.load_dir ~dir
       >>= function
       | Source { files } ->
-        Path.set_of_source_paths files
-        |> Path.Set.filter ~f:(File_selector.test g)
+        Path.Source.Set.to_list files
+        |> List.filter_map ~f:(fun file ->
+          let basename = Path.Source.basename file in
+          Option.some_if (File_selector.test_basename g ~basename) basename)
+        |> Filename.Set.of_list
         |> Memo.return
       | External { files } ->
-        Path.set_of_external_paths files
-        |> Path.Set.filter ~f:(File_selector.test g)
+        Path.External.Set.to_list files
+        |> List.filter_map ~f:(fun file ->
+          let basename = Path.External.basename file in
+          Option.some_if (File_selector.test_basename g ~basename) basename)
+        |> Filename.Set.of_list
         |> Memo.return
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
@@ -930,20 +939,19 @@ end = struct
         Path.Build.Map.foldi
           ~init:[]
           rules_here.by_file_targets
-          ~f:(fun s { Rule.info; _ } acc ->
+          ~f:(fun path { Rule.info; _ } acc ->
             match info with
             | Rule.Info.Source_file_copy _ when only_generated_files -> acc
             | _ ->
-              let s = Path.build s in
-              if File_selector.test g s then s :: acc else acc)
-        |> Path.Set.of_list
+              let basename = Path.Build.basename path in
+              if File_selector.test_basename g ~basename then basename :: acc else acc)
+        |> Filename.Set.of_list
         |> Memo.return
       | Build_under_directory_target _ ->
-        (* To evaluate a glob in a generated directory, we have no choice but to
-           build the whole directory, so we might as well build the
-           predicate. *)
-        let+ fact = Pred.build g in
-        Dep.Fact.Files.paths fact |> Path.Set.of_keys
+        (* To evaluate a glob in a generated directory, we have no choice but to build the
+           whole directory, so we might as well build the predicate. *)
+        let+ facts = Pred.build g in
+        Dep.Fact.Files.filenames_exn facts ~expected_parent:dir
     ;;
 
     let eval_memo =
@@ -956,7 +964,7 @@ end = struct
                 (Path.to_string_maybe_quoted (File_selector.dir glob))
             ])
         ~input:(module File_selector)
-        ~cutoff:Path.Set.equal
+        ~cutoff:Filename.Set.equal
         eval_impl
     ;;
 

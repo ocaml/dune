@@ -16,6 +16,9 @@ end
 let set_current_rule_loc = Current_rule_loc.set
 
 module Loaded = struct
+  (* CR-someday amokhov: Loaded rules are relative to the directory passed to [load_dir],
+     so these maps should probably be indexed by [Filename.t]s rather than [Path.t]s. We
+     could add [Filename_map.t] anchored to a specific directory like [Filename_set.t]. *)
   type rules_here =
     { by_file_targets : Rule.t Path.Build.Map.t
     ; by_directory_targets : Rule.t Path.Build.Map.t

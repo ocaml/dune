@@ -43,18 +43,18 @@ let paths ps = deps (Dep.Set.of_files ps)
 let path_set ps = deps (Dep.Set.of_files_set ps)
 
 let paths_matching
-  : type a. File_selector.t -> a eval_mode -> (Path.Set.t * a Dep.Map.t) Memo.t
+  : type a. File_selector.t -> a eval_mode -> (Filename.Set.t * a Dep.Map.t) Memo.t
   =
   fun g mode ->
   let open Memo.O in
   match mode with
   | Eager ->
-    let+ files = Build_system.build_pred g in
-    ( Path.Map.keys (Dep.Fact.Files.paths files) |> Path.Set.of_list
-    , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g files) )
+    let+ facts = Build_system.build_pred g in
+    ( Dep.Fact.Files.filenames_exn facts ~expected_parent:(File_selector.dir g)
+    , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g facts) )
   | Lazy ->
-    let+ files = Build_system.eval_pred g in
-    files, Dep.Set.singleton (Dep.file_selector g)
+    let+ filenames = Build_system.eval_pred g in
+    filenames, Dep.Set.singleton (Dep.file_selector g)
 ;;
 
 let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode) }

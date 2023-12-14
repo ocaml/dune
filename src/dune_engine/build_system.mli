@@ -20,7 +20,7 @@ val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
 val eval_pred : File_selector.t -> Filename_set.t Memo.t
 
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
-val files_of : dir:Path.t -> Path.Set.t Memo.t
+val files_of : dir:Path.t -> Filename_set.t Memo.t
 
 (* CR-someday amokhov: Make [build_pred] return something like [Dep.Fact.Filename_set.t]
    which is anchored to the [File_selector]'s directory. *)

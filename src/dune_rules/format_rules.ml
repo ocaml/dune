@@ -124,8 +124,12 @@ let gen_rules_output
     match source_dir with
     | None -> Memo.return ()
     | Some source_dir ->
-      Source_tree.Dir.file_paths source_dir
-      |> Memo.parallel_iter_set (module Path.Source.Set) ~f:setup_formatting
+      Source_tree.Dir.filenames source_dir
+      |> Memo.parallel_iter_set
+           (module Filename.Set)
+           ~f:(fun file ->
+             setup_formatting
+               (Path.Source.relative (Source_tree.Dir.path source_dir) file))
   and* () =
     match Format_config.includes config Dune with
     | false -> Memo.return ()

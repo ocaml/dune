@@ -917,21 +917,8 @@ end = struct
          a bunch of set/list operations and reduce code duplication. *)
       Load_rules.load_dir ~dir
       >>= function
-      | Source { files } ->
-        Path.Source.Set.to_list files
-        |> List.filter_map ~f:(fun file ->
-          let basename = Path.Source.basename file in
-          Option.some_if (File_selector.test_basename g ~basename) basename)
-        |> Filename.Set.of_list
-        |> Filename_set.create ~dir
-        |> Memo.return
-      | External { files } ->
-        Path.External.Set.to_list files
-        |> List.filter_map ~f:(fun file ->
-          let basename = Path.External.basename file in
-          Option.some_if (File_selector.test_basename g ~basename) basename)
-        |> Filename.Set.of_list
-        |> Filename_set.create ~dir
+      | Source { filenames } | External { filenames } ->
+        Filename_set.create ~dir ~filter:(File_selector.test_basename g) filenames
         |> Memo.return
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
@@ -1058,16 +1045,8 @@ let build_pred = Pred.build
 let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn)
   >>= function
-  | Source { files } ->
-    Memo.return
-      (match Path.as_in_source_tree fn with
-       | None -> false
-       | Some file -> Path.Source.Set.mem files file)
-  | External { files } ->
-    Memo.return
-      (match Path.as_external fn with
-       | None -> false
-       | Some file -> Path.External.Set.mem files file)
+  | Source { filenames } | External { filenames } ->
+    Filename.Set.mem filenames (Path.basename fn) |> Memo.return
   | Build { rules_here; _ } ->
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
@@ -1079,20 +1058,26 @@ let file_exists fn =
 let files_of ~dir =
   Load_rules.load_dir ~dir
   >>= function
-  | Source { files } -> Memo.return (Path.set_of_source_paths files)
-  | External { files } -> Memo.return (Path.set_of_external_paths files)
+  | Source { filenames } | External { filenames } ->
+    Memo.return (Filename_set.create ~dir filenames)
   | Build { rules_here; _ } ->
-    Memo.return
-      (Path.Build.Map.keys rules_here.by_file_targets
-       |> Path.Set.of_list_map ~f:Path.build)
+    Path.Build.Map.keys rules_here.by_file_targets
+    |> Filename.Set.of_list_map ~f:Path.Build.basename
+    |> Filename_set.create ~dir
+    |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
-    let dir = Path.as_in_build_dir_exn dir in
-    Path.Build.Map.foldi path_map ~init:Path.Set.empty ~f:(fun path _digest acc ->
-      let parent = Path.Build.parent_exn path in
-      match Path.Build.equal parent dir with
-      | true -> Path.Set.add acc (Path.build path)
-      | false -> acc)
+    let filenames =
+      let dir = Path.as_in_build_dir_exn dir in
+      Path.Build.Map.keys path_map
+      |> List.filter_map ~f:(fun path ->
+        let parent = Path.Build.parent_exn path in
+        match Path.Build.equal parent dir with
+        | true -> Some (Path.Build.basename path)
+        | false -> None)
+      |> Filename.Set.of_list
+    in
+    Filename_set.create ~dir filenames
 ;;
 
 let caused_by_cancellation (exn : Exn_with_backtrace.t) =

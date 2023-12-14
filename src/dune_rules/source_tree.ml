@@ -382,14 +382,10 @@ module Dir0 = struct
   let contents t = t.contents
   let path t = t.path
   let status t = t.status
-  let files t = (contents t).files
+  let filenames t = (contents t).files
   let sub_dirs t = (contents t).sub_dirs
   let dune_file t = (contents t).dune_file
   let project t = t.project
-
-  let file_paths t =
-    Path.Source.Set.of_listing ~dir:t.path ~filenames:(Filename.Set.to_list (files t))
-  ;;
 
   let sub_dir_names t =
     Filename.Map.foldi (sub_dirs t) ~init:Filename.Set.empty ~f:(fun s _ acc ->
@@ -720,7 +716,7 @@ let files_of path =
   >>| function
   | None -> Path.Source.Set.empty
   | Some dir ->
-    Dir0.files dir
+    Dir0.filenames dir
     |> Filename.Set.to_list
     |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 ;;

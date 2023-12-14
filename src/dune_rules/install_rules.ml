@@ -523,7 +523,7 @@ end = struct
         | None -> init
         | Some dir ->
           let pkg_dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
-          Source_tree.Dir.files dir
+          Source_tree.Dir.filenames dir
           |> Filename.Set.fold ~init ~f:(fun fn acc ->
             if is_odig_doc_file fn
             then (

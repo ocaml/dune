@@ -16,7 +16,7 @@ Demonstrate dune's system for enabling/disabling warnings
        ^^^^^^^^^^^^^^
   Warning: no_keep_locs is a no-op. Please delete it.
   Hint: To disable this warning, add the following to your dune-project file:
-  (no_keep_locs disabled)
+  (warnings (no_keep_locs disabled))
 
 Now we demonstrate how this warning can be deleted:
 

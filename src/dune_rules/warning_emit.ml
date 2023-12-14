@@ -16,20 +16,21 @@ let check_project warning project =
   Warning.Settings.active warnings warning version
 ;;
 
+let emit_hint warning =
+  [ Pp.concat
+      ~sep:Pp.space
+      [ Pp.text "To disable this warning, add the following to your dune-project file:"
+      ; Pp.verbatim (sprintf "(warnings (%s disabled))" (Warning.name warning))
+      ]
+  ]
+;;
+
 let maybe_emit warning f = function
   | `Disabled -> Memo.return ()
   | `Enabled ->
     let+ message =
       let+ message = f () in
-      let hints =
-        [ Pp.concat
-            ~sep:Pp.space
-            [ Pp.text
-                "To disable this warning, add the following to your dune-project file:"
-            ; Pp.verbatim (sprintf "(%s disabled)" (Warning.name warning))
-            ]
-        ]
-      in
+      let hints = emit_hint warning in
       { message with User_message.hints }
     in
     User_warning.emit_message message

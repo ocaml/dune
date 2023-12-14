@@ -147,7 +147,7 @@ module type Rec = sig
     -> string Memo.t
 
   module Pred : sig
-    val eval : File_selector.t -> Filename.Set.t Memo.t
+    val eval : File_selector.t -> Filename_set.t Memo.t
     val build : File_selector.t -> Dep.Fact.Files.t Memo.t
   end
 end
@@ -892,8 +892,7 @@ end = struct
       | External _ | Source _ | Build _ ->
         let* filenames = Pred.eval g in
         let+ files =
-          Memo.parallel_map (Filename.Set.to_list filenames) ~f:(fun filename ->
-            let path = Path.relative dir filename in
+          Memo.parallel_map (Filename_set.to_list filenames) ~f:(fun path ->
             let+ digest = build_file path in
             path, digest)
         in
@@ -924,6 +923,7 @@ end = struct
           let basename = Path.Source.basename file in
           Option.some_if (File_selector.test_basename g ~basename) basename)
         |> Filename.Set.of_list
+        |> Filename_set.create ~dir
         |> Memo.return
       | External { files } ->
         Path.External.Set.to_list files
@@ -931,6 +931,7 @@ end = struct
           let basename = Path.External.basename file in
           Option.some_if (File_selector.test_basename g ~basename) basename)
         |> Filename.Set.of_list
+        |> Filename_set.create ~dir
         |> Memo.return
       | Build { rules_here; _ } ->
         let only_generated_files = File_selector.only_generated_files g in
@@ -946,6 +947,7 @@ end = struct
               let basename = Path.Build.basename path in
               if File_selector.test_basename g ~basename then basename :: acc else acc)
         |> Filename.Set.of_list
+        |> Filename_set.create ~dir
         |> Memo.return
       | Build_under_directory_target _ ->
         (* To evaluate a glob in a generated directory, we have no choice but to build the
@@ -964,7 +966,7 @@ end = struct
                 (Path.to_string_maybe_quoted (File_selector.dir glob))
             ])
         ~input:(module File_selector)
-        ~cutoff:Filename.Set.equal
+        ~cutoff:Filename_set.equal
         eval_impl
     ;;
 

@@ -43,7 +43,7 @@ let paths ps = deps (Dep.Set.of_files ps)
 let path_set ps = deps (Dep.Set.of_files_set ps)
 
 let paths_matching
-  : type a. File_selector.t -> a eval_mode -> (Filename.Set.t * a Dep.Map.t) Memo.t
+  : type a. File_selector.t -> a eval_mode -> (Filename_set.t * a Dep.Map.t) Memo.t
   =
   fun g mode ->
   let open Memo.O in

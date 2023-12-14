@@ -225,7 +225,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let* () =
     Memo.parallel_iter_set
       (module Filename.Set)
-      files
+      (Filename_set.filenames files)
       ~f:(fun basename ->
         let file_src = Path.relative src_in_build basename in
         let file_dst = Path.Build.relative dir basename in
@@ -242,7 +242,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
              ~dst:file_dst))
   in
   let targets =
-    Filename.Set.to_list_map files ~f:(fun basename ->
+    Filename.Set.to_list_map (Filename_set.filenames files) ~f:(fun basename ->
       let file_dst = Path.Build.relative dir basename in
       Path.build file_dst)
     |> Path.Set.of_list

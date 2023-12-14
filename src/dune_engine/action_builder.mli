@@ -76,12 +76,9 @@ val dyn_deps : ('a * Dep.Set.t) t -> 'a t
 val paths : Path.t list -> unit t
 val path_set : Path.Set.t -> unit t
 
-(* CR-soon amokhov: Make [paths_matching] return a [Filename_set.t] anchored to the right
-   [dir] instead of [Filename.Set.t], once [Filename_set.t] is moved to Stdune. *)
-
 (** Evaluate a predicate against all targets and record all the matched files as
     dependencies of the action produced by the action builder. *)
-val paths_matching : loc:Loc.t -> File_selector.t -> Filename.Set.t t
+val paths_matching : loc:Loc.t -> File_selector.t -> Filename_set.t t
 
 (** Like [paths_matching], but don't return the resulting set. The action
     dependency is still registered. *)

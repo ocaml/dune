@@ -52,12 +52,9 @@ module Fact : sig
     (** Return all file paths in this file group. *)
     val paths : t -> Digest.t Path.Map.t
 
-    (* CR-soon amokhov: Make [filenames_exn] return a [Filename_set.t] anchored to the
-       [expected_parent] once [Filename_set.t] is moved to Stdune. *)
-
     (** Like [paths] but asserts that all paths are relative to the [expected_parent] and
         returns their basenames instead. *)
-    val filenames_exn : t -> expected_parent:Path.t -> Filename.Set.t
+    val filenames_exn : t -> expected_parent:Path.t -> Filename_set.t
 
     (** Create a new [t] from a list of [t] and a list of files. *)
     val group : t list -> Digest.t Path.Map.t -> t

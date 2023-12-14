@@ -50,8 +50,7 @@ end = struct
         let+ filenames = Build_system.eval_pred g in
         (* Alas, we can't use filename sets here because we end up putting paths coming
            from different directories together. *)
-        Filename.Set.to_list_map filenames ~f:(Path.relative (File_selector.dir g))
-        |> Path.Set.of_list
+        Path.Set.of_list (Filename_set.to_list filenames)
       | Alias a -> Expand.alias a
       | Env _ | Universe -> Memo.return Path.Set.empty)
     >>| Path.Set.union_all

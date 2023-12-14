@@ -133,7 +133,7 @@ end
 module Expand
     (M : Memo.S)
     (C : sig
-       val collect_files : loc:Loc.t -> File_selector.t -> Filename.Set.t M.t
+       val collect_files : loc:Loc.t -> File_selector.t -> Filename_set.t M.t
      end) =
 struct
   let expand_vars { Dep_conf.Glob_files.glob; recursive } ~f ~base_dir =
@@ -161,6 +161,7 @@ struct
       |> M.of_memo
       >>= M.List.concat_map ~f:(fun (file_selector, prefix) ->
         C.collect_files ~loc file_selector
+        >>| Filename_set.filenames
         >>| Filename.Set.to_list_map ~f:(Filename.concat prefix))
       >>| List.sort ~compare:String.compare
     in

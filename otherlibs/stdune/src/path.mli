@@ -195,6 +195,7 @@ module Build : sig
   val chmod : t -> mode:int -> unit
 
   val lstat : t -> Unix.stats
+  val unlink : t -> unit
   val unlink_no_err : t -> unit
 
   module Table : Hashtbl.S with type key = t

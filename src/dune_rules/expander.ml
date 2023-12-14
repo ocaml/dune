@@ -505,11 +505,7 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
     @@ let+ ocaml = ocaml in
        get_prog ocaml.ocamlopt
   | Make -> Direct (Without (make (Dune_lang.Template.Pform.loc source) context))
-  | Dev_null ->
-    Path.to_string Dev_null.path
-    |> string
-    |> Memo.return
-    |> static (* why don't we expand this as a path? *)
+  | Dev_null -> path Dev_null.path |> Memo.return |> static
   | Ocaml_stdlib_dir | Ext_obj | Ext_lib | Ext_dll | Ccomp_type ->
     (let+ ocaml = ocaml in
      lib_config_var var ocaml.lib_config)

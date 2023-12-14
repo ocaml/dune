@@ -28,7 +28,7 @@ let name t = Name.to_string t.name
 let frozen = ref false
 let all : (Name.t, t) Table.t = Table.create (module Name) 12
 
-let create ~default ~name ~since =
+let make ~default ~name ~since =
   if !frozen
   then
     Code_error.raise
@@ -79,19 +79,3 @@ module Settings = struct
     | None -> warn.default version
   ;;
 end
-
-let missing_project_name =
-  create
-    ~default:(fun version -> if version >= (2, 8) then `Enabled else `Disabled)
-    ~name:"missing_project_name"
-    ~since:(3, 11)
-;;
-
-let escaping_paths_in_install_stanza =
-  create
-    ~default:(fun version -> if version >= (3, 11) then `Enabled else `Disabled)
-    ~name:"escaping_paths_in_install_stanza"
-    ~since:(3, 11)
-;;
-
-let no_keep_locs = create ~default:(fun _ -> `Enabled) ~name:"no_keep_locs" ~since:(3, 11)

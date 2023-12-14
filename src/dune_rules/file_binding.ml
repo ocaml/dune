@@ -33,6 +33,13 @@ let relative_path_starts_with_parent relative_path =
   | Some (first, _) -> String.equal first Filename.parent_dir_name
 ;;
 
+let escaping_paths_in_install_stanza =
+  Warning.make
+    ~default:(fun version -> if version >= (3, 11) then `Enabled else `Disabled)
+    ~name:"escaping_paths_in_install_stanza"
+    ~since:(3, 11)
+;;
+
 let validate_dst_for_install_stanza
   ~relative_dst_path_starts_with_parent_error_when
   ~loc
@@ -45,7 +52,7 @@ let validate_dst_for_install_stanza
     (match relative_dst_path_starts_with_parent_error_when with
      | `Deprecation_warning_from_3_11 ->
        Warning_emit.emit
-         Warning.escaping_paths_in_install_stanza
+         escaping_paths_in_install_stanza
          (Warning_emit.Context.source_dir_or_enable dir)
          (fun () ->
             User_message.make

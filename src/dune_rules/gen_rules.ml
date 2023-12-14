@@ -347,6 +347,14 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   contexts
 ;;
 
+(* Warn whenever [(name <name>)]) is missing from the [dune-project] file *)
+let missing_project_name =
+  Warning.make
+    ~default:(fun version -> if version >= (2, 8) then `Enabled else `Disabled)
+    ~name:"missing_project_name"
+    ~since:(3, 11)
+;;
+
 (* To be called once per project, when we are generating the rules for the root
    directory of the project *)
 let gen_project_rules =
@@ -382,7 +390,7 @@ let gen_project_rules =
          | false -> Memo.return ()
          | true ->
            Warning_emit.emit
-             Warning.missing_project_name
+             missing_project_name
              (Warning_emit.Context.project project)
              (fun () ->
                 let+ () = Memo.return () in

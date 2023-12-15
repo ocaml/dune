@@ -10,6 +10,7 @@ module Lock_dir : sig
     ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; constraints : Dune_lang.Package_dependency.t list
+    ; default_local_package_version : Dune_lang.Package_version.t option
     }
 
   val equal : t -> t -> bool
@@ -99,6 +100,12 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
+
+val default_local_package_version_of_lock_dir_path
+  :  t
+  -> Path.Source.t
+  -> Package_version.t
+
 val default_repositories : Dune_pkg.Pkg_workspace.Repository.t list
 
 module Clflags : sig

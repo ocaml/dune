@@ -16,11 +16,11 @@ let info =
 
 let enumerate_lock_dirs_by_path ~lock_dirs () =
   let open Fiber.O in
-  let+ per_contexts =
+  let+ lock_dir_paths =
     Memo.run (Workspace.workspace ())
     >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
-  List.filter_map per_contexts ~f:(fun lock_dir_path ->
+  List.filter_map lock_dir_paths ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
     then (
       try Some (Ok (lock_dir_path, Lock_dir.read_disk lock_dir_path)) with
@@ -31,7 +31,8 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
 let validate_lock_dirs ~lock_dirs () =
   let open Fiber.O in
   let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs ()
-  and+ local_packages = Pkg_common.find_local_packages in
+  and+ local_packages = Pkg_common.find_local_packages
+  and+ workspace = Memo.run (Workspace.workspace ()) in
   if List.is_empty lock_dirs_by_path
   then Console.print [ Pp.text "No lockdirs to validate." ]
   else (
@@ -39,7 +40,15 @@ let validate_lock_dirs ~lock_dirs () =
       List.filter_map lock_dirs_by_path ~f:(function
         | Error e -> Some e
         | Ok (path, lock_dir) ->
-          (match Package_universe.create local_packages lock_dir with
+          let default_local_package_version =
+            Workspace.default_local_package_version_of_lock_dir_path workspace path
+          in
+          (match
+             Package_universe.create
+               ~default_local_package_version
+               local_packages
+               lock_dir
+           with
            | Ok _ -> None
            | Error e -> Some (path, `Lock_dir_out_of_sync e)))
     with

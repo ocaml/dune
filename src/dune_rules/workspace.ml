@@ -12,10 +12,18 @@ module Lock_dir = struct
     ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
     ; constraints : Dune_lang.Package_dependency.t list
+    ; default_local_package_version : Dune_pkg.Package_version.t option
     }
 
   let to_dyn
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
+    { path
+    ; version_preference
+    ; solver_env
+    ; unset_solver_vars
+    ; repositories
+    ; constraints
+    ; default_local_package_version
+    }
     =
     Dyn.record
       [ "path", Path.Source.to_dyn path
@@ -27,18 +35,40 @@ module Lock_dir = struct
       ; ( "repositories"
         , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
+      ; ( "default_local_package_version"
+        , Dyn.option Dune_pkg.Package_version.to_dyn default_local_package_version )
       ]
   ;;
 
   let hash
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
+    { path
+    ; version_preference
+    ; solver_env
+    ; unset_solver_vars
+    ; repositories
+    ; constraints
+    ; default_local_package_version
+    }
     =
     Poly.hash
-      (path, version_preference, solver_env, unset_solver_vars, repositories, constraints)
+      ( path
+      , version_preference
+      , solver_env
+      , unset_solver_vars
+      , repositories
+      , constraints
+      , default_local_package_version )
   ;;
 
   let equal
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
+    { path
+    ; version_preference
+    ; solver_env
+    ; unset_solver_vars
+    ; repositories
+    ; constraints
+    ; default_local_package_version
+    }
     t
     =
     Path.Source.equal path t.path
@@ -50,6 +80,10 @@ module Lock_dir = struct
     && Option.equal Dune_pkg.Variable_name.Set.equal unset_solver_vars t.unset_solver_vars
     && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
+    && Option.equal
+         Dune_pkg.Package_version.equal
+         default_local_package_version
+         t.default_local_package_version
   ;;
 
   let decode ~dir =
@@ -73,6 +107,8 @@ module Lock_dir = struct
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
+      and+ default_local_package_version =
+        field_o "default_local_package_version" Dune_pkg.Package_version.decode
       in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
@@ -98,6 +134,7 @@ module Lock_dir = struct
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
       ; constraints
+      ; default_local_package_version
       }
     in
     fields decode
@@ -551,6 +588,13 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs } =
 
 let find_lock_dir t path =
   List.find t.lock_dirs ~f:(fun lock_dir -> Path.Source.equal lock_dir.path path)
+;;
+
+let default_local_package_version_of_lock_dir_path t path =
+  find_lock_dir t path
+  |> Option.bind ~f:(fun (lock_dir : Lock_dir.t) ->
+    lock_dir.default_local_package_version)
+  |> Option.value ~default:(Package_version.of_string "dev")
 ;;
 
 include Dune_lang.Versioned_file.Make (struct

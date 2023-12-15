@@ -193,8 +193,6 @@ module Pkg_info = struct
       ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
       ]
   ;;
-
-  let default_version = Package_version.of_string "dev"
 end
 
 module Pkg = struct
@@ -263,7 +261,10 @@ module Pkg = struct
     enter
     @@ fields
     @@ let+ version =
-         field ~default:Pkg_info.default_version Fields.version Package_version.decode
+         field
+           ~default:(Package_version.of_string "dev")
+           Fields.version
+           Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))

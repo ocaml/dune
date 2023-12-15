@@ -80,8 +80,14 @@ solve_project() {
 }
 
 make_lockdir() {
-  mkdir dune.lock
-  cat >dune.lock/lock.dune <<EOF
+  if [ "$#" -eq "0" ]
+  then
+    lockdir="dune.lock"
+  else
+    lockdir="$1"
+  fi
+  mkdir $lockdir
+  cat >$lockdir/lock.dune <<EOF
 (lang package 0.1)
 (repositories (complete true))
 EOF

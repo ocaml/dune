@@ -18,10 +18,14 @@ let lockdir_regenerate_hints =
   ]
 ;;
 
-let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
+let version_by_package_name
+  local_packages
+  (lock_dir : Lock_dir.t)
+  default_local_package_version
+  =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
-      Option.value local_package.version ~default:Lock_dir.Pkg_info.default_version)
+      Option.value local_package.version ~default:default_local_package_version)
   in
   let from_lock_dir =
     Package_name.Map.map lock_dir.packages ~f:(fun pkg -> pkg.info.version)
@@ -193,9 +197,11 @@ let validate t =
   >>= check_for_unnecessary_packges_in_lock_dir t
 ;;
 
-let create local_packages lock_dir =
+let create ~default_local_package_version local_packages lock_dir =
   let open Result.O in
-  let* version_by_package_name = version_by_package_name local_packages lock_dir in
+  let* version_by_package_name =
+    version_by_package_name local_packages lock_dir default_local_package_version
+  in
   let solver_env =
     Solver_stats.Expanded_variable_bindings.to_solver_env
       lock_dir.expanded_solver_variable_bindings

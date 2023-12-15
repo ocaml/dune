@@ -43,6 +43,11 @@ let solve
            Console.Status_line.remove_overlay overlay;
            Fiber.return ())
          (fun () ->
+           let default_local_package_version =
+             Workspace.default_local_package_version_of_lock_dir_path
+               workspace
+               lock_dir_path
+           in
            Dune_pkg.Opam_solver.solve_lock_dir
              solver_env
              (Pkg_common.Version_preference.choose
@@ -52,7 +57,8 @@ let solve
              repos
              ~local_packages:
                (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
-             ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
+             ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
+             ~default_local_package_version)
        >>= function
        | Error (`Diagnostic_message message) ->
          Fiber.return (Error (lock_dir_path, message))

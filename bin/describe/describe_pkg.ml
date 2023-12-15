@@ -136,12 +136,23 @@ module List_locked_dependencies = struct
   let list_locked_dependencies ~transitive ~lock_dirs () =
     let open Fiber.O in
     let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs
-    and+ local_packages = Pkg_common.find_local_packages in
+    and+ local_packages = Pkg_common.find_local_packages
+    and+ workspace = Memo.run (Workspace.workspace ()) in
     let pp =
       Pp.concat
         ~sep:Pp.cut
         (List.map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
-           match Package_universe.create local_packages lock_dir with
+           let default_local_package_version =
+             Workspace.default_local_package_version_of_lock_dir_path
+               workspace
+               lock_dir_path
+           in
+           match
+             Package_universe.create
+               ~default_local_package_version
+               local_packages
+               lock_dir
+           with
            | Error e -> raise (User_error.E e)
            | Ok package_universe ->
              Pp.vbox

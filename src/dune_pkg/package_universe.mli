@@ -6,7 +6,8 @@ open! Import
 type t
 
 val create
-  :  Local_package.t Package_name.Map.t
+  :  default_local_package_version:Package_version.t
+  -> Local_package.t Package_name.Map.t
   -> Lock_dir.t
   -> (t, User_message.t) result
 

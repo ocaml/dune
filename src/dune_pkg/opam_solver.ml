@@ -38,10 +38,6 @@ module Context_for_dune = struct
   type filter = OpamTypes.filter
   type rejection = Unavailable
 
-  let local_package_default_version =
-    Package_version.to_opam_package_version Lock_dir.Pkg_info.default_version
-  ;;
-
   type candidates =
     { resolved : With_file.t OpamPackage.Version.Map.t
     ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
@@ -61,6 +57,7 @@ module Context_for_dune = struct
          packages for which we've printed a warning. *)
       mutable available_cache : bool OpamPackage.Map.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; default_local_package_version : OpamPackage.Version.t
     }
 
   let create
@@ -70,6 +67,7 @@ module Context_for_dune = struct
     ~version_preference
     ~stats_updater
     ~constraints
+    ~default_local_package_version
     =
     let dune_version =
       let major, minor = Dune_lang.Stanza.latest_version in
@@ -91,6 +89,7 @@ module Context_for_dune = struct
     ; candidates_cache
     ; available_cache = OpamPackage.Map.empty
     ; constraints
+    ; default_local_package_version
     }
   ;;
 
@@ -160,7 +159,7 @@ module Context_for_dune = struct
     match Package_name.Map.find t.local_packages key with
     | Some local_package ->
       let version =
-        Option.value local_package.version ~default:local_package_default_version
+        Option.value local_package.version ~default:t.default_local_package_version
       in
       Fiber.return [ version, Ok local_package ]
     | None ->
@@ -648,7 +647,14 @@ module Solver_result = struct
     }
 end
 
-let solve_lock_dir solver_env version_preference repos ~local_packages ~constraints =
+let solve_lock_dir
+  solver_env
+  version_preference
+  repos
+  ~local_packages
+  ~constraints
+  ~default_local_package_version
+  =
   let* solver_result =
     let stats_updater = Solver_stats.Updater.init () in
     let context =
@@ -660,6 +666,8 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
           (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
         ~stats_updater
         ~constraints
+        ~default_local_package_version:
+          (Package_version.to_opam_package_version default_local_package_version)
     in
     let packages =
       Package_name.Map.to_list_map local_packages ~f:(fun name _ ->

@@ -10,6 +10,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
+  ; explain : bool
   }
 
 val modules : t -> string list

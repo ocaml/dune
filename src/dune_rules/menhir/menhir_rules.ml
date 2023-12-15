@@ -120,6 +120,15 @@ module Run (P : PARAMS) = struct
     Super_context.add_rule sctx ~dir ~mode ~loc:stanza.loc
   ;;
 
+  let explain_flags base explain =
+    if explain
+    then
+      [ Command.Args.A "--explain"
+      ; Hidden_targets [ Path.Build.relative dir (base ^ ".conflicts") ]
+      ]
+    else []
+  ;;
+
   let expand_flags flags =
     let standard =
       Action_builder.of_memo @@ Super_context.env_node sctx ~dir >>= Env_node.menhir_flags
@@ -225,9 +234,11 @@ module Run (P : PARAMS) = struct
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)
     in
+    let explain_flags = explain_flags base stanza.explain in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
       [ Command.Args.dyn expanded_flags
+      ; S explain_flags
       ; Deps (sources stanza.modules)
       ; A "--base"
       ; Path (Path.relative (Path.build dir) base)
@@ -245,8 +256,10 @@ module Run (P : PARAMS) = struct
 
   let process1 base ~cmly (stanza : stanza) : unit Memo.t =
     let expanded_flags = expand_flags stanza.flags in
+    let explain_flags = explain_flags base stanza.explain in
     menhir
       [ Command.Args.dyn expanded_flags
+      ; S explain_flags
       ; Deps (sources stanza.modules)
       ; A "--base"
       ; Path (Path.relative (Path.build dir) base)

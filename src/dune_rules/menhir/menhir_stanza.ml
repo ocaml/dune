@@ -8,6 +8,7 @@ let syntax =
     ; (1, 1), `Since (1, 4)
     ; (2, 0), `Since (1, 4)
     ; (2, 1), `Since (2, 2)
+    ; (2, 2), `Since (3, 13)
     ]
 ;;
 
@@ -21,6 +22,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
+  ; explain : bool
   }
 
 let decode =
@@ -32,13 +34,14 @@ let decode =
      and+ infer = field_o_b "infer" ~check:(Dune_lang.Syntax.since syntax (2, 0))
      and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
-     and+ loc = loc in
+     and+ loc = loc
+     and+ explain = field_b ~check:(Dune_lang.Syntax.since syntax (2, 2)) "explain" in
      let infer =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
      in
-     { merge_into; flags; modules; mode; loc; infer; enabled_if })
+     { merge_into; flags; modules; mode; loc; infer; enabled_if; explain })
 ;;
 
 include Stanza.Make (struct

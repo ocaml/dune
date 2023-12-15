@@ -33,7 +33,6 @@ let decode =
      and+ mode = Rule_mode_decoder.field
      and+ infer = field_o_b "infer" ~check:(Dune_lang.Syntax.since syntax (2, 0))
      and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
-     and+ dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ loc = loc
      and+ explain = field_o "explain" (Dune_lang.Syntax.since syntax (2, 2) >>> bool) in
@@ -44,7 +43,7 @@ let decode =
      in
      let explain =
        match explain with
-       | None -> dune_syntax >= (3, 13)
+       | None -> menhir_syntax >= (2, 2)
        | Some explain -> explain
      in
      { merge_into; flags; modules; mode; loc; infer; enabled_if; explain })

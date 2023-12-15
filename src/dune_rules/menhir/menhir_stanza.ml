@@ -35,11 +35,16 @@ let decode =
      and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ loc = loc
-     and+ explain = field_b ~check:(Dune_lang.Syntax.since syntax (2, 2)) "explain" in
+     and+ explain = field_o "explain" (Dune_lang.Syntax.since syntax (2, 2) >>> bool) in
      let infer =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
+     in
+     let explain =
+       match explain with
+       | None -> false
+       | Some explain -> explain
      in
      { merge_into; flags; modules; mode; loc; infer; enabled_if; explain })
 ;;

@@ -8,7 +8,7 @@ Support (explain) field in (menhir) stanza to produce .conflicts file:
   > EOF
 
   $ cat >dune <<EOF
-  > (menhir (modules parser) (explain))
+  > (menhir (modules parser) (explain true))
   > (library (name lib))
   > EOF
 
@@ -20,9 +20,9 @@ First we check the version guards:
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 25-34:
-  1 | (menhir (modules parser) (explain))
-                               ^^^^^^^^^
+  File "dune", line 1, characters 25-39:
+  1 | (menhir (modules parser) (explain true))
+                               ^^^^^^^^^^^^^^
   Error: 'explain' is only available since version 2.2 of the menhir extension.
   Please update your dune-project file to have (using menhir 2.2).
   [1]
@@ -84,6 +84,9 @@ Let's check that the conflicts file has been generated successfully:
   START . 
 
 
+
+
+
 Let's check that it stops being generated if we remove the (explain) field:
 
   $ cat >dune <<EOF
@@ -97,5 +100,16 @@ Let's check that it stops being generated if we remove the (explain) field:
   File "parser.mly", line 4, characters 15-20:
   Warning: production start -> START is never reduced.
   Warning: in total, 1 production is never reduced.
+
+  $ ! test -f _build/default/parser.conflicts
+
+Let's check we can also pass `(explain false)`:
+
+  $ cat >dune <<EOF
+  > (menhir (modules parser) (explain false))
+  > (library (name lib))
+  > EOF
+
+  $ dune build
 
   $ ! test -f _build/default/parser.conflicts

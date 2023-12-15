@@ -22,7 +22,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
-  ; explain : bool
+  ; explain : Blang.t
   }
 
 let decode =
@@ -35,7 +35,9 @@ let decode =
      and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ loc = loc
-     and+ explain = field_o "explain" (Dune_lang.Syntax.since syntax (2, 2) >>> bool) in
+     and+ explain =
+       field_o "explain" (Dune_lang.Syntax.since syntax (2, 2) >>> Blang.decode)
+     in
      let infer =
        match infer with
        | Some infer -> infer
@@ -43,7 +45,7 @@ let decode =
      in
      let explain =
        match explain with
-       | None -> menhir_syntax >= (2, 2)
+       | None -> if menhir_syntax >= (2, 2) then Blang.true_ else Blang.false_
        | Some explain -> explain
      in
      { merge_into; flags; modules; mode; loc; infer; enabled_if; explain })

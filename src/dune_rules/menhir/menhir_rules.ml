@@ -121,6 +121,9 @@ module Run (P : PARAMS) = struct
   ;;
 
   let explain_flags base explain =
+    let open Memo.O in
+    let* expander = expander in
+    let+ explain = Expander.eval_blang expander explain in
     if explain
     then
       [ Command.Args.A "--explain"
@@ -234,7 +237,7 @@ module Run (P : PARAMS) = struct
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)
     in
-    let explain_flags = explain_flags base stanza.explain in
+    let* explain_flags = explain_flags base stanza.explain in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
       [ Command.Args.dyn expanded_flags
@@ -255,8 +258,9 @@ module Run (P : PARAMS) = struct
      is a simpler one-step process where Menhir is invoked directly. *)
 
   let process1 base ~cmly (stanza : stanza) : unit Memo.t =
+    let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
-    let explain_flags = explain_flags base stanza.explain in
+    let* explain_flags = explain_flags base stanza.explain in
     menhir
       [ Command.Args.dyn expanded_flags
       ; S explain_flags

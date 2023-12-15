@@ -8,6 +8,7 @@ The test-source folder has a file to use substitution on.
   > EOF
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
   >  (progn
@@ -31,6 +32,7 @@ This should also work with any other filename combination:
   > This is using a different file suffix
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
   >  (progn
@@ -50,6 +52,7 @@ Undefined variables, how do they substitute?
   > We substitute this '%%{var}%%' into '%{var}%'
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
   >  (progn
@@ -79,6 +82,7 @@ Now with variables set
   > %%{os}%% is '%{os}%'
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (build
   >  (progn
@@ -87,7 +91,7 @@ Now with variables set
   > EOF
   $ build_pkg test 2>&1 | sed 's/%{os}% is.*/%{os}% is $REDACTED/g'
   We substitute '%{name}%' into 'test' and '%{_:name}%' into 'test'
-  And '%{version}%' is set to 'dev'
+  And '%{version}%' is set to '0.0.1'
   There is also some paths set:
   %{lib}% is '../target/lib'
   %{libexec}% is '../target/lib'
@@ -106,9 +110,11 @@ It is also possible to use variables of your dependencies:
 
   $ mkdir dependency-source
   $ cat >dune.lock/dependency.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/dependency-source))
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > (deps dependency)
   > (build

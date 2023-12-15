@@ -14,6 +14,7 @@ Create a directory containing a shell script and add the directory to PATH.
 Create a lockdir with a lockfile that runs the shell script in a build command.
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
+  > (version 0.0.1)
   > (build (run hello))
   > EOF
 

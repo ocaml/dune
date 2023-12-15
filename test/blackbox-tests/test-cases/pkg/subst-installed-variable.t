@@ -8,6 +8,7 @@ Test the %{pkg:intsalled}% form inside file substitution:
   > foo: %{somepkg:installed}%
   > EOF
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/source))
   > (build
   >  (progn

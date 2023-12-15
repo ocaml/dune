@@ -4,6 +4,7 @@ Setting environment variables in actions
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
+  > (version 0.0.1)
   > (build
   >  (withenv
   >   ((= FOO myfoo)

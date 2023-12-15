@@ -4,6 +4,7 @@ Test that we can set variables
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (build
   >  (system "\| cat >test.config <<EOF
   >          "\| opam-version: "2.0"
@@ -18,6 +19,7 @@ Test that we can set variables
   > EOF
 
   $ cat >dune.lock/usetest.pkg <<EOF
+  > (version 0.0.1)
   > (deps test)
   > (build
   >  (progn
@@ -50,6 +52,7 @@ Test that we can set variables
 Now we demonstrate we get a proper error from invalid .config files:
 
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (build
   >  (system "\| cat >test.config <<EOF
   >          "\| this is dummy text

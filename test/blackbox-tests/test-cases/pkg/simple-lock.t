@@ -4,6 +4,7 @@ Test that we run the build command
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (build
   >  (progn
   >   (run mkdir -p %{prefix}/bin)

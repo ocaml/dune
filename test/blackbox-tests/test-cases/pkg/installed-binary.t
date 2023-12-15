@@ -4,6 +4,7 @@ Test that installed binaries are visible in dependent packages
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (build
   >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
   >          "\| chmod +x foo;
@@ -18,6 +19,7 @@ Test that installed binaries are visible in dependent packages
   > EOF
 
   $ cat >dune.lock/usetest.pkg <<EOF
+  > (version 0.0.1)
   > (deps test)
   > (build
   >  (progn

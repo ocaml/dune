@@ -6,6 +6,7 @@ Testing the when action in lockfiles
 
 Case with a mix of uncoditional and conditional actions in a progn action
   $ cat >dune.lock/test.pkg <<'EOF'
+  > (version 0.0.1)
   > (install
   >  (progn
   >   (when (= foo foo)

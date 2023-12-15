@@ -4,6 +4,8 @@ dependencies.
   $ dune build A
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Dependency cycle between:
      theory A in A/dune:2
   -> theory B in B/dune:2
@@ -17,6 +19,8 @@ dependencies.
   $ dune build B
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Dependency cycle between:
      theory B in B/dune:2
   -> theory C in C/dune:2
@@ -30,6 +34,8 @@ dependencies.
   $ dune build C
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Dependency cycle between:
      theory C in C/dune:2
   -> theory A in A/dune:2

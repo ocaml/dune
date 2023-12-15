@@ -55,6 +55,17 @@ let emit t context f =
   >>= maybe_emit t f
 ;;
 
+let emit_project warning project message =
+  match check_project warning project with
+  | `Disabled -> ()
+  | `Enabled ->
+    let message =
+      let hints = emit_hint warning in
+      { message with User_message.hints }
+    in
+    User_warning.emit_message message
+;;
+
 module Bag = struct
   type decode =
     { active : Config.Toggle.t

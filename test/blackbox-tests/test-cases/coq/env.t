@@ -48,6 +48,8 @@ Case A / A
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -58,6 +60,8 @@ Case A / A
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -75,6 +79,8 @@ Case A / I
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -85,6 +91,8 @@ Case A / I
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -102,6 +110,8 @@ Case A / N
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -112,6 +122,8 @@ Case A / N
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -129,6 +141,8 @@ Case A / Y
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -139,6 +153,8 @@ Case A / Y
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 Cases for I
 
@@ -157,6 +173,8 @@ Case I / A
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -167,6 +185,8 @@ Case I / A
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -184,6 +204,8 @@ Case I / I
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -194,6 +216,8 @@ Case I / I
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -211,6 +235,8 @@ Case I / N
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -221,6 +247,8 @@ Case I / N
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -238,6 +266,8 @@ Case I / Y
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -248,6 +278,8 @@ Case I / Y
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 Cases for N
 
@@ -266,6 +298,8 @@ Case N / A
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -276,6 +310,8 @@ Case N / A
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -293,6 +329,8 @@ Case N / I
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -303,6 +341,8 @@ Case N / I
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -320,6 +360,8 @@ Case N / N
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -330,6 +372,8 @@ Case N / N
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -347,6 +391,8 @@ Case N / Y
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -357,6 +403,8 @@ Case N / Y
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -380,6 +428,8 @@ Case Y / A
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -390,6 +440,8 @@ Case Y / A
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 Case Y / I
 
@@ -401,6 +453,8 @@ Case Y / I
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -411,6 +465,8 @@ Case Y / I
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 Case Y / N
 
@@ -422,6 +478,8 @@ Case Y / N
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -432,6 +490,8 @@ Case Y / N
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 Case Y / Y
 
@@ -443,6 +503,8 @@ Case Y / Y
   $ dune build @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "./foo.v", line 3, characters 24-25:
   Error:
   The term "t" has type "Type" while it is expected to have type 
@@ -453,3 +515,5 @@ Case Y / Y
   $ dune build @all --profile unsound
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))

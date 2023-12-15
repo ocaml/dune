@@ -10,6 +10,8 @@ coqdep and coqc.
   $ dune build A
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   Module
   Prelude
   := Struct Inductive BootType : Set :=  boot : BootType | type : BootType. End
@@ -30,6 +32,8 @@ private boot library will be loaded implicitly.
   $ dune build B
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   private_boot
        : PrivateBootType
 
@@ -51,6 +55,8 @@ to fix this currently.
   $ dune build B
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Cannot have more than one boot theory in scope:
   - Coq at Coq/dune:1
   - Coq at B/Coq/dune:2

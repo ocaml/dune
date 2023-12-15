@@ -13,6 +13,8 @@ public_name field is deprecated
   Please use 'package' instead.
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
 
 both package and public_name field is an error
   $ cat > dune << EOF
@@ -30,6 +32,8 @@ both package and public_name field is an error
   Please use 'package' instead.
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   File "dune", line 3, characters 14-17:
   3 |  (public_name Foo)
                     ^^^

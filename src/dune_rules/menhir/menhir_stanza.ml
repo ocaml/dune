@@ -48,7 +48,7 @@ let decode =
      in
      let explain =
        match explain with
-       | None -> if menhir_syntax >= (2, 2) then Blang.true_ else Blang.false_
+       | None -> if menhir_syntax >= explain_since then Blang.true_ else Blang.false_
        | Some explain -> explain
      in
      { merge_into; flags; modules; mode; loc; infer; enabled_if; explain; menhir_syntax })

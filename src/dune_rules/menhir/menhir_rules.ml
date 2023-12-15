@@ -193,7 +193,7 @@ module Run (P : PARAMS) = struct
      is the three-step process where Menhir is invoked twice and OCaml type
      inference is performed in between. *)
 
-  let process3 base ~cmly ~explain (stanza : stanza) : unit Memo.t =
+  let process3 base ~cmly (stanza : stanza) : unit Memo.t =
     let open Memo.O in
     let expanded_flags = expand_flags stanza.flags in
     (* 1. A first invocation of Menhir creates a mock [.ml] file. *)
@@ -234,7 +234,7 @@ module Run (P : PARAMS) = struct
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)
     in
-    let explain_flags = explain_flags base (stanza.explain || explain) in
+    let explain_flags = explain_flags base stanza.explain in
     (* 3. A second invocation of Menhir reads the inferred [.mli] file. *)
     menhir
       [ Command.Args.dyn expanded_flags
@@ -254,9 +254,9 @@ module Run (P : PARAMS) = struct
   (* [process3 stanza] converts a Menhir stanza into a set of build rules. This
      is a simpler one-step process where Menhir is invoked directly. *)
 
-  let process1 base ~cmly ~explain (stanza : stanza) : unit Memo.t =
+  let process1 base ~cmly (stanza : stanza) : unit Memo.t =
     let expanded_flags = expand_flags stanza.flags in
-    let explain_flags = explain_flags base (stanza.explain || explain) in
+    let explain_flags = explain_flags base stanza.explain in
     menhir
       [ Command.Args.dyn expanded_flags
       ; S explain_flags
@@ -278,23 +278,22 @@ module Run (P : PARAMS) = struct
 
   let process (stanza : stanza) : unit Memo.t =
     let base = Option.value_exn stanza.merge_into in
-    let ocaml_type_inference_disabled, cmly, explain =
+    let ocaml_type_inference_disabled, cmly =
       Ordered_set_lang.Unexpanded.fold_strings
         stanza.flags
-        ~init:(false, false, false)
-        ~f:(fun pos sw ((only_tokens, cmly, explain) as acc) ->
+        ~init:(false, false)
+        ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
           match pos with
           | Neg -> acc
           | Pos ->
             (match String_with_vars.text_only sw with
-             | Some "--only-tokens" -> true, cmly, explain
-             | Some "--cmly" -> only_tokens, true, explain
-             | Some "--explain" -> only_tokens, cmly, true
+             | Some "--only-tokens" -> true, cmly
+             | Some "--cmly" -> only_tokens, true
              | Some _ | None -> acc))
     in
     if ocaml_type_inference_disabled || not stanza.infer
-    then process1 base stanza ~cmly ~explain
-    else process3 base stanza ~cmly ~explain
+    then process1 base stanza ~cmly
+    else process3 base stanza ~cmly
   ;;
 
   (* ------------------------------------------------------------------------ *)

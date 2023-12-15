@@ -1,2 +1,7 @@
 (include_preprocessed_sources
  (exclude_dirs ../bench ../otherlibs))
+
+(alias
+ (name check)
+ (deps
+  (alias_rec ./all)))

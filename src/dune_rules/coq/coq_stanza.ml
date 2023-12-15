@@ -18,16 +18,31 @@ let coq_syntax =
 
 let already_warned = ref false
 
+let deprecated_coq_lang_lt_08 =
+  Warning.make
+    ~default:(fun _version -> `Enabled)
+    ~name:"deprecated_coq_lang_lt_08"
+    ~since:(3, 8)
+;;
+
+let deprecated_coq_lang_lt_08_msg =
+  User_message.make
+    [ Pp.text
+        "Coq Language Versions lower than 0.8 have been deprecated in Dune 3.8 and will \
+         be removed in an upcoming Dune version."
+    ]
+;;
+
 let get_coq_syntax () =
   let* version = Dune_lang.Syntax.get_exn coq_syntax in
+  let* project = Dune_project.get_exn () in
   if version < (0, 8) && not !already_warned
   then (
     already_warned := true;
-    User_warning.emit
-      [ Pp.text
-          "Coq Language Versions lower than 0.8 have been deprecated in Dune 3.8 and \
-           will be removed in an upcoming Dune version."
-      ]);
+    Warning_emit.emit_project
+      deprecated_coq_lang_lt_08
+      project
+      deprecated_coq_lang_lt_08_msg);
   return version
 ;;
 

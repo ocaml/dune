@@ -1,6 +1,8 @@
   $ dune build --display short --debug-dependency-path @all
   Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
   3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b.{cmi,cmo,cmt}
       ocamldep src_b/.ml_plugin_b.objs/ml_plugin_b__Simple_b.impl.d
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a.{cmi,cmo,cmt}

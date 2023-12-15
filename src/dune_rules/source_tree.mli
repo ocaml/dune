@@ -25,8 +25,7 @@ module Dir : sig
 
   val cram_tests : t -> (Cram_test.t, error) result list Memo.t
   val path : t -> Path.Source.t
-  val files : t -> Filename.Set.t
-  val file_paths : t -> Path.Source.Set.t
+  val filenames : t -> Filename.Set.t
 
   type sub_dir
 

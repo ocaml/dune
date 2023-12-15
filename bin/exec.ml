@@ -183,10 +183,11 @@ let not_found ~dir ~prog =
        matching executable, they would be located in a subdirectory of
        [dir], so it's unclear if that's what the user wanted. *)
     let+ candidates =
-      Build_system.files_of ~dir:(Path.build dir)
-      >>| Path.Set.to_list
-      >>| List.filter ~f:(fun p -> Path.extension p = ".exe")
-      >>| List.map ~f:(fun p -> "./" ^ Path.basename p)
+      let+ filename_set = Build_system.files_of ~dir:(Path.build dir) in
+      Filename_set.filenames filename_set
+      |> Filename.Set.to_list
+      |> List.filter ~f:(fun filename -> Filename.extension filename = ".exe")
+      |> List.map ~f:(fun filename -> "./" ^ filename)
     in
     User_message.did_you_mean prog ~candidates
   in

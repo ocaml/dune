@@ -176,7 +176,7 @@ end = struct
 
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx st_dir stanzas ~dir ~src_dir =
-    let from_source = Source_tree.Dir.files st_dir in
+    let from_source = Source_tree.Dir.filenames st_dir in
     match stanzas with
     | [] -> Memo.return from_source
     | _ :: _ ->

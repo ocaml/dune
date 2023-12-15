@@ -45,6 +45,12 @@ module Validated : sig
 
   val to_dyn : t -> Dyn.t
   val unvalidate : t -> unvalidated
+
+  (** The set of target filenames in a specified [dir]. *)
+  val filenames : t -> dir:Path.Build.t -> Filename.Set.t
+
+  (** The set of target dirnames in a specified [dir]. *)
+  val dirnames : t -> dir:Path.Build.t -> Filename.Set.t
 end
 
 module Validation_result : sig

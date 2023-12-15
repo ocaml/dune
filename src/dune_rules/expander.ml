@@ -56,15 +56,12 @@ type t =
   ; scope_host : Scope.t
   ; context : Context.t
   ; lookup_artifacts : (dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t) option
-  ; foreign_flags :
-      dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t
   ; expanding_what : Expanding_what.t
   }
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
 let context t = t.context
-let set_foreign_flags t ~f:foreign_flags = { t with foreign_flags }
 
 let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }
@@ -194,10 +191,12 @@ let expand_artifact ~source t a s =
             Value.Path fn)))
 ;;
 
+let foreign_flags = Fdecl.create Dyn.opaque
+
 let cc t =
   let make (language : Foreign_language.t) =
     let+ cc =
-      let* cc = Action_builder.of_memo @@ t.foreign_flags ~dir:t.dir in
+      let* cc = Action_builder.of_memo @@ Fdecl.get foreign_flags ~dir:t.dir in
       Foreign_language.Dict.get cc language
     and+ c_compiler =
       let+ ocaml = Action_builder.of_memo @@ Context.ocaml t.context in
@@ -760,11 +759,6 @@ let make_root
   ; artifacts_host
   ; context
   ; lookup_artifacts = None
-  ; foreign_flags =
-      (fun ~dir ->
-        Code_error.raise
-          "foreign flags expander is not set"
-          [ "dir", Path.Build.to_dyn dir ])
   ; expanding_what = Nothing_special
   }
 ;;

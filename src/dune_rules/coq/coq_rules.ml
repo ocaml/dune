@@ -125,28 +125,65 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
           | _ -> Coq_mode.VoOnly))
 ;;
 
-let coq_flags ~dir ~stanza_flags ~expander ~sctx =
-  let standard =
-    let open Memo.O in
-    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
+let coq_env =
+  let f =
+    Env_stanza_db.inherited
+      ~name:"coq-env"
+      ~root:(fun _ _ -> Memo.return (Action_builder.return Coq_flags.default))
+      ~f:(fun ~parent ~dir (config : Dune_env.config) ->
+        Memo.return
+        @@
+        let open Action_builder.O in
+        let* expander =
+          Action_builder.of_memo
+          @@
+          let open Memo.O in
+          let* sctx =
+            let context = Install.Context.of_path dir |> Option.value_exn in
+            Super_context.find_exn context
+          in
+          Super_context.expander sctx ~dir
+        in
+        let+ coq_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coq_flags
+          in
+          Expander.expand_and_eval_set expander (Coq_env.flags config.coq) ~standard
+        and+ coqdoc_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdoc_flags
+          in
+          Expander.expand_and_eval_set
+            expander
+            (Coq_env.coqdoc_flags config.coq)
+            ~standard
+        in
+        { Coq_flags.coq_flags; coqdoc_flags })
   in
+  fun ~dir ->
+    (let* () = Memo.return () in
+     (Staged.unstage f) dir)
+    |> Action_builder.of_memo_join
+;;
+
+let coq_flags ~dir ~stanza_flags ~expander =
   Expander.expand_and_eval_set
     expander
     stanza_flags
     ~standard:
-      (Action_builder.map ~f:(fun { Coq_flags.coq_flags; _ } -> coq_flags) standard)
+      (Action_builder.map ~f:(fun { Coq_flags.coq_flags; _ } -> coq_flags) (coq_env ~dir))
 ;;
 
-let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander ~sctx =
-  let standard =
-    let open Memo.O in
-    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
-  in
+let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander =
   Expander.expand_and_eval_set
     expander
     stanza_coqdoc_flags
     ~standard:
-      (Action_builder.map ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags) standard)
+      (Action_builder.map
+         ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags)
+         (coq_env ~dir))
 ;;
 
 let theory_coqc_flag lib =
@@ -579,7 +616,7 @@ let generic_coq_args
   let+ coq_stanza_flags =
     let+ expander = Super_context.expander sctx ~dir in
     let coq_flags =
-      let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~sctx in
+      let coq_flags = coq_flags ~expander ~dir ~stanza_flags in
       (* By default we have the -q flag. We don't want to pass this to coqtop to
          allow users to load their .coqrc files for interactive development.
          Therefore we manually scrub the -q setting when passing arguments to
@@ -751,7 +788,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
              let standard =
-               coqdoc_flags ~dir ~stanza_coqdoc_flags:s.coqdoc_flags ~expander ~sctx
+               coqdoc_flags ~dir ~stanza_coqdoc_flags:s.coqdoc_flags ~expander
              in
              Expander.expand_and_eval_set expander s.coqdoc_flags ~standard
            in

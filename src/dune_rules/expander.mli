@@ -17,11 +17,6 @@ val make_root
   -> artifacts_host:Artifacts.t
   -> t
 
-val set_foreign_flags
-  :  t
-  -> f:(dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
-  -> t
-
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
 val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
@@ -134,3 +129,7 @@ val expand_locks
   -> t
   -> Locks.t
   -> Path.t list Action_builder.t
+
+val foreign_flags
+  : (dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)
+      Fdecl.t

@@ -106,23 +106,16 @@ But when lang dune is 3.3 or higher the warning becomes an error:
     -short-paths
     -keep-locs))
   Leaving directory 'outer'
+
   $ dune build --root=outer
   Entering directory 'outer'
-  File "vendored/inner/inner.ml", line 6, characters 11-18:
-  6 | type t = { x : int }
-                 ^^^^^^^
-  Error (warning 69 [unused-field]): unused record field x.
   Leaving directory 'outer'
-  [1]
   $ pat="\-o [./a-zA-Z_]\{1,\}.cmx"
   $ log=outer/_build/log
   $ grep -o "$pat" $log | sort
   -o .outer.eobjs/native/dune__exe__Outer.cmx
-  -o vendored/inner/.inner.objs/native/inner.cmx
   $ grep "$pat" $log | sort | grep -n -E -o "\-w [^ ]+"
   1:-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-  2:-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-  2:-w -a
 
 This is unexpected as vendored projects should be built according to their
 declared dune-project rather than the dune-project of the outer project.

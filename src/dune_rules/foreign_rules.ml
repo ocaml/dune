@@ -8,16 +8,74 @@ module Source_tree_map_reduce =
          type t = Command.Args.without_targets Command.Args.t
        end))
 
-let default_foreign_flags t ~dir ~language =
-  Super_context.env_node t ~dir
-  >>| Env_node.foreign_flags
+let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
+  let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
+  let c, cxx =
+    let cxxflags =
+      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    in
+    match Dune_project.use_standard_c_and_cxx_flags project with
+    | None | Some false -> Action_builder.(return cflags, return cxxflags)
+    | Some true ->
+      let fdiagnostics_color =
+        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
+      in
+      let open Action_builder.O in
+      let c =
+        let+ fdiagnostics_color = fdiagnostics_color in
+        List.concat
+          [ cflags; Ocaml_config.ocamlc_cppflags ocaml_config; fdiagnostics_color ]
+      in
+      let cxx =
+        let+ fdiagnostics_color = fdiagnostics_color
+        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
+        List.concat [ db_flags; cxxflags; fdiagnostics_color ]
+      in
+      c, cxx
+  in
+  Foreign_language.Dict.make ~c ~cxx
+;;
+
+let foreign_flags_env =
+  let f =
+    Env_stanza_db.inherited
+      ~name:"foreign_flags_env"
+      ~root:(fun ctx project ->
+        let* context = Context.DB.get ctx in
+        let+ ocaml = Context.ocaml context in
+        default_context_flags (Context.build_context context) ocaml.ocaml_config ~project)
+      ~f:(fun ~parent ~dir (env : Dune_env.config) ->
+        let open Memo.O in
+        let* parent = parent in
+        let+ expander =
+          let* context = Context.DB.by_dir dir in
+          let* sctx = Super_context.find_exn (Context.name context) in
+          Super_context.expander sctx ~dir
+        in
+        let foreign_flags lang =
+          Foreign_language.Dict.get env.foreign_flags lang
+          |> Expander.expand_and_eval_set
+               expander
+               ~standard:(Foreign_language.Dict.get parent lang)
+        in
+        Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx))
+  in
+  fun ~dir ->
+    let* () = Memo.return () in
+    (Staged.unstage f) dir
+;;
+
+let () = Fdecl.set Expander.foreign_flags foreign_flags_env
+
+let default_foreign_flags ~dir ~language =
+  foreign_flags_env ~dir
   >>| (fun dict -> Foreign_language.Dict.get dict language)
   |> Action_builder.of_memo_join
 ;;
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let context = Super_context.context t in
-  let default = default_foreign_flags t ~dir ~language in
+  let default = default_foreign_flags ~dir ~language in
   let open Action_builder.O in
   let name = Foreign_language.proper_name language in
   let flags =
@@ -181,7 +239,7 @@ let build_c
           let open Action_builder.O in
           let+ default_flags =
             let dir = Path.Build.parent_exn dst in
-            default_foreign_flags sctx ~dir ~language:C
+            default_foreign_flags ~dir ~language:C
           and+ pkg_config_flags =
             let lib = External_lib_name.to_string field.external_library_name in
             Pkg_config.Query.read ~dir (Cflags lib) sctx

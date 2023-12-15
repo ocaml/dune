@@ -40,4 +40,8 @@ Menhir supports writing the grammar and automation to the ``.cmly`` file.
 Therefore, if this is flag is passed to Menhir, Dune will know to introduce a
 ``.cmly`` target for the module.
 
+- ``(explain)`` is used to generate a ``.conflicts`` file explaining any
+  conflicts found while generating the parser. This option is available since
+  version 2.2 of the Menhir extension.
+
 .. _menhir-git: https://gitlab.inria.fr/fpottier/menhir

@@ -15,6 +15,20 @@ module Ast = struct
   let true_ = Const true
   let false_ = Const false
 
+  let rec equal f t1 t2 =
+    match t1, t2 with
+    | Const b1, Const b2 -> Bool.equal b1 b2
+    | Not t1, Not t2 -> equal f t1 t2
+    | Expr x1, Expr x2 -> f x1 x2
+    | And tl1, And tl2 | Or tl1, Or tl2 ->
+      (match List.for_all2 ~f:(equal f) tl1 tl2 with
+       | Ok b -> b
+       | Error `Length_mismatch -> false)
+    | Compare (op1, x1, y1), Compare (op2, x2, y2) ->
+      Relop.equal op1 op2 && f x1 x2 && f y1 y2
+    | (Const _ | Not _ | Expr _ | And _ | Or _ | Compare _), _ -> false
+  ;;
+
   let rec to_dyn string_to_dyn =
     let open Dyn in
     function
@@ -72,3 +86,4 @@ let false_ = Ast.false_
 let to_dyn = Ast.to_dyn String_with_vars.to_dyn
 let decode = Ast.decode String_with_vars.decode
 let encode = Ast.encode String_with_vars.encode
+let equal = Ast.equal String_with_vars.equal

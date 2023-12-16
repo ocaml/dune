@@ -8,7 +8,7 @@ type t =
   ; link_flags : Link_flags.t Memo.Lazy.t
   ; external_env : Env.t Memo.Lazy.t
   ; artifacts : Artifacts.t Memo.Lazy.t
-  ; menhir_flags : string list Action_builder.t Memo.Lazy.t
+  ; menhir : string list Action_builder.t Menhir_env.t Memo.Lazy.t
   ; js_of_ocaml : string list Action_builder.t Js_of_ocaml.Env.t Memo.Lazy.t
   ; coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t
   }
@@ -21,7 +21,7 @@ let link_flags t = Memo.Lazy.force t.link_flags
 let external_env t = Memo.Lazy.force t.external_env
 let artifacts t = Memo.Lazy.force t.artifacts
 let js_of_ocaml t = Memo.Lazy.force t.js_of_ocaml
-let menhir_flags t = Memo.Lazy.force t.menhir_flags |> Action_builder.of_memo_join
+let menhir t = Memo.Lazy.force t.menhir
 let coq_flags t = Memo.Lazy.force t.coq_flags
 
 let expand_str_lazy expander sw =
@@ -139,16 +139,17 @@ let make
         ~default:link_flags
         ~eval:(Expander.expand_and_eval_set expander))
   in
-  let menhir_flags =
+  let menhir =
     inherited
-      ~field:(fun t -> Memo.return (menhir_flags t))
-      ~root:(Action_builder.return [])
-      (fun flags ->
-        match config.menhir_flags with
-        | None -> Memo.return flags
-        | Some menhir_flags ->
-          let+ expander = Memo.Lazy.force expander in
-          Expander.expand_and_eval_set expander menhir_flags ~standard:flags)
+      ~field:menhir
+      ~root:(Menhir_env.map ~f:Action_builder.return Menhir_env.default)
+      (fun (menhir : _ Action_builder.t Menhir_env.t) ->
+         let local = config.menhir in
+         let+ expander = Memo.Lazy.force expander in
+         let flags =
+           Expander.expand_and_eval_set expander local.flags ~standard:menhir.flags
+         in
+         { Menhir_env.flags; explain = Option.first_some local.explain menhir.explain })
   in
   let coq_flags : Coq_flags.t Action_builder.t Memo.Lazy.t =
     inherited
@@ -178,7 +179,7 @@ let make
   ; artifacts
   ; local_binaries
   ; js_of_ocaml
-  ; menhir_flags
+  ; menhir
   ; coq_flags
   }
 ;;

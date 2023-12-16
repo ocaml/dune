@@ -22,7 +22,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
-  ; explain : Blang.t
+  ; explain : Blang.t option
   ; menhir_syntax : Syntax.Version.t
   }
 
@@ -45,11 +45,6 @@ let decode =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
-     in
-     let explain =
-       match explain with
-       | None -> if menhir_syntax >= explain_since then Blang.true_ else Blang.false_
-       | Some explain -> explain
      in
      { merge_into; flags; modules; mode; loc; infer; enabled_if; explain; menhir_syntax })
 ;;

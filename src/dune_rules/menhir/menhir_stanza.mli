@@ -10,7 +10,7 @@ type t =
   ; loc : Loc.t
   ; infer : bool
   ; enabled_if : Blang.t
-  ; explain : Blang.t
+  ; explain : Blang.t option
   ; menhir_syntax : Syntax.Version.t
   }
 

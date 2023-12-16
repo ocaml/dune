@@ -31,4 +31,4 @@ val local_binaries : t -> File_binding.Expanded.t list Memo.t
 
 val artifacts : t -> Artifacts.t Memo.t
 val coq_flags : t -> Coq_flags.t Action_builder.t Memo.t
-val menhir_flags : t -> string list Action_builder.t
+val menhir : t -> string list Action_builder.t Menhir_env.t Memo.t

@@ -10,12 +10,14 @@ let foreign_flags ~since =
   Foreign_language.Dict.make ~c ~cxx
 ;;
 
-let menhir_flags ~since =
+let menhir_flags ~since ~deleted_in =
   let decode =
-    let decode = Ordered_set_lang.Unexpanded.decode in
-    match since with
-    | None -> decode
-    | Some since -> Dune_lang.Syntax.since Menhir_stanza.syntax since >>> decode
+    Dune_lang.Syntax.since Menhir_stanza.syntax since
+    >>> Dune_lang.Syntax.deleted_in
+          ~extra_info:"Use (menhir (flags ...)) instead."
+          Menhir_stanza.syntax
+          deleted_in
+    >>> Ordered_set_lang.Unexpanded.decode
   in
   field_o "menhir_flags" decode
 ;;
@@ -75,7 +77,7 @@ type config =
   ; env_vars : Env.t
   ; binaries : File_binding.Unexpanded.t list option
   ; inline_tests : Inline_tests.t option
-  ; menhir_flags : Ordered_set_lang.Unexpanded.t option
+  ; menhir : Ordered_set_lang.Unexpanded.t Menhir_env.t
   ; odoc : Odoc.t
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t
@@ -97,7 +99,7 @@ let equal_config
   ; env_vars
   ; binaries
   ; inline_tests
-  ; menhir_flags
+  ; menhir
   ; odoc
   ; js_of_ocaml
   ; coq
@@ -117,7 +119,7 @@ let equal_config
   && Env.equal env_vars t.env_vars
   && Option.equal (List.equal File_binding.Unexpanded.equal) binaries t.binaries
   && Option.equal Inline_tests.equal inline_tests t.inline_tests
-  && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
+  && Menhir_env.equal menhir t.menhir
   && Odoc.equal odoc t.odoc
   && Coq_env.equal coq t.coq
   && Option.equal Format_config.equal format_config t.format_config
@@ -136,7 +138,7 @@ let empty_config =
   ; env_vars = Env.empty
   ; binaries = None
   ; inline_tests = None
-  ; menhir_flags = None
+  ; menhir = Menhir_env.empty
   ; odoc = Odoc.empty
   ; js_of_ocaml = Js_of_ocaml.Env.empty
   ; coq = Coq_env.default
@@ -209,6 +211,12 @@ let odoc_field =
     (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
 ;;
 
+let menhir_field ~since =
+  field_o
+    "menhir"
+    (Dune_lang.Syntax.since Menhir_stanza.syntax since >>> Menhir_env.decode)
+;;
+
 let js_of_ocaml_field =
   field
     "js_of_ocaml"
@@ -229,19 +237,27 @@ let config =
       "binaries"
       (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
   and+ inline_tests = inline_tests_field
-  and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
+  and+ menhir = menhir_field ~since:Menhir_stanza.explain_since
+  and+ menhir_flags = menhir_flags ~since:(2, 1) ~deleted_in:Menhir_stanza.explain_since
   and+ odoc = odoc_field
   and+ js_of_ocaml = js_of_ocaml_field
   and+ coq = Coq_env.decode
   and+ format_config = Format_config.field ~since:(2, 8)
   and+ bin_annot = bin_annot in
+  let menhir =
+    match menhir_flags, menhir with
+    | Some flags, None -> { Menhir_env.empty with flags }
+    | None, Some env -> env
+    | None, None -> Menhir_env.empty
+    | Some _, Some _ -> Code_error.raise "(menhir_flags) and (menhir) cannot both be present" []
+  in
   { flags
   ; foreign_flags
   ; link_flags
   ; env_vars
   ; binaries
   ; inline_tests
-  ; menhir_flags
+  ; menhir
   ; odoc
   ; js_of_ocaml
   ; coq

@@ -27,7 +27,7 @@ type config =
   ; env_vars : Env.t
   ; binaries : File_binding.Unexpanded.t list option
   ; inline_tests : Inline_tests.t option
-  ; menhir_flags : Ordered_set_lang.Unexpanded.t option
+  ; menhir : Ordered_set_lang.Unexpanded.t Menhir_env.t
   ; odoc : Odoc.t
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t

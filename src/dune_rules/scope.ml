@@ -246,7 +246,7 @@ module DB = struct
   let scopes_by_dir
     ~build_dir
     ~lib_config
-    ~projects
+    ~projects_by_root
     ~public_libs
     ~public_theories
     ~instrument_with
@@ -254,10 +254,6 @@ module DB = struct
     coq_stanzas
     =
     let open Memo.O in
-    let projects_by_dir =
-      Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
-        Dune_project.root project, project)
-    in
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
         let project =
@@ -271,7 +267,7 @@ module DB = struct
     in
     let+ db_by_project_dir =
       Path.Source.Map.merge
-        projects_by_dir
+        projects_by_root
         stanzas_by_project_dir
         ~f:(fun _dir project stanzas ->
           let project = Option.value_exn project in
@@ -285,7 +281,7 @@ module DB = struct
     in
     let coq_scopes_by_dir =
       Memo.Lazy.map public_theories ~f:(fun public_theories ->
-        coq_scopes_by_dir db_by_project_dir projects_by_dir public_theories coq_stanzas)
+        coq_scopes_by_dir db_by_project_dir projects_by_root public_theories coq_stanzas)
     in
     let coq_db_find dir =
       Memo.Lazy.map coq_scopes_by_dir ~f:(fun x -> Path.Source.Map.find_exn x dir)
@@ -296,7 +292,7 @@ module DB = struct
       { project; db; coq_db; root })
   ;;
 
-  let create ~(context : Context.t) ~projects stanzas coq_stanzas =
+  let create ~(context : Context.t) ~projects_by_root stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
     let build_dir = Context.build_dir context in
@@ -325,7 +321,7 @@ module DB = struct
         ~instrument_with
         ~build_dir
         ~lib_config
-        ~projects
+        ~projects_by_root
         ~public_libs
         ~public_theories
         stanzas
@@ -336,7 +332,7 @@ module DB = struct
     value, public_libs
   ;;
 
-  let create_from_stanzas ~projects ~(context : Context.t) stanzas =
+  let create_from_stanzas ~projects_by_root ~(context : Context.t) stanzas =
     let stanzas, coq_stanzas =
       Dune_file.fold_stanzas
         stanzas
@@ -355,7 +351,7 @@ module DB = struct
             acc, (ctx_dir, coq_lib) :: coq_acc
           | _ -> acc, coq_acc)
     in
-    create ~projects ~context stanzas coq_stanzas
+    create ~projects_by_root ~context stanzas coq_stanzas
   ;;
 
   let all =
@@ -366,9 +362,9 @@ module DB = struct
       let scopes =
         Memo.Lazy.create
         @@ fun () ->
-        let* { Dune_load.dune_files = _; packages = _; projects } = Dune_load.load () in
+        let* { Dune_load.projects_by_root; _ } = Dune_load.load () in
         let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
-        create_from_stanzas ~projects ~context stanzas
+        create_from_stanzas ~projects_by_root ~context stanzas
       in
       Context.name context, scopes)
   ;;

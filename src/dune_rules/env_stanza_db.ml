@@ -34,8 +34,10 @@ module Node = struct
 
   let rec by_dir dir =
     let parent =
-      let* scope = Scope.DB.find_by_dir dir in
-      if Path.Build.equal dir (Scope.root scope)
+      let* project = Dune_load.find_project ~dir in
+      if Path.Source.equal
+           (Path.Build.drop_build_context_exn dir)
+           (Dune_project.root project)
       then by_context dir
       else (
         match Path.Build.parent dir with

@@ -297,6 +297,7 @@ type conf =
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
+  ; projects_by_root : Dune_project.t Path.Source.Map.t
   }
 
 module Projects_and_dune_files =
@@ -352,10 +353,21 @@ let load () =
     |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
       Dune_files.interpret ~dir ~project ~dune_file)
   in
-  { dune_files; packages; projects }
+  { dune_files
+  ; packages
+  ; projects
+  ; projects_by_root =
+      Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
+        Dune_project.root project, project)
+  }
 ;;
 
 let load =
   let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
+;;
+
+let find_project ~dir =
+  let+ { projects_by_root; _ } = load () in
+  Find_closest_source_dir.find_by_dir projects_by_root ~dir
 ;;

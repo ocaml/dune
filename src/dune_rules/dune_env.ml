@@ -249,7 +249,8 @@ let config =
     | Some flags, None -> { Menhir_env.empty with flags }
     | None, Some env -> env
     | None, None -> Menhir_env.empty
-    | Some _, Some _ -> Code_error.raise "(menhir_flags) and (menhir) cannot both be present" []
+    | Some _, Some _ ->
+      Code_error.raise "(menhir_flags) and (menhir) cannot both be present" []
   in
   { flags
   ; foreign_flags

@@ -193,9 +193,7 @@ let gen_rules sctx ~output_dir =
   let dir = Path.Build.parent_exn output_dir in
   with_config ~dir (fun config ->
     let* expander = Super_context.expander sctx ~dir in
-    (* CR-rgrinberg: initializing the library database seems unnecessary here *)
-    let* scope = Scope.DB.find_by_dir output_dir in
-    let project = Scope.project scope in
+    let* project = Dune_load.find_project ~dir in
     let dialects = Dune_project.dialects project in
     let version = Dune_project.dune_version project in
     gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)

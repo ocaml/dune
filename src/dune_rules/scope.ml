@@ -17,33 +17,7 @@ module DB = struct
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }
 
-  let find_by_dir_in_map =
-    (* This function is linear in the depth of [dir] in the worst case, so if it
-       shows up in the profile we should memoize it. *)
-    let find_by_dir map (dir : Path.Source.t) =
-      let rec loop d =
-        match Path.Source.Map.find map d with
-        | Some s -> s
-        | None ->
-          (match Path.Source.parent d with
-           | Some d -> loop d
-           | None ->
-             Code_error.raise
-               "find_by_dir: invalid directory"
-               [ "d", Path.Source.to_dyn d; "dir", Path.Source.to_dyn dir ])
-      in
-      loop dir
-    in
-    fun map dir ->
-      if Path.Build.is_root dir
-      then
-        Code_error.raise
-          "Scope.DB.find_by_dir_in_map got an invalid path"
-          [ "dir", Path.Build.to_dyn dir ];
-      find_by_dir map (Path.Build.drop_build_context_exn dir)
-  ;;
-
-  let find_by_dir t dir = find_by_dir_in_map t.by_dir dir
+  let find_by_dir t dir = Find_closest_source_dir.find_by_dir t.by_dir ~dir
 
   let find_by_project t project =
     Path.Source.Map.find_exn t.by_dir (Dune_project.root project)
@@ -225,7 +199,7 @@ module DB = struct
       |> Path.Source.Map.of_list_multi
     in
     let parent = Some public_theories in
-    let find_db dir = snd (find_by_dir_in_map db_by_project_dir dir) in
+    let find_db dir = snd (Find_closest_source_dir.find_by_dir db_by_project_dir ~dir) in
     Path.Source.Map.merge
       projects_by_dir
       coq_stanzas_by_project_dir

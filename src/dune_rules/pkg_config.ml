@@ -69,10 +69,7 @@ let gen_rule sctx ~loc ~dir query =
   | Ok _ as bin ->
     let* command =
       let+ env =
-        let* dune_version =
-          let+ expander = Super_context.expander sctx ~dir in
-          expander |> Expander.scope |> Scope.project |> Dune_project.dune_version
-        in
+        let* dune_version = Dune_load.find_project ~dir >>| Dune_project.dune_version in
         let* env_node = Super_context.env_node sctx ~dir in
         if dune_version >= (3, 8)
         then Env_node.external_env env_node

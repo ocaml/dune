@@ -148,7 +148,7 @@ let build_c
   (loc, (src : Foreign.Source.t), dst)
   =
   let ctx = Super_context.context sctx in
-  let* project = Scope.DB.find_by_dir dir >>| Scope.project in
+  let* project = Dune_load.find_project ~dir in
   let use_standard_flags = Dune_project.use_standard_c_and_cxx_flags project in
   let* ocaml = Context.ocaml ctx in
   let base_flags =

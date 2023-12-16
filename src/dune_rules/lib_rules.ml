@@ -68,7 +68,7 @@ let build_lib
     in
     let ocaml_flags = Ocaml_flags.get flags (Ocaml mode) in
     let* standard =
-      let+ project = Scope.DB.find_by_dir dir |> Memo.map ~f:Scope.project in
+      let+ project = Dune_load.find_project ~dir in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Buildable.has_foreign_cxx lib.buildable ->
         Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
@@ -263,13 +263,10 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir ~dir_conten
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
   let* standard =
-    let+ project =
-      let+ scope = Scope.DB.find_by_dir dir in
-      Scope.project scope
-    in
-    let ctx = Super_context.context sctx in
+    let+ project = Dune_load.find_project ~dir in
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
+      let ctx = Super_context.context sctx in
       Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
     | _ -> Action_builder.return []
   in
@@ -328,7 +325,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
            (Compilation_context.ocaml cctx).ocaml_config
     in
     let* standard =
-      let+ project = Scope.DB.find_by_dir dir >>| Scope.project in
+      let+ project = Dune_load.find_project ~dir in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
         Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)

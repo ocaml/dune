@@ -33,12 +33,12 @@ Fields supported in ``<settings>`` are:
   used by ``dune exec``.
 
 - ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas. This flag was
-  replaced by the ``(menhir)`` field (see below) starting in version 2.2 of the
+  replaced by the ``(menhir)`` field (see below) starting in version 3.0 of the
   Menhir extension.
 
 - ``(menhir (flags <flags) (explain <blang expression>))`` specifies the Menhir
   settings. See `menhir`_ for more details. This field was introduced in version
-  2.2 of the Menhir extension.
+  3.0 of the Menhir extension.
 
 - ``(js_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
   specifies ``js_of_ocaml`` flags. See `jsoo-field`_ for more details.

@@ -8,7 +8,7 @@ let syntax =
     ; (1, 1), `Since (1, 4)
     ; (2, 0), `Since (1, 4)
     ; (2, 1), `Since (2, 2)
-    ; (2, 2), `Since (3, 13)
+    ; (3, 0), `Since (3, 13)
     ]
 ;;
 
@@ -26,7 +26,7 @@ type t =
   ; menhir_syntax : Syntax.Version.t
   }
 
-let explain_since = 2, 2
+let explain_since = 3, 0
 
 let decode =
   fields

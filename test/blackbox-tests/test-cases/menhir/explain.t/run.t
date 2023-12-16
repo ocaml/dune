@@ -16,20 +16,20 @@ First we check the version guards:
   File "dune", line 1, characters 25-39:
   1 | (menhir (modules parser) (explain true))
                                ^^^^^^^^^^^^^^
-  Error: 'explain' is only available since version 2.2 of the menhir extension.
-  Please update your dune-project file to have (using menhir 2.2).
+  Error: 'explain' is only available since version 3.0 of the menhir extension.
+  Please update your dune-project file to have (using menhir 3.0).
   [1]
 
   $ cat >dune-project <<EOF
   > (lang dune 3.12)
-  > (using menhir 2.2)
+  > (using menhir 3.0)
   > EOF
 
   $ dune build
   File "dune-project", line 2, characters 14-17:
-  2 | (using menhir 2.2)
+  2 | (using menhir 3.0)
                     ^^^
-  Error: Version 2.2 of the menhir extension is not supported until version
+  Error: Version 3.0 of the menhir extension is not supported until version
   3.13 of the dune language.
   Supported versions of this extension in version 3.12 of the dune language:
   - 1.0 to 1.1
@@ -38,7 +38,7 @@ First we check the version guards:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
-  > (using menhir 2.2)
+  > (using menhir 3.0)
   > EOF
 
   $ dune build
@@ -84,7 +84,7 @@ Let's check that the argument to (explain) can be a blang:
 
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
-  > (using menhir 2.2)
+  > (using menhir 3.0)
   > EOF
 
   $ cat >dune <<EOF
@@ -100,7 +100,7 @@ Let's check that we get a warning if we use --explain with the new mode
 
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
-  > (using menhir 2.2)
+  > (using menhir 3.0)
   > EOF
 
   $ cat >dune <<EOF
@@ -133,13 +133,13 @@ Let's now test the new field of (env), (menhir):
   File "dune", line 1, characters 8-32:
   1 | (env (_ (menhir (explain false))))
               ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'menhir' is only available since version 2.2 of the menhir extension.
-  Please update your dune-project file to have (using menhir 2.2).
+  Error: 'menhir' is only available since version 3.0 of the menhir extension.
+  Please update your dune-project file to have (using menhir 3.0).
   [1]
 
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
-  > (using menhir 2.2)
+  > (using menhir 3.0)
   > EOF
 
   $ cat >dune <<EOF
@@ -152,7 +152,7 @@ Let's now test the new field of (env), (menhir):
   File "dune", line 1, characters 8-32:
   1 | (env (_ (menhir_flags --explain)))
               ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'menhir_flags' was deleted in version 2.2 of the menhir extension. Use
+  Error: 'menhir_flags' was deleted in version 3.0 of the menhir extension. Use
   (menhir (flags ...)) instead.
   [1]
 

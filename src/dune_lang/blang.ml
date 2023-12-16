@@ -20,7 +20,7 @@ module Ast = struct
     | Const b1, Const b2 -> Bool.equal b1 b2
     | Not t1, Not t2 -> equal f t1 t2
     | Expr x1, Expr x2 -> f x1 x2
-    | And tl1, And tl2 | Or tl1, Or tl2 -> List.equal f tl1 tl2
+    | And tl1, And tl2 | Or tl1, Or tl2 -> List.equal (equal f) tl1 tl2
     | Compare (op1, x1, y1), Compare (op2, x2, y2) ->
       Relop.equal op1 op2 && f x1 x2 && f y1 y2
     | (Const _ | Not _ | Expr _ | And _ | Or _ | Compare _), _ -> false

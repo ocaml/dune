@@ -17,6 +17,7 @@ type conf = private
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
+  ; projects_by_root : Dune_project.t Path.Source.Map.t
   }
 
 (** Load all dune files. This function is memoized. *)

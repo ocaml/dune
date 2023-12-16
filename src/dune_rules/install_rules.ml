@@ -1165,10 +1165,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       entries
       ~f:(List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src))
   in
-  let* dune_project =
-    let+ scope = Scope.DB.find_by_dir pkg_build_dir in
-    Scope.project scope
-  in
+  let* dune_project = Dune_load.find_project ~dir:pkg_build_dir in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in

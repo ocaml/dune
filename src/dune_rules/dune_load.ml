@@ -366,3 +366,8 @@ let load =
   let memo = Memo.lazy_ ~name:"dune_load" load in
   fun () -> Memo.Lazy.force memo
 ;;
+
+let find_project ~dir =
+  let+ { projects_by_root; _ } = load () in
+  Find_closest_source_dir.find_by_dir projects_by_root ~dir
+;;

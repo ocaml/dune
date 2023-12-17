@@ -18,6 +18,7 @@ val false_ : t
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
 val encode : t Encoder.t
+val equal : t -> t -> bool
 
 module Ast : sig
   type 'string t = 'string ast

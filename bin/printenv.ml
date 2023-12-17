@@ -7,12 +7,13 @@ let dump sctx ~dir =
   let module Link_flags = Dune_rules.Link_flags in
   let module Ocaml_flags = Dune_rules.Ocaml_flags in
   let module Js_of_ocaml = Dune_rules.Js_of_ocaml in
+  let module Menhir_env = Dune_rules.Menhir_env in
   let node = Super_context.env_node sctx ~dir in
   let open Memo.O in
   let ocaml_flags = node >>= Env_node.ocaml_flags in
   let foreign_flags = node >>| Env_node.foreign_flags in
   let link_flags = node >>= Env_node.link_flags in
-  let menhir_flags = node >>| Env_node.menhir_flags in
+  let menhir = node >>= Env_node.menhir in
   let coq_flags = node >>= Env_node.coq_flags in
   let js_of_ocaml = node >>= Env_node.js_of_ocaml in
   let open Action_builder.O in
@@ -30,8 +31,8 @@ let dump sctx ~dir =
     let* link_flags = Action_builder.of_memo link_flags in
     Link_flags.dump link_flags
   and+ menhir_dump =
-    let+ flags = Action_builder.of_memo_join menhir_flags in
-    [ "menhir_flags", flags ] |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
+    let* env = Action_builder.of_memo menhir in
+    Menhir_env.dump env
   and+ coq_dump = Action_builder.of_memo_join coq_flags >>| Dune_rules.Coq.Coq_flags.dump
   and+ jsoo_dump =
     let* jsoo = Action_builder.of_memo js_of_ocaml in

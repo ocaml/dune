@@ -6,6 +6,7 @@ module Env_node = Env_node
 module Link_flags = Link_flags
 module Ocaml_flags = Ocaml_flags
 module Js_of_ocaml = Js_of_ocaml
+module Menhir_env = Menhir_env
 module Super_context = Super_context
 module Compilation_context = Compilation_context
 module Colors = Colors

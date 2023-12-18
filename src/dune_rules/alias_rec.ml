@@ -8,8 +8,8 @@ open Import
      runtime_deps rules created under them; in this case, dune needs to
      traverse allowed build-only sub-directories. *)
 
-module Alias_status = Action_builder.Alias_status
-module Alias_build_info = Action_builder.Alias_build_info
+module Alias_status = Alias_builder.Alias_status
+module Alias_build_info = Alias_builder.Alias_build_info
 
 module In_melange_target_dir = struct
   let dep_on_alias_rec =
@@ -19,14 +19,14 @@ module In_melange_target_dir = struct
       (* TODO there should be traversals that don't require this conversion *)
       Filename.Set.to_list allowed_build_only_subdirs
       |> Action_builder.List.map ~f:(fun s -> fold (Path.Build.relative dir s) ~f)
-      >>| List.fold_left ~init:alias_status ~f:Action_builder.Alias_status.combine
+      >>| List.fold_left ~init:alias_status ~f:Alias_builder.Alias_status.combine
     in
     fun dir ~f:dep_on_alias_if_exists ->
       fold dir ~f:(fun path -> dep_on_alias_if_exists ~path)
   ;;
 end
 
-include Action_builder.Alias_rec (struct
+include Alias_builder.Alias_rec (struct
     module Map_reduce = Source_tree.Dir.Make_map_reduce (Action_builder) (Alias_status)
 
     let traverse dir ~f =
@@ -69,7 +69,7 @@ include Action_builder.Alias_rec (struct
       Source_tree.find_dir src_dir
       |> Action_builder.of_memo
       >>= function
-      | None -> Action_builder.return Action_builder.Alias_status.Not_defined
+      | None -> Action_builder.return Alias_builder.Alias_status.Not_defined
       | Some src_dir ->
         Map_reduce.map_reduce src_dir ~traverse:Sub_dirs.Status.Set.normal_only ~f
     ;;

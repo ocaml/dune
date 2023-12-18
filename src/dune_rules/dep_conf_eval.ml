@@ -133,7 +133,7 @@ let package loc pkg (context : Build_context.t) ~dune_version =
      Package_db.find_package package_db pkg)
   >>= function
   | Some (Build build) -> build
-  | Some (Local pkg) -> Action_builder.alias (package_install ~context ~pkg)
+  | Some (Local pkg) -> Alias_builder.alias (package_install ~context ~pkg)
   | Some (Installed pkg) ->
     if dune_version < (2, 9)
     then
@@ -206,7 +206,7 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Alias s ->
     Other
       (let* a = make_alias expander s in
-       let+ () = Action_builder.alias a in
+       let+ () = Alias_builder.alias a in
        [])
   | Alias_rec s ->
     Other

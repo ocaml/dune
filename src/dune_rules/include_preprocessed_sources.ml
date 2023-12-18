@@ -5,6 +5,7 @@ module Lib_or_exes_to_pp = struct
   type t =
     { ppx_driver_and_flags : (Path.Build.t * string list) Action_builder.t
     ; sources : Module.t list
+    ; source_dir : Path.Build.t
     }
 
   let ppx_driver ~sctx ~scope ~expander lib =
@@ -43,12 +44,12 @@ module Lib_or_exes_to_pp = struct
     | Some ms -> modules_to_pp ms
   ;;
 
-  let from_lib ~sctx ~scope ~expander lib =
+  let from_lib ~sctx ~scope ~expander ~dir lib =
     let* ppx_driver_and_flags = ppx_driver ~sctx ~scope ~expander lib in
     match ppx_driver_and_flags with
     | Some ppx_driver_and_flags ->
       let+ sources = sources ~sctx lib in
-      Some { ppx_driver_and_flags; sources }
+      Some { ppx_driver_and_flags; sources; source_dir = dir }
     | None -> Memo.return None
   ;;
 
@@ -85,7 +86,7 @@ module Lib_or_exes_to_pp = struct
           ctx
           pps
       in
-      Memo.return (Some { sources; ppx_driver_and_flags })
+      Memo.return (Some { sources; ppx_driver_and_flags; source_dir = dir })
   ;;
 end
 
@@ -148,7 +149,7 @@ let libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude =
                    if Path.is_descendant ~of_:(Path.build dir) src_dir
                    then
                      let+ src_to_pp =
-                       Lib_or_exes_to_pp.from_lib ~sctx ~scope ~expander lib
+                       Lib_or_exes_to_pp.from_lib ~sctx ~scope ~expander ~dir lib
                      in
                      append_opt src_to_pp acc
                    else Memo.return acc)
@@ -162,56 +163,104 @@ let libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude =
   Appendable_list.to_list srcs_to_pp
 ;;
 
-let gen_rule_for_source_file ~sctx ~dir ~ppx_driver_and_flags ~ml_kind path =
-  let target = Path.Build.append_source dir (Path.drop_build_context_exn path) in
-  (*let target = Path.Build.relative dir (Path.basename path) in*)
+type pp_ctx =
+  { sctx : Super_context.t
+  ; expander : Expander.t
+  ; dialects : Dialect.DB.t
+  ; stanza_dir : Path.Build.t
+  ; source_dir : Path.Build.t
+  ; format_config : Format_config.t
+  ; ppx_driver_and_flags : (Path.Build.t * string list) Action_builder.t
+  }
+
+let gen_pp_rule ~pp_ctx ~ml_kind ~target ~input =
   let rule =
     Action_builder.with_file_targets
       ~file_targets:[ target ]
       (let open Action_builder.O in
-       let* ppx_driver, flags = ppx_driver_and_flags in
+       let* ppx_driver, flags = pp_ctx.ppx_driver_and_flags in
        Command.run'
-         ~dir:(Path.build dir)
+         ~dir:(Path.build pp_ctx.stanza_dir)
          (Ok (Path.build ppx_driver))
          [ As flags
          ; Command.Ml_kind.ppx_driver_flag ml_kind
-         ; Dep path
+         ; Dep input
          ; A "-o"
          ; Path (Path.build target)
          ])
   in
-  let mode = Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None } in
-  Super_context.add_rule sctx ~mode ~dir rule
+  Super_context.add_rule pp_ctx.sctx ~mode:Standard ~dir:pp_ctx.stanza_dir rule
 ;;
 
-let gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags module_ =
+let gen_format_rule ~pp_ctx ~output ~ext ~input =
+  let fmt_action =
+    Format_rules.format_action
+      ~expander:pp_ctx.expander
+      ~dialects:pp_ctx.dialects
+      ~config:pp_ctx.format_config
+      ~ext
+      ~input
+      ~dir:pp_ctx.source_dir
+      ~output
+  in
+  let mode = Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None } in
+  Memo.Option.iter fmt_action ~f:(fun action ->
+    Super_context.add_rule pp_ctx.sctx ~mode ~dir:pp_ctx.stanza_dir action)
+;;
+
+let gen_rules_for_source_file ~pp_ctx ~ml_kind path =
+  let target =
+    Path.Build.append_source pp_ctx.stanza_dir (Path.drop_build_context_exn path)
+  in
+  let raw_pp_target = Path.Build.map_extension target ~f:(fun ext -> ".pp" ^ ext) in
+  let* () = gen_pp_rule ~pp_ctx ~ml_kind ~target:raw_pp_target ~input:path in
+  let ext = Path.extension path in
+  gen_format_rule ~pp_ctx ~output:target ~ext ~input:raw_pp_target
+;;
+
+let gen_rules_for_module ~pp_ctx module_ =
   let impl = Module.file ~ml_kind:Impl module_ in
   let intf = Module.file ~ml_kind:Intf module_ in
   let* () =
     match impl with
     | None -> Memo.return ()
-    | Some path ->
-      gen_rule_for_source_file ~sctx ~dir ~ppx_driver_and_flags ~ml_kind:Impl path
+    | Some path -> gen_rules_for_source_file ~pp_ctx ~ml_kind:Impl path
   in
   match intf with
   | None -> Memo.return ()
-  | Some path ->
-    gen_rule_for_source_file ~sctx ~dir ~ppx_driver_and_flags ~ml_kind:Intf path
+  | Some path -> gen_rules_for_source_file ~pp_ctx ~ml_kind:Intf path
 ;;
 
-let gen_rules_for_lib_or_exes ~sctx ~dir lib_or_exes_to_pp =
-  let { Lib_or_exes_to_pp.sources; ppx_driver_and_flags } = lib_or_exes_to_pp in
-  Memo.List.iter sources ~f:(gen_rules_for_module ~sctx ~dir ~ppx_driver_and_flags)
+let gen_rules_for_lib_or_exes ~sctx ~expander ~dir ~dialects lib_or_exes_to_pp =
+  let { Lib_or_exes_to_pp.sources; ppx_driver_and_flags; source_dir } =
+    lib_or_exes_to_pp
+  in
+  Format_rules.with_config ~dir:source_dir (fun format_config ->
+    let pp_ctx =
+      { sctx
+      ; expander
+      ; dialects
+      ; stanza_dir = dir
+      ; ppx_driver_and_flags
+      ; source_dir
+      ; format_config
+      }
+    in
+    Memo.List.iter sources ~f:(gen_rules_for_module ~pp_ctx))
 ;;
 
 let gen_stanza_rules ~dir ~dirs_to_exclude sctx =
   let* scope = Scope.DB.find_by_dir dir in
   let* expander = Super_context.expander sctx ~dir in
+  let project = Scope.project scope in
+  let dialects = Dune_project.dialects project in
   let dirs_to_exclude = List.map dirs_to_exclude ~f:Path.drop_build_context_exn in
   let* libs_or_exes_to_pp =
     libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude
   in
-  Memo.List.iter libs_or_exes_to_pp ~f:(gen_rules_for_lib_or_exes ~sctx ~dir)
+  Memo.List.iter
+    libs_or_exes_to_pp
+    ~f:(gen_rules_for_lib_or_exes ~expander ~dialects ~sctx ~dir)
 ;;
 
 type t = { dirs_to_exclude : String_with_vars.t list }

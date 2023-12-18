@@ -11,6 +11,10 @@ and blang = t Blang.Ast.t
 and form =
   | Concat of t list
   | When of (blang * t)
+  | Cond of
+      { cases : (blang * t) list
+      ; default : t
+      }
   | If of
       { condition : blang
       ; then_ : t
@@ -38,6 +42,41 @@ let decode =
           , let+ condition = Blang.Ast.decode decode
             and+ t = decode in
             When (condition, t) )
+        ; ( "cond"
+          , let case_or_default =
+              (let+ x = pair (Blang.Ast.decode decode) decode in
+               `Case x)
+              <|> let+ x = decode in
+                  `Default x
+            in
+            let+ terms = repeat (located case_or_default)
+            and+ loc = loc in
+            match List.destruct_last terms with
+            | None ->
+              User_error.raise
+                ~loc
+                [ Pp.text "cond requires at least one argument (its default value)" ]
+            | Some (_, (loc, `Case _)) ->
+              User_error.raise
+                ~loc
+                [ Pp.text
+                    "The final argument to cond must not have a condition as it's the \
+                     default value of the cond expression."
+                ]
+            | Some (cases, (_, `Default default)) ->
+              let cases =
+                List.map cases ~f:(fun (loc, term) ->
+                  match term with
+                  | `Case case -> case
+                  | `Default _ ->
+                    User_error.raise
+                      ~loc
+                      [ Pp.text
+                          "Conditions are required for each argument to cond except for \
+                           the final argument."
+                      ])
+              in
+              Cond { cases; default } )
         ; ( "if"
           , let+ condition = Blang.Ast.decode decode
             and+ then_ = decode
@@ -84,6 +123,12 @@ let rec encode t =
      | Concat ts -> List (string "concat" :: List.map ts ~f:encode)
      | When (condition, t) ->
        List [ string "when"; Blang.Ast.encode encode condition; encode t ]
+     | Cond { cases; default } ->
+       List
+         ((string "cond"
+           :: List.map cases ~f:(fun (condition, t) ->
+             List [ Blang.Ast.encode encode condition; encode t ]))
+          @ [ encode default ])
      | If { condition; then_; else_ } ->
        List [ string "if"; Blang.Ast.encode encode condition; encode then_; encode else_ ]
      | Has_undefined_var t -> List [ string "has_undefined_var"; encode t ]
@@ -109,6 +154,14 @@ let rec to_dyn = function
      | Concat ts -> Dyn.variant "Concat" (List.map ts ~f:to_dyn)
      | When (condition, t) ->
        Dyn.variant "When" [ Blang.Ast.to_dyn to_dyn condition; to_dyn t ]
+     | Cond { cases; default } ->
+       Dyn.variant
+         "Cond"
+         [ Dyn.record
+             [ "cases", Dyn.list (Dyn.pair (Blang.Ast.to_dyn to_dyn) to_dyn) cases
+             ; "default", to_dyn default
+             ]
+         ]
      | If { condition; then_; else_ } ->
        Dyn.variant "If" [ Blang.Ast.to_dyn to_dyn condition; to_dyn then_; to_dyn else_ ]
      | Has_undefined_var t -> Dyn.variant "Has_undefined_var" [ to_dyn t ]
@@ -238,7 +291,8 @@ let rec simplify = function
            | blang -> [ blang ])
        in
        Form (loc, Or_absorb_undefined_var (List.map blangs ~f:simplify_blang))
-     | Blang b -> Form (loc, Blang (simplify_blang b)))
+     | Blang b -> Form (loc, Blang (simplify_blang b))
+     | other -> Form (loc, other))
 
 and simplify_blang = function
   | Const b -> Const b

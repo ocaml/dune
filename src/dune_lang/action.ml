@@ -533,6 +533,14 @@ let rec slang_map_string_with_vars ~f = function
         When
           ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
           , slang_map_string_with_vars t ~f )
+      | Cond { cases; default } ->
+        Cond
+          { cases =
+              List.map cases ~f:(fun (condition, slang) ->
+                ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+                , slang_map_string_with_vars slang ~f ))
+          ; default = slang_map_string_with_vars default ~f
+          }
       | If { condition; then_; else_ } ->
         If
           { condition =

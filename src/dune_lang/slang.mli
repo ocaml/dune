@@ -14,6 +14,10 @@ and blang = t Blang.Ast.t
 and form =
   | Concat of t list (** Concatenate a list of strings recursively with no delimiter *)
   | When of (blang * t)
+  | Cond of
+      { cases : (blang * t) list
+      ; default : t
+      }
   (** If the LHS evaluates to true then this is the RHS, otherwise evaluates to the empty list *)
   | If of
       { condition : blang

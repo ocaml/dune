@@ -33,6 +33,19 @@ let rec eval_rec (t : Slang.t) ~dir ~f : (Value.t list list, _) result Memo.t =
         | Error _ as e -> Memo.return e
         | Ok false -> Memo.return (Ok [])
         | Ok true -> eval_rec t ~dir ~f)
+     | Cond { cases; default } ->
+       let* case_result =
+         Memo.List.find_map cases ~f:(fun (condition, t) ->
+           let* condition = eval_blang_rec condition ~dir ~f in
+           match condition with
+           | Error _ as e -> Memo.return (Some e)
+           | Ok false -> Memo.return None
+           | Ok true -> eval_rec t ~dir ~f >>| Option.some)
+       in
+       (match case_result with
+        | None -> eval_rec default ~dir ~f
+        | Some (Error _ as e) -> Memo.return e
+        | Some (Ok x) -> Memo.return (Ok x))
      | If { condition; then_; else_ } ->
        let* condition = eval_blang_rec condition ~dir ~f in
        (match condition with

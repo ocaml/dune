@@ -75,6 +75,35 @@ Tests for when:
   $ test_action '(run echo (when (or true %{pkg-self:not_a_variable}) foo))'
   foo
 
+Tests for cond:
+  $ test_action '(run echo (cond default))'
+  default
+  $ test_action '(run echo (cond (false foo) (true bar) baz))'
+  bar
+  $ test_action '(run echo (cond (true foo) (true bar) baz))'
+  foo
+  $ test_action '(run echo (cond))'
+  File "dune.lock/test.pkg", line 2, characters 19-25:
+  2 | (install (run echo (cond)))
+                         ^^^^^^
+  Error: cond requires at least one argument (its default value)
+  [1]
+  $ test_action '(run echo (cond foo bar))'
+  File "dune.lock/test.pkg", line 2, characters 25-28:
+  2 | (install (run echo (cond foo bar)))
+                               ^^^
+  Error: Conditions are required for each argument to cond except for the final
+  argument.
+  [1]
+  $ test_action '(run echo (cond (true foo)))'
+  File "dune.lock/test.pkg", line 2, characters 25-35:
+  2 | (install (run echo (cond (true foo))))
+                               ^^^^^^^^^^
+  Error: The final argument to cond must not have a condition as it's the
+  default value of the cond expression.
+  [1]
+
+
 Tests for if:
   $ test_action '(run echo (if (= %{pkg-self:version} 0.0.1) foo bar) (if (<> %{pkg-self:name} test) baz qux))'
   foo qux

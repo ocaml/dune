@@ -35,7 +35,7 @@ module Validated : sig
   (** A rule can produce a set of files whose names are known upfront, as well
       as a set of "opaque" directories whose contents is initially unknown. *)
   type t = private
-    { root : Path.Build.t
+    { root : Path.Build.t (** [files] and [dirs] are relative to [root] *)
     ; files : Filename.Set.t
     ; dirs : Filename.Set.t
     }
@@ -80,8 +80,9 @@ val all : t -> Path.Build.t list
     payload, for example, the target's digest. *)
 module Produced : sig
   type 'a t = private
-    { files : 'a Path.Build.Map.t
-    ; dirs : 'a Filename.Map.t Path.Build.Map.t
+    { root : Path.Build.t (** [files] and [dirs] are relative to [root] *)
+    ; files : 'a Filename.Map.t
+    ; dirs : 'a Filename.Map.t Path.Local.Map.t
     }
 
   module Error : sig
@@ -101,8 +102,9 @@ module Produced : sig
   (** Drop all directory targets, leaving only file targets. *)
   val drop_dirs : 'a t -> 'a t
 
-  (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal. *)
-  val all_files_seq : 'a t -> (Path.Build.t * 'a) Seq.t
+  (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal.
+      The resulting [Path.Local.t]s are relative to [t.root]. *)
+  val all_files_seq : 'a t -> (Path.Local.t * 'a) Seq.t
 
   (** Check if a file is present in the targets. *)
   val mem : 'a t -> Path.Build.t -> bool

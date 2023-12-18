@@ -432,12 +432,12 @@ end = struct
           | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
   ;;
 
-  let promote_targets ~rule_mode ~dir ~targets ~promote_source =
+  let promote_targets ~rule_mode ~targets ~promote_source =
     match rule_mode, !Clflags.promote with
     | (Rule.Mode.Standard | Fallback | Ignore_source_files), _ | Promote _, Some Never ->
       Fiber.return ()
     | Promote promote, (Some Automatically | None) ->
-      Target_promotion.promote ~dir ~targets ~promote ~promote_source
+      Target_promotion.promote ~targets ~promote ~promote_source
   ;;
 
   let execute_rule_impl ~rule_kind rule =
@@ -615,7 +615,6 @@ end = struct
       let* () =
         promote_targets
           ~rule_mode:mode
-          ~dir:targets.root
           ~targets:produced_targets
           ~promote_source:config.promote_source
       in

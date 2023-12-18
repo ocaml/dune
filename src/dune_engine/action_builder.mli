@@ -100,8 +100,6 @@ val dyn_memo_deps : (Dep.Set.t * 'a) Memo.t -> 'a t
 val dyn_paths : ('a * Path.t list) t -> 'a t
 
 val dyn_paths_unit : Path.t list t -> unit t
-val dyn_path_set : ('a * Path.Set.t) t -> 'a t
-val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
 (** [contents path] returns a description that when run will return the contents
     of the file at [path]. *)
@@ -144,11 +142,6 @@ val with_stdout_to
 val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
 val symlink_dir : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-val create_file : ?perm:Action.File_perm.t -> Path.Build.t -> Action.Full.t With_targets.t
 
 (** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.Full.t With_targets.t list -> Action.Full.t With_targets.t
-
-(** A version of [dyn_of_memo] that makes it convenient to declare dynamic
-    action dependencies. *)
-val dyn_of_memo_deps : ('a * Dep.Set.t) Memo.t t -> 'a t

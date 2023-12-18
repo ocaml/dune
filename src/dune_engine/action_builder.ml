@@ -61,15 +61,6 @@ let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode)
 let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
 let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files paths)
 let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
-
-let dyn_path_set paths =
-  dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files_set paths)
-;;
-
-let dyn_path_set_reuse paths =
-  dyn_deps (paths >>| fun paths -> paths, Dep.Set.of_files_set paths)
-;;
-
 let env_var s = deps (Dep.Set.singleton (Dep.env s))
 
 let contents =
@@ -249,15 +240,7 @@ let symlink_dir ~src ~dst =
     (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
 ;;
 
-let create_file ?(perm = Action.File_perm.Normal) fn =
-  with_file_targets
-    ~file_targets:[ fn ]
-    (return (Action.Full.make (Action.Redirect_out (Stdout, fn, perm, Action.empty))))
-;;
-
 let progn ts =
   let open With_targets.O in
   With_targets.all ts >>| Action.Full.reduce
 ;;
-
-let dyn_of_memo_deps t = dyn_deps (dyn_of_memo t)

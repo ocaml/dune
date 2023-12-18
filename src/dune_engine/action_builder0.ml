@@ -247,5 +247,3 @@ let of_memo_join f =
         t.f mode)
   }
 ;;
-
-let dyn_of_memo f = f >>= of_memo

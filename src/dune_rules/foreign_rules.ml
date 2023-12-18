@@ -38,10 +38,11 @@ let foreign_flags t ~dir ~expander ~flags ~language =
    dependencies. *)
 let include_dir_flags ~expander ~dir ~include_dirs =
   let lib_dir =
-    let scope = Expander.scope expander in
+    let scope = Scope.DB.find_by_dir dir in
     fun loc lib_name ->
       let open Resolve.Memo.O in
-      let+ lib = Lib.DB.resolve (Scope.libs scope) (loc, lib_name) in
+      let* libs = Memo.map scope ~f:Scope.libs |> Resolve.Memo.lift_memo in
+      let+ lib = Lib.DB.resolve libs (loc, lib_name) in
       Lib_info.src_dir (Lib.info lib)
   in
   let args_of_include_dir include_dir =

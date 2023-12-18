@@ -455,7 +455,9 @@ module Unprocessed = struct
     | Pps { loc; pps; flags; staged = _ } ->
       let open Action_builder.O in
       let+ exe, flags =
-        let scope = Expander.scope expander in
+        let* scope =
+          Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
+        in
         Preprocessing.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
       in
       let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
@@ -525,7 +527,7 @@ module Unprocessed = struct
         | Melange ->
           Action_builder.of_memo
             (let open Memo.O in
-             let scope = Expander.scope expander in
+             let* scope = Scope.DB.find_by_dir (Expander.dir expander) in
              let libs = Scope.libs scope in
              Lib.DB.find libs (Lib_name.of_string "melange")
              >>= function

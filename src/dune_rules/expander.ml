@@ -61,7 +61,6 @@ type t =
   ; expanding_what : Expanding_what.t
   }
 
-let scope t = t.scope
 let artifacts t = t.artifacts_host
 let dir t = t.dir
 let context t = t.context

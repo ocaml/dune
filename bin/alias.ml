@@ -1,5 +1,6 @@
 open Import
 module Alias = Dune_engine.Alias
+module Alias_builder = Dune_rules.Alias_builder
 
 type t =
   { name : Alias.Name.t
@@ -76,7 +77,7 @@ let dep_on_alias_multi_contexts ~dir ~name ~contexts =
   let context_to_alias_expansion ctx =
     let ctx_dir = Context_name.build_dir ctx in
     let dir = Path.Build.(append_source ctx_dir dir) in
-    Action_builder.alias (Alias.make ~dir name)
+    Alias_builder.alias (Alias.make ~dir name)
   in
   Action_builder.all_unit (List.map contexts ~f:context_to_alias_expansion)
 ;;
@@ -96,7 +97,7 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
   in
   match
     Alias.is_standard name
-    || List.exists alias_statuses ~f:(fun (x : Action_builder.Alias_status.t) ->
+    || List.exists alias_statuses ~f:(fun (x : Alias_builder.Alias_status.t) ->
       match x with
       | Defined -> true
       | Not_defined -> false)

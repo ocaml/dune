@@ -40,21 +40,11 @@ let head { files; dirs } =
   | None -> Path.Build.Set.choose dirs
 ;;
 
-let head_exn t =
-  match head t with
-  | Some target -> target
-  | None -> Code_error.raise "Targets.head_exn applied to empty set of targets" []
-;;
-
 let to_dyn { files; dirs } =
   Dyn.Record [ "files", Path.Build.Set.to_dyn files; "dirs", Path.Build.Set.to_dyn dirs ]
 ;;
 
 let all { files; dirs } = Path.Build.Set.to_list files @ Path.Build.Set.to_list dirs
-
-let exists { files; dirs } ~f =
-  Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
-;;
 
 let iter { files; dirs } ~file ~dir =
   Path.Build.Set.iter files ~f:file;
@@ -62,57 +52,110 @@ let iter { files; dirs } ~file ~dir =
 ;;
 
 module Validated = struct
+  type unvalidated = t
+
   (* CR-soon amokhov: Represent these path sets more efficiently, e.g., by a map from the
      parent directory to the corresponding [Filename.Set.t] so that [target_names_in_dir]
      could be implemented without traversing the whole set. *)
-  type nonrec t = t =
-    { files : Path.Build.Set.t
-    ; dirs : Path.Build.Set.t
+  type nonrec t =
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
     }
 
-  let to_dyn = to_dyn
-  let head = head_exn
-  let unvalidate t = t
-
-  let target_names_in_dir ~dir paths =
-    Path.Build.Set.to_list paths
-    |> List.filter_map ~f:(fun path ->
-      (* Root can't be a target, so this can't raise. *)
-      match Path.Build.equal dir (Path.Build.parent_exn path) with
-      | false -> None
-      | true ->
-        (* CR-someday amokhov: Add [Path.Build.split] and use it here to avoid repeating
-           the same work in [Path.Build.parent_exn] and [Path.Build.basename]. *)
-        Some (Path.Build.basename path))
-    |> Filename.Set.of_list
+  let iter { root; files; dirs } ~file ~dir =
+    Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative root fn));
+    Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative root dn))
   ;;
 
-  let filenames { files; dirs = _ } ~dir = target_names_in_dir ~dir files
-  let dirnames { files = _; dirs } ~dir = target_names_in_dir ~dir dirs
+  let fold { root; files; dirs } ~init ~file ~dir =
+    let acc =
+      Filename.Set.fold files ~init ~f:(fun fn -> file (Path.Build.relative root fn))
+    in
+    Filename.Set.fold dirs ~init:acc ~f:(fun dn -> dir (Path.Build.relative root dn))
+  ;;
+
+  let head { root; files; dirs } =
+    let name =
+      match Filename.Set.choose files with
+      | Some name -> name
+      | None ->
+        (match Filename.Set.choose dirs with
+         | Some name -> name
+         | None -> assert false)
+    in
+    Path.Build.relative root name
+  ;;
+
+  let unvalidate t : unvalidated =
+    { files =
+        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.files)
+    ; dirs =
+        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.dirs)
+    }
+  ;;
+
+  let to_dyn { root; files; dirs } =
+    Dyn.Record
+      [ "root", Path.Build.to_dyn root
+      ; "files", Filename.Set.to_dyn files
+      ; "dirs", Filename.Set.to_dyn dirs
+      ]
+  ;;
+
+  let to_trace_args { root; files; dirs } =
+    let mkset s xs =
+      if Filename.Set.is_empty xs
+      then []
+      else
+        [ ( s
+          , `List
+              (Filename.Set.to_list_map xs ~f:(fun x ->
+                 `String (Path.Build.relative root x |> Path.Build.to_string))) )
+        ]
+    in
+    mkset "target_files" files @ mkset "target_dirs" dirs
+  ;;
 end
 
 module Validation_result = struct
   type t =
-    | Valid of
-        { parent_dir : Path.Build.t
-        ; targets : Validated.t
-        }
+    | Valid of Validated.t
     | No_targets
     | Inconsistent_parent_dir
     | File_and_directory_target_with_the_same_name of Path.Build.t
 end
 
-let validate t =
-  match is_empty t with
-  | true -> Validation_result.No_targets
-  | false ->
-    (match Path.Build.Set.inter t.files t.dirs |> Path.Build.Set.choose with
-     | Some path -> File_and_directory_target_with_the_same_name path
-     | None ->
-       let parent_dir = Path.Build.parent_exn (head_exn t) in
-       (match exists t ~f:(fun path -> Path.Build.(parent_exn path <> parent_dir)) with
-        | true -> Inconsistent_parent_dir
-        | false -> Valid { parent_dir; targets = t }))
+let validate { files; dirs } =
+  let add_file (t : Validated.t) name =
+    Validation_result.Valid { t with files = Filename.Set.add t.files name }
+  in
+  let add_dir (t : Validated.t) name =
+    if Filename.Set.mem t.files name
+    then
+      Validation_result.File_and_directory_target_with_the_same_name
+        (Path.Build.relative t.root name)
+    else Valid { t with dirs = Filename.Set.add t.dirs name }
+  in
+  let build (init : Validation_result.t) ~paths ~f =
+    Path.Build.Set.fold paths ~init ~f:(fun path res ->
+      let parent = Path.Build.parent_exn path in
+      let name = Path.Build.basename path in
+      match res with
+      | No_targets ->
+        let t =
+          { Validated.root = parent
+          ; files = Filename.Set.empty
+          ; dirs = Filename.Set.empty
+          }
+        in
+        f t name
+      | Valid t when Path.Build.equal t.root parent -> f t name
+      | Valid _ -> Inconsistent_parent_dir
+      | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res
+        -> res)
+  in
+  build No_targets ~paths:files ~f:add_file |> build ~paths:dirs ~f:add_dir
 ;;
 
 module Produced = struct
@@ -120,8 +163,9 @@ module Produced = struct
      trees may be better. It would allow for hierarchical traversals and reduce
      the number of internal invariants. *)
   type 'a t =
-    { files : 'a Path.Build.Map.t
-    ; dirs : 'a Filename.Map.t Path.Build.Map.t
+    { root : Path.Build.t
+    ; files : 'a Filename.Map.t
+    ; dirs : 'a Filename.Map.t Path.Local.Map.t
     }
 
   module Error = struct
@@ -172,7 +216,10 @@ module Produced = struct
   end
 
   let of_validated =
-    let rec collect dir : (unit Filename.Map.t Path.Build.Map.t, Error.t) result =
+    (* The call sites ensure that [dir = Path.Build.append_local validated.root local]. *)
+    let rec collect (dir : Path.Build.t) (local : Path.Local.t)
+      : (unit Filename.Map.t Path.Local.Map.t, Error.t) result
+      =
       match Path.readdir_unsorted_with_kinds (Path.build dir) with
       | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
       | Error e -> Error (Unreadable_dir (dir, e))
@@ -181,122 +228,145 @@ module Produced = struct
         let+ filenames, dirs =
           Result.List.fold_left
             dir_contents
-            ~init:(Filename.Map.empty, Path.Build.Map.empty)
+            ~init:(Filename.Map.empty, Path.Local.Map.empty)
             ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
               match (kind : File_kind.t) with
               (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
               | S_LNK | S_REG ->
-                Ok (String.Map.add_exn acc_filenames filename (), acc_dirs)
+                Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
               | S_DIR ->
-                let+ dir = collect (Path.Build.relative dir filename) in
-                acc_filenames, Path.Build.Map.union_exn acc_dirs dir
+                let+ dir =
+                  collect
+                    (Path.Build.relative dir filename)
+                    (Path.Local.relative local filename)
+                in
+                acc_filenames, Path.Local.Map.union_exn acc_dirs dir
               | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
         in
-        if not (String.Map.is_empty filenames)
-        then Path.Build.Map.add_exn dirs dir filenames
+        if not (Filename.Map.is_empty filenames)
+        then Path.Local.Map.add_exn dirs local filenames
         else dirs
     in
-    let directory dir =
+    let directory root dirname =
       let open Result.O in
-      let* files = collect dir in
-      if Path.Build.Map.is_empty files then Error (Empty_dir dir) else Ok files
+      let dir = Path.Build.relative root dirname in
+      let* files = collect dir (Path.Local.of_string dirname) in
+      if Path.Local.Map.is_empty files then Error (Empty_dir dir) else Ok files
     in
     fun (validated : Validated.t) ->
-      match Path.Build.Set.to_list_map validated.dirs ~f:directory |> Result.List.all with
+      match
+        Filename.Set.to_list validated.dirs
+        |> Result.List.map ~f:(directory validated.root)
+      with
       | Error _ as error -> error
       | Ok dirs ->
         let files =
-          Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
+          (* CR-someday rleshchinskiy: Check if the files actually exist here. Currently,
+             we check this here for directory targets but for files, the check is done by
+             the cache. *)
+          Filename.Set.to_map validated.files ~f:(fun _ -> ())
         in
         (* The [union_exn] below can't raise because each map in [dirs] contains
            unique keys, which are paths rooted at the corresponding [dir]s. *)
         let dirs =
-          List.fold_left dirs ~init:Path.Build.Map.empty ~f:Path.Build.Map.union_exn
+          List.fold_left dirs ~init:Path.Local.Map.empty ~f:Path.Local.Map.union_exn
         in
-        Ok { files; dirs }
+        Ok { root = validated.root; files; dirs }
   ;;
 
-  let of_files dir files =
-    { files =
-        Filename.Map.foldi files ~init:Path.Build.Map.empty ~f:(fun file value files ->
-          Path.Build.Map.add_exn files (Path.Build.relative dir file) value)
-    ; dirs = Path.Build.Map.empty
-    }
-  ;;
+  let of_files root files = { root; files; dirs = Path.Local.Map.empty }
+  let drop_dirs t = { t with dirs = Path.Local.Map.empty }
 
-  let all_files { files; dirs } =
-    let disallow_duplicates file _payload1 _payload2 =
-      Code_error.raise
-        (sprintf
-           "Targets.Produced.all_files: duplicate file %S"
-           (Path.Build.to_string file))
-        [ "files", Path.Build.Map.to_dyn Dyn.opaque files
-        ; "dirs", Path.Build.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
-        ]
-    in
-    let files_in_dirs =
-      Path.Build.Map.foldi dirs ~init:Path.Build.Map.empty ~f:(fun dir filenames ->
-        let paths =
-          Path.Build.Map.of_list_exn
-            (Filename.Map.to_list_map filenames ~f:(fun filename payload ->
-               Path.Build.relative dir filename, payload))
-        in
-        Path.Build.Map.union paths ~f:disallow_duplicates)
-    in
-    Path.Build.Map.union ~f:disallow_duplicates files files_in_dirs
-  ;;
-
-  let drop_dirs { files; dirs = _ } = { files; dirs = Path.Build.Map.empty }
-
-  let all_files_seq t =
+  let all_files_seq { root = _; files; dirs } =
     Seq.append
-      (Path.Build.Map.to_seq t.files)
+      (Filename.Map.to_seq files
+       |> Seq.map ~f:(fun (file, payload) -> Path.Local.of_string file, payload))
       (Seq.concat
-         (Path.Build.Map.to_seq t.dirs
+         (Path.Local.Map.to_seq dirs
           |> Seq.map ~f:(fun (dir, filenames) ->
             Filename.Map.to_seq filenames
             |> Seq.map ~f:(fun (filename, payload) ->
-              Path.Build.relative dir filename, payload))))
+              Path.Local.relative dir filename, payload))))
   ;;
 
-  let exists { files; dirs } ~f =
-    Path.Build.Map.exists files ~f || Path.Build.Map.exists dirs ~f:(String.Map.exists ~f)
+  let find { root; files; dirs } path =
+    let open Option.O in
+    let* path =
+      Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local root)
+    in
+    let* parent = Path.Local.parent path in
+    if Path.Local.is_root parent
+    then Filename.Map.find files (Path.Local.to_string path)
+    else
+      let* files = Path.Local.Map.find dirs parent in
+      Filename.Map.find files (Path.Local.basename path)
   ;;
 
-  let foldi { files; dirs } ~init ~f =
-    let acc = Path.Build.Map.foldi files ~init ~f in
-    Path.Build.Map.foldi dirs ~init:acc ~f:(fun dir filenames acc ->
+  let mem t path = Option.is_some (find t path)
+
+  let find_dir { root; files; dirs } path =
+    match Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local root) with
+    | Some dir when Path.Local.is_root dir -> Some files
+    | Some dir -> Path.Local.Map.find dirs dir
+    | None -> None
+  ;;
+
+  let equal
+    { root = root1; files = files1; dirs = dirs1 }
+    { root = root2; files = files2; dirs = dirs2 }
+    ~equal
+    =
+    Path.Build.equal root1 root2
+    && Filename.Map.equal files1 files2 ~equal
+    && Path.Local.Map.equal dirs1 dirs2 ~equal:(Filename.Map.equal ~equal)
+  ;;
+
+  let exists { root = _; files; dirs } ~f =
+    Filename.Map.exists files ~f || Path.Local.Map.exists dirs ~f:(String.Map.exists ~f)
+  ;;
+
+  let foldi { root; files; dirs } ~init ~f =
+    let acc =
+      Filename.Map.foldi files ~init ~f:(fun file acc ->
+        f (Path.Build.relative root file) acc)
+    in
+    Path.Local.Map.foldi dirs ~init:acc ~f:(fun dir filenames acc ->
+      let dir = Path.Build.append_local root dir in
       String.Map.foldi filenames ~init:acc ~f:(fun filename payload acc ->
         f (Path.Build.relative dir filename) payload acc))
   ;;
 
-  let iteri { files; dirs } ~f =
-    Path.Build.Map.iteri files ~f;
-    Path.Build.Map.iteri dirs ~f:(fun dir filenames ->
+  let iteri { root; files; dirs } ~f =
+    Filename.Map.iteri files ~f:(fun file acc -> f (Path.Build.relative root file) acc);
+    Path.Local.Map.iteri dirs ~f:(fun dir filenames ->
+      let dir = Path.Build.append_local root dir in
       String.Map.iteri filenames ~f:(fun filename payload ->
         f (Path.Build.relative dir filename) payload))
   ;;
 
-  module Path_traversal = Fiber.Make_map_traversals (Path.Build.Map)
+  module Path_traversal = Fiber.Make_map_traversals (Path.Local.Map)
   module Filename_traversal = Fiber.Make_map_traversals (String.Map)
 
-  let parallel_map { files; dirs } ~f =
+  let parallel_map { root; files; dirs } ~f =
     let open Fiber.O in
     let+ files, dirs =
       Fiber.fork_and_join
-        (fun () -> Path_traversal.parallel_map files ~f)
+        (fun () ->
+          Filename_traversal.parallel_map files ~f:(fun file ->
+            f (Path.Build.relative root file)))
         (fun () ->
           Path_traversal.parallel_map dirs ~f:(fun dir files ->
+            let dir = Path.Build.append_local root dir in
             Filename_traversal.parallel_map files ~f:(fun file payload ->
               f (Path.Build.relative dir file) payload)))
     in
-    { files; dirs }
+    { root; files; dirs }
   ;;
 
-  let digest { files; dirs } =
+  let digest { root = _; files; dirs } =
     let all_digests =
-      Path.Build.Map.values files
-      :: Path.Build.Map.to_list_map dirs ~f:(fun _ -> Filename.Map.values)
+      Filename.Map.values files
+      :: Path.Local.Map.to_list_map dirs ~f:(fun _ -> String.Map.values)
     in
     Digest.generic (List.concat all_digests)
   ;;
@@ -304,7 +374,7 @@ module Produced = struct
   exception Short_circuit
 
   let map_with_errors
-    { files; dirs }
+    { root; files; dirs }
     ~all_errors
     ~(f : Path.Build.t -> 'a -> ('b, 'e) result)
     =
@@ -318,25 +388,30 @@ module Produced = struct
     in
     let result =
       try
-        let files = Path.Build.Map.filter_mapi files ~f in
+        let files =
+          Filename.Map.filter_mapi files ~f:(fun file ->
+            f (Path.Build.relative root file))
+        in
         let dirs =
-          Path.Build.Map.mapi dirs ~f:(fun dir ->
+          Path.Local.Map.mapi dirs ~f:(fun dir ->
+            let dir = Path.Build.append_local root dir in
             Filename.Map.filter_mapi ~f:(fun filename ->
               f (Path.Build.relative dir filename)))
         in
-        { files; dirs }
+        { root; files; dirs }
       with
-      | Short_circuit -> { files = Path.Build.Map.empty; dirs = Path.Build.Map.empty }
+      | Short_circuit -> { root; files = Filename.Map.empty; dirs = Path.Local.Map.empty }
     in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list
   ;;
 
-  let to_dyn { files; dirs } =
+  let to_dyn { root; files; dirs } =
     Dyn.record
-      [ "files", Path.Build.Map.to_dyn Dyn.opaque files
-      ; "dirs", Path.Build.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
+      [ "root", Path.Build.to_dyn root
+      ; "files", Filename.Map.to_dyn Dyn.opaque files
+      ; "dirs", Path.Local.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
       ]
   ;;
 end

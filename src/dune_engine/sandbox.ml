@@ -288,33 +288,35 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
   maybe_async (fun () ->
     Option.iter t.snapshot ~f:(fun old_snapshot ->
       apply_changes_to_source_tree t ~old_snapshot);
-    Path.Build.Set.iter targets.files ~f:(fun target ->
-      if not (should_be_skipped target)
-      then rename_optional_file ~src:(map_path t target) ~dst:target);
-    Path.Build.Set.iter targets.dirs ~f:(fun target ->
-      let src_dir = map_path t target in
-      (match Path.Untracked.stat (Path.build target) with
-       | Error (Unix.ENOENT, _, _) -> ()
-       | Error e ->
-         User_error.raise
-           ~hints:hint_delete_dir
-           [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
-           ; Pp.text "reason:"
-           ; Pp.text (Unix_error.Detailed.to_string_hum e)
-           ]
-       | Ok { Unix.st_kind; _ } ->
-         (* We clean up all targets (including directory targets) before
-            running an action, so this branch should be unreachable unless
-            the rule somehow escaped the sandbox *)
-         User_error.raise
-           ~hints:hint_delete_dir
-           [ Pp.textf
-               "Target %s of kind %S already exists in the build directory"
-               (Path.Build.to_string_maybe_quoted target)
-               (File_kind.to_string_hum st_kind)
-           ]);
-      if Path.Untracked.exists (Path.build src_dir)
-      then Path.rename (Path.build src_dir) (Path.build target)))
+    Targets.Validated.iter
+      targets
+      ~file:(fun target ->
+        if not (should_be_skipped target)
+        then rename_optional_file ~src:(map_path t target) ~dst:target)
+      ~dir:(fun target ->
+        let src_dir = map_path t target in
+        (match Path.Untracked.stat (Path.build target) with
+         | Error (Unix.ENOENT, _, _) -> ()
+         | Error e ->
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf "unable to stat %s" (Path.Build.to_string_maybe_quoted target)
+             ; Pp.text "reason:"
+             ; Pp.text (Unix_error.Detailed.to_string_hum e)
+             ]
+         | Ok { Unix.st_kind; _ } ->
+           (* We clean up all targets (including directory targets) before
+              running an action, so this branch should be unreachable unless
+              the rule somehow escaped the sandbox *)
+           User_error.raise
+             ~hints:hint_delete_dir
+             [ Pp.textf
+                 "Target %s of kind %S already exists in the build directory"
+                 (Path.Build.to_string_maybe_quoted target)
+                 (File_kind.to_string_hum st_kind)
+             ]);
+        if Path.Untracked.exists (Path.build src_dir)
+        then Path.rename (Path.build src_dir) (Path.build target)))
 ;;
 
 let failed_to_delete_sandbox dir reason =

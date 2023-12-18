@@ -10,7 +10,6 @@ module type S = sig
     :  can_go_in_shared_cache:bool
     -> rule_digest:Digest.t
     -> targets:Targets.Validated.t
-    -> target_dir:Path.Build.t
     -> Digest.t Targets.Produced.t option Fiber.t
 
   (** This function performs the following steps:

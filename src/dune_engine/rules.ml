@@ -117,7 +117,7 @@ include T
 let to_dyn = Path.Build.Map.to_dyn Dir_rules.Nonempty.to_dyn
 
 let singleton_rule (rule : Rule.t) =
-  let dir = rule.dir in
+  let dir = rule.targets.root in
   Path.Build.Map.singleton dir (Dir_rules.Nonempty.singleton (Rule rule))
 ;;
 
@@ -177,7 +177,7 @@ let of_dir_rules ~dir rules =
 
 let of_rules rules =
   List.fold_left rules ~init:Path.Build.Map.empty ~f:(fun acc rule ->
-    Path.Build.Map.update acc rule.Rule.dir ~f:(function
+    Path.Build.Map.update acc rule.Rule.targets.root ~f:(function
       | None -> Some (Dir_rules.Nonempty.singleton (Rule rule))
       | Some acc -> Some (Dir_rules.Nonempty.add acc (Rule rule))))
 ;;
@@ -192,7 +192,8 @@ let directory_targets (rules : t) =
         match data with
         | Alias _ -> acc
         | Rule rule ->
-          Path.Build.Set.fold ~init:acc rule.targets.dirs ~f:(fun target acc ->
+          Filename.Set.fold ~init:acc rule.targets.dirs ~f:(fun target acc ->
+            let target = Path.Build.relative rule.targets.root target in
             Path.Build.Map.add_exn acc target rule.loc)))
 ;;
 

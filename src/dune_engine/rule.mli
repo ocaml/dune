@@ -60,7 +60,6 @@ type t = private
   ; mode : Mode.t
   ; info : Info.t
   ; loc : Loc.t
-  ; dir : Path.Build.t (** Directory where all the targets are produced. *)
   }
 
 include Comparable_intf.S with type key := t

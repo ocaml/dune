@@ -31,7 +31,8 @@ Whenever an invalid package name is used, dune crashes when building @doc
     ; example =
         Rule
           { targets =
-              { files = set { "default/_doc/_html/x/index.html" }
+              { root = In_build_dir "default/_doc/_html/x"
+              ; files = set { "index.html" }
               ; dirs = set {}
               }
           }

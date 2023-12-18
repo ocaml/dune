@@ -35,9 +35,19 @@ module Validated : sig
   (** A rule can produce a set of files whose names are known upfront, as well
       as a set of "opaque" directories whose contents is initially unknown. *)
   type t = private
-    { files : Path.Build.Set.t
-    ; dirs : Path.Build.Set.t
+    { root : Path.Build.t (** [files] and [dirs] are relative to [root] *)
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
     }
+
+  val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
+
+  val fold
+    :  t
+    -> init:'acc
+    -> file:(Path.Build.t -> 'acc -> 'acc)
+    -> dir:(Path.Build.t -> 'acc -> 'acc)
+    -> 'acc
 
   (** If [t] contains at least one file, then it's the lexicographically first
       target file. Otherwise, it's the lexicographically first target directory. *)
@@ -45,20 +55,12 @@ module Validated : sig
 
   val to_dyn : t -> Dyn.t
   val unvalidate : t -> unvalidated
-
-  (** The set of target filenames in a specified [dir]. *)
-  val filenames : t -> dir:Path.Build.t -> Filename.Set.t
-
-  (** The set of target dirnames in a specified [dir]. *)
-  val dirnames : t -> dir:Path.Build.t -> Filename.Set.t
+  val to_trace_args : t -> (string * Chrome_trace.Json.t) list
 end
 
 module Validation_result : sig
   type t =
-    | Valid of
-        { parent_dir : Path.Build.t
-        ; targets : Validated.t
-        }
+    | Valid of Validated.t
     | No_targets
     | Inconsistent_parent_dir
     | File_and_directory_target_with_the_same_name of Path.Build.t
@@ -78,8 +80,9 @@ val all : t -> Path.Build.t list
     payload, for example, the target's digest. *)
 module Produced : sig
   type 'a t = private
-    { files : 'a Path.Build.Map.t
-    ; dirs : 'a Filename.Map.t Path.Build.Map.t
+    { root : Path.Build.t (** [files] and [dirs] are relative to [root] *)
+    ; files : 'a Filename.Map.t
+    ; dirs : 'a Filename.Map.t Path.Local.Map.t
     }
 
   module Error : sig
@@ -96,15 +99,23 @@ module Produced : sig
   (** Populates only the [files] field, leaving [dirs] empty. *)
   val of_files : Path.Build.t -> 'a Filename.Map.t -> 'a t
 
-  (* Drop all directory targets, leaving only file targets. *)
+  (** Drop all directory targets, leaving only file targets. *)
   val drop_dirs : 'a t -> 'a t
 
-  (** Union of [t.files] and all files in [t.dirs]. *)
-  val all_files : 'a t -> 'a Path.Build.Map.t
+  (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal.
+      The resulting [Path.Local.t]s are relative to [t.root]. *)
+  val all_files_seq : 'a t -> (Path.Local.t * 'a) Seq.t
 
-  (** Like [all_files] but returns a [Seq.t] for efficient traversal. *)
-  val all_files_seq : 'a t -> (Path.Build.t * 'a) Seq.t
+  (** Check if a file is present in the targets. *)
+  val mem : 'a t -> Path.Build.t -> bool
 
+  (** Find the value associated with the file, if any. *)
+  val find : 'a t -> Path.Build.t -> 'a option
+
+  (** Find all files in a directory target or a subdirectory. *)
+  val find_dir : 'a t -> Path.Build.t -> 'a Filename.Map.t option
+
+  val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
   val exists : 'a t -> f:('a -> bool) -> bool
   val foldi : 'a t -> init:'acc -> f:(Path.Build.t -> 'a -> 'acc -> 'acc) -> 'acc
   val iteri : 'a t -> f:(Path.Build.t -> 'a -> unit) -> unit

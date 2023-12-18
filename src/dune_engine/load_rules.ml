@@ -159,15 +159,15 @@ let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
     [ Pp.textf
         "This rule defines a target %S whose name conflicts with a source directory in \
          the same directory."
-        (Path.Build.basename fn)
+        fn
     ]
     ~hints:
       [ Pp.textf
           "If you want Dune to generate and replace %S, add (mode promote) to the rule \
            stanza. Alternatively, you can delete %S from the source tree or change the \
            rule to generate a different target."
-          (Path.Build.basename fn)
-          (Path.Build.basename fn)
+          fn
+          fn
       ]
 ;;
 
@@ -340,17 +340,17 @@ end = struct
   let compile_rules ~dir ~source_dirs rules =
     let file_targets, directory_targets =
       let check_for_source_dir_conflict rule target =
-        if Filename.Set.mem source_dirs (Path.Build.basename target)
+        if Filename.Set.mem source_dirs target
         then report_rule_src_dir_conflict dir target rule
       in
       List.map rules ~f:(fun rule ->
-        assert (Path.Build.( = ) dir rule.Rule.dir);
-        ( Path.Build.Set.to_list_map rule.targets.files ~f:(fun target ->
+        assert (Path.Build.( = ) dir rule.Rule.targets.root);
+        ( Filename.Set.to_list_map rule.targets.files ~f:(fun target ->
             check_for_source_dir_conflict rule target;
-            target, rule)
-        , Path.Build.Set.to_list_map rule.targets.dirs ~f:(fun target ->
+            Path.Build.relative rule.targets.root target, rule)
+        , Filename.Set.to_list_map rule.targets.dirs ~f:(fun target ->
             check_for_source_dir_conflict rule target;
-            target, rule) ))
+            Path.Build.relative rule.targets.root target, rule) ))
       |> List.unzip
     in
     let by_file_targets =
@@ -410,12 +410,14 @@ end = struct
       | Standard | Promote _ | Ignore_source_files -> rule :: acc
       | Fallback ->
         let source_filenames_for_targets =
-          if not (Path.Build.Set.is_empty rule.targets.dirs)
+          if not (Filename.Set.is_empty rule.targets.dirs)
           then
             Code_error.raise
               "Unexpected directory target in a Fallback rule"
               [ "targets", Targets.Validated.to_dyn rule.targets ];
-          Targets.Validated.filenames rule.targets ~dir
+          if Path.Build.equal dir rule.targets.root
+          then rule.targets.files
+          else Filename.Set.empty
         in
         if Filename.Set.is_subset source_filenames_for_targets ~of_:source_filenames
         then (* All targets are present *)
@@ -430,7 +432,7 @@ end = struct
           let present_targets =
             Filename.Set.diff source_filenames_for_targets absent_targets
           in
-          let dir = Path.source (Path.Build.drop_build_context_exn rule.dir) in
+          let dir = Path.source (Path.Build.drop_build_context_exn rule.targets.root) in
           User_error.raise
             ~loc:(Rule.loc rule)
             [ Pp.text
@@ -668,9 +670,9 @@ end = struct
     let rec iter ~filenames ~dirnames rules =
       match rules with
       | [] -> { filenames; dirnames }
-      | { Rule.targets; mode; loc; _ } :: rules ->
-        let target_filenames = Targets.Validated.filenames targets ~dir in
-        let target_dirnames = lazy (Targets.Validated.dirnames targets ~dir) in
+      | { Rule.targets; mode; loc; _ } :: rules when Path.Build.equal dir targets.root ->
+        let target_filenames = targets.files in
+        let target_dirnames = targets.dirs in
         (* Check if this rule defines any file targets that conflict with internal Dune
            directories listed in [build_dir_only_sub_dirs]. We don't check directory
            targets as these are already checked earlier. *)
@@ -684,7 +686,7 @@ end = struct
          | Ignore_source_files ->
            iter
              ~filenames:(Filename.Set.union filenames target_filenames)
-             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             ~dirnames:(Filename.Set.union dirnames target_dirnames)
              rules
          | Promote { only; _ } ->
            (* Note that the [only] predicate applies to the files inside the
@@ -701,8 +703,9 @@ end = struct
            in
            iter
              ~filenames:(Filename.Set.union filenames target_filenames)
-             ~dirnames:(Filename.Set.union dirnames (Lazy.force target_dirnames))
+             ~dirnames:(Filename.Set.union dirnames target_dirnames)
              rules)
+      | _ :: rules -> iter ~filenames ~dirnames rules
     in
     iter ~filenames:Filename.Set.empty ~dirnames:Filename.Set.empty rules
   ;;

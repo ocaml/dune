@@ -276,28 +276,6 @@ module Produced = struct
     }
   ;;
 
-  let all_files { files; dirs } =
-    let disallow_duplicates file _payload1 _payload2 =
-      Code_error.raise
-        (sprintf
-           "Targets.Produced.all_files: duplicate file %S"
-           (Path.Build.to_string file))
-        [ "files", Path.Build.Map.to_dyn Dyn.opaque files
-        ; "dirs", Path.Build.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
-        ]
-    in
-    let files_in_dirs =
-      Path.Build.Map.foldi dirs ~init:Path.Build.Map.empty ~f:(fun dir filenames ->
-        let paths =
-          Path.Build.Map.of_list_exn
-            (Filename.Map.to_list_map filenames ~f:(fun filename payload ->
-               Path.Build.relative dir filename, payload))
-        in
-        Path.Build.Map.union paths ~f:disallow_duplicates)
-    in
-    Path.Build.Map.union ~f:disallow_duplicates files files_in_dirs
-  ;;
-
   let drop_dirs { files; dirs = _ } = { files; dirs = Path.Build.Map.empty }
 
   let all_files_seq t =
@@ -309,6 +287,23 @@ module Produced = struct
             Filename.Map.to_seq filenames
             |> Seq.map ~f:(fun (filename, payload) ->
               Path.Build.relative dir filename, payload))))
+  ;;
+
+  let find { files; dirs } path =
+    match Path.Build.Map.find files path with
+    | Some _ as result -> result
+    | None ->
+      (match Path.Build.Map.find dirs (Path.Build.parent_exn path) with
+       | Some files -> String.Map.find files (Path.Build.basename path)
+       | None -> None)
+  ;;
+
+  let mem t path = Option.is_some (find t path)
+  let find_dir { files = _; dirs } path = Path.Build.Map.find dirs path
+
+  let equal { files = files1; dirs = dirs1 } { files = files2; dirs = dirs2 } ~equal =
+    Path.Build.Map.equal files1 files2 ~equal
+    && Path.Build.Map.equal dirs1 dirs2 ~equal:(String.Map.equal ~equal)
   ;;
 
   let exists { files; dirs } ~f =

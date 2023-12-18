@@ -98,15 +98,22 @@ module Produced : sig
   (** Populates only the [files] field, leaving [dirs] empty. *)
   val of_files : Path.Build.t -> 'a Filename.Map.t -> 'a t
 
-  (* Drop all directory targets, leaving only file targets. *)
+  (** Drop all directory targets, leaving only file targets. *)
   val drop_dirs : 'a t -> 'a t
 
-  (** Union of [t.files] and all files in [t.dirs]. *)
-  val all_files : 'a t -> 'a Path.Build.Map.t
-
-  (** Like [all_files] but returns a [Seq.t] for efficient traversal. *)
+  (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal. *)
   val all_files_seq : 'a t -> (Path.Build.t * 'a) Seq.t
 
+  (** Check if a file is present in the targets. *)
+  val mem : 'a t -> Path.Build.t -> bool
+
+  (** Find the value associated with the file, if any. *)
+  val find : 'a t -> Path.Build.t -> 'a option
+
+  (** Find all files in a directory target or a subdirectory. *)
+  val find_dir : 'a t -> Path.Build.t -> 'a Filename.Map.t option
+
+  val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
   val exists : 'a t -> f:('a -> bool) -> bool
   val foldi : 'a t -> init:'acc -> f:(Path.Build.t -> 'a -> 'acc -> 'acc) -> 'acc
   val iteri : 'a t -> f:(Path.Build.t -> 'a -> unit) -> unit

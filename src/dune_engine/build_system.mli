@@ -41,7 +41,7 @@ val execute_action_stdout
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
-  ; targets : Digest.t Path.Build.Map.t
+  ; targets : Digest.t Targets.Produced.t
   }
 
 val execute_rule : Rule.t -> rule_execution_result Memo.t

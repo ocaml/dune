@@ -122,7 +122,7 @@ let () = Hooks.End_of_build.always Metrics.reset
 
 type rule_execution_result =
   { deps : Dep.Fact.t Dep.Map.t
-  ; targets : Digest.t Path.Build.Map.t
+  ; targets : Digest.t Targets.Produced.t
   }
 
 module type Rec = sig
@@ -131,7 +131,7 @@ module type Rec = sig
   val build_alias : Alias.t -> Dep.Fact.Files.t Memo.t
 
   val build_file : Path.t -> Digest.t Memo.t
-  val build_dir : Path.t -> (Digest.t * Digest.t Path.Build.Map.t) Memo.t
+  val build_dir : Path.t -> (Digest.t * Digest.t Targets.Produced.t) Memo.t
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
   val eval_deps : 'a Action_builder.eval_mode -> Dep.Set.t -> 'a Dep.Map.t Memo.t
   val execute_rule : Rule.t -> rule_execution_result Memo.t
@@ -164,7 +164,7 @@ and Exported : sig
 
   type target_kind =
     | File_target
-    | Dir_target of { generated_file_digests : Digest.t Path.Build.Map.t }
+    | Dir_target of { targets : Digest.t Targets.Produced.t }
 
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
@@ -624,8 +624,7 @@ end = struct
     (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions. *)
-    >>| fun produced_targets ->
-    { deps; targets = Targets.Produced.all_files produced_targets }
+    >>| fun produced_targets -> { deps; targets = produced_targets }
   ;;
 
   module Anonymous_action = struct
@@ -786,13 +785,17 @@ end = struct
 
   type target_kind =
     | File_target
-    | Dir_target of { generated_file_digests : Digest.t Path.Build.Map.t }
+    | Dir_target of
+        { targets :
+            (* All targets of the rule which produced the directory target in question. *)
+            Digest.t Targets.Produced.t
+        }
 
   let target_kind_equal a b =
     match a, b with
     | File_target, File_target -> true
-    | Dir_target { generated_file_digests = a }, Dir_target { generated_file_digests = b }
-      -> Path.Build.Map.equal a b ~equal:Digest.equal
+    | Dir_target { targets = a }, Dir_target { targets = b } ->
+      Targets.Produced.equal a b ~equal:Digest.equal
     | File_target, Dir_target _ | Dir_target _, File_target -> false
   ;;
 
@@ -809,11 +812,11 @@ end = struct
           ~human_readable_description:(fun () ->
             Pp.text (Path.to_string_maybe_quoted (Path.build path)))
       in
-      (match Path.Build.Map.find targets path with
+      (match Targets.Produced.find targets path with
        | Some digest -> digest, File_target
        | None ->
          (match Cached_digest.build_file ~allow_dirs:true path with
-          | Ok digest -> digest, Dir_target { generated_file_digests = targets }
+          | Ok digest -> digest, Dir_target { targets }
           (* Must be a directory target *)
           | Error _ ->
             (* CR-someday amokhov: The most important reason we end up here is
@@ -902,12 +905,14 @@ end = struct
       | Build_under_directory_target _ ->
         let* digest, path_map = build_dir dir in
         let files =
-          Path.Build.Map.foldi path_map ~init:Path.Map.empty ~f:(fun path digest acc ->
-            let parent = Path.Build.parent_exn path |> Path.build in
-            let path = Path.build path in
-            match Path.equal parent dir && File_selector.test g path with
-            | true -> Path.Map.add_exn acc path digest
-            | false -> acc)
+          let dir = Path.as_in_build_dir_exn dir in
+          match Targets.Produced.find_dir path_map dir with
+          | Some files ->
+            Filename.Map.to_list_map files ~f:(fun file digest ->
+              Path.build (Path.Build.relative dir file), digest)
+            |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
+            |> Path.Map.of_list_exn
+          | None -> Path.Map.empty
         in
         let dirs = Path.Map.singleton dir digest in
         Memo.return (Dep.Fact.Files.make ~files ~dirs)
@@ -991,7 +996,7 @@ end = struct
   let build_dir path =
     let+ digest, kind = Memo.exec (Lazy.force build_file_memo) path in
     match kind with
-    | Dir_target { generated_file_digests } -> digest, generated_file_digests
+    | Dir_target { targets } -> digest, targets
     | File_target ->
       Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
   ;;
@@ -1054,7 +1059,7 @@ let file_exists fn =
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
-    Path.Build.Map.mem path_map (Path.as_in_build_dir_exn fn)
+    Targets.Produced.mem path_map (Path.as_in_build_dir_exn fn)
 ;;
 
 let files_of ~dir =
@@ -1071,13 +1076,9 @@ let files_of ~dir =
     let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
     let filenames =
       let dir = Path.as_in_build_dir_exn dir in
-      Path.Build.Map.keys path_map
-      |> List.filter_map ~f:(fun path ->
-        let parent = Path.Build.parent_exn path in
-        match Path.Build.equal parent dir with
-        | true -> Some (Path.Build.basename path)
-        | false -> None)
-      |> Filename.Set.of_list
+      match Targets.Produced.find_dir path_map dir with
+      | Some files -> Filename.Set.of_keys files
+      | None -> Filename.Set.empty
     in
     Filename_set.create ~dir filenames
 ;;

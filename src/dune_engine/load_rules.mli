@@ -1,7 +1,6 @@
 (** Loading build rules *)
 
 open Import
-module Action_builder := Action_builder0
 
 (** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)
 val set_current_rule_loc : (unit -> Loc.t option Memo.t) -> unit

@@ -1,7 +1,6 @@
 (** The core of the build system *)
 
 open Import
-module Action_builder := Action_builder0
 
 (** Build a file. *)
 val build_file : Path.t -> unit Memo.t

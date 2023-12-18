@@ -1,246 +1,249 @@
 open Import
-include Action_builder0
+
+type 'a eval_mode =
+  | Lazy : unit eval_mode
+  | Eager : Dep.Fact.t eval_mode
+
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxed]
+
+module Deps_or_facts = struct
+  let union : type a. a eval_mode -> a Dep.Map.t -> a Dep.Map.t -> a Dep.Map.t =
+    fun mode a b ->
+    match mode with
+    | Lazy -> Dep.Set.union a b
+    | Eager -> Dep.Facts.union a b
+  ;;
+
+  let union_all mode l = List.fold_left l ~init:Dep.Map.empty ~f:(union mode)
+end
+
+module T = struct
+  open Memo.O
+
+  module M = struct
+    type 'a t = 'a thunk
+
+    let return x = { f = (fun _mode -> Memo.return (x, Dep.Map.empty)) }
+
+    let map t ~f =
+      { f =
+          (fun mode ->
+            let+ x, deps = t.f mode in
+            f x, deps)
+      }
+    ;;
+
+    let bind t ~f =
+      { f =
+          (fun mode ->
+            let* x, deps1 = t.f mode in
+            let+ y, deps2 = (f x).f mode in
+            y, Deps_or_facts.union mode deps1 deps2)
+      }
+    ;;
+  end
+
+  include M
+
+  let both x y =
+    { f =
+        (fun mode ->
+          let+ x, deps1 = x.f mode
+          and+ y, deps2 = y.f mode in
+          (x, y), Deps_or_facts.union mode deps1 deps2)
+    }
+  ;;
+
+  let all xs =
+    { f =
+        (fun mode ->
+          let+ res = Memo.parallel_map xs ~f:(fun x -> x.f mode) in
+          let res, facts = List.split res in
+          res, Deps_or_facts.union_all mode facts)
+    }
+  ;;
+
+  let of_memo m =
+    { f =
+        (fun _mode ->
+          let+ x = m in
+          x, Dep.Map.empty)
+    }
+  ;;
+
+  module O = struct
+    let ( >>> ) a b =
+      { f =
+          (fun mode ->
+            let+ ((), deps_a), (b, deps_b) =
+              Memo.fork_and_join (fun () -> a.f mode) (fun () -> b.f mode)
+            in
+            b, Deps_or_facts.union mode deps_a deps_b)
+      }
+    ;;
+
+    let ( >>= ) t f = bind t ~f
+    let ( >>| ) t f = map t ~f
+    let ( and+ ) = both
+    let ( and* ) = both
+    let ( let+ ) t f = map t ~f
+    let ( let* ) t f = bind t ~f
+  end
+
+  module List = struct
+    include Monad.List (struct
+        include M
+        include Monad.Make (M)
+      end)
+
+    let map l ~f =
+      { f =
+          (fun mode ->
+            let+ res = Memo.parallel_map l ~f:(fun x -> (f x).f mode) in
+            let res, deps = List.split res in
+            res, Deps_or_facts.union_all mode deps)
+      }
+    ;;
+
+    let concat_map l ~f =
+      { f =
+          (fun mode ->
+            let+ res = Memo.parallel_map l ~f:(fun x -> (f x).f mode) in
+            let res, deps = List.split res in
+            List.concat res, Deps_or_facts.union_all mode deps)
+      }
+    ;;
+  end
+end
+
+include T
 open O
 
 open struct
   module List = Stdune.List
 end
 
-let register_action_deps : type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.t =
-  fun mode deps ->
-  match mode with
-  | Eager -> Build_system.build_deps deps
-  | Lazy -> Memo.return deps
-;;
+let of_thunk t = t
+let run t mode = t.f mode
 
-let dyn_memo_deps deps =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          let* deps, paths = deps in
-          let+ deps = register_action_deps mode deps in
-          paths, deps)
-    }
-;;
-
-let deps d = dyn_memo_deps (Memo.return (d, ()))
-let dep d = deps (Dep.Set.singleton d)
-
-let dyn_deps t =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          let* (x, deps), deps_x = run t mode in
-          let+ deps = register_action_deps mode deps in
-          x, Deps_or_facts.union mode deps deps_x)
-    }
-;;
-
-let path p = deps (Dep.Set.singleton (Dep.file p))
-let paths ps = deps (Dep.Set.of_files ps)
-let path_set ps = deps (Dep.Set.of_files_set ps)
-
-let paths_matching
-  : type a. File_selector.t -> a eval_mode -> (Filename_set.t * a Dep.Map.t) Memo.t
+let force_lazy_or_eager
+  : type a b.
+    a eval_mode
+    -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
+    -> (b * Dep.Facts.t) Memo.Lazy.t
+    -> (b * a Dep.Map.t) Memo.t
   =
-  fun g mode ->
-  let open Memo.O in
+  fun mode lazy_ eager ->
   match mode with
-  | Eager ->
-    let+ facts = Build_system.build_pred g in
-    ( Dep.Fact.Files.filenames_exn facts ~expected_parent:(File_selector.dir g)
-    , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g facts) )
-  | Lazy ->
-    let+ filenames = Build_system.eval_pred g in
-    filenames, Dep.Set.singleton (Dep.file_selector g)
+  | Lazy -> Memo.Lazy.force (Lazy.force lazy_)
+  | Eager -> Memo.Lazy.force eager
 ;;
 
-let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode) }
-let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
-let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files paths)
-let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
-let env_var s = deps (Dep.Set.singleton (Dep.env s))
-
-let contents =
-  let read_file =
-    Memo.exec
-      (Memo.create_with_store
-         "Action_builder.contents"
-         ~store:(module Path.Table)
-         ~input:(module Path)
-         ~cutoff:String.equal
-         (fun p -> Build_system.read_file p ~f:Io.read_file))
+let memoize ?cutoff name t =
+  let lazy_ : ('a * Dep.Set.t) Memo.Lazy.t Lazy.t =
+    lazy
+      (let cutoff =
+         Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Set.equal)
+       in
+       Memo.lazy_ ?cutoff ~name:(name ^ "(lazy)") (fun () -> t.f Lazy))
   in
-  fun p ->
-    of_thunk
-      { f =
-          (fun _mode ->
-            let open Memo.O in
-            let+ x = read_file p in
-            x, Dep.Map.empty)
-      }
+  (* Unlike [lazy_], [eager] doesn't have the outer [Lazy.t] wrapper because most [Eager]
+     nodes end up getting forced during every build. *)
+  let eager : ('a * Dep.Facts.t) Memo.Lazy.t =
+    let cutoff =
+      Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Facts.equal)
+    in
+    Memo.lazy_ ?cutoff ~name (fun () -> t.f Eager)
+  in
+  { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 ;;
 
-let lines_of p = contents p >>| String.split_lines
+let ignore x = map x ~f:ignore
 
-let read_sexp p =
-  let+ s = contents p in
-  Dune_sexp.Parser.parse_string s ~fname:(Path.to_string p) ~mode:Single
+let map2 x y ~f =
+  let+ x = x
+  and+ y = y in
+  f x y
 ;;
 
-let if_file_exists p ~then_ ~else_ =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          Build_system.file_exists p
-          >>= function
-          | true -> run then_ mode
-          | false -> run else_ mode)
-    }
+let push_stack_frame ~human_readable_description f =
+  { f =
+      (fun mode ->
+        Memo.push_stack_frame ~human_readable_description (fun () -> (f ()).f mode))
+  }
 ;;
 
-let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
-
-let paths_existing paths =
-  all_unit
-    (List.map paths ~f:(fun file ->
-       if_file_exists file ~then_:(path file) ~else_:(return ())))
+let delayed f =
+  let+ () = return () in
+  f ()
 ;;
+
+let all_unit (xs : unit t list) =
+  { f =
+      (fun mode ->
+        let open Memo.O in
+        let+ res = Memo.parallel_map xs ~f:(fun x -> x.f mode) in
+        let deps = List.map res ~f:snd in
+        (), Deps_or_facts.union_all mode deps)
+  }
+;;
+
+type fail = { fail : 'a. unit -> 'a }
 
 let fail x =
   let+ () = return () in
   x.fail ()
 ;;
 
-(* CR-someday amokhov: The set of targets is accumulated using information from
-   multiple sources by calling [Targets.combine], which performs set union and
-   hence duplicate declarations of the very same target can go unnoticed. I
-   think such redeclarations are not erroneous but are merely redundant; perhaps
-   we should detect and disallow them. *)
-module With_targets = struct
-  type nonrec 'a t =
-    { build : 'a t
-    ; targets : Targets.t
-    }
+type ('input, 'output) memo =
+  { lazy_ : ('input, 'output * Dep.Set.t) Memo.Table.t Lazy.t
+  ; eager : ('input, 'output * Dep.Facts.t) Memo.Table.t Lazy.t
+  }
 
-  let map_build t ~f = { t with build = f t.build }
-  let return x = { build = return x; targets = Targets.empty }
-
-  let add t ~file_targets =
-    { build = t.build
-    ; targets =
-        Targets.combine
-          t.targets
-          (Targets.Files.create (Path.Build.Set.of_list file_targets))
-    }
-  ;;
-
-  let add_directories t ~directory_targets =
-    { build = t.build
-    ; targets =
-        Targets.combine
-          t.targets
-          (Targets.create
-             ~dirs:(Path.Build.Set.of_list directory_targets)
-             ~files:Path.Build.Set.empty)
-    }
-  ;;
-
-  let map { build; targets } ~f = { build = map build ~f; targets }
-
-  let map2 x y ~f =
-    { build = map2 x.build y.build ~f; targets = Targets.combine x.targets y.targets }
-  ;;
-
-  let both x y =
-    { build = both x.build y.build; targets = Targets.combine x.targets y.targets }
-  ;;
-
-  let seq x y =
-    { build = x.build >>> y.build; targets = Targets.combine x.targets y.targets }
-  ;;
-
-  module O = struct
-    let ( >>> ) = seq
-    let ( >>| ) t f = map t ~f
-    let ( and+ ) = both
-    let ( let+ ) a f = map ~f a
-  end
-
-  open O
-
-  let all xs =
-    match xs with
-    | [] -> return []
-    | xs ->
-      let build, targets =
-        List.fold_left xs ~init:([], Targets.empty) ~f:(fun (builds, targets) x ->
-          x.build :: builds, Targets.combine x.targets targets)
-      in
-      { build = all (List.rev build); targets }
-  ;;
-
-  let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
-    add
-      ~file_targets:[ fn ]
-      (let+ s = s in
-       Action.Full.make (Action.Write_file (fn, perm, s)))
-  ;;
-
-  let memoize name t = { build = memoize name t.build; targets = t.targets }
-end
-
-let with_targets build ~targets : _ With_targets.t = { build; targets }
-
-let with_file_targets build ~file_targets : _ With_targets.t =
-  { build; targets = Targets.Files.create (Path.Build.Set.of_list file_targets) }
+let create_memo name ~input ?cutoff ?human_readable_description f =
+  let lazy_ =
+    lazy
+      (let cutoff =
+         Option.map cutoff ~f:(fun f (a, deps1) (b, deps2) ->
+           f a b && Dep.Set.equal deps1 deps2)
+       in
+       let name = name ^ "(lazy)" in
+       Memo.create name ~input ?cutoff ?human_readable_description (fun x -> (f x).f Lazy))
+  and eager =
+    lazy
+      (let cutoff =
+         Option.map cutoff ~f:(fun f (a, facts1) (b, facts2) ->
+           f a b && Dep.Map.equal facts1 facts2 ~equal:Dep.Fact.equal)
+       in
+       Memo.create name ~input ?cutoff ?human_readable_description (fun x ->
+         (f x).f Eager))
+  in
+  { lazy_; eager }
 ;;
 
-let with_no_targets build : _ With_targets.t = { build; targets = Targets.empty }
-
-let write_file ?(perm = Action.File_perm.Normal) fn s =
-  with_file_targets
-    ~file_targets:[ fn ]
-    (return (Action.Full.make (Action.Write_file (fn, perm, s))))
+let exec_memo : type i o m. (i, o) memo -> i -> m eval_mode -> (o * m Dep.Map.t) Memo.t =
+  fun memo i mode ->
+  match mode with
+  | Lazy -> Memo.exec (Lazy.force memo.lazy_) i
+  | Eager -> Memo.exec (Lazy.force memo.eager) i
 ;;
 
-let write_file_dyn ?(perm = Action.File_perm.Normal) fn s =
-  with_file_targets
-    ~file_targets:[ fn ]
-    (let+ s = s in
-     Action.Full.make (Action.Write_file (fn, perm, s)))
+let exec_memo m i = { f = (fun mode -> exec_memo m i mode) }
+
+let goal t =
+  { f =
+      (fun mode ->
+        let open Memo.O in
+        let+ a, (_irrelevant_for_goals : _ Dep.Map.t) = t.f mode in
+        a, Dep.Map.empty)
+  }
 ;;
 
-let with_stdout_to ?(perm = Action.File_perm.Normal) fn t =
-  with_targets
-    ~targets:(Targets.File.create fn)
-    (let+ (act : Action.Full.t) = t in
-     Action.Full.map act ~f:(Action.with_stdout_to ~perm fn))
-;;
-
-let copy ~src ~dst =
-  with_file_targets
-    ~file_targets:[ dst ]
-    (path src >>> return (Action.Full.make (Action.Copy (src, dst))))
-;;
-
-let symlink ~src ~dst =
-  with_file_targets
-    ~file_targets:[ dst ]
-    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
-;;
-
-let symlink_dir ~src ~dst =
-  with_targets
-    ~targets:
-      (Targets.create ~files:Path.Build.Set.empty ~dirs:(Path.Build.Set.singleton dst))
-    (path src >>> return (Action.Full.make (Action.Symlink (src, dst))))
-;;
-
-let progn ts =
-  let open With_targets.O in
-  With_targets.all ts >>| Action.Full.reduce
+let of_memo_join f =
+  { f =
+      (fun mode ->
+        let open Memo.O in
+        let* t = f in
+        t.f mode)
+  }
 ;;

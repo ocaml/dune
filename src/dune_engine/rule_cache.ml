@@ -218,10 +218,10 @@ module Workspace_local = struct
 end
 
 module Shared = struct
-  let lookup ~can_go_in_shared_cache ~rule_digest ~targets ~target_dir =
+  let lookup ~can_go_in_shared_cache ~rule_digest ~targets =
     let config = Build_config.get () in
     let module Shared_cache = (val config.shared_cache) in
-    Shared_cache.lookup ~can_go_in_shared_cache ~rule_digest ~targets ~target_dir
+    Shared_cache.lookup ~can_go_in_shared_cache ~rule_digest ~targets
   ;;
 
   let examine_targets_and_store

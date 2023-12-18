@@ -222,13 +222,15 @@ let exec_run_dynamic_client ~display ~ectx ~eenv prog args =
       match ectx.targets with
       | None -> String.Set.empty
       | Some targets ->
-        if not (Path.Build.Set.is_empty targets.dirs)
+        if not (Filename.Set.is_empty targets.dirs)
         then
           User_error.raise
             ~loc:ectx.rule_loc
             [ Pp.text "Directory targets are not compatible with dynamic actions" ];
-        Path.Build.Set.to_list_map targets.files ~f:(fun target ->
-          Path.reach (Path.build target) ~from:eenv.working_dir)
+        Filename.Set.to_list_map targets.files ~f:(fun target ->
+          Path.Build.relative targets.root target
+          |> Path.build
+          |> Path.reach ~from:eenv.working_dir)
         |> String.Set.of_list
     in
     { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies; targets }

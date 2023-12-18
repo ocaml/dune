@@ -253,17 +253,15 @@ end = struct
       =
       action
     in
-    let file_targets =
-      Path.Build.Set.to_list_map rule.targets.files ~f:Path.Build.to_string
-    in
-    let dir_targets =
-      Path.Build.Set.to_list_map rule.targets.dirs ~f:Path.Build.to_string
+    let target_paths names =
+      Filename.Set.to_list_map names ~f:(fun name ->
+        Path.Build.relative rule.targets.root name |> Path.Build.to_string)
     in
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , sandbox_mode
       , Dep.Facts.digest deps ~env
-      , file_targets @ dir_targets
+      , target_paths rule.targets.files @ target_paths rule.targets.dirs
       , Action.for_shell action
       , can_go_in_shared_cache
       , List.map locks ~f:Path.to_string
@@ -324,7 +322,6 @@ end = struct
     ~loc
     ~execution_parameters
     ~sandbox_mode
-    ~dir
     ~(targets : Targets.Validated.t)
     : Exec_result.t Fiber.t
     =
@@ -340,7 +337,7 @@ end = struct
           Sandbox.create
             ~mode
             ~deps
-            ~rule_dir:dir
+            ~rule_dir:targets.root
             ~rule_loc:loc
             ~rule_digest
             ~dune_stats
@@ -376,7 +373,7 @@ end = struct
         Action.chdirs action
         |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
     in
-    let context = Build_context.of_build_path dir in
+    let context = Build_context.of_build_path targets.root in
     let root =
       match context with
       | None -> Path.Build.root
@@ -444,7 +441,7 @@ end = struct
   ;;
 
   let execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; dir; mode; action; info = _; loc } = rule in
+    let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every
@@ -452,11 +449,13 @@ end = struct
     let* () = Memo.of_reproducible_fiber (State.start_rule_exn ()) in
     let head_target = Targets.Validated.head targets in
     let* execution_parameters =
-      match Dpath.Target_dir.of_target dir with
+      match Dpath.Target_dir.of_target targets.root with
       | Regular (With_context (_, _)) | Anonymous_action (With_context (_, _)) ->
-        (Build_config.get ()).execution_parameters ~dir
+        (Build_config.get ()).execution_parameters ~dir:targets.root
       | Anonymous_action Root | Regular Root | Invalid _ ->
-        Code_error.raise "invalid dir for rule execution" [ "dir", Path.Build.to_dyn dir ]
+        Code_error.raise
+          "invalid dir for rule execution"
+          [ "dir", Path.Build.to_dyn targets.root ]
     in
     (* Note: we do not run the below in parallel with the above: if we fail to
        compute action execution parameters, we have no use for the action and
@@ -481,7 +480,9 @@ end = struct
     wrap_fiber (fun () ->
       let open Fiber.O in
       report_evaluated_rule_exn config;
-      let* () = maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build dir)) in
+      let* () =
+        maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build targets.root))
+      in
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
         select_sandbox_mode
@@ -519,7 +520,7 @@ end = struct
       (* CR-someday amokhov: Add support for rules with directory targets. *)
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
-        && Path.Build.Set.is_empty targets.dirs
+        && Filename.Set.is_empty targets.dirs
         && (not
               (always_rerun
                || is_action_dynamic
@@ -545,21 +546,21 @@ end = struct
           (* Step II. Remove stale targets both from the digest table and from
              the build directory. *)
           let () =
-            Path.Build.Set.iter targets.files ~f:Cached_digest.remove;
-            Path.Build.Set.iter targets.dirs ~f:Cached_digest.remove
+            Targets.Validated.iter
+              targets
+              ~file:Cached_digest.remove
+              ~dir:Cached_digest.remove
           in
           let* () =
             maybe_async_rule_file_op (fun () ->
-              Path.Build.Set.iter targets.files ~f:Path.Build.unlink_no_err;
-              Path.Build.Set.iter targets.dirs ~f:(fun dir -> Path.rm_rf (Path.build dir)))
+              Targets.Validated.iter
+                targets
+                ~file:Path.Build.unlink_no_err
+                ~dir:(fun dir -> Path.rm_rf (Path.build dir)))
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)
-            Rule_cache.Shared.lookup
-              ~can_go_in_shared_cache
-              ~rule_digest
-              ~targets
-              ~target_dir:rule.dir
+            Rule_cache.Shared.lookup ~can_go_in_shared_cache ~rule_digest ~targets
             >>= function
             | Some produced_targets ->
               (* Rules with dynamic deps can't be stored to the shared cache
@@ -581,7 +582,6 @@ end = struct
                   ~loc
                   ~execution_parameters
                   ~sandbox_mode
-                  ~dir
                   ~targets
               in
               (* Step V. Examine produced targets and store them to the shared
@@ -615,7 +615,7 @@ end = struct
       let* () =
         promote_targets
           ~rule_mode:mode
-          ~dir
+          ~dir:targets.root
           ~targets:produced_targets
           ~promote_source:config.promote_source
       in
@@ -823,7 +823,9 @@ end = struct
               Path.Build.drop_build_context_exn path |> Path.Source.to_string_maybe_quoted
             in
             let matching_dirs =
-              Path.Build.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
+              Filename.Set.to_list_map rule.targets.dirs ~f:(fun dir ->
+                (* CR-someday rleshchinskiy: This test can probably be simplified. *)
+                let dir = Path.Build.relative rule.targets.root dir in
                 match Path.Build.is_descendant path ~of_:dir with
                 | true -> [ dir ]
                 | false -> [])

@@ -40,21 +40,11 @@ let head { files; dirs } =
   | None -> Path.Build.Set.choose dirs
 ;;
 
-let head_exn t =
-  match head t with
-  | Some target -> target
-  | None -> Code_error.raise "Targets.head_exn applied to empty set of targets" []
-;;
-
 let to_dyn { files; dirs } =
   Dyn.Record [ "files", Path.Build.Set.to_dyn files; "dirs", Path.Build.Set.to_dyn dirs ]
 ;;
 
 let all { files; dirs } = Path.Build.Set.to_list files @ Path.Build.Set.to_list dirs
-
-let exists { files; dirs } ~f =
-  Path.Build.Set.exists files ~f || Path.Build.Set.exists dirs ~f
-;;
 
 let iter { files; dirs } ~file ~dir =
   Path.Build.Set.iter files ~f:file;
@@ -62,57 +52,110 @@ let iter { files; dirs } ~file ~dir =
 ;;
 
 module Validated = struct
+  type unvalidated = t
+
   (* CR-soon amokhov: Represent these path sets more efficiently, e.g., by a map from the
      parent directory to the corresponding [Filename.Set.t] so that [target_names_in_dir]
      could be implemented without traversing the whole set. *)
-  type nonrec t = t =
-    { files : Path.Build.Set.t
-    ; dirs : Path.Build.Set.t
+  type nonrec t =
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
     }
 
-  let to_dyn = to_dyn
-  let head = head_exn
-  let unvalidate t = t
-
-  let target_names_in_dir ~dir paths =
-    Path.Build.Set.to_list paths
-    |> List.filter_map ~f:(fun path ->
-      (* Root can't be a target, so this can't raise. *)
-      match Path.Build.equal dir (Path.Build.parent_exn path) with
-      | false -> None
-      | true ->
-        (* CR-someday amokhov: Add [Path.Build.split] and use it here to avoid repeating
-           the same work in [Path.Build.parent_exn] and [Path.Build.basename]. *)
-        Some (Path.Build.basename path))
-    |> Filename.Set.of_list
+  let iter { root; files; dirs } ~file ~dir =
+    Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative root fn));
+    Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative root dn))
   ;;
 
-  let filenames { files; dirs = _ } ~dir = target_names_in_dir ~dir files
-  let dirnames { files = _; dirs } ~dir = target_names_in_dir ~dir dirs
+  let fold { root; files; dirs } ~init ~file ~dir =
+    let acc =
+      Filename.Set.fold files ~init ~f:(fun fn -> file (Path.Build.relative root fn))
+    in
+    Filename.Set.fold dirs ~init:acc ~f:(fun dn -> dir (Path.Build.relative root dn))
+  ;;
+
+  let head { root; files; dirs } =
+    let name =
+      match Filename.Set.choose files with
+      | Some name -> name
+      | None ->
+        (match Filename.Set.choose dirs with
+         | Some name -> name
+         | None -> assert false)
+    in
+    Path.Build.relative root name
+  ;;
+
+  let unvalidate t : unvalidated =
+    { files =
+        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.files)
+    ; dirs =
+        Path.Build.Set.of_listing ~dir:t.root ~filenames:(Filename.Set.to_list t.dirs)
+    }
+  ;;
+
+  let to_dyn { root; files; dirs } =
+    Dyn.Record
+      [ "root", Path.Build.to_dyn root
+      ; "files", Filename.Set.to_dyn files
+      ; "dirs", Filename.Set.to_dyn dirs
+      ]
+  ;;
+
+  let to_trace_args { root; files; dirs } =
+    let mkset s xs =
+      if Filename.Set.is_empty xs
+      then []
+      else
+        [ ( s
+          , `List
+              (Filename.Set.to_list_map xs ~f:(fun x ->
+                 `String (Path.Build.relative root x |> Path.Build.to_string))) )
+        ]
+    in
+    mkset "target_files" files @ mkset "target_dirs" dirs
+  ;;
 end
 
 module Validation_result = struct
   type t =
-    | Valid of
-        { parent_dir : Path.Build.t
-        ; targets : Validated.t
-        }
+    | Valid of Validated.t
     | No_targets
     | Inconsistent_parent_dir
     | File_and_directory_target_with_the_same_name of Path.Build.t
 end
 
-let validate t =
-  match is_empty t with
-  | true -> Validation_result.No_targets
-  | false ->
-    (match Path.Build.Set.inter t.files t.dirs |> Path.Build.Set.choose with
-     | Some path -> File_and_directory_target_with_the_same_name path
-     | None ->
-       let parent_dir = Path.Build.parent_exn (head_exn t) in
-       (match exists t ~f:(fun path -> Path.Build.(parent_exn path <> parent_dir)) with
-        | true -> Inconsistent_parent_dir
-        | false -> Valid { parent_dir; targets = t }))
+let validate { files; dirs } =
+  let add_file (t : Validated.t) name =
+    Validation_result.Valid { t with files = Filename.Set.add t.files name }
+  in
+  let add_dir (t : Validated.t) name =
+    if Filename.Set.mem t.files name
+    then
+      Validation_result.File_and_directory_target_with_the_same_name
+        (Path.Build.relative t.root name)
+    else Valid { t with dirs = Filename.Set.add t.dirs name }
+  in
+  let build (init : Validation_result.t) ~paths ~f =
+    Path.Build.Set.fold paths ~init ~f:(fun path res ->
+      let parent = Path.Build.parent_exn path in
+      let name = Path.Build.basename path in
+      match res with
+      | No_targets ->
+        let t =
+          { Validated.root = parent
+          ; files = Filename.Set.empty
+          ; dirs = Filename.Set.empty
+          }
+        in
+        f t name
+      | Valid t when Path.Build.equal t.root parent -> f t name
+      | Valid _ -> Inconsistent_parent_dir
+      | (Inconsistent_parent_dir | File_and_directory_target_with_the_same_name _) as res
+        -> res)
+  in
+  build No_targets ~paths:files ~f:add_file |> build ~paths:dirs ~f:add_dir
 ;;
 
 module Produced = struct
@@ -196,17 +239,26 @@ module Produced = struct
         then Path.Build.Map.add_exn dirs dir filenames
         else dirs
     in
-    let directory dir =
+    let directory root dir =
       let open Result.O in
+      let dir = Path.Build.relative root dir in
       let* files = collect dir in
       if Path.Build.Map.is_empty files then Error (Empty_dir dir) else Ok files
     in
     fun (validated : Validated.t) ->
-      match Path.Build.Set.to_list_map validated.dirs ~f:directory |> Result.List.all with
+      match
+        Filename.Set.to_list validated.dirs
+        |> Result.List.map ~f:(directory validated.root)
+      with
       | Error _ as error -> error
       | Ok dirs ->
         let files =
-          Path.Build.Set.to_map validated.files ~f:(fun (_ : Path.Build.t) -> ())
+          (* CR-someday rleshchinskiy: Check if the files actually exist here. Currently,
+             we check this here for directory targets but for files, the check is done by
+             the cache. *)
+          Filename.Set.to_list validated.files
+          |> Path.Build.Map.of_list_map_exn ~f:(fun file ->
+            Path.Build.relative validated.root file, ())
         in
         (* The [union_exn] below can't raise because each map in [dirs] contains
            unique keys, which are paths rooted at the corresponding [dir]s. *)

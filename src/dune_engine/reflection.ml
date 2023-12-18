@@ -5,7 +5,6 @@ open Memo.O
 module Rule = struct
   type t =
     { id : Rule.Id.t
-    ; dir : Path.Build.t
     ; deps : Dep.Set.t
     ; expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t
@@ -67,7 +66,6 @@ let evaluate_rule =
         let* expanded_deps = Expand.deps deps in
         Memo.return
           { Rule.id = rule.id
-          ; dir = rule.dir
           ; deps
           ; expanded_deps
           ; targets = rule.targets

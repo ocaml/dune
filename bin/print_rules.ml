@@ -30,16 +30,22 @@ let info = Cmd.info "rules" ~doc ~man
 let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
   let action =
     Action.For_shell.Progn
-      [ Mkdir (Path.to_string (Path.build rule.dir)); Action.for_shell rule.action ]
+      [ Mkdir (Path.to_string (Path.build rule.targets.root))
+      ; Action.for_shell rule.action
+      ]
   in
   (* Makefiles seem to allow directory targets, so we include them. *)
-  let targets = Path.Build.Set.union rule.targets.files rule.targets.dirs in
+  let targets =
+    Filename.Set.union rule.targets.files rule.targets.dirs
+    |> Filename.Set.to_list_map ~f:(fun basename ->
+      Path.Build.relative rule.targets.root basename |> Path.build)
+  in
   Format.fprintf
     ppf
     "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}\n"
     (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
        Format.pp_print_string ppf (Path.to_string p)))
-    (List.map ~f:Path.build (Path.Build.Set.to_list targets))
+    targets
     (fun ppf ->
       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
         Format.fprintf ppf "@ %s" (Path.to_string dep)))
@@ -115,8 +121,11 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action = Action.for_shell action |> encode in
   let paths ps =
     Dune_lang.Encoder.list
-      (fun p -> Dune_sexp.atom_or_quoted_string (Path.Build.to_string p))
-      (Path.Build.Set.to_list ps)
+      (fun p ->
+        Path.Build.relative rule.targets.root p
+        |> Path.Build.to_string
+        |> Dune_sexp.atom_or_quoted_string)
+      (Filename.Set.to_list ps)
   in
   let sexp =
     Dune_lang.Encoder.record
@@ -128,7 +137,7 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
                  ; "directories", paths rule.targets.dirs
                  ] )
            ]
-         ; (match Path.Build.extract_build_context rule.dir with
+         ; (match Path.Build.extract_build_context rule.targets.root with
             | None -> []
             | Some (c, _) -> [ "context", Dune_sexp.atom_or_quoted_string c ])
          ; [ "action", sexp_of_action rule.action ]

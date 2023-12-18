@@ -35,9 +35,19 @@ module Validated : sig
   (** A rule can produce a set of files whose names are known upfront, as well
       as a set of "opaque" directories whose contents is initially unknown. *)
   type t = private
-    { files : Path.Build.Set.t
-    ; dirs : Path.Build.Set.t
+    { root : Path.Build.t
+    ; files : Filename.Set.t
+    ; dirs : Filename.Set.t
     }
+
+  val iter : t -> file:(Path.Build.t -> unit) -> dir:(Path.Build.t -> unit) -> unit
+
+  val fold
+    :  t
+    -> init:'acc
+    -> file:(Path.Build.t -> 'acc -> 'acc)
+    -> dir:(Path.Build.t -> 'acc -> 'acc)
+    -> 'acc
 
   (** If [t] contains at least one file, then it's the lexicographically first
       target file. Otherwise, it's the lexicographically first target directory. *)
@@ -45,20 +55,12 @@ module Validated : sig
 
   val to_dyn : t -> Dyn.t
   val unvalidate : t -> unvalidated
-
-  (** The set of target filenames in a specified [dir]. *)
-  val filenames : t -> dir:Path.Build.t -> Filename.Set.t
-
-  (** The set of target dirnames in a specified [dir]. *)
-  val dirnames : t -> dir:Path.Build.t -> Filename.Set.t
+  val to_trace_args : t -> (string * Chrome_trace.Json.t) list
 end
 
 module Validation_result : sig
   type t =
-    | Valid of
-        { parent_dir : Path.Build.t
-        ; targets : Validated.t
-        }
+    | Valid of Validated.t
     | No_targets
     | Inconsistent_parent_dir
     | File_and_directory_target_with_the_same_name of Path.Build.t

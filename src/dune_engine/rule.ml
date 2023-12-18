@@ -58,7 +58,6 @@ module T = struct
     ; mode : Mode.t
     ; info : Info.t
     ; loc : Loc.t
-    ; dir : Path.Build.t
     }
 
   let compare a b = Id.compare a.id b.id
@@ -83,11 +82,9 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
         message
         [ "info", Info.to_dyn info; "targets", Targets.to_dyn targets ]
   in
-  (* CR-someday amokhov: Since [dir] and [targets] are produced together and are
-     logically related, we could make [dir] a field of [Targets.Validated.t]. *)
-  let dir, targets =
+  let targets =
     match Targets.validate targets with
-    | Valid { parent_dir; targets } -> parent_dir, targets
+    | Valid targets -> targets
     | No_targets -> report_error "Rule has no targets specified"
     | Inconsistent_parent_dir ->
       (* user written actions have their own validation step that also works
@@ -107,10 +104,10 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
     | Internal ->
       Loc.in_file
         (Path.drop_optional_build_context
-           (Path.build (Path.Build.relative dir "_unknown_")))
+           (Path.build (Path.Build.relative targets.root "_unknown_")))
     | Source_file_copy p -> Loc.in_file (Path.source p)
   in
-  { id = Id.gen (); targets; action; mode; info; loc; dir }
+  { id = Id.gen (); targets; action; mode; info; loc }
 ;;
 
 let set_action t action =

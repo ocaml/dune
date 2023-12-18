@@ -201,7 +201,7 @@ end = struct
              | None -> []
              | Some targets ->
                (* CR-someday amokhov: Do not ignore directory targets. *)
-               Path.Build.Set.to_list_map targets.files ~f:Path.Build.basename)
+               Filename.Set.to_list targets.files)
           | Copy_files.T def ->
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             >>| Path.Set.to_list_map ~f:Path.basename

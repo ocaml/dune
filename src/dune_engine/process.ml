@@ -390,13 +390,18 @@ end = struct
              split_paths ("(internal)" :: targets_acc) (add_ctx ctx ctxs_acc) rest)
       in
       let target_names, contexts =
-        let file_targets, directory_targets =
+        let targets =
           match targets with
-          | None -> [], []
+          | None -> []
           | Some targets ->
-            Path.Build.Set.to_list targets.files, Path.Build.Set.to_list targets.dirs
+            Targets.Validated.fold
+              targets
+              ~init:[]
+              ~file:(fun path acc -> path :: acc)
+              ~dir:(fun dir acc -> dir :: acc)
+            |> List.rev
         in
-        split_paths [] Context_name.Set.empty (file_targets @ directory_targets)
+        split_paths [] Context_name.Set.empty targets
       in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
@@ -809,15 +814,7 @@ let report_process_finished
         match metadata.purpose with
         | Internal_job -> []
         | Build_job None -> []
-        | Build_job (Some { files; dirs }) ->
-          let mkset s xs =
-            match
-              Path.Build.Set.to_list_map ~f:(fun x -> `String (Path.Build.to_string x)) xs
-            with
-            | [] -> []
-            | xs -> [ s, `List xs ]
-          in
-          [ "targets", `Assoc (mkset "files" files @ mkset "dirs" dirs) ]
+        | Build_job (Some targets) -> Targets.Validated.to_trace_args targets
       in
       let exit =
         match exit_status with

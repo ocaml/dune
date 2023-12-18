@@ -4,6 +4,7 @@ Packages can export environment variables
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (exported_env
   >  (= FOO bar)
   >  (= BAR xxx)

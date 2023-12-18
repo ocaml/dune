@@ -78,6 +78,7 @@ Now we finally make the OCaml package for testing through the lock file:
   > (ocaml mycaml)
   > EOF
   $ cat >dune.lock/mycaml.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/mycamlsources))
   > (build
   >  (system "\| cat >mycaml.install <<EOF

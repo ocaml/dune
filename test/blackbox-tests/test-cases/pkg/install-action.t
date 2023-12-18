@@ -4,6 +4,7 @@ Testing install actions
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
+  > (version 0.0.1)
   > (install (system "echo foobar; mkdir -p %{lib}; touch %{lib}/xxx"))
   > EOF
 

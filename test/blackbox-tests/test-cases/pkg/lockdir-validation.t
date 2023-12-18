@@ -7,27 +7,31 @@ package graph then it's caught when loading the lockdir.
   $ make_lockdir
 
   $ cat >dune.lock/a.pkg <<EOF
+  > (version 0.0.1)
   > (deps b)
   > EOF
   $ cat >dune.lock/b.pkg <<EOF
+  > (version 0.0.1)
   > (deps c)
   > EOF
   $ cat >dune.lock/c.pkg <<EOF
+  > (version 0.0.1)
   > (deps a)
   > EOF
 
   $ dune describe pkg lock
   Contents of dune.lock:
-  - a.dev
-  - b.dev
-  - c.dev
+  - a.0.0.1
+  - b.0.0.1
+  - c.0.0.1
 
   $ cat >dune.lock/c.pkg <<EOF
+  > (version 0.0.1)
   > (deps a d)
   > EOF
 
   $ dune describe pkg lock
-  File "dune.lock/c.pkg", line 1, characters 8-9:
+  File "dune.lock/c.pkg", line 2, characters 8-9:
   The package "c" depends on the package "d", but "d" does not appear in the
   lockdir dune.lock.
   Error: At least one package dependency is itself not present as a package in
@@ -39,10 +43,10 @@ package graph then it's caught when loading the lockdir.
   $ rm dune.lock/a.pkg
 
   $ dune describe pkg lock
-  File "dune.lock/c.pkg", line 1, characters 6-7:
+  File "dune.lock/c.pkg", line 2, characters 6-7:
   The package "c" depends on the package "a", but "a" does not appear in the
   lockdir dune.lock.
-  File "dune.lock/c.pkg", line 1, characters 8-9:
+  File "dune.lock/c.pkg", line 2, characters 8-9:
   The package "c" depends on the package "d", but "d" does not appear in the
   lockdir dune.lock.
   Error: At least one package dependency is itself not present as a package in

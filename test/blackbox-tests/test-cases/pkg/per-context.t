@@ -21,6 +21,7 @@ TODO: versioning will be added once this feature is stable
   > (repositories (complete true))
   > EOF
   $ cat >foo.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (build
   >  (system "echo building from %{context_name}"))
   > EOF

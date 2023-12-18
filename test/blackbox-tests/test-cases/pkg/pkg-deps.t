@@ -8,6 +8,7 @@ We should be able to specify (package ..) deps on locally built packages.
 
   $ make_lockdir
   $ cat >dune.lock/foo.pkg <<EOF
+  > (version 0.0.1)
   > (install
   >  (progn
   >   (run mkdir -p %{prefix}/bin)
@@ -46,6 +47,7 @@ Now we define the external package using a dune project:
   > EOF
 
   $ cat >dune.lock/foo.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/external_sources))
   > (build (run dune build @install --promote-install-files))
   > EOF

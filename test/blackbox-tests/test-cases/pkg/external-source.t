@@ -7,6 +7,7 @@ Test that can fetch the sources from an external dir
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<EOF
+  > (version 0.0.1)
   > (source (copy $PWD/foo))
   > (build
   >  (progn

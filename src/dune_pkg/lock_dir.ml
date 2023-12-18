@@ -262,8 +262,7 @@ module Pkg = struct
     let open Decoder in
     enter
     @@ fields
-    @@ let+ version =
-         field ~default:Pkg_info.default_version Fields.version Package_version.decode
+    @@ let+ version = field Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
        and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))

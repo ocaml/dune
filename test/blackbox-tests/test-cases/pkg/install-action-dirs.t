@@ -4,6 +4,7 @@ Install actions should have the switch directory prepared:
 
   $ make_lockdir
   $ cat >dune.lock/test.pkg <<'EOF'
+  > (version 0.0.1)
   > (install (system "find %{prefix} | sort"))
   > EOF
 

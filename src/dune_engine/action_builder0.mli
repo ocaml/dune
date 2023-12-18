@@ -73,11 +73,6 @@ val of_memo : 'a Memo.t -> 'a t
 (** Like [of_memo] but collapses the two levels of [t]. *)
 val of_memo_join : 'a t Memo.t -> 'a t
 
-(** If you're thinking of using [Process.run] here, check that: (i) you don't in
-    fact need [Command.run], and that (ii) [Process.run] only reads the declared
-    build rule dependencies. *)
-val dyn_of_memo : 'a Memo.t t -> 'a t
-
 (** {1 Execution} *)
 
 (** Evaluation mode.

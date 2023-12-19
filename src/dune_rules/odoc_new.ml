@@ -1321,8 +1321,13 @@ module Index_tree = struct
            ; Sub_dir "baz", Br (<foo.baz info>, [])
      ])])])
   *)
-  type info =
+  type artifact_info =
     { artifacts : Artifact.t list
+    ; compile_libs : Lib.t list
+    }
+
+  type info =
+    { artifact_sets : artifact_info list
     ; predefined_index : Path.t option
     ; libs : Artifact.t list Lib.Map.t
     ; package : Package.Name.t option
@@ -1330,6 +1335,11 @@ module Index_tree = struct
     }
 
   type 'a t = Br of 'a * (Index.ty * 'a t) list
+
+  let all_artifacts info =
+    List.fold_left ~init:[] info.artifact_sets ~f:(fun acc x ->
+      List.rev_append x.artifacts acc)
+  ;;
 
   let of_index_list ~empty ~combine indexes =
     let cmp x (y, _) = Index.compare_ty x y = Eq in
@@ -1354,7 +1364,7 @@ module Index_tree = struct
 
   let of_index_info =
     let empty =
-      { artifacts = []
+      { artifact_sets = []
       ; predefined_index = None
       ; libs = Lib.Map.empty
       ; package = None
@@ -1366,7 +1376,7 @@ module Index_tree = struct
       let libs = Lib.Map.union x.libs y.libs ~f:(fun _lib x _y -> Some x) in
       let package = Option.first_some x.package y.package in
       let is_fallback = x.is_fallback || y.is_fallback in
-      { artifacts = x.artifacts @ y.artifacts
+      { artifact_sets = x.artifact_sets @ y.artifact_sets
       ; predefined_index
       ; libs
       ; package
@@ -1405,7 +1415,7 @@ let index_info_of_pkg_def =
     let pkg_index_info =
       ( index
       , { Index_tree.libs = Lib.Map.empty
-        ; artifacts = main_artifacts
+        ; artifact_sets = [ { artifacts = main_artifacts; compile_libs = [] } ]
         ; predefined_index = main_index_path
         ; package = Some pkg_name
         ; is_fallback = false
@@ -1485,7 +1495,7 @@ let index_info_of_lib_def =
     let lib_index_info =
       ( index
       , { Index_tree.libs
-        ; artifacts
+        ; artifact_sets = [ { artifacts; compile_libs = [ lib ] } ]
         ; predefined_index = None
         ; package
         ; is_fallback = false
@@ -1498,7 +1508,7 @@ let index_info_of_lib_def =
       let pkg_index_info =
         ( pkg_index
         , { Index_tree.libs
-          ; artifacts = []
+          ; artifact_sets = []
           ; predefined_index = None
           ; package = Some pkg
           ; is_fallback = false
@@ -1537,6 +1547,7 @@ let index_info_of_external_fallback_def =
               Lib.name lib |> Lib_name.to_string <> "threads")
           else libs
         in
+        let compile_libs = Lib_name.Map.to_list_map libs ~f:(fun _ l -> l) in
         let libs =
           Lib_name.Map.fold libs ~init:Lib.Map.empty ~f:(fun lib map ->
             match Lib.Map.add map lib [] with
@@ -1544,7 +1555,7 @@ let index_info_of_external_fallback_def =
             | Error _ -> map)
         in
         ( index
-        , { Index_tree.artifacts
+        , { Index_tree.artifact_sets = [ { artifacts; compile_libs } ]
           ; libs
           ; predefined_index = None
           ; package = None
@@ -1677,7 +1688,7 @@ let default_index index tree entry_modules =
     |> List.iter ~f:(fun i ->
       Printf.bprintf b "- {{!page-\"%s\"}%s}\n" (Index.mld_name i) (Index.mld_name i)));
   if info.is_fallback
-  then fallback_index_contents b entry_modules info.artifacts
+  then fallback_index_contents b entry_modules (Index_tree.all_artifacts info)
   else standard_index_contents b entry_modules;
   Buffer.contents b
 ;;
@@ -1780,13 +1791,14 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
         | [] -> None
         | _ :: idx -> Some (Artifact.index ctx ~all idx)
       in
+      let all_artifacts = Index_tree.all_artifacts ii in
       compile_mld
         sctx
         mld
         ~quiet
         ~parent_opt
         ~is_index:true
-        ~children:(extra_children @ ii.artifacts)
+        ~children:(extra_children @ all_artifacts)
     and* () =
       let libs = Lib.Map.keys ii.libs in
       let package = ii.package in
@@ -1806,13 +1818,14 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
         in
         List.map all_descendent_indices ~f:(Artifact.index ctx ~all)
       in
+      let all_artifacts = Index_tree.all_artifacts ii in
       link_odoc_rules
         sctx
         ~all
         [ mld ]
         ~package
         ~libs
-        ~indices:(all_descendent_artifacts @ ii.artifacts)
+        ~indices:(all_descendent_artifacts @ all_artifacts)
         ~quiet
     in
     Memo.parallel_iter ~f:(fun (x, tree) -> inner (x :: index) tree) children
@@ -1826,7 +1839,8 @@ let hierarchical_html_rules sctx all tree =
     let* dirs = dirs in
     let artifacts =
       let index_artifact = Artifact.index ctx ~all:true index in
-      List.filter ~f:Artifact.is_visible (index_artifact :: ii.artifacts)
+      let all_artifacts = Index_tree.all_artifacts ii in
+      List.filter ~f:Artifact.is_visible (index_artifact :: all_artifacts)
     in
     let* new_dirs =
       Memo.List.filter_map artifacts ~f:(fun a -> html_generate sctx true a)
@@ -1848,18 +1862,27 @@ let hierarchical_html_rules sctx all tree =
 let hierarchical_odoc_rules sctx ~all tree =
   let ctx = Super_context.context sctx in
   Index_tree.iter_memo tree ~f:(fun index (ii : Index_tree.info) ->
-    let artifacts = ii.artifacts in
     let quiet = Index.is_external index in
     let libs = Lib.Map.keys ii.libs in
+    let all_artifacts = Index_tree.all_artifacts ii in
     let* () =
       let parent = Artifact.index ctx ~all index in
-      compile_odocs sctx ~all ~quiet artifacts parent libs
+      Memo.List.iter
+        ~f:(fun a ->
+          compile_odocs
+            sctx
+            ~all
+            ~quiet
+            a.Index_tree.artifacts
+            parent
+            a.Index_tree.compile_libs)
+        ii.artifact_sets
     and* () =
       let package = ii.package in
-      link_odoc_rules sctx ~all artifacts ~package ~libs ~indices:[] ~quiet
+      link_odoc_rules sctx ~all all_artifacts ~package ~libs ~indices:[] ~quiet
     in
     let all_deps =
-      Path.Set.of_list_map artifacts ~f:(fun a -> Artifact.odoc_file a |> Path.build)
+      Path.Set.of_list_map all_artifacts ~f:(fun a -> Artifact.odoc_file a |> Path.build)
     in
     Dep.setup_deps ctx ~all index all_deps)
 ;;

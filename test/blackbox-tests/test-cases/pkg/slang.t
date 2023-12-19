@@ -28,6 +28,8 @@ Tests for concat:
   foo
   $ test_action '(run echo foo (concat) bar (concat) baz)' # two spaces between each word because (concat) is the empty string
   foo  bar  baz
+  $ test_action '(run echo (= (concat foo bar) (concat f o o b a r)))'
+  true
 
 Tests for when:
   $ test_action '(run echo (when true foo) bar (when false baz) qux)'

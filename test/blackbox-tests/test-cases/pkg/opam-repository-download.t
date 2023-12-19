@@ -224,3 +224,56 @@ So we should get `bar.1.0.0` when locking.
   Solution for dune.lock:
   - bar.1.0.0
   - foo.0.1.0
+
+We want to make sure locking works even with submodules:
+
+  $ rm -r mock-opam-repository
+  $ mkrepo
+  $ mkpkg foo <<EOF
+  > EOF
+  $ mkpkg bar <<EOF
+  > depends: [ "foo" ]
+  > EOF
+
+We move `packages` into a different folder
+
+  $ mkdir remote-submodule
+  $ mv mock-opam-repository/packages/* remote-submodule
+  $ rm -r mock-opam-repository/packages
+
+And create it as a separate repo, this time with the packages in the root:
+
+  $ cd remote-submodule
+  $ git init --quiet
+  $ git add -A
+  $ git commit -m "Initial subrepo commit" --quiet
+  $ cd ..
+
+In our mock repository, we make sure to add the submodule as `packages`:
+
+  $ cd mock-opam-repository
+  $ git init --quiet
+  $ GIT_ALLOW_PROTOCOL=file git submodule add ../remote-submodule packages
+  Cloning into '$TESTCASE_ROOT/mock-opam-repository/packages'...
+  done.
+  $ git commit -m "Initial opam-repo commit" --quiet
+  $ git submodule init
+  $ cd ..
+
+We'll use the mock repository as source:
+
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  > (lock_dir
+  >  (repositories mock))
+  > EOF
+
+We should be able to successfully solve the project with `foo` and `bar`,
+however due to some issues this currently fails:
+
+  $ rm -r dune.lock
+  $ dune pkg lock 2> /dev/null
+  [1]

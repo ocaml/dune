@@ -22,6 +22,10 @@ module Toggle : sig
   val to_dyn : t -> Dyn.t
 end
 
+(** [make ~name ~of_string ~default] registers a config value called [name],
+    parsed using [of_string], defaulting to [default]. *)
+val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t
+
 (** [get t] return the value of the configuration for [t] *)
 val get : 'a t -> 'a
 
@@ -53,9 +57,6 @@ val threaded_console : Toggle.t t
 
 (** The number of frames per second for the threaded console. *)
 val threaded_console_frames_per_second : [ `Default | `Custom of int ] t
-
-(** Controls whether we use background threads in the dune rules *)
-val background_dune_rules : Toggle.t t
 
 (** Before any configuration value is accessed, this function must be called
     with all the configuration values from the relevant config file

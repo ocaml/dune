@@ -1,0 +1,5 @@
+(cram
+ (applies_to 32bit)
+ (enabled_if
+  (not %{arch_sixtyfour}))
+ (deps %{bin:git}))

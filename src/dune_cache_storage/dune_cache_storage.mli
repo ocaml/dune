@@ -68,7 +68,7 @@ end
 module Artifacts : sig
   module Metadata_entry : sig
     type t =
-      { file_name : string
+      { file_path : string (** Can have more than one component for directory targets *)
       ; file_digest : Digest.t
       }
   end

@@ -274,8 +274,26 @@ module Produced = struct
         Ok { root = validated.root; files; dirs }
   ;;
 
-  let of_files root files = { root; files; dirs = Path.Local.Map.empty }
-  let drop_dirs t = { t with dirs = Path.Local.Map.empty }
+  let of_files root files =
+    let f file payload t =
+      let parent = Path.Local.parent_exn file in
+      if Path.Local.is_root parent
+      then
+        { t with
+          files = Filename.Map.add_exn t.files (Path.Local.to_string file) payload
+        }
+      else (
+        let fn = Path.Local.basename file in
+        { t with
+          dirs =
+            Path.Local.Map.update t.dirs parent ~f:(fun files ->
+              let files = Option.value files ~default:Filename.Map.empty in
+              Some (Filename.Map.add_exn files fn payload))
+        })
+    in
+    let init = { root; files = Filename.Map.empty; dirs = Path.Local.Map.empty } in
+    Path.Local.Map.foldi files ~init ~f
+  ;;
 
   let all_files_seq { root = _; files; dirs } =
     Seq.append
@@ -325,23 +343,21 @@ module Produced = struct
     Filename.Map.exists files ~f || Path.Local.Map.exists dirs ~f:(String.Map.exists ~f)
   ;;
 
-  let foldi { root; files; dirs } ~init ~f =
+  let foldi { root = _; files; dirs } ~init ~f =
     let acc =
       Filename.Map.foldi files ~init ~f:(fun file acc ->
-        f (Path.Build.relative root file) acc)
+        f (Path.Local.of_string file) acc)
     in
     Path.Local.Map.foldi dirs ~init:acc ~f:(fun dir filenames acc ->
-      let dir = Path.Build.append_local root dir in
       String.Map.foldi filenames ~init:acc ~f:(fun filename payload acc ->
-        f (Path.Build.relative dir filename) payload acc))
+        f (Path.Local.relative dir filename) payload acc))
   ;;
 
-  let iteri { root; files; dirs } ~f =
-    Filename.Map.iteri files ~f:(fun file acc -> f (Path.Build.relative root file) acc);
+  let iteri { root = _; files; dirs } ~f =
+    Filename.Map.iteri files ~f:(fun file acc -> f (Path.Local.of_string file) acc);
     Path.Local.Map.iteri dirs ~f:(fun dir filenames ->
-      let dir = Path.Build.append_local root dir in
       String.Map.iteri filenames ~f:(fun filename payload ->
-        f (Path.Build.relative dir filename) payload))
+        f (Path.Local.relative dir filename) payload))
   ;;
 
   module Path_traversal = Fiber.Make_map_traversals (Path.Local.Map)
@@ -353,12 +369,11 @@ module Produced = struct
       Fiber.fork_and_join
         (fun () ->
           Filename_traversal.parallel_map files ~f:(fun file ->
-            f (Path.Build.relative root file)))
+            f (Path.Local.of_string file)))
         (fun () ->
           Path_traversal.parallel_map dirs ~f:(fun dir files ->
-            let dir = Path.Build.append_local root dir in
             Filename_traversal.parallel_map files ~f:(fun file payload ->
-              f (Path.Build.relative dir file) payload)))
+              f (Path.Local.relative dir file) payload)))
     in
     { root; files; dirs }
   ;;

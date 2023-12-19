@@ -120,7 +120,7 @@ struct
   (* If this function fails to store the rule to the shared cache, it returns
      [None] because we don't want this to be a catastrophic error. We simply log
      this incident and continue without saving the rule to the shared cache. *)
-  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~targets
+  let try_to_store_to_shared_cache ~mode ~rule_digest ~action ~produced_targets
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
@@ -136,15 +136,17 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      Targets.Produced.iteri targets_and_digests ~f:Cached_digest.set
+      Targets.Produced.iteri targets_and_digests ~f:(fun path digest ->
+        Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
     in
     match
-      (* CR-soon rleshchinskiy: Don't drop directory targets here. *)
-      Targets.Produced.drop_dirs targets
-      |> Targets.Produced.map_with_errors ~all_errors:false ~f:(fun target () ->
-        match Dune_cache.Local.Target.create target with
-        | Some t -> Ok t
-        | None -> Error ())
+      Targets.Produced.map_with_errors
+        produced_targets
+        ~all_errors:false
+        ~f:(fun target () ->
+          match Dune_cache.Local.Target.create target with
+          | Some t -> Ok t
+          | None -> Error ())
     with
     | Error _ -> Fiber.return None
     | Ok targets ->
@@ -299,7 +301,7 @@ struct
       when can_go_in_shared_cache ->
       let open Fiber.O in
       let+ produced_targets_with_digests =
-        try_to_store_to_shared_cache ~mode ~rule_digest ~targets:produced_targets ~action
+        try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action
       in
       (match produced_targets_with_digests with
        | Some produced_targets_with_digests -> produced_targets_with_digests

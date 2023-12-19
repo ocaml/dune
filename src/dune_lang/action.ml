@@ -258,15 +258,7 @@ let sw = String_with_vars.decode
 
 let cstrs_dune_file t =
   let open Decoder in
-  [ ( "run"
-    , let+ args =
-        (* Although a single [Slang.t] evaluates to a list of strings, individual
-           terms of the command are represented by individual [Slang.t]s, hence
-           the [repeat] below. *)
-        repeat Slang.decode
-      in
-      Run args )
-  ; "with-accepted-exit-codes", decode_with_accepted_exit_codes t
+  [ "with-accepted-exit-codes", decode_with_accepted_exit_codes t
   ; ( "dynamic-run"
     , Syntax.since Action_plugin.syntax (0, 1)
       >>> let+ prog = sw
@@ -361,7 +353,23 @@ let cstrs_dune_file t =
   ]
 ;;
 
-let decode_dune_file = Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t)
+let decode_dune_file =
+  let dune_file_specific =
+    let open Decoder in
+    [ ( "run"
+      , (* In regular dune files the "run" action is parsed as a command and
+           argument list rather than with the slang dsl parser which is still
+           experimental. *)
+        let+ prog = sw
+        and+ args = repeat sw in
+        let slang =
+          Slang.Literal prog :: List.map args ~f:(fun arg -> Slang.Literal arg)
+        in
+        Run slang )
+    ]
+  in
+  Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ dune_file_specific)
+;;
 
 let decode_pkg =
   let cstrs_pkg t =
@@ -385,6 +393,14 @@ let decode_pkg =
         >>> let+ condition = Slang.decode_blang
             and+ action = t in
             When (condition, action) )
+    ; ( "run"
+      , let+ args =
+          (* Although a single [Slang.t] evaluates to a list of strings, individual
+             terms of the command are represented by individual [Slang.t]s, hence
+             the [repeat] below. *)
+          repeat Slang.decode
+        in
+        Run args )
     ]
   in
   Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)

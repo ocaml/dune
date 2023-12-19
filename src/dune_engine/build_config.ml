@@ -1,5 +1,4 @@
 open Import
-module Action_builder = Action_builder0
 
 module Gen_rules = struct
   module Context_type = Build_config_intf.Context_type

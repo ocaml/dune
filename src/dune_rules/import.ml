@@ -29,7 +29,6 @@ include struct
   module Dir_set = Dir_set
   module Rule = Rule
   module Rules = Rules
-  module Action_builder = Action_builder
   module Build_system = Build_system
   module Context_name = Context_name
   module Dpath = Dpath

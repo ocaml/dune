@@ -1,4 +1,5 @@
 module Alias_builder = Alias_builder
+module Action_builder = Action_builder
 module Alias = Alias0
 module Findlib = Findlib
 module Main = Main

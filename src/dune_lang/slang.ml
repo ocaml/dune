@@ -25,9 +25,16 @@ and form =
   | Or_absorb_undefined_var of blang list
   | Blang of blang
 
+let decode_literal =
+  let open Decoder in
+  let+ x = String_with_vars.decode in
+  Literal x
+;;
+
 let decode =
   let open Decoder in
   fix (fun decode ->
+    let decode_blang = Blang.Ast.decode ~override_decode_bare_literal:None decode in
     let decode_form =
       sum
         ~force_parens:true
@@ -35,11 +42,11 @@ let decode =
           , let+ x = repeat decode in
             Concat x )
         ; ( "when"
-          , let+ condition = Blang.Ast.decode decode
+          , let+ condition = decode_blang
             and+ t = decode in
             When (condition, t) )
         ; ( "if"
-          , let+ condition = Blang.Ast.decode decode
+          , let+ condition = decode_blang
             and+ then_ = decode
             and+ else_ = decode in
             If { condition; then_; else_ } )
@@ -51,22 +58,33 @@ let decode =
             and+ fallback = decode in
             Catch_undefined_var { value; fallback } )
         ; ( "and_absorb_undefined_var"
-          , let+ x = repeat (Blang.Ast.decode decode) in
+          , let+ x = repeat decode_blang in
             And_absorb_undefined_var x )
         ; ( "or_absorb_undefined_var"
-          , let+ x = repeat (Blang.Ast.decode decode) in
+          , let+ x = repeat decode_blang in
             Or_absorb_undefined_var x )
         ]
     in
     located decode_form
     >>| (fun (loc, x) -> Form (loc, x))
-    <|> (let+ x = String_with_vars.decode in
-         Literal x)
-    <|> let+ loc, x = located (Blang.Ast.decode decode) in
-        Form (loc, Blang x))
+    <|> decode_literal
+    <|>
+    (* The decoders for the blang and slang DSLs are mutually recursive
+       since blang expressions can appear as the conditions in slang
+       expressions and slang expressions can be compared in blang
+       expressions, and also produce blang literals. When encountering
+       a form which is not valid syntax for slang nor blang each
+       decoder will attempt to invoke the other leading to infinite
+       recursion. to prevent this, only attempt to parse [literal _] values
+       when the blang parser parses literals.*)
+    let+ loc, x =
+      located
+        (Blang.Ast.decode ~override_decode_bare_literal:(Some decode_literal) decode)
+    in
+    Form (loc, Blang x))
 ;;
 
-let decode_blang = Blang.Ast.decode decode
+let decode_blang = Blang.Ast.decode ~override_decode_bare_literal:None decode
 
 let rec encode t =
   let open Encoder in

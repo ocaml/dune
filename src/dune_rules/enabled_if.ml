@@ -52,6 +52,7 @@ let decode_value ~allowed_vars ?(is_error = true) () =
   | Any -> Blang.decode
   | Only allowed_vars ->
     Blang.Ast.decode
+      ~override_decode_bare_literal:None
       (String_with_vars.decode_manually (fun env var ->
          match Dune_lang.Template.Pform.payload var with
          | Some _ ->

@@ -38,8 +38,13 @@ module Ast = struct
       variant "Compare" [ Relop.to_dyn o; string_to_dyn s1; string_to_dyn s2 ]
   ;;
 
-  let decode decode_string =
+  let decode ~override_decode_bare_literal decode_string =
     let open Decoder in
+    let decode_bare_literal =
+      match override_decode_bare_literal with
+      | None -> decode_string
+      | Some decode_bare_literal -> decode_bare_literal
+    in
     let ops =
       List.map Relop.map ~f:(fun (name, op) ->
         ( name
@@ -49,13 +54,16 @@ module Ast = struct
     in
     let decode =
       fix (fun t ->
-        sum
-          ~force_parens:true
-          (("or", repeat t >>| fun x -> Or x)
-           :: ("and", repeat t >>| fun x -> And x)
-           :: ("not", Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x -> Not x)
-           :: ops)
-        <|> let+ v = decode_string in
+        let decode_term =
+          sum
+            ~force_parens:true
+            (("or", repeat t >>| fun x -> Or x)
+             :: ("and", repeat t >>| fun x -> And x)
+             :: ("not", Syntax.since Stanza.syntax (3, 2) >>> t >>| fun x -> Not x)
+             :: ops)
+        in
+        decode_term
+        <|> let+ v = decode_bare_literal in
             Expr v)
     in
     let+ () = Syntax.since Stanza.syntax (1, 1)
@@ -81,6 +89,6 @@ type t = String_with_vars.t ast
 let true_ = Ast.true_
 let false_ = Ast.false_
 let to_dyn = Ast.to_dyn String_with_vars.to_dyn
-let decode = Ast.decode String_with_vars.decode
+let decode = Ast.decode ~override_decode_bare_literal:None String_with_vars.decode
 let encode = Ast.encode String_with_vars.encode
 let equal = Ast.equal String_with_vars.equal

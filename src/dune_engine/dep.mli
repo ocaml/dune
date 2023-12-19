@@ -67,15 +67,37 @@ module Fact : sig
   val file_selector : File_selector.t -> Files.t -> t
 end
 
+module Set : sig
+  include Set.S with type elt = t and type 'a map := 'a Map.t and type t = unit Map.t
+
+  (** [of_source_files ~files ~empty_directories] depend on all source files
+      [files].
+
+      Dependency on a [files] requires special care for empty directories. Empty
+      directories need to be loaded so that we clean up stale artifacts in such
+      directories. This is why [empty_directories] must be provided *)
+  val of_source_files : files:Path.Set.t -> empty_directories:Path.Set.t -> t
+
+  val of_files : Path.t list -> t
+  val of_files_set : Path.Set.t -> t
+  val encode : t -> Dune_sexp.t
+  val add_paths : t -> Path.Set.t -> t
+  val digest : t -> Digest.t
+end
+
 module Facts : sig
+  type dep := t
+
   (* There is an invariant that is not currently enforced: values correspond to
      keys. For example, we can't have [Map.find (File f) = File_selector _]. *)
   type t = Fact.t Map.t
 
+  val singleton : dep -> Fact.t -> t
   val equal : t -> t -> bool
   val empty : t
   val union : t -> t -> t
   val union_all : t list -> t
+  val record_facts : Set.t -> f:(dep -> Fact.t Memo.t) -> t Memo.t
 
   (** Return all file paths, expanding aliases. *)
   val paths : t -> Digest.t Path.Map.t
@@ -93,22 +115,4 @@ module Facts : sig
 
   val digest : t -> env:Env.t -> Digest.t
   val to_dyn : t -> Dyn.t
-end
-
-module Set : sig
-  include Set.S with type elt = t and type 'a map := 'a Map.t and type t = unit Map.t
-
-  (** [of_source_files ~files ~empty_directories] depend on all source files
-      [files].
-
-      Dependency on a [files] requires special care for empty directories. Empty
-      directories need to be loaded so that we clean up stale artifacts in such
-      directories. This is why [empty_directories] must be provided *)
-  val of_source_files : files:Path.Set.t -> empty_directories:Path.Set.t -> t
-
-  val of_files : Path.t list -> t
-  val of_files_set : Path.Set.t -> t
-  val encode : t -> Dune_sexp.t
-  val add_paths : t -> Path.Set.t -> t
-  val digest : t -> Digest.t
 end

@@ -226,11 +226,52 @@ module Fact = struct
   let alias _alias files = Alias files
 end
 
+module Set = struct
+  module M = Set.Of_map (T) (Map)
+  include M
+
+  let of_files l = of_list_map l ~f:file
+  let of_files_set = Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
+  let add_paths t paths = Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
+  let encode t = Dune_sexp.Encoder.list encode (to_list t)
+
+  (* This is to force the rules to be loaded for directories without files when
+     depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
+     directories in directories that contain no file. *)
+  let dir_without_files_dep dir =
+    file_selector (File_selector.of_predicate_lang ~dir Predicate_lang.false_)
+  ;;
+
+  let of_source_files ~files ~empty_directories =
+    let init = Path.Set.fold files ~init:empty ~f:(fun path acc -> add acc (file path)) in
+    Path.Set.fold empty_directories ~init ~f:(fun path acc ->
+      add acc (dir_without_files_dep path))
+  ;;
+
+  let digest t =
+    fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->
+      match dep with
+      | Env var -> Env var :: acc
+      | Universe -> Universe :: acc
+      | File p -> File (Path.to_string p) :: acc
+      | File_selector fs -> File_selector (File_selector.to_dyn fs) :: acc
+      | Alias a ->
+        Alias
+          { dir = Path.Build.to_string (Alias.dir a)
+          ; name = Alias.Name.to_string (Alias.name a)
+          }
+        :: acc)
+    |> Digest.generic
+  ;;
+end
+
 module Facts = struct
   type t = Fact.t Map.t
 
+  let singleton = Map.singleton
   let equal x y = Map.equal ~equal:Fact.equal x y
   let empty = Map.empty
+  let record_facts set ~f = Map.parallel_map set ~f:(fun dep () -> f dep)
 
   let union a b =
     Map.union a b ~f:(fun _ a b ->
@@ -304,44 +345,5 @@ module Facts = struct
            | Alias ps -> Alias ps.digest :: acc))
     in
     Digest.generic facts
-  ;;
-end
-
-module Set = struct
-  module M = Set.Of_map (T) (Map)
-  include M
-
-  let of_files l = of_list_map l ~f:file
-  let of_files_set = Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
-  let add_paths t paths = Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
-  let encode t = Dune_sexp.Encoder.list encode (to_list t)
-
-  (* This is to force the rules to be loaded for directories without files when
-     depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
-     directories in directories that contain no file. *)
-  let dir_without_files_dep dir =
-    file_selector (File_selector.of_predicate_lang ~dir Predicate_lang.false_)
-  ;;
-
-  let of_source_files ~files ~empty_directories =
-    let init = Path.Set.fold files ~init:empty ~f:(fun path acc -> add acc (file path)) in
-    Path.Set.fold empty_directories ~init ~f:(fun path acc ->
-      add acc (dir_without_files_dep path))
-  ;;
-
-  let digest t =
-    fold t ~init:[] ~f:(fun dep acc : Stable_for_digest.t list ->
-      match dep with
-      | Env var -> Env var :: acc
-      | Universe -> Universe :: acc
-      | File p -> File (Path.to_string p) :: acc
-      | File_selector fs -> File_selector (File_selector.to_dyn fs) :: acc
-      | Alias a ->
-        Alias
-          { dir = Path.Build.to_string (Alias.dir a)
-          ; name = Alias.Name.to_string (Alias.name a)
-          }
-        :: acc)
-    |> Digest.generic
   ;;
 end

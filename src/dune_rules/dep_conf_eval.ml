@@ -75,10 +75,9 @@ let dep_on_alias_rec alias ~loc =
            ])
 ;;
 
-let relative d s = Path.build (Path.Build.relative d s)
-
 let expand_include ~expander s =
-  relative (Expander.dir expander) s
+  Path.Build.relative (Expander.dir expander) s
+  |> Path.build
   |> Action_builder.read_sexp
   >>| function
   | List (_loc, asts) ->

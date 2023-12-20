@@ -97,11 +97,6 @@ type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxe
 
 val of_thunk : 'a thunk -> 'a t
 
-module Deps_or_facts : sig
-  val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
-  val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
-end
-
 (** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build
     work required for finding the facts about those dependencies, so you should use this
     function if you don't need the facts. *)

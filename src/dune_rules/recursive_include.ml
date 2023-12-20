@@ -63,7 +63,7 @@ let decode ~base_term ~include_keyword ~include_allowed_in_versions ~non_sexp_be
 
 let load_included_file config path ~context =
   let open Memo.O in
-  let+ contents = Build_system.read_file (Path.build path) ~f:Io.read_file in
+  let+ contents = Build_system.read_file (Path.build path) in
   let ast =
     Dune_lang.Parser.parse_string contents ~mode:Single ~fname:(Path.Build.to_string path)
   in

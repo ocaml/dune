@@ -260,15 +260,11 @@ let[@inline never] invalid_use_of_target_variable
        assert false)
 ;;
 
-let expand_read_macro ~dir ~source s ~read ~pack =
+let expand_read_macro ~dir ~source s ~read =
   let path = relative ~source dir s in
   let read =
     let open Memo.O in
-    let+ x =
-      Build_system.read_file path ~f:(fun a -> Async.async (fun () -> read a))
-      >>= Memo.of_reproducible_fiber
-    in
-    pack x
+    Build_system.read_file path >>| read
   in
   Need_full_expander
     (fun t ->
@@ -636,10 +632,12 @@ let expand_pform_macro
           (let open Memo.O in
            let+ b = Artifacts.binary_available t.artifacts_host s in
            b |> string_of_bool |> string))
-  | Read -> expand_read_macro ~dir ~source s ~read:Io.read_file ~pack:string
-  | Read_lines -> expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:strings
+  | Read -> expand_read_macro ~dir ~source s ~read:string
+  | Read_lines ->
+    expand_read_macro ~dir ~source s ~read:(fun x -> String.split_lines x |> strings)
   | Read_strings ->
-    expand_read_macro ~dir ~source s ~read:Io.lines_of_file ~pack:(fun lines ->
+    expand_read_macro ~dir ~source s ~read:(fun contents ->
+      let lines = String.split_lines contents in
       List.map lines ~f:(fun line ->
         match Scanf.unescaped line with
         | Error () ->

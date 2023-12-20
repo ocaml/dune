@@ -41,24 +41,14 @@ let path_set ps = deps (Dep.Set.of_files_set ps)
 let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files paths)
 let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
 
-let contents =
-  let read_file =
-    Memo.exec
-      (Memo.create_with_store
-         "Action_builder_fs.contents"
-         ~store:(module Path.Table)
-         ~input:(module Path)
-         ~cutoff:String.equal
-         (fun p -> Build_system.read_file p ~f:Io.read_file))
-  in
-  fun p ->
-    of_thunk
-      { f =
-          (fun _mode ->
-            let open Memo.O in
-            let+ x = read_file p in
-            x, Dep.Map.empty)
-      }
+let contents p =
+  of_thunk
+    { f =
+        (fun _mode ->
+          let open Memo.O in
+          let+ x = Build_system.read_file p in
+          x, Dep.Map.empty)
+    }
 ;;
 
 let lines_of p = contents p >>| String.split_lines

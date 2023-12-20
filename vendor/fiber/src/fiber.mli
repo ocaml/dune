@@ -18,11 +18,14 @@ type 'a fiber := 'a t
 (** Create a fiber that has already terminated. *)
 val return : 'a -> 'a t
 
-(** Converts a thunk to a fiber, making sure the thunk runs in the context of
-    the fiber (rather than applied in the current context).
+(** Convert a thunk to a fiber, making sure the thunk runs in the context of the fiber
+    rather than in the current context.
 
-    Equivalent to [(>>=) (return ())], but more explicit. *)
+    [of_thunk f] is equivalent to [return () >>= f] but is more explicit. *)
 val of_thunk : (unit -> 'a t) -> 'a t
+
+(** Like [of_thunk] but accepts functions of any argument. *)
+val of_thunk_apply : ('a -> 'b t) -> 'a -> 'b t
 
 (** Fiber that never completes. *)
 val never : 'a t

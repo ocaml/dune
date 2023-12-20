@@ -393,7 +393,6 @@ end = struct
           Fiber.return ())
       (fun () ->
         with_locks locks ~f:(fun () ->
-          let build_deps deps = Memo.run (build_deps deps) in
           let* action_exec_result =
             let input =
               { Action_exec.root
@@ -406,7 +405,9 @@ end = struct
               }
             in
             match (Build_config.get ()).action_runner input with
-            | None -> Action_exec.exec input ~build_deps
+            | None ->
+              let build_deps deps = Memo.run (build_deps deps) in
+              Action_exec.exec input ~build_deps
             | Some runner -> Action_runner.exec_action runner input
           in
           let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in

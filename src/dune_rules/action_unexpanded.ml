@@ -50,7 +50,7 @@ module Action_expander : sig
     -> expander:Expander.t
     -> 'a Action_builder.With_targets.t Memo.t
 
-  val with_expander : (Expander.t -> 'a t) -> 'a t
+  val with_expander : (Expander.t -> 'a t Memo.t) -> 'a t
 
   (* String with vars expansion *)
   module E : sig
@@ -110,8 +110,9 @@ end = struct
 
   let return x _env acc = Memo.return (Action_builder.return x, acc)
 
-  let with_expander (type a) (f : Expander.t -> a t) env acc =
-    let f = f env.expander in
+  let with_expander (type a) (f : Expander.t -> a t Memo.t) env acc =
+    let open Memo.O in
+    let* f = f env.expander in
     f env acc
   ;;
 
@@ -476,9 +477,12 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     O.Echo l
   | Cat xs ->
     A.with_expander (fun expander ->
-      let version =
-        Expander.scope expander |> Scope.project |> Dune_project.dune_version
+      let open Memo.O in
+      let+ version =
+        let dir = Expander.dir expander in
+        Dune_load.find_project ~dir >>| Dune_project.dune_version
       in
+      let open Action_expander.O in
       if version >= (3, 10)
       then
         let+ xs = A.all (List.map xs ~f:E.deps) in
@@ -496,6 +500,8 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     O.Symlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
     A.with_expander (fun expander ->
+      Memo.return
+      @@
       let context = Expander.context expander in
       let+ x = E.dep x
       and+ y = E.target y in

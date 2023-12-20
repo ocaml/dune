@@ -4,7 +4,6 @@ open Import
 
 type t
 
-val scope : t -> Scope.t
 val dir : t -> Path.Build.t
 val context : t -> Context.t
 

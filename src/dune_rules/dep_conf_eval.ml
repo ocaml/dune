@@ -75,8 +75,8 @@ let dep_on_alias_rec alias ~loc =
            ])
 ;;
 
-let expand_include ~expander s =
-  Path.Build.relative (Expander.dir expander) s
+let expand_include ~dir ~project s =
+  Path.Build.relative dir s
   |> Path.build
   |> Action_builder.read_sexp
   >>| function
@@ -84,7 +84,7 @@ let expand_include ~expander s =
     let dep_parser =
       Dune_lang.Syntax.set
         Stanza.syntax
-        (Active (Dune_project.dune_version (Scope.project (Expander.scope expander))))
+        (Active (Dune_project.dune_version project))
         (String_with_vars.set_decoding_env
            (Pform.Env.initial Stanza.latest_version)
            (Bindings.decode Dep_conf.decode))
@@ -175,9 +175,11 @@ let rec dep expander : Dep_conf.t -> _ = function
   | Include s ->
     (* TODO this is wrong. we shouldn't allow bindings here if we are in an
        unnamed expansion *)
-    let deps = expand_include ~expander s in
+    let dir = Expander.dir expander in
     Other
-      (let* deps = deps in
+      (let* project = Action_builder.of_memo @@ Dune_load.find_project ~dir in
+       let deps = expand_include ~dir ~project s in
+       let* deps = deps in
        let builder, _bindings = named_paths_builder ~expander deps in
        let+ paths = builder in
        paths)
@@ -234,8 +236,12 @@ let rec dep expander : Dep_conf.t -> _ = function
          let* pkg = Expander.expand_str expander p in
          let context = Context.build_context (Expander.context expander) in
          let loc = String_with_vars.loc p in
-         let dune_version =
-           Dune_project.dune_version @@ Scope.project @@ Expander.scope expander
+         let* dune_version =
+           Action_builder.of_memo
+           @@
+           let open Memo.O in
+           Dune_load.find_project ~dir:(Expander.dir expander)
+           >>| Dune_project.dune_version
          in
          package loc pkg context ~dune_version
        in

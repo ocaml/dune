@@ -536,8 +536,8 @@ end = struct
       Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
         let dir = Path.Build.append_source (Context.build_dir ctx) dune_file.dir in
         let named_entries =
-          let* expander = Super_context.expander sctx ~dir in
-          let scope = Expander.scope expander in
+          let* expander = Super_context.expander sctx ~dir
+          and* scope = Scope.DB.find_by_dir dir in
           stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza
         in
         named_entries :: acc)

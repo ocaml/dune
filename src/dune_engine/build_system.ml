@@ -1164,9 +1164,20 @@ let build_file p =
   ()
 ;;
 
-let read_file p ~f =
+let with_file p ~f =
   let+ () = build_file p in
   f p
+;;
+
+(* CR-someday amokhov: Try running [Io.read_file] in a separate thread. *)
+let read_file =
+  Memo.exec
+    (Memo.create_with_store
+       "Build_system.read_file"
+       ~store:(module Path.Table)
+       ~input:(module Path)
+       ~cutoff:String.equal
+       (fun path -> with_file path ~f:Io.read_file))
 ;;
 
 let state = State.t

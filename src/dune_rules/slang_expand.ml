@@ -165,7 +165,13 @@ and eval_blang_rec (t : Slang.blang) ~dir ~f =
     and+ y = eval_rec y ~dir ~f in
     Result.bind x ~f:(fun x ->
       Result.map y ~f:(fun y ->
-        Relop.eval op (List.compare ~compare:(Value.L.compare_vals ~dir) x y)))
+        (* Concatenation of strings is delayed but to compare the result of a
+           slang expression we must force the concatenation first. *)
+        let concat =
+          List.map ~f:(fun s ->
+            Value.String (List.map s ~f:(Value.to_string ~dir) |> String.concat ~sep:""))
+        in
+        Relop.eval op (Value.L.compare_vals ~dir (concat x) (concat y))))
 ;;
 
 let eval t ~dir ~f : Value.t list list Memo.t =

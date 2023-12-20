@@ -127,14 +127,14 @@ let term =
               ~coq_lang_version
               coq_module)
         in
-        Action_builder.(run deps_of) Eager
+        Action_builder.evaluate_and_collect_facts deps_of
       in
       (* Get args *)
       let* (args, _) : string list * Dep.Fact.t Dep.Map.t =
         let* args = args in
         let dir = Path.external_ Path.External.initial_cwd in
         let args = Dune_rules.Command.expand ~dir (S args) in
-        Action_builder.run args.build Eager
+        Action_builder.evaluate_and_collect_facts args.build
       in
       let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None coqtop in
       let prog = Action.Prog.ok_exn prog in

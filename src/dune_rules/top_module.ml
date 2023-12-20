@@ -71,7 +71,7 @@ let module_deps cctx module_ =
     Ocaml.Ml_kind.Dict.get dg Impl
   in
   let action = Dep_graph.deps_of dep_graph module_ in
-  let+ graph, _ = Action_builder.run action Eager in
+  let+ graph, _ = Action_builder.evaluate_and_collect_facts action in
   graph
 ;;
 

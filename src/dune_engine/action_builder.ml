@@ -247,3 +247,6 @@ let of_memo_join f =
         t.f mode)
   }
 ;;
+
+let evaluate_and_collect_deps t = t.f Lazy
+let evaluate_and_collect_facts t = t.f Eager

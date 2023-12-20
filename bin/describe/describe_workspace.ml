@@ -373,7 +373,7 @@ module Crawl = struct
       let* acc = macc in
       let deps = deps_of m in
       let+ { Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
-        Dune_engine.Action_builder.run deps Eager
+        Dune_engine.Action_builder.evaluate_and_collect_facts deps
       in
       module_ ~obj_dir ~deps_for_intf ~deps_for_impl m :: acc)
   ;;

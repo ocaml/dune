@@ -462,7 +462,7 @@ end = struct
        function [(Build_config.get ()).execution_parameters] is likely
        memoized, and the result is not expected to change often, so we do not
        sacrifice too much performance here by executing it sequentially. *)
-    let* action, deps = Action_builder.run action Eager in
+    let* action, deps = Action_builder.evaluate_and_collect_facts action in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc
@@ -863,7 +863,7 @@ end = struct
             match mode with
             | Lazy -> Memo.return ((), Dep.Map.empty)
             | Eager ->
-              let* action, facts = Action_builder.run x Eager in
+              let* action, facts = Action_builder.evaluate_and_collect_facts x in
               let+ () = execute_action action ~observing_facts:facts in
               (), Dep.Map.empty)
       }
@@ -881,7 +881,8 @@ end = struct
       >>= Memo.parallel_map ~f:(fun (loc, definition) ->
         Memo.push_stack_frame
           (fun () ->
-            Action_builder.run (dep_on_alias_definition definition) Eager >>| snd)
+            Action_builder.evaluate_and_collect_facts (dep_on_alias_definition definition)
+            >>| snd)
           ~human_readable_description:(fun () -> Alias.describe alias ~loc))
     in
     Dep.Facts.group_paths_as_fact_files l

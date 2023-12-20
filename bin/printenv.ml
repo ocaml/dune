@@ -109,7 +109,7 @@ let term =
     in
     Build_system.run_exn (fun () ->
       let open Memo.O in
-      let+ res, _facts = Action_builder.run request Eager in
+      let+ res, _facts = Action_builder.evaluate_and_collect_facts request in
       res)
     >>| function
     | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env

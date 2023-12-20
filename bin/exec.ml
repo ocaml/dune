@@ -52,7 +52,8 @@ module Cmd_arg = struct
     | Terminal s -> Memo.return s
     | Expandable (sw, _) ->
       let+ path, _ =
-        Action_builder.run (Target.expand_path_from_root root sctx sw) Eager
+        Target.expand_path_from_root root sctx sw
+        |> Action_builder.evaluate_and_collect_facts
       in
       let context = Dune_rules.Super_context.context sctx in
       (* TODO Why are we stringifying this path? *)

@@ -101,3 +101,12 @@ module Deps_or_facts : sig
   val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
   val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
 end
+
+(** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build
+    work required for finding the facts about those dependencies, so you should use this
+    function if you don't need the facts. *)
+val evaluate_and_collect_deps : 'a t -> ('a * Dep.Set.t) Memo.t
+
+(** Evaluate a [t] and collect the set of its dependencies along with facts about them.
+    Note that finding [t]'s facts requires building all of [t]'s dependencies. *)
+val evaluate_and_collect_facts : 'a t -> ('a * Dep.Facts.t) Memo.t

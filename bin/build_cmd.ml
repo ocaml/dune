@@ -55,7 +55,9 @@ let run_build_system ~common ~request =
       let toplevel_cell, toplevel =
         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
           let open Memo.O in
-          let+ (), (_ : Dep.Fact.t Dep.Map.t) = Action_builder.run request Eager in
+          let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+            Action_builder.evaluate_and_collect_facts request
+          in
           ())
       in
       let* res = run ~toplevel in

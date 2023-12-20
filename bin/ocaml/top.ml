@@ -138,7 +138,7 @@ module Module = struct
                   let graph =
                     Dune_rules.Dep_graph.top_closed_implementations dep_graph [ module_ ]
                   in
-                  let+ modules, _ = Action_builder.run graph Eager in
+                  let+ modules, _ = Action_builder.evaluate_and_collect_facts graph in
                   modules
                 in
                 let cmos =
@@ -166,7 +166,7 @@ module Module = struct
       let pps () =
         let module Merlin = Dune_rules.Merlin in
         let pps = Merlin.pp_config merlin ctx ~expander in
-        let+ pps, _ = Action_builder.run pps Eager in
+        let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
         let pp = Dune_rules.Module_name.Per_item.get pps module_name in
         match pp with
         | None -> None, None

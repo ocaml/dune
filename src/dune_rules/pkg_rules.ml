@@ -924,7 +924,7 @@ module Action_expander = struct
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
         let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        Action_builder.run cookie Eager
+        Action_builder.evaluate_and_collect_facts cookie
         |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
       |> Memo.map ~f:(fun cookies ->
         List.fold_left

@@ -435,7 +435,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           >>= (function
            | None -> toolchain `Lock
            | Some toolchain ->
-             let+ toolchain, _ = Action_builder.run toolchain Eager in
+             let+ toolchain, _ = Action_builder.evaluate_and_collect_facts toolchain in
              toolchain, `Default)
       in
       Ocaml_toolchain.register_response_file_support ocaml;

@@ -18,6 +18,9 @@ val file_exists : Path.t -> bool Memo.t
 (** Build a set of dependencies and return learned facts about them. *)
 val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
 
+(** Record the given set as dependencies of the action produced by the action builder. *)
+val record_deps : Dep.Set.t -> unit Action_builder.t
+
 (** [eval_pred glob] returns the set of filenames in [File_selector.dir glob] that matches
     [File_selector.predicate glob], including both sources and generated files. *)
 val eval_pred : File_selector.t -> Filename_set.t Memo.t

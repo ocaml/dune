@@ -131,8 +131,8 @@ module type Rec = sig
 
   val build_file : Path.t -> Digest.t Memo.t
   val build_dir : Path.t -> (Digest.t * Digest.t Targets.Produced.t) Memo.t
+  val build_dep : Dep.t -> Dep.Fact.t Memo.t
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
-  val eval_deps : 'a Action_builder.eval_mode -> Dep.Set.t -> 'a Dep.Map.t Memo.t
   val execute_rule : Rule.t -> rule_execution_result Memo.t
 
   val execute_action
@@ -199,13 +199,6 @@ end = struct
   ;;
 
   let build_deps deps = Dep.Map.parallel_map deps ~f:(fun dep () -> build_dep dep)
-
-  let eval_deps : type a. a Action_builder.eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.t =
-    fun mode deps ->
-    match mode with
-    | Lazy -> Memo.return deps
-    | Eager -> build_deps deps
-  ;;
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc ~sandboxing_preference =
     (* Rules with (mode patch-back-source-tree) are special and are not affected
@@ -663,12 +656,7 @@ end = struct
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
         ~mode:Standard
-        (Action_builder.of_thunk
-           { f =
-               (fun mode ->
-                 let+ deps = eval_deps mode deps in
-                 act.action, deps)
-           })
+        (Action_builder.record act.action deps ~f:build_dep)
     in
     let+ { deps = _; targets = _ } =
       execute_rule_impl
@@ -853,19 +841,15 @@ end = struct
               ]))
   ;;
 
-  let dep_on_anonymous_action (x : Rule.Anonymous_action.t Action_builder.t)
-    : _ Action_builder.t
+  let execute_anonymous_action action =
+    let* action, facts = Action_builder.evaluate_and_collect_facts action in
+    execute_action action ~observing_facts:facts
+  ;;
+
+  let dep_on_anonymous_action (action : Rule.Anonymous_action.t Action_builder.t)
+    : unit Action_builder.t
     =
-    Action_builder.of_thunk
-      { f =
-          (fun (type m) (mode : m Action_builder.eval_mode) ->
-            match mode with
-            | Lazy -> Memo.return ((), Dep.Map.empty)
-            | Eager ->
-              let* action, facts = Action_builder.evaluate_and_collect_facts x in
-              let+ () = execute_action action ~observing_facts:facts in
-              (), Dep.Map.empty)
-      }
+    Action_builder.record_success (Memo.of_thunk_apply execute_anonymous_action action)
   ;;
 
   let dep_on_alias_definition (definition : Rules.Dir_rules.Alias_spec.item) =
@@ -1036,6 +1020,7 @@ end
 
 include Exported
 
+let record_deps (deps : Dep.Set.t) = Action_builder.record () deps ~f:build_dep
 let eval_pred = Pred.eval
 let build_pred = Pred.build
 

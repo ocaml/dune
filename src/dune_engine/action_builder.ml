@@ -1,20 +1,32 @@
 open Import
 
 type 'a eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
+  | Lazy : Dep.Set.t eval_mode
+  | Eager : Dep.Facts.t eval_mode
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxed]
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
 
 module Deps_or_facts = struct
-  let union : type a. a eval_mode -> a Dep.Map.t -> a Dep.Map.t -> a Dep.Map.t =
+  let empty : type m. m eval_mode -> m = function
+    | Lazy -> Dep.Set.empty
+    | Eager -> Dep.Facts.empty
+  ;;
+
+  let return : type a m. a -> m eval_mode -> a * m = fun a mode -> a, empty mode
+
+  let union : type m. m eval_mode -> m -> m -> m =
     fun mode a b ->
     match mode with
     | Lazy -> Dep.Set.union a b
     | Eager -> Dep.Facts.union a b
   ;;
 
-  let union_all mode l = List.fold_left l ~init:Dep.Map.empty ~f:(union mode)
+  let union_all : type m. m eval_mode -> m list -> m =
+    fun mode list ->
+    match mode with
+    | Lazy -> Dep.Set.union_all list
+    | Eager -> Dep.Facts.union_all list
+  ;;
 end
 
 module T = struct
@@ -23,7 +35,7 @@ module T = struct
   module M = struct
     type 'a t = 'a thunk
 
-    let return x = { f = (fun _mode -> Memo.return (x, Dep.Map.empty)) }
+    let return x = { f = (fun mode -> Memo.return (Deps_or_facts.return x mode)) }
 
     let map t ~f =
       { f =
@@ -63,13 +75,58 @@ module T = struct
     }
   ;;
 
-  let of_memo m =
+  let of_memo memo =
     { f =
-        (fun _mode ->
-          let+ x = m in
-          x, Dep.Map.empty)
+        (fun mode ->
+          let+ x = memo in
+          x, Deps_or_facts.empty mode)
     }
   ;;
+
+  let record res (deps : Dep.Set.t) ~f =
+    let f : type m. m eval_mode -> (_ * m) Memo.t =
+      fun mode ->
+      let open Memo.O in
+      match mode with
+      | Lazy -> Memo.return (res, deps)
+      | Eager ->
+        let+ facts = Dep.Facts.record_facts deps ~f in
+        res, facts
+    in
+    { f }
+  ;;
+
+  let record_success memo =
+    let f : type m. m eval_mode -> (unit * m) Memo.t =
+      fun mode ->
+      let open Memo.O in
+      match mode with
+      | Lazy -> Memo.return ((), Dep.Set.empty)
+      | Eager ->
+        let+ () = memo in
+        (), Dep.Facts.empty
+    in
+    { f }
+  ;;
+
+  module Expert = struct
+    let record_dep_on_source_file_exn res ?loc (src_path : Path.Source.t) =
+      let f : type m. m eval_mode -> (_ * m) Memo.t =
+        fun mode ->
+        let (path : Path.t) = Path.source src_path in
+        let dep = Dep.file path in
+        match mode with
+        | Lazy -> Memo.return (res, Dep.Set.singleton dep)
+        | Eager ->
+          let open Memo.O in
+          let+ digest =
+            Fs_memo.file_digest_exn ?loc (Path.Outside_build_dir.In_source_dir src_path)
+          in
+          res, Dep.Facts.singleton dep (Dep.Fact.file path digest)
+      in
+      { f }
+    ;;
+  end
 
   module O = struct
     let ( >>> ) a b =
@@ -127,11 +184,11 @@ let of_thunk t = t
 let run t mode = t.f mode
 
 let force_lazy_or_eager
-  : type a b.
-    a eval_mode
-    -> (b * Dep.Set.t) Memo.Lazy.t Lazy.t
-    -> (b * Dep.Facts.t) Memo.Lazy.t
-    -> (b * a Dep.Map.t) Memo.t
+  : type a m.
+    m eval_mode
+    -> (a * Dep.Set.t) Memo.Lazy.t Lazy.t
+    -> (a * Dep.Facts.t) Memo.Lazy.t
+    -> (a * m) Memo.t
   =
   fun mode lazy_ eager ->
   match mode with
@@ -221,7 +278,7 @@ let create_memo name ~input ?cutoff ?human_readable_description f =
   { lazy_; eager }
 ;;
 
-let exec_memo : type i o m. (i, o) memo -> i -> m eval_mode -> (o * m Dep.Map.t) Memo.t =
+let exec_memo : type i o m. (i, o) memo -> i -> m eval_mode -> (o * m) Memo.t =
   fun memo i mode ->
   match mode with
   | Lazy -> Memo.exec (Lazy.force memo.lazy_) i
@@ -234,8 +291,8 @@ let goal t =
   { f =
       (fun mode ->
         let open Memo.O in
-        let+ a, (_irrelevant_for_goals : _ Dep.Map.t) = t.f mode in
-        a, Dep.Map.empty)
+        let+ a, _facts_are_irrelevant_for_goals = t.f mode in
+        a, Deps_or_facts.empty mode)
   }
 ;;
 

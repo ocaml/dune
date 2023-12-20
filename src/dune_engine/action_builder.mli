@@ -65,7 +65,10 @@ val exec_memo : ('i, 'o) memo -> 'i -> 'o t
     but the contents of [p] is irrelevant. *)
 val goal : 'a t -> 'a t
 
-(** If you're thinking of using [Process.run] here, check that: (i) you don't in
+(** An action builder with no dependencies. Consider passing [Memo.of_thunk] to delay
+    forcing the computation until the action's dependencies need to be determined.
+
+    If you're thinking of using [Process.run] here, check that: (i) you don't in
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
 val of_memo : 'a Memo.t -> 'a t
@@ -85,22 +88,46 @@ val of_memo_join : 'a t Memo.t -> 'a t
     dependencies, using [Eager] mode will increase parallelism. If you only want
     to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
 type 'a eval_mode =
-  | Lazy : unit eval_mode
-  | Eager : Dep.Fact.t eval_mode
+  | Lazy : Dep.Set.t eval_mode
+  | Eager : Dep.Facts.t eval_mode
 
 (** Execute an action builder. *)
-val run : 'a t -> 'b eval_mode -> ('a * 'b Dep.Map.t) Memo.t
+val run : 'a t -> 'b eval_mode -> ('a * 'b) Memo.t
 
 (** {1 Low-level} *)
 
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm Dep.Map.t) Memo.t } [@@unboxed]
+type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
 
 val of_thunk : 'a thunk -> 'a t
 
 module Deps_or_facts : sig
-  val union : 'a eval_mode -> 'a Dep.Map.t -> 'a Dep.Map.t -> 'a Dep.Map.t
-  val union_all : 'a eval_mode -> 'a Dep.Map.t list -> 'a Dep.Map.t
+  val union : 'm eval_mode -> 'm -> 'm -> 'm
+  val union_all : 'm eval_mode -> 'm list -> 'm
 end
+
+(** Record the given set as dependencies of the action produced by the action builder. *)
+val record : 'a -> Dep.Set.t -> f:(Dep.t -> Dep.Fact.t Memo.t) -> 'a t
+
+(** Record a given Memo computation as a "dependency" of the action builder, i.e., require
+    that it must succeed. Consider passing [Memo.of_thunk] to delay forcing the computation
+    until the action's dependencies need to be determined. *)
+val record_success : unit Memo.t -> unit t
+
+module Expert : sig
+  (** Like [record] but records a dependency on a *source* file. Evaluating the resulting
+      [t] in the [Eager] mode will raise a user error if the file can't be digested.
+
+      This function is in the [Expert] module because depending on files in the source
+      directory is usually a mistake. As of 2023-11-14, we use this function only for
+      setting up the rules that copy files from the source to the build directory. *)
+  val record_dep_on_source_file_exn
+    :  'a
+    -> ?loc:(unit -> Loc.t option Memo.t)
+    -> Path.Source.t
+    -> 'a t
+end
+
+(** {1 Evaluation} *)
 
 (** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build
     work required for finding the facts about those dependencies, so you should use this

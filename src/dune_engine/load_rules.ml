@@ -267,15 +267,6 @@ let no_rule_found ~loc fn =
       [ "fn", Path.Build.to_dyn fn ]
 ;;
 
-let eval_source_file : type a. a Action_builder.eval_mode -> Path.Source.t -> a Memo.t =
-  fun mode path ->
-  match mode with
-  | Lazy -> Memo.return ()
-  | Eager ->
-    let+ d = Fs_memo.file_digest_exn (In_source_dir path) in
-    Dep.Fact.file (Path.source path) d
-;;
-
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t Memo.t
   val is_under_directory_target : Path.t -> bool Memo.t
@@ -286,28 +277,28 @@ module rec Load_rules : sig
 end = struct
   open Load_rules
 
+  let copy_source_action ~src_path ~build_path : Action.Full.t Action_builder.t =
+    let action =
+      Action.Full.make
+        (Action.copy (Path.source src_path) build_path)
+        (* Sandboxing this action doesn't make much sense: if we can copy [src_path] to
+           the sandbox, we might as well copy it to the build directory directly. *)
+        ~sandbox:Sandbox_config.no_sandboxing
+    in
+    Action_builder.Expert.record_dep_on_source_file_exn
+      action
+      ~loc:Current_rule_loc.get
+      src_path
+  ;;
+
   let create_copy_rules ~dir ~ctx_dir ~non_target_source_filenames =
     Filename.Set.to_list_map non_target_source_filenames ~f:(fun filename ->
-      let path = Path.Source.relative dir filename in
-      let ctx_path = Path.Build.append_source ctx_dir path in
-      let build =
-        Action_builder.of_thunk
-          { f =
-              (fun mode ->
-                let+ fact = eval_source_file mode path in
-                let path = Path.source path in
-                ( Action.Full.make
-                    (Action.copy path ctx_path)
-                    (* There's an [assert false] in [prepare_managed_paths]
-                       that blows up if we try to sandbox this. *)
-                    ~sandbox:Sandbox_config.no_sandboxing
-                , Dep.Map.singleton (Dep.file path) fact ))
-          }
-      in
+      let src_path = Path.Source.relative dir filename in
+      let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
-        ~info:(Source_file_copy path)
-        ~targets:(Targets.File.create ctx_path)
-        build)
+        ~info:(Source_file_copy src_path)
+        ~targets:(Targets.File.create build_path)
+        (copy_source_action ~src_path ~build_path))
   ;;
 
   let compile_rules ~dir ~source_dirs rules =

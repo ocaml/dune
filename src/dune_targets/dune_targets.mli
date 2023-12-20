@@ -96,11 +96,8 @@ module Produced : sig
       and collecting all contained files. *)
   val of_validated : Validated.t -> (unit t, Error.t) result
 
-  (** Populates only the [files] field, leaving [dirs] empty. *)
-  val of_files : Path.Build.t -> 'a Filename.Map.t -> 'a t
-
-  (** Drop all directory targets, leaving only file targets. *)
-  val drop_dirs : 'a t -> 'a t
+  (** Construct from a set of files in the root directory. *)
+  val of_files : Path.Build.t -> 'a Path.Local.Map.t -> 'a t
 
   (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal.
       The resulting [Path.Local.t]s are relative to [t.root]. *)
@@ -117,9 +114,9 @@ module Produced : sig
 
   val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
   val exists : 'a t -> f:('a -> bool) -> bool
-  val foldi : 'a t -> init:'acc -> f:(Path.Build.t -> 'a -> 'acc -> 'acc) -> 'acc
-  val iteri : 'a t -> f:(Path.Build.t -> 'a -> unit) -> unit
-  val parallel_map : 'a t -> f:(Path.Build.t -> 'a -> 'b Fiber.t) -> 'b t Fiber.t
+  val foldi : 'a t -> init:'acc -> f:(Path.Local.t -> 'a -> 'acc -> 'acc) -> 'acc
+  val iteri : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit
+  val parallel_map : 'a t -> f:(Path.Local.t -> 'a -> 'b Fiber.t) -> 'b t Fiber.t
 
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t

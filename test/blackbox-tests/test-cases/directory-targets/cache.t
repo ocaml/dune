@@ -50,7 +50,6 @@ When building, we expect to restore from cache. So the message should not be
 displayed, but the files should be created.
 
   $ dune build out
-  Running create.sh
   $ dune_cmd exists _build/default/out/a
   true
   $ dune_cmd exists _build/default/out/b
@@ -62,4 +61,5 @@ cache.
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm _build/default/out/a
   $ dune build out
-  Running create.sh
+  $ dune_cmd exists _build/default/out/a
+  true

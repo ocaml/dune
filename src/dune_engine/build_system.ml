@@ -516,10 +516,8 @@ end = struct
       let rule_digest =
         compute_rule_digest rule ~deps ~action ~sandbox_mode ~execution_parameters
       in
-      (* CR-someday amokhov: Add support for rules with directory targets. *)
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
-        && Filename.Set.is_empty targets.dirs
         && (not
               (always_rerun
                || is_action_dynamic

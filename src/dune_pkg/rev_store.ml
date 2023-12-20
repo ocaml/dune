@@ -407,18 +407,31 @@ let query_head_branch =
       | Some m -> Some (Re.Group.get m 1))
 ;;
 
+let branch_of_refspec refspec =
+  refspec
+  |> String.drop_prefix_if_exists ~prefix:"+"
+  |> String.lsplit2 ~on:':'
+  |> Option.bind ~f:(fun (remote_ref, _local_ref) ->
+    String.drop_prefix remote_ref ~prefix:"refs/heads/")
+;;
+
 let read_head_branch =
-  let headline = Re.(compile @@ seq [ bol; rep space; str "Remote branch:" ]) in
+  let fetch_line = Re.(compile @@ seq [ str "fetch = "; group (rep1 any); eol ]) in
   fun t handle ->
-    let+ lines = run_capture_lines t [ "remote"; "show"; "-n"; handle ] in
-    let rec inspect = function
-      | [] | [ _ ] -> None
-      | heading :: branch :: rest ->
-        (match Re.exec_opt headline heading with
-         | None -> inspect (branch :: rest)
-         | Some _ -> Some (String.trim branch))
-    in
-    inspect lines
+    let headline = sprintf {|[remote "%s"]|} handle in
+    let path = Path.relative t.dir "config" in
+    let lines = Io.lines_of_file path in
+    let _front, back = List.split_while lines ~f:(String.equal headline) in
+    match back with
+    | [] -> None
+    | [ _heading ] -> None
+    | _heading :: section ->
+      List.find_map section ~f:(fun line ->
+        line
+        |> Re.exec_opt fetch_line
+        |> Option.bind ~f:(fun m ->
+          let refspec = Re.Group.get m 1 in
+          branch_of_refspec refspec))
 ;;
 
 let remote_add t ~branch ~handle ~source =
@@ -447,9 +460,9 @@ let add_repo ({ dir } as t) ~source ~branch =
       match exists, branch with
       | true, Some branch -> Fiber.return branch
       | true, None ->
-        let+ head_branch = read_head_branch t handle in
+        let head_branch = read_head_branch t handle in
         (match head_branch with
-         | Some head_branch -> head_branch
+         | Some head_branch -> Fiber.return head_branch
          | None ->
            (* the rev store is in some sort of unexpected state *)
            Code_error.raise

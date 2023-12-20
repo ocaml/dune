@@ -26,4 +26,9 @@ module Expanded_variable_bindings : sig
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val to_solver_env : t -> Solver_env.t
+
+  (** [validate_against_solver_env t solver_env] checks that each variable in
+      common between [t] and [solver_env] is assigned the same value, and that
+      all the unset variables in [t] are not assigned a value in [solver_env]. *)
+  val validate_against_solver_env : t -> Solver_env.t -> unit
 end

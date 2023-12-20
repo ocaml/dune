@@ -112,8 +112,22 @@ module Lock_dir = struct
     | Some (Opam _) -> None
   ;;
 
+  let get_workspace_lock_dir ctx =
+    let* workspace = Workspace.workspace () in
+    let+ path = get_path ctx >>| Option.value_exn in
+    Workspace.find_lock_dir workspace path
+  ;;
+
   let get (ctx : Context_name.t) : t Memo.t =
-    get_path ctx >>| Option.value_exn >>= Load.load
+    let* lock_dir = get_path ctx >>| Option.value_exn >>= Load.load in
+    let+ workspace_lock_dir = get_workspace_lock_dir ctx in
+    (match workspace_lock_dir with
+     | None -> ()
+     | Some workspace_lock_dir ->
+       Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+         lock_dir.expanded_solver_variable_bindings
+         (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+    lock_dir
   ;;
 
   let lock_dir_active ctx =

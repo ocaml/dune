@@ -103,4 +103,42 @@ module Expanded_variable_bindings = struct
     List.fold_left variable_values ~init:Solver_env.empty ~f:(fun acc (variable, value) ->
       Solver_env.set acc variable value)
   ;;
+
+  let validate_against_solver_env t solver_env =
+    let hints =
+      [ Pp.text
+          "This can happen if the \"solver_env\" for the lockdir in the dune-workspace \
+           file has changed since generating the lockdir. Regenerate the lockdir by \
+           running:"
+      ; User_message.command "dune pkg lock"
+      ]
+    in
+    List.iter t.variable_values ~f:(fun (variable_name, variable_value) ->
+      Option.iter
+        (Solver_env.get solver_env variable_name)
+        ~f:(fun variable_value_in_env ->
+          if not (Variable_value.equal variable_value_in_env variable_value)
+          then
+            User_error.raise
+              [ Pp.textf
+                  "The dependency solution relies on the assignment of the solver \
+                   variable %S to %S but the solver environment in the workspace would \
+                   assign it the value %S."
+                  (Variable_name.to_string variable_name)
+                  (Variable_value.to_string variable_value)
+                  (Variable_value.to_string variable_value_in_env)
+              ]
+              ~hints));
+    List.iter t.unset_variables ~f:(fun variable_name ->
+      Option.iter (Solver_env.get solver_env variable_name) ~f:(fun variable_value ->
+        User_error.raise
+          [ Pp.textf
+              "The dependency solution relies on the variable %S not being assigned a \
+               value but the solver environment in the workspace would assign it the \
+               value %S."
+              (Variable_name.to_string variable_name)
+              (Variable_value.to_string variable_value)
+          ]
+          ~hints))
+  ;;
 end

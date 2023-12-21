@@ -1,6 +1,13 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_compilation =
+let ( concurrency
+    , verbose
+    , _keep_generated_files
+    , debug
+    , secondary
+    , force_byte_compilation
+    , use_single_command )
+  =
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
@@ -9,6 +16,7 @@ let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_co
   let debug = ref false in
   let secondary = ref false in
   let force_byte_compilation = ref false in
+  let use_single_command = ref Sys.win32 in
   Arg.parse
     [ "-j", Int (fun n -> concurrency := Some n), "JOBS Concurrency"
     ; "--verbose", Set verbose, " Set the display mode"
@@ -18,6 +26,10 @@ let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_co
     ; ( "--force-byte-compilation"
       , Set force_byte_compilation
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; ( "--use-single-command"
+      , Set use_single_command
+      , " Build with a single command instead of separate compilation. This is faster \
+         compared to -j1, but produces a different binary." )
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
@@ -26,7 +38,8 @@ let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_co
   , !keep_generated_files
   , !debug
   , !secondary
-  , !force_byte_compilation )
+  , !force_byte_compilation
+  , !use_single_command )
 ;;
 
 (** {2 General configuration} *)
@@ -1193,7 +1206,7 @@ let main () =
        | None -> []
        | Some flags -> flags)
   in
-  let build = if concurrency = 1 || Sys.win32 then build_with_single_command else build in
+  let build = if use_single_command then build_with_single_command else build in
   build ~ocaml_config ~dependencies ~c_files ~link_flags task
 ;;
 

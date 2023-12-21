@@ -2,6 +2,9 @@ Add some build contexts with different environments
   $ cat >dune-workspace <<EOF
   > (lang dune 3.8)
   > (lock_dir
+  >  (path dune.lock)
+  >  (unset_solver_vars arch os-distribution os os-family os-version sys-ocaml-version))
+  > (lock_dir
   >  (path dune.linux.lock)
   >  (solver_env
   >   (os linux))
@@ -38,6 +41,10 @@ Add some build contexts with different environments
   Solver environment for lock directory change-opam-version.lock:
   - opam-version = 42
   - with-doc = false
+  Solver environment for lock directory dune.linux.lock:
+  - opam-version = 2.2.0~alpha-vendored
+  - os = linux
+  - with-doc = false
   Solver environment for lock directory dune.linux.no-doc.lock:
   - arch = x86_64
   - opam-version = 2.2.0~alpha-vendored
@@ -47,7 +54,6 @@ Add some build contexts with different environments
   - os-version = 22.04
   - sys-ocaml-version = 5.0
   - with-doc = false
-  Solver environment for lock directory dune.linux.lock:
+  Solver environment for lock directory dune.lock:
   - opam-version = 2.2.0~alpha-vendored
-  - os = linux
   - with-doc = false

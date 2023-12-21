@@ -160,13 +160,11 @@ module Lock_dirs_arg = struct
 
   let lock_dirs_of_workspace t (workspace : Workspace.t) =
     let workspace_lock_dirs =
-      List.filter_map workspace.contexts ~f:(function
-        | Workspace.Context.Default { lock_dir; base = _ } ->
-          let lock_dir_path =
-            Option.value lock_dir ~default:Dune_pkg.Lock_dir.default_path
-          in
-          Some lock_dir_path
-        | Opam _ -> None)
+      Lock_dir.default_path
+      :: List.map workspace.lock_dirs ~f:(fun (lock_dir : Workspace.Lock_dir.t) ->
+        lock_dir.path)
+      |> Path.Source.Set.of_list
+      |> Path.Source.Set.to_list
     in
     match t with
     | All -> workspace_lock_dirs

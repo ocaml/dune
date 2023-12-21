@@ -215,8 +215,6 @@ let memoize ?cutoff name t =
   { f = (fun mode -> force_lazy_or_eager mode lazy_ eager) }
 ;;
 
-let ignore x = map x ~f:ignore
-
 let map2 x y ~f =
   let+ x = x
   and+ y = y in
@@ -230,11 +228,6 @@ let push_stack_frame ~human_readable_description f =
   }
 ;;
 
-let delayed f =
-  let+ () = return () in
-  f ()
-;;
-
 let all_unit (xs : unit t list) =
   { f =
       (fun mode ->
@@ -243,13 +236,6 @@ let all_unit (xs : unit t list) =
         let deps = List.map res ~f:snd in
         (), Deps_or_facts.union_all mode deps)
   }
-;;
-
-type fail = { fail : 'a. unit -> 'a }
-
-let fail x =
-  let+ () = return () in
-  x.fail ()
 ;;
 
 type ('input, 'output) memo =
@@ -293,15 +279,6 @@ let goal t =
         let open Memo.O in
         let+ a, _facts_are_irrelevant_for_goals = t.f mode in
         a, Deps_or_facts.empty mode)
-  }
-;;
-
-let of_memo_join f =
-  { f =
-      (fun mode ->
-        let open Memo.O in
-        let* t = f in
-        t.f mode)
   }
 ;;
 

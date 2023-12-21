@@ -3,6 +3,20 @@ include Dune_engine.Action_builder
 open O
 module With_targets = With_targets
 
+type fail = { fail : 'a. unit -> 'a }
+
+let fail x =
+  let+ () = return () in
+  x.fail ()
+;;
+
+let delayed f =
+  let+ () = return () in
+  f ()
+;;
+
+let of_memo_join f = of_memo f >>= Fun.id
+
 let dyn_memo_deps deps =
   let* deps, a = of_memo deps in
   let+ () = Build_system.record_deps deps in
@@ -121,6 +135,7 @@ let paths_matching : type a. File_selector.t -> a eval_mode -> (Filename_set.t *
     filenames, Dep.Set.singleton (Dep.file_selector g)
 ;;
 
+let ignore x = map x ~f:ignore
 let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode) }
 let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
 let env_var s = deps (Dep.Set.singleton (Dep.env s))

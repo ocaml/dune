@@ -4,6 +4,20 @@ include
   module type of Dune_engine.Action_builder
   with type 'a t = 'a Dune_engine.Action_builder.t
 
+(** Like [of_memo] but collapses the two levels of [t]. *)
+val of_memo_join : 'a t Memo.t -> 'a t
+
+(** Delay a static computation until the description is evaluated *)
+val delayed : (unit -> 'a) -> 'a t
+
+val ignore : 'a t -> unit t
+
+type fail = { fail : 'a. unit -> 'a }
+
+(** Always fail when executed. We pass a function rather than an exception to
+    get a proper backtrace *)
+val fail : fail -> _ t
+
 module With_targets : module type of With_targets with type 'a t = 'a With_targets.t
 
 (** [path p] records [p] as a file that is read by the action produced by the

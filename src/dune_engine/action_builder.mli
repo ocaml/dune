@@ -17,7 +17,6 @@ val bind : 'a t -> f:('a -> 'b t) -> 'b t
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 val both : 'a t -> 'b t -> ('a * 'b) t
-val ignore : 'a t -> unit t
 val all : 'a t list -> 'a list t
 val all_unit : unit t list -> unit t
 
@@ -27,15 +26,6 @@ val push_stack_frame
   :  human_readable_description:(unit -> User_message.Style.t Pp.t)
   -> (unit -> 'a t)
   -> 'a t
-
-(** Delay a static computation until the description is evaluated *)
-val delayed : (unit -> 'a) -> 'a t
-
-type fail = { fail : 'a. unit -> 'a }
-
-(** Always fail when executed. We pass a function rather than an exception to
-    get a proper backtrace *)
-val fail : fail -> _ t
 
 (** [memoize ?cutoff name t] is an action builder that behaves like [t] except
     that its result is computed only once.
@@ -72,9 +62,6 @@ val goal : 'a t -> 'a t
     fact need [Command.run], and that (ii) [Process.run] only reads the declared
     build rule dependencies. *)
 val of_memo : 'a Memo.t -> 'a t
-
-(** Like [of_memo] but collapses the two levels of [t]. *)
-val of_memo_join : 'a t Memo.t -> 'a t
 
 (** {1 Execution} *)
 

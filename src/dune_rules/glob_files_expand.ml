@@ -47,10 +47,8 @@ let split_glob_string_into_parent_and_pattern glob_string =
     | Some x -> x
     | None ->
       Code_error.raise
-        (sprintf
-           "Filename.basename did not return a suffix of the string \"%s\""
-           glob_string)
-        []
+        "Filename.basename did not return a suffix of the string"
+        [ "glob_string", Dyn.string glob_string ]
   in
   let parent_str = Filename.dirname glob_string in
   prefix, parent_str, pattern_str

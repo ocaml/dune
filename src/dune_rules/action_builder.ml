@@ -3,36 +3,19 @@ include Dune_engine.Action_builder
 open O
 module With_targets = With_targets
 
-let register_action_deps : type a. a eval_mode -> Dep.Set.t -> a Memo.t =
-  fun mode deps ->
-  match mode with
-  | Eager -> Build_system.build_deps deps
-  | Lazy -> Memo.return deps
-;;
-
 let dyn_memo_deps deps =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          let* deps, paths = deps in
-          let+ deps = register_action_deps mode deps in
-          paths, deps)
-    }
+  let* deps, a = of_memo deps in
+  let+ () = Build_system.record_deps deps in
+  a
 ;;
 
 let deps d = dyn_memo_deps (Memo.return (d, ()))
 let dep d = deps (Dep.Set.singleton d)
 
 let dyn_deps t =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          let* (x, deps), deps_x = run t mode in
-          let+ deps = register_action_deps mode deps in
-          x, Deps_or_facts.union mode deps deps_x)
-    }
+  let* a, deps = t in
+  let+ () = Build_system.record_deps deps in
+  a
 ;;
 
 let path p = deps (Dep.Set.singleton (Dep.file p))

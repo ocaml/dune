@@ -22,11 +22,6 @@ val all_unit : unit t list -> unit t
 
 module List : Monad.List with type 'a t := 'a t
 
-val push_stack_frame
-  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
-  -> (unit -> 'a t)
-  -> 'a t
-
 (** [memoize ?cutoff name t] is an action builder that behaves like [t] except
     that its result is computed only once.
 
@@ -63,35 +58,6 @@ val goal : 'a t -> 'a t
     build rule dependencies. *)
 val of_memo : 'a Memo.t -> 'a t
 
-(** {1 Execution} *)
-
-(** Evaluation mode.
-
-    In [Lazy] mode, dependencies are only collected. In [Eager] mode,
-    dependencies are build as soon as they are recorded and their facts are
-    returned.
-
-    If you want to both evaluate an action builder and build the collected
-    dependencies, using [Eager] mode will increase parallelism. If you only want
-    to know the set of dependencies, using [Lazy] will avoid unnecessary work. *)
-type 'a eval_mode =
-  | Lazy : Dep.Set.t eval_mode
-  | Eager : Dep.Facts.t eval_mode
-
-(** Execute an action builder. *)
-val run : 'a t -> 'b eval_mode -> ('a * 'b) Memo.t
-
-(** {1 Low-level} *)
-
-type 'a thunk = { f : 'm. 'm eval_mode -> ('a * 'm) Memo.t } [@@unboxed]
-
-val of_thunk : 'a thunk -> 'a t
-
-module Deps_or_facts : sig
-  val union : 'm eval_mode -> 'm -> 'm -> 'm
-  val union_all : 'm eval_mode -> 'm list -> 'm
-end
-
 (** Record the given set as dependencies of the action produced by the action builder. *)
 val record : 'a -> Dep.Set.t -> f:(Dep.t -> Dep.Fact.t Memo.t) -> 'a t
 
@@ -124,3 +90,9 @@ val evaluate_and_collect_deps : 'a t -> ('a * Dep.Set.t) Memo.t
 (** Evaluate a [t] and collect the set of its dependencies along with facts about them.
     Note that finding [t]'s facts requires building all of [t]'s dependencies. *)
 val evaluate_and_collect_facts : 'a t -> ('a * Dep.Facts.t) Memo.t
+
+(** only used in the public rules *)
+val push_stack_frame
+  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a t)
+  -> 'a t

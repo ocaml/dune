@@ -96,6 +96,12 @@ Tests for has_undefined_var:
   $ test_action '(run echo (if (has_undefined_var (when %{pkg-self:not_a_variable} foo)) foo bar))'
   foo
 
+Test conversion from blang to string:
+  $ test_action '(run echo (and (= (concat foo bar) foobar)))'
+  true
+  $ test_action '(run echo (and true false))'
+  false
+
 Test the error message when the program doesn't exist:
   $ test_action '(run madeup)'
   File "dune.lock/test.pkg", line 2, characters 14-20:
@@ -119,4 +125,24 @@ Test the error message when the program doesn't exist:
                     ^^^^^^^^^^^^^^^^^^^^^
   Error: Program madeup not found in the tree or in PATH
    (context: default)
+  [1]
+
+Test for the error message when a slang expression fails to parse:
+  $ test_action '(run echo (concat ()))'
+  File "dune.lock/test.pkg", line 2, characters 27-29:
+  2 | (install (run echo (concat ())))
+                                 ^^
+  Error: Unexpected list
+  [1]
+  $ test_action '(run echo (if true))'
+  File "dune.lock/test.pkg", line 2, characters 19-28:
+  2 | (install (run echo (if true)))
+                         ^^^^^^^^^
+  Error: Not enough arguments for if
+  [1]
+  $ test_action '(run echo (if (= a) () ()))'
+  File "dune.lock/test.pkg", line 2, characters 23-28:
+  2 | (install (run echo (if (= a) () ())))
+                             ^^^^^
+  Error: Not enough arguments for =
   [1]

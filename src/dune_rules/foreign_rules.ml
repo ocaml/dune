@@ -131,10 +131,10 @@ let include_dir_flags ~expander ~dir ~include_dirs =
   Command.Args.Dyn
     (let open Action_builder.O in
      let+ include_dirs_expanded =
-       let expand_str = Expander.No_deps.expand_str expander in
+       let expand = Expander.No_deps.expand expander ~mode:Single in
        Memo.List.concat_map
          include_dirs
-         ~f:(Foreign.Stubs.Include_dir.expand_include ~expand_str ~dir)
+         ~f:(Foreign.Stubs.Include_dir.expand_include ~expand ~dir:(Path.build dir))
        |> Action_builder.of_memo
      in
      Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))

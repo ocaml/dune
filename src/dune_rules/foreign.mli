@@ -101,8 +101,8 @@ module Stubs : sig
 
     val expand_include
       :  t
-      -> expand_str:(String_with_vars.t -> string Memo.t)
-      -> dir:Path.Build.t
+      -> expand:(String_with_vars.t -> Value.t Memo.t)
+      -> dir:Path.t
       -> Without_include.t list Memo.t
   end
 

@@ -861,6 +861,14 @@ module With_reduced_var_set = struct
     | None -> isn't_allowed_in_this_position ~source
   ;;
 
+  let expand ~context ~dir sw =
+    String_expander.Memo.expand
+      ~dir:(Path.build dir)
+      ~mode:Single
+      sw
+      ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
+  ;;
+
   let expand_str ~context ~dir sw =
     let+ v =
       String_expander.Memo.expand

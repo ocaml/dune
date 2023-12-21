@@ -388,7 +388,7 @@ end = struct
   ;;
 
   let entries_of_install_stanza ~dir ~expander ~package_db (i : Install_conf.t) =
-    let expand_str = Expander.No_deps.expand_str expander in
+    let expand = Expander.No_deps.expand expander ~mode:Single in
     let make_entry =
       let section = Package_db.section_of_site package_db in
       fun fb ~kind ->
@@ -398,7 +398,7 @@ end = struct
     in
     let+ files =
       let* files_expanded =
-        Install_entry.File.to_file_bindings_expanded i.files ~expand_str ~dir
+        Install_entry.File.to_file_bindings_expanded i.files ~expand ~dir
       in
       Memo.List.map files_expanded ~f:(fun fb ->
         let+ entry = make_entry ~kind:`File fb in
@@ -408,7 +408,7 @@ end = struct
       let* dirs_expanded =
         Install_entry.Dir.to_file_bindings_expanded
           i.dirs
-          ~expand_str
+          ~expand
           ~dir
           ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       in
@@ -423,7 +423,7 @@ end = struct
          that we deprecated starting a destination install path with "..". *)
       Install_entry.Dir.to_file_bindings_expanded
         i.source_trees
-        ~expand_str
+        ~expand
         ~dir
         ~relative_dst_path_starts_with_parent_error_when:`Always_error
       >>= Memo.List.map ~f:(fun fb ->

@@ -7,16 +7,16 @@ let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
     (* XXX we're evaluating these stanzas here and [Install_rules]. Seems a bit
        sad to do that *)
     let files_and_dirs =
-      let expand_str = Expander.No_deps.expand_str expander in
+      let expand = Expander.No_deps.expand expander ~mode:Single in
       let+ files_expanded =
         Install_entry.File.to_file_bindings_expanded
           install_conf.files
-          ~expand_str
+          ~expand
           ~dir:ctx_dir
       and+ dirs_expanded =
         Install_entry.Dir.to_file_bindings_expanded
           install_conf.dirs
-          ~expand_str
+          ~expand
           ~dir:ctx_dir
           ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
       in

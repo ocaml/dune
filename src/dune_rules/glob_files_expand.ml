@@ -139,7 +139,7 @@ struct
   let expand_vars { Dep_conf.Glob_files.glob; recursive } ~f ~base_dir =
     let open M.O in
     let loc = String_with_vars.loc glob in
-    let+ glob_str = f glob in
+    let+ glob_str = f glob >>| Value.to_string ~dir:(Path.build base_dir) in
     let prefix, parent_str, pattern_str =
       split_glob_string_into_parent_and_pattern glob_str
     in

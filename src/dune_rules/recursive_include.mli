@@ -39,6 +39,6 @@ val decode
     function is used to resolve them to strings. *)
 val expand_include
   :  'a t
-  -> expand_str:(String_with_vars.t -> string Memo.t)
-  -> dir:Path.Build.t
+  -> expand:(String_with_vars.t -> Value.t Memo.t)
+  -> dir:Path.t
   -> 'a list Memo.t

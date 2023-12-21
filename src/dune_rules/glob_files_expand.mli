@@ -21,7 +21,7 @@ end
     matched the glob. *)
 val memo
   :  Dep_conf.Glob_files.t
-  -> f:(String_with_vars.t -> string Memo.t)
+  -> f:(String_with_vars.t -> Value.t Memo.t)
   -> base_dir:Path.Build.t
   -> Expanded.t Memo.t
 
@@ -31,6 +31,6 @@ val memo
     dependencies will include the file selector built from the glob. *)
 val action_builder
   :  Dep_conf.Glob_files.t
-  -> f:(String_with_vars.t -> string Action_builder.t)
+  -> f:(String_with_vars.t -> Value.t Action_builder.t)
   -> base_dir:Path.Build.t
   -> Expanded.t Action_builder.t

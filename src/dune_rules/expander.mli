@@ -95,6 +95,12 @@ module With_deps_if_necessary : sig
 end
 
 module With_reduced_var_set : sig
+  val expand
+    :  context:Context.t
+    -> dir:Path.Build.t
+    -> String_with_vars.t
+    -> Value.t Memo.t
+
   val expand_str
     :  context:Context.t
     -> dir:Path.Build.t

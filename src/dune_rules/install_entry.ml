@@ -2,8 +2,8 @@ open Import
 
 (* Expands a [String_with_vars.t] with a given function, returning the result
    unless the result is an absolute path in which case a user error is raised. *)
-let expand_str_with_check_for_local_path ~expand_str sw =
-  Memo.map (expand_str sw) ~f:(fun str ->
+let expand_with_check_for_local_path ~expand sw =
+  Memo.map (expand sw) ~f:(fun str ->
     if not (Filename.is_relative str)
     then (
       let loc = String_with_vars.loc sw in
@@ -66,22 +66,22 @@ module File = struct
       file_binding_decode <|> glob_files_decode
     ;;
 
-    let to_file_bindings_unexpanded t ~expand_str ~dir ~dune_syntax =
+    let to_file_bindings_unexpanded t ~expand ~dir ~dune_syntax =
       match t with
       | File_binding file_binding -> Memo.return [ file_binding ]
       | Glob_files { glob_files; prefix } ->
         let open Memo.O in
-        let* glob_expanded =
-          Glob_files_expand.memo glob_files ~f:expand_str ~base_dir:dir
-        in
+        let* glob_expanded = Glob_files_expand.memo glob_files ~f:expand ~base_dir:dir in
         let glob_loc = String_with_vars.loc glob_files.glob in
         let glob_prefix = Glob_files_expand.Expanded.prefix glob_expanded in
         let+ prefix_loc_opt =
           Memo.Option.map prefix ~f:(fun prefix_sw ->
-            let+ prefix = expand_str prefix_sw in
-            prefix, String_with_vars.loc prefix_sw)
+            let loc = String_with_vars.loc prefix_sw in
+            let+ prefix = expand prefix_sw >>| Value.to_string ~dir:(Path.build dir) in
+            prefix, loc)
         in
-        List.map (Glob_files_expand.Expanded.matches glob_expanded) ~f:(fun path ->
+        Glob_files_expand.Expanded.matches glob_expanded
+        |> List.map ~f:(fun path ->
           let src = glob_loc, path in
           let dst =
             match prefix_loc_opt with
@@ -106,15 +106,17 @@ module File = struct
             ~dir:(Some (Path.Build.drop_build_context_exn dir)))
     ;;
 
-    let to_file_bindings_expanded t ~expand_str ~dir ~dune_syntax =
-      to_file_bindings_unexpanded t ~expand_str ~dir ~dune_syntax
+    let to_file_bindings_expanded t ~expand ~dir ~dune_syntax =
+      to_file_bindings_unexpanded t ~expand ~dir ~dune_syntax
       |> Memo.bind
            ~f:
              (Memo.List.map
                 ~f:
                   (File_binding.Unexpanded.expand
                      ~dir
-                     ~f:(expand_str_with_check_for_local_path ~expand_str)))
+                     ~f:
+                       (expand_with_check_for_local_path ~expand:(fun p ->
+                          expand p |> Memo.map ~f:(Value.to_string ~dir:(Path.build dir))))))
     ;;
   end
 
@@ -141,39 +143,31 @@ module File = struct
     { entry; dune_syntax }
   ;;
 
-  let to_file_bindings_unexpanded ts ~expand_str ~dir =
+  let to_file_bindings_unexpanded ts ~expand ~dir =
     let open Memo.O in
     Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
       let+ with_include_expanded =
-        Recursive_include.expand_include entry ~expand_str ~dir
+        Recursive_include.expand_include entry ~expand ~dir:(Path.build dir)
       in
       List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
     |> Memo.bind
          ~f:
            (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
-              Without_include.to_file_bindings_unexpanded
-                ~expand_str
-                ~dir
-                ~dune_syntax
-                entry))
+              Without_include.to_file_bindings_unexpanded ~expand ~dir ~dune_syntax entry))
   ;;
 
-  let to_file_bindings_expanded ts ~expand_str ~dir =
+  let to_file_bindings_expanded ts ~expand ~dir =
     let open Memo.O in
     let* file_bindings_expanded =
       Memo.List.concat_map ts ~f:(fun { entry; dune_syntax } ->
         let+ with_include_expanded =
-          Recursive_include.expand_include entry ~expand_str ~dir
+          Recursive_include.expand_include entry ~expand ~dir:(Path.build dir)
         in
         List.map with_include_expanded ~f:(fun entry -> entry, dune_syntax))
       |> Memo.bind
            ~f:
              (Memo.List.concat_map ~f:(fun (entry, dune_syntax) ->
-                Without_include.to_file_bindings_expanded
-                  ~expand_str
-                  ~dir
-                  ~dune_syntax
-                  entry))
+                Without_include.to_file_bindings_expanded ~expand ~dir ~dune_syntax entry))
     in
     (* Note that validation is deferred until after file bindings have been
        expanded as a path may be invalid due to the contents of a variable
@@ -203,18 +197,22 @@ module Dir = struct
 
   let to_file_bindings_expanded
     ts
-    ~expand_str
-    ~dir
+    ~expand
+    ~(dir : Path.Build.t)
     ~relative_dst_path_starts_with_parent_error_when
     =
     let open Memo.O in
     let* file_bindings_expanded =
-      Memo.List.concat_map ts ~f:(Recursive_include.expand_include ~expand_str ~dir)
+      Memo.List.concat_map
+        ts
+        ~f:(Recursive_include.expand_include ~expand ~dir:(Path.build dir))
       >>= Memo.List.map
             ~f:
               (File_binding.Unexpanded.expand
                  ~dir
-                 ~f:(expand_str_with_check_for_local_path ~expand_str))
+                 ~f:
+                   (expand_with_check_for_local_path ~expand:(fun s ->
+                      expand s >>| Value.to_string ~dir:(Path.build dir))))
     in
     (* Note that validation is deferred until after file bindings have been
        expanded as a path may be invalid due to the contents of a variable

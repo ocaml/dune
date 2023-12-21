@@ -37,6 +37,7 @@ let available_exes ~dir (exes : Dune_file.Executables.t) =
 let get_installed_binaries ~(context : Context.t) stanzas =
   let open Memo.O in
   let install_dir = Install.Context.bin_dir ~context:(Context.name context) in
+  let expand ~dir sw = Expander.With_reduced_var_set.expand ~context ~dir sw in
   let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
   let expand_str_partial ~dir sw =
     Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
@@ -45,10 +46,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     let dir = Path.Build.append_source (Context.build_dir context) d.dir in
     let binaries_from_install files =
       let* unexpanded_file_bindings =
-        Install_entry.File.to_file_bindings_unexpanded
-          files
-          ~expand_str:(expand_str ~dir)
-          ~dir
+        Install_entry.File.to_file_bindings_unexpanded files ~expand:(expand ~dir) ~dir
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =

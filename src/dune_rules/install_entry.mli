@@ -12,13 +12,13 @@ module File : sig
 
   val to_file_bindings_unexpanded
     :  t list
-    -> expand_str:(String_with_vars.t -> string Memo.t)
+    -> expand:(String_with_vars.t -> Value.t Memo.t)
     -> dir:Path.Build.t
     -> File_binding.Unexpanded.t list Memo.t
 
   val to_file_bindings_expanded
     :  t list
-    -> expand_str:(String_with_vars.t -> string Memo.t)
+    -> expand:(String_with_vars.t -> Value.t Memo.t)
     -> dir:Path.Build.t
     -> File_binding.Expanded.t list Memo.t
 
@@ -34,7 +34,7 @@ module Dir : sig
 
   val to_file_bindings_expanded
     :  t list
-    -> expand_str:(String_with_vars.t -> string Memo.t)
+    -> expand:(String_with_vars.t -> Value.t Memo.t)
     -> dir:Path.Build.t
     -> relative_dst_path_starts_with_parent_error_when:
          [ `Deprecation_warning_from_3_11 | `Always_error ]

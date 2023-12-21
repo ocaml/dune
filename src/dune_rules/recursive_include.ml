@@ -63,9 +63,9 @@ let decode ~base_term ~include_keyword ~include_allowed_in_versions ~non_sexp_be
 
 let load_included_file config path ~context =
   let open Memo.O in
-  let+ contents = Build_system.read_file (Path.build path) in
+  let+ contents = Build_system.read_file path in
   let ast =
-    Dune_lang.Parser.parse_string contents ~mode:Single ~fname:(Path.Build.to_string path)
+    Dune_lang.Parser.parse_string contents ~mode:Single ~fname:(Path.to_string path)
   in
   let config = Lazy.force config in
   let parse = Dune_lang.Decoder.parse config.decode context in
@@ -81,24 +81,24 @@ let load_included_file config path ~context =
        [ term ])
 ;;
 
-let expand_include (type a) (t : a t) ~expand_str ~dir =
+let expand_include (type a) (t : a t) ~expand ~dir =
   let rec expand_include t ~seen =
     match t with
     | Base base_term -> Memo.return [ base_term ]
     | Include ({ context; path = path_sw }, config) ->
       let open Memo.O in
       let* path =
-        expand_str path_sw
-        >>| Path.Build.relative ~error_loc:(String_with_vars.loc path_sw) dir
+        let loc = String_with_vars.loc path_sw in
+        expand path_sw >>| Value.to_path ~error_loc:loc ~dir
       in
-      if Path.Build.Set.mem seen path
+      if Path.Set.mem seen path
       then
         User_error.raise
           ~loc:(String_with_vars.loc path_sw)
-          [ Pp.textf "Include loop detected via: %s" (Path.Build.to_string path) ];
-      let seen = Path.Build.Set.add seen path in
+          [ Pp.textf "Include loop detected via: %s" (Path.to_string path) ];
+      let seen = Path.Set.add seen path in
       let* contents = load_included_file config path ~context in
       Memo.List.concat_map contents ~f:(expand_include ~seen)
   in
-  expand_include t ~seen:Path.Build.Set.empty
+  expand_include t ~seen:Path.Set.empty
 ;;

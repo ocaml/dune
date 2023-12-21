@@ -218,7 +218,7 @@ let rec dep expander : Dep_conf.t -> _ = function
     Other
       (Glob_files_expand.action_builder
          glob_files
-         ~f:(Expander.expand_str expander)
+         ~f:(Expander.expand ~mode:Single expander)
          ~base_dir:(Expander.dir expander)
        >>| Glob_files_expand.Expanded.matches
        >>| List.map ~f:(fun path ->

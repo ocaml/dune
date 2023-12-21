@@ -180,8 +180,8 @@ open struct
   module List = Stdune.List
 end
 
-let of_thunk t = t
-let run t mode = t.f mode
+let evaluate_and_collect_deps t = t.f Lazy
+let evaluate_and_collect_facts t = t.f Eager
 
 let force_lazy_or_eager
   : type a m.
@@ -200,7 +200,7 @@ let memoize ?cutoff name t =
   let lazy_ : ('a * Dep.Set.t) Memo.Lazy.t Lazy.t =
     lazy
       (let cutoff =
-         Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Set.equal)
+         Option.map cutoff ~f:(fun equal x y -> Tuple.T2.equal equal Dep.Set.equal x y)
        in
        Memo.lazy_ ?cutoff ~name:(name ^ "(lazy)") (fun () -> t.f Lazy))
   in
@@ -208,7 +208,7 @@ let memoize ?cutoff name t =
      nodes end up getting forced during every build. *)
   let eager : ('a * Dep.Facts.t) Memo.Lazy.t =
     let cutoff =
-      Option.map cutoff ~f:(fun equal -> Tuple.T2.equal equal Dep.Facts.equal)
+      Option.map cutoff ~f:(fun equal x y -> Tuple.T2.equal equal Dep.Facts.equal x y)
     in
     Memo.lazy_ ?cutoff ~name (fun () -> t.f Eager)
   in
@@ -219,13 +219,6 @@ let map2 x y ~f =
   let+ x = x
   and+ y = y in
   f x y
-;;
-
-let push_stack_frame ~human_readable_description f =
-  { f =
-      (fun mode ->
-        Memo.push_stack_frame ~human_readable_description (fun () -> (f ()).f mode))
-  }
 ;;
 
 let all_unit (xs : unit t list) =
@@ -256,7 +249,7 @@ let create_memo name ~input ?cutoff ?human_readable_description f =
     lazy
       (let cutoff =
          Option.map cutoff ~f:(fun f (a, facts1) (b, facts2) ->
-           f a b && Dep.Map.equal facts1 facts2 ~equal:Dep.Fact.equal)
+           f a b && Dep.Facts.equal facts1 facts2)
        in
        Memo.create name ~input ?cutoff ?human_readable_description (fun x ->
          (f x).f Eager))
@@ -282,5 +275,9 @@ let goal t =
   }
 ;;
 
-let evaluate_and_collect_deps t = t.f Lazy
-let evaluate_and_collect_facts t = t.f Eager
+let push_stack_frame ~human_readable_description f =
+  { f =
+      (fun mode ->
+        Memo.push_stack_frame ~human_readable_description (fun () -> (f ()).f mode))
+  }
+;;

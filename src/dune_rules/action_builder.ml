@@ -102,15 +102,8 @@ let progn ts =
 ;;
 
 let if_file_exists p ~then_ ~else_ =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          Build_system.file_exists p
-          >>= function
-          | true -> run then_ mode
-          | false -> run else_ mode)
-    }
+  let* exists = of_memo (Build_system.file_exists p) in
+  if exists then then_ else else_
 ;;
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
@@ -121,21 +114,20 @@ let paths_existing paths =
        if_file_exists file ~then_:(path file) ~else_:(return ())))
 ;;
 
-let paths_matching : type a. File_selector.t -> a eval_mode -> (Filename_set.t * a) Memo.t
-  =
-  fun g mode ->
-  let open Memo.O in
-  match mode with
-  | Eager ->
-    let+ facts = Build_system.build_pred g in
-    ( Dep.Fact.Files.filenames_exn facts ~expected_parent:(File_selector.dir g)
-    , Dep.Map.singleton (Dep.file_selector g) (Dep.Fact.file_selector g facts) )
-  | Lazy ->
-    let+ filenames = Build_system.eval_pred g in
-    filenames, Dep.Set.singleton (Dep.file_selector g)
+let paths_matching g =
+  let* filenames = of_memo @@ Build_system.eval_pred g in
+  let+ () = Build_system.record_deps (Dep.Set.singleton (Dep.file_selector g)) in
+  filenames
 ;;
 
 let ignore x = map x ~f:ignore
-let paths_matching ~loc:_ g = of_thunk { f = (fun mode -> paths_matching g mode) }
+
+let paths_matching ~loc:_ g =
+  (* CR-rgrinberg: how about doing something with this location? Like pushing a
+     stack frame with it for example *)
+  let* () = return () in
+  paths_matching g
+;;
+
 let paths_matching_unit ~loc g = ignore (paths_matching ~loc g)
 let env_var s = deps (Dep.Set.singleton (Dep.env s))

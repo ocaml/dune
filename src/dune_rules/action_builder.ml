@@ -3,7 +3,7 @@ include Dune_engine.Action_builder
 open O
 module With_targets = With_targets
 
-let register_action_deps : type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.t =
+let register_action_deps : type a. a eval_mode -> Dep.Set.t -> a Memo.t =
   fun mode deps ->
   match mode with
   | Eager -> Build_system.build_deps deps
@@ -42,13 +42,8 @@ let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files 
 let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
 
 let contents p =
-  of_thunk
-    { f =
-        (fun _mode ->
-          let open Memo.O in
-          let+ x = Build_system.read_file p in
-          x, Dep.Map.empty)
-    }
+  let* () = Dep.file p |> Dep.Set.singleton |> Build_system.record_deps in
+  of_memo (Build_system.read_file p)
 ;;
 
 let lines_of p = contents p >>| String.split_lines
@@ -129,8 +124,7 @@ let paths_existing paths =
        if_file_exists file ~then_:(path file) ~else_:(return ())))
 ;;
 
-let paths_matching
-  : type a. File_selector.t -> a eval_mode -> (Filename_set.t * a Dep.Map.t) Memo.t
+let paths_matching : type a. File_selector.t -> a eval_mode -> (Filename_set.t * a) Memo.t
   =
   fun g mode ->
   let open Memo.O in

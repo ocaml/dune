@@ -39,37 +39,24 @@ module Alias_build_info = struct
   ;;
 end
 
-let register_action_deps : type a. a eval_mode -> Dep.Set.t -> a Dep.Map.t Memo.t =
-  fun mode deps ->
-  match mode with
-  | Eager -> Build_system.build_deps deps
-  | Lazy -> Memo.return deps
-;;
-
 let dep_on_alias_build_info_if_exists alias =
-  of_thunk
-    { f =
-        (fun mode ->
-          let open Memo.O in
-          Load_rules.load_dir ~dir:(Path.build (Alias.dir alias))
-          >>= function
-          | Source _ | External _ ->
-            Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
-          | Build { aliases; allowed_subdirs; rules_here = _ } ->
-            (match Alias.Name.Map.find aliases (Alias.name alias) with
-             | None ->
-               Memo.return
-                 ( Alias_build_info.of_dir_set ~status:Not_defined allowed_subdirs
-                 , Dep.Map.empty )
-             | Some _ ->
-               let deps = Dep.Set.singleton (Dep.alias alias) in
-               let+ deps = register_action_deps mode deps in
-               Alias_build_info.of_dir_set ~status:Defined allowed_subdirs, deps)
-          | Build_under_directory_target _ ->
-            Memo.return
-              ( Alias_build_info.of_dir_set ~status:Not_defined Dir_set.empty
-              , Dep.Map.empty ))
-    }
+  let open O in
+  Load_rules.load_dir ~dir:(Path.build (Alias.dir alias))
+  |> Action_builder.of_memo
+  >>= function
+  | Source _ | External _ ->
+    Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
+  | Build { aliases; allowed_subdirs; rules_here = _ } ->
+    (match Alias.Name.Map.find aliases (Alias.name alias) with
+     | None ->
+       Action_builder.return
+         (Alias_build_info.of_dir_set ~status:Not_defined allowed_subdirs)
+     | Some _ ->
+       let deps = Dep.Set.singleton (Dep.alias alias) in
+       let+ () = Build_system.record_deps deps in
+       Alias_build_info.of_dir_set ~status:Defined allowed_subdirs)
+  | Build_under_directory_target _ ->
+    Action_builder.return (Alias_build_info.of_dir_set ~status:Not_defined Dir_set.empty)
 ;;
 
 module Alias_rec (Traverse : sig

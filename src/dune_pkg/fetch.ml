@@ -288,6 +288,29 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
     Error (Checksum_mismatch (Checksum.of_opam_hash expected))
 ;;
 
+let fetch_git rev_store ~target (source : Opam_repo.Source.t) =
+  let branch =
+    match source.commit with
+    | Some (Branch b) -> Some b
+    | _ -> None
+  in
+  let* remote = Rev_store.add_repo rev_store ~source:source.url ~branch in
+  let* remote = Rev_store.Remote.update remote in
+  let* at_rev =
+    match source.commit with
+    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
+    | None ->
+      let name = Rev_store.Remote.default_branch remote in
+      Rev_store.Remote.rev_of_name remote ~name
+  in
+  match at_rev with
+  | None -> Fiber.return @@ Error (Unavailable None)
+  | Some at_rev ->
+    let+ res = Rev_store.At_rev.check_out at_rev ~target in
+    Ok res
+;;
+
 let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
   let event =
     Dune_stats.(

@@ -16,6 +16,13 @@ let lock_path { dir } =
 
 type rev = Rev of string
 
+let tar =
+  lazy
+    (match Bin.which ~path:(Env_path.path Env.initial) "tar" with
+     | Some x -> x
+     | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
+;;
+
 let rec attempt_to_lock flock lock ~max_retries =
   let sleep_duration = 0.1 in
   match Flock.lock_non_block flock lock with
@@ -311,6 +318,36 @@ module At_rev = struct
 
   let repository_id { revision = Rev rev; repo = _; files_at_rev = _ } =
     Repository_id.of_git_hash rev
+  ;;
+
+  let check_out { repo = { dir }; revision = Rev rev; files_at_rev = _ } ~target =
+    let git = Lazy.force Vcs.git in
+    let tar = Lazy.force tar in
+    let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
+    let archive_file = Path.relative temp_dir "archive.tar" in
+    let stdout_to = Process.Io.file archive_file Process.Io.Out in
+    let stderr_to = make_stderr () in
+    let* () =
+      Process.run
+        ~dir
+        ~display
+        ~stdout_to
+        ~stderr_to
+        ~env
+        failure_mode
+        git
+        [ "archive"; "--format=tar"; rev ]
+    in
+    let stdout_to = make_stdout () in
+    let stderr_to = make_stderr () in
+    Process.run
+      ~dir:target
+      ~display
+      ~stdout_to
+      ~stderr_to
+      failure_mode
+      tar
+      [ "xf"; Path.to_string archive_file ]
   ;;
 end
 

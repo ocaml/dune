@@ -16,7 +16,7 @@ let wrong_checksum =
   OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
 ;;
 
-let target destination =
+let subdir destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
   Path.external_ ext
 ;;
@@ -102,7 +102,7 @@ let%expect_test "downloading simple file" =
        ~unpack:false
        ~port
        ~filename
-       ~target:(target destination)
+       ~target:(subdir destination)
        ~checksum:(calculate_checksum ~filename));
   Thread.join server;
   let served_content = Io.String_path.read_file filename in
@@ -141,7 +141,7 @@ let%expect_test "downloading but the checksums don't match" =
        ~unpack:false
        ~port
        ~filename
-       ~target:(target destination)
+       ~target:(subdir destination)
        ~checksum:wrong_checksum);
   Thread.join server;
   print_endline "Finished successfully?";
@@ -161,7 +161,7 @@ let%expect_test "downloading, without any checksum" =
   let filename = "plaintext.md" in
   let port, server = serve_once ~filename in
   let destination = "destination.md" in
-  run (download ~unpack:false ~port ~filename ~target:(target destination));
+  run (download ~unpack:false ~port ~filename ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   [%expect {|
@@ -182,7 +182,7 @@ let%expect_test "downloading, tarball" =
        ~checksum:wrong_checksum
        ~port
        ~filename
-       ~target:(target destination));
+       ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   [%expect.unreachable]
@@ -202,7 +202,7 @@ let%expect_test "downloading, tarball with no checksum match" =
      correct location. *)
   let filename = "tarball.tar.gz" in
   let port, server = serve_once ~filename in
-  let target = target "tarball" in
+  let target = subdir "tarball" in
   run (download ~reproducible:false ~unpack:true ~port ~filename ~target);
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
@@ -220,4 +220,32 @@ let%expect_test "downloading, tarball with no checksum match" =
     ------
     files in target dir:
     plaintext.md |}]
+;;
+
+let download_git rev_store url ~target =
+  let open Fiber.O in
+  let+ res = Fetch.fetch_git rev_store ~target url in
+  match res with
+  | Error _ ->
+    let errs = [ Pp.text "Failure while downloading" ] in
+    User_error.raise ~loc:Loc.none errs
+  | Ok () -> ()
+;;
+
+let%expect_test "downloading via git" =
+  let source = subdir "source-repository" in
+  let url = OpamUrl.parse (sprintf "git+file://%s" (Path.to_string source)) in
+  let rev_store_dir = subdir "rev-store" in
+  let target = subdir "checkout-into-here" in
+  (* The file at [entry] is created by [create_repo_at] *)
+  let entry = Path.relative target "entry" in
+  Path.mkdir_p target;
+  run (fun () ->
+    let open Fiber.O in
+    let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
+    let* (_commit : string) = Rev_store_tests.create_repo_at source in
+    let* source = Dune_pkg.Opam_repo.Source.Private.of_opam_url rev_store url in
+    let+ () = download_git rev_store source ~target in
+    print_endline (Io.read_file entry));
+  [%expect {| just some content |}]
 ;;

@@ -18,6 +18,7 @@ module At_rev : sig
   val directory_entries : t -> Path.Local.t -> File.Set.t
   val equal : t -> t -> bool
   val repository_id : t -> Repository_id.t
+  val check_out : t -> target:Path.t -> unit Fiber.t
 end
 
 module Remote : sig

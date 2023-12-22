@@ -115,6 +115,7 @@ end
 module Unexpanded = struct
   type nonrec t = (String_with_vars.t, String_with_vars.t) t
 
+  let loc t = String_with_vars.loc t.src
   let to_dyn = to_dyn String_with_vars.to_dyn String_with_vars.to_dyn
   let equal = equal String_with_vars.equal_no_loc String_with_vars.equal_no_loc
 

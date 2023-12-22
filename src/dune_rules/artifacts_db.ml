@@ -36,16 +36,17 @@ let available_exes ~dir (exes : Dune_file.Executables.t) =
 ;;
 
 let get_installed_binaries ~(context : Context.t) stanzas =
-  let merge _ _ x = Some x in
+  let merge _ x y = Some (Appendable_list.( @ ) x y) in
   let open Memo.O in
   let expand ~dir sw = Expander.With_reduced_var_set.expand ~context ~dir sw in
   let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
   let expand_str_partial ~dir sw =
     Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
+  let eval_blang ~dir = Expander.With_reduced_var_set.eval_blang ~dir ~context in
   Memo.List.map stanzas ~f:(fun (d : Dune_file.t) ->
     let dir = Path.Build.append_source (Context.build_dir context) d.dir in
-    let binaries_from_install files =
+    let binaries_from_install ~enabled_if files =
       let* unexpanded_file_bindings =
         Install_entry.File.to_file_bindings_unexpanded files ~expand:(expand ~dir) ~dir
       in
@@ -60,29 +61,34 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         let dst = Path.Local.of_string (Install.Entry.Dst.to_string p) in
         if Path.Local.is_root (Path.Local.parent_exn dst)
         then (
-          let origin = { Artifacts.binding = fb; dir; dst } in
+          let origin = { Artifacts.binding = fb; dir; dst; enabled_if } in
           Some (Path.Local.basename dst, origin))
         else None)
       >>| List.filter_opt
-      >>| Filename.Map.of_list_reduce ~f:(fun _ y -> y)
+      >>| Filename.Map.of_list_reduce ~f:(fun _ y ->
+        (* CR-rgrinberg: we shouldn't allow duplicate bindings, but where's the
+           correct place for this validation? *)
+        y)
+      >>| Filename.Map.map ~f:Appendable_list.singleton
     in
     Memo.List.map d.stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Install_conf.T { section = Section Bin; files; _ } -> binaries_from_install files
+      | Install_conf.T { section = Section Bin; files; enabled_if; _ } ->
+        let enabled_if = eval_blang ~dir enabled_if in
+        binaries_from_install ~enabled_if files
       | Dune_file.Executables.T
           ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
-        let* available =
-          let* enabled_if =
-            Expander.With_reduced_var_set.eval_blang ~context ~dir exes.enabled_if
-          in
-          match enabled_if with
-          | false -> Memo.return false
+        let enabled_if =
+          let enabled_if = eval_blang ~dir exes.enabled_if in
+          match exes.optional with
+          | false -> enabled_if
           | true ->
-            (match exes.optional with
-             | false -> Memo.return true
+            enabled_if
+            >>= (function
+             | false -> Memo.return false
              | true -> available_exes ~dir exes)
         in
-        if available then binaries_from_install files else Memo.return Filename.Map.empty
+        binaries_from_install ~enabled_if files
       | _ -> Memo.return Filename.Map.empty)
     >>| Filename.Map.union_all ~f:merge)
   >>| Filename.Map.union_all ~f:merge

@@ -6,6 +6,7 @@ type origin =
   { binding : File_binding.Unexpanded.t
   ; dir : Path.Build.t
   ; dst : Path.Local.t
+  ; enabled_if : bool Memo.t
   }
 
 type where =
@@ -35,7 +36,11 @@ val binary
 
 val binary_available : t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
-val create : Context.t -> local_bins:origin Filename.Map.t Memo.Lazy.t -> t
+
+val create
+  :  Context.t
+  -> local_bins:origin Appendable_list.t Filename.Map.t Memo.Lazy.t
+  -> t
 
 val expand
   : (context:Context.t -> dir:Path.Build.t -> String_with_vars.t -> string Memo.t) Fdecl.t

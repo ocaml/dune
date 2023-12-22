@@ -113,7 +113,7 @@ let win32_unlink fn =
      | _ -> raise e)
 ;;
 
-let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
 
 type unlink_status =
   | Success
@@ -121,7 +121,7 @@ type unlink_status =
   | Error of exn
 
 let unlink_status t =
-  match unlink t with
+  match unlink_exn t with
   | () -> Success
   | exception exn ->
     (match exn with
@@ -133,7 +133,7 @@ let unlink_status t =
 ;;
 
 let unlink_no_err t =
-  try unlink t with
+  try unlink_exn t with
   | _ -> ()
 ;;
 
@@ -174,7 +174,7 @@ let rm_rf fn =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> unlink fn
+  | _ -> unlink_exn fn
 ;;
 
 let traverse_files =

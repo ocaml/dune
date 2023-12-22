@@ -27,7 +27,7 @@ val follow_symlink : string -> (string, follow_symlink_error) result
     [Error Max_depth_exceeded] on some intermediate path). *)
 val follow_symlinks : string -> string option
 
-val unlink : string -> unit
+val unlink_exn : string -> unit
 val unlink_no_err : string -> unit
 
 type unlink_status =

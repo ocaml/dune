@@ -275,5 +275,10 @@ We should be able to successfully solve the project with `foo` and `bar`,
 however due to some issues this currently fails:
 
   $ rm -r dune.lock
-  $ dune pkg lock 2> /dev/null
+  $ dune pkg lock
+  Error: Unable to solve dependencies for dune.lock:
+  Can't find all required versions.
+  Selected: baz.dev
+  - bar -> (problem)
+      No known implementations at all
   [1]

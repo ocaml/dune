@@ -36,7 +36,7 @@ type unlink_status =
   | Error of exn
 
 (** Unlink and return error, if any. *)
-val unlink_status : string -> unlink_status
+val unlink : string -> unlink_status
 
 val initial_cwd : string
 

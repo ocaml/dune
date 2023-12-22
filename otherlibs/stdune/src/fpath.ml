@@ -120,7 +120,7 @@ type unlink_status =
   | Is_a_directory
   | Error of exn
 
-let unlink_status t =
+let unlink t =
   match unlink_exn t with
   | () -> Success
   | exception exn ->

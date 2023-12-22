@@ -575,7 +575,7 @@ end = struct
                   (* If target changed from a directory to a file, delete
                      in anyway. *)
                   remove_target_dir path
-                | Other_error -> ()
+                | Unix_error _ | Other_error _ -> ()
               in
               Targets.Validated.iter
                 targets

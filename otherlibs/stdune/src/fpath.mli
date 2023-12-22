@@ -33,8 +33,7 @@ val unlink_no_err : string -> unit
 type unlink_status =
   | Success
   | Is_a_directory
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
-  | Other_error of exn
+  | Error of exn
 
 (** Unlink and return error, if any. *)
 val unlink_status : string -> unlink_status

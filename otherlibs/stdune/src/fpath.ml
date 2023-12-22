@@ -118,17 +118,18 @@ let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
 type unlink_status =
   | Success
   | Is_a_directory
-  | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
-  | Other_error of exn
+  | Error of exn
 
 let unlink_status t =
   match unlink t with
   | () -> Success
-  | exception Unix.Unix_error (error, syscall, arg) ->
-    (match error, Platform.OS.value with
-     | EISDIR, _ | EPERM, Darwin -> Is_a_directory
-     | _ -> Unix_error (error, syscall, arg))
-  | exception exn -> Other_error exn
+  | exception exn ->
+    (match exn with
+     | Unix.Unix_error (error, _, _) ->
+       (match error, Platform.OS.value with
+        | EISDIR, _ | EPERM, Darwin -> Is_a_directory
+        | _ -> Error exn)
+     | _ -> Error exn)
 ;;
 
 let unlink_no_err t =

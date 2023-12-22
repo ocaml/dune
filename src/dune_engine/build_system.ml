@@ -575,7 +575,13 @@ end = struct
                   (* If target changed from a directory to a file, delete
                      in anyway. *)
                   remove_target_dir path
-                | Error _ -> ()
+                | Error exn ->
+                  Log.info
+                    [ Pp.textf
+                        "Error while removing target %s: %s"
+                        (Path.Build.to_string path)
+                        (Printexc.to_string exn)
+                    ]
               in
               Targets.Validated.iter
                 targets

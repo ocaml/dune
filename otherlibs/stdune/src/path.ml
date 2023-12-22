@@ -1135,7 +1135,7 @@ let is_directory t =
 ;;
 
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Fpath.unlink_exn (to_string t)
+let unlink_exn t = Fpath.unlink_exn (to_string t)
 
 let link src dst =
   match Unix.link (to_string src) (to_string dst) with

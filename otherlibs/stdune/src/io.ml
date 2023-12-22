@@ -500,7 +500,7 @@ let portable_hardlink ~src ~dst =
           destination (we also do this in the symlink case above). Perhaps, the
           list of dependencies may have duplicates? If yes, it may be better to
           filter out the duplicates first. *)
-       Path.unlink dst;
+       Path.unlink_exn dst;
        Path.link src dst
      | Unix.Unix_error (Unix.EMLINK, _, _) ->
        (* If we can't make a new hard link because we reached the limit on the

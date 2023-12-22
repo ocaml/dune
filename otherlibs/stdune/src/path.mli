@@ -357,7 +357,7 @@ val is_dir_sep : char -> bool
 val is_directory : t -> bool
 
 val rmdir : t -> unit
-val unlink : t -> unit
+val unlink_exn : t -> unit
 val unlink_no_err : t -> unit
 val link : t -> t -> unit
 

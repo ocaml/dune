@@ -569,7 +569,7 @@ end = struct
             maybe_async_rule_file_op (fun () ->
               let remove_target_dir dir = Path.rm_rf (Path.build dir) in
               let remove_target_file path =
-                match Path.Build.unlink_status path with
+                match Path.Build.unlink path with
                 | Success -> ()
                 | Is_a_directory ->
                   (* If target changed from a directory to a file, delete

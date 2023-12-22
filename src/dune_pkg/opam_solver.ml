@@ -384,7 +384,7 @@ let filter_to_blang ~package ~loc filter =
   filter_to_blang filter
 ;;
 
-let simplify_filter solver_env =
+let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
     | Global ->
@@ -395,9 +395,7 @@ let simplify_filter solver_env =
            test dependencies for non-local packages, so "with-test" always
            evaluates to "false". *)
         Some (B false)
-      else
-        Solver_env.get solver_env name
-        |> Option.map ~f:Variable_value.to_opam_variable_contents
+      else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
     | _ -> None)
 ;;
 
@@ -410,15 +408,20 @@ let partial_eval_filter = function
      | b -> if b then `Filter None else `Skip)
 ;;
 
-let opam_commands_to_actions solver_env loc package (commands : OpamTypes.command list) =
+let opam_commands_to_actions
+  get_solver_var
+  loc
+  package
+  (commands : OpamTypes.command list)
+  =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let filter = Option.map filter ~f:(simplify_filter solver_env) in
+    let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
     match partial_eval_filter filter with
     | `Skip -> None
     | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun (simple_arg, filter) ->
-          let filter = Option.map filter ~f:(simplify_filter solver_env) in
+          let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
           match partial_eval_filter filter with
           | `Skip -> None
           | `Filter filter ->
@@ -480,6 +483,7 @@ let make_action = function
 
 let opam_package_to_lock_file_pkg
   solver_env
+  stats_updater
   version_by_package_name
   opam_package
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
@@ -560,6 +564,10 @@ let opam_package_to_lock_file_pkg
     | [] -> action
     | env_update -> Action.Withenv (env_update, action)
   in
+  let get_solver_var variable_name =
+    Solver_stats.Updater.expand_variable stats_updater variable_name;
+    Solver_env.get solver_env variable_name
+  in
   let build_command =
     let subst_step =
       OpamFile.OPAM.substs opam_file
@@ -585,7 +593,11 @@ let opam_package_to_lock_file_pkg
             , action ))
     in
     let build_step =
-      opam_commands_to_actions solver_env loc opam_package (OpamFile.OPAM.build opam_file)
+      opam_commands_to_actions
+        get_solver_var
+        loc
+        opam_package
+        (OpamFile.OPAM.build opam_file)
     in
     List.concat [ subst_step; patch_step; build_step ]
     |> make_action
@@ -593,7 +605,7 @@ let opam_package_to_lock_file_pkg
   in
   let install_command =
     OpamFile.OPAM.install opam_file
-    |> opam_commands_to_actions solver_env loc opam_package
+    |> opam_commands_to_actions get_solver_var loc opam_package
     |> make_action
     |> Option.map ~f:build_env
   in
@@ -687,6 +699,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
           List.map opam_packages_to_lock ~f:(fun opam_package ->
             opam_package_to_lock_file_pkg
               solver_env
+              stats_updater
               version_by_package_name
               opam_package
               ~candidates_cache:context.candidates_cache)

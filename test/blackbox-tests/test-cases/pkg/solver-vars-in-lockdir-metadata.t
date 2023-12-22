@@ -113,3 +113,50 @@ Solve the packages again, this time with the variables set.
     (os-family dunefamily)
     (os linux)
     (arch arm)))
+
+Test that variables referred to in filters on build and install commands are
+stored in the lockdir metadata:
+  $ mkpkg filtered-commands <<EOF
+  > build: [
+  >  [ "echo" "foo" ] { os = "linux" }
+  >  [ "echo" "bar" ] { os = "macos" }
+  >  [ "echo" "baz" ] { ! (? x) }
+  > ]
+  > install: [
+  >  [ "echo" "qux" ] { arch = "arm" }
+  > ]
+  > EOF
+
+  $ solve_project <<EOF
+  > (lang dune 3.12)
+  > (package
+  >  (name foo)
+  >  (depends filtered-commands))
+  > EOF
+  Solution for dune.lock:
+  - filtered-commands.0.0.1
+
+  $ cat dune.lock/filtered-commands.pkg
+  (version 0.0.1)
+  
+  (install
+   (run echo qux))
+  
+  (build
+   (progn
+    (run echo foo)
+    (run echo baz)))
+  $ cat dune.lock/lock.dune
+  (lang package 0.1)
+  
+  (dependency_hash 72ab96748951e41c88d4ad9673fea081)
+  
+  (repositories
+   (complete false)
+   (used))
+  
+  (expanded_solver_variable_bindings
+   (variable_values
+    (os linux)
+    (arch arm))
+   (unset_variables x))

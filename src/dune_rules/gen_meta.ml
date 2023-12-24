@@ -156,7 +156,7 @@ let gen_lib pub_name lib ~version =
 let gen ~(package : Package.t) ~add_directory_entry entries =
   let open Memo.O in
   let version =
-    match package.version with
+    match Package.version package with
     | None -> []
     | Some s -> [ rule "version" [] Set (Package_version.to_string s) ]
   in

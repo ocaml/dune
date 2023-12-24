@@ -342,7 +342,8 @@ let add_packages_env context ~base stanzas packages =
         packages
         ~init:package_sections
         ~f:(fun package_name (package : Package.t) acc ->
-          Site.Map.fold package.sites ~init:acc ~f:(fun section acc ->
+          Package.sites package
+          |> Site.Map.fold ~init:acc ~f:(fun section acc ->
             add_in_package_section acc package_name section))
     in
     let roots =

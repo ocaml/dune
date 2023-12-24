@@ -245,7 +245,8 @@ module Public_lib = struct
       else
         Dune_project.packages project
         |> Package.Name.Map.values
-        |> List.find_map ~f:(fun ({ Package.deprecated_package_names; _ } as package) ->
+        |> List.find_map ~f:(fun package ->
+          let deprecated_package_names = Package.deprecated_package_names package in
           if Package.Name.Map.mem deprecated_package_names pkg
           then Some { package; sub_dir = None; name = loc_name }
           else None)
@@ -1026,7 +1027,7 @@ module Library = struct
     in
     let version =
       match status with
-      | Public (_, pkg) -> pkg.version
+      | Public (_, pkg) -> Package.version pkg
       | Installed_private | Installed | Private _ -> None
     in
     let requires = conf.buildable.libraries in

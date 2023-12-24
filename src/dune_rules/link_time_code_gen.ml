@@ -121,7 +121,7 @@ let build_info_code cctx ~libs ~api_version =
          var, placeholders)
   in
   let version_of_package placeholders (p : Package.t) =
-    match p.version with
+    match Package.version p with
     | Some v -> Memo.return (sprintf "Some %S" (Package_version.to_string v), placeholders)
     | None -> placeholder placeholders (Package.dir p)
   in

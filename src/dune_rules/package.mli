@@ -86,25 +86,11 @@ type opam_file =
   | Exists of bool
   | Generated
 
-type t =
-  { id : Id.t
-  ; opam_file : Path.Source.t
-  ; loc : Loc.t
-  ; synopsis : string option
-  ; description : string option
-  ; depends : Dependency.t list
-  ; conflicts : Dependency.t list
-  ; depopts : Dependency.t list
-  ; info : Info.t
-  ; version : Package_version.t option
-  ; has_opam_file : opam_file
-  ; tags : string list
-  ; deprecated_package_names : Loc.t Name.Map.t
-  ; sites : Install.Section.t Site.Map.t
-  ; allow_empty : bool
-  ; original_opam_file : (Path.Source.t * string) option
-  }
+type t
 
+val loc : t -> Loc.t
+val deprecated_package_names : t -> Loc.t Name.Map.t
+val sites : t -> Section.t Site.Map.t
 val equal : t -> t -> bool
 val name : t -> Name.t
 val dir : t -> Path.Source.t
@@ -118,6 +104,20 @@ val deprecated_meta_file : t -> Name.t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val is_opam_file : Path.t -> bool
+val set_has_opam_file : t -> opam_file -> t
+val version : t -> Package_version.t option
+val depends : t -> Dependency.t list
+val conflicts : t -> Dependency.t list
+val depopts : t -> Dependency.t list
+val tags : t -> string list
+val synopsis : t -> string option
+val info : t -> Info.t
+val description : t -> string option
+val id : t -> Id.t
+val set_version_and_info : t -> version:Package_version.t option -> info:Info.t -> t
+val has_opam_file : t -> opam_file
+val allow_empty : t -> bool
+val map_depends : t -> f:(Dependency.t list -> Dependency.t list) -> t
 
 (** Construct a default package (e.g., for project initialization) *)
 val default : Name.t -> Path.Source.t -> t

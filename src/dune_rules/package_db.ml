@@ -39,7 +39,7 @@ let section_of_any_package_site any_package pkg_name loc site =
       (* TODO We should be able to extract this information after the package
          is built *)
       Site.Map.empty
-    | Local p -> p.sites
+    | Local p -> Package.sites p
     | Installed p -> p.sites
   in
   match Site.Map.find sites site with

@@ -483,9 +483,9 @@ module Toplevel_index = struct
     }
 
   let of_packages packages =
-    Package.Name.Map.to_list_map packages ~f:(fun name { Package.version; _ } ->
+    Package.Name.Map.to_list_map packages ~f:(fun name package ->
       let name = Package.Name.to_string name in
-      { name; version; link = sp "%s/index.html" name })
+      { name; version = Package.version package; link = sp "%s/index.html" name })
   ;;
 
   let html_list_items t =

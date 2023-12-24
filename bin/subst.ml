@@ -337,7 +337,7 @@ let subst vcs =
     let metadata_from_dune_project () = Dune_project.info dune_project.project in
     let metadata_from_matching_package () =
       match package_named_after_project with
-      | Some pkg -> Ok pkg.info
+      | Some pkg -> Ok (Package.info pkg)
       | None ->
         Error
           (User_error.make

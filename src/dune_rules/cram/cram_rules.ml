@@ -227,7 +227,7 @@ let rules ~sctx ~expander ~dir tests =
                 match stanza.package with
                 | None -> acc.packages
                 | Some (p : Package.t) ->
-                  Package.Name.Set.add acc.packages (Package.Id.name p.id)
+                  Package.Name.Set.add acc.packages (Package.Id.name (Package.id p))
               in
               ( runtest_alias
               , { acc with enabled_if; locks; deps; alias; packages; sandbox } ))

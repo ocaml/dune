@@ -13,7 +13,7 @@ module Package_paths = struct
   let opam_file (ctx : Context.t) (pkg : Package.t) =
     let opam_file = Package.opam_file pkg in
     let exists =
-      match pkg.has_opam_file with
+      match Package.has_opam_file pkg with
       | Exists b -> b
       | Generated -> true
     in
@@ -495,7 +495,8 @@ end = struct
             |> Install.Entry.Sourced.create
           in
           let deprecated_meta_and_dune_files =
-            Package.Name.Map.to_list pkg.deprecated_package_names
+            Package.deprecated_package_names pkg
+            |> Package.Name.Map.to_list
             |> List.concat_map ~f:(fun (name, _) ->
               let meta_file = Package_paths.deprecated_meta_file ctx pkg name in
               let dune_package_file =
@@ -577,7 +578,7 @@ end = struct
     let pkg_name = Package.name pkg in
     let sections =
       (* the one from sites *)
-      Site.Map.values pkg.sites |> Section.Set.of_list
+      Package.sites pkg |> Site.Map.values |> Section.Set.of_list
     in
     let sections =
       (* the one from install stanza *)
@@ -688,12 +689,12 @@ end = struct
     in
     let sections = sections (Context.name ctx) files pkg in
     Dune_package.Or_meta.Dune_package
-      { Dune_package.version = pkg.version
+      { Dune_package.version = Package.version pkg
       ; name = pkg_name
       ; entries
       ; dir = Path.build pkg_root
       ; sections
-      ; sites = pkg.sites
+      ; sites = Package.sites pkg
       ; files
       }
   ;;
@@ -727,61 +728,54 @@ end = struct
       |> Package.Name.Map.of_list_multi
     in
     let* () =
-      Package.Name.Map.foldi
-        pkg.deprecated_package_names
-        ~init:(Memo.return ())
-        ~f:(fun name loc acc ->
-          acc
-          >>>
-          let dune_pkg =
-            let entries =
-              match Package.Name.Map.find deprecated_dune_packages name with
-              | None -> Lib_name.Map.empty
-              | Some entries ->
-                List.fold_left
-                  entries
-                  ~init:Lib_name.Map.empty
-                  ~f:
-                    (fun
-                      acc
-                      { Dune_file.Library_redirect.old_name = old_public_name, _
-                      ; new_public_name = _, new_public_name
-                      ; loc
-                      ; _
-                      }
-                    ->
-                    let old_public_name = Dune_file.Public_lib.name old_public_name in
-                    Lib_name.Map.add_exn
-                      acc
-                      old_public_name
-                      (Dune_package.Entry.Deprecated_library_name
-                         { loc; old_public_name; new_public_name }))
-            in
-            let context_name = Context.name ctx in
-            let sections = sections context_name [] pkg in
-            { Dune_package.version = pkg.version
-            ; name
-            ; entries
-            ; dir =
-                Path.build (Install.Context.lib_dir ~context:context_name ~package:name)
-            ; sections
-            ; sites = pkg.sites
-            ; files = []
-            }
+      Package.deprecated_package_names pkg
+      |> Package.Name.Map.foldi ~init:(Memo.return ()) ~f:(fun name loc acc ->
+        acc
+        >>>
+        let dune_pkg =
+          let entries =
+            match Package.Name.Map.find deprecated_dune_packages name with
+            | None -> Lib_name.Map.empty
+            | Some entries ->
+              List.fold_left
+                entries
+                ~init:Lib_name.Map.empty
+                ~f:
+                  (fun
+                    acc
+                    { Dune_file.Library_redirect.old_name = old_public_name, _
+                    ; new_public_name = _, new_public_name
+                    ; loc
+                    ; _
+                    }
+                  ->
+                  let old_public_name = Dune_file.Public_lib.name old_public_name in
+                  Lib_name.Map.add_exn
+                    acc
+                    old_public_name
+                    (Dune_package.Entry.Deprecated_library_name
+                       { loc; old_public_name; new_public_name }))
           in
-          let action_with_targets =
-            Action_builder.write_file
-              (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
-              (Format.asprintf
-                 "%a"
-                 (Dune_package.Or_meta.pp ~dune_version)
-                 (Dune_package dune_pkg))
-          in
-          Super_context.add_rule
-            sctx
-            ~dir:(Context.build_dir ctx)
-            ~loc
-            action_with_targets)
+          let context_name = Context.name ctx in
+          let sections = sections context_name [] pkg in
+          { Dune_package.version = Package.version pkg
+          ; name
+          ; entries
+          ; dir = Path.build (Install.Context.lib_dir ~context:context_name ~package:name)
+          ; sections
+          ; sites = Package.sites pkg
+          ; files = []
+          }
+        in
+        let action_with_targets =
+          Action_builder.write_file
+            (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
+            (Format.asprintf
+               "%a"
+               (Dune_package.Or_meta.pp ~dune_version)
+               (Dune_package dune_pkg))
+        in
+        Super_context.add_rule sctx ~dir:(Context.build_dir ctx) ~loc action_with_targets)
     in
     Super_context.add_rule sctx ~dir:(Context.build_dir ctx) action
   ;;
@@ -860,31 +854,30 @@ end = struct
          |> Action_builder.write_file_dyn meta)
     in
     let deprecated_packages = Package.Name.Map.of_list_multi deprecated_packages in
-    Package.Name.Map_traversals.parallel_iter
-      pkg.deprecated_package_names
-      ~f:(fun name loc ->
-        let meta = Package_paths.deprecated_meta_file ctx pkg name in
-        Super_context.add_rule
-          sctx
-          ~dir:(Context.build_dir ctx)
-          ~loc
-          (Action_builder.write_file_dyn
-             meta
-             (let open Action_builder.O in
-              let+ meta =
-                let entries =
-                  match Package.Name.Map.find deprecated_packages name with
-                  | None -> []
-                  | Some entries -> entries
-                in
-                Action_builder.of_memo
-                  (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
+    Package.deprecated_package_names pkg
+    |> Package.Name.Map_traversals.parallel_iter ~f:(fun name loc ->
+      let meta = Package_paths.deprecated_meta_file ctx pkg name in
+      Super_context.add_rule
+        sctx
+        ~dir:(Context.build_dir ctx)
+        ~loc
+        (Action_builder.write_file_dyn
+           meta
+           (let open Action_builder.O in
+            let+ meta =
+              let entries =
+                match Package.Name.Map.find deprecated_packages name with
+                | None -> []
+                | Some entries -> entries
               in
-              let pp =
-                let open Pp.O in
-                Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
-              in
-              Format.asprintf "%a" Pp.to_fmt pp)))
+              Action_builder.of_memo
+                (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
+            in
+            let pp =
+              let open Pp.O in
+              Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
+            in
+            Format.asprintf "%a" Pp.to_fmt pp)))
   ;;
 
   let meta_and_dune_package_rules sctx project =
@@ -979,7 +972,7 @@ let packages =
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
         install_entries sctx pkg
-        >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src, pkg.id))
+        >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src, Package.id pkg))
     in
     Path.Build.Map.of_list_fold
       (List.concat l)
@@ -1038,7 +1031,7 @@ let symlinked_entries =
 let package_deps (pkg : Package.t) files =
   let rec loop rules_seen (fn : Path.Build.t) =
     let* pkgs = packages_file_is_part_of fn in
-    if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs pkg.id
+    if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs (Package.id pkg)
     then loop_deps rules_seen fn
     else Memo.return (pkgs, rules_seen)
   and loop_deps rules_seen fn =
@@ -1246,7 +1239,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                 Install.Entry.add_install_prefix e.entry ~paths:install_paths ~prefix
             })
       in
-      if not package.allow_empty
+      if not (Package.allow_empty package)
       then
         if List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
              match e.source with

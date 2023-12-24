@@ -369,10 +369,24 @@ type t =
 let hash t = Id.hash t.id
 let name t = t.id.name
 let dir t = t.id.dir
+let loc t = t.loc
+let deprecated_package_names t = t.deprecated_package_names
+let set_has_opam_file t has_opam_file = { t with has_opam_file }
+let version t = t.version
+let depends t = t.depends
+let conflicts t = t.conflicts
+let depopts t = t.depopts
+let tags t = t.tags
+let synopsis t = t.synopsis
+let info t = t.info
+let description t = t.description
+let id t = t.id
 
 let set_inside_opam_dir t ~dir =
   { t with opam_file = Path.Source.relative dir (Name.opam_fn t.id.name) }
 ;;
+
+let set_version_and_info t ~version ~info = { t with version; info }
 
 let encode
   (name : Name.t)
@@ -541,6 +555,10 @@ let opam_file t = t.opam_file
 let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
 let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 let deprecated_meta_file t name = Path.Source.relative t.id.dir (Name.meta_fn name)
+let sites t = t.sites
+let has_opam_file t = t.has_opam_file
+let allow_empty t = t.allow_empty
+let map_depends t ~f = { t with depends = f t.depends }
 
 let default name dir =
   let depends =

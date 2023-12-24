@@ -98,7 +98,8 @@ let sites_code packages buf (loc, pkg) =
     | None -> User_error.raise ~loc [ Pp.text "Unknown package" ]
   in
   let package_name = Package.name package in
-  Site.Map.iteri package.sites ~f:(fun name section ->
+  Package.sites package
+  |> Site.Map.iteri ~f:(fun name section ->
     pr buf "    let %s = %s.site" (sanitize_site_name name) helpers;
     pr buf "      ~package:%S" (Package.Name.to_string package_name);
     pr
@@ -119,7 +120,7 @@ let plugins_code packages buf pkg sites =
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   List.iter sites ~f:(fun (loc, ssite) ->
     let site = sanitize_site_name ssite in
-    if not (Site.Map.mem package.sites ssite)
+    if not (Site.Map.mem (Package.sites package) ssite)
     then User_error.raise ~loc [ Pp.textf "Package %s doesn't define a site %s" pkg site ];
     pr
       buf

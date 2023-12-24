@@ -118,7 +118,7 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   match
     Package.Name.Map.find (Dune_project.packages project) (Package.Name.of_string s)
   with
-  | Some p -> Memo.return (value_from_version p.version)
+  | Some p -> Memo.return (value_from_version (Package.version p))
   | None when Dune_project.dune_version project < (2, 9) ->
     User_error.raise
       ~loc:source.loc

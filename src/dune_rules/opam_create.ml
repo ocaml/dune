@@ -108,37 +108,24 @@ let default_build_command =
            ~with_sites:Dune_project.(is_extension_set project dune_site_extension))
 ;;
 
-let package_fields
-  { Package.synopsis
-  ; description
-  ; depends
-  ; conflicts
-  ; depopts
-  ; info = _
-  ; id = _
-  ; version = _
-  ; has_opam_file = _
-  ; tags
-  ; loc = _
-  ; deprecated_package_names = _
-  ; sites = _
-  ; opam_file = _
-  ; allow_empty = _
-  ; original_opam_file = _
-  }
-  ~project
-  =
+let package_fields package ~project =
   let open Opam_file.Create in
-  let tags = if tags = [] then [] else [ "tags", string_list tags ] in
+  let tags =
+    let tags = Package.tags package in
+    if tags = [] then [] else [ "tags", string_list tags ]
+  in
   let optional =
-    [ "synopsis", synopsis; "description", description ]
+    [ "synopsis", Package.synopsis package; "description", Package.description package ]
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | None -> None
       | Some v -> Some (k, string v))
   in
   let dep_fields =
-    [ "depends", depends; "conflicts", conflicts; "depopts", depopts ]
+    [ "depends", Package.depends package
+    ; "conflicts", Package.conflicts package
+    ; "depopts", Package.depopts package
+    ]
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | [] -> None
@@ -215,16 +202,17 @@ let opam_fields project (package : Package.t) =
   let package =
     if dune_version < (1, 11) || Package.Name.equal package_name dune_name
     then package
-    else { package with depends = insert_dune_dep package.depends dune_version }
+    else
+      Package.map_depends package ~f:(fun depends -> insert_dune_dep depends dune_version)
   in
   let package =
     if dune_version < (2, 7) || Package.Name.equal package_name odoc_name
     then package
-    else { package with depends = insert_odoc_dep package.depends }
+    else Package.map_depends package ~f:insert_odoc_dep
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in
-  let info = package.Package.info in
+  let info = Package.info package in
   let optional_fields =
     [ "bug-reports", Package.Info.bug_reports info
     ; "homepage", Package.Info.homepage info
@@ -233,7 +221,7 @@ let opam_fields project (package : Package.t) =
       , match Package.Info.license info with
         | Some [ x ] -> Some x
         | _ -> None )
-    ; "version", Option.map ~f:Package_version.to_string package.version
+    ; "version", Option.map ~f:Package_version.to_string (Package.version package)
     ; "dev-repo", Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
     ]
     |> List.filter_map ~f:(fun (k, v) -> Option.map v ~f:(fun v -> k, string v))

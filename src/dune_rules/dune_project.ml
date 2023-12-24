@@ -500,7 +500,7 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
           rejected as a valid Dune project name. It would be better to make the
           set of allowed package names and the set of project names coincide. *)
        User_error.raise
-         ~loc:pkg.loc
+         ~loc:(Package.loc pkg)
          [ Pp.textf "%S is not a valid Dune project name." name ])
 ;;
 
@@ -765,7 +765,7 @@ let parse_packages
          if Package.Name.to_string (Package.name p) <> name
          then
            User_error.raise
-             ~loc:p.loc
+             ~loc:(Package.loc p)
              [ Pp.textf
                  "when a single package is defined, it must have the same name as the \
                   project name: %s"
@@ -792,29 +792,27 @@ let parse_packages
              ])
       in
       let deprecated_package_names =
-        List.fold_left
-          packages
-          ~init:Package.Name.Map.empty
-          ~f:(fun acc { Package.deprecated_package_names; _ } ->
-            Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
+        List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
+          let deprecated_package_names = Package.deprecated_package_names package in
+          Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
       in
       List.iter packages ~f:(fun p ->
         let name = Package.name p in
         match Package.Name.Map.find deprecated_package_names name with
         | None -> ()
-        | Some loc -> package_defined_twice name loc p.loc);
+        | Some loc -> package_defined_twice name loc (Package.loc p));
       match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
       | Error (_, _, p) ->
         let name = Package.name p in
         User_error.raise
-          ~loc:p.loc
+          ~loc:(Package.loc p)
           [ Pp.textf "package %s is already defined" (Package.Name.to_string name) ]
       | Ok packages ->
         Memo.return
         @@
         let generated_opam_file =
           if generate_opam_files
-          then fun p -> { p with Package.has_opam_file = Generated }
+          then fun p -> Package.set_has_opam_file p Package.Generated
           else Fun.id
         in
         (match opam_file_location with
@@ -829,7 +827,7 @@ let parse_packages
              | None, None -> assert false
              | Some p, None -> Some (generated_opam_file p)
              | Some p, Some _ ->
-               let p = { p with Package.has_opam_file = Exists true } in
+               let p = Package.set_has_opam_file p (Exists true) in
                Some (generated_opam_file p)
              | None, Some (loc, _) ->
                User_error.raise
@@ -842,13 +840,13 @@ let parse_packages
                  ])))
   in
   Package.Name.Map.map packages ~f:(fun p ->
-    let info = Package.Info.superpose info p.info in
+    let info = Package.Info.superpose info (Package.info p) in
     let version =
-      match p.version with
+      match Package.version p with
       | Some _ as v -> v
       | None -> version
     in
-    { p with version; info })
+    Package.set_version_and_info p ~version ~info)
 ;;
 
 let parse ~dir ~(lang : Lang.Instance.t) ~file =

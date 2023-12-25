@@ -1,33 +1,5 @@
 open Import
 
-let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
-  let cflags = Ocaml_config.ocamlc_cflags ocaml_config in
-  let c, cxx =
-    let cxxflags =
-      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-    in
-    match Dune_project.use_standard_c_and_cxx_flags project with
-    | None | Some false -> Action_builder.(return cflags, return cxxflags)
-    | Some true ->
-      let fdiagnostics_color =
-        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
-      in
-      let open Action_builder.O in
-      let c =
-        let+ fdiagnostics_color = fdiagnostics_color in
-        List.concat
-          [ cflags; Ocaml_config.ocamlc_cppflags ocaml_config; fdiagnostics_color ]
-      in
-      let cxx =
-        let+ fdiagnostics_color = fdiagnostics_color
-        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
-        List.concat [ db_flags; cxxflags; fdiagnostics_color ]
-      in
-      c, cxx
-  in
-  Foreign_language.Dict.make ~c ~cxx
-;;
-
 module Env_tree : sig
   type t
 
@@ -117,9 +89,7 @@ end = struct
       let scope = Env_node.scope node in
       expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
     in
-    let+ expander = extend_expander t ~dir ~expander_for_artifacts in
-    Expander.set_foreign_flags expander ~f:(fun ~dir ->
-      get_node t ~dir >>| Env_node.foreign_flags)
+    extend_expander t ~dir ~expander_for_artifacts
   ;;
 
   let get_env_stanza ~dir =
@@ -137,7 +107,6 @@ end = struct
 
   let get_impl t dir =
     let* scope = Scope.DB.find_by_dir dir in
-    let project = Scope.project scope in
     let inherit_from =
       if Path.Build.equal dir (Scope.root scope)
       then Memo.lazy_ (fun () -> Memo.Lazy.force t.default_env)
@@ -149,33 +118,20 @@ end = struct
             [ "dir", Path.Build.to_dyn dir ]
         | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
     in
-    let* config_stanza = get_env_stanza ~dir in
-    let build_context = Context.build_context t.context in
-    let+ default_context_flags =
-      let+ ocaml = Context.ocaml t.context in
-      default_context_flags build_context ocaml.ocaml_config ~project
-    in
+    let+ config_stanza = get_env_stanza ~dir in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
         let* external_env = external_env t ~dir in
         expander_for_artifacts ~scope ~root_expander:t.root_expander ~external_env ~dir)
     in
-    let expander =
-      Memo.lazy_ (fun () ->
-        let* expander_for_artifacts = Memo.Lazy.force expander_for_artifacts in
-        extend_expander t ~dir ~expander_for_artifacts >>| Expander.set_dir ~dir)
-    in
     let profile = Context.profile t.context in
     Env_node.make
-      build_context
       ~dir
       ~scope
       ~config_stanza
       ~inherit_from:(Some inherit_from)
       ~profile
-      ~expander
       ~expander_for_artifacts
-      ~default_context_flags
       ~default_env:t.context_env
       ~default_artifacts:t.artifacts
   ;;
@@ -366,10 +322,8 @@ let add_packages_env context ~base stanzas packages =
 ;;
 
 let make_default_env_node
-  ocaml_config
   (context : Build_context.t)
   profile
-  root_expander
   (env_nodes : Context.Env_nodes.t)
   ~root_env
   ~(artifacts : Artifacts.t)
@@ -378,24 +332,18 @@ let make_default_env_node
     let config_stanza = Option.value config_stanza ~default:Dune_env.empty in
     let dir = context.build_dir in
     let+ scope = Scope.DB.find_by_dir dir in
-    let project = Scope.project scope in
-    let default_context_flags = default_context_flags context ocaml_config ~project in
     let expander_for_artifacts =
       Memo.lazy_ (fun () ->
         Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" [])
     in
     Dune_env.fire_hooks config_stanza ~profile;
-    let expander = Memo.Lazy.of_val (Expander.set_dir ~dir root_expander) in
     Env_node.make
-      context
       ~dir
       ~scope
       ~inherit_from
       ~config_stanza
       ~profile
-      ~expander
       ~expander_for_artifacts
-      ~default_context_flags
       ~default_env:root_env
       ~default_artifacts:artifacts
   in
@@ -481,10 +429,8 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     let profile = Context.profile context in
     Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
-        ocaml.ocaml_config
         (Context.build_context context)
         profile
-        root_expander
         (Context.env_nodes context)
         ~root_env
         ~artifacts)

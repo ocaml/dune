@@ -4,7 +4,7 @@ open Memo.O
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Super_context.expander t ~dir in
   let* flags =
-    let+ ocaml_flags = Super_context.env_node t ~dir >>= Env_node.ocaml_flags in
+    let+ ocaml_flags = Ocaml_flags_db.ocaml_flags_env ~dir in
     Ocaml_flags.make
       ~spec
       ~default:ocaml_flags

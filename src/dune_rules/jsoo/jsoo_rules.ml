@@ -1,4 +1,38 @@
 open Import
+open Memo.O
+
+let jsoo_env =
+  let f =
+    Env_stanza_db.inherited
+      ~name:"jsoo-env"
+      ~root:(fun ctx _ ->
+        let+ profile = Per_context.profile ctx in
+        Js_of_ocaml.Env.(map ~f:Action_builder.return (default ~profile)))
+      ~f:(fun ~parent ~dir (local : Dune_env.config) ->
+        let local = local.js_of_ocaml in
+        let* expander =
+          let open Memo.O in
+          let* sctx =
+            let context = Install.Context.of_path dir |> Option.value_exn in
+            Super_context.find_exn context
+          in
+          Super_context.expander sctx ~dir
+        in
+        let+ parent = parent in
+        { Js_of_ocaml.Env.compilation_mode =
+            Option.first_some local.compilation_mode parent.compilation_mode
+        ; runtest_alias = Option.first_some local.runtest_alias parent.runtest_alias
+        ; flags =
+            Js_of_ocaml.Flags.make
+              ~spec:local.flags
+              ~default:parent.flags
+              ~eval:(Expander.expand_and_eval_set expander)
+        })
+  in
+  fun ~dir ->
+    let* () = Memo.return () in
+    (Staged.unstage f) dir
+;;
 
 module Config : sig
   type t
@@ -172,7 +206,7 @@ let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   @@
   let open Memo.O in
   let+ expander = Super_context.expander t ~dir
-  and+ js_of_ocaml = Super_context.env_node t ~dir >>= Env_node.js_of_ocaml in
+  and+ js_of_ocaml = jsoo_env ~dir in
   Js_of_ocaml.Flags.make
     ~spec
     ~default:js_of_ocaml.flags
@@ -420,7 +454,7 @@ let setup_separate_compilation_rules sctx components =
 
 let js_of_ocaml_compilation_mode t ~dir =
   let open Memo.O in
-  let+ js_of_ocaml = Super_context.env_node t ~dir >>= Env_node.js_of_ocaml in
+  let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.compilation_mode with
   | Some m -> m
   | None ->
@@ -482,9 +516,9 @@ let build_exe
 
 let runner = "node"
 
-let js_of_ocaml_runtest_alias sctx ~dir =
+let js_of_ocaml_runtest_alias ~dir =
   let open Memo.O in
-  let+ js_of_ocaml = Super_context.env_node sctx ~dir >>= Env_node.js_of_ocaml in
+  let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.runtest_alias with
   | Some a -> a
   | None -> Alias0.runtest

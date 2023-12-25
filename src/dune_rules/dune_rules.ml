@@ -7,8 +7,12 @@ module Context = Context
 module Env_node = Env_node
 module Link_flags = Link_flags
 module Ocaml_flags = Ocaml_flags
+module Ocaml_flags_db = Ocaml_flags_db
 module Js_of_ocaml = Js_of_ocaml
 module Menhir_env = Menhir_env
+module Menhir_rules = Menhir_rules
+module Foreign_rules = Foreign_rules
+module Jsoo_rules = Jsoo_rules
 module Super_context = Super_context
 module Compilation_context = Compilation_context
 module Colors = Colors
@@ -68,7 +72,6 @@ module For_tests = struct
   module Dynlink_supported = Dynlink_supported
   module Ocamlobjinfo = Ocamlobjinfo
   module Action_unexpanded = Action_unexpanded
-  module Jsoo_rules = Jsoo_rules
 end
 
 module Coq = struct

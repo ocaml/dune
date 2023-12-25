@@ -16,3 +16,7 @@ val build_o_files
   -> requires:Lib.t list Resolve.t
   -> dir_contents:Dir_contents.t
   -> Path.t Mode.Map.Multi.t Memo.t
+
+val foreign_flags_env
+  :  dir:Path.Build.t
+  -> string list Action_builder.t Foreign_language.Dict.t Memo.t

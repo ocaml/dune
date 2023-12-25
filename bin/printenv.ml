@@ -6,36 +6,30 @@ let dump sctx ~dir =
   let module Env_node = Dune_rules.Env_node in
   let module Link_flags = Dune_rules.Link_flags in
   let module Ocaml_flags = Dune_rules.Ocaml_flags in
-  let module Js_of_ocaml = Dune_rules.Js_of_ocaml in
-  let module Menhir_env = Dune_rules.Menhir_env in
-  let node = Super_context.env_node sctx ~dir in
-  let open Memo.O in
-  let ocaml_flags = node >>= Env_node.ocaml_flags in
-  let foreign_flags = node >>| Env_node.foreign_flags in
-  let link_flags = node >>= Env_node.link_flags in
-  let menhir = node >>= Env_node.menhir in
-  let coq_flags = node >>= Env_node.coq_flags in
-  let js_of_ocaml = node >>= Env_node.js_of_ocaml in
   let open Action_builder.O in
   let+ o_dump =
-    let* ocaml_flags = Action_builder.of_memo ocaml_flags in
-    Ocaml_flags.dump ocaml_flags
+    Dune_rules.Ocaml_flags_db.ocaml_flags_env ~dir
+    |> Action_builder.of_memo
+    >>= Ocaml_flags.dump
   and+ c_dump =
-    let* foreign_flags = Action_builder.of_memo foreign_flags in
+    let* foreign_flags =
+      Dune_rules.Foreign_rules.foreign_flags_env ~dir |> Action_builder.of_memo
+    in
     let+ c_flags = foreign_flags.c
     and+ cxx_flags = foreign_flags.cxx in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ "c_flags", c_flags; "cxx_flags", cxx_flags ]
   and+ link_flags_dump =
-    let* link_flags = Action_builder.of_memo link_flags in
-    Link_flags.dump link_flags
+    Action_builder.of_memo (Dune_rules.Ocaml_flags_db.link_env ~dir) >>= Link_flags.dump
   and+ menhir_dump =
-    let* env = Action_builder.of_memo menhir in
-    Menhir_env.dump env
-  and+ coq_dump = Action_builder.of_memo_join coq_flags >>| Dune_rules.Coq.Coq_flags.dump
+    Dune_rules.Menhir_rules.menhir_env ~dir
+    |> Action_builder.of_memo
+    >>= Dune_rules.Menhir_env.dump
+  and+ coq_dump = Dune_rules.Coq.Coq_rules.coq_env ~dir >>| Dune_rules.Coq.Coq_flags.dump
   and+ jsoo_dump =
-    let* jsoo = Action_builder.of_memo js_of_ocaml in
+    let module Js_of_ocaml = Dune_rules.Js_of_ocaml in
+    let* jsoo = Action_builder.of_memo (Dune_rules.Jsoo_rules.jsoo_env ~dir) in
     Js_of_ocaml.Flags.dump jsoo.flags
   in
   let env =

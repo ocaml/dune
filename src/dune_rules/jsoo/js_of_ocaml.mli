@@ -4,6 +4,8 @@ module Ext : sig
   type t = string
 
   val exe : t
+  val wasm_exe : t
+  val wasm : t
   val cmo : t
   val cma : t
   val runtime : t
@@ -42,6 +44,7 @@ module In_buildable : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : string list
+    ; wasm_files : string list
     }
 
   val decode : t Dune_lang.Decoder.t
@@ -52,6 +55,7 @@ module In_context : sig
   type t =
     { flags : Flags.Spec.t
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     }
 
   val make : dir:Path.Build.t -> In_buildable.t -> t
@@ -64,9 +68,27 @@ module Compilation_mode : sig
     | Separate_compilation
 end
 
+module Target : sig
+  type t =
+    | JS
+    | Wasm
+
+  type target := t
+
+  module Set : sig
+    type t =
+      { js : bool
+      ; wasm : bool
+      }
+
+    val to_list : t -> target list
+  end
+end
+
 module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; targets : Target.Set.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }

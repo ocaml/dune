@@ -1,5 +1,32 @@
 open Import
 
+let configurations ~sctx ~dir modes =
+  let open Memo.O in
+  let+ l =
+    Memo.sequential_map
+      (Dune_file.Executables.Link_mode.Map.to_list modes)
+      ~f:(fun ((mode : Dune_file.Executables.Link_mode.t), _) ->
+        match mode with
+        | Byte_complete | Other { kind = Exe; mode = Native | Best } ->
+          Memo.return [ `exe, ".exe" ]
+        | Other { kind = Exe; mode = Byte } -> Memo.return [ `bc, ".bc" ]
+        | Other { kind = C | Object | Shared_object | Plugin; _ } ->
+          (* We don't know how to run tests in these cases *)
+          Memo.return []
+        | Other { kind = Js; _ } ->
+          let+ js_of_ocaml = Super_context.env_node sctx ~dir >>= Env_node.js_of_ocaml in
+          let multiple_targets =
+            match js_of_ocaml.targets with
+            | Some targets -> List.length (Js_of_ocaml.Target.Set.to_list targets) > 1
+            | None -> false
+          in
+          if multiple_targets
+          then [ `js, Js_of_ocaml.Ext.exe; `js, Js_of_ocaml.Ext.wasm_exe ]
+          else [ `js, Js_of_ocaml.Ext.exe ])
+  in
+  List.flatten l
+;;
+
 let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let test_kind (loc, name) =
     let files = Dir_contents.text_files dir_contents in
@@ -15,31 +42,14 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
     else `Regular
   in
   let open Memo.O in
-  let runtest_modes =
+  let* runtest_modes =
     if Dune_project.dune_version (Scope.project scope) < (3, 0)
-    then [ `exe ]
-    else
-      Dune_file.Executables.Link_mode.Map.to_list t.exes.modes
-      |> List.filter_map ~f:(fun ((mode : Dune_file.Executables.Link_mode.t), _) ->
-        match mode with
-        | Byte_complete -> Some `exe
-        | Other { kind = Exe; mode = Native | Best } -> Some `exe
-        | Other { kind = Exe; mode = Byte } -> Some `bc
-        | Other { kind = Js; _ } -> Some `js
-        | Other { kind = C | Object | Shared_object | Plugin; _ } ->
-          (* We don't know how to run tests in these cases *)
-          None)
-      |> List.sort_uniq ~compare:Poly.compare
+    then Memo.return [ `exe, ".exe" ]
+    else configurations ~sctx ~dir t.exes.modes
   in
   let* () =
     Memo.parallel_iter t.exes.names ~f:(fun (loc, s) ->
-      Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
-        let ext =
-          match runtest_mode with
-          | `js -> Js_of_ocaml.Ext.exe
-          | `bc -> ".bc"
-          | `exe -> ".exe"
-        in
+      Memo.parallel_iter runtest_modes ~f:(fun (runtest_mode, ext) ->
         let custom_runner =
           match runtest_mode with
           | `js -> Some Jsoo_rules.runner

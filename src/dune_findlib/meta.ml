@@ -332,8 +332,13 @@ let pp_print_string s =
 
 let pp_quoted_value var =
   match var with
-  | "archive" | "plugin" | "requires" | "ppx_runtime_deps" | "linkopts" | "jsoo_runtime"
-    -> pp_print_text
+  | "archive"
+  | "plugin"
+  | "requires"
+  | "ppx_runtime_deps"
+  | "linkopts"
+  | "jsoo_runtime"
+  | "wasm_runtime" -> pp_print_text
   | _ -> pp_print_string
 ;;
 

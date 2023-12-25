@@ -136,6 +136,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let public_headers = Lib_info.File_deps.External [] in
     let plugins = Findlib.Package.plugins t in
     let jsoo_runtime = Findlib.Package.jsoo_runtime t in
+    let wasm_runtime = Findlib.Package.wasm_runtime t in
     let melange_runtime_deps = Lib_info.File_deps.External [] in
     let preprocess = Preprocess.Per_module.no_preprocessing () in
     let virtual_ = None in
@@ -229,6 +230,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
       ~native_archives:(Files native_archives)
       ~foreign_dll_files:[]
       ~jsoo_runtime
+      ~wasm_runtime
       ~preprocess
       ~enabled
       ~virtual_deps

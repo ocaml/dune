@@ -240,87 +240,6 @@ let resolve_program t ~dir ?hint ~loc bin =
   Action_builder.of_memo @@ resolve_program_memo t ~dir ?hint ~loc bin
 ;;
 
-let add_packages_env context ~base stanzas packages =
-  let+ env_dune_dir_locations =
-    let init =
-      match Stdune.Env.get base Dune_site_private.dune_dir_locations_env_var with
-      | None -> []
-      | Some var ->
-        (match Dune_site_private.decode_dune_dir_locations var with
-         | Some s -> s
-         | None ->
-           User_error.raise
-             [ Pp.textf
-                 "Invalid env var %s=%S"
-                 Dune_site_private.dune_dir_locations_env_var
-                 var
-             ])
-    in
-    let+ package_sections =
-      (* Add the section of the site mentioned in stanzas (it could be a site
-         of an external package) *)
-      let add_in_package_section m pkg section =
-        Package.Name.Map.update m pkg ~f:(function
-          | None -> Some (Section.Set.singleton section)
-          | Some s -> Some (Section.Set.add s section))
-      in
-      let+ package_sections =
-        let* package_db = Package_db.create context in
-        Dune_file.Memo_fold.fold_stanzas
-          stanzas
-          ~init:Package.Name.Map.empty
-          ~f:(fun _ stanza acc ->
-            let add_in_package_sites pkg_name site loc =
-              Package_db.find_package package_db pkg_name
-              >>| function
-              | None ->
-                (* Really ugly to supress errors like this. Instead,
-                   executables that rely on sites should declare that
-                   in their dependencies *)
-                acc
-              | Some pkg ->
-                let section =
-                  Package_db.section_of_any_package_site pkg pkg_name loc site
-                in
-                add_in_package_section acc pkg_name section
-            in
-            match Stanza.repr stanza with
-            | Install_conf.T { section = Site { pkg; site; loc }; _ } ->
-              add_in_package_sites pkg site loc
-            | Plugin.T { site = loc, (pkg, site); _ } -> add_in_package_sites pkg site loc
-            | _ -> Memo.return acc)
-      in
-      (* Add the site of the local package: it should only useful for making
-         sure that at least one location is given to the site of local package
-         because if the site is used it should already be in
-         [packages_sections] *)
-      Package.Name.Map.foldi
-        packages
-        ~init:package_sections
-        ~f:(fun package_name (package : Package.t) acc ->
-          Package.sites package
-          |> Site.Map.fold ~init:acc ~f:(fun section acc ->
-            add_in_package_section acc package_name section))
-    in
-    let roots =
-      Install.Context.dir ~context |> Path.build |> Install.Roots.opam_from_prefix
-    in
-    Package.Name.Map.foldi ~init package_sections ~f:(fun package_name sections init ->
-      let paths = Install.Paths.make ~package:package_name ~roots in
-      Section.Set.fold sections ~init ~f:(fun section acc ->
-        let package = Package.Name.to_string package_name in
-        let dir = Path.to_absolute_filename (Install.Paths.get paths section) in
-        { Dune_site_private.package; dir; section } :: acc))
-  in
-  if List.is_empty env_dune_dir_locations
-  then base
-  else
-    Stdune.Env.add
-      base
-      ~var:Dune_site_private.dune_dir_locations_env_var
-      ~value:(Dune_site_private.encode_dune_dir_locations env_dune_dir_locations)
-;;
-
 let make_default_env_node
   (context : Build_context.t)
   profile
@@ -421,7 +340,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~lib_artifacts_host:public_libs_host
   and+ artifacts = artifacts
   and+ root_env =
-    add_packages_env (Context.name context) ~base:expander_env stanzas packages
+    Site_env.add_packages_env (Context.name context) ~base:expander_env stanzas packages
   in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)

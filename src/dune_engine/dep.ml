@@ -13,12 +13,12 @@ module T = struct
   module Stable_for_digest = struct
     type t =
       | Env of string
-      | File of string
+      | File of Digest.t (* Digest of the underlying [Path.t] *)
       | Alias of
           { dir : string
           ; name : string
           }
-      | File_selector of Dyn.t
+      | File_selector of Digest.t (* Digest of the underlying [File_selector.t] *)
       | Universe
   end
 
@@ -76,30 +76,24 @@ let as_in_build_dir_no_source = function
 ;;
 
 module Fact = struct
-  (* CR-someday amokhov: Find a better name, perhaps, [Files_and_dirs]? *)
   module Files = struct
     type t =
-      { files : Digest.t Path.Map.t
-      ; dirs : Digest.t Path.Map.t (* Only for file selectors for now *)
-      ; digest : Digest.t
+      { files : Path.Set.t
+      ; digest : Digest.t (* Includes digests associated with [files] *)
       }
 
-    let to_dyn { files; dirs; digest } =
-      Dyn.Record
-        [ "files", Path.Map.to_dyn Digest.to_dyn files
-        ; "dirs", Path.Map.to_dyn Digest.to_dyn dirs
-        ; "digest", Digest.to_dyn digest
-        ]
+    let to_dyn { files; digest } =
+      Dyn.Record [ "files", Path.Set.to_dyn files; "digest", Digest.to_dyn digest ]
     ;;
 
-    let is_empty t = Path.Map.is_empty t.files && Path.Map.is_empty t.dirs
+    let is_empty t = Path.Set.is_empty t.files
     let compare a b = Digest.compare a.digest b.digest
     let equal a b = Digest.equal a.digest b.digest
     let paths t = t.files
 
     let filenames_exn t ~expected_parent =
       let filenames =
-        Filename.Set.of_list_map (Path.Map.keys t.files) ~f:(fun path ->
+        Filename.Set.of_list_map (Path.Set.to_list t.files) ~f:(fun path ->
           match Path.parent path with
           | Some actual_parent when Path.equal expected_parent actual_parent ->
             Path.basename path
@@ -113,32 +107,26 @@ module Fact = struct
       Filename_set.create ~dir:expected_parent filenames
     ;;
 
-    let make ~files ~dirs =
-      { files
-      ; dirs
+    let make ~files =
+      { files = Path.Set.of_keys files
       ; digest =
-          Digest.generic
-            ( Path.Map.to_list_map files ~f:(fun p d -> Path.to_string p, d)
-            , Path.Map.to_list_map dirs ~f:(fun p d -> Path.to_string p, d) )
+          Digest.generic (Path.Map.to_list_map files ~f:(fun p d -> Path.to_string p, d))
       }
     ;;
 
-    let necessary_dirs_for_sandboxing { files; dirs; digest = _ } =
-      let f (path : Path.t) (_ : Digest.t) acc =
+    let necessary_dirs_for_sandboxing { files; digest = _ } =
+      let f (path : Path.t) acc =
         match as_in_build_dir_no_source path with
         | None -> acc
         | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
       in
-      let init = Path.Map.foldi files ~init:Path.Build.Set.empty ~f in
-      Path.Map.foldi dirs ~init ~f
+      Path.Set.fold files ~init:Path.Build.Set.empty ~f
     ;;
 
-    let empty = lazy (make ~files:Path.Map.empty ~dirs:Path.Map.empty)
+    let empty = lazy (make ~files:Path.Map.empty)
 
     let group ts files =
-      let ts =
-        if Path.Map.is_empty files then ts else make ~files ~dirs:Path.Map.empty :: ts
-      in
+      let ts = if Path.Map.is_empty files then ts else make ~files :: ts in
       (* Sort and de-dup so that the result is resilient to code changes *)
       let ts =
         List.filter_map ts ~f:(fun t -> if is_empty t then None else Some (t.digest, t))
@@ -148,17 +136,8 @@ module Fact = struct
       match ts with
       | [] -> Lazy.force empty
       | [ t ] -> t
-      | t :: l ->
-        { files =
-            List.fold_left l ~init:t.files ~f:(fun acc t ->
-              Path.Map.union t.files acc ~f:(fun _ d1 d2 ->
-                assert (Digest.equal d1 d2);
-                Some d1))
-        ; dirs =
-            List.fold_left l ~init:t.dirs ~f:(fun acc t ->
-              Path.Map.union t.dirs acc ~f:(fun _ d1 d2 ->
-                assert (Digest.equal d1 d2);
-                Some d1))
+      | ts ->
+        { files = Path.Set.union_map ts ~f:(fun t -> t.files)
         ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
         }
     ;;
@@ -167,7 +146,10 @@ module Fact = struct
   type t =
     | Nothing
     | File of Path.t * Digest.t
-    | File_selector of Dyn.t * Files.t
+    | File_selector of
+        { file_selector_digest : Digest.t
+        ; facts : Files.t
+        }
     | Alias of Files.t
 
   let to_dyn = function
@@ -176,17 +158,28 @@ module Fact = struct
       Dyn.Variant
         ( "File"
         , [ Dyn.Record [ "path", Path.to_dyn path; "digest", Digest.to_dyn digest ] ] )
-    | File_selector (dyn, files) ->
+    | File_selector { file_selector_digest; facts } ->
       Dyn.Variant
-        ("File_selector", [ Dyn.Record [ "dyn", dyn; "files", Files.to_dyn files ] ])
-    | Alias files -> Dyn.Variant ("Alias", [ Dyn.Record [ "files", Files.to_dyn files ] ])
+        ( "File_selector"
+        , [ Dyn.Record
+              [ "file_selector_digest", Digest.to_dyn file_selector_digest
+              ; "facts", Files.to_dyn facts
+              ]
+          ] )
+    | Alias facts -> Dyn.Variant ("Alias", [ Dyn.Record [ "facts", Files.to_dyn facts ] ])
   ;;
 
   module Stable_for_digest = struct
     type t =
       | Env of string * string option
-      | File of string * Digest.t
-      | File_selector of Dyn.t * Digest.t
+      | File of
+          { path_digest : Digest.t
+          ; file_digest : Digest.t
+          }
+      | File_selector of
+          { file_selector_digest : Digest.t
+          ; facts_digest : Digest.t
+          }
       | Alias of Digest.t
   end
 
@@ -201,8 +194,9 @@ module Fact = struct
       Digest.compare d1 d2
     | File _, _ -> Lt
     | _, File _ -> Gt
-    | File_selector (d1, f1), File_selector (d2, f2) ->
-      let= () = Dyn.compare d1 d2 in
+    | ( File_selector { file_selector_digest = d1; facts = f1 }
+      , File_selector { file_selector_digest = d2; facts = f2 } ) ->
+      let= () = Digest.compare d1 d2 in
       Files.compare f1 f2
     | File_selector _, _ -> Lt
     | _, File_selector _ -> Gt
@@ -218,9 +212,12 @@ module Fact = struct
   let nothing = Nothing
   let file fn digest = File (fn, digest)
 
-  let file_selector fs files =
-    let id = File_selector.to_dyn fs in
-    File_selector (id, files)
+  let file_selector fs facts =
+    (* CR-someday amokhov: We used to call [File_selector.to_dyn] here that raises under
+       the same conditions that [File_selector.digest_exn] is raising, namely, when
+       the underlying glob is not serialisable. We should make all globs serialisable
+       or use stronger types to statically rule out the possibility of raising here. *)
+    File_selector { file_selector_digest = File_selector.digest_exn fs; facts }
   ;;
 
   let alias _alias files = Alias files
@@ -253,8 +250,13 @@ module Set = struct
       match dep with
       | Env var -> Env var :: acc
       | Universe -> Universe :: acc
-      | File p -> File (Path.to_string p) :: acc
-      | File_selector fs -> File_selector (File_selector.to_dyn fs) :: acc
+      | File p -> File (Path.to_string p |> Digest.string) :: acc
+      | File_selector fs ->
+        (* CR-someday amokhov: We used to call [File_selector.to_dyn] here that raises under
+           the same conditions that [File_selector.digest_exn] is raising, namely, when
+           the underlying glob is not serialisable. We should make all globs serialisable
+           or use stronger types to statically rule out the possibility of raising here. *)
+        File_selector (File_selector.digest_exn fs) :: acc
       | Alias a ->
         Alias
           { dir = Path.Build.to_string (Alias.dir a)
@@ -282,21 +284,13 @@ module Facts = struct
   let union_all xs = List.fold_left xs ~init:Map.empty ~f:union
   let to_dyn = Map.to_dyn Fact.to_dyn
 
-  let paths t =
-    Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
+  let paths t ~expand_aliases =
+    Map.fold t ~init:Path.Set.empty ~f:(fun fact acc ->
       match (fact : Fact.t) with
       | Nothing -> acc
-      | File (p, d) -> Path.Map.set acc p d
-      | File_selector (_, ps) | Alias ps ->
-        Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
-  ;;
-
-  let paths_without_expanding_aliases t =
-    Map.fold t ~init:Path.Map.empty ~f:(fun fact acc ->
-      match (fact : Fact.t) with
-      | Nothing | Alias _ -> acc
-      | File (p, d) -> Path.Map.set acc p d
-      | File_selector (_, ps) -> Path.Map.union acc ps.files ~f:(fun _ a _ -> Some a))
+      | File (path, _digest) -> Path.Set.add acc path
+      | File_selector { file_selector_digest = _; facts } | Alias facts ->
+        if expand_aliases then Path.Set.union acc facts.files else acc)
   ;;
 
   let group_paths_as_fact_files ts =
@@ -306,7 +300,8 @@ module Facts = struct
           match (fact : Fact.t) with
           | Nothing -> acc
           | File (p, d) -> acc_ff, Path.Map.set acc_paths p d
-          | File_selector (_, ps) | Alias ps -> ps :: acc_ff, acc_paths))
+          | File_selector { file_selector_digest = _; facts } | Alias facts ->
+            facts :: acc_ff, acc_paths))
     in
     Fact.Files.group fact_files paths
   ;;
@@ -321,14 +316,8 @@ module Facts = struct
          | Some p ->
            let p = Path.Build.parent_exn p in
            Path.Build.Set.add acc p)
-      | File_selector (_, ps) | Alias ps ->
-        Path.Build.Set.union_all
-          [ acc
-          ; Path.Map.keys ps.dirs
-            |> List.filter_map ~f:as_in_build_dir_no_source
-            |> Path.Build.Set.of_list
-          ; Fact.Files.necessary_dirs_for_sandboxing ps
-          ])
+      | File_selector { file_selector_digest = _; facts } | Alias facts ->
+        Path.Build.Set.union_all [ acc; Fact.Files.necessary_dirs_for_sandboxing facts ])
   ;;
 
   let digest t ~env =
@@ -340,8 +329,11 @@ module Facts = struct
         | File _ | File_selector _ | Alias _ ->
           (match (fact : Fact.t) with
            | Nothing -> acc
-           | File (p, d) -> File (Path.to_string p, d) :: acc
-           | File_selector (id, ps) -> File_selector (id, ps.digest) :: acc
+           | File (p, d) ->
+             File { path_digest = Digest.string (Path.to_string p); file_digest = d }
+             :: acc
+           | File_selector { file_selector_digest; facts } ->
+             File_selector { file_selector_digest; facts_digest = facts.digest } :: acc
            | Alias ps -> Alias ps.digest :: acc))
     in
     Digest.generic facts

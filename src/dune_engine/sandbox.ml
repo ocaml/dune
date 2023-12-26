@@ -145,7 +145,7 @@ let link_function ~(mode : Sandbox_mode.some) =
 
 let link_deps t ~mode ~deps =
   let link = Staged.unstage (link_function ~mode) in
-  Path.Map.iteri deps ~f:(fun path (_ : Digest.t) ->
+  Path.Set.iter deps ~f:(fun path ->
     match Path.as_in_build_dir path with
     | None ->
       (* This can actually raise if we try to sandbox the "copy from source
@@ -199,11 +199,7 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_alia
       create_dirs t ~deps ~rule_dir;
       (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
          targets produced dynamically will be unavailable. *)
-      let deps =
-        if expand_aliases
-        then Dep.Facts.paths deps
-        else Dep.Facts.paths_without_expanding_aliases deps
-      in
+      let deps = Dep.Facts.paths deps ~expand_aliases in
       link_deps t ~mode ~deps)
   in
   Dune_stats.finish event;

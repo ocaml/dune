@@ -47,10 +47,6 @@ module Fact : sig
     val make : files:Digest.t Path.Map.t -> t
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-    val compare : t -> t -> Ordering.t
-
-    (** Return all file paths in this file group. *)
-    val paths : t -> Path.Set.t
 
     (** Like [paths] but asserts that all paths are relative to the [expected_parent] and
         returns their basenames instead. *)

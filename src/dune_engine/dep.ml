@@ -89,7 +89,6 @@ module Fact = struct
     let is_empty t = Path.Set.is_empty t.files
     let compare a b = Digest.compare a.digest b.digest
     let equal a b = Digest.equal a.digest b.digest
-    let paths t = t.files
 
     let filenames_exn t ~expected_parent =
       let filenames =

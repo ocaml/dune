@@ -288,8 +288,9 @@ module Facts = struct
       match (fact : Fact.t) with
       | Nothing -> acc
       | File (path, _digest) -> Path.Set.add acc path
-      | File_selector { file_selector_digest = _; facts } | Alias facts ->
-        if expand_aliases then Path.Set.union acc facts.files else acc)
+      | File_selector { file_selector_digest = _; facts } ->
+        Path.Set.union acc facts.files
+      | Alias facts -> if expand_aliases then Path.Set.union acc facts.files else acc)
   ;;
 
   let group_paths_as_fact_files ts =

@@ -294,27 +294,9 @@ let make_root_env (context : Context.t) ~(host : t option) =
     Some (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:name)) ~_PATH))
 ;;
 
-let dune_sites_env ~default_ocamlpath ~stdlib =
-  [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
-  ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
-    , List.map ~f:Path.to_absolute_filename default_ocamlpath
-      |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
-  ; ( Dune_site_private.dune_sourceroot_env_var
-    , Path.to_absolute_filename (Path.source Path.Source.root) )
-  ]
-  |> String.Map.of_list_exn
-  |> Env.of_string_map
-;;
-
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
-  let* ocaml = Context.ocaml context in
   let* env =
-    let* default_ocamlpath = Context.default_ocamlpath context in
-    let base =
-      Env.extend_env
-        (make_root_env context ~host)
-        (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
-    in
+    let base = make_root_env context ~host in
     Site_env.add_packages_env (Context.name context) ~base stanzas packages
   in
   let public_libs = Scope.DB.public_libs context in

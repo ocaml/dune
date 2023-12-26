@@ -78,8 +78,8 @@ entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
   $ cat out
-  ./57/572f0d07f15fafa10217f0f78d2d4f39:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
-  ./5a/5a512ee6d64f5d7a29d7863269566506:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  ./4e/4e86d96c474b2bf21f00736e524add20:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
+  ./da/dadf48eff6efc0cc0eced61607e4c673:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 

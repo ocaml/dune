@@ -308,11 +308,14 @@ let dune_sites_env ~default_ocamlpath ~stdlib =
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let* ocaml = Context.ocaml context in
-  let* expander_env =
-    let+ default_ocamlpath = Context.default_ocamlpath context in
-    Env.extend_env
-      (make_root_env context ~host)
-      (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
+  let* env =
+    let* default_ocamlpath = Context.default_ocamlpath context in
+    let base =
+      Env.extend_env
+        (make_root_env context ~host)
+        (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
+    in
+    Site_env.add_packages_env (Context.name context) ~base stanzas packages
   in
   let public_libs = Scope.DB.public_libs context in
   let artifacts = Artifacts_db.get context in
@@ -334,14 +337,11 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~scope
       ~scope_host
       ~context
-      ~env:expander_env
+      ~env
       ~lib_artifacts:public_libs
       ~artifacts_host
       ~lib_artifacts_host:public_libs_host
-  and+ artifacts = artifacts
-  and+ root_env =
-    Site_env.add_packages_env (Context.name context) ~base:expander_env stanzas packages
-  in
+  and+ artifacts = artifacts in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
@@ -351,7 +351,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         (Context.build_context context)
         profile
         (Context.env_nodes context)
-        ~root_env
+        ~root_env:env
         ~artifacts)
   in
   Env_tree.create
@@ -360,7 +360,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     ~host_env_tree:host
     ~root_expander
     ~artifacts
-    ~context_env:root_env
+    ~context_env:env
 ;;
 
 let all =

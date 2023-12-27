@@ -44,7 +44,10 @@ module Fact : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    val make : files:Digest.t Path.Map.t -> t
+    (** Record an observed path-digest mapping. If a [dir] is specified, record it as
+        existing, so that it can be created in the sandbox when the mapping is empty. *)
+    val create : ?dir:Path.Build.t -> Digest.t Path.Map.t -> t
+
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
 

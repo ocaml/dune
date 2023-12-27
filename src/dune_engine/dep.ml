@@ -79,14 +79,19 @@ module Fact = struct
   module Files = struct
     type t =
       { files : Path.Set.t
-      ; digest : Digest.t (* Includes digests associated with [files] *)
+      ; empty_dirs : Path.Build.Set.t (* For [File_selector]s that match no files *)
+      ; digest : Digest.t (* Includes [empty_dirs] and digests associated with [files] *)
       }
 
-    let to_dyn { files; digest } =
-      Dyn.Record [ "files", Path.Set.to_dyn files; "digest", Digest.to_dyn digest ]
+    let to_dyn { files; empty_dirs; digest } =
+      Dyn.Record
+        [ "files", Path.Set.to_dyn files
+        ; "empty_dirs", Path.Build.Set.to_dyn empty_dirs
+        ; "digest", Digest.to_dyn digest
+        ]
     ;;
 
-    let is_empty t = Path.Set.is_empty t.files
+    let is_empty t = Path.Set.is_empty t.files && Path.Build.Set.is_empty t.empty_dirs
     let compare a b = Digest.compare a.digest b.digest
     let equal a b = Digest.equal a.digest b.digest
 
@@ -106,26 +111,34 @@ module Fact = struct
       Filename_set.create ~dir:expected_parent filenames
     ;;
 
-    let make ~files =
+    let create ?dir files =
+      let empty_dirs =
+        match dir with
+        | None -> []
+        | Some dir -> if Path.Map.is_empty files then [ dir ] else []
+      in
       { files = Path.Set.of_keys files
+      ; empty_dirs = Path.Build.Set.of_list empty_dirs
       ; digest =
-          Digest.generic (Path.Map.to_list_map files ~f:(fun p d -> Path.to_string p, d))
+          Digest.generic
+            ( Path.Map.to_list_map files ~f:(fun path d -> Path.to_string path, d)
+            , List.map empty_dirs ~f:(fun path -> Path.Build.to_string path) )
       }
     ;;
 
-    let necessary_dirs_for_sandboxing { files; digest = _ } =
+    let necessary_dirs_for_sandboxing { files; empty_dirs; digest = _ } =
       let f (path : Path.t) acc =
         match as_in_build_dir_no_source path with
         | None -> acc
         | Some p -> Path.Build.Set.add acc (Path.Build.parent_exn p)
       in
-      Path.Set.fold files ~init:Path.Build.Set.empty ~f
+      Path.Set.fold files ~init:empty_dirs ~f
     ;;
 
-    let empty = lazy (make ~files:Path.Map.empty)
+    let empty = create Path.Map.empty
 
     let group ts files =
-      let ts = if Path.Map.is_empty files then ts else make ~files :: ts in
+      let ts = if Path.Map.is_empty files then ts else create files :: ts in
       (* Sort and de-dup so that the result is resilient to code changes *)
       let ts =
         List.filter_map ts ~f:(fun t -> if is_empty t then None else Some (t.digest, t))
@@ -133,10 +146,11 @@ module Fact = struct
         |> Digest.Map.values
       in
       match ts with
-      | [] -> Lazy.force empty
+      | [] -> empty
       | [ t ] -> t
       | ts ->
         { files = Path.Set.union_map ts ~f:(fun t -> t.files)
+        ; empty_dirs = Path.Build.Set.union_map ts ~f:(fun t -> t.empty_dirs)
         ; digest = Digest.generic (List.map ts ~f:(fun t -> t.digest))
         }
     ;;

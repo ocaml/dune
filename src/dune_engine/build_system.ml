@@ -899,20 +899,18 @@ end = struct
             let+ digest = build_file path in
             path, digest)
         in
-        Dep.Fact.Files.make ~files:(Path.Map.of_list_exn files)
+        Dep.Fact.Files.create ?dir:(Path.as_in_build_dir dir) (Path.Map.of_list_exn files)
       | Build_under_directory_target { directory_target_ancestor = _ } ->
         let+ path_map = build_dir dir in
-        let files =
-          let dir = Path.as_in_build_dir_exn dir in
-          match Targets.Produced.find_dir path_map dir with
-          | Some files ->
-            Filename.Map.to_list_map files ~f:(fun file digest ->
-              Path.build (Path.Build.relative dir file), digest)
-            |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
-            |> Path.Map.of_list_exn
-          | None -> Path.Map.empty
-        in
-        Dep.Fact.Files.make ~files
+        let dir = Path.as_in_build_dir_exn dir in
+        (match Targets.Produced.find_dir path_map dir with
+         | Some files ->
+           Filename.Map.to_list_map files ~f:(fun file digest ->
+             Path.build (Path.Build.relative dir file), digest)
+           |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
+           |> Path.Map.of_list_exn
+           |> Dep.Fact.Files.create ~dir
+         | None -> Dep.Fact.Files.create Path.Map.empty)
     ;;
 
     let eval_impl g =

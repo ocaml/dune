@@ -17,7 +17,7 @@ type kind =
   | Implementation of Implementation.t
   | Exe_or_normal_lib
 
-let eval =
+let eval0 =
   let key = function
     | Error s -> [ s ]
     | Ok m -> [ Module.Source.name m ]
@@ -31,29 +31,47 @@ let eval =
   end
   in
   let module Unordered = Expander.Unordered (Key) in
-  let parse ~all_modules ~loc s =
+  (* Fake modules are modules that do not exist but it doesn't matter because
+     they are only removed from a set (for jbuild file compatibility) *)
+  let parse ~all_modules ~loc ~ctx:fake_modules s =
     let name = Module_name.of_string_allow_invalid (loc, s) in
     match Module_trie.find all_modules [ name ] with
-    | Some m -> Ok m
-    | None ->
-      (* fake_modules := Module_name.Map.set !fake_modules name loc; *)
-      Error name
+    | Some m -> Ok m, fake_modules
+    | None -> Error name, Module_name.Map.set fake_modules name loc
   in
   fun ~expander ~loc ~all_modules ~standard osl ->
     let open Memo.O in
     let parse = parse ~all_modules in
     let standard = Module_trie.map standard ~f:(fun m -> loc, Ok m) in
-    let+ modules, _ =
+    let+ (modules, fake_modules), _ =
       Action_builder.evaluate_and_collect_facts
-        (Unordered.expand_and_eval expander ~parse ~standard ~key osl)
+        (Unordered.expand_and_eval
+           expander
+           ~ctx:Module_name.Map.empty
+           ~parse
+           ~standard
+           ~key
+           osl)
     in
-    Module_trie.filter_map modules ~f:(fun (loc, m) ->
-      match m with
-      | Ok m -> Some (loc, m)
-      | Error s ->
+    let modules =
+      Module_trie.filter_map modules ~f:(fun (loc, m) ->
+        match m with
+        | Ok m -> Some (loc, m)
+        | Error s ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+    in
+    Module_name.Map.iteri
+      ~f:(fun m loc ->
         User_error.raise
           ~loc
-          [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+          [ Pp.textf
+              "Module %s is excluded but it doesn't exist."
+              (Module_name.to_string m)
+          ])
+      fake_modules;
+    modules
 ;;
 
 type single_module_error =
@@ -302,26 +320,6 @@ let check_invalid_module_listing
       [])
 ;;
 
-type eval0 =
-  { modules : (Loc.t * Module.Source.t) Module_trie.t
-  ; fake_modules : Loc.t Module_name.Map.t
-  }
-
-let eval0
-  ~expander
-  ~modules:(all_modules : Module.Source.t Module_trie.t)
-  ~stanza_loc
-  modules_field
-  =
-  (* Fake modules are modules that do not exist but it doesn't matter because
-     they are only removed from a set (for jbuild file compatibility) *)
-  let open Memo.O in
-  let+ modules =
-    eval ~expander ~loc:stanza_loc ~all_modules ~standard:all_modules modules_field
-  in
-  { modules; fake_modules = Module_name.Map.empty }
-;;
-
 let eval
   ~expander
   ~modules:(all_modules : Module.Source.t Module_trie.t)
@@ -335,12 +333,12 @@ let eval
   ; root_module
   ; modules_without_implementation
   }
-  { modules; fake_modules = _ }
+  modules
   =
   let open Memo.O in
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
-  let eval = eval ~expander ~loc:stanza_loc ~all_modules in
+  let eval = eval0 ~expander ~loc:stanza_loc ~all_modules in
   let allow_new_public_modules =
     match kind with
     | Exe_or_normal_lib | Virtual _ -> true
@@ -357,10 +355,6 @@ let eval
     | Exe_or_normal_lib | Implementation _ -> Memo.return Module_trie.empty
     | Virtual { virtual_modules } -> eval ~standard:Module_trie.empty virtual_modules
   and+ private_modules = eval ~standard:Module_trie.empty private_modules in
-  (* Module_name.Map.iteri !fake_modules ~f:(fun m loc -> *)
-  (*   User_error.raise *)
-  (*     ~loc *)
-  (*     [ Pp.textf "Module %s is excluded but it doesn't exist." (Module_name.to_string m) ]); *)
   check_invalid_module_listing
     ~stanza_loc
     ~modules_without_implementation
@@ -410,12 +404,8 @@ let eval
   (settings : Stanza_common.Modules_settings.t)
   =
   let open Memo.O in
-  let* eval0 =
-    eval0
-      ~expander
-      ~modules:(all_modules : Module.Source.t Module_trie.t)
-      ~stanza_loc
-      settings.modules
+  let* modules0 =
+    eval0 ~expander ~loc:stanza_loc ~all_modules ~standard:all_modules settings.modules
   in
   let* is_vendored =
     match Path.Build.drop_build_context src_dir with
@@ -432,8 +422,8 @@ let eval
       ~src_dir
       ~is_vendored
       settings
-      eval0
+      modules0
       ~version
   in
-  eval0.modules, modules
+  modules0, modules
 ;;

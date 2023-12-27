@@ -120,10 +120,11 @@ module Unordered (Key : Ordered_set_lang.Key) : sig
   val expand_and_eval
     :  t
     -> Ordered_set_lang.Unexpanded.t
-    -> parse:(loc:Loc.t -> string -> 'a)
+    -> ctx:'ctx
+    -> parse:(loc:Loc.t -> ctx:'ctx -> string -> 'a * 'ctx)
     -> key:('a -> Key.t)
     -> standard:(Loc.t * 'a) Key.Map.t
-    -> (Loc.t * 'a) Key.Map.t Action_builder.t
+    -> ((Loc.t * 'a) Key.Map.t * 'ctx) Action_builder.t
 end
 
 val eval_blang : t -> Blang.t -> bool Memo.t

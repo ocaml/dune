@@ -665,10 +665,10 @@ module Library = struct
          ()
        and+ sub_systems = Sub_system_info.record_parser
        and+ virtual_modules =
-         field_o
+         Ordered_set_lang.Unexpanded.field_o
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
+           ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "virtual_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 7)
-            >>> Ordered_set_lang.Unexpanded.decode)
        and+ implements =
          field_o
            "implements"
@@ -678,10 +678,10 @@ module Library = struct
            "default_implementation"
            (Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> located Lib_name.decode)
        and+ private_modules =
-         field_o
+         Ordered_set_lang.Unexpanded.field_o
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 2))
+           ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "private_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 2)
-            >>> Ordered_set_lang.Unexpanded.decode)
        and+ stdlib =
          field_o
            "stdlib"

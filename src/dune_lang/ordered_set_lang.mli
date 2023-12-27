@@ -53,7 +53,19 @@ module Unexpanded : sig
   val standard : t
   val of_strings : pos:string * int * int * int -> string list -> t
   val include_single : context:Univ_map.t -> pos:string * int * int * int -> string -> t
-  val field : ?check:unit Decoder.t -> string -> t Decoder.fields_parser
+
+  val field
+    :  ?check:unit Decoder.t
+    -> ?since_expanded:Syntax.Version.t
+    -> string
+    -> t Decoder.fields_parser
+
+  val field_o
+    :  ?check:unit Decoder.t
+    -> ?since_expanded:Syntax.Version.t
+    -> string
+    -> t option Decoder.fields_parser
+
   val has_special_forms : t -> bool
   val has_standard : t -> bool
 

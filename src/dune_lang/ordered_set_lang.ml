@@ -288,13 +288,56 @@ module Unexpanded = struct
     }
   ;;
 
-  let field ?check name =
+  let is_expanded t =
+    let rec loop (t : ast) =
+      let open Ast in
+      match t with
+      | Standard -> true
+      | Include _ -> false
+      | Element s -> Option.is_some (String_with_vars.text_only s)
+      | Union l -> List.for_all l ~f:loop
+      | Diff (l, r) -> loop l && loop r
+    in
+    loop t.ast
+  ;;
+
+  let field_gen field ?check ?since_expanded is_expanded =
     let decode =
       match check with
       | None -> decode
       | Some x -> Decoder.( >>> ) x decode
     in
-    Decoder.field name decode ~default:standard
+    let x = field decode in
+    match since_expanded with
+    | None -> x
+    | Some since_expanded ->
+      let open Decoder in
+      let+ loc, x = located x
+      and+ ver = Syntax.get_exn Stanza.syntax in
+      if ver < since_expanded && not (is_expanded x)
+      then
+        Syntax.Error.since
+          loc
+          Stanza.syntax
+          since_expanded
+          ~what:"the ability to specify non-constant module lists";
+      x
+  ;;
+
+  let field ?check ?since_expanded name =
+    field_gen
+      (Decoder.field name ~default:standard ?on_dup:None)
+      ?check
+      ?since_expanded
+      is_expanded
+  ;;
+
+  let field_o ?check ?since_expanded name =
+    field_gen
+      (Decoder.field_o name ?on_dup:None)
+      ?check
+      ?since_expanded
+      (Option.forall ~f:is_expanded)
   ;;
 
   let has_special_forms t =

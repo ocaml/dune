@@ -26,5 +26,6 @@ module Modules_settings : sig
     ; modules : Ordered_set_lang.Unexpanded.t
     }
 
+  val since_expanded : Syntax.Version.t
   val decode : t Dune_lang.Decoder.fields_parser
 end

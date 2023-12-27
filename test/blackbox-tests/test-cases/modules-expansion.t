@@ -1,8 +1,7 @@
 Here we test the ability of (modules) to be contain dynamic forms such as
 `(:include)` and variables such as `"%{read-lines:}"`.
 
-Begin by setting up a project. Note that the feature is not currently versioned;
-this should be done before merging.
+Begin by setting up a project and check the versioning guards.
 
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
@@ -34,7 +33,24 @@ file `gen/lst`:
   > (executable (name mod) (modules (:include gen/lst)))
   > EOF
 
-Let's check that it works:
+Let's check that it fails in the current version of Dune:
+
+  $ dune exec ./mod.exe
+  File "dune", line 1, characters 23-51:
+  1 | (executable (name mod) (modules (:include gen/lst)))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: the ability to specify non-constant module lists is only available
+  since version 3.13 of the dune language. Please update your dune-project file
+  to have (lang dune 3.13).
+  [1]
+
+Update the version...
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > EOF
+
+... and it works!
 
   $ dune exec ./mod.exe
   Hello, Mod!

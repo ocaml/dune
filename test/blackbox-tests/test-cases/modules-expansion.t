@@ -134,44 +134,8 @@ appears. We need to handle this cycle gracefully and report it to the user.
   > EOF
 
   $ dune exec ./mod.exe
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("internal dependency cycle",
-    { frames =
-        [ ("build-file", In_build_dir "default/lst")
-        ; ("<unnamed>", ())
-        ; ("<unnamed>", ())
-        ; ("load-dir", In_build_dir "default")
-        ]
-    })
-  Raised at Memo.Exec.exec_dep_node.(fun) in file "src/memo/memo.ml", line
-    1289, characters 29-62
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  Re-raised at Stdune__Exn.raise_with_backtrace in file
-    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
-  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
-    line 76, characters 8-11
-  
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases. 
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
+  Error: Dependency cycle between:
+     Finding source files in directory _build/default
+  -> Evaluating modules field in directory _build/default
+  -> Finding source files in directory _build/default
   [1]

@@ -404,6 +404,9 @@ let eval
   (settings : Stanza_common.Modules_settings.t)
   =
   let open Memo.O in
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf "Evaluating modules field in directory %s" (Path.Build.to_string src_dir))
+  @@ fun () ->
   let* modules0 =
     eval0 ~expander ~loc:stanza_loc ~all_modules ~standard:all_modules settings.modules
   in

@@ -601,10 +601,10 @@ module Library = struct
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; dune_version : Dune_lang.Syntax.Version.t
-    ; virtual_modules : Ordered_set_lang.t option
+    ; virtual_modules : Ordered_set_lang.Unexpanded.t option
     ; implements : (Loc.t * Lib_name.t) option
     ; default_implementation : (Loc.t * Lib_name.t) option
-    ; private_modules : Ordered_set_lang.t option
+    ; private_modules : Ordered_set_lang.Unexpanded.t option
     ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
@@ -667,7 +667,8 @@ module Library = struct
        and+ virtual_modules =
          field_o
            "virtual_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 7) >>> Ordered_set_lang.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (1, 7)
+            >>> Ordered_set_lang.Unexpanded.decode)
        and+ implements =
          field_o
            "implements"
@@ -679,7 +680,8 @@ module Library = struct
        and+ private_modules =
          field_o
            "private_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 2) >>> Ordered_set_lang.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (1, 2)
+            >>> Ordered_set_lang.Unexpanded.decode)
        and+ stdlib =
          field_o
            "stdlib"
@@ -766,7 +768,7 @@ module Library = struct
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
          User_error.raise
-           ~loc:(Ordered_set_lang.loc virtual_modules |> Option.value_exn)
+           ~loc:(Ordered_set_lang.Unexpanded.loc virtual_modules |> Option.value_exn)
            [ Pp.textf
                "A library cannot be both virtual and implement %s"
                (Lib_name.to_string impl)

@@ -44,6 +44,7 @@ module Unexpanded : sig
   type expanded := t
   type t
 
+  val loc : t -> Loc.t option
   val equal : t -> t -> bool
 
   include Dune_sexp.Conv.S with type t := t

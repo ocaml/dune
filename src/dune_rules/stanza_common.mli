@@ -22,8 +22,8 @@ val instrumentation
 module Modules_settings : sig
   type t =
     { root_module : (Loc.t * Module_name.t) option
-    ; modules_without_implementation : Ordered_set_lang.t
-    ; modules : Ordered_set_lang.t
+    ; modules_without_implementation : Ordered_set_lang.Unexpanded.t
+    ; modules : Ordered_set_lang.Unexpanded.t
     }
 
   val decode : t Dune_lang.Decoder.fields_parser

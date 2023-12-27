@@ -238,6 +238,7 @@ module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
 
+  let loc t = t.loc
   let equal x y = equal_generic (Ast.equal String_with_vars.equal_no_loc) x y
 
   let decode : t Decoder.t =

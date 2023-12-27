@@ -202,15 +202,15 @@ let instrumentation =
 module Modules_settings = struct
   type t =
     { root_module : (Loc.t * Module_name.t) option
-    ; modules_without_implementation : Ordered_set_lang.t
-    ; modules : Ordered_set_lang.t
+    ; modules_without_implementation : Ordered_set_lang.Unexpanded.t
+    ; modules : Ordered_set_lang.Unexpanded.t
     }
 
   let decode =
     let+ root_module = field_o "root_module" Module_name.decode_loc
     and+ modules_without_implementation =
-      Ordered_set_lang.field "modules_without_implementation"
-    and+ modules = Ordered_set_lang.field "modules" in
+      Ordered_set_lang.Unexpanded.field "modules_without_implementation"
+    and+ modules = Ordered_set_lang.Unexpanded.field "modules" in
     { root_module; modules; modules_without_implementation }
   ;;
 end

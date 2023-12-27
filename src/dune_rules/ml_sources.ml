@@ -266,6 +266,7 @@ let virtual_modules ~lookup_vlib vlib =
 ;;
 
 let make_lib_modules
+  ~expander
   ~dir
   ~libs
   ~lookup_vlib
@@ -325,11 +326,12 @@ let make_lib_modules
   let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
     Modules_field_evaluator.eval
+      ~expander
       ~modules
       ~stanza_loc
       ~kind
       ~private_modules:
-        (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+        (Option.value ~default:Ordered_set_lang.Unexpanded.standard lib.private_modules)
       ~src_dir:dir
       modules_settings
       ~version
@@ -388,7 +390,7 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  fun stanzas ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
+  fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
@@ -399,6 +401,7 @@ let modules_of_stanzas =
         let+ sources, modules =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules
+            ~expander
             ~dir
             ~libs
             ~lookup_vlib
@@ -417,11 +420,12 @@ let modules_of_stanzas =
             exes.buildable
           in
           Modules_field_evaluator.eval
+            ~expander
             ~modules
             ~stanza_loc
             ~src_dir:dir
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.Unexpanded.standard
             ~version:exes.dune_version
             modules_settings
         in
@@ -436,11 +440,12 @@ let modules_of_stanzas =
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let+ sources, modules =
           Modules_field_evaluator.eval
+            ~expander
             ~modules
             ~stanza_loc:mel.loc
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
             ~version:mel.dune_version
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.Unexpanded.standard
             ~src_dir:dir
             mel.modules
         in
@@ -454,6 +459,7 @@ let modules_of_stanzas =
 
 let make
   dune_file
+  ~expander
   ~dir
   ~libs
   ~project
@@ -529,6 +535,7 @@ let make
     in
     modules_of_stanzas
       dune_file
+      ~expander
       ~project
       ~dir
       ~libs

@@ -47,6 +47,7 @@ val include_subdirs : t -> Dune_file.Include_subdirs.t
 
 val make
   :  Stanza.t list
+  -> expander:Expander.t
   -> dir:Path.Build.t
   -> libs:Lib.DB.t Memo.t
   -> project:Dune_project.t

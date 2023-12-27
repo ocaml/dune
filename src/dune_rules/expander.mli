@@ -116,6 +116,16 @@ val expand_and_eval_set
   -> standard:string list Action_builder.t
   -> string list Action_builder.t
 
+module Unordered (Key : Ordered_set_lang.Key) : sig
+  val expand_and_eval
+    :  t
+    -> Ordered_set_lang.Unexpanded.t
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:(Loc.t * 'a) Key.Map.t
+    -> (Loc.t * 'a) Key.Map.t Action_builder.t
+end
+
 val eval_blang : t -> Blang.t -> bool Memo.t
 val map_exe : t -> Path.t -> Path.t
 val artifacts : t -> Artifacts.t

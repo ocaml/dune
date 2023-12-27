@@ -909,6 +909,16 @@ let expand_and_eval_set t set ~standard =
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s -> s)
 ;;
 
+module Unordered (Key : Ordered_set_lang.Key) = struct
+  module Unordered = Ordered_set_lang.Unordered (Key)
+
+  let expand_and_eval t set ~parse ~key ~standard =
+    let dir = Path.build (dir t) in
+    let+ set = expand_ordered_set_lang set ~dir ~f:(expand_pform t) in
+    Unordered.eval_loc set ~parse ~key ~standard
+  ;;
+end
+
 let eval_blang t blang =
   Blang_expand.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 ;;

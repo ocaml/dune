@@ -1,7 +1,27 @@
 open Import
 open Memo.O
 
+let dune_sites_env ~default_ocamlpath ~stdlib =
+  [ Dune_site_private.dune_ocaml_stdlib_env_var, Path.to_absolute_filename stdlib
+  ; ( Dune_site_private.dune_ocaml_hardcoded_env_var
+    , List.map ~f:Path.to_absolute_filename default_ocamlpath
+      |> String.concat ~sep:(Char.escaped Findlib_config.ocamlpath_sep) )
+  ; ( Dune_site_private.dune_sourceroot_env_var
+    , Path.to_absolute_filename (Path.source Path.Source.root) )
+  ]
+  |> String.Map.of_list_exn
+  |> Env.of_string_map
+;;
+
 let add_packages_env context ~base stanzas packages =
+  let* base =
+    let* context = Context.DB.get context in
+    let* ocaml = Context.ocaml context in
+    let+ default_ocamlpath = Context.default_ocamlpath context in
+    Env.extend_env
+      base
+      (dune_sites_env ~default_ocamlpath ~stdlib:ocaml.lib_config.stdlib_dir)
+  in
   let+ env_dune_dir_locations =
     let init =
       match Stdune.Env.get base Dune_site_private.dune_dir_locations_env_var with

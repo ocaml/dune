@@ -130,7 +130,7 @@ module type Rec = sig
   val build_alias : Alias.t -> Dep.Fact.Files.t Memo.t
 
   val build_file : Path.t -> Digest.t Memo.t
-  val build_dir : Path.t -> (Digest.t * Digest.t Targets.Produced.t) Memo.t
+  val build_dir : Path.t -> Digest.t Targets.Produced.t Memo.t
   val build_dep : Dep.t -> Dep.Fact.t Memo.t
   val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
   val execute_rule : Rule.t -> rule_execution_result Memo.t
@@ -227,7 +227,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 20
+  let rule_digest_version = 21
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -681,6 +681,10 @@ end = struct
       execute_action_generic_stage2_impl
   ;;
 
+  (* The current version of the action digest scheme. We should increment it when
+     making any changes to the scheme, to avoid collisions. *)
+  let action_digest_version = 1
+
   let execute_action_generic
     ~observing_facts
     (act : Rule.Anonymous_action.t)
@@ -737,7 +741,8 @@ end = struct
         |> Env.Map.to_list
       in
       Digest.generic
-        ( env
+        ( action_digest_version
+        , env
         , Dep.Set.digest deps
         , Action.for_shell action
         , List.map locks ~f:Path.to_string
@@ -768,6 +773,10 @@ end = struct
     Io.read_file (Path.build target)
   ;;
 
+  (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]
+     could always return [targets : Digest.t Targets.Produced.t], and the latter could
+     provide a way to conveniently check if a specific [path] is a file or a directory,
+     as well as extract its digest when needed. *)
   type target_kind =
     | File_target
     | Dir_target of
@@ -800,6 +809,13 @@ end = struct
       (match Targets.Produced.find targets path with
        | Some digest -> digest, File_target
        | None ->
+         (* CR-soon amokhov: Here we expect [path] to be a directory target. It seems odd
+            to compute its digest here by calling to [Cached_digest.build_file]. Shouldn't
+            we do that in [execute_rule], like we do for file targets?
+
+            rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
+            (or should we) ever use [build_file] to build directories? Perhaps this could
+            be split in two memo tables, one for files and one for directories. *)
          (match Cached_digest.build_file ~allow_dirs:true path with
           | Ok digest -> digest, Dir_target { targets }
           (* Must be a directory target *)
@@ -883,21 +899,18 @@ end = struct
             let+ digest = build_file path in
             path, digest)
         in
-        Dep.Fact.Files.make ~files:(Path.Map.of_list_exn files) ~dirs:Path.Map.empty
-      | Build_under_directory_target _ ->
-        let* digest, path_map = build_dir dir in
-        let files =
-          let dir = Path.as_in_build_dir_exn dir in
-          match Targets.Produced.find_dir path_map dir with
-          | Some files ->
-            Filename.Map.to_list_map files ~f:(fun file digest ->
-              Path.build (Path.Build.relative dir file), digest)
-            |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
-            |> Path.Map.of_list_exn
-          | None -> Path.Map.empty
-        in
-        let dirs = Path.Map.singleton dir digest in
-        Memo.return (Dep.Fact.Files.make ~files ~dirs)
+        Dep.Fact.Files.create ?dir:(Path.as_in_build_dir dir) (Path.Map.of_list_exn files)
+      | Build_under_directory_target { directory_target_ancestor = _ } ->
+        let+ path_map = build_dir dir in
+        let dir = Path.as_in_build_dir_exn dir in
+        (match Targets.Produced.find_dir path_map dir with
+         | Some files ->
+           Filename.Map.to_list_map files ~f:(fun file digest ->
+             Path.build (Path.Build.relative dir file), digest)
+           |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
+           |> Path.Map.of_list_exn
+           |> Dep.Fact.Files.create ~dir
+         | None -> Dep.Fact.Files.create Path.Map.empty)
     ;;
 
     let eval_impl g =
@@ -925,7 +938,7 @@ end = struct
         |> Filename.Set.of_list
         |> Filename_set.create ~dir
         |> Memo.return
-      | Build_under_directory_target _ ->
+      | Build_under_directory_target { directory_target_ancestor = _ } ->
         (* To evaluate a glob in a generated directory, we have no choice but to build the
            whole directory, so we might as well build the predicate. *)
         let+ facts = Pred.build g in
@@ -976,9 +989,9 @@ end = struct
   let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 
   let build_dir path =
-    let+ digest, kind = Memo.exec (Lazy.force build_file_memo) path in
+    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
     match kind with
-    | Dir_target { targets } -> digest, targets
+    | Dir_target { targets } -> targets
     | File_target ->
       Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
   ;;
@@ -1041,7 +1054,7 @@ let file_exists fn =
     Memo.return
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
-    let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
+    let+ path_map = build_dir (Path.build directory_target_ancestor) in
     Targets.Produced.mem path_map (Path.as_in_build_dir_exn fn)
 ;;
 
@@ -1056,7 +1069,7 @@ let files_of ~dir =
     |> Filename_set.create ~dir
     |> Memo.return
   | Build_under_directory_target { directory_target_ancestor } ->
-    let+ _digest, path_map = build_dir (Path.build directory_target_ancestor) in
+    let+ path_map = build_dir (Path.build directory_target_ancestor) in
     let filenames =
       let dir = Path.as_in_build_dir_exn dir in
       match Targets.Produced.find_dir path_map dir with

@@ -12,6 +12,10 @@ type t =
 let dir t = t.dir
 let only_generated_files t = t.only_generated_files
 
+let digest_exn { dir; predicate; only_generated_files } =
+  Digest.generic (dir, Predicate_lang.Glob.digest_exn predicate, only_generated_files)
+;;
+
 let compare { dir; predicate; only_generated_files } t =
   let open Ordering.O in
   let= () = Path.compare dir t.dir in

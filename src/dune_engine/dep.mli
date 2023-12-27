@@ -44,20 +44,16 @@ module Fact : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    val make : files:Digest.t Path.Map.t -> dirs:Digest.t Path.Map.t -> t
+    (** Record an observed path-digest mapping. If a [dir] is specified, record it as
+        existing, so that it can be created in the sandbox when the mapping is empty. *)
+    val create : ?dir:Path.Build.t -> Digest.t Path.Map.t -> t
+
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-    val compare : t -> t -> Ordering.t
-
-    (** Return all file paths in this file group. *)
-    val paths : t -> Digest.t Path.Map.t
 
     (** Like [paths] but asserts that all paths are relative to the [expected_parent] and
         returns their basenames instead. *)
     val filenames_exn : t -> expected_parent:Path.t -> Filename_set.t
-
-    (** Create a new [t] from a list of [t] and a list of files. *)
-    val group : t list -> Digest.t Path.Map.t -> t
   end
 
   (** [digest] is assumed to be the [digest_paths expansion]. *)
@@ -99,10 +95,8 @@ module Facts : sig
   val union_all : t list -> t
   val record_facts : Set.t -> f:(dep -> Fact.t Memo.t) -> t Memo.t
 
-  (** Return all file paths, expanding aliases. *)
-  val paths : t -> Digest.t Path.Map.t
-
-  val paths_without_expanding_aliases : t -> Digest.t Path.Map.t
+  (** Return all file paths, expanding aliases if [expand_aliases = true]. *)
+  val paths : t -> expand_aliases:bool -> Path.Set.t
 
   (** Create a single [Fact.Files.t] from all the paths contained in a list of
       fact maps. Does so while preserving as much sharing as possible with the

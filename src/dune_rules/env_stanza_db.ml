@@ -83,6 +83,14 @@ let value ~default ~dir ~f =
     | Some stanza -> f stanza)
 ;;
 
+let value_opt ~dir ~f =
+  value ~default:None ~dir ~f:(fun t ->
+    f t
+    >>| function
+    | None -> None
+    | Some s -> Some (Some s))
+;;
+
 let bin_annot ~dir =
   value ~default:true ~dir ~f:(fun (t : Dune_env.config) -> Memo.return t.bin_annot)
 ;;

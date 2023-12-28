@@ -8,6 +8,12 @@ val value
   -> f:(Dune_env.config -> 'a option Memo.t)
   -> 'a Memo.t
 
+val value_opt
+  :  dir:Path.Build.t
+  -> f:(Dune_env.config -> 'a option Memo.t)
+  -> 'a option Memo.t
+
+val profile : dir:Path.Build.t -> Profile.t Memo.t
 val bin_annot : dir:Path.Build.t -> bool Memo.t
 val inline_tests : dir:Path.Build.t -> Dune_env.Inline_tests.t Memo.t
 

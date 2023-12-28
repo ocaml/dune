@@ -161,12 +161,8 @@ let gen_rules_output
 let format_config ~dir =
   let open Memo.O in
   let+ value =
-    Env_stanza_db.value ~default:None ~dir ~f:(fun (t : Dune_env.config) ->
-      Memo.return
-      @@
-      match t.format_config with
-      | Some x -> Some (Some x)
-      | None -> None)
+    Env_stanza_db.value_opt ~dir ~f:(fun (t : Dune_env.config) ->
+      Memo.return t.format_config)
   and+ default =
     (* we always force the default for error checking *)
     Path.Build.drop_build_context_exn dir

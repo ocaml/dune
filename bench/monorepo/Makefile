@@ -15,7 +15,7 @@ DUNIVERSE_MOUNT_POINT = /home/opam/bench-dir/current-bench-data/duniverse
 duniverse:
 	sudo cp -a $(DUNIVERSE_MOUNT_POINT) .
 	sudo chown -hR $(USER_GROUP) duniverse
-	./apply-patches.sh || true # TODO(steve): remove the "|| true" once the monorepo is reassembled without patches applied
+	./apply-patches.sh
 
 # Run the dune benchmark runner. To reduce noise, short benchmarks are run 5
 # times each, and the max and min results of each benchmark are discarded. The

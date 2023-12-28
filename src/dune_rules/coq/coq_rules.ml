@@ -127,23 +127,13 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
 
 let coq_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"coq-env"
       ~root:(fun _ _ -> Memo.return (Action_builder.return Coq_flags.default))
-      ~f:(fun ~parent ~dir (config : Dune_env.config) ->
+      ~f:(fun ~parent expander (config : Dune_env.config) ->
         Memo.return
         @@
         let open Action_builder.O in
-        let* expander =
-          Action_builder.of_memo
-          @@
-          let open Memo.O in
-          let* sctx =
-            let context = Install.Context.of_path dir |> Option.value_exn in
-            Super_context.find_exn context
-          in
-          Super_context.expander sctx ~dir
-        in
         let+ coq_flags =
           let standard =
             let+ x = Action_builder.of_memo_join parent in

@@ -38,20 +38,15 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
 
 let foreign_flags_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"foreign_flags_env"
       ~root:(fun ctx project ->
         let* context = Context.DB.get ctx in
         let+ ocaml = Context.ocaml context in
         default_context_flags (Context.build_context context) ocaml.ocaml_config ~project)
-      ~f:(fun ~parent ~dir (env : Dune_env.config) ->
+      ~f:(fun ~parent expander (env : Dune_env.config) ->
         let open Memo.O in
-        let* parent = parent in
-        let+ expander =
-          let* context = Context.DB.by_dir dir in
-          let* sctx = Super_context.find_exn (Context.name context) in
-          Super_context.expander sctx ~dir
-        in
+        let+ parent = parent in
         let foreign_flags lang =
           Foreign_language.Dict.get env.foreign_flags lang
           |> Expander.expand_and_eval_set

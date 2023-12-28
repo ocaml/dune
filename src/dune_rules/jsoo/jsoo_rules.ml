@@ -3,21 +3,13 @@ open Memo.O
 
 let jsoo_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"jsoo-env"
       ~root:(fun ctx _ ->
         let+ profile = Per_context.profile ctx in
         Js_of_ocaml.Env.(map ~f:Action_builder.return (default ~profile)))
-      ~f:(fun ~parent ~dir (local : Dune_env.config) ->
+      ~f:(fun ~parent expander (local : Dune_env.config) ->
         let local = local.js_of_ocaml in
-        let* expander =
-          let open Memo.O in
-          let* sctx =
-            let context = Install.Context.of_path dir |> Option.value_exn in
-            Super_context.find_exn context
-          in
-          Super_context.expander sctx ~dir
-        in
         let+ parent = parent in
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode parent.compilation_mode

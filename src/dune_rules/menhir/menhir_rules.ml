@@ -46,19 +46,14 @@ end
 
 let menhir_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"jsoo-env"
       ~root:(fun _ _ ->
         Menhir_env.map ~f:Action_builder.return Menhir_env.default |> Memo.return)
-      ~f:(fun ~parent ~dir (local : Dune_env.config) ->
+      ~f:(fun ~parent expander (local : Dune_env.config) ->
         let local = local.menhir in
         let open Memo.O in
-        let* parent = parent in
-        let+ expander =
-          let* context = Context.DB.by_dir dir in
-          let* sctx = Super_context.find_exn (Context.name context) in
-          Super_context.expander sctx ~dir
-        in
+        let+ parent = parent in
         let flags =
           Expander.expand_and_eval_set expander local.flags ~standard:parent.flags
         in

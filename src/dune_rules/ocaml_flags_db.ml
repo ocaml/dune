@@ -3,19 +3,14 @@ open Memo.O
 
 let ocaml_flags_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"ocaml-flags-env"
       ~root:(fun ctx project ->
         let+ profile = Context.DB.get ctx >>| Context.profile in
         let dune_version = Dune_project.dune_version project in
         Ocaml_flags.default ~profile ~dune_version)
-      ~f:(fun ~parent ~dir (env : Dune_env.config) ->
-        let* parent = parent in
-        let+ expander =
-          let* context = Context.DB.by_dir dir in
-          let* sctx = Super_context.find_exn (Context.name context) in
-          Super_context.expander sctx ~dir
-        in
+      ~f:(fun ~parent expander (env : Dune_env.config) ->
+        let+ parent = parent in
         Ocaml_flags.make
           ~spec:env.flags
           ~default:parent
@@ -48,20 +43,15 @@ let ocaml_flags sctx ~dir (spec : Ocaml_flags.Spec.t) =
 
 let link_env =
   let f =
-    Env_stanza_db.inherited
+    Env_stanza_db_flags.flags
       ~name:"link-env"
       ~root:(fun ctx _ ->
         let default_cxx_link_flags =
           Cxx_flags.get_flags ~for_:Link (Build_context.create ~name:ctx)
         in
         Link_flags.default ~default_cxx_link_flags |> Memo.return)
-      ~f:(fun ~parent ~dir (env : Dune_env.config) ->
-        let* parent = parent in
-        let+ expander =
-          let* context = Context.DB.by_dir dir in
-          let* sctx = Super_context.find_exn (Context.name context) in
-          Super_context.expander sctx ~dir
-        in
+      ~f:(fun ~parent expander (env : Dune_env.config) ->
+        let+ parent = parent in
         Link_flags.make
           ~spec:env.link_flags
           ~default:parent

@@ -12,10 +12,10 @@
 
   $ cp ./bin/foo.exe ./
 
-  $ dune build some_file 2>&1 | awk '/Internal error/,/unable to serialize/'
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("unable to serialize exception",
+  $ dune build some_file
+  Error: Dependency cycle between:
+     _build/default/some_file
+  [1]
 
 ^ This is not great. There is no actual dependency cycle, dune is just
 interpreting glob dependency too coarsely (it builds all files instead

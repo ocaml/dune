@@ -80,7 +80,7 @@ module Fact = struct
     type t =
       { files : Path.Set.t
       ; empty_dirs : Path.Build.Set.t (* For [File_selector]s that match no files *)
-      ; digest : Digest.t (* Includes [empty_dirs] and digests associated with [files] *)
+      ; digest : Digest.t (* Includes [empty_dirs], [files] and their content digests *)
       }
 
     let to_dyn { files; empty_dirs; digest } =
@@ -95,34 +95,40 @@ module Fact = struct
     let compare a b = Digest.compare a.digest b.digest
     let equal a b = Digest.equal a.digest b.digest
 
-    let filenames_exn t ~expected_parent =
-      let filenames =
-        Filename.Set.of_list_map (Path.Set.to_list t.files) ~f:(fun path ->
-          match Path.parent path with
-          | Some actual_parent when Path.equal expected_parent actual_parent ->
-            Path.basename path
-          | actual_parent ->
-            Code_error.raise
-              "Unexpected parent directory in Dep.Fact.Files.filenames_exn"
-              [ "expected_parent", Path.to_dyn expected_parent
-              ; "actual_parent", Dyn.option Path.to_dyn actual_parent
-              ])
-      in
-      Filename_set.create ~dir:expected_parent filenames
+    (* The caller should ensure that [files] and [digests] are listed in the same order *)
+    let combined_digest ?empty_dir (files : Path.t list) (digests : Digest.t list) =
+      let files = List.map files ~f:Path.to_string in
+      match empty_dir with
+      | None -> Digest.generic (files, digests)
+      | Some empty_dir -> Digest.generic (empty_dir, files, digests)
     ;;
 
-    let create ?dir files =
-      let empty_dirs =
-        match dir with
-        | None -> []
-        | Some dir -> if Path.Map.is_empty files then [ dir ] else []
+    let create files ~build_file =
+      let open Memo.O in
+      let empty_dir =
+        if Filename_set.is_empty files
+        then Path.as_in_build_dir (Filename_set.dir files)
+        else None
       in
-      { files = Path.Set.of_keys files
-      ; empty_dirs = Path.Build.Set.of_list empty_dirs
-      ; digest =
-          Digest.generic
-            ( Path.Map.to_list_map files ~f:(fun path d -> Path.to_string path, d)
-            , List.map empty_dirs ~f:(fun path -> Path.Build.to_string path) )
+      let empty_dirs =
+        match empty_dir with
+        | None -> Path.Build.Set.empty
+        | Some dir -> Path.Build.Set.singleton dir
+      in
+      let files = Filename_set.to_list files in
+      let+ digests = Memo.parallel_map files ~f:build_file in
+      { files = Path.Set.of_list files
+      ; empty_dirs
+      ; digest = combined_digest ?empty_dir files digests
+      }
+    ;;
+
+    let of_file_digest_map file_digest_map =
+      let files = Path.Set.of_keys file_digest_map in
+      let digests = Path.Map.values file_digest_map in
+      { files
+      ; empty_dirs = Path.Build.Set.empty
+      ; digest = combined_digest (Path.Set.to_list files) digests
       }
     ;;
 
@@ -135,10 +141,15 @@ module Fact = struct
       Path.Set.fold files ~init:empty_dirs ~f
     ;;
 
-    let empty = create Path.Map.empty
+    let empty =
+      { files = Path.Set.empty
+      ; empty_dirs = Path.Build.Set.empty
+      ; digest = Digest.generic []
+      }
+    ;;
 
     let group ts files =
-      let ts = if Path.Map.is_empty files then ts else create files :: ts in
+      let ts = if Path.Map.is_empty files then ts else of_file_digest_map files :: ts in
       (* Sort and de-dup so that the result is resilient to code changes *)
       let ts =
         List.filter_map ts ~f:(fun t -> if is_empty t then None else Some (t.digest, t))

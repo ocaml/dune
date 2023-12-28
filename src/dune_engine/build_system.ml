@@ -145,10 +145,7 @@ module type Rec = sig
     -> Rule.Anonymous_action.t
     -> string Memo.t
 
-  module Pred : sig
-    val eval : File_selector.t -> Filename_set.t Memo.t
-    val build : File_selector.t -> Dep.Fact.Files.t Memo.t
-  end
+  val eval_pred : File_selector.t -> Filename_set.t Memo.t
 end
 
 (* Separation between [Used_recursively] and [Exported] is necessary because at
@@ -176,6 +173,8 @@ and Exported : sig
 end = struct
   open Used_recursively
 
+  (* CR-soon amokhov: [build_dep] does some non-trivial computation, consider memoizing it. *)
+
   (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
      fact about the world. To do that, it needs to do some building. *)
   let build_dep : Dep.t -> Dep.Fact.t Memo.t = function
@@ -188,10 +187,11 @@ end = struct
       (* Fact: file [f] has digest [digest] *)
       Dep.Fact.file f digest
     | File_selector g ->
-      let+ digests = Pred.build g in
-      (* Fact: file selector [g] expands to the set of file- and (possibly)
-         dir-digest pairs [digests] *)
-      Dep.Fact.file_selector g digests
+      let* files = eval_pred g in
+      let+ fact = Dep.Fact.Files.create files ~build_file in
+      (* Fact: file selector [g] expands to the set of [files] whose digests are captured
+         via [build_file]; also, [File_selector.dir g] exists (though it may be empty) *)
+      Dep.Fact.file_selector g fact
     | Universe | Env _ ->
       (* Facts about these dependencies are constructed in
          [Dep.Facts.digest]. *)
@@ -887,89 +887,63 @@ end = struct
     Dep.Facts.group_paths_as_fact_files l
   ;;
 
-  module Pred = struct
-    let build_impl g =
-      let dir = File_selector.dir g in
-      Load_rules.load_dir ~dir
-      >>= function
-      | External _ | Source _ | Build _ ->
-        let* filenames = Pred.eval g in
-        let+ files =
-          Memo.parallel_map (Filename_set.to_list filenames) ~f:(fun path ->
-            let+ digest = build_file path in
-            path, digest)
-        in
-        Dep.Fact.Files.create ?dir:(Path.as_in_build_dir dir) (Path.Map.of_list_exn files)
-      | Build_under_directory_target { directory_target_ancestor = _ } ->
-        let+ path_map = build_dir dir in
-        let dir = Path.as_in_build_dir_exn dir in
-        (match Targets.Produced.find_dir path_map dir with
-         | Some files ->
-           Filename.Map.to_list_map files ~f:(fun file digest ->
-             Path.build (Path.Build.relative dir file), digest)
-           |> List.filter ~f:(fun (path, _) -> File_selector.test g path)
-           |> Path.Map.of_list_exn
-           |> Dep.Fact.Files.create ~dir
-         | None -> Dep.Fact.Files.create Path.Map.empty)
-    ;;
+  let eval_pred_impl g =
+    let dir = File_selector.dir g in
+    (* CR-soon amokhov: Change [Load_rules.load_dir] to return [Filename_set.t]s to save
+       a bunch of set/list operations and reduce code duplication. *)
+    Load_rules.load_dir ~dir
+    >>= function
+    | Source { filenames } | External { filenames } ->
+      Filename_set.create ~dir ~filter:(File_selector.test_basename g) filenames
+      |> Memo.return
+    | Build { rules_here; _ } ->
+      let only_generated_files = File_selector.only_generated_files g in
+      (* We look only at [by_file_targets] because [File_selector] does not
+         match directories. *)
+      Path.Build.Map.foldi
+        ~init:[]
+        rules_here.by_file_targets
+        ~f:(fun path { Rule.info; _ } acc ->
+          match info with
+          | Rule.Info.Source_file_copy _ when only_generated_files -> acc
+          | _ ->
+            let basename = Path.Build.basename path in
+            if File_selector.test_basename g ~basename then basename :: acc else acc)
+      |> Filename.Set.of_list
+      |> Filename_set.create ~dir
+      |> Memo.return
+    | Build_under_directory_target { directory_target_ancestor = _ } ->
+      (* To evaluate a glob in a generated directory, we have no choice but to build the
+         whole directory and examine its contents. *)
+      let+ path_map = build_dir dir in
+      (match Targets.Produced.find_dir path_map (Path.as_in_build_dir_exn dir) with
+       | Some files_and_digests ->
+         Filename_set.create
+           ~dir
+           ~filter:(File_selector.test_basename g)
+           (Filename.Set.of_keys files_and_digests)
+       | None ->
+         (* CR-soon amokhov: I think this case should be an error. If the directory target
+            doesn't contain the requested dir, we will currently create an empty directory
+            in the sandbox, as if it actually existed. *)
+         Filename_set.empty ~dir)
+  ;;
 
-    let eval_impl g =
-      let dir = File_selector.dir g in
-      (* CR-soon amokhov: Change [Load_rules.load_dir] to return [Filename_set.t]s to save
-         a bunch of set/list operations and reduce code duplication. *)
-      Load_rules.load_dir ~dir
-      >>= function
-      | Source { filenames } | External { filenames } ->
-        Filename_set.create ~dir ~filter:(File_selector.test_basename g) filenames
-        |> Memo.return
-      | Build { rules_here; _ } ->
-        let only_generated_files = File_selector.only_generated_files g in
-        (* We look only at [by_file_targets] because [File_selector] does not
-           match directories. *)
-        Path.Build.Map.foldi
-          ~init:[]
-          rules_here.by_file_targets
-          ~f:(fun path { Rule.info; _ } acc ->
-            match info with
-            | Rule.Info.Source_file_copy _ when only_generated_files -> acc
-            | _ ->
-              let basename = Path.Build.basename path in
-              if File_selector.test_basename g ~basename then basename :: acc else acc)
-        |> Filename.Set.of_list
-        |> Filename_set.create ~dir
-        |> Memo.return
-      | Build_under_directory_target { directory_target_ancestor = _ } ->
-        (* To evaluate a glob in a generated directory, we have no choice but to build the
-           whole directory, so we might as well build the predicate. *)
-        let+ facts = Pred.build g in
-        Dep.Fact.Files.filenames_exn facts ~expected_parent:dir
-    ;;
+  let eval_pred_memo =
+    Memo.create
+      "eval-pred"
+      ~human_readable_description:(fun glob ->
+        Pp.concat
+          [ Pp.textf
+              "Evaluating predicate in directory %s"
+              (Path.to_string_maybe_quoted (File_selector.dir glob))
+          ])
+      ~input:(module File_selector)
+      ~cutoff:Filename_set.equal
+      eval_pred_impl
+  ;;
 
-    let eval_memo =
-      Memo.create
-        "eval-pred"
-        ~human_readable_description:(fun glob ->
-          Pp.concat
-            [ Pp.textf
-                "Evaluating predicate in directory %s"
-                (Path.to_string_maybe_quoted (File_selector.dir glob))
-            ])
-        ~input:(module File_selector)
-        ~cutoff:Filename_set.equal
-        eval_impl
-    ;;
-
-    let eval = Memo.exec eval_memo
-
-    let build =
-      Memo.exec
-        (Memo.create
-           "build-pred"
-           ~input:(module File_selector)
-           ~cutoff:Dep.Fact.Files.equal
-           build_impl)
-    ;;
-  end
+  let eval_pred = Memo.exec eval_pred_memo
 
   let build_file_memo =
     lazy
@@ -1032,10 +1006,6 @@ end = struct
 end
 
 include Exported
-
-let record_deps (deps : Dep.Set.t) = Action_builder.record () deps ~f:build_dep
-let eval_pred = Pred.eval
-let build_pred = Pred.build
 
 (* Here we are doing a O(log |S|) lookup in a set S of files in the build
    directory [dir]. We could memoize these lookups, but it doesn't seem to be
@@ -1180,3 +1150,4 @@ let read_file =
 
 let state = State.t
 let errors = State.errors
+let record_deps (deps : Dep.Set.t) = Action_builder.record () deps ~f:build_dep

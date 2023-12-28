@@ -44,16 +44,13 @@ module Fact : sig
     (** A group of files for which we cache the digest of the whole group. *)
     type t
 
-    (** Record an observed path-digest mapping. If a [dir] is specified, record it as
-        existing, so that it can be created in the sandbox when the mapping is empty. *)
-    val create : ?dir:Path.Build.t -> Digest.t Path.Map.t -> t
+    (** Record a file-digest mapping for a given [Filename_set.t]. If the set is empty,
+        record the parent directory as existing, so that it can be created in the sandbox
+        even when the mapping is empty. *)
+    val create : Filename_set.t -> build_file:(Path.t -> Digest.t Memo.t) -> t Memo.t
 
     val to_dyn : t -> Dyn.t
     val equal : t -> t -> bool
-
-    (** Like [paths] but asserts that all paths are relative to the [expected_parent] and
-        returns their basenames instead. *)
-    val filenames_exn : t -> expected_parent:Path.t -> Filename_set.t
   end
 
   (** [digest] is assumed to be the [digest_paths expansion]. *)

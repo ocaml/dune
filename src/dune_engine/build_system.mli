@@ -22,19 +22,15 @@ val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
 val record_deps : Dep.Set.t -> unit Action_builder.t
 
 (** [eval_pred glob] returns the set of filenames in [File_selector.dir glob] that matches
-    [File_selector.predicate glob], including both sources and generated files. *)
+    [File_selector.predicate glob], including both sources and generated files.
+
+    This function does the minimum amount of work necessary to produce the result, and may
+    do some building (e.g., if [glob] points inside a directory target). To force building
+    the files you need, use [build_file]. *)
 val eval_pred : File_selector.t -> Filename_set.t Memo.t
 
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)
 val files_of : dir:Path.t -> Filename_set.t Memo.t
-
-(* CR-someday amokhov: Make [build_pred] return something like [Dep.Fact.Filename_set.t]
-   which is anchored to the [File_selector]'s directory. *)
-
-(** Like [eval_pred] but also builds the resulting set of files. This function
-    doesn't have [eval_pred]'s limitation about directory targets and takes them
-    into account. *)
-val build_pred : File_selector.t -> Dep.Fact.Files.t Memo.t
 
 (** Execute an action. The execution is cached. *)
 val execute_action : observing_facts:Dep.Facts.t -> Rule.Anonymous_action.t -> unit Memo.t

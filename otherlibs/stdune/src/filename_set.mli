@@ -13,6 +13,7 @@ val dir : t -> Path.t
 val filenames : t -> Filename.Set.t
 
 val empty : dir:Path.t -> t
+val is_empty : t -> bool
 
 (* CR-soon amokhov: Decouple [create] from [filter]. *)
 val create : ?filter:(basename:string -> bool) -> dir:Path.t -> Filename.Set.t -> t

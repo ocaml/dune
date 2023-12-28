@@ -8,19 +8,20 @@ let available_exes ~dir (exes : Dune_file.Executables.t) =
       let project = Scope.project scope in
       Dune_project.dune_version project
     in
+    let libs = Scope.libs scope in
     let+ pps =
       (* Instead of making the binary unavailable, this will just
          fail when loading artifacts. This is clearly bad but
          "optional" executables shouldn't be used. *)
-      Resolve.Memo.read_memo
-        (Preprocess.Per_module.with_instrumentation
-           exes.buildable.preprocess
-           ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+      Preprocess.Per_module.with_instrumentation
+        exes.buildable.preprocess
+        ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
+      |> Resolve.Memo.read_memo
       >>| Preprocess.Per_module.pps
     in
     let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names) in
     Lib.DB.resolve_user_written_deps
-      (Scope.libs scope)
+      libs
       (`Exe exes.names)
       exes.buildable.libraries
       ~pps

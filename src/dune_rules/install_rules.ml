@@ -960,9 +960,9 @@ let promote_install_file (ctx : Context.t) =
   | Opam _ -> false
 ;;
 
-let install_entries sctx (package : Package.t) =
+let install_entries sctx package =
   let+ packages = Stanzas_to_entries.stanzas_to_entries sctx in
-  Package.Name.Map.Multi.find packages (Package.name package)
+  Package.Name.Map.Multi.find packages package
 ;;
 
 let packages =
@@ -971,7 +971,8 @@ let packages =
     let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
-        install_entries sctx pkg
+        Package.name pkg
+        |> install_entries sctx
         >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src, Package.id pkg))
     in
     Path.Build.Map.of_list_fold
@@ -1004,16 +1005,14 @@ let packages_file_is_part_of path =
 ;;
 
 let symlinked_entries sctx package =
-  let package_name = Package.name package in
-  let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
   let install_paths =
-    Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
+    let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
+    Install.Paths.make ~relative:Path.relative ~package ~roots
   in
-  let* entries = install_entries sctx package in
-  let+ entries =
-    symlink_installed_artifacts_to_build_install sctx ~install_paths entries
-  in
-  List.concat entries |> List.split
+  install_entries sctx package
+  >>= symlink_installed_artifacts_to_build_install sctx ~install_paths
+  >>| List.concat
+  >>| List.split
 ;;
 
 let symlinked_entries =
@@ -1025,7 +1024,7 @@ let symlinked_entries =
           "Computing installable artifacts for package %s"
           (Package.Name.to_string (Package.name pkg)))
       "symlinked_entries"
-      (fun (sctx, pkg) -> symlinked_entries sctx pkg)
+      (fun (sctx, pkg) -> symlinked_entries sctx (Package.name pkg))
   in
   fun sctx pkg -> Memo.exec memo (sctx, pkg)
 ;;

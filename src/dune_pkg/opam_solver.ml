@@ -510,7 +510,7 @@ let opam_package_to_lock_file_pkg
           (* opam discards the later checksums, so we only take the first one *)
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
-        Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
+        Source.Fetch { Source.url; checksum } ))
   in
   let info =
     let source =
@@ -525,7 +525,7 @@ let opam_package_to_lock_file_pkg
           let url = OpamFile.URL.url url in
           Loc.none, OpamUrl.to_string url
         in
-        Lock_dir.Source.Fetch { url; checksum })
+        Source.Fetch { url; checksum })
     in
     { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
     ; version

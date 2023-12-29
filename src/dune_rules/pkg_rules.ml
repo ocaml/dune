@@ -1555,7 +1555,7 @@ let source_rules (pkg : Pkg.t) =
     List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
       let extra_source = Paths.extra_source pkg.paths local in
       let rule =
-        match (fetch : Lock_dir.Source.t) with
+        match (fetch : Source.t) with
         | External_copy (loc, src) ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | Fetch { url = (loc, _) as url; checksum } ->

@@ -2,17 +2,6 @@
 
 open Import
 
-module Source : sig
-  type fetch =
-    { url : Loc.t * string
-    ; checksum : (Loc.t * Checksum.t) option
-    }
-
-  type t =
-    | External_copy of Loc.t * Path.External.t
-    | Fetch of fetch
-end
-
 module Pkg_info : sig
   type t =
     { name : Package_name.t

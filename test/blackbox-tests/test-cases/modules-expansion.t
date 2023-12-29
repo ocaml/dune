@@ -140,6 +140,52 @@ We can also use special forms such as `%{read-lines:}`:
       ocamlopt lib.{a,cmxa}
       ocamlopt lib.cmxs
 
+Interaction with `(include_subdirs)` when the dependencies are in the subtree:
+
+  $ cat >dune <<EOF
+  > (include_subdirs unqualified)
+  > (library
+  >  (name lib)
+  >  (modules %{read-lines:gen/lst}))
+  > EOF
+
+  $ dune build --display short
+  Error: Dependency cycle between:
+     Finding source files in directory _build/default
+  -> %{read-lines:gen/lst} at dune:4
+  -> Evaluating modules field in directory _build/default
+  -> Finding source files in directory _build/default
+  [1]
+
+Let's move the gen subdirectory out of the hierarchy:
+
+  $ rm dune
+  $ mkdir -p lib/sub
+  $ cat >lib/dune <<EOF
+  > (include_subdirs unqualified)
+  > (library
+  >  (name lib2)
+  >  (modules %{read-lines:../gen/lst}))
+  > EOF
+
+  $ cp mod.ml lib
+  $ cp mod2.ml lib/sub
+
+  $ dune build @lib/all --display short
+        ocamlc lib/.lib2.objs/byte/lib2.{cmi,cmo,cmt}
+      ocamldep lib/.lib2.objs/lib2__Mod.impl.d
+      ocamldep lib/.lib2.objs/lib2__Mod2.impl.d
+      ocamlopt lib/.lib2.objs/native/lib2.{cmx,o}
+        ocamlc lib/.lib2.objs/byte/lib2__Mod.{cmi,cmo,cmt}
+        ocamlc lib/.lib2.objs/byte/lib2__Mod2.{cmi,cmo,cmt}
+      ocamlopt lib/.lib2.objs/native/lib2__Mod.{cmx,o}
+      ocamlopt lib/.lib2.objs/native/lib2__Mod2.{cmx,o}
+        ocamlc lib/lib2.cma
+      ocamlopt lib/lib2.{a,cmxa}
+      ocamlopt lib/lib2.cmxs
+
+  $ rm -rf lib
+
 Next, we illustrate the issue mentioned above: the build dependencies must not
 live in the same directory as the containing stanza, otherwise a cycle
 appears. We need to handle this cycle gracefully and report it to the user.
@@ -155,3 +201,28 @@ appears. We need to handle this cycle gracefully and report it to the user.
   -> Evaluating modules field in directory _build/default
   -> Finding source files in directory _build/default
   [1]
+
+Let's do one example with a generated source file:
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name lib)
+  >  (modules mod3 (:include gen/lst)))
+  > (rule (with-stdout-to mod3.ml (progn)))
+  > (rule (with-stdout-to mod4.ml (progn)))
+  > EOF
+
+  $ echo mod4 >gen/lst && rm -f gen/dune mod.ml mod2.ml
+
+  $ dune build --display short
+        ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
+      ocamldep .lib.objs/lib__Mod3.impl.d
+      ocamldep .lib.objs/lib__Mod4.impl.d
+      ocamlopt .lib.objs/native/lib.{cmx,o}
+        ocamlc .lib.objs/byte/lib__Mod3.{cmi,cmo,cmt}
+        ocamlc .lib.objs/byte/lib__Mod4.{cmi,cmo,cmt}
+      ocamlopt .lib.objs/native/lib__Mod3.{cmx,o}
+      ocamlopt .lib.objs/native/lib__Mod4.{cmx,o}
+        ocamlc lib.cma
+      ocamlopt lib.{a,cmxa}
+      ocamlopt lib.cmxs

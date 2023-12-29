@@ -1005,8 +1005,10 @@ let packages_file_is_part_of path =
 
 let symlinked_entries sctx package =
   let package_name = Package.name package in
-  let roots = Install.Roots.opam_from_prefix Path.root in
-  let install_paths = Install.Paths.make ~package:package_name ~roots in
+  let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
+  let install_paths =
+    Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
+  in
   let* entries = install_entries sctx package in
   let+ entries =
     symlink_installed_artifacts_to_build_install sctx ~install_paths entries
@@ -1148,8 +1150,10 @@ end)
 
 let gen_package_install_file_rules sctx (package : Package.t) =
   let package_name = Package.name package in
-  let roots = Install.Roots.opam_from_prefix Path.root in
-  let install_paths = Install.Paths.make ~package:package_name ~roots in
+  let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
+  let install_paths =
+    Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
+  in
   let entries = Action_builder.of_memo (symlinked_entries sctx package >>| fst) in
   let ctx = Super_context.context sctx in
   let pkg_build_dir = Package_paths.build_dir ctx package in

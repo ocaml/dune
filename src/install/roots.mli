@@ -12,7 +12,7 @@ type 'a t =
   }
 
 (** Compute the opam layout from prefix. the opam layout is used for _build *)
-val opam_from_prefix : Path.t -> Path.t t
+val opam_from_prefix : 'a -> relative:('a -> string -> 'a) -> 'a t
 
 (** Some roots (e.g. libexec) have another roots as default (e.g. lib) *)
 val complete : 'a option t -> 'a option t

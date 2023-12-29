@@ -147,12 +147,17 @@ module Paths = struct
     ; target_dir : Path.Build.t
     ; extra_sources : Path.Build.t
     ; name : Package.Name.t
-    ; install_roots : Path.t Install.Roots.t Lazy.t
-    ; install_paths : Install.Paths.t Lazy.t
+    ; install_roots : Path.Build.t Install.Roots.t Lazy.t
+    ; install_paths : Path.Build.t Install.Paths.t Lazy.t
     }
 
-  let install_roots ~target_dir = Path.build target_dir |> Install.Roots.opam_from_prefix
-  let install_paths roots package = Install.Paths.make ~package ~roots
+  let install_roots ~target_dir =
+    Install.Roots.opam_from_prefix ~relative:Path.Build.relative target_dir
+  ;;
+
+  let install_paths roots package =
+    Install.Paths.make ~relative:Path.Build.relative ~package ~roots
+  ;;
 
   let of_root name ~root =
     let source_dir = Path.Build.relative root "source" in
@@ -348,9 +353,7 @@ module Pkg = struct
     fun xs ->
       List.fold_left xs ~init:Env.Map.empty ~f:(fun env t ->
         let env =
-          let roots =
-            Paths.install_roots t.paths |> Install.Roots.map ~f:Path.as_in_build_dir_exn
-          in
+          let roots = Paths.install_roots t.paths in
           let init = add_to_path env Env_path.var roots.bin in
           let vars = Install.Roots.to_env_without_path roots in
           List.fold_left vars ~init ~f:(fun acc (var, path) -> add_to_path acc var path)
@@ -638,8 +641,8 @@ module Action_expander = struct
       | Etc -> roots.etc_root
       | Doc -> roots.doc_root
       | Man -> roots.man
-      | Toplevel -> Path.relative roots.lib_root "toplevel"
-      | Stublibs -> Path.relative roots.lib_root "stublibs"
+      | Toplevel -> Path.Build.relative roots.lib_root "toplevel"
+      | Stublibs -> Path.Build.relative roots.lib_root "stublibs"
     ;;
 
     let sys_poll_var accessor =
@@ -674,7 +677,7 @@ module Action_expander = struct
       | Section_dir section ->
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir dir ]
+        Memo.return [ Value.Dir (Path.build dir) ]
     ;;
 
     let expand_pkg_macro ~loc (paths : Paths.t) deps macro_invocation =
@@ -718,7 +721,9 @@ module Action_expander = struct
                | Some section ->
                  let section = dune_section_of_pform section in
                  let install_paths = Paths.install_paths paths in
-                 Memo.return @@ Ok [ Value.Dir (Install.Paths.get install_paths section) ])))
+                 Memo.return
+                 @@ Ok
+                      [ Value.Dir (Path.build (Install.Paths.get install_paths section)) ])))
     ;;
 
     let expand_pform
@@ -1173,8 +1178,11 @@ module Install_action = struct
             |> Filename.chop_extension
             |> Package.Name.of_string
           in
-          let roots = Path.build target_dir |> Install.Roots.opam_from_prefix in
-          Install.Paths.make ~package ~roots
+          let roots =
+            Path.build target_dir
+            |> Install.Roots.opam_from_prefix ~relative:Path.relative
+          in
+          Install.Paths.make ~relative:Path.relative ~package ~roots
         in
         Install.Entry.relative_installed_path entry ~paths
       in
@@ -1354,6 +1362,7 @@ module Install_action = struct
             let install_paths =
               Paths.of_root package ~root:(Path.Build.parent_exn target_dir)
               |> Paths.install_paths
+              |> Install.Paths.map ~f:Path.build
             in
             section_map_of_dir install_paths
         in
@@ -1615,9 +1624,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
             let install_paths = Paths.install_paths pkg.paths in
             Install_action.installable_sections
             |> List.rev_map ~f:(fun section ->
-              Install.Paths.get install_paths section
-              |> Path.as_in_build_dir_exn
-              |> Action.mkdir)
+              Install.Paths.get install_paths section |> Action.mkdir)
             |> Action.progn
             |> Action.Full.make
             |> Action_builder.With_targets.return

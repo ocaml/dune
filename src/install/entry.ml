@@ -19,7 +19,7 @@ module Dst : sig
   include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t -> Dyn.t
-  val install_path : Paths.t -> Section.t -> t -> Path.t
+  val install_path : Path.t Paths.t -> Section.t -> t -> Path.t
 end = struct
   type t = string
 

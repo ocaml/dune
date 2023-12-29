@@ -84,10 +84,14 @@ let add_packages_env context ~base stanzas packages =
             add_in_package_section acc package_name section))
     in
     let roots =
-      Install.Context.dir ~context |> Path.build |> Install.Roots.opam_from_prefix
+      Install.Context.dir ~context
+      |> Path.build
+      |> Install.Roots.opam_from_prefix ~relative:Path.relative
     in
     Package.Name.Map.foldi ~init package_sections ~f:(fun package_name sections init ->
-      let paths = Install.Paths.make ~package:package_name ~roots in
+      let paths =
+        Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
+      in
       Section.Set.fold sections ~init ~f:(fun section acc ->
         let package = Package.Name.to_string package_name in
         let dir = Path.to_absolute_filename (Install.Paths.get paths section) in

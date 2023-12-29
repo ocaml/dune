@@ -469,9 +469,6 @@ let make
   ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
   ~dirs
   =
-  Memo.push_stack_frame ~human_readable_description:(fun () ->
-    Pp.textf "Finding source files in directory %s" (Path.Build.to_string dir))
-  @@ fun () ->
   let+ modules_of_stanzas =
     let modules =
       let dialects = Dune_project.dialects project in

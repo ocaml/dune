@@ -411,7 +411,13 @@ module Unexpanded = struct
             let* sexp =
               let* path = expand_template fn ~mode:Single in
               let path = Value.to_path path ?error_loc:(Some loc) ~dir in
-              Action_builder.read_sexp path
+              Action_builder.push_stack_frame
+                ~human_readable_description:(fun () ->
+                  Pp.textf
+                    "(:include %s) at %s"
+                    (Path.to_string path)
+                    (Loc.to_file_colon_line loc))
+                (fun () -> Action_builder.read_sexp path)
             in
             let t = Decoder.parse decode context sexp in
             expand t.ast ~allow_include:false

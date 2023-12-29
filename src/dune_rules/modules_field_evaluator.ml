@@ -405,7 +405,7 @@ let eval
   =
   let open Memo.O in
   Memo.push_stack_frame ~human_readable_description:(fun () ->
-    Pp.textf "Evaluating modules field in directory %s" (Path.Build.to_string src_dir))
+    Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))
   @@ fun () ->
   let* modules0 =
     eval0 ~expander ~loc:stanza_loc ~all_modules ~standard:all_modules settings.modules

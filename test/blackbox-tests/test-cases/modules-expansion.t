@@ -151,10 +151,9 @@ Interaction with `(include_subdirs)` when the dependencies are in the subtree:
 
   $ dune build --display short
   Error: Dependency cycle between:
-     Finding source files in directory _build/default
+     (modules) field at dune:2
   -> %{read-lines:gen/lst} at dune:4
-  -> Evaluating modules field in directory _build/default
-  -> Finding source files in directory _build/default
+  -> (modules) field at dune:2
   [1]
 
 Let's move the gen subdirectory out of the hierarchy:
@@ -197,9 +196,9 @@ appears. We need to handle this cycle gracefully and report it to the user.
 
   $ dune exec ./mod.exe
   Error: Dependency cycle between:
-     Finding source files in directory _build/default
-  -> Evaluating modules field in directory _build/default
-  -> Finding source files in directory _build/default
+     (modules) field at dune:2
+  -> (:include _build/default/lst) at dune:2
+  -> (modules) field at dune:2
   [1]
 
 Let's do one example with a generated source file:

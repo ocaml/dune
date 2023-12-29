@@ -519,7 +519,12 @@ module Component = struct
             [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
-        { dir; files = dune_project_file dir opts :: package_files }
+        let default_files =
+          [ File.make_text dir ".ocamlformat" ""
+          ; File.make_text dir ".gitignore" "_build/"
+          ]
+        in
+        { dir; files = (dune_project_file dir opts :: package_files) @ default_files }
       in
       let component_targets =
         match (template : Options.Project.Template.t) with

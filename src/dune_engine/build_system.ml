@@ -173,7 +173,32 @@ and Exported : sig
 end = struct
   open Used_recursively
 
-  (* CR-soon amokhov: [build_dep] does some non-trivial computation, consider memoizing it. *)
+  let file_selector_stack_frame_description file_selector =
+    Pp.concat
+      [ Pp.textf
+          "Evaluating predicate in directory %s"
+          (Path.to_string_maybe_quoted (File_selector.dir file_selector))
+      ]
+  ;;
+
+  let build_file_selector : File_selector.t -> Dep.Fact.t Memo.t =
+    let impl file_selector =
+      let* files = eval_pred file_selector in
+      let+ fact = Dep.Fact.Files.create files ~build_file in
+      (* Fact: [file_selector] expands to the set of [files] whose digests are captured
+         via [build_file]; also, the [File_selector.dir] exists (though it may be empty) *)
+      Dep.Fact.file_selector file_selector fact
+    in
+    let memo =
+      Memo.create
+        "build_file_selector"
+        ~input:(module File_selector)
+        ~cutoff:Dep.Fact.equal
+        ~human_readable_description:file_selector_stack_frame_description
+        impl
+    in
+    fun file_selector -> Memo.exec memo file_selector
+  ;;
 
   (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
      fact about the world. To do that, it needs to do some building. *)
@@ -186,12 +211,7 @@ end = struct
       let+ digest = build_file f in
       (* Fact: file [f] has digest [digest] *)
       Dep.Fact.file f digest
-    | File_selector g ->
-      let* files = eval_pred g in
-      let+ fact = Dep.Fact.Files.create files ~build_file in
-      (* Fact: file selector [g] expands to the set of [files] whose digests are captured
-         via [build_file]; also, [File_selector.dir g] exists (though it may be empty) *)
-      Dep.Fact.file_selector g fact
+    | File_selector file_selector -> build_file_selector file_selector
     | Universe | Env _ ->
       (* Facts about these dependencies are constructed in
          [Dep.Facts.digest]. *)
@@ -932,12 +952,7 @@ end = struct
   let eval_pred_memo =
     Memo.create
       "eval-pred"
-      ~human_readable_description:(fun glob ->
-        Pp.concat
-          [ Pp.textf
-              "Evaluating predicate in directory %s"
-              (Path.to_string_maybe_quoted (File_selector.dir glob))
-          ])
+      ~human_readable_description:file_selector_stack_frame_description
       ~input:(module File_selector)
       ~cutoff:Filename_set.equal
       eval_pred_impl

@@ -633,6 +633,7 @@ end = struct
     ;;
   end
 
+  (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   let execute_action_generic_stage2_impl
     { Anonymous_action.action = act; deps; capture_stdout; digest }
     =
@@ -668,16 +669,14 @@ end = struct
              ; stamp_file = target
              })
     in
-    target
+    if capture_stdout then Io.read_file (Path.build target) else ""
   ;;
 
   let execute_action_generic_stage2_memo =
     Memo.create
       "execute-action"
       ~input:(module Anonymous_action)
-      (* this memo doesn't need cutoff because the input's digests
-         fully determines the returned build path and we already compare the
-         input using this digest *)
+      ~cutoff:String.equal
       execute_action_generic_stage2_impl
   ;;
 
@@ -764,13 +763,14 @@ end = struct
   ;;
 
   let execute_action ~observing_facts act =
-    let+ _target = execute_action_generic ~observing_facts act ~capture_stdout:false in
+    let+ (_empty_string : string) =
+      execute_action_generic ~observing_facts act ~capture_stdout:false
+    in
     ()
   ;;
 
   let execute_action_stdout ~observing_facts act =
-    let+ target = execute_action_generic ~observing_facts act ~capture_stdout:true in
-    Io.read_file (Path.build target)
+    execute_action_generic ~observing_facts act ~capture_stdout:true
   ;;
 
   (* CR-soon amokhov: Instead of wrapping the result into a variant, [build_file_impl]

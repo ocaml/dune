@@ -1439,7 +1439,7 @@ module Fetch = struct
   module Spec = struct
     type ('path, 'target) t =
       { target_dir : 'target
-      ; url : Loc.t * string
+      ; url : Loc.t * OpamUrl.t
       ; checksum : (Loc.t * Checksum.t) option
       }
 
@@ -1458,7 +1458,9 @@ module Fetch = struct
       List
         ([ Dune_lang.atom_or_quoted_string name
          ; target target_dir
-         ; encode_loc Dune_lang.atom_or_quoted_string url
+         ; encode_loc
+             (fun url -> Dune_lang.atom_or_quoted_string (OpamUrl.to_string url))
+             url
          ]
          @
          match checksum with
@@ -1475,11 +1477,7 @@ module Fetch = struct
       let* () = Fiber.return () in
       let* res =
         let checksum = Option.map checksum ~f:snd in
-        Dune_pkg.Fetch.fetch
-          ~unpack:true
-          ~checksum
-          ~target:(Path.build target_dir)
-          (OpamUrl.of_string url)
+        Dune_pkg.Fetch.fetch ~unpack:true ~checksum ~target:(Path.build target_dir) url
       in
       match res with
       | Ok () -> Fiber.return ()

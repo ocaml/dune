@@ -1,7 +1,7 @@
 open Import
 
 type fetch =
-  { url : Loc.t * string
+  { url : Loc.t * OpamUrl.t
   ; checksum : (Loc.t * Checksum.t) option
   }
 
@@ -25,7 +25,7 @@ let equal a b =
   | ( Fetch { url = loc, url; checksum }
     , Fetch { url = other_loc, other_url; checksum = other_checksum } ) ->
     Loc.equal loc other_loc
-    && String.equal url other_url
+    && OpamUrl.equal url other_url
     && Option.equal
          (fun (loc, checksum) (other_loc, other_checksum) ->
            Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
@@ -40,7 +40,7 @@ let to_dyn = function
   | Fetch { url = _loc, url; checksum } ->
     Dyn.variant
       "Fetch"
-      [ Dyn.string url
+      [ Dyn.string (OpamUrl.to_string url)
       ; Dyn.option (fun (_loc, checksum) -> Checksum.to_dyn checksum) checksum
       ]
 ;;
@@ -53,7 +53,7 @@ let fetch_and_hash_archive url =
     Fiber.return ())
   @@ fun () ->
   let target = Path.relative temp_dir "archive" in
-  Fetch.fetch ~unpack:false ~checksum:None ~target (OpamUrl.of_string url)
+  Fetch.fetch ~unpack:false ~checksum:None ~target url
   >>| function
   | Ok () -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
   | Error (Checksum_mismatch _) ->
@@ -63,7 +63,9 @@ let fetch_and_hash_archive url =
       match message_opt with
       | Some message -> message
       | None ->
-        User_message.make [ Pp.textf "Failed to retrieve source archive from: %s" url ]
+        User_message.make
+          [ Pp.textf "Failed to retrieve source archive from: %s" (OpamUrl.to_string url)
+          ]
     in
     User_warning.emit_message message;
     None
@@ -82,7 +84,9 @@ let compute_missing_checksum_of_fetch
          [ Pp.textf
              "Package %S has source archive which lacks a checksum."
              (Package_name.to_string package_name)
-         ; Pp.textf "The source archive will be downloaded from: %s" url
+         ; Pp.textf
+             "The source archive will be downloaded from: %s"
+             (OpamUrl.to_string url)
          ; Pp.text "Dune will compute its own checksum for this source archive."
          ]);
     fetch_and_hash_archive url
@@ -109,7 +113,7 @@ end
 
 let decode_fetch =
   let open Decoder in
-  let+ url = field Fields.url (located string)
+  let+ url_loc, url = field Fields.url (located string)
   and+ checksum = field_o Fields.checksum (located string) in
   let checksum =
     match checksum with
@@ -118,7 +122,8 @@ let decode_fetch =
       let checksum = Checksum.of_string_user_error checksum |> User_error.ok_exn in
       Some (loc, checksum)
   in
-  { url; checksum }
+  let url = OpamUrl.of_string url in
+  { url = url_loc, url; checksum }
 ;;
 
 let decode =
@@ -140,7 +145,7 @@ let decode =
 
 let encode_fetch_field { url = _loc, url; checksum } =
   let open Encoder in
-  [ field Fields.url string url
+  [ field Fields.url string (OpamUrl.to_string url)
   ; field_o Fields.checksum Checksum.encode (Option.map checksum ~f:snd)
   ]
 ;;

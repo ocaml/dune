@@ -258,7 +258,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; extra_sources =
                   [ Path.Local.of_string "one", extra_source
                   ; ( Path.Local.of_string "two"
-                    , Fetch { url = Loc.none, "randomurl"; checksum = None } )
+                    , Fetch
+                        { url = Loc.none, OpamUrl.of_string "file://randomurl"
+                        ; checksum = None
+                        } )
                   ]
               }
           ; exported_env =
@@ -282,7 +285,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; source =
                   Some
                     (Fetch
-                       { url = Loc.none, "https://github.com/foo/b"
+                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
                        ; checksum =
                            Some
                              ( Loc.none
@@ -304,7 +307,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                 dev = false
               ; source =
                   Some
-                    (Fetch { url = Loc.none, "https://github.com/foo/c"; checksum = None })
+                    (Fetch
+                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
+                       ; checksum = None
+                       })
               }
           } )
       in
@@ -344,7 +350,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; source = Some External_copy External "/tmp/a"
                   ; extra_sources =
                       [ ("one", External_copy External "/tmp/a")
-                      ; ("two", Fetch "randomurl", None)
+                      ; ("two", Fetch "file://randomurl", None)
                       ]
                   }
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]

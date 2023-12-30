@@ -9,6 +9,7 @@ module Buildable : sig
     ; plugins : (Loc.t * Lib_name.t) list (** ocaml plugins *)
     ; theories : (Loc.t * Coq_lib_name.t) list (** coq libraries *)
     ; loc : Loc.t
+    ; extra_sources : string list
     }
 end
 

@@ -463,6 +463,7 @@ let setup_coqdep_for_theory_rule
   ~ml_flags
   ~mlpack_rule
   ~coq_lang_version
+  ~extra_sources
   coq_modules
   =
   let* boot_type =
@@ -474,7 +475,9 @@ let setup_coqdep_for_theory_rule
     | m :: _ -> Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version m
   in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
-  let sources = List.rev_map ~f:Coq_module.source coq_modules in
+  let sources =
+    List.map ~f:Path.build extra_sources @ List.rev_map ~f:Coq_module.source coq_modules
+  in
   let file_flags =
     [ Command.Args.S
         (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags)
@@ -718,13 +721,13 @@ let coq_modules_of_theory ~sctx lib =
     Coq_sources.library coq_sources ~name |> List.rev_map ~f:Coq_module.source
 ;;
 
-let source_rule ~sctx theories =
+let source_rule ~sctx extra_sources theories =
   (* sources for depending libraries coqdep requires all the files to be in the
      tree to produce correct dependencies, including those of dependencies *)
   Action_builder.dyn_paths_unit
     (let open Action_builder.O in
      let+ l = Action_builder.List.map theories ~f:(coq_modules_of_theory ~sctx) in
-     List.concat l)
+     List.map ~f:Path.build extra_sources @ List.concat l)
 ;;
 
 let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_modules =
@@ -901,7 +904,10 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     in
     let open Action_builder.O in
     let* theories = Resolve.Memo.read theories in
-    source_rule ~sctx theories
+    source_rule
+      ~sctx
+      (List.map ~f:(Path.Build.relative dir) s.buildable.extra_sources)
+      theories
   in
   let coqc_dir = Super_context.context sctx |> Context.build_dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
@@ -917,6 +923,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     ~ml_flags
     ~mlpack_rule
     ~coq_lang_version
+    ~extra_sources:(List.map ~f:(Path.Build.relative dir) s.buildable.extra_sources)
     coq_modules
   >>> Memo.parallel_iter
         coq_modules
@@ -1106,10 +1113,12 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Extraction.t
     let context = Super_context.context sctx |> Context.name in
     extraction_context ~context ~scope ~coq_lang_version s.buildable
   in
+  let extra_sources = List.map ~f:(Path.Build.relative dir) s.buildable.extra_sources in
   let source_rule =
     let open Action_builder.O in
     let* theories_deps = Resolve.Memo.read theories_deps in
-    source_rule ~sctx theories_deps >>> Action_builder.path (Coq_module.source coq_module)
+    source_rule ~sctx extra_sources theories_deps
+    >>> Action_builder.path (Coq_module.source coq_module)
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   setup_coqdep_for_theory_rule
@@ -1123,6 +1132,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Extraction.t
     ~ml_flags
     ~mlpack_rule
     ~coq_lang_version
+    ~extra_sources
     [ coq_module ]
   >>> setup_coqc_rule
         ~file_targets

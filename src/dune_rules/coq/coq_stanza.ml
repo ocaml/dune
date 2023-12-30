@@ -13,6 +13,7 @@ let coq_syntax =
     ; (0, 6), `Since (3, 5)
     ; (0, 7), `Since (3, 7)
     ; (0, 8), `Since (3, 8)
+    ; (0, 9), `Since (3, 13)
     ]
 ;;
 
@@ -77,6 +78,7 @@ module Buildable = struct
     ; plugins : (Loc.t * Lib_name.t) list (** ocaml libraries *)
     ; theories : (Loc.t * Coq_lib_name.t) list (** coq libraries *)
     ; loc : Loc.t
+    ; extra_sources : string list
     }
 
   let merge_plugins_libraries ~plugins ~libraries =
@@ -121,9 +123,14 @@ module Buildable = struct
         "theories"
         (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
         ~default:[]
+    and+ extra_sources =
+      field
+        "extra_sources"
+        (Dune_lang.Syntax.since coq_syntax (0, 9) >>> repeat string)
+        ~default:[]
     in
     let plugins = merge_plugins_libraries ~plugins ~libraries in
-    { flags; mode; use_stdlib; coq_lang_version; plugins; theories; loc }
+    { flags; mode; use_stdlib; coq_lang_version; plugins; theories; loc; extra_sources }
   ;;
 end
 

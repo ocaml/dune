@@ -712,10 +712,9 @@ let compute_missing_checksums t =
   let open Fiber.O in
   let+ packages =
     Package_name.Map.to_list t.packages
-    |> List.map ~f:(fun (name, pkg) ->
+    |> Fiber.parallel_map ~f:(fun (name, pkg) ->
       let+ pkg = Pkg.compute_missing_checksum pkg in
       name, pkg)
-    |> Fiber.all_concurrently
     >>| Package_name.Map.of_list_exn
   in
   { t with packages }

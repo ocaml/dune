@@ -503,7 +503,7 @@ let opam_package_to_lock_file_pkg
     OpamFile.OPAM.extra_sources opam_file
     |> List.map ~f:(fun (opam_basename, opam_url) ->
       ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
-      , let url = Loc.none, OpamUrl.to_string (OpamFile.URL.url opam_url) in
+      , let url = Loc.none, OpamFile.URL.url opam_url in
         let checksum =
           match OpamFile.URL.checksum opam_url with
           | [] -> None
@@ -521,10 +521,7 @@ let opam_package_to_lock_file_pkg
           |> List.hd_opt
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in
-        let url =
-          let url = OpamFile.URL.url url in
-          Loc.none, OpamUrl.to_string url
-        in
+        let url = Loc.none, OpamFile.URL.url url in
         Source.Fetch { url; checksum })
     in
     { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name

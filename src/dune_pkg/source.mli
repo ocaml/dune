@@ -1,7 +1,7 @@
 open Import
 
 type fetch =
-  { url : Loc.t * string
+  { url : Loc.t * OpamUrl.t
   ; checksum : (Loc.t * Checksum.t) option
   }
 

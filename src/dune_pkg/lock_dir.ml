@@ -62,12 +62,13 @@ module Pkg = struct
          t.exported_env
   ;;
 
-  let remove_locs t =
-    { t with
-      info = Pkg_info.remove_locs t.info
+  let remove_locs { build_command; install_command; deps; info; exported_env } =
+    { info = Pkg_info.remove_locs info
     ; exported_env =
-        List.map t.exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
-    ; deps = List.map t.deps ~f:(fun (_, pkg) -> Loc.none, pkg)
+        List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
+    ; deps = List.map deps ~f:(fun (_, pkg) -> Loc.none, pkg)
+    ; build_command = Option.map build_command ~f:Action.remove_locs
+    ; install_command = Option.map install_command ~f:Action.remove_locs
     }
   ;;
 

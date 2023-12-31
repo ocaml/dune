@@ -47,3 +47,99 @@ Test conversion of opam sources into lock dir package specifications
 
   $ showpkg
   [1]
+
+Unsupported backends:
+
+  $ rm -rf dune.lock
+
+  $ mkpkg testpkg <<EOF
+  > url {
+  >   src: "hg+http://no-support.com/foo"
+  >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
+  > }
+  > EOF
+
+  $ solve testpkg 2>&1
+  Solution for dune.lock:
+  - testpkg.0.0.1
+  $ showpkg
+  (version 0.0.1)
+  
+  (source
+   (fetch
+    (url hg+http://no-support.com/foo)
+    (checksum md5=069aa55d40e548280f92af693f6c625a)))
+
+git+http
+
+  $ rm -rf dune.lock
+  $ mkpkg testpkg <<EOF
+  > url {
+  >   src: "git+http://github.com/foo"
+  >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
+  > }
+  > EOF
+
+  $ solve testpkg 2>&1
+  Solution for dune.lock:
+  - testpkg.0.0.1
+  $ showpkg
+  (version 0.0.1)
+  
+  (source
+   (fetch
+    (url git+http://github.com/foo)
+    (checksum md5=069aa55d40e548280f92af693f6c625a)))
+
+git+file
+
+  $ rm -rf dune.lock
+  $ mkpkg testpkg <<EOF
+  > url {
+  >   src: "git+file://here"
+  >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
+  > }
+  > EOF
+  $ solve testpkg 2>&1
+  Solution for dune.lock:
+  - testpkg.0.0.1
+  $ showpkg
+  (version 0.0.1)
+  
+  (source
+   (fetch
+    (url git+file://here)
+    (checksum md5=069aa55d40e548280f92af693f6c625a)))
+
+git+foobar
+  $ rm -rf dune.lock
+  $ mkpkg testpkg <<EOF
+  > url {
+  >   src: "git+foobar://random-thing-here"
+  >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
+  > }
+  > EOF
+  $ solve testpkg 2>&1
+  Solution for dune.lock:
+  - testpkg.0.0.1
+  $ showpkg
+  (version 0.0.1)
+  
+  (source
+   (fetch
+    (url git+foobar://random-thing-here)
+    (checksum md5=069aa55d40e548280f92af693f6c625a)))
+
+file+git
+  $ rm -rf dune.lock
+  $ mkpkg testpkg <<EOF
+  > url {
+  >   src: "file+git://random-thing-here"
+  >   checksum: "md5=069aa55d40e548280f92af693f6c625a"
+  > }
+  > EOF
+  $ solve testpkg 2>&1
+  Solution for dune.lock:
+  - testpkg.0.0.1
+  $ showpkg
+  (version 0.0.1)

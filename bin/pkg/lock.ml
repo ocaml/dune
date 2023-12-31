@@ -78,8 +78,8 @@ let solve
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
      lockdir would fail then no side effect takes place. *)
-  (let* local_packages = find_local_packages in
-   let+ solutions =
+  (let+ errors, solutions =
+     let* local_packages = find_local_packages in
      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
      |> Fiber.parallel_map
           ~f:
@@ -89,16 +89,19 @@ let solve
                version_preference
                ~update_opam_repositories
                solver_env_from_current_system)
+     >>| List.partition_map ~f:Result.to_either
    in
-   Result.List.all solutions)
+   match errors with
+   | [] -> Ok solutions
+   | _ -> Error errors)
   >>| function
-  | Error (lock_dir_path, message) ->
+  | Error errors ->
     User_error.raise
-      [ Pp.textf
-          "Unable to solve dependencies for %s:"
-          (Path.Source.to_string_maybe_quoted lock_dir_path)
-      ; message
-      ]
+      ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
+       @ List.concat_map errors ~f:(fun (path, message) ->
+         [ Pp.textf "Lock directory %s:" (Path.Source.to_string_maybe_quoted path)
+         ; Pp.hovbox message
+         ]))
   | Ok write_disks_with_summaries ->
     let write_disk_list, summary_messages = List.split write_disks_with_summaries in
     List.iter summary_messages ~f:Console.print_user_message;

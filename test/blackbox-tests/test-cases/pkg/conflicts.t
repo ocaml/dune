@@ -17,7 +17,8 @@ The solver should say no solution rather than just ignoring the conflict.
   >  (conflicts foo)
   >  (depends bar))
   > EOF
-  Error: Unable to solve dependencies for dune.lock:
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
   Can't find all required versions.
   Selected: bar.0.0.1 x.dev
   - foo -> (problem)

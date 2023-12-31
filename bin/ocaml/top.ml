@@ -97,7 +97,7 @@ module Module = struct
     then User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
     let module_name =
-      let name = Filename.chop_extension filename in
+      let name = Filename.remove_extension filename in
       Dune_rules.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
     in
     let* expander = Super_context.expander sctx ~dir in

@@ -143,7 +143,7 @@ let eval_foreign_stubs
           ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
             let loc = Loc.none (* TODO *) in
             let fname = Ctypes_field.c_generated_functions_cout_c ctypes fd in
-            let name = Filename.chop_extension fname in
+            let name = Filename.remove_extension fname in
             let path =
               match find_source C (loc, name) with
               | Some p -> p

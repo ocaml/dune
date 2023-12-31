@@ -33,6 +33,8 @@ path.
     (url
      file://<pwd>/foo.txt)
     (checksum md5=bea8252ff4e80f41719ea13cdf007273)))
+  
+  (dev)
 
 Now make sure we can gracefully handle the case when the archive is missing.
 
@@ -53,3 +55,5 @@ Now make sure we can gracefully handle the case when the archive is missing.
    (fetch
     (url
      file://<pwd>/foo.txt)))
+  
+  (dev)

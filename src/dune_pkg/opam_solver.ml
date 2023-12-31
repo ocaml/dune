@@ -517,9 +517,9 @@ let opam_package_to_lock_file_pkg
         Source.Fetch { Source.url; checksum } ))
   in
   let info =
+    let url = OpamFile.OPAM.url opam_file in
     let source =
-      OpamFile.OPAM.url opam_file
-      |> Option.map ~f:(fun (url : OpamFile.URL.t) ->
+      Option.map url ~f:(fun (url : OpamFile.URL.t) ->
         let checksum =
           OpamFile.URL.checksum url
           |> List.hd_opt
@@ -528,13 +528,12 @@ let opam_package_to_lock_file_pkg
         let url = Loc.none, OpamFile.URL.url url in
         Source.Fetch { url; checksum })
     in
-    { Lock_dir.Pkg_info.name
-    ; version
-    ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
-      dev = false
-    ; source
-    ; extra_sources
-    }
+    let dev =
+      match url with
+      | None -> false
+      | Some url -> List.is_empty (OpamFile.URL.checksum url)
+    in
+    { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
   in
   let deps =
     match

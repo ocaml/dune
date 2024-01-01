@@ -5,6 +5,7 @@ module Lock_dir = Lock_dir
 module Opam_file = Opam_file
 module Opam_repo = Opam_repo
 module Opam_solver = Opam_solver
+module OpamUrl = OpamUrl0
 module Package_variable = Package_variable
 module Package_dependency = Package_dependency
 module Rev_store = Rev_store

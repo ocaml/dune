@@ -1,3 +1,5 @@
+open Stdune
+
 type t = OpamUrl.t
 
 val equal : t -> t -> bool
@@ -11,3 +13,8 @@ val is_version_control : t -> bool
 
 (** [is_file t] is true iff [t] is a url begining with "file://" *)
 val is_local : t -> bool
+
+(* [local_or_git_only t loc] returns [`Path p] for a URL pointing to a local
+   file system or [`Git] if it's a git repository (remote or otherwise). If
+   it's neither of those cases, it will error out. *)
+val local_or_git_only : t -> Loc.t -> [ `Path of Path.t | `Git ]

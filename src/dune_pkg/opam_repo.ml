@@ -2,19 +2,14 @@ open Import
 open Fiber.O
 
 let rev_store =
-  let store = ref None in
-  Fiber.of_thunk (fun () ->
-    match !store with
-    | Some s -> Fiber.return s
-    | None ->
-      let dir =
-        Path.L.relative
-          (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
-          [ "dune"; "git-repo" ]
-      in
-      let+ rev_store = Rev_store.load_or_create ~dir in
-      store := Some rev_store;
-      rev_store)
+  Fiber_lazy.create (fun () ->
+    let dir =
+      Path.L.relative
+        (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
+        [ "dune"; "git-repo" ]
+    in
+    Rev_store.load_or_create ~dir)
+  |> Fiber_lazy.force
 ;;
 
 module Paths = struct

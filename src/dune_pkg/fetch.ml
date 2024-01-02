@@ -23,31 +23,6 @@ module Curl = struct
        | Some v -> base ^ "." ^ Build_info.V1.Version.to_string v)
   ;;
 
-  module Fiber_lazy : sig
-    type 'a t
-
-    val create : (unit -> 'a Fiber.t) -> 'a t
-    val force : 'a t -> 'a Fiber.t
-  end = struct
-    type 'a t =
-      { value : 'a Fiber.Ivar.t
-      ; mutable f : (unit -> 'a Fiber.t) option
-      }
-
-    let create f = { f = Some f; value = Fiber.Ivar.create () }
-
-    let force t =
-      match t.f with
-      | None -> Fiber.Ivar.read t.value
-      | Some f ->
-        Fiber.of_thunk (fun () ->
-          t.f <- None;
-          let* v = f () in
-          let+ () = Fiber.Ivar.fill t.value v in
-          v)
-    ;;
-  end
-
   let curl_features_regex =
     (* If these features are present, then --compressed is supported *)
     let features = [ "libz"; "brotli"; "zstd" ] in

@@ -77,7 +77,31 @@ the file and directory, if necessary):
      (preprocess
       (pps ppx_inline_tests)))
 
-Consult the manual page using the ``dune init --help`` command for more details.
+Initializing Components in a Specified Directory
+------------------------------------------------
+
+All ``init`` subcommands take an optional ``PATH`` argument, which should be a
+path to a directory. When supplied, the component will be created in the
+specified directory. E.g., to initialize a project in the current working
+directory, run
+
+.. code:: console
+
+    $ dune init proj my_proj .
+
+To initialize a project in a directory in some nested path, run
+
+.. code:: console
+
+    $ dune init proj my_proj path/to/my/project
+
+If the specified directory does not already exist, it will be created.
+
+Learning More About the ``init`` Commands
+-----------------------------------------
+
+Consult the manual page using the ```dune init --help`` command for more
+details.
 
 .. _finding-root:
 
@@ -309,8 +333,8 @@ must be prefixed by the shortest one.
 
 .. _dune-subst:
 
-dune subst
-==========
+``dune subst``
+==============
 
 One of the features ``dune-release`` provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all your project files

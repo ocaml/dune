@@ -667,7 +667,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
           ( Package_name.of_opam_package_name (OpamPackage.name package)
-          , Package_version.of_string (OpamPackage.version_to_string package) ))
+          , Package_version.of_opam_package_version (OpamPackage.version package) ))
         |> Package_name.Map.of_list_exn
       in
       (* don't include local packages in the lock dir *)

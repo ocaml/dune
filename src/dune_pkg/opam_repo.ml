@@ -316,7 +316,6 @@ module With_file = struct
 
   let package t = t.package
   let opam_file t = t.opam_file
-  let repo t = t.repo
 end
 
 let load_opam_package_from_dir ~(dir : Path.t) package =

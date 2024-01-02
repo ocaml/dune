@@ -367,9 +367,8 @@ let get_opam_package_files with_files =
       >>| List.map2 files_with_idx ~f:(fun (idx, package, file) content ->
         let entry =
           let local_file =
-            Path.Local.descendant
-              ~of_:(Paths.files_dir package)
-              (Rev_store.File.path file)
+            Rev_store.File.path file
+            |> Path.Local.descendant ~of_:(Paths.files_dir package)
             |> Option.value_exn
           in
           { File_entry.local_file; original = Content content }

@@ -53,20 +53,16 @@ let repositories_of_workspace (workspace : Workspace.t) =
 ;;
 
 let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
-  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-  match lock_dir with
+  match Workspace.find_lock_dir workspace lock_dir_path with
   | None -> []
   | Some lock_dir -> lock_dir.constraints
 ;;
 
 let repositories_of_lock_dir workspace ~lock_dir_path =
-  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-  Option.map lock_dir ~f:(fun lock_dir -> lock_dir.repositories)
-  |> Option.value
-       ~default:
-         (List.map
-            Workspace.default_repositories
-            ~f:Dune_pkg.Pkg_workspace.Repository.name)
+  match Workspace.find_lock_dir workspace lock_dir_path with
+  | Some lock_dir -> lock_dir.repositories
+  | None ->
+    List.map Workspace.default_repositories ~f:Dune_pkg.Pkg_workspace.Repository.name
 ;;
 
 let unset_solver_vars_of_workspace workspace ~lock_dir_path =
@@ -89,8 +85,6 @@ let location_of_opam_url url =
 
 let get_repos repos ~repositories ~update_opam_repositories =
   let open Fiber.O in
-  let module Repository_id = Dune_pkg.Repository_id in
-  let module Opam_repo = Dune_pkg.Opam_repo in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
   repositories
   |> Fiber.parallel_map ~f:(fun name ->
@@ -102,13 +96,14 @@ let get_repos repos ~repositories ~update_opam_repositories =
           @@ Repository.Name.to_string name
         ]
     | Some repo ->
-      let opam_url = Dune_pkg.Pkg_workspace.Repository.opam_url repo in
+      let opam_url = Repository.opam_url repo in
+      let module Opam_repo = Dune_pkg.Opam_repo in
       (match location_of_opam_url opam_url with
        | `Git ->
          let* source = Opam_repo.Source.of_opam_url opam_url in
          Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories source
        | `Path path ->
-         let repo_id = Repository_id.of_path path in
+         let repo_id = Dune_pkg.Repository_id.of_path path in
          Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
 ;;
 
@@ -122,11 +117,11 @@ let find_local_packages =
 ;;
 
 let pp_packages packages =
-  let module Package_version = Dune_pkg.Package_version in
   Pp.enumerate
     packages
     ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-      Pp.verbatim (Package_name.to_string name ^ "." ^ Package_version.to_string version))
+      Pp.verbatim
+        (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
 ;;
 
 module Lock_dirs_arg = struct

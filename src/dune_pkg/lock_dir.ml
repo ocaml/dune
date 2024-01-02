@@ -296,20 +296,17 @@ let create_latest_version
   (match validate_packages packages with
    | Ok () -> ()
    | Error (`Missing_dependencies missing_dependencies) ->
-     Code_error.raise
-       "Invalid package table"
-       (List.map
-          missing_dependencies
-          ~f:(fun { dependant_package; dependency; loc = _ } ->
-            ( "missing dependency"
-            , Dyn.record
-                [ "missing package", Package_name.to_dyn dependency
-                ; "dependency of", Package_name.to_dyn dependant_package.info.name
-                ] ))));
+     List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
+       ( "missing dependency"
+       , Dyn.record
+           [ "missing package", Package_name.to_dyn dependency
+           ; "dependency of", Package_name.to_dyn dependant_package.info.name
+           ] ))
+     |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   let dependency_hash =
     Local_package.(
-      Dependency_set.hash (For_solver.list_non_local_dependency_set local_packages))
+      For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
   let complete, used =
@@ -320,17 +317,13 @@ let create_latest_version
       let complete = Int.equal (List.length repos) (List.length used) in
       complete, Some used
   in
-  let repos : Repositories.t = { complete; used } in
-  let t =
-    { version
-    ; dependency_hash
-    ; packages
-    ; ocaml
-    ; repos
-    ; expanded_solver_variable_bindings
-    }
-  in
-  t
+  { version
+  ; dependency_hash
+  ; packages
+  ; ocaml
+  ; repos = { complete; used }
+  ; expanded_solver_variable_bindings
+  }
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")

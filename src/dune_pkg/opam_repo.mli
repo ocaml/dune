@@ -48,11 +48,12 @@ val of_opam_repo_dir_path
   -> Path.t
   -> t
 
-(** [of_git_repo git ~repo_id ~update source] loads the opam repository located at [source] from git.
-    [source] can be any URL that [git remote add] supports.
+(** [of_git_repo git ~repo_id ~update source] loads the opam repository located
+    at [source] from git. [source] can be any URL that [git remote add]
+    supports.
 
-    Set [update] to true to update the source to the newest revision, otherwise it will use the latest
-    data available in the cache (if any). *)
+    Set [update] to true to update the source to the newest revision, otherwise
+    it will use the latest data available in the cache (if any). *)
 val of_git_repo : repo_id:Repository_id.t option -> update:bool -> Source.t -> t Fiber.t
 
 val repo_id : t -> Repository_id.t option

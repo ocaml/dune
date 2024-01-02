@@ -520,9 +520,16 @@ module Component = struct
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
         let default_files =
-          [ File.make_text dir ".ocamlformat" ""
-          ; File.make_text dir ".gitignore" "_build/"
-          ]
+          let exists =
+            Path.exists (Path.relative dir ".ocamlformat")
+            && Path.exists (Path.relative dir ".gitignore")
+          in
+          if exists
+          then []
+          else
+            [ File.make_text dir ".ocamlformat" ""
+            ; File.make_text dir ".gitignore" "_build/"
+            ]
         in
         { dir; files = (dune_project_file dir opts :: package_files) @ default_files }
       in

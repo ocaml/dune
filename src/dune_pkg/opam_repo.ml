@@ -302,12 +302,12 @@ module With_file = struct
     { opam_file : OpamFile.OPAM.t
     ; package : OpamPackage.t
     ; opam_file_path : Path.Local.t
-    ; repo : t
+    ; source : Backend.t
     ; extra_files : extra_files
     }
 
   let file t =
-    match t.repo.source with
+    match t.source with
     | Directory d -> Path.append_local d t.opam_file_path
     | Repo _ ->
       (* XXX fake path *)
@@ -332,7 +332,7 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
     { With_file.opam_file
     ; package
     ; opam_file_path
-    ; repo = { source = Backend.Directory dir; serializable = None }
+    ; source = Backend.Directory dir
     ; extra_files = With_file.Inside_files_dir
     })
 ;;
@@ -345,7 +345,7 @@ let get_opam_package_files with_files =
       | Git_files files -> Right (with_file.package, files)
       | Inside_files_dir ->
         let dir =
-          match with_file.repo.source with
+          match with_file.source with
           | Directory root -> Path.append_local root (Paths.files_dir with_file.package)
           | Repo _ -> assert false
         in
@@ -411,7 +411,7 @@ let load_packages_from_git rev_store opam_packages =
         OpamFile.OPAM.read_from_string ~filename opam_file_contents
       in
       (* TODO the [file] here is made up *)
-      { With_file.opam_file; opam_file_path; repo; extra_files; package })
+      { With_file.opam_file; opam_file_path; source = repo.source; extra_files; package })
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =

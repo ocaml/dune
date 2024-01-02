@@ -18,14 +18,16 @@ end
 val equal : t -> t -> bool
 
 module Source : sig
-  type commitish =
-    | Commit of string
-    | Branch of string
-    | Tag of string
+  module Commitish : sig
+    type t =
+      | Commit of string
+      | Branch of string
+      | Tag of string
+  end
 
   type t =
     { url : string
-    ; commit : commitish option
+    ; commit : Commitish.t option
     }
 
   val of_opam_url : OpamUrl.t -> t Fiber.t

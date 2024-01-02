@@ -57,13 +57,11 @@ val repo_id : t -> Repository_id.t option
 val serializable : t -> Serializable.t option
 
 module With_file : sig
-  type repo := t
   type t
 
   val package : t -> OpamPackage.t
   val opam_file : t -> OpamFile.OPAM.t
   val file : t -> Path.t
-  val repo : t -> repo
 end
 
 (** Load package metadata for all versions of a package with a given name *)

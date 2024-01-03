@@ -400,7 +400,7 @@ module Package_filename = struct
 
   let to_package_name package_filename =
     if String.equal (Filename.extension package_filename) file_extension
-    then Ok (Filename.chop_extension package_filename |> Package_name.of_string)
+    then Ok (Filename.remove_extension package_filename |> Package_name.of_string)
     else Error `Bad_extension
   ;;
 end

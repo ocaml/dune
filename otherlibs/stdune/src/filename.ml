@@ -32,6 +32,7 @@ let analyze_program_name fn =
 
 let compare = String.compare
 let equal = String.equal
+let chop_extension = `Use_remove_extension
 
 module Set = String.Set
 module Map = String.Map

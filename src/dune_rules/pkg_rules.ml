@@ -1175,7 +1175,7 @@ module Install_action = struct
         let paths =
           let package =
             Path.basename install_file
-            |> Filename.chop_extension
+            |> Filename.remove_extension
             |> Package.Name.of_string
           in
           let roots =

@@ -555,3 +555,14 @@ let content_of_files t files =
     in
     List.rev (loop [] 0 files)
 ;;
+
+let get =
+  Fiber_lazy.create (fun () ->
+    let dir =
+      Path.L.relative
+        (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
+        [ "dune"; "git-repo" ]
+    in
+    load_or_create ~dir)
+  |> Fiber_lazy.force
+;;

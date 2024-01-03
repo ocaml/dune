@@ -1,17 +1,6 @@
 open Import
 open Fiber.O
 
-let rev_store =
-  Fiber_lazy.create (fun () ->
-    let dir =
-      Path.L.relative
-        (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
-        [ "dune"; "git-repo" ]
-    in
-    Rev_store.load_or_create ~dir)
-  |> Fiber_lazy.force
-;;
-
 module Paths = struct
   let packages = Path.Local.of_string "packages"
 
@@ -91,7 +80,7 @@ module Source = struct
 
   let of_opam_url opam_url =
     (* fairly ugly to pull the rev-store out of thin air *)
-    let* rev_store = rev_store in
+    let* rev_store = Rev_store.get in
     Private.of_opam_url rev_store opam_url
   ;;
 
@@ -222,7 +211,7 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
 let of_git_repo ~repo_id ~update (source : Source.t) =
   let+ at_rev, computed_repo_id =
     let* remote =
-      let* repo = rev_store in
+      let* repo = Rev_store.get in
       let branch =
         match source.commit with
         | Some (Branch b) -> Some b
@@ -358,7 +347,7 @@ let get_opam_package_files with_files =
         |> List.concat_map ~f:(fun (idx, (package, files)) ->
           List.map files ~f:(fun file -> idx, package, file))
       in
-      let* rev_store = rev_store in
+      let* rev_store = Rev_store.get in
       List.map files_with_idx ~f:(fun (_, _, file) -> file)
       |> Rev_store.content_of_files rev_store
       >>| List.map2 files_with_idx ~f:(fun (idx, package, file) content ->
@@ -497,7 +486,7 @@ let load_all_versions ts opam_package_name =
     match from_git with
     | [] -> Fiber.return []
     | packages ->
-      let* rev_store = rev_store in
+      let* rev_store = Rev_store.get in
       let+ opam_files = load_packages_from_git rev_store packages in
       List.map2 opam_files packages ~f:(fun opam_file (_, _, pkg, _) -> pkg, opam_file)
   in

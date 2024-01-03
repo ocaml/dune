@@ -7,6 +7,7 @@ module Variable_name = Dune_pkg.Variable_name
 module Variable_value = Dune_pkg.Variable_value
 module Rev_store = Dune_pkg.Rev_store
 module Package_version = Dune_pkg.Package_version
+module Source = Dune_pkg.Source
 module Package_name = Dune_lang.Package_name
 module Scheduler = Dune_engine.Scheduler
 
@@ -236,7 +237,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     let+ lock_dir =
       let pkg_a =
         let name = Package_name.of_string "a" in
-        let extra_source : Lock_dir.Source.t =
+        let extra_source : Source.t =
           External_copy (Loc.none, Path.External.of_string "/tmp/a")
         in
         ( name
@@ -257,7 +258,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; extra_sources =
                   [ Path.Local.of_string "one", extra_source
                   ; ( Path.Local.of_string "two"
-                    , Fetch { url = Loc.none, "randomurl"; checksum = None } )
+                    , Fetch
+                        { url = Loc.none, OpamUrl.of_string "file://randomurl"
+                        ; checksum = None
+                        } )
                   ]
               }
           ; exported_env =
@@ -281,7 +285,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; source =
                   Some
                     (Fetch
-                       { url = Loc.none, "https://github.com/foo/b"
+                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
                        ; checksum =
                            Some
                              ( Loc.none
@@ -303,7 +307,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                 dev = false
               ; source =
                   Some
-                    (Fetch { url = Loc.none, "https://github.com/foo/c"; checksum = None })
+                    (Fetch
+                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
+                       ; checksum = None
+                       })
               }
           } )
       in
@@ -343,7 +350,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; source = Some External_copy External "/tmp/a"
                   ; extra_sources =
                       [ ("one", External_copy External "/tmp/a")
-                      ; ("two", Fetch "randomurl", None)
+                      ; ("two", Fetch "file://randomurl", None)
                       ]
                   }
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]

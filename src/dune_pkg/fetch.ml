@@ -23,31 +23,6 @@ module Curl = struct
        | Some v -> base ^ "." ^ Build_info.V1.Version.to_string v)
   ;;
 
-  module Fiber_lazy : sig
-    type 'a t
-
-    val create : (unit -> 'a Fiber.t) -> 'a t
-    val force : 'a t -> 'a Fiber.t
-  end = struct
-    type 'a t =
-      { value : 'a Fiber.Ivar.t
-      ; mutable f : (unit -> 'a Fiber.t) option
-      }
-
-    let create f = { f = Some f; value = Fiber.Ivar.create () }
-
-    let force t =
-      match t.f with
-      | None -> Fiber.Ivar.read t.value
-      | Some f ->
-        Fiber.of_thunk (fun () ->
-          t.f <- None;
-          let* v = f () in
-          let+ () = Fiber.Ivar.fill t.value v in
-          v)
-    ;;
-  end
-
   let curl_features_regex =
     (* If these features are present, then --compressed is supported *)
     let features = [ "libz"; "brotli"; "zstd" ] in
@@ -140,12 +115,12 @@ module Fiber_job = struct
   let run (command : OpamProcess.command) =
     let prefix = "dune-source-fetch" in
     let stderr_file = Temp.create File ~prefix ~suffix:"stderr" in
+    let stderr_to = Process.Io.file stderr_file Out in
     let stdout_file =
       match command.cmd_stdout with
       | None -> Temp.create File ~prefix ~suffix:"stdout"
       | Some path -> path |> Path.External.of_string |> Path.external_
     in
-    let stderr_to = Process.Io.file stderr_file Out in
     let stdout_to = Process.Io.file stdout_file Out in
     let* times =
       let prog = command.cmd |> Path.External.of_string |> Path.external_ in
@@ -172,15 +147,15 @@ module Fiber_job = struct
         prog
         args
     in
-    let result : OpamProcess.result =
-      let r_stdout = Io.lines_of_file stdout_file in
-      let r_stderr = Io.lines_of_file stderr_file in
-      Temp.destroy File stderr_file;
-      Temp.destroy File stdout_file;
-      (* Process.run_with_times forces Strict failure-mode, so the return code is 0 *)
-      let r_code = 0 in
-      let r_duration = times.elapsed_time in
-      { r_code
+    let r_stdout = Io.lines_of_file stdout_file in
+    let r_stderr = Io.lines_of_file stderr_file in
+    Temp.destroy File stderr_file;
+    Temp.destroy File stdout_file;
+    (* Process.run_with_times forces Strict failure-mode, so the return code is 0 *)
+    let r_code = 0 in
+    let r_duration = times.elapsed_time in
+    Fiber.return
+      { OpamProcess.r_code
       ; r_signal = None
       ; r_duration
       ; r_info = []
@@ -188,8 +163,6 @@ module Fiber_job = struct
       ; r_stderr
       ; r_cleanup = []
       }
-    in
-    Fiber.return result
   ;;
 
   let run =
@@ -218,8 +191,8 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
     Temp.destroy Dir temp_dir;
     Fiber.return ())
   @@ fun () ->
-  let* res = Curl.run ~temp_dir ~url ~output in
-  match res with
+  Curl.run ~temp_dir ~url ~output
+  >>= function
   | Error message -> Fiber.return @@ Error (Unavailable (Some message))
   | Ok () ->
     let checksum =
@@ -255,30 +228,28 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
-  let path = Path.to_string target in
-  let+ downloaded =
-    Fiber_job.run
-    @@
-    let hashes =
-      match checksum with
-      | None -> []
-      | Some checksum -> [ Checksum.to_opam_hash checksum ]
-    in
-    match url.backend, unpack with
-    | #OpamUrl.version_control, _ | _, true ->
-      let dirname = OpamFilename.Dir.of_string path in
-      let open OpamProcess.Job.Op in
-      OpamRepository.pull_tree label dirname hashes [ url ]
-      @@| (function
-       | Up_to_date _ -> OpamTypes.Up_to_date ()
-       | Checksum_mismatch e -> Checksum_mismatch e
-       | Result _ -> Result ()
-       | Not_available (a, b) -> Not_available (a, b))
-    | _ ->
-      let fname = OpamFilename.of_string path in
-      OpamRepository.pull_file label fname hashes [ url ]
-  in
-  match downloaded with
+  (Fiber_job.run
+   @@
+   let hashes =
+     match checksum with
+     | None -> []
+     | Some checksum -> [ Checksum.to_opam_hash checksum ]
+   in
+   let path = Path.to_string target in
+   match url.backend, unpack with
+   | #OpamUrl.version_control, _ | _, true ->
+     let dirname = OpamFilename.Dir.of_string path in
+     let open OpamProcess.Job.Op in
+     OpamRepository.pull_tree label dirname hashes [ url ]
+     @@| (function
+      | Up_to_date _ -> OpamTypes.Up_to_date ()
+      | Checksum_mismatch e -> Checksum_mismatch e
+      | Result _ -> Result ()
+      | Not_available (a, b) -> Not_available (a, b))
+   | _ ->
+     let fname = OpamFilename.of_string path in
+     OpamRepository.pull_file label fname hashes [ url ])
+  >>| function
   | Up_to_date () | Result () -> Ok ()
   | Not_available (None, _verbose) -> Error (Unavailable None)
   | Not_available (Some normal, verbose) ->
@@ -289,22 +260,21 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_git rev_store ~target (source : Opam_repo.Source.t) =
-  let branch =
-    match source.commit with
-    | Some (Branch b) -> Some b
-    | _ -> None
+  let* remote =
+    let branch =
+      match source.commit with
+      | Some (Branch b) -> Some b
+      | _ -> None
+    in
+    Rev_store.add_repo rev_store ~source:source.url ~branch >>= Rev_store.Remote.update
   in
-  let* remote = Rev_store.add_repo rev_store ~source:source.url ~branch in
-  let* remote = Rev_store.Remote.update remote in
-  let* at_rev =
-    match source.commit with
-    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
-    | None ->
-      let name = Rev_store.Remote.default_branch remote in
-      Rev_store.Remote.rev_of_name remote ~name
-  in
-  match at_rev with
+  (match source.commit with
+   | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+   | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
+   | None ->
+     let name = Rev_store.Remote.default_branch remote in
+     Rev_store.Remote.rev_of_name remote ~name)
+  >>= function
   | None -> Fiber.return @@ Error (Unavailable None)
   | Some at_rev ->
     let+ res = Rev_store.At_rev.check_out at_rev ~target in

@@ -9,7 +9,7 @@ Setup mutable files
   >   (name test_lib))
   > EOF
 
-Adding a library
+Adding a Library
 ----------------
 
 Can init a public library
@@ -61,7 +61,7 @@ Clean up library with inlines tests
 
   $ rm -rf ./_inline_tests_lib
 
-Adding an executable
+Adding an Executable
 --------------------
 
 Can init a public executable
@@ -90,7 +90,7 @@ Clean up the executable tests
 
   $ rm -rf ./_test_bin_dir
 
-Adding tests
+Adding Tests
 ------------
 
 Can init tests
@@ -109,7 +109,7 @@ Clean up the test tests
 
   $ rm -rf ./_test_tests_dir
 
-Adding components to default and non-standard places
+Adding Components to Default and Non-Standard Places
 ---------------------------------------------------
 
 Add a library in the current working directory
@@ -124,27 +124,37 @@ Clean the library creation
 
   $ rm ./dune
 
-Add a library to a dune file in a specified directory
+Add a library to a `dune` file in a specified directory
 
   $ dune init lib test_lib ./_test_dir
   Success: initialized library component named test_lib
   $ test -f ./_test_dir/dune
 
-Clean up from the dune file created in ./_test_dir
+Clean up from the `dune` file created in ./_test_dir
 
   $ rm -rf ./_test_dir
 
-Add a library to a dune file in a directory specified with an absolute path
+Add a library to a `dune` file in a directory specified with an absolute path
 
   $ dune init lib test_lib $PWD/_test_dir
   Success: initialized library component named test_lib
   $ test -f $PWD/_test_dir/dune
 
-Clean up from the dune file created at an absolute path
+Clean up from the `dune` file created at an absolute path
 
   $ rm -rf $PWD/_test_dir
 
-Adding a library and an executable dependent on that library
+Add a library in the current working directory
+
+  $ dune init lib test_cwd_lib .
+  Success: initialized library component named test_cwd_lib
+  $ test -f dune
+
+Clean up from the `dune` file created in the current workding dir
+
+  $ rm dune
+
+Adding a Library and an Executable Dependent on that Library
 ------------------------------------------------------------
 
 Can init a library and dependent executable in a combo project
@@ -175,7 +185,7 @@ Clean up the combo project
 
   $ rm -rf ./_test_lib_exe_dir
 
-Adding libraries in a single directory
+Adding Libraries in a Single Directory
 --------------------------------------
 
 Can add multiple libraries in the same directory
@@ -204,7 +214,7 @@ Clan up the multiple library project
 
   $ rm -rf ./_test_lib
 
-Multiple ppxs and library dependencies
+Multiple PPXs and Library Dependencies
 --------------------------------------
 
 Can add multiple library dependencies in one command
@@ -234,7 +244,7 @@ Will not overwrite existing files
   $ cat ./existing_project/bin/main.ml
   () = print_endline "Goodbye"
 
-Comments in dune files are preserved
+Comments in `dune` files are preserved
 
   $ dune init lib test_lib2 ./existing_project/src
   Success: initialized library component named test_lib2
@@ -261,7 +271,7 @@ Will not create components with invalid names
   $ test -f ./_test_lib
   [1]
 
-Adding fields to existing stanzas
+Adding Fields to Existing Stanzas
 ---------------------------------
 
 # TODO(shonfeder)
@@ -284,10 +294,10 @@ Adding fields to existing stanzas is currently not supported
    (name test_bin)
    (libraries test_lib1))
 
-Creating projects
+Creating Projects
 -----------------
 
-Initializing executable projects
+Initializing Executable Projects
 ================================
 
 We can init a new executable project:
@@ -297,7 +307,7 @@ We can init a new executable project:
   Success: initialized project component named new_exec_proj
   Leaving directory 'new_exec_proj'
 
-The generated project contains all expected sub-components:
+The generated project contains all expected subcomponents:
 
   $ ls new_exec_proj/**
   new_exec_proj/dune-project
@@ -317,7 +327,7 @@ The generated project contains all expected sub-components:
   dune
   test_new_exec_proj.ml
 
-In particular, the dune-project file has the expected content:
+In particular, the `dune-project` file has the expected content:
 
   $ cat new_exec_proj/dune-project | sed 's/dune [0-9].[0-9]*/dune $version/g'
   (lang dune $version)
@@ -401,7 +411,7 @@ We can build and run the project's tests:
   Entering directory 'new_exec_proj'
   Leaving directory 'new_exec_proj'
 
-Initializing library projects
+Initializing Library Projects
 ================================
 
 We can init a new library project:
@@ -411,7 +421,7 @@ We can init a new library project:
   Success: initialized project component named new_lib_proj
   Leaving directory 'new_lib_proj'
 
-The generated project contains all expected sub-components:
+The generated project contains all expected subcomponents:
 
   $ ls new_lib_proj/**
   new_lib_proj/dune-project
@@ -427,7 +437,7 @@ The generated project contains all expected sub-components:
   dune
   test_new_lib_proj.ml
 
-In particular, the dune-project file has the expected content:
+In particular, the `dune-project` file has the expected content:
 
   $ cat new_lib_proj/dune-project | sed 's/dune [0-9].[0-9]*/dune $version/g'
   (lang dune $version)
@@ -508,7 +518,28 @@ And we we can run the tests:
   test_new_lib_proj alias test/runtest
   Leaving directory 'new_lib_proj'
 
-Initializing projects using Esy
+
+Initializing Projects Using the PATH Argument
+=============================================
+
+We can init a project in a specified directory:
+
+  $ dune init proj proj_at_path path/to/project
+  Entering directory 'path/to/project'
+  Success: initialized project component named proj_at_path
+  Leaving directory 'path/to/project'
+  $ test -f path/to/project/dune-project
+
+A project can be initialized in the current directory (addressing
+https://github.com/ocaml/dune/issues/9209):
+
+  $ mkdir a-new-dir
+  $ cd a-new-dir
+  $ dune init proj project_in_cwd .
+  Success: initialized project component named project_in_cwd
+  $ test -f dune-project
+
+Initializing Projects Using Esy
 ===============================
 
 We can init a project using Esy:
@@ -518,7 +549,7 @@ We can init a project using Esy:
   Success: initialized project component named new_esy_proj
   Leaving directory 'new_esy_proj'
 
-The esy project contains all expected sub-components:
+The `esy` project contains all expected subcomponents:
 
   $ ls new_esy_proj/**
   new_esy_proj/dune-project
@@ -538,7 +569,7 @@ The esy project contains all expected sub-components:
   dune
   test_new_esy_proj.ml
 
-And the dune-project file does NOT specify generation of an opam file:
+And the `dune-project` file does NOT specify generation of an opam file:
 
   $ cat new_esy_proj/dune-project | grep "generate_opam_files"
   (generate_opam_files false)

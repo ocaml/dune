@@ -2,19 +2,14 @@ open Import
 open Fiber.O
 
 let rev_store =
-  let store = ref None in
-  Fiber.of_thunk (fun () ->
-    match !store with
-    | Some s -> Fiber.return s
-    | None ->
-      let dir =
-        Path.L.relative
-          (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
-          [ "dune"; "git-repo" ]
-      in
-      let+ rev_store = Rev_store.load_or_create ~dir in
-      store := Some rev_store;
-      rev_store)
+  Fiber_lazy.create (fun () ->
+    let dir =
+      Path.L.relative
+        (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
+        [ "dune"; "git-repo" ]
+    in
+    Rev_store.load_or_create ~dir)
+  |> Fiber_lazy.force
 ;;
 
 module Paths = struct
@@ -35,26 +30,28 @@ module Paths = struct
 end
 
 module Source = struct
-  type commitish =
-    | Commit of string
-    | Branch of string
-    | Tag of string
+  module Commitish = struct
+    type t =
+      | Commit of string
+      | Branch of string
+      | Tag of string
 
-  let commitish_to_dyn = function
-    | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
-    | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
-    | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
-  ;;
+    let to_dyn = function
+      | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
+      | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
+      | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
+    ;;
 
-  let commitish_equal a b =
-    match a, b with
-    | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
-    | _, _ -> false
-  ;;
+    let equal a b =
+      match a, b with
+      | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
+      | _, _ -> false
+    ;;
+  end
 
   type t =
     { url : string
-    ; commit : commitish option
+    ; commit : Commitish.t option
     }
 
   module Private = struct
@@ -65,15 +62,16 @@ module Source = struct
         match hash with
         | None -> Fiber.return None
         | Some ref ->
-          (* OpamUrl doesn't distinguish between branches/tags and commits, so we need to look up *)
-          let* member = Rev_store.mem rev_store ~rev:ref in
-          (match member with
-           | true -> Fiber.return @@ Some (Commit ref)
+          (* OpamUrl doesn't distinguish between branches/tags and commits, so
+             we need to look up *)
+          Rev_store.mem rev_store ~rev:ref
+          >>= (function
+           | true -> Fiber.return @@ Some (Commitish.Commit ref)
            | false ->
-             let+ type' = Rev_store.ref_type rev_store ~source:url ~ref in
-             (match type' with
-              | Some `Tag -> Some (Tag ref)
-              | Some `Head -> Some (Branch ref)
+             Rev_store.ref_type rev_store ~source:url ~ref
+             >>| (function
+              | Some `Tag -> Some (Commitish.Tag ref)
+              | Some `Head -> Some (Commitish.Branch ref)
               | None ->
                 User_error.raise
                   ~hints:
@@ -100,11 +98,11 @@ module Source = struct
   let to_string { url; commit = _ } = url
 
   let to_dyn { url; commit } =
-    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option commitish_to_dyn commit ]
+    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option Commitish.to_dyn commit ]
   ;;
 
   let equal { url; commit } t =
-    String.equal url t.url && Option.equal commitish_equal commit t.commit
+    String.equal url t.url && Option.equal Commitish.equal commit t.commit
   ;;
 end
 
@@ -302,12 +300,12 @@ module With_file = struct
     { opam_file : OpamFile.OPAM.t
     ; package : OpamPackage.t
     ; opam_file_path : Path.Local.t
-    ; repo : t
+    ; source : Backend.t
     ; extra_files : extra_files
     }
 
   let file t =
-    match t.repo.source with
+    match t.source with
     | Directory d -> Path.append_local d t.opam_file_path
     | Repo _ ->
       (* XXX fake path *)
@@ -316,7 +314,6 @@ module With_file = struct
 
   let package t = t.package
   let opam_file t = t.opam_file
-  let repo t = t.repo
 end
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
@@ -333,7 +330,7 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
     { With_file.opam_file
     ; package
     ; opam_file_path
-    ; repo = { source = Backend.Directory dir; serializable = None }
+    ; source = Backend.Directory dir
     ; extra_files = With_file.Inside_files_dir
     })
 ;;
@@ -346,7 +343,7 @@ let get_opam_package_files with_files =
       | Git_files files -> Right (with_file.package, files)
       | Inside_files_dir ->
         let dir =
-          match with_file.repo.source with
+          match with_file.source with
           | Directory root -> Path.append_local root (Paths.files_dir with_file.package)
           | Repo _ -> assert false
         in
@@ -367,9 +364,8 @@ let get_opam_package_files with_files =
       >>| List.map2 files_with_idx ~f:(fun (idx, package, file) content ->
         let entry =
           let local_file =
-            Path.Local.descendant
-              ~of_:(Paths.files_dir package)
-              (Rev_store.File.path file)
+            Rev_store.File.path file
+            |> Path.Local.descendant ~of_:(Paths.files_dir package)
             |> Option.value_exn
           in
           { File_entry.local_file; original = Content content }
@@ -413,7 +409,7 @@ let load_packages_from_git rev_store opam_packages =
         OpamFile.OPAM.read_from_string ~filename opam_file_contents
       in
       (* TODO the [file] here is made up *)
-      { With_file.opam_file; opam_file_path; repo; extra_files; package })
+      { With_file.opam_file; opam_file_path; source = repo.source; extra_files; package })
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =

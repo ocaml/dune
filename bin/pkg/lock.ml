@@ -5,6 +5,68 @@ module Opam_repo = Dune_pkg.Opam_repo
 module Repository_id = Dune_pkg.Repository_id
 module Lock_dir = Dune_pkg.Lock_dir
 
+let solve_lock_dir
+  workspace
+  ~local_packages
+  version_preference
+  ~update_opam_repositories
+  solver_env_from_current_system
+  lock_dir_path
+  =
+  let open Fiber.O in
+  let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  let solver_env =
+    solver_env
+      ~solver_env_from_context:
+        (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
+      ~solver_env_from_current_system
+      ~unset_solver_vars_from_context:
+        (unset_solver_vars_of_workspace workspace ~lock_dir_path)
+  in
+  let overlay =
+    Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
+  in
+  let* repos =
+    repositories_of_workspace workspace
+    |> get_repos
+         ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+         ~update_opam_repositories
+  in
+  Fiber.finalize
+    ~finally:(fun () ->
+      Console.Status_line.remove_overlay overlay;
+      Fiber.return ())
+    (fun () ->
+      Dune_pkg.Opam_solver.solve_lock_dir
+        solver_env
+        (Pkg_common.Version_preference.choose
+           ~from_arg:version_preference
+           ~from_context:
+             (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)))
+        repos
+        ~local_packages:
+          (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
+        ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
+  >>= function
+  | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
+  | Ok { lock_dir; files; _ } ->
+    let summary_message =
+      User_message.make
+        [ Pp.tag
+            User_message.Style.Success
+            (Pp.textf
+               "Solution for %s:"
+               (Path.Source.to_string_maybe_quoted lock_dir_path))
+        ; (match Package_name.Map.values lock_dir.packages with
+           | [] ->
+             Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
+           | packages -> pp_packages packages)
+        ]
+    in
+    let+ lock_dir = Lock_dir.compute_missing_checksums lock_dir in
+    Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message)
+;;
+
 let solve
   workspace
   ~update_opam_repositories
@@ -19,59 +81,14 @@ let solve
   (let* local_packages = find_local_packages in
    let+ solutions =
      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
-     |> Fiber.parallel_map ~f:(fun lock_dir_path ->
-       let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-       let solver_env =
-         solver_env
-           ~solver_env_from_context:
-             (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
-           ~solver_env_from_current_system
-           ~unset_solver_vars_from_context:
-             (unset_solver_vars_of_workspace workspace ~lock_dir_path)
-       in
-       let* repos =
-         get_repos
-           (repositories_of_workspace workspace)
-           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
-           ~update_opam_repositories
-       in
-       let overlay =
-         Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
-       in
-       Fiber.finalize
-         ~finally:(fun () ->
-           Console.Status_line.remove_overlay overlay;
-           Fiber.return ())
-         (fun () ->
-           Dune_pkg.Opam_solver.solve_lock_dir
-             solver_env
-             (Pkg_common.Version_preference.choose
-                ~from_arg:version_preference
-                ~from_context:
-                  (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)))
-             repos
-             ~local_packages:
-               (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
-             ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
-       >>= function
-       | Error (`Diagnostic_message message) ->
-         Fiber.return (Error (lock_dir_path, message))
-       | Ok { lock_dir; files; _ } ->
-         let summary_message =
-           User_message.make
-             [ Pp.tag
-                 User_message.Style.Success
-                 (Pp.textf
-                    "Solution for %s:"
-                    (Path.Source.to_string_maybe_quoted lock_dir_path))
-             ; (match Package_name.Map.values lock_dir.packages with
-                | [] ->
-                  Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
-                | packages -> pp_packages packages)
-             ]
-         in
-         let+ lock_dir = Lock_dir.compute_missing_checksums lock_dir in
-         Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message))
+     |> Fiber.parallel_map
+          ~f:
+            (solve_lock_dir
+               workspace
+               ~local_packages
+               version_preference
+               ~update_opam_repositories
+               solver_env_from_current_system)
    in
    Result.List.all solutions)
   >>| function

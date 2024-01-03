@@ -484,15 +484,13 @@ let opam_package_to_lock_file_pkg
   opam_package
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
-  let name = OpamPackage.name opam_package in
+  let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
   let opam_file, loc =
     let with_file =
-      (let key = Package_name.of_opam_package_name name in
-       Table.find_exn candidates_cache key)
-        .resolved
+      (Table.find_exn candidates_cache name).resolved
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
     let opam_file = With_file.opam_file with_file in
@@ -503,14 +501,14 @@ let opam_package_to_lock_file_pkg
     OpamFile.OPAM.extra_sources opam_file
     |> List.map ~f:(fun (opam_basename, opam_url) ->
       ( Path.Local.of_string (OpamFilename.Base.to_string opam_basename)
-      , let url = Loc.none, OpamUrl.to_string (OpamFile.URL.url opam_url) in
+      , let url = Loc.none, OpamFile.URL.url opam_url in
         let checksum =
           match OpamFile.URL.checksum opam_url with
           | [] -> None
           (* opam discards the later checksums, so we only take the first one *)
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
-        Lock_dir.Source.Fetch { Lock_dir.Source.url; checksum } ))
+        Source.Fetch { Source.url; checksum } ))
   in
   let info =
     let source =
@@ -521,13 +519,10 @@ let opam_package_to_lock_file_pkg
           |> List.hd_opt
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in
-        let url =
-          let url = OpamFile.URL.url url in
-          Loc.none, OpamUrl.to_string url
-        in
-        Lock_dir.Source.Fetch { url; checksum })
+        let url = Loc.none, OpamFile.URL.url url in
+        Source.Fetch { url; checksum })
     in
-    { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
+    { Lock_dir.Pkg_info.name
     ; version
     ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
       dev = false
@@ -670,7 +665,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
           ( Package_name.of_opam_package_name (OpamPackage.name package)
-          , Package_version.of_string (OpamPackage.version_to_string package) ))
+          , Package_version.of_opam_package_version (OpamPackage.version package) ))
         |> Package_name.Map.of_list_exn
       in
       (* don't include local packages in the lock dir *)

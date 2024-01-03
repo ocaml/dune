@@ -16,15 +16,13 @@ directory in the current directory.
   test
 
   $ dune init proj foo bar
-  Entering directory 'bar/foo'
+  Entering directory 'bar'
   Success: initialized project component named foo
-  Leaving directory 'bar/foo'
+  Leaving directory 'bar'
   $ ls
   bar
   foo
   $ ls bar
-  foo
-  $ ls bar/foo
   _build
   bar
   bin
@@ -35,16 +33,14 @@ directory in the current directory.
 
   $ mkdir baz
   $ dune init proj foo baz
-  Entering directory 'baz/foo'
+  Entering directory 'baz'
   Success: initialized project component named foo
-  Leaving directory 'baz/foo'
+  Leaving directory 'baz'
   $ ls
   bar
   baz
   foo
   $ ls baz
-  foo
-  $ ls baz/foo
   _build
   baz
   bin

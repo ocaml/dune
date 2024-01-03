@@ -1,5 +1,6 @@
 module Fetch = Fetch
 module Checksum = Checksum
+module Source = Source
 module Lock_dir = Lock_dir
 module Opam_file = Opam_file
 module Opam_repo = Opam_repo

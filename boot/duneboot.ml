@@ -1193,7 +1193,7 @@ let main () =
        | None -> []
        | Some flags -> flags)
   in
-  let build = if concurrency = 1 || Sys.win32 then build_with_single_command else build in
+  let build = if concurrency = 1 then build_with_single_command else build in
   build ~ocaml_config ~dependencies ~c_files ~link_flags task
 ;;
 

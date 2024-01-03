@@ -24,7 +24,10 @@ Dune loads all the rules of a directory at once.
   $ dune build
   Error: Dependency cycle between:
      Computing directory contents of _build/default
-  -> Evaluating predicate in directory _build/default/foo
+  -> { dir = In_build_dir "default/foo"
+     ; predicate = Glob Glob "*"
+     ; only_generated_files = false
+     }
   -> Computing directory contents of _build/default
   [1]
 

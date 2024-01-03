@@ -210,7 +210,7 @@ end = struct
   let create p = p
 
   let odoc_file ~doc_dir t =
-    let t = Filename.chop_extension (Path.Build.basename t) in
+    let t = Filename.remove_extension (Path.Build.basename t) in
     Path.Build.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
   ;;
 
@@ -601,7 +601,7 @@ let entry_modules sctx ~pkg =
 let create_odoc ctx ~target odoc_file =
   let html_base = Paths.html ctx target in
   let odocl_base = Paths.odocl ctx target in
-  let basename = Path.Build.basename odoc_file |> Filename.chop_extension in
+  let basename = Path.Build.basename odoc_file |> Filename.remove_extension in
   let odocl_file = odocl_base ++ (basename ^ ".odocl") in
   match target with
   | Lib _ ->
@@ -622,7 +622,7 @@ let create_odoc ctx ~target odoc_file =
 let check_mlds_no_dupes ~pkg ~mlds =
   match
     List.rev_map mlds ~f:(fun mld ->
-      Filename.chop_extension (Path.Build.basename mld), mld)
+      Filename.remove_extension (Path.Build.basename mld), mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m

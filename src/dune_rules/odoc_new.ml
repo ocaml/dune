@@ -718,11 +718,11 @@ end = struct
   let reference v =
     match v.ty with
     | Mld ->
-      let basename = Path.basename v.source |> Filename.chop_extension in
+      let basename = Path.basename v.source |> Filename.remove_extension in
       sprintf "page-\"%s\"" basename
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.chop_extension |> Stdune.String.capitalize
+        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
       sprintf "module-%s" basename
   ;;
@@ -731,18 +731,18 @@ end = struct
     match v.ty with
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.chop_extension |> Stdune.String.capitalize
+        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
       Some (Module_name.of_string_allow_invalid (Loc.none, basename))
     | _ -> None
   ;;
 
-  let name v = Path.basename v.source |> Filename.chop_extension
+  let name v = Path.basename v.source |> Filename.remove_extension
   let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
   let make_module ctx ~all index source ~visible =
     let basename =
-      Path.basename source |> Filename.chop_extension |> Stdune.String.uncapitalize
+      Path.basename source |> Filename.remove_extension |> Stdune.String.uncapitalize
     in
     let odoc = Index.odoc_dir ctx ~all index ++ (basename ^ ".odoc") in
     let html_dir = Index.html_dir ctx ~all index ++ Stdune.String.capitalize basename in
@@ -756,7 +756,7 @@ end = struct
   ;;
 
   let int_make_mld ctx ~all index source ~is_index =
-    let basename = Path.basename source |> Filename.chop_extension in
+    let basename = Path.basename source |> Filename.remove_extension in
     let odoc =
       (if is_index then Index.obj_dir ctx ~all index else Index.odoc_dir ctx ~all index)
       ++ ("page-" ^ basename ^ ".odoc")
@@ -1154,7 +1154,7 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
     let list = Fs_cache.Dir_contents.to_list dc in
     List.filter_map list ~f:(fun (x, ty) ->
       match ty, List.assoc extensions (Filename.extension x) with
-      | Unix.S_REG, Some _ -> Some (Filename.chop_extension x)
+      | Unix.S_REG, Some _ -> Some (Filename.remove_extension x)
       | _, _ -> None)
     |> List.sort_uniq ~compare:String.compare
     |> List.map ~f:(fun m ->
@@ -1257,7 +1257,7 @@ let pkg_mlds sctx pkg =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld -> Filename.chop_extension (Path.basename mld), mld)
+    List.rev_map mlds ~f:(fun mld -> Filename.remove_extension (Path.basename mld), mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m

@@ -199,7 +199,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                   then Ok None
                   else (
                     match
-                      let name = Filename.chop_extension fname in
+                      let name = Filename.remove_extension fname in
                       Module_name.of_string_user_error (Loc.in_dir src_dir, name)
                     with
                     | Ok s -> Ok (Some s)

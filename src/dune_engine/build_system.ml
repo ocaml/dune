@@ -174,11 +174,7 @@ end = struct
   open Used_recursively
 
   let file_selector_stack_frame_description file_selector =
-    Pp.concat
-      [ Pp.textf
-          "Evaluating predicate in directory %s"
-          (Path.to_string_maybe_quoted (File_selector.dir file_selector))
-      ]
+    Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
   ;;
 
   let build_file_selector : File_selector.t -> Dep.Fact.t Memo.t =
@@ -194,7 +190,9 @@ end = struct
         "build_file_selector"
         ~input:(module File_selector)
         ~cutoff:Dep.Fact.equal
-        ~human_readable_description:file_selector_stack_frame_description
+          (* CR-someday amokhov: Pass [file_selector_stack_frame_description] here to
+             include globs into stack traces. *)
+        ?human_readable_description:None
         impl
     in
     fun file_selector -> Memo.exec memo file_selector

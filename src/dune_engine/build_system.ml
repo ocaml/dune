@@ -120,7 +120,7 @@ end
 let () = Hooks.End_of_build.always Metrics.reset
 
 type rule_execution_result =
-  { deps : Dep.Fact.t Dep.Map.t
+  { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
   }
 
@@ -249,7 +249,7 @@ end = struct
 
   let compute_rule_digest
     (rule : Rule.t)
-    ~deps
+    ~facts
     ~action
     ~sandbox_mode
     ~execution_parameters
@@ -270,7 +270,7 @@ end = struct
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , sandbox_mode
-      , Dep.Facts.digest deps ~env
+      , Dep.Facts.digest facts ~env
       , target_paths rule.targets.files @ target_paths rule.targets.dirs
       , Action.for_shell action
       , can_go_in_shared_cache
@@ -328,7 +328,7 @@ end = struct
     ~rule_kind
     ~rule_digest
     ~action
-    ~deps
+    ~facts
     ~loc
     ~execution_parameters
     ~sandbox_mode
@@ -340,19 +340,24 @@ end = struct
       action
     in
     let* dune_stats = Scheduler.stats () in
+    let deps =
+      Dep.Facts.paths
+        ~expand_aliases:
+          (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
+        facts
+    in
     let* sandbox =
       match sandbox_mode with
       | Some mode ->
         let+ sandbox =
           Sandbox.create
             ~mode
+            ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
             ~deps
             ~rule_dir:targets.root
             ~rule_loc:loc
             ~rule_digest
             ~dune_stats
-            ~expand_aliases:
-              (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
         in
         Some sandbox
       | None ->
@@ -474,7 +479,7 @@ end = struct
        function [(Build_config.get ()).execution_parameters] is likely
        memoized, and the result is not expected to change often, so we do not
        sacrifice too much performance here by executing it sequentially. *)
-    let* action, deps = Action_builder.evaluate_and_collect_facts action in
+    let* action, facts = Action_builder.evaluate_and_collect_facts action in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc
@@ -523,10 +528,10 @@ end = struct
           | Anonymous_action a -> a.attached_to_alias
         in
         let force_rerun = !Clflags.force && is_test in
-        force_rerun || Dep.Map.has_universe deps
+        force_rerun || Dep.Map.has_universe facts
       in
       let rule_digest =
-        compute_rule_digest rule ~deps ~action ~sandbox_mode ~execution_parameters
+        compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
       in
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
@@ -587,7 +592,7 @@ end = struct
                   ~rule_kind
                   ~rule_digest
                   ~action
-                  ~deps
+                  ~facts
                   ~loc
                   ~execution_parameters
                   ~sandbox_mode
@@ -632,7 +637,7 @@ end = struct
     (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions. *)
-    >>| fun produced_targets -> { deps; targets = produced_targets }
+    >>| fun produced_targets -> { facts; targets = produced_targets }
   ;;
 
   module Anonymous_action = struct
@@ -677,7 +682,7 @@ end = struct
         ~mode:Standard
         (Action_builder.record act.action deps ~f:build_dep)
     in
-    let+ { deps = _; targets = _ } =
+    let+ { facts = _; targets = _ } =
       execute_rule_impl
         rule
         ~rule_kind:
@@ -818,7 +823,7 @@ end = struct
     >>= function
     | Source digest -> Memo.return (digest, File_target)
     | Rule (path, rule) ->
-      let+ { deps = _; targets } =
+      let+ { facts = _; targets } =
         Memo.push_stack_frame
           (fun () -> execute_rule rule)
           ~human_readable_description:(fun () ->

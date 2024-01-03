@@ -1047,7 +1047,7 @@ let package_deps (pkg : Package.t) files =
         let* res = Dune_engine.Build_system.execute_rule rule in
         loop_files
           rules_seen
-          (Dep.Facts.paths ~expand_aliases:true res.deps
+          (Dep.Facts.paths ~expand_aliases:true res.facts
            |> Path.Set.to_list
            |> (* if this file isn't in the build dir, it doesn't belong to any
                  package and it doesn't have dependencies that do *)

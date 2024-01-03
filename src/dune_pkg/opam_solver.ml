@@ -484,15 +484,13 @@ let opam_package_to_lock_file_pkg
   opam_package
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
-  let name = OpamPackage.name opam_package in
+  let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
   let opam_file, loc =
     let with_file =
-      (let key = Package_name.of_opam_package_name name in
-       Table.find_exn candidates_cache key)
-        .resolved
+      (Table.find_exn candidates_cache name).resolved
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
     let opam_file = With_file.opam_file with_file in
@@ -524,7 +522,7 @@ let opam_package_to_lock_file_pkg
         let url = Loc.none, OpamFile.URL.url url in
         Source.Fetch { url; checksum })
     in
-    { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
+    { Lock_dir.Pkg_info.name
     ; version
     ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
       dev = false

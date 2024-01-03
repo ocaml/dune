@@ -2,7 +2,6 @@ open Import
 open Pkg_common
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
-module Repository_id = Dune_pkg.Repository_id
 module Lock_dir = Dune_pkg.Lock_dir
 
 let solve_lock_dir

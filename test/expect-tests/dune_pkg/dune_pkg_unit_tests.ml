@@ -16,30 +16,14 @@ let () = Dune_tests_common.init ()
 module Update = struct
   open Dyn
 
-  let update_commit ~commit = function
-    | Option (Some (Variant ("Commit", [ String s ]))) as d ->
-      (match String.equal commit s with
-       | true -> Option (Some (Variant ("Commit", [ string "MATCHES EXPECTED" ])))
-       | false -> d)
-    | otherwise -> otherwise
-  ;;
-
   let update_source ~commit = function
-    | Record xs ->
-      let xs =
-        List.map xs ~f:(function
-          | ("commit" as u), dyn -> u, update_commit ~commit dyn
-          | otherwise -> otherwise)
-      in
-      Record xs
-    | otherwise -> otherwise
-  ;;
-
-  let update_repo_id ~commit = function
-    | Option (Some (Variant ("Git_hash", [ String s ]))) as d ->
-      (match String.equal commit s with
-       | true -> Option (Some (Variant ("Git_hash", [ string "MATCHES EXPECTED" ])))
-       | false -> d)
+    | String url as v ->
+      let opam_url = OpamUrl.parse url in
+      (match Option.equal String.equal opam_url.hash (Some commit) with
+       | false -> v
+       | true ->
+         let opam_url = { opam_url with hash = Some "MATCHES_EXPECTED" } in
+         String (OpamUrl.to_string opam_url))
     | otherwise -> otherwise
   ;;
 
@@ -47,10 +31,9 @@ module Update = struct
     | Option (Some (List xs)) ->
       let xs =
         List.map xs ~f:(function
-          | Variant (("opam_repo_serializable" as u), [ repo_id; source ]) ->
-            let repo_id = update_repo_id ~commit repo_id in
+          | Variant (("opam_repo_serializable" as u), [ source ]) ->
             let source = update_source ~commit source in
-            Variant (u, [ repo_id; source ])
+            Variant (u, [ source ])
           | otherwise -> otherwise)
       in
       Option (Some (List xs))
@@ -97,13 +80,7 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
       Exn.raise exn
   in
   let lock_dir_round_tripped', lock_dir' =
-    match commit with
-    | None -> Lock_dir.remove_locs lock_dir_round_tripped, Lock_dir.remove_locs lock_dir
-    | Some commit ->
-      let lock_dir_round_tripped = Lock_dir.remove_locs lock_dir_round_tripped in
-      let lock_dir = Lock_dir.remove_locs lock_dir in
-      ( Lock_dir.Private.with_commit ~commit lock_dir_round_tripped
-      , Lock_dir.Private.with_commit ~commit lock_dir )
+    Lock_dir.remove_locs lock_dir_round_tripped, Lock_dir.remove_locs lock_dir
   in
   if Lock_dir.equal lock_dir_round_tripped' lock_dir'
   then print_endline "lockdir matches after roundtrip:"
@@ -315,14 +292,13 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           } )
       in
       let+ opam_repo =
-        let repo_id = Some (Dune_pkg.Repository_id.of_git_hash "95cf548dc") in
         let+ source =
           OpamUrl.parse "https://github.com/ocaml/dune"
           |> Opam_repo.Source.of_opam_url
           >>| (fun (src : Opam_repo.Source.t) -> src.url)
           >>| Option.some
         in
-        Opam_repo.Private.create ~source ~repo_id
+        Opam_repo.Private.create ~source
       in
       Lock_dir.create_latest_version
         ~local_packages:[]
@@ -393,12 +369,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
     ; repos =
         { complete = true
-        ; used =
-            Some
-              [ opam_repo_serializable
-                  Some Git_hash "95cf548dc",
-                  "https://github.com/ocaml/dune"
-              ]
+        ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
         }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
@@ -411,10 +382,8 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
   let module String_with_vars = Dune_lang.String_with_vars in
   run (fun () ->
     let cwd = Path.External.cwd () |> Path.external_ in
-    let dir = Path.relative cwd "git-repo" in
     let other_dir = Path.relative cwd "random-git-repo" in
     let* git_hash = Rev_store_tests.create_repo_at other_dir in
-    let* rev_store = Rev_store.load_or_create ~dir in
     let+ lock_dir =
       let pkg_a =
         let name = Package_name.of_string "a" in
@@ -428,23 +397,17 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         let name = Package_name.of_string "c" in
         name, empty_package name ~version:(Package_version.of_string "0.2")
       in
-      let+ opam_repo =
-        let repo_id = Some (Dune_pkg.Repository_id.of_git_hash git_hash) in
-        let+ source =
-          sprintf "https://github.com/ocaml/dune#%s" git_hash
-          |> OpamUrl.parse
-          |> Opam_repo.Source.Private.of_opam_url rev_store
-          >>| (fun (src : Opam_repo.Source.t) -> src.url)
-          >>| Option.some
-        in
-        Opam_repo.Private.create ~source ~repo_id
+      let opam_repo =
+        let source = Some (sprintf "https://github.com/ocaml/dune#%s" git_hash) in
+        Opam_repo.Private.create ~source
       in
-      Lock_dir.create_latest_version
-        ~local_packages:[]
-        ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
-        ~repos:(Some [ opam_repo ])
-        ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-        (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+      Fiber.return
+      @@ Lock_dir.create_latest_version
+           ~local_packages:[]
+           ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+           ~repos:(Some [ opam_repo ])
+           ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
+           (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
     in
     lock_dir_encode_decode_round_trip_test
       ~commit:git_hash
@@ -504,8 +467,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         ; used =
             Some
               [ opam_repo_serializable
-                  Some Git_hash "MATCHES EXPECTED",
-                  "https://github.com/ocaml/dune"
+                  "https://github.com/ocaml/dune#MATCHES_EXPECTED"
               ]
         }
     ; expanded_solver_variable_bindings =

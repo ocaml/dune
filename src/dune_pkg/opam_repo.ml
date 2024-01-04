@@ -142,26 +142,13 @@ module Serializable = struct
   end
 end
 
-module Backend = struct
-  type t =
-    | Directory of Path.t
-    | Repo of Rev_store.At_rev.t
-
-  let equal a b =
-    match a, b with
-    | Directory a, Directory b -> Path.equal a b
-    | Repo a, Repo b -> Rev_store.At_rev.equal a b
-    | _, _ -> false
-  ;;
-end
-
 type t =
-  { source : Backend.t
+  { source : Source_backend.t
   ; serializable : Serializable.t option
   }
 
 let equal { source; serializable } t =
-  Backend.equal source t.source
+  Source_backend.equal source t.source
   && Option.equal Serializable.equal serializable t.serializable
 ;;
 
@@ -289,7 +276,7 @@ module With_file = struct
     { opam_file : OpamFile.OPAM.t
     ; package : OpamPackage.t
     ; opam_file_path : Path.Local.t
-    ; source : Backend.t
+    ; source : Source_backend.t
     ; extra_files : extra_files
     }
 
@@ -319,7 +306,7 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
     { With_file.opam_file
     ; package
     ; opam_file_path
-    ; source = Backend.Directory dir
+    ; source = Directory dir
     ; extra_files = With_file.Inside_files_dir
     })
 ;;

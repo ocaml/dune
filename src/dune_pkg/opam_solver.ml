@@ -755,7 +755,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
               (OpamPackage.version opam_package)
               candidates.resolved)
         in
-        Opam_repo.get_opam_package_files resolved_packages
+        Resolved_package.get_opam_package_files resolved_packages
         >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
           let package_name =
             Resolved_package.package resolved_package

@@ -238,12 +238,6 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
     { source = Repo at_rev; serializable }
 ;;
 
-let if_exists p =
-  match Path.exists p with
-  | false -> None
-  | true -> Some p
-;;
-
 (* Scan a path recursively down retrieving a list of all files together with their
    relative path. *)
 let scan_files_entries path =
@@ -269,21 +263,11 @@ let scan_files_entries path =
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
   let opam_file_path = Paths.opam_file package in
-  Path.append_local dir opam_file_path
-  |> if_exists
-  |> Option.map ~f:(fun opam_file_path_in_repo ->
-    let opam_file =
-      Path.to_string opam_file_path_in_repo
-      |> OpamFilename.raw
-      |> OpamFile.make
-      |> OpamFile.OPAM.read
-    in
-    Resolved_package.create
-      opam_file
-      package
-      opam_file_path
-      (Directory dir)
-      Inside_files_dir)
+  match Path.exists (Path.append_local dir opam_file_path) with
+  | false -> None
+  | true ->
+    let files_dir = Path.append_local dir (Paths.files_dir package) in
+    Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir)
 ;;
 
 let get_opam_package_files resolved_packages =
@@ -292,16 +276,7 @@ let get_opam_package_files resolved_packages =
     Int.Map.partition_map indexed ~f:(fun (resolved_package : Resolved_package.t) ->
       match Resolved_package.extra_files resolved_package with
       | Git_files files -> Right (Resolved_package.package resolved_package, files)
-      | Inside_files_dir ->
-        let dir =
-          match Resolved_package.source resolved_package with
-          | Repo _ -> assert false
-          | Directory root ->
-            Path.append_local
-              root
-              (Paths.files_dir (Resolved_package.package resolved_package))
-        in
-        Left dir)
+      | Inside_files_dir dir -> Left dir)
   in
   let+ from_git =
     if Int.Map.is_empty from_git
@@ -363,7 +338,7 @@ let load_packages_from_git rev_store opam_packages =
         OpamFile.OPAM.read_from_string ~filename opam_file_contents
       in
       (* TODO the [file] here is made up *)
-      Resolved_package.create opam_file package opam_file_path repo.source extra_files)
+      Resolved_package.git_repo package opam_file ~opam_file_path repo.source ~extra_files)
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =
@@ -405,10 +380,9 @@ let all_package_versions t opam_package_name =
   | Repo rev ->
     all_packages_versions_at_rev rev opam_package_name
     |> List.map ~f:(fun (file, pkg) ->
-      let extra_files : Resolved_package.extra_files =
+      let extra_files =
         let dir = Paths.files_dir pkg in
-        Git_files
-          (Rev_store.At_rev.directory_entries rev dir |> Rev_store.File.Set.to_list)
+        Rev_store.At_rev.directory_entries rev dir |> Rev_store.File.Set.to_list
       in
       `Git (file, pkg, extra_files))
 ;;

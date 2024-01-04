@@ -236,19 +236,19 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
      | Some checksum -> [ Checksum.to_opam_hash checksum ]
    in
    let path = Path.to_string target in
-   match url.backend, unpack with
-   | #OpamUrl.version_control, _ | _, true ->
+   if OpamUrl.is_version_control url || unpack
+   then (
      let dirname = OpamFilename.Dir.of_string path in
      let open OpamProcess.Job.Op in
      OpamRepository.pull_tree label dirname hashes [ url ]
-     @@| (function
-      | Up_to_date _ -> OpamTypes.Up_to_date ()
-      | Checksum_mismatch e -> Checksum_mismatch e
-      | Result _ -> Result ()
-      | Not_available (a, b) -> Not_available (a, b))
-   | _ ->
+     @@| function
+     | Up_to_date _ -> OpamTypes.Up_to_date ()
+     | Checksum_mismatch e -> Checksum_mismatch e
+     | Result _ -> Result ()
+     | Not_available (a, b) -> Not_available (a, b))
+   else (
      let fname = OpamFilename.of_string path in
-     OpamRepository.pull_file label fname hashes [ url ])
+     OpamRepository.pull_file label fname hashes [ url ]))
   >>| function
   | Up_to_date () | Result () -> Ok ()
   | Not_available (None, _verbose) -> Error (Unavailable None)

@@ -51,15 +51,7 @@ module Repository = struct
     let open Decoder in
     fields
       (let+ name = field "name" Name.decode
-       and+ source =
-         field
-           "source"
-           (map_validate string ~f:(fun s ->
-              match OpamUrl.of_string s with
-              | url -> Ok url
-              | exception OpamUrl.Parse_error m ->
-                Error (User_message.make [ Pp.text "invalid url "; Pp.text m ])))
-       in
+       and+ source = field "source" OpamUrl.decode in
        { name; source })
   ;;
 

@@ -583,7 +583,6 @@ end
 module Remote = struct
   type nonrec t =
     { repo : t
-    ; handle : string
     ; source : string
     ; default_branch : string
     ; add_remote : string -> unit Fiber.t
@@ -591,51 +590,35 @@ module Remote = struct
 
   type uninit = t
 
-  let update ({ repo; handle; source = _; default_branch = _; add_remote = _ } as t) =
-    let+ () = run repo ~display:!Dune_engine.Clflags.display [ "fetch"; handle ] in
+  let update ({ repo; source; default_branch = _; add_remote = _ } as t) =
+    let+ () = run repo ~display:!Dune_engine.Clflags.display [ "fetch"; source ] in
     t
   ;;
 
   let don't_update t = t
 
-  let default_branch { repo = _; handle = _; source = _; default_branch; add_remote = _ } =
+  let default_branch { repo = _; source = _; default_branch; add_remote = _ } =
     default_branch
   ;;
 
-  let equal { repo; handle; source; default_branch; add_remote = _ } t =
+  let equal { repo; source; default_branch; add_remote = _ } t =
     equal repo t.repo
-    && String.equal handle t.handle
     && String.equal source t.source
     && String.equal default_branch t.default_branch
   ;;
 
-  let rev_of_name { repo; handle; source; default_branch = _; add_remote } ~name =
+  let rev_of_name { repo; source; default_branch = _; add_remote } ~name =
     (* TODO handle non-existing name *)
-    let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
+    let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" source name ] in
     let revision = Rev.Rev rev in
     At_rev.of_rev repo ~add_remote ~revision ~source >>| Option.some
   ;;
 
-  let rev_of_ref { repo; handle = _; source; default_branch = _; add_remote } ~ref =
+  let rev_of_ref { repo; source; default_branch = _; add_remote } ~ref =
     let revision = Rev.Rev ref in
     At_rev.of_rev repo ~add_remote ~revision ~source >>| Option.some
   ;;
 end
-
-let remote_exists dir ~name =
-  let stderr_to = make_stderr () in
-  let command = [ "remote"; "--verbose" ] in
-  let+ lines =
-    let git = Lazy.force Vcs.git in
-    Process.run_capture_lines ~dir ~display:Quiet ~stderr_to ~env Strict git command
-  in
-  lines
-  |> List.find ~f:(fun line ->
-    match String.lsplit2 ~on:'\t' line with
-    | None -> false
-    | Some (candidate, _) -> String.equal candidate name)
-  |> Option.is_some
-;;
 
 let query_head_branch =
   let re =
@@ -663,59 +646,6 @@ let query_head_branch =
       | Some m -> Some (Re.Group.get m 1))
 ;;
 
-let branch_of_refspec refspec =
-  refspec
-  |> String.drop_prefix_if_exists ~prefix:"+"
-  |> String.lsplit2 ~on:':'
-  |> Option.bind ~f:(fun (remote_ref, _local_ref) ->
-    String.drop_prefix remote_ref ~prefix:"refs/heads/")
-;;
-
-let find_section =
-  let re =
-    Re.seq
-      [ Re.(rep space)
-      ; Re.str "[remote "
-      ; Re.char '"'
-      ; Re.group (Re.rep (Re.diff Re.any (Re.char '"')))
-      ; Re.char '"'
-      ; Re.char ']'
-      ; Re.(rep space)
-      ]
-    |> Re.compile
-  in
-  fun contents ~name ->
-    let rec loop (xs : Re.split_token list) =
-      match xs with
-      | [] -> None
-      | `Text _ :: rest -> loop rest
-      | `Delim delim :: rest ->
-        if Re.Group.get delim 1 = name
-        then
-          Some
-            (match rest with
-             | `Text s :: _ -> s
-             | _ -> "")
-        else loop rest
-    in
-    loop (Re.split_full re contents)
-;;
-
-let read_head_branch =
-  let fetch_line = Re.(compile @@ seq [ str "fetch = "; group (rep1 any); eol ]) in
-  fun t handle ->
-    Path.relative t.dir "config"
-    |> Io.read_file ~binary:true
-    |> find_section ~name:handle
-    |> Option.bind ~f:(fun section ->
-      String.split_lines section
-      |> List.find_map ~f:(fun line ->
-        Re.exec_opt fetch_line line
-        |> Option.bind ~f:(fun m ->
-          let refspec = Re.Group.get m 1 in
-          branch_of_refspec refspec)))
-;;
-
 let remote_add t ~branch ~handle ~source =
   let* () = run ~display:Quiet t [ "remote"; "add"; "--track"; branch; handle; source ] in
   (* add a refspec to fetch the remotes' tags into <handle>/<tag> namespace *)
@@ -729,35 +659,13 @@ let remote_add t ~branch ~handle ~source =
     ]
 ;;
 
-let remote_name ~source ~branch =
-  let decoded_remote =
-    match branch with
-    | None -> source
-    | Some branch -> sprintf "%s %s" source branch
-  in
-  decoded_remote |> Dune_digest.string |> Dune_digest.to_string
-;;
-
-let rec add_repo ({ dir } as t) ~source ~branch =
-  let handle = remote_name ~source ~branch in
+let rec add_repo t ~source ~branch =
   let lock = lock_path t in
   with_flock lock ~f:(fun () ->
-    let* exists = remote_exists dir ~name:handle in
     let+ default_branch =
-      match exists, branch with
-      | true, Some branch -> Fiber.return branch
-      | true, None ->
-        (match read_head_branch t handle with
-         | Some head_branch -> Fiber.return head_branch
-         | None ->
-           (* the rev store is in some sort of unexpected state *)
-           Code_error.raise
-             (sprintf "Could not load default branch of repository")
-             [ "source", Dyn.string source; "handle", Dyn.string handle ])
-      | false, Some branch ->
-        let+ () = remote_add t ~branch ~handle ~source in
-        branch
-      | false, None ->
+      match branch with
+      | Some branch -> Fiber.return branch
+      | None ->
         let* branch =
           query_head_branch t source
           >>| function
@@ -772,7 +680,7 @@ let rec add_repo ({ dir } as t) ~source ~branch =
               [ Pp.textf "Could not determine default branch of repository at '%s'" source
               ]
         in
-        let+ () = remote_add t ~branch ~handle ~source in
+        let+ () = remote_add t ~branch ~handle:source ~source in
         branch
     in
     let add_remote source =
@@ -780,7 +688,7 @@ let rec add_repo ({ dir } as t) ~source ~branch =
       let+ (_ : Remote.t) = Remote.update remote in
       ()
     in
-    { Remote.repo = t; handle; source; default_branch; add_remote })
+    { Remote.repo = t; source; default_branch; add_remote })
 ;;
 
 let content_of_files t files =

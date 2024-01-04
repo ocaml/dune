@@ -207,107 +207,100 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with complex deps" =
-  let open Fiber.O in
   let module Action = Dune_lang.Action in
   let module String_with_vars = Dune_lang.String_with_vars in
-  run (fun () ->
-    let+ lock_dir =
-      let pkg_a =
-        let name = Package_name.of_string "a" in
-        let extra_source : Source.t =
-          External_copy (Loc.none, Path.External.of_string "/tmp/a")
-        in
-        ( name
-        , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
-          { pkg with
-            build_command =
-              Some Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
-          ; install_command =
-              Some
-                (Action.System
-                   (* String_with_vars.t doesn't round trip so we have to set
-                      [quoted] if the string would be quoted *)
-                   (String_with_vars.make_text ~quoted:true Loc.none "echo 'world'"))
-          ; info =
-              { pkg.info with
-                dev = false
-              ; source = Some extra_source
-              ; extra_sources =
-                  [ Path.Local.of_string "one", extra_source
-                  ; ( Path.Local.of_string "two"
-                    , Fetch
-                        { url = Loc.none, OpamUrl.of_string "file://randomurl"
-                        ; checksum = None
-                        } )
-                  ]
+  let lock_dir =
+    let pkg_a =
+      let name = Package_name.of_string "a" in
+      let extra_source : Source.t =
+        External_copy (Loc.none, Path.External.of_string "/tmp/a")
+      in
+      ( name
+      , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
+        { pkg with
+          build_command =
+            Some Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
+        ; install_command =
+            Some
+              (Action.System
+                 (* String_with_vars.t doesn't round trip so we have to set
+                    [quoted] if the string would be quoted *)
+                 (String_with_vars.make_text ~quoted:true Loc.none "echo 'world'"))
+        ; info =
+            { pkg.info with
+              dev = false
+            ; source = Some extra_source
+            ; extra_sources =
+                [ Path.Local.of_string "one", extra_source
+                ; ( Path.Local.of_string "two"
+                  , Fetch
+                      { url = Loc.none, OpamUrl.of_string "file://randomurl"
+                      ; checksum = None
+                      } )
+                ]
+            }
+        ; exported_env =
+            [ { Action.Env_update.op = Eq
+              ; var = "foo"
+              ; value = String_with_vars.make_text Loc.none "bar"
               }
-          ; exported_env =
-              [ { Action.Env_update.op = Eq
-                ; var = "foo"
-                ; value = String_with_vars.make_text Loc.none "bar"
-                }
-              ]
-          } )
-      in
-      let pkg_b =
-        let name = Package_name.of_string "b" in
-        ( name
-        , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
-          { pkg with
-            install_command = None
-          ; deps = [ Loc.none, fst pkg_a ]
-          ; info =
-              { pkg.info with
-                dev = true
-              ; source =
-                  Some
-                    (Fetch
-                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
-                       ; checksum =
-                           Some
-                             ( Loc.none
-                             , Checksum.of_string
-                                 "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
-                             )
-                       })
-              }
-          } )
-      in
-      let pkg_c =
-        let name = Package_name.of_string "c" in
-        ( name
-        , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
-          { pkg with
-            deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
-          ; info =
-              { pkg.info with
-                dev = false
-              ; source =
-                  Some
-                    (Fetch
-                       { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
-                       ; checksum = None
-                       })
-              }
-          } )
-      in
-      let+ opam_repo =
-        let+ source =
-          OpamUrl.parse "https://github.com/ocaml/dune"
-          |> Opam_repo.Source.of_opam_url
-          >>| (fun (src : Opam_repo.Source.t) -> src.url)
-          >>| Option.some
-        in
-        Opam_repo.Private.create ~source
-      in
-      Lock_dir.create_latest_version
-        ~local_packages:[]
-        ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
-        ~repos:(Some [ opam_repo ])
-        ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-        (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+            ]
+        } )
     in
-    lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir" ~lock_dir ());
+    let pkg_b =
+      let name = Package_name.of_string "b" in
+      ( name
+      , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
+        { pkg with
+          install_command = None
+        ; deps = [ Loc.none, fst pkg_a ]
+        ; info =
+            { pkg.info with
+              dev = true
+            ; source =
+                Some
+                  (Fetch
+                     { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
+                     ; checksum =
+                         Some
+                           ( Loc.none
+                           , Checksum.of_string
+                               "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                           )
+                     })
+            }
+        } )
+    in
+    let pkg_c =
+      let name = Package_name.of_string "c" in
+      ( name
+      , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
+        { pkg with
+          deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
+        ; info =
+            { pkg.info with
+              dev = false
+            ; source =
+                Some
+                  (Fetch
+                     { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
+                     ; checksum = None
+                     })
+            }
+        } )
+    in
+    let opam_repo =
+      let source = Some "https://github.com/ocaml/dune" in
+      Opam_repo.Private.create ~source
+    in
+    Lock_dir.create_latest_version
+      ~local_packages:[]
+      ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+      ~repos:(Some [ opam_repo ])
+      ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
+      (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+  in
+  lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir" ~lock_dir ();
   [%expect
     {|
     lockdir matches after roundtrip:
@@ -383,8 +376,8 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
   run (fun () ->
     let cwd = Path.External.cwd () |> Path.external_ in
     let other_dir = Path.relative cwd "random-git-repo" in
-    let* git_hash = Rev_store_tests.create_repo_at other_dir in
-    let+ lock_dir =
+    let+ git_hash = Rev_store_tests.create_repo_at other_dir in
+    let lock_dir =
       let pkg_a =
         let name = Package_name.of_string "a" in
         name, empty_package name ~version:(Package_version.of_string "0.1.0")
@@ -401,13 +394,12 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         let source = Some (sprintf "https://github.com/ocaml/dune#%s" git_hash) in
         Opam_repo.Private.create ~source
       in
-      Fiber.return
-      @@ Lock_dir.create_latest_version
-           ~local_packages:[]
-           ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
-           ~repos:(Some [ opam_repo ])
-           ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-           (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+      Lock_dir.create_latest_version
+        ~local_packages:[]
+        ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+        ~repos:(Some [ opam_repo ])
+        ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
+        (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
     in
     lock_dir_encode_decode_round_trip_test
       ~commit:git_hash

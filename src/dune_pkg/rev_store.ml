@@ -458,7 +458,9 @@ let read_head_branch =
     let headline = sprintf {|[remote "%s"]|} handle in
     let path = Path.relative t.dir "config" in
     let lines = Io.lines_of_file path in
-    let _front, back = List.split_while lines ~f:(String.equal headline) in
+    let _front, back =
+      List.split_while lines ~f:(fun line -> not (String.equal headline line))
+    in
     match back with
     | [] -> None
     | [ _heading ] -> None

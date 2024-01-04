@@ -1,7 +1,7 @@
 open Import
 
 type extra_files =
-  | Inside_files_dir
+  | Inside_files_dir of Path.t
   | Git_files of Rev_store.File.t list
 
 type nonrec t =
@@ -25,6 +25,22 @@ let opam_file t = t.opam_file
 let extra_files t = t.extra_files
 let source t = t.source
 
-let create opam_file package opam_file_path source extra_files =
-  { opam_file; package; opam_file_path; source; extra_files }
+let git_repo package opam_file ~opam_file_path source ~extra_files =
+  { opam_file; package; opam_file_path; source; extra_files = Git_files extra_files }
+;;
+
+let local_fs package ~dir ~opam_file_path ~files_dir =
+  let opam_file =
+    Path.append_local dir opam_file_path
+    |> Path.to_string
+    |> OpamFilename.raw
+    |> OpamFile.make
+    |> OpamFile.OPAM.read
+  in
+  { package
+  ; opam_file_path
+  ; source = Directory dir
+  ; extra_files = Inside_files_dir files_dir
+  ; opam_file
+  }
 ;;

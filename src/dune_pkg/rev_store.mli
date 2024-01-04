@@ -59,3 +59,4 @@ val add_repo : t -> source:string -> branch:string option -> Remote.uninit Fiber
 val mem : t -> rev:string -> bool Fiber.t
 
 val ref_type : t -> source:string -> ref:string -> [ `Head | `Tag ] option Fiber.t
+val get : t Fiber.t

@@ -480,19 +480,19 @@ let load_all_versions ts opam_package_name =
           []
       | Directory dir ->
         load_opam_package_from_dir ~dir pkg
-        |> Option.map ~f:(fun opam_file -> pkg, opam_file))
+        |> Option.map ~f:(fun with_file -> pkg, with_file))
   in
   let+ from_git =
     match from_git with
     | [] -> Fiber.return []
     | packages ->
       let* rev_store = Rev_store.get in
-      let+ opam_files = load_packages_from_git rev_store packages in
-      List.map2 opam_files packages ~f:(fun opam_file (_, _, pkg, _) -> pkg, opam_file)
+      let+ with_files = load_packages_from_git rev_store packages in
+      List.map2 with_files packages ~f:(fun with_file (_, _, pkg, _) -> pkg, with_file)
   in
   from_dirs @ from_git
-  |> List.rev_map ~f:(fun (opam_package, opam_file) ->
-    OpamPackage.version opam_package, opam_file)
+  |> List.rev_map ~f:(fun (opam_package, with_file) ->
+    OpamPackage.version opam_package, with_file)
   |> OpamPackage.Version.Map.of_list
 ;;
 

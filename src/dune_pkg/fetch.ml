@@ -285,26 +285,11 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
     Error (Checksum_mismatch (Checksum.of_opam_hash expected))
 ;;
 
-let fetch_git rev_store ~target (source : Opam_repo.Source.t) =
-  let commit = Opam_repo.Source.commit source in
-  let* remote =
-    let branch =
-      match commit with
-      | Some (Branch b) -> Some b
-      | _ -> None
-    in
-    Rev_store.add_repo rev_store ~source:(Opam_repo.Source.url source) ~branch
-    >>= Rev_store.Remote.update
-  in
-  (match commit with
-   | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-   | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
-   | None ->
-     let name = Rev_store.Remote.default_branch remote in
-     Rev_store.Remote.rev_of_name remote ~name)
+let fetch_git rev_store ~target (url : OpamUrl.t) =
+  OpamUrl.find_revision url rev_store
   >>= function
-  | None -> Fiber.return @@ Error (Unavailable None)
-  | Some at_rev ->
+  | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
+  | Ok at_rev ->
     let+ res = Rev_store.At_rev.check_out at_rev ~target in
     Ok res
 ;;
@@ -333,11 +318,10 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       Dune_stats.finish event;
       Fiber.return ())
     (fun () ->
-      (match url.backend with
-       | `http -> fetch_curl
-       | _ -> fetch_others)
-        ~unpack
-        ~checksum
-        ~target
-        url)
+      match url.backend with
+      | `git ->
+        let* rev_store = Rev_store.get in
+        fetch_git rev_store ~target url
+      | `http -> fetch_curl ~unpack ~checksum ~target url
+      | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;

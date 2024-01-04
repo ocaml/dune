@@ -20,8 +20,14 @@ Local file system
   opendir($TESTCASE_ROOT/dummy): No such file or directory
 
 Git
-  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed -ne '/Command exited/,$ p'
-  Command exited with code 128.
+  $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | awk '/fatal:/,/Description/'
+  fatal: '$TESTCASE_ROOT/dummy' does not appear to be a git repository
+  fatal: Could not read from remote repository.
+  
+  Please make sure you have the correct access rights
+  and the repository exists.
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
 
 
 Http

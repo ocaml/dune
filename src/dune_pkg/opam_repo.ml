@@ -18,131 +18,6 @@ module Paths = struct
   let opam_file package = Path.Local.relative (package_dir package) "opam"
 end
 
-module Source = struct
-  module Commitish = struct
-    type t =
-      | Commit of string
-      | Branch of string
-      | Tag of string
-
-    let to_dyn = function
-      | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
-      | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
-      | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
-    ;;
-
-    let equal a b =
-      match a, b with
-      | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
-      | _, _ -> false
-    ;;
-  end
-
-  type t =
-    { url : string
-    ; commit : Commitish.t option
-    ; loc : Loc.t
-    }
-
-  let url t = t.url
-  let commit t = t.commit
-
-  module Private = struct
-    let of_opam_url rev_store loc opam_url =
-      let url = OpamUrl.base_url opam_url in
-      let+ commit =
-        match OpamUrl.rev opam_url with
-        | None -> Fiber.return None
-        | Some ref ->
-          (* OpamUrl doesn't distinguish between branches/tags and commits, so
-             we need to look up *)
-          Rev_store.mem rev_store ~rev:ref
-          >>= (function
-           | true ->
-             (* CR-Leonidas-from-XIV is this always a commit? *)
-             Fiber.return @@ Some (Commitish.Commit ref)
-           | false ->
-             Rev_store.ref_type rev_store ~source:url ~ref
-             >>= (function
-              | Some `Tag -> Fiber.return @@ Some (Commitish.Tag ref)
-              | Some `Head -> Fiber.return @@ Some (Commitish.Branch ref)
-              | None ->
-                (* we have to update the local repo as a side-effect and see if
-                   the commit exists *)
-                let* (_ : Rev_store.Remote.t) =
-                  Rev_store.add_repo rev_store ~source:url ~branch:None
-                  >>= Rev_store.Remote.update
-                in
-                Rev_store.mem rev_store ~rev:ref
-                >>= (function
-                 | true -> Fiber.return @@ Some (Commitish.Commit ref)
-                 | false ->
-                   User_error.raise
-                     ~loc
-                     ~hints:
-                       [ Pp.text
-                           "Make sure the URL is correct and the repository contains the \
-                            branch/tag"
-                       ]
-                     [ Pp.textf
-                         "Opam repository at '%s' does not have a reference '%s'"
-                         url
-                         ref
-                     ])))
-      in
-      { commit; url; loc }
-    ;;
-  end
-
-  let of_opam_url loc opam_url =
-    (* fairly ugly to pull the rev-store out of thin air *)
-    let* rev_store = Rev_store.get in
-    Private.of_opam_url rev_store loc opam_url
-  ;;
-
-  let to_dyn { url; commit; loc = _ } =
-    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option Commitish.to_dyn commit ]
-  ;;
-
-  let equal { url; commit; loc } t =
-    String.equal url t.url
-    && Option.equal Commitish.equal commit t.commit
-    && Loc.equal loc t.loc
-  ;;
-
-  let rev t =
-    (let* remote =
-       let branch =
-         match t.commit with
-         | Some (Branch b) -> Some b
-         | _ -> None
-       in
-       let* repo = Rev_store.get in
-       let* remote = Rev_store.add_repo repo ~source:t.url ~branch in
-       match t.commit with
-       | Some (Branch _) | Some (Tag _) | None -> Rev_store.Remote.update remote
-       | Some (Commit rev) ->
-         Rev_store.mem repo ~rev
-         >>= (function
-          | true -> Fiber.return @@ Rev_store.Remote.don't_update remote
-          | false -> Rev_store.Remote.update remote)
-     in
-     match t.commit with
-     | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-     | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
-     | None ->
-       let name = Rev_store.Remote.default_branch remote in
-       Rev_store.Remote.rev_of_name remote ~name)
-    >>| function
-    | Some at_rev -> at_rev
-    | None ->
-      User_error.raise (* CR-rgrinberg: include revision in error *)
-        ~loc:t.loc
-        ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
-        [ Pp.textf "Could not find revision in repository %s" t.url ]
-  ;;
-end
-
 module Serializable = struct
   type t = string
 
@@ -218,15 +93,30 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable = None; loc }
 ;;
 
-let of_git_repo (source : Source.t) =
-  let+ at_rev = Source.rev source in
+let of_git_repo loc url =
+  let+ at_rev =
+    let* rev_store = Rev_store.get in
+    OpamUrl.find_revision url rev_store
+    >>| function
+    | Ok s -> s
+    | Error m -> raise (User_error.E m)
+  in
   let serializable =
     Some
-      (sprintf "%s#%s" source.url (Rev_store.At_rev.rev at_rev)
+      (sprintf
+         "%s#%s"
+         (OpamUrl.base_url url)
+         (Rev_store.Object.to_string (Rev_store.At_rev.rev at_rev))
        |> OpamUrl.of_string
        |> OpamUrl.to_string)
   in
-  { source = Repo at_rev; serializable; loc = source.loc }
+  { source = Repo at_rev; serializable; loc }
+;;
+
+let revision t =
+  match t.source with
+  | Repo r -> r
+  | Directory _ -> Code_error.raise "not a git repo" []
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =

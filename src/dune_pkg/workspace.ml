@@ -22,35 +22,47 @@ module Repository = struct
 
   type t =
     { name : Name.t
-    ; source : string
+    ; source : OpamUrl.t
     }
 
   let name { name; _ } = name
 
   let to_dyn { name; source } =
     let open Dyn in
-    variant "repository" [ Name.to_dyn name; string source ]
+    variant "repository" [ Name.to_dyn name; string (OpamUrl.to_string source) ]
   ;;
 
-  let equal { name; source } t = Name.equal name t.name && String.equal source t.source
-  let hash { name; source } = Tuple.T2.hash Name.hash String.hash (name, source)
+  let equal { name; source } t = Name.equal name t.name && OpamUrl.equal source t.source
+  let hash { name; source } = Tuple.T2.hash Name.hash Poly.hash (name, source)
 
   let upstream =
-    { name = "upstream"; source = "git+https://github.com/ocaml/opam-repository.git" }
+    { name = "upstream"
+    ; source = OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
+    }
   ;;
 
   let overlay =
-    { name = "overlay"; source = "git+https://github.com/ocaml-dune/opam-overlays.git" }
+    { name = "overlay"
+    ; source = OpamUrl.of_string "git+https://github.com/ocaml-dune/opam-overlays.git"
+    }
   ;;
 
   let decode =
     let open Decoder in
     fields
       (let+ name = field "name" Name.decode
-       and+ source = field "source" string in
+       and+ source =
+         field
+           "source"
+           (map_validate string ~f:(fun s ->
+              match OpamUrl.of_string s with
+              | url -> Ok url
+              | exception OpamUrl.Parse_error m ->
+                Error (User_message.make [ Pp.text "invalid url "; Pp.text m ])))
+       in
        { name; source })
   ;;
 
   let create ~name ~source = { name; source }
-  let opam_url { source; _ } = OpamUrl.of_string source
+  let opam_url { source; _ } = source
 end

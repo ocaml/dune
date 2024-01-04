@@ -16,8 +16,6 @@ Make a mock repo tarball that will get used by dune to download the package
   $ git commit -m "Initial commit" --quiet
   $ REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
-  $ mkdir fake-xdg-cache
-  $ export XDG_CACHE_HOME=$(pwd)/fake-xdg-cache
 
   $ cat > dune-project <<EOF
   > (lang dune 3.10)
@@ -41,16 +39,13 @@ Make a mock repo tarball that will get used by dune to download the package
   - bar.0.0.1
   - foo.0.0.1
 
-Our custom cache folder should be populated with the unpacked tarball
-containing the repository:
+Our cache folder should be populated with a revision store:
 
-  $ find fake-xdg-cache | grep HEAD | sort
-  fake-xdg-cache/dune/git-repo/FETCH_HEAD
-  fake-xdg-cache/dune/git-repo/HEAD
+  $ find $XDG_CACHE_HOME | grep HEAD | sort
+  $TESTCASE_ROOT/.cache/dune/git-repo/FETCH_HEAD
+  $TESTCASE_ROOT/.cache/dune/git-repo/HEAD
 
-Automatically download the repo and make sure lock.dune contains the repo hash
-(exit code 0 from grep, we don't care about the output as it is not
-reproducible)
+Make sure lock.dune contains the repo hash:
 
   $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
 

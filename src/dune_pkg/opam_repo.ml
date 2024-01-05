@@ -44,11 +44,11 @@ module Source = struct
     }
 
   module Private = struct
-    let of_opam_url rev_store ({ OpamUrl.hash; _ } as opam_url) =
+    let of_opam_url rev_store opam_url =
       (* fairly ugly to pull the rev-store out of thin air *)
       let url = OpamUrl.base_url opam_url in
       let+ commit =
-        match hash with
+        match OpamUrl.rev opam_url with
         | None -> Fiber.return None
         | Some ref ->
           (* OpamUrl doesn't distinguish between branches/tags and commits, so

@@ -65,8 +65,6 @@ val load_all_versions
   -> OpamPackage.Name.t
   -> Resolved_package.t OpamPackage.Version.Map.t Fiber.t
 
-val get_opam_package_files : Resolved_package.t list -> File_entry.t list list Fiber.t
-
 module Private : sig
   val create : source:string option -> repo_id:Repository_id.t option -> t
 end

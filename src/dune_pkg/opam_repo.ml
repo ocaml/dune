@@ -238,97 +238,24 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
     { source = Repo at_rev; serializable }
 ;;
 
-(* Scan a path recursively down retrieving a list of all files together with their
-   relative path. *)
-let scan_files_entries path =
-  match Path.stat path with
-  | Error (Unix.ENOENT, _, _) -> []
-  | Error e -> Unix_error.Detailed.raise e
-  | _ ->
-    (try
-       Fpath.traverse_files
-         ~dir:(Path.to_string path)
-         ~init:[]
-         ~f:(fun ~dir filename acc ->
-           let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
-           local_path :: acc)
-     with
-     | Unix.Unix_error (err, a, e) ->
-       User_error.raise
-         ~loc:(Loc.in_file path)
-         [ Pp.text "Unable to read file in opam repository:"
-         ; Unix_error.Detailed.pp (err, a, e)
-         ])
-;;
-
 let load_opam_package_from_dir ~(dir : Path.t) package =
   let opam_file_path = Paths.opam_file package in
   match Path.exists (Path.append_local dir opam_file_path) with
   | false -> None
   | true ->
-    let files_dir = Path.append_local dir (Paths.files_dir package) in
+    let files_dir = Paths.files_dir package in
     Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir)
-;;
-
-let get_opam_package_files resolved_packages =
-  let indexed = List.mapi resolved_packages ~f:(fun i w -> i, w) |> Int.Map.of_list_exn in
-  let from_dirs, from_git =
-    Int.Map.partition_map indexed ~f:(fun (resolved_package : Resolved_package.t) ->
-      match Resolved_package.extra_files resolved_package with
-      | Git_files files -> Right (Resolved_package.package resolved_package, files)
-      | Inside_files_dir dir -> Left dir)
-  in
-  let+ from_git =
-    if Int.Map.is_empty from_git
-    then Fiber.return []
-    else (
-      let files_with_idx =
-        Int.Map.to_list from_git
-        |> List.concat_map ~f:(fun (idx, (package, files)) ->
-          List.map files ~f:(fun file -> idx, package, file))
-      in
-      let* rev_store = Rev_store.get in
-      List.map files_with_idx ~f:(fun (_, _, file) -> file)
-      |> Rev_store.content_of_files rev_store
-      >>| List.map2 files_with_idx ~f:(fun (idx, package, file) content ->
-        let entry =
-          let local_file =
-            Rev_store.File.path file
-            |> Path.Local.descendant ~of_:(Paths.files_dir package)
-            |> Option.value_exn
-          in
-          { File_entry.local_file; original = Content content }
-        in
-        idx, entry))
-  in
-  let from_dirs =
-    Int.Map.to_list from_dirs
-    |> List.concat_map ~f:(fun (idx, files_dir) ->
-      scan_files_entries files_dir
-      |> List.map ~f:(fun local_file ->
-        ( idx
-        , { File_entry.original = Path (Path.append_local files_dir local_file)
-          ; local_file
-          } )))
-  in
-  List.rev_append from_git from_dirs
-  |> Int.Map.of_list_multi
-  |> Int.Map.merge indexed ~f:(fun _ pkg files ->
-    match pkg with
-    | None -> assert false
-    | Some _ -> Some (Option.value files ~default:[]))
-  |> Int.Map.values
 ;;
 
 let load_packages_from_git rev_store opam_packages =
   let+ contents =
-    List.map opam_packages ~f:(fun (_, file, _, _) -> file)
+    List.map opam_packages ~f:(fun (file, _, _, _) -> file)
     |> Rev_store.content_of_files rev_store
   in
   List.map2
     opam_packages
     contents
-    ~f:(fun (repo, file, package, extra_files) opam_file_contents ->
+    ~f:(fun (file, package, rev, files_dir) opam_file_contents ->
       let opam_file_path = Rev_store.File.path file in
       let opam_file =
         let filename =
@@ -338,7 +265,7 @@ let load_packages_from_git rev_store opam_packages =
         OpamFile.OPAM.read_from_string ~filename opam_file_contents
       in
       (* TODO the [file] here is made up *)
-      Resolved_package.git_repo package opam_file ~opam_file_path repo.source ~extra_files)
+      Resolved_package.git_repo package opam_file ~opam_file_path rev ~files_dir)
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =
@@ -380,11 +307,8 @@ let all_package_versions t opam_package_name =
   | Repo rev ->
     all_packages_versions_at_rev rev opam_package_name
     |> List.map ~f:(fun (file, pkg) ->
-      let extra_files =
-        let dir = Paths.files_dir pkg in
-        Rev_store.At_rev.directory_entries rev dir |> Rev_store.File.Set.to_list
-      in
-      `Git (file, pkg, extra_files))
+      let files_dir = Paths.files_dir pkg in
+      `Git (file, pkg, rev, files_dir))
 ;;
 
 let load_all_versions ts opam_package_name =
@@ -397,7 +321,7 @@ let load_all_versions ts opam_package_name =
         let pkg =
           match pkg with
           | `Directory pkg -> pkg
-          | `Git (_, pkg, _) -> pkg
+          | `Git (_, pkg, _, _) -> pkg
         in
         OpamPackage.version pkg
       in
@@ -407,7 +331,7 @@ let load_all_versions ts opam_package_name =
     |> OpamPackage.Version.Map.values
     |> List.partition_map ~f:(fun (repo, pkg) ->
       match pkg with
-      | `Git (file, pkg, extra_files) -> Left (repo, file, pkg, extra_files)
+      | `Git (file, pkg, rev, files_dir) -> Left (file, pkg, rev, files_dir)
       | `Directory pkg -> Right (repo, pkg))
   in
   let from_dirs =
@@ -427,7 +351,7 @@ let load_all_versions ts opam_package_name =
     | packages ->
       let* rev_store = Rev_store.get in
       let+ resolved_packages = load_packages_from_git rev_store packages in
-      List.map2 resolved_packages packages ~f:(fun resolved_package (_, _, pkg, _) ->
+      List.map2 resolved_packages packages ~f:(fun resolved_package (_, pkg, _, _) ->
         pkg, resolved_package)
   in
   from_dirs @ from_git

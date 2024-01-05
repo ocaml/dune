@@ -244,7 +244,7 @@ let%expect_test "downloading via git" =
     let open Fiber.O in
     let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
     let* (_commit : string) = Rev_store_tests.create_repo_at source in
-    let* source = Dune_pkg.Opam_repo.Source.Private.of_opam_url rev_store url in
+    let* source = Dune_pkg.Opam_repo.Source.Private.of_opam_url rev_store Loc.none url in
     let+ () = download_git rev_store source ~target in
     print_endline (Io.read_file entry));
   [%expect {| just some content |}]

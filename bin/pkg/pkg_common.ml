@@ -71,12 +71,13 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
   lock_dir.unset_solver_vars
 ;;
 
-let location_of_opam_url url =
+let location_of_opam_url loc url =
   match (url : OpamUrl.t).backend with
   | `rsync -> `Path (Path.of_string url.path)
   | `git -> `Git
   | `http | `darcs | `hg ->
     User_error.raise
+      ~loc
       ~hints:[ Pp.text "Specify either a file path or git repo via SSH/HTTPS" ]
       [ Pp.textf "Could not determine location of repository %s" @@ OpamUrl.to_string url
       ]
@@ -95,11 +96,11 @@ let get_repos repos ~repositories ~update_opam_repositories =
           @@ Repository.Name.to_string name
         ]
     | Some repo ->
-      let opam_url = Repository.opam_url repo in
+      let loc, opam_url = Repository.opam_url repo in
       let module Opam_repo = Dune_pkg.Opam_repo in
-      (match location_of_opam_url opam_url with
+      (match location_of_opam_url loc opam_url with
        | `Git ->
-         let* source = Opam_repo.Source.of_opam_url opam_url in
+         let* source = Opam_repo.Source.of_opam_url loc opam_url in
          Opam_repo.of_git_repo ~update:update_opam_repositories source
        | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path path))
 ;;

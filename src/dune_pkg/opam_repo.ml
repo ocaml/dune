@@ -41,13 +41,14 @@ module Source = struct
   type t =
     { url : string
     ; commit : Commitish.t option
+    ; loc : Loc.t
     }
 
   let url t = t.url
   let commit t = t.commit
 
   module Private = struct
-    let of_opam_url rev_store opam_url =
+    let of_opam_url rev_store loc opam_url =
       let url = OpamUrl.base_url opam_url in
       let+ commit =
         match OpamUrl.rev opam_url with
@@ -76,24 +77,24 @@ module Source = struct
                       ref
                   ]))
       in
-      { commit; url }
+      { commit; url; loc }
     ;;
   end
 
-  let of_opam_url opam_url =
+  let of_opam_url loc opam_url =
     (* fairly ugly to pull the rev-store out of thin air *)
     let* rev_store = Rev_store.get in
-    Private.of_opam_url rev_store opam_url
+    Private.of_opam_url rev_store loc opam_url
   ;;
 
-  let to_string { url; commit = _ } = url
-
-  let to_dyn { url; commit } =
+  let to_dyn { url; commit; loc = _ } =
     Dyn.record [ "url", Dyn.string url; "commit", Dyn.option Commitish.to_dyn commit ]
   ;;
 
-  let equal { url; commit } t =
-    String.equal url t.url && Option.equal Commitish.equal commit t.commit
+  let equal { url; commit; loc } t =
+    String.equal url t.url
+    && Option.equal Commitish.equal commit t.commit
+    && Loc.equal loc t.loc
   ;;
 end
 
@@ -188,8 +189,9 @@ let of_git_repo ~update (source : Source.t) =
   match at_rev with
   | None ->
     User_error.raise
+      ~loc:source.loc
       ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
-      [ Pp.textf "Could not find revision in repository %s" (Source.to_string source) ]
+      [ Pp.textf "Could not find revision in repository %s" source.url ]
   | Some at_rev ->
     let source = at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string in
     let serializable = Some source in

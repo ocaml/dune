@@ -55,6 +55,5 @@ module Repository = struct
        { name; source })
   ;;
 
-  let create ~name ~source = { name; source }
   let opam_url { source; _ } = source
 end

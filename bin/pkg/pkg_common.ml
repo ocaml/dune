@@ -62,7 +62,10 @@ let repositories_of_lock_dir workspace ~lock_dir_path =
   match Workspace.find_lock_dir workspace lock_dir_path with
   | Some lock_dir -> lock_dir.repositories
   | None ->
-    List.map Workspace.default_repositories ~f:Dune_pkg.Pkg_workspace.Repository.name
+    List.map Workspace.default_repositories ~f:(fun repo ->
+      let name = Dune_pkg.Pkg_workspace.Repository.name repo in
+      let loc = Loc.none in
+      loc, name)
 ;;
 
 let unset_solver_vars_of_workspace workspace ~lock_dir_path =
@@ -87,11 +90,11 @@ let get_repos repos ~repositories ~update_opam_repositories =
   let open Fiber.O in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
   repositories
-  |> Fiber.parallel_map ~f:(fun name ->
+  |> Fiber.parallel_map ~f:(fun (loc, name) ->
     match Repository.Name.Map.find repos name with
     | None ->
-      (* TODO: have loc for this failure? *)
       User_error.raise
+        ~loc
         [ Pp.textf "Repository '%s' is not a known repository"
           @@ Repository.Name.to_string name
         ]

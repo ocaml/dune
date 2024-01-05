@@ -31,7 +31,7 @@ val repositories_of_workspace
 val repositories_of_lock_dir
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
-  -> Dune_pkg.Pkg_workspace.Repository.Name.t list
+  -> (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
 
 val constraints_of_workspace
   :  Workspace.t
@@ -40,7 +40,7 @@ val constraints_of_workspace
 
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-  -> repositories:Dune_pkg.Pkg_workspace.Repository.Name.t list
+  -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
   -> update_opam_repositories:bool
   -> Dune_pkg.Opam_repo.t list Fiber.t
 

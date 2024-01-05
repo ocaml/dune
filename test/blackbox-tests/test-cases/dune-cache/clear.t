@@ -13,21 +13,11 @@ Test for the "dune cache clear" command.
 
   $ dune build
 
-  $ find $DUNE_CACHE_ROOT -type d | sort -u
-  $TESTCASE_ROOT/dune-cache
-  $TESTCASE_ROOT/dune-cache/files
-  $TESTCASE_ROOT/dune-cache/files/v4
-  $TESTCASE_ROOT/dune-cache/files/v4/11
-  $TESTCASE_ROOT/dune-cache/files/v4/4d
-  $TESTCASE_ROOT/dune-cache/files/v4/b8
-  $TESTCASE_ROOT/dune-cache/meta
-  $TESTCASE_ROOT/dune-cache/meta/v5
-  $TESTCASE_ROOT/dune-cache/meta/v5/2f
-  $TESTCASE_ROOT/dune-cache/meta/v5/39
-  $TESTCASE_ROOT/dune-cache/meta/v5/4d
-  $TESTCASE_ROOT/dune-cache/temp
-  $TESTCASE_ROOT/dune-cache/values
-  $TESTCASE_ROOT/dune-cache/values/v3
+  $ ls $DUNE_CACHE_ROOT | sort -u
+  files
+  meta
+  temp
+  values
 
   $ dune cache clear
 

@@ -43,6 +43,9 @@ module Source = struct
     ; commit : Commitish.t option
     }
 
+  let url t = t.url
+  let commit t = t.commit
+
   module Private = struct
     let of_opam_url rev_store opam_url =
       let url = OpamUrl.base_url opam_url in

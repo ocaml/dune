@@ -260,15 +260,17 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_git rev_store ~target (source : Opam_repo.Source.t) =
+  let commit = Opam_repo.Source.commit source in
   let* remote =
     let branch =
-      match source.commit with
+      match commit with
       | Some (Branch b) -> Some b
       | _ -> None
     in
-    Rev_store.add_repo rev_store ~source:source.url ~branch >>= Rev_store.Remote.update
+    Rev_store.add_repo rev_store ~source:(Opam_repo.Source.url source) ~branch
+    >>= Rev_store.Remote.update
   in
-  (match source.commit with
+  (match commit with
    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
    | None ->

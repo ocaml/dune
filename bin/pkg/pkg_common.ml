@@ -74,9 +74,8 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
 let location_of_opam_url url =
   match (url : OpamUrl.t).backend with
   | `rsync -> `Path (Path.of_string url.path)
-  (* contrary to OPAM we also attempt to load HTTP sources via git *)
-  | `git | `http -> `Git
-  | `darcs | `hg ->
+  | `git -> `Git
+  | `http | `darcs | `hg ->
     User_error.raise
       ~hints:[ Pp.text "Specify either a file path or git repo via SSH/HTTPS" ]
       [ Pp.textf "Could not determine location of repository %s" @@ OpamUrl.to_string url

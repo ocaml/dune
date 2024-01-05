@@ -113,7 +113,7 @@ end
 
 let decode_fetch =
   let open Decoder in
-  let+ url_loc, url = field Fields.url (located string)
+  let+ url_loc, url = field Fields.url (located OpamUrl.decode)
   and+ checksum = field_o Fields.checksum (located string) in
   let checksum =
     match checksum with
@@ -122,7 +122,6 @@ let decode_fetch =
       let checksum = Checksum.of_string_user_error checksum |> User_error.ok_exn in
       Some (loc, checksum)
   in
-  let url = OpamUrl.of_string url in
   { url = url_loc, url; checksum }
 ;;
 

@@ -45,7 +45,6 @@ module Source = struct
 
   module Private = struct
     let of_opam_url rev_store opam_url =
-      (* fairly ugly to pull the rev-store out of thin air *)
       let url = OpamUrl.base_url opam_url in
       let+ commit =
         match OpamUrl.rev opam_url with
@@ -176,15 +175,12 @@ let of_git_repo ~update (source : Source.t) =
       | true -> Rev_store.Remote.update remote
       | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
     in
-    let+ at_rev =
-      match source.commit with
-      | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-      | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
-      | None ->
-        let name = Rev_store.Remote.default_branch remote in
-        Rev_store.Remote.rev_of_name remote ~name
-    in
-    at_rev
+    match source.commit with
+    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
+    | None ->
+      let name = Rev_store.Remote.default_branch remote in
+      Rev_store.Remote.rev_of_name remote ~name
   in
   match at_rev with
   | None ->

@@ -193,7 +193,7 @@ let setup_emit_cmj_rules
   let f () =
     (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
        of the same name *)
-    let* modules, obj_dir =
+    let* source_modules, obj_dir =
       Dir_contents.ocaml dir_contents
       >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
     in
@@ -212,7 +212,7 @@ let setup_emit_cmj_rules
         expander
         ~dir
         scope
-        modules
+        source_modules
     in
     let requires_link = Lib.Compile.requires_link compile_info in
     let* flags =
@@ -274,7 +274,7 @@ let setup_emit_cmj_rules
         ~requires:requires_compile
         ~stdlib_dir
         ~flags
-        ~modules
+        ~source_modules
         ~source_dirs:Path.Source.Set.empty
         ~libname:None
         ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess)

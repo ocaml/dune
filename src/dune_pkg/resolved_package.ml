@@ -7,54 +7,38 @@ type extra_files =
 type nonrec t =
   { opam_file : OpamFile.OPAM.t
   ; package : OpamPackage.t
-  ; opam_file_path : Path.Local.t
-  ; source : Source_backend.t
+  ; opam_file_path : Path.t
   ; extra_files : extra_files
   }
 
-let file t =
-  match t.source with
-  | Directory d -> Path.append_local d t.opam_file_path
-  | Repo _ ->
-    (* XXX fake path *)
-    Path.source @@ Path.Source.of_local t.opam_file_path
-;;
-
+let file t = t.opam_file_path
 let package t = t.package
 let opam_file t = t.opam_file
 
-let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
-  let opam_file_path = Rev_store.File.path opam_file in
-  let opam_file =
-    let filename =
-      (* the filename is used to read the version number *)
-      Path.Local.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
-    in
-    OpamFile.OPAM.read_from_string ~filename opam_file_contents
+let read_opam_file package ~opam_file_path ~opam_file_contents =
+  let filename =
+    (* the filename is used to read the version number *)
+    Path.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
   in
-  { opam_file
-  ; package
-  ; opam_file_path
-  ; source = Repo rev
-  ; extra_files = Git_files (files_dir, rev)
-  }
+  OpamFile.OPAM.read_from_string ~filename opam_file_contents
+  |> OpamFile.OPAM.with_version (OpamPackage.version package)
+  |> OpamFile.OPAM.with_name (OpamPackage.name package)
+;;
+
+let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
+  let opam_file_path = Path.of_local (Rev_store.File.path opam_file) in
+  let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
+  { opam_file; package; opam_file_path; extra_files = Git_files (files_dir, rev) }
 ;;
 
 let local_fs package ~dir ~opam_file_path ~files_dir =
+  let opam_file_path = Path.append_local dir opam_file_path in
   let files_dir = Path.append_local dir files_dir in
   let opam_file =
-    Path.append_local dir opam_file_path
-    |> Path.to_string
-    |> OpamFilename.raw
-    |> OpamFile.make
-    |> OpamFile.OPAM.read
+    let opam_file_contents = Io.read_file ~binary:true opam_file_path in
+    read_opam_file package ~opam_file_path ~opam_file_contents
   in
-  { package
-  ; opam_file_path
-  ; source = Directory dir
-  ; extra_files = Inside_files_dir files_dir
-  ; opam_file
-  }
+  { package; opam_file_path; extra_files = Inside_files_dir files_dir; opam_file }
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their

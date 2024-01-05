@@ -172,6 +172,9 @@ let of_git_repo ~update (source : Source.t) =
         | _ -> None
       in
       let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
+      (* CR-rgrinberg: We need to update before deciding whether a ref is a tag
+         or a branch, yet we already have [source], so we've determined this
+         [source] with out of date info? *)
       match update with
       | true -> Rev_store.Remote.update remote
       | false -> Fiber.return @@ Rev_store.Remote.don't_update remote

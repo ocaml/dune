@@ -21,11 +21,10 @@ module Source : sig
       | Tag of string
   end
 
-  type t =
-    { url : string
-    ; commit : Commitish.t option
-    }
+  type t
 
+  val commit : t -> Commitish.t option
+  val url : t -> string
   val of_opam_url : OpamUrl.t -> t Fiber.t
   val to_string : t -> string
   val to_dyn : t -> Dyn.t

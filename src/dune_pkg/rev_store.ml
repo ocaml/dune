@@ -294,14 +294,15 @@ module At_rev = struct
   type nonrec t =
     { repo : t
     ; revision : rev
+    ; source : string
     ; files_at_rev : File.Set.t
     }
 
-  let content { repo; revision; files_at_rev = _ } path =
+  let content { repo; revision; source = _; files_at_rev = _ } path =
     show repo [ `Path (revision, path) ]
   ;;
 
-  let directory_entries { repo = _; files_at_rev; revision = _ } path =
+  let directory_entries { repo = _; source = _; files_at_rev; revision = _ } path =
     (* TODO: there are much better ways of implementing this:
        1. using libgit or ocamlgit
        2. possibly using [$ git archive] *)
@@ -309,18 +310,22 @@ module At_rev = struct
       Path.Local.is_descendant file.path ~of_:path)
   ;;
 
-  let equal { repo; revision = Rev revision; files_at_rev } t =
+  let equal { repo; revision = Rev revision; source; files_at_rev } t =
     let (Rev revision') = t.revision in
     equal repo t.repo
     && String.equal revision revision'
+    && String.equal source t.source
     && File.Set.equal files_at_rev t.files_at_rev
   ;;
 
-  let repository_id { revision = Rev rev; repo = _; files_at_rev = _ } =
-    Repository_id.of_git_hash rev
+  let opam_url { revision = Rev rev; source; repo = _; files_at_rev = _ } =
+    OpamUrl.parse (sprintf "%s#%s" source rev)
   ;;
 
-  let check_out { repo = { dir }; revision = Rev rev; files_at_rev = _ } ~target =
+  let check_out
+    { repo = { dir }; revision = Rev rev; source = _; files_at_rev = _ }
+    ~target
+    =
     let git = Lazy.force Vcs.git in
     let tar = Lazy.force tar in
     let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
@@ -355,22 +360,24 @@ module Remote = struct
   type nonrec t =
     { repo : t
     ; handle : string
+    ; source : string
     ; default_branch : string
     }
 
   type uninit = t
 
-  let update ({ repo; handle; default_branch = _ } as t) =
+  let update ({ repo; handle; source = _; default_branch = _ } as t) =
     let+ () = run repo [ "fetch"; handle ] in
     t
   ;;
 
   let don't_update t = t
-  let default_branch { repo = _; handle = _; default_branch } = default_branch
+  let default_branch { repo = _; handle = _; source = _; default_branch } = default_branch
 
-  let equal { repo; handle; default_branch } t =
+  let equal { repo; handle; source; default_branch } t =
     equal repo t.repo
     && String.equal handle t.handle
+    && String.equal source t.source
     && String.equal default_branch t.default_branch
   ;;
 
@@ -380,31 +387,18 @@ module Remote = struct
     >>| File.Set.of_list
   ;;
 
-  let rev_of_name { repo; handle; default_branch = _ } ~name =
+  let rev_of_name { repo; handle; source; default_branch = _ } ~name =
     (* TODO handle non-existing name *)
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
     let revision = Rev rev in
     let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.repo; revision; files_at_rev }
+    Some { At_rev.repo; revision; source; files_at_rev }
   ;;
 
-  let rev_of_ref { repo; handle = _; default_branch = _ } ~ref =
+  let rev_of_ref { repo; handle = _; source; default_branch = _ } ~ref =
     let revision = Rev ref in
     let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.repo; revision; files_at_rev }
-  ;;
-
-  let rev_of_repository_id { repo; handle = _; default_branch = _ } repo_id =
-    match Repository_id.git_hash repo_id with
-    | None -> Fiber.return None
-    | Some rev ->
-      run_capture_line repo [ "cat-file"; "-t"; rev ]
-      >>= (function
-       | "commit" ->
-         let revision = Rev rev in
-         let+ files_at_rev = files_at_rev repo revision in
-         Some { At_rev.repo; revision = Rev rev; files_at_rev }
-       | _ -> Fiber.return None)
+    Some { At_rev.repo; revision; source; files_at_rev }
   ;;
 end
 
@@ -528,7 +522,7 @@ let add_repo ({ dir } as t) ~source ~branch =
         let+ () = remote_add t ~branch ~handle ~source in
         branch
     in
-    { Remote.repo = t; handle; default_branch })
+    { Remote.repo = t; handle; source; default_branch })
 ;;
 
 let content_of_files t files =

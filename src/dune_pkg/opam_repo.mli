@@ -9,10 +9,6 @@ module Serializable : sig
   val decode : t Decoder.t
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
-
-  module Private : sig
-    val with_commit : commit:string -> t -> t
-  end
 end
 
 val equal : t -> t -> bool
@@ -42,21 +38,16 @@ end
 
 (** [of_opam_repo_dir_path opam_repo_dir] creates a repo represented by a local
     directory in the path given by [opam_repo_dir]. *)
-val of_opam_repo_dir_path
-  :  source:string option
-  -> repo_id:Repository_id.t option
-  -> Path.t
-  -> t
+val of_opam_repo_dir_path : Path.t -> t
 
-(** [of_git_repo git ~repo_id ~update source] loads the opam repository located
+(** [of_git_repo git ~update source] loads the opam repository located
     at [source] from git. [source] can be any URL that [git remote add]
     supports.
 
     Set [update] to true to update the source to the newest revision, otherwise
     it will use the latest data available in the cache (if any). *)
-val of_git_repo : repo_id:Repository_id.t option -> update:bool -> Source.t -> t Fiber.t
+val of_git_repo : update:bool -> Source.t -> t Fiber.t
 
-val repo_id : t -> Repository_id.t option
 val serializable : t -> Serializable.t option
 
 (** Load package metadata for all versions of a package with a given name *)
@@ -66,5 +57,5 @@ val load_all_versions
   -> Resolved_package.t OpamPackage.Version.Map.t Fiber.t
 
 module Private : sig
-  val create : source:string option -> repo_id:Repository_id.t option -> t
+  val create : source:string option -> t
 end

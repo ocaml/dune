@@ -101,10 +101,8 @@ let get_repos repos ~repositories ~update_opam_repositories =
       (match location_of_opam_url opam_url with
        | `Git ->
          let* source = Opam_repo.Source.of_opam_url opam_url in
-         Opam_repo.of_git_repo ~repo_id:None ~update:update_opam_repositories source
-       | `Path path ->
-         let repo_id = Dune_pkg.Repository_id.of_path path in
-         Fiber.return @@ Opam_repo.of_opam_repo_dir_path ~source:None ~repo_id path))
+         Opam_repo.of_git_repo ~update:update_opam_repositories source
+       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path path))
 ;;
 
 let find_local_packages =

@@ -96,50 +96,26 @@ module Source = struct
 end
 
 module Serializable = struct
-  type t =
-    { repo_id : Repository_id.t option
-    ; source : string
-    }
+  type t = string
 
-  let equal { repo_id; source } t =
-    Option.equal Repository_id.equal repo_id t.repo_id && String.equal source t.source
-  ;;
+  let equal = String.equal
 
-  let to_dyn { repo_id; source } =
+  let to_dyn source =
     let open Dyn in
-    variant
-      "opam_repo_serializable"
-      [ option Repository_id.to_dyn repo_id; string source ]
+    variant "opam_repo_serializable" [ string source ]
   ;;
 
-  let encode { repo_id; source } =
+  let encode source =
     let open Encoder in
-    record_fields
-      [ field "source" string source; field_o "repo_id" Repository_id.encode repo_id ]
+    record_fields [ field "source" string source ]
   ;;
 
   let decode =
     let open Decoder in
     fields
-      (let+ source = field "source" string
-       and+ repo_id = field_o "repo_id" Repository_id.decode in
-       { repo_id; source })
+      (let+ source = field "source" string in
+       source)
   ;;
-
-  module Private = struct
-    let with_commit ~commit { repo_id; source } =
-      let repo_id =
-        match repo_id with
-        | None -> None
-        | Some repo_id as orig ->
-          let candidate_repo_id = Repository_id.of_git_hash commit in
-          (match Repository_id.equal repo_id candidate_repo_id with
-           | true -> Some (Repository_id.of_git_hash "MATCHING")
-           | false -> orig)
-      in
-      { repo_id; source }
-    ;;
-  end
 end
 
 type t =
@@ -154,13 +130,7 @@ let equal { source; serializable } t =
 
 let serializable { serializable; _ } = serializable
 
-let repo_id t =
-  let open Option.O in
-  let* serializable = serializable t in
-  serializable.repo_id
-;;
-
-let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
+let of_opam_repo_dir_path opam_repo_dir_path =
   (match Path.stat opam_repo_dir_path with
    | Error (Unix.ENOENT, _, _) ->
      User_error.raise
@@ -189,14 +159,11 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
    | Error _ ->
      User_error.raise
        [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]);
-  let serializable =
-    Option.map source ~f:(fun source -> { Serializable.repo_id; source })
-  in
-  { source = Directory opam_repo_dir_path; serializable }
+  { source = Directory opam_repo_dir_path; serializable = None }
 ;;
 
-let of_git_repo ~repo_id ~update (source : Source.t) =
-  let+ at_rev, computed_repo_id =
+let of_git_repo ~update (source : Source.t) =
+  let+ at_rev =
     let* remote =
       let* repo = Rev_store.get in
       let branch =
@@ -209,22 +176,15 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
       | true -> Rev_store.Remote.update remote
       | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
     in
-    match repo_id with
-    | Some repo_id ->
-      let+ at_rev = Rev_store.Remote.rev_of_repository_id remote repo_id in
-      at_rev, Some repo_id
-    | None ->
-      let+ at_rev =
-        match source.commit with
-        | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-        | Some (Branch name) | Some (Tag name) ->
-          Rev_store.Remote.rev_of_name remote ~name
-        | None ->
-          let name = Rev_store.Remote.default_branch remote in
-          Rev_store.Remote.rev_of_name remote ~name
-      in
-      let repo_id = Option.map at_rev ~f:Rev_store.At_rev.repository_id in
-      at_rev, repo_id
+    let+ at_rev =
+      match source.commit with
+      | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+      | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
+      | None ->
+        let name = Rev_store.Remote.default_branch remote in
+        Rev_store.Remote.rev_of_name remote ~name
+    in
+    at_rev
   in
   match at_rev with
   | None ->
@@ -232,9 +192,8 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
       ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
       [ Pp.textf "Could not find revision in repository %s" (Source.to_string source) ]
   | Some at_rev ->
-    let serializable =
-      Some { Serializable.repo_id = computed_repo_id; source = source.url }
-    in
+    let source = at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string in
+    let serializable = Some source in
     { source = Repo at_rev; serializable }
 ;;
 
@@ -361,11 +320,8 @@ let load_all_versions ts opam_package_name =
 ;;
 
 module Private = struct
-  let create ~source ~repo_id =
+  let create ~source:serializable =
     let packages_dir_path = Path.of_string "/" in
-    let serializable =
-      Option.map source ~f:(fun source -> { Serializable.repo_id; source })
-    in
     { source = Directory packages_dir_path; serializable }
   ;;
 end

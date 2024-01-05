@@ -138,3 +138,5 @@ module Raw_value : sig
     -> content_digest:Digest.t
     -> Util.Write_result.t
 end
+
+val clear : unit -> unit

@@ -214,17 +214,8 @@ let load_packages_from_git rev_store opam_packages =
   List.map2
     opam_packages
     contents
-    ~f:(fun (file, package, rev, files_dir) opam_file_contents ->
-      let opam_file_path = Rev_store.File.path file in
-      let opam_file =
-        let filename =
-          (* the filename is used to read the version number *)
-          Path.Local.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
-        in
-        OpamFile.OPAM.read_from_string ~filename opam_file_contents
-      in
-      (* TODO the [file] here is made up *)
-      Resolved_package.git_repo package opam_file ~opam_file_path rev ~files_dir)
+    ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
+      Resolved_package.git_repo package ~opam_file ~opam_file_contents rev ~files_dir)
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =

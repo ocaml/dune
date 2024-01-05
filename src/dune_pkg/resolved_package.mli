@@ -8,8 +8,8 @@ val file : t -> Path.t
 
 val git_repo
   :  OpamPackage.t
-  -> OpamFile.OPAM.t
-  -> opam_file_path:Path.Local.t
+  -> opam_file:Rev_store.File.t
+  -> opam_file_contents:string
   -> Rev_store.At_rev.t
   -> files_dir:Path.Local.t
   -> t

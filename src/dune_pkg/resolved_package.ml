@@ -23,7 +23,15 @@ let file t =
 let package t = t.package
 let opam_file t = t.opam_file
 
-let git_repo package opam_file ~opam_file_path rev ~files_dir =
+let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
+  let opam_file_path = Rev_store.File.path opam_file in
+  let opam_file =
+    let filename =
+      (* the filename is used to read the version number *)
+      Path.Local.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
+    in
+    OpamFile.OPAM.read_from_string ~filename opam_file_contents
+  in
   { opam_file
   ; package
   ; opam_file_path

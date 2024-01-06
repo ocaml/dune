@@ -1,6 +1,11 @@
 open Import
 open Fiber.O
 
+let apply_or_skip_empty f = function
+  | None | Some "" -> None
+  | Some s -> Some (f s)
+;;
+
 let norm = function
   | "" -> None
   | s -> Some (String.lowercase s)
@@ -53,18 +58,14 @@ let arch ~path =
        | Intel -> Some "x86_32"
        | Unknown -> None)
    | _ -> Fiber.return None)
-  >>| function
-  | None | Some "" -> None
-  | Some a -> Some (normalise_arch a)
+  >>| apply_or_skip_empty normalise_arch
 ;;
 
 let os ~path =
   (match Sys.os_type with
    | "Unix" -> uname ~path [ "-s" ]
    | s -> Fiber.return (norm s))
-  >>| function
-  | None | Some "" -> None
-  | Some s -> Some (normalise_os s)
+  >>| apply_or_skip_empty normalise_os
 ;;
 
 let android_release ~path =
@@ -174,6 +175,8 @@ let os_distribution ~path =
 let os_family ~path =
   os ~path
   >>= function
+  | Some ("freebsd" | "openbsd" | "netbsd" | "dragonfly") -> Fiber.return @@ Some "bsd"
+  | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
   | Some "linux" ->
     os_release_field "ID_LIKE"
     >>= (function
@@ -183,8 +186,6 @@ let os_family ~path =
        (match Scanf.sscanf s " %s" Fun.id with
         | Error _ -> os_distribution ~path
         | Ok s -> Fiber.return @@ norm s))
-  | Some ("freebsd" | "openbsd" | "netbsd" | "dragonfly") -> Fiber.return @@ Some "bsd"
-  | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
   | _ -> os_distribution ~path
 ;;
 

@@ -185,13 +185,6 @@ let os_family ~os_distribution ~os_release_fields ~os =
   | _ -> os_distribution
 ;;
 
-let sys_ocaml_version ~path =
-  match Bin.which "ocamlc" ~path with
-  | None -> Fiber.return None
-  | Some ocamlc ->
-    Process.run_capture_line ~display:Quiet Strict ocamlc [ "-vnum" ] >>| Option.some
-;;
-
 let make_lazy f = Fiber_lazy.create f |> Fiber_lazy.force
 
 let make ~path =
@@ -211,7 +204,9 @@ let make ~path =
   let os_family =
     make_lazy (fun () -> os_family ~os_release_fields ~os_distribution ~os)
   in
-  let sys_ocaml_version = make_lazy (fun () -> sys_ocaml_version ~path) in
+  let sys_ocaml_version =
+    make_lazy (fun () -> run_capture_line ~path ~prog:"ocamlc" ~args:[ "-vnum" ])
+  in
   { arch; os; os_version; os_distribution; os_family; sys_ocaml_version }
 ;;
 

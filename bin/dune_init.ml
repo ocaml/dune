@@ -524,10 +524,41 @@ module Component = struct
             Path.exists (Path.relative dir ".ocamlformat")
             && Path.exists (Path.relative dir ".gitignore")
           in
+          let fmt_version =
+            try
+              let ic = Unix.open_process_in "ocamlformat --version" in
+              let version = input_line ic in
+              let _ = Unix.close_process_in ic in
+              (let open Pp.O in
+               Console.print_user_message
+                 (User_message.make
+                    [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
+                      ++ Pp.textf ": using ocamlversion number %s" version
+                    ]));
+              version
+            with
+            | _ ->
+              (let open Pp.O in
+               Console.print_user_message
+                 (User_message.make
+                    [ Pp.tag User_message.Style.Warning (Pp.verbatim "Format")
+                      ++ Pp.textf ": couldn't get the ocamlformat version number."
+                    ]);
+               Console.print_user_message
+                 (User_message.make
+                    [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
+                      ++ Pp.textf ": Are you sure you have ocamlformat installed ?"
+                    ]));
+              ""
+          in
           if exists
           then []
           else
-            [ File.make_text dir ".ocamlformat" ""
+            (* get the current ocamlversion *)
+            [ File.make_text
+                dir
+                ".ocamlformat"
+                (if fmt_version = "" then "" else "version = \"" ^ fmt_version ^ "\"\n")
             ; File.make_text dir ".gitignore" "_build/"
             ]
         in

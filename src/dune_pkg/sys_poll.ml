@@ -31,45 +31,38 @@ let normalise_os raw =
 ;;
 
 let run_capture_line ~path ~prog ~args =
-  let prog = Bin.which ~path prog in
-  match prog with
+  match Bin.which ~path prog with
   | None -> Fiber.return None
-  | Some prog ->
-    let+ res = Process.run_capture_line ~display:Quiet Strict prog args in
-    norm res
+  | Some prog -> Process.run_capture_line ~display:Quiet Strict prog args >>| norm
 ;;
 
 let uname ~path args = run_capture_line ~path ~prog:"uname" ~args
 let lsb_release ~path args = run_capture_line ~path ~prog:"lsb_release" ~args
 
 let arch ~path =
-  let+ raw =
-    match Sys.os_type with
-    | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
-    | "Win32" ->
-      Fiber.return
-      @@
-        (match OpamStubs.getArchitecture () with
-        | OpamStubs.AMD64 -> Some "x86_64"
-        | ARM -> Some "arm32"
-        | ARM64 -> Some "arm64"
-        | IA64 -> Some "ia64"
-        | Intel -> Some "x86_32"
-        | Unknown -> None)
-    | _ -> Fiber.return None
-  in
-  match raw with
+  (match Sys.os_type with
+   | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
+   | "Win32" ->
+     Fiber.return
+     @@
+       (match OpamStubs.getArchitecture () with
+       | OpamStubs.AMD64 -> Some "x86_64"
+       | ARM -> Some "arm32"
+       | ARM64 -> Some "arm64"
+       | IA64 -> Some "ia64"
+       | Intel -> Some "x86_32"
+       | Unknown -> None)
+   | _ -> Fiber.return None)
+  >>| function
   | None | Some "" -> None
   | Some a -> Some (normalise_arch a)
 ;;
 
 let os ~path =
-  let+ raw =
-    match Sys.os_type with
-    | "Unix" -> uname ~path [ "-s" ]
-    | s -> Fiber.return (norm s)
-  in
-  match raw with
+  (match Sys.os_type with
+   | "Unix" -> uname ~path [ "-s" ]
+   | s -> Fiber.return (norm s))
+  >>| function
   | None | Some "" -> None
   | Some s -> Some (normalise_os s)
 ;;
@@ -84,15 +77,16 @@ let is_android ~path =
 ;;
 
 let os_release_field field =
-  let candidates =
-    [ "/etc/os-release"; "/usr/lib/os-release" ] |> List.map ~f:path_of_string
-  in
-  match List.find ~f:Path.exists candidates with
+  match
+    [ "/etc/os-release"; "/usr/lib/os-release" ]
+    |> List.map ~f:path_of_string
+    |> List.find ~f:Path.exists
+  with
   | None -> Fiber.return None
   | Some release_file ->
-    let lines = Io.lines_of_file release_file in
     let mappings =
-      List.filter_map lines ~f:(fun line ->
+      Io.lines_of_file release_file
+      |> List.filter_map ~f:(fun line ->
         match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
         | Error _ -> None
         | Ok (key, v) ->
@@ -104,22 +98,20 @@ let os_release_field field =
 ;;
 
 let os_version ~path =
-  let* os = os ~path in
-  match os with
+  os ~path
+  >>= function
   | Some "linux" ->
-    let* prop = android_release ~path in
-    (match prop with
+    android_release ~path
+    >>= (function
      | Some android -> Fiber.return @@ norm android
      | None ->
-       let* release = lsb_release ~path [ "-s"; "-r" ] in
-       (match release with
+       lsb_release ~path [ "-s"; "-r" ]
+       >>= (function
         | Some lsb -> Fiber.return @@ norm lsb
-        | None ->
-          let+ version_id = os_release_field "VERSION_ID" in
-          Option.bind version_id ~f:norm))
+        | None -> os_release_field "VERSION_ID" >>| Option.bind ~f:norm))
   | Some "macos" ->
-    let+ sw_vers = run_capture_line ~path ~prog:"sw_vers" ~args:[ "-productVersion" ] in
-    Option.bind sw_vers ~f:norm
+    run_capture_line ~path ~prog:"sw_vers" ~args:[ "-productVersion" ]
+    >>| Option.bind ~f:norm
   | Some "win32" ->
     let major, minor, build, _ = OpamStubs.getWindowsVersion () in
     OpamStd.Option.some @@ Printf.sprintf "%d.%d.%d" major minor build |> Fiber.return
@@ -129,45 +121,43 @@ let os_version ~path =
       match Scanf.sscanf s "%_s@[ Version %s@]" Fun.id with
       | Ok s -> norm s
       | Error _ -> None)
-  | Some "freebsd" ->
-    let+ uname = uname ~path [ "-U" ] in
-    Option.bind uname ~f:norm
-  | _ ->
-    let+ uname = uname ~path [ "-r" ] in
-    Option.bind uname ~f:norm
+  | Some "freebsd" -> uname ~path [ "-U" ] >>| Option.bind ~f:norm
+  | _ -> uname ~path [ "-r" ] >>| Option.bind ~f:norm
 ;;
 
 let os_distribution ~path =
-  let* os = os ~path in
-  match os with
+  os ~path
+  >>= function
   | Some "macos" as macos ->
+    Fiber.return
+    @@
     if Bin.which ~path "brew" <> None
-    then Fiber.return @@ Some "homebrew"
+    then Some "homebrew"
     else if Bin.which ~path "port" <> None
-    then Fiber.return @@ Some "macports"
-    else Fiber.return macos
+    then Some "macports"
+    else macos
   | Some "linux" as linux ->
-    let* is_android = is_android ~path in
-    (match is_android with
+    is_android ~path
+    >>= (function
      | true -> Fiber.return @@ Some "android"
      | false ->
-       let* id = os_release_field "ID" in
-       (match id with
+       os_release_field "ID"
+       >>= (function
         | Some os_release_field -> Fiber.return @@ norm os_release_field
         | None ->
-          let+ lsb_release = lsb_release ~path [ "-i"; "-s" ] in
-          (match lsb_release with
+          lsb_release ~path [ "-i"; "-s" ]
+          >>| (function
            | Some lsb_release -> norm lsb_release
            | None ->
-             let candidates =
-               [ "/etc/redhat-release"
-               ; "/etc/centos-release"
-               ; "/etc/gentoo-release"
-               ; "/etc/issue"
-               ]
-               |> List.map ~f:path_of_string
-             in
-             (match List.find ~f:Path.exists candidates with
+             (match
+                [ "/etc/redhat-release"
+                ; "/etc/centos-release"
+                ; "/etc/gentoo-release"
+                ; "/etc/issue"
+                ]
+                |> List.map ~f:path_of_string
+                |> List.find ~f:Path.exists
+              with
               | None -> linux
               | Some release_file ->
                 (match Io.lines_of_file release_file with
@@ -180,11 +170,11 @@ let os_distribution ~path =
 ;;
 
 let os_family ~path =
-  let* os = os ~path in
-  match os with
+  os ~path
+  >>= function
   | Some "linux" ->
-    let* id_like = os_release_field "ID_LIKE" in
-    (match id_like with
+    os_release_field "ID_LIKE"
+    >>= (function
      | None -> os_distribution ~path
      | Some s ->
        (* first word *)
@@ -210,21 +200,16 @@ let solver_env_from_current_system ~path =
   in
   (* TODO this will rerun `uname` multiple times with the same arguments
      unless it is memoized *)
-  let+ mappings =
-    Fiber.all
-      [ entry Variable_name.arch arch
-      ; entry Variable_name.os os
-      ; entry Variable_name.os_version os_version
-      ; entry Variable_name.os_distribution os_distribution
-      ; entry Variable_name.os_family os_family
-      ; entry Variable_name.sys_ocaml_version sys_ocaml_version
-      ]
-  in
-  List.fold_left
-    ~init:Solver_env.empty
-    ~f:(fun solver_env (var, data) ->
-      match data with
-      | Some value -> Solver_env.set solver_env var value
-      | None -> solver_env)
-    mappings
+  Fiber.all
+    [ entry Variable_name.arch arch
+    ; entry Variable_name.os os
+    ; entry Variable_name.os_version os_version
+    ; entry Variable_name.os_distribution os_distribution
+    ; entry Variable_name.os_family os_family
+    ; entry Variable_name.sys_ocaml_version sys_ocaml_version
+    ]
+  >>| List.fold_left ~init:Solver_env.empty ~f:(fun solver_env (var, data) ->
+    match data with
+    | Some value -> Solver_env.set solver_env var value
+    | None -> solver_env)
 ;;

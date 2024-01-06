@@ -81,12 +81,6 @@
    (<> %{ocaml-config:system} macosx)
    (<> %{ocaml-config:system} win))))
 
-(cram
- (applies_to ppx-rewriter)
- (deps
-  (package ppxlib)
-  %{bin:ocamlfind}))
-
 (subdir
  cram
  ;  mac has a different sh error message

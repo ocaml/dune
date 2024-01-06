@@ -1,0 +1,5 @@
+(cram
+ (applies_to ppx-rewriter)
+ (deps
+  (package ppxlib)
+  %{bin:ocamlfind}))

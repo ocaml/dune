@@ -38,6 +38,9 @@ Create a workspace config that defines separate build contexts for macos and lin
   >  (repositories mock)
   >  (solver_env
   >   (os macos)))
+  > (lock_dir
+  >  (path dune.lock)
+  >  (repositories mock))
   > (context
   >  (default
   >   (name linux)

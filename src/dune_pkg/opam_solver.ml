@@ -1,6 +1,5 @@
 open Import
 open Fiber.O
-module With_file = Opam_repo.With_file
 
 module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
   type 'a t = 'a Fiber.t
@@ -43,7 +42,7 @@ module Context_for_dune = struct
   ;;
 
   type candidates =
-    { resolved : With_file.t OpamPackage.Version.Map.t
+    { resolved : Resolved_package.t OpamPackage.Version.Map.t
     ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
     }
 
@@ -177,9 +176,12 @@ module Context_for_dune = struct
                message. *)
             OpamPackage.Version.Map.values resolved
             |> List.sort ~compare:(fun p1 p2 ->
-              opam_version_compare t (With_file.opam_file p1) (With_file.opam_file p2))
-            |> List.map ~f:(fun with_file ->
-              let opam_file = With_file.opam_file with_file in
+              opam_version_compare
+                t
+                (Resolved_package.opam_file p1)
+                (Resolved_package.opam_file p2))
+            |> List.map ~f:(fun resolved_package ->
+              let opam_file = Resolved_package.opam_file resolved_package in
               let opam_file_result =
                 if is_opam_available t opam_file then Ok opam_file else Error Unavailable
               in
@@ -384,7 +386,7 @@ let filter_to_blang ~package ~loc filter =
   filter_to_blang filter
 ;;
 
-let simplify_filter solver_env =
+let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
     | Global ->
@@ -395,9 +397,7 @@ let simplify_filter solver_env =
            test dependencies for non-local packages, so "with-test" always
            evaluates to "false". *)
         Some (B false)
-      else
-        Solver_env.get solver_env name
-        |> Option.map ~f:Variable_value.to_opam_variable_contents
+      else get_solver_var name |> Option.map ~f:Variable_value.to_opam_variable_contents
     | _ -> None)
 ;;
 
@@ -410,15 +410,20 @@ let partial_eval_filter = function
      | b -> if b then `Filter None else `Skip)
 ;;
 
-let opam_commands_to_actions solver_env loc package (commands : OpamTypes.command list) =
+let opam_commands_to_actions
+  get_solver_var
+  loc
+  package
+  (commands : OpamTypes.command list)
+  =
   List.filter_map commands ~f:(fun (args, filter) ->
-    let filter = Option.map filter ~f:(simplify_filter solver_env) in
+    let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
     match partial_eval_filter filter with
     | `Skip -> None
     | `Filter filter ->
       let terms =
         List.filter_map args ~f:(fun (simple_arg, filter) ->
-          let filter = Option.map filter ~f:(simplify_filter solver_env) in
+          let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
           match partial_eval_filter filter with
           | `Skip -> None
           | `Filter filter ->
@@ -480,23 +485,22 @@ let make_action = function
 
 let opam_package_to_lock_file_pkg
   solver_env
+  stats_updater
   version_by_package_name
   opam_package
   ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
-  let name = OpamPackage.name opam_package in
+  let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
   let opam_file, loc =
-    let with_file =
-      (let key = Package_name.of_opam_package_name name in
-       Table.find_exn candidates_cache key)
-        .resolved
+    let resolved_package =
+      (Table.find_exn candidates_cache name).resolved
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
-    let opam_file = With_file.opam_file with_file in
-    let loc = Loc.in_file (With_file.file with_file) in
+    let opam_file = Resolved_package.opam_file resolved_package in
+    let loc = Loc.in_file (Resolved_package.file resolved_package) in
     opam_file, loc
   in
   let extra_sources =
@@ -524,7 +528,7 @@ let opam_package_to_lock_file_pkg
         let url = Loc.none, OpamFile.URL.url url in
         Source.Fetch { url; checksum })
     in
-    { Lock_dir.Pkg_info.name = Package_name.of_opam_package_name name
+    { Lock_dir.Pkg_info.name
     ; version
     ; (* CR-rgrinberg: should be true for pinned packages or without a checksum *)
       dev = false
@@ -557,6 +561,10 @@ let opam_package_to_lock_file_pkg
     | [] -> action
     | env_update -> Action.Withenv (env_update, action)
   in
+  let get_solver_var variable_name =
+    Solver_stats.Updater.expand_variable stats_updater variable_name;
+    Solver_env.get solver_env variable_name
+  in
   let build_command =
     let subst_step =
       OpamFile.OPAM.substs opam_file
@@ -582,7 +590,11 @@ let opam_package_to_lock_file_pkg
             , action ))
     in
     let build_step =
-      opam_commands_to_actions solver_env loc opam_package (OpamFile.OPAM.build opam_file)
+      opam_commands_to_actions
+        get_solver_var
+        loc
+        opam_package
+        (OpamFile.OPAM.build opam_file)
     in
     List.concat [ subst_step; patch_step; build_step ]
     |> make_action
@@ -590,7 +602,7 @@ let opam_package_to_lock_file_pkg
   in
   let install_command =
     OpamFile.OPAM.install opam_file
-    |> opam_commands_to_actions solver_env loc opam_package
+    |> opam_commands_to_actions get_solver_var loc opam_package
     |> make_action
     |> Option.map ~f:build_env
   in
@@ -667,7 +679,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
           ( Package_name.of_opam_package_name (OpamPackage.name package)
-          , Package_version.of_string (OpamPackage.version_to_string package) ))
+          , Package_version.of_opam_package_version (OpamPackage.version package) ))
         |> Package_name.Map.of_list_exn
       in
       (* don't include local packages in the lock dir *)
@@ -684,6 +696,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
           List.map opam_packages_to_lock ~f:(fun opam_package ->
             opam_package_to_lock_file_pkg
               solver_env
+              stats_updater
               version_by_package_name
               opam_package
               ~candidates_cache:context.candidates_cache)
@@ -730,7 +743,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
             ~expanded_solver_variable_bindings
       in
       let+ files =
-        let with_files =
+        let resolved_packages =
           List.map opam_packages_to_lock ~f:(fun opam_package ->
             let package_name =
               OpamPackage.name opam_package
@@ -742,10 +755,10 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
               (OpamPackage.version opam_package)
               candidates.resolved)
         in
-        Opam_repo.get_opam_package_files with_files
-        >>| List.map2 with_files ~f:(fun with_file entries ->
+        Resolved_package.get_opam_package_files resolved_packages
+        >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
           let package_name =
-            With_file.package with_file
+            Resolved_package.package resolved_package
             |> OpamPackage.name
             |> OpamPackage.Name.to_string
             |> Package_name.of_string

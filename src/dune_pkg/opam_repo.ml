@@ -1,22 +1,6 @@
 open Import
 open Fiber.O
 
-let rev_store =
-  let store = ref None in
-  Fiber.of_thunk (fun () ->
-    match !store with
-    | Some s -> Fiber.return s
-    | None ->
-      let dir =
-        Path.L.relative
-          (Path.of_string (Xdg.cache_dir (Lazy.force Dune_util.xdg)))
-          [ "dune"; "git-repo" ]
-      in
-      let+ rev_store = Rev_store.load_or_create ~dir in
-      store := Some rev_store;
-      rev_store)
-;;
-
 module Paths = struct
   let packages = Path.Local.of_string "packages"
 
@@ -35,45 +19,50 @@ module Paths = struct
 end
 
 module Source = struct
-  type commitish =
-    | Commit of string
-    | Branch of string
-    | Tag of string
+  module Commitish = struct
+    type t =
+      | Commit of string
+      | Branch of string
+      | Tag of string
 
-  let commitish_to_dyn = function
-    | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
-    | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
-    | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
-  ;;
+    let to_dyn = function
+      | Commit c -> Dyn.variant "Commit" [ Dyn.string c ]
+      | Branch b -> Dyn.variant "Branch" [ Dyn.string b ]
+      | Tag t -> Dyn.variant "Tag" [ Dyn.string t ]
+    ;;
 
-  let commitish_equal a b =
-    match a, b with
-    | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
-    | _, _ -> false
-  ;;
+    let equal a b =
+      match a, b with
+      | Commit x, Commit x' | Branch x, Branch x' | Tag x, Tag x' -> String.equal x x'
+      | _, _ -> false
+    ;;
+  end
 
   type t =
     { url : string
-    ; commit : commitish option
+    ; commit : Commitish.t option
     }
 
+  let url t = t.url
+  let commit t = t.commit
+
   module Private = struct
-    let of_opam_url rev_store ({ OpamUrl.hash; _ } as opam_url) =
-      (* fairly ugly to pull the rev-store out of thin air *)
+    let of_opam_url rev_store opam_url =
       let url = OpamUrl.base_url opam_url in
       let+ commit =
-        match hash with
+        match OpamUrl.rev opam_url with
         | None -> Fiber.return None
         | Some ref ->
-          (* OpamUrl doesn't distinguish between branches/tags and commits, so we need to look up *)
-          let* member = Rev_store.mem rev_store ~rev:ref in
-          (match member with
-           | true -> Fiber.return @@ Some (Commit ref)
+          (* OpamUrl doesn't distinguish between branches/tags and commits, so
+             we need to look up *)
+          Rev_store.mem rev_store ~rev:ref
+          >>= (function
+           | true -> Fiber.return @@ Some (Commitish.Commit ref)
            | false ->
-             let+ type' = Rev_store.ref_type rev_store ~source:url ~ref in
-             (match type' with
-              | Some `Tag -> Some (Tag ref)
-              | Some `Head -> Some (Branch ref)
+             Rev_store.ref_type rev_store ~source:url ~ref
+             >>| (function
+              | Some `Tag -> Some (Commitish.Tag ref)
+              | Some `Head -> Some (Commitish.Branch ref)
               | None ->
                 User_error.raise
                   ~hints:
@@ -93,100 +82,57 @@ module Source = struct
 
   let of_opam_url opam_url =
     (* fairly ugly to pull the rev-store out of thin air *)
-    let* rev_store = rev_store in
+    let* rev_store = Rev_store.get in
     Private.of_opam_url rev_store opam_url
   ;;
 
   let to_string { url; commit = _ } = url
 
   let to_dyn { url; commit } =
-    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option commitish_to_dyn commit ]
+    Dyn.record [ "url", Dyn.string url; "commit", Dyn.option Commitish.to_dyn commit ]
   ;;
 
   let equal { url; commit } t =
-    String.equal url t.url && Option.equal commitish_equal commit t.commit
+    String.equal url t.url && Option.equal Commitish.equal commit t.commit
   ;;
 end
 
 module Serializable = struct
-  type t =
-    { repo_id : Repository_id.t option
-    ; source : string
-    }
+  type t = string
 
-  let equal { repo_id; source } t =
-    Option.equal Repository_id.equal repo_id t.repo_id && String.equal source t.source
-  ;;
+  let equal = String.equal
 
-  let to_dyn { repo_id; source } =
+  let to_dyn source =
     let open Dyn in
-    variant
-      "opam_repo_serializable"
-      [ option Repository_id.to_dyn repo_id; string source ]
+    variant "opam_repo_serializable" [ string source ]
   ;;
 
-  let encode { repo_id; source } =
+  let encode source =
     let open Encoder in
-    record_fields
-      [ field "source" string source; field_o "repo_id" Repository_id.encode repo_id ]
+    record_fields [ field "source" string source ]
   ;;
 
   let decode =
     let open Decoder in
     fields
-      (let+ source = field "source" string
-       and+ repo_id = field_o "repo_id" Repository_id.decode in
-       { repo_id; source })
-  ;;
-
-  module Private = struct
-    let with_commit ~commit { repo_id; source } =
-      let repo_id =
-        match repo_id with
-        | None -> None
-        | Some repo_id as orig ->
-          let candidate_repo_id = Repository_id.of_git_hash commit in
-          (match Repository_id.equal repo_id candidate_repo_id with
-           | true -> Some (Repository_id.of_git_hash "MATCHING")
-           | false -> orig)
-      in
-      { repo_id; source }
-    ;;
-  end
-end
-
-module Backend = struct
-  type t =
-    | Directory of Path.t
-    | Repo of Rev_store.At_rev.t
-
-  let equal a b =
-    match a, b with
-    | Directory a, Directory b -> Path.equal a b
-    | Repo a, Repo b -> Rev_store.At_rev.equal a b
-    | _, _ -> false
+      (let+ source = field "source" string in
+       source)
   ;;
 end
 
 type t =
-  { source : Backend.t
+  { source : Source_backend.t
   ; serializable : Serializable.t option
   }
 
 let equal { source; serializable } t =
-  Backend.equal source t.source
+  Source_backend.equal source t.source
   && Option.equal Serializable.equal serializable t.serializable
 ;;
 
 let serializable { serializable; _ } = serializable
 
-let repo_id t =
-  let open Option.O in
-  let* serializable = serializable t in
-  serializable.repo_id
-;;
-
-let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
+let of_opam_repo_dir_path opam_repo_dir_path =
   (match Path.stat opam_repo_dir_path with
    | Error (Unix.ENOENT, _, _) ->
      User_error.raise
@@ -215,16 +161,13 @@ let of_opam_repo_dir_path ~source ~repo_id opam_repo_dir_path =
    | Error _ ->
      User_error.raise
        [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]);
-  let serializable =
-    Option.map source ~f:(fun source -> { Serializable.repo_id; source })
-  in
-  { source = Directory opam_repo_dir_path; serializable }
+  { source = Directory opam_repo_dir_path; serializable = None }
 ;;
 
-let of_git_repo ~repo_id ~update (source : Source.t) =
-  let+ at_rev, computed_repo_id =
+let of_git_repo ~update (source : Source.t) =
+  let+ at_rev =
     let* remote =
-      let* repo = rev_store in
+      let* repo = Rev_store.get in
       let branch =
         match source.commit with
         | Some (Branch b) -> Some b
@@ -235,22 +178,12 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
       | true -> Rev_store.Remote.update remote
       | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
     in
-    match repo_id with
-    | Some repo_id ->
-      let+ at_rev = Rev_store.Remote.rev_of_repository_id remote repo_id in
-      at_rev, Some repo_id
+    match source.commit with
+    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
     | None ->
-      let+ at_rev =
-        match source.commit with
-        | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-        | Some (Branch name) | Some (Tag name) ->
-          Rev_store.Remote.rev_of_name remote ~name
-        | None ->
-          let name = Rev_store.Remote.default_branch remote in
-          Rev_store.Remote.rev_of_name remote ~name
-      in
-      let repo_id = Option.map at_rev ~f:Rev_store.At_rev.repository_id in
-      at_rev, repo_id
+      let name = Rev_store.Remote.default_branch remote in
+      Rev_store.Remote.rev_of_name remote ~name
   in
   match at_rev with
   | None ->
@@ -258,162 +191,30 @@ let of_git_repo ~repo_id ~update (source : Source.t) =
       ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
       [ Pp.textf "Could not find revision in repository %s" (Source.to_string source) ]
   | Some at_rev ->
-    let serializable =
-      Some { Serializable.repo_id = computed_repo_id; source = source.url }
-    in
+    let source = at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string in
+    let serializable = Some source in
     { source = Repo at_rev; serializable }
 ;;
 
-let if_exists p =
-  match Path.exists p with
-  | false -> None
-  | true -> Some p
-;;
-
-(* Scan a path recursively down retrieving a list of all files together with their
-   relative path. *)
-let scan_files_entries path =
-  match Path.stat path with
-  | Error (Unix.ENOENT, _, _) -> []
-  | Error e -> Unix_error.Detailed.raise e
-  | _ ->
-    (try
-       Fpath.traverse_files
-         ~dir:(Path.to_string path)
-         ~init:[]
-         ~f:(fun ~dir filename acc ->
-           let local_path = Path.Local.relative (Path.Local.of_string dir) filename in
-           local_path :: acc)
-     with
-     | Unix.Unix_error (err, a, e) ->
-       User_error.raise
-         ~loc:(Loc.in_file path)
-         [ Pp.text "Unable to read file in opam repository:"
-         ; Unix_error.Detailed.pp (err, a, e)
-         ])
-;;
-
-module With_file = struct
-  type extra_files =
-    | Inside_files_dir
-    | Git_files of Rev_store.File.t list
-
-  type nonrec t =
-    { opam_file : OpamFile.OPAM.t
-    ; package : OpamPackage.t
-    ; opam_file_path : Path.Local.t
-    ; repo : t
-    ; extra_files : extra_files
-    }
-
-  let file t =
-    match t.repo.source with
-    | Directory d -> Path.append_local d t.opam_file_path
-    | Repo _ ->
-      (* XXX fake path *)
-      Path.source @@ Path.Source.of_local t.opam_file_path
-  ;;
-
-  let package t = t.package
-  let opam_file t = t.opam_file
-  let repo t = t.repo
-end
-
 let load_opam_package_from_dir ~(dir : Path.t) package =
   let opam_file_path = Paths.opam_file package in
-  Path.append_local dir opam_file_path
-  |> if_exists
-  |> Option.map ~f:(fun opam_file_path_in_repo ->
-    let opam_file =
-      Path.to_string opam_file_path_in_repo
-      |> OpamFilename.raw
-      |> OpamFile.make
-      |> OpamFile.OPAM.read
-    in
-    { With_file.opam_file
-    ; package
-    ; opam_file_path
-    ; repo = { source = Backend.Directory dir; serializable = None }
-    ; extra_files = With_file.Inside_files_dir
-    })
-;;
-
-let get_opam_package_files with_files =
-  let indexed = List.mapi with_files ~f:(fun i w -> i, w) |> Int.Map.of_list_exn in
-  let from_dirs, from_git =
-    Int.Map.partition_map indexed ~f:(fun (with_file : With_file.t) ->
-      match with_file.extra_files with
-      | Git_files files -> Right (with_file.package, files)
-      | Inside_files_dir ->
-        let dir =
-          match with_file.repo.source with
-          | Directory root -> Path.append_local root (Paths.files_dir with_file.package)
-          | Repo _ -> assert false
-        in
-        Left dir)
-  in
-  let+ from_git =
-    if Int.Map.is_empty from_git
-    then Fiber.return []
-    else (
-      let files_with_idx =
-        Int.Map.to_list from_git
-        |> List.concat_map ~f:(fun (idx, (package, files)) ->
-          List.map files ~f:(fun file -> idx, package, file))
-      in
-      let* rev_store = rev_store in
-      List.map files_with_idx ~f:(fun (_, _, file) -> file)
-      |> Rev_store.content_of_files rev_store
-      >>| List.map2 files_with_idx ~f:(fun (idx, package, file) content ->
-        let entry =
-          let local_file =
-            Path.Local.descendant
-              ~of_:(Paths.files_dir package)
-              (Rev_store.File.path file)
-            |> Option.value_exn
-          in
-          { File_entry.local_file; original = Content content }
-        in
-        idx, entry))
-  in
-  let from_dirs =
-    Int.Map.to_list from_dirs
-    |> List.concat_map ~f:(fun (idx, files_dir) ->
-      scan_files_entries files_dir
-      |> List.map ~f:(fun local_file ->
-        ( idx
-        , { File_entry.original = Path (Path.append_local files_dir local_file)
-          ; local_file
-          } )))
-  in
-  List.rev_append from_git from_dirs
-  |> Int.Map.of_list_multi
-  |> Int.Map.merge indexed ~f:(fun _ pkg files ->
-    match pkg with
-    | None -> assert false
-    | Some _ -> Some (Option.value files ~default:[]))
-  |> Int.Map.values
+  match Path.exists (Path.append_local dir opam_file_path) with
+  | false -> None
+  | true ->
+    let files_dir = Paths.files_dir package in
+    Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir)
 ;;
 
 let load_packages_from_git rev_store opam_packages =
   let+ contents =
-    List.map opam_packages ~f:(fun (_, file, _, _) -> file)
+    List.map opam_packages ~f:(fun (file, _, _, _) -> file)
     |> Rev_store.content_of_files rev_store
   in
   List.map2
     opam_packages
     contents
-    ~f:(fun (repo, file, package, extra_files) opam_file_contents ->
-      let opam_file_path = Rev_store.File.path file in
-      let opam_file =
-        let filename =
-          (* the filename is used to read the version number *)
-          Path.Local.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
-        in
-        OpamFile.OPAM.read_from_string ~filename opam_file_contents
-      in
-      (* TODO the [file] here is made up *)
-      { With_file.opam_file; opam_file_path; repo; extra_files; package })
+    ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
+      Resolved_package.git_repo package ~opam_file ~opam_file_contents rev ~files_dir)
 ;;
 
 let all_packages_versions_in_dir ~dir opam_package_name =
@@ -455,12 +256,8 @@ let all_package_versions t opam_package_name =
   | Repo rev ->
     all_packages_versions_at_rev rev opam_package_name
     |> List.map ~f:(fun (file, pkg) ->
-      let extra_files : With_file.extra_files =
-        let dir = Paths.files_dir pkg in
-        Git_files
-          (Rev_store.At_rev.directory_entries rev dir |> Rev_store.File.Set.to_list)
-      in
-      `Git (file, pkg, extra_files))
+      let files_dir = Paths.files_dir pkg in
+      `Git (file, pkg, rev, files_dir))
 ;;
 
 let load_all_versions ts opam_package_name =
@@ -473,7 +270,7 @@ let load_all_versions ts opam_package_name =
         let pkg =
           match pkg with
           | `Directory pkg -> pkg
-          | `Git (_, pkg, _) -> pkg
+          | `Git (_, pkg, _, _) -> pkg
         in
         OpamPackage.version pkg
       in
@@ -483,7 +280,7 @@ let load_all_versions ts opam_package_name =
     |> OpamPackage.Version.Map.values
     |> List.partition_map ~f:(fun (repo, pkg) ->
       match pkg with
-      | `Git (file, pkg, extra_files) -> Left (repo, file, pkg, extra_files)
+      | `Git (file, pkg, rev, files_dir) -> Left (file, pkg, rev, files_dir)
       | `Directory pkg -> Right (repo, pkg))
   in
   let from_dirs =
@@ -495,28 +292,26 @@ let load_all_versions ts opam_package_name =
           []
       | Directory dir ->
         load_opam_package_from_dir ~dir pkg
-        |> Option.map ~f:(fun opam_file -> pkg, opam_file))
+        |> Option.map ~f:(fun resolved_package -> pkg, resolved_package))
   in
   let+ from_git =
     match from_git with
     | [] -> Fiber.return []
     | packages ->
-      let* rev_store = rev_store in
-      let+ opam_files = load_packages_from_git rev_store packages in
-      List.map2 opam_files packages ~f:(fun opam_file (_, _, pkg, _) -> pkg, opam_file)
+      let* rev_store = Rev_store.get in
+      let+ resolved_packages = load_packages_from_git rev_store packages in
+      List.map2 resolved_packages packages ~f:(fun resolved_package (_, pkg, _, _) ->
+        pkg, resolved_package)
   in
   from_dirs @ from_git
-  |> List.rev_map ~f:(fun (opam_package, opam_file) ->
-    OpamPackage.version opam_package, opam_file)
+  |> List.rev_map ~f:(fun (opam_package, resolved_package) ->
+    OpamPackage.version opam_package, resolved_package)
   |> OpamPackage.Version.Map.of_list
 ;;
 
 module Private = struct
-  let create ~source ~repo_id =
+  let create ~source:serializable =
     let packages_dir_path = Path.of_string "/" in
-    let serializable =
-      Option.map source ~f:(fun source -> { Serializable.repo_id; source })
-    in
     { source = Directory packages_dir_path; serializable }
   ;;
 end

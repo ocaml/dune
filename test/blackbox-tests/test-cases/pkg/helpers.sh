@@ -1,3 +1,5 @@
+export XDG_CACHE_HOME="$PWD/.cache"
+
 dune="dune"
 
 pkg_root="_build/_private/default/.pkg"

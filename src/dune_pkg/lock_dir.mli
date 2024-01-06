@@ -84,10 +84,6 @@ end
 
 val read_disk : Path.Source.t -> t
 
-module Private : sig
-  val with_commit : commit:string -> t -> t
-end
-
 module Make_load (Io : sig
     include Monad.S
 

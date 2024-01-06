@@ -120,7 +120,7 @@ end
 let () = Hooks.End_of_build.always Metrics.reset
 
 type rule_execution_result =
-  { deps : Dep.Fact.t Dep.Map.t
+  { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
   }
 
@@ -173,7 +173,30 @@ and Exported : sig
 end = struct
   open Used_recursively
 
-  (* CR-soon amokhov: [build_dep] does some non-trivial computation, consider memoizing it. *)
+  let file_selector_stack_frame_description file_selector =
+    Pp.concat [ Pp.text (File_selector.to_dyn file_selector |> Dyn.to_string) ]
+  ;;
+
+  let build_file_selector : File_selector.t -> Dep.Fact.t Memo.t =
+    let impl file_selector =
+      let* files = eval_pred file_selector in
+      let+ fact = Dep.Fact.Files.create files ~build_file in
+      (* Fact: [file_selector] expands to the set of [files] whose digests are captured
+         via [build_file]; also, the [File_selector.dir] exists (though it may be empty) *)
+      Dep.Fact.file_selector file_selector fact
+    in
+    let memo =
+      Memo.create
+        "build_file_selector"
+        ~input:(module File_selector)
+        ~cutoff:Dep.Fact.equal
+          (* CR-someday amokhov: Pass [file_selector_stack_frame_description] here to
+             include globs into stack traces. *)
+        ?human_readable_description:None
+        impl
+    in
+    fun file_selector -> Memo.exec memo file_selector
+  ;;
 
   (* [build_dep] turns a [Dep.t] which is a description of a dependency into a
      fact about the world. To do that, it needs to do some building. *)
@@ -186,12 +209,7 @@ end = struct
       let+ digest = build_file f in
       (* Fact: file [f] has digest [digest] *)
       Dep.Fact.file f digest
-    | File_selector g ->
-      let* files = eval_pred g in
-      let+ fact = Dep.Fact.Files.create files ~build_file in
-      (* Fact: file selector [g] expands to the set of [files] whose digests are captured
-         via [build_file]; also, [File_selector.dir g] exists (though it may be empty) *)
-      Dep.Fact.file_selector g fact
+    | File_selector file_selector -> build_file_selector file_selector
     | Universe | Env _ ->
       (* Facts about these dependencies are constructed in
          [Dep.Facts.digest]. *)
@@ -231,7 +249,7 @@ end = struct
 
   let compute_rule_digest
     (rule : Rule.t)
-    ~deps
+    ~facts
     ~action
     ~sandbox_mode
     ~execution_parameters
@@ -252,7 +270,7 @@ end = struct
     let trace =
       ( rule_digest_version (* Update when changing the rule digest scheme. *)
       , sandbox_mode
-      , Dep.Facts.digest deps ~env
+      , Dep.Facts.digest facts ~env
       , target_paths rule.targets.files @ target_paths rule.targets.dirs
       , Action.for_shell action
       , can_go_in_shared_cache
@@ -310,7 +328,7 @@ end = struct
     ~rule_kind
     ~rule_digest
     ~action
-    ~deps
+    ~facts
     ~loc
     ~execution_parameters
     ~sandbox_mode
@@ -322,19 +340,24 @@ end = struct
       action
     in
     let* dune_stats = Scheduler.stats () in
+    let deps =
+      Dep.Facts.paths
+        ~expand_aliases:
+          (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
+        facts
+    in
     let* sandbox =
       match sandbox_mode with
       | Some mode ->
         let+ sandbox =
           Sandbox.create
             ~mode
+            ~dirs:(Dep.Facts.necessary_dirs_for_sandboxing facts)
             ~deps
             ~rule_dir:targets.root
             ~rule_loc:loc
             ~rule_digest
             ~dune_stats
-            ~expand_aliases:
-              (Execution_parameters.expand_aliases_in_sandbox execution_parameters)
         in
         Some sandbox
       | None ->
@@ -456,7 +479,7 @@ end = struct
        function [(Build_config.get ()).execution_parameters] is likely
        memoized, and the result is not expected to change often, so we do not
        sacrifice too much performance here by executing it sequentially. *)
-    let* action, deps = Action_builder.evaluate_and_collect_facts action in
+    let* action, facts = Action_builder.evaluate_and_collect_facts action in
     let wrap_fiber f =
       Memo.of_reproducible_fiber
         (if Loc.is_none loc
@@ -505,10 +528,10 @@ end = struct
           | Anonymous_action a -> a.attached_to_alias
         in
         let force_rerun = !Clflags.force && is_test in
-        force_rerun || Dep.Map.has_universe deps
+        force_rerun || Dep.Map.has_universe facts
       in
       let rule_digest =
-        compute_rule_digest rule ~deps ~action ~sandbox_mode ~execution_parameters
+        compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
       in
       let can_go_in_shared_cache =
         action.can_go_in_shared_cache
@@ -569,7 +592,7 @@ end = struct
                   ~rule_kind
                   ~rule_digest
                   ~action
-                  ~deps
+                  ~facts
                   ~loc
                   ~execution_parameters
                   ~sandbox_mode
@@ -614,7 +637,7 @@ end = struct
     (* jeremidimino: We need to include the dependencies discovered while
        running the action here. Otherwise, package dependencies are broken in
        the presence of dynamic actions. *)
-    >>| fun produced_targets -> { deps; targets = produced_targets }
+    >>| fun produced_targets -> { facts; targets = produced_targets }
   ;;
 
   module Anonymous_action = struct
@@ -659,7 +682,7 @@ end = struct
         ~mode:Standard
         (Action_builder.record act.action deps ~f:build_dep)
     in
-    let+ { deps = _; targets = _ } =
+    let+ { facts = _; targets = _ } =
       execute_rule_impl
         rule
         ~rule_kind:
@@ -800,7 +823,7 @@ end = struct
     >>= function
     | Source digest -> Memo.return (digest, File_target)
     | Rule (path, rule) ->
-      let+ { deps = _; targets } =
+      let+ { facts = _; targets } =
         Memo.push_stack_frame
           (fun () -> execute_rule rule)
           ~human_readable_description:(fun () ->
@@ -932,12 +955,7 @@ end = struct
   let eval_pred_memo =
     Memo.create
       "eval-pred"
-      ~human_readable_description:(fun glob ->
-        Pp.concat
-          [ Pp.textf
-              "Evaluating predicate in directory %s"
-              (Path.to_string_maybe_quoted (File_selector.dir glob))
-          ])
+      ~human_readable_description:file_selector_stack_frame_description
       ~input:(module File_selector)
       ~cutoff:Filename_set.equal
       eval_pred_impl

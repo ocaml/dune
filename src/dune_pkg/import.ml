@@ -25,3 +25,5 @@ include struct
   module Process = Process
   module Display = Display
 end
+
+module OpamUrl = OpamUrl0

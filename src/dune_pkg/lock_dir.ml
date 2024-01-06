@@ -62,12 +62,13 @@ module Pkg = struct
          t.exported_env
   ;;
 
-  let remove_locs t =
-    { t with
-      info = Pkg_info.remove_locs t.info
+  let remove_locs { build_command; install_command; deps; info; exported_env } =
+    { info = Pkg_info.remove_locs info
     ; exported_env =
-        List.map t.exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
-    ; deps = List.map t.deps ~f:(fun (_, pkg) -> Loc.none, pkg)
+        List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
+    ; deps = List.map deps ~f:(fun (_, pkg) -> Loc.none, pkg)
+    ; build_command = Option.map build_command ~f:Action.remove_locs
+    ; install_command = Option.map install_command ~f:Action.remove_locs
     }
   ;;
 
@@ -296,20 +297,17 @@ let create_latest_version
   (match validate_packages packages with
    | Ok () -> ()
    | Error (`Missing_dependencies missing_dependencies) ->
-     Code_error.raise
-       "Invalid package table"
-       (List.map
-          missing_dependencies
-          ~f:(fun { dependant_package; dependency; loc = _ } ->
-            ( "missing dependency"
-            , Dyn.record
-                [ "missing package", Package_name.to_dyn dependency
-                ; "dependency of", Package_name.to_dyn dependant_package.info.name
-                ] ))));
+     List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
+       ( "missing dependency"
+       , Dyn.record
+           [ "missing package", Package_name.to_dyn dependency
+           ; "dependency of", Package_name.to_dyn dependant_package.info.name
+           ] ))
+     |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
   let dependency_hash =
     Local_package.(
-      Dependency_set.hash (For_solver.list_non_local_dependency_set local_packages))
+      For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
   let complete, used =
@@ -320,17 +318,13 @@ let create_latest_version
       let complete = Int.equal (List.length repos) (List.length used) in
       complete, Some used
   in
-  let repos : Repositories.t = { complete; used } in
-  let t =
-    { version
-    ; dependency_hash
-    ; packages
-    ; ocaml
-    ; repos
-    ; expanded_solver_variable_bindings
-    }
-  in
-  t
+  { version
+  ; dependency_hash
+  ; packages
+  ; ocaml
+  ; repos = { complete; used }
+  ; expanded_solver_variable_bindings
+  }
 ;;
 
 let default_path = Path.Source.(relative root "dune.lock")
@@ -406,7 +400,7 @@ module Package_filename = struct
 
   let to_package_name package_filename =
     if String.equal (Filename.extension package_filename) file_extension
-    then Ok (Filename.chop_extension package_filename |> Package_name.of_string)
+    then Ok (Filename.remove_extension package_filename |> Package_name.of_string)
     else Error `Bad_extension
   ;;
 end
@@ -712,28 +706,10 @@ let compute_missing_checksums t =
   let open Fiber.O in
   let+ packages =
     Package_name.Map.to_list t.packages
-    |> List.map ~f:(fun (name, pkg) ->
+    |> Fiber.parallel_map ~f:(fun (name, pkg) ->
       let+ pkg = Pkg.compute_missing_checksum pkg in
       name, pkg)
-    |> Fiber.all_concurrently
     >>| Package_name.Map.of_list_exn
   in
   { t with packages }
 ;;
-
-module Private = struct
-  let used_with_commit ~commit xs =
-    List.map xs ~f:(fun serializable ->
-      Opam_repo.Serializable.Private.with_commit ~commit serializable)
-  ;;
-
-  let repos_with_commit ~commit ({ Repositories.used; _ } as repos) =
-    let used = Option.map used ~f:(used_with_commit ~commit) in
-    { repos with used }
-  ;;
-
-  let with_commit ~commit ({ repos; _ } as lock_dir) =
-    let repos = repos_with_commit ~commit repos in
-    { lock_dir with repos }
-  ;;
-end

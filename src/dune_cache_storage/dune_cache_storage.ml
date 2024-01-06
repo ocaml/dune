@@ -338,3 +338,24 @@ let with_temp_file ?(prefix = "dune") ~suffix f =
 let with_temp_dir ?(prefix = "dune") ~suffix f =
   Fiber_util.Temp.with_temp_dir ~parent_dir:Layout.temp_dir ~prefix ~suffix ~f
 ;;
+
+let clear () =
+  let rm_rf path = Path.rm_rf ~allow_external:true path in
+  let rmdir path =
+    try Path.rmdir path with
+    | Unix.Unix_error ((ENOENT | ENOTEMPTY), _, _) -> ()
+  in
+  let rm_rf_all versions dir =
+    List.iter versions ~f:(fun version ->
+      let dir = dir version in
+      rm_rf dir;
+      Option.iter ~f:rmdir (Path.parent dir))
+  in
+  rm_rf_all Version.Metadata.all Layout.Versioned.metadata_storage_dir;
+  rm_rf_all Version.File.all Layout.Versioned.file_storage_dir;
+  rm_rf_all Version.Value.all Layout.Versioned.value_storage_dir;
+  rm_rf Layout.temp_dir;
+  (* Do not catch errors when deleting the root directory so that they are
+     reported to the user. *)
+  Path.rmdir Layout.root_dir
+;;

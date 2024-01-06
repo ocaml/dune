@@ -45,6 +45,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
                   Dune_lang.Package_name.to_string name |> Pp.verbatim)
               ; Pp.text "were not found in the following opam repositories:" |> Pp.hovbox
               ; Pp.enumerate repos ~f:(fun repo ->
+                  (* CR-rgrinberg: why are we outputting [Dyn.t] in error
+                     messages? *)
                   Opam_repo.serializable repo
                   |> Dyn.option Opam_repo.Serializable.to_dyn
                   |> Dyn.pp)

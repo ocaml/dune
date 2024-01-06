@@ -22,7 +22,9 @@ Demonstrate our support for pin-depends.
 Local pinned source:
 
   $ mkdir _bar_file
-  $ touch _bar_file
+  $ cat >_bar_file/opam <<EOF
+  > opam-version: "2.0"
+  > EOF
   $ runtest "file://$PWD/_bar_file"
   Solution for dune.lock:
   - bar.0.0.1
@@ -33,6 +35,11 @@ Git pinned source:
   $ mkdir _bar_git
   $ cd _bar_git
   $ git init --quiet
+  $ cat >opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ git add -A
+  $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/_bar_git"
   Solution for dune.lock:

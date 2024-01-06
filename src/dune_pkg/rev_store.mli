@@ -17,7 +17,7 @@ module At_rev : sig
   val content : t -> Path.Local.t -> string option Fiber.t
   val directory_entries : t -> Path.Local.t -> File.Set.t
   val equal : t -> t -> bool
-  val repository_id : t -> Repository_id.t
+  val opam_url : t -> OpamUrl.t
   val check_out : t -> target:Path.t -> unit Fiber.t
 end
 
@@ -40,7 +40,6 @@ module Remote : sig
   val default_branch : t -> string
   val rev_of_name : t -> name:string -> At_rev.t option Fiber.t
   val rev_of_ref : t -> ref:string -> At_rev.t option Fiber.t
-  val rev_of_repository_id : t -> Repository_id.t -> At_rev.t option Fiber.t
 end
 
 val content_of_files : t -> File.t list -> string list Fiber.t
@@ -59,3 +58,4 @@ val add_repo : t -> source:string -> branch:string option -> Remote.uninit Fiber
 val mem : t -> rev:string -> bool Fiber.t
 
 val ref_type : t -> source:string -> ref:string -> [ `Head | `Tag ] option Fiber.t
+val get : t Fiber.t

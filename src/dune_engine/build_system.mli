@@ -42,7 +42,7 @@ val execute_action_stdout
   -> string Memo.t
 
 type rule_execution_result =
-  { deps : Dep.Fact.t Dep.Map.t
+  { facts : Dep.Fact.t Dep.Map.t
   ; targets : Digest.t Targets.Produced.t
   }
 

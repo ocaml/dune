@@ -13,6 +13,9 @@ Here we observe the documentation for the dune cache commands.
          functionality soon.
   
   COMMANDS
+         clear [OPTION]…
+             Clear the Dune cache.
+  
          size [--machine-readable] [OPTION]…
              Query the size of the Dune cache.
   

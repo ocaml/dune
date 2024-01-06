@@ -96,9 +96,11 @@ let os_release_field field =
         match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
         | Error _ -> None
         | Ok (key, v) ->
-          (match Scanf.sscanf v "\"%s@\"" Fun.id with
-           | Error _ -> Some (key, v)
-           | Ok contents -> Some (key, contents)))
+          Some
+            ( key
+            , match Scanf.sscanf v "\"%s@\"" Fun.id with
+              | Error _ -> v
+              | Ok contents -> contents ))
     in
     Fiber.return @@ List.assoc mappings field
 ;;

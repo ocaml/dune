@@ -522,7 +522,8 @@ let create_inotifylib ~scheduler ~should_exclude =
   { kind = Inotify inotify; sync_table }
 ;;
 
-let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
+let fsevents_callback ?exclusion_paths ?should_exclude (scheduler : Scheduler.t) ~f events
+  =
   let skip_path =
     (* excluding a [path] will exclude children under [path] but not [path]
        itself. Hence we need to skip [path] manually *)
@@ -535,13 +536,21 @@ let fsevents_callback ?exclusion_paths (scheduler : Scheduler.t) ~f events =
       let path =
         Fsevents.Event.path event |> Path.of_string |> Path.Expert.try_localize_external
       in
-      if skip_path path then None else f event path))
+      let ignore_event =
+        skip_path path
+        || Option.map should_exclude ~f:(fun p -> p (Path.to_string path))
+           |> Option.value ~default:false
+      in
+      if ignore_event then None else f event path))
 ;;
 
-let fsevents ?exclusion_paths ~latency ~paths scheduler f =
+let fsevents ?exclusion_paths ?should_exclude ~latency ~paths scheduler f =
   let paths = List.map paths ~f:Path.to_absolute_filename in
   let fsevents =
-    Fsevents.create ~latency ~paths ~f:(fsevents_callback ?exclusion_paths scheduler ~f)
+    Fsevents.create
+      ~latency
+      ~paths
+      ~f:(fsevents_callback ?exclusion_paths ?should_exclude scheduler ~f)
   in
   Option.iter exclusion_paths ~f:(fun paths ->
     let paths = List.rev_map paths ~f:Path.to_absolute_filename in
@@ -560,7 +569,7 @@ let fsevents_standard_event event path =
   Some (Event.Fs_memo_event { Fs_memo_event.kind; path })
 ;;
 
-let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
+let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) ~should_exclude () =
   prepare_sync ();
   let sync_table = Table.create (module String) 64 in
   let sync =
@@ -588,7 +597,13 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) () =
       :: ([ "_esy"; "_opam"; ".git"; ".hg" ]
           |> List.rev_map ~f:(Path.relative (Path.source Path.Source.root)))
     in
-    fsevents ~latency scheduler ~exclusion_paths ~paths fsevents_standard_event
+    fsevents
+      ~latency
+      scheduler
+      ~exclusion_paths
+      ~should_exclude
+      ~paths
+      fsevents_standard_event
   in
   let cv = Condition.create () in
   let dispatch_queue_ref = ref None in
@@ -684,7 +699,7 @@ let create_default ?fsevents_debounce ~watch_exclusions ~scheduler () =
       ~debounce_interval:(Some 0.5 (* seconds *))
       ~backend
       ~watch_exclusions
-  | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ()
+  | `Fsevents -> create_fsevents ?latency:fsevents_debounce ~scheduler ~should_exclude ()
   | `Inotify_lib -> create_inotifylib ~scheduler ~should_exclude
   | `Fswatch_win ->
     create_fswatch_win

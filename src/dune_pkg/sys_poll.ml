@@ -118,10 +118,10 @@ let os_version ~path =
     >>| Option.bind ~f:norm
   | Some "win32" ->
     let major, minor, build, _ = OpamStubs.getWindowsVersion () in
-    OpamStd.Option.some @@ Printf.sprintf "%d.%d.%d" major minor build |> Fiber.return
+    Some (Printf.sprintf "%d.%d.%d" major minor build) |> Fiber.return
   | Some "cygwin" ->
-    let+ cmd = run_capture_line ~path ~prog:"cmd" ~args:[ "/C"; "ver" ] in
-    Option.bind cmd ~f:(fun s ->
+    run_capture_line ~path ~prog:"cmd" ~args:[ "/C"; "ver" ]
+    >>| Option.bind ~f:(fun s ->
       match Scanf.sscanf s "%_s@[ Version %s@]" Fun.id with
       | Ok s -> norm s
       | Error _ -> None)
@@ -162,14 +162,11 @@ let os_distribution ~path =
                   ; "/etc/issue"
                   ]
               with
-              | None -> linux
-              | Some release_lines ->
-                (match release_lines with
-                 | [] -> linux
-                 | s :: _ ->
-                   (match Scanf.sscanf s " %s " Fun.id with
-                    | Error _ -> linux
-                    | Ok s -> norm s))))))
+              | None | Some [] -> linux
+              | Some (s :: _) ->
+                (match Scanf.sscanf s " %s " Fun.id with
+                 | Error _ -> linux
+                 | Ok s -> norm s)))))
   | os -> Fiber.return os
 ;;
 

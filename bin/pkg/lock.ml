@@ -112,8 +112,8 @@ let lock ~version_preference ~update_opam_repositories ~lock_dirs_arg =
   let open Fiber.O in
   let* workspace = Memo.run (Workspace.workspace ())
   and* solver_env_from_current_system =
-    Dune_pkg.Sys_poll.solver_env_from_current_system
-      ~path:(Env_path.path Stdune.Env.initial)
+    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+    |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
   in
   solve

@@ -64,11 +64,11 @@ module File = struct
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.of_ast project in
       (let open Option.O in
-       let* a_ast = Cst.abstract a in
-       let+ b_ast = Cst.abstract b in
-       let a_asts = of_ast a_ast in
-       let b_asts = of_ast b_ast in
-       List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts)
+      let* a_ast = Cst.abstract a in
+      let+ b_ast = Cst.abstract b in
+      let a_asts = of_ast a_ast in
+      let b_asts = of_ast b_ast in
+      List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts)
       |> Option.value ~default:false
     ;;
 
@@ -86,18 +86,18 @@ module File = struct
       | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f ->
         (match find_conflicting project stanzas f.content with
-         | None -> Dune { f with content = f.content @ stanzas }
-         | Some (a, b) ->
-           User_error.raise
-             [ Pp.text "Updating existing stanzas is not yet supported."
-             ; Pp.text "A preexisting dune stanza conflicts with a generated stanza:"
-             ; Pp.nop
-             ; Pp.text "Generated stanza:"
-             ; pp a
-             ; Pp.nop
-             ; Pp.text "Pre-existing stanza:"
-             ; pp b
-             ])
+        | None -> Dune { f with content = f.content @ stanzas }
+        | Some (a, b) ->
+          User_error.raise
+            [ Pp.text "Updating existing stanzas is not yet supported."
+            ; Pp.text "A preexisting dune stanza conflicts with a generated stanza:"
+            ; Pp.nop
+            ; Pp.text "Generated stanza:"
+            ; pp a
+            ; Pp.nop
+            ; Pp.text "Pre-existing stanza:"
+            ; pp b
+            ])
     ;;
   end
 
@@ -378,7 +378,7 @@ module Component = struct
       |> Dune_project.set_generate_opam_files opam_file_gen
       |> Dune_project.encode
       |> List.map ~f:(fun exp ->
-        exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
+             exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
       |> fun cst ->
       List.append
         cst
@@ -520,47 +520,40 @@ module Component = struct
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
         let default_files =
-          let exists =
-            Path.exists (Path.relative dir ".ocamlformat")
-            && Path.exists (Path.relative dir ".gitignore")
-          in
           let fmt_version =
             try
               let ic = Unix.open_process_in "ocamlformat --version" in
               let version = input_line ic in
               let _ = Unix.close_process_in ic in
               (let open Pp.O in
-               Console.print_user_message
-                 (User_message.make
-                    [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
-                      ++ Pp.textf ": using ocamlversion number %s" version
-                    ]));
+              Console.print_user_message
+                (User_message.make
+                   [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
+                     ++ Pp.textf ": using ocamlversion number %s" version
+                   ]));
               version
             with
             | _ ->
               (let open Pp.O in
-               Console.print_user_message
-                 (User_message.make
-                    [ Pp.tag User_message.Style.Warning (Pp.verbatim "Format")
-                      ++ Pp.textf ": couldn't get the ocamlformat version number."
-                    ]);
-               Console.print_user_message
-                 (User_message.make
-                    [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
-                      ++ Pp.textf ": Are you sure you have ocamlformat installed ?"
-                    ]));
+              Console.print_user_message
+                (User_message.make
+                   [ Pp.tag User_message.Style.Warning (Pp.verbatim "Format")
+                     ++ Pp.textf ": couldn't get the ocamlformat version number."
+                   ]);
+              Console.print_user_message
+                (User_message.make
+                   [ Pp.tag User_message.Style.Hint (Pp.verbatim "Format")
+                     ++ Pp.textf ": Are you sure you have ocamlformat installed ?"
+                   ]));
               ""
           in
-          if exists
-          then []
-          else
-            (* get the current ocamlversion *)
-            [ File.make_text
-                dir
-                ".ocamlformat"
-                (if fmt_version = "" then "" else "version = \"" ^ fmt_version ^ "\"\n")
-            ; File.make_text dir ".gitignore" "_build/"
-            ]
+          (* get the current ocamlversion *)
+          [ File.make_text
+              dir
+              ".ocamlformat"
+              (if fmt_version = "" then "" else "version = \"" ^ fmt_version ^ "\"\n")
+          ; File.make_text dir ".gitignore" "_build/"
+          ]
         in
         { dir; files = (dune_project_file dir opts :: package_files) @ default_files }
       in

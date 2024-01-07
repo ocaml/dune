@@ -142,25 +142,23 @@ end = struct
   ;;
 
   let print_merlin_conf file =
-    let+ answer =
-      let+ file = to_local file in
-      match file with
-      | Error s -> Merlin_conf.make_error s
-      | Ok file -> load_merlin_file file
-    in
-    Merlin_conf.to_stdout answer
+    to_local file
+    >>| (function
+           | Error s -> Merlin_conf.make_error s
+           | Ok file -> load_merlin_file file)
+    >>| Merlin_conf.to_stdout
   ;;
 
   let dump s =
-    let+ file = to_local s in
-    match file with
+    to_local s
+    >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
   ;;
 
   let dump_dot_merlin s =
-    let+ file = to_local s in
-    match file with
+    to_local s
+    >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
       let files = get_merlin_files_paths path in
@@ -195,9 +193,13 @@ module Dump_config = struct
   let term =
     let+ builder = Common.Builder.term
     and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH") in
-    let builder = Common.Builder.forbid_builds builder in
-    let builder = Common.Builder.disable_log_file builder in
-    let common, config = Common.init builder in
+    let common, config =
+      let builder =
+        let builder = Common.Builder.forbid_builds builder in
+        Common.Builder.disable_log_file builder
+      in
+      Common.init builder
+    in
     Scheduler.go ~common ~config (fun () -> Server.dump dir)
   ;;
 
@@ -221,9 +223,13 @@ let start_session_info name = Cmd.info name ~doc ~man
 
 let start_session_term =
   let+ builder = Common.Builder.term in
-  let builder = Common.Builder.forbid_builds builder in
-  let builder = Common.Builder.disable_log_file builder in
-  let common, config = Common.init builder in
+  let common, config =
+    let builder =
+      let builder = Common.Builder.forbid_builds builder in
+      Common.Builder.disable_log_file builder
+    in
+    Common.init builder
+  in
   Scheduler.go ~common ~config Server.start
 ;;
 
@@ -259,9 +265,13 @@ module Dump_dot_merlin = struct
               "The path to the folder of which the configuration should be printed. \
                Defaults to the current directory.")
     in
-    let builder = Common.Builder.forbid_builds builder in
-    let builder = Common.Builder.disable_log_file builder in
-    let common, config = Common.init builder in
+    let common, config =
+      let builder =
+        let builder = Common.Builder.forbid_builds builder in
+        Common.Builder.disable_log_file builder
+      in
+      Common.init builder
+    in
     Scheduler.go ~common ~config (fun () ->
       match path with
       | Some s -> Server.dump_dot_merlin s

@@ -253,17 +253,18 @@ module Processed = struct
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok { per_module_config; pp_config; config } ->
-      let pp_one { module_; opens } =
+      let pp_one (source, { module_; opens }) =
         let open Pp.O in
         let name = Module.name module_ in
         let pp = Module_name.Per_item.get pp_config name in
         let sexp = to_sexp ~opens ~pp config in
-        Pp.vbox (Pp.text (Module_name.to_string name))
+        Pp.hvbox
+          (Pp.textf "%s: %s" (Module_name.to_string name) (Path.Build.to_string source))
         ++ Pp.newline
         ++ Pp.vbox (Sexp.pp sexp)
       in
       let pp =
-        Path.Build.Map.values per_module_config
+        Path.Build.Map.to_list per_module_config
         |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
         |> Pp.vbox
       in

@@ -7,7 +7,7 @@ We build the project
 
 Verify that merlin configuration was generated...
   $ dune ocaml merlin dump-config $PWD
-  Test
+  Test: _build/default/test
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -26,7 +26,7 @@ Verify that merlin configuration was generated...
      -short-paths
      -keep-locs
      -g)))
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

@@ -17,7 +17,7 @@
 
   $ dune build ./.merlin-conf/exe-pp_future_syntax --profile release
   $ dune ocaml merlin dump-config .
-  Pp_future_syntax
+  Pp_future_syntax: _build/default/pp_future_syntax
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

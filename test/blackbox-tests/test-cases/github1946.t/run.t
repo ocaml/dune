@@ -6,7 +6,7 @@ in the same dune file, but require different ppx specifications
 
   $ dune build @all --profile release
   $ dune ocaml merlin dump-config $PWD
-  Usesppx1
+  Usesppx1: _build/default/usesppx1
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -20,7 +20,7 @@ in the same dune file, but require different ppx specifications
      --cookie
      'library-name="usesppx1"'"))
    (FLG (-w -40 -g)))
-  Usesppx2
+  Usesppx2: _build/default/usesppx2
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

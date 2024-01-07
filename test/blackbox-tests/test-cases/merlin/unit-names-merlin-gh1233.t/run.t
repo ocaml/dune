@@ -5,7 +5,7 @@
   42
 
   $ dune ocaml merlin dump-config $PWD
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -26,7 +26,7 @@
      -g)))
 
   $ dune ocaml merlin dump-config $PWD/foo
-  Bar
+  Bar: _build/default/foo/bar
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -42,7 +42,7 @@
      -short-paths
      -keep-locs
      -g)))
-  Foo
+  Foo: _build/default/foo/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

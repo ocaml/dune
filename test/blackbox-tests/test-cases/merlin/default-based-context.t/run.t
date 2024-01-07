@@ -22,7 +22,7 @@ If Merlin field is absent, default context is chosen
   lib-foo
 
   $ dune ocaml merlin dump-config "$PWD"
-  Foo
+  Foo: _build/default/foo
   ((STDLIB OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -60,7 +60,7 @@ If Merlin field is present, this context is chosen
   No config in default
 
   $ dune ocaml merlin dump-config "$PWD"
-  Foo
+  Foo: _build/cross/foo
   ((STDLIB OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B

@@ -3,7 +3,7 @@
 
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -15,7 +15,7 @@
   $ rm -f .merlin
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -27,7 +27,7 @@
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

@@ -56,7 +56,7 @@ module Repository = struct
     let open Decoder in
     fields
       (let+ name = field "name" Name.decode
-       and+ source = field "source" OpamUrl.decode in
+       and+ source = field "source" OpamUrl.decode_loc in
        { name; source })
   ;;
 

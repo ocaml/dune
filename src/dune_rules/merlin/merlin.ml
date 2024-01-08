@@ -175,9 +175,7 @@ module Processed = struct
       | opens ->
         make_directive
           "FLG"
-          (Sexp.List
-             (List.concat_map opens ~f:(fun name ->
-                [ Sexp.Atom "-open"; Atom (Module_name.to_string name) ])))
+          (Sexp.List (Ocaml_flags.open_flags opens |> List.map ~f:(fun x -> Sexp.Atom x)))
         :: flags
     in
     let suffixes =

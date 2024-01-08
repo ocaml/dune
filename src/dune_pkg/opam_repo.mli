@@ -36,7 +36,7 @@ end
 
 (** [of_opam_repo_dir_path opam_repo_dir] creates a repo represented by a local
     directory in the path given by [opam_repo_dir]. *)
-val of_opam_repo_dir_path : Path.t -> t
+val of_opam_repo_dir_path : Loc.t -> Path.t -> t
 
 (** [of_git_repo git ~update source] loads the opam repository located
     at [source] from git. [source] can be any URL that [git remote add]

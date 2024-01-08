@@ -134,17 +134,20 @@ let equal { source; serializable } t =
 
 let serializable { serializable; _ } = serializable
 
-let of_opam_repo_dir_path opam_repo_dir_path =
+let of_opam_repo_dir_path loc opam_repo_dir_path =
   (match Path.stat opam_repo_dir_path with
    | Error (Unix.ENOENT, _, _) ->
      User_error.raise
+       ~loc
        [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted opam_repo_dir_path) ]
    | Error _ ->
      User_error.raise
+       ~loc
        [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]
    | Ok { Unix.st_kind = S_DIR; _ } -> ()
    | Ok _ ->
      User_error.raise
+       ~loc
        [ Pp.textf "%s is not a directory" (Path.to_string_maybe_quoted opam_repo_dir_path)
        ]);
   (let packages = Path.append_local opam_repo_dir_path Paths.packages in
@@ -152,9 +155,11 @@ let of_opam_repo_dir_path opam_repo_dir_path =
    | Ok { Unix.st_kind = S_DIR; _ } -> ()
    | Ok _ ->
      User_error.raise
+       ~loc
        [ Pp.textf "%s is not a directory" (Path.to_string_maybe_quoted packages) ]
    | Error (Unix.ENOENT, _, _) ->
      User_error.raise
+       ~loc
        [ Pp.textf
            "%s doesn't look like a path to an opam repository as it lacks a subdirectory \
             named \"packages\""
@@ -162,6 +167,7 @@ let of_opam_repo_dir_path opam_repo_dir_path =
        ]
    | Error _ ->
      User_error.raise
+       ~loc
        [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]);
   { source = Directory opam_repo_dir_path; serializable = None }
 ;;

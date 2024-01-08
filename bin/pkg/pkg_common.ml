@@ -105,7 +105,7 @@ let get_repos repos ~repositories ~update_opam_repositories =
        | `Git ->
          let* source = Opam_repo.Source.of_opam_url loc opam_url in
          Opam_repo.of_git_repo ~update:update_opam_repositories source
-       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path path))
+       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
 ;;
 
 let find_local_packages =

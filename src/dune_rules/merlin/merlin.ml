@@ -577,7 +577,7 @@ module Unprocessed = struct
         |> Path.Build.Set.fold ~init ~f:(fun src acc ->
           let config =
             { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.alias_for modules m |> List.map ~f:Module.name
+            ; opens = Modules.local_open modules m
             }
           in
           (src, config) :: acc))

@@ -149,7 +149,7 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
-   (FLG (-open Utils -open Foo))
+   (FLG (-open Foo__Utils -open Foo))
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40

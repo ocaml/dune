@@ -175,3 +175,7 @@ let allow_only_melange t =
   in
   { t with specific = { t.specific with ocaml } }
 ;;
+
+let open_flags modules =
+  List.concat_map modules ~f:(fun name -> [ "-open"; Module_name.to_string name ])
+;;

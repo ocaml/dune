@@ -13,6 +13,8 @@ let dev_mode_warnings =
       (Int.Set.of_list
          [ 4; 29; 40; 41; 42; 44; 45; 48; 58; 59; 60; 63; 64; 65; 66; 67; 68; 69; 70 ])
   in
+  let add n range = Int.Set.add range n in
+  let remove n range = Int.Set.remove range n in
   let warnings_range ws =
     let wrange_to_flag (x, y) =
       if x = y then sprintf "@%d" x else sprintf "@%d..%d" x y
@@ -25,10 +27,22 @@ let dev_mode_warnings =
     |> List.rev_map ~f:wrange_to_flag
     |> String.concat ~sep:""
   in
-  let pre_3_3 = lazy (warnings_range all) in
-  let post_3_3 = lazy (warnings_range (Int.Set.union all (Int.Set.of_list [ 67; 69 ]))) in
+  let and_warnings lazy_range =
+    lazy_range, lazy (warnings_range (Lazy.force lazy_range))
+  in
+  let range_pre_3_3, pre_3_3 = and_warnings @@ lazy all in
+  let range_pre_3_13, pre_3_13 =
+    and_warnings @@ lazy (Lazy.force range_pre_3_3 |> add 67 |> add 69)
+  in
+  let _range_later, later =
+    and_warnings @@ lazy (Lazy.force range_pre_3_13 |> remove 30)
+  in
   fun ~dune_version ->
-    if dune_version >= (3, 3) then Lazy.force post_3_3 else Lazy.force pre_3_3
+    if dune_version < (3, 3)
+    then Lazy.force pre_3_3
+    else if dune_version < (3, 13)
+    then Lazy.force pre_3_13
+    else Lazy.force later
 ;;
 
 let vendored_warnings = [ "-w"; "-a" ]

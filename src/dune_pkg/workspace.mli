@@ -3,7 +3,7 @@ open Import
 module Repository : sig
   type t
 
-  val opam_url : t -> OpamUrl.t
+  val opam_url : t -> Loc.t * OpamUrl.t
   val hash : t -> int
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool

@@ -22,28 +22,33 @@ module Repository = struct
 
   type t =
     { name : Name.t
-    ; source : OpamUrl.t
+    ; source : Loc.t * OpamUrl.t
     }
 
   let name { name; _ } = name
 
-  let to_dyn { name; source } =
+  let to_dyn { name; source = _, source } =
     let open Dyn in
     variant "repository" [ Name.to_dyn name; string (OpamUrl.to_string source) ]
   ;;
 
-  let equal { name; source } t = Name.equal name t.name && OpamUrl.equal source t.source
+  let equal { name; source } t =
+    Name.equal name t.name && Tuple.T2.equal Loc.equal OpamUrl.equal source t.source
+  ;;
+
   let hash { name; source } = Tuple.T2.hash Name.hash Poly.hash (name, source)
 
   let upstream =
     { name = "upstream"
-    ; source = OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
+    ; source =
+        Loc.none, OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
     }
   ;;
 
   let overlay =
     { name = "overlay"
-    ; source = OpamUrl.of_string "git+https://github.com/ocaml-dune/opam-overlays.git"
+    ; source =
+        Loc.none, OpamUrl.of_string "git+https://github.com/ocaml-dune/opam-overlays.git"
     }
   ;;
 

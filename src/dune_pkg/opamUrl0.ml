@@ -1,11 +1,11 @@
 include OpamUrl
 open Stdune
 
-let decode =
+let decode_loc =
   let open Dune_sexp.Decoder in
-  map_validate string ~f:(fun s ->
+  map_validate (located string) ~f:(fun (loc, s) ->
     match OpamUrl.of_string s with
-    | url -> Ok url
+    | url -> Ok (loc, url)
     | exception OpamUrl.Parse_error m ->
       Error (User_message.make [ Pp.text "invalid url "; Pp.text m ]))
 ;;

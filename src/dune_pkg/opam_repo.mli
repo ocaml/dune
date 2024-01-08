@@ -25,13 +25,12 @@ module Source : sig
 
   val commit : t -> Commitish.t option
   val url : t -> string
-  val of_opam_url : OpamUrl.t -> t Fiber.t
-  val to_string : t -> string
+  val of_opam_url : Loc.t -> OpamUrl.t -> t Fiber.t
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
 
   module Private : sig
-    val of_opam_url : Rev_store.t -> OpamUrl.t -> t Fiber.t
+    val of_opam_url : Rev_store.t -> Loc.t -> OpamUrl.t -> t Fiber.t
   end
 end
 

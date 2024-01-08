@@ -19,21 +19,61 @@ Demonstrate our support for pin-depends.
   > cat dune.lock/bar.pkg
   > }
 
-Local pinned source:
+Local pinned source.
 
-  $ mkdir _bar_file
-  $ cat >_bar_file/opam <<EOF
+"opam" file at the root
+
+  $ dir=_bar_file
+  $ mkdir $dir
+  $ cat >$dir/opam <<EOF
   > opam-version: "2.0"
   > EOF
-  $ runtest "file://$PWD/_bar_file"
+  $ runtest "file://$PWD/$dir"
+  Solution for dune.lock:
+  - bar.0.0.1
+  (version 0.0.1)
+
+"opam" directory at the root
+
+  $ dir=_bar_file_opam_dir
+  $ mkdir -p $dir/opam
+  $ cat >$dir/opam/bar.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ runtest "file://$PWD/$dir"
+  Solution for dune.lock:
+  - bar.0.0.1
+  (version 0.0.1)
+
+"bar.opam" file at the root
+
+  $ dir=_bar_named_opam_root
+  $ mkdir $dir
+  $ cat >$dir/bar.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ runtest "file://$PWD/$dir"
+  Solution for dune.lock:
+  - bar.0.0.1
+  (version 0.0.1)
+
+"bar.opam" file at opam/
+
+  $ dir=_bar_named_opam_subdir
+  $ mkdir -p $dir/opam
+  $ cat >$dir/opam/bar.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ runtest "file://$PWD/$dir"
   Solution for dune.lock:
   - bar.0.0.1
   (version 0.0.1)
 
 Git pinned source:
 
-  $ mkdir _bar_git
-  $ cd _bar_git
+  $ dir=_bar_git
+  $ mkdir $dir
+  $ cd $dir
   $ git init --quiet
   $ cat >opam <<EOF
   > opam-version: "2.0"
@@ -41,7 +81,7 @@ Git pinned source:
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..
-  $ runtest "git+file://$PWD/_bar_git"
+  $ runtest "git+file://$PWD/$dir"
   Solution for dune.lock:
   - bar.0.0.1
   (version 0.0.1)

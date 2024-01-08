@@ -73,7 +73,7 @@ each command. This corrected file is then offered for
 :doc:`promotion <../concepts/promotion>` by Dune.
 
 Concretely, this means that ``dune runtest`` will display the difference
-between the current contents of the Cram test, and the output of the latest
+between the current contents of the Cram test and the output of the latest
 run. This diff can be applied by running ``dune promote``, as usual.
 
 .. code:: diff

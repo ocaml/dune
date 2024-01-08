@@ -11,6 +11,7 @@ let _verbose, keep_generated_files, _debug =
   let verbose = ref false in
   let keep_generated_files = ref false in
   let debug = ref false in
+  let single_command = ref false in
   Arg.parse
     [ "-j", Arg.Int ignore, "JOBS Concurrency"
     ; "--verbose", Arg.Set verbose, " Set the display mode"
@@ -19,6 +20,7 @@ let _verbose, keep_generated_files, _debug =
     ; ( "--force-byte-compilation"
       , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; "--use-single-command", Arg.Set single_command, " Build using a single command"
     ]
     anon
     "Usage: ocaml bootstrap.ml <options>\nOptions are:";

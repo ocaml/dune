@@ -11,8 +11,6 @@ let norm = function
   | s -> Some (String.lowercase s)
 ;;
 
-let path_of_string s = s |> Path.External.of_string |> Path.external_
-
 let normalise_arch raw =
   match String.lowercase_ascii raw with
   | "x86" | "i386" | "i486" | "i586" | "i686" -> "x86_32"
@@ -77,17 +75,20 @@ let is_android ~path =
   prop <> None
 ;;
 
+let maybe_read_lines p =
+  match Io.String_path.lines_of_file p with
+  | s -> Some s
+  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> None
+;;
+
 let os_release_field field =
   match
-    [ "/etc/os-release"; "/usr/lib/os-release" ]
-    |> List.map ~f:path_of_string
-    |> List.find ~f:Path.exists
+    List.find_map [ "/etc/os-release"; "/usr/lib/os-release" ] ~f:maybe_read_lines
   with
   | None -> Fiber.return None
-  | Some release_file ->
+  | Some release_lines ->
     let mappings =
-      Io.lines_of_file release_file
-      |> List.filter_map ~f:(fun line ->
+      List.filter_map release_lines ~f:(fun line ->
         match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
         | Error _ -> None
         | Ok (key, v) ->
@@ -153,17 +154,17 @@ let os_distribution ~path =
            | Some lsb_release -> norm lsb_release
            | None ->
              (match
-                [ "/etc/redhat-release"
-                ; "/etc/centos-release"
-                ; "/etc/gentoo-release"
-                ; "/etc/issue"
-                ]
-                |> List.map ~f:path_of_string
-                |> List.find ~f:Path.exists
+                List.find_map
+                  ~f:maybe_read_lines
+                  [ "/etc/redhat-release"
+                  ; "/etc/centos-release"
+                  ; "/etc/gentoo-release"
+                  ; "/etc/issue"
+                  ]
               with
               | None -> linux
-              | Some release_file ->
-                (match Io.lines_of_file release_file with
+              | Some release_lines ->
+                (match release_lines with
                  | [] -> linux
                  | s :: _ ->
                    (match Scanf.sscanf s " %s " Fun.id with

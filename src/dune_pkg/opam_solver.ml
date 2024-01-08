@@ -638,6 +638,7 @@ let solve_package_list packages context =
   | Error (`Exn exn) ->
     (match exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
+       (* CR-rgrinberg: needs to include locations *)
        User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
      | unexpected_exn ->
        Code_error.raise
@@ -713,6 +714,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
           | [ x ] -> Some (Loc.none, x)
           | _ ->
             User_error.raise
+              (* CR-rgrinberg: needs to include locations *)
               [ Pp.text "multiple compilers selected" ]
               ~hints:[ Pp.text "add a conflict" ]
         in

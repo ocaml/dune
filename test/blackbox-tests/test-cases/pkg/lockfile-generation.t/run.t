@@ -145,7 +145,8 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 
 Run the solver again. This time it will fail.
   $ dune pkg lock
-  Error: Unable to solve dependencies for dune.lock:
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
   Can't find all required versions.
   Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)

@@ -159,3 +159,8 @@ let to_dyn ok err = function
   | Ok e -> Dyn.variant "Ok" [ ok e ]
   | Error e -> Dyn.variant "Error" [ err e ]
 ;;
+
+let to_either = function
+  | Ok e -> Either.Right e
+  | Error e -> Left e
+;;

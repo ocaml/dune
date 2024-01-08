@@ -271,7 +271,8 @@ however due to some issues this currently fails:
 
   $ rm -r dune.lock
   $ dune pkg lock
-  Error: Unable to solve dependencies for dune.lock:
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
   Can't find all required versions.
   Selected: baz.dev
   - bar -> (problem)

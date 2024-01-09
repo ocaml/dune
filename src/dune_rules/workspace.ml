@@ -10,7 +10,7 @@ module Lock_dir = struct
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
     ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     }
 
@@ -25,7 +25,9 @@ module Lock_dir = struct
       ; ( "unset_solver_vars"
         , Dyn.option Dune_pkg.Variable_name.Set.to_dyn unset_solver_vars )
       ; ( "repositories"
-        , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
+        , Dyn.list
+            Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
+            (List.map repositories ~f:snd) )
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
       ]
   ;;
@@ -48,7 +50,10 @@ module Lock_dir = struct
          t.version_preference
     && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
     && Option.equal Dune_pkg.Variable_name.Set.equal unset_solver_vars t.unset_solver_vars
-    && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
+    && List.equal
+         (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
+         repositories
+         t.repositories
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
   ;;
 
@@ -57,9 +62,10 @@ module Lock_dir = struct
       Dune_lang.Ordered_set_lang.eval
         ordered_set
         ~parse:(fun ~loc string ->
-          Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
-        ~eq:Dune_pkg.Pkg_workspace.Repository.Name.equal
-        ~standard:(List.map default_repositories ~f:Repository.name)
+          loc, Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
+        ~eq:(fun (_, x) (_, y) -> Dune_pkg.Pkg_workspace.Repository.Name.equal x y)
+        ~standard:
+          (List.map default_repositories ~f:(fun d -> Loc.none, Repository.name d))
     in
     let decode =
       let+ path =

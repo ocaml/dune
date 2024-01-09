@@ -183,7 +183,14 @@ let of_git_repo (source : Source.t) =
         | Some (Branch b) -> Some b
         | _ -> None
       in
-      Rev_store.add_repo repo ~source:source.url ~branch >>= Rev_store.Remote.update
+      let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
+      match source.commit with
+      | Some (Commit rev) ->
+        let* exists = Rev_store.mem repo ~rev in
+        (match exists with
+         | true -> Fiber.return @@ Rev_store.Remote.don't_update remote
+         | false -> Rev_store.Remote.update remote)
+      | Some (Branch _) | Some (Tag _) | None -> Rev_store.Remote.update remote
     in
     match source.commit with
     | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref

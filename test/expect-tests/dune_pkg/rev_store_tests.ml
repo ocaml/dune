@@ -63,6 +63,12 @@ let%expect_test "adding remotes" =
     [%expect {|
     Creating first remote succeeded
     |}];
+    let* remote' = Rev_store.add_repo rev_store ~source ~branch:None in
+    let (_ : Rev_store.Remote.t) = Rev_store.Remote.don't_update remote' in
+    print_endline "Adding same remote without update succeeded";
+    [%expect {|
+    Adding same remote without update succeeded
+    |}];
     let* remote'' = Rev_store.add_repo rev_store ~source ~branch:None in
     let* (_ : Rev_store.Remote.t) = Rev_store.Remote.update remote'' in
     print_endline "Adding same remote with update succeeded";

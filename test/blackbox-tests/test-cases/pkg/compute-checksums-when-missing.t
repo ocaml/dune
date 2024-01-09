@@ -57,3 +57,31 @@ Now make sure we can gracefully handle the case when the archive is missing.
      file://<pwd>/foo.txt)))
   
   (dev)
+
+Now we use a directory source:
+
+  $ mkdir src
+  $ mkpkg foo <<EOF
+  > url {
+  >  src: "$PWD/src"
+  > }
+  > EOF
+  $ solve foo 2>&1 | strip_pwd | awk '/Package /{f=1} /File /{ print "File .."; exit } f'
+  Package "foo" has source archive which lacks a checksum.
+  The source archive will be downloaded from:
+  file://<pwd>/src
+  Dune will compute its own checksum for this source archive.
+  File ..
+
+A git source:
+
+  $ mkdir gitrepo
+  $ cd gitrepo
+  $ git init --quiet
+  $ cd ..
+  $ solve foo 2>&1 | strip_pwd | awk '/I must not crash/,/Dune will recompute/'
+  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  little-death that brings total obliteration.  I will fully express my cases. 
+  Execution will pass over me and through me.  And when it has gone past, I
+  will unwind the stack along its path.  Where the cases are handled there will
+  be nothing.  Only I will remain.

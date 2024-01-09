@@ -25,8 +25,8 @@ let print_solver_env ~lock_dirs_arg =
   let open Fiber.O in
   let+ workspace = Memo.run (Workspace.workspace ())
   and+ solver_env_from_current_system =
-    Dune_pkg.Sys_poll.solver_env_from_current_system
-      ~path:(Env_path.path Stdune.Env.initial)
+    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+    |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
   in
   let lock_dirs = Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace in

@@ -13,11 +13,15 @@ module Sys_vars = struct
     }
 
   let poll =
-    let path = lazy (Env_path.path (Global.env ())) in
+    let vars =
+      lazy
+        (let path = Env_path.path (Global.env ()) in
+         Sys_poll.make ~path)
+    in
     let sys_poll_memo key =
       Memo.lazy_ (fun () ->
-        let path = Lazy.force path in
-        Memo.of_reproducible_fiber @@ key ~path)
+        let vars = Lazy.force vars in
+        Memo.of_reproducible_fiber @@ key vars)
     in
     { os = sys_poll_memo Sys_poll.os
     ; os_version = sys_poll_memo Sys_poll.os_version

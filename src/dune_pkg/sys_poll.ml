@@ -1,6 +1,15 @@
 open Import
 open Fiber.O
 
+type t =
+  { arch : string option Fiber.t
+  ; os : string option Fiber.t
+  ; os_version : string option Fiber.t
+  ; os_distribution : string option Fiber.t
+  ; os_family : string option Fiber.t
+  ; sys_ocaml_version : string option Fiber.t
+  }
+
 let apply_or_skip_empty f = function
   | None | Some "" -> None
   | Some s -> Some (f s)
@@ -39,6 +48,8 @@ let run_capture_line ~path ~prog ~args =
   | Some prog -> Process.run_capture_line ~display:Quiet Strict prog args >>| norm
 ;;
 
+(* CR-rgrinberg: do we need to call [uname] for every single option? Can't we
+   call [uname -a] and extract everything from there *)
 let uname ~path args = run_capture_line ~path ~prog:"uname" ~args
 let lsb_release ~path args = run_capture_line ~path ~prog:"lsb_release" ~args
 
@@ -66,53 +77,42 @@ let os ~path =
   >>| apply_or_skip_empty normalise_os
 ;;
 
-let android_release ~path =
-  run_capture_line ~path ~prog:"getprop" ~args:[ "ro.build.version.release" ]
-;;
-
-let is_android ~path =
-  let+ prop = android_release ~path in
-  prop <> None
-;;
-
 let maybe_read_lines p =
   match Io.String_path.lines_of_file p with
   | s -> Some s
   | exception Unix.Unix_error (Unix.ENOENT, _, _) -> None
 ;;
 
-let os_release_field field =
+let os_release_fields () =
   match
     List.find_map [ "/etc/os-release"; "/usr/lib/os-release" ] ~f:maybe_read_lines
   with
-  | None -> Fiber.return None
+  | None -> []
   | Some release_lines ->
-    let mappings =
-      List.filter_map release_lines ~f:(fun line ->
-        match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
-        | Error _ -> None
-        | Ok (key, v) ->
-          Some
-            ( key
-            , match Scanf.sscanf v "\"%s@\"" Fun.id with
-              | Error _ -> v
-              | Ok contents -> contents ))
-    in
-    Fiber.return @@ List.assoc mappings field
+    List.filter_map release_lines ~f:(fun line ->
+      match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
+      | Error _ -> None
+      | Ok (key, v) ->
+        Some
+          ( key
+          , match Scanf.sscanf v "\"%s@\"" Fun.id with
+            | Error _ -> v
+            | Ok contents -> contents ))
 ;;
 
-let os_version ~path =
-  os ~path
+let os_version ~android_release ~os ~os_release_fields ~path =
+  os
   >>= function
   | Some "linux" ->
-    android_release ~path
+    android_release
     >>= (function
      | Some android -> Fiber.return @@ norm android
      | None ->
        lsb_release ~path [ "-s"; "-r" ]
-       >>= (function
-        | Some lsb -> Fiber.return @@ norm lsb
-        | None -> os_release_field "VERSION_ID" >>| Option.bind ~f:norm))
+       >>| (function
+        | Some lsb -> norm lsb
+        | None ->
+          List.assoc (Lazy.force os_release_fields) "VERSION_ID" |> Option.bind ~f:norm))
   | Some "macos" ->
     run_capture_line ~path ~prog:"sw_vers" ~args:[ "-productVersion" ]
     >>| Option.bind ~f:norm
@@ -129,8 +129,8 @@ let os_version ~path =
   | _ -> uname ~path [ "-r" ] >>| Option.bind ~f:norm
 ;;
 
-let os_distribution ~path =
-  os ~path
+let os_distribution ~os ~android_release ~os_release_fields ~path =
+  os
   >>= function
   | Some "macos" as macos ->
     Fiber.return
@@ -141,12 +141,11 @@ let os_distribution ~path =
     then Some "macports"
     else macos
   | Some "linux" as linux ->
-    is_android ~path
+    android_release
     >>= (function
-     | true -> Fiber.return @@ Some "android"
-     | false ->
-       os_release_field "ID"
-       >>= (function
+     | Some _ -> Fiber.return @@ Some "android"
+     | None ->
+       (match List.assoc (Lazy.force os_release_fields) "ID" with
         | Some os_release_field -> Fiber.return @@ norm os_release_field
         | None ->
           lsb_release ~path [ "-i"; "-s" ]
@@ -170,21 +169,20 @@ let os_distribution ~path =
   | os -> Fiber.return os
 ;;
 
-let os_family ~path =
-  os ~path
+let os_family ~os_distribution ~os_release_fields ~os =
+  os
   >>= function
   | Some ("freebsd" | "openbsd" | "netbsd" | "dragonfly") -> Fiber.return @@ Some "bsd"
   | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
   | Some "linux" ->
-    os_release_field "ID_LIKE"
-    >>= (function
-     | None -> os_distribution ~path
+    (match List.assoc (Lazy.force os_release_fields) "ID_LIKE" with
+     | None -> os_distribution
      | Some s ->
        (* first word *)
        (match Scanf.sscanf s " %s" Fun.id with
-        | Error _ -> os_distribution ~path
+        | Error _ -> os_distribution
         | Ok s -> Fiber.return @@ norm s))
-  | _ -> os_distribution ~path
+  | _ -> os_distribution
 ;;
 
 let sys_ocaml_version ~path =
@@ -194,9 +192,39 @@ let sys_ocaml_version ~path =
     Process.run_capture_line ~display:Quiet Strict ocamlc [ "-vnum" ] >>| Option.some
 ;;
 
-let solver_env_from_current_system ~path =
+let make_lazy f = Fiber_lazy.create f |> Fiber_lazy.force
+
+let make ~path =
+  let arch = make_lazy (fun () -> arch ~path) in
+  let os = make_lazy (fun () -> os ~path) in
+  let os_release_fields = lazy (os_release_fields ()) in
+  let android_release =
+    make_lazy (fun () ->
+      run_capture_line ~path ~prog:"getprop" ~args:[ "ro.build.version.release" ])
+  in
+  let os_version =
+    make_lazy (fun () -> os_version ~android_release ~os_release_fields ~os ~path)
+  in
+  let os_distribution =
+    make_lazy (fun () -> os_distribution ~android_release ~os_release_fields ~os ~path)
+  in
+  let os_family =
+    make_lazy (fun () -> os_family ~os_release_fields ~os_distribution ~os)
+  in
+  let sys_ocaml_version = make_lazy (fun () -> sys_ocaml_version ~path) in
+  { arch; os; os_version; os_distribution; os_family; sys_ocaml_version }
+;;
+
+let arch t = t.arch
+let os t = t.os
+let os_version t = t.os_version
+let os_distribution t = t.os_distribution
+let os_family t = t.os_family
+let sys_ocaml_version t = t.sys_ocaml_version
+
+let solver_env_from_current_system t =
   let entry k f =
-    let+ v = f ~path in
+    let+ v = f t in
     k, Option.map v ~f:Variable_value.string
   in
   (* TODO this will rerun `uname` multiple times with the same arguments

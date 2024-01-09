@@ -307,7 +307,10 @@ module At_rev = struct
        1. using libgit or ocamlgit
        2. possibly using [$ git archive] *)
     File.Set.filter files_at_rev ~f:(fun (file : File.t) ->
-      Path.Local.is_descendant file.path ~of_:path)
+      (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
+         "foo" is indeed a descendant of itself. So we filter it manually. *)
+      (not (Path.Local.equal file.path path))
+      && Path.Local.is_descendant file.path ~of_:path)
   ;;
 
   let equal { repo; revision = Rev revision; source; files_at_rev } t =

@@ -174,7 +174,7 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable = None; loc }
 ;;
 
-let of_git_repo ~update (source : Source.t) =
+let of_git_repo (source : Source.t) =
   let+ at_rev =
     let* remote =
       let* repo = Rev_store.get in
@@ -183,10 +183,7 @@ let of_git_repo ~update (source : Source.t) =
         | Some (Branch b) -> Some b
         | _ -> None
       in
-      let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
-      match update with
-      | true -> Rev_store.Remote.update remote
-      | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
+      Rev_store.add_repo repo ~source:source.url ~branch >>= Rev_store.Remote.update
     in
     match source.commit with
     | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref

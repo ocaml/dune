@@ -8,7 +8,6 @@ let solve_lock_dir
   workspace
   ~local_packages
   version_preference
-  ~update_opam_repositories
   solver_env_from_current_system
   lock_dir_path
   =
@@ -27,9 +26,7 @@ let solve_lock_dir
   in
   let* repos =
     repositories_of_workspace workspace
-    |> get_repos
-         ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
-         ~update_opam_repositories
+    |> get_repos ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   Fiber.finalize
     ~finally:(fun () ->
@@ -66,13 +63,7 @@ let solve_lock_dir
     Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message)
 ;;
 
-let solve
-  workspace
-  ~update_opam_repositories
-  ~solver_env_from_current_system
-  ~version_preference
-  ~lock_dirs_arg
-  =
+let solve workspace ~solver_env_from_current_system ~version_preference ~lock_dirs_arg =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
@@ -86,7 +77,6 @@ let solve
                workspace
                ~local_packages
                version_preference
-               ~update_opam_repositories
                solver_env_from_current_system)
      >>| List.partition_map ~f:Result.to_either
    in
@@ -108,7 +98,7 @@ let solve
     List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 ;;
 
-let lock ~version_preference ~update_opam_repositories ~lock_dirs_arg =
+let lock ~version_preference ~lock_dirs_arg =
   let open Fiber.O in
   let* workspace = Memo.run (Workspace.workspace ())
   and* solver_env_from_current_system =
@@ -116,31 +106,16 @@ let lock ~version_preference ~update_opam_repositories ~lock_dirs_arg =
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
   in
-  solve
-    workspace
-    ~update_opam_repositories
-    ~solver_env_from_current_system
-    ~version_preference
-    ~lock_dirs_arg
+  solve workspace ~solver_env_from_current_system ~version_preference ~lock_dirs_arg
 ;;
 
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
-  and+ skip_update =
-    Arg.(
-      value
-      & flag
-      & info
-          [ "skip-update" ]
-          ~doc:
-            "Do not fetch updates of opam repositories, will use the cached opam \
-             metadata. This allows offline use if the repositories are cached locally.")
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () ->
-    lock ~version_preference ~update_opam_repositories:(not skip_update) ~lock_dirs_arg)
+  Scheduler.go ~common ~config (fun () -> lock ~version_preference ~lock_dirs_arg)
 ;;
 
 let info =

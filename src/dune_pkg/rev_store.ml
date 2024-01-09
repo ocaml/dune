@@ -127,7 +127,7 @@ let mem { dir } ~rev =
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  let command = [ "rev-parse"; rev ] in
+  let command = [ "cat-file"; "-t"; rev ] in
   let+ res =
     Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git command
   in

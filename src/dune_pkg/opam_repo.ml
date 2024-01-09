@@ -58,25 +58,37 @@ module Source = struct
              we need to look up *)
           Rev_store.mem rev_store ~rev:ref
           >>= (function
-           | true -> Fiber.return @@ Some (Commitish.Commit ref)
+           | true ->
+             (* CR-Leonidas-from-XIV is this always a commit? *)
+             Fiber.return @@ Some (Commitish.Commit ref)
            | false ->
              Rev_store.ref_type rev_store ~source:url ~ref
-             >>| (function
-              | Some `Tag -> Some (Commitish.Tag ref)
-              | Some `Head -> Some (Commitish.Branch ref)
+             >>= (function
+              | Some `Tag -> Fiber.return @@ Some (Commitish.Tag ref)
+              | Some `Head -> Fiber.return @@ Some (Commitish.Branch ref)
               | None ->
-                User_error.raise
-                  ~loc
-                  ~hints:
-                    [ Pp.text
-                        "Make sure the URL is correct and the repository contains the \
-                         branch/tag"
-                    ]
-                  [ Pp.textf
-                      "Opam repository at '%s' does not have a reference '%s'"
-                      url
-                      ref
-                  ]))
+                (* we have to update the local repo as a side-effect and see if
+                   the commit exists *)
+                let* (_ : Rev_store.Remote.t) =
+                  Rev_store.add_repo rev_store ~source:url ~branch:None
+                  >>= Rev_store.Remote.update
+                in
+                Rev_store.mem rev_store ~rev:ref
+                >>= (function
+                 | true -> Fiber.return @@ Some (Commitish.Commit ref)
+                 | false ->
+                   User_error.raise
+                     ~loc
+                     ~hints:
+                       [ Pp.text
+                           "Make sure the URL is correct and the repository contains the \
+                            branch/tag"
+                       ]
+                     [ Pp.textf
+                         "Opam repository at '%s' does not have a reference '%s'"
+                         url
+                         ref
+                     ])))
       in
       { commit; url; loc }
     ;;

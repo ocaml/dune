@@ -155,7 +155,7 @@ restored the repo to where it was before)
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (source "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"))
   > (lock_dir
   >  (repositories mock))
   > EOF

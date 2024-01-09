@@ -451,12 +451,14 @@ module Write_disk = struct
           Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
         | `Failed_to_parse_metadata (path, exn) ->
           Pp.concat
-            ~sep:Pp.newline
+            ~sep:Pp.cut
             [ Pp.textf
                 "Unable to parse lock directory metadata file (%s):"
                 (Path.to_string_maybe_quoted path)
-            ; Exn.pp exn
+              |> Pp.hovbox
+            ; Exn.pp exn |> Pp.hovbox
             ]
+          |> Pp.vbox
       in
       User_error.raise
         [ Pp.textf

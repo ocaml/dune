@@ -30,14 +30,25 @@ let eval0 =
     module Map = Module_trie
   end
   in
-  let module Unordered = Expander.Unordered (Key) in
+  let module Unordered = Ordered_set_lang.Unordered (Key) in
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
-  let parse ~all_modules ~loc ~ctx:fake_modules s =
+  let expand_and_eval t set ~parse ~key ~standard =
+    let open Action_builder.O in
+    let dir = Path.build (Expander.dir t) in
+    let+ set = Expander.expand_ordered_set_lang set ~dir ~f:(Expander.expand_pform t) in
+    let fake_modules = ref Module_name.Map.empty in
+    let parse ~loc x = parse ~loc ~fake_modules x in
+    let r = Unordered.eval_loc set ~parse ~key ~standard in
+    r, !fake_modules
+  in
+  let parse ~all_modules ~loc ~fake_modules s =
     let name = Module_name.of_string_allow_invalid (loc, s) in
     match Module_trie.find all_modules [ name ] with
-    | Some m -> Ok m, fake_modules
-    | None -> Error name, Module_name.Map.set fake_modules name loc
+    | Some m -> Ok m
+    | None ->
+      fake_modules := Module_name.Map.set !fake_modules name loc;
+      Error name
   in
   fun ~expander ~loc ~all_modules ~standard osl ->
     let open Memo.O in
@@ -45,13 +56,7 @@ let eval0 =
     let standard = Module_trie.map standard ~f:(fun m -> loc, Ok m) in
     let+ (modules, fake_modules), _ =
       Action_builder.evaluate_and_collect_facts
-        (Unordered.expand_and_eval
-           expander
-           ~ctx:Module_name.Map.empty
-           ~parse
-           ~standard
-           ~key
-           osl)
+        (expand_and_eval expander ~parse ~standard ~key osl)
     in
     let modules =
       Module_trie.filter_map modules ~f:(fun (loc, m) ->

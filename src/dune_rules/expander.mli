@@ -107,6 +107,12 @@ module With_reduced_var_set : sig
   val eval_blang : context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
 
+val expand_ordered_set_lang
+  :  Ordered_set_lang.Unexpanded.t
+  -> dir:Path.t
+  -> f:Value.t list Action_builder.t String_with_vars.expander
+  -> Ordered_set_lang.t Action_builder.t
+
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
     inside [Action_builder.t] because such forms may contain the form (:include
     ..) which needs files to be built. *)
@@ -115,17 +121,6 @@ val expand_and_eval_set
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list Action_builder.t
   -> string list Action_builder.t
-
-module Unordered (Key : Ordered_set_lang.Key) : sig
-  val expand_and_eval
-    :  t
-    -> Ordered_set_lang.Unexpanded.t
-    -> ctx:'ctx
-    -> parse:(loc:Loc.t -> ctx:'ctx -> string -> 'a * 'ctx)
-    -> key:('a -> Key.t)
-    -> standard:(Loc.t * 'a) Key.Map.t
-    -> ((Loc.t * 'a) Key.Map.t * 'ctx) Action_builder.t
-end
 
 val eval_blang : t -> Blang.t -> bool Memo.t
 val map_exe : t -> Path.t -> Path.t

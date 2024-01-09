@@ -66,6 +66,7 @@ module Source = struct
               | Some `Head -> Some (Commitish.Branch ref)
               | None ->
                 User_error.raise
+                  ~loc
                   ~hints:
                     [ Pp.text
                         "Make sure the URL is correct and the repository contains the \

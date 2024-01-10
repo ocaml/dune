@@ -14,7 +14,18 @@ Test the error cases for invalid opam repositories
   >  (source "file://$(pwd)/directory-that-does-not-exist"))
   > EOF
 
-  $ dune pkg lock
+  $ lock() {
+  > out="$(dune pkg lock 2>&1)"
+  > local code="$?"
+  > echo "$out" | sed 's/character.*:/characters X-X:/g' \
+  >   | sed 's/source ".*"/source ../g' \
+  >   | grep -v "\^"
+  > printf "[%d]\n" "$code"
+  > }
+
+  $ lock
+  File "dune-workspace", line 6, characters X-X:
+  6 |  (source ..))
   Error:
   $TESTCASE_ROOT/directory-that-does-not-exist
   does not exist
@@ -29,7 +40,9 @@ Test the error cases for invalid opam repositories
   >  (name mock)
   >  (source "file://$(pwd)/empty"))
   > EOF
-  $ dune pkg lock
+  $ lock
+  File "dune-workspace", line 6, characters X-X:
+  6 |  (source ..))
   Error:
   $TESTCASE_ROOT/empty
   is not a directory
@@ -43,7 +56,9 @@ Test the error cases for invalid opam repositories
   >  (name mock)
   >  (source "file://$(pwd)/no-packages-dir"))
   > EOF
-  $ dune pkg lock
+  $ lock
+  File "dune-workspace", line 6, characters X-X:
+  6 |  (source ..))
   Error:
   $TESTCASE_ROOT/no-packages-dir
   doesn't look like a path to an opam repository as it lacks a subdirectory

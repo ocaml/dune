@@ -3,6 +3,7 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Solver_env = Dune_pkg.Solver_env
 module Variable_name = Dune_pkg.Variable_name
 module Variable_value = Dune_pkg.Variable_value
+module Package_name = Dune_pkg.Package_name
 
 let solver_env
   ~solver_env_from_current_system
@@ -114,7 +115,10 @@ let find_local_packages =
     let+ source_dir = Memo.run (Source_tree.root ()) in
     Source_tree.Dir.project source_dir
   in
-  Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
+  Dune_project.packages project
+  |> Package.Name.Map.to_list_map ~f:(fun name package ->
+    Package_name.of_package_name_exn name, Package.to_local_package package)
+  |> Package_name.Map.of_list_exn
 ;;
 
 let pp_packages packages =

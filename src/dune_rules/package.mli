@@ -28,7 +28,7 @@ module Id : sig
   include Comparable_intf.S with type key := t
 end
 
-module Dependency : module type of Dune_pkg.Package_dependency
+module Dependency : module type of Dune_lang.Package_dependency
 
 module Source_kind : sig
   module Host : sig

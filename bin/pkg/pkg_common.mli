@@ -36,14 +36,15 @@ val repositories_of_lock_dir
 val constraints_of_workspace
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
-  -> Dune_lang.Package_dependency.t list
+  -> Dune_pkg.Package_dependency.t list
 
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
   -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
-val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t
+val find_local_packages
+  : Dune_pkg.Local_package.t Package_name.Opam_compatible.Map.t Fiber.t
 
 module Lock_dirs_arg : sig
   (** [Lock_dirs_arg.t] is the type of lock directory arguments. This can be

@@ -1,7 +1,7 @@
 open! Import
 module Stanza = Dune_lang.Stanza
 module Opam_file = Dune_pkg.Opam_file
-module Dependency = Dune_pkg.Package_dependency
+module Dependency = Dune_lang.Package_dependency
 
 let opam_ext = ".opam"
 let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
@@ -730,9 +730,11 @@ let to_local_package t =
     let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
     let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
     let conflict_class =
-      OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
+      OpamFile.OPAM.conflict_class opam_file
+      |> List.map ~f:(fun p ->
+        Name.of_opam_package_name p |> Dune_pkg.Package_name.of_package_name_exn)
     in
-    { Dune_pkg.Local_package.name = name t
+    { Dune_pkg.Local_package.name = name t |> Dune_pkg.Package_name.of_package_name_exn
     ; version = t.version
     ; dependencies
     ; conflicts
@@ -741,11 +743,13 @@ let to_local_package t =
     ; conflict_class
     }
   | None ->
-    { Dune_pkg.Local_package.name = name t
+    { Dune_pkg.Local_package.name = name t |> Dune_pkg.Package_name.of_package_name_exn
     ; version = t.version
-    ; dependencies = t.depends
-    ; conflicts = t.conflicts
-    ; depopts = t.depopts
+    ; dependencies =
+        List.map t.depends ~f:Dune_pkg.Package_dependency.of_package_dependency
+    ; conflicts =
+        List.map t.conflicts ~f:Dune_pkg.Package_dependency.of_package_dependency
+    ; depopts = List.map t.depopts ~f:Dune_pkg.Package_dependency.of_package_dependency
     ; loc = t.loc
     ; conflict_class = []
     }

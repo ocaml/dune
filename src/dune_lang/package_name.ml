@@ -1,18 +1,28 @@
 open Stdune
-include String
 
-include (
-  Dune_util.Stringlike.Make (struct
-    type t = string
+module T = struct
+  (* A package name is accompanied by its source location (if any) so that
+     failed conversions to [Opam_compatible.t] produce error messages pointing
+     to the source location. *)
+  include Located_stringlike.Make (struct
+      type t = string
 
-    let to_string x = x
-    let module_ = "Package.Name"
-    let description = "package name"
-    let description_of_valid_string = None
-    let hint_valid = None
-    let of_string_opt s = if s = "" then None else Some s
-  end) :
-    Dune_util.Stringlike with type t := t)
+      let to_string x = x
+      let module_ = "Package.Name"
+      let description = "package name"
+      let description_of_valid_string = None
+      let hint_valid = None
+      let of_string_opt s = if s = "" then None else Some s
+    end)
+
+  let compare (_, a) (_, b) = String.compare a b
+  let equal (_, a) (_, b) = String.equal a b
+  let hash (_, s) = String.hash s
+end
+
+module Map = Map.Make (T)
+module Set = Set.Make (T) (Map)
+include T
 
 module Opam_compatible = struct
   let description_of_valid_string =
@@ -57,10 +67,12 @@ module Opam_compatible = struct
     let hint_valid = Some make_valid
   end
 
+  include String
   include Dune_util.Stringlike.Make (T)
 
   let make_valid = T.make_valid
-  let to_package_name s = s
+  let to_package_name s = Loc.none, s
+  let of_package_name_exn = parse_string_exn
 end
 
 let is_opam_compatible s = Option.is_some (Opam_compatible.of_string_opt (to_string s))

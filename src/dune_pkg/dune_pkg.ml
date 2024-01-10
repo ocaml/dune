@@ -13,6 +13,7 @@ module Solver_stats = Solver_stats
 module Substs = Substs
 module Sys_poll = Sys_poll
 module Version_preference = Version_preference
+module Package_name = Package_name
 module Package_version = Package_version
 module Pkg_workspace = Workspace
 module Local_package = Local_package

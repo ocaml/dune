@@ -5,6 +5,7 @@ module Report_error = Report_error
 module Stringlike = Stringlike
 
 module type Stringlike = Stringlike_intf.S
+module type Stringlike_base = Stringlike_intf.S_base
 
 module Build_path_prefix_map = Build_path_prefix_map0
 module Flock = Flock

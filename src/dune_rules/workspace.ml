@@ -11,7 +11,7 @@ module Lock_dir = struct
     ; solver_env : Dune_pkg.Solver_env.t option
     ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
-    ; constraints : Dune_lang.Package_dependency.t list
+    ; constraints : Dune_pkg.Package_dependency.t list
     }
 
   let to_dyn
@@ -28,7 +28,7 @@ module Lock_dir = struct
         , Dyn.list
             Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
             (List.map repositories ~f:snd) )
-      ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
+      ; "constraints", Dyn.list Dune_pkg.Package_dependency.to_dyn constraints
       ]
   ;;
 
@@ -54,7 +54,7 @@ module Lock_dir = struct
          (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
          repositories
          t.repositories
-    && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
+    && List.equal Dune_pkg.Package_dependency.equal constraints t.constraints
   ;;
 
   let decode ~dir =
@@ -78,7 +78,7 @@ module Lock_dir = struct
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
-        field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
+        field ~default:[] "constraints" (repeat Dune_pkg.Package_dependency.decode)
       in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter

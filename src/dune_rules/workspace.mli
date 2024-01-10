@@ -9,7 +9,7 @@ module Lock_dir : sig
     ; solver_env : Dune_pkg.Solver_env.t option
     ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
-    ; constraints : Dune_lang.Package_dependency.t list
+    ; constraints : Dune_pkg.Package_dependency.t list
     }
 
   val equal : t -> t -> bool

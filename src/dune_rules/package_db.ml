@@ -16,7 +16,7 @@ let find_package ctx pkg =
     Pkg_rules.lock_dir_active ctx
     >>= (function
      | true ->
-       Pkg_rules.find_package ctx pkg
+       Pkg_rules.find_package ctx (Dune_pkg.Package_name.of_package_name_exn pkg)
        >>| (function
         | None -> None
         | Some b -> Some (Build b))

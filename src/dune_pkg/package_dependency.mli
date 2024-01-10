@@ -17,12 +17,12 @@ module Constraint : sig
   val to_dyn : t -> Dyn.t
 end
 
-type t = Dune_lang.Package_dependency.t =
+type t = Dune_lang.Package_dependency.Opam_compatible.t =
   { name : Package_name.t
   ; constraint_ : Constraint.t option
   }
 
-include module type of Dune_lang.Package_dependency with type t := t
+include module type of Dune_lang.Package_dependency.Opam_compatible with type t := t
 
 val opam_depend : t -> OpamParserTypes.FullPos.value
 val list_to_opam_filtered_formula : t list -> OpamTypes.filtered_formula

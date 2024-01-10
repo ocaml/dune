@@ -1,6 +1,7 @@
 open Import
 open Memo.O
 module Opam_file = Dune_pkg.Opam_file
+module Package_dependency = Dune_pkg.Package_dependency
 
 let default_build_command =
   let before_1_11 =
@@ -121,6 +122,9 @@ let package_fields package ~project =
       | None -> None
       | Some v -> Some (k, string v))
   in
+  let opam_dependency dependency =
+    Package_dependency.of_package_dependency dependency |> Package_dependency.opam_depend
+  in
   let dep_fields =
     [ "depends", Package.depends package
     ; "conflicts", Package.conflicts package
@@ -129,7 +133,7 @@ let package_fields package ~project =
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | [] -> None
-      | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
+      | _ :: _ -> Some (k, list opam_dependency v))
   in
   let fields = [ optional; dep_fields ] in
   let fields =
@@ -143,7 +147,7 @@ let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 
 let insert_dune_dep depends dune_version =
-  let constraint_ : Package.Dependency.Constraint.t =
+  let constraint_ : Package_dependency.Constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
     Uop (Gte, String_literal dune_version)
   in
@@ -174,7 +178,7 @@ let insert_dune_dep depends dune_version =
   loop [] depends
 ;;
 
-let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool = function
+let rec already_requires_odoc : Package_dependency.Constraint.t -> bool = function
   | Bvar { name = "with-doc" | "build" | "post" } | Uop _ | Bop _ -> true
   | Bvar _ -> false
   | And l -> List.for_all ~f:already_requires_odoc l
@@ -182,7 +186,7 @@ let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool = functi
 ;;
 
 let insert_odoc_dep depends =
-  let with_doc : Package.Dependency.Constraint.t = Bvar { name = "with-doc" } in
+  let with_doc : Package_dependency.Constraint.t = Bvar { name = "with-doc" } in
   let odoc_dep = { Package.Dependency.name = odoc_name; constraint_ = Some with_doc } in
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)

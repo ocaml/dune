@@ -1,5 +1,5 @@
 open! Stdune
-include Dune_lang.Package_dependency
+include Dune_lang.Package_dependency.Opam_compatible
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
 

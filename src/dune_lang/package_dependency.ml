@@ -56,7 +56,7 @@ let to_dyn { name; constraint_ } =
   let open Dyn in
   record
     [ "name", Package_name.to_dyn name
-    ; "constr", Dyn.Option (Option.map ~f:Package_constraint.to_dyn constraint_)
+    ; "constraint_", Dyn.Option (Option.map ~f:Package_constraint.to_dyn constraint_)
     ]
 ;;
 
@@ -64,3 +64,49 @@ let equal { name; constraint_ } t =
   Package_name.equal name t.name
   && Option.equal Package_constraint.equal constraint_ t.constraint_
 ;;
+
+module Opam_compatible = struct
+  type package_dependency = t
+
+  type t =
+    { name : Package_name.Opam_compatible.t
+    ; constraint_ : Package_constraint.t option
+    }
+
+  let equal { name; constraint_ } t =
+    Package_name.Opam_compatible.equal name t.name
+    && Option.equal Package_constraint.equal constraint_ t.constraint_
+  ;;
+
+  let to_dyn { name; constraint_ } =
+    let open Dyn in
+    record
+      [ "name", Package_name.Opam_compatible.to_dyn name
+      ; "constraint_", Dyn.Option (Option.map ~f:Package_constraint.to_dyn constraint_)
+      ]
+  ;;
+
+  let encode { name; constraint_ } =
+    let open Dune_sexp.Encoder in
+    match constraint_ with
+    | None -> Package_name.Opam_compatible.encode name
+    | Some c ->
+      pair Package_name.Opam_compatible.encode Package_constraint.encode (name, c)
+  ;;
+
+  let decode =
+    let open Dune_sexp.Decoder in
+    let constrained =
+      let+ name = Well_formed_name.T.decode
+      and+ expr = Package_constraint.decode in
+      { name; constraint_ = Some expr }
+    in
+    enter constrained
+    <|> let+ name = Well_formed_name.T.decode in
+        { name; constraint_ = None }
+  ;;
+
+  let of_package_dependency ({ name; constraint_ } : package_dependency) =
+    { name = Package_name.Opam_compatible.of_package_name_exn name; constraint_ }
+  ;;
+end

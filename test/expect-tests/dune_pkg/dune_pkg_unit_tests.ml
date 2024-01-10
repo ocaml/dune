@@ -8,7 +8,7 @@ module Variable_value = Dune_pkg.Variable_value
 module Rev_store = Dune_pkg.Rev_store
 module Package_version = Dune_pkg.Package_version
 module Source = Dune_pkg.Source
-module Package_name = Dune_lang.Package_name
+module Package_name = Dune_pkg.Package_name
 module Scheduler = Dune_engine.Scheduler
 
 let () = Dune_tests_common.init ()

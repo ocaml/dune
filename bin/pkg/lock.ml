@@ -3,6 +3,7 @@ open Pkg_common
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
+module Package_name = Dune_pkg.Package_name
 
 let solve_lock_dir
   workspace

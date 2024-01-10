@@ -1,4 +1,5 @@
 open Import
+module Package_name = Dune_pkg.Package_name
 
 type candidate =
   { is_immediate_dep_of_local_package : bool
@@ -87,7 +88,7 @@ let better_candidate
   (pkg : Lock_dir.Pkg.t)
   =
   let open Fiber.O in
-  let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
+  let pkg_name = pkg.info.name |> Package_name.to_opam_package_name in
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun local_package ->
       Dune_pkg.Local_package.(
@@ -148,7 +149,7 @@ let pp results ~transitive ~lock_dir_path =
                those to align output. *)
             Some
               (Pp.concat
-                 [ Pp.verbatim (Dune_lang.Package_name.to_string name)
+                 [ Pp.verbatim (Package_name.to_string name)
                  ; Pp.space
                  ; Pp.tag
                      (User_message.Style.Ansi_styles [ `Fg_bright_red ])

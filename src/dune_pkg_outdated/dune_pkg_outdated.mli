@@ -1,4 +1,5 @@
 open Import
+module Package_name = Dune_pkg.Package_name
 
 (** Library for finding and printing outdated packges in the dune_pkg lock directory. *)
 

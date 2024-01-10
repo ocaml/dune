@@ -400,7 +400,23 @@ module Package_filename = struct
 
   let to_package_name package_filename =
     if String.equal (Filename.extension package_filename) file_extension
-    then Ok (Filename.remove_extension package_filename |> Package_name.of_string)
+    then (
+      let basename = Filename.remove_extension package_filename in
+      match Package_name.of_string_user_error (Loc.none, basename) with
+      | Ok package_name -> Ok package_name
+      | Error message ->
+        let message =
+          { message with
+            User_message.hints =
+              message.hints
+              @ [ Pp.textf
+                    "The lockfile %S is named incorrectly. Lockfiles must be named \
+                     <package>.pkg where <package> is a valid opam package name."
+                    package_filename
+                ]
+          }
+        in
+        raise (User_error.E message))
     else Error `Bad_extension
   ;;
 end

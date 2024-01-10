@@ -1,6 +1,7 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
+module Package_name = Dune_pkg.Package_name
 
 module Show_lock = struct
   let print_lock lock_dir_arg () =

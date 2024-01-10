@@ -20,19 +20,3 @@ val binary : t -> ?hint:string -> loc:Loc.t option -> string -> Action.Prog.t Me
 val binary_available : t -> string -> bool Memo.t
 val add_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list -> t
 val create : Context.t -> local_bins:Path.Build.Set.t Memo.Lazy.t -> t
-
-module Objs : sig
-  type t
-
-  val empty : t
-
-  val make
-    :  dir:Path.Build.t
-    -> lib_config:Lib_config.t Memo.t
-    -> libs:(Dune_file.Library.t * _ * Modules.t * Path.Build.t Obj_dir.t) list
-    -> exes:(_ * _ * Modules.t * Path.Build.t Obj_dir.t) list
-    -> t Memo.t
-
-  val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
-  val lookup_library : t -> Lib_name.t -> Lib_info.local option
-end

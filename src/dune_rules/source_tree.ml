@@ -602,8 +602,8 @@ end = struct
     let* project =
       Dune_project.load ~dir:path ~files:readdir.files ~infer_from_opam_files:true
       >>| function
-      | None -> Dune_project.anonymous ~dir:path ()
       | Some p -> p
+      | None -> Dune_project.anonymous ~dir:path Package.Info.empty Package.Name.Map.empty
     in
     let* dirs_visited =
       File.of_source_path (In_source_dir path)

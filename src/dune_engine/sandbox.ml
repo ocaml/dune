@@ -1,15 +1,7 @@
 open Import
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
-
-let maybe_async f =
-  (* It would be nice to do this check only once and return a function, but the
-     type of this function would need to be polymorphic which is forbidden by the
-     relaxed value restriction. *)
-  match Config.(get background_sandboxes) with
-  | `Disabled -> Fiber.return (f ())
-  | `Enabled -> Scheduler.async_exn f
-;;
+let maybe_async = Async_ops.maybe_async_sandbox
 
 let init =
   let init =

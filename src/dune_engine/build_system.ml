@@ -315,15 +315,6 @@ end = struct
         ; attached_to_alias : bool
         }
 
-  let maybe_async_rule_file_op f =
-    (* It would be nice to do this check only once and return a function, but the
-       type of this function would need to be polymorphic which is forbidden by
-       the relaxed value restriction. *)
-    match Config.(get background_file_system_operations_in_rule_execution) with
-    | `Enabled -> Scheduler.async_exn f
-    | `Disabled -> Fiber.return (f ())
-  ;;
-
   let execute_action_for_rule
     ~rule_kind
     ~rule_digest
@@ -384,7 +375,7 @@ end = struct
         else Action.progn [ action; Action.write_file stamp_file "" ]
     in
     let* () =
-      maybe_async_rule_file_op (fun () ->
+      Async_ops.maybe_async_rule_file_op (fun () ->
         Action.chdirs action
         |> Path.Build.Set.iter ~f:(fun p -> Path.mkdir_p (Path.build p)))
     in
@@ -441,7 +432,8 @@ end = struct
               Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
           in
           let+ produced_targets =
-            maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
+            Async_ops.maybe_async_rule_file_op (fun () ->
+              Targets.Produced.of_validated targets)
           in
           match produced_targets with
           | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
@@ -497,7 +489,8 @@ end = struct
       let open Fiber.O in
       report_evaluated_rule_exn config;
       let* () =
-        maybe_async_rule_file_op (fun () -> Path.mkdir_p (Path.build targets.root))
+        Async_ops.maybe_async_rule_file_op (fun () ->
+          Path.mkdir_p (Path.build targets.root))
       in
       let is_action_dynamic = Action.is_dynamic action.action in
       let sandbox_mode =
@@ -566,7 +559,7 @@ end = struct
               ~dir:Cached_digest.remove
           in
           let* () =
-            maybe_async_rule_file_op (fun () ->
+            Async_ops.maybe_async_rule_file_op (fun () ->
               Targets.Validated.iter
                 targets
                 ~file:Path.Build.unlink_no_err

@@ -1,16 +1,6 @@
 open Import
 module DAP = Dune_action_plugin.Private.Protocol
 
-let maybe_async =
-  let maybe_async =
-    lazy
-      (match Config.(get background_actions) with
-       | `Enabled -> Scheduler.async_exn
-       | `Disabled -> fun f -> Fiber.return (f ()))
-  in
-  fun f -> (Lazy.force maybe_async) f
-;;
-
 let to_dune_dep_set =
   let of_DAP_dep ~loc ~working_dir : DAP.Dependency.t -> Dep.t =
     let to_dune_path = Path.relative working_dir in
@@ -353,7 +343,7 @@ let diff_eq_files { Action.Diff.optional; mode; file1; file2 } =
 ;;
 
 let zero = Predicate_lang.element 0
-let maybe_async f = Produce.of_fiber (maybe_async f)
+let maybe_async f = Produce.of_fiber (Async_ops.maybe_async_actions f)
 
 let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   match (t : Action.t) with

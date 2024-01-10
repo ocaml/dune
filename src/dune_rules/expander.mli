@@ -21,7 +21,7 @@ val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
 val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
 val set_artifacts : t -> artifacts_host:Artifacts.t -> t
-val set_lookup_ml_sources : t -> f:(dir:Path.Build.t -> Artifacts.Objs.t Memo.t) -> t
+val set_lookup_ml_sources : t -> f:(dir:Path.Build.t -> Artifacts_obj.t Memo.t) -> t
 
 module Expanding_what : sig
   type t =

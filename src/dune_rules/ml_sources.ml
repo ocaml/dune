@@ -152,7 +152,7 @@ end
 
 type t =
   { modules : Modules.t
-  ; artifacts : Artifacts.Objs.t Memo.Lazy.t
+  ; artifacts : Artifacts_obj.t Memo.Lazy.t
   ; include_subdirs : Dune_file.Include_subdirs.t
   }
 
@@ -160,7 +160,7 @@ let include_subdirs t = t.include_subdirs
 
 let empty =
   { modules = Modules.empty
-  ; artifacts = Memo.Lazy.of_val Artifacts.Objs.empty
+  ; artifacts = Memo.Lazy.of_val Artifacts_obj.empty
   ; include_subdirs = No
   }
 ;;
@@ -546,7 +546,7 @@ let make
   let modules = Modules.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
-      Artifacts.Objs.make
+      Artifacts_obj.make
         ~dir
         ~lib_config
         ~libs:modules_of_stanzas.libraries

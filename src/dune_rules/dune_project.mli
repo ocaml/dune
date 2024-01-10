@@ -123,12 +123,7 @@ val load
 
     - [info] defaults to the empty package info
     - [package] defaults to the empty map of packages *)
-val anonymous
-  :  dir:Path.Source.t
-  -> ?info:Package.Info.t
-  -> ?packages:Package.t Package.Name.Map.t
-  -> unit
-  -> t
+val anonymous : dir:Path.Source.t -> Package.Info.t -> Package.t Package.Name.Map.t -> t
 
 (** "dune-project" *)
 val filename : Filename.t

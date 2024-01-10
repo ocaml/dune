@@ -183,7 +183,11 @@ module Init_context = struct
         ~infer_from_opam_files:true
       >>| function
       | Some p -> p
-      | None -> Dune_project.anonymous ~dir:Path.Source.root ()
+      | None ->
+        Dune_project.anonymous
+          ~dir:Path.Source.root
+          Package.Info.empty
+          Package.Name.Map.empty
     in
     let dir =
       match path with
@@ -368,18 +372,19 @@ module Component = struct
     let test common (() : Options.Test.t) = make "test" common []
 
     (* A list of CSTs for dune-project file content *)
-    let dune_project ?(opam_file_gen = true) dir (common : Options.Common.t) =
-      let package =
-        Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
+    let dune_project ~opam_file_gen dir (common : Options.Common.t) =
+      let cst =
+        let package =
+          Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
+        in
+        let packages = Package.Name.Map.singleton (Package.name package) package in
+        let info = Package.Info.example in
+        Dune_project.anonymous ~dir info packages
+        |> Dune_project.set_generate_opam_files opam_file_gen
+        |> Dune_project.encode
+        |> List.map ~f:(fun exp ->
+          exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
       in
-      let packages = Package.Name.Map.singleton (Package.name package) package in
-      let info = Package.Info.example in
-      Dune_project.anonymous ~dir ~packages ~info ()
-      |> Dune_project.set_generate_opam_files opam_file_gen
-      |> Dune_project.encode
-      |> List.map ~f:(fun exp ->
-        exp |> Dune_lang.Ast.add_loc ~loc:Loc.none |> Cst.concrete)
-      |> fun cst ->
       List.append
         cst
         [ Cst.Comment

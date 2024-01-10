@@ -30,15 +30,15 @@ We declare a `executable` where the list of modules is read from the (generated)
 file `gen/lst`:
 
   $ cat >dune <<EOF
-  > (executable (name mod) (modules (:include gen/lst)))
+  > (executable (name mod) (modes byte) (modules (:include gen/lst)))
   > EOF
 
 Let's check that it fails in the current version of Dune:
 
   $ dune exec ./mod.exe
-  File "dune", line 1, characters 23-51:
-  1 | (executable (name mod) (modules (:include gen/lst)))
-                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "dune", line 1, characters 36-64:
+  1 | (executable (name mod) (modes byte) (modules (:include gen/lst)))
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: the ability to specify non-constant module lists is only available
   since version 3.13 of the dune language. Please update your dune-project file
   to have (lang dune 3.13).
@@ -82,7 +82,7 @@ Let's check that error messages owning to non-existent modules continue to work:
 
   $ mv mod.ml mod2.ml
   $ cat >dune <<EOF
-  > (executable (name mod) (modules (:include gen/lst)))
+  > (executable (name mod) (modes byte) (modules (:include gen/lst)))
   > EOF
 
 Locations are accurate even for generated files:
@@ -101,24 +101,22 @@ Let's do some examples using libraries:
   $ cat >dune <<EOF
   > (library
   >  (name lib)
+  >  (modes byte)
   >  (modules (:include gen/lst)))
   > EOF
 
   $ dune build --display short
         ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
       ocamldep .lib.objs/lib__Mod.impl.d
-      ocamlopt .lib.objs/native/lib.{cmx,o}
         ocamlc .lib.objs/byte/lib__Mod.{cmi,cmo,cmt}
-      ocamlopt .lib.objs/native/lib__Mod.{cmx,o}
         ocamlc lib.cma
-      ocamlopt lib.{a,cmxa}
-      ocamlopt lib.cmxs
 
 We can also use special forms such as `%{read-lines:}`:
 
   $ cat >dune <<EOF
   > (library
   >  (name lib)
+  >  (modes byte)
   >  (modules %{read-lines:gen/lst}))
   > EOF
 
@@ -131,14 +129,9 @@ We can also use special forms such as `%{read-lines:}`:
   $ dune build --display short
         ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
       ocamldep .lib.objs/lib__Mod2.impl.d
-      ocamlopt .lib.objs/native/lib.{cmx,o}
         ocamlc .lib.objs/byte/lib__Mod.{cmi,cmo,cmt}
         ocamlc .lib.objs/byte/lib__Mod2.{cmi,cmo,cmt}
-      ocamlopt .lib.objs/native/lib__Mod.{cmx,o}
-      ocamlopt .lib.objs/native/lib__Mod2.{cmx,o}
         ocamlc lib.cma
-      ocamlopt lib.{a,cmxa}
-      ocamlopt lib.cmxs
 
 Interaction with `(include_subdirs)` when the dependencies are in the subtree:
 
@@ -146,13 +139,14 @@ Interaction with `(include_subdirs)` when the dependencies are in the subtree:
   > (include_subdirs unqualified)
   > (library
   >  (name lib)
+  >  (modes byte)
   >  (modules %{read-lines:gen/lst}))
   > EOF
 
   $ dune build --display short
   Error: Dependency cycle between:
      (modules) field at dune:2
-  -> %{read-lines:gen/lst} at dune:4
+  -> %{read-lines:gen/lst} at dune:5
   -> (modules) field at dune:2
   [1]
 
@@ -164,6 +158,7 @@ Let's move the gen subdirectory out of the hierarchy:
   > (include_subdirs unqualified)
   > (library
   >  (name lib2)
+  >  (modes byte)
   >  (modules %{read-lines:../gen/lst}))
   > EOF
 
@@ -174,14 +169,9 @@ Let's move the gen subdirectory out of the hierarchy:
         ocamlc lib/.lib2.objs/byte/lib2.{cmi,cmo,cmt}
       ocamldep lib/.lib2.objs/lib2__Mod.impl.d
       ocamldep lib/.lib2.objs/lib2__Mod2.impl.d
-      ocamlopt lib/.lib2.objs/native/lib2.{cmx,o}
         ocamlc lib/.lib2.objs/byte/lib2__Mod.{cmi,cmo,cmt}
         ocamlc lib/.lib2.objs/byte/lib2__Mod2.{cmi,cmo,cmt}
-      ocamlopt lib/.lib2.objs/native/lib2__Mod.{cmx,o}
-      ocamlopt lib/.lib2.objs/native/lib2__Mod2.{cmx,o}
         ocamlc lib/lib2.cma
-      ocamlopt lib/lib2.{a,cmxa}
-      ocamlopt lib/lib2.cmxs
 
   $ rm -rf lib
 
@@ -191,7 +181,7 @@ appears. We need to handle this cycle gracefully and report it to the user.
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to lst (echo "mod")))
-  > (executable (name mod) (modules (:include lst)))
+  > (executable (name mod) (modes byte) (modules (:include lst)))
   > EOF
 
   $ dune exec ./mod.exe
@@ -206,6 +196,7 @@ Let's do one example with a generated source file:
   $ cat >dune <<EOF
   > (library
   >  (name lib)
+  >  (modes byte)
   >  (modules mod3 (:include gen/lst)))
   > (rule (with-stdout-to mod3.ml (progn)))
   > (rule (with-stdout-to mod4.ml (progn)))
@@ -217,11 +208,6 @@ Let's do one example with a generated source file:
         ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
       ocamldep .lib.objs/lib__Mod3.impl.d
       ocamldep .lib.objs/lib__Mod4.impl.d
-      ocamlopt .lib.objs/native/lib.{cmx,o}
         ocamlc .lib.objs/byte/lib__Mod3.{cmi,cmo,cmt}
         ocamlc .lib.objs/byte/lib__Mod4.{cmi,cmo,cmt}
-      ocamlopt .lib.objs/native/lib__Mod3.{cmx,o}
-      ocamlopt .lib.objs/native/lib__Mod4.{cmx,o}
         ocamlc lib.cma
-      ocamlopt lib.{a,cmxa}
-      ocamlopt lib.cmxs

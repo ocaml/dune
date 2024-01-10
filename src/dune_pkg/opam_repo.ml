@@ -124,12 +124,14 @@ end
 
 type t =
   { source : Source_backend.t
+  ; loc : Loc.t
   ; serializable : Serializable.t option
   }
 
-let equal { source; serializable } t =
+let equal { source; serializable; loc } t =
   Source_backend.equal source t.source
   && Option.equal Serializable.equal serializable t.serializable
+  && Loc.equal loc t.loc
 ;;
 
 let serializable { serializable; _ } = serializable
@@ -169,7 +171,7 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
      User_error.raise
        ~loc
        [ Pp.textf "could not read %s" (Path.to_string_maybe_quoted opam_repo_dir_path) ]);
-  { source = Directory opam_repo_dir_path; serializable = None }
+  { source = Directory opam_repo_dir_path; serializable = None; loc }
 ;;
 
 let of_git_repo ~update (source : Source.t) =
@@ -200,9 +202,8 @@ let of_git_repo ~update (source : Source.t) =
       ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
       [ Pp.textf "Could not find revision in repository %s" source.url ]
   | Some at_rev ->
-    let source = at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string in
-    let serializable = Some source in
-    { source = Repo at_rev; serializable }
+    let serializable = Some (at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string) in
+    { source = Repo at_rev; serializable; loc = source.loc }
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
@@ -226,13 +227,14 @@ let load_packages_from_git rev_store opam_packages =
       Resolved_package.git_repo package ~opam_file ~opam_file_contents rev ~files_dir)
 ;;
 
-let all_packages_versions_in_dir ~dir opam_package_name =
+let all_packages_versions_in_dir loc ~dir opam_package_name =
   let dir = Path.append_local dir (Paths.package_root opam_package_name) in
   match Path.readdir_unsorted dir with
   | Ok version_dirs -> List.map version_dirs ~f:OpamPackage.of_string
   | Error (Unix.ENOENT, _, _) -> []
   | Error e ->
     User_error.raise
+      ~loc
       [ Pp.textf
           "Unable to read package versions from %s: %s"
           (Path.to_string_maybe_quoted dir)
@@ -260,7 +262,7 @@ let all_packages_versions_at_rev rev opam_package_name =
 let all_package_versions t opam_package_name =
   match t.source with
   | Directory dir ->
-    all_packages_versions_in_dir ~dir opam_package_name
+    all_packages_versions_in_dir t.loc ~dir opam_package_name
     |> List.map ~f:(fun pkg -> `Directory pkg)
   | Repo rev ->
     all_packages_versions_at_rev rev opam_package_name
@@ -321,6 +323,6 @@ let load_all_versions ts opam_package_name =
 module Private = struct
   let create ~source:serializable =
     let packages_dir_path = Path.of_string "/" in
-    { source = Directory packages_dir_path; serializable }
+    { source = Directory packages_dir_path; serializable; loc = Loc.none }
   ;;
 end

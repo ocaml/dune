@@ -21,11 +21,7 @@ val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
 val set_dir : t -> dir:Path.Build.t -> t
 val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
 val set_artifacts : t -> artifacts_host:Artifacts.t -> t
-
-val set_lookup_ml_sources
-  :  t
-  -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t Memo.t)
-  -> t
+val set_lookup_ml_sources : t -> f:(dir:Path.Build.t -> Artifacts.Objs.t Memo.t) -> t
 
 module Expanding_what : sig
   type t =
@@ -110,6 +106,12 @@ module With_reduced_var_set : sig
 
   val eval_blang : context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
+
+val expand_ordered_set_lang
+  :  Ordered_set_lang.Unexpanded.t
+  -> dir:Path.t
+  -> f:Value.t list Action_builder.t String_with_vars.expander
+  -> Ordered_set_lang.t Action_builder.t
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible
     inside [Action_builder.t] because such forms may contain the form (:include

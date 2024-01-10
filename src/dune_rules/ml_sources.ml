@@ -150,46 +150,9 @@ module Modules = struct
   ;;
 end
 
-module Artifacts = struct
-  type t =
-    { libraries : Lib_info.local Lib_name.Map.t
-    ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
-    }
-
-  let empty = { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
-  let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
-  let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
-
-  let make ~dir ~lib_config ~libs ~exes =
-    let+ libraries =
-      Memo.List.map libs ~f:(fun ((lib : Library.t), _, _, _) ->
-        let* lib_config = lib_config in
-        let name = Lib_name.of_local lib.name in
-        let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
-        name, info)
-      >>| Lib_name.Map.of_list_exn
-    in
-    let modules =
-      let by_name modules obj_dir =
-        Modules_group.fold_user_available ~init:modules ~f:(fun m modules ->
-          Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
-      in
-      let init =
-        List.fold_left
-          exes
-          ~init:Module_name.Map.empty
-          ~f:(fun modules (_, _, m, obj_dir) -> by_name modules obj_dir m)
-      in
-      List.fold_left libs ~init ~f:(fun modules (_, _, m, obj_dir) ->
-        by_name modules obj_dir m)
-    in
-    { libraries; modules }
-  ;;
-end
-
 type t =
   { modules : Modules.t
-  ; artifacts : Artifacts.t Memo.Lazy.t
+  ; artifacts : Artifacts.Objs.t Memo.Lazy.t
   ; include_subdirs : Dune_file.Include_subdirs.t
   }
 
@@ -197,7 +160,7 @@ let include_subdirs t = t.include_subdirs
 
 let empty =
   { modules = Modules.empty
-  ; artifacts = Memo.Lazy.of_val Artifacts.empty
+  ; artifacts = Memo.Lazy.of_val Artifacts.Objs.empty
   ; include_subdirs = No
   }
 ;;
@@ -303,6 +266,7 @@ let virtual_modules ~lookup_vlib vlib =
 ;;
 
 let make_lib_modules
+  ~expander
   ~dir
   ~libs
   ~lookup_vlib
@@ -362,11 +326,12 @@ let make_lib_modules
   let* sources, modules =
     let { Buildable.loc = stanza_loc; modules = modules_settings; _ } = lib.buildable in
     Modules_field_evaluator.eval
+      ~expander
       ~modules
       ~stanza_loc
       ~kind
       ~private_modules:
-        (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+        (Option.value ~default:Ordered_set_lang.Unexpanded.standard lib.private_modules)
       ~src_dir:dir
       modules_settings
       ~version
@@ -425,7 +390,7 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  fun stanzas ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
+  fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
@@ -436,6 +401,7 @@ let modules_of_stanzas =
         let+ sources, modules =
           let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
           make_lib_modules
+            ~expander
             ~dir
             ~libs
             ~lookup_vlib
@@ -454,11 +420,12 @@ let modules_of_stanzas =
             exes.buildable
           in
           Modules_field_evaluator.eval
+            ~expander
             ~modules
             ~stanza_loc
             ~src_dir:dir
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.Unexpanded.standard
             ~version:exes.dune_version
             modules_settings
         in
@@ -473,11 +440,12 @@ let modules_of_stanzas =
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let+ sources, modules =
           Modules_field_evaluator.eval
+            ~expander
             ~modules
             ~stanza_loc:mel.loc
             ~kind:Modules_field_evaluator.Exe_or_normal_lib
             ~version:mel.dune_version
-            ~private_modules:Ordered_set_lang.standard
+            ~private_modules:Ordered_set_lang.Unexpanded.standard
             ~src_dir:dir
             mel.modules
         in
@@ -491,6 +459,7 @@ let modules_of_stanzas =
 
 let make
   dune_file
+  ~expander
   ~dir
   ~libs
   ~project
@@ -566,6 +535,7 @@ let make
     in
     modules_of_stanzas
       dune_file
+      ~expander
       ~project
       ~dir
       ~libs
@@ -576,7 +546,7 @@ let make
   let modules = Modules.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
-      Artifacts.make
+      Artifacts.Objs.make
         ~dir
         ~lib_config
         ~libs:modules_of_stanzas.libraries

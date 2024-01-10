@@ -54,7 +54,11 @@ order to declare a multi-directory library, you need to use the
   <modules>)`` field. ``<modules>`` uses the
   :doc:`reference/ordered-set-language`, where elements are module names and
   don't need to start with an uppercase letter. For instance, to exclude module
-  ``Foo``, use ``(modules (:standard \ foo))``
+  ``Foo``, use ``(modules (:standard \ foo))``.  Starting in Dune 3.13, one can
+  also use special forms ``(:include <file>)`` and variables such as
+  ``%{read-lines:<file>}`` in this field to customize the list of modules using
+  Dune rules. The dependencies introduced in this way *must live in a different
+  directory that the stanza making use of them*.
 
 - ``(libraries <library-dependencies>)`` specifies the library's dependencies.
   See :doc:`reference/library-dependencies` for more details.

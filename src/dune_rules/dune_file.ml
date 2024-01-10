@@ -601,10 +601,10 @@ module Library = struct
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; dune_version : Dune_lang.Syntax.Version.t
-    ; virtual_modules : Ordered_set_lang.t option
+    ; virtual_modules : Ordered_set_lang.Unexpanded.t option
     ; implements : (Loc.t * Lib_name.t) option
     ; default_implementation : (Loc.t * Lib_name.t) option
-    ; private_modules : Ordered_set_lang.t option
+    ; private_modules : Ordered_set_lang.Unexpanded.t option
     ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t
@@ -665,9 +665,10 @@ module Library = struct
          ()
        and+ sub_systems = Sub_system_info.record_parser
        and+ virtual_modules =
-         field_o
+         Ordered_set_lang.Unexpanded.field_o
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
+           ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "virtual_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 7) >>> Ordered_set_lang.decode)
        and+ implements =
          field_o
            "implements"
@@ -677,9 +678,10 @@ module Library = struct
            "default_implementation"
            (Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> located Lib_name.decode)
        and+ private_modules =
-         field_o
+         Ordered_set_lang.Unexpanded.field_o
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 2))
+           ~since_expanded:Stanza_common.Modules_settings.since_expanded
            "private_modules"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 2) >>> Ordered_set_lang.decode)
        and+ stdlib =
          field_o
            "stdlib"
@@ -766,7 +768,7 @@ module Library = struct
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
          User_error.raise
-           ~loc:(Ordered_set_lang.loc virtual_modules |> Option.value_exn)
+           ~loc:(Ordered_set_lang.Unexpanded.loc virtual_modules |> Option.value_exn)
            [ Pp.textf
                "A library cannot be both virtual and implement %s"
                (Lib_name.to_string impl)

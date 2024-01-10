@@ -4,7 +4,7 @@
 open Import
 
 module Virtual : sig
-  type t = { virtual_modules : Ordered_set_lang.t }
+  type t = { virtual_modules : Ordered_set_lang.Unexpanded.t }
 end
 
 module Implementation : sig
@@ -20,9 +20,10 @@ type kind =
   | Exe_or_normal_lib
 
 val eval
-  :  modules:Module.Source.t Module_trie.t
+  :  expander:Expander.t
+  -> modules:Module.Source.t Module_trie.t
   -> stanza_loc:Loc.t
-  -> private_modules:Ordered_set_lang.t
+  -> private_modules:Ordered_set_lang.Unexpanded.t
   -> kind:kind
   -> src_dir:Path.Build.t
   -> version:Dune_lang.Syntax.Version.t

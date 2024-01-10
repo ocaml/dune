@@ -46,6 +46,11 @@ module type Action_builder = sig
   val all : 'a t list -> 'a list t
   val read_sexp : Path.t -> Dune_sexp.Ast.t t
 
+  val push_stack_frame
+    :  human_readable_description:(unit -> User_message.Style.t Pp.t)
+    -> (unit -> 'a t)
+    -> 'a t
+
   module O : sig
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t

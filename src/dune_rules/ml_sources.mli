@@ -15,16 +15,9 @@ module Origin : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Artifacts : sig
-  type t
-
-  val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
-  val lookup_library : t -> Lib_name.t -> Lib_info.local option
-end
-
 type t
 
-val artifacts : t -> Artifacts.t Memo.t
+val artifacts : t -> Artifacts.Objs.t Memo.t
 
 type for_ =
   | Library of Lib_name.t (** Library name *)
@@ -54,6 +47,7 @@ val include_subdirs : t -> Dune_file.Include_subdirs.t
 
 val make
   :  Stanza.t list
+  -> expander:Expander.t
   -> dir:Path.Build.t
   -> libs:Lib.DB.t Memo.t
   -> project:Dune_project.t

@@ -160,10 +160,10 @@ module Library : sig
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; dune_version : Dune_lang.Syntax.Version.t
-    ; virtual_modules : Ordered_set_lang.t option
+    ; virtual_modules : Ordered_set_lang.Unexpanded.t option
     ; implements : (Loc.t * Lib_name.t) option
     ; default_implementation : (Loc.t * Lib_name.t) option
-    ; private_modules : Ordered_set_lang.t option
+    ; private_modules : Ordered_set_lang.Unexpanded.t option
     ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option
     ; enabled_if : Blang.t

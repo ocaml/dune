@@ -278,8 +278,10 @@ end = struct
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+              let* expander = Super_context.expander sctx ~dir in
               Ml_sources.make
                 d.stanzas
+                ~expander
                 ~dir
                 ~libs
                 ~project:d.project
@@ -360,8 +362,10 @@ end = struct
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let project = dune_file.project in
+              let* expander = Super_context.expander sctx ~dir in
               Ml_sources.make
                 dune_file.stanzas
+                ~expander
                 ~dir
                 ~project
                 ~libs

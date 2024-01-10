@@ -617,24 +617,26 @@ let opam_package_to_lock_file_pkg
 ;;
 
 let solve_package_list packages context =
-  let* result =
-    Fiber.collect_errors (fun () ->
-      (* [Solver.solve] returns [Error] when it's unable to find a solution to
-         the dependencies, but can also raise exceptions, for example if opam
-         is unable to parse an opam file in the package repository. To prevent
-         an unexpected opam exception from crashing dune, we catch all
-         exceptions raised by the solver and report them as [User_error]s
-         instead. *)
-      Solver.solve context packages)
-    >>| function
-    | Ok (Ok res) -> Ok res
-    | Ok (Error e) -> Error (`Diagnostics e)
-    | Error [] -> assert false
-    | Error (exn :: _) ->
-      (* CR-rgrinberg: this needs to be handled right *)
-      Error (`Exn exn.exn)
-  in
-  match result with
+  Fiber.collect_errors (fun () ->
+    (* [Solver.solve] returns [Error] when it's unable to find a solution to
+       the dependencies, but can also raise exceptions, for example if opam
+       is unable to parse an opam file in the package repository. To prevent
+       an unexpected opam exception from crashing dune, we catch all
+       exceptions raised by the solver and report them as [User_error]s
+       instead. *)
+    Solver.solve context packages)
+  >>| (function
+         | Ok (Ok res) -> Ok res
+         | Ok (Error e) -> Error (`Diagnostics e)
+         | Error [] -> assert false
+         | Error (exn :: _) ->
+           (* CR-rgrinberg: this needs to be handled right *)
+           Error (`Exn exn.exn))
+  >>= function
+  | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
+  | Error (`Diagnostics e) ->
+    let+ diagnostics = Solver.diagnostics e in
+    Error (`Diagnostic_message (Pp.text diagnostics))
   | Error (`Exn exn) ->
     (match exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
@@ -644,10 +646,6 @@ let solve_package_list packages context =
        Code_error.raise
          "Unexpected exception raised while solving dependencies"
          [ "exception", Exn.to_dyn unexpected_exn ])
-  | Error (`Diagnostics e) ->
-    let+ diagnostics = Solver.diagnostics e in
-    Error (`Diagnostic_message (Pp.text diagnostics))
-  | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
 ;;
 
 module Solver_result = struct

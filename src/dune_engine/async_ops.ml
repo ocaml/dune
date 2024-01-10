@@ -1,29 +1,21 @@
 open Import
 
-let maybe_async_rule_file_op f =
-  (* It would be nice to do this check only once and return a function, but the
-     type of this function would need to be polymorphic which is forbidden by
-     the relaxed value restriction. *)
-  match Config.(get background_file_system_operations_in_rule_execution) with
-  | `Enabled -> Scheduler.async_exn f
-  | `Disabled -> Fiber.return (f ())
+type maybe_async_function = { apply : 'a. (unit -> 'a) -> 'a Fiber.t }
+
+let of_config_value = function
+  | `Enabled -> { apply = Scheduler.async_exn }
+  | `Disabled -> { apply = (fun f -> Fiber.return (f ())) }
 ;;
 
-let maybe_async_actions : _ -> unit Fiber.t =
-  let maybe_async =
-    lazy
-      (match Config.(get background_actions) with
-       | `Enabled -> Scheduler.async_exn
-       | `Disabled -> fun f -> Fiber.return (f ()))
-  in
-  fun f -> (Lazy.force maybe_async) f
+let of_key k =
+  let l = lazy (of_config_value (Config.get k)) in
+  let apply f = (Lazy.force l).apply f in
+  { apply }
 ;;
 
-let maybe_async_sandbox f =
-  (* It would be nice to do this check only once and return a function, but the
-     type of this function would need to be polymorphic which is forbidden by the
-     relaxed value restriction. *)
-  match Config.(get background_sandboxes) with
-  | `Disabled -> Fiber.return (f ())
-  | `Enabled -> Scheduler.async_exn f
+let { apply = maybe_async_rule_file_op } =
+  of_key Config.background_file_system_operations_in_rule_execution
 ;;
+
+let { apply = maybe_async_actions } = of_key Config.background_actions
+let { apply = maybe_async_sandbox } = of_key Config.background_sandboxes

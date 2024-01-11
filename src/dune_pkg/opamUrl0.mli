@@ -8,3 +8,6 @@ val decode_loc : (Stdune.Loc.t * t) Dune_sexp.Decoder.t
 val rev : t -> string option
 val base_url : t -> string
 val is_version_control : t -> bool
+
+(** [is_file t] is true iff [t] is a url begining with "file://" *)
+val is_local : t -> bool

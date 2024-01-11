@@ -18,3 +18,5 @@ let is_version_control t =
   | #version_control -> true
   | _ -> false
 ;;
+
+let is_local t = String.equal t.transport "file"

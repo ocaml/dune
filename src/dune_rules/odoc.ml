@@ -247,7 +247,13 @@ let odoc_base_flags quiet build_dir =
 ;;
 
 let odoc_program sctx dir =
-  Super_context.resolve_program sctx ~dir "odoc" ~loc:None ~hint:"opam install odoc"
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~where:Original_path
+    "odoc"
+    ~loc:None
+    ~hint:"opam install odoc"
 ;;
 
 let run_odoc sctx ~dir command ~quiet ~flags_for args =

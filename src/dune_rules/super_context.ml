@@ -231,13 +231,13 @@ let add_alias_action t alias ~dir ~loc action =
 
 let env_node = Env_tree.get_node
 
-let resolve_program_memo t ~dir ?hint ~loc bin =
+let resolve_program_memo t ~dir ?where ?hint ~loc bin =
   let* artifacts = Env_tree.artifacts_host t ~dir in
-  Artifacts.binary ?hint ~loc artifacts bin
+  Artifacts.binary ?hint ?where ~loc artifacts bin
 ;;
 
-let resolve_program t ~dir ?hint ~loc bin =
-  Action_builder.of_memo @@ resolve_program_memo t ~dir ?hint ~loc bin
+let resolve_program t ~dir ?where ?hint ~loc bin =
+  Action_builder.of_memo @@ resolve_program_memo t ~dir ?where ?hint ~loc bin
 ;;
 
 let make_default_env_node

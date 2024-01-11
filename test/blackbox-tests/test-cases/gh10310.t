@@ -3,7 +3,6 @@ with enabled_if.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.14)
-  > (using directory-targets 0.1)
   > EOF
 
   $ cat > dune <<EOF

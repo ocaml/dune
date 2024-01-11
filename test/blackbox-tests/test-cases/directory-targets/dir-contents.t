@@ -1,8 +1,7 @@
 Directory targets and ocaml/coq/etc sources
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.2)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat >produce.sh <<EOF

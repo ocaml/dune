@@ -3,7 +3,6 @@ properly promoted.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)
-  > (using directory-targets 0.1)
   > EOF
 
   $ cat > dune <<EOF

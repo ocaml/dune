@@ -1,9 +1,8 @@
 Allow directories to be installable
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.13)
   > (package (name foo))
-  > (using directory-targets 0.1)
   > EOF
 
   $ cat >dune <<EOF

@@ -1,8 +1,7 @@
 Tests for directory targets that are produced by unsandboxed rule
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.4)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
 Build directory target from the command line without sandboxing

@@ -1,5 +1,4 @@
-(lang dune 3.1)
-(using directory-targets 0.1)
+(lang dune 3.13)
 (using coq 0.3)
 
 (package

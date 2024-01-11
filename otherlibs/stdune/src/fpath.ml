@@ -1,4 +1,12 @@
-let is_root t = Filename.dirname t = t
+let is_root =
+  if Sys.unix
+  then fun x -> x = "/" || x = "."
+  else
+    (* CR-someday rgrinberg: can we do better on windows? *)
+    fun s ->
+    Filename.dirname s = s
+;;
+
 let initial_cwd = Stdlib.Sys.getcwd ()
 
 type mkdir_result =

@@ -81,7 +81,7 @@ struct
       let t = Table.find_exn langs name in
       { syntax = t.syntax
       ; data = t.data
-      ; version = Syntax.greatest_supported_version t.syntax
+      ; version = Syntax.greatest_supported_version_exn t.syntax
       }
     ;;
   end

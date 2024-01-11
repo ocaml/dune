@@ -701,7 +701,7 @@ end = struct
 
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
-    let dune_version = Dune_lang.Syntax.greatest_supported_version Stanza.syntax in
+    let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
     let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in

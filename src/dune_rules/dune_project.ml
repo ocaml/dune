@@ -248,7 +248,7 @@ include Dune_lang.Versioned_file.Make (struct
   end)
 
 let default_dune_language_version =
-  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
+  ref (Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax)
 ;;
 
 let get_dune_lang () =
@@ -404,17 +404,21 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
         | Not_selected (Packed e) ->
           let stanzas =
             let open Dune_lang.Decoder in
-            let _arg, stanzas =
-              let parsing_context =
-                (* Temporarily mark the extension as active so that we can
-                   call the parser and extract the list of stanza names this
-                   extension registers *)
-                Univ_map.set
-                  parsing_context
-                  (Dune_lang.Syntax.key e.syntax)
-                  (Active (Dune_lang.Syntax.greatest_supported_version e.syntax))
-              in
-              parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+            let stanzas =
+              match Dune_lang.Syntax.greatest_supported_version e.syntax with
+              | None -> []
+              | Some greatest_supported_version ->
+                let parsing_context =
+                  (* Temporarily mark the extension as active so that we can
+                     call the parser and extract the list of stanza names this
+                     extension registers *)
+                  Univ_map.set
+                    parsing_context
+                    (Dune_lang.Syntax.key e.syntax)
+                    (Active greatest_supported_version)
+                in
+                parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+                |> snd
             in
             List.map stanzas ~f:(fun (name, _) ->
               ( name

@@ -142,7 +142,9 @@ module File = struct
 
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
-    let version = Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax in
+    let version =
+      Dune_lang.Syntax.greatest_supported_version_exn Dune_lang.Stanza.syntax
+    in
     Io.with_file_out
       ~binary:true
       (* Why do we pass [~binary:true] but not anywhere else when formatting? *)

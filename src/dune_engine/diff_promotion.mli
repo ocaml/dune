@@ -45,3 +45,4 @@ type files_to_promote =
 
 val promote_files_registered_in_last_run : files_to_promote -> unit
 val display : files_to_promote -> unit Fiber.t
+val display_files : files_to_promote -> unit Fiber.t

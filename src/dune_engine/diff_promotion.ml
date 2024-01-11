@@ -237,3 +237,20 @@ let display files_to_promote =
   |> List.sort ~compare:(fun (file, _) (file', _) -> File.compare file file')
   |> List.iter ~f:(fun (_file, diff) -> Print_diff.Diff.print diff)
 ;;
+
+let display_files files_to_promote =
+  let open Fiber.O in
+  let files = load_db () |> filter_db files_to_promote in
+  let+ file_opts =
+    Fiber.parallel_map files ~f:(fun file ->
+      let+ diff_opt = diff_for_file file in
+      match diff_opt with
+      | Ok _ -> Some file
+      | Error _ -> None)
+  in
+  file_opts
+  |> List.filter_opt
+  |> List.sort ~compare:(fun file file' -> File.compare file file')
+  |> List.map ~f:File.to_dyn
+  |> List.iter ~f:(fun file -> Console.print [ Dyn.pp file ])
+;;

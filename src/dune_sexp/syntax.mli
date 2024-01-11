@@ -74,7 +74,10 @@ val name : t -> string
 (** Check that the given version is supported and raise otherwise. *)
 val check_supported : dune_lang_ver:Version.t -> t -> Loc.t * Version.t -> unit
 
-val greatest_supported_version : t -> Version.t
+val greatest_supported_version : t -> Version.t option
+
+(** [greatest_supported_version_exn t] assumes *)
+val greatest_supported_version_exn : t -> Version.t
 
 (** {1 S-expression parsing} *)
 

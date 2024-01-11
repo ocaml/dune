@@ -69,7 +69,7 @@ module Supported_versions : sig
     -> dune_lang_ver:Version.t
     -> Version.t option
 
-  val minimum_versions : t -> Version.t * Version.t
+  val minimum_versions : t -> (Version.t * Version.t) option
 
   val status
     :  t
@@ -188,8 +188,9 @@ end = struct
   ;;
 
   let minimum_versions t =
-    let major, major_map = Option.value_exn (Int.Map.min_binding t.version_map) in
-    let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
+    let open Option.O in
+    let* major, major_map = Int.Map.min_binding t.version_map in
+    let+ minor, lang = Int.Map.min_binding major_map in
     (major, minor), lang
   ;;
 
@@ -323,19 +324,23 @@ module Error = struct
          ]
        else (
          match greatest_supported_version with
+         | Some _ -> []
          | None ->
-           let min_lang_version, min_dune_version =
-             Supported_versions.minimum_versions t.supported_versions
+           let first_version_message =
+             match Supported_versions.minimum_versions t.supported_versions with
+             | None -> ""
+             | Some (min_lang_version, min_dune_version) ->
+               sprintf
+                 " The first version of this plugin is %s and was introduced in dune %s."
+                 (Version.to_string min_lang_version)
+                 (Version.to_string min_dune_version)
            in
            [ Pp.textf
                "Note however that the currently selected version of dune (%s) does not \
-                support this plugin. The first version of this plugin is %s and was \
-                introduced in dune %s."
+                support this plugin.%s"
                (Version.to_string dune_lang_ver)
-               (Version.to_string min_lang_version)
-               (Version.to_string min_dune_version)
-           ]
-         | Some _ -> []))
+               first_version_message
+           ]))
   ;;
 end
 
@@ -372,28 +377,40 @@ let check_supported ~dune_lang_ver t (loc, ver) =
   | `Supported -> ()
   | `Deleted_in deleted_in ->
     let min_ext_ver, min_dune_lang_ver =
-      Supported_versions.minimum_versions t.supported_versions
+      match Supported_versions.minimum_versions t.supported_versions with
+      | None -> None, None
+      | Some (x, y) -> Some x, Some y
+    in
+    let please_port_message =
+      match min_ext_ver with
+      | None -> ""
+      | Some min_ext_ver ->
+        sprintf
+          " Please port this project to a newer version of the extension, such as %s."
+          (Version.to_string min_ext_ver)
     in
     let hints =
-      if dune_lang_ver >= min_dune_lang_ver
-      then []
-      else
-        [ Pp.textf
-            "You will also need to upgrade to (lang dune %s)."
-            (Version.to_string min_dune_lang_ver)
-        ]
+      match min_dune_lang_ver with
+      | None -> []
+      | Some min_dune_lang_ver ->
+        if dune_lang_ver >= min_dune_lang_ver
+        then []
+        else
+          [ Pp.textf
+              "You will also need to upgrade to (lang dune %s)."
+              (Version.to_string min_dune_lang_ver)
+          ]
     in
     User_error.raise
       ~loc
+      ~hints
       [ Pp.textf
-          "Version %s of the %s extension has been deleted in Dune %s. Please port this \
-           project to a newer version of the extension, such as %s."
+          "Version %s of the %s extension has been deleted in Dune %s.%s"
           (Version.to_string ver)
           t.name
           (Version.to_string deleted_in)
-          (Version.to_string min_ext_ver)
+          please_port_message
       ]
-      ~hints
   | `Unsupported_in_project (supported_ranges, min_lang_ver) ->
     let dune_ver_text v =
       Printf.sprintf "version %s of the dune language" (Version.to_string v)
@@ -428,7 +445,16 @@ let check_supported ~dune_lang_ver t (loc, ver) =
 ;;
 
 let greatest_supported_version t =
-  Option.value_exn (Supported_versions.greatest_supported_version t.supported_versions)
+  Supported_versions.greatest_supported_version t.supported_versions
+;;
+
+let greatest_supported_version_exn t =
+  match greatest_supported_version t with
+  | Some s -> s
+  | None ->
+    Code_error.raise
+      "no supported versions for extesnion"
+      [ "supported_versions", Supported_versions.to_dyn t.supported_versions ]
 ;;
 
 let key t = t.key

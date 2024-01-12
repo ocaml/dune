@@ -75,6 +75,13 @@ EOF
   fi
 }
 
+make_lockpkg() {
+  local dir="dune.lock"
+  mkdir -p $dir
+  local f="$dir/$1.pkg"
+  cat >$f
+}
+
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
@@ -82,7 +89,7 @@ solve_project() {
 }
 
 make_lockdir() {
-  mkdir dune.lock
+  mkdir -p dune.lock
   cat >dune.lock/lock.dune <<EOF
 (lang package 0.1)
 (repositories (complete true))

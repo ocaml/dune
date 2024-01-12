@@ -1,9 +1,77 @@
-Unreleased
-----------
+3.13.0~alpha1 (2024-01-12)
+--------------------------
 
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.  
+- Do not ignore `(formatting ..)` settings in context or workspace files
+  (#8447, @rgrinberg)
+
+- Add command `dune cache clear` to completely delete all traces of the Dune
+  cache. (#8975, @nojb)
+
+- Fixed a bug where Dune was incorrectly parsing the output of coqdep when it
+  was escaped, as is the case on Windows. (#9231, fixes #9218, @Alizter)
+
+- Copying mode for sandboxes will now follow symbolic links (#9282, @rgrinberg)
+
+- Forbid the empty `(binaries ..)` field in the `env` stanza in the workspace
+  file unless language version is at least 3.2.
+
+- [coq] Fix bug in computation of flags when composed with boot theories.
+  (#9347, fixes #7909, @ejgallego)
+
+- Fixed a bug where the `(select)` field of the `(libraries)` field of the
+  `(test)` stanza wasn't working properly. (#9387, fixes #9365, @Alizter)
+
+- Allow to disable Coq 0.8 deprecation warning (#9439, @ejgallego)
+
+- Fix handling of the `PATH` argument to `dune init proj NAME PATH`. An
+  intermediate directory called `NAME` is no longer created if `PATH` is
+  supplied, so `dune init proj my_project .` will now initialize a project in
+  the current working directory. (#9447, fixes #9209, @shonfeder)
+
+- Allow `OCAMLFIND_TOOLCHAIN` to be set per context in the workspace file
+  through the `env` stanza. (#9449, @rgrinberg)
+
+- Experimental doc rules: Correctly handle the case when a package depends upon
+  its own sublibraries (#9461, fixes #9456, @jonludlam)
+
+- Resolve various public binaries to their build location, rather than to where
+  they're copied in the `_build/install` directory (#9496, fixes #7908,
+  @rgrinberg).
+
+- Menhir: generate `.conflicts` file by default. Add new field to the
+  `(menhir)` stanza to control the generation of this file: `(explain <blang
+  expression>)`. Introduce `(menhir (flags ...) (explain ...))` field in the
+  `(env)` stanza, delete `(menhir_flags)` field. All changes are guarded under
+  a new version of the Menhir extension, 3.0. (#9512, @nojb)
+
+- Correctly ignore warning flags in vendored projects (#9515, @rgrinberg)
+
+- Directory targets can now be caches. (#9535, @rleshchinskiy)
+
+- Remove warning 30 from default set for projects where dune lang is at least
+  3.13 (#9568, @gasche)
+
+- It is now possible to use special forms such as `(:include)` and variables
+  `%{read-lines:}` in `(modules)` and similar fields. Note that the
+  dependencies introduced in this way (ie the files being read) must live in a
+  different directory than the stanza making use of them. (#9578, @nojb)
+
+- Use watch exclusions in watch mode on MacOS (#9643, fixes #9517,
+  @PoorlyDefinedBehaviour)
+
+- Fix merlin configuration for `(include_subdirs qualified)` modules (#9659,
+  fixes #8297, @rgrinberg)
+
+- Fix handling of `enabled_if` in binary install stanzas. Previously, we'd
+  ignore the result of `enabled_if` when evaluating `%{bin:..}` (#9707,
+  @rgrinberg)
+
+- Add `coqdoc_flags` field to `coq` field of `env` stanza allowing the setting
+  of workspace-wide defaults for `coqdoc_flags`. (#9280, fixes #9139, @Alizter)
+
+- ctypes: fix an error where `(ctypes)` with no `(function_description)` would
+  cause an error trying refer to a nonexistent `_stubs.a` dependency (#9302,
+  fix #9300, @emillon)
 
 3.12.2 (2024-01-05)
 -------------------

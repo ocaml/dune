@@ -1,7 +1,7 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Local_package = Dune_pkg.Local_package
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 module Show_lock = struct
   let print_lock lock_dir_arg () =
@@ -18,7 +18,9 @@ module Show_lock = struct
         [ Pp.hovbox
           @@ Pp.textf "Contents of %s:" (Path.Source.to_string_maybe_quoted lock_dir_path)
         ; Pkg_common.pp_packages
-            (Package_name.Map.to_list_map ~f:(fun _ pkg -> pkg) lock_dir.packages)
+            (Opam_compatible_package_name.Map.to_list_map
+               ~f:(fun _ pkg -> pkg)
+               lock_dir.packages)
         ]
       |> Pp.vbox)
   ;;
@@ -43,7 +45,7 @@ module Dependency_hash = struct
     let open Fiber.O in
     let+ local_packages =
       Pkg_common.find_local_packages
-      >>| Package_name.Map.values
+      >>| Opam_compatible_package_name.Map.values
       >>| List.map ~f:Local_package.for_solver
     in
     match
@@ -153,7 +155,7 @@ module List_locked_dependencies = struct
                          "Dependencies of local packages locked in %s"
                          (Path.Source.to_string_maybe_quoted lock_dir_path))
                   ; Pp.enumerate
-                      (Package_name.Map.keys local_packages)
+                      (Opam_compatible_package_name.Map.keys local_packages)
                       ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
                     |> Pp.box
                   ])))

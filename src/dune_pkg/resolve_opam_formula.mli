@@ -13,9 +13,9 @@ end
 
 module Unsatisfied_formula_hint : sig
   type t =
-    | Missing_package of Package_name.t
+    | Missing_package of Opam_compatible_package_name.t
     | Unsatisfied_version_constraint of
-        { package_name : Package_name.t
+        { package_name : Opam_compatible_package_name.t
         ; found_version : Package_version.t
         ; version_constraint : Version_constraint.t
         }
@@ -40,9 +40,9 @@ type unsatisfied_formula =
     multiple sets of packages that satisfy the formula. In this case the choice
     of which set to return is made arbitrarily. *)
 val formula_to_package_names
-  :  Package_version.t Package_name.Map.t
+  :  Package_version.t Opam_compatible_package_name.Map.t
   -> OpamTypes.formula
-  -> (Package_name.t list, unsatisfied_formula) result
+  -> (Opam_compatible_package_name.t list, unsatisfied_formula) result
 
 (** Like [formula_to_package_name] but takes an [OpamTypes.filtered_formula]
     and evaluates its filters to produce a formula which is then resolved to a
@@ -50,6 +50,6 @@ val formula_to_package_names
 val filtered_formula_to_package_names
   :  OpamFilter.env
   -> with_test:bool
-  -> Package_version.t Package_name.Map.t
+  -> Package_version.t Opam_compatible_package_name.Map.t
   -> OpamTypes.filtered_formula
-  -> (Package_name.t list, unsatisfied_formula) result
+  -> (Opam_compatible_package_name.t list, unsatisfied_formula) result

@@ -8,7 +8,7 @@ module Variable_value = Dune_pkg.Variable_value
 module Rev_store = Dune_pkg.Rev_store
 module Package_version = Dune_pkg.Package_version
 module Source = Dune_pkg.Source
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 module Scheduler = Dune_engine.Scheduler
 
 let () = Dune_tests_common.init ()
@@ -66,7 +66,8 @@ end
 let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(
-    prepare ~lock_dir_path ~files:Package_name.Map.empty lock_dir |> commit);
+    prepare ~lock_dir_path ~files:Opam_compatible_package_name.Map.empty lock_dir
+    |> commit);
   let lock_dir_round_tripped =
     try Lock_dir.read_disk lock_dir_path with
     | User_error.E _ as exn ->
@@ -112,7 +113,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ~lock_dir_path:"empty_lock_dir"
     ~lock_dir:
       (Lock_dir.create_latest_version
-         Package_name.Map.empty
+         Opam_compatible_package_name.Map.empty
          ~local_packages:[]
          ~ocaml:None
          ~repos:None
@@ -146,19 +147,19 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ~lock_dir_path:"simple_lock_dir"
     ~lock_dir:
       (let mk_pkg_basic ~name ~version =
-         let name = Package_name.of_string name in
+         let name = Opam_compatible_package_name.of_string name in
          name, empty_package name ~version
        in
        Lock_dir.create_latest_version
          ~local_packages:[]
-         ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+         ~ocaml:(Some (Loc.none, Opam_compatible_package_name.of_string "ocaml"))
          ~repos:None
          ~expanded_solver_variable_bindings:
            { Expanded_variable_bindings.variable_values =
                [ Variable_name.os, Variable_value.string "linux" ]
            ; unset_variables = [ Variable_name.os_family ]
            }
-         (Package_name.Map.of_list_exn
+         (Opam_compatible_package_name.Map.of_list_exn
             [ mk_pkg_basic ~name:"foo" ~version:(Package_version.of_string "0.1.0")
             ; mk_pkg_basic ~name:"bar" ~version:(Package_version.of_string "0.2.0")
             ]))
@@ -211,7 +212,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
   let module String_with_vars = Dune_lang.String_with_vars in
   let lock_dir =
     let pkg_a =
-      let name = Package_name.of_string "a" in
+      let name = Opam_compatible_package_name.of_string "a" in
       let extra_source : Source.t =
         External_copy (Loc.none, Path.External.of_string "/tmp/a")
       in
@@ -248,7 +249,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         } )
     in
     let pkg_b =
-      let name = Package_name.of_string "b" in
+      let name = Opam_compatible_package_name.of_string "b" in
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
         { pkg with
@@ -272,7 +273,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         } )
     in
     let pkg_c =
-      let name = Package_name.of_string "c" in
+      let name = Opam_compatible_package_name.of_string "c" in
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
         { pkg with
@@ -295,10 +296,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     in
     Lock_dir.create_latest_version
       ~local_packages:[]
-      ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+      ~ocaml:(Some (Loc.none, Opam_compatible_package_name.of_string "ocaml"))
       ~repos:(Some [ opam_repo ])
       ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-      (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+      (Opam_compatible_package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
   in
   lock_dir_encode_decode_round_trip_test ~lock_dir_path:"complex_lock_dir" ~lock_dir ();
   [%expect
@@ -379,15 +380,15 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
     let+ git_hash = Rev_store_tests.create_repo_at other_dir in
     let lock_dir =
       let pkg_a =
-        let name = Package_name.of_string "a" in
+        let name = Opam_compatible_package_name.of_string "a" in
         name, empty_package name ~version:(Package_version.of_string "0.1.0")
       in
       let pkg_b =
-        let name = Package_name.of_string "b" in
+        let name = Opam_compatible_package_name.of_string "b" in
         name, empty_package name ~version:(Package_version.of_string "dev")
       in
       let pkg_c =
-        let name = Package_name.of_string "c" in
+        let name = Opam_compatible_package_name.of_string "c" in
         name, empty_package name ~version:(Package_version.of_string "0.2")
       in
       let opam_repo =
@@ -396,10 +397,10 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
       in
       Lock_dir.create_latest_version
         ~local_packages:[]
-        ~ocaml:(Some (Loc.none, Package_name.of_string "ocaml"))
+        ~ocaml:(Some (Loc.none, Opam_compatible_package_name.of_string "ocaml"))
         ~repos:(Some [ opam_repo ])
         ~expanded_solver_variable_bindings:Expanded_variable_bindings.empty
-        (Package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
+        (Opam_compatible_package_name.Map.of_list_exn [ pkg_a; pkg_b; pkg_c ])
     in
     lock_dir_encode_decode_round_trip_test
       ~commit:git_hash

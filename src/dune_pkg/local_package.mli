@@ -8,11 +8,11 @@ open! Import
     circular dependency so this type is defined here so "dune_pkg" has a type
     it can use to represent local packages. *)
 type t =
-  { name : Package_name.t
+  { name : Opam_compatible_package_name.t
   ; version : Package_version.t option
   ; dependencies : Package_dependency.t list
   ; conflicts : Package_dependency.t list
-  ; conflict_class : Package_name.t list
+  ; conflict_class : Opam_compatible_package_name.t list
   ; depopts : Package_dependency.t list
   ; loc : Loc.t
   }
@@ -49,11 +49,11 @@ end
 module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
-    { name : Package_name.t
+    { name : Opam_compatible_package_name.t
     ; dependencies : Package_dependency.t list
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
-    ; conflict_class : Package_name.t list
+    ; conflict_class : Opam_compatible_package_name.t list
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

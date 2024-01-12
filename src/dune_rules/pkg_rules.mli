@@ -23,5 +23,5 @@ val exported_env : Context_name.t -> Env.t Memo.t
 
 val find_package
   :  Context_name.t
-  -> Dune_pkg.Package_name.t
+  -> Dune_pkg.Opam_compatible_package_name.t
   -> unit Action_builder.t option Memo.t

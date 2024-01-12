@@ -14,4 +14,4 @@ val decode : (Path.External.t -> t) Dune_sexp.Decoder.t
 val encode : t -> Dune_sexp.t
 val to_dyn : t -> Dyn.t
 val remove_locs : t -> t
-val compute_missing_checksum : t -> Package_name.t -> t Fiber.t
+val compute_missing_checksum : t -> Opam_compatible_package_name.t -> t Fiber.t

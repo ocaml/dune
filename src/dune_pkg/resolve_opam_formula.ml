@@ -40,22 +40,22 @@ end
 
 module Unsatisfied_formula_hint = struct
   type t =
-    | Missing_package of Package_name.t
+    | Missing_package of Opam_compatible_package_name.t
     | Unsatisfied_version_constraint of
-        { package_name : Package_name.t
+        { package_name : Opam_compatible_package_name.t
         ; found_version : Package_version.t
         ; version_constraint : Version_constraint.t
         }
 
   let to_dyn = function
     | Missing_package package_name ->
-      Dyn.variant "Missing_package" [ Package_name.to_dyn package_name ]
+      Dyn.variant "Missing_package" [ Opam_compatible_package_name.to_dyn package_name ]
     | Unsatisfied_version_constraint { package_name; found_version; version_constraint }
       ->
       Dyn.variant
         "Unsatisfied_version_constraint"
         [ Dyn.record
-            [ "package_name", Package_name.to_dyn package_name
+            [ "package_name", Opam_compatible_package_name.to_dyn package_name
             ; "found_version", Package_version.to_dyn found_version
             ; "version_constraint", Version_constraint.to_dyn version_constraint
             ]
@@ -64,14 +64,16 @@ module Unsatisfied_formula_hint = struct
 
   let pp = function
     | Missing_package missing_package ->
-      Pp.textf "Package %S is missing" (Package_name.to_string missing_package)
+      Pp.textf
+        "Package %S is missing"
+        (Opam_compatible_package_name.to_string missing_package)
     | Unsatisfied_version_constraint { package_name; found_version; version_constraint }
       ->
       Pp.textf
         "Found version %S of package %S which doesn't satisfy the required version \
          constraint %S"
         (Package_version.to_string found_version)
-        (Package_name.to_string package_name)
+        (Opam_compatible_package_name.to_string package_name)
         (Version_constraint.to_string version_constraint)
   ;;
 end
@@ -82,8 +84,12 @@ type unsatisfied_formula =
 let formula_to_package_names version_by_package_name opam_formula =
   let check_conjunction conjunction =
     Result.List.map conjunction ~f:(fun (opam_package_name, version_constraint_opt) ->
-      let package_name = Package_name.of_opam_package_name opam_package_name in
-      match Package_name.Map.find version_by_package_name package_name with
+      let package_name =
+        Opam_compatible_package_name.of_opam_package_name opam_package_name
+      in
+      match
+        Opam_compatible_package_name.Map.find version_by_package_name package_name
+      with
       | None ->
         (* this package wasn't part of the solution so the current
            conjunction can't be satisfied *)
@@ -131,7 +137,7 @@ let formula_to_package_names version_by_package_name opam_formula =
   | Ok satisfied_conjunction ->
     Ok
       (List.map satisfied_conjunction ~f:(fun (opam_package_name, _) ->
-         Package_name.of_opam_package_name opam_package_name))
+         Opam_compatible_package_name.of_opam_package_name opam_package_name))
 ;;
 
 let filtered_formula_to_package_names env ~with_test version_by_package_name formula =

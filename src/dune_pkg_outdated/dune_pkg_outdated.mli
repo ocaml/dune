@@ -1,5 +1,5 @@
 open Import
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 (** Library for finding and printing outdated packges in the dune_pkg lock directory. *)
 
@@ -10,8 +10,8 @@ type t
     collection of [packages] by consulting the [repos] and [local_packages].*)
 val find
   :  repos:Opam_repo.t list
-  -> local_packages:Dune_pkg.Local_package.t Package_name.Map.t
-  -> Lock_dir.Pkg.t Package_name.Map.t
+  -> local_packages:Dune_pkg.Local_package.t Opam_compatible_package_name.Map.t
+  -> Lock_dir.Pkg.t Opam_compatible_package_name.Map.t
   -> t Fiber.t
 
 (** [pp t ~transitive ~lock_dir_path] returns a specially constructed user message
@@ -25,7 +25,7 @@ val find
     - [lock_dir_path] is the path to the lock directory that will appear in the messages. *)
 val pp : t -> transitive:bool -> lock_dir_path:Path.Source.t -> User_message.Style.t Pp.t
 
-val packages_that_were_not_found : t -> Package_name.t list
+val packages_that_were_not_found : t -> Opam_compatible_package_name.t list
 
 module For_tests : sig
   (** Special module for internal testing only. *)

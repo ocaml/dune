@@ -1,16 +1,16 @@
 open Import
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 type candidate =
   { is_immediate_dep_of_local_package : bool
-  ; name : Package_name.t
+  ; name : Opam_compatible_package_name.t
   ; outdated_version : Package_version.t
   ; newer_version : Package_version.t
   }
 
 type result =
   | Better_candidate of candidate
-  | Package_not_found of Package_name.t
+  | Package_not_found of Opam_compatible_package_name.t
   | Package_is_best_candidate
 
 type t = result list
@@ -84,13 +84,13 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
 
 let better_candidate
   ~repos
-  ~(local_packages : Dune_pkg.Local_package.t Package_name.Map.t)
+  ~(local_packages : Dune_pkg.Local_package.t Opam_compatible_package_name.Map.t)
   (pkg : Lock_dir.Pkg.t)
   =
   let open Fiber.O in
-  let pkg_name = pkg.info.name |> Package_name.to_opam_package_name in
+  let pkg_name = pkg.info.name |> Opam_compatible_package_name.to_opam_package_name in
   let is_immediate_dep_of_local_package =
-    Package_name.Map.exists local_packages ~f:(fun local_package ->
+    Opam_compatible_package_name.Map.exists local_packages ~f:(fun local_package ->
       Dune_pkg.Local_package.(
         for_solver local_package |> For_solver.opam_filtered_dependency_formula)
       |> OpamFilter.filter_deps
@@ -149,7 +149,7 @@ let pp results ~transitive ~lock_dir_path =
                those to align output. *)
             Some
               (Pp.concat
-                 [ Pp.verbatim (Package_name.to_string name)
+                 [ Pp.verbatim (Opam_compatible_package_name.to_string name)
                  ; Pp.space
                  ; Pp.tag
                      (User_message.Style.Ansi_styles [ `Fg_bright_red ])
@@ -170,7 +170,7 @@ let pp results ~transitive ~lock_dir_path =
 ;;
 
 let find ~repos ~local_packages packages =
-  Package_name.Map.to_list_map packages ~f:(fun _name pkg ->
+  Opam_compatible_package_name.Map.to_list_map packages ~f:(fun _name pkg ->
     better_candidate ~repos ~local_packages pkg)
   |> Fiber.all_concurrently
 ;;
@@ -188,7 +188,7 @@ module For_tests = struct
     =
     Better_candidate
       { is_immediate_dep_of_local_package
-      ; name = Package_name.of_string name
+      ; name = Opam_compatible_package_name.of_string name
       ; newer_version
       ; outdated_version
       }

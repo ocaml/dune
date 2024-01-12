@@ -44,7 +44,7 @@ val get_repos
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
 val find_local_packages
-  : Dune_pkg.Local_package.t Package_name.Opam_compatible.Map.t Fiber.t
+  : Dune_pkg.Local_package.t Dune_pkg.Opam_compatible_package_name.Map.t Fiber.t
 
 module Lock_dirs_arg : sig
   (** [Lock_dirs_arg.t] is the type of lock directory arguments. This can be

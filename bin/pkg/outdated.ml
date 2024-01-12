@@ -2,7 +2,7 @@ open Import
 open Pkg_common
 module Lock_dir = Dune_pkg.Lock_dir
 module Opam_repo = Dune_pkg.Opam_repo
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 let find_outdated_packages ~transitive ~lock_dirs_arg () =
   let open Fiber.O in
@@ -20,8 +20,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
       let+ results = Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages in
       ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results
       , ( Dune_pkg_outdated.packages_that_were_not_found results
-          |> Package_name.Set.of_list
-          |> Package_name.Set.to_list
+          |> Opam_compatible_package_name.Set.of_list
+          |> Opam_compatible_package_name.Set.to_list
         , lock_dir_path
         , repos ) ))
     >>| List.split
@@ -42,7 +42,7 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
           ; Pp.concat
               ~sep:Pp.space
               [ Pp.enumerate packages ~f:(fun name ->
-                  Package_name.to_string name |> Pp.verbatim)
+                  Opam_compatible_package_name.to_string name |> Pp.verbatim)
               ; Pp.text "were not found in the following opam repositories:" |> Pp.hovbox
               ; Pp.enumerate repos ~f:(fun repo ->
                   (* CR-rgrinberg: why are we outputting [Dyn.t] in error

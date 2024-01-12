@@ -3,7 +3,7 @@ open Import
 module Scope : sig
   type t =
     | Self
-    | Package of Package_name.t
+    | Package of Opam_compatible_package_name.t
 end
 
 type t =

@@ -3,19 +3,19 @@ open Import
 module Scope = struct
   type t =
     | Self
-    | Package of Package_name.t
+    | Package of Opam_compatible_package_name.t
 
   let compare x y =
     match x, y with
     | Self, Self -> Eq
     | Self, Package _ -> Gt
     | Package _, Self -> Lt
-    | Package x, Package y -> Package_name.compare x y
+    | Package x, Package y -> Opam_compatible_package_name.compare x y
   ;;
 
   let to_dyn = function
     | Self -> Dyn.variant "Self" []
-    | Package name -> Dyn.variant "Package" [ Package_name.to_dyn name ]
+    | Package name -> Dyn.variant "Package" [ Opam_compatible_package_name.to_dyn name ]
   ;;
 end
 
@@ -56,7 +56,7 @@ let of_macro_invocation ~loc ({ Pform.Macro_invocation.macro; _ } as macro_invoc
     Ok
       (package_scoped
          (Variable_name.of_string variable_name)
-         (Package_name.of_string package_name))
+         (Opam_compatible_package_name.of_string package_name))
   | _ -> Error `Unexpected_macro
 ;;
 
@@ -70,7 +70,9 @@ let to_macro_invocation { name; scope } =
     { Pform.Macro_invocation.macro = Pkg
     ; payload =
         Pform.Payload.of_args
-          [ Package_name.to_string package_name; Variable_name.to_string name ]
+          [ Opam_compatible_package_name.to_string package_name
+          ; Variable_name.to_string name
+          ]
     }
 ;;
 

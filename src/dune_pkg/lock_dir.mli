@@ -4,7 +4,7 @@ open Import
 
 module Pkg_info : sig
   type t =
-    { name : Package_name.t
+    { name : Opam_compatible_package_name.t
     ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
@@ -18,13 +18,13 @@ module Pkg : sig
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : (Loc.t * Package_name.t) list
+    ; deps : (Loc.t * Opam_compatible_package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
   val equal : t -> t -> bool
-  val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
+  val decode : (lock_dir:Path.Source.t -> Opam_compatible_package_name.t -> t) Decoder.t
 end
 
 module Repositories : sig
@@ -34,11 +34,11 @@ end
 type t = private
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
-  ; packages : Pkg.t Package_name.Map.t
+  ; packages : Pkg.t Opam_compatible_package_name.Map.t
   (** It's guaranteed that this map will contain an entry for all dependencies
       of all packages in this map. That is, the set of packages is closed under
       the "depends on" relationship between packages. *)
-  ; ocaml : (Loc.t * Package_name.t) option
+  ; ocaml : (Loc.t * Opam_compatible_package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
   (** Stores the solver variables that were evaluated while solving
@@ -56,9 +56,9 @@ val to_dyn : t -> Dyn.t
     dependency of every package in [packages] must itself have a corresponding
     entry in [packages]. *)
 val create_latest_version
-  :  Pkg.t Package_name.Map.t
+  :  Pkg.t Opam_compatible_package_name.Map.t
   -> local_packages:Local_package.For_solver.t list
-  -> ocaml:(Loc.t * Package_name.t) option
+  -> ocaml:(Loc.t * Opam_compatible_package_name.t) option
   -> repos:Opam_repo.t list option
   -> expanded_solver_variable_bindings:Solver_stats.Expanded_variable_bindings.t
   -> t
@@ -75,7 +75,7 @@ module Write_disk : sig
 
   val prepare
     :  lock_dir_path:Path.Source.t
-    -> files:File_entry.t Package_name.Map.Multi.t
+    -> files:File_entry.t Opam_compatible_package_name.Map.Multi.t
     -> lock_dir
     -> t
 
@@ -102,8 +102,10 @@ end
     not present in the lockdir. *)
 val transitive_dependency_closure
   :  t
-  -> Package_name.Set.t
-  -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
+  -> Opam_compatible_package_name.Set.t
+  -> ( Opam_compatible_package_name.Set.t
+       , [ `Missing_packages of Opam_compatible_package_name.Set.t ] )
+       result
 
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)

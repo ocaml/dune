@@ -3,11 +3,11 @@ module Package_constraint = Dune_lang.Package_constraint
 module Digest = Dune_digest
 
 type t =
-  { name : Package_name.t
+  { name : Opam_compatible_package_name.t
   ; version : Package_version.t option
   ; dependencies : Package_dependency.t list
   ; conflicts : Package_dependency.t list
-  ; conflict_class : Package_name.t list
+  ; conflict_class : Opam_compatible_package_name.t list
   ; depopts : Package_dependency.t list
   ; loc : Loc.t
   }
@@ -30,13 +30,13 @@ module Dependency_hash = struct
 end
 
 module Dependency_set = struct
-  type t = Package_constraint.Set.t Package_name.Map.t
+  type t = Package_constraint.Set.t Opam_compatible_package_name.Map.t
 
-  let empty = Package_name.Map.empty
+  let empty = Opam_compatible_package_name.Map.empty
 
   let of_list =
     List.fold_left ~init:empty ~f:(fun acc { Package_dependency.name; constraint_ } ->
-      Package_name.Map.update acc name ~f:(fun existing ->
+      Opam_compatible_package_name.Map.update acc name ~f:(fun existing ->
         match existing, constraint_ with
         | None, None -> Some Package_constraint.Set.empty
         | None, Some constraint_ -> Some (Package_constraint.Set.singleton constraint_)
@@ -46,13 +46,14 @@ module Dependency_set = struct
   ;;
 
   let union =
-    Package_name.Map.union ~f:(fun _name a b -> Some (Package_constraint.Set.union a b))
+    Opam_compatible_package_name.Map.union ~f:(fun _name a b ->
+      Some (Package_constraint.Set.union a b))
   ;;
 
   let union_all = List.fold_left ~init:empty ~f:union
 
   let package_dependencies =
-    Package_name.Map.to_list_map ~f:(fun name constraints ->
+    Opam_compatible_package_name.Map.to_list_map ~f:(fun name constraints ->
       let constraint_ =
         if Package_constraint.Set.is_empty constraints
         then None
@@ -66,7 +67,7 @@ module Dependency_set = struct
   ;;
 
   let hash t =
-    if Package_name.Map.is_empty t
+    if Opam_compatible_package_name.Map.is_empty t
     then None
     else Some (encode_for_hash t |> Dune_sexp.to_string |> Dune_digest.string)
   ;;
@@ -74,22 +75,22 @@ end
 
 module For_solver = struct
   type t =
-    { name : Package_name.t
+    { name : Opam_compatible_package_name.t
     ; dependencies : Package_dependency.t list
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
-    ; conflict_class : Package_name.t list
+    ; conflict_class : Opam_compatible_package_name.t list
     }
 
   let to_opam_file { name; dependencies; conflicts; conflict_class; depopts } =
     OpamFile.OPAM.empty
-    |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
+    |> OpamFile.OPAM.with_name (Opam_compatible_package_name.to_opam_package_name name)
     |> OpamFile.OPAM.with_depends
          (Package_dependency.list_to_opam_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
          (Package_dependency.list_to_opam_filtered_formula conflicts)
     |> OpamFile.OPAM.with_conflict_class
-         (List.map conflict_class ~f:Package_name.to_opam_package_name)
+         (List.map conflict_class ~f:Opam_compatible_package_name.to_opam_package_name)
     |> OpamFile.OPAM.with_depopts
          (Package_dependency.list_to_opam_filtered_formula depopts)
   ;;
@@ -103,7 +104,7 @@ module For_solver = struct
 
   let list_non_local_dependency_set ts =
     List.fold_left ts ~init:(list_dependency_set ts) ~f:(fun acc { name; _ } ->
-      Package_name.Map.remove acc name)
+      Opam_compatible_package_name.Map.remove acc name)
   ;;
 end
 

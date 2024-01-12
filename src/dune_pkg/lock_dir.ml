@@ -2,7 +2,7 @@ open Import
 
 module Pkg_info = struct
   type t =
-    { name : Package_name.t
+    { name : Opam_compatible_package_name.t
     ; version : Package_version.t
     ; dev : bool
     ; source : Source.t option
@@ -10,7 +10,7 @@ module Pkg_info = struct
     }
 
   let equal { name; version; dev; source; extra_sources } t =
-    Package_name.equal name t.name
+    Opam_compatible_package_name.equal name t.name
     && Package_version.equal version t.version
     && Bool.equal dev t.dev
     && Option.equal Source.equal source t.source
@@ -31,7 +31,7 @@ module Pkg_info = struct
 
   let to_dyn { name; version; dev; source; extra_sources } =
     Dyn.record
-      [ "name", Package_name.to_dyn name
+      [ "name", Opam_compatible_package_name.to_dyn name
       ; "version", Package_version.to_dyn version
       ; "dev", Dyn.bool dev
       ; "source", Dyn.option Source.to_dyn source
@@ -46,7 +46,7 @@ module Pkg = struct
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : (Loc.t * Package_name.t) list
+    ; deps : (Loc.t * Opam_compatible_package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
@@ -54,7 +54,10 @@ module Pkg = struct
   let equal { build_command; install_command; deps; info; exported_env } t =
     Option.equal Action.equal_no_locs build_command t.build_command
     && Option.equal Action.equal_no_locs install_command t.install_command
-    && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
+    && List.equal
+         (Tuple.T2.equal Loc.equal Opam_compatible_package_name.equal)
+         deps
+         t.deps
     && Pkg_info.equal info t.info
     && List.equal
          (Action.Env_update.equal String_with_vars.equal)
@@ -76,7 +79,8 @@ module Pkg = struct
     Dyn.record
       [ "build_command", Dyn.option Action.to_dyn build_command
       ; "install_command", Dyn.option Action.to_dyn install_command
-      ; "deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps
+      ; ( "deps"
+        , Dyn.list (Dyn.pair Loc.to_dyn_hum Opam_compatible_package_name.to_dyn) deps )
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
         , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
@@ -111,7 +115,11 @@ module Pkg = struct
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
-       and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
+       and+ deps =
+         field
+           ~default:[]
+           Fields.deps
+           (repeat (located Opam_compatible_package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
@@ -159,7 +167,7 @@ module Pkg = struct
       [ field Fields.version Package_version.encode version
       ; field_o Fields.install Action.encode install_command
       ; field_o Fields.build Action.encode build_command
-      ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
+      ; field_l Fields.deps Opam_compatible_package_name.encode (List.map deps ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Action.Env_update.encode exported_env
@@ -216,15 +224,15 @@ end
 type t =
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
-  ; packages : Pkg.t Package_name.Map.t
-  ; ocaml : (Loc.t * Package_name.t) option
+  ; packages : Pkg.t Opam_compatible_package_name.Map.t
+  ; ocaml : (Loc.t * Opam_compatible_package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
   }
 
 let remove_locs t =
   { t with
-    packages = Package_name.Map.map t.packages ~f:Pkg.remove_locs
+    packages = Opam_compatible_package_name.Map.map t.packages ~f:Pkg.remove_locs
   ; ocaml = Option.map t.ocaml ~f:(fun (_, ocaml) -> Loc.none, ocaml)
   }
 ;;
@@ -238,9 +246,12 @@ let equal
        (Tuple.T2.equal Loc.equal Local_package.Dependency_hash.equal)
        dependency_hash
        t.dependency_hash
-  && Option.equal (Tuple.T2.equal Loc.equal Package_name.equal) ocaml t.ocaml
+  && Option.equal
+       (Tuple.T2.equal Loc.equal Opam_compatible_package_name.equal)
+       ocaml
+       t.ocaml
   && Repositories.equal repos t.repos
-  && Package_name.Map.equal packages t.packages ~equal:Pkg.equal
+  && Opam_compatible_package_name.Map.equal packages t.packages ~equal:Pkg.equal
   && Solver_stats.Expanded_variable_bindings.equal
        expanded_solver_variable_bindings
        t.expanded_solver_variable_bindings
@@ -255,8 +266,11 @@ let to_dyn
       , Dyn.option
           (Tuple.T2.to_dyn Loc.to_dyn_hum Local_package.Dependency_hash.to_dyn)
           dependency_hash )
-    ; "packages", Package_name.Map.to_dyn Pkg.to_dyn packages
-    ; "ocaml", Dyn.option (Tuple.T2.to_dyn Loc.to_dyn_hum Package_name.to_dyn) ocaml
+    ; "packages", Opam_compatible_package_name.Map.to_dyn Pkg.to_dyn packages
+    ; ( "ocaml"
+      , Dyn.option
+          (Tuple.T2.to_dyn Loc.to_dyn_hum Opam_compatible_package_name.to_dyn)
+          ocaml )
     ; "repos", Repositories.to_dyn repos
     ; ( "expanded_solver_variable_bindings"
       , Solver_stats.Expanded_variable_bindings.to_dyn expanded_solver_variable_bindings )
@@ -265,7 +279,7 @@ let to_dyn
 
 type missing_dependency =
   { dependant_package : Pkg.t
-  ; dependency : Package_name.t
+  ; dependency : Opam_compatible_package_name.t
   ; loc : Loc.t
   }
 
@@ -275,10 +289,10 @@ type missing_dependency =
    dependency which doesn't have a corresponding entry in [packages]. *)
 let validate_packages packages =
   let missing_dependencies =
-    Package_name.Map.values packages
+    Opam_compatible_package_name.Map.values packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
       List.filter_map dependant_package.deps ~f:(fun (loc, dependency) ->
-        if Package_name.Map.mem packages dependency
+        if Opam_compatible_package_name.Map.mem packages dependency
         then None
         else Some { dependant_package; dependency; loc }))
   in
@@ -300,8 +314,9 @@ let create_latest_version
      List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
        ( "missing dependency"
        , Dyn.record
-           [ "missing package", Package_name.to_dyn dependency
-           ; "dependency of", Package_name.to_dyn dependant_package.info.name
+           [ "missing package", Opam_compatible_package_name.to_dyn dependency
+           ; ( "dependency of"
+             , Opam_compatible_package_name.to_dyn dependant_package.info.name )
            ] ))
      |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
@@ -364,7 +379,8 @@ let encode_metadata
        ])
   @ (match ocaml with
      | None -> []
-     | Some ocaml -> [ list sexp [ string "ocaml"; Package_name.encode (snd ocaml) ] ])
+     | Some ocaml ->
+       [ list sexp [ string "ocaml"; Opam_compatible_package_name.encode (snd ocaml) ] ])
   @ [ list sexp (string "repositories" :: Repositories.encode repos) ]
   @
   if Solver_stats.Expanded_variable_bindings.is_empty expanded_solver_variable_bindings
@@ -381,7 +397,7 @@ let encode_metadata
 let decode_metadata =
   let open Decoder in
   fields
-    (let+ ocaml = field_o "ocaml" (located Package_name.decode)
+    (let+ ocaml = field_o "ocaml" (located Opam_compatible_package_name.decode)
      and+ dependency_hash =
        field_o "dependency_hash" (located Local_package.Dependency_hash.decode)
      and+ repos = field "repositories" ~default:Repositories.default Repositories.decode
@@ -396,13 +412,16 @@ let decode_metadata =
 
 module Package_filename = struct
   let file_extension = ".pkg"
-  let of_package_name package_name = Package_name.to_string package_name ^ file_extension
+
+  let of_package_name package_name =
+    Opam_compatible_package_name.to_string package_name ^ file_extension
+  ;;
 
   let to_package_name package_filename =
     if String.equal (Filename.extension package_filename) file_extension
     then (
       let basename = Filename.remove_extension package_filename in
-      match Package_name.of_string_user_error (Loc.none, basename) with
+      match Opam_compatible_package_name.of_string_user_error (Loc.none, basename) with
       | Ok package_name -> Ok package_name
       | Error message ->
         let message =
@@ -423,7 +442,7 @@ end
 
 let file_contents_by_path t =
   (metadata_filename, encode_metadata t)
-  :: (Package_name.Map.to_list t.packages
+  :: (Opam_compatible_package_name.Map.to_list t.packages
       |> List.map ~f:(fun (name, pkg) ->
         Package_filename.of_package_name name, Pkg.encode pkg))
 ;;
@@ -502,9 +521,11 @@ module Write_disk = struct
         in
         let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
-        Package_name.Map.iteri files ~f:(fun package_name files ->
+        Opam_compatible_package_name.Map.iteri files ~f:(fun package_name files ->
           let files_dir =
-            Path.relative lock_dir_path (Package_name.to_string package_name ^ ".files")
+            Path.relative
+              lock_dir_path
+              (Opam_compatible_package_name.to_string package_name ^ ".files")
           in
           Path.mkdir_p files_dir;
           List.iter files ~f:(fun { File_entry.original; local_file } ->
@@ -617,9 +638,9 @@ struct
              [ Pp.textf
                  "The package %S depends on the package %S, but %S does not appear in \
                   the lockdir %s."
-                 (Package_name.to_string dependant_package.info.name)
-                 (Package_name.to_string dependency)
-                 (Package_name.to_string dependency)
+                 (Opam_compatible_package_name.to_string dependant_package.info.name)
+                 (Opam_compatible_package_name.to_string dependency)
+                 (Opam_compatible_package_name.to_string dependency)
                  (Path.Source.to_string_maybe_quoted lock_dir_path)
              ]));
       User_error.raise
@@ -656,7 +677,7 @@ struct
       >>= Io.parallel_map ~f:(fun package_name ->
         let+ pkg = load_pkg ~version ~lock_dir_path package_name in
         package_name, pkg)
-      >>| Package_name.Map.of_list_exn
+      >>| Opam_compatible_package_name.Map.of_list_exn
     in
     check_packages packages ~lock_dir_path;
     { version
@@ -693,14 +714,14 @@ let read_disk = Load_immediate.load
 
 let transitive_dependency_closure t start =
   let missing_packages =
-    let all_packages_in_lock_dir = Package_name.Set.of_keys t.packages in
-    Package_name.Set.diff start all_packages_in_lock_dir
+    let all_packages_in_lock_dir = Opam_compatible_package_name.Set.of_keys t.packages in
+    Opam_compatible_package_name.Set.diff start all_packages_in_lock_dir
   in
-  match Package_name.Set.is_empty missing_packages with
+  match Opam_compatible_package_name.Set.is_empty missing_packages with
   | false -> Error (`Missing_packages missing_packages)
   | true ->
     let to_visit = Queue.create () in
-    let push_set = Package_name.Set.iter ~f:(Queue.push to_visit) in
+    let push_set = Opam_compatible_package_name.Set.iter ~f:(Queue.push to_visit) in
     push_set start;
     let rec loop seen =
       match Queue.pop to_visit with
@@ -709,13 +730,15 @@ let transitive_dependency_closure t start =
         let unseen_deps =
           (* Note that the call to find_exn won't raise because [t] guarantees
              that its map of dependencies is closed under "depends on". *)
-          Package_name.Set.(
+          Opam_compatible_package_name.Set.(
             diff
-              (of_list_map (Package_name.Map.find_exn t.packages node).deps ~f:snd)
+              (of_list_map
+                 (Opam_compatible_package_name.Map.find_exn t.packages node).deps
+                 ~f:snd)
               seen)
         in
         push_set unseen_deps;
-        loop (Package_name.Set.union seen unseen_deps)
+        loop (Opam_compatible_package_name.Set.union seen unseen_deps)
     in
     Ok (loop start)
 ;;
@@ -723,11 +746,11 @@ let transitive_dependency_closure t start =
 let compute_missing_checksums t =
   let open Fiber.O in
   let+ packages =
-    Package_name.Map.to_list t.packages
+    Opam_compatible_package_name.Map.to_list t.packages
     |> Fiber.parallel_map ~f:(fun (name, pkg) ->
       let+ pkg = Pkg.compute_missing_checksum pkg in
       name, pkg)
-    >>| Package_name.Map.of_list_exn
+    >>| Opam_compatible_package_name.Map.of_list_exn
   in
   { t with packages }
 ;;

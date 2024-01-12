@@ -6,7 +6,7 @@ open! Import
 type t
 
 val create
-  :  Local_package.t Package_name.Map.t
+  :  Local_package.t Opam_compatible_package_name.Map.t
   -> Lock_dir.t
   -> (t, User_message.t) result
 
@@ -14,11 +14,11 @@ val create
     universe *)
 val opam_package_dependencies_of_package
   :  t
-  -> Package_name.t
+  -> Opam_compatible_package_name.t
   -> which:[ `All | `Non_test | `Test_only ]
   -> traverse:[ `Immediate | `Transitive ]
   -> OpamPackage.t list
 
 (** Returns the opam package whose name is the given package name and whose
     version is the version of that package within the package universe *)
-val opam_package_of_package : t -> Package_name.t -> OpamPackage.t
+val opam_package_of_package : t -> Opam_compatible_package_name.t -> OpamPackage.t

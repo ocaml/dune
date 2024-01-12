@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 open Dune_pkg
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 module Sys_vars = struct
   type t =
@@ -71,7 +71,7 @@ module Pkg_info = struct
 
   let variables t =
     Variable_name.Map.of_list_map_exn
-      [ "name", Variable.S (Package_name.to_string t.name)
+      [ "name", Variable.S (Opam_compatible_package_name.to_string t.name)
       ; "version", S (Package_version.to_string t.version)
       ; "dev", B t.dev
       ]
@@ -151,7 +151,7 @@ module Paths = struct
     { source_dir : Path.Build.t
     ; target_dir : Path.Build.t
     ; extra_sources : Path.Build.t
-    ; name : Package_name.t
+    ; name : Opam_compatible_package_name.t
     ; install_roots : Path.Build.t Install.Roots.t Lazy.t
     ; install_paths : Path.Build.t Install.Paths.t Lazy.t
     }
@@ -163,7 +163,7 @@ module Paths = struct
   let install_paths roots package =
     Install.Paths.make
       ~relative:Path.Build.relative
-      ~package:(Package_name.to_package_name package)
+      ~package:(Opam_compatible_package_name.to_package_name package)
       ~roots
   ;;
 
@@ -182,7 +182,11 @@ module Paths = struct
     let build_dir =
       Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
     in
-    let root = Path.Build.L.relative build_dir [ ".pkg"; Package_name.to_string name ] in
+    let root =
+      Path.Build.L.relative
+        build_dir
+        [ ".pkg"; Opam_compatible_package_name.to_string name ]
+    in
     of_root name ~root
   ;;
 
@@ -192,11 +196,13 @@ module Paths = struct
   let install_file t =
     Path.Build.relative
       t.source_dir
-      (sprintf "%s.install" (Package_name.to_string t.name))
+      (sprintf "%s.install" (Opam_compatible_package_name.to_string t.name))
   ;;
 
   let config_file t =
-    Path.Build.relative t.source_dir (sprintf "%s.config" (Package_name.to_string t.name))
+    Path.Build.relative
+      t.source_dir
+      (sprintf "%s.config" (Opam_compatible_package_name.to_string t.name))
   ;;
 
   let install_paths t = Lazy.force t.install_paths
@@ -377,7 +383,7 @@ module Pkg = struct
         [ Opam_switch.opam_switch_prefix_var_name, Path.Build.to_string t.paths.target_dir
         ; "CDPATH", ""
         ; "MAKELEVEL", ""
-        ; "OPAM_PACKAGE_NAME", Package_name.to_string t.info.name
+        ; "OPAM_PACKAGE_NAME", Opam_compatible_package_name.to_string t.info.name
         ; "OPAM_PACKAGE_VERSION", Package_version.to_string t.info.version
         ; "OPAMCLI", "2.0"
         ]
@@ -421,7 +427,8 @@ module Expander0 = struct
   type t =
     { paths : Paths.t
     ; artifacts : Path.t Filename.Map.t
-    ; deps : (Variable.value Variable_name.Map.t * Paths.t) Package_name.Map.t
+    ; deps :
+        (Variable.value Variable_name.Map.t * Paths.t) Opam_compatible_package_name.Map.t
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -466,7 +473,8 @@ module Substitute = struct
         let paths (p : Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
         , expander.artifacts
-        , Package_name.Map.to_list_map expander.deps ~f:(fun _ (m, p) -> m, paths p)
+        , Opam_compatible_package_name.Map.to_list_map expander.deps ~f:(fun _ (m, p) ->
+            m, paths p)
         , expander.version
         , expander.context
         , expander.env )
@@ -704,7 +712,7 @@ module Action_expander = struct
           | Self -> paths.name
           | Package package_name -> package_name
         in
-        match Package_name.Map.find deps package_name with
+        match Opam_compatible_package_name.Map.find deps package_name with
         | None -> Variable_name.Map.empty, None
         | Some (var, paths) -> var, Some paths
       in
@@ -943,10 +951,12 @@ module Action_expander = struct
       { binaries : Path.t Filename.Map.t
       ; dep_info :
           (OpamVariable.variable_contents Variable_name.Map.t * Paths.t)
-            Package_name.Map.t
+            Opam_compatible_package_name.Map.t
       }
 
-    let empty = { binaries = Filename.Map.empty; dep_info = Package_name.Map.empty }
+    let empty =
+      { binaries = Filename.Map.empty; dep_info = Opam_compatible_package_name.Map.empty }
+    ;;
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
@@ -969,7 +979,10 @@ module Action_expander = struct
                   (Variable_name.Map.of_list_exn cookie.variables)
                   (Pkg_info.variables pkg.info)
               in
-              Package_name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
+              Opam_compatible_package_name.Map.add_exn
+                dep_info
+                pkg.info.name
+                (variables, pkg.paths)
             in
             { binaries; dep_info }))
     ;;
@@ -981,7 +994,7 @@ module Action_expander = struct
     in
     let env = Pkg.build_env pkg in
     let deps =
-      Package_name.Map.add_exn
+      Opam_compatible_package_name.Map.add_exn
         dep_info
         pkg.info.name
         (Pkg_info.variables pkg.info, pkg.paths)
@@ -1028,17 +1041,20 @@ end
 
 module DB = struct
   type t =
-    { all : Lock_dir.Pkg.t Package_name.Map.t
-    ; system_provided : Package_name.Set.t
+    { all : Lock_dir.Pkg.t Opam_compatible_package_name.Map.t
+    ; system_provided : Opam_compatible_package_name.Set.t
     }
 
   let equal t { all; system_provided } =
-    Package_name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
-    && Package_name.Set.equal t.system_provided system_provided
+    Opam_compatible_package_name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
+    && Opam_compatible_package_name.Set.equal t.system_provided system_provided
   ;;
 
   let get =
-    let dune = Package_name.Set.singleton (Package_name.of_string "dune") in
+    let dune =
+      Opam_compatible_package_name.Set.singleton
+        (Opam_compatible_package_name.of_string "dune")
+    in
     fun context ->
       let+ all = Lock_dir.get context in
       { all = all.packages; system_provided = dune }
@@ -1049,16 +1065,16 @@ module rec Resolve : sig
   val resolve
     :  DB.t
     -> Context_name.t
-    -> Loc.t * Package_name.t
+    -> Loc.t * Opam_compatible_package_name.t
     -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
 end = struct
   open Resolve
 
-  let resolve_impl ((db : DB.t), ctx, (name : Package_name.t)) =
-    match Package_name.Map.find db.all name with
+  let resolve_impl ((db : DB.t), ctx, (name : Opam_compatible_package_name.t)) =
+    match Opam_compatible_package_name.Map.find db.all name with
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env } ->
-      assert (Package_name.equal name info.name);
+      assert (Opam_compatible_package_name.equal name info.name);
       let* deps =
         Memo.parallel_map deps ~f:(fun name ->
           resolve db ctx name
@@ -1073,7 +1089,7 @@ end = struct
           (Path.Source.relative
              lock_dir
              (* TODO this should come from [Dune_pkg] *)
-             (sprintf "%s.files" (Package_name.to_string info.name)))
+             (sprintf "%s.files" (Opam_compatible_package_name.to_string info.name)))
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
@@ -1098,10 +1114,16 @@ end = struct
 
   let resolve =
     let module Input = struct
-      type t = DB.t * Context_name.t * Package_name.t
+      type t = DB.t * Context_name.t * Opam_compatible_package_name.t
 
-      let equal = Tuple.T3.equal DB.equal Context_name.equal Package_name.equal
-      let hash = Tuple.T3.hash Poly.hash Context_name.hash Package_name.hash
+      let equal =
+        Tuple.T3.equal DB.equal Context_name.equal Opam_compatible_package_name.equal
+      ;;
+
+      let hash =
+        Tuple.T3.hash Poly.hash Context_name.hash Opam_compatible_package_name.hash
+      ;;
+
       let to_dyn = Dyn.opaque
     end
     in
@@ -1110,11 +1132,11 @@ end = struct
         "pkg-resolve"
         ~input:(module Input)
         ~human_readable_description:(fun (_db, _ctx, pkg) ->
-          Pp.textf "- package %s" (Package_name.to_string pkg))
+          Pp.textf "- package %s" (Opam_compatible_package_name.to_string pkg))
         resolve_impl
     in
     fun (db : DB.t) ctx (loc, name) ->
-      if Package_name.Set.mem db.system_provided name
+      if Opam_compatible_package_name.Set.mem db.system_provided name
       then Memo.return `System_provided
       else
         Memo.exec memo (db, ctx, name)
@@ -1123,7 +1145,8 @@ end = struct
         | None ->
           User_error.raise
             ~loc
-            [ Pp.textf "Unknown package %S" (Package_name.to_string name) ]
+            [ Pp.textf "Unknown package %S" (Opam_compatible_package_name.to_string name)
+            ]
   ;;
 end
 
@@ -1139,7 +1162,7 @@ module Install_action = struct
       ; config_file : 'path
       ; target_dir : 'target
       ; install_action : [ `Has_install_action | `No_install_action ]
-      ; package : Package_name.t
+      ; package : Opam_compatible_package_name.t
       }
 
     let name = "install-file-run"
@@ -1170,7 +1193,7 @@ module Install_action = struct
         ; path install_file
         ; path config_file
         ; target target_dir
-        ; Dune_lang.atom_or_quoted_string (Package_name.to_string package)
+        ; Dune_lang.atom_or_quoted_string (Opam_compatible_package_name.to_string package)
         ; Dune_lang.atom
             (match install_action with
              | `Has_install_action -> "has_install_action"
@@ -1184,7 +1207,7 @@ module Install_action = struct
           let package =
             Path.basename install_file
             |> Filename.remove_extension
-            |> Package_name.of_string
+            |> Opam_compatible_package_name.of_string
           in
           let roots =
             Path.build target_dir
@@ -1192,7 +1215,7 @@ module Install_action = struct
           in
           Install.Paths.make
             ~relative:Path.relative
-            ~package:(Package_name.to_package_name package)
+            ~package:(Opam_compatible_package_name.to_package_name package)
             ~roots
         in
         Install.Entry.relative_installed_path entry ~paths
@@ -1674,7 +1697,10 @@ let gen_rules context_name (pkg : Pkg.t) =
 module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
-  let name = User_error.ok_exn (Package_name.of_string_user_error (Loc.none, pkg_name)) in
+  let name =
+    User_error.ok_exn
+      (Opam_compatible_package_name.of_string_user_error (Loc.none, pkg_name))
+  in
   let* db = DB.get context in
   let+ pkg =
     Resolve.resolve db context (Loc.none, name)
@@ -1685,7 +1711,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
         (* TODO loc *)
         [ Pp.textf
             "There are no rules for %S because it's set as provided by the system"
-            (Package_name.to_string name)
+            (Opam_compatible_package_name.to_string name)
         ]
   in
   let paths = Paths.make name context in
@@ -1750,7 +1776,7 @@ let ocaml_toolchain context =
 let all_packages context =
   let* db = DB.get context in
   let+ closure =
-    Package_name.Map.values db.all
+    Opam_compatible_package_name.Map.values db.all
     |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
       let package = package.info.name in
       Resolve.resolve db context (Loc.none, package)

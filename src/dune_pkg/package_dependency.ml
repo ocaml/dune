@@ -183,7 +183,9 @@ let opam_constraint t : OpamParserTypes.FullPos.value =
 
 let opam_depend { name; constraint_ } =
   let constraint_ = Option.map ~f:opam_constraint constraint_ in
-  let pkg = nopos (OpamParserTypes.FullPos.String (Package_name.to_string name)) in
+  let pkg =
+    nopos (OpamParserTypes.FullPos.String (Opam_compatible_package_name.to_string name))
+  in
   match constraint_ with
   | None -> pkg
   | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
@@ -191,7 +193,7 @@ let opam_depend { name; constraint_ } =
 
 let list_to_opam_filtered_formula ts =
   List.map ts ~f:(fun { name; constraint_ } ->
-    let opam_package_name = Package_name.to_opam_package_name name in
+    let opam_package_name = Opam_compatible_package_name.to_opam_package_name name in
     let condition =
       match constraint_ with
       | None -> OpamTypes.Empty
@@ -208,7 +210,7 @@ let list_of_opam_filtered_formula loc filtered_formula =
     |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
       match filtered_formula with
       | Atom (name, condition) ->
-        let name = Package_name.of_opam_package_name name in
+        let name = Opam_compatible_package_name.of_opam_package_name name in
         (match Constraint.opt_of_opam_condition condition with
          | Ok constraint_ -> { name; constraint_ }
          | Error error -> raise (E error))

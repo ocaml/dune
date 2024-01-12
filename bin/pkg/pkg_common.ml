@@ -3,7 +3,7 @@ module Lock_dir = Dune_pkg.Lock_dir
 module Solver_env = Dune_pkg.Solver_env
 module Variable_name = Dune_pkg.Variable_name
 module Variable_value = Dune_pkg.Variable_value
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 let solver_env
   ~solver_env_from_current_system
@@ -117,8 +117,9 @@ let find_local_packages =
   in
   Dune_project.packages project
   |> Package.Name.Map.to_list_map ~f:(fun name package ->
-    Package_name.of_package_name_exn name, Package.to_local_package package)
-  |> Package_name.Map.of_list_exn
+    ( Opam_compatible_package_name.of_package_name_exn name
+    , Package.to_local_package package ))
+  |> Opam_compatible_package_name.Map.of_list_exn
 ;;
 
 let pp_packages packages =
@@ -126,7 +127,9 @@ let pp_packages packages =
     packages
     ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
       Pp.verbatim
-        (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
+        (Opam_compatible_package_name.to_string name
+         ^ "."
+         ^ Dune_pkg.Package_version.to_string version))
 ;;
 
 module Lock_dirs_arg = struct

@@ -83,7 +83,7 @@ let compute_missing_checksum_of_fetch
       (User_message.make
          [ Pp.textf
              "Package %S has source archive which lacks a checksum."
-             (Package_name.to_string package_name)
+             (Opam_compatible_package_name.to_string package_name)
          ; Pp.textf
              "The source archive will be downloaded from: %s"
              (OpamUrl.to_string url)

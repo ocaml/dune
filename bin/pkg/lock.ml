@@ -3,7 +3,7 @@ open Pkg_common
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
-module Package_name = Dune_pkg.Package_name
+module Opam_compatible_package_name = Dune_pkg.Opam_compatible_package_name
 
 let solve_lock_dir
   workspace
@@ -42,7 +42,9 @@ let solve_lock_dir
              (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)))
         repos
         ~local_packages:
-          (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
+          (Opam_compatible_package_name.Map.map
+             local_packages
+             ~f:Dune_pkg.Local_package.for_solver)
         ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
   >>= function
   | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
@@ -54,7 +56,7 @@ let solve_lock_dir
             (Pp.textf
                "Solution for %s:"
                (Path.Source.to_string_maybe_quoted lock_dir_path))
-        ; (match Package_name.Map.values lock_dir.packages with
+        ; (match Opam_compatible_package_name.Map.values lock_dir.packages with
            | [] ->
              Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
            | packages -> pp_packages packages)

@@ -732,9 +732,11 @@ let to_local_package t =
     let conflict_class =
       OpamFile.OPAM.conflict_class opam_file
       |> List.map ~f:(fun p ->
-        Name.of_opam_package_name p |> Dune_pkg.Package_name.of_package_name_exn)
+        Name.of_opam_package_name p
+        |> Dune_pkg.Opam_compatible_package_name.of_package_name_exn)
     in
-    { Dune_pkg.Local_package.name = name t |> Dune_pkg.Package_name.of_package_name_exn
+    { Dune_pkg.Local_package.name =
+        name t |> Dune_pkg.Opam_compatible_package_name.of_package_name_exn
     ; version = t.version
     ; dependencies
     ; conflicts
@@ -743,7 +745,8 @@ let to_local_package t =
     ; conflict_class
     }
   | None ->
-    { Dune_pkg.Local_package.name = name t |> Dune_pkg.Package_name.of_package_name_exn
+    { Dune_pkg.Local_package.name =
+        name t |> Dune_pkg.Opam_compatible_package_name.of_package_name_exn
     ; version = t.version
     ; dependencies =
         List.map t.depends ~f:Dune_pkg.Package_dependency.of_package_dependency

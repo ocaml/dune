@@ -49,17 +49,17 @@ module Context_for_dune = struct
   type t =
     { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
-    ; local_packages : OpamFile.OPAM.t Package_name.Map.t
+    ; local_packages : OpamFile.OPAM.t Opam_compatible_package_name.Map.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
-    ; candidates_cache : (Package_name.t, candidates) Table.t
+    ; candidates_cache : (Opam_compatible_package_name.t, candidates) Table.t
     ; (* The solver can call this function several times on the same package.
          If the package contains an invalid "available" filter we want to print a
          warning, but only once per package. This field will keep track of the
          packages for which we've printed a warning. *)
       mutable available_cache : bool OpamPackage.Map.t
-    ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; constraints : OpamTypes.filtered_formula Opam_compatible_package_name.Map.t
     }
 
   let create
@@ -74,12 +74,13 @@ module Context_for_dune = struct
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
-    let candidates_cache = Table.create (module Package_name) 1 in
+    let candidates_cache = Table.create (module Opam_compatible_package_name) 1 in
     let constraints =
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
         constraint_.name, constraint_)
-      |> Package_name.Map.of_list_multi
-      |> Package_name.Map.map ~f:Package_dependency.list_to_opam_filtered_formula
+      |> Opam_compatible_package_name.Map.of_list_multi
+      |> Opam_compatible_package_name.Map.map
+           ~f:Package_dependency.list_to_opam_filtered_formula
     in
     { repos
     ; version_preference
@@ -155,8 +156,8 @@ module Context_for_dune = struct
 
   let candidates t name =
     let* () = Fiber.return () in
-    let key = Package_name.of_opam_package_name name in
-    match Package_name.Map.find t.local_packages key with
+    let key = Opam_compatible_package_name.of_opam_package_name name in
+    match Opam_compatible_package_name.Map.find t.local_packages key with
     | Some local_package ->
       let version =
         Option.value local_package.version ~default:local_package_default_version
@@ -202,20 +203,22 @@ module Context_for_dune = struct
   ;;
 
   let filter_deps t package filtered_formula =
-    let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+    let name =
+      OpamPackage.name package |> Opam_compatible_package_name.of_opam_package_name
+    in
     let filtered_formula =
       OpamFormula.map_up_formula
         (fun formula ->
           match formula with
           | Atom (pkg, _) ->
-            let name = Package_name.of_opam_package_name pkg in
-            (match Package_name.Map.find t.constraints name with
+            let name = Opam_compatible_package_name.of_opam_package_name pkg in
+            (match Opam_compatible_package_name.Map.find t.constraints name with
              | None -> formula
              | Some additional -> OpamFormula.And (formula, additional))
           | _ -> formula)
         filtered_formula
     in
-    let package_is_local = Package_name.Map.mem t.local_packages name in
+    let package_is_local = Opam_compatible_package_name.Map.mem t.local_packages name in
     Resolve_opam_formula.apply_filter
       (add_self_to_filter_env
          package
@@ -255,7 +258,7 @@ let opam_variable_to_slang ~loc packages variable =
       let scope : Package_variable.Scope.t =
         match package_name with
         | None -> Self
-        | Some p -> Package (Package_name.of_opam_package_name p)
+        | Some p -> Package (Opam_compatible_package_name.of_opam_package_name p)
       in
       Package_variable.to_pform { Package_variable.name; scope }
     in
@@ -488,9 +491,12 @@ let opam_package_to_lock_file_pkg
   stats_updater
   version_by_package_name
   opam_package
-  ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
+  ~(candidates_cache :
+     (Opam_compatible_package_name.t, Context_for_dune.candidates) Table.t)
   =
-  let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
+  let name =
+    Opam_compatible_package_name.of_opam_package_name (OpamPackage.name opam_package)
+  in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
@@ -651,7 +657,7 @@ let solve_package_list packages context =
 module Solver_result = struct
   type t =
     { lock_dir : Lock_dir.t
-    ; files : File_entry.t Package_name.Map.Multi.t
+    ; files : File_entry.t Opam_compatible_package_name.Map.Multi.t
     }
 end
 
@@ -664,28 +670,30 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
         ~repos
         ~version_preference
         ~local_packages:
-          (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
+          (Opam_compatible_package_name.Map.map
+             local_packages
+             ~f:Local_package.For_solver.to_opam_file)
         ~stats_updater
         ~constraints
     in
     let packages =
-      Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
-        Package_name.to_opam_package_name name)
+      Opam_compatible_package_name.Map.to_list_map local_packages ~f:(fun name _ ->
+        Opam_compatible_package_name.to_opam_package_name name)
     in
     solve_package_list packages context
     >>| Result.map ~f:(fun solution ->
       let version_by_package_name =
         List.map solution ~f:(fun (package : OpamPackage.t) ->
-          ( Package_name.of_opam_package_name (OpamPackage.name package)
+          ( Opam_compatible_package_name.of_opam_package_name (OpamPackage.name package)
           , Package_version.of_opam_package_version (OpamPackage.version package) ))
-        |> Package_name.Map.of_list_exn
+        |> Opam_compatible_package_name.Map.of_list_exn
       in
       (* don't include local packages in the lock dir *)
       let opam_packages_to_lock =
         let is_local_package package =
           OpamPackage.name package
-          |> Package_name.of_opam_package_name
-          |> Package_name.Map.mem local_packages
+          |> Opam_compatible_package_name.of_opam_package_name
+          |> Opam_compatible_package_name.Map.mem local_packages
         in
         List.filter solution ~f:(Fun.negate is_local_package)
       in
@@ -717,7 +725,8 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
               ~hints:[ Pp.text "add a conflict" ]
         in
         let pkgs =
-          Package_name.Map.of_list_map pkgs ~f:(fun (_kind, pkg) -> pkg.info.name, pkg)
+          Opam_compatible_package_name.Map.of_list_map pkgs ~f:(fun (_kind, pkg) ->
+            pkg.info.name, pkg)
         in
         ocaml, pkgs
       in
@@ -726,7 +735,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
         | Error (name, _pkg1, _pkg2) ->
           Code_error.raise
             "Solver selected multiple versions for the same package"
-            [ "name", Package_name.to_dyn name ]
+            [ "name", Opam_compatible_package_name.to_dyn name ]
         | Ok pkgs_by_name ->
           let stats = Solver_stats.Updater.snapshot stats_updater in
           let expanded_solver_variable_bindings =
@@ -736,7 +745,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
           in
           Lock_dir.create_latest_version
             pkgs_by_name
-            ~local_packages:(Package_name.Map.values local_packages)
+            ~local_packages:(Opam_compatible_package_name.Map.values local_packages)
             ~ocaml
             ~repos:(Some repos)
             ~expanded_solver_variable_bindings
@@ -747,7 +756,7 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
             let package_name =
               OpamPackage.name opam_package
               |> OpamPackage.Name.to_string
-              |> Package_name.of_string
+              |> Opam_compatible_package_name.of_string
             in
             let candidates = Table.find_exn context.candidates_cache package_name in
             OpamPackage.Version.Map.find
@@ -760,11 +769,11 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
             Resolved_package.package resolved_package
             |> OpamPackage.name
             |> OpamPackage.Name.to_string
-            |> Package_name.of_string
+            |> Opam_compatible_package_name.of_string
           in
           package_name, entries)
         >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
-        >>| Package_name.Map.of_list_exn
+        >>| Opam_compatible_package_name.Map.of_list_exn
       in
       { Solver_result.lock_dir; files })
   in

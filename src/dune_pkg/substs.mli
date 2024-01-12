@@ -19,7 +19,7 @@ module Make (Monad : sig
   end) : sig
   val subst
     :  (Variable.t -> OpamVariable.variable_contents option Monad.t)
-    -> Package_name.t
+    -> Opam_compatible_package_name.t
     -> src:Path.t
     -> dst:Path.Build.t
     -> unit Monad.t

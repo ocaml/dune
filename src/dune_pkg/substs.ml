@@ -64,7 +64,7 @@ struct
       let scope : Package_variable.Scope.t =
         match
           OpamVariable.Full.package ~self full_variable
-          |> Option.map ~f:Package_name.of_opam_package_name
+          |> Option.map ~f:Opam_compatible_package_name.of_opam_package_name
         with
         | None -> Self
         | Some p -> Package p
@@ -96,7 +96,9 @@ struct
       !variables
     in
     let env =
-      let self = self |> Package_name.to_string |> OpamPackage.Name.of_string in
+      let self =
+        self |> Opam_compatible_package_name.to_string |> OpamPackage.Name.of_string
+      in
       fun full_variable -> env (package_variable self full_variable)
     in
     let+ expansions =

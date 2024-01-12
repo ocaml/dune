@@ -18,7 +18,7 @@ module Constraint : sig
 end
 
 type t = Dune_lang.Package_dependency.Opam_compatible.t =
-  { name : Package_name.t
+  { name : Opam_compatible_package_name.t
   ; constraint_ : Constraint.t option
   }
 

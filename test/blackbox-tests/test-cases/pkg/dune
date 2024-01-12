@@ -34,4 +34,4 @@
 
 (cram
  (deps %{bin:webserver_oneshot})
- (applies_to compute-checksums-when-missing))
+ (applies_to compute-checksums-when-missing e2e))

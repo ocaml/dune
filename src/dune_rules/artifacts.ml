@@ -8,6 +8,7 @@ type origin =
   { binding : File_binding.Unexpanded.t
   ; dir : Path.Build.t
   ; dst : Path.Local.t
+  ; enabled_if : bool Memo.t
   }
 
 type where =
@@ -16,7 +17,7 @@ type where =
 
 type path =
   | Resolved of Path.Build.t
-  | Origin of origin
+  | Origin of origin list
 
 type local_bins = path Filename.Map.t
 
@@ -42,14 +43,35 @@ let analyze_binary t name =
   | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
   | true ->
     let* local_bins = Memo.Lazy.force t.local_bins in
+    let which () =
+      Context.which t.context name
+      >>| function
+      | None -> `None
+      | Some path -> `Resolved path
+    in
     (match Filename.Map.find local_bins name with
      | Some (Resolved p) -> Memo.return (`Resolved (Path.build p))
-     | Some (Origin o) -> Memo.return (`Origin o)
-     | None ->
-       Context.which t.context name
-       >>| (function
-        | None -> `None
-        | Some path -> `Resolved path))
+     | None -> which ()
+     | Some (Origin origins) ->
+       Memo.parallel_map origins ~f:(fun origin ->
+         origin.enabled_if
+         >>| function
+         | true -> Some origin
+         | false -> None)
+       >>| List.filter_opt
+       >>= (function
+        | [] -> which ()
+        | [ x ] -> Memo.return (`Origin x)
+        | x :: rest ->
+          let loc x = File_binding.Unexpanded.loc x.binding in
+          User_error.raise
+            ~loc:(loc x)
+            [ Pp.textf
+                "binary %S is available from more than one definition. It is also \
+                 available in:"
+                name
+            ; Pp.enumerate rest ~f:(fun x -> Pp.verbatim (Loc.to_file_colon_line (loc x)))
+            ]))
 ;;
 
 let binary t ?hint ?(where = Install_dir) ~loc name =
@@ -60,7 +82,7 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
     let context = Context.name t.context in
     Memo.return
     @@ Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
-  | `Origin { dir; binding; dst } ->
+  | `Origin { dir; binding; dst; enabled_if = _ } ->
     (match where with
      | Install_dir ->
        let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
@@ -100,13 +122,15 @@ let create =
     then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
     else name
   in
-  fun (context : Context.t) ~local_bins ->
+  fun (context : Context.t)
+    ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
     let local_bins =
       Memo.lazy_ (fun () ->
         let+ local_bins = Memo.Lazy.force local_bins in
-        Filename.Map.foldi local_bins ~init:Filename.Map.empty ~f:(fun name origin acc ->
-          let key = drop_suffix name in
-          Filename.Map.set acc key (Origin origin)))
+        Filename.Map.to_list_map local_bins ~f:(fun name sources ->
+          let sources = Appendable_list.to_list sources in
+          drop_suffix name, Origin sources)
+        |> Filename.Map.of_list_exn)
     in
     { context; local_bins }
 ;;

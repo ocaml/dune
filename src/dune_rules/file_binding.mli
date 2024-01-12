@@ -21,6 +21,7 @@ module Unexpanded : sig
 
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
+  val loc : t -> Loc.t
 
   val make
     :  src:Loc.t * string

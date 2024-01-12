@@ -896,8 +896,9 @@ module Action_expander = struct
        | true -> expand action ~expander
        | false -> Memo.return (Action.progn []))
     | _ ->
-      (* TODO *)
-      assert false
+      Code_error.raise
+        "Pkg_rules.action_expander.expand: unsupported action"
+        [ "action", Dune_lang.Action.to_dyn action ]
 
   and expand_withenv (expander : Expander.t) updates action =
     let* env, updates =

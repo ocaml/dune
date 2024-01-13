@@ -206,6 +206,11 @@ end = struct
            Is_component_of_a_group_but_not_the_root { stanzas = Some d; group_root })
   ;;
 
+  let build_dir_is_project_root st_dir =
+    let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
+    Source_tree.Dir.path st_dir |> Path.Source.equal project_root
+  ;;
+
   let get_impl dir =
     (match Path.Build.extract_build_context dir with
      | None -> Memo.return None
@@ -230,10 +235,7 @@ end = struct
       >>= (function
        | true -> Memo.return Lock_dir
        | false ->
-         let build_dir_is_project_root =
-           let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
-           Source_tree.Dir.path st_dir |> Path.Source.equal project_root
-         in
+         let build_dir_is_project_root = build_dir_is_project_root st_dir in
          Only_packages.stanzas_in_dir dir
          >>= (function
           | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d

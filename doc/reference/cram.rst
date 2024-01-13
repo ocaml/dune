@@ -31,7 +31,7 @@ Here is an example showing how ``echo``, ``cat``, and ``rm`` interact.
      rm: cannot remove 'data.txt': No such file or directory
      [1]
 
-The syntax mimics a shell session: there are comments, and shell commands with
+The syntax mimics a shell session: there are comments and shell commands with
 their output.
 
 Examples
@@ -41,7 +41,7 @@ Simple Commands
 ^^^^^^^^^^^^^^^
 
 This is the simplest test case: it executes the command ``touch
-this-file.txt``, and expects that the command has no output.
+this-file.txt`` and expects that the command has no output.
 
 .. code:: console
 
@@ -145,7 +145,7 @@ each line:
 - If a line starts with ``␣␣$␣`` (``␣`` denoting a space character), the rest
   is a command.
 - If it starts with ``␣␣>␣``, the rest is the continuation of a command
-  (continuation lines must immediately follow a command)
+  (continuation lines must immediately follow a command).
 - If it start with ``␣␣`` and something else, the rest is the expected output
   or exit code of the previous command.
 - Everything else is a comment.
@@ -167,30 +167,30 @@ happens in a single file. This is handy because it does not make a deep file
 hierarchy in a project. But if the test requires some files, these need to be
 created using ``cat`` and heredocs. Directory tests, on the other hand, allow
 creating these test fixtures as normal files. This can be more comfortable
-because it makes the usual tooling (syntax highlighting, completion, etc)
+because it makes the usual tooling (syntax highlighting, completion, etc.)
 available.
 
 Executing Cram Tests
 --------------------
 
-Every cram test has a name: for file tests, the name of ``something.t`` is
+Every Cram test has a name. For file tests, the name of ``something.t`` is
 ``something``, and for directory tests, the name of ``something.t/run.t`` is
 ``something``.
 
-There are several ways to execute cram tests:
+There are several ways to execute Cram tests:
 
-- all cram tests are attached to the ``@runtest`` alias. So ``dune runtest``
-  will run all cram tests.
-- every cram test creates an alias after its name. So, ``dune build
+- All Cram tests are attached to the ``@runtest`` alias. So ``dune runtest``
+  will run all Cram tests.
+- Every Cram test creates an alias after its name. So, ``dune build
   @something`` will run tests named ``something``.
 
 When a Cram test is executed, the commands it contains are executed, and a
-corrected file is created where the outputs of the commands are inserted after
+corrected file is created where the command outputs are inserted after
 each command. This corrected file is then offered for :doc:`promotion
 <../concepts/promotion>` by Dune.
 
 Concretely, this means that Dune will display the difference between the
-current contents of the Cram test and the output of the latest run. This diff
+Cram test's current contents and the latest run's output. This diff
 can be applied by running ``dune promote``, as usual.
 
 .. code:: diff

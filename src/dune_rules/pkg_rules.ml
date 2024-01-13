@@ -19,7 +19,7 @@ module Sys_vars = struct
          Sys_poll.make ~path)
     in
     let sys_poll_memo key =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"sys-poll-vars" ~cutoff:(Option.equal String.equal) (fun () ->
         let vars = Lazy.force vars in
         Memo.of_reproducible_fiber @@ key vars)
     in

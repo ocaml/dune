@@ -50,7 +50,7 @@ let pp ppf ~fields sexps =
     in
     if do_print
     then (
-      let version = Dune_lang.Syntax.greatest_supported_version Stanza.syntax in
+      let version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
       Dune_lang.Ast.add_loc sexp ~loc:Loc.none
       |> Dune_lang.Cst.concrete
       |> List.singleton

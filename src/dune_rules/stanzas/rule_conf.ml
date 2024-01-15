@@ -87,6 +87,7 @@ let directory_targets_extension =
     Dune_lang.Syntax.create
       ~name:"directory-targets"
       ~desc:"experimental support for directory targets"
+      ~experimental:true
       [ (0, 1), `Since (3, 0) ]
   in
   Dune_project.Extension.register syntax (Dune_lang.Decoder.return ((), [])) Dyn.unit

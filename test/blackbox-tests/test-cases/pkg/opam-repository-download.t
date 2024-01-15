@@ -121,6 +121,7 @@ A new package is released in the repo:
   $ cd mock-opam-repository
   $ git add -A
   $ git commit -m "bar.1.0.0" --quiet
+  $ NEWEST_REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
 
 Since we have a working cached copy we get the old version of `bar` if we opt
@@ -130,7 +131,7 @@ out of the auto update.
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (source "git+file://$(pwd)/mock-opam-repository#${NEW_REPO_HASH}"))
   > (lock_dir
   >  (repositories mock))
   > EOF
@@ -142,7 +143,7 @@ To be safe it doesn't access the repo, we make sure to move the mock-repo away
 So now the test should work as it can't access the repo:
 
   $ rm -r dune.lock
-  $ dune pkg lock --skip-update
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -150,6 +151,14 @@ So now the test should work as it can't access the repo:
 But it will also get the new version of bar if we attempt to lock again (having
 restored the repo to where it was before)
 
+  $ cat > dune-workspace <<EOF
+  > (lang dune 3.10)
+  > (repository
+  >  (name mock)
+  >  (source "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"))
+  > (lock_dir
+  >  (repositories mock))
+  > EOF
   $ mv elsewhere mock-opam-repository
   $ rm -r dune.lock
   $ dune pkg lock

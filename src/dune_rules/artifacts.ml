@@ -4,6 +4,23 @@ open Memo.O
 let bin_dir_basename = ".bin"
 let local_bin p = Path.Build.relative p bin_dir_basename
 
+type origin =
+  { binding : File_binding.Unexpanded.t
+  ; dir : Path.Build.t
+  ; dst : Path.Local.t
+  ; enabled_if : bool Memo.t
+  }
+
+type where =
+  | Install_dir
+  | Original_path
+
+type path =
+  | Resolved of Path.Build.t
+  | Origin of origin list
+
+type local_bins = path Filename.Map.t
+
 type t =
   { context : Context.t
   ; (* Mapping from executable names to their actual path in the workspace.
@@ -11,42 +28,81 @@ type t =
        Enumerating binaries from install stanzas may involve expanding globs,
        but the artifacts database is depended on by the logic which expands
        globs. The computation of this field is deferred to break the cycle. *)
-    local_bins : Path.Build.t Filename.Map.t Memo.Lazy.t
+    local_bins : local_bins Memo.Lazy.t
   }
 
 let force { local_bins; _ } =
-  let+ (_ : Path.Build.t Filename.Map.t) = Memo.Lazy.force local_bins in
+  let+ (_ : local_bins) = Memo.Lazy.force local_bins in
   ()
 ;;
 
+let expand = Fdecl.create Dyn.opaque
+
 let analyze_binary t name =
   match Filename.is_relative name with
-  | false -> Memo.return (Some (Path.of_filename_relative_to_initial_cwd name))
+  | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
   | true ->
     let* local_bins = Memo.Lazy.force t.local_bins in
+    let which () =
+      Context.which t.context name
+      >>| function
+      | None -> `None
+      | Some path -> `Resolved path
+    in
     (match Filename.Map.find local_bins name with
-     | Some path -> Memo.return (Some (Path.build path))
-     | None -> Context.which t.context name)
+     | Some (Resolved p) -> Memo.return (`Resolved (Path.build p))
+     | None -> which ()
+     | Some (Origin origins) ->
+       Memo.parallel_map origins ~f:(fun origin ->
+         origin.enabled_if
+         >>| function
+         | true -> Some origin
+         | false -> None)
+       >>| List.filter_opt
+       >>= (function
+        | [] -> which ()
+        | [ x ] -> Memo.return (`Origin x)
+        | x :: rest ->
+          let loc x = File_binding.Unexpanded.loc x.binding in
+          User_error.raise
+            ~loc:(loc x)
+            [ Pp.textf
+                "binary %S is available from more than one definition. It is also \
+                 available in:"
+                name
+            ; Pp.enumerate rest ~f:(fun x -> Pp.verbatim (Loc.to_file_colon_line (loc x)))
+            ]))
 ;;
 
-let binary t ?hint ~loc name =
+let binary t ?hint ?(where = Install_dir) ~loc name =
   analyze_binary t name
-  >>| function
-  | Some path -> Ok path
-  | None ->
+  >>= function
+  | `Resolved path -> Memo.return @@ Ok path
+  | `None ->
     let context = Context.name t.context in
-    Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
+    Memo.return
+    @@ Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
+  | `Origin { dir; binding; dst; enabled_if = _ } ->
+    (match where with
+     | Install_dir ->
+       let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
+       Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
+     | Original_path ->
+       let+ expanded =
+         File_binding.Unexpanded.expand
+           binding
+           ~dir
+           ~f:(Fdecl.get expand ~context:t.context ~dir)
+       in
+       let src = File_binding.Expanded.src expanded in
+       Ok (Path.build src))
 ;;
 
 let binary_available t name =
   analyze_binary t name
-  >>= function
-  | None -> Memo.return false
-  | Some path ->
-    (match path with
-     | External e -> Fs_memo.file_exists @@ External e
-     | In_source_tree e -> Fs_memo.file_exists @@ In_source_dir e
-     | In_build_dir _ -> Memo.return true)
+  >>| function
+  | `None -> false
+  | `Resolved _ | `Origin _ -> true
 ;;
 
 let add_binaries t ~dir l =
@@ -55,7 +111,7 @@ let add_binaries t ~dir l =
       let+ local_bins = Memo.Lazy.force t.local_bins in
       List.fold_left l ~init:local_bins ~f:(fun acc fb ->
         let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
-        Filename.Map.set acc (Path.Build.basename path) path))
+        Filename.Map.set acc (Path.Build.basename path) (Resolved path)))
   in
   { t with local_bins }
 ;;
@@ -66,51 +122,15 @@ let create =
     then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
     else name
   in
-  fun (context : Context.t) ~local_bins ->
+  fun (context : Context.t)
+    ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
     let local_bins =
       Memo.lazy_ (fun () ->
         let+ local_bins = Memo.Lazy.force local_bins in
-        Path.Build.Set.fold local_bins ~init:Filename.Map.empty ~f:(fun path acc ->
-          let name = Path.Build.basename path in
-          let key = drop_suffix name in
-          Filename.Map.set acc key path))
+        Filename.Map.to_list_map local_bins ~f:(fun name sources ->
+          let sources = Appendable_list.to_list sources in
+          drop_suffix name, Origin sources)
+        |> Filename.Map.of_list_exn)
     in
     { context; local_bins }
 ;;
-
-module Objs = struct
-  type t =
-    { libraries : Lib_info.local Lib_name.Map.t
-    ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
-    }
-
-  let empty = { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
-  let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
-  let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
-
-  let make ~dir ~lib_config ~libs ~exes =
-    let+ libraries =
-      Memo.List.map libs ~f:(fun ((lib : Dune_file.Library.t), _, _, _) ->
-        let* lib_config = lib_config in
-        let name = Lib_name.of_local lib.name in
-        let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
-        name, info)
-      >>| Lib_name.Map.of_list_exn
-    in
-    let modules =
-      let by_name modules obj_dir =
-        Modules.fold_user_available ~init:modules ~f:(fun m modules ->
-          Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
-      in
-      let init =
-        List.fold_left
-          exes
-          ~init:Module_name.Map.empty
-          ~f:(fun modules (_, _, m, obj_dir) -> by_name modules obj_dir m)
-      in
-      List.fold_left libs ~init ~f:(fun modules (_, _, m, obj_dir) ->
-        by_name modules obj_dir m)
-    in
-    { libraries; modules }
-  ;;
-end

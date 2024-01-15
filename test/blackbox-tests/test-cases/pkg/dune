@@ -31,3 +31,7 @@
 (cram
  (deps %{bin:which})
  (applies_to pkg-deps))
+
+(cram
+ (deps %{bin:webserver_oneshot})
+ (applies_to compute-checksums-when-missing e2e))

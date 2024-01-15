@@ -1,7 +1,13 @@
 open Import
 
 let melc sctx ~loc ~dir =
-  Super_context.resolve_program_memo sctx ~loc ~dir ~hint:"opam install melange" "melc"
+  Super_context.resolve_program_memo
+    sctx
+    ~loc
+    ~dir
+    ~where:Original_path
+    ~hint:"opam install melange"
+    "melc"
 ;;
 
 let where =

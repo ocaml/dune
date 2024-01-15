@@ -95,6 +95,7 @@ let coqc ~loc ~dir ~sctx =
   Super_context.resolve_program_memo
     sctx
     "coqc"
+    ~where:Original_path
     ~dir
     ~loc:(Some loc)
     ~hint:"opam install coq"
@@ -488,6 +489,7 @@ let setup_coqdep_for_theory_rule
       sctx
       "coqdep"
       ~dir
+      ~where:Original_path
       ~loc:(Some loc)
       ~hint:"opam install coq"
   in
@@ -746,6 +748,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
             sctx
             "coqdoc"
             ~dir
+            ~where:Original_path
             ~loc:(Some loc)
             ~hint:"opam install coq"
         in
@@ -1075,6 +1078,7 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
     Super_context.resolve_program_memo
       sctx
       "coqpp"
+      ~where:Original_path
       ~dir
       ~loc:(Some loc)
       ~hint:"opam install coq"

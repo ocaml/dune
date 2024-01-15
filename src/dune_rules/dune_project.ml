@@ -248,7 +248,7 @@ include Dune_lang.Versioned_file.Make (struct
   end)
 
 let default_dune_language_version =
-  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
+  ref (Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax)
 ;;
 
 let get_dune_lang () =
@@ -404,17 +404,21 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
         | Not_selected (Packed e) ->
           let stanzas =
             let open Dune_lang.Decoder in
-            let _arg, stanzas =
-              let parsing_context =
-                (* Temporarily mark the extension as active so that we can
-                   call the parser and extract the list of stanza names this
-                   extension registers *)
-                Univ_map.set
-                  parsing_context
-                  (Dune_lang.Syntax.key e.syntax)
-                  (Active (Dune_lang.Syntax.greatest_supported_version e.syntax))
-              in
-              parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+            let stanzas =
+              match Dune_lang.Syntax.greatest_supported_version e.syntax with
+              | None -> []
+              | Some greatest_supported_version ->
+                let parsing_context =
+                  (* Temporarily mark the extension as active so that we can
+                     call the parser and extract the list of stanza names this
+                     extension registers *)
+                  Univ_map.set
+                    parsing_context
+                    (Dune_lang.Syntax.key e.syntax)
+                    (Active greatest_supported_version)
+                in
+                parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+                |> snd
             in
             List.map stanzas ~f:(fun (name, _) ->
               ( name
@@ -504,7 +508,7 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
          [ Pp.textf "%S is not a valid Dune project name." name ])
 ;;
 
-let infer ~dir ?(info = Package.Info.empty) packages =
+let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
   let project_file = Path.Source.relative dir filename in
@@ -594,9 +598,7 @@ module Toggle = struct
   ;;
 end
 
-let anonymous ~dir ?info ?(packages = Package.Name.Map.empty) () =
-  infer ~dir ?info packages
-;;
+let anonymous ~dir info packages = infer ~dir info packages
 
 let encode : t -> Dune_lang.t list =
   fun { name
@@ -1072,7 +1074,7 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
     let+ opam_packages =
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
-    Some (infer ~dir opam_packages)
+    Some (infer Package.Info.empty ~dir opam_packages)
   else Memo.return None
 ;;
 

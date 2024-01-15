@@ -41,7 +41,6 @@ val constraints_of_workspace
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
   -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
-  -> update_opam_repositories:bool
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
 val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t

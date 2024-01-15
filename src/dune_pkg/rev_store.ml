@@ -127,7 +127,7 @@ let mem { dir } ~rev =
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  let command = [ "rev-parse"; rev ] in
+  let command = [ "cat-file"; "-t"; rev ] in
   let+ res =
     Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git command
   in
@@ -449,25 +449,49 @@ let branch_of_refspec refspec =
     String.drop_prefix remote_ref ~prefix:"refs/heads/")
 ;;
 
+let find_section =
+  let re =
+    Re.seq
+      [ Re.(rep space)
+      ; Re.str "[remote "
+      ; Re.char '"'
+      ; Re.group (Re.rep (Re.diff Re.any (Re.char '"')))
+      ; Re.char '"'
+      ; Re.char ']'
+      ; Re.(rep space)
+      ]
+    |> Re.compile
+  in
+  fun contents ~name ->
+    let rec loop (xs : Re.split_token list) =
+      match xs with
+      | [] -> None
+      | `Text _ :: rest -> loop rest
+      | `Delim delim :: rest ->
+        if Re.Group.get delim 1 = name
+        then
+          Some
+            (match rest with
+             | `Text s :: _ -> s
+             | _ -> "")
+        else loop rest
+    in
+    loop (Re.split_full re contents)
+;;
+
 let read_head_branch =
   let fetch_line = Re.(compile @@ seq [ str "fetch = "; group (rep1 any); eol ]) in
   fun t handle ->
-    let headline = sprintf {|[remote "%s"]|} handle in
-    let path = Path.relative t.dir "config" in
-    let lines = Io.lines_of_file path in
-    let _front, back =
-      List.split_while lines ~f:(fun line -> not (String.equal headline line))
-    in
-    match back with
-    | [] -> None
-    | [ _heading ] -> None
-    | _heading :: section ->
-      List.find_map section ~f:(fun line ->
-        line
-        |> Re.exec_opt fetch_line
+    Path.relative t.dir "config"
+    |> Io.read_file ~binary:true
+    |> find_section ~name:handle
+    |> Option.bind ~f:(fun section ->
+      String.split_lines section
+      |> List.find_map ~f:(fun line ->
+        Re.exec_opt fetch_line line
         |> Option.bind ~f:(fun m ->
           let refspec = Re.Group.get m 1 in
-          branch_of_refspec refspec))
+          branch_of_refspec refspec)))
 ;;
 
 let remote_add t ~branch ~handle ~source =

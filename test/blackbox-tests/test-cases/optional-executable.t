@@ -83,12 +83,19 @@ of its dependencies were optional.
   > print_endline "hello world"
   > EOF
   $ cat >exe/dune <<EOF
-  > (executable (public_name dunetestbar) (name bar) (libraries foo))
+  > (executable
+  >  (public_name dunetestbar)
+  >  (name bar)
+  >  (libraries foo))
   > EOF
 
   $ mkdir lib
   $ cat >lib/dune <<EOF
-  > (library (name foo) (libraries xxx-does-not-exist) (optional) (modules ()))
+  > (library
+  >  (name foo)
+  >  (libraries xxx-does-not-exist)
+  >  (optional)
+  >  (modules ()))
   > EOF
 
   $ cat >dune <<EOF

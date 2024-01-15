@@ -17,7 +17,7 @@ end
 
 type t
 
-val artifacts : t -> Artifacts.Objs.t Memo.t
+val artifacts : t -> Artifacts_obj.t Memo.t
 
 type for_ =
   | Library of Lib_name.t (** Library name *)

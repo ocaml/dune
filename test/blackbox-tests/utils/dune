@@ -22,3 +22,8 @@
 (executable
  (name refmt)
  (modules refmt))
+
+(executable
+ (name webserver_oneshot)
+ (modules webserver_oneshot)
+ (libraries unix))

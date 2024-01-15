@@ -304,7 +304,7 @@ let create_latest_version
            ; "dependency of", Package_name.to_dyn dependant_package.info.name
            ] ))
      |> Code_error.raise "Invalid package table");
-  let version = Syntax.greatest_supported_version Dune_lang.Pkg.syntax in
+  let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
     Local_package.(
       For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)

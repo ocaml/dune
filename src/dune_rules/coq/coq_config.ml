@@ -269,7 +269,7 @@ let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default } na
 let expand source macro artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
-  let* coqc = Artifacts.binary artifacts_host ~loc:None "coqc" in
+  let* coqc = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "coqc" in
   let+ t = make ~coqc in
   match t with
   | Error msg ->

@@ -44,6 +44,12 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let merge a b ~f = merge a b ~f
   let union a b ~f = union a b ~f
 
+  let union_all maps ~f =
+    match maps with
+    | [] -> empty
+    | init :: maps -> List.fold_left maps ~init ~f:(fun acc map -> union acc map ~f)
+  ;;
+
   let union_exn a b =
     union a b ~f:(fun key _ _ ->
       Code_error.raise

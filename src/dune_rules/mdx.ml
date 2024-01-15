@@ -509,6 +509,7 @@ let gen_rules t ~sctx ~dir ~scope ~expander =
     let mdx_prog =
       Super_context.resolve_program
         sctx
+        ~where:Original_path
         ~dir
         ~loc:(Some t.loc)
         ~hint:"opam install mdx"

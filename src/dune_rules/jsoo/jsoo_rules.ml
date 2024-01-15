@@ -185,7 +185,13 @@ let in_obj_dir' ~obj_dir ~config args =
 ;;
 
 let jsoo ~dir sctx =
-  Super_context.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint "js_of_ocaml"
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~loc:None
+    ~where:Original_path
+    ~hint:install_jsoo_hint
+    "js_of_ocaml"
 ;;
 
 type sub_command =

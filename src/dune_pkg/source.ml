@@ -78,6 +78,7 @@ let compute_missing_checksum_of_fetch
   let open Fiber.O in
   match checksum with
   | Some _ -> Fiber.return fetch
+  | None when OpamUrl.is_local url -> Fiber.return fetch
   | None ->
     User_message.print
       (User_message.make

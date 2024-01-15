@@ -1,64 +1,91 @@
 Test that dune will add checksums to lockfiles when the package has a source
-archive but no checksum.
+archive but no checksum. This test uses an http server to serve packages to
+test checksum generation, since we only generate checksums for packages
+downloaded from non-local sources.
   $ . ./helpers.sh
   $ mkrepo
 
-  $ strip_pwd() {
-  >   sed -e "s#$PWD#<pwd>#"
+  $ strip_transient() {
+  >   sed -e "s#$PWD#<pwd>#" | \
+  >   # strip the entire address as the port number may also appear in the hash
+  >   sed -e "s#http://.*$PORT#<addr>#"
   > }
 
+A file that will comprise the package source:
   $ echo "Hello, World!" > foo.txt
+
+Run the server in the background:
+  $ webserver_oneshot --content-file foo.txt --port-file port.txt &
+  $ until test -f port.txt; do sleep 0.1; done
+  $ PORT=$(cat port.txt)
 
   $ mkpkg foo <<EOF
   > url {
-  >  src: "$PWD/foo.txt"
+  >  src: "http://0.0.0.0:$PORT"
   > }
   > EOF
 
-  $ solve foo | strip_pwd
+  $ solve foo | strip_transient
   Solution for dune.lock:
   - foo.0.0.1
   Package "foo" has source archive which lacks a checksum.
-  The source archive will be downloaded from:
-  file://<pwd>/foo.txt
+  The source archive will be downloaded from: <addr>
   Dune will compute its own checksum for this source archive.
 
 Replace the path in the lockfile as it would otherwise include the sandbox
 path.
-  $ cat dune.lock/foo.pkg | strip_pwd
+  $ cat dune.lock/foo.pkg | strip_transient
   (version 0.0.1)
   
   (source
    (fetch
-    (url
-     file://<pwd>/foo.txt)
+    (url <addr>)
     (checksum md5=bea8252ff4e80f41719ea13cdf007273)))
   
   (dev)
 
 Now make sure we can gracefully handle the case when the archive is missing.
 
-  $ rm foo.txt
-  $ solve foo 2>&1 | strip_pwd
+  $ rm port.txt
+  $ webserver_oneshot --content-file foo.txt --port-file port.txt --simulate-not-found &
+  $ until test -f port.txt; do sleep 0.1; done
+  $ PORT=$(cat port.txt)
+
+Recreate the foo package as the port number will have changed:
+  $ mkpkg foo <<EOF
+  > url {
+  >  src: "http://0.0.0.0:$PORT"
+  > }
+  > EOF
+
+  $ solve foo 2>&1 | strip_transient
   Package "foo" has source archive which lacks a checksum.
-  The source archive will be downloaded from:
-  file://<pwd>/foo.txt
+  The source archive will be downloaded from: <addr>
   Dune will compute its own checksum for this source archive.
-  Warning: Failed to retrieve source archive from:
-  file://<pwd>/foo.txt
+  Warning: download failed with code 404
   Solution for dune.lock:
   - foo.0.0.1
-  $ cat dune.lock/foo.pkg | strip_pwd
+  $ cat dune.lock/foo.pkg | strip_transient
   (version 0.0.1)
   
   (source
    (fetch
-    (url
-     file://<pwd>/foo.txt)))
+    (url <addr>)))
   
   (dev)
 
-Now we use a directory source:
+Check that no checksum is computed for a local source file:
+
+  $ mkpkg foo <<EOF
+  > url {
+  >  src: "$PWD/foo.txt"
+  > }
+  > EOF
+  $ solve foo 2>&1 | strip_transient
+  Solution for dune.lock:
+  - foo.0.0.1
+
+Check that no checksum is computed for a local source directory:
 
   $ mkdir src
   $ mkpkg foo <<EOF
@@ -66,22 +93,6 @@ Now we use a directory source:
   >  src: "$PWD/src"
   > }
   > EOF
-  $ solve foo 2>&1 | strip_pwd | awk '/Package /{f=1} /File /{ print "File .."; exit } f'
-  Package "foo" has source archive which lacks a checksum.
-  The source archive will be downloaded from:
-  file://<pwd>/src
-  Dune will compute its own checksum for this source archive.
-  File ..
-
-A git source:
-
-  $ mkdir gitrepo
-  $ cd gitrepo
-  $ git init --quiet
-  $ cd ..
-  $ solve foo 2>&1 | strip_pwd | awk '/I must not crash/,/Dune will recompute/'
-  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
-  little-death that brings total obliteration.  I will fully express my cases. 
-  Execution will pass over me and through me.  And when it has gone past, I
-  will unwind the stack along its path.  Where the cases are handled there will
-  be nothing.  Only I will remain.
+  $ solve foo 2>&1 | strip_transient
+  Solution for dune.lock:
+  - foo.0.0.1

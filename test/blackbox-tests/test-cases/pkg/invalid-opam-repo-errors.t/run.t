@@ -20,7 +20,7 @@ Test the error cases for invalid opam repositories
   > echo "$out" | sed 's/character.*:/characters X-X:/g' \
   >   | sed 's/source ".*"/source ../g' \
   >   | grep -v "\^"
-  > printf "[%d]\n" "$code"
+  > return $code
   > }
 
   $ lock

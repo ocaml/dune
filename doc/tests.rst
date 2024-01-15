@@ -550,12 +550,8 @@ To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
    Simplest possible Cram test
      $ echo "testing"
 
-This simple example demonstrates two components of Cram tests:
-
-* Comments - Anything that doesn't start with a 2 space indentation is a comment
-* Commands - A command starts with 2 spaces followed by a ``$``. It's executed
-  in the shell and the output is diffed against the output below. In this
-  example, there's no output yet.
+This simple example demonstrates two components of Cram tests: comments and
+commands. See :doc:`reference/cram` for a description of the syntax.
 
 To run the test and promote the results:
 

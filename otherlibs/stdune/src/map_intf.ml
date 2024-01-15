@@ -20,6 +20,7 @@ module type S = sig
   val add_multi : 'a list t -> key -> 'a -> 'a list t
   val merge : 'a t -> 'b t -> f:(key -> 'a option -> 'b option -> 'c option) -> 'c t
   val union : 'a t -> 'a t -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
+  val union_all : 'a t list -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
 
   (** Like [union] but raises a code error if a key appears in both maps. *)
   val union_exn : 'a t -> 'a t -> 'a t

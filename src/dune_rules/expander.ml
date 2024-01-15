@@ -55,7 +55,7 @@ type t =
   ; scope : Scope.t
   ; scope_host : Scope.t
   ; context : Context.t
-  ; lookup_artifacts : (dir:Path.Build.t -> Artifacts.Objs.t Memo.t) option
+  ; lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) option
   ; expanding_what : Expanding_what.t
   }
 
@@ -165,7 +165,7 @@ let expand_artifact ~source t a s =
        let name =
          Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
        in
-       (match Artifacts.Objs.lookup_module artifacts name with
+       (match Artifacts_obj.lookup_module artifacts name with
         | None ->
           does_not_exist
             ~loc:(Dune_lang.Template.Pform.loc source)
@@ -177,7 +177,7 @@ let expand_artifact ~source t a s =
            | Some path -> dep (Path.build path)))
      | Lib mode ->
        let name = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name) in
-       (match Artifacts.Objs.lookup_library artifacts name with
+       (match Artifacts_obj.lookup_library artifacts name with
         | None ->
           does_not_exist
             ~loc:(Dune_lang.Template.Pform.loc source)
@@ -924,4 +924,9 @@ let expand_lock ~base expander (Locks.Lock sw) =
 
 let expand_locks ~base expander locks =
   Memo.List.map locks ~f:(expand_lock ~base expander) |> Action_builder.of_memo
+;;
+
+let () =
+  Fdecl.set Artifacts.expand (fun ~context ~dir sw ->
+    With_reduced_var_set.expand_str ~context ~dir sw)
 ;;

@@ -86,7 +86,7 @@ let location_of_opam_url loc url =
       ]
 ;;
 
-let get_repos repos ~repositories ~update_opam_repositories =
+let get_repos repos ~repositories =
   let open Fiber.O in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
   repositories
@@ -104,7 +104,7 @@ let get_repos repos ~repositories ~update_opam_repositories =
       (match location_of_opam_url loc opam_url with
        | `Git ->
          let* source = Opam_repo.Source.of_opam_url loc opam_url in
-         Opam_repo.of_git_repo ~update:update_opam_repositories source
+         Opam_repo.of_git_repo source
        | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
 ;;
 

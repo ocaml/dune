@@ -37,5 +37,5 @@ Test for %{bin-available:...}
   non existent program: false
   local path foo: false
   local path bar: false
-  disabled binary is available: true
+  disabled binary is available: false
   disabled by enabled_if: false

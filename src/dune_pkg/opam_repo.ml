@@ -58,25 +58,37 @@ module Source = struct
              we need to look up *)
           Rev_store.mem rev_store ~rev:ref
           >>= (function
-           | true -> Fiber.return @@ Some (Commitish.Commit ref)
+           | true ->
+             (* CR-Leonidas-from-XIV is this always a commit? *)
+             Fiber.return @@ Some (Commitish.Commit ref)
            | false ->
              Rev_store.ref_type rev_store ~source:url ~ref
-             >>| (function
-              | Some `Tag -> Some (Commitish.Tag ref)
-              | Some `Head -> Some (Commitish.Branch ref)
+             >>= (function
+              | Some `Tag -> Fiber.return @@ Some (Commitish.Tag ref)
+              | Some `Head -> Fiber.return @@ Some (Commitish.Branch ref)
               | None ->
-                User_error.raise
-                  ~loc
-                  ~hints:
-                    [ Pp.text
-                        "Make sure the URL is correct and the repository contains the \
-                         branch/tag"
-                    ]
-                  [ Pp.textf
-                      "Opam repository at '%s' does not have a reference '%s'"
-                      url
-                      ref
-                  ]))
+                (* we have to update the local repo as a side-effect and see if
+                   the commit exists *)
+                let* (_ : Rev_store.Remote.t) =
+                  Rev_store.add_repo rev_store ~source:url ~branch:None
+                  >>= Rev_store.Remote.update
+                in
+                Rev_store.mem rev_store ~rev:ref
+                >>= (function
+                 | true -> Fiber.return @@ Some (Commitish.Commit ref)
+                 | false ->
+                   User_error.raise
+                     ~loc
+                     ~hints:
+                       [ Pp.text
+                           "Make sure the URL is correct and the repository contains the \
+                            branch/tag"
+                       ]
+                     [ Pp.textf
+                         "Opam repository at '%s' does not have a reference '%s'"
+                         url
+                         ref
+                     ])))
       in
       { commit; url; loc }
     ;;
@@ -174,7 +186,7 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
   { source = Directory opam_repo_dir_path; serializable = None; loc }
 ;;
 
-let of_git_repo ~update (source : Source.t) =
+let of_git_repo (source : Source.t) =
   let+ at_rev =
     let* remote =
       let* repo = Rev_store.get in
@@ -184,9 +196,13 @@ let of_git_repo ~update (source : Source.t) =
         | _ -> None
       in
       let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
-      match update with
-      | true -> Rev_store.Remote.update remote
-      | false -> Fiber.return @@ Rev_store.Remote.don't_update remote
+      match source.commit with
+      | Some (Commit rev) ->
+        let* exists = Rev_store.mem repo ~rev in
+        (match exists with
+         | true -> Fiber.return @@ Rev_store.Remote.don't_update remote
+         | false -> Rev_store.Remote.update remote)
+      | Some (Branch _) | Some (Tag _) | None -> Rev_store.Remote.update remote
     in
     match source.commit with
     | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref

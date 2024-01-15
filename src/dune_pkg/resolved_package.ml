@@ -1,8 +1,8 @@
 open Import
 
 type extra_files =
-  | Inside_files_dir of Path.t
-  | Git_files of Path.Local.t * Rev_store.At_rev.t
+  | Inside_files_dir of Path.t option
+  | Git_files of Path.Local.t option * Rev_store.At_rev.t
 
 type nonrec t =
   { opam_file : OpamFile.OPAM.t
@@ -14,6 +14,11 @@ type nonrec t =
 let file t = t.opam_file_path
 let package t = t.package
 let opam_file t = t.opam_file
+
+let set_url t url =
+  let opam_file = OpamFile.OPAM.with_url (OpamFile.URL.create url) t.opam_file in
+  { t with opam_file }
+;;
 
 let read_opam_file package ~opam_file_path ~opam_file_contents =
   let filename =
@@ -33,7 +38,7 @@ let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
 
 let local_fs package ~dir ~opam_file_path ~files_dir =
   let opam_file_path = Path.append_local dir opam_file_path in
-  let files_dir = Path.append_local dir files_dir in
+  let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file =
     let opam_file_contents = Io.read_file ~binary:true opam_file_path in
     read_opam_file package ~opam_file_path ~opam_file_contents
@@ -81,9 +86,12 @@ let get_opam_package_files resolved_packages =
       let files_with_idx =
         Int.Map.to_list from_git
         |> List.concat_map ~f:(fun (idx, (files_dir, rev)) ->
-          Rev_store.At_rev.directory_entries rev files_dir
-          |> Rev_store.File.Set.to_list
-          |> List.map ~f:(fun file -> idx, files_dir, file))
+          match files_dir with
+          | None -> []
+          | Some files_dir ->
+            Rev_store.At_rev.directory_entries rev files_dir
+            |> Rev_store.File.Set.to_list
+            |> List.map ~f:(fun file -> idx, files_dir, file))
       in
       let* rev_store = Rev_store.get in
       List.map files_with_idx ~f:(fun (_, _, file) -> file)
@@ -102,12 +110,15 @@ let get_opam_package_files resolved_packages =
   let from_dirs =
     Int.Map.to_list from_dirs
     |> List.concat_map ~f:(fun (idx, files_dir) ->
-      scan_files_entries files_dir
-      |> List.map ~f:(fun local_file ->
-        ( idx
-        , { File_entry.original = Path (Path.append_local files_dir local_file)
-          ; local_file
-          } )))
+      match files_dir with
+      | None -> []
+      | Some files_dir ->
+        scan_files_entries files_dir
+        |> List.map ~f:(fun local_file ->
+          ( idx
+          , { File_entry.original = Path (Path.append_local files_dir local_file)
+            ; local_file
+            } )))
   in
   List.rev_append from_git from_dirs
   |> Int.Map.of_list_multi

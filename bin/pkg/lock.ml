@@ -45,7 +45,7 @@ let solve_lock_dir
         ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
   >>= function
   | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
-  | Ok { lock_dir; files; _ } ->
+  | Ok { lock_dir; files; pinned_packages } ->
     let summary_message =
       User_message.make
         [ Pp.tag
@@ -59,7 +59,7 @@ let solve_lock_dir
            | packages -> pp_packages packages)
         ]
     in
-    let+ lock_dir = Lock_dir.compute_missing_checksums lock_dir in
+    let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
     Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message)
 ;;
 

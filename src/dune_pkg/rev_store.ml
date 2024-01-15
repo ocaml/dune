@@ -100,21 +100,16 @@ let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_l
 (* to avoid Git translating its CLI *)
 let env = Env.add Env.initial ~var:"LC_ALL" ~value:"C"
 
-let git_code_error dir args exit_code maybe_output_dyn =
+let git_code_error ~dir ~args ~exit_code ~output =
   let git = Lazy.force Vcs.git in
-  let output_list =
-    match maybe_output_dyn with
-    | Some output_dyn -> [ "output", output_dyn ]
-    | None -> []
-  in
   Code_error.raise
     "git returned non-zero exit code"
-    ([ "exit code", Dyn.int exit_code
-     ; "dir", Path.to_dyn dir
-     ; "git", Path.to_dyn git
-     ; "args", Dyn.string (String.concat ~sep:" " args)
-     ]
-     @ output_list)
+    [ "exit code", Dyn.int exit_code
+    ; "dir", Path.to_dyn dir
+    ; "git", Path.to_dyn git
+    ; "args", Dyn.list Dyn.string args
+    ; "output", Dyn.list Dyn.string output
+    ]
 ;;
 
 let run { dir } args =
@@ -124,7 +119,7 @@ let run { dir } args =
   let+ (), exit_code =
     Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
   in
-  if exit_code <> 0 then git_code_error dir args exit_code None
+  if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
 ;;
 
 let run_capture_line { dir } args =
@@ -132,9 +127,9 @@ let run_capture_line { dir } args =
   let+ output, exit_code =
     Process.run_capture_line ~dir ~display ~env failure_mode git args
   in
-  if exit_code == 0
+  if exit_code = 0
   then output
-  else git_code_error dir args exit_code (Some (Dyn.string output))
+  else git_code_error ~dir ~args ~exit_code ~output:[ output ]
 ;;
 
 let run_capture_lines { dir } args =
@@ -142,9 +137,7 @@ let run_capture_lines { dir } args =
   let+ output, exit_code =
     Process.run_capture_lines ~dir ~display ~env failure_mode git args
   in
-  if exit_code == 0
-  then output
-  else git_code_error dir args exit_code (Some (Dyn.list Dyn.string output))
+  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
 let run_capture_zero_separated_lines { dir } args =
@@ -152,9 +145,7 @@ let run_capture_zero_separated_lines { dir } args =
   let+ output, exit_code =
     Process.run_capture_zero_separated ~dir ~display ~env failure_mode git args
   in
-  if exit_code == 0
-  then output
-  else git_code_error dir args exit_code (Some (Dyn.list Dyn.string output))
+  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
 let mem { dir } ~rev =
@@ -162,13 +153,9 @@ let mem { dir } ~rev =
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  let command = [ "cat-file"; "-t"; rev ] in
-  let+ res =
-    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git command
-  in
-  match res with
-  | Ok () -> true
-  | Error _ -> false
+  [ "cat-file"; "-t"; rev ]
+  |> Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git
+  >>| Result.is_ok
 ;;
 
 let ref_type =
@@ -375,7 +362,7 @@ module At_rev = struct
       let+ (), exit_code =
         Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
       in
-      if exit_code <> 0 then git_code_error dir args exit_code None
+      if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
     in
     let stdout_to = make_stdout () in
     let stderr_to = make_stderr () in
@@ -391,7 +378,7 @@ module At_rev = struct
           [ "exit code", Dyn.int exit_code
           ; "dir", Path.to_dyn target
           ; "tar", Path.to_dyn tar
-          ; "args", Dyn.string (String.concat ~sep:" " args)
+          ; "args", Dyn.list Dyn.string args
           ]
     in
     ()

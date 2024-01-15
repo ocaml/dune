@@ -32,6 +32,8 @@ Run the server in the background:
   The source archive will be downloaded from: <addr>
   Dune will compute its own checksum for this source archive.
 
+  $ wait
+
 Replace the path in the lockfile as it would otherwise include the sandbox
 path.
   $ cat dune.lock/foo.pkg | strip_transient
@@ -73,6 +75,8 @@ Recreate the foo package as the port number will have changed:
     (url <addr>)))
   
   (dev)
+
+  $ wait
 
 Check that no checksum is computed for a local source file:
 

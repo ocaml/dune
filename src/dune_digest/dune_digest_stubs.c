@@ -1,4 +1,4 @@
-#define CAML_INTERNALS
+#define CAML_INTERNALS  // needed to access md5.h functions
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
 #include <caml/bigarray.h>

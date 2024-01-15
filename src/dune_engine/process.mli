@@ -12,7 +12,7 @@ module Failure_mode : sig
     | Strict : ('a, 'a) t (** Fail if the process exits with anything else than [0] *)
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     (** Accept the following non-zero exit codes, and return [Error code] if
-        the process exists with one of these codes. *)
+        the process exits with one of these codes. *)
     | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
 end
 

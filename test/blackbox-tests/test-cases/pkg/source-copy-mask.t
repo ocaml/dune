@@ -23,19 +23,6 @@ We include an empty file because of a bug that prevents us from copying empty di
 
   $ build_pkg foo
   .
-  ./.#foo
-  ./.git
-  ./.git/file
-  ./.hg
-  ./.hg/file
-  ./_build
-  ./_build/file
-  ./_darcs
-  ./_darcs/file
-  ./_esy
-  ./_esy/file
-  ./_opam
-  ./_opam/file
   ./file
   ./node_modules
   ./node_modules/file

@@ -1,3 +1,4 @@
+#define CAML_INTERNALS  // needed to access md5.h functions
 #include <caml/mlvalues.h>
 #include <caml/alloc.h>
 #include <caml/bigarray.h>
@@ -6,9 +7,7 @@
 #include <caml/threads.h>
 #include <caml/unixsupport.h>
 #include <errno.h>
-#define CAML_INTERNALS
 #include <caml/md5.h>
-#undef CAML_INTERNALS
 
 /* yanked from:
  * https://github.com/janestreet/core/blob/master/core/src/md5_stubs.c

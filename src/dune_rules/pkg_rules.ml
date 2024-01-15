@@ -19,7 +19,7 @@ module Sys_vars = struct
          Sys_poll.make ~path)
     in
     let sys_poll_memo key =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~name:"sys-poll-vars" ~cutoff:(Option.equal String.equal) (fun () ->
         let vars = Lazy.force vars in
         Memo.of_reproducible_fiber @@ key vars)
     in
@@ -908,8 +908,9 @@ module Action_expander = struct
       in
       Action.Write_file (path, perm, contents)
     | _ ->
-      (* TODO *)
-      assert false
+      Code_error.raise
+        "Pkg_rules.action_expander.expand: unsupported action"
+        [ "action", Dune_lang.Action.to_dyn action ]
 
   and expand_withenv (expander : Expander.t) updates action =
     let* env, updates =
@@ -1491,11 +1492,9 @@ module Fetch = struct
     let action { target_dir; url = loc_url, url; checksum } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let* () = Fiber.return () in
-      let* res =
-        let checksum = Option.map checksum ~f:snd in
-        Dune_pkg.Fetch.fetch ~unpack:true ~checksum ~target:(Path.build target_dir) url
-      in
-      match res with
+      (let checksum = Option.map checksum ~f:snd in
+       Dune_pkg.Fetch.fetch ~unpack:true ~checksum ~target:(Path.build target_dir) url)
+      >>= function
       | Ok () -> Fiber.return ()
       | Error (Checksum_mismatch actual_checksum) ->
         (match checksum with
@@ -1727,14 +1726,12 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  let* lock_dir = Lock_dir.get context in
-  let+ pkg =
-    let* db = DB.get context in
-    match lock_dir.ocaml with
-    | None -> Memo.return `System_provided
-    | Some ocaml -> Resolve.resolve db context ocaml
-  in
-  match pkg with
+  (let* lock_dir = Lock_dir.get context in
+   let* db = DB.get context in
+   match lock_dir.ocaml with
+   | None -> Memo.return `System_provided
+   | Some ocaml -> Resolve.resolve db context ocaml)
+  >>| function
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
     let toolchain =
@@ -1754,18 +1751,16 @@ let ocaml_toolchain context =
 
 let all_packages context =
   let* db = DB.get context in
-  let+ closure =
-    Dune_lang.Package_name.Map.values db.all
-    |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
-      let package = package.info.name in
-      Resolve.resolve db context (Loc.none, package)
-      >>| function
-      | `Inside_lock_dir pkg -> Some pkg
-      | `System_provided -> None)
-    >>| List.filter_opt
-    >>| Pkg.top_closure
-  in
-  match closure with
+  Dune_lang.Package_name.Map.values db.all
+  |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
+    let package = package.info.name in
+    Resolve.resolve db context (Loc.none, package)
+    >>| function
+    | `Inside_lock_dir pkg -> Some pkg
+    | `System_provided -> None)
+  >>| List.filter_opt
+  >>| Pkg.top_closure
+  >>| function
   | Error _ -> assert false
   | Ok closure -> closure
 ;;

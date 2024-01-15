@@ -5,6 +5,14 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.12.2 (2024-01-05)
+-------------------
+
+- Fix version check in `runtest_alias` for `cram` stanza (#9454, @emillon)
+
+- Fix stack overflow when a `(run)` action can not be parsed. (#9530, fixes
+  #9529, @gridbugs)
+
 3.12.1 (2023-11-29)
 -------------------
 

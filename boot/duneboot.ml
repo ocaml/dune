@@ -1141,27 +1141,6 @@ let build
        ])
 ;;
 
-let build_with_single_command
-  ~ocaml_config:_
-  ~dependencies
-  ~c_files
-  ~link_flags
-  { target = name, main; external_libraries; _ }
-  =
-  let external_libraries, external_includes = resolve_externals external_libraries in
-  write_args "mods_list" (sort_files dependencies ~main);
-  Process.run
-    ~cwd:build_dir
-    Config.compiler
-    (List.concat
-       [ common_build_args name ~external_includes ~external_libraries
-       ; [ "-no-alias-deps"; "-w"; "-49-6" ]
-       ; c_files
-       ; [ "-args"; "mods_list" ] @ link_flags
-       ; allow_unstable_sources
-       ])
-;;
-
 let rec rm_rf fn =
   match Unix.lstat fn with
   | { st_kind = S_DIR; _ } ->
@@ -1193,7 +1172,6 @@ let main () =
        | None -> []
        | Some flags -> flags)
   in
-  let build = if concurrency = 1 || Sys.win32 then build_with_single_command else build in
   build ~ocaml_config ~dependencies ~c_files ~link_flags task
 ;;
 

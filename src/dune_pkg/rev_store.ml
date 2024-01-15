@@ -91,7 +91,6 @@ let with_flock lock_path ~f =
 ;;
 
 let equal { dir } t = Path.equal dir t.dir
-let display = Display.Quiet
 let failure_mode = Process.Failure_mode.Return
 let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
@@ -112,7 +111,7 @@ let git_code_error ~dir ~args ~exit_code ~output =
     ]
 ;;
 
-let run { dir } args =
+let run { dir } ~display args =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
@@ -125,14 +124,14 @@ let run { dir } args =
 let run_capture_line { dir } args =
   let git = Lazy.force Vcs.git in
   let+ output, exit_code =
-    Process.run_capture_line ~dir ~display ~env failure_mode git args
+    Process.run_capture_line ~dir ~display:Quiet ~env failure_mode git args
   in
   if exit_code = 0
   then output
   else git_code_error ~dir ~args ~exit_code ~output:[ output ]
 ;;
 
-let run_capture_lines { dir } args =
+let run_capture_lines { dir } ~display args =
   let git = Lazy.force Vcs.git in
   let+ output, exit_code =
     Process.run_capture_lines ~dir ~display ~env failure_mode git args
@@ -143,7 +142,7 @@ let run_capture_lines { dir } args =
 let run_capture_zero_separated_lines { dir } args =
   let git = Lazy.force Vcs.git in
   let+ output, exit_code =
-    Process.run_capture_zero_separated ~dir ~display ~env failure_mode git args
+    Process.run_capture_zero_separated ~dir ~display:Quiet ~env failure_mode git args
   in
   if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
@@ -154,7 +153,7 @@ let mem { dir } ~rev =
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
   [ "cat-file"; "-t"; rev ]
-  |> Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git
+  |> Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git
   >>| Result.is_ok
 ;;
 
@@ -174,7 +173,7 @@ let ref_type =
   in
   fun t ~source ~ref ->
     let command = [ "ls-remote"; source; ref ] in
-    let+ hits = run_capture_lines t command in
+    let+ hits = run_capture_lines t ~display:!Dune_engine.Clflags.display command in
     List.find_map hits ~f:(fun line ->
       match Re.exec_opt re line with
       | None -> None
@@ -196,7 +195,7 @@ let show =
         | `Path (Rev r, path) -> sprintf "%s:%s" r (Path.Local.to_string path))
     in
     let stderr_to = make_stderr () in
-    Process.run_capture ~dir ~display ~stderr_to failure_mode git command
+    Process.run_capture ~dir ~display:Quiet ~stderr_to failure_mode git command
   in
   fun t revs_and_paths ->
     let cli_limit =
@@ -239,7 +238,7 @@ let load_or_create ~dir =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
       | Already_exists -> Fiber.return ()
-      | Created -> run t [ "init"; "--bare" ]
+      | Created -> run t ~display:Quiet [ "init"; "--bare" ]
       | exception Unix.Unix_error (e, x, y) ->
         User_error.raise
           [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
@@ -360,7 +359,7 @@ module At_rev = struct
     let* () =
       let args = [ "archive"; "--format=tar"; rev ] in
       let+ (), exit_code =
-        Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+        Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
       in
       if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
     in
@@ -369,7 +368,7 @@ module At_rev = struct
     let+ () =
       let args = [ "xf"; Path.to_string archive_file ] in
       let+ (), exit_code =
-        Process.run ~dir:target ~display ~stdout_to ~stderr_to failure_mode tar args
+        Process.run ~dir:target ~display:Quiet ~stdout_to ~stderr_to failure_mode tar args
       in
       if exit_code <> 0
       then
@@ -396,7 +395,7 @@ module Remote = struct
   type uninit = t
 
   let update ({ repo; handle; source = _; default_branch = _ } as t) =
-    let+ () = run repo [ "fetch"; handle ] in
+    let+ () = run repo ~display:!Dune_engine.Clflags.display [ "fetch"; handle ] in
     t
   ;;
 
@@ -436,7 +435,7 @@ let remote_exists dir ~name =
   let command = [ "remote"; "--verbose" ] in
   let+ lines =
     let git = Lazy.force Vcs.git in
-    Process.run_capture_lines ~dir ~display ~stderr_to ~env Strict git command
+    Process.run_capture_lines ~dir ~display:Quiet ~stderr_to ~env Strict git command
   in
   lines
   |> List.find ~f:(fun line ->
@@ -460,7 +459,12 @@ let query_head_branch =
            ])
   in
   fun t source ->
-    let+ lines = run_capture_lines t [ "ls-remote"; "--symref"; source ] in
+    let+ lines =
+      run_capture_lines
+        t
+        ~display:!Dune_engine.Clflags.display
+        [ "ls-remote"; "--symref"; source ]
+    in
     List.find_map lines ~f:(fun line ->
       match Re.exec_opt re line with
       | None -> None
@@ -521,10 +525,11 @@ let read_head_branch =
 ;;
 
 let remote_add t ~branch ~handle ~source =
-  let* () = run t [ "remote"; "add"; "--track"; branch; handle; source ] in
+  let* () = run ~display:Quiet t [ "remote"; "add"; "--track"; branch; handle; source ] in
   (* add a refspec to fetch the remotes' tags into <handle>/<tag> namespace *)
   run
     t
+    ~display:Quiet
     [ "config"
     ; "--add"
     ; sprintf "remote.%s.fetch" handle

@@ -178,6 +178,10 @@ module Context_for_dune = struct
     let+ resolved = Opam_repo.load_all_versions t.repos name in
     let available =
       OpamPackage.Version.Map.values resolved
+      (* This sort is not strictly necessary. The values returned from the map
+         are already sorted in ascending order. So it would be enough to just
+         reverse this list if we want the highest versions first. We leave the
+         sorting for clarity. *)
       |> List.sort ~compare:(fun p1 p2 ->
         opam_version_compare
           t

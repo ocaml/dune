@@ -1,5 +1,8 @@
-Welcome to Dune's Documentation!
-================================
+Dune Documentation
+==================
+
+Dune is a build system for OCaml projects. Using it, you can build executables,
+libraries, run tests, and much more.
 
 .. toctree::
    :maxdepth: 2

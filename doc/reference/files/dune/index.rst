@@ -22,36 +22,61 @@ The syntax of ``dune`` files is described in
 
 The following pages describe the available stanzas and their meanings.
 
-.. toctree::
+.. grid:: 1 2 1 3
 
-  alias
-  cinaps
-  copy_files
-  coq_theory
-  cram
-  data_only_dirs
-  deprecated_library_name
-  dirs
-  documentation
-  dynamic_include
-  env
-  executable
-  external_variant
-  foreign_library
-  generate_sites_module
-  ignored_subdirs
-  include
-  include_subdirs
-  install
-  jbuild_version
-  library
-  mdx
-  menhir
-  ocamllex
-  ocamlyacc
-  plugin
-  rule
-  subdir
-  test
-  toplevel
-  vendored_dirs
+  .. grid-item::
+
+    .. toctree::
+      :caption: Components
+      :maxdepth: 1
+    
+      executable
+      library
+      foreign_library
+      deprecated_library_name
+      generate_sites_module
+      test
+      cram
+      toplevel
+      documentation
+      install
+      plugin
+
+  .. grid-item::
+    
+    .. toctree::
+      :caption: Project structure
+      :maxdepth: 1
+    
+      rule
+      alias
+      copy_files
+      include
+      dynamic_include
+      env
+      dirs
+      data_only_dirs
+      ignored_subdirs
+      include_subdirs
+      vendored_dirs
+      subdir
+
+  .. grid-item::
+
+    .. toctree::
+      :caption: Integrations
+      :maxdepth: 1
+    
+      cinaps
+      coq_theory
+      mdx
+      menhir
+      ocamllex
+      ocamlyacc
+    
+    .. toctree::
+      :caption: Deprecated
+      :maxdepth: 1
+    
+      external_variant
+      jbuild_version

@@ -103,17 +103,25 @@ module Lock_dir = struct
       ;;
     end)
 
+  let select_lock_dir lock_dir_selection dir =
+    let* expander = Ocaml_config_expander.from_env () in
+    Workspace.Lock_dir_selection.eval lock_dir_selection ~dir ~f:(fun ~source pform ->
+      Memo.return (expander ~source pform))
+  ;;
+
   let get_path ctx =
-    let+ workspace = Workspace.workspace () in
+    let* workspace = Workspace.workspace () in
     match
       List.find_map workspace.contexts ~f:(fun ctx' ->
         match Context_name.equal (Workspace.Context.name ctx') ctx with
         | false -> None
         | true -> Some ctx')
     with
-    | None -> Some default_path
-    | Some (Default { lock_dir; _ }) -> Some (Option.value lock_dir ~default:default_path)
-    | Some (Opam _) -> None
+    | None -> Memo.return (Some default_path)
+    | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
+      select_lock_dir lock_dir_selection workspace.dir >>| Option.some
+    | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
+    | Some (Opam _) -> Memo.return None
   ;;
 
   let get_workspace_lock_dir ctx =

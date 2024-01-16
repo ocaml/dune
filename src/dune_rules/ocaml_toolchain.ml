@@ -22,7 +22,7 @@ let make_builtins ~ocaml_config ~version =
     Meta.builtins ~stdlib_dir ~version)
 ;;
 
-let make_ocaml_config ~env ~ocamlc =
+let make_ocaml_vars_and_config ~env ~ocamlc =
   let+ vars =
     Process.run_capture_lines ~display:Quiet ~env Strict ocamlc [ "-config" ]
     |> Memo.of_reproducible_fiber
@@ -85,7 +85,7 @@ let make name ~which ~env ~get_ocaml_tool =
       in
       Error (not_found ~hint prog)
   in
-  let* ocaml_config_vars, ocaml_config = make_ocaml_config ~env ~ocamlc in
+  let* ocaml_config_vars, ocaml_config = make_ocaml_vars_and_config ~env ~ocamlc in
   let* ocamlopt = get_ocaml_tool "ocamlopt"
   and* ocaml = get_ocaml_tool "ocaml"
   and* ocamldep = get_ocaml_tool "ocamldep"
@@ -187,4 +187,11 @@ let check_fdo_support { version; lib_config = { has_native; _ }; ocaml_config; _
             (Context_name.to_string name)
             version_string
         ]
+;;
+
+let make_ocaml_config ~env ~ocamlc =
+  let+ (_ : Ocaml_config.Vars.t), ocaml_config =
+    make_ocaml_vars_and_config ~env ~ocamlc
+  in
+  ocaml_config
 ;;

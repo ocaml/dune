@@ -212,10 +212,6 @@ let get_prog = function
   | Error err -> Action.Prog.Not_found.raise err
 ;;
 
-let c_compiler_and_flags ocaml_config =
-  Ocaml_config.c_compiler ocaml_config :: Ocaml_config.ocamlc_cflags ocaml_config
-;;
-
 let relative ~source d s =
   Path.build (Path.Build.relative ~error_loc:(Dune_lang.Template.Pform.loc source) d s)
 ;;
@@ -426,28 +422,6 @@ let lib_config_var (var : Pform.Var.t) (lib_config : Lib_config.t) =
   ]
 ;;
 
-let ocaml_config_var (var : Pform.Var.t) (ocaml_config : Ocaml_config.t) =
-  match var with
-  | Cpp -> c_compiler_and_flags ocaml_config @ [ "-E" ] |> strings
-  | Pa_cpp ->
-    c_compiler_and_flags ocaml_config @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ]
-    |> strings
-  | Arch_sixtyfour -> 64 = Ocaml_config.word_size ocaml_config |> string_of_bool |> string
-  | Ocaml_version -> Ocaml_config.version_string ocaml_config |> string
-  | Ext_asm -> Ocaml_config.ext_asm ocaml_config |> string
-  | Ext_plugin ->
-    (if Ocaml_config.natdynlink_supported ocaml_config then Mode.Native else Byte)
-    |> Mode.plugin_ext
-    |> string
-  | Os_type ->
-    Ocaml_config.os_type ocaml_config |> Ocaml_config.Os_type.to_string |> string
-  | Architecture -> Ocaml_config.architecture ocaml_config |> string
-  | System -> Ocaml_config.system ocaml_config |> string
-  | Model -> Ocaml_config.model ocaml_config |> string
-  | Ext_exe -> Ocaml_config.ext_exe ocaml_config |> string
-  | _ -> Code_error.raise "not a ocaml_config variables" [ "var", Pform.Var.to_dyn var ]
-;;
-
 let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   let open Memo.O in
   let ocaml = Context.ocaml context in
@@ -515,7 +489,10 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | System
   | Model ->
     (let+ ocaml = ocaml in
-     ocaml_config_var var ocaml.ocaml_config)
+     match Ocaml_config_expander.ocaml_config_var ocaml.ocaml_config var with
+     | Ok x -> x
+     | Error `Not_a_config_var ->
+       Code_error.raise "not an ocaml_config variable" [ "var", Pform.Var.to_dyn var ])
     |> static
   | Ignoring_promoted_rules ->
     string_of_bool !Clflags.ignore_promoted_rules |> string |> Memo.return |> static

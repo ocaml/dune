@@ -34,3 +34,4 @@ val best_mode : t -> Mode.t
 
 val check_fdo_support : t -> Context_name.t -> unit
 val register_response_file_support : t -> unit
+val make_ocaml_config : env:Env.t -> ocamlc:Path.t -> Ocaml_config.t Memo.t

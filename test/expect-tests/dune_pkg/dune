@@ -11,6 +11,7 @@
   dune_lang
   dune_vcs
   fiber
+  http
   opam_core
   threads.posix
   unix

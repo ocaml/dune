@@ -114,6 +114,14 @@ For integration tests, we use a system similar to `Cram tests
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
+.. seealso::
+
+   `actions_to_sh tests <https://github.com/ocaml/dune/blob/3.12.2/test/expect-tests/dune_engine/action_to_sh_tests.ml>`_
+     An example of expect-tests.
+
+   `mdx-stanza/locks.t <https://github.com/ocaml/dune/blob/3.12.2/test/blackbox-tests/test-cases/mdx-stanza/locks.t>`_
+     An example of Cram test.
+
 When running Dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
 This has the following effects:
 

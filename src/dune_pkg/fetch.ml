@@ -72,7 +72,12 @@ module Curl = struct
     let stderr = Path.relative temp_dir "curl.stderr" in
     let+ http_code, exit_code =
       let stderr_to = Process.Io.file stderr Out in
-      Process.run_capture_line Return ~stderr_to ~display:Quiet (Lazy.force bin) args
+      Process.run_capture_line
+        Return
+        ~stderr_to
+        ~display:!Dune_engine.Clflags.display
+        (Lazy.force bin)
+        args
     in
     if exit_code <> 0
     then (

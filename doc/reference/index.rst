@@ -1,10 +1,9 @@
-Reference guides
+Reference Manual
 ================
 
 These documents specify the various features and languages present in Dune.
 
 .. toctree::
-   :caption: Reference Guides
    :maxdepth: 2
 
    lexical-conventions

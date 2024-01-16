@@ -1,6 +1,8 @@
 Advanced Topics
 ===============
 
+These documents describe some advanced or very specific features of Dune.
+
 .. toctree::
    :maxdepth: 1
 

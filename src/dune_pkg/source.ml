@@ -74,34 +74,39 @@ let fetch_and_hash_archive url =
 let compute_missing_checksum_of_fetch
   ({ url = url_loc, url; checksum } as fetch)
   package_name
+  ~pinned
   =
   let open Fiber.O in
   match checksum with
   | Some _ -> Fiber.return fetch
   | None when OpamUrl.is_local url -> Fiber.return fetch
   | None ->
-    User_message.print
-      (User_message.make
-         [ Pp.textf
-             "Package %S has source archive which lacks a checksum."
-             (Package_name.to_string package_name)
-         ; Pp.textf
-             "The source archive will be downloaded from: %s"
-             (OpamUrl.to_string url)
-         ; Pp.text "Dune will compute its own checksum for this source archive."
-         ]);
+    if not pinned
+       (* No point in warning this about pinned packages. The user explicitly
+          asked for the pins *)
+    then
+      User_message.print
+        (User_message.make
+           [ Pp.textf
+               "Package %S has source archive which lacks a checksum."
+               (Package_name.to_string package_name)
+           ; Pp.textf
+               "The source archive will be downloaded from: %s"
+               (OpamUrl.to_string url)
+           ; Pp.text "Dune will compute its own checksum for this source archive."
+           ]);
     fetch_and_hash_archive url
     >>| Option.map ~f:(fun checksum ->
       { url = url_loc, url; checksum = Some (Loc.none, checksum) })
     >>| Option.value ~default:fetch
 ;;
 
-let compute_missing_checksum t package_name =
+let compute_missing_checksum t package_name ~pinned =
   let open Fiber.O in
   match t with
   | External_copy _ -> Fiber.return t
   | Fetch fetch ->
-    let+ fetch = compute_missing_checksum_of_fetch fetch package_name in
+    let+ fetch = compute_missing_checksum_of_fetch fetch package_name ~pinned in
     Fetch fetch
 ;;
 

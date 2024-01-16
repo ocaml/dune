@@ -83,12 +83,13 @@ module Pkg = struct
       ]
   ;;
 
-  let compute_missing_checksum t =
+  let compute_missing_checksum t ~pinned =
     let open Fiber.O in
     let+ source =
       match t.info.source with
-      | Some source -> Source.compute_missing_checksum source t.info.name >>| Option.some
       | None -> Fiber.return None
+      | Some source ->
+        Source.compute_missing_checksum source t.info.name ~pinned >>| Option.some
     in
     { t with info = { t.info with source } }
   ;;
@@ -704,12 +705,13 @@ let transitive_dependency_closure t start =
     Ok (loop start)
 ;;
 
-let compute_missing_checksums t =
+let compute_missing_checksums t ~pinned_packages =
   let open Fiber.O in
   let+ packages =
     Package_name.Map.to_list t.packages
     |> Fiber.parallel_map ~f:(fun (name, pkg) ->
-      let+ pkg = Pkg.compute_missing_checksum pkg in
+      let pinned = Package_name.Set.mem pinned_packages name in
+      let+ pkg = Pkg.compute_missing_checksum pkg ~pinned in
       name, pkg)
     >>| Package_name.Map.of_list_exn
   in

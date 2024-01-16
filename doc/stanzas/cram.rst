@@ -11,6 +11,8 @@ Cram
    cases, the values from all applicable ``cram`` stanzas are merged together
    to get the final values for all the fields.
 
+   .. seealso:: :doc:`reference/cram`
+
    .. dune:field:: deps
       :param: <dep-spec>
 

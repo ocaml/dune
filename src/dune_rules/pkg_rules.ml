@@ -305,6 +305,11 @@ module Pkg = struct
   ;;
 
   let source_files t ~loc =
+    let skip_dir = function
+      | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
+      | _ -> false
+    in
+    let skip_file = String.is_prefix ~prefix:".#" in
     let rec loop root acc path =
       let full_path = Path.External.append_local root path in
       Fs_memo.dir_contents (External full_path)
@@ -318,11 +323,11 @@ module Pkg = struct
       | Ok contents ->
         let files, dirs =
           let contents = Fs_cache.Dir_contents.to_list contents in
-          List.partition_map contents ~f:(fun (name, kind) ->
+          List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
             match kind with
-            | S_DIR -> Right name
-            | _ -> Left name)
+            | S_DIR -> if skip_dir name then Skip else Right name
+            | _ -> if skip_file name then Skip else Left name)
         in
         let acc =
           Path.Local.Set.of_list_map files ~f:(Path.Local.relative path)

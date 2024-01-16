@@ -16,7 +16,10 @@ Demonstrate our support for pin-depends.
   > pin-depends: [ "bar.1.0.0" "$1" ]
   > EOF
   > dune pkg lock
-  > cat dune.lock/bar.pkg
+  > local pkg="dune.lock/bar.pkg"
+  > grep version $pkg
+  > grep dev $pkg
+  > grep "$1" $pkg | sed "s#$PWD#PWD#g"
   > }
 
 Local pinned source.
@@ -30,8 +33,10 @@ Local pinned source.
   > EOF
   $ runtest "file://$PWD/$dir"
   Solution for dune.lock:
-  - bar.0.0.1
-  (version 0.0.1)
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+     file://PWD/_bar_file)))
 
 "opam" directory at the root
 
@@ -42,8 +47,10 @@ Local pinned source.
   > EOF
   $ runtest "file://$PWD/$dir"
   Solution for dune.lock:
-  - bar.0.0.1
-  (version 0.0.1)
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+     file://PWD/_bar_file_opam_dir)))
 
 "bar.opam" file at the root
 
@@ -54,8 +61,10 @@ Local pinned source.
   > EOF
   $ runtest "file://$PWD/$dir"
   Solution for dune.lock:
-  - bar.0.0.1
-  (version 0.0.1)
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+     file://PWD/_bar_named_opam_root)))
 
 "bar.opam" file at opam/
 
@@ -66,8 +75,10 @@ Local pinned source.
   > EOF
   $ runtest "file://$PWD/$dir"
   Solution for dune.lock:
-  - bar.0.0.1
-  (version 0.0.1)
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+     file://PWD/_bar_named_opam_subdir)))
 
 Git pinned source:
 
@@ -83,5 +94,7 @@ Git pinned source:
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
   Solution for dune.lock:
-  - bar.0.0.1
-  (version 0.0.1)
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+     git+file://PWD/_bar_git)))

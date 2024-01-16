@@ -2,6 +2,8 @@ open! Import
 module Package_constraint = Dune_lang.Package_constraint
 module Digest = Dune_digest
 
+type pins = (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
+
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
@@ -9,6 +11,7 @@ type t =
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
+  ; pins : pins
   ; loc : Loc.t
   }
 
@@ -79,9 +82,12 @@ module For_solver = struct
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
+    ; pins : (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
     }
 
-  let to_opam_file { name; dependencies; conflicts; conflict_class; depopts } =
+  let to_opam_file { name; dependencies; conflicts; conflict_class; depopts; pins = _ } =
+    (* CR-rgrinberg: it's OK to ignore pins here since the solver doesn't touch
+       them *)
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
     |> OpamFile.OPAM.with_depends
@@ -108,7 +114,7 @@ module For_solver = struct
 end
 
 let for_solver
-  { name; version = _; dependencies; conflicts; conflict_class; loc = _; depopts }
+  { name; version = _; dependencies; conflicts; conflict_class; loc = _; depopts; pins }
   =
-  { For_solver.name; dependencies; conflicts; conflict_class; depopts }
+  { For_solver.name; dependencies; conflicts; conflict_class; depopts; pins }
 ;;

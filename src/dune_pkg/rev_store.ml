@@ -92,7 +92,7 @@ let with_flock lock_path ~f =
 
 let equal { dir } t = Path.equal dir t.dir
 let display = Display.Quiet
-let failure_mode = Process.Failure_mode.Strict
+let failure_mode = Process.Failure_mode.Return
 let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
@@ -100,26 +100,52 @@ let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_l
 (* to avoid Git translating its CLI *)
 let env = Env.add Env.initial ~var:"LC_ALL" ~value:"C"
 
-let run { dir } =
+let git_code_error ~dir ~args ~exit_code ~output =
+  let git = Lazy.force Vcs.git in
+  Code_error.raise
+    "git returned non-zero exit code"
+    [ "exit code", Dyn.int exit_code
+    ; "dir", Path.to_dyn dir
+    ; "git", Path.to_dyn git
+    ; "args", Dyn.list Dyn.string args
+    ; "output", Dyn.list Dyn.string output
+    ]
+;;
+
+let run { dir } args =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
-  Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git
+  let+ (), exit_code =
+    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+  in
+  if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
 ;;
 
-let run_capture_line { dir } =
+let run_capture_line { dir } args =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_line ~dir ~display ~env failure_mode git
+  let+ output, exit_code =
+    Process.run_capture_line ~dir ~display ~env failure_mode git args
+  in
+  if exit_code = 0
+  then output
+  else git_code_error ~dir ~args ~exit_code ~output:[ output ]
 ;;
 
-let run_capture_lines { dir } =
+let run_capture_lines { dir } args =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_lines ~dir ~display ~env failure_mode git
+  let+ output, exit_code =
+    Process.run_capture_lines ~dir ~display ~env failure_mode git args
+  in
+  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
-let run_capture_zero_separated_lines { dir } =
+let run_capture_zero_separated_lines { dir } args =
   let git = Lazy.force Vcs.git in
-  Process.run_capture_zero_separated ~dir ~display ~env failure_mode git
+  let+ output, exit_code =
+    Process.run_capture_zero_separated ~dir ~display ~env failure_mode git args
+  in
+  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
 let mem { dir } ~rev =
@@ -127,13 +153,9 @@ let mem { dir } ~rev =
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  let command = [ "cat-file"; "-t"; rev ] in
-  let+ res =
-    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git command
-  in
-  match res with
-  | Ok () -> true
-  | Error _ -> false
+  [ "cat-file"; "-t"; rev ]
+  |> Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git
+  >>| Result.is_ok
 ;;
 
 let ref_type =
@@ -336,26 +358,30 @@ module At_rev = struct
     let stdout_to = Process.Io.file archive_file Process.Io.Out in
     let stderr_to = make_stderr () in
     let* () =
-      Process.run
-        ~dir
-        ~display
-        ~stdout_to
-        ~stderr_to
-        ~env
-        failure_mode
-        git
-        [ "archive"; "--format=tar"; rev ]
+      let args = [ "archive"; "--format=tar"; rev ] in
+      let+ (), exit_code =
+        Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+      in
+      if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
     in
     let stdout_to = make_stdout () in
     let stderr_to = make_stderr () in
-    Process.run
-      ~dir:target
-      ~display
-      ~stdout_to
-      ~stderr_to
-      failure_mode
-      tar
-      [ "xf"; Path.to_string archive_file ]
+    let+ () =
+      let args = [ "xf"; Path.to_string archive_file ] in
+      let+ (), exit_code =
+        Process.run ~dir:target ~display ~stdout_to ~stderr_to failure_mode tar args
+      in
+      if exit_code <> 0
+      then
+        Code_error.raise
+          "tar returned non-zero exit code"
+          [ "exit code", Dyn.int exit_code
+          ; "dir", Path.to_dyn target
+          ; "tar", Path.to_dyn tar
+          ; "args", Dyn.list Dyn.string args
+          ]
+    in
+    ()
   ;;
 end
 

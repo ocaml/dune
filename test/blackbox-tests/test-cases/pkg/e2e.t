@@ -78,3 +78,5 @@ Lock, build, and run the executable in the project:
 
   $ dune exec bar
   Hello, World!
+
+  $ wait

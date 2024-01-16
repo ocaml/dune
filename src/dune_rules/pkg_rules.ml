@@ -900,6 +900,18 @@ module Action_expander = struct
       >>= (function
        | true -> expand action ~expander
        | false -> Memo.return (Action.progn []))
+    | Write_file (path_sw, perm, contents_sw) ->
+      let+ path =
+        Expander.expand_pform_gen ~mode:Single expander path_sw
+        >>| Value.to_path ~dir
+        >>| Expander0.as_in_build_dir
+              ~what:"write-file"
+              ~loc:(String_with_vars.loc path_sw)
+      and+ contents =
+        Expander.expand_pform_gen ~mode:Single expander contents_sw
+        >>| Value.to_string ~dir
+      in
+      Action.Write_file (path, perm, contents)
     | _ ->
       Code_error.raise
         "Pkg_rules.action_expander.expand: unsupported action"

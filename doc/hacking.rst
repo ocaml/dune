@@ -114,7 +114,7 @@ For integration tests, we use a system similar to `Cram tests
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
-When running dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
+When running Dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
 This has the following effects:
 
 * Change the default root detection behaviour to use the current directory
@@ -396,7 +396,7 @@ For links, prefer references that use ``:doc:`` (link to a whole document) or
 ``:term:`` (link to a definition in the glossary) to ``:ref:``.
 
 Use the right lexers:
-- ``dune`` for dune and related files
+- ``dune`` for ``dune`` and related files
 - ``opam`` for opam files
 - ``console`` for shell sessions and commands (start with ``$``)
 - ``cram`` for cram tests
@@ -433,20 +433,20 @@ Vendoring
 =========
 
 Dune vendors some code that it uses internally. This is done to make installing
-dune easy as it requires nothing but an OCaml compiler as well as to prevent
+Dune easy as it requires nothing but an OCaml compiler as well as to prevent
 circular dependencies. Before vendoring, make sure that the license of the code
-allows it to be included in dune.
+allows it to be included in Dune.
 
 The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
 create a shell script ``update-<library>.sh``, that will be launched from the
 ``vendor/`` folder to download and unpack the source and copy the necessary
 source files into the ``vendor/<library>`` folder. Try to keep the amount of
-source code imported minimal, e.g. leave out ``dune-project`` files, For the
-most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+source code imported minimal, e.g., leave out ``dune-project`` files. For the
+most part, it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
 also include the license if there is such a file in the code to be vendored to
 stay compliant.
 
-As these sources get vendored not as sub-projects but parts of dune, you need
+As these sources get vendored not as subprojects but parts of Dune, you need
 to deal with ``public_name``. The preferred way is to remove the
 ``public_name`` and only use the private name. If that is not possible, the
 library can be renamed into ``dune-private-libs.<library>``.
@@ -457,12 +457,12 @@ you can commit the modified files to ``dune`` and make the
 file.
 
 For larger modifications, it is better to fork the upstream project in the
-ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+ocaml-dune_ organisation and then vendor the forked copy in Dune. This makes
 the changes better visible and easier to update from upstream in the long run
 while keeping our custom patches in sync. The changes to the ``dune`` files are
 to be kept in the Dune repository.
 
-It is preferable to cut out as many dependencies as possible, e.g. ones that
+It is preferable to cut out as many dependencies as possible, e.g., ones that
 are only necessary on older OCaml versions or build-time dependencies.
 
 .. _ocaml-dune: https://github.com/ocaml-dune/
@@ -506,7 +506,7 @@ Good:
 - Every module should have toplevel documentation that describes the module
   briefly. This is a good place to discuss its purpose, invariants, etc.
 
-- Keep interfaces short & sweet. The less functions, types, etc. there are, the
+- Keep interfaces short & sweet. The less functions, types, etc., there are, the
   easier it is for users to understand, use, and ultimately modify the
   interface correctly. Instead of creating elaborate interfaces with the hope
   of future-proofing every use case, embrace change and make it easier to throw
@@ -705,7 +705,7 @@ Good:
   module types.
 
 - Avoid qualifying constructors and record fields. Instead, add type
-  annotations to the type being matched on or being constructed. E.g.
+  annotations to the type being matched on or being constructed, e.g.,
 
 Bad:
 
@@ -738,12 +738,12 @@ sumamry. Clicking ``Details`` will show a bench report.
 
 The report contains the following information:
 
-- The build times for Clean and Null builds.
-- The size of the ``dune.exe`` binary.
-- User CPU times for the Clean and Null builds.
-- System CPU times for the Clean and Null builds.
+- The build times for Clean and Null builds
+- The size of the ``dune.exe`` binary
+- User CPU times for the Clean and Null builds
+- System CPU times for the Clean and Null builds
 - All the garbage collection stats apart from "forced collections" for Clean and
-  Null builds.
+  Null builds
 
 Pull requests that add new libraries are likely to increase the size of the dune
 binary.
@@ -786,7 +786,7 @@ constructed according to the files in
 https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
 Build the Docker image from the root directory of this repo.
 
-E.g., run
+E.g., run:
 
 .. code:: console
 

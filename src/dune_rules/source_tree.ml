@@ -86,9 +86,10 @@ module Dune_file = struct
   ;;
 
   let equal { path; kind; plain } t =
-    Option.equal Path.Source.equal path t.path
-    && equal_kind kind t.kind
-    && Plain.equal plain t.plain
+    match path, t.path with
+    | Some a, Some b -> Path.Source.equal a b
+    | Some _, None | None, Some _ -> false
+    | None, None -> equal_kind kind t.kind && Plain.equal plain t.plain
   ;;
 
   let get_static_sexp t = t.plain.contents.sexps

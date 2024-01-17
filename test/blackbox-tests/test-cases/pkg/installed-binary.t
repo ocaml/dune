@@ -20,7 +20,7 @@ Test that installed binaries are visible in dependent packages
 
   $ cat >dune.lock/usetest.pkg <<EOF
   > (version 0.0.1)
-  > (deps test)
+  > (depends test)
   > (build
   >  (progn
   >   (run foo)

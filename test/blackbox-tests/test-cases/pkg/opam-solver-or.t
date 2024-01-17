@@ -23,4 +23,4 @@ Only a1 or a2 should appear but not both.
   $ cat dune.lock/b.pkg
   (version 0.0.1)
   
-  (deps a1)
+  (depends a1)

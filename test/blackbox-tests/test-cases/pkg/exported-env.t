@@ -13,7 +13,7 @@ Packages can export environment variables
   > EOF
 
   $ cat >dune.lock/usetest.pkg <<'EOF'
-  > (deps test)
+  > (depends test)
   > (version 1.2.3)
   > (build
   >  (progn

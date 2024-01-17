@@ -69,7 +69,7 @@ Print the contents of each file in the lockdir:
   
   (version 0.0.1)
   
-  (deps baz bar)
+  (depends baz bar)
   
   
   ---
@@ -114,7 +114,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   (version 0.0.1)
   
-  (deps baz bar)
+  (depends baz bar)
   
   
   ---

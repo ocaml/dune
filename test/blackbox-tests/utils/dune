@@ -26,4 +26,4 @@
 (executable
  (name webserver_oneshot)
  (modules webserver_oneshot)
- (libraries unix))
+ (libraries unix http stdune))

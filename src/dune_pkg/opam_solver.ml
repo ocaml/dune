@@ -769,6 +769,21 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
             stats.expanded_variables
             solver_env
         in
+        Package_name.Map.iter
+          pkgs_by_name
+          ~f:(fun { Lock_dir.Pkg.deps; info = { name; _ }; _ } ->
+            List.iter deps ~f:(fun (loc, dep_name) ->
+              if Package_name.Map.mem local_packages dep_name
+              then
+                User_error.raise
+                  ~loc
+                  [ Pp.textf
+                      "Dune does not support packages outside the workspace depending on \
+                       packages in the workspace. The package %S is not in the workspace \
+                       but it depends on the package %S which is in the workspace."
+                      (Package_name.to_string name)
+                      (Package_name.to_string dep_name)
+                  ]));
         Lock_dir.create_latest_version
           pkgs_by_name
           ~local_packages:(Package_name.Map.values local_packages)

@@ -34,15 +34,9 @@ end
 let main content_file port_file ~simulate_not_found =
   let host = Unix.inet_addr_loopback in
   let addr = Unix.ADDR_INET (host, 0) in
-  let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
-  Unix.setsockopt sock Unix.SO_REUSEADDR true;
-  Unix.bind sock addr;
-  Unix.listen sock 1;
-  let port =
-    match Unix.getsockname sock with
-    | Unix.ADDR_INET (_, port) -> port
-    | ADDR_UNIX _ -> failwith "unreachable"
-  in
+  let server = Http.Server.make addr in
+  Http.Server.start server;
+  let port = Http.Server.port server in
   (* Create the port file immediately before starting the server. This way
      clients can use the existance of the port file to know roughly when the
      server is ready to accept connections. Note that there is technically a
@@ -50,14 +44,10 @@ let main content_file port_file ~simulate_not_found =
      which we can remove if it ends up causing us problems. *)
   Out_channel.with_open_text port_file (fun out_channel ->
     Out_channel.output_string out_channel (Printf.sprintf "%d\n" port));
-  let descr, _sockaddr = Unix.accept sock in
-  let content = In_channel.with_open_bin content_file In_channel.input_all in
-  let content_length = String.length content in
-  let out_channel = Unix.out_channel_of_descr descr in
-  let status = if simulate_not_found then "404 Not Found" else "200 Ok" in
-  Printf.fprintf out_channel "HTTP/1.1 %s\nContent-Length: %d\n\n" status content_length;
-  Out_channel.output_string out_channel content;
-  close_out out_channel
+  Http.Server.accept server ~f:(fun out_channel ->
+    if simulate_not_found
+    then Http.Server.respond out_channel ~status:`Not_found ~content:""
+    else Http.Server.respond_file out_channel ~file:content_file)
 ;;
 
 let () =

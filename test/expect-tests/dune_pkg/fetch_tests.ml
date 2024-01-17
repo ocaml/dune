@@ -24,32 +24,16 @@ let subdir destination =
 let serve_once ~filename =
   let host = Unix.inet_addr_loopback in
   let addr = Unix.ADDR_INET (host, 0) in
-  let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
-  Unix.setsockopt sock Unix.SO_REUSEADDR true;
-  Unix.bind sock addr;
-  Unix.listen sock 5;
-  let port =
-    match Unix.getsockname sock with
-    | Unix.ADDR_INET (_, port) -> port
-    | ADDR_UNIX _ -> assert false
-  in
+  let server = Http.Server.make addr in
+  Http.Server.start server;
+  let port = Http.Server.port server in
   let thread =
     Thread.create
-      (fun sock ->
-        let descr, _sockaddr = Unix.accept sock in
-        let content = Io.String_path.read_file filename in
-        let content_length = String.length content in
-        let write_end = Unix.out_channel_of_descr descr in
-        Printf.fprintf
-          write_end
-          {|HTTP/1.1 200 Ok
-Content-Length: %d
-
-%s|}
-          content_length
-          content;
-        close_out write_end)
-      sock
+      (fun server ->
+        Http.Server.accept server ~f:(fun write_end ->
+          Http.Server.respond_file write_end ~file:filename);
+        Http.Server.stop server)
+      server
   in
   port, thread
 ;;

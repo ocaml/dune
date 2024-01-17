@@ -1,7 +1,7 @@
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 module Solver_env = Dune_pkg.Solver_env
-module Variable_name = Dune_pkg.Variable_name
+module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
 let solver_env

@@ -9,7 +9,7 @@ module Lock_dir = struct
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
-    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
+    ; unset_solver_vars : Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     }
@@ -22,8 +22,7 @@ module Lock_dir = struct
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
       ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
-      ; ( "unset_solver_vars"
-        , Dyn.option Dune_pkg.Variable_name.Set.to_dyn unset_solver_vars )
+      ; "unset_solver_vars", Dyn.option Package_variable_name.Set.to_dyn unset_solver_vars
       ; ( "repositories"
         , Dyn.list
             Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
@@ -49,7 +48,7 @@ module Lock_dir = struct
          version_preference
          t.version_preference
     && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
-    && Option.equal Dune_pkg.Variable_name.Set.equal unset_solver_vars t.unset_solver_vars
+    && Option.equal Package_variable_name.Set.equal unset_solver_vars t.unset_solver_vars
     && List.equal
          (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
          repositories
@@ -73,7 +72,7 @@ module Lock_dir = struct
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
       and+ unset_solver_vars =
-        field_o "unset_solver_vars" (repeat (located Dune_pkg.Variable_name.decode))
+        field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
@@ -92,11 +91,11 @@ module Lock_dir = struct
                    [ Pp.textf
                        "Variable %S appears in both 'solver_env' and 'unset_solver_vars' \
                         which is not allowed."
-                       (Dune_pkg.Variable_name.to_string variable)
+                       (Package_variable_name.to_string variable)
                    ])));
       let unset_solver_vars =
         Option.map unset_solver_vars ~f:(fun x ->
-          List.map x ~f:snd |> Dune_pkg.Variable_name.Set.of_list)
+          List.map x ~f:snd |> Package_variable_name.Set.of_list)
       in
       { path
       ; solver_env

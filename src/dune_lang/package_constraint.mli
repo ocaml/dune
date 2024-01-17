@@ -1,13 +1,9 @@
 open! Stdune
 
-module Variable : sig
-  type t = { name : string }
-end
-
 module Value : sig
   type t =
     | String_literal of string
-    | Variable of Variable.t
+    | Variable of Package_variable_name.t
 end
 
 (** A constraint for use in package definitions, equivalent to the filter
@@ -17,7 +13,7 @@ end
     represent strings and booleans. If a variable appears in a position where a
     boolean is expected it will be assumed to represent a boolean. *)
 type t =
-  | Bvar of Variable.t (** A boolean variable *)
+  | Bvar of Package_variable_name.t (** A boolean variable *)
   | Uop of Relop.t * Value.t
   (** A unary operator applied to a value. Unary operators are operators
       whose LHS is implied by context. E.g. when placing version constraints

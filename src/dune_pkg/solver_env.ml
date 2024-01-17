@@ -1,31 +1,31 @@
 open Import
 
-type t = Variable_value.t Variable_name.Map.t
+type t = Variable_value.t Package_variable_name.Map.t
 
-let empty = Variable_name.Map.empty
-let equal = Variable_name.Map.equal ~equal:Variable_value.equal
-let to_dyn = Variable_name.Map.to_dyn Variable_value.to_dyn
-let is_empty = Variable_name.Map.is_empty
+let empty = Package_variable_name.Map.empty
+let equal = Package_variable_name.Map.equal ~equal:Variable_value.equal
+let to_dyn = Package_variable_name.Map.to_dyn Variable_value.to_dyn
+let is_empty = Package_variable_name.Map.is_empty
 
 let validate t ~loc =
-  if Variable_name.Map.mem t Variable_name.with_test
+  if Package_variable_name.Map.mem t Package_variable_name.with_test
   then
     User_error.raise
       ?loc
       [ Pp.textf
           "Setting the %S solver variable is not permitted as it would conflict with \
            dune's internal use of %S while solving opam packages."
-          Variable_name.(to_string with_test)
-          Variable_name.(to_string with_test)
+          Package_variable_name.(to_string with_test)
+          Package_variable_name.(to_string with_test)
       ]
 ;;
 
 let decode =
   let open Decoder in
   let+ loc, bindings =
-    located (repeat (pair Variable_name.decode Variable_value.decode))
+    located (repeat (pair Package_variable_name.decode Variable_value.decode))
   in
-  match Variable_name.Map.of_list bindings with
+  match Package_variable_name.Map.of_list bindings with
   | Ok t ->
     validate t ~loc:(Some loc);
     t
@@ -34,44 +34,44 @@ let decode =
       ~loc
       [ Pp.textf
           "Duplicate entries for user variable %s (%s, %s)"
-          (String.maybe_quoted (Variable_name.to_string duplicate_key))
+          (String.maybe_quoted (Package_variable_name.to_string duplicate_key))
           (String.maybe_quoted (Variable_value.to_string a))
           (String.maybe_quoted (Variable_value.to_string b))
       ]
 ;;
 
 let set t variable_name variable_value =
-  let t = Variable_name.Map.set t variable_name variable_value in
+  let t = Package_variable_name.Map.set t variable_name variable_value in
   validate t ~loc:None;
   t
 ;;
 
-let get = Variable_name.Map.find
-let extend a b = Variable_name.Map.superpose b a
+let get = Package_variable_name.Map.find
+let extend a b = Package_variable_name.Map.superpose b a
 
 let with_defaults =
-  [ ( Variable_name.opam_version
+  [ ( Package_variable_name.opam_version
     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
-  ; Variable_name.with_doc, Variable_value.false_
+  ; Package_variable_name.with_doc, Variable_value.false_
   ]
   |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
 ;;
 
 let pp t =
-  if Variable_name.Map.is_empty t
+  if Package_variable_name.Map.is_empty t
   then Pp.text "(empty)"
   else
-    Pp.enumerate (Variable_name.Map.to_list t) ~f:(fun (variable, value) ->
+    Pp.enumerate (Package_variable_name.Map.to_list t) ~f:(fun (variable, value) ->
       Pp.textf
         "%s = %s"
-        (Variable_name.to_string variable)
+        (Package_variable_name.to_string variable)
         (String.maybe_quoted (Variable_value.to_string value)))
 ;;
 
-let unset = Variable_name.Map.remove
+let unset = Package_variable_name.Map.remove
 
 let unset_multi t variable_names =
-  Variable_name.Set.fold variable_names ~init:t ~f:(fun variable_name t ->
+  Package_variable_name.Set.fold variable_names ~init:t ~f:(fun variable_name t ->
     unset t variable_name)
 ;;
 
@@ -79,6 +79,8 @@ let to_env t variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> None
   | Global ->
-    let variable_name = OpamVariable.Full.variable variable |> Variable_name.of_opam in
+    let variable_name =
+      OpamVariable.Full.variable variable |> Package_variable_name.of_opam
+    in
     get t variable_name |> Option.map ~f:Variable_value.to_opam_variable_contents
 ;;

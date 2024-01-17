@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 include Dune_lang.Package_dependency
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
@@ -42,10 +42,10 @@ module Constraint = struct
   end
 
   module Variable = struct
-    include Variable
+    include Package_variable_name
 
-    let to_opam { name } = nopos (OpamParserTypes.FullPos.Ident name)
-    let to_opam_filter { name } = OpamTypes.FIdent ([], OpamVariable.of_string name, None)
+    let to_opam_filter (t : t) = OpamTypes.FIdent ([], to_opam t, None)
+    let to_opam t = nopos (OpamParserTypes.FullPos.Ident (to_string t))
   end
 
   module Value = struct
@@ -67,8 +67,7 @@ module Constraint = struct
       | FString string -> Ok (Value.String_literal string)
       | FBool true -> Ok (Value.String_literal "true")
       | FBool false -> Ok (Value.String_literal "false")
-      | FIdent ([], name, None) ->
-        Ok (Value.Variable { name = OpamVariable.to_string name })
+      | FIdent ([], name, None) -> Ok (Value.Variable (Variable.of_opam name))
       | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_value filter)
     ;;
   end
@@ -91,7 +90,7 @@ module Constraint = struct
   let rec of_opam_filter (filter : OpamTypes.filter) =
     let open Result.O in
     match filter with
-    | FIdent ([], name, None) -> Ok (Bvar { name = OpamVariable.to_string name })
+    | FIdent ([], name, None) -> Ok (Bvar (Variable.of_opam name))
     | FOp (lhs, relop, rhs) ->
       let op = Op.of_opam relop in
       let+ lhs = Value.of_opam_filter lhs

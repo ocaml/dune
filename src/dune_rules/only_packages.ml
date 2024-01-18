@@ -128,7 +128,7 @@ let stanzas_in_dir dir =
   if Path.Build.is_root dir
   then Memo.return None
   else
-    Dune_load.Dune_files.in_dir dir
+    Dune_load.in_dir dir
     >>= function
     | None -> Memo.return None
     | Some dune_file ->

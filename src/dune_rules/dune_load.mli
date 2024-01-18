@@ -13,7 +13,7 @@ module Dune_files : sig
   val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 end
 
-type conf = private
+type t = private
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
@@ -21,6 +21,6 @@ type conf = private
   }
 
 (** Load all dune files. This function is memoized. *)
-val load : unit -> conf Memo.t
+val load : unit -> t Memo.t
 
 val find_project : dir:Path.Build.t -> Dune_project.t Memo.t

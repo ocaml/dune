@@ -12,7 +12,7 @@ val init
   -> unit
 
 type build_system =
-  { conf : Dune_load.conf
+  { conf : Dune_load.t
   ; contexts : Context.t list
   ; scontexts : Super_context.t Context_name.Map.t
   }

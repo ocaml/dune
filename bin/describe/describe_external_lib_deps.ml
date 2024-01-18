@@ -143,7 +143,8 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
   let { Dune_rules.Main.conf; contexts = _; _ } = build_system in
   let open Memo.O in
   let* dune_files =
-    Dune_rules.Dune_load.Dune_files.eval conf.dune_files ~context:(Context.name context)
+    Dune_rules.Dune_load.dune_files conf
+    |> Dune_rules.Dune_load.Dune_files.eval ~context:(Context.name context)
   in
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
     Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->

@@ -215,42 +215,26 @@ module Dune_files = struct
 
   type t = one list
 
-  let interpret =
-    let impl (dir, project, dune_file) =
-      let file = Source_tree.Dune_file.path dune_file in
-      let static = Source_tree.Dune_file.get_static_sexp dune_file in
-      match Source_tree.Dune_file.kind dune_file with
-      | Ocaml_script ->
-        Memo.return
-          (Script
-             { script =
-                 { dir
-                 ; project
-                 ; file =
-                     (* we can't introduce ocaml syntax with [(sudir ..)] *)
-                     Option.value_exn file
-                 }
-             ; from_parent = static
-             })
-      | Plain ->
-        let open Memo.O in
-        let+ stanzas = Dune_file.parse static ~dir ~file ~project in
-        Literal stanzas
-    in
-    let module Input = struct
-      type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
-
-      let equal =
-        Tuple.T3.equal Path.Source.equal Dune_project.equal Source_tree.Dune_file.equal
-      ;;
-
-      let hash = Tuple.T3.hash Path.Source.hash Dune_project.hash Poly.hash
-      let to_dyn = Dyn.opaque
-    end
-    in
-    let memo = Memo.create "Dune_files.interpret" ~input:(module Input) impl in
-    fun ~dir ~project ~(dune_file : Source_tree.Dune_file.t) ->
-      Memo.exec memo (dir, project, dune_file)
+  let interpret ~dir project dune_file =
+    let file = Source_tree.Dune_file.path dune_file in
+    let static = Source_tree.Dune_file.get_static_sexp dune_file in
+    match Source_tree.Dune_file.kind dune_file with
+    | Ocaml_script ->
+      Memo.return
+        (Script
+           { script =
+               { dir
+               ; project
+               ; file =
+                   (* we can't introduce ocaml syntax with [(sudir ..)] *)
+                   Option.value_exn file
+               }
+           ; from_parent = static
+           })
+    | Plain ->
+      let open Memo.O in
+      let+ stanzas = Dune_file.parse static ~dir ~file ~project in
+      Literal stanzas
   ;;
 
   let eval dune_files ~context =
@@ -328,7 +312,7 @@ let load () =
   let+ dune_files =
     Appendable_list.to_list dune_files
     |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
-      Dune_files.interpret ~dir ~project ~dune_file)
+      Dune_files.interpret ~dir project dune_file)
   in
   { dune_files
   ; packages
@@ -337,34 +321,6 @@ let load () =
       Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
         Dune_project.root project, project)
   }
-;;
-
-let in_dir dir =
-  let source_dir = Path.Build.drop_build_context_exn dir in
-  Source_tree.find_dir source_dir
-  >>= function
-  | None -> Memo.return None
-  | Some d ->
-    (match Source_tree.Dir.dune_file d with
-     | None -> Memo.return None
-     | Some dune_file ->
-       let project = Source_tree.Dir.project d in
-       Dune_files.interpret ~dir:source_dir ~project ~dune_file
-       >>= (function
-        | Literal dune_file -> Memo.return (Some dune_file)
-        | Script script ->
-          let context =
-            match Install.Context.of_path dir with
-            | Some c -> c
-            | None ->
-              User_error.raise
-                [ Pp.textf
-                    "no context in directory %s"
-                    (Path.Build.to_string_maybe_quoted dir)
-                ]
-          in
-          let+ dune_file = Script.eval_one ~context script in
-          Some dune_file))
 ;;
 
 let load =

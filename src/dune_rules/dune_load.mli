@@ -14,7 +14,6 @@ end
 
 type t
 
-val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 val dune_files : t -> Dune_files.t
 val packages : t -> Package.t Package.Name.Map.t
 val projects : t -> Dune_project.t list

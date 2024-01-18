@@ -293,7 +293,7 @@ module Dune_files = struct
   ;;
 end
 
-type conf =
+type t =
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list

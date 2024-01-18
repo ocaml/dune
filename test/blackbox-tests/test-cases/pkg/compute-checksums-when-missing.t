@@ -100,3 +100,49 @@ Check that no checksum is computed for a local source directory:
   $ solve foo 2>&1 | strip_transient
   Solution for dune.lock:
   - foo.0.0.1
+
+
+Create 3 packages that all share the same source url with no checksum. Dune
+will need to download each package's source archive to compute their hashes.
+Test that dune only downloads the file a single time since the source url is
+identical among the packgaes. The fact that the download only occurs once is
+asserted by the fact that the webserver will only serve the file a single time.
+  $ webserver_oneshot --content-file foo.txt --port-file port.txt &
+  $ until test -f port.txt; do sleep 0.1; done
+  $ PORT=$(cat port.txt)
+
+  $ mkpkg foo <<EOF
+  > url {
+  >  src: "http://0.0.0.0:$PORT"
+  > }
+  > EOF
+
+  $ mkpkg bar <<EOF
+  > url {
+  >  src: "http://0.0.0.0:$PORT"
+  > }
+  > EOF
+
+  $ mkpkg baz <<EOF
+  > url {
+  >  src: "http://0.0.0.0:$PORT"
+  > }
+  > EOF
+
+  $ solve foo bar baz | strip_transient
+  Solution for dune.lock:
+  - bar.0.0.1
+  - baz.0.0.1
+  - foo.0.0.1
+  Package "bar" has source archive which lacks a checksum.
+  The source archive will be downloaded from: <addr>
+  Dune will compute its own checksum for this source archive.
+  Package "baz" has source archive which lacks a checksum.
+  The source archive will be downloaded from: <addr>
+  Dune will compute its own checksum for this source archive.
+  Package "foo" has source archive which lacks a checksum.
+  The source archive will be downloaded from: <addr>
+  Dune will compute its own checksum for this source archive.
+
+  $ wait
+

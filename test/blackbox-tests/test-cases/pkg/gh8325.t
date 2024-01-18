@@ -29,7 +29,7 @@ Now it fails since adding the dependency modified PATH.
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
   > ; adding deps breaks cat
-  > (deps dependency)
+  > (depends dependency)
   > (build
   >  (system "command -v cat > /dev/null 2>&1 || echo no cat"))
   > EOF

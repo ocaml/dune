@@ -6,15 +6,15 @@ Package resolution creating a cycle
 
   $ cat >dune.lock/a.pkg <<EOF
   > (version 0.0.1)
-  > (deps b)
+  > (depends b)
   > EOF
   $ cat >dune.lock/b.pkg <<EOF
   > (version 0.0.1)
-  > (deps c)
+  > (depends c)
   > EOF
   $ cat >dune.lock/c.pkg <<EOF
   > (version 0.0.1)
-  > (deps a)
+  > (depends a)
   > EOF
 
   $ build_pkg a

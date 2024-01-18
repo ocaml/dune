@@ -134,7 +134,7 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
 let empty_package name ~version =
   { Lock_dir.Pkg.build_command = None
   ; install_command = None
-  ; deps = []
+  ; depends = []
   ; info =
       { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
   ; exported_env = []
@@ -173,7 +173,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
           { "bar" :
               { build_command = None
               ; install_command = None
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "bar"
                   ; version = "0.2.0"
@@ -186,7 +186,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
           ; "foo" :
               { build_command = None
               ; install_command = None
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "foo"
                   ; version = "0.1.0"
@@ -253,7 +253,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
         { pkg with
           install_command = None
-        ; deps = [ Loc.none, fst pkg_a ]
+        ; depends = [ Loc.none, fst pkg_a ]
         ; info =
             { pkg.info with
               dev = true
@@ -276,7 +276,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
         { pkg with
-          deps = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
+          depends = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
         ; info =
             { pkg.info with
               dev = false
@@ -311,7 +311,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           { "a" :
               { build_command = Some [ "progn"; [ "echo"; "hello" ] ]
               ; install_command = Some [ "system"; "echo 'world'" ]
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "a"
                   ; version = "0.1.0"
@@ -327,7 +327,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "b" :
               { build_command = None
               ; install_command = None
-              ; deps = [ ("complex_lock_dir/b.pkg:3", "a") ]
+              ; depends = [ ("complex_lock_dir/b.pkg:3", "a") ]
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -345,7 +345,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
           ; "c" :
               { build_command = None
               ; install_command = None
-              ; deps =
+              ; depends =
                   [ ("complex_lock_dir/c.pkg:3", "a")
                   ; ("complex_lock_dir/c.pkg:3", "b")
                   ]
@@ -416,7 +416,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
           { "a" :
               { build_command = None
               ; install_command = None
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "a"
                   ; version = "0.1.0"
@@ -429,7 +429,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
           ; "b" :
               { build_command = None
               ; install_command = None
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -442,7 +442,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
           ; "c" :
               { build_command = None
               ; install_command = None
-              ; deps = []
+              ; depends = []
               ; info =
                   { name = "c"
                   ; version = "0.2"

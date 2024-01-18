@@ -285,7 +285,7 @@ module Pkg = struct
     { id : Id.t
     ; build_command : Dune_lang.Action.t option
     ; install_command : Dune_lang.Action.t option
-    ; deps : t list
+    ; depends : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
@@ -294,12 +294,12 @@ module Pkg = struct
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
-  let top_closure deps =
-    Top_closure.top_closure deps ~key:(fun t -> t.id) ~deps:(fun t -> t.deps)
+  let top_closure depends =
+    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
   ;;
 
   let deps_closure t =
-    match top_closure t.deps with
+    match top_closure t.depends with
     | Ok s -> s
     | Error _ -> assert false
   ;;
@@ -422,7 +422,7 @@ module Expander0 = struct
   type t =
     { paths : Paths.t
     ; artifacts : Path.t Filename.Map.t
-    ; deps : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
+    ; depends : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -467,7 +467,7 @@ module Substitute = struct
         let paths (p : Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
         , expander.artifacts
-        , Package.Name.Map.to_list_map expander.deps ~f:(fun _ (m, p) -> m, paths p)
+        , Package.Name.Map.to_list_map expander.depends ~f:(fun _ (m, p) -> m, paths p)
         , expander.version
         , expander.context
         , expander.env )
@@ -736,7 +736,7 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { env = _; paths; artifacts = _; context; deps; version = _ }
+      { env = _; paths; artifacts = _; context; depends; version = _ }
       ~source
       (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Variable_name.t ]) result Memo.t
@@ -753,7 +753,7 @@ module Action_expander = struct
         in
         Ok [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
-        expand_pkg_macro ~loc paths deps macro_invocation
+        expand_pkg_macro ~loc paths depends macro_invocation
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
@@ -994,7 +994,7 @@ module Action_expander = struct
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
     let env = Pkg.build_env pkg in
-    let deps =
+    let depends =
       Package.Name.Map.add_exn
         dep_info
         pkg.info.name
@@ -1003,7 +1003,7 @@ module Action_expander = struct
     { Expander.paths = pkg.paths
     ; artifacts = binaries
     ; context
-    ; deps
+    ; depends
     ; version = pkg.info.version
     ; env
     }
@@ -1071,10 +1071,10 @@ end = struct
   let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
-    | Some { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env } ->
+    | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* deps =
-        Memo.parallel_map deps ~f:(fun name ->
+      let* depends =
+        Memo.parallel_map depends ~f:(fun name ->
           resolve db ctx name
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
@@ -1095,7 +1095,7 @@ end = struct
         { Pkg.id
         ; build_command
         ; install_command
-        ; deps
+        ; depends
         ; paths
         ; info
         ; files_dir

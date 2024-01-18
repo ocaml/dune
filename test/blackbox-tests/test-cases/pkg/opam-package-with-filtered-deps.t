@@ -29,4 +29,4 @@ Demonstrate the translation of filtered dependencies
   $ cat dune.lock/bar.pkg
   (version 0.0.1)
   
-  (deps pkg-build)
+  (depends pkg-build)

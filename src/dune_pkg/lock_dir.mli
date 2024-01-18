@@ -18,7 +18,7 @@ module Pkg : sig
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : (Loc.t * Package_name.t) list
+    ; depends : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }

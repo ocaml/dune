@@ -20,7 +20,7 @@ Test that we can set variables
 
   $ cat >dune.lock/usetest.pkg <<EOF
   > (version 0.0.1)
-  > (deps test)
+  > (depends test)
   > (build
   >  (progn
   >   (system "\| echo abool: %{pkg:test:abool}

@@ -564,7 +564,7 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
   in
-  let deps =
+  let depends =
     match
       Resolve_opam_formula.filtered_formula_to_package_names
         ~with_test:false
@@ -642,7 +642,7 @@ let opam_package_to_lock_file_pkg
     then `Compiler
     else `Non_compiler
   in
-  kind, { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env }
+  kind, { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env }
 ;;
 
 let solve_package_list packages context =
@@ -771,8 +771,8 @@ let solve_lock_dir solver_env version_preference repos ~local_packages ~constrai
         in
         Package_name.Map.iter
           pkgs_by_name
-          ~f:(fun { Lock_dir.Pkg.deps; info = { name; _ }; _ } ->
-            List.iter deps ~f:(fun (loc, dep_name) ->
+          ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
+            List.iter depends ~f:(fun (loc, dep_name) ->
               if Package_name.Map.mem local_packages dep_name
               then
                 User_error.raise

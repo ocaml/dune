@@ -9,7 +9,7 @@ Multiple projects support
   $ cat >a/dune-project <<EOF
   > (lang dune 3.13)
   > (package
-  >  (name a)
+  >  (name a))
   > EOF
 
   $ cat >dune-project <<EOF
@@ -20,13 +20,8 @@ Multiple projects support
   > EOF
 
   $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: b.dev
-  - a -> (problem)
-      No known implementations at all
-  [1]
+  Solution for dune.lock:
+  (no dependencies to lock)
 
 This should work without any toplevel projects as well:
 

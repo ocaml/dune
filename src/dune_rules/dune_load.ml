@@ -300,6 +300,11 @@ type t =
   ; projects_by_root : Dune_project.t Path.Source.Map.t
   }
 
+let dune_files t = t.dune_files
+let packages t = t.packages
+let projects t = t.projects
+let projects_by_root t = t.projects_by_root
+
 module Projects_and_dune_files =
   Monoid.Product
     (Monoid.Appendable_list (struct

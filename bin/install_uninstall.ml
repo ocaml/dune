@@ -81,9 +81,9 @@ module Workspace = struct
   let get () =
     let open Memo.O in
     Memo.run
-      (let+ conf = Dune_rules.Dune_load.load ()
+      (let+ packages = Dune_rules.Dune_load.load () >>| Dune_rules.Dune_load.packages
        and+ contexts = Context.DB.all () in
-       { packages = conf.packages; contexts })
+       { packages; contexts })
   ;;
 
   let package_install_file t ~findlib_toolchain pkg =

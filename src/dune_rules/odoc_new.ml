@@ -485,7 +485,7 @@ module Valid = struct
   ;;
 
   let get ctx ~all =
-    let* { projects; _ } = Dune_load.load () in
+    let* projects = Dune_load.load () >>| Dune_load.projects in
     Memo.exec valid_libs_and_packages (ctx, all, projects)
   ;;
 

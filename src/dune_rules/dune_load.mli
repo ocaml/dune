@@ -10,11 +10,11 @@ module Dune_files : sig
   type t
 
   val eval : t -> context:Context_name.t -> Dune_file.t list Memo.t
-  val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 end
 
 type t
 
+val in_dir : Path.Build.t -> Dune_file.t option Memo.t
 val dune_files : t -> Dune_files.t
 val packages : t -> Package.t Package.Name.Map.t
 val projects : t -> Dune_project.t list

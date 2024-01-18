@@ -31,7 +31,7 @@ let conf =
     match Clflags.t () with
     | No_restriction -> Memo.return None
     | Restrict { names; command_line_option } ->
-      let* { packages; _ } = Dune_load.load () in
+      let* packages = Dune_load.load () >>| Dune_load.packages in
       Package.Name.Set.iter names ~f:(fun pkg_name ->
         if not (Package.Name.Map.mem packages pkg_name)
         then (
@@ -105,9 +105,7 @@ let filtered_stanzas =
     Per_context.create_by_name ~name:"filtered_stanzas"
     @@ fun context ->
     let* only_packages = Memo.Lazy.force conf
-    and+ { Dune_load.dune_files; packages = _; projects = _; projects_by_root = _ } =
-      Dune_load.load ()
-    in
+    and+ dune_files = Dune_load.load () >>| Dune_load.dune_files in
     let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
     match only_packages with
     | None -> stanzas
@@ -121,9 +119,7 @@ let filtered_stanzas =
 ;;
 
 let get () =
-  let* { Dune_load.dune_files = _; packages; projects = _; projects_by_root = _ } =
-    Dune_load.load ()
-  in
+  let* packages = Dune_load.load () >>| Dune_load.packages in
   let+ only_packages = Memo.Lazy.force conf in
   Option.value only_packages ~default:packages
 ;;

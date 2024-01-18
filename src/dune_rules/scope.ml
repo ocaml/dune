@@ -336,7 +336,7 @@ module DB = struct
       let scopes =
         Memo.Lazy.create
         @@ fun () ->
-        let* { Dune_load.projects_by_root; _ } = Dune_load.load () in
+        let* projects_by_root = Dune_load.load () >>| Dune_load.projects_by_root in
         let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
         create_from_stanzas ~projects_by_root ~context stanzas
       in

@@ -20,3 +20,15 @@ let is_version_control t =
 ;;
 
 let is_local t = String.equal t.transport "file"
+
+let local_or_git_only url loc =
+  match (url : t).backend with
+  | `rsync -> `Path (Path.of_string url.path)
+  | `git -> `Git
+  | `http | `darcs | `hg ->
+    User_error.raise
+      ~loc
+      ~hints:[ Pp.text "Specify either a file path or git repo via SSH/HTTPS" ]
+      [ Pp.textf "Could not determine location of repository %s" @@ OpamUrl.to_string url
+      ]
+;;

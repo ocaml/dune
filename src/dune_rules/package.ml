@@ -732,6 +732,24 @@ let to_local_package t =
     let conflict_class =
       OpamFile.OPAM.conflict_class opam_file |> List.map ~f:Name.of_opam_package_name
     in
+    let pins =
+      match
+        OpamFile.OPAM.pin_depends opam_file
+        |> List.map ~f:(fun (pkg, url) ->
+          let name = Name.of_opam_package_name (OpamPackage.name pkg) in
+          let version =
+            Dune_pkg.Package_version.of_opam_package_version (OpamPackage.version pkg)
+          in
+          let loc = Loc.in_file (Path.source file) in
+          name, (loc, version, url))
+        |> Name.Map.of_list
+      with
+      | Ok x -> x
+      | Error (pkg, (loc, _, _), _) ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "package %s is already pinned" (Name.to_string pkg) ]
+    in
     { Dune_pkg.Local_package.name = name t
     ; version = t.version
     ; dependencies
@@ -739,6 +757,7 @@ let to_local_package t =
     ; depopts
     ; loc = t.loc
     ; conflict_class
+    ; pins
     }
   | None ->
     { Dune_pkg.Local_package.name = name t
@@ -748,5 +767,6 @@ let to_local_package t =
     ; depopts = t.depopts
     ; loc = t.loc
     ; conflict_class = []
+    ; pins = Name.Map.empty
     }
 ;;

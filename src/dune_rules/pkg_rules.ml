@@ -1,6 +1,15 @@
 open Import
 open Memo.O
-open Dune_pkg
+
+include struct
+  open Dune_pkg
+  module Sys_poll = Sys_poll
+  module Variable_name = Variable_name
+  module Package_variable = Package_variable
+  module Substs = Substs
+  module Checksum = Checksum
+  module Source = Source
+end
 
 module Sys_vars = struct
   type t =
@@ -75,73 +84,6 @@ module Pkg_info = struct
       ; "dev", B t.dev
       ]
       ~f:(fun (name, value) -> Variable_name.of_string name, value)
-  ;;
-end
-
-module Lock_dir = struct
-  include Dune_pkg.Lock_dir
-
-  module Load = Make_load (struct
-      include Memo
-
-      let readdir_with_kinds path =
-        Fs_memo.dir_contents (In_source_dir path)
-        >>| function
-        | Error _ ->
-          (* TODO *)
-          User_error.raise [ Pp.text "" ]
-        | Ok content -> Fs_cache.Dir_contents.to_list content
-      ;;
-
-      let with_lexbuf_from_file path ~f =
-        Fs_memo.with_lexbuf_from_file (In_source_dir path) ~f
-      ;;
-
-      let stats_kind p =
-        Fs_memo.path_stat (In_source_dir p)
-        >>| Stdune.Result.map ~f:(fun { Fs_cache.Reduced_stats.st_kind; _ } -> st_kind)
-      ;;
-    end)
-
-  let get_path ctx =
-    let+ workspace = Workspace.workspace () in
-    match
-      List.find_map workspace.contexts ~f:(fun ctx' ->
-        match Context_name.equal (Workspace.Context.name ctx') ctx with
-        | false -> None
-        | true -> Some ctx')
-    with
-    | None -> Some default_path
-    | Some (Default { lock_dir; _ }) -> Some (Option.value lock_dir ~default:default_path)
-    | Some (Opam _) -> None
-  ;;
-
-  let get_workspace_lock_dir ctx =
-    let* workspace = Workspace.workspace () in
-    let+ path = get_path ctx >>| Option.value_exn in
-    Workspace.find_lock_dir workspace path
-  ;;
-
-  let get (ctx : Context_name.t) : t Memo.t =
-    let* lock_dir = get_path ctx >>| Option.value_exn >>= Load.load in
-    let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-    (match workspace_lock_dir with
-     | None -> ()
-     | Some workspace_lock_dir ->
-       Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-         lock_dir.expanded_solver_variable_bindings
-         (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-    lock_dir
-  ;;
-
-  let lock_dir_active ctx =
-    if !Clflags.ignore_lock_dir
-    then Memo.return false
-    else
-      get_path ctx
-      >>= function
-      | None -> Memo.return false
-      | Some path -> Fs_memo.dir_exists (In_source_dir path)
   ;;
 end
 
@@ -285,7 +227,7 @@ module Pkg = struct
     { id : Id.t
     ; build_command : Dune_lang.Action.t option
     ; install_command : Dune_lang.Action.t option
-    ; deps : t list
+    ; depends : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
@@ -294,17 +236,22 @@ module Pkg = struct
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
-  let top_closure deps =
-    Top_closure.top_closure deps ~key:(fun t -> t.id) ~deps:(fun t -> t.deps)
+  let top_closure depends =
+    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
   ;;
 
   let deps_closure t =
-    match top_closure t.deps with
+    match top_closure t.depends with
     | Ok s -> s
     | Error _ -> assert false
   ;;
 
   let source_files t ~loc =
+    let skip_dir = function
+      | ".hg" | ".git" | "_darcs" | "_opam" | "_build" | "_esy" -> true
+      | _ -> false
+    in
+    let skip_file = String.is_prefix ~prefix:".#" in
     let rec loop root acc path =
       let full_path = Path.External.append_local root path in
       Fs_memo.dir_contents (External full_path)
@@ -318,11 +265,11 @@ module Pkg = struct
       | Ok contents ->
         let files, dirs =
           let contents = Fs_cache.Dir_contents.to_list contents in
-          List.partition_map contents ~f:(fun (name, kind) ->
+          List.rev_filter_partition_map contents ~f:(fun (name, kind) ->
             (* TODO handle links and cycles correctly *)
             match kind with
-            | S_DIR -> Right name
-            | _ -> Left name)
+            | S_DIR -> if skip_dir name then Skip else Right name
+            | _ -> if skip_file name then Skip else Left name)
         in
         let acc =
           Path.Local.Set.of_list_map files ~f:(Path.Local.relative path)
@@ -417,7 +364,7 @@ module Expander0 = struct
   type t =
     { paths : Paths.t
     ; artifacts : Path.t Filename.Map.t
-    ; deps : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
+    ; depends : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -462,7 +409,7 @@ module Substitute = struct
         let paths (p : Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
         , expander.artifacts
-        , Package.Name.Map.to_list_map expander.deps ~f:(fun _ (m, p) -> m, paths p)
+        , Package.Name.Map.to_list_map expander.depends ~f:(fun _ (m, p) -> m, paths p)
         , expander.version
         , expander.context
         , expander.env )
@@ -731,7 +678,7 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { env = _; paths; artifacts = _; context; deps; version = _ }
+      { env = _; paths; artifacts = _; context; depends; version = _ }
       ~source
       (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Variable_name.t ]) result Memo.t
@@ -748,7 +695,7 @@ module Action_expander = struct
         in
         Ok [ Value.Path make ]
       | Macro ({ macro = Pkg | Pkg_self; _ } as macro_invocation) ->
-        expand_pkg_macro ~loc paths deps macro_invocation
+        expand_pkg_macro ~loc paths depends macro_invocation
       | _ -> Expander0.isn't_allowed_in_this_position ~source
     ;;
 
@@ -895,6 +842,18 @@ module Action_expander = struct
       >>= (function
        | true -> expand action ~expander
        | false -> Memo.return (Action.progn []))
+    | Write_file (path_sw, perm, contents_sw) ->
+      let+ path =
+        Expander.expand_pform_gen ~mode:Single expander path_sw
+        >>| Value.to_path ~dir
+        >>| Expander0.as_in_build_dir
+              ~what:"write-file"
+              ~loc:(String_with_vars.loc path_sw)
+      and+ contents =
+        Expander.expand_pform_gen ~mode:Single expander contents_sw
+        >>| Value.to_string ~dir
+      in
+      Action.Write_file (path, perm, contents)
     | _ ->
       Code_error.raise
         "Pkg_rules.action_expander.expand: unsupported action"
@@ -977,7 +936,7 @@ module Action_expander = struct
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
     let env = Pkg.build_env pkg in
-    let deps =
+    let depends =
       Package.Name.Map.add_exn
         dep_info
         pkg.info.name
@@ -986,7 +945,7 @@ module Action_expander = struct
     { Expander.paths = pkg.paths
     ; artifacts = binaries
     ; context
-    ; deps
+    ; depends
     ; version = pkg.info.version
     ; env
     }
@@ -1054,10 +1013,10 @@ end = struct
   let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
-    | Some { Lock_dir.Pkg.build_command; install_command; deps; info; exported_env } ->
+    | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* deps =
-        Memo.parallel_map deps ~f:(fun name ->
+      let* depends =
+        Memo.parallel_map depends ~f:(fun name ->
           resolve db ctx name
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
@@ -1078,7 +1037,7 @@ end = struct
         { Pkg.id
         ; build_command
         ; install_command
-        ; deps
+        ; depends
         ; paths
         ; info
         ; files_dir

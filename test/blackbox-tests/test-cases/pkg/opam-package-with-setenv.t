@@ -52,7 +52,7 @@ The exported env from the first package should be in the lock dir.
     (run sh -c "echo $append_without_leading_sep")
     (run sh -c "echo $append_with_leading_sep")))
   
-  (deps with-setenv)
+  (depends with-setenv)
 
 When building the second package the exported env vars from the first package should be
 available and all the env updates should be applied correctly.

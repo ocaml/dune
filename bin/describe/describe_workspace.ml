@@ -527,7 +527,8 @@ module Crawl = struct
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.Dune_files.eval conf.dune_files ~context:context_name
+      Dune_load.dune_files conf
+      |> Dune_load.Dune_files.eval ~context:context_name
       >>| List.filter ~f:(dune_file_is_in_dirs dirs)
     in
     let* exes, exe_libs =
@@ -550,9 +551,9 @@ module Crawl = struct
     in
     let* project_libs =
       (* the list of libraries declared in the project *)
-      Memo.parallel_map conf.projects ~f:(fun project ->
-        let* scope = Scope.DB.find_by_project context project in
-        Scope.libs scope |> Lib.DB.all)
+      Dune_load.projects conf
+      |> Memo.parallel_map ~f:(fun project ->
+        Scope.DB.find_by_project context project >>| Scope.libs >>= Lib.DB.all)
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
     in

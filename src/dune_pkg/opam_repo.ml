@@ -109,6 +109,38 @@ module Source = struct
     && Option.equal Commitish.equal commit t.commit
     && Loc.equal loc t.loc
   ;;
+
+  let rev t =
+    (let* remote =
+       let branch =
+         match t.commit with
+         | Some (Branch b) -> Some b
+         | _ -> None
+       in
+       let* repo = Rev_store.get in
+       let* remote = Rev_store.add_repo repo ~source:t.url ~branch in
+       match t.commit with
+       | Some (Branch _) | Some (Tag _) | None -> Rev_store.Remote.update remote
+       | Some (Commit rev) ->
+         Rev_store.mem repo ~rev
+         >>= (function
+          | true -> Fiber.return @@ Rev_store.Remote.don't_update remote
+          | false -> Rev_store.Remote.update remote)
+     in
+     match t.commit with
+     | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
+     | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
+     | None ->
+       let name = Rev_store.Remote.default_branch remote in
+       Rev_store.Remote.rev_of_name remote ~name)
+    >>| function
+    | Some at_rev -> at_rev
+    | None ->
+      User_error.raise (* CR-rgrinberg: include revision in error *)
+        ~loc:t.loc
+        ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
+        [ Pp.textf "Could not find revision in repository %s" t.url ]
+  ;;
 end
 
 module Serializable = struct
@@ -187,39 +219,9 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
 ;;
 
 let of_git_repo (source : Source.t) =
-  let+ at_rev =
-    let* remote =
-      let* repo = Rev_store.get in
-      let branch =
-        match source.commit with
-        | Some (Branch b) -> Some b
-        | _ -> None
-      in
-      let* remote = Rev_store.add_repo repo ~source:source.url ~branch in
-      match source.commit with
-      | Some (Commit rev) ->
-        let* exists = Rev_store.mem repo ~rev in
-        (match exists with
-         | true -> Fiber.return @@ Rev_store.Remote.don't_update remote
-         | false -> Rev_store.Remote.update remote)
-      | Some (Branch _) | Some (Tag _) | None -> Rev_store.Remote.update remote
-    in
-    match source.commit with
-    | Some (Commit ref) -> Rev_store.Remote.rev_of_ref remote ~ref
-    | Some (Branch name) | Some (Tag name) -> Rev_store.Remote.rev_of_name remote ~name
-    | None ->
-      let name = Rev_store.Remote.default_branch remote in
-      Rev_store.Remote.rev_of_name remote ~name
-  in
-  match at_rev with
-  | None ->
-    User_error.raise
-      ~loc:source.loc
-      ~hints:[ Pp.text "Double check that the revision is included in the repository" ]
-      [ Pp.textf "Could not find revision in repository %s" source.url ]
-  | Some at_rev ->
-    let serializable = Some (at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string) in
-    { source = Repo at_rev; serializable; loc = source.loc }
+  let+ at_rev = Source.rev source in
+  let serializable = Some (at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string) in
+  { source = Repo at_rev; serializable; loc = source.loc }
 ;;
 
 let load_opam_package_from_dir ~(dir : Path.t) package =
@@ -227,7 +229,7 @@ let load_opam_package_from_dir ~(dir : Path.t) package =
   match Path.exists (Path.append_local dir opam_file_path) with
   | false -> None
   | true ->
-    let files_dir = Paths.files_dir package in
+    let files_dir = Some (Paths.files_dir package) in
     Some (Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir)
 ;;
 
@@ -240,7 +242,12 @@ let load_packages_from_git rev_store opam_packages =
     opam_packages
     contents
     ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
-      Resolved_package.git_repo package ~opam_file ~opam_file_contents rev ~files_dir)
+      Resolved_package.git_repo
+        package
+        ~opam_file
+        ~opam_file_contents
+        rev
+        ~files_dir:(Some files_dir))
 ;;
 
 let all_packages_versions_in_dir loc ~dir opam_package_name =

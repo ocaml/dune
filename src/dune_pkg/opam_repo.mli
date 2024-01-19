@@ -28,6 +28,7 @@ module Source : sig
   val of_opam_url : Loc.t -> OpamUrl.t -> t Fiber.t
   val to_dyn : t -> Dyn.t
   val equal : t -> t -> bool
+  val rev : t -> Rev_store.At_rev.t Fiber.t
 
   module Private : sig
     val of_opam_url : Rev_store.t -> Loc.t -> OpamUrl.t -> t Fiber.t

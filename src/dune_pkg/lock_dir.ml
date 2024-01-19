@@ -46,15 +46,15 @@ module Pkg = struct
   type t =
     { build_command : Action.t option
     ; install_command : Action.t option
-    ; deps : (Loc.t * Package_name.t) list
+    ; depends : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
-  let equal { build_command; install_command; deps; info; exported_env } t =
+  let equal { build_command; install_command; depends; info; exported_env } t =
     Option.equal Action.equal_no_locs build_command t.build_command
     && Option.equal Action.equal_no_locs install_command t.install_command
-    && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) deps t.deps
+    && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) depends t.depends
     && Pkg_info.equal info t.info
     && List.equal
          (Action.Env_update.equal String_with_vars.equal)
@@ -62,33 +62,34 @@ module Pkg = struct
          t.exported_env
   ;;
 
-  let remove_locs { build_command; install_command; deps; info; exported_env } =
+  let remove_locs { build_command; install_command; depends; info; exported_env } =
     { info = Pkg_info.remove_locs info
     ; exported_env =
         List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
-    ; deps = List.map deps ~f:(fun (_, pkg) -> Loc.none, pkg)
+    ; depends = List.map depends ~f:(fun (_, pkg) -> Loc.none, pkg)
     ; build_command = Option.map build_command ~f:Action.remove_locs
     ; install_command = Option.map install_command ~f:Action.remove_locs
     }
   ;;
 
-  let to_dyn { build_command; install_command; deps; info; exported_env } =
+  let to_dyn { build_command; install_command; depends; info; exported_env } =
     Dyn.record
       [ "build_command", Dyn.option Action.to_dyn build_command
       ; "install_command", Dyn.option Action.to_dyn install_command
-      ; "deps", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) deps
+      ; "depends", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) depends
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
         , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
       ]
   ;;
 
-  let compute_missing_checksum t =
+  let compute_missing_checksum t ~pinned =
     let open Fiber.O in
     let+ source =
       match t.info.source with
-      | Some source -> Source.compute_missing_checksum source t.info.name >>| Option.some
       | None -> Fiber.return None
+      | Some source ->
+        Source.compute_missing_checksum source t.info.name ~pinned >>| Option.some
     in
     { t with info = { t.info with source } }
   ;;
@@ -97,7 +98,7 @@ module Pkg = struct
     let version = "version"
     let install = "install"
     let build = "build"
-    let deps = "deps"
+    let depends = "depends"
     let source = "source"
     let dev = "dev"
     let exported_env = "exported_env"
@@ -111,7 +112,8 @@ module Pkg = struct
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
        and+ build_command = field_o Fields.build Action.decode_pkg
-       and+ deps = field ~default:[] Fields.deps (repeat (located Package_name.decode))
+       and+ depends =
+         field ~default:[] Fields.depends (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
@@ -136,7 +138,7 @@ module Pkg = struct
            in
            { Pkg_info.name; version; dev; source; extra_sources }
          in
-         { build_command; deps; install_command; info; exported_env }
+         { build_command; depends; install_command; info; exported_env }
   ;;
 
   let encode_extra_source (local, source) : Dune_sexp.t =
@@ -149,7 +151,7 @@ module Pkg = struct
   let encode
     { build_command
     ; install_command
-    ; deps
+    ; depends
     ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
     ; exported_env
     }
@@ -159,7 +161,7 @@ module Pkg = struct
       [ field Fields.version Package_version.encode version
       ; field_o Fields.install Action.encode install_command
       ; field_o Fields.build Action.encode build_command
-      ; field_l Fields.deps Package_name.encode (List.map deps ~f:snd)
+      ; field_l Fields.depends Package_name.encode (List.map depends ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Action.Env_update.encode exported_env
@@ -277,7 +279,7 @@ let validate_packages packages =
   let missing_dependencies =
     Package_name.Map.values packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
-      List.filter_map dependant_package.deps ~f:(fun (loc, dependency) ->
+      List.filter_map dependant_package.depends ~f:(fun (loc, dependency) ->
         if Package_name.Map.mem packages dependency
         then None
         else Some { dependant_package; dependency; loc }))
@@ -695,7 +697,7 @@ let transitive_dependency_closure t start =
              that its map of dependencies is closed under "depends on". *)
           Package_name.Set.(
             diff
-              (of_list_map (Package_name.Map.find_exn t.packages node).deps ~f:snd)
+              (of_list_map (Package_name.Map.find_exn t.packages node).depends ~f:snd)
               seen)
         in
         push_set unseen_deps;
@@ -704,12 +706,13 @@ let transitive_dependency_closure t start =
     Ok (loop start)
 ;;
 
-let compute_missing_checksums t =
+let compute_missing_checksums t ~pinned_packages =
   let open Fiber.O in
   let+ packages =
     Package_name.Map.to_list t.packages
     |> Fiber.parallel_map ~f:(fun (name, pkg) ->
-      let+ pkg = Pkg.compute_missing_checksum pkg in
+      let pinned = Package_name.Set.mem pinned_packages name in
+      let+ pkg = Pkg.compute_missing_checksum pkg ~pinned in
       name, pkg)
     >>| Package_name.Map.of_list_exn
   in

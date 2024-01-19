@@ -1,5 +1,7 @@
 open! Import
 
+type pins = (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
+
 (** Information about a local package that's relevant for package management.
     This is intended to represent local packages defined in a dune-project file
     (rather than packages in a lockdir). This is distinct from a
@@ -14,6 +16,7 @@ type t =
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
+  ; pins : pins
   ; loc : Loc.t
   }
 
@@ -54,6 +57,7 @@ module For_solver : sig
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
+    ; pins : pins
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

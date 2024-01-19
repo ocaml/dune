@@ -42,6 +42,7 @@ module Dependency_hash = struct
     let open Fiber.O in
     let+ local_packages =
       Pkg_common.find_local_packages
+      |> Memo.run
       >>| Package_name.Map.values
       >>| List.map ~f:Local_package.for_solver
     in
@@ -114,9 +115,7 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path ~lock_dirs =
-    let open Fiber.O in
-    let+ workspace = Memo.run (Workspace.workspace ()) in
+  let enumerate_lock_dirs_by_path workspace ~lock_dirs =
     let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
@@ -135,8 +134,13 @@ module List_locked_dependencies = struct
 
   let list_locked_dependencies ~transitive ~lock_dirs () =
     let open Fiber.O in
-    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs
-    and+ local_packages = Pkg_common.find_local_packages in
+    let+ lock_dirs_by_path, local_packages =
+      let open Memo.O in
+      Memo.both
+        (Workspace.workspace () >>| enumerate_lock_dirs_by_path ~lock_dirs)
+        Pkg_common.find_local_packages
+      |> Memo.run
+    in
     let pp =
       Pp.concat
         ~sep:Pp.cut

@@ -101,7 +101,6 @@ let find_local_packages =
   Dune_rules.Dune_load.load ()
   >>| Dune_rules.Dune_load.packages
   >>| Package.Name.Map.map ~f:Package.to_local_package
-  |> Memo.run
 ;;
 
 let pp_packages packages =

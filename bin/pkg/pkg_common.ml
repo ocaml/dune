@@ -97,12 +97,11 @@ let get_repos repos ~repositories =
 ;;
 
 let find_local_packages =
-  let open Fiber.O in
-  let+ project =
-    let+ source_dir = Memo.run (Source_tree.root ()) in
-    Source_tree.Dir.project source_dir
-  in
-  Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
+  let open Memo.O in
+  Dune_rules.Dune_load.load ()
+  >>| Dune_rules.Dune_load.packages
+  >>| Package.Name.Map.map ~f:Package.to_local_package
+  |> Memo.run
 ;;
 
 let pp_packages packages =

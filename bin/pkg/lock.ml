@@ -63,13 +63,18 @@ let solve_lock_dir
     Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message)
 ;;
 
-let solve workspace ~solver_env_from_current_system ~version_preference ~lock_dirs_arg =
+let solve
+  workspace
+  ~local_packages
+  ~solver_env_from_current_system
+  ~version_preference
+  ~lock_dirs_arg
+  =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
      lockdir would fail then no side effect takes place. *)
   (let+ errors, solutions =
-     let* local_packages = find_local_packages in
      Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
      |> Fiber.parallel_map
           ~f:
@@ -106,7 +111,13 @@ let lock ~version_preference ~lock_dirs_arg =
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
   in
-  solve workspace ~solver_env_from_current_system ~version_preference ~lock_dirs_arg
+  let* local_packages = find_local_packages in
+  solve
+    workspace
+    ~local_packages
+    ~solver_env_from_current_system
+    ~version_preference
+    ~lock_dirs_arg
 ;;
 
 let term =

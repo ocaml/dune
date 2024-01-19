@@ -16,6 +16,18 @@ module Lock_dir : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Lock_dir_selection : sig
+  (** A dsl for selecting a lockdir either by literally naming it or using a
+      cond expression to select a lockdir based on blangs *)
+  type t
+
+  val eval
+    :  t
+    -> dir:Path.Source.t
+    -> f:Value.t list Memo.t String_with_vars.expander
+    -> Path.Source.t Memo.t
+end
+
 module Context : sig
   module Target : sig
     type t =
@@ -60,7 +72,7 @@ module Context : sig
   module Default : sig
     type t =
       { base : Common.t
-      ; lock_dir : Path.Source.t option
+      ; lock_dir : Lock_dir_selection.t option
       }
   end
 
@@ -93,6 +105,7 @@ type t = private
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
+  ; dir : Path.Source.t
   }
 
 val equal : t -> t -> bool

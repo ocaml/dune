@@ -13,6 +13,7 @@
   dune_console
   dune_re
   dune_vcs
+  dune_config
   opam_core
   opam_repository
   opam_format

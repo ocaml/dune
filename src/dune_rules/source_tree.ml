@@ -448,14 +448,16 @@ end = struct
           match status ~status_map ~parent_status fn with
           | None -> dirs_visited_acc, subdirs
           | Some dir_status ->
-            let path = Path.Source.relative dir fn in
             let dirs_visited_acc =
+              let path = Path.Source.relative dir fn in
               Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited ~path info
             in
-            let sub_dir =
-              make_subdir ~dir_status ~virtual_:false (Path.Source.relative dir fn)
+            let subdirs =
+              let sub_dir =
+                make_subdir ~dir_status ~virtual_:false (Path.Source.relative dir fn)
+              in
+              Filename.Map.add_exn subdirs fn sub_dir
             in
-            let subdirs = Filename.Map.add_exn subdirs fn sub_dir in
             dirs_visited_acc, subdirs)
     ;;
 
@@ -547,8 +549,8 @@ end = struct
         let open Option.O in
         let* parent = parent in
         let* dune_file = parent.contents.dune_file in
-        let dir_basename = Path.Source.basename path in
         let+ dir_map =
+          let dir_basename = Path.Source.basename path in
           Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
         in
         dune_file.path, dir_map
@@ -558,9 +560,11 @@ end = struct
     | None, None -> Memo.return None
     | _, _ ->
       let* () = ensure_dune_project_file_exists project in
-      let file = Option.map file ~f:(Path.Source.relative path) in
-      let from_parent = Option.map from_parent ~f:snd in
-      let+ dune_file = Dune_file.load file ~project ~from_parent in
+      let+ dune_file =
+        let file = Option.map file ~f:(Path.Source.relative path) in
+        let from_parent = Option.map from_parent ~f:snd in
+        Dune_file.load file ~project ~from_parent
+      in
       Some dune_file
   ;;
 
@@ -571,8 +575,8 @@ end = struct
     ~(dir_status : Sub_dirs.Status.t)
     =
     let+ dune_file = dune_file ~dir_status ~files ~project ~path in
-    let sub_dirs = Dune_file.sub_dirs dune_file in
     let dirs_visited, sub_dirs =
+      let sub_dirs = Dune_file.sub_dirs dune_file in
       Get_subdir.all
         ~dirs_visited
         ~dirs
@@ -787,11 +791,13 @@ module Dir = struct
           match Cram_test.is_cram_suffix name with
           | false -> Memo.return None
           | true ->
-            let+ t = Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn in
-            let contents = t.dir in
-            let dir = contents.path in
+            let+ contents =
+              let+ t = Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn in
+              t.dir
+            in
             let fname = Cram_test.fname_in_dir_test in
             let test =
+              let dir = contents.path in
               let file = Path.Source.relative dir fname in
               Cram_test.Dir { file; dir }
             in

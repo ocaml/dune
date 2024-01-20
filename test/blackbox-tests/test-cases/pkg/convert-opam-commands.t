@@ -254,8 +254,10 @@ Test that if opam filter translation is disabled the output doesn't contain any 
      c)))
 
   $ solve filter-error-bool-where-string-expected
-  Error: At
-  $TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam:3:33-3:34::
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam", line 3, characters 33-34:
+  3 |   [ "echo" "a" ] { foo:version < (foo = bar) }
+                                       ^
+  Error: unable to parse opam file
   Parse error
   [1]
 

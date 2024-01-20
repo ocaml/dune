@@ -11,7 +11,7 @@ Empty files are not allowed as they lack the format version.
   $ touch x.opam
   $ dune pkg lock
   File "x.opam", line 1, characters 0-0:
-  Error: Unable to parse opam file x.opam as local dune package.
+  Error: unexpected version
   unsupported or missing file format version; should be 2.0 or older
   [1]
 
@@ -32,7 +32,8 @@ Handle the case where opam's parser rejects the file.
   File "$TESTCASE_ROOT/x.opam", line 3, characters 10-11:
   3 |   "a" { < ("0.1" & "0.2") }
                 ^
-  Error: Parse error
+  Error: unable to parse opam file
+  Parse error
   [1]
 
 Make sure we print an error when encountering opam files with dependency

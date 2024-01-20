@@ -21,11 +21,7 @@ let set_url t url =
 ;;
 
 let read_opam_file package ~opam_file_path ~opam_file_contents =
-  let filename =
-    (* the filename is used to read the version number *)
-    Path.to_string opam_file_path |> OpamFilename.of_string |> OpamFile.make
-  in
-  OpamFile.OPAM.read_from_string ~filename opam_file_contents
+  Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
   |> OpamFile.OPAM.with_version (OpamPackage.version package)
   |> OpamFile.OPAM.with_name (OpamPackage.name package)
 ;;

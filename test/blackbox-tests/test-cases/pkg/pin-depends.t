@@ -98,3 +98,23 @@ Git pinned source:
   (version 1.0.0)
   (dev)
      git+file://PWD/_bar_git)))
+
+Pin to something that doesn't have an opam file
+
+  $ dir=_no_opam; mkdir $dir
+  $ runtest "file://$PWD/$dir"
+  File "foo.opam", line 1, characters 0-0:
+  Error: unable to discover an opam file for package bar
+  (version 1.0.0)
+  (dev)
+
+Pin to an invalid opam file
+
+  $ dir=_invalid_opam; mkdir $dir
+  $ touch $dir/opam
+  $ runtest "file://$PWD/$dir"
+  File "$TESTCASE_ROOT/_invalid_opam/opam", line 1, characters 0-0:
+  Error: unexpected version
+  unsupported or missing file format version; should be 2.0 or older
+  (version 1.0.0)
+  (dev)

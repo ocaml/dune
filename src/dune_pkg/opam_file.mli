@@ -2,6 +2,8 @@
 
 open Stdune
 
+val read_from_string_exn : contents:string -> Path.t -> OpamFile.OPAM.t
+
 type value := OpamParserTypes.FullPos.value
 
 (** Type of opam files *)

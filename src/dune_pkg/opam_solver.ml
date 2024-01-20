@@ -671,6 +671,7 @@ let solve_package_list packages context =
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
        (* CR-rgrinberg: needs to include locations *)
        User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
+     | User_error.E _ -> reraise exn
      | unexpected_exn ->
        Code_error.raise
          "Unexpected exception raised while solving dependencies"

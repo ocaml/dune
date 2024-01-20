@@ -586,27 +586,6 @@ let default name dir =
   }
 ;;
 
-let loc_of_opam_pos
-  ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
-    OpamParserTypes.FullPos.pos)
-  =
-  let start =
-    { Lexing.pos_fname = filename
-    ; pos_lnum = start_line
-    ; pos_bol = 0
-    ; pos_cnum = start_column
-    }
-  in
-  let stop =
-    { Lexing.pos_fname = filename
-    ; pos_lnum = stop_line
-    ; pos_bol = 0
-    ; pos_cnum = stop_column
-    }
-  in
-  Loc.create ~start ~stop
-;;
-
 let load_opam_file file name =
   let open Memo.O in
   let loc = Loc.in_file (Path.source file) in
@@ -706,22 +685,9 @@ let to_local_package t =
   match t.original_opam_file with
   | Some (file, opam_file_string) ->
     let opam_file =
-      try
-        OpamFile.OPAM.read_from_string
-          ~filename:(Path.Source.to_string file |> OpamFilename.of_string |> OpamFile.make)
-          opam_file_string
-      with
-      | OpamPp.Bad_version (_, message) ->
-        User_error.raise
-          ~loc:(Loc.in_file (Path.source file))
-          [ Pp.textf
-              "Unable to parse opam file %s as local dune package."
-              (Path.Source.to_string file)
-          ; Pp.text message
-          ]
-      | OpamPp.Bad_format (pos, message) ->
-        let loc = Option.map pos ~f:loc_of_opam_pos in
-        User_error.raise ?loc [ Pp.text message ]
+      Dune_pkg.Opam_file.read_from_string_exn
+        ~contents:opam_file_string
+        (Path.source file)
     in
     let convert_filtered_formula filtered_formula =
       Dune_pkg.Package_dependency.list_of_opam_filtered_formula t.loc filtered_formula

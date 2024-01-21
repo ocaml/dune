@@ -2,30 +2,6 @@
 
 open Import
 
-module Documentation : sig
-  type t =
-    { loc : Loc.t
-    ; package : Package.t
-    ; mld_files : Ordered_set_lang.t
-    }
-
-  include Stanza.S with type t := t
-end
-
-module Tests : sig
-  type t =
-    { exes : Executables.t
-    ; locks : Locks.t
-    ; package : Package.t option
-    ; deps : Dep_conf.t Bindings.t
-    ; enabled_if : Blang.t
-    ; build_if : Blang.t
-    ; action : Dune_lang.Action.t option
-    }
-
-  include Stanza.S with type t := t
-end
-
 module Include_subdirs : sig
   type qualification =
     | Unqualified

@@ -64,6 +64,7 @@ module Private_context = Private_context
 module Odoc = Odoc
 module Library = Library
 module Executables = Executables
+module Tests = Tests
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

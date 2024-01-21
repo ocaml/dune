@@ -1,6 +1,6 @@
 open Import
 
-let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
+let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let test_kind (loc, name) =
     let files = Dir_contents.text_files dir_contents in
     let expected_basename = name ^ ".expected" in

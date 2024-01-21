@@ -154,7 +154,7 @@ let create
   in
   let modes =
     let default =
-      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited)
+      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)
       ; melange = None
       }
     in

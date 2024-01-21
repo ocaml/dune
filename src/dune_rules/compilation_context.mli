@@ -34,7 +34,7 @@ val create
   -> package:Package.t option
   -> ?public_lib_name:Lib_name.t
   -> ?vimpl:Vimpl.t
-  -> ?modes:Dune_file.Mode_conf.Set.Details.t Lib_mode.Map.t
+  -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
   -> ?loc:Loc.t
   -> unit

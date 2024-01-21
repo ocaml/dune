@@ -152,7 +152,7 @@ end
 type t =
   { modules : Modules.t
   ; artifacts : Artifacts_obj.t Memo.Lazy.t
-  ; include_subdirs : Dune_file.Include_subdirs.t
+  ; include_subdirs : Include_subdirs.t
   }
 
 let include_subdirs t = t.include_subdirs
@@ -271,7 +271,7 @@ let make_lib_modules
   ~lookup_vlib
   ~(lib : Library.t)
   ~modules
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
+  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
   ~version
   =
   let open Resolve.Memo.O in
@@ -465,7 +465,7 @@ let make
   ~lib_config
   ~loc
   ~lookup_vlib
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
+  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
   ~dirs
   =
   let+ modules_of_stanzas =

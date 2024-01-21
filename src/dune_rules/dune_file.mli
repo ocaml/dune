@@ -2,20 +2,6 @@
 
 open Import
 
-module Include_subdirs : sig
-  type qualification =
-    | Unqualified
-    | Qualified
-
-  type t =
-    | No
-    | Include of qualification
-
-  type stanza = Loc.t * t
-
-  include Stanza.S with type t := stanza
-end
-
 (** The purpose of [Library_redirect] stanza is to create a redirection from an
     [old_name] to a [new_public_name].
 

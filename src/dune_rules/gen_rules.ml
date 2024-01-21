@@ -115,9 +115,7 @@ end = struct
     | Library.T lib ->
       (* XXX why are we setting up private doc rules for disabled libraries? *)
       let* () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-      and+ enabled_if =
-        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
-      in
+      and+ enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)

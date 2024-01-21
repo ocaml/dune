@@ -162,14 +162,14 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
         >>| List.singleton
-      | Dune_rules.Dune_file.Library.T lib ->
+      | Dune_rules.Library.T lib ->
         resolve_libs
           db
           dir
           lib.buildable.libraries
           lib.buildable.preprocess
-          [ Dune_rules.Dune_file.Library.best_name lib |> Lib_name.to_string ]
-          (Dune_rules.Dune_file.Library.package lib)
+          [ Dune_rules.Library.best_name lib |> Lib_name.to_string ]
+          (Dune_rules.Library.package lib)
           Item.Kind.Library
           []
         >>| List.singleton

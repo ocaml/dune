@@ -54,8 +54,6 @@ open Import
    generation. As a result, there are no intermediate libraries (or
    packages). *)
 
-module Library = Dune_file.Library
-
 let verbatimf fmt = Printf.ksprintf (fun s -> Pp.concat [ Pp.verbatim s; Pp.newline ]) fmt
 
 let write_c_types_includer_module ~type_description_functor ~c_generated_types_module =

@@ -44,7 +44,7 @@ val setup_private_library_doc_alias
   :  Super_context.t
   -> scope:Scope.t
   -> dir:Stdune.Path.Build.t
-  -> Dune_file.Library.t
+  -> Library.t
   -> unit Memo.t
 
 val gen_rules

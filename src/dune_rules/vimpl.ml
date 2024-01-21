@@ -2,7 +2,7 @@ open Import
 
 type t =
   { vlib : Lib.t
-  ; impl : Dune_file.Library.t
+  ; impl : Library.t
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
   ; impl_cm_kind : Cm_kind.t

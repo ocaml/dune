@@ -101,9 +101,7 @@ include Sub_system.Register_end_point (struct
           Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
             backend.runner_libraries)
         in
-        let* lib =
-          Lib.DB.resolve (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
-        in
+        let* lib = Lib.DB.resolve (Scope.libs scope) (loc, Library.best_name lib) in
         let* more_libs =
           Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
         in
@@ -148,7 +146,7 @@ include Sub_system.Register_end_point (struct
            in
            Action_builder.With_targets.add ~file_targets:[ target ] action)
       and* cctx =
-        let package = Dune_file.Library.package lib in
+        let package = Library.package lib in
         let* ocaml_flags =
           Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
         in

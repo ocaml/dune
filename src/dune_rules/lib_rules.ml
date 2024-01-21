@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Library = Dune_file.Library
 
 let msvc_hack_cclibs =
   List.map ~f:(fun lib ->
@@ -422,13 +421,7 @@ let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t) ~(f : Ocaml.Mode.t -> unit
   ()
 ;;
 
-let setup_build_archives
-  (lib : Dune_file.Library.t)
-  ~top_sorted_modules
-  ~cctx
-  ~expander
-  ~lib_info
-  =
+let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~lib_info =
   let obj_dir = Compilation_context.obj_dir cctx in
   let dir = Compilation_context.dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -526,7 +519,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     let { Lib_config.has_native; _ } = ocaml.lib_config in
     Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
-  let package = Dune_file.Library.package lib in
+  let package = Library.package lib in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
   (* XXX(anmonteiro): `public_lib_name` is used to derive Melange's
      `--bs-package-name` argument. We only use the library name for public

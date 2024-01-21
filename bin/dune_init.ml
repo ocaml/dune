@@ -37,9 +37,7 @@ module File = struct
       | Some s -> Dune_lang.pp s
     ;;
 
-    let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t) =
-      a.name = b.name
-    ;;
+    let libraries_conflict (a : Library.t) (b : Library.t) = a.name = b.name
 
     let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
       let a_names = String.Set.of_list_map ~f:snd a.names in

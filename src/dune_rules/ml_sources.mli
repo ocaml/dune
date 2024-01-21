@@ -43,7 +43,7 @@ val empty : t
     all virtual modules are implemented - make sure that we construct [Module.t]
     with the correct [kind] *)
 
-val include_subdirs : t -> Dune_file.Include_subdirs.t
+val include_subdirs : t -> Include_subdirs.t
 
 val make
   :  Stanza.t list
@@ -54,6 +54,6 @@ val make
   -> lib_config:Lib_config.t Memo.t
   -> loc:Loc.t
   -> lookup_vlib:(loc:Loc.t -> dir:Path.Build.t -> t Memo.t)
-  -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
+  -> include_subdirs:Loc.t * Include_subdirs.t
   -> dirs:Source_file_dir.t list
   -> t Memo.t

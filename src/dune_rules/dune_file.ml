@@ -15,36 +15,6 @@ let () =
   Dune_project.Extension.register_deleted ~name:"library_variants" ~deleted_in:(2, 6)
 ;;
 
-module Include_subdirs = struct
-  type qualification =
-    | Unqualified
-    | Qualified
-
-  type t =
-    | No
-    | Include of qualification
-
-  type stanza = Loc.t * t
-
-  include Stanza.Make (struct
-      type nonrec t = stanza
-
-      include Poly
-    end)
-
-  let decode ~enable_qualified =
-    sum
-      [ "no", return No
-      ; "unqualified", return (Include Unqualified)
-      ; ( "qualified"
-        , let+ () =
-            if enable_qualified then return () else Syntax.since Stanza.syntax (3, 7)
-          in
-          Include Qualified )
-      ]
-  ;;
-end
-
 module Library_redirect = struct
   type 'old_name t =
     { project : Dune_project.t

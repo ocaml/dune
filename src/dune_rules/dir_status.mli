@@ -19,7 +19,7 @@ end
 module Group_root : sig
   type t =
     { source_dir : Source_tree.Dir.t
-    ; qualification : Loc.t * Dune_file.Include_subdirs.qualification
+    ; qualification : Loc.t * Include_subdirs.qualification
     ; dune_file : Dune_file.t
     ; components : Group_component.t list Memo.t
     }

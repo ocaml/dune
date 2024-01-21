@@ -194,7 +194,7 @@ module Stanza = struct
         ~expander
         ~scope
         ~lib_name:None
-        ~lint:Dune_file.Lint.no_lint
+        ~lint:Buildable.Lint.no_lint
         ~preprocess
         ~preprocessor_deps:[]
         ~instrumentation_deps:[]

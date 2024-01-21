@@ -21,8 +21,8 @@ val with_lib_deps
   -> 'a Memo.t
 
 type kind =
-  | Executables of Dune_file.Buildable.t * (Loc.t * string) list
-  | Library of Dune_file.Buildable.t * Lib_name.Local.t
+  | Executables of Buildable.t * (Loc.t * string) list
+  | Library of Buildable.t * Lib_name.Local.t
   | Melange of
       { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
       ; preprocessor_deps : Dep_conf.t list

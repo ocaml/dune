@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
 module Public_lib = Dune_file.Public_lib
 module Mode_conf = Dune_file.Mode_conf

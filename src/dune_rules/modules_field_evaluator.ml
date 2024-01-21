@@ -1,5 +1,4 @@
 open Import
-module Buildable = Dune_file.Buildable
 
 module Virtual = struct
   type t = { virtual_modules : Ordered_set_lang.Unexpanded.t }

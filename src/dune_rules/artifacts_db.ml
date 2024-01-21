@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let available_exes ~dir (exes : Dune_file.Executables.t) =
+let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
     let dune_version =
@@ -76,7 +76,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
       | Install_conf.T { section = Section Bin; files; enabled_if; _ } ->
         let enabled_if = eval_blang ~dir enabled_if in
         binaries_from_install ~enabled_if files
-      | Dune_file.Executables.T
+      | Executables.T
           ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
         let enabled_if =
           let enabled_if = eval_blang ~dir exes.enabled_if in

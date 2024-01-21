@@ -7,10 +7,10 @@ let () = init ()
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =
   Dune_lang.Decoder.parse
-    Dune_file.Executables.Link_mode.decode
+    Executables.Link_mode.decode
     Univ_map.empty
     (Dune_lang.Parser.parse_string ~fname:"" ~mode:Dune_lang.Parser.Mode.Single s)
-  |> Dune_file.Executables.Link_mode.to_dyn
+  |> Executables.Link_mode.to_dyn
   |> print_dyn
 ;;
 
@@ -59,7 +59,7 @@ Other { mode = native; kind = exe }
 ;;
 
 (* Dune_file.Executables.Link_mode.encode *)
-let test l = Dune_file.Executables.Link_mode.encode l
+let test l = Executables.Link_mode.encode l
 
 let%expect_test _ =
   (* In the general case, modes are serialized as a list *)
@@ -71,7 +71,7 @@ let%expect_test _ =
 
 (* But the specialized ones are serialized in the minimal version *)
 let%expect_test _ =
-  test Dune_file.Executables.Link_mode.exe |> Dune_lang.to_dyn |> print_dyn;
+  test Executables.Link_mode.exe |> Dune_lang.to_dyn |> print_dyn;
   [%expect {|
 "exe"
 |}]

@@ -39,7 +39,8 @@ module File = struct
 
     let libraries_conflict (a : Library.t) (b : Library.t) = a.name = b.name
 
-    let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
+    let executables_conflict (a : Dune_rules.Executables.t) (b : Dune_rules.Executables.t)
+      =
       let a_names = String.Set.of_list_map ~f:snd a.names in
       let b_names = String.Set.of_list_map ~f:snd b.names in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
@@ -52,7 +53,7 @@ module File = struct
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
       match Stanza.repr a, Stanza.repr b with
-      | Executables.T a, Executables.T b -> executables_conflict a b
+      | Dune_rules.Executables.T a, Dune_rules.Executables.T b -> executables_conflict a b
       | Library.T a, Library.T b -> libraries_conflict a b
       | Tests.T a, Tests.T b -> tests_conflict a b
       (* NOTE No other stanza types currently supported *)

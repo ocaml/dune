@@ -6,7 +6,7 @@ module Modules_group = Modules
 module Origin = struct
   type t =
     | Library of Library.t
-    | Executables of Dune_file.Executables.t
+    | Executables of Executables.t
     | Melange of Melange_stanzas.Emit.t
 
   let loc = function
@@ -414,7 +414,7 @@ let modules_of_stanzas =
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, sources, modules, obj_dir)
       | Executables.T exes | Tests.T { exes; _ } ->
-        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
+        let obj_dir = Executables.obj_dir ~dir exes in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable

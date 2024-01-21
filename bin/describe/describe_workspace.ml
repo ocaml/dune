@@ -379,7 +379,7 @@ module Crawl = struct
   ;;
 
   (* Builds a workspace item for the provided executables object *)
-  let executables sctx ~options ~project ~dir (exes : Dune_file.Executables.t)
+  let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
     let first_exe = snd (List.hd exes.names) in
@@ -538,7 +538,7 @@ module Crawl = struct
         Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
           let dir = Path.Build.append_source (Context.build_dir context) dune_file.dir in
           match Stanza.repr stanza with
-          | Dune_file.Executables.T exes ->
+          | Executables.T exes ->
             executables sctx ~options ~project:dune_file.project ~dir exes
           | _ -> Memo.return None)
         >>| List.filter_opt)

@@ -1,6 +1,6 @@
 open Import
 
-val compile_info : scope:Scope.t -> Dune_file.Executables.t -> Lib.Compile.t Memo.t
+val compile_info : scope:Scope.t -> Executables.t -> Lib.Compile.t Memo.t
 
 val rules
   :  sctx:Super_context.t
@@ -8,5 +8,5 @@ val rules
   -> dir_contents:Dir_contents.t
   -> scope:Scope.t
   -> expander:Expander.t
-  -> Dune_file.Executables.t
+  -> Executables.t
   -> (Compilation_context.t * Merlin.t) Memo.t

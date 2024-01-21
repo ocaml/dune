@@ -61,7 +61,7 @@ module Linkage = struct
     (ocaml : Ocaml_toolchain.t)
     ~dynamically_linked_foreign_archives
     ~loc
-    (m : Dune_file.Executables.Link_mode.t)
+    (m : Executables.Link_mode.t)
     =
     match m with
     | Other { mode = Byte; kind = Js } -> js
@@ -87,7 +87,7 @@ module Linkage = struct
       in
       let ext =
         let lib_config = ocaml.lib_config in
-        Dune_file.Executables.Link_mode.extension
+        Executables.Link_mode.extension
           m
           ~loc
           ~ext_obj:lib_config.ext_obj

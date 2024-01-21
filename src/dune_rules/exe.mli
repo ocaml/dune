@@ -41,7 +41,7 @@ module Linkage : sig
     :  Ocaml_toolchain.t
     -> dynamically_linked_foreign_archives:bool
     -> loc:Loc.t
-    -> Dune_file.Executables.Link_mode.t
+    -> Executables.Link_mode.t
     -> t
 end
 

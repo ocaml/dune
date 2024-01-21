@@ -130,9 +130,9 @@ let resolve_libs db dir libraries preprocess names package kind extensions =
 ;;
 
 let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
-  Dune_rules.Dune_file.Executables.Link_mode.Map.to_list modes
+  Dune_rules.Executables.Link_mode.Map.to_list modes
   |> List.map ~f:(fun (m, loc) ->
-    Dune_rules.Dune_file.Executables.Link_mode.extension
+    Dune_rules.Executables.Link_mode.extension
       m
       ~loc
       ~ext_obj:lib_config.ext_obj
@@ -150,7 +150,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
     Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
       let dir = dune_file.dir in
       match Stanza.repr stanza with
-      | Dune_rules.Dune_file.Executables.T exes ->
+      | Dune_rules.Executables.T exes ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db

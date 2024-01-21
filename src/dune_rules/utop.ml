@@ -89,7 +89,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                              (Lib_info.loc info, Lib_info.name info)
                              pps ))
                      else acc, pps)
-                | Dune_file.Executables.T exes ->
+                | Executables.T exes ->
                   let+ libs =
                     let open Memo.O in
                     let* compile_info =

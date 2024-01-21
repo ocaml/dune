@@ -82,7 +82,7 @@ module Library_compilation_context = struct
   type t =
     { super_context : Super_context.t
     ; dir : Path.Build.t
-    ; stanza : Dune_file.Library.t
+    ; stanza : Library.t
     ; scope : Scope.t
     ; source_modules : Module.t list
     ; compile_info : Lib.Compile.t

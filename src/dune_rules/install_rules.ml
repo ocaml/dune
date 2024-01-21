@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Library = Dune_file.Library
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
@@ -75,11 +74,11 @@ module Stanzas_to_entries : sig
     :  Super_context.t
     -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
 end = struct
-  let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
+  let lib_ppxs sctx ~scope ~(lib : Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
-      let name = Dune_file.Library.best_name lib in
+      let name = Library.best_name lib in
       let+ ppx_exe = Resolve.Memo.read_memo (Preprocessing.ppx_exe sctx ~scope name) in
       [ ppx_exe ]
   ;;
@@ -139,7 +138,7 @@ end = struct
       let+ ocaml = Context.ocaml ctx in
       ocaml.lib_config
     in
-    let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let* info = Library.to_lib_info lib ~dir ~lib_config in
     let make_entry =
       let in_sub_dir = function
         | None -> lib_subdir
@@ -334,7 +333,7 @@ end = struct
         if enabled_if
         then
           if lib.optional
-          then Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+          then Lib.DB.available (Scope.libs scope) (Library.best_name lib)
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -458,7 +457,7 @@ end = struct
         | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i
         | Library.T lib ->
-          let sub_dir = Dune_file.Library.sub_dir lib in
+          let sub_dir = Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib

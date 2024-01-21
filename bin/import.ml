@@ -36,6 +36,7 @@ include struct
   module Sub_dirs = Sub_dirs
   module Source_tree = Source_tree
   module Dune_file = Dune_file
+  module Library = Library
 end
 
 include struct

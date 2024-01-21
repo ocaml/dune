@@ -57,13 +57,11 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
               ~init:Libs_and_ppxs.empty
               ~f:(fun (acc, pps) stanza ->
                 match Stanza.repr stanza with
-                | Dune_file.Library.T l ->
+                | Library.T l ->
                   let+ lib =
                     let open Memo.O in
                     let+ resolve =
-                      Lib.DB.resolve_when_exists
-                        db
-                        (l.buildable.loc, Dune_file.Library.best_name l)
+                      Lib.DB.resolve_when_exists db (l.buildable.loc, Library.best_name l)
                     in
                     Option.map resolve ~f:Resolve.peek
                     (* external lib with a name matching our private name *)

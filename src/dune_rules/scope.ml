@@ -46,7 +46,7 @@ module DB = struct
 
   module Library_related_stanza = struct
     type t =
-      | Library of Path.Build.t * Dune_file.Library.t
+      | Library of Path.Build.t * Library.t
       | Library_redirect of Dune_file.Library_redirect.Local.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
@@ -62,11 +62,9 @@ module DB = struct
         | Deprecated_library_name s ->
           let old_public_name = Dune_file.Deprecated_library_name.old_public_name s in
           Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
-        | Library (dir, (conf : Dune_file.Library.t)) ->
-          let+ info =
-            Dune_file.Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local
-          in
-          Dune_file.Library.best_name conf, Found_or_redirect.found info)
+        | Library (dir, (conf : Library.t)) ->
+          let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
+          Library.best_name conf, Found_or_redirect.found info)
       >>| Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
           match v1, v2 with
@@ -314,7 +312,7 @@ module DB = struct
         ~f:(fun dune_file stanza (acc, coq_acc) ->
           let build_dir = Context.build_dir context in
           match Stanza.repr stanza with
-          | Dune_file.Library.T lib ->
+          | Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
           | Dune_file.Deprecated_library_name.T d ->
@@ -387,18 +385,18 @@ module DB = struct
       let+ libs =
         Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
-          | Dune_file.Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
+          | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
               let* scope = find_by_dir (Path.Build.append_source build_dir d.dir) in
               let db = libs scope in
-              Lib.DB.find db (Dune_file.Library.best_name lib)
+              Lib.DB.find db (Library.best_name lib)
             in
             (match lib with
              | None -> acc
              | Some lib ->
                let name = Package.name pkg in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Library.T { visibility = Public pub; _ } ->
+          | Library.T { visibility = Public pub; _ } ->
             let+ lib = Lib.DB.find public_libs (Public_lib.name pub) in
             (match lib with
              | None ->

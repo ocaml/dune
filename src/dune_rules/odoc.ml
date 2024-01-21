@@ -1,5 +1,4 @@
 open Import
-open Dune_file
 open Memo.O
 module Gen_rules = Build_config.Gen_rules
 
@@ -925,7 +924,7 @@ let gen_project_rules sctx project =
     setup_package_aliases sctx pkg)
 ;;
 
-let setup_private_library_doc_alias sctx ~scope ~dir (l : Dune_file.Library.t) =
+let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
   match l.visibility with
   | Public _ -> Memo.return ()
   | Private _ ->

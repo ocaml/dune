@@ -62,7 +62,7 @@ let get_pped_file super_context file =
            dune_file.stanzas
            |> List.fold_left ~init:None ~f:(fun acc stanza ->
              match Stanza.repr stanza with
-             | Dune_rules.Dune_file.Library.T lib ->
+             | Dune_rules.Library.T lib ->
                let preprocess =
                  Dune_rules.Preprocess.Per_module.(
                    lib.buildable.preprocess |> single_preprocess)

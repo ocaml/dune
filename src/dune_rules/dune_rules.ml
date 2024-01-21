@@ -62,6 +62,7 @@ module Package = Package
 module Dialect = Dialect
 module Private_context = Private_context
 module Odoc = Odoc
+module Library = Library
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

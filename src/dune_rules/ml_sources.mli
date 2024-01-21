@@ -7,7 +7,7 @@ open Import
 
 module Origin : sig
   type t =
-    | Library of Dune_file.Library.t
+    | Library of Library.t
     | Executables of Dune_file.Executables.t
     | Melange of Melange_stanzas.Emit.t
 

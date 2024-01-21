@@ -4,7 +4,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
   let vlib = Vimpl.vlib vimpl in
   let impl = Vimpl.impl vimpl in
-  let impl_obj_dir = Dune_file.Library.obj_dir ~dir impl in
+  let impl_obj_dir = Library.obj_dir ~dir impl in
   let vlib_obj_dir = Lib.info vlib |> Lib_info.obj_dir in
   let add_rule = Super_context.add_rule sctx ~dir in
   let copy_to_obj_dir ~src ~dst =
@@ -51,7 +51,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     acc >>> copy_objs m)
 ;;
 
-let impl sctx ~(lib : Dune_file.Library.t) ~scope =
+let impl sctx ~(lib : Library.t) ~scope =
   let open Memo.O in
   match lib.implements with
   | None -> Memo.return None

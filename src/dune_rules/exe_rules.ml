@@ -1,7 +1,6 @@
 open Import
 open Memo.O
 module Executables = Dune_file.Executables
-module Buildable = Dune_file.Buildable
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 

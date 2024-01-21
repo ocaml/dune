@@ -54,7 +54,6 @@ open Import
    generation. As a result, there are no intermediate libraries (or
    packages). *)
 
-module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
 
 let verbatimf fmt = Printf.ksprintf (fun s -> Pp.concat [ Pp.verbatim s; Pp.newline ]) fmt

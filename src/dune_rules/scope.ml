@@ -48,7 +48,7 @@ module DB = struct
     type t =
       | Library of Path.Build.t * Library.t
       | Library_redirect of Library_redirect.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Deprecated_library_name of Deprecated_library_name.t
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
@@ -60,7 +60,7 @@ module DB = struct
           let old_public_name = Lib_name.of_local s.old_name in
           Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
         | Deprecated_library_name s ->
-          let old_public_name = Dune_file.Deprecated_library_name.old_public_name s in
+          let old_public_name = Deprecated_library_name.old_public_name s in
           Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
         | Library (dir, (conf : Library.t)) ->
           let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
@@ -140,7 +140,7 @@ module DB = struct
           Some (Public_lib.name p, Project project)
         | Library _ | Library_redirect _ -> None
         | Deprecated_library_name s ->
-          let old_name = Dune_file.Deprecated_library_name.old_public_name s in
+          let old_name = Deprecated_library_name.old_public_name s in
           Some (old_name, Name s.new_public_name))
       |> Lib_name.Map.of_list
       |> function
@@ -314,8 +314,7 @@ module DB = struct
           | Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
-          | Dune_file.Deprecated_library_name.T d ->
-            Deprecated_library_name d :: acc, coq_acc
+          | Deprecated_library_name.T d -> Deprecated_library_name d :: acc, coq_acc
           | Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
@@ -370,7 +369,7 @@ module DB = struct
   module Lib_entry = struct
     type t =
       | Library of Lib.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Deprecated_library_name of Deprecated_library_name.t
 
     let name = function
       | Library lib -> Lib.Local.to_lib lib |> Lib.name
@@ -406,8 +405,7 @@ module DB = struct
                let package = Public_lib.package pub in
                let name = Package.name package in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Deprecated_library_name.T
-              ({ old_name = old_public_name, _; _ } as d) ->
+          | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in
             Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)

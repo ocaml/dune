@@ -1,7 +1,6 @@
 open Import
 open Memo.O
 module Library = Dune_file.Library
-module Public_lib = Dune_file.Public_lib
 module Mode_conf = Dune_file.Mode_conf
 
 let msvc_hack_cclibs =

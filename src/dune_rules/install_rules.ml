@@ -740,7 +740,7 @@ end = struct
                 ~f:
                   (fun
                     acc
-                    { Dune_file.Library_redirect.old_name = old_public_name, _
+                    { Library_redirect.old_name = old_public_name, _
                     ; new_public_name = _, new_public_name
                     ; loc
                     ; _

@@ -95,8 +95,8 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
       match Stanza.repr stanza with
       | Library.T l ->
         let open Option.O in
-        let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
-        Dune_file.Library_redirect.Local.make_stanza redirect
+        let+ redirect = Library_redirect.Local.of_private_lib l in
+        Library_redirect.Local.make_stanza redirect
       | _ -> None))
 ;;
 

@@ -233,7 +233,7 @@ end = struct
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
-      Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
+      Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers

@@ -1,7 +1,6 @@
 open Import
 open Memo.O
 module Library = Dune_file.Library
-module Mode_conf = Dune_file.Mode_conf
 
 let msvc_hack_cclibs =
   List.map ~f:(fun lib ->
@@ -525,7 +524,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
   let requires_link = Lib.Compile.requires_link compile_info in
   let modes =
     let { Lib_config.has_native; _ } = ocaml.lib_config in
-    Dune_file.Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
+    Mode_conf.Lib.Set.eval_detailed lib.modes ~has_native
   in
   let package = Dune_file.Library.package lib in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in

@@ -16,7 +16,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
     ocaml.lib_config
   in
   let { Lib_mode.Map.ocaml = { byte; native }; melange } =
-    Dune_file.Mode_conf.Lib.Set.eval impl.modes ~has_native
+    Mode_conf.Lib.Set.eval impl.modes ~has_native
   in
   let copy_obj_file m kind =
     let src = Obj_dir.Module.cm_file_exn vlib_obj_dir m ~kind in

@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-open Dune_file
 
 module Is_component_of_a_group_but_not_the_root = struct
   type t =
@@ -157,7 +156,7 @@ end = struct
                  ; stanzas =
                      (match stanzas with
                       | None -> []
-                      | Some d -> d.stanzas)
+                      | Some d -> Dune_file.stanzas d)
                  })
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
@@ -174,7 +173,7 @@ end = struct
   ;;
 
   let has_dune_file ~dir st_dir ~build_dir_is_project_root (d : Dune_file.t) =
-    match get_include_subdirs d.stanzas with
+    match get_include_subdirs (Dune_file.stanzas d) with
     | Some (loc, Include mode) ->
       let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
       Memo.return
@@ -194,7 +193,7 @@ end = struct
          | No_group -> Memo.return @@ Standalone (st_dir, d)
          | Group_root group_root ->
            let+ () =
-             match find_module_stanza d.stanzas with
+             match find_module_stanza (Dune_file.stanzas d) with
              | None -> Memo.return ()
              | Some loc ->
                get ~dir:group_root
@@ -260,12 +259,13 @@ let directory_targets t ~dir =
   match t with
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
-  | Standalone (_, dune_file) -> extract_directory_targets ~dir dune_file.stanzas
+  | Standalone (_, dune_file) ->
+    extract_directory_targets ~dir (Dune_file.stanzas dune_file)
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
       extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
     in
-    let* init = f ~dir dune_file.stanzas Path.Build.Map.empty in
+    let* init = f ~dir (Dune_file.stanzas dune_file) Path.Build.Map.empty in
     components
     >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
       f ~dir stanzas acc)

@@ -101,7 +101,8 @@ let collect_stanzas =
     match stanzas with
     | None -> []
     | Some (d : Dune_file.t) ->
-      List.filter_map d.stanzas ~f:(fun x ->
+      Dune_file.stanzas d
+      |> List.filter_map ~f:(fun x ->
         match Stanza.repr x with
         | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
         | _ -> None)

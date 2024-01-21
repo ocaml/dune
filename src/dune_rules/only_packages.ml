@@ -119,14 +119,15 @@ let filtered_stanzas =
         | None -> stanzas
         | Some visible_pkgs ->
           List.map stanzas ~f:(fun (dune_file : Dune_file.t) ->
-            { dune_file with
-              stanzas =
-                filter_out_stanzas_from_hidden_packages ~visible_pkgs dune_file.stanzas
-            })
+            Dune_file.set_stanzas
+              dune_file
+              (filter_out_stanzas_from_hidden_packages
+                 ~visible_pkgs
+                 (Dune_file.stanzas dune_file)))
       in
       let map =
-        Path.Source.Map.of_list_map_exn all ~f:(fun (dune_file : Dune_file.t) ->
-          dune_file.dir, dune_file)
+        Path.Source.Map.of_list_map_exn all ~f:(fun dune_file ->
+          Dune_file.dir dune_file, dune_file)
       in
       { all; map })
     |> Memo.Lazy.force

@@ -1,5 +1,4 @@
 open Import
-open Dune_file
 open Memo.O
 
 (* CR-someday jeremiedimino: This should be a memoized function [Super_context.t
@@ -13,10 +12,13 @@ let mlds_by_package_def =
       let ctx = Super_context.context sctx in
       let* dune_files = Context.name ctx |> Only_packages.filtered_stanzas in
       Memo.parallel_map dune_files ~f:(fun dune_file ->
-        Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
+        Dune_file.stanzas dune_file
+        |> Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Documentation.T d ->
-            let dir = Path.Build.append_source (Context.build_dir ctx) dune_file.dir in
+            let dir =
+              Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
+            in
             let* dc = Dir_contents.get sctx ~dir in
             let+ mlds = Dir_contents.mlds dc d in
             let name = Package.name d.package in

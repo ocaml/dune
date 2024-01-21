@@ -2,7 +2,6 @@ open Import
 
 (* we need to convince ocamldep that we don't depend on the menhir rules *)
 module Menhir = struct end
-open Dune_file
 open Memo.O
 
 let loc_of_dune_file st_dir =
@@ -268,9 +267,12 @@ end = struct
             let+ ocaml = Context.ocaml ctx in
             ocaml.lib_config
           in
+          let stanzas = Dune_file.stanzas d in
+          let project = Dune_file.project d in
           let+ files, rules =
             Rules.collect (fun () ->
-              load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
+              let src_dir = Dune_file.dir d in
+              load_text_files sctx st_dir stanzas ~src_dir ~dir)
           in
           let dirs = [ { Source_file_dir.dir; path_to_root = []; files } ] in
           let ml =
@@ -280,11 +282,11 @@ end = struct
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir in
               Ml_sources.make
-                d.stanzas
+                stanzas
                 ~expander
                 ~dir
                 ~libs
-                ~project:d.project
+                ~project
                 ~lib_config
                 ~loc
                 ~include_subdirs
@@ -296,15 +298,14 @@ end = struct
               ; dir
               ; text_files = files
               ; ml
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                    let dune_version = Dune_project.dune_version d.project in
-                    Memo.return (Foreign_sources.make d.stanzas ~dune_version ~dirs))
+                    let dune_version = Dune_project.dune_version project in
+                    Memo.return (Foreign_sources.make stanzas ~dune_version ~dirs))
               ; coq =
                   Memo.lazy_ (fun () ->
-                    Coq_sources.of_dir d.stanzas ~dir ~include_subdirs ~dirs
-                    |> Memo.return)
+                    Coq_sources.of_dir stanzas ~dir ~include_subdirs ~dirs |> Memo.return)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -328,6 +329,8 @@ end = struct
         ~human_readable_description:(fun () -> human_readable_description dir)
         (fun () ->
           let ctx = Super_context.context sctx in
+          let stanzas = Dune_file.stanzas dune_file in
+          let project = Dune_file.project dune_file in
           let+ (files, subdirs), rules =
             Rules.collect (fun () ->
               Memo.fork_and_join
@@ -335,8 +338,8 @@ end = struct
                   load_text_files
                     sctx
                     source_dir
-                    dune_file.stanzas
-                    ~src_dir:dune_file.dir
+                    stanzas
+                    ~src_dir:(Dune_file.dir dune_file)
                     ~dir)
                 (fun () ->
                   Memo.parallel_map
@@ -361,10 +364,9 @@ end = struct
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-              let project = dune_file.project in
               let* expander = Super_context.expander sctx ~dir in
               Ml_sources.make
-                dune_file.stanzas
+                stanzas
                 ~expander
                 ~dir
                 ~project
@@ -377,13 +379,12 @@ end = struct
           in
           let foreign_sources =
             Memo.lazy_ (fun () ->
-              let dune_version = Dune_project.dune_version dune_file.project in
-              Memo.return (Foreign_sources.make dune_file.stanzas ~dune_version ~dirs))
+              let dune_version = Dune_project.dune_version project in
+              Memo.return (Foreign_sources.make stanzas ~dune_version ~dirs))
           in
           let coq =
             Memo.lazy_ (fun () ->
-              Coq_sources.of_dir dune_file.stanzas ~dir ~dirs ~include_subdirs
-              |> Memo.return)
+              Coq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs |> Memo.return)
           in
           let subdirs =
             List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
@@ -392,7 +393,7 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
               ; coq
               })
           in
@@ -402,7 +403,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
             ; coq
             }
           in

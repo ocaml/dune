@@ -99,7 +99,8 @@ end = struct
     @@
     let open Option.O in
     let* stanzas = stanzas in
-    List.find_map stanzas.stanzas ~f:(fun stanza ->
+    Dune_file.stanzas stanzas
+    |> List.find_map ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Dune_env.T config -> Some config
       | _ -> None)

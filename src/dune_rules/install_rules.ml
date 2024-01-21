@@ -615,7 +615,7 @@ end = struct
             ; loc
             ; project = _
             } ->
-          let old_public_name = Dune_file.Public_lib.name old_public_name in
+          let old_public_name = Public_lib.name old_public_name in
           Memo.return
             (Some
                ( old_public_name
@@ -723,7 +723,7 @@ end = struct
     let deprecated_dune_packages =
       List.filter_map lib_entries ~f:(function
         | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
-          -> Some (Lib_name.package_name (Dune_file.Public_lib.name old_public_name), t)
+          -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
         | _ -> None)
       |> Package.Name.Map.of_list_multi
     in
@@ -749,7 +749,7 @@ end = struct
                     ; _
                     }
                   ->
-                  let old_public_name = Dune_file.Public_lib.name old_public_name in
+                  let old_public_name = Public_lib.name old_public_name in
                   Lib_name.Map.add_exn
                     acc
                     old_public_name
@@ -788,7 +788,7 @@ end = struct
       List.partition_map entries ~f:(function
         | Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
-          (match Dune_file.Public_lib.sub_dir public with
+          (match Public_lib.sub_dir public with
            | None -> Left (deprecated_package, entry)
            | Some _ -> Right entry)
         | entry -> Right entry)

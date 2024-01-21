@@ -107,7 +107,6 @@ end = struct
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
     let dir = ctx_dir in
     let toplevel_setup = Toplevel.Stanza.setup in
-    let open Dune_file in
     match Stanza.repr stanza with
     | Toplevel_stanza.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in

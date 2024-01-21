@@ -326,7 +326,6 @@ end = struct
 
   let keep_if expander ~scope stanza =
     let+ keep =
-      let open Dune_file in
       match Stanza.repr stanza with
       | Library.T lib ->
         let* enabled_if = Expander.eval_blang expander lib.enabled_if in
@@ -452,7 +451,6 @@ end = struct
     | None -> Memo.return None
     | Some (stanza, package) ->
       let new_entries =
-        let open Dune_file in
         match Stanza.repr stanza with
         | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i

@@ -173,7 +173,7 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
           Item.Kind.Library
           []
         >>| List.singleton
-      | Dune_rules.Dune_file.Tests.T tests ->
+      | Dune_rules.Tests.T tests ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db

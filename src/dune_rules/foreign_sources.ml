@@ -1,5 +1,4 @@
 open Import
-open Dune_file
 
 (* TODO: This is a strange module; it seems to add unnecessary indirection for
    accessing foreign sources. It's worth checking if it can be simplified away.

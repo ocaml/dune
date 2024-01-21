@@ -1,5 +1,5 @@
-(lang dune 3.5)
-;          ^^^
+(lang dune 3.13)
+;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
@@ -12,6 +12,7 @@
 
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)
+(using include_preprocessed_sources 0.1)
 
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")

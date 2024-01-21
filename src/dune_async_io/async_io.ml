@@ -4,9 +4,9 @@ open Fiber.O
 module Fd = struct
   type t = Unix.file_descr
 
+  let to_dyn = Dyn.opaque
   let equal = Poly.equal
   let hash = Poly.hash
-  let to_dyn = Dyn.opaque
 end
 
 module type Scheduler = sig

@@ -1,35 +1,6 @@
 open Import
 open Memo.O
 
-module File = struct
-  module T = struct
-    type t =
-      { ino : int
-      ; dev : int
-      }
-
-    let to_dyn { ino; dev } =
-      let open Dyn in
-      record [ "ino", Int.to_dyn ino; "dev", Int.to_dyn dev ]
-    ;;
-
-    let compare { ino; dev } t =
-      let open Ordering.O in
-      let= () = Int.compare ino t.ino in
-      Int.compare dev t.dev
-    ;;
-  end
-
-  include T
-
-  let dummy = { ino = 0; dev = 0 }
-  let of_stats (st : Fs_cache.Reduced_stats.t) = { ino = st.st_ino; dev = st.st_dev }
-
-  module Map = Map.Make (T)
-
-  let of_source_path p = Fs_memo.path_stat p >>| Result.map ~f:of_stats
-end
-
 module Dune_file = struct
   module Plain = struct
     type t =
@@ -151,125 +122,11 @@ module Dune_file = struct
   ;;
 end
 
-module Readdir : sig
-  type t = private
-    { path : Path.Source.t
-    ; files : Filename.Set.t
-    ; dirs : (Filename.t * File.t) list
-    }
-
-  val empty : Path.Source.t -> t
-  val of_source_path : Path.Source.t -> (t, Unix_error.Detailed.t) Result.t Memo.t
-end = struct
-  type t =
-    { path : Path.Source.t
-    ; files : Filename.Set.t
-    ; dirs : (Filename.t * File.t) list
-    }
-
-  let equal =
-    let dirs_equal (s1, f1) (s2, f2) = Filename.equal s1 s2 && File.compare f1 f2 = Eq in
-    fun x y ->
-      Path.Source.equal x.path y.path
-      && Filename.Set.equal x.files y.files
-      && List.equal dirs_equal x.dirs y.dirs
-  ;;
-
-  let empty path = { path; files = Filename.Set.empty; dirs = [] }
-
-  let _to_dyn { path; files; dirs } =
-    let open Dyn in
-    record
-      [ "path", Path.Source.to_dyn path
-      ; "files", Filename.Set.to_dyn files
-      ; "dirs", list (pair string File.to_dyn) dirs
-      ]
-  ;;
-
-  (* Returns [true] for special files such as character devices of sockets; see
-     #3124 for more on issues caused by special devices *)
-  let is_special (st_kind : Unix.file_kind) =
-    match st_kind with
-    | S_CHR | S_BLK | S_FIFO | S_SOCK -> true
-    | _ -> false
-  ;;
-
-  let is_temp_file fn =
-    String.is_prefix fn ~prefix:".#"
-    || String.is_suffix fn ~suffix:".swp"
-    || String.is_suffix fn ~suffix:"~"
-  ;;
-
-  let of_source_path_impl path =
-    Fs_memo.dir_contents (In_source_dir path)
-    >>= function
-    | Error unix_error ->
-      User_warning.emit
-        [ Pp.textf
-            "Unable to read directory %s. Ignoring."
-            (Path.Source.to_string_maybe_quoted path)
-        ; Pp.text "Remove this message by ignoring by adding:"
-        ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
-        ; Pp.textf
-            "to the dune file: %s"
-            (Path.Source.to_string_maybe_quoted
-               (Path.Source.relative (Path.Source.parent_exn path) Dune_file.fname))
-        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
-        ];
-      Memo.return (Error unix_error)
-    | Ok dir_contents ->
-      let+ files, dirs =
-        Fs_cache.Dir_contents.to_list dir_contents
-        |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
-          let path = Path.Source.relative path fn in
-          if Path.Source.is_in_build_dir path || is_temp_file fn
-          then Memo.return List.Skip
-          else
-            let+ is_directory, file =
-              match kind with
-              | S_DIR ->
-                let+ file =
-                  File.of_source_path (In_source_dir path)
-                  >>| function
-                  | Ok file -> file
-                  | Error _ -> File.dummy
-                in
-                true, file
-              | S_LNK ->
-                Fs_memo.path_stat (In_source_dir path)
-                >>| (function
-                 | Ok ({ st_kind = S_DIR; _ } as st) -> true, File.of_stats st
-                 | Ok _ | Error _ -> false, File.dummy)
-              | _ -> Memo.return (false, File.dummy)
-            in
-            if is_directory
-            then List.Right (fn, file)
-            else if is_special kind
-            then Skip
-            else Left fn)
-        >>| List.filter_partition_map ~f:Fun.id
-      in
-      { path; files = Filename.Set.of_list files; dirs } |> Result.ok
-  ;;
-
-  (* Having a cutoff here speeds up incremental rebuilds quite a bit when a
-     directory contents is invalidated but the result stays the same. *)
-  let of_source_path_memo =
-    Memo.create
-      "readdir-of-source-path"
-      ~input:(module Path.Source)
-      ~cutoff:(Result.equal equal Unix_error.Detailed.equal)
-      of_source_path_impl
-  ;;
-
-  let of_source_path = Memo.exec of_source_path_memo
-end
-
 module Dirs_visited : sig
   (** Unique set of all directories visited *)
   type t
 
-  val singleton : Path.Source.t -> File.t -> t
+  val singleton : Path.Source.t -> Readdir.File.t -> t
 
   module Per_fn : sig
     (** Stores the directories visited per node (basename) *)
@@ -279,12 +136,12 @@ module Dirs_visited : sig
 
     val init : t
     val find : t -> Path.Source.t -> dirs_visited
-    val add : t -> dirs_visited -> path:Path.Source.t -> Filename.t * File.t -> t
+    val add : t -> dirs_visited -> path:Path.Source.t -> Filename.t * Readdir.File.t -> t
   end
 end = struct
-  type t = Path.Source.t File.Map.t
+  type t = Path.Source.t Readdir.File.Map.t
 
-  let singleton path file = File.Map.singleton file path
+  let singleton path file = Readdir.File.Map.singleton file path
 
   module Per_fn = struct
     type nonrec t = t Filename.Map.t
@@ -294,7 +151,7 @@ end = struct
     let find t path =
       Path.Source.basename path
       |> Filename.Map.find t
-      |> Option.value ~default:File.Map.empty
+      |> Option.value ~default:Readdir.File.Map.empty
     ;;
 
     let add (acc : t) dirs_visited ~path (fn, file) =
@@ -302,7 +159,7 @@ end = struct
       then acc
       else (
         let new_dirs_visited =
-          File.Map.update dirs_visited file ~f:(function
+          Readdir.File.Map.update dirs_visited file ~f:(function
             | None -> Some path
             | Some first_path ->
               User_error.raise
@@ -411,7 +268,7 @@ end = struct
     (** Get all the sub directories of [path].*)
     val all
       :  dirs_visited:Dirs_visited.t
-      -> dirs:(Filename.t * File.t) list
+      -> dirs:(Filename.t * Readdir.File.t) list
       -> sub_dirs:Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       -> parent_status:Sub_dirs.Status.t
       -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
@@ -568,18 +425,15 @@ end = struct
       Some dune_file
   ;;
 
-  let contents
-    { Readdir.path; dirs; files }
-    ~dirs_visited
-    ~project
-    ~(dir_status : Sub_dirs.Status.t)
-    =
+  let contents readdir ~dirs_visited ~project ~(dir_status : Sub_dirs.Status.t) =
+    let files = Readdir.files readdir in
+    let path = Readdir.path readdir in
     let+ dune_file = dune_file ~dir_status ~files ~project ~path in
     let dirs_visited, sub_dirs =
       let sub_dirs = Dune_file.sub_dirs dune_file in
       Get_subdir.all
         ~dirs_visited
-        ~dirs
+        ~dirs:(Readdir.dirs readdir)
         ~sub_dirs
         ~parent_status:dir_status
         ~dune_file
@@ -604,13 +458,16 @@ end = struct
       | Error unix_error -> error_unable_to_load ~path unix_error
     in
     let* project =
-      Dune_project.load ~dir:path ~files:readdir.files ~infer_from_opam_files:true
+      Dune_project.load
+        ~dir:path
+        ~files:(Readdir.files readdir)
+        ~infer_from_opam_files:true
       >>| function
       | Some p -> p
       | None -> Dune_project.anonymous ~dir:path Package.Info.empty Package.Name.Map.empty
     in
     let* dirs_visited =
-      File.of_source_path (In_source_dir path)
+      Readdir.File.of_source_path (In_source_dir path)
       >>| function
       | Ok file -> Dirs_visited.singleton path file
       | Error unix_error -> error_unable_to_load ~path unix_error
@@ -661,7 +518,7 @@ end = struct
              let+ project =
                Dune_project.load
                  ~dir:path
-                 ~files:readdir.files
+                 ~files:(Readdir.files readdir)
                  ~infer_from_opam_files:false
              in
              Option.value project ~default:parent_dir.project
@@ -892,7 +749,9 @@ let nearest_vcs =
     >>| function
     | Error _ -> acc
     | Ok readdir ->
-      (match List.find_map readdir.dirs ~f:(fun (s, _) -> Vcs.Kind.of_dir_name s) with
+      (match
+         Readdir.dirs readdir |> List.find_map ~f:(fun (s, _) -> Vcs.Kind.of_dir_name s)
+       with
        | None -> acc
        | Some kind -> Some { Vcs.kind; root = Path.source @@ Dir.path dir })
   in

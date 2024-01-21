@@ -229,6 +229,46 @@ let rec dep expander : Dep_conf.t -> _ = function
     Other
       (let* path = Expander.expand_path expander s in
        let deps = Source_deps.files path in
+       let* _, descendant_paths = Action_builder.of_memo deps in
+       let* descendant_dir_paths =
+         Action_builder.of_memo
+           (Source_tree.descendant_dir_paths (Path.drop_build_context_exn path))
+       in
+       let source_tree_path_suffix = Path.drop_build_context_exn path |> Path.source in
+       let descendant_file_paths_in_build_dir =
+         Path.Set.to_list descendant_paths |> List.map ~f:Path.drop_build_context_exn
+       in
+       List.iter descendant_dir_paths ~f:(fun descendant_dir_path ->
+         let at_least_one_build_path_descends_from_source_path =
+           List.exists
+             descendant_file_paths_in_build_dir
+             ~f:(fun descendant_file_path_in_build_dir ->
+               Path.Source.is_descendant
+                 descendant_file_path_in_build_dir
+                 ~of_:descendant_dir_path)
+         in
+         if not at_least_one_build_path_descends_from_source_path
+         then
+           User_warning.emit
+             ~loc:(String_with_vars.loc s)
+             ~hints:
+               [ Pp.textf
+                   "This could be because the directory is empty or due to dune's rules \
+                    for excluding directories. By default directories whose names begin \
+                    with '.' or '_' are excluded. This can be prevented by adding a \
+                    `(dirs ...)` stanza to %s/dune which explicitly includes the \
+                    directory %s."
+                   (Path.Source.parent descendant_dir_path
+                    |> Option.value_exn
+                    |> Path.Source.to_string_maybe_quoted)
+                   (Path.Source.to_string_maybe_quoted descendant_dir_path)
+               ]
+             [ Pp.textf
+                 "The source directory %s has a subdirectory %s which was not copied to \
+                  the build directory and will not be visible to build actions."
+                 (Path.to_string_maybe_quoted source_tree_path_suffix)
+                 (Path.Source.to_string_maybe_quoted descendant_dir_path)
+             ]);
        Action_builder.dyn_memo_deps deps |> Action_builder.map ~f:Path.Set.to_list)
   | Package p ->
     Other

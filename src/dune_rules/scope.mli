@@ -23,7 +23,7 @@ module DB : sig
   module Lib_entry : sig
     type t =
       | Library of Lib.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Deprecated_library_name of Deprecated_library_name.t
   end
 
   val lib_entries_of_package : Context.t -> Package.Name.t -> Lib_entry.t list Memo.t

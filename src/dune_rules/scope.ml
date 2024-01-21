@@ -47,7 +47,7 @@ module DB = struct
   module Library_related_stanza = struct
     type t =
       | Library of Path.Build.t * Library.t
-      | Library_redirect of Dune_file.Library_redirect.Local.t
+      | Library_redirect of Library_redirect.Local.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
@@ -151,8 +151,7 @@ module DB = struct
              let named p loc = Option.some_if (name = p) loc in
              match stanza with
              | Library (_, { buildable = { loc; _ }; visibility = Public p; _ })
-             | Deprecated_library_name
-                 { Dune_file.Library_redirect.loc; old_name = p, _; _ } ->
+             | Deprecated_library_name { Library_redirect.loc; old_name = p, _; _ } ->
                named (Public_lib.name p) loc
              | _ -> None)
          with
@@ -317,7 +316,7 @@ module DB = struct
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
           | Dune_file.Deprecated_library_name.T d ->
             Deprecated_library_name d :: acc, coq_acc
-          | Dune_file.Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
+          | Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
             acc, (ctx_dir, coq_lib) :: coq_acc

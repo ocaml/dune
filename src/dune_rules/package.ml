@@ -22,8 +22,6 @@ module Name = struct
     OpamPackage.Name.to_string opam_package_name |> of_string
   ;;
 
-  let to_opam_package_name t = to_string t |> OpamPackage.Name.of_string
-
   module Infix = Comparator.Operators (String)
   module Map_traversals = Memo.Make_map_traversals (Map)
 

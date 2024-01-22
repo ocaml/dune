@@ -10,12 +10,12 @@ val stanza_package : Stanza.t -> Package.t option
 val of_ast : Dune_project.t -> Dune_lang.Ast.t -> Stanza.t list
 
 (** A fully evaluated dune file *)
-type t =
-  { dir : Path.Source.t
-  ; project : Dune_project.t
-  ; stanzas : Stanza.t list
-  }
+type t
 
+val dir : t -> Path.Source.t
+val stanzas : t -> Stanza.t list
+val set_stanzas : t -> Stanza.t list -> t
+val project : t -> Dune_project.t
 val equal : t -> t -> bool
 val hash : t -> int
 val to_dyn : t -> Dyn.t

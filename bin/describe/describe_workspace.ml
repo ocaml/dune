@@ -495,8 +495,8 @@ module Crawl = struct
 
   (* Tests whether a dune file is located in a path that is a descendant of
      some directory *)
-  let dune_file_is_in_dirs dirs (dune_file : Dune_file.t) =
-    source_path_is_in_dirs dirs dune_file.dir
+  let dune_file_is_in_dirs dirs dune_file =
+    Dune_file.dir dune_file |> source_path_is_in_dirs dirs
   ;;
 
   (* Tests whether a library is located in a path that is a descendant of some
@@ -535,11 +535,17 @@ module Crawl = struct
       (* the list of workspace items that describe executables, and the list of
          their direct library dependencies *)
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
-        Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
-          let dir = Path.Build.append_source (Context.build_dir context) dune_file.dir in
+        Dune_file.stanzas dune_file
+        |> Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Executables.T exes ->
-            executables sctx ~options ~project:dune_file.project ~dir exes
+            let dir =
+              Path.Build.append_source
+                (Context.build_dir context)
+                (Dune_file.dir dune_file)
+            in
+            let project = Dune_file.project dune_file in
+            executables sctx ~options ~project ~dir exes
           | _ -> Memo.return None)
         >>| List.filter_opt)
       >>| List.concat

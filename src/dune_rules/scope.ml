@@ -312,12 +312,12 @@ module DB = struct
           let build_dir = Context.build_dir context in
           match Stanza.repr stanza with
           | Library.T lib ->
-            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
+            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
           | Deprecated_library_name.T d -> Deprecated_library_name d :: acc, coq_acc
           | Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
+            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             acc, (ctx_dir, coq_lib) :: coq_acc
           | _ -> acc, coq_acc)
     in
@@ -385,7 +385,9 @@ module DB = struct
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
-              let* scope = find_by_dir (Path.Build.append_source build_dir d.dir) in
+              let* scope =
+                find_by_dir (Path.Build.append_source build_dir (Dune_file.dir d))
+              in
               let db = libs scope in
               Lib.DB.find db (Library.best_name lib)
             in

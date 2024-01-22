@@ -532,7 +532,9 @@ end = struct
     and+ l =
       let* package_db = Package_db.create (Context.name ctx) in
       Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-        let dir = Path.Build.append_source (Context.build_dir ctx) dune_file.dir in
+        let dir =
+          Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
+        in
         let named_entries =
           let* expander = Super_context.expander sctx ~dir
           and* scope = Scope.DB.find_by_dir dir in

@@ -206,14 +206,9 @@ let define_all_alias ~dir ~project ~js_targets =
   Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let gen_rules_for_stanzas
-  sctx
-  dir_contents
-  cctxs
-  expander
-  { Dune_file.dir = src_dir; stanzas; project }
-  ~dir:ctx_dir
-  =
+let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
+  let src_dir = Dune_file.dir dune_file in
+  let stanzas = Dune_file.stanzas dune_file in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas
@@ -292,7 +287,10 @@ let gen_rules_for_stanzas
         Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
       | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
       | _ -> Memo.return ())
-  and+ () = define_all_alias ~dir:ctx_dir ~project ~js_targets in
+  and+ () =
+    let project = Dune_file.project dune_file in
+    define_all_alias ~dir:ctx_dir ~project ~js_targets
+  in
   cctxs
 ;;
 

@@ -199,6 +199,11 @@ type t =
   ; stanzas : Stanzas.t
   }
 
+let dir t = t.dir
+let stanzas t = t.stanzas
+let set_stanzas t stanzas = { t with stanzas }
+let project t = t.project
+
 let is_promoted_rule =
   let is_promoted_mode version = function
     | Rule.Mode.Promote { only = None; lifetime; _ } ->

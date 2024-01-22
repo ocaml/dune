@@ -59,7 +59,7 @@ let get_pped_file super_context file =
        let* dune_file = Dune_rules.Only_packages.stanzas_in_dir (dir |> in_build_dir) in
        let staged_pps =
          Option.bind dune_file ~f:(fun dune_file ->
-           dune_file.stanzas
+           Dune_file.stanzas dune_file
            |> List.fold_left ~init:None ~f:(fun acc stanza ->
              match Stanza.repr stanza with
              | Dune_rules.Library.T lib ->

@@ -16,7 +16,6 @@ module Name = struct
   ;;
 
   let opam_fn (t : t) = to_string t ^ opam_ext
-  let meta_fn (t : t) = "META." ^ to_string t
   let version_fn (t : t) = to_string t ^ ".version"
 
   let of_opam_package_name opam_package_name =
@@ -559,9 +558,7 @@ let to_dyn
 ;;
 
 let opam_file t = t.opam_file
-let meta_file t = Path.Source.relative t.id.dir (Name.meta_fn t.id.name)
 let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
-let deprecated_meta_file t name = Path.Source.relative t.id.dir (Name.meta_fn name)
 let sites t = t.sites
 let has_opam_file t = t.has_opam_file
 let allow_empty t = t.allow_empty

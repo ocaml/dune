@@ -99,8 +99,6 @@ val file : dir:Path.t -> name:Name.t -> Path.t
 val encode : Name.t -> t Dune_lang.Encoder.t
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 val opam_file : t -> Path.Source.t
-val meta_file : t -> Path.Source.t
-val deprecated_meta_file : t -> Name.t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val is_opam_file : Path.t -> bool

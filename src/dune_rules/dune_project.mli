@@ -123,7 +123,7 @@ val load
 
     - [info] defaults to the empty package info
     - [package] defaults to the empty map of packages *)
-val anonymous : dir:Path.Source.t -> Package.Info.t -> Package.t Package.Name.Map.t -> t
+val anonymous : dir:Path.Source.t -> Package_info.t -> Package.t Package.Name.Map.t -> t
 
 (** "dune-project" *)
 val filename : Filename.t
@@ -153,7 +153,7 @@ val executables_implicit_empty_intf : t -> bool
 val accept_alternative_dune_file_name : t -> bool
 val strict_package_deps : t -> bool
 val cram : t -> bool
-val info : t -> Package.Info.t
+val info : t -> Package_info.t
 val warnings : t -> Warning.Settings.t
 
 (** Update the execution parameters according to what is written in the

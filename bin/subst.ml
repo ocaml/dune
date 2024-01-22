@@ -244,8 +244,8 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     | Some value -> Ok (String.concat ~sep value)
   in
   let make_dev_repo_value = function
-    | Some (Package.Source_kind.Host h) -> Ok (Package.Source_kind.Host.homepage h)
-    | Some (Package.Source_kind.Url url) -> Ok url
+    | Some (Source_kind.Host h) -> Ok (Source_kind.Host.homepage h)
+    | Some (Source_kind.Url url) -> Ok url
     | None -> Error (sprintf "variable dev-repo not found in dune-project file")
   in
   let make_version = function
@@ -260,13 +260,13 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
       , match commit with
         | None -> Error "repository does not contain any commits"
         | Some s -> Ok s )
-    ; "PKG_MAINTAINER", make_separated "maintainer" ", " @@ Package.Info.maintainers info
-    ; "PKG_AUTHORS", make_separated "authors" ", " @@ Package.Info.authors info
-    ; "PKG_HOMEPAGE", make_value "homepage" @@ Package.Info.homepage info
-    ; "PKG_ISSUES", make_value "bug-reports" @@ Package.Info.bug_reports info
-    ; "PKG_DOC", make_value "doc" @@ Package.Info.documentation info
-    ; "PKG_LICENSE", make_separated "license" ", " @@ Package.Info.license info
-    ; "PKG_REPO", make_dev_repo_value @@ Package.Info.source info
+    ; "PKG_MAINTAINER", make_separated "maintainer" ", " @@ Package_info.maintainers info
+    ; "PKG_AUTHORS", make_separated "authors" ", " @@ Package_info.authors info
+    ; "PKG_HOMEPAGE", make_value "homepage" @@ Package_info.homepage info
+    ; "PKG_ISSUES", make_value "bug-reports" @@ Package_info.bug_reports info
+    ; "PKG_DOC", make_value "doc" @@ Package_info.documentation info
+    ; "PKG_LICENSE", make_separated "license" ", " @@ Package_info.license info
+    ; "PKG_REPO", make_dev_repo_value @@ Package_info.source info
     ]
 ;;
 

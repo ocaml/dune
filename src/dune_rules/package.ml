@@ -63,283 +63,6 @@ module Id = struct
   module Map = C.Map
 end
 
-module Source_kind = struct
-  module Host = struct
-    type kind =
-      | Github
-      | Bitbucket
-      | Gitlab
-      | Sourcehut
-
-    let to_string = function
-      | Github -> "github"
-      | Bitbucket -> "bitbucket"
-      | Gitlab -> "gitlab"
-      | Sourcehut -> "sourcehut"
-    ;;
-
-    type t =
-      { user : string
-      ; repo : string
-      ; kind : kind
-      }
-
-    let dyn_of_kind kind = kind |> to_string |> Dyn.string
-
-    let to_dyn { user; repo; kind } =
-      let open Dyn in
-      record [ "kind", dyn_of_kind kind; "user", string user; "repo", string repo ]
-    ;;
-
-    let host_of_kind = function
-      | Github -> "github.com"
-      | Bitbucket -> "bitbucket.org"
-      | Gitlab -> "gitlab.com"
-      | Sourcehut -> "sr.ht"
-    ;;
-
-    let base_uri { kind; user; repo } =
-      let host = host_of_kind kind in
-      sprintf
-        "%s/%s/%s"
-        host
-        (match kind with
-         | Sourcehut -> "~" ^ user
-         | _ -> user)
-        repo
-    ;;
-
-    let add_https s = "https://" ^ s
-    let homepage t = add_https (base_uri t)
-
-    let bug_reports t =
-      match t.kind with
-      | Sourcehut -> add_https ("todo." ^ base_uri t)
-      | _ ->
-        homepage t
-        ^
-          (match t.kind with
-          | Sourcehut -> assert false
-          | Bitbucket | Github -> "/issues"
-          | Gitlab -> "/-/issues")
-    ;;
-
-    let enum k =
-      [ "GitHub", Github, None
-      ; "Bitbucket", Bitbucket, Some (2, 8)
-      ; "Gitlab", Gitlab, Some (2, 8)
-      ; "Sourcehut", Sourcehut, Some (3, 1)
-      ]
-      |> List.map ~f:(fun (name, kind, since) ->
-        let decode =
-          let of_string ~loc s =
-            match String.split ~on:'/' s with
-            | [ user; repo ] -> k { kind; user; repo }
-            | _ ->
-              User_error.raise
-                ~loc
-                [ Pp.textf "%s repository must be of form user/repo" name ]
-          in
-          let open Dune_lang.Decoder in
-          (match since with
-           | None -> return ()
-           | Some v -> Dune_lang.Syntax.since Stanza.syntax v)
-          >>> plain_string of_string
-        in
-        let constr = to_string kind in
-        constr, decode)
-    ;;
-
-    let encode { user; repo; kind } =
-      let forge = to_string kind in
-      let path = user ^ "/" ^ repo in
-      let open Dune_lang.Encoder in
-      pair string string (forge, path)
-    ;;
-
-    let to_string t =
-      let base_uri =
-        let base = base_uri t in
-        match t.kind with
-        | Sourcehut -> "git." ^ base
-        | _ -> base ^ ".git"
-      in
-      "git+https://" ^ base_uri
-    ;;
-  end
-
-  type t =
-    | Host of Host.t
-    | Url of string
-
-  let to_dyn =
-    let open Dyn in
-    function
-    | Host h -> variant "Host" [ Host.to_dyn h ]
-    | Url url -> variant "Url" [ string url ]
-  ;;
-
-  let to_string = function
-    | Host h -> Host.to_string h
-    | Url u -> u
-  ;;
-
-  let encode =
-    let open Dune_lang.Encoder in
-    function
-    | Url url -> pair string string ("uri", url)
-    | Host host -> Host.encode host
-  ;;
-
-  let decode =
-    let open Dune_lang.Decoder in
-    sum
-      (( "uri"
-       , let+ s = string in
-         Url s )
-       :: Host.enum (fun x -> Host x))
-  ;;
-end
-
-module Info = struct
-  type t =
-    { source : Source_kind.t option
-    ; license : string list option
-    ; authors : string list option
-    ; homepage : string option
-    ; bug_reports : string option
-    ; documentation : string option
-    ; maintainers : string list option
-    }
-
-  let source t = t.source
-  let license t = t.license
-  let authors t = t.authors
-
-  let homepage t =
-    match t.homepage, t.source with
-    | None, Some (Host h) -> Some (Source_kind.Host.homepage h)
-    | s, _ -> s
-  ;;
-
-  let bug_reports t =
-    match t.bug_reports, t.source with
-    | None, Some (Host h) -> Some (Source_kind.Host.bug_reports h)
-    | s, _ -> s
-  ;;
-
-  let documentation t = t.documentation
-  let maintainers t = t.maintainers
-
-  let empty =
-    { source = None
-    ; license = None
-    ; authors = None
-    ; homepage = None
-    ; bug_reports = None
-    ; documentation = None
-    ; maintainers = None
-    }
-  ;;
-
-  let example =
-    { source =
-        Some
-          (Host { kind = Source_kind.Host.Github; user = "username"; repo = "reponame" })
-    ; license = Some [ "LICENSE" ]
-    ; authors = Some [ "Author Name" ]
-    ; maintainers = Some [ "Maintainer Name" ]
-    ; documentation =
-        Some "https://url/to/documentation"
-        (* homepage and bug_reports are inferred from the source *)
-    ; homepage = None
-    ; bug_reports = None
-    }
-  ;;
-
-  let to_dyn
-    { source; license; authors; homepage; bug_reports; documentation; maintainers }
-    =
-    let open Dyn in
-    record
-      [ "source", (option Source_kind.to_dyn) source
-      ; "license", (option (list string)) license
-      ; "homepage", (option string) homepage
-      ; "documentation", (option string) documentation
-      ; "bug_reports", (option string) bug_reports
-      ; "maintainers", option (list string) maintainers
-      ; "authors", option (list string) authors
-      ]
-  ;;
-
-  let encode_fields
-    { source; authors; license; homepage; documentation; bug_reports; maintainers }
-    =
-    let open Dune_lang.Encoder in
-    record_fields
-      [ field_o "source" Source_kind.encode source
-      ; field_l "authors" string (Option.value ~default:[] authors)
-      ; field_l "maintainers" string (Option.value ~default:[] maintainers)
-      ; field_l "license" string (Option.value ~default:[] license)
-      ; field_o "homepage" string homepage
-      ; field_o "documentation" string documentation
-      ; field_o "bug_reports" string bug_reports
-      ]
-  ;;
-
-  let decode ?since () =
-    let open Dune_lang.Decoder in
-    let v default = Option.value since ~default in
-    let+ source =
-      field_o
-        "source"
-        (Dune_lang.Syntax.since Stanza.syntax (v (1, 7)) >>> Source_kind.decode)
-    and+ authors =
-      field_o "authors" (Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> repeat string)
-    and+ license =
-      field_o
-        "license"
-        (Dune_lang.Syntax.since Stanza.syntax (v (1, 9))
-         >>> let* l = repeat1 string in
-             (if List.length l > 1
-              then
-                Dune_lang.Syntax.since
-                  ~what:"Parsing several licenses"
-                  Stanza.syntax
-                  (v (3, 2))
-              else return ())
-             >>> return l)
-    and+ homepage =
-      field_o "homepage" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
-    and+ documentation =
-      field_o "documentation" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
-    and+ bug_reports =
-      field_o "bug_reports" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
-    and+ maintainers =
-      field_o
-        "maintainers"
-        (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
-    in
-    { source; authors; license; homepage; documentation; bug_reports; maintainers }
-  ;;
-
-  let superpose t1 t2 =
-    let f o1 o2 =
-      match o2 with
-      | Some _ as x -> x
-      | None -> o1
-    in
-    { source = f t1.source t2.source
-    ; authors = f t1.authors t2.authors
-    ; license = f t1.license t2.license
-    ; homepage = f t1.homepage t2.homepage
-    ; documentation = f t1.documentation t2.documentation
-    ; bug_reports = f t1.bug_reports t2.bug_reports
-    ; maintainers = f t1.maintainers t2.maintainers
-    }
-  ;;
-end
-
 type opam_file =
   | Exists of bool
   | Generated
@@ -360,7 +83,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
-  ; info : Info.t
+  ; info : Package_info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
   ; tags : string list
@@ -417,7 +140,7 @@ let encode
   =
   let open Dune_lang.Encoder in
   let fields =
-    Info.encode_fields info
+    Package_info.encode_fields info
     @ record_fields
         [ field "name" Name.encode name
         ; field_o "synopsis" string synopsis
@@ -469,7 +192,7 @@ let decode =
        and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
        and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
        and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
-       and+ info = Info.decode ~since:(2, 0) ()
+       and+ info = Package_info.decode ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ deprecated_package_names =
          name_map
@@ -548,7 +271,7 @@ let to_dyn
     ; "depends", list Dependency.to_dyn depends
     ; "conflicts", list Dependency.to_dyn conflicts
     ; "depopts", list Dependency.to_dyn depopts
-    ; "info", Info.to_dyn info
+    ; "info", Package_info.to_dyn info
     ; "has_opam_file", dyn_of_opam_file has_opam_file
     ; "tags", list string tags
     ; "version", option Package_version.to_dyn version
@@ -581,7 +304,7 @@ let default name dir =
   ; description = Some "A longer description"
   ; depends
   ; conflicts = []
-  ; info = Info.empty
+  ; info = Package_info.empty
   ; depopts = []
   ; has_opam_file = Exists false
   ; tags = [ "topics"; "to describe"; "your"; "project" ]
@@ -655,16 +378,16 @@ let load_opam_file file name =
   ; depends = []
   ; depopts = []
   ; info =
-      { maintainers = get_many "maintainer"
-      ; authors = get_many "authors"
-      ; homepage = get_one "homepage"
-      ; bug_reports = get_one "bug-reports"
-      ; documentation = get_one "doc"
-      ; license = get_many "license"
-      ; source =
+      Package_info.create
+        ~maintainers:(get_many "maintainer")
+        ~authors:(get_many "authors")
+        ~homepage:(get_one "homepage")
+        ~bug_reports:(get_one "bug-reports")
+        ~documentation:(get_one "doc")
+        ~license:(get_many "license")
+        ~source:
           (let+ url = get_one "dev-repo" in
            Source_kind.Url url)
-      }
   ; synopsis = get_one "synopsis"
   ; description = get_one "description"
   ; has_opam_file = Exists true

@@ -186,7 +186,7 @@ module Init_context = struct
       | None ->
         Dune_project.anonymous
           ~dir:Path.Source.root
-          Package.Info.empty
+          Package_info.empty
           Package.Name.Map.empty
     in
     let dir =
@@ -378,7 +378,7 @@ module Component = struct
           Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
-        let info = Package.Info.example in
+        let info = Package_info.example in
         Dune_project.anonymous ~dir info packages
         |> Dune_project.set_generate_opam_files opam_file_gen
         |> Dune_project.encode

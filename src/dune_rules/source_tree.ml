@@ -464,7 +464,7 @@ end = struct
         ~infer_from_opam_files:true
       >>| function
       | Some p -> p
-      | None -> Dune_project.anonymous ~dir:path Package.Info.empty Package.Name.Map.empty
+      | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty
     in
     let* dirs_visited =
       Readdir.File.of_source_path (In_source_dir path)

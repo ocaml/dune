@@ -29,6 +29,8 @@ include struct
   module Context = Context
   module Workspace = Workspace
   module Package = Package
+  module Source_kind = Source_kind
+  module Package_info = Package_info
   module Section = Install.Section
   module Dune_project = Dune_project
   module Dune_package = Dune_package

@@ -131,7 +131,7 @@ type t =
   ; root : Path.Source.t
   ; version : Package_version.t option
   ; dune_version : Dune_lang.Syntax.Version.t
-  ; info : Package.Info.t
+  ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
   ; project_file : Path.Source.t
@@ -211,7 +211,7 @@ let to_dyn
     ; "root", Path.Source.to_dyn root
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
-    ; "info", Package.Info.to_dyn info
+    ; "info", Package_info.to_dyn info
     ; "project_file", Path.Source.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
@@ -716,7 +716,7 @@ let encode : t -> Dune_lang.t list =
   [ lang_stanza; name ]
   @ flags
   @ version
-  @ Package.Info.encode_fields info
+  @ Package_info.encode_fields info
   @ formatting
   @ dialects
   @ packages
@@ -842,7 +842,7 @@ let parse_packages
                  ])))
   in
   Package.Name.Map.map packages ~f:(fun p ->
-    let info = Package.Info.superpose info (Package.info p) in
+    let info = Package_info.superpose info (Package.info p) in
     let version =
       match Package.version p with
       | Some _ as v -> v
@@ -856,7 +856,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   @@ fields
   @@ let+ name = field_o "name" Name.decode
      and+ version = field_o "version" Package_version.decode
-     and+ info = Package.Info.decode ()
+     and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
      and+ explicit_extensions =
        multi_field
@@ -1074,7 +1074,7 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
     let+ opam_packages =
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
-    Some (infer Package.Info.empty ~dir opam_packages)
+    Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None
 ;;
 

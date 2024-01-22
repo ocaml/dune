@@ -65,6 +65,8 @@ module Odoc = Odoc
 module Library = Library
 module Executables = Executables
 module Tests = Tests
+module Source_kind = Source_kind
+module Package_info = Package_info
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

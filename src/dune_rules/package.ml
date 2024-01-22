@@ -344,6 +344,13 @@ type opam_file =
   | Exists of bool
   | Generated
 
+(* we need the original opam file when passing it [$ dune pkg lock] we want to
+   to allow the opam library interpret the opam file directly. *)
+type original_opam_file =
+  { file : Path.Source.t
+  ; contents : string
+  }
+
 type t =
   { id : Id.t
   ; opam_file : Path.Source.t
@@ -360,7 +367,7 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
-  ; original_opam_file : (Path.Source.t * string) option
+  ; original_opam_file : original_opam_file option
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -665,7 +672,7 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = true
-  ; original_opam_file = Some (file, opam_file_string)
+  ; original_opam_file = Some { file; contents = opam_file_string }
   }
 ;;
 
@@ -683,7 +690,17 @@ let missing_deps (t : t) ~effective_deps =
 
 let to_local_package t =
   match t.original_opam_file with
-  | Some (file, opam_file_string) ->
+  | None ->
+    { Dune_pkg.Local_package.name = name t
+    ; version = t.version
+    ; dependencies = t.depends
+    ; conflicts = t.conflicts
+    ; depopts = t.depopts
+    ; loc = t.loc
+    ; conflict_class = []
+    ; pins = Name.Map.empty
+    }
+  | Some { file; contents = opam_file_string } ->
     let opam_file =
       Dune_pkg.Opam_file.read_from_string_exn
         ~contents:opam_file_string
@@ -724,15 +741,5 @@ let to_local_package t =
     ; loc = t.loc
     ; conflict_class
     ; pins
-    }
-  | None ->
-    { Dune_pkg.Local_package.name = name t
-    ; version = t.version
-    ; dependencies = t.depends
-    ; conflicts = t.conflicts
-    ; depopts = t.depopts
-    ; loc = t.loc
-    ; conflict_class = []
-    ; pins = Name.Map.empty
     }
 ;;

@@ -15,8 +15,7 @@ let term =
   @@ fun () ->
   let open Memo.O in
   Dune_rules.Install_rules.stanzas_to_entries super_context
-  >>| Package.Name.Map.to_dyn (fun entries ->
-    Dyn.List (List.map ~f:Install.Entry.Sourced.to_dyn entries))
+  >>| Package.Name.Map.to_dyn (Dyn.list Install.Entry.Sourced.to_dyn)
   >>| Describe_format.print_dyn format
 ;;
 

@@ -288,6 +288,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
         t'
     ;;
 
-    let to_dyn a_to_dyn t = to_dyn (fun l -> Dyn.List (List.map ~f:a_to_dyn l)) t
+    let to_dyn a_to_dyn t = to_dyn (Dyn.list a_to_dyn) t
   end
 end

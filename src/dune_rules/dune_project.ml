@@ -13,8 +13,6 @@ module Name : sig
   val to_string_hum : t -> string
   val encode : t Dune_lang.Encoder.t
   val decode : t Dune_lang.Decoder.t
-  val to_encoded_string : t -> string
-  val of_encoded_string : string -> t
   val anonymous : Path.Source.t -> t
   val named : string -> t option
 
@@ -48,8 +46,6 @@ end = struct
   module Map = Map.Make (T)
   module Infix = Comparator.Operators (T)
 
-  let anonymous_root = Anonymous Path.Source.root
-
   let to_string_hum = function
     | Named s -> s
     | Anonymous p -> sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
@@ -73,43 +69,7 @@ end = struct
       else User_error.raise ~loc [ Pp.text "Invalid project name" ])
   ;;
 
-  let to_encoded_string = function
-    | Named s -> s
-    | Anonymous p ->
-      if Path.Source.is_root p
-      then "."
-      else
-        "."
-        ^ String.map (Path.Source.to_string p) ~f:(function
-          | '/' -> '.'
-          | c -> c)
-  ;;
-
   let encode n = Dune_lang.Encoder.string (to_string_hum n)
-
-  let of_encoded_string =
-    let invalid s =
-      (* Users would see this error if they did "dune build
-         _build/default/.ppx/..." *)
-      User_error.raise [ Pp.textf "Invalid encoded project name: %S" s ]
-    in
-    fun s ->
-      match s with
-      | "" -> invalid s
-      | "." -> anonymous_root
-      | _ when s.[0] = '.' ->
-        (match
-           String.split s ~on:'.'
-           |> List.tl
-           |> String.concat ~sep:"/"
-           |> Path.of_string
-           |> Path.as_in_source_tree
-         with
-         | Some p -> Anonymous p
-         | None -> invalid s)
-      | _ when validate s -> Named s
-      | _ -> invalid s
-  ;;
 end
 
 module File_key = struct

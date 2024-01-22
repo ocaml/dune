@@ -16,11 +16,6 @@ module Name : sig
   (** Convert to a string that is suitable for human readable messages *)
   val to_string_hum : t -> string
 
-  (** Convert to/from an encoded string that is suitable to use in filenames *)
-  val to_encoded_string : t -> string
-
-  val of_encoded_string : string -> t
-
   module Infix : Comparator.OPS with type t = t
   module Map : Map.S with type key = t
 end

@@ -322,12 +322,10 @@ module Sources = struct
     type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
 
     let to_dyn t =
-      String.Map.to_dyn
-        (fun xs ->
-          Dyn.List
-            (List.map xs ~f:(fun (language, path) ->
-               Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ])))
-        t
+      let entry_to_dyn (language, path) =
+        Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ]
+      in
+      String.Map.to_dyn (Dyn.list entry_to_dyn) t
     ;;
 
     let load ~dune_version ~dir ~files =

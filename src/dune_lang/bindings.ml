@@ -31,12 +31,12 @@ let empty = []
 let singleton x = [ Unnamed x ]
 
 let to_dyn dyn_of_a bindings =
-  let open Dyn in
-  Dyn.List
-    (List.map bindings ~f:(function
-      | Unnamed a -> dyn_of_a a
-      | Named (name, bindings) ->
-        Dyn.List (string (":" ^ name) :: List.map ~f:dyn_of_a bindings)))
+  let binding_to_dyn = function
+    | Unnamed a -> dyn_of_a a
+    | Named (name, bindings) ->
+      Dyn.List (Dyn.string (":" ^ name) :: List.map ~f:dyn_of_a bindings)
+  in
+  Dyn.list binding_to_dyn bindings
 ;;
 
 let decode elem =

@@ -28,7 +28,7 @@ let term =
     in
     Dyn.Tuple [ String (Path.to_string opam_file); String contents ]
   in
-  Dyn.List (List.map packages ~f:opam_file_to_dyn) |> Describe_format.print_dyn format
+  packages |> Dyn.list opam_file_to_dyn |> Describe_format.print_dyn format
 ;;
 
 let command =

@@ -64,7 +64,7 @@ let to_path_in_build_or_external ?error_loc t ~dir =
 ;;
 
 module L = struct
-  let to_dyn t = Dyn.List (List.map t ~f:to_dyn)
+  let to_dyn = Dyn.list to_dyn
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
   let concat ts ~dir = List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "

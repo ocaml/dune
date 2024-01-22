@@ -6,7 +6,6 @@ module Name : sig
   type t = Dune_lang.Package_name.t
 
   val opam_fn : t -> Filename.t
-  val version_fn : t -> Filename.t
 
   include module type of Dune_lang.Package_name with type t := t
 

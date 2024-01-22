@@ -16,7 +16,6 @@ module Name = struct
   ;;
 
   let opam_fn (t : t) = to_string t ^ opam_ext
-  let version_fn (t : t) = to_string t ^ ".version"
 
   let of_opam_package_name opam_package_name =
     OpamPackage.Name.to_string opam_package_name |> of_string

@@ -21,14 +21,19 @@ module Package_paths = struct
     else None
   ;;
 
-  let meta_file (ctx : Context.t) pkg =
-    Path.Build.append_source (Context.build_dir ctx) (Package.meta_file pkg)
-  ;;
+  let meta_fn pkg = "META." ^ Package.Name.to_string pkg
 
   let deprecated_meta_file (ctx : Context.t) pkg name =
+    let meta_fn = meta_fn name in
+    let pkg_dir = Package.dir pkg in
     Path.Build.append_source
       (Context.build_dir ctx)
-      (Package.deprecated_meta_file pkg name)
+      (Path.Source.relative pkg_dir meta_fn)
+  ;;
+
+  let meta_file (ctx : Context.t) pkg =
+    let name = Package.name pkg in
+    deprecated_meta_file ctx pkg name
   ;;
 
   let build_dir (ctx : Context.t) (pkg : Package.t) =

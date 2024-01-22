@@ -324,12 +324,12 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
                   same project. The current project's name is %S, but the reference is \
                   to %s."
                  (if lib_exec then "exec" else "")
-                 (Dune_project.Name.to_string_hum (Dune_project.name current_project))
+                 (Dune_project_name.to_string_hum (Dune_project.name current_project))
                  (match referenced_project with
                   | None -> "an external library"
                   | Some project ->
                     Dune_project.name project
-                    |> Dune_project.Name.to_string_hum
+                    |> Dune_project_name.to_string_hum
                     |> String.quoted)
              ])
     else (

@@ -26,10 +26,7 @@ This test uses subst, which needs a git repository:
    create mode 100644 dune-project
    create mode 100644 large.dat
 
-  $ dune subst 2>&1 | head -n 6
-  Error: exception Invalid_argument("Bytes.create")
-  Raised by primitive operation at Stdune__Io.Make.eagerly_input_string in file
-    "otherlibs/stdune/src/io.ml", line 273, characters 14-30
-  Called from Stdune__Io.Make.read_all.(fun) in file
-    "otherlibs/stdune/src/io.ml", line 308, characters 16-40
-  Called from Stdune__Exn.protectx in file "otherlibs/stdune/src/exn.ml", line
+  $ dune subst
+  Warning: Ignoring large file: large.dat
+  Hint: Dune has been built as a 32-bit binary so the maximum size "dune subst"
+  can operate on is 16MiB.

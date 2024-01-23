@@ -186,14 +186,10 @@ module Dir0 = struct
   type t =
     { path : Path.Source.t
     ; status : Sub_dirs.Status.t
-    ; contents : contents
-    ; project : Dune_project.t
-    }
-
-  and contents =
-    { files : Filename.Set.t
+    ; files : Filename.Set.t
     ; sub_dirs : sub_dir Filename.Map.t
     ; dune_file : Dune_file.t option
+    ; project : Dune_project.t
     }
 
   and sub_dir =
@@ -202,12 +198,14 @@ module Dir0 = struct
     ; sub_dir_as_t : (Path.Source.t, t Output.t option) Memo.Cell.t
     }
 
-  let rec to_dyn { path; status; contents; project = _ } =
+  let rec to_dyn { path; status; files; dune_file; sub_dirs; project = _ } =
     let open Dyn in
     Record
       [ "path", Path.Source.to_dyn path
       ; "status", Sub_dirs.Status.to_dyn status
-      ; "contents", dyn_of_contents contents
+      ; "files", Filename.Set.to_dyn files
+      ; "sub_dirs", Filename.Map.to_dyn dyn_of_sub_dir sub_dirs
+      ; ("dune_file", Dyn.(option opaque dune_file))
       ]
 
   and dyn_of_sub_dir { sub_dir_status; sub_dir_as_t; virtual_ } =
@@ -218,28 +216,17 @@ module Dir0 = struct
       ; "sub_dir_as_t", Path.Source.to_dyn path
       ; "virtual_", bool virtual_
       ]
-
-  and dyn_of_contents { files; sub_dirs; dune_file } =
-    let open Dyn in
-    record
-      [ "files", Filename.Set.to_dyn files
-      ; "sub_dirs", Filename.Map.to_dyn dyn_of_sub_dir sub_dirs
-      ; ("dune_file", Dyn.(option opaque dune_file))
-      ; "project", Opaque
-      ]
   ;;
 
-  module Contents = struct
-    let create ~files ~sub_dirs ~dune_file = { files; sub_dirs; dune_file }
-  end
+  let create ~project ~path ~status ~files ~sub_dirs ~dune_file =
+    { path; status; files; sub_dirs; project; dune_file }
+  ;;
 
-  let create ~project ~path ~status ~contents = { path; status; contents; project }
-  let contents t = t.contents
   let path t = t.path
   let status t = t.status
-  let filenames t = (contents t).files
-  let sub_dirs t = (contents t).sub_dirs
-  let dune_file t = (contents t).dune_file
+  let filenames t = t.files
+  let sub_dirs t = t.sub_dirs
+  let dune_file t = t.dune_file
   let project t = t.project
 
   let sub_dir_names t =
@@ -397,7 +384,7 @@ end = struct
         let open Option.O in
         let* dune_file =
           let* parent = parent in
-          parent.contents.dune_file
+          parent.dune_file
         in
         let+ dir_map =
           let dir_basename = Path.Source.basename path in
@@ -432,7 +419,8 @@ end = struct
         ~dune_file
         ~path
     in
-    Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited
+    ( Dir0.create ~project ~status:dir_status ~path ~files ~sub_dirs ~dune_file
+    , dirs_visited )
   ;;
 
   let root () =
@@ -465,8 +453,7 @@ end = struct
       | Ok file -> Dirs_visited.singleton path file
       | Error unix_error -> error_unable_to_load ~path unix_error
     in
-    let+ contents, visited = contents readdir ~dirs_visited ~project ~dir_status in
-    let dir = Dir0.create ~project ~path ~status:dir_status ~contents in
+    let+ dir, visited = contents readdir ~dirs_visited ~project ~dir_status in
     { Output.dir; visited }
   ;;
 
@@ -482,7 +469,7 @@ end = struct
          let* { Output.dir = parent_dir; visited = dirs_visited } = parent in
          let+ dir_status, virtual_ =
            let basename = Path.Source.basename path in
-           let+ sub_dir = Filename.Map.find parent_dir.contents.sub_dirs basename in
+           let+ sub_dir = Filename.Map.find parent_dir.sub_dirs basename in
            let status =
              let status = sub_dir.sub_dir_status in
              if Dune_project.cram parent_dir.project && Cram_test.is_cram_suffix basename
@@ -514,12 +501,11 @@ end = struct
                ~infer_from_opam_files:false
              >>| Option.value ~default:parent_dir.project
          in
-         let* contents, visited =
+         let+ dir, visited =
            let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
            contents readdir ~dirs_visited ~project ~dir_status
          in
-         let dir = Dir0.create ~project ~path ~status:dir_status ~contents in
-         Memo.return (Some { Output.dir; visited }))
+         Some { Output.dir; visited })
   ;;
 
   let find_dir_raw =
@@ -587,7 +573,7 @@ module Dir = struct
         | true ->
           let+ here = f t
           and+ in_sub_dirs =
-            M.List.map (Filename.Map.values t.contents.sub_dirs) ~f:(fun s ->
+            M.List.map (Filename.Map.values t.sub_dirs) ~f:(fun s ->
               let* t = M.of_memo (sub_dir_as_t s) in
               map_reduce t ~traverse ~f)
           in

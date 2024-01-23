@@ -189,7 +189,10 @@ module Module = struct
   let term =
     let+ builder = Common.Builder.term
     and+ module_path =
-      Arg.(required & pos 0 (some string) None & Arg.info [] ~docv:"MODULE")
+      Arg.(
+        required
+        & pos 0 (some string) None
+        & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
     and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
     let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
@@ -203,12 +206,22 @@ module Module = struct
         in
         let+ directives =
           let module_path =
-            let root = Common.root common in
-            Path.Source.relative
-              Path.Source.root
-              (root.reach_from_root_prefix ^ module_path)
+            if Filename.is_relative module_path
+            then Path.Local.of_string module_path
+            else (
+              let root =
+                (Common.root common).dir
+                |> Path.of_string
+                |> Path.to_absolute_filename
+                |> Path.of_string
+              in
+              match Path.drop_prefix ~prefix:root (Path.of_string module_path) with
+              | Some module_path -> module_path
+              | None ->
+                User_error.raise
+                  [ Pp.text "Module path not a descendent of workspace root." ])
           in
-          module_directives sctx module_path
+          module_directives sctx (Path.Source.of_local module_path)
         in
         Dune_rules.Toplevel.print_toplevel_init_file directives))
   ;;

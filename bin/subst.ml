@@ -1,23 +1,32 @@
 open Import
 
-let is_a_source_file path =
-  (match Path.extension path with
-   | ".flv"
-   | ".gif"
-   | ".ico"
-   | ".jpeg"
-   | ".jpg"
-   | ".mov"
-   | ".mp3"
-   | ".mp4"
-   | ".otf"
-   | ".pdf"
-   | ".png"
-   | ".ttf"
-   | ".woff" -> false
-   | _ -> true)
-  && (Path.stat_exn path).st_kind = Unix.S_REG
+let is_path_a_source_file path =
+  match Path.extension path with
+  | ".flv"
+  | ".gif"
+  | ".ico"
+  | ".jpeg"
+  | ".jpg"
+  | ".mov"
+  | ".mp3"
+  | ".mp4"
+  | ".otf"
+  | ".pdf"
+  | ".png"
+  | ".ttf"
+  | ".woff" -> false
+  | _ -> true
 ;;
+
+let is_kind_a_source_file path =
+  match Path.stat_exn path with
+  | st -> st.st_kind = Unix.S_REG
+  | exception Unix.Unix_error (ENOENT, "stat", _) ->
+    (* broken symlink *)
+    false
+;;
+
+let is_a_source_file path = is_path_a_source_file path && is_kind_a_source_file path
 
 let subst_string s path ~map =
   let len = String.length s in

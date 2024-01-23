@@ -83,7 +83,7 @@ let packages_of_project project =
 let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
   List.filter_map ~f:(fun stanza ->
     let include_stanza =
-      match Dune_file.stanza_package stanza with
+      match Stanzas.stanza_package stanza with
       | None -> true
       | Some package ->
         let name = Package.name package in

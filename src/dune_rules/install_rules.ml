@@ -449,7 +449,7 @@ end = struct
       let+ stanza = keep_if expander stanza ~scope in
       let open Option.O in
       let* stanza = stanza in
-      let+ package = Dune_file.stanza_package stanza in
+      let+ package = Stanzas.stanza_package stanza in
       stanza, package
     in
     match stanza_and_package with

@@ -119,16 +119,10 @@ module Stanzas = struct
   ;;
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
-
-  let parser project =
-    let syntax_parser = Dune_project.stanza_parser project in
-    Dune_project.set project syntax_parser
-  ;;
-
   let parse parser = Dune_lang.Decoder.parse parser Univ_map.empty
 
   let of_ast (project : Dune_project.t) sexp =
-    let parser = parser project in
+    let parser = Dune_project.stanza_parser project in
     parse parser sexp
   ;;
 
@@ -146,7 +140,7 @@ module Stanzas = struct
   ;;
 
   let parse ~file ~dir (project : Dune_project.t) sexps =
-    let stanza_parser = parser project in
+    let stanza_parser = Dune_project.stanza_parser project in
     let warnings = Warning_emit.Bag.create () in
     let stanza_parser = Warning_emit.Bag.set warnings stanza_parser in
     let open Memo.O in

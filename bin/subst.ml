@@ -19,11 +19,12 @@ let is_path_a_source_file path =
 ;;
 
 let is_kind_a_source_file path =
-  match Path.stat_exn path with
-  | st -> st.st_kind = S_REG
-  | exception Unix.Unix_error (ENOENT, "stat", _) ->
+  match Path.stat path with
+  | Ok st -> st.st_kind = S_REG
+  | Error (ENOENT, "stat", _) ->
     (* broken symlink *)
     false
+  | Error e -> Unix_error.Detailed.raise e
 ;;
 
 let is_a_source_file path = is_path_a_source_file path && is_kind_a_source_file path

@@ -278,8 +278,7 @@ end = struct
     let status ~status_map ~(parent_status : Sub_dirs.Status.t) dir
       : Sub_dirs.Status.t option
       =
-      let status = Sub_dirs.status status_map ~dir in
-      match status with
+      match Sub_dirs.status status_map ~dir with
       | Ignored -> None
       | Status status ->
         Some
@@ -326,7 +325,6 @@ end = struct
         let dirs = Sub_dirs.Dir_map.sub_dirs df.plain.for_subdirs in
         let status_map = Sub_dirs.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
-          let path = Path.Source.relative path fn in
           match status ~status_map ~parent_status fn with
           | None -> acc
           | Some dir_status ->
@@ -334,7 +332,9 @@ end = struct
               (* Physical directories have already been added so they are
                  skipped here.*)
               | Some _ as r -> r
-              | None -> Some (make_subdir ~dir_status ~virtual_:true path)))
+              | None ->
+                let path = Path.Source.relative path fn in
+                Some (make_subdir ~dir_status ~virtual_:true path)))
     ;;
 
     let all ~dirs_visited ~dirs ~sub_dirs ~parent_status ~dune_file ~path =
@@ -397,8 +397,10 @@ end = struct
       | Some parent ->
         let+ parent = find_dir parent in
         let open Option.O in
-        let* parent = parent in
-        let* dune_file = parent.contents.dune_file in
+        let* dune_file =
+          let* parent = parent in
+          parent.contents.dune_file
+        in
         let+ dir_map =
           let dir_basename = Path.Source.basename path in
           Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
@@ -480,7 +482,7 @@ end = struct
       (match
          let open Option.O in
          let* { Output.dir = parent_dir; visited = dirs_visited } = parent in
-         let* dir_status, virtual_ =
+         let+ dir_status, virtual_ =
            let basename = Path.Source.basename path in
            let+ sub_dir = Filename.Map.find parent_dir.contents.sub_dirs basename in
            let status =
@@ -491,7 +493,7 @@ end = struct
            in
            status, sub_dir.virtual_
          in
-         Some (parent_dir, dirs_visited, dir_status, virtual_)
+         parent_dir, dirs_visited, dir_status, virtual_
        with
        | None -> Memo.return None
        | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
@@ -508,13 +510,11 @@ end = struct
            if dir_status = Data_only
            then Memo.return parent_dir.project
            else
-             let+ project =
-               Dune_project.load
-                 ~dir:path
-                 ~files:(Readdir.files readdir)
-                 ~infer_from_opam_files:false
-             in
-             Option.value project ~default:parent_dir.project
+             Dune_project.load
+               ~dir:path
+               ~files:(Readdir.files readdir)
+               ~infer_from_opam_files:false
+             >>| Option.value ~default:parent_dir.project
          in
          let* contents, visited =
            let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in

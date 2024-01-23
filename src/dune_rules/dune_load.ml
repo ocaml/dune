@@ -183,6 +183,7 @@ module Script = struct
     if not (Path.Untracked.exists (Path.build generated_dune_file))
     then
       User_error.raise
+        ~loc:(Loc.in_file (Path.source file))
         [ Pp.textf
             "%s failed to produce a valid dune file."
             (Path.Source.to_string_maybe_quoted file)

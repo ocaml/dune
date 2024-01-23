@@ -296,9 +296,7 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_di
 
 let gen_format_and_cram_rules sctx ~expander ~dir source_dir =
   let+ () = Format_rules.setup_alias ~dir
-  and+ () =
-    Source_tree.Dir.cram_tests source_dir >>= Cram_rules.rules ~sctx ~expander ~dir
-  in
+  and+ () = Cram_rules.rules source_dir ~sctx ~expander ~dir in
   ()
 ;;
 

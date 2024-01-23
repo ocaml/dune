@@ -21,9 +21,7 @@ end
 
 module Dir : sig
   type t
-  type error = Missing_run_t of Cram_test.t
 
-  val cram_tests : t -> (Cram_test.t, error) result list Memo.t
   val path : t -> Path.Source.t
   val filenames : t -> Filename.Set.t
 

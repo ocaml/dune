@@ -24,6 +24,8 @@ module Spec = struct
   ;;
 end
 
+type error = Missing_run_t of Cram_test.t
+
 let missing_run_t (error : Cram_test.t) =
   Action_builder.fail
     { fail =
@@ -48,7 +50,7 @@ let test_rule
   ~expander
   ~dir
   ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
-  (test : (Cram_test.t, Source_tree.Dir.error) result)
+  (test : (Cram_test.t, error) result)
   =
   let module Alias_rules = Simple_rules.Alias_rules in
   let aliases = Alias.Name.Set.to_list_map alias ~f:(Alias.make ~dir) in
@@ -145,7 +147,7 @@ let rules ~sctx ~expander ~dir tests =
       let name =
         match test with
         | Ok test -> Cram_test.name test
-        | Error (Source_tree.Dir.Missing_run_t test) -> Cram_test.name test
+        | Error (Missing_run_t test) -> Cram_test.name test
       in
       let init =
         ( None
@@ -246,8 +248,49 @@ let rules ~sctx ~expander ~dir tests =
     with_package_mask spec.packages (fun () -> test_rule ~sctx ~expander ~dir spec test))
 ;;
 
-let rules ~sctx ~expander ~dir tests =
-  match tests with
+let cram_tests dir =
+  match Dune_project.cram (Source_tree.Dir.project dir) with
+  | false -> Memo.return []
+  | true ->
+    let path = Source_tree.Dir.path dir in
+    let file_tests =
+      Source_tree.Dir.filenames dir
+      |> Filename.Set.to_list
+      |> List.filter_map ~f:(fun s ->
+        if Cram_test.is_cram_suffix s
+        then Some (Ok (Cram_test.File (Path.Source.relative path s)))
+        else None)
+    in
+    let+ dir_tests =
+      Source_tree.Dir.sub_dirs dir
+      |> Filename.Map.to_list
+      |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
+        match Cram_test.is_cram_suffix name with
+        | false -> Memo.return None
+        | true ->
+          let+ sub_dir = Source_tree.Dir.sub_dir_as_t sub_dir in
+          let fname = Cram_test.fname_in_dir_test in
+          let test =
+            let dir = Source_tree.Dir.path sub_dir in
+            let file = Path.Source.relative dir fname in
+            Cram_test.Dir { file; dir }
+          in
+          let files = Source_tree.Dir.filenames sub_dir in
+          if Filename.Set.is_empty files
+          then None
+          else
+            Some
+              (if Filename.Set.mem files fname
+               then Ok test
+               else Error (Missing_run_t test)))
+      >>| List.filter_opt
+    in
+    file_tests @ dir_tests
+;;
+
+let rules ~sctx ~expander ~dir source_dir =
+  cram_tests source_dir
+  >>= function
   | [] -> Memo.return ()
   | tests -> rules ~sctx ~expander ~dir tests
 ;;

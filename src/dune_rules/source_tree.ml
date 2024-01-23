@@ -202,8 +202,6 @@ module Dir0 = struct
     ; sub_dir_as_t : (Path.Source.t, t Output.t option) Memo.Cell.t
     }
 
-  type error = Missing_run_t of Cram_test.t
-
   let rec to_dyn { path; status; contents; project = _ } =
     let open Dyn in
     Record
@@ -623,46 +621,6 @@ module Dir = struct
       fun t ~traverse ~f -> (Lazy.force impl) t ~traverse ~f
     ;;
   end
-
-  let cram_tests (t : t) =
-    match Dune_project.cram t.project with
-    | false -> Memo.return []
-    | true ->
-      let file_tests =
-        Filename.Set.to_list t.contents.files
-        |> List.filter_map ~f:(fun s ->
-          if Cram_test.is_cram_suffix s
-          then Some (Ok (Cram_test.File (Path.Source.relative t.path s)))
-          else None)
-      in
-      let+ dir_tests =
-        Filename.Map.to_list t.contents.sub_dirs
-        |> Memo.parallel_map ~f:(fun (name, sub_dir) ->
-          match Cram_test.is_cram_suffix name with
-          | false -> Memo.return None
-          | true ->
-            let+ contents =
-              let+ t = Memo.Cell.read sub_dir.sub_dir_as_t >>| Option.value_exn in
-              t.dir
-            in
-            let fname = Cram_test.fname_in_dir_test in
-            let test =
-              let dir = contents.path in
-              let file = Path.Source.relative dir fname in
-              Cram_test.Dir { file; dir }
-            in
-            let files = contents.contents.files in
-            if Filename.Set.is_empty files
-            then None
-            else
-              Some
-                (if Filename.Set.mem files fname
-                 then Ok test
-                 else Error (Missing_run_t test)))
-        >>| List.filter_opt
-      in
-      file_tests @ dir_tests
-  ;;
 end
 
 module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct

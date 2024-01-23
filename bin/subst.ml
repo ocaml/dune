@@ -20,7 +20,7 @@ let is_path_a_source_file path =
 
 let is_kind_a_source_file path =
   match Path.stat_exn path with
-  | st -> st.st_kind = Unix.S_REG
+  | st -> st.st_kind = S_REG
   | exception Unix.Unix_error (ENOENT, "stat", _) ->
     (* broken symlink *)
     false

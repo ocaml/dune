@@ -43,8 +43,8 @@ val default : Predicate_lang.Glob.t Status.Map.t
 
 type status_map
 
-val eval : Predicate_lang.Glob.t Status.Map.t -> dirs:string list -> status_map
-val status : status_map -> dir:string -> Status.Or_ignored.t
+val eval : Predicate_lang.Glob.t Status.Map.t -> dirs:Filename.t list -> status_map
+val status : status_map -> dir:Filename.t -> Status.Or_ignored.t
 
 module Dir_map : sig
   type t
@@ -62,8 +62,8 @@ module Dir_map : sig
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val empty : t
-  val descend : t -> string -> t option
-  val sub_dirs : t -> string list
+  val descend : t -> Filename.t -> t option
+  val sub_dirs : t -> Filename.t list
   val merge : t -> t -> t
   val root : t -> Per_dir.t
 end

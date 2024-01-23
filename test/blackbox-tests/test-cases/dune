@@ -131,3 +131,9 @@
 (cram
  (applies_to reason)
  (deps %{bin:refmt}))
+
+(cram
+ (applies_to github4194)
+ (enabled_if
+  (not %{arch_sixtyfour}))
+ (deps %{bin:ocaml}))

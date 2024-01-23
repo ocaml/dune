@@ -33,6 +33,7 @@ include struct
   module Package_info = Package_info
   module Section = Install.Section
   module Dune_project = Dune_project
+  module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
   module Resolve = Resolve
   module Sub_dirs = Sub_dirs

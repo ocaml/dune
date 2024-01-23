@@ -56,6 +56,7 @@ module Preprocessing = Preprocessing
 module Command = Command
 module Clflags = Clflags
 module Dune_project = Dune_project
+module Dune_project_name = Dune_project_name
 module Source_tree = Source_tree
 module Sub_dirs = Sub_dirs
 module Package = Package

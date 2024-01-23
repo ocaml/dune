@@ -253,7 +253,7 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     | None -> Error "repository does not contain any version information"
   in
   String.Map.of_list_exn
-    [ "NAME", Ok (Dune_project.Name.to_string_hum name)
+    [ "NAME", Ok (Dune_project_name.to_string_hum name)
     ; "VERSION", make_version version
     ; "VERSION_NUM", make_version version_num
     ; ( "VCS_COMMIT_ID"

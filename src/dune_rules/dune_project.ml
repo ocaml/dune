@@ -2,76 +2,6 @@ open Import
 module Stanza = Dune_lang.Stanza
 open Dune_lang.Decoder
 
-module Name : sig
-  type t = private
-    | Named of string
-    | Anonymous of Path.Source.t
-
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-  val compare : t -> t -> Ordering.t
-  val to_string_hum : t -> string
-  val encode : t Dune_lang.Encoder.t
-  val decode : t Dune_lang.Decoder.t
-  val anonymous : Path.Source.t -> t
-  val named : string -> t option
-
-  module Infix : Comparator.OPS with type t = t
-  module Map : Map.S with type key = t
-end = struct
-  module T = struct
-    type t =
-      | Named of string
-      | Anonymous of Path.Source.t
-
-    let compare a b =
-      match a, b with
-      | Named x, Named y -> String.compare x y
-      | Anonymous x, Anonymous y -> Path.Source.compare x y
-      | Named _, Anonymous _ -> Lt
-      | Anonymous _, Named _ -> Gt
-    ;;
-
-    let equal a b = Ordering.is_eq (compare a b)
-
-    let to_dyn =
-      let open Dyn in
-      function
-      | Named n -> variant "Named" [ string n ]
-      | Anonymous p -> variant "Anonymous" [ Path.Source.to_dyn p ]
-    ;;
-  end
-
-  include T
-  module Map = Map.Make (T)
-  module Infix = Comparator.Operators (T)
-
-  let to_string_hum = function
-    | Named s -> s
-    | Anonymous p -> sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
-  ;;
-
-  let validate name =
-    let len = String.length name in
-    len > 0
-    && String.for_all name ~f:(function
-      | '.' | '/' -> false
-      | _ -> true)
-  ;;
-
-  let named name = if validate name then Some (Named name) else None
-  let anonymous path = Anonymous path
-
-  let decode =
-    Dune_lang.Decoder.plain_string (fun ~loc s ->
-      if validate s
-      then Named s
-      else User_error.raise ~loc [ Pp.text "Invalid project name" ])
-  ;;
-
-  let encode n = Dune_lang.Encoder.string (to_string_hum n)
-end
-
 module File_key = struct
   type t = string
 
@@ -87,7 +17,7 @@ module File_key = struct
 end
 
 type t =
-  { name : Name.t
+  { name : Dune_project_name.t
   ; root : Path.Source.t
   ; version : Package_version.t option
   ; dune_version : Dune_lang.Syntax.Version.t
@@ -167,7 +97,7 @@ let to_dyn
   =
   let open Dyn in
   record
-    [ "name", Name.to_dyn name
+    [ "name", Dune_project_name.to_dyn name
     ; "root", Path.Source.to_dyn root
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
@@ -453,19 +383,18 @@ let format_config t =
 let subst_config t = Subst_config.of_config t.subst_config
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
-  match Package.Name.Map.min_binding packages with
-  | None -> Name.anonymous dir
+  match
+    (* CR-rgrinberg: why do we pick a name randomly? How about just making it
+       anonymous here *)
+    Package.Name.Map.min_binding packages
+  with
+  | None -> Dune_project_name.anonymous dir
   | Some (name, pkg) ->
-    let name = Package.Name.to_string name in
-    (match Name.named name with
-     | Some x -> x
-     | None ->
-       (* TODO: This is a strange error: [name] comes from a package but is
-          rejected as a valid Dune project name. It would be better to make the
-          set of allowed package names and the set of project names coincide. *)
-       User_error.raise
-         ~loc:(Package.loc pkg)
-         [ Pp.textf "%S is not a valid Dune project name." name ])
+    let loc = Package.loc pkg in
+    (* TODO: This is a strange error: [name] comes from a package but is
+       rejected as a valid Dune project name. It would be better to make the
+       set of allowed package names and the set of project names coincide. *)
+    Dune_project_name.named loc (Package.Name.to_string name)
 ;;
 
 let infer ~dir info packages =
@@ -669,7 +598,7 @@ let encode : t -> Dune_lang.t list =
     Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
     |> Option.to_list
   in
-  let name = constr "name" Name.encode name in
+  let name = constr "name" Dune_project_name.encode name in
   let version =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
@@ -701,7 +630,7 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
 ;;
 
 let parse_packages
-  (name : Name.t option)
+  (name : Dune_project_name.t option)
   ~info
   ~dir
   ~version
@@ -814,7 +743,7 @@ let parse_packages
 let parse ~dir ~(lang : Lang.Instance.t) ~file =
   String_with_vars.set_decoding_env (Pform.Env.initial lang.version)
   @@ fields
-  @@ let+ name = field_o "name" Name.decode
+  @@ let+ name = field_o "name" Dune_project_name.decode
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)

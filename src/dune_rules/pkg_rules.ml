@@ -11,37 +11,6 @@ include struct
   module Source = Source
 end
 
-module Sys_vars = struct
-  type t =
-    { os : string option Memo.Lazy.t
-    ; os_version : string option Memo.Lazy.t
-    ; os_distribution : string option Memo.Lazy.t
-    ; os_family : string option Memo.Lazy.t
-    ; arch : string option Memo.Lazy.t
-    ; sys_ocaml_version : string option Memo.Lazy.t
-    }
-
-  let poll =
-    let vars =
-      lazy
-        (let path = Env_path.path (Global.env ()) in
-         Sys_poll.make ~path)
-    in
-    let sys_poll_memo key =
-      Memo.lazy_ ~name:"sys-poll-vars" ~cutoff:(Option.equal String.equal) (fun () ->
-        let vars = Lazy.force vars in
-        Memo.of_reproducible_fiber @@ key vars)
-    in
-    { os = sys_poll_memo Sys_poll.os
-    ; os_version = sys_poll_memo Sys_poll.os_version
-    ; os_distribution = sys_poll_memo Sys_poll.os_distribution
-    ; os_family = sys_poll_memo Sys_poll.os_family
-    ; arch = sys_poll_memo Sys_poll.arch
-    ; sys_ocaml_version = sys_poll_memo Sys_poll.sys_ocaml_version
-    }
-  ;;
-end
-
 module Variable = struct
   type value = OpamVariable.variable_contents =
     | B of bool
@@ -597,7 +566,7 @@ module Action_expander = struct
     ;;
 
     let sys_poll_var accessor =
-      accessor Sys_vars.poll
+      accessor Lock_dir.Sys_vars.poll
       |> Memo.Lazy.force
       >>| function
       | Some v -> [ Value.String v ]

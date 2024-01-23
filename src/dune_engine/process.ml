@@ -698,7 +698,14 @@ module Result = struct
       | No_capture -> ""
       | Read s -> s
       | File p ->
-        let contents = Stdune.Io.read_file p |> limit_output ~n:t.limit in
+        let all_contents =
+          match Stdune.Io.with_file_in ~f:Stdune.Io.read_all_unless_large p with
+          | Ok s -> s
+          | Error () ->
+            Stdune.Io.with_file_in p ~f:(fun ic ->
+              In_channel.really_input_string ic Sys.max_string_length |> Option.value_exn)
+        in
+        let contents = limit_output ~n:t.limit all_contents in
         Temp.destroy File p;
         t.state <- Read contents;
         contents

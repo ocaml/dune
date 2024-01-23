@@ -20,9 +20,9 @@ Can init a public library
 Can build the public library
 
   $ (cd _test_lib_dir && touch test_lib.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   $ cat ./_test_lib_dir/dune
   (library
@@ -72,17 +72,17 @@ Can init a public executable
 Can build an executable
 
   $ (cd _test_bin_dir && touch test_bin.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Can run the created executable
 
   $ (cd _test_bin_dir && dune exec test_bin)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
@@ -167,17 +167,17 @@ Can init a library and dependent executable in a combo project
 Can build the combo project
 
   $ (cd _test_lib_exe_dir && touch test_bin.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Can run the combo project
 
   $ (cd _test_lib_exe_dir && dune exec test_bin)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
@@ -205,9 +205,9 @@ Can add multiple libraries in the same directory
 Can build the multiple library project
 
   $ (cd _test_lib && touch test_lib1.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Clan up the multiple library project

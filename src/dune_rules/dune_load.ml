@@ -139,11 +139,9 @@ module Script = struct
     && List.equal Dune_lang.Ast.equal t.from_parent from_parent
   ;;
 
+  (* CR-rgrinberg: context handling code should be aware of this special
+     directory *)
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
-
-  let ensure_parent_dir_exists path =
-    Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
-  ;;
 
   let eval_one (context, { script = { dir; file; project }; from_parent }) =
     let generated_dune_file =
@@ -152,7 +150,7 @@ module Script = struct
         file
     in
     let wrapper = Path.Build.extend_basename generated_dune_file ~suffix:".ml" in
-    ensure_parent_dir_exists generated_dune_file;
+    generated_dune_file |> Path.build |> Path.parent |> Option.iter ~f:Path.mkdir_p;
     let* context = Context.DB.get context in
     let* ocaml = Context.ocaml context in
     let* () =
@@ -164,21 +162,18 @@ module Script = struct
         ~wrapper
         ~target:generated_dune_file
     in
-    let* context = Context.host context in
-    let args =
-      List.concat
-        [ [ "-I"; "+compiler-libs" ]; [ Path.to_absolute_filename (Path.build wrapper) ] ]
-    in
     let* () =
-      let ocaml = Action.Prog.ok_exn ocaml.ocaml in
-      Memo.of_reproducible_fiber
-        (Process.run
-           Strict
-           ~display:Quiet
-           ~dir:(Path.source dir)
-           ~env:(Context.installed_env context)
-           ocaml
-           args)
+      let* env = Context.host context >>| Context.installed_env in
+      let ocaml =
+        (* CR-rgrinberg: This ocaml seems wrong. shouldn't we be using the
+           host context here? *)
+        Action.Prog.ok_exn ocaml.ocaml
+      in
+      let args =
+        [ "-I"; "+compiler-libs"; Path.to_absolute_filename (Path.build wrapper) ]
+      in
+      Process.run Strict ~display:Quiet ~dir:(Path.source dir) ~env ocaml args
+      |> Memo.of_reproducible_fiber
     in
     if not (Path.Untracked.exists (Path.build generated_dune_file))
     then

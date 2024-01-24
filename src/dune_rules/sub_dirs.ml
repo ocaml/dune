@@ -140,6 +140,7 @@ let eval (t : _ Status.Map.t) ~dirs =
        | [] -> Some Normal
        | [ status ] -> Some status
        | statuses ->
+         (* CR-rgrinberg: this error needs a location *)
          User_error.raise
            [ Pp.textf
                "Directory %s was marked as %s, it can't be marked as %s."

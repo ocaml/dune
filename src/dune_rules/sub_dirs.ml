@@ -1,83 +1,7 @@
 open! Import
 module Stanza = Dune_lang.Stanza
 
-module Status = struct
-  type t =
-    | Data_only
-    | Normal
-    | Vendored
-
-  module Map = struct
-    type 'a t =
-      { data_only : 'a
-      ; vendored : 'a
-      ; normal : 'a
-      }
-
-    let equal f { data_only; vendored; normal } t =
-      f data_only t.data_only && f vendored t.vendored && f normal t.normal
-    ;;
-
-    let merge x y ~f =
-      { data_only = f x.data_only y.data_only
-      ; vendored = f x.vendored y.vendored
-      ; normal = f x.normal y.normal
-      }
-    ;;
-
-    let find { data_only; vendored; normal } = function
-      | Data_only -> data_only
-      | Vendored -> vendored
-      | Normal -> normal
-    ;;
-
-    let to_dyn f { data_only; vendored; normal } =
-      let open Dyn in
-      record [ "data_only", f data_only; "vendored", f vendored; "normal", f normal ]
-    ;;
-
-    let init ~f = { data_only = f Data_only; vendored = f Vendored; normal = f Normal }
-  end
-
-  let to_dyn t =
-    let open Dyn in
-    match t with
-    | Data_only -> Variant ("Data_only", [])
-    | Vendored -> Variant ("Vendored", [])
-    | Normal -> Variant ("Normal", [])
-  ;;
-
-  let to_string = function
-    | Data_only -> "data_only"
-    | Vendored -> "vendored"
-    | Normal -> "normal"
-  ;;
-
-  module Or_ignored = struct
-    type nonrec t =
-      | Ignored
-      | Status of t
-  end
-
-  module Set = struct
-    open Map
-
-    type t = bool Map.t
-
-    let all = { data_only = true; vendored = true; normal = true }
-    let normal_only = { data_only = false; vendored = false; normal = true }
-
-    let to_list { data_only; vendored; normal } =
-      let acc = [] in
-      let acc = if vendored then Vendored :: acc else acc in
-      let acc = if data_only then Data_only :: acc else acc in
-      let acc = if normal then Normal :: acc else acc in
-      acc
-    ;;
-  end
-end
-
-let status status_by_dir ~dir : Status.Or_ignored.t =
+let status status_by_dir ~dir : Source_dir_status.Or_ignored.t =
   match Filename.Map.find status_by_dir dir with
   | None -> Ignored
   | Some d -> Status d
@@ -85,16 +9,16 @@ let status status_by_dir ~dir : Status.Or_ignored.t =
 
 let default =
   let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
-  { Status.Map.normal = standard_dirs
+  { Source_dir_status.Map.normal = standard_dirs
   ; data_only = Predicate_lang.false_
   ; vendored = Predicate_lang.false_
   }
 ;;
 
-let or_default (t : _ Status.Map.t) : _ Status.Map.t =
-  Status.Map.init ~f:(fun kind ->
-    match Status.Map.find t kind with
-    | None -> Status.Map.find default kind
+let or_default (t : _ Source_dir_status.Map.t) : _ Source_dir_status.Map.t =
+  Source_dir_status.Map.init ~f:(fun kind ->
+    match Source_dir_status.Map.find t kind with
+    | None -> Source_dir_status.Map.find default kind
     | Some (_loc, s) -> s)
 ;;
 
@@ -108,12 +32,12 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
       Some (loc, Predicate_lang.or_ ignored_sub_dirs)
     | Some _data_only, _ :: _ -> assert false
   in
-  { Status.Map.normal = dirs; data_only; vendored = vendored_dirs }
+  { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
 ;;
 
-type status_map = Status.t Filename.Map.t
+type status_map = Source_dir_status.t Filename.Map.t
 
-let eval (t : _ Status.Map.t) ~dirs =
+let eval (t : _ Source_dir_status.Map.t) ~dirs =
   (* This function defines the unexpected behavior of: (dirs foo)
      (data_only_dirs bar)
 
@@ -121,11 +45,11 @@ let eval (t : _ Status.Map.t) ~dirs =
      it was excluded from the total set of directories. *)
   Filename.Set.of_list dirs
   |> Filename.Set.to_map ~f:(fun _ -> ())
-  |> Filename.Map.filter_mapi ~f:(fun dir () : Status.t option ->
+  |> Filename.Map.filter_mapi ~f:(fun dir () : Source_dir_status.t option ->
     let statuses =
-      Status.Map.merge t default ~f:(fun pred standard ->
+      Source_dir_status.Map.merge t default ~f:(fun pred standard ->
         Predicate_lang.Glob.test pred ~standard dir)
-      |> Status.Set.to_list
+      |> Source_dir_status.Set.to_list
     in
     match statuses with
     | [] -> None
@@ -134,7 +58,7 @@ let eval (t : _ Status.Map.t) ~dirs =
          status is irrelevant so we just filter it out. *)
       (match
          List.filter statuses ~f:(function
-           | Status.Normal -> false
+           | Source_dir_status.Normal -> false
            | _ -> true)
        with
        | [] -> Some Normal
@@ -144,14 +68,14 @@ let eval (t : _ Status.Map.t) ~dirs =
            [ Pp.textf
                "Directory %s was marked as %s, it can't be marked as %s."
                dir
-               (String.enumerate_and (List.map statuses ~f:Status.to_string))
+               (String.enumerate_and (List.map statuses ~f:Source_dir_status.to_string))
                (match List.length statuses with
                 | 2 -> "both"
                 | _ -> "all these")
            ]))
 ;;
 
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Status.Map.t
+type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Source_dir_status.Map.t
 
 module Dir_map = struct
   module Per_dir = struct
@@ -168,18 +92,20 @@ module Dir_map = struct
 
     let equal { sexps; subdir_status } t =
       List.equal Dune_sexp.Ast.equal sexps t.sexps
-      && Status.Map.equal
+      && Source_dir_status.Map.equal
            (Option.equal (Tuple.T2.equal Loc.equal Predicate_lang.Glob.equal))
            subdir_status
            t.subdir_status
     ;;
 
-    let empty = { sexps = []; subdir_status = Status.Map.init ~f:(fun _ -> None) }
+    let empty =
+      { sexps = []; subdir_status = Source_dir_status.Map.init ~f:(fun _ -> None) }
+    ;;
 
     let merge d1 d2 =
       { sexps = d1.sexps @ d2.sexps
       ; subdir_status =
-          Status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
+          Source_dir_status.Map.merge d1.subdir_status d2.subdir_status ~f:(fun l r ->
             Option.merge l r ~f:(fun (loc, _) (loc2, _) ->
               let main_message = Pp.text "This stanza stanza was already specified at:" in
               let annots =

@@ -36,7 +36,7 @@ include struct
   module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
   module Resolve = Resolve
-  module Sub_dirs = Sub_dirs
+  module Source_dir_status = Source_dir_status
   module Source_tree = Source_tree
   module Dune_file = Dune_file
   module Library = Library

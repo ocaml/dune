@@ -1,8 +1,13 @@
 open! Stdune
-module Dune_project = Dune_rules.Dune_project
-module Source_tree = Dune_rules.Source_tree
+
+include struct
+  open Dune_rules
+  module Dune_project = Dune_project
+  module Source_tree = Source_tree
+  module Source_dir_status = Source_dir_status
+end
+
 module Console = Dune_console
-module Sub_dirs = Dune_rules.Sub_dirs
 
 type rename_and_edit =
   { original_file : Path.Source.t
@@ -351,7 +356,7 @@ let upgrade () =
                   type t = Source_tree.Dir.t * project_version
                 end))
          in
-        M.map_reduce ~traverse:Sub_dirs.Status.Set.normal_only ~f:(fun dir ->
+        M.map_reduce ~traverse:Source_dir_status.Set.normal_only ~f:(fun dir ->
           let project = Source_tree.Dir.project dir in
           let detected_version = detect_project_version project dir in
           Memo.return (Appendable_list.singleton (dir, detected_version))))

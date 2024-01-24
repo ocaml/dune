@@ -1,3 +1,6 @@
+Demonstrate that it's not possible to generate the (dirs ..) stanza using the
+dune syntax.
+
   $ cat >dune-project <<EOF
   > (lang dune 2.7)
   > EOF

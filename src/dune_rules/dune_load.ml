@@ -212,9 +212,9 @@ module Dune_files = struct
   type t = one list
 
   let interpret ~dir project dune_file =
-    let file = Source_tree.Dune_file.path dune_file in
-    let static = Source_tree.Dune_file.get_static_sexp dune_file in
-    match Source_tree.Dune_file.kind dune_file with
+    let file = Dune_file0.path dune_file in
+    let static = Dune_file0.get_static_sexp dune_file in
+    match Dune_file0.kind dune_file with
     | Ocaml_script ->
       Memo.return
         (Script
@@ -263,7 +263,7 @@ module Projects_and_dune_files =
       type t = Dune_project.t
     end))
     (Monoid.Appendable_list (struct
-         type t = Path.Source.t * Dune_project.t * Source_tree.Dune_file.t
+         type t = Path.Source.t * Dune_project.t * Dune_file0.t
        end))
 
 module Source_tree_map_reduce =

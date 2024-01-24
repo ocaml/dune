@@ -5,14 +5,12 @@ type subdir_stanzas
 val or_default : subdir_stanzas -> Predicate_lang.Glob.t Source_dir_status.Map.t
 val default : Predicate_lang.Glob.t Source_dir_status.Map.t
 
-type status_map
+module Status_map : sig
+  type t
 
-val eval
-  :  Predicate_lang.Glob.t Source_dir_status.Map.t
-  -> dirs:Filename.t list
-  -> status_map
-
-val status : status_map -> dir:Filename.t -> Source_dir_status.Or_ignored.t
+  val eval : Predicate_lang.Glob.t Source_dir_status.Map.t -> dirs:Filename.t list -> t
+  val status : t -> dir:Filename.t -> Source_dir_status.Or_ignored.t
+end
 
 module Dir_map : sig
   type t

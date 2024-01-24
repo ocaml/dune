@@ -252,7 +252,7 @@ end = struct
     let status ~status_map ~(parent_status : Source_dir_status.t) dir
       : Source_dir_status.t option
       =
-      match Sub_dirs.status status_map ~dir with
+      match Sub_dirs.Status_map.status status_map ~dir with
       | Ignored -> None
       | Status status ->
         Some
@@ -269,7 +269,7 @@ end = struct
 
     let physical ~dir ~dirs_visited ~dirs ~sub_dirs ~parent_status =
       let status_map =
-        Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
+        Sub_dirs.Status_map.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
       in
       List.fold_left
         dirs
@@ -297,7 +297,7 @@ end = struct
       | Some (df : Dune_file.t) ->
         (* Virtual directories are not in [Readdir.t]. Their presence is only *)
         let dirs = Sub_dirs.Dir_map.sub_dirs df.plain.for_subdirs in
-        let status_map = Sub_dirs.eval sub_dirs ~dirs in
+        let status_map = Sub_dirs.Status_map.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
           match status ~status_map ~parent_status fn with
           | None -> acc

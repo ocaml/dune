@@ -271,7 +271,8 @@ end = struct
       match dune_file with
       | None -> init
       | Some (df : Dune_file.t) ->
-        (* Virtual directories are not in [Readdir.t]. Their presence is only *)
+        (* There's no files to read for virtual directories, but we still record
+           their entries *)
         let dirs = Sub_dirs.Dir_map.sub_dirs df.plain in
         let status_map = Sub_dirs.Status_map.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
@@ -280,10 +281,16 @@ end = struct
           | Some dir_status ->
             Filename.Map.update acc fn ~f:(function
               (* Physical directories have already been added so they are
-                 skipped here.*)
+                 skipped here.
+
+                 CR-rgrinberg: we should still update the status for these
+                 directories if it hasn't been set *)
               | Some _ as r -> r
               | None ->
                 let path = Path.Source.relative path fn in
+                (* CR-rgrinberg: we could introduce a simplified
+                   call paths for virtual directories since we know the
+                   children of a virtual directory are also virtual. *)
                 Some (make_subdir ~dir_status ~virtual_:true path)))
     ;;
 

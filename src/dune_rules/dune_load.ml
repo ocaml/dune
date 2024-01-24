@@ -163,10 +163,10 @@ module Script = struct
         ~target:generated_dune_file
     in
     let* () =
-      let* env = Context.host context >>| Context.installed_env in
-      let ocaml =
-        (* CR-rgrinberg: This ocaml seems wrong. shouldn't we be using the
-           host context here? *)
+      let* host = Context.host context in
+      let env = Context.installed_env host in
+      let* ocaml =
+        let+ ocaml = Context.ocaml host in
         Action.Prog.ok_exn ocaml.ocaml
       in
       let args =

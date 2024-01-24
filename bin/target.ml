@@ -55,7 +55,7 @@ let all_direct_targets dir =
   |> Memo.parallel_map ~f:(fun (ctx : Dune_engine.Build_context.t) ->
     Source_tree_map_reduce.map_reduce
       root
-      ~traverse:Sub_dirs.Status.Set.all
+      ~traverse:Source_dir_status.Set.all
       ~f:(fun dir ->
         Dune_engine.Load_rules.load_dir
           ~dir:

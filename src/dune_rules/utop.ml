@@ -41,7 +41,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
     let+ libs, pps =
       Source_tree_map_reduce.map_reduce
         dir
-        ~traverse:Sub_dirs.Status.Set.all
+        ~traverse:Source_dir_status.Set.all
         ~f:(fun dir ->
           let dir =
             Path.Build.append_source

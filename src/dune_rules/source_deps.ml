@@ -13,7 +13,7 @@ let files dir =
   | None -> Memo.return (Dep.Set.empty, Path.Set.empty)
   | Some dir ->
     let+ files, empty_directories =
-      Map_reduce.map_reduce dir ~traverse:Sub_dirs.Status.Set.all ~f:(fun dir ->
+      Map_reduce.map_reduce dir ~traverse:Source_dir_status.Set.all ~f:(fun dir ->
         let path = Path.append_source prefix_with @@ Source_tree.Dir.path dir in
         let files =
           Source_tree.Dir.filenames dir

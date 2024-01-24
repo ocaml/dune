@@ -287,7 +287,7 @@ let load () =
       in
       Memo.return (projects, dune_files)
     in
-    Source_tree_map_reduce.map_reduce ~traverse:Sub_dirs.Status.Set.all ~f
+    Source_tree_map_reduce.map_reduce ~traverse:Source_dir_status.Set.all ~f
   in
   let projects = Appendable_list.to_list projects in
   let packages =

@@ -198,7 +198,7 @@ module File_ops_real (W : sig
   open W
 
   let print_line = print_line ~verbosity
-  let get_vcs p = Source_tree.nearest_vcs p
+  let get_vcs p = Dune_rules.Vcs_db.nearest_vcs p
 
   type load_special_file_result =
     { need_version : bool

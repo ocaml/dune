@@ -47,12 +47,22 @@ type t =
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
   }
 
+let key = Univ_map.Key.create ~name:"dune-project" Dyn.opaque
+let get () = Dune_lang.Decoder.get key
+
+let get_exn () =
+  get ()
+  >>| function
+  | Some t -> t
+  | None -> Code_error.raise "Current project is unset" []
+;;
+
 let equal : t -> t -> bool = phys_equal
 let hash = Poly.hash
 let packages t = t.packages
 let name t = t.name
 let root t = t.root
-let stanza_parser t = t.stanza_parser
+let stanza_parser t = Dune_lang.Decoder.set key t t.stanza_parser
 let file t = t.project_file
 let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
@@ -332,17 +342,6 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   let stanzas = List.concat (lang.data :: extension_stanzas) in
   let stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas)) in
   parsing_context, stanza_parser, extension_args
-;;
-
-let key = Univ_map.Key.create ~name:"dune-project" to_dyn
-let set t = Dune_lang.Decoder.set key t
-let get () = Dune_lang.Decoder.get key
-
-let get_exn () =
-  get ()
-  >>| function
-  | Some t -> t
-  | None -> Code_error.raise "Current project is unset" []
 ;;
 
 let filename = "dune-project"
@@ -967,7 +966,11 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
   else Memo.return None
 ;;
 
-let set_parsing_context t parser = Dune_lang.Decoder.set_many t.parsing_context parser
+let set_parsing_context t parser =
+  let parsing_context = Univ_map.set t.parsing_context key t in
+  Dune_lang.Decoder.set_many parsing_context parser
+;;
+
 let wrapped_executables t = t.wrapped_executables
 let map_workspace_root t = t.map_workspace_root
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf

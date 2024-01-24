@@ -35,13 +35,13 @@ module Dir : sig
         intermediate results into a single one via [M.combine]. *)
     val map_reduce
       :  t
-      -> traverse:Sub_dirs.Status.Set.t
+      -> traverse:Source_dir_status.Set.t
       -> f:(t -> Outcome.t M.t)
       -> Outcome.t M.t
   end
 
   val sub_dir_names : t -> Filename.Set.t
-  val status : t -> Sub_dirs.Status.t
+  val status : t -> Source_dir_status.t
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
   val dune_file : t -> Dune_file.t option
@@ -57,7 +57,7 @@ val root : unit -> Dir.t Memo.t
 module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
   (** Traverse starting from the root and report progress in the status line *)
   val map_reduce
-    :  traverse:Sub_dirs.Status.Set.t
+    :  traverse:Source_dir_status.Set.t
     -> f:(Dir.t -> Outcome.t M.t)
     -> Outcome.t M.t
 end

@@ -45,30 +45,29 @@ let to_dyn = function
       ]
 ;;
 
-let fetch_and_hash_archive url =
-  let open Fiber.O in
-  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:"archive" in
-  Fiber.finalize ~finally:(fun () ->
-    Temp.destroy Dir temp_dir;
-    Fiber.return ())
-  @@ fun () ->
-  let target = Path.relative temp_dir "archive" in
-  Fetch.fetch ~unpack:false ~checksum:None ~target url
-  >>| function
-  | Ok () -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
-  | Error (Checksum_mismatch _) ->
-    Code_error.raise "Checksum mismatch when no checksum was provided" []
-  | Error (Unavailable message_opt) ->
-    let message =
-      match message_opt with
-      | Some message -> message
-      | None ->
-        User_message.make
-          [ Pp.textf "Failed to retrieve source archive from: %s" (OpamUrl.to_string url)
-          ]
-    in
-    User_warning.emit_message message;
-    None
+let fetch_and_hash_archive_cached =
+  let cache = Single_run_file_cache.create () in
+  fun url ->
+    let open Fiber.O in
+    Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
+      Fetch.fetch ~unpack:false ~checksum:None ~target url)
+    >>| function
+    | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
+    | Error (Checksum_mismatch _) ->
+      Code_error.raise "Checksum mismatch when no checksum was provided" []
+    | Error (Unavailable message_opt) ->
+      let message =
+        match message_opt with
+        | Some message -> message
+        | None ->
+          User_message.make
+            [ Pp.textf
+                "Failed to retrieve source archive from: %s"
+                (OpamUrl.to_string url)
+            ]
+      in
+      User_warning.emit_message message;
+      None
 ;;
 
 let compute_missing_checksum_of_fetch
@@ -95,7 +94,7 @@ let compute_missing_checksum_of_fetch
                (OpamUrl.to_string url)
            ; Pp.text "Dune will compute its own checksum for this source archive."
            ]);
-    fetch_and_hash_archive url
+    fetch_and_hash_archive_cached url
     >>| Option.map ~f:(fun checksum ->
       { url = url_loc, url; checksum = Some (Loc.none, checksum) })
     >>| Option.value ~default:fetch

@@ -163,7 +163,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                    let+ l =
                      Source_tree_map_reduce.map_reduce
                        dir
-                       ~traverse:Sub_dirs.Status.Set.all
+                       ~traverse:Source_dir_status.Set.all
                        ~f:(fun t ->
                          let deps =
                            let dir =

@@ -2,26 +2,6 @@ open Import
 open Memo.O
 
 module Dune_file = struct
-  module Plain = struct
-    type t =
-      { contents : Sub_dirs.Dir_map.Per_dir.t
-      ; for_subdirs : Sub_dirs.Dir_map.t
-      }
-
-    let equal { contents; for_subdirs } t =
-      Sub_dirs.Dir_map.Per_dir.equal contents t.contents
-      && Sub_dirs.Dir_map.equal for_subdirs t.for_subdirs
-    ;;
-
-    let to_dyn { contents; for_subdirs } =
-      let open Dyn in
-      record
-        [ "contents", Sub_dirs.Dir_map.Per_dir.to_dyn contents
-        ; "for_subdirs", Sub_dirs.Dir_map.to_dyn for_subdirs
-        ]
-    ;;
-  end
-
   let fname = "dune"
   let alternative_fname = "dune-file"
 
@@ -44,7 +24,7 @@ module Dune_file = struct
     { path : Path.Source.t option
     ; kind : kind
     ; (* for [kind = Ocaml_script], this is the part inserted with subdir *)
-      plain : Plain.t
+      plain : Sub_dirs.Dir_map.t
     }
 
   let to_dyn { path; kind; plain } =
@@ -52,39 +32,35 @@ module Dune_file = struct
     record
       [ "path", option Path.Source.to_dyn path
       ; "kind", dyn_of_kind kind
-      ; "plain", Plain.to_dyn plain
+      ; "plain", Sub_dirs.Dir_map.to_dyn plain
       ]
   ;;
 
   let equal { path; kind; plain } t =
     Option.equal Path.Source.equal path t.path
     && equal_kind kind t.kind
-    && Plain.equal plain t.plain
+    && Sub_dirs.Dir_map.equal plain t.plain
   ;;
 
-  let get_static_sexp t = t.plain.contents.sexps
+  let get_static_sexp t = (Sub_dirs.Dir_map.root t.plain).sexps
   let kind t = t.kind
   let path t = t.path
 
   let sub_dirs (t : t option) =
     match t with
     | None -> Sub_dirs.default
-    | Some t -> Sub_dirs.or_default t.plain.contents.subdir_status
+    | Some t -> Sub_dirs.or_default (Sub_dirs.Dir_map.root t.plain).subdir_status
   ;;
 
   let load_plain sexps ~file ~from_parent ~project =
-    let+ active =
-      let+ parsed =
-        match file with
-        | None -> Memo.return Sub_dirs.Dir_map.empty
-        | Some file -> Sub_dirs.decode ~file project sexps
-      in
-      match from_parent with
-      | None -> parsed
-      | Some from_parent -> Sub_dirs.Dir_map.merge parsed from_parent
+    let+ parsed =
+      match file with
+      | None -> Memo.return Sub_dirs.Dir_map.empty
+      | Some file -> Sub_dirs.decode ~file project sexps
     in
-    let contents = Sub_dirs.Dir_map.root active in
-    { Plain.contents; for_subdirs = active }
+    match from_parent with
+    | None -> parsed
+    | Some from_parent -> Sub_dirs.Dir_map.merge parsed from_parent
   ;;
 
   let load file ~from_parent ~project =
@@ -296,7 +272,7 @@ end = struct
       | None -> init
       | Some (df : Dune_file.t) ->
         (* Virtual directories are not in [Readdir.t]. Their presence is only *)
-        let dirs = Sub_dirs.Dir_map.sub_dirs df.plain.for_subdirs in
+        let dirs = Sub_dirs.Dir_map.sub_dirs df.plain in
         let status_map = Sub_dirs.Status_map.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
           match status ~status_map ~parent_status fn with
@@ -377,7 +353,7 @@ end = struct
         in
         let+ dir_map =
           let dir_basename = Path.Source.basename path in
-          Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
+          Sub_dirs.Dir_map.descend dune_file.plain dir_basename
         in
         dune_file.path, dir_map
     in

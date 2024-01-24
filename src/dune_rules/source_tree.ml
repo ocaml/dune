@@ -77,18 +77,7 @@ module Dune_file = struct
       let+ parsed =
         match file with
         | None -> Memo.return Sub_dirs.Dir_map.empty
-        | Some file ->
-          let decoder =
-            { Sub_dirs.decode =
-                (fun ast d ->
-                  let d = Dune_project.set_parsing_context project d in
-                  Dune_lang.Decoder.parse
-                    d
-                    Univ_map.empty
-                    (Dune_lang.Ast.List (Loc.none, ast)))
-            }
-          in
-          Sub_dirs.decode ~file decoder sexps
+        | Some file -> Sub_dirs.decode ~file project sexps
       in
       match from_parent with
       | None -> parsed

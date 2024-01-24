@@ -35,10 +35,7 @@ module All_targets = struct
 end
 
 module Source_tree = Dune_rules.Source_tree
-module Context_name = Dune_engine.Context_name
-module Sub_dirs = Dune_rules.Sub_dirs
 module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
-module Build_config = Dune_engine.Build_config
 
 let all_direct_targets dir =
   let open Memo.O in

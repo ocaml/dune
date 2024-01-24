@@ -72,14 +72,6 @@ module Stanzas = struct
       ; ( "copy_files#"
         , let+ x = Copy_files.decode in
           [ Copy_files.make_stanza { x with add_line_directive = true } ] )
-      ; ( "copy_files_src"
-        , let+ x = Copy_files.decode in
-          [ Copy_files.make_stanza { x with only_sources = true } ] )
-      ; ( "copy_files_src#"
-        , let+ x = Copy_files.decode in
-          [ Copy_files.make_stanza
-              { x with add_line_directive = true; only_sources = true }
-          ] )
       ; ( "include"
         , let+ loc = loc
           and+ fn = relative_file in

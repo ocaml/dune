@@ -17,10 +17,10 @@ Show that copy_files operates on the build folder, copying over e.g. .re.ml file
   $ ls _build/default | grep foo.re.ml
   foo.re.ml
 
-Show the difference with copy_files_src
+Show the difference when `only_sources` is used
 
   $ cat >dune <<EOF
-  > (copy_files_src (files subdir/*.ml))
+  > (copy_files (only_sources true) (files subdir/*.ml))
   > EOF
   $ dune build
   $ ls _build/default | grep foo.re.ml

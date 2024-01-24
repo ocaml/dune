@@ -68,6 +68,8 @@ module Dir_map : sig
   val root : t -> Per_dir.t
 end
 
-type decoder = { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }
-
-val decode : file:Path.Source.t -> decoder -> Dune_lang.Ast.t list -> Dir_map.t Memo.t
+val decode
+  :  file:Path.Source.t
+  -> Dune_project.t
+  -> Dune_lang.Ast.t list
+  -> Dir_map.t Memo.t

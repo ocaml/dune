@@ -426,7 +426,14 @@ let decode_includes ~context (decoder : decoder) =
   fun sexps -> decode ~context ~path:[] ~inside_include:false sexps
 ;;
 
-let decode ~file (decoder : decoder) sexps =
+let decode ~file project sexps =
+  let decoder =
+    { decode =
+        (fun ast d ->
+          let d = Dune_project.set_parsing_context project d in
+          Dune_lang.Decoder.parse d Univ_map.empty (Dune_lang.Ast.List (Loc.none, ast)))
+    }
+  in
   let open Memo.O in
   let+ sexps = decode_includes ~context:(Include_stanza.in_file file) decoder sexps in
   decoder.decode sexps decode

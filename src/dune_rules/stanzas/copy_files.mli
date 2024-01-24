@@ -6,6 +6,7 @@ type t =
   ; mode : Rule.Mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
+  ; only_sources : bool
   ; syntax_version : Dune_lang.Syntax.Version.t
   }
 

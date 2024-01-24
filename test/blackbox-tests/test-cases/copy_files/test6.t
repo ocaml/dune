@@ -11,8 +11,17 @@ Show that copy_files operates on the build folder, copying over e.g. .re.ml file
   > let t = 1
   > EOF
   $ cat >dune <<EOF
-  > (copy_files (enabled_if true) (files subdir/*.ml))
+  > (copy_files (files subdir/*.ml))
   > EOF
   $ dune build
   $ ls _build/default | grep foo.re.ml
   foo.re.ml
+
+Show the difference with copy_files_src
+
+  $ cat >dune <<EOF
+  > (copy_files_src (files subdir/*.ml))
+  > EOF
+  $ dune build
+  $ ls _build/default | grep foo.re.ml
+  [1]

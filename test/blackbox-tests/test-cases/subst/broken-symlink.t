@@ -19,5 +19,3 @@ This test requires a git repository, otherwise `dune subst` does nothing.
    create mode 100644 dune-project
 
   $ dune subst
-  Error: stat(broken): No such file or directory
-  [1]

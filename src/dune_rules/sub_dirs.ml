@@ -1,11 +1,4 @@
 open! Import
-module Stanza = Dune_lang.Stanza
-
-let status status_by_dir ~dir : Source_dir_status.Or_ignored.t =
-  match Filename.Map.find status_by_dir dir with
-  | None -> Ignored
-  | Some d -> Status d
-;;
 
 let default =
   let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
@@ -35,46 +28,54 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
   { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
 ;;
 
-type status_map = Source_dir_status.t Filename.Map.t
+module Status_map = struct
+  type t = Source_dir_status.t Filename.Map.t
 
-let eval (t : _ Source_dir_status.Map.t) ~dirs =
-  (* This function defines the unexpected behavior of: (dirs foo)
-     (data_only_dirs bar)
+  let status status_by_dir ~dir : Source_dir_status.Or_ignored.t =
+    match Filename.Map.find status_by_dir dir with
+    | None -> Ignored
+    | Some d -> Status d
+  ;;
 
-     In this setup, bar is actually ignored rather than being data only. Because
-     it was excluded from the total set of directories. *)
-  Filename.Set.of_list dirs
-  |> Filename.Set.to_map ~f:(fun _ -> ())
-  |> Filename.Map.filter_mapi ~f:(fun dir () : Source_dir_status.t option ->
-    let statuses =
-      Source_dir_status.Map.merge t default ~f:(fun pred standard ->
-        Predicate_lang.Glob.test pred ~standard dir)
-      |> Source_dir_status.Set.to_list
-    in
-    match statuses with
-    | [] -> None
-    | statuses ->
-      (* If a directory has a status other than [Normal], then the [Normal]
-         status is irrelevant so we just filter it out. *)
-      (match
-         List.filter statuses ~f:(function
-           | Source_dir_status.Normal -> false
-           | _ -> true)
-       with
-       | [] -> Some Normal
-       | [ status ] -> Some status
-       | statuses ->
-         (* CR-rgrinberg: this error needs a location *)
-         User_error.raise
-           [ Pp.textf
-               "Directory %s was marked as %s, it can't be marked as %s."
-               dir
-               (String.enumerate_and (List.map statuses ~f:Source_dir_status.to_string))
-               (match List.length statuses with
-                | 2 -> "both"
-                | _ -> "all these")
-           ]))
-;;
+  let eval (t : _ Source_dir_status.Map.t) ~dirs =
+    (* This function defines the unexpected behavior of: (dirs foo)
+       (data_only_dirs bar)
+
+       In this setup, bar is actually ignored rather than being data only. Because
+       it was excluded from the total set of directories. *)
+    Filename.Set.of_list dirs
+    |> Filename.Set.to_map ~f:(fun _ -> ())
+    |> Filename.Map.filter_mapi ~f:(fun dir () : Source_dir_status.t option ->
+      let statuses =
+        Source_dir_status.Map.merge t default ~f:(fun pred standard ->
+          Predicate_lang.Glob.test pred ~standard dir)
+        |> Source_dir_status.Set.to_list
+      in
+      match statuses with
+      | [] -> None
+      | statuses ->
+        (* If a directory has a status other than [Normal], then the [Normal]
+           status is irrelevant so we just filter it out. *)
+        (match
+           List.filter statuses ~f:(function
+             | Source_dir_status.Normal -> false
+             | _ -> true)
+         with
+         | [] -> Some Normal
+         | [ status ] -> Some status
+         | statuses ->
+           (* CR-rgrinberg: this error needs a location *)
+           User_error.raise
+             [ Pp.textf
+                 "Directory %s was marked as %s, it can't be marked as %s."
+                 dir
+                 (String.enumerate_and (List.map statuses ~f:Source_dir_status.to_string))
+                 (match List.length statuses with
+                  | 2 -> "both"
+                  | _ -> "all these")
+             ]))
+  ;;
+end
 
 type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Source_dir_status.Map.t
 

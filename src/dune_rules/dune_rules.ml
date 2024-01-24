@@ -57,6 +57,7 @@ module Command = Command
 module Clflags = Clflags
 module Dune_project = Dune_project
 module Dune_project_name = Dune_project_name
+module Vcs_db = Vcs_db
 module Source_tree = Source_tree
 module Sub_dirs = Sub_dirs
 module Source_dir_status = Source_dir_status

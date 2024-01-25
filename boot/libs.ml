@@ -23,6 +23,7 @@ let local_libraries =
   ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
+  ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("vendor/sha", None, false, None)
   ; ("vendor/uutf", None, false, None)
   ; ("vendor/opam/src/core", None, false, None)
@@ -33,7 +34,6 @@ let local_libraries =
   ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
     None)
-  ; ("src/dune_config", Some "Dune_config", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
   ; ("src/dune_metrics", Some "Dune_metrics", false, None)
   ; ("src/dune_digest", Some "Dune_digest", false, None)

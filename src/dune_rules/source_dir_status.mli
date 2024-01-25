@@ -1,3 +1,5 @@
+open Import
+
 type t =
   | Data_only
   | Normal
@@ -35,4 +37,19 @@ module Set : sig
   val all : t
   val normal_only : t
   val to_list : t -> status list
+end
+
+module Per_dir : sig
+  type t
+
+  val status : t -> dir:Filename.t -> Or_ignored.t
+end
+
+module Spec : sig
+  type t
+  type input = (Loc.t * Predicate_lang.Glob.t) option Map.t
+
+  val default : t
+  val create : input -> t
+  val eval : t -> dirs:Filename.t list -> Per_dir.t
 end

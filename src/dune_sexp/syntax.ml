@@ -453,7 +453,7 @@ let greatest_supported_version_exn t =
   | Some s -> s
   | None ->
     Code_error.raise
-      "no supported versions for extesnion"
+      "no supported versions for extension"
       [ "supported_versions", Supported_versions.to_dyn t.supported_versions ]
 ;;
 

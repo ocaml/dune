@@ -128,7 +128,7 @@ let to_dyn
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
-    ; "subst_config", option Subst_config.to_dyn subst_config
+    ; "subst_config", option Toggle.to_dyn subst_config
     ; "strict_package_deps", bool strict_package_deps
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
@@ -445,47 +445,6 @@ let infer ~dir info packages =
   }
 ;;
 
-module Toggle = struct
-  include Config.Toggle
-
-  let enabled : t -> bool = function
-    | `Enabled -> true
-    | `Disabled -> false
-  ;;
-
-  let of_bool = function
-    | true -> `Enabled
-    | false -> `Disabled
-  ;;
-
-  let all = [ "enable", `Enabled; "disable", `Disabled ]
-
-  let encode t =
-    let open Dune_lang.Encoder in
-    let v =
-      List.find_map all ~f:(fun (k, v) -> Option.some_if (v = t) k) |> Option.value_exn
-    in
-    string v
-  ;;
-
-  let decode =
-    Dune_lang.Decoder.(map_validate string) ~f:(fun s ->
-      match List.assoc all s with
-      | Some v -> Ok v
-      | None -> Error (User_error.make [ Pp.text "must be 'disable' or 'enable'" ]))
-  ;;
-
-  let field ?check name =
-    let open Dune_lang.Decoder in
-    let decode =
-      match check with
-      | None -> decode
-      | Some check -> check >>> decode
-    in
-    field_o name decode
-  ;;
-end
-
 let anonymous ~dir info packages = infer ~dir info packages
 
 let encode : t -> Dune_lang.t list =
@@ -799,7 +758,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode" ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
      and+ format_config = Format_config.field ~since:(2, 0)
-     and+ subst_config = Subst_config.field ~since:(3, 0)
+     and+ subst_config = Subst_config.field
      and+ strict_package_deps =
        field_o_b
          "strict_package_deps"

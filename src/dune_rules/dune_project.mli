@@ -110,9 +110,6 @@ val filename : Filename.t
     language. *)
 val default_dune_language_version : Dune_lang.Syntax.Version.t ref
 
-(** Set the project we are currently parsing dune files for *)
-val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
-
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 val get : unit -> (t option, 'k) Dune_lang.Decoder.parser
 

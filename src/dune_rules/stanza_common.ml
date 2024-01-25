@@ -20,7 +20,8 @@ module Pkg = struct
   ;;
 
   let default (project : Dune_project.t) stanza =
-    match Package.Name.Map.values (Dune_project.packages project) with
+    let packages = Dune_project.packages project in
+    match Package.Name.Map.values packages with
     | [ pkg ] -> Ok pkg
     | [] ->
       Error
@@ -37,7 +38,7 @@ module Pkg = struct
         (User_error.make
            [ Pp.text "I can't determine automatically which package this stanza is for."
            ; Pp.text "I have the choice between these ones:"
-           ; listing (Package.Name.Map.values (Dune_project.packages project))
+           ; listing (Package.Name.Map.values packages)
            ; Pp.textf "You need to add a (package ...) field to this (%s) stanza." stanza
            ])
   ;;

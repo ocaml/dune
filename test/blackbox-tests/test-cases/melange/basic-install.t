@@ -27,7 +27,7 @@ Test that we can install melange mode libraries
   ]
 
   $ cat ./_build/install/default/lib/foo/dune-package
-  (lang dune 3.13)
+  (lang dune 3.14)
   (name foo)
   (sections (lib .))
   (files

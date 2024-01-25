@@ -1,89 +1,60 @@
-open! Import
+open Import
+open Memo.O
 
-let default =
-  let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
-  { Source_dir_status.Map.normal = standard_dirs
-  ; data_only = Predicate_lang.false_
-  ; vendored = Predicate_lang.false_
-  }
+(* This module implements the first stage of evaluating dune files. In other
+   words, only what is to traverse the source tree. The implementation is
+   somewhat messy right now, but it can be described as the following pipeline:
+
+   1. Determine whether the dune file is OCaml or dune syntax.
+
+   2. If it's OCaml syntax, there's nothing we can do because the source tree
+   cannot evaluate the script without a context. If it's dune syntax, decode it
+   into the following AST:
+
+   {[ type t =
+     | Data_only_dirs of Predicate_lang.t
+     | Vendored_dirs of Predicate_lang.t
+     | Normal_dirs of Predicate_lang.t
+     | Subdir of Path.Local.t * t list
+     | Include of Path.Local.t
+   }]
+
+   3. Resolve and expand all the includes. This eliminates the [Include]
+   constructor.
+
+   4. Group all the stanzas to the sub directories they belong to. This
+   eliminates the [Subdir] constructor.
+
+   5. Evaluate the status stanzas into a combined map for every directory. This
+   eliminates the remaining constructors.
+
+   After the last step, we're left with [Dir_map.t]. Which contains all the
+   expanded stanzas for the current dune file and all subdirectories.
+*)
+
+let fname = "dune"
+let alternative_fname = "dune-file"
+
+type kind =
+  | Plain
+  | Ocaml_script
+
+let dyn_of_kind = function
+  | Plain -> Dyn.variant "Plain" []
+  | Ocaml_script -> Dyn.variant "Ocaml_script" []
 ;;
 
-let or_default (t : _ Source_dir_status.Map.t) : _ Source_dir_status.Map.t =
-  Source_dir_status.Map.init ~f:(fun kind ->
-    match Source_dir_status.Map.find t kind with
-    | None -> Source_dir_status.Map.find default kind
-    | Some (_loc, s) -> s)
+let equal_kind x y =
+  match x, y with
+  | Plain, Plain | Ocaml_script, Ocaml_script -> true
+  | _, _ -> false
 ;;
-
-let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
-  let data_only =
-    match data_only, ignored_sub_dirs with
-    | None, [] -> None
-    | Some (loc, data_only), [] -> Some (loc, data_only)
-    | None, (loc, _) :: _ ->
-      let ignored_sub_dirs = List.map ~f:snd ignored_sub_dirs in
-      Some (loc, Predicate_lang.or_ ignored_sub_dirs)
-    | Some _data_only, _ :: _ -> assert false
-  in
-  { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
-;;
-
-module Status_map = struct
-  type t = Source_dir_status.t Filename.Map.t
-
-  let status status_by_dir ~dir : Source_dir_status.Or_ignored.t =
-    match Filename.Map.find status_by_dir dir with
-    | None -> Ignored
-    | Some d -> Status d
-  ;;
-
-  let eval (t : _ Source_dir_status.Map.t) ~dirs =
-    (* This function defines the unexpected behavior of: (dirs foo)
-       (data_only_dirs bar)
-
-       In this setup, bar is actually ignored rather than being data only. Because
-       it was excluded from the total set of directories. *)
-    Filename.Set.of_list dirs
-    |> Filename.Set.to_map ~f:(fun _ -> ())
-    |> Filename.Map.filter_mapi ~f:(fun dir () : Source_dir_status.t option ->
-      let statuses =
-        Source_dir_status.Map.merge t default ~f:(fun pred standard ->
-          Predicate_lang.Glob.test pred ~standard dir)
-        |> Source_dir_status.Set.to_list
-      in
-      match statuses with
-      | [] -> None
-      | statuses ->
-        (* If a directory has a status other than [Normal], then the [Normal]
-           status is irrelevant so we just filter it out. *)
-        (match
-           List.filter statuses ~f:(function
-             | Source_dir_status.Normal -> false
-             | _ -> true)
-         with
-         | [] -> Some Normal
-         | [ status ] -> Some status
-         | statuses ->
-           (* CR-rgrinberg: this error needs a location *)
-           User_error.raise
-             [ Pp.textf
-                 "Directory %s was marked as %s, it can't be marked as %s."
-                 dir
-                 (String.enumerate_and (List.map statuses ~f:Source_dir_status.to_string))
-                 (match List.length statuses with
-                  | 2 -> "both"
-                  | _ -> "all these")
-             ]))
-  ;;
-end
-
-type subdir_stanzas = (Loc.t * Predicate_lang.Glob.t) option Source_dir_status.Map.t
 
 module Dir_map = struct
   module Per_dir = struct
     type t =
       { sexps : Dune_lang.Ast.t list
-      ; subdir_status : subdir_stanzas
+      ; subdir_status : Source_dir_status.Spec.input
       }
 
     let to_dyn { sexps; subdir_status = _ } =
@@ -213,6 +184,19 @@ let strict_subdir_glob field_name =
 ;;
 
 let decode =
+  (* CR-rgrinberg: introduce an explicit AST to make this less opaque *)
+  let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
+    let data_only =
+      match data_only, ignored_sub_dirs with
+      | None, [] -> None
+      | Some (loc, data_only), [] -> Some (loc, data_only)
+      | None, (loc, _) :: _ ->
+        let ignored_sub_dirs = List.map ~f:snd ignored_sub_dirs in
+        Some (loc, Predicate_lang.or_ ignored_sub_dirs)
+      | Some _data_only, _ :: _ -> assert false
+    in
+    { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
+  in
   let open Dune_lang.Decoder in
   let ignored_sub_dirs =
     let ignored =
@@ -310,7 +294,12 @@ let decode_includes ~context (decoder : decoder) =
          name, path, nodes
     in
     let open Memo.O in
-    let+ nodes = decode ~context ~path ~inside_include nodes in
+    let+ nodes =
+      (* CR-rgrinberg: there's no strict need to resolve the includes for sub
+         directories here. We could delay it until we actually need the stanzas
+         for the sub directories. *)
+      decode ~context ~path ~inside_include nodes
+    in
     Dune_lang.Ast.List
       (subdir_loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
   and decode ~context ~path ~inside_include (sexps : Dune_lang.Ast.t list) =
@@ -365,4 +354,125 @@ let decode ~file project sexps =
   let open Memo.O in
   let+ sexps = decode_includes ~context:(Include_stanza.in_file file) decoder sexps in
   decoder.decode sexps decode
+;;
+
+type t =
+  { path : Path.Source.t option
+  ; kind : kind
+  ; (* for [kind = Ocaml_script], this is the part inserted with subdir *)
+    plain : Dir_map.t
+  }
+
+let to_dyn { path; kind; plain } =
+  let open Dyn in
+  record
+    [ "path", option Path.Source.to_dyn path
+    ; "kind", dyn_of_kind kind
+    ; "plain", Dir_map.to_dyn plain
+    ]
+;;
+
+let equal { path; kind; plain } t =
+  Option.equal Path.Source.equal path t.path
+  && equal_kind kind t.kind
+  && Dir_map.equal plain t.plain
+;;
+
+let get_static_sexp t = (Dir_map.root t.plain).sexps
+let kind t = t.kind
+let path t = t.path
+let sub_dir_status t = Source_dir_status.Spec.create (Dir_map.root t.plain).subdir_status
+
+let load_plain sexps ~file ~from_parent ~project =
+  let+ parsed =
+    match file with
+    | None -> Memo.return Dir_map.empty
+    | Some file -> decode ~file project sexps
+  in
+  match from_parent with
+  | None -> parsed
+  | Some from_parent -> Dir_map.merge parsed from_parent
+;;
+
+let sub_dirnames t = Dir_map.sub_dirs t.plain
+
+let load file ~from_parent ~project =
+  let+ kind, plain =
+    let load_plain = load_plain ~file ~from_parent ~project in
+    match file with
+    | None ->
+      let+ plain = load_plain [] in
+      Plain, plain
+    | Some file ->
+      let* kind, ast =
+        Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lb ->
+          let kind, ast =
+            if Dune_lang.Dune_file_script.is_script lb
+            then Ocaml_script, []
+            else Plain, Dune_lang.Parser.parse lb ~mode:Many
+          in
+          kind, ast)
+      in
+      let+ ast = load_plain ast in
+      kind, ast
+  in
+  { path = file; kind; plain }
+;;
+
+let ensure_dune_project_file_exists =
+  let impl ~is_error project =
+    let project_file = Dune_project.file project in
+    let+ exists =
+      Path.Outside_build_dir.In_source_dir project_file |> Fs_memo.file_exists
+    in
+    if not exists
+    then (
+      let dir = Path.Source.parent_exn project_file in
+      User_warning.emit
+        ~is_error
+        ~hints:[ Pp.text "generate the project file with: $ dune init project <name>" ]
+        [ Pp.textf
+            "No dune-project file has been found in directory %S. A default one is \
+             assumed but the project might break when dune is upgraded. Please create a \
+             dune-project file."
+            (Path.Source.to_string dir)
+        ])
+  in
+  let memo =
+    (* memoization is here just to make sure we don't warn more than once per
+       project. the computation itself is cheap *)
+    Memo.create
+      "ensure-dune-project-file-exists"
+      ~input:(module Dune_project)
+      (impl ~is_error:false)
+  in
+  fun project ->
+    match !Clflags.on_missing_dune_project_file with
+    | Ignore -> Memo.return ()
+    | Warn -> Memo.exec memo project
+    | Error -> impl ~is_error:true project
+;;
+
+let load ~dir (status : Source_dir_status.t) project ~files ~parent =
+  let file =
+    if status = Data_only
+    then None
+    else if Dune_project.accept_alternative_dune_file_name project
+            && Filename.Set.mem files alternative_fname
+    then Some alternative_fname
+    else if Filename.Set.mem files fname
+    then Some fname
+    else None
+  in
+  let parent =
+    Option.bind parent ~f:(fun parent ->
+      Dir_map.descend parent.plain (Path.Source.basename dir))
+  in
+  match parent, file with
+  | None, None -> Memo.return None
+  | _, _ ->
+    (* CR-rgrinberg: no need to warn if [file = None] *)
+    let* () = ensure_dune_project_file_exists project in
+    let file = Option.map file ~f:(Path.Source.relative dir) in
+    load file ~from_parent:parent ~project >>| Option.some
 ;;

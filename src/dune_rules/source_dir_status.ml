@@ -1,3 +1,5 @@
+open Import
+
 type t =
   | Data_only
   | Normal
@@ -12,6 +14,10 @@ module Map = struct
 
   let equal f { data_only; vendored; normal } t =
     f data_only t.data_only && f vendored t.vendored && f normal t.normal
+  ;;
+
+  let map { data_only; vendored; normal } ~f =
+    { data_only = f data_only; vendored = f vendored; normal = f normal }
   ;;
 
   let merge x y ~f =
@@ -69,5 +75,74 @@ module Set = struct
     let acc = if data_only then Data_only :: acc else acc in
     let acc = if normal then Normal :: acc else acc in
     acc
+  ;;
+end
+
+module Per_dir = struct
+  type nonrec t = t Filename.Map.t
+
+  let status t ~dir =
+    match Filename.Map.find t dir with
+    | None -> Or_ignored.Ignored
+    | Some s -> Or_ignored.Status s
+  ;;
+end
+
+module Spec = struct
+  type status = t
+  type t = Predicate_lang.Glob.t Map.t
+  type input = (Loc.t * Predicate_lang.Glob.t) option Map.t
+
+  let default : t =
+    let standard_dirs = Predicate_lang.Glob.of_glob (Glob.of_string "[!._]*") in
+    { Map.normal = standard_dirs
+    ; data_only = Predicate_lang.false_
+    ; vendored = Predicate_lang.false_
+    }
+  ;;
+
+  let create (t : input) =
+    Map.init ~f:(fun kind ->
+      match Map.find t kind with
+      | None -> Map.find default kind
+      | Some (_loc, s) -> s)
+  ;;
+
+  let eval (t : t) ~dirs : Per_dir.t =
+    (* This function defines the unexpected behavior of: (dirs foo)
+       (data_only_dirs bar)
+
+       In this setup, bar is actually ignored rather than being data only. Because
+       it was excluded from the total set of directories. *)
+    let f =
+      Map.merge t default ~f:(fun pred standard ->
+        Predicate_lang.Glob.test pred ~standard)
+    in
+    Filename.Set.of_list dirs
+    |> Filename.Set.to_map ~f:(fun _ -> ())
+    |> Filename.Map.filter_mapi ~f:(fun dir () : status option ->
+      match Map.map f ~f:(fun pred -> pred dir) |> Set.to_list with
+      | [] -> None
+      | statuses ->
+        (* If a directory has a status other than [Normal], then the [Normal]
+           status is irrelevant so we just filter it out. *)
+        (match
+           List.filter statuses ~f:(function
+             | Normal -> false
+             | _ -> true)
+         with
+         | [] -> Some Normal
+         | [ status ] -> Some status
+         | statuses ->
+           (* CR-rgrinberg: this error needs a location *)
+           User_error.raise
+             [ Pp.textf
+                 "Directory %s was marked as %s, it can't be marked as %s."
+                 dir
+                 (String.enumerate_and (List.map statuses ~f:to_string))
+                 (match List.length statuses with
+                  | 2 -> "both"
+                  | _ -> "all these")
+             ]))
   ;;
 end

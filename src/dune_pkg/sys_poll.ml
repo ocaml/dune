@@ -243,12 +243,12 @@ let solver_env_from_current_system t =
   (* TODO this will rerun `uname` multiple times with the same arguments
      unless it is memoized *)
   Fiber.all
-    [ entry Variable_name.arch arch
-    ; entry Variable_name.os os
-    ; entry Variable_name.os_version os_version
-    ; entry Variable_name.os_distribution os_distribution
-    ; entry Variable_name.os_family os_family
-    ; entry Variable_name.sys_ocaml_version sys_ocaml_version
+    [ entry Package_variable_name.arch arch
+    ; entry Package_variable_name.os os
+    ; entry Package_variable_name.os_version os_version
+    ; entry Package_variable_name.os_distribution os_distribution
+    ; entry Package_variable_name.os_family os_family
+    ; entry Package_variable_name.sys_ocaml_version sys_ocaml_version
     ]
   >>| List.fold_left ~init:Solver_env.empty ~f:(fun solver_env (var, data) ->
     match data with

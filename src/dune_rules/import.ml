@@ -91,6 +91,7 @@ include struct
   module Dep_conf = Dep_conf
   module Package_version = Package_version
   module Relop = Relop
+  module Package_variable_name = Package_variable_name
 end
 
 include Dune_engine.No_io

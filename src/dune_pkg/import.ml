@@ -18,6 +18,7 @@ include struct
   module Pform = Pform
   module Blang = Blang
   module Slang = Slang
+  module Package_variable_name = Package_variable_name
 end
 
 include struct

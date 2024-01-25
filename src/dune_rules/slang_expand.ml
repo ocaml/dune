@@ -1,16 +1,15 @@
-open! Stdune
 open Import
 open Memo.O
 
 type expander =
   String_with_vars.t
   -> dir:Path.t
-  -> (Value.t list, [ `Undefined_pkg_var of Dune_pkg.Variable_name.t ]) result Memo.t
+  -> (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
 
 type error =
   | Undefined_pkg_var of
       { literal : String_with_vars.t
-      ; variable_name : Dune_pkg.Variable_name.t
+      ; variable_name : Package_variable_name.t
       }
 
 let rec eval_rec (t : Slang.t) ~dir ~f : (Value.t list list, _) result Memo.t =
@@ -183,7 +182,7 @@ let eval t ~dir ~f : Value.t list list Memo.t =
       ~loc:(String_with_vars.loc literal)
       [ Pp.textf
           "Undefined package variable %S"
-          (Dune_pkg.Variable_name.to_string variable_name)
+          (Package_variable_name.to_string variable_name)
       ]
 ;;
 
@@ -201,6 +200,6 @@ let eval_blang blang ~dir ~f =
       ~loc:(String_with_vars.loc literal)
       [ Pp.textf
           "Undefined package variable %S"
-          (Dune_pkg.Variable_name.to_string variable_name)
+          (Package_variable_name.to_string variable_name)
       ]
 ;;

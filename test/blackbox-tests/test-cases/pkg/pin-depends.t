@@ -99,6 +99,62 @@ Git pinned source:
   (dev)
      git+file://PWD/_bar_git)))
 
+Git pinned source with toplevel opam file:
+
+  $ dir=_bar_opam_git
+  $ mkdir $dir
+  $ cd $dir
+  $ git init --quiet
+  $ cat >bar.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ git add -A
+  $ git commit --quiet -m "Initial commit"
+  $ cd ..
+  $ runtest "git+file://$PWD/$dir"
+  File "foo.opam", line 1, characters 0-0:
+  Error: unable to find opam file in this repository
+  (version 1.0.0)
+  (dev)
+
+Git pinned source with toplevel opam dir 1
+
+  $ dir=_bar_opam_dir_git1
+  $ mkdir $dir
+  $ cd $dir
+  $ git init --quiet
+  $ mkdir opam
+  $ cat >opam/opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ git add -A
+  $ git commit --quiet -m "Initial commit"
+  $ cd ..
+  $ runtest "git+file://$PWD/$dir"
+  File "foo.opam", line 1, characters 0-0:
+  Error: unable to find opam file in this repository
+  (version 1.0.0)
+  (dev)
+
+Git pinned source with toplevel opam dir 2
+
+  $ dir=_bar_opam_dir_git2
+  $ mkdir $dir
+  $ cd $dir
+  $ git init --quiet
+  $ mkdir opam
+  $ cat >opam/foo.opam <<EOF
+  > opam-version: "2.0"
+  > EOF
+  $ git add -A
+  $ git commit --quiet -m "Initial commit"
+  $ cd ..
+  $ runtest "git+file://$PWD/$dir"
+  File "foo.opam", line 1, characters 0-0:
+  Error: unable to find opam file in this repository
+  (version 1.0.0)
+  (dev)
+
 Pin to something that doesn't have an opam file
 
   $ dir=_no_opam; mkdir $dir

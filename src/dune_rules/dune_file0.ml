@@ -471,8 +471,11 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
   match parent, file with
   | None, None -> Memo.return None
   | _, _ ->
-    (* CR-rgrinberg: no need to warn if [file = None] *)
-    let* () = ensure_dune_project_file_exists project in
+    let* () =
+      match file with
+      | None -> Memo.return ()
+      | Some _ -> ensure_dune_project_file_exists project
+    in
     let file = Option.map file ~f:(Path.Source.relative dir) in
     load file ~from_parent:parent ~project >>| Option.some
 ;;

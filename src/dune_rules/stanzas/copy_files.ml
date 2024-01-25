@@ -23,7 +23,8 @@ let long_form =
   and+ mode = field "mode" ~default:Rule.Mode.Standard (check >>> Rule_mode_decoder.decode)
   and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 8)) ()
   and+ files = field "files" (check >>> String_with_vars.decode)
-  and+ only_sources = field_b "only_sources"
+  and+ only_sources =
+    field_b "only_sources" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 14))
   and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
   { add_line_directive = false
   ; alias

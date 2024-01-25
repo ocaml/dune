@@ -2,7 +2,7 @@ Show that copy_files operates on the build folder, copying over e.g. .re.ml file
 
   $ mkdir -p subdir
   $ cat >dune-project <<EOF
-  > (lang dune 3.13)
+  > (lang dune 3.14)
   > EOF
   $ cat >subdir/dune <<EOF
   > (library (name foo))

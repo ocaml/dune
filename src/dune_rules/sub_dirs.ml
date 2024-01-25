@@ -31,13 +31,13 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
 module Status_map = struct
   type t = Source_dir_status.t Filename.Map.t
 
-  let status status_by_dir ~dir : Source_dir_status.Or_ignored.t =
-    match Filename.Map.find status_by_dir dir with
+  let status (t : t) ~dir : Source_dir_status.Or_ignored.t =
+    match Filename.Map.find t dir with
     | None -> Ignored
     | Some d -> Status d
   ;;
 
-  let eval (t : _ Source_dir_status.Map.t) ~dirs =
+  let eval (status_predicates : _ Source_dir_status.Map.t) ~dirs : t =
     (* This function defines the unexpected behavior of: (dirs foo)
        (data_only_dirs bar)
 
@@ -47,7 +47,7 @@ module Status_map = struct
     |> Filename.Set.to_map ~f:(fun _ -> ())
     |> Filename.Map.filter_mapi ~f:(fun dir () : Source_dir_status.t option ->
       let statuses =
-        Source_dir_status.Map.merge t default ~f:(fun pred standard ->
+        Source_dir_status.Map.merge status_predicates default ~f:(fun pred standard ->
           Predicate_lang.Glob.test pred ~standard dir)
         |> Source_dir_status.Set.to_list
       in

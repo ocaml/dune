@@ -60,6 +60,7 @@ module Dune_project_name = Dune_project_name
 module Vcs_db = Vcs_db
 module Source_tree = Source_tree
 module Source_dir_status = Source_dir_status
+module Dune_file0 = Dune_file0
 module Package = Package
 module Dialect = Dialect
 module Private_context = Private_context

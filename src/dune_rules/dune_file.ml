@@ -55,7 +55,7 @@ let parse ~file ~dir (project : Dune_project.t) sexps =
       | Some f -> f
       | None ->
         (* TODO this is wrong *)
-        Path.Source.relative dir Source_tree.Dune_file.fname
+        Path.Source.relative dir Dune_file0.fname
     in
     parse_file_includes ~stanza_parser ~context sexps
   in

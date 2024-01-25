@@ -315,7 +315,7 @@ let subst vcs =
           ]
   in
   (match Dune_project.subst_config dune_project.project with
-   | Dune_lang.Subst_config.Disabled ->
+   | `Disabled ->
      User_error.raise
        [ Pp.concat
            ~sep:Pp.space
@@ -328,7 +328,7 @@ let subst vcs =
              "If you wish to re-enable it, change to (subst enabled) in the dune-project \
               file."
          ]
-   | Enabled -> ());
+   | `Enabled -> ());
   let info =
     let loc, name =
       match dune_project.name with

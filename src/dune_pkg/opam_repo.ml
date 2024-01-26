@@ -244,7 +244,7 @@ let load_packages_from_git rev_store opam_packages =
     ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
       Resolved_package.git_repo
         package
-        ~opam_file
+        ~opam_file:(Rev_store.File.path opam_file)
         ~opam_file_contents
         rev
         ~files_dir:(Some files_dir))

@@ -27,7 +27,7 @@ let read_opam_file package ~opam_file_path ~opam_file_contents =
 ;;
 
 let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
-  let opam_file_path = Path.of_local (Rev_store.File.path opam_file) in
+  let opam_file_path = Path.of_local opam_file in
   let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
   { opam_file; package; opam_file_path; extra_files = Git_files (files_dir, rev) }
 ;;

@@ -19,11 +19,11 @@ Show that copy_files operates on the build folder
   $ dune build target/in-source.txt
   $ dune build target/in-build.txt
 
-Show the difference when `only_sources` is used
+Show the difference when `sources` is used
 
   $ cat >target/dune <<EOF
   > (copy_files
-  >  (only_sources true)
+  >  (sources true)
   >  (files ../foo/*.txt))
   > EOF
 

@@ -219,7 +219,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ];
   (* add rules *)
   let* files =
-    let dir = if def.only_sources then src_in_src else src_in_build in
+    let dir = if def.sources then src_in_src else src_in_build in
     Build_system.eval_pred (File_selector.of_glob ~dir glob)
   in
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to

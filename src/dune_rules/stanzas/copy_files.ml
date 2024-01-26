@@ -7,7 +7,7 @@ type t =
   ; mode : Rule.Mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
-  ; only_sources : bool
+  ; sources : bool
   ; syntax_version : Dune_lang.Syntax.Version.t
   }
 
@@ -23,15 +23,15 @@ let long_form =
   and+ mode = field "mode" ~default:Rule.Mode.Standard (check >>> Rule_mode_decoder.decode)
   and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 8)) ()
   and+ files = field "files" (check >>> String_with_vars.decode)
-  and+ only_sources =
-    field_b "only_sources" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 14))
+  and+ sources =
+    field_b "sources" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 14))
   and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
   { add_line_directive = false
   ; alias
   ; mode
   ; enabled_if
   ; files
-  ; only_sources
+  ; sources
   ; syntax_version
   }
 ;;
@@ -48,7 +48,7 @@ let decode =
     ; mode = Standard
     ; enabled_if = Blang.true_
     ; files
-    ; only_sources = false
+    ; sources = false
     ; syntax_version
     }
 ;;

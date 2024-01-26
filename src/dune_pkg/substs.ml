@@ -2,7 +2,7 @@ open Import
 
 module Variable = struct
   type t =
-    | Global of Variable_name.t
+    | Global of Package_variable_name.t
     | Package of Package_variable.t
 end
 
@@ -53,13 +53,16 @@ struct
   ;;
 
   let package_variable self full_variable =
-    let name = OpamVariable.Full.variable full_variable |> Variable_name.of_opam in
+    let name =
+      OpamVariable.Full.variable full_variable |> Package_variable_name.of_opam
+    in
     match OpamVariable.Full.scope full_variable with
     | Global ->
-      (match Variable_name.to_string name with
-       | "name" -> Variable.Package { Package_variable.scope = Self; name }
-       | "version" -> Variable.Package { Package_variable.scope = Self; name }
-       | _ -> Variable.Global name)
+      if Package_variable_name.equal Package_variable_name.name name
+      then Variable.Package { Package_variable.scope = Self; name }
+      else if Package_variable_name.equal name Package_variable_name.version
+      then Variable.Package { Package_variable.scope = Self; name }
+      else Variable.Global name
     | _ ->
       let scope : Package_variable.Scope.t =
         match

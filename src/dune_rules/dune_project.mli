@@ -33,7 +33,7 @@ val use_standard_c_and_cxx_flags : t -> bool option
 val dialects : t -> Dialect.DB.t
 val explicit_js_mode : t -> bool
 val format_config : t -> Format_config.t
-val subst_config : t -> Subst_config.t
+val subst_config : t -> Config.Toggle.t
 val equal : t -> t -> bool
 val hash : t -> int
 
@@ -109,9 +109,6 @@ val filename : Filename.t
     [dune-project] file. The default value is the latest version of the dune
     language. *)
 val default_dune_language_version : Dune_lang.Syntax.Version.t ref
-
-(** Set the project we are currently parsing dune files for *)
-val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
 
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 val get : unit -> (t option, 'k) Dune_lang.Decoder.parser

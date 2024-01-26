@@ -1,116 +1,6 @@
 open Import
 open Memo.O
 
-module Dune_file = struct
-  module Plain = struct
-    type t =
-      { contents : Sub_dirs.Dir_map.Per_dir.t
-      ; for_subdirs : Sub_dirs.Dir_map.t
-      }
-
-    let equal { contents; for_subdirs } t =
-      Sub_dirs.Dir_map.Per_dir.equal contents t.contents
-      && Sub_dirs.Dir_map.equal for_subdirs t.for_subdirs
-    ;;
-
-    let to_dyn { contents; for_subdirs } =
-      let open Dyn in
-      record
-        [ "contents", Sub_dirs.Dir_map.Per_dir.to_dyn contents
-        ; "for_subdirs", Sub_dirs.Dir_map.to_dyn for_subdirs
-        ]
-    ;;
-  end
-
-  let fname = "dune"
-  let alternative_fname = "dune-file"
-
-  type kind =
-    | Plain
-    | Ocaml_script
-
-  let dyn_of_kind = function
-    | Plain -> Dyn.variant "Plain" []
-    | Ocaml_script -> Dyn.variant "Ocaml_script" []
-  ;;
-
-  let equal_kind x y =
-    match x, y with
-    | Plain, Plain | Ocaml_script, Ocaml_script -> true
-    | _, _ -> false
-  ;;
-
-  type t =
-    { path : Path.Source.t option
-    ; kind : kind
-    ; (* for [kind = Ocaml_script], this is the part inserted with subdir *)
-      plain : Plain.t
-    }
-
-  let to_dyn { path; kind; plain } =
-    let open Dyn in
-    record
-      [ "path", option Path.Source.to_dyn path
-      ; "kind", dyn_of_kind kind
-      ; "plain", Plain.to_dyn plain
-      ]
-  ;;
-
-  let equal { path; kind; plain } t =
-    Option.equal Path.Source.equal path t.path
-    && equal_kind kind t.kind
-    && Plain.equal plain t.plain
-  ;;
-
-  let get_static_sexp t = t.plain.contents.sexps
-  let kind t = t.kind
-  let path t = t.path
-
-  let sub_dirs (t : t option) =
-    match t with
-    | None -> Sub_dirs.default
-    | Some t -> Sub_dirs.or_default t.plain.contents.subdir_status
-  ;;
-
-  let load_plain sexps ~file ~from_parent ~project =
-    let+ active =
-      let+ parsed =
-        match file with
-        | None -> Memo.return Sub_dirs.Dir_map.empty
-        | Some file -> Sub_dirs.decode ~file project sexps
-      in
-      match from_parent with
-      | None -> parsed
-      | Some from_parent -> Sub_dirs.Dir_map.merge parsed from_parent
-    in
-    let contents = Sub_dirs.Dir_map.root active in
-    { Plain.contents; for_subdirs = active }
-  ;;
-
-  let load file ~from_parent ~project =
-    let+ kind, plain =
-      let load_plain = load_plain ~file ~from_parent ~project in
-      match file with
-      | None ->
-        let+ plain = load_plain [] in
-        Plain, plain
-      | Some file ->
-        let* kind, ast =
-          Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lb ->
-            let kind, ast =
-              if Dune_lang.Dune_file_script.is_script lb
-              then Ocaml_script, []
-              else Plain, Dune_lang.Parser.parse lb ~mode:Many
-            in
-            kind, ast)
-        in
-        let+ ast = load_plain ast in
-        kind, ast
-    in
-    { path = file; kind; plain }
-  ;;
-end
-
 module Dirs_visited : sig
   (** Unique set of all directories visited *)
   type t
@@ -177,7 +67,7 @@ module Dir0 = struct
     ; status : Source_dir_status.t
     ; files : Filename.Set.t
     ; sub_dirs : sub_dir Filename.Map.t
-    ; dune_file : Dune_file.t option
+    ; dune_file : Dune_file0.t option
     ; project : Dune_project.t
     }
 
@@ -243,16 +133,16 @@ end = struct
     val all
       :  dirs_visited:Dirs_visited.t
       -> dirs:(Filename.t * Readdir.File.t) list
-      -> sub_dirs:Predicate_lang.Glob.t Source_dir_status.Map.t
+      -> sub_dirs:Source_dir_status.Spec.t
       -> parent_status:Source_dir_status.t
-      -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
+      -> dune_file:Dune_file0.t option (** to interpret [(subdir ..)] stanzas *)
       -> path:Path.Source.t
       -> Dirs_visited.Per_fn.t * Dir0.sub_dir Filename.Map.t
   end = struct
     let status ~status_map ~(parent_status : Source_dir_status.t) dir
       : Source_dir_status.t option
       =
-      match Sub_dirs.status status_map ~dir with
+      match Source_dir_status.Per_dir.status status_map ~dir with
       | Ignored -> None
       | Status status ->
         Some
@@ -269,7 +159,7 @@ end = struct
 
     let physical ~dir ~dirs_visited ~dirs ~sub_dirs ~parent_status =
       let status_map =
-        Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
+        Source_dir_status.Spec.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _) -> a) dirs)
       in
       List.fold_left
         dirs
@@ -294,20 +184,27 @@ end = struct
     let virtual_ ~sub_dirs ~parent_status ~dune_file ~init ~path =
       match dune_file with
       | None -> init
-      | Some (df : Dune_file.t) ->
-        (* Virtual directories are not in [Readdir.t]. Their presence is only *)
-        let dirs = Sub_dirs.Dir_map.sub_dirs df.plain.for_subdirs in
-        let status_map = Sub_dirs.eval sub_dirs ~dirs in
+      | Some df ->
+        (* There's no files to read for virtual directories, but we still record
+           their entries *)
+        let dirs = Dune_file0.sub_dirnames df in
+        let status_map = Source_dir_status.Spec.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
           match status ~status_map ~parent_status fn with
           | None -> acc
           | Some dir_status ->
             Filename.Map.update acc fn ~f:(function
               (* Physical directories have already been added so they are
-                 skipped here.*)
+                 skipped here.
+
+                 CR-rgrinberg: we should still update the status for these
+                 directories if it hasn't been set *)
               | Some _ as r -> r
               | None ->
                 let path = Path.Source.relative path fn in
+                (* CR-rgrinberg: we could introduce a simplified
+                   call paths for virtual directories since we know the
+                   children of a virtual directory are also virtual. *)
                 Some (make_subdir ~dir_status ~virtual_:true path)))
     ;;
 
@@ -320,86 +217,25 @@ end = struct
     ;;
   end
 
-  let ensure_dune_project_file_exists =
-    let impl ~is_error project =
-      let project_file = Dune_project.file project in
-      let+ exists =
-        Path.Outside_build_dir.In_source_dir project_file |> Fs_memo.file_exists
-      in
-      if not exists
-      then (
-        let dir = Path.Source.parent_exn project_file in
-        User_warning.emit
-          ~is_error
-          ~hints:[ Pp.text "generate the project file with: $ dune init project <name>" ]
-          [ Pp.textf
-              "No dune-project file has been found in directory %S. A default one is \
-               assumed but the project might break when dune is upgraded. Please create \
-               a dune-project file."
-              (Path.Source.to_string dir)
-          ])
-    in
-    let memo =
-      (* memoization is here just to make sure we don't warn more than once per
-         project. the computation itself is cheap *)
-      Memo.create
-        "ensure-dune-project-file-exists"
-        ~input:(module Dune_project)
-        (impl ~is_error:false)
-    in
-    fun project ->
-      match !Clflags.on_missing_dune_project_file with
-      | Ignore -> Memo.return ()
-      | Warn -> Memo.exec memo project
-      | Error -> impl ~is_error:true project
-  ;;
-
-  let dune_file ~(dir_status : Source_dir_status.t) ~path ~files ~project =
-    let file =
-      if dir_status = Data_only
-      then None
-      else if Dune_project.accept_alternative_dune_file_name project
-              && Filename.Set.mem files Dune_file.alternative_fname
-      then Some Dune_file.alternative_fname
-      else if Filename.Set.mem files Dune_file.fname
-      then Some Dune_file.fname
-      else None
-    in
-    let* from_parent =
-      match Path.Source.parent path with
-      | None -> Memo.return None
-      | Some parent ->
-        let+ parent = find_dir parent in
-        let open Option.O in
-        let* dune_file =
-          let* parent = parent in
-          parent.dune_file
-        in
-        let+ dir_map =
-          let dir_basename = Path.Source.basename path in
-          Sub_dirs.Dir_map.descend dune_file.plain.for_subdirs dir_basename
-        in
-        dune_file.path, dir_map
-    in
-    let open Memo.O in
-    match from_parent, file with
-    | None, None -> Memo.return None
-    | _, _ ->
-      let* () = ensure_dune_project_file_exists project in
-      let+ dune_file =
-        let file = Option.map file ~f:(Path.Source.relative path) in
-        let from_parent = Option.map from_parent ~f:snd in
-        Dune_file.load file ~project ~from_parent
-      in
-      Some dune_file
-  ;;
-
   let contents readdir ~dirs_visited ~project ~(dir_status : Source_dir_status.t) =
     let files = Readdir.files readdir in
     let path = Readdir.path readdir in
-    let+ dune_file = dune_file ~dir_status ~files ~project ~path in
+    let+ dune_file =
+      let* parent =
+        match Path.Source.parent path with
+        | None -> Memo.return None
+        | Some parent ->
+          let+ parent = find_dir parent in
+          Option.bind parent ~f:(fun p -> p.dune_file)
+      in
+      Dune_file0.load ~dir:path dir_status project ~files ~parent
+    in
     let dirs_visited, sub_dirs =
-      let sub_dirs = Dune_file.sub_dirs dune_file in
+      let sub_dirs =
+        match dune_file with
+        | None -> Source_dir_status.Spec.default
+        | Some dune_file -> Dune_file0.sub_dir_status dune_file
+      in
       Get_subdir.all
         ~dirs_visited
         ~dirs:(Readdir.dirs readdir)
@@ -625,64 +461,4 @@ let is_vendored dir =
   >>| function
   | None -> false
   | Some d -> Dir.status d = Vendored
-;;
-
-let ancestor_vcs =
-  Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
-    if Execution_env.inside_dune
-    then Memo.return None
-    else (
-      let rec loop dir =
-        if Fpath.is_root dir
-        then None
-        else (
-          let dir = Filename.dirname dir in
-          match
-            Sys.readdir dir
-            |> Array.to_list
-            |> Filename.Set.of_list
-            |> Vcs.Kind.of_dir_contents
-          with
-          | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
-          | None -> loop dir)
-      in
-      Memo.return (loop (Path.to_absolute_filename Path.root))))
-;;
-
-let fold_parents =
-  let rec loop acc f t = function
-    | [] -> Memo.return acc
-    | comp :: components ->
-      (match Filename.Map.find (Dir0.sub_dirs t) comp with
-       | None -> Memo.return acc
-       | Some sub_dir ->
-         let* sub_dir = Dir0.sub_dir_as_t sub_dir in
-         let* acc = f sub_dir acc in
-         loop acc f sub_dir components)
-  in
-  fun path ~init ~f ->
-    let components = Path.Source.explode path in
-    let* root = root () in
-    let* acc = f root init in
-    loop acc f root components
-;;
-
-(* there's no need for any memoization. we use this function sporadically and
-   it's already fast enough *)
-let nearest_vcs =
-  let f dir acc =
-    Readdir.of_source_path (Dir.path dir)
-    >>| function
-    | Error _ -> acc
-    | Ok readdir ->
-      (match
-         Readdir.dirs readdir |> List.find_map ~f:(fun (s, _) -> Vcs.Kind.of_dir_name s)
-       with
-       | None -> acc
-       | Some kind -> Some { Vcs.kind; root = Path.source @@ Dir.path dir })
-  in
-  fun path ->
-    let open Memo.O in
-    let* init = Memo.Lazy.force ancestor_vcs in
-    fold_parents ~f ~init path
 ;;

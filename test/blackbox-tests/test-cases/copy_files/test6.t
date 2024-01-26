@@ -10,8 +10,7 @@ Show that copy_files operates on the build folder
   > EOF
   $ cat >foo/dune <<EOF
   > (rule
-  >  (with-stdout-to in-build.txt
-  >  (echo "")))
+  >  (write-file in-build.txt ""))
   > EOF
 
   $ touch foo/in-source.txt
@@ -23,7 +22,7 @@ Show the difference when `sources` is used
 
   $ cat >target/dune <<EOF
   > (copy_files
-  >  (sources true)
+  >  (sources)
   >  (files ../foo/*.txt))
   > EOF
 

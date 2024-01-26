@@ -55,8 +55,10 @@ failure, then, as the library requires the stdlib, it fails:
   Warning: Skipping installed theories due to 'coqc --config' failure:
   - $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
   Hint: Try running 'coqc --config' manually to see the error.
-  Error: Couldn't find Coq standard library, and theory is not using (stdlib
-  no)
+  Couldn't find Coq standard library, and theory is not using (stdlib no)
+  -> required by _build/default/.foo.theory.d
+  -> required by alias all
+  -> required by alias default
   [1]
 
 Here we build a simple Coq project. Neither a failing --config or --print-version should

@@ -1,28 +1,13 @@
 open Stdune
 
-module Variable = struct
-  type t = { name : string }
-
-  let of_name name = { name }
-  let to_dyn { name } = Dyn.record [ "name", Dyn.string name ]
-  let encode { name } = Dune_sexp.Encoder.string (":" ^ name)
-
-  let decode =
-    Dune_sexp.Decoder.atom_matching ~desc:"variable" (fun s ->
-      if String.is_prefix s ~prefix:":" then Some (of_name (String.drop s 1)) else None)
-  ;;
-
-  let compare { name } t = String.compare name t.name
-end
-
 module Value = struct
   type t =
     | String_literal of string
-    | Variable of Variable.t
+    | Variable of Package_variable_name.t
 
   let to_dyn = function
     | String_literal s -> Dyn.variant "String_literal" [ Dyn.string s ]
-    | Variable v -> Dyn.variant "Variable" [ Variable.to_dyn v ]
+    | Variable v -> Dyn.variant "Variable" [ Package_variable_name.to_dyn v ]
   ;;
 
   let compare a b =
@@ -30,17 +15,17 @@ module Value = struct
     | String_literal a, String_literal b -> String.compare a b
     | String_literal _, _ -> Lt
     | _, String_literal _ -> Gt
-    | Variable a, Variable b -> Variable.compare a b
+    | Variable a, Variable b -> Package_variable_name.compare a b
   ;;
 
   let encode = function
     | String_literal s -> Dune_sexp.Encoder.string s
-    | Variable v -> Variable.encode v
+    | Variable v -> Package_variable_name.Project.encode v
   ;;
 
   let decode =
     let open Dune_sexp.Decoder in
-    (let+ variable = Variable.decode in
+    (let+ variable = Package_variable_name.Project.decode in
      Variable variable)
     <|> let+ s = string in
         String_literal s
@@ -49,7 +34,7 @@ end
 
 module T = struct
   type t =
-    | Bvar of Variable.t
+    | Bvar of Package_variable_name.t
     | Uop of Relop.t * Value.t
     | Bop of Relop.t * Value.t * Value.t
     | And of t list
@@ -58,7 +43,7 @@ module T = struct
   let rec to_dyn =
     let open Dyn in
     function
-    | Bvar v -> variant "Bvar" [ Variable.to_dyn v ]
+    | Bvar v -> variant "Bvar" [ Package_variable_name.to_dyn v ]
     | Uop (b, x) -> variant "Uop" [ Relop.to_dyn b; Value.to_dyn x ]
     | Bop (b, x, y) -> variant "Bop" [ Relop.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
     | And t -> variant "And" (List.map ~f:to_dyn t)
@@ -68,7 +53,7 @@ module T = struct
   let rec compare a b =
     let open Ordering.O in
     match a, b with
-    | Bvar a, Bvar b -> Variable.compare a b
+    | Bvar a, Bvar b -> Package_variable_name.compare a b
     | Bvar _, _ -> Lt
     | _, Bvar _ -> Gt
     | Uop (a_op, a_value), Uop (b_op, b_value) ->
@@ -95,7 +80,7 @@ include Comparable.Make (T)
 let rec encode c =
   let open Dune_sexp.Encoder in
   match c with
-  | Bvar x -> Variable.encode x
+  | Bvar x -> Package_variable_name.Project.encode x
   | Uop (op, x) -> pair Relop.encode Value.encode (op, x)
   | Bop (op, x, y) -> triple Relop.encode Value.encode Value.encode (op, x, y)
   | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
@@ -159,7 +144,7 @@ let decode =
     >>= function
     | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
       let+ () = junk in
-      Bvar (Variable.of_name (String.drop s 1))
+      Bvar (Package_variable_name.of_string (String.drop s 1))
     | _ -> sum (ops @ logops))
 ;;
 

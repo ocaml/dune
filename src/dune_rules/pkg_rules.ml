@@ -4,7 +4,6 @@ open Memo.O
 include struct
   open Dune_pkg
   module Sys_poll = Sys_poll
-  module Variable_name = Variable_name
   module Package_variable = Package_variable
   module Substs = Substs
   module Checksum = Checksum
@@ -17,7 +16,7 @@ module Variable = struct
     | S of string
     | L of string list
 
-  type t = Variable_name.t * value
+  type t = Package_variable_name.t * value
 
   let dyn_of_value : value -> Dyn.t =
     let open Dyn in
@@ -40,19 +39,21 @@ module Variable = struct
     | xs -> L xs
   ;;
 
-  let to_dyn (name, value) = Dyn.(pair Variable_name.to_dyn dyn_of_value (name, value))
+  let to_dyn (name, value) =
+    Dyn.(pair Package_variable_name.to_dyn dyn_of_value (name, value))
+  ;;
 end
 
 module Pkg_info = struct
   include Dune_pkg.Lock_dir.Pkg_info
 
   let variables t =
-    Variable_name.Map.of_list_map_exn
+    Package_variable_name.Map.of_list_map_exn
       [ "name", Variable.S (Package.Name.to_string t.name)
       ; "version", S (Package_version.to_string t.version)
       ; "dev", B t.dev
       ]
-      ~f:(fun (name, value) -> Variable_name.of_string name, value)
+      ~f:(fun (name, value) -> Package_variable_name.of_string name, value)
   ;;
 end
 
@@ -333,7 +334,7 @@ module Expander0 = struct
   type t =
     { paths : Paths.t
     ; artifacts : Path.t Filename.Map.t
-    ; depends : (Variable.value Variable_name.Map.t * Paths.t) Package.Name.Map.t
+    ; depends : (Variable.value Package_variable_name.Map.t * Paths.t) Package.Name.Map.t
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -343,7 +344,7 @@ module Expander0 = struct
     : (t
        -> source:Dune_sexp.Template.Pform.t
        -> Pform.t
-       -> (Value.t list, [ `Undefined_pkg_var of Variable_name.t ]) result Memo.t)
+       -> (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t)
         Fdecl.t
     =
     Fdecl.create Dyn.opaque
@@ -405,7 +406,7 @@ module Substitute = struct
            match var with
            | Package var -> Some (Package_variable.to_pform var)
            | Global n ->
-             Variable_name.to_string n
+             Package_variable_name.to_string n
              |> Pform.Var.of_opam_global_variable_name
              |> Option.map ~f:(fun v -> Pform.Var v)
          with
@@ -617,15 +618,15 @@ module Action_expander = struct
           | Package package_name -> package_name
         in
         match Package.Name.Map.find deps package_name with
-        | None -> Variable_name.Map.empty, None
+        | None -> Package_variable_name.Map.empty, None
         | Some (var, paths) -> var, Some paths
       in
-      match Variable_name.Map.find variables variable_name with
+      match Package_variable_name.Map.find variables variable_name with
       | Some v -> Memo.return @@ Ok (Variable.dune_value v)
       | None ->
         let present = Option.is_some paths in
         (* TODO we should be looking it up in all packages now *)
-        (match Variable_name.to_string variable_name with
+        (match Package_variable_name.to_string variable_name with
          | "pinned" -> Memo.return @@ Ok [ Value.false_ ]
          | "enable" ->
            Memo.return @@ Ok [ Value.String (if present then "enable" else "disable") ]
@@ -635,7 +636,8 @@ module Action_expander = struct
             | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
             | Some paths ->
               (match
-                 Pform.Var.Pkg.Section.of_string (Variable_name.to_string variable_name)
+                 Pform.Var.Pkg.Section.of_string
+                   (Package_variable_name.to_string variable_name)
                with
                | None -> Memo.return (Error (`Undefined_pkg_var variable_name))
                | Some section ->
@@ -650,7 +652,7 @@ module Action_expander = struct
       { env = _; paths; artifacts = _; context; depends; version = _ }
       ~source
       (pform : Pform.t)
-      : (Value.t list, [ `Undefined_pkg_var of Variable_name.t ]) result Memo.t
+      : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
@@ -682,7 +684,7 @@ module Action_expander = struct
               ~loc:(Dune_sexp.Template.Pform.loc source)
               [ Pp.textf
                   "Undefined package variable: %s"
-                  (Variable_name.to_string variable_name)
+                  (Package_variable_name.to_string variable_name)
               ])
     ;;
 
@@ -867,7 +869,7 @@ module Action_expander = struct
     type artifacts_and_deps =
       { binaries : Path.t Filename.Map.t
       ; dep_info :
-          (OpamVariable.variable_contents Variable_name.Map.t * Paths.t)
+          (OpamVariable.variable_contents Package_variable_name.Map.t * Paths.t)
             Package.Name.Map.t
       }
 
@@ -890,8 +892,8 @@ module Action_expander = struct
             in
             let dep_info =
               let variables =
-                Variable_name.Map.superpose
-                  (Variable_name.Map.of_list_exn cookie.variables)
+                Package_variable_name.Map.superpose
+                  (Package_variable_name.Map.of_list_exn cookie.variables)
                   (Pkg_info.variables pkg.info)
               in
               Package.Name.Map.add_exn dep_info pkg.info.name (variables, pkg.paths)
@@ -1250,7 +1252,7 @@ module Install_action = struct
               [ message_with_loc; Pp.seq (Pp.text "Reason: ") (Pp.text message) ]
         in
         OpamFile.Dot_config.bindings config
-        |> List.map ~f:(fun (name, value) -> Variable_name.of_opam name, value)
+        |> List.map ~f:(fun (name, value) -> Package_variable_name.of_opam name, value)
     ;;
 
     let install_entry ~src ~install_file ~target_dir (entry : Path.t Install.Entry.t) =

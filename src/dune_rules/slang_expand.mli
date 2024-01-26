@@ -4,7 +4,8 @@ open Import
 type expander =
   String_with_vars.t
   -> dir:Path.t
-  -> (Value.t list, [ `Undefined_pkg_var of Dune_pkg.Variable_name.t ]) result Memo.t
+  -> (Value.t list, [ `Undefined_pkg_var of Dune_lang.Package_variable_name.t ]) result
+       Memo.t
 
 val eval_multi_located
   :  Slang.t list

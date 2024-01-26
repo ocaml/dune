@@ -104,7 +104,7 @@ let default_build_command =
        then from_2_9
        else
          from_3_0
-           ~with_subst:(Subst_config.is_enabled (Dune_project.subst_config project))
+           ~with_subst:(Toggle.enabled (Dune_project.subst_config project))
            ~with_sites:Dune_project.(is_extension_set project dune_site_extension))
 ;;
 
@@ -175,14 +175,16 @@ let insert_dune_dep depends dune_version =
 ;;
 
 let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool = function
-  | Bvar { name = "with-doc" | "build" | "post" } | Uop _ | Bop _ -> true
-  | Bvar _ -> false
+  | Uop _ | Bop _ -> true
+  | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
 ;;
 
 let insert_odoc_dep depends =
-  let with_doc : Package.Dependency.Constraint.t = Bvar { name = "with-doc" } in
+  let with_doc : Package.Dependency.Constraint.t =
+    Bvar Dune_lang.Package_variable_name.with_doc
+  in
   let odoc_dep = { Package.Dependency.name = odoc_name; constraint_ = Some with_doc } in
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)

@@ -296,9 +296,8 @@ let all_package_versions t opam_package_name =
 
 let load_all_versions ts opam_package_name =
   let from_git, from_dirs =
-    List.map ts ~f:(fun t ->
+    List.concat_map ts ~f:(fun t ->
       all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
-    |> List.concat
     |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, pkg) ->
       let version =
         let pkg =

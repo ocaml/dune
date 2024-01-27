@@ -143,6 +143,7 @@ module Dune_project = struct
 
   type t =
     { contents : string
+    ; project_file : Path.Source.t
     ; name : Package.Name.t simple_field option
     ; version : string simple_field option
     ; project : Dune_project.t
@@ -156,10 +157,10 @@ module Dune_project = struct
     let open Option.O in
     let* project = project in
     let* project_file = Dune_project.file project in
-    let project_file = Path.source project_file in
-    let contents = Io.read_file project_file in
+    let project_file = project_file in
+    let contents = Io.read_file (Path.source project_file) in
     let sexp =
-      let lb = Lexbuf.from_string contents ~fname:(Path.to_string project_file) in
+      let lb = Lexbuf.from_string contents ~fname:(Path.Source.to_string project_file) in
       Dune_lang.Parser.parse lb ~mode:Many_as_one
     in
     let parser =
@@ -173,7 +174,7 @@ module Dune_project = struct
            (let+ name = simple_field "name" Package.Name.decode
             and+ version = simple_field "version" string
             and+ () = junk_everything in
-            Some { contents; name; version; project }))
+            Some { contents; name; version; project; project_file }))
     in
     Dune_lang.Decoder.parse parser Univ_map.empty sexp
   ;;
@@ -335,6 +336,7 @@ let subst vcs =
       match dune_project.name with
       | None ->
         User_error.raise
+          ~loc:(Loc.in_file (Path.source dune_project.project_file))
           [ Pp.textf
               "The project name is not defined, please add a (name <name>) field to your \
                dune-project file."

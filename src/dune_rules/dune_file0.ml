@@ -421,23 +421,25 @@ let load file ~from_parent ~project =
 
 let ensure_dune_project_file_exists =
   let impl ~is_error project =
-    let project_file = Dune_project.file project in
+    let project_dir = Dune_project.root project in
     let+ exists =
-      Path.Outside_build_dir.In_source_dir project_file |> Fs_memo.file_exists
+      let supposed_project_file =
+        Path.Source.relative project_dir Dune_project.filename
+      in
+      Path.Outside_build_dir.In_source_dir supposed_project_file |> Fs_memo.file_exists
     in
     if not exists
-    then (
-      let dir = Path.Source.parent_exn project_file in
+    then
       User_warning.emit
-        ~loc:(Loc.in_dir (Path.source dir))
+        ~loc:(Loc.in_dir (Path.source project_dir))
         ~is_error
         ~hints:[ Pp.text "generate the project file with: $ dune init project <name>" ]
         [ Pp.textf
             "No dune-project file has been found in directory %S. A default one is \
              assumed but the project might break when dune is upgraded. Please create a \
              dune-project file."
-            (Path.Source.to_string dir)
-        ])
+            (Path.Source.to_string project_dir)
+        ]
   in
   let memo =
     (* memoization is here just to make sure we don't warn more than once per

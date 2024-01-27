@@ -155,10 +155,11 @@ module Dune_project = struct
     let+ project = Dune_project.load ~dir ~files ~infer_from_opam_files in
     let open Option.O in
     let* project = project in
-    let file = Dune_project.file project |> Path.Source.to_string |> Path.in_source in
-    let contents = Io.read_file file in
+    let* project_file = Dune_project.file project in
+    let project_file = Path.source project_file in
+    let contents = Io.read_file project_file in
     let sexp =
-      let lb = Lexbuf.from_string contents ~fname:(Path.to_string file) in
+      let lb = Lexbuf.from_string contents ~fname:(Path.to_string project_file) in
       Dune_lang.Parser.parse lb ~mode:Many_as_one
     in
     let parser =

@@ -146,9 +146,13 @@ module Common = struct
   ;;
 
   let ensure_project_file_exists project ~lang_version =
-    let fn = Path.source (Dune_project.file project) in
-    if not (Path.exists fn)
-    then (
+    match Dune_project.file project with
+    | Some _ -> ()
+    | None ->
+      let fn =
+        Path.Source.relative (Dune_project.root project) Dune_project.filename
+        |> Path.source
+      in
       Console.print [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];
       Io.write_lines
         fn
@@ -162,7 +166,7 @@ module Common = struct
                 [ Dune_lang.to_string
                     (List [ Dune_lang.atom "name"; Dune_lang.atom_or_quoted_string s ])
                 ])
-           ]))
+           ])
   ;;
 end
 
@@ -246,12 +250,12 @@ module V2 = struct
   ;;
 
   let update_project_file todo project =
-    let sexps, comments = read_and_parse (Dune_project.file project) in
+    let project_file = Option.value_exn (Dune_project.file project) in
+    let sexps, comments = read_and_parse project_file in
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps |> Ast_tools.bump_lang_version v |> update_formatting in
     let new_file_contents = string_of_sexps ~version:v sexps comments in
-    (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
-    todo.to_edit <- (Dune_project.file project, new_file_contents) :: todo.to_edit
+    todo.to_edit <- (project_file, new_file_contents) :: todo.to_edit
   ;;
 
   let upgrade_dune_file todo fn sexps comments =

@@ -39,7 +39,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
-  ; subst_config : Subst_config.t option
+  ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
   ; cram : bool
@@ -128,7 +128,7 @@ let to_dyn
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
-    ; "subst_config", option Toggle.to_dyn subst_config
+    ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
@@ -379,7 +379,14 @@ let format_config t =
   Format_config.of_config ~ext ~dune_lang ~version
 ;;
 
-let subst_config t = Subst_config.of_config t.subst_config
+let subst_config t =
+  let loc, subst_config =
+    match t.subst_config with
+    | None -> Loc.none, None
+    | Some (loc, config) -> loc, Some config
+  in
+  loc, Subst_config.of_config subst_config
+;;
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match
@@ -552,7 +559,7 @@ let encode : t -> Dune_lang.t list =
       Package.encode name package)
   in
   let subst_config =
-    Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
+    Option.map subst_config ~f:(fun (_loc, x) -> constr "subst" Subst_config.encode x)
     |> Option.to_list
   in
   let name = constr "name" Dune_project_name.encode name in

@@ -303,6 +303,7 @@ let subst vcs =
     | Some dune_project -> dune_project
     | None ->
       User_error.raise
+        ~loc:(Loc.in_dir (Path.source Path.Source.root))
         [ Pp.text
             "There is no dune-project file in the current directory, please add one with \
              a (name <name>) field in it."
@@ -316,9 +317,12 @@ let subst vcs =
             |> Pp.hovbox
           ]
   in
-  (match Dune_project.subst_config dune_project.project with
+  (let loc, subst_config = Dune_project.subst_config dune_project.project in
+   match subst_config with
+   | `Enabled -> ()
    | `Disabled ->
      User_error.raise
+       ~loc
        [ Pp.concat
            ~sep:Pp.space
            [ User_message.command "dune subst"
@@ -329,8 +333,7 @@ let subst vcs =
          [ Pp.text
              "If you wish to re-enable it, change to (subst enabled) in the dune-project \
               file."
-         ]
-   | `Enabled -> ());
+         ]);
   let info =
     let loc, name =
       match dune_project.name with

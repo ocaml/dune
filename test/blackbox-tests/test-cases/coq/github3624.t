@@ -8,6 +8,7 @@ good when the coq extension is not enabled.
   >  (name foo))
   > EOF
   $ dune build
+  File ".", line 1, characters 0-0:
   Warning: No dune-project file has been found in directory ".". A default one
   is assumed but the project might break when dune is upgraded. Please create a
   dune-project file.

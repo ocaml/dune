@@ -429,6 +429,7 @@ let ensure_dune_project_file_exists =
     then (
       let dir = Path.Source.parent_exn project_file in
       User_warning.emit
+        ~loc:(Loc.in_dir (Path.source dir))
         ~is_error
         ~hints:[ Pp.text "generate the project file with: $ dune init project <name>" ]
         [ Pp.textf

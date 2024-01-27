@@ -921,8 +921,7 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
   in
   if Filename.Set.mem files filename
   then load_dune_project ~dir opam_packages >>| Option.some
-  else if Path.Source.is_root dir
-          || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))
+  else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)

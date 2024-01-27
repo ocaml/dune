@@ -24,7 +24,7 @@ type t =
   ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
-  ; project_file : Path.Source.t
+  ; project_file : Path.Source.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
@@ -112,7 +112,7 @@ let to_dyn
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
     ; "info", Package_info.to_dyn info
-    ; "project_file", Path.Source.to_dyn project_file
+    ; "project_file", Dyn.option Path.Source.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
@@ -399,7 +399,6 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
 let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
-  let project_file = Path.Source.relative dir filename in
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
@@ -427,7 +426,7 @@ let infer ~dir info packages =
   ; executables_implicit_empty_intf
   ; accept_alternative_dune_file_name = false
   ; stanza_parser
-  ; project_file
+  ; project_file = None
   ; extension_args
   ; parsing_context
   ; generate_opam_files = false
@@ -867,7 +866,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; info
        ; packages
        ; stanza_parser
-       ; project_file = file
+       ; project_file = Some file
        ; extension_args
        ; parsing_context
        ; implicit_transitive_deps

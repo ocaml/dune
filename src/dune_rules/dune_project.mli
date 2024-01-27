@@ -38,7 +38,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.Source.t
+val file : t -> Path.Source.t option
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select

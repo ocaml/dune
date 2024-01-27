@@ -14,43 +14,43 @@ The `dune build` should generate the opam file
   > (generate_opam_files true)
   > 
   > (package
-  >   (name cohttp)
-  >   (synopsis "An OCaml library for HTTP clients and servers")
-  >   (description "A longer description")
-  >   (depends
-  >     (alcotest :with-test)
-  >     (dune (and :build (> 1.5)))
-  >     (foo (and :dev (> 1.5) (< 2.0)))
-  >     (uri (>= 1.9.0))
-  >     (uri (< 2.0.0))
-  >     (fieldslib (> v0.12))
-  >     (fieldslib (< v0.13))))
+  >  (name cohttp)
+  >  (synopsis "An OCaml library for HTTP clients and servers")
+  >  (description "A longer description")
+  >  (depends
+  >   (alcotest :with-test)
+  >   (dune (and :build (> 1.5)))
+  >   (foo (and :dev (> 1.5) (< 2.0)))
+  >   (uri (>= 1.9.0))
+  >   (uri (< 2.0.0))
+  >   (fieldslib (> v0.12))
+  >   (fieldslib (< v0.13))))
   > 
   > (package
-  >   (name cohttp-async)
-  >   (synopsis "HTTP client and server for the Async library")
-  >   (description "\
+  >  (name cohttp-async)
+  >  (synopsis "HTTP client and server for the Async library")
+  >  (description "\
   > A really long multi line description that spans across lines to
   > make sure that the rendering of long strings stays compatible.
   > ")
-  >   (depends
-  >     (cohttp (>= 1.0.2))
-  >     (conduit-async (>= 1.0.3))
-  >     (async (>= v0.10.0))
-  >     (async (< v0.12))))
+  >  (depends
+  >   (cohttp (>= 1.0.2))
+  >   (conduit-async (>= 1.0.3))
+  >   (async (>= v0.10.0))
+  >   (async (< v0.12))))
   > 
   > (package
-  >   (name cohttp-lwt)
-  >   (synopsis "HTTP client and server for the Lwt library")
-  >   (description "
+  >  (name cohttp-lwt)
+  >  (synopsis "HTTP client and server for the Lwt library")
+  >  (description "
   > A really long description that is supposed to start with a
   > newline since it doesn't escape the line break.
   > ")
-  >   (depends
-  >     (cohttp (>= 1.0.2))
-  >     (conduit-lwt (>= 1.0.3))
-  >     (lwt (>= 5.0.0))
-  >     (lwt (< 6.0.0))))
+  >  (depends
+  >   (cohttp (>= 1.0.2))
+  >   (conduit-lwt (>= 1.0.3))
+  >   (lwt (>= 5.0.0))
+  >   (lwt (< 6.0.0))))
   > EOF
 
   $ dune build @install

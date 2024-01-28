@@ -7,11 +7,11 @@ type extra_files =
 type nonrec t =
   { opam_file : OpamFile.OPAM.t
   ; package : OpamPackage.t
-  ; opam_file_path : Path.t
   ; extra_files : extra_files
+  ; loc : Loc.t
   }
 
-let file t = t.opam_file_path
+let loc t = t.loc
 let package t = t.package
 let opam_file t = t.opam_file
 
@@ -29,7 +29,8 @@ let read_opam_file package ~opam_file_path ~opam_file_contents =
 let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
   let opam_file_path = Path.of_local (Rev_store.File.path opam_file) in
   let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
-  { opam_file; package; opam_file_path; extra_files = Git_files (files_dir, rev) }
+  let loc = Loc.in_file opam_file_path in
+  { loc; package; opam_file; extra_files = Git_files (files_dir, rev) }
 ;;
 
 let local_fs package ~dir ~opam_file_path ~files_dir =
@@ -39,7 +40,8 @@ let local_fs package ~dir ~opam_file_path ~files_dir =
     let opam_file_contents = Io.read_file ~binary:true opam_file_path in
     read_opam_file package ~opam_file_path ~opam_file_contents
   in
-  { package; opam_file_path; extra_files = Inside_files_dir files_dir; opam_file }
+  let loc = Loc.in_file opam_file_path in
+  { loc; package; extra_files = Inside_files_dir files_dir; opam_file }
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their

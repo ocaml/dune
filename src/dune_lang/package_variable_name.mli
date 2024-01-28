@@ -28,6 +28,7 @@ val name : t
 val version : t
 val post : t
 val build : t
+val dev : t
 val one_of : t -> t list -> bool
 
 module Project : sig

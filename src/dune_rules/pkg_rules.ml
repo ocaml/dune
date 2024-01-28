@@ -48,12 +48,11 @@ module Pkg_info = struct
   include Dune_pkg.Lock_dir.Pkg_info
 
   let variables t =
-    Package_variable_name.Map.of_list_map_exn
-      [ "name", Variable.S (Package.Name.to_string t.name)
-      ; "version", S (Package_version.to_string t.version)
-      ; "dev", B t.dev
+    Package_variable_name.Map.of_list_exn
+      [ Package_variable_name.name, Variable.S (Package.Name.to_string t.name)
+      ; Package_variable_name.version, S (Package_version.to_string t.version)
+      ; Package_variable_name.dev, B t.dev
       ]
-      ~f:(fun (name, value) -> Package_variable_name.of_string name, value)
   ;;
 end
 

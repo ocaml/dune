@@ -4,7 +4,7 @@ type t
 
 val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
-val file : t -> Path.t
+val loc : t -> Loc.t
 val set_url : t -> OpamUrl.t -> t
 
 val git_repo

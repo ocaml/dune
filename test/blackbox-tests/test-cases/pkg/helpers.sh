@@ -110,6 +110,10 @@ make_project() {
 EOF
 }
 
+print_source() {
+  cat dune.lock/$1.pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
+}
+
 solve() {
   make_project $@ | solve_project
 }

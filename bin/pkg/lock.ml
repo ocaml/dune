@@ -3,10 +3,28 @@ open Pkg_common
 module Package_version = Dune_pkg.Package_version
 module Opam_repo = Dune_pkg.Opam_repo
 module Lock_dir = Dune_pkg.Lock_dir
+module Pin_stanza = Dune_pkg.Pin_stanza
+
+let resolve_project_sources sources =
+  let scan_project ~read ~files =
+    let read file = Memo.of_reproducible_fiber (read file) in
+    let open Memo.O in
+    Dune_project.gen_load ~read ~files ~dir:Path.Source.root ~infer_from_opam_files:false
+    >>| Option.map ~f:(fun project ->
+      let sources = Dune_project.sources project in
+      let packages =
+        Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
+      in
+      sources, packages)
+    |> Memo.run
+  in
+  Pin_stanza.resolve sources ~scan_project
+;;
 
 let solve_lock_dir
   workspace
   ~local_packages
+  ~project_sources
   version_preference
   solver_env_from_current_system
   lock_dir_path
@@ -33,6 +51,7 @@ let solve_lock_dir
       Console.Status_line.remove_overlay overlay;
       Fiber.return ())
     (fun () ->
+      let* pins = resolve_project_sources project_sources in
       Dune_pkg.Opam_solver.solve_lock_dir
         solver_env
         (Pkg_common.Version_preference.choose
@@ -40,6 +59,7 @@ let solve_lock_dir
            ~from_context:
              (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)))
         repos
+        ~pins
         ~local_packages:
           (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
         ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
@@ -66,6 +86,7 @@ let solve_lock_dir
 let solve
   workspace
   ~local_packages
+  ~project_sources
   ~solver_env_from_current_system
   ~version_preference
   ~lock_dirs_arg
@@ -81,6 +102,7 @@ let solve
             (solve_lock_dir
                workspace
                ~local_packages
+               ~project_sources
                version_preference
                solver_env_from_current_system)
      >>| List.partition_map ~f:Result.to_either
@@ -103,18 +125,32 @@ let solve
     List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 ;;
 
+let project_sources =
+  let open Memo.O in
+  Dune_rules.Dune_load.projects ()
+  >>| List.fold_left ~init:(Pin_stanza.DB.empty Workspace) ~f:(fun acc project ->
+    Pin_stanza.DB.combine_exn acc (Dune_project.sources project))
+;;
+
 let lock ~version_preference ~lock_dirs_arg =
   let open Fiber.O in
   let* solver_env_from_current_system =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
-  and* workspace, local_packages =
-    Memo.both (Workspace.workspace ()) find_local_packages |> Memo.run
+  and* workspace, local_packages, project_sources =
+    Memo.run
+    @@
+    let open Memo.O in
+    let+ workspace = Workspace.workspace ()
+    and+ local_packages = find_local_packages
+    and+ project_sources = project_sources in
+    workspace, local_packages, project_sources
   in
   solve
     workspace
     ~local_packages
+    ~project_sources
     ~solver_env_from_current_system
     ~version_preference
     ~lock_dirs_arg

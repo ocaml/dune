@@ -15,11 +15,12 @@ Demonstrate our support for pin-depends.
   > depends: [ "bar" ]
   > pin-depends: [ "bar.1.0.0" "$1" ]
   > EOF
-  > dune pkg lock
-  > local pkg="dune.lock/bar.pkg"
-  > grep version $pkg
-  > grep dev $pkg
-  > grep "$1" $pkg | sed "s#$PWD#PWD#g"
+  > dune pkg lock && {
+  >   local pkg="dune.lock/bar.pkg";
+  >   grep version $pkg;
+  >   grep dev $pkg;
+  >   print_source "bar";
+  >   } 
   > }
 
 Local pinned source.
@@ -36,7 +37,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     file://PWD/_bar_file)))
+  (source (fetch (url file://PWD/_bar_file))) (dev) 
 
 "opam" directory at the root
 
@@ -50,7 +51,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     file://PWD/_bar_file_opam_dir)))
+  (source (fetch (url file://PWD/_bar_file_opam_dir))) (dev) 
 
 "bar.opam" file at the root
 
@@ -64,7 +65,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     file://PWD/_bar_named_opam_root)))
+  (source (fetch (url file://PWD/_bar_named_opam_root))) (dev) 
 
 "bar.opam" file at opam/
 
@@ -78,7 +79,7 @@ Local pinned source.
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     file://PWD/_bar_named_opam_subdir)))
+  (source (fetch (url file://PWD/_bar_named_opam_subdir))) (dev) 
 
 Git pinned source:
 
@@ -97,7 +98,7 @@ Git pinned source:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     git+file://PWD/_bar_git)))
+  (source (fetch (url git+file://PWD/_bar_git))) (dev) 
 
 Git pinned source with toplevel opam file:
 
@@ -116,7 +117,7 @@ Git pinned source with toplevel opam file:
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     git+file://PWD/_bar_opam_git)))
+  (source (fetch (url git+file://PWD/_bar_opam_git))) (dev) 
 
 Git pinned source with toplevel opam dir 1
 
@@ -136,7 +137,7 @@ Git pinned source with toplevel opam dir 1
   - bar.1.0.0
   (version 1.0.0)
   (dev)
-     git+file://PWD/_bar_opam_dir_git1)))
+  (source (fetch (url git+file://PWD/_bar_opam_dir_git1))) (dev) 
 
 Git pinned source with toplevel opam dir 2
 
@@ -154,8 +155,7 @@ Git pinned source with toplevel opam dir 2
   $ runtest "git+file://$PWD/$dir"
   File "foo.opam", line 1, characters 0-0:
   Error: unable to discover an opam file for package bar
-  (version 1.0.0)
-  (dev)
+  [1]
 
 Pin to something that doesn't have an opam file
 
@@ -163,8 +163,7 @@ Pin to something that doesn't have an opam file
   $ runtest "file://$PWD/$dir"
   File "foo.opam", line 1, characters 0-0:
   Error: unable to discover an opam file for package bar
-  (version 1.0.0)
-  (dev)
+  [1]
 
 Pin to an invalid opam file
 
@@ -174,5 +173,4 @@ Pin to an invalid opam file
   File "$TESTCASE_ROOT/_invalid_opam/opam", line 1, characters 0-0:
   Error: unexpected version
   unsupported or missing file format version; should be 2.0 or older
-  (version 1.0.0)
-  (dev)
+  [1]

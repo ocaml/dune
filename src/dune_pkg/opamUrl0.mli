@@ -5,6 +5,7 @@ type t = OpamUrl.t
 val equal : t -> t -> bool
 val hash : t -> int
 val to_string : t -> string
+val to_dyn : t -> Dyn.t
 val of_string : string -> t
 val decode_loc : (Stdune.Loc.t * t) Dune_sexp.Decoder.t
 val rev : t -> string option
@@ -18,3 +19,6 @@ val is_local : t -> bool
    file system or [`Git] if it's a git repository (remote or otherwise). If
    it's neither of those cases, it will error out. *)
 val local_or_git_only : t -> Loc.t -> [ `Path of Path.t | `Git ]
+
+module Map : Map.S with type key = t
+module Set : Set.S with type elt = t and type 'a map = 'a Map.t

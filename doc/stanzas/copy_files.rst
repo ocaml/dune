@@ -25,7 +25,7 @@ details.
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
   condition is specified using the :doc:`reference/boolean-language`.
 
-- ``(sources)`` specifies that the glob in ``files`` gets applied over the
+- ``(only_sources)`` specifies that the glob in ``files`` gets applied over the
   source tree, and not the build tree.
 
 The short form:

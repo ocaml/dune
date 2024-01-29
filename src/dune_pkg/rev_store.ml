@@ -372,40 +372,30 @@ type submodule =
   ; source : string
   }
 
-let parse_submodules =
-  let path_re = Re.(compile @@ seq [ str "path = "; group (rep1 any) ]) in
-  let url_re = Re.(compile @@ seq [ str "url = "; group (rep1 any) ]) in
-  fun gitmodules ->
-    let lines = String.split ~on:'\n' gitmodules in
-    let parse_section lines =
-      let section, rest =
-        List.split_while lines ~f:(fun line -> not @@ String.is_prefix ~prefix:"[" line)
-      in
-      let locate_by_re re line =
-        Re.exec_opt re line |> Option.map ~f:(fun m -> Re.Group.get m 1)
-      in
-      let path = List.find_map section ~f:(locate_by_re path_re) in
-      let url = List.find_map section ~f:(locate_by_re url_re) in
-      match path, url with
-      | Some path, Some source ->
-        let path = Path.Local.of_string path in
-        { path; source }, rest
-      | _, _ ->
-        (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
-        User_error.raise
-          ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
-          [ Pp.text "Submodule definition missing path or url" ]
-    in
-    let rec parse submodules = function
-      | [] -> submodules
-      | line :: lines ->
-        (match String.is_prefix ~prefix:"[submodule" line with
-         | false -> parse submodules lines
-         | true ->
-           let submodule, lines = parse_section lines in
-           parse (submodule :: submodules) lines)
-    in
-    parse [] lines
+let parse_submodules lines =
+  match Git_config_parser.parse lines with
+  | Error err -> User_error.raise [ Pp.textf "Failed to parse submodules: %s" err ]
+  | Ok cfg ->
+    List.filter_map cfg ~f:(fun { name; arg = _; bindings } ->
+      match name with
+      | "submodule" ->
+        let find_key key (k, v) =
+          match String.equal k key with
+          | true -> Some v
+          | false -> None
+        in
+        let path = List.find_map bindings ~f:(find_key "path") in
+        let url = List.find_map bindings ~f:(find_key "url") in
+        (match path, url with
+         | Some path, Some source ->
+           let path = Path.Local.of_string path in
+           Some { path; source }
+         | _, _ ->
+           (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
+           User_error.raise
+             ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
+             [ Pp.text "Submodule definition missing path or url" ])
+      | _otherwise -> None)
 ;;
 
 module At_rev = struct

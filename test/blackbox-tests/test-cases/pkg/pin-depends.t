@@ -112,10 +112,11 @@ Git pinned source with toplevel opam file:
   $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
-  File "foo.opam", line 1, characters 0-0:
-  Error: unable to find opam file in this repository
+  Solution for dune.lock:
+  - bar.1.0.0
   (version 1.0.0)
   (dev)
+     git+file://PWD/_bar_opam_git)))
 
 Git pinned source with toplevel opam dir 1
 
@@ -131,10 +132,11 @@ Git pinned source with toplevel opam dir 1
   $ git commit --quiet -m "Initial commit"
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
-  File "foo.opam", line 1, characters 0-0:
-  Error: unable to find opam file in this repository
+  Solution for dune.lock:
+  - bar.1.0.0
   (version 1.0.0)
   (dev)
+     git+file://PWD/_bar_opam_dir_git1)))
 
 Git pinned source with toplevel opam dir 2
 
@@ -151,7 +153,7 @@ Git pinned source with toplevel opam dir 2
   $ cd ..
   $ runtest "git+file://$PWD/$dir"
   File "foo.opam", line 1, characters 0-0:
-  Error: unable to find opam file in this repository
+  Error: unable to discover an opam file for package bar
   (version 1.0.0)
   (dev)
 

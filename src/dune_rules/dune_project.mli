@@ -33,12 +33,12 @@ val use_standard_c_and_cxx_flags : t -> bool option
 val dialects : t -> Dialect.DB.t
 val explicit_js_mode : t -> bool
 val format_config : t -> Format_config.t
-val subst_config : t -> Config.Toggle.t
+val subst_config : t -> Loc.t * Config.Toggle.t
 val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.Source.t
+val file : t -> Path.Source.t option
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select

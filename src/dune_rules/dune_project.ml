@@ -24,7 +24,7 @@ type t =
   ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
-  ; project_file : Path.Source.t
+  ; project_file : Path.Source.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
@@ -39,7 +39,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
-  ; subst_config : Subst_config.t option
+  ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
   ; cram : bool
@@ -112,7 +112,7 @@ let to_dyn
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
     ; "info", Package_info.to_dyn info
-    ; "project_file", Path.Source.to_dyn project_file
+    ; "project_file", Dyn.option Path.Source.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
@@ -128,7 +128,7 @@ let to_dyn
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
-    ; "subst_config", option Toggle.to_dyn subst_config
+    ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
@@ -379,7 +379,14 @@ let format_config t =
   Format_config.of_config ~ext ~dune_lang ~version
 ;;
 
-let subst_config t = Subst_config.of_config t.subst_config
+let subst_config t =
+  let loc, subst_config =
+    match t.subst_config with
+    | None -> Loc.none, None
+    | Some (loc, config) -> loc, Some config
+  in
+  loc, Subst_config.of_config subst_config
+;;
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match
@@ -399,7 +406,6 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
 let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
-  let project_file = Path.Source.relative dir filename in
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
@@ -427,7 +433,7 @@ let infer ~dir info packages =
   ; executables_implicit_empty_intf
   ; accept_alternative_dune_file_name = false
   ; stanza_parser
-  ; project_file
+  ; project_file = None
   ; extension_args
   ; parsing_context
   ; generate_opam_files = false
@@ -553,7 +559,7 @@ let encode : t -> Dune_lang.t list =
       Package.encode name package)
   in
   let subst_config =
-    Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
+    Option.map subst_config ~f:(fun (_loc, x) -> constr "subst" Subst_config.encode x)
     |> Option.to_list
   in
   let name = constr "name" Dune_project_name.encode name in
@@ -867,7 +873,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; info
        ; packages
        ; stanza_parser
-       ; project_file = file
+       ; project_file = Some file
        ; extension_args
        ; parsing_context
        ; implicit_transitive_deps
@@ -915,8 +921,7 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
   in
   if Filename.Set.mem files filename
   then load_dune_project ~dir opam_packages >>| Option.some
-  else if Path.Source.is_root dir
-          || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))
+  else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)

@@ -36,6 +36,7 @@ All dune commands work when you run them in sub-directories, so this should be n
 
 This test is currently broken due to the workspace resolution being faulty #5899.
   $ dune coq top --toplevel=echo -- foo.v
+  File ".", line 1, characters 0-0:
   Warning: No dune-project file has been found in directory ".". A default one
   is assumed but the project might break when dune is upgraded. Please create a
   dune-project file.

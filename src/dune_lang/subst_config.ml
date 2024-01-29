@@ -10,7 +10,10 @@ let to_string = function
 
 let encode t = Dune_sexp.Encoder.string (to_string t)
 let decoder = enum [ "disabled", `Disabled; "enabled", `Enabled ]
-let field = field_o "subst" (Dune_sexp.Syntax.since Stanza.syntax (3, 0) >>> decoder)
+
+let field =
+  field_o "subst" (Dune_sexp.Syntax.since Stanza.syntax (3, 0) >>> located decoder)
+;;
 
 let of_config = function
   | None -> `Enabled

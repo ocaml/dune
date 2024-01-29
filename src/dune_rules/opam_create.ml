@@ -104,7 +104,7 @@ let default_build_command =
        then from_2_9
        else
          from_3_0
-           ~with_subst:(Toggle.enabled (Dune_project.subst_config project))
+           ~with_subst:(Toggle.enabled (snd (Dune_project.subst_config project)))
            ~with_sites:Dune_project.(is_extension_set project dune_site_extension))
 ;;
 

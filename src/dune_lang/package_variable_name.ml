@@ -50,6 +50,7 @@ let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
 let one_of t xs = List.mem xs ~equal t
+let dev = of_string "dev"
 
 module Project = struct
   let encode name = Dune_sexp.Encoder.string (":" ^ to_string name)

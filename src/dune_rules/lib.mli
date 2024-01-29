@@ -55,7 +55,7 @@ module Compile : sig
   type lib := t
   type t
 
-  val for_lib : allow_overlaps:bool -> context:Context.t -> db -> lib -> t
+  val for_lib : allow_overlaps:bool -> db -> lib -> t
 
   (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> lib list Resolve.t Memo.Lazy.t
@@ -114,35 +114,30 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create
     :  parent:t option
-    -> resolve:(context:Context.t -> Lib_name.t -> Resolve_result.t Memo.t)
+    -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
     -> lib_config:Lib_config.t
     -> instrument_with:Lib_name.t list
     -> unit
     -> t
 
-  val find : context:Context.t -> t -> Lib_name.t -> lib option Memo.t
-  val find_even_when_hidden : context:Context.t -> t -> Lib_name.t -> lib option Memo.t
-  val available : t -> Lib_name.t -> context:Context.t -> bool Memo.t
+  val find : t -> Lib_name.t -> lib option Memo.t
+  val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.t
+  val available : t -> Lib_name.t -> bool Memo.t
 
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
   val get_compile_info
     :  t
     -> allow_overlaps:bool
-    -> context:Context.t
     -> Lib_name.t
     -> (lib * Compile.t) Memo.t
 
-  val resolve : context:Context.t -> t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
+  val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 
   (** Like [resolve], but will return [None] instead of an error if we are
       unable to find the library. *)
-  val resolve_when_exists
-    :  context:Context.t
-    -> t
-    -> Loc.t * Lib_name.t
-    -> lib Resolve.t option Memo.t
+  val resolve_when_exists : t -> Loc.t * Lib_name.t -> lib Resolve.t option Memo.t
 
   (** Resolve libraries written by the user in a [dune] file. The resulting list
       of libraries is transitively closed and sorted by the order of
@@ -153,7 +148,6 @@ module DB : sig
     :  t
     -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
     -> allow_overlaps:bool
-    -> context:Context.t
     -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
@@ -161,26 +155,21 @@ module DB : sig
     -> merlin_ident:Merlin_ident.t
     -> Compile.t
 
-  val resolve_pps
-    :  t
-    -> (Loc.t * Lib_name.t) list
-    -> context:Context.t
-    -> lib list Resolve.Memo.t
+  val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t
 
   (** Return the list of all libraries in this database. If [recursive] is true,
       also include libraries in parent databases recursively. *)
-  val all : ?recursive:bool -> context:Context.t -> t -> Set.t Memo.t
+  val all : ?recursive:bool -> t -> Set.t Memo.t
 
   val instrumentation_backend
-    :  context:Context.t
-    -> t
+    :  t
     -> Loc.t * Lib_name.t
     -> Preprocess.Without_instrumentation.t option Resolve.Memo.t
 end
 
 (** {1 Transitive closure} *)
 
-val closure : t list -> context:Context.t -> linking:bool -> t list Resolve.Memo.t
+val closure : t list -> linking:bool -> t list Resolve.Memo.t
 
 (** [descriptive_closure ~with_pps libs] computes the smallest set of libraries
     that contains the libraries in the list [libs], and that is transitively

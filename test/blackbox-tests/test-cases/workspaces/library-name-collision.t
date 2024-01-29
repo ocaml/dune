@@ -20,14 +20,17 @@ Showcase that using same library name in two workspaces is not possible at the m
   >  (name foo)
   >  (enabled_if (= %{context_name} "default")))
   > EOF
+  $ cat > a/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
+
   $ cat > b/dune << EOF
   > (library
   >  (name foo)
   >  (enabled_if (= %{context_name} "alt-context")))
   > EOF
+  $ cat > b/foo.ml <<EOF
+  > let x = "foo"
+  > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - b/dune:1
-  - a/dune:1
-  [1]

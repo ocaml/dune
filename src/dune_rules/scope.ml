@@ -54,17 +54,22 @@ module DB = struct
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
-      Memo.List.map stanzas ~f:(fun stanza ->
+      Memo.List.filter_map stanzas ~f:(fun stanza ->
         match (stanza : Library_related_stanza.t) with
         | Library_redirect s ->
           let old_public_name = Lib_name.of_local s.old_name in
-          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
+          Memo.return
+            (Some (Found_or_redirect.redirect old_public_name s.new_public_name))
         | Deprecated_library_name s ->
           let old_public_name = Deprecated_library_name.old_public_name s in
-          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
+          Memo.return
+            (Some (Found_or_redirect.redirect old_public_name s.new_public_name))
         | Library (dir, (conf : Library.t)) ->
           let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
-          Library.best_name conf, Found_or_redirect.found info)
+          (match Lib_info.enabled info with
+           | Disabled_because_of_enabled_if -> None
+           | Normal | Optional ->
+             Some (Library.best_name conf, Found_or_redirect.found info)))
       >>| Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
           match v1, v2 with

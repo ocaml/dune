@@ -9,7 +9,7 @@ val set_url : t -> OpamUrl.t -> t
 
 val git_repo
   :  OpamPackage.t
-  -> opam_file:Rev_store.File.t
+  -> opam_file:Path.Local.t
   -> opam_file_contents:string
   -> Rev_store.At_rev.t
   -> files_dir:Path.Local.t option

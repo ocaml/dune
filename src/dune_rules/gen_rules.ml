@@ -377,17 +377,19 @@ let gen_project_rules =
       | Named _ -> Memo.return ()
       | Anonymous _ ->
         (match
-           Dune_project.dune_version project >= (2, 8)
-           && Dune_project.generate_opam_files project
+           if Dune_project.dune_version project >= (2, 8)
+              && Dune_project.generate_opam_files project
+           then Dune_project.file project
+           else None
          with
-         | false -> Memo.return ()
-         | true ->
+         | None -> Memo.return ()
+         | Some project_file ->
            Warning_emit.emit
              missing_project_name
              (Warning_emit.Context.project project)
              (fun () ->
                 let+ () = Memo.return () in
-                let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+                let loc = Loc.in_file (Path.source project_file) in
                 User_message.make
                   ~loc
                   [ Pp.text

@@ -527,7 +527,7 @@ let opam_package_to_lock_file_pkg
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
     let opam_file = Resolved_package.opam_file resolved_package in
-    let loc = Loc.in_file (Resolved_package.file resolved_package) in
+    let loc = Resolved_package.loc resolved_package in
     opam_file, loc
   in
   let extra_sources =

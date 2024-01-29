@@ -767,7 +767,7 @@ Build-Time Benchmarks
 
 We benchmark the build time of Dune in every PR. The times can be found here:
 
-https://autumn.ocamllabs.io/ocaml/dune?worker=autumn&image=bench.Dockerfile
+https://bench.ci.dev/ocaml/dune?worker=autumn&image=bench.Dockerfile
 
 
 Melange Bench

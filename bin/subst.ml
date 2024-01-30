@@ -120,15 +120,27 @@ let subst_string s path ~map =
 ;;
 
 let subst_file path ~map =
-  let s = Io.read_file path in
-  let s =
-    if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
-    then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
-    else s
-  in
-  match subst_string s ~map path with
-  | None -> ()
-  | Some s -> Io.write_file path s
+  match Io.with_file_in path ~f:Io.read_all_unless_large with
+  | Error () ->
+    let hints =
+      if Sys.word_size = 32
+      then
+        [ Pp.textf
+            "Dune has been built as a 32-bit binary so the maximum size \"dune subst\" \
+             can operate on is 16MiB."
+        ]
+      else []
+    in
+    User_warning.emit ~hints [ Pp.textf "Ignoring large file: %s" (Path.to_string path) ]
+  | Ok s ->
+    let s =
+      if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
+      then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
+      else s
+    in
+    (match subst_string s ~map path with
+     | None -> ()
+     | Some s -> Io.write_file path s)
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)

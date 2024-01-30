@@ -102,12 +102,12 @@ module Status_line = struct
   let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
 end
 
-(* Return list of entries in [path] as [path/entry] *)
+(* Return a sorted list of entries in [path] as [path/entry] *)
 let readdir path =
-  Array.fold_right
-    ~f:(fun entry dir -> (path ^/ entry) :: dir)
-    ~init:[]
-    (Sys.readdir path)
+  Sys.readdir path
+  |> Array.to_list
+  |> List.map ~f:(fun entry -> path ^/ entry)
+  |> List.sort ~cmp:String.compare
 ;;
 
 let open_out file =

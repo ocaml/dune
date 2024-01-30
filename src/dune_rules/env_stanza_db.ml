@@ -26,11 +26,9 @@ module Node = struct
     >>| function
     | None -> None
     | Some stanzas ->
-      Dune_file.stanzas stanzas
-      |> List.find_map ~f:(fun stanza ->
-        match Stanza.repr stanza with
-        | Dune_env.T config -> Some config
-        | _ -> None)
+      (match Dune_file.find_stanzas stanzas Dune_env.key with
+       | [ config ] -> Some config
+       | _ -> None)
   ;;
 
   let rec by_dir dir =

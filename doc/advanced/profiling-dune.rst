@@ -1,6 +1,10 @@
 Profiling Dune
 ==============
 
+.. TODO(diataxis)
+   - reference: the CLI
+   - howto: profiling a dune build
+
 If ``--trace-file FILE`` is passed, Dune will write detailed data about internal
 operations, such as the timing of commands that Dune runs.
 

@@ -2,6 +2,12 @@
 FAQ
 ***
 
+.. TODO(diataxis)
+
+   This is an odd one - most of these questions are not frequently asked at all.
+
+   Some of these are mini how-to guides, or sections of existing guides.
+
 Why Do Many Dune Projects Contain a ``Makefile``?
 =================================================
 

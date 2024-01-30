@@ -2,6 +2,8 @@
 Dune Cache
 **********
 
+.. TODO(diataxis) This is reference material with some explanation.
+
 Dune implements a cache of build results that is shared across different
 workspaces. Before executing a build rule, Dune looks it up in the shared
 cache, and if it finds a matching entry, Dune skips the rule's execution and

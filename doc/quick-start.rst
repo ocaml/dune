@@ -2,6 +2,17 @@
 Quickstart
 **********
 
+.. TODO(diataxis)
+
+   Split this into:
+
+   - :doc:`tutorials/from-zero-to-opam`
+   - :doc:`tutorials/developing-with-dune`
+   - :doc:`howto/changing-flags`
+   - an how-to guide about ``cppo``
+   - an how-to guide about staged programming / generators
+   - an how-to guide about testing
+
 This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.

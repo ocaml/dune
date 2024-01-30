@@ -1,6 +1,10 @@
 Locks
 =====
 
+.. TODO(diataxis)
+   - howto: testing in general (note about concurrency)
+   - reference: locks
+
 Given two rules that are independent, Dune will assume that their
 associated actions can be run concurrently. Two rules are considered
 independent if neither of them depend on the other, either directly or

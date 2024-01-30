@@ -2,6 +2,9 @@
 Working on the Dune Codebase
 ****************************
 
+.. TODO(diataxis)
+   This can be folded either in a meta section or as an how-to guide.
+
 This section gives guidelines for working on Dune itself. Many of these are
 general guidelines specific to Dune. However, given that Dune is a large project
 developed by many different people, it's important to follow these guidelines in

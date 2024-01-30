@@ -1,6 +1,10 @@
 Variables
 =========
 
+.. TODO(diataxis)
+   - reference: variables
+   - explanation: rule loading
+
 Some fields can contains variables that are expanded by Dune.
 The syntax of variables is as follows:
 

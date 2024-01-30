@@ -1,6 +1,10 @@
 Dependency Specification
 ========================
 
+.. TODO(diataxis)
+   - reference - dependency spec
+   - reference - globbing
+
 Dependencies in ``dune`` files can be specified using one of the following:
 
 .. _source_tree:

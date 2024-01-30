@@ -2,6 +2,8 @@
 Virtual Libraries & Variants
 ****************************
 
+.. TODO(diataxis) This is a guide, with reference info in it.
+
 Virtual libraries correspond to Dune's ability to compile parameterised
 libraries and delay the selection of concrete implementations until linking an
 executable.

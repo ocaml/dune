@@ -1,6 +1,9 @@
 Package Version
 ===============
 
+.. TODO(diataxis)
+   - reference: environment - packages
+
 Dune determines a package's version by looking at the ``version``
 field in the :ref:`package stanza <package>`. If the version field isn't 
 set, it looks at the toplevel ``version`` field in the

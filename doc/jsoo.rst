@@ -4,6 +4,10 @@
 JavaScript Compilation With Js_of_ocaml
 ***************************************
 
+.. TODO(diataxis)
+
+   This is an how-to guide.
+
 Js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
 translating OCaml bytecode to JS files. The compiler can be installed with opam:
 

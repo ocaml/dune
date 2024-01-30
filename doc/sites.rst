@@ -4,6 +4,13 @@
 How to Load Additional Files at Runtime
 ***************************************
 
+.. TODO(diataxis)
+
+   Split between:
+
+   - an how-to guide
+   - some reference material
+
 There are many ways for applications to load files at runtime and Dune provides
 a well-tested, key-in-hand portable system for doing so. The Dune model works by
 defining ``sites`` where files will be installed and looked up at runtime. At

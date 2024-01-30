@@ -4,6 +4,13 @@
 Coq
 ***
 
+.. TODO(diataxis)
+
+   This looks like there are several components in there:
+
+   - reference info for stanzas and variables
+   - tutorials (the examples part)
+
 .. contents:: Table of Contents
     :depth: 3
 

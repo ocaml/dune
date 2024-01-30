@@ -2,6 +2,13 @@
 Stanza Reference
 ****************
 
+.. TODO(diataxis)
+
+   Recycle this content into:
+
+   - :doc:`reference/stanzas`
+   - :doc:`reference/files`
+
 .. _dune-project:
 
 dune-project

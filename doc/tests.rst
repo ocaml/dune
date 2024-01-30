@@ -4,6 +4,18 @@
 Writing and Running Tests
 *************************
 
+.. TODO(diataxis)
+
+   This is mostly a guide, or rather several of them. There is also some
+   reference in it.
+
+   Something we can do is split this into:
+
+   - one how-to guide per test technique
+   - a "choosing a test technique" how-to guide
+   - reference for ``inline_tests.backend``
+   - reference for cram tests
+
 Dune tries to streamline the testing story as much as possible, so
 you can focus on the tests themselves and not bother with setting
 up various test frameworks.

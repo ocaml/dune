@@ -2,6 +2,14 @@
 Instrumentation
 ***************
 
+.. TODO(diataxis)
+
+   Split between:
+
+   - reference about ``(instrumentation)``
+   - :doc:`howto/code-coverage`
+   - specific reference about ``(instrumentation.backend)``
+
 In this section, we'll explain how to define and use instrumentation backends
 (such as ``bisect_ppx`` or ``landmarks``) so that you can enable and disable
 coverage via ``dune-workspace`` files or by passing a command-line flag or

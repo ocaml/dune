@@ -1,6 +1,8 @@
 Building an Ad Hoc ``.cmxs``
 ----------------------------
 
+.. TODO(diataxis) howto: Building an Ad Hoc ``.cmxs``
+
 In the model exposed by Dune, a ``.cmxs`` target is created for each
 library. However, the ``.cmxs`` format itself is more flexible and is
 capable to containing arbitrary ``.cmxa`` and ``.cmx`` files.

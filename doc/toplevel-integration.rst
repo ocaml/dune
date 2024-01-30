@@ -2,6 +2,11 @@
 Toplevel Integration
 ********************
 
+.. TODO(diataxis)
+
+   This is an how-to guide (but the list of commands should be in a reference
+   article somewhere).
+
 OCaml provides a small REPL to use the language interactively. We
 generally call this tool a `toplevel`. The compiler distribution comes
 with a small REPL called simply ``ocaml``, and the community has

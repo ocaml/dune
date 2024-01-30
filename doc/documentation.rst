@@ -4,6 +4,13 @@
 Generating Documentation
 ************************
 
+.. TODO(diataxis)
+
+   Split between:
+
+   - a "generating API documentation" how-to guide
+   - some reference documentation
+
 Prerequisites
 =============
 

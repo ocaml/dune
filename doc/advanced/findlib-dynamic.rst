@@ -1,6 +1,8 @@
 Dynamic Loading of Packages with Findlib
 ========================================
 
+.. TODO(diataxis) this is an howto
+
 The preferred way for new development is to use :ref:`plugins`.
 
 Dune supports the ``findlib.dynload`` package from `Findlib

@@ -2,6 +2,15 @@
 Command-Line Interface
 **********************
 
+.. TODO(diataxis)
+
+   There are mixed types of contents in this document, including:
+
+   - an how-to about ``dune init``
+   - reference info about finding the root and libraries
+   - reference info about the CLI
+   - how-to info about overriding what ``dune build`` does
+
 This section describes using ``dune`` from the shell.
 
 .. _initializing_components:

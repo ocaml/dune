@@ -25,14 +25,14 @@ module DB = struct
 
   module Found_or_redirect : sig
     type t = private
-      | Found of Lib_info.external_
+      | Found of Lib_info.external_ list
       | Redirect of (Loc.t * Lib_name.t)
 
     val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
-    val found : Lib_info.external_ -> t
+    val found : Lib_info.external_ list -> t
   end = struct
     type t =
-      | Found of Lib_info.external_
+      | Found of Lib_info.external_ list
       | Redirect of (Loc.t * Lib_name.t)
 
     let redirect from (loc, to_) =
@@ -54,28 +54,25 @@ module DB = struct
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let open Memo.O in
     let+ (map : Found_or_redirect.t Lib_name.Map.t) =
-      Memo.List.filter_map stanzas ~f:(fun stanza ->
+      Memo.List.map stanzas ~f:(fun stanza ->
         match (stanza : Library_related_stanza.t) with
         | Library_redirect s ->
           let old_public_name = Lib_name.of_local s.old_name in
-          Memo.return
-            (Some (Found_or_redirect.redirect old_public_name s.new_public_name))
+          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
         | Deprecated_library_name s ->
           let old_public_name = Deprecated_library_name.old_public_name s in
-          Memo.return
-            (Some (Found_or_redirect.redirect old_public_name s.new_public_name))
+          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
         | Library (dir, (conf : Library.t)) ->
           let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
-          (match Lib_info.enabled info with
-           | Disabled_because_of_enabled_if -> None
-           | Normal | Optional ->
-             Some (Library.best_name conf, Found_or_redirect.found info)))
+          Library.best_name conf, Found_or_redirect.found [ info ])
       >>| Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
           match v1, v2 with
-          | Found info1, Found info2 -> Error (Lib_info.loc info1, Lib_info.loc info2)
+          | Found info1, Found info2 ->
+            Ok (Found_or_redirect.found (List.rev_append info1 info2))
           | Found info, Redirect (loc, _) | Redirect (loc, _), Found info ->
-            Error (loc, Lib_info.loc info)
+            (* todo: should this not be an error? *)
+            Error (loc, Lib_info.loc (List.hd info))
           | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
             if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
         in

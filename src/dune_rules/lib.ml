@@ -406,7 +406,7 @@ type db =
 
 and resolve_result =
   | Not_found
-  | Found of Lib_info.external_
+  | Found of Lib_info.external_ list
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
   | Ignore
@@ -1121,7 +1121,25 @@ end = struct
     | Redirect (db', (_, name')) ->
       let db' = Option.value db' ~default:db in
       find_internal db' name'
-    | Found info -> instantiate db name info ~hidden:None
+    | Found libs ->
+      let filtered_libs =
+        List.filter libs ~f:(fun lib ->
+          match Lib_info.enabled lib with
+          | Disabled_because_of_enabled_if -> false
+          | Normal | Optional -> true)
+      in
+      (match filtered_libs with
+       | [] ->
+         (* todo: make function with Not_found below *)
+         let+ res =
+           match db.parent with
+           | None -> Memo.return Status.Not_found
+           | Some db -> find_internal db name
+         in
+         res
+       | info :: [] -> instantiate db name info ~hidden:None
+       | _ :: _ ->
+         (* todo: handle by adding an error to Error module above *) failwith "ERROR")
     | Invalid e -> Memo.return (Status.Invalid e)
     | Not_found ->
       let+ res =
@@ -1766,7 +1784,7 @@ module DB = struct
   module Resolve_result = struct
     type t = resolve_result =
       | Not_found
-      | Found of Lib_info.external_
+      | Found of Lib_info.external_ list
       | Hidden of Lib_info.external_ Hidden.t
       | Invalid of User_message.t
       | Ignore
@@ -1781,7 +1799,7 @@ module DB = struct
       match x with
       | Not_found -> variant "Not_found" []
       | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
-      | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
+      | Found libs -> variant "Found" [ (Dyn.list (Lib_info.to_dyn Path.to_dyn)) libs ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
       | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
@@ -1808,7 +1826,7 @@ module DB = struct
           let open Memo.O in
           Findlib.find findlib name
           >>| function
-          | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
+          | Ok (Library pkg) -> Found [ Dune_package.Lib.info pkg ]
           | Ok (Deprecated_library_name d) -> Redirect (None, (d.loc, d.new_public_name))
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
           | Error e ->

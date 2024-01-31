@@ -22,7 +22,7 @@ let find_project_by_key =
     Memo.create "project-by-keys" ~input:(module Input) make_map
   in
   fun key ->
-    let* projects = Dune_load.load () >>| Dune_load.projects in
+    let* projects = Dune_load.projects () in
     let+ map = Memo.exec memo projects in
     Dune_project.File_key.Map.find_exn map key
 ;;
@@ -561,7 +561,7 @@ module Toplevel_index = struct
 end
 
 let setup_toplevel_index_rule sctx output =
-  let* packages = Only_packages.get () in
+  let* packages = Dune_load.packages () in
   let index = Toplevel_index.of_packages packages in
   let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
@@ -918,8 +918,8 @@ let setup_package_odoc_rules sctx ~pkg =
 ;;
 
 let gen_project_rules sctx project =
-  let* packages = Only_packages.packages_of_project project in
-  Package.Name.Map_traversals.parallel_iter packages ~f:(fun _ (pkg : Package.t) ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg)
 ;;
@@ -946,7 +946,7 @@ let has_rules ?(directory_targets = Path.Build.Map.empty) m =
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
-  let* packages = Only_packages.get () in
+  let* packages = Dune_load.packages () in
   match Package.Name.Map.find packages pkg with
   | Some pkg -> has_rules (f pkg)
   | None -> Memo.return Gen_rules.no_rules
@@ -991,7 +991,7 @@ let gen_rules sctx ~dir rest =
               setup_lib_odocl_rules sctx lib ~requires
             | Some pkg -> setup_pkg_odocl_rules sctx ~pkg)
        and+ () =
-         let* packages = Only_packages.get () in
+         let* packages = Dune_load.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with
@@ -1020,7 +1020,7 @@ let gen_rules sctx ~dir rest =
             | None -> setup_lib_html_rules sctx lib
             | Some pkg -> setup_pkg_html_rules sctx ~pkg)
        and+ () =
-         let* packages = Only_packages.get () in
+         let* packages = Dune_load.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with

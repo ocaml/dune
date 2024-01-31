@@ -44,7 +44,7 @@ include Alias_builder.Alias_rec (struct
             =
             f ~path:build_path
           and* stanzas_in_dir =
-            Action_builder.of_memo (Only_packages.stanzas_in_dir build_path)
+            Action_builder.of_memo (Dune_load.stanzas_in_dir build_path)
           in
           match stanzas_in_dir with
           | None -> Action_builder.return found_in_source

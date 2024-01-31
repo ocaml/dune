@@ -94,7 +94,7 @@ end = struct
 
   let get_env_stanza ~dir =
     let open Memo.O in
-    let+ stanzas = Only_packages.stanzas_in_dir dir in
+    let+ stanzas = Dune_load.stanzas_in_dir dir in
     Option.value ~default:Dune_env.empty
     @@
     let open Option.O in
@@ -348,7 +348,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
     let open Memo.O in
-    let* packages = Only_packages.get ()
+    let* packages = Dune_load.packages ()
     and* contexts = Context.DB.all () in
     let rec sctxs =
       lazy
@@ -367,8 +367,7 @@ let all =
           Some sctx
       in
       let* host, stanzas =
-        Memo.fork_and_join host (fun () ->
-          Only_packages.filtered_stanzas (Context.name context))
+        Memo.fork_and_join host (fun () -> Dune_load.dune_files (Context.name context))
       in
       create ~host ~context ~packages ~stanzas
     in

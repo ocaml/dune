@@ -48,7 +48,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
               (Context.build_dir (Super_context.context sctx))
               (Source_tree.Dir.path dir)
           in
-          Only_packages.stanzas_in_dir dir
+          Dune_load.stanzas_in_dir dir
           >>= function
           | None -> Memo.return Libs_and_ppxs.empty
           | Some (d : Dune_file.t) ->

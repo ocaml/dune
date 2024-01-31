@@ -138,6 +138,8 @@ val encode : t -> Dune_lang.t list
 val dune_site_extension : unit Extension.t
 val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
 val allow_approximate_merlin : t -> Loc.t option
+val filter_packages : t -> f:(Package.Name.t -> bool) -> t
+val including_hidden_packages : t -> Package.t Package.Name.Map.t
 
 module Melange_syntax : sig
   val name : string

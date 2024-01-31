@@ -8,7 +8,6 @@ type t =
 
 let dir t = t.dir
 let stanzas t = t.stanzas
-let set_stanzas t stanzas = { t with stanzas }
 let project t = t.project
 
 let is_promoted_rule =
@@ -289,11 +288,7 @@ module Script = struct
     in
     let* () =
       let* env = Context.host context >>| Context.installed_env in
-      let ocaml =
-        (* CR-rgrinberg: This ocaml seems wrong. shouldn't we be using the
-           host context here? *)
-        Action.Prog.ok_exn ocaml.ocaml
-      in
+      let ocaml = Action.Prog.ok_exn ocaml.ocaml in
       let args =
         [ "-I"; "+compiler-libs"; Path.to_absolute_filename (Path.build wrapper) ]
       in
@@ -329,6 +324,35 @@ module Script = struct
   ;;
 end
 
+let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
+  List.filter_map ~f:(fun stanza ->
+    let include_stanza =
+      match Stanzas.stanza_package stanza with
+      | None -> true
+      | Some package ->
+        let name = Package.name package in
+        Package.Name.Map.mem visible_pkgs name
+    in
+    if include_stanza
+    then Some stanza
+    else (
+      match Stanza.repr stanza with
+      | Library.T l ->
+        Library_redirect.Local.of_private_lib l
+        |> Option.map ~f:Library_redirect.Local.make_stanza
+      | _ -> None))
+;;
+
+let filter_stanzas (mask : Only_packages.t) (dune_files : t list) =
+  match mask with
+  | None -> dune_files
+  | Some visible_pkgs ->
+    List.map dune_files ~f:(fun dune_file ->
+      { dune_file with
+        stanzas = filter_out_stanzas_from_hidden_packages ~visible_pkgs dune_file.stanzas
+      })
+;;
+
 module Eval = struct
   type nonrec t =
     | Literal of t
@@ -357,7 +381,9 @@ module Eval = struct
       Literal stanzas
   ;;
 
-  let eval dune_files =
+  let eval dune_files (mask : Only_packages.t) =
+    (* CR-rgrinberg: all this evaluation complexity is to share
+       some work in multi context builds. Is it worth it? *)
     let+ static, dynamic =
       Appendable_list.to_list dune_files
       |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
@@ -366,9 +392,10 @@ module Eval = struct
         | Literal x -> Left x
         | Script s -> Right s)
     in
-    Staged.stage (fun context ->
+    let static = filter_stanzas mask static in
+    fun context ->
       let+ dynamic = Memo.parallel_map dynamic ~f:(Script.eval_one ~context) in
-      static @ dynamic)
+      static @ filter_stanzas mask dynamic
   ;;
 end
 

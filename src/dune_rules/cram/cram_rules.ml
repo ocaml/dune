@@ -99,7 +99,7 @@ let test_rule
 
 let collect_stanzas =
   let stanzas dir ~f =
-    let+ stanzas = Only_packages.stanzas_in_dir dir in
+    let+ stanzas = Dune_load.stanzas_in_dir dir in
     match stanzas with
     | None -> []
     | Some (d : Dune_file.t) ->
@@ -128,7 +128,7 @@ let rules ~sctx ~expander ~dir tests =
   let open Memo.O in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
-    Only_packages.get_mask ()
+    Dune_load.mask ()
     >>| function
     | None -> fun _packages f -> f ()
     | Some only ->

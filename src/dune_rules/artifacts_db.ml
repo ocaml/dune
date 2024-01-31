@@ -103,8 +103,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
-          get_installed_binaries ~context stanzas)
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
       in
       Artifacts.create context ~local_bins |> Memo.return
     in

@@ -399,7 +399,7 @@ module Valid = struct
     let run (ctx, all, projects) =
       let* libs_and_pkgs =
         let* mask =
-          let+ mask = Only_packages.get_mask () in
+          let+ mask = Dune_load.mask () in
           Option.map ~f:Package.Name.Map.keys mask
         in
         Scope.DB.with_all ctx ~f:(fun find ->
@@ -485,7 +485,7 @@ module Valid = struct
   ;;
 
   let get ctx ~all =
-    let* projects = Dune_load.load () >>| Dune_load.projects in
+    let* projects = Dune_load.projects () in
     Memo.exec valid_libs_and_packages (ctx, all, projects)
   ;;
 
@@ -1247,7 +1247,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
 ;;
 
 let pkg_mlds sctx pkg =
-  let* pkgs = Only_packages.get () in
+  let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
   then Packages.mlds sctx pkg >>| List.map ~f:Path.build
   else (
@@ -1952,8 +1952,8 @@ let setup_all_html_rules sctx ~all =
 
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
-  Only_packages.packages_of_project project
-  >>= Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

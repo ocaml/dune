@@ -1,6 +1,8 @@
 open Import
 open Memo.O
 
+type 'a t = Context_name.t -> 'a Memo.t
+
 let all =
   Memo.lazy_ ~name:"context-db"
   @@ fun () ->

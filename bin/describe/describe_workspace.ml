@@ -518,7 +518,7 @@ module Crawl = struct
   (* Builds a workspace description for the provided dune setup and context *)
   let workspace
     options
-    ({ Dune_rules.Main.conf; contexts = _; scontexts } : Dune_rules.Main.build_system)
+    ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
     (context : Context.t)
     dirs
     : Descr.Workspace.t Memo.t
@@ -527,8 +527,7 @@ module Crawl = struct
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.dune_files conf ~context:context_name
-      >>| List.filter ~f:(dune_file_is_in_dirs dirs)
+      Dune_load.dune_files context_name >>| List.filter ~f:(dune_file_is_in_dirs dirs)
     in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
@@ -556,8 +555,8 @@ module Crawl = struct
     in
     let* project_libs =
       (* the list of libraries declared in the project *)
-      Dune_load.projects conf
-      |> Memo.parallel_map ~f:(fun project ->
+      Dune_load.projects ()
+      >>= Memo.parallel_map ~f:(fun project ->
         Scope.DB.find_by_project context project >>| Scope.libs >>= Lib.DB.all)
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)

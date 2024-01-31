@@ -20,7 +20,7 @@ let make ~allow_deprecated_names project ((_, s) as loc_name) =
     match allow_deprecated_names with
     | false -> None
     | true ->
-      Dune_project.packages project
+      Dune_project.including_hidden_packages project
       |> Package.Name.Map.values
       |> List.find_map ~f:(fun package ->
         let deprecated_package_names = Package.deprecated_package_names package in

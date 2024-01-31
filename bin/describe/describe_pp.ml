@@ -56,7 +56,7 @@ let get_pped_file super_context file =
          >>| Source_tree.Dir.path
          >>| Path.source
        in
-       let* dune_file = Dune_rules.Only_packages.stanzas_in_dir (dir |> in_build_dir) in
+       let* dune_file = Dune_rules.Dune_load.stanzas_in_dir (dir |> in_build_dir) in
        let staged_pps =
          Option.bind dune_file ~f:(fun dune_file ->
            Dune_file.find_stanzas dune_file Dune_rules.Library.key

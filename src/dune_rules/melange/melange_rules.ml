@@ -572,7 +572,7 @@ let rec under_melange_emit_target ~dir =
   match Path.Build.parent dir with
   | None -> Memo.return None
   | Some parent ->
-    Only_packages.stanzas_in_dir parent
+    Dune_load.stanzas_in_dir parent
     >>= (function
      | None -> under_melange_emit_target ~dir:parent
      | Some stanzas ->
@@ -637,7 +637,7 @@ let setup_emit_js_rules sctx ~dir =
      | Some melange -> Gen_rules.make melange)
   | None ->
     (* this should probably be handled by [Dir_status] *)
-    Only_packages.stanzas_in_dir dir
+    Dune_load.stanzas_in_dir dir
     >>| (function
      | None -> Gen_rules.no_rules
      | Some dune_file ->

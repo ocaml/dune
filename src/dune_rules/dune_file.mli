@@ -12,6 +12,7 @@ val project : t -> Dune_project.t
 val equal : t -> t -> bool
 val hash : t -> int
 val to_dyn : t -> Dyn.t
+val find_stanzas : t -> 'a Stanza.Key.t -> 'a list
 
 val parse
   :  Dune_lang.Ast.t list

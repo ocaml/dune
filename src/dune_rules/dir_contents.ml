@@ -127,31 +127,28 @@ let build_mlds_map stanzas ~dir ~files =
         | _ -> acc)
       |> Memo.return)
   in
-  Memo.parallel_map stanzas ~f:(fun x ->
-    match Stanza.repr x with
-    | Documentation.T doc ->
-      let+ mlds =
-        let+ mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.Unordered_string.eval
-          doc.mld_files
-          ~standard:mlds
-          ~key:Fun.id
-          ~parse:(fun ~loc s ->
-            match Filename.Map.find mlds s with
-            | Some s -> s
-            | None ->
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "%s.mld doesn't exist in %s"
-                    s
-                    (Path.to_string_maybe_quoted
-                       (Path.drop_optional_build_context (Path.build dir)))
-                ])
-      in
-      Some (doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ -> Memo.return None)
-  >>| List.filter_opt
+  Dune_file.find_stanzas stanzas Documentation.key
+  |> Memo.parallel_map ~f:(fun (doc : Documentation.t) ->
+    let+ mlds =
+      let+ mlds = Memo.Lazy.force mlds in
+      Ordered_set_lang.Unordered_string.eval
+        doc.mld_files
+        ~standard:mlds
+        ~key:Fun.id
+        ~parse:(fun ~loc s ->
+          match Filename.Map.find mlds s with
+          | Some s -> s
+          | None ->
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "%s.mld doesn't exist in %s"
+                  s
+                  (Path.to_string_maybe_quoted
+                     (Path.drop_optional_build_context (Path.build dir)))
+              ])
+    in
+    doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
 ;;
 
 module rec Load : sig
@@ -298,7 +295,7 @@ end = struct
               ; dir
               ; text_files = files
               ; ml
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
                     let dune_version = Dune_project.dune_version project in
@@ -393,7 +390,7 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
               ; coq
               })
           in
@@ -403,7 +400,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
             ; coq
             }
           in

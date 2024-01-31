@@ -59,17 +59,14 @@ let get_pped_file super_context file =
        let* dune_file = Dune_rules.Only_packages.stanzas_in_dir (dir |> in_build_dir) in
        let staged_pps =
          Option.bind dune_file ~f:(fun dune_file ->
-           Dune_file.stanzas dune_file
-           |> List.fold_left ~init:None ~f:(fun acc stanza ->
-             match Stanza.repr stanza with
-             | Dune_rules.Library.T lib ->
-               let preprocess =
-                 Dune_rules.Preprocess.Per_module.(
-                   lib.buildable.preprocess |> single_preprocess)
-               in
-               (match preprocess with
-                | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
-                | _ -> acc)
+           Dune_file.find_stanzas dune_file Dune_rules.Library.key
+           |> List.fold_left ~init:None ~f:(fun acc (lib : Dune_rules.Library.t) ->
+             let preprocess =
+               Dune_rules.Preprocess.Per_module.(
+                 lib.buildable.preprocess |> single_preprocess)
+             in
+             match preprocess with
+             | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
              | _ -> acc))
        in
        (match staged_pps with

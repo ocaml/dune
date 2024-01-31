@@ -103,11 +103,8 @@ let collect_stanzas =
     match stanzas with
     | None -> []
     | Some (d : Dune_file.t) ->
-      Dune_file.stanzas d
-      |> List.filter_map ~f:(fun x ->
-        match Stanza.repr x with
-        | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
-        | _ -> None)
+      Dune_file.find_stanzas d Cram_stanza.key
+      |> List.filter_map ~f:(fun c -> Option.some_if (f c) (dir, c))
   in
   let rec collect_whole_subtree acc dir =
     let* acc =

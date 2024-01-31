@@ -118,3 +118,8 @@ let equal t { dir; project; stanzas } =
 
 let hash = Poly.hash
 let to_dyn = Dyn.opaque
+
+let find_stanzas t key =
+  (* CR-rgrinberg: save a map to represent the stanzas to make this fast. *)
+  List.filter_map t.stanzas ~f:(Stanza.Key.get key)
+;;

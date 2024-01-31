@@ -57,6 +57,7 @@ module Local : sig
   include Path_intf.S with type t := t
 
   val root : t
+  val append : t -> t -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -102,6 +103,7 @@ module Source : sig
       though having such paths is almost always an error. *)
   val is_in_build_dir : t -> bool
 
+  val append_local : t -> Local.t -> t
   val descendant : t -> of_:t -> t option
   val to_local : t -> Local.t
 

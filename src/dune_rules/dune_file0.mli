@@ -3,6 +3,7 @@
 
 open Import
 
+val statically_evaluated_stanzas : string list
 val fname : Filename.t
 
 type kind =

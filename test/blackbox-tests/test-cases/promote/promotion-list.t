@@ -33,24 +33,12 @@
   [1]
 
   $ dune promotion list --diff-command 'diff -u' 2>&1
-  { src = In_build_dir "default/a.actual"
-  ; staging = None
-  ; dst = In_source_tree "a.expected"
-  }
-  { src = In_build_dir "default/b.actual"
-  ; staging = Some In_build_dir ".promotion-staging/b.expected"
-  ; dst = In_source_tree "b.expected"
-  }
+  a.expected
+  b.expected
 
   $ dune promotion list b.expected --diff-command 'diff -u' 2>&1
-  { src = In_build_dir "default/b.actual"
-  ; staging = Some In_build_dir ".promotion-staging/b.expected"
-  ; dst = In_source_tree "b.expected"
-  }
+  b.expected
 
   $ dune promotion list a.expected nothing-to-promote.txt --diff-command 'diff -u' 2>&1
   Warning: Nothing to promote for nothing-to-promote.txt.
-  { src = In_build_dir "default/a.actual"
-  ; staging = None
-  ; dst = In_source_tree "a.expected"
-  }
+  a.expected

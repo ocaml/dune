@@ -251,6 +251,6 @@ let display_files files_to_promote =
   file_opts
   |> List.filter_opt
   |> List.sort ~compare:(fun file file' -> File.compare file file')
-  |> List.map ~f:File.to_dyn
-  |> List.iter ~f:(fun file -> Console.print [ Dyn.pp file ])
+  |> List.iter ~f:(fun (file : File.t) ->
+    Console.printf "%s" (Path.Source.to_string file.dst))
 ;;

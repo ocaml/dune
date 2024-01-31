@@ -17,22 +17,8 @@ This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.
 
-
-Install Dune
-============
-
-The best way to install Dune is with opam: 
-
-.. code:: console
-
-  $ opam install dune
-
-Then run ``eval $(opam env)`` to update the shell. When creating a new 
-directory or changing directories, run ``eval $(opam env)`` if you 
-get the `dune` command not found error.
-
-Now you're ready to create your first workspace and initialize projects. 
-
+To try these examples, you will need to have Dune installed. See
+:doc:`howto/install-dune`.
 
 Initializing Projects
 =====================
@@ -214,24 +200,6 @@ step:
    $ dune exec -- ./hello_world.exe
 
 Voila! This should print "Hello, world!" in the command line.
-
-Please note: if you have Dune, opam, and OCaml installed, but you 
-get an error that the ``dune`` command isn't recognized, it will be necessary 
-to run ``eval $(opam env)`` to enable Dune in your directory. Find more 
-information in the `Dune ReadMe  <https://github.com/ocaml/dune>`__.
-
-If that didn't work, you should verify that OCaml and opam are installed correctly by
-running ``ocaml -version`` and ``opam --version``.
-
-If you still get an error that the ``dune`` command isn't recognized, try running 
-the following in this order:
-
-#. ``opam switch create . ocaml-base-compiler``
-#. ``opam install merlin ocp-indent dune utop``
-
-Then run ``eval $(opam env)`` again before trying to build and run 
-your new hello_world.exe program. 
-
 
 Building a Hello World Program Using Lwt
 ========================================

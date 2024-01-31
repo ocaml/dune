@@ -36,10 +36,6 @@ so this also tests that it won't be a problem.
   (warnings (deprecated_coq_lang_lt_08 disabled))
   Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
-  Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
   Installing $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi

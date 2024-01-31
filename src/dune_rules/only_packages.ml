@@ -111,9 +111,7 @@ let filtered_stanzas =
     @@ fun context ->
     Memo.lazy_ (fun () ->
       let+ only_packages = Memo.Lazy.force conf
-      and+ stanzas =
-        Dune_load.load () >>| Dune_load.dune_files >>= Dune_load.Dune_files.eval ~context
-      in
+      and+ stanzas = Dune_load.load () >>= Dune_load.dune_files ~context in
       let all =
         match only_packages with
         | None -> stanzas

@@ -1,4 +1,4 @@
-Exntesion registered twice
+Extension registered twice
 
   $ dune build
   File "dune-project", line 9, characters 1-74:

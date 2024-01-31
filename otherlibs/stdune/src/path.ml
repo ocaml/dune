@@ -513,6 +513,7 @@ module Source0 = struct
   include Local
 
   let to_dyn s = Dyn.variant "In_source_tree" [ to_dyn s ]
+  let append_local = Local.append
 end
 
 let abs_root, set_root =

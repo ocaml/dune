@@ -52,17 +52,14 @@ let current_group dir = function
   | Is_component_of_a_group_but_not_the_root { group_root; _ } -> Group_root group_root
 ;;
 
-let get_include_subdirs stanzas =
-  List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
-    match Stanza.repr stanza with
-    | Include_subdirs.T (loc, x) ->
-      if Option.is_some acc
-      then
-        User_error.raise
-          ~loc
-          [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ];
-      Some (loc, x)
-    | _ -> acc)
+let get_include_subdirs include_stanzas =
+  match include_stanzas with
+  | [] -> None
+  | [ (loc, x) ] -> Some (loc, x)
+  | _ :: (loc, _) :: _ ->
+    User_error.raise
+      ~loc
+      [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ]
 ;;
 
 let find_module_stanza stanzas =
@@ -173,7 +170,7 @@ end = struct
   ;;
 
   let has_dune_file ~dir st_dir ~build_dir_is_project_root (d : Dune_file.t) =
-    match get_include_subdirs (Dune_file.stanzas d) with
+    match get_include_subdirs (Dune_file.find_stanzas d Include_subdirs.key) with
     | Some (loc, Include mode) ->
       let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
       Memo.return

@@ -30,6 +30,16 @@ type constructors = Stanza.Parser.t list
 let stanzas : constructors =
   [ Site_stanzas.all
   ; Cram_stanza.stanza
+  ; List.map Dune_file0.statically_evaluated_stanzas ~f:(fun stanza ->
+      ( stanza
+      , let* loc = loc in
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "stanza %S may not appear in (include ..) or be generated with OCaml \
+               syntax dune files"
+              stanza
+          ] ))
   ; [ ( "library"
       , let+ x = Library.decode in
         let base = [ Library.make_stanza x ] in

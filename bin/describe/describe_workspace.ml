@@ -527,8 +527,7 @@ module Crawl = struct
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.dune_files conf
-      |> Dune_load.Dune_files.eval ~context:context_name
+      Dune_load.dune_files conf ~context:context_name
       >>| List.filter ~f:(dune_file_is_in_dirs dirs)
     in
     let* exes, exe_libs =

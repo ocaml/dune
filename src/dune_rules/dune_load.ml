@@ -246,13 +246,13 @@ module Dune_files = struct
 end
 
 type t =
-  { dune_files : Dune_files.t
+  { dune_files : Dune_files.t Memo.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
   ; projects_by_root : Dune_project.t Path.Source.Map.t
   }
 
-let dune_files t = t.dune_files
+let dune_files t ~context = t.dune_files >>= Dune_files.eval ~context
 let packages t = t.packages
 let projects t = t.projects
 let projects_by_root t = t.projects_by_root
@@ -271,7 +271,7 @@ module Source_tree_map_reduce =
 
 let load () =
   let open Memo.O in
-  let* projects, dune_files =
+  let+ projects, dune_files =
     let f dir : Projects_and_dune_files.t Memo.t =
       let path = Source_tree.Dir.path dir in
       let project = Source_tree.Dir.project dir in
@@ -305,10 +305,12 @@ let load () =
               ; Pp.textf "- %s" (Path.Source.to_string_maybe_quoted (Package.opam_file b))
               ])))
   in
-  let+ dune_files =
-    Appendable_list.to_list dune_files
-    |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
-      Dune_files.interpret ~dir project dune_file)
+  let dune_files =
+    Memo.Lazy.create ~name:"dune-file-evaluation" (fun () ->
+      Appendable_list.to_list dune_files
+      |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
+        Dune_files.interpret ~dir project dune_file))
+    |> Memo.Lazy.force
   in
   { dune_files
   ; packages

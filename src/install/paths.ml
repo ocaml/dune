@@ -49,21 +49,40 @@ let map
   }
 ;;
 
-let make ~relative ~package ~(roots : _ Roots.t) =
+let get_field ~relative ~package ~(roots : _ Roots.t) (section : Section.t) =
   let package = Package_name.to_string package in
-  { lib_root = roots.lib_root
-  ; libexec_root = roots.libexec_root
-  ; share_root = roots.share_root
-  ; bin = roots.bin
-  ; sbin = roots.sbin
-  ; man = roots.man
-  ; toplevel = relative roots.lib_root "toplevel"
-  ; stublibs = relative roots.lib_root "stublibs"
-  ; lib = relative roots.lib_root package
-  ; libexec = relative roots.libexec_root package
-  ; share = relative roots.share_root package
-  ; etc = relative roots.etc_root package
-  ; doc = relative roots.doc_root package
+  match section with
+  | Lib -> relative roots.lib_root package
+  | Lib_root -> roots.lib_root
+  | Libexec -> relative roots.libexec_root package
+  | Libexec_root -> roots.libexec_root
+  | Bin -> roots.bin
+  | Sbin -> roots.sbin
+  | Toplevel -> relative roots.lib_root "toplevel"
+  | Share -> relative roots.share_root package
+  | Share_root -> roots.share_root
+  | Etc -> relative roots.etc_root package
+  | Doc -> relative roots.doc_root package
+  | Stublibs -> relative roots.lib_root "stublibs"
+  | Man -> roots.man
+  | Misc -> Code_error.raise "Install.Paths.get" []
+;;
+
+let make ~relative ~package ~(roots : _ Roots.t) =
+  let f = get_field ~relative ~package ~roots in
+  { lib_root = f Lib_root
+  ; libexec_root = f Libexec_root
+  ; share_root = f Share_root
+  ; bin = f Bin
+  ; sbin = f Sbin
+  ; man = f Man
+  ; toplevel = f Toplevel
+  ; stublibs = f Stublibs
+  ; lib = f Lib
+  ; libexec = f Libexec
+  ; share = f Share
+  ; etc = f Etc
+  ; doc = f Doc
   }
 ;;
 
@@ -90,6 +109,5 @@ let get_local_location context section package_name =
   let install_dir = Context.dir ~context in
   let install_dir = Path.build install_dir in
   let roots = Roots.opam_from_prefix install_dir ~relative:Path.relative in
-  let paths = make ~relative:Path.relative ~package:package_name ~roots in
-  get paths section
+  get_field ~relative:Path.relative ~package:package_name ~roots section
 ;;

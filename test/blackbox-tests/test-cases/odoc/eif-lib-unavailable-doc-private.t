@@ -14,6 +14,3 @@ Show behavior of doc-private alias when it's part of an unavailable library
   > EOF
 
   $ dune build @doc-private
-  Error: No rule found for alias _doc/_html/foo@26bb1931b3ad/doc
-  -> required by alias doc-private
-  [1]

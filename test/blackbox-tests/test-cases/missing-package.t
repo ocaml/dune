@@ -34,3 +34,37 @@ Now we try to add a bad package:
   directory are:
   - bar (because of bar.opam)
   [1]
+
+Now we use another form instead of a library
+  $ cat >dune <<EOF
+  > (install
+  >  (files dune)
+  >  (section share)
+  >  (package foo))
+  > EOF
+
+  $ dune build @install
+  File "dune", line 4, characters 1-14:
+  4 |  (package foo))
+       ^^^^^^^^^^^^^
+  Error: The current scope doesn't define package "foo".
+  The only packages for which you can declare elements to be installed in this
+  directory are:
+  - bar (because of bar.opam)
+  [1]
+
+Same thing but without packages in the project
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > EOF
+  $ dune build @install
+  File "dune", line 4, characters 1-14:
+  4 |  (package foo))
+       ^^^^^^^^^^^^^
+  Error: You cannot declare items to be installed without adding a
+  <package>.opam file at the root of your project.
+  To declare elements to be installed as part of package "foo", add a
+  "foo.opam" file at the root of your project.
+  Root of the project as discovered by dune: .
+  [1]

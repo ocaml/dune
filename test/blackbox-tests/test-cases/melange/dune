@@ -4,7 +4,7 @@
 
 (cram
  (deps %{bin:rescript_syntax})
- (applies_to rescript_syntax))
+ (applies_to rescript-syntax))
 
 (cram
  (deps %{bin:melc_stdlib_prefix})

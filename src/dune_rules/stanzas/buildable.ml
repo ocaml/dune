@@ -110,7 +110,7 @@ let decode (for_ : for_) =
     field_o
       "ctypes"
       (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1) >>> Ctypes_field.decode)
-  and+ loc_instrumentation, instrumentation = Preprocess.Instrumentation.instrumentation
+  and+ instrumentation = Preprocess.Instrumentation.instrumentation
   and+ empty_module_interface_if_absent =
     field_b
       "empty_module_interface_if_absent"
@@ -121,11 +121,7 @@ let decode (for_ : for_) =
       let f libname = Preprocess.With_instrumentation.Ordinary libname in
       Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
     in
-    List.fold_left instrumentation ~init ~f:(fun accu instrumentation ->
-      Preprocess.Per_module.add_instrumentation
-        accu
-        ~loc:loc_instrumentation
-        instrumentation)
+    List.fold_left instrumentation ~init ~f:Preprocess.Per_module.add_instrumentation
   in
   let foreign_stubs =
     foreign_stubs

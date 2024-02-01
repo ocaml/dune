@@ -226,6 +226,7 @@ module Instrumentation = struct
     { backend : Loc.t * Lib_name.t
     ; flags : String_with_vars.t list
     ; deps : Dep_conf.t list
+    ; loc : Loc.t
     }
 
   let instrumentation =
@@ -261,9 +262,8 @@ module Instrumentation = struct
                "deps"
                ~default:[]
                (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
-           in
-           { backend; deps; flags })
-    |> located
+           and+ loc = Dune_lang.Decoder.loc in
+           { backend; deps; flags; loc })
   ;;
 end
 
@@ -293,7 +293,7 @@ module Per_module = struct
     if Per_module.is_constant t then Per_module.get t dummy_name else No_preprocessing
   ;;
 
-  let add_instrumentation t ~loc { Instrumentation.flags; deps; backend = libname } =
+  let add_instrumentation t { Instrumentation.flags; loc; deps; backend = libname } =
     Per_module.map t ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
@@ -302,6 +302,8 @@ module Per_module = struct
         in
         Pps { loc; pps; flags = []; staged = false }
       | Pps ({ pps; _ } as t) ->
+        (* CR-rgrinberg: Maybe we shouldn't drop the loc of the instrumentation
+           stanza? *)
         let pps =
           With_instrumentation.Instrumentation_backend { libname; deps; flags } :: pps
         in

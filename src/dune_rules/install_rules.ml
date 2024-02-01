@@ -709,29 +709,29 @@ end = struct
     let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
-      let meta_template = Package_paths.meta_template ctx pkg in
       Action_builder.write_file_dyn
         dune_package_file
         (let open Action_builder.O in
          let+ pkg =
-           Action_builder.if_file_exists
-             (Path.build meta_template)
-             ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-             ~else_:
-               (Action_builder.of_memo
-                  (Memo.bind (Memo.return ()) ~f:(fun () ->
-                     make_dune_package sctx lib_entries pkg)))
+           Package_paths.meta_template ctx pkg
+           |> Path.build
+           |> Action_builder.if_file_exists
+                ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
+                ~else_:
+                  (Action_builder.of_memo
+                     (Memo.bind (Memo.return ()) ~f:(fun () ->
+                        make_dune_package sctx lib_entries pkg)))
          in
          Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in
-    let deprecated_dune_packages =
-      List.filter_map lib_entries ~f:(function
-        | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
-          -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
-        | _ -> None)
-      |> Package.Name.Map.of_list_multi
-    in
     let* () =
+      let deprecated_dune_packages =
+        List.filter_map lib_entries ~f:(function
+          | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
+            -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
+          | _ -> None)
+        |> Package.Name.Map.of_list_multi
+      in
       Package.deprecated_package_names pkg
       |> Package.Name.Map.foldi ~init:(Memo.return ()) ~f:(fun name loc acc ->
         acc

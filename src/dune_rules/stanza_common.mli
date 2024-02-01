@@ -14,10 +14,14 @@ val preprocess_fields
   : (Preprocess.Without_instrumentation.t Preprocess.Per_module.t * Dep_conf.t list)
       fields_parser
 
+type instrumentation =
+  { backend : Loc.t * Lib_name.t
+  ; flags : String_with_vars.t list
+  ; deps : Dep_conf.t list
+  }
+
 (** [instrumentation] multi field *)
-val instrumentation
-  : (Loc.t * (((Loc.t * Lib_name.t) * String_with_vars.t list) * Dep_conf.t list) list)
-      fields_parser
+val instrumentation : (Loc.t * instrumentation list) fields_parser
 
 module Modules_settings : sig
   type t =

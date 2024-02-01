@@ -161,43 +161,48 @@ let preprocess_fields =
   preprocess, preprocessor_deps
 ;;
 
+type instrumentation =
+  { backend : Loc.t * Lib_name.t
+  ; flags : String_with_vars.t list
+  ; deps : Dep_conf.t list
+  }
+
 let instrumentation =
-  located
-    (multi_field
-       "instrumentation"
-       (Dune_lang.Syntax.since Stanza.syntax (2, 7)
-        >>> fields
-              (let+ backend =
-                 field
-                   "backend"
-                   (let+ libname = located Lib_name.decode
-                    and+ flags =
-                      let* current_ver = Dune_lang.Syntax.get_exn Stanza.syntax in
-                      let version_check flag =
-                        let ver = 2, 8 in
-                        if current_ver >= ver
-                        then flag
-                        else (
-                          let what =
-                            "The possibility to pass arguments to instrumentation \
-                             backends"
-                          in
-                          Dune_lang.Syntax.Error.since
-                            (String_with_vars.loc flag)
-                            Stanza.syntax
-                            ver
-                            ~what)
-                      in
-                      repeat (String_with_vars.decode >>| version_check)
+  multi_field
+    "instrumentation"
+    (Dune_lang.Syntax.since Stanza.syntax (2, 7)
+     >>> fields
+         @@
+         let+ backend, flags =
+           field "backend"
+           @@ let+ libname = located Lib_name.decode
+              and+ flags =
+                let* current_ver = Dune_lang.Syntax.get_exn Stanza.syntax in
+                let version_check flag =
+                  let ver = 2, 8 in
+                  if current_ver >= ver
+                  then flag
+                  else (
+                    let what =
+                      "The possibility to pass arguments to instrumentation backends"
                     in
-                    libname, flags)
-               and+ deps =
-                 field
-                   "deps"
-                   ~default:[]
-                   (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
-               in
-               backend, deps)))
+                    Dune_lang.Syntax.Error.since
+                      (String_with_vars.loc flag)
+                      Stanza.syntax
+                      ver
+                      ~what)
+                in
+                repeat (String_with_vars.decode >>| version_check)
+              in
+              libname, flags
+         and+ deps =
+           field
+             "deps"
+             ~default:[]
+             (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
+         in
+         { backend; deps; flags })
+  |> located
 ;;
 
 module Modules_settings = struct

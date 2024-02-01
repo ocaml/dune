@@ -84,6 +84,31 @@ let%expect_test "parsing multiple bindings" =
   |}]
 ;;
 
+let%expect_test "parsing duplicate bindings" =
+  let config = {|[foo]
+    bar = baz
+    bar = qux
+  |} in
+  print_or_fail config;
+  [%expect
+    {|
+  [ { name = "foo"; arg = None; bindings = [ ("bar", "baz"); ("bar", "qux") ] }
+  ]
+  |}]
+;;
+
+let%expect_test "comments" =
+  let config = {|[foo]
+    #set = wrong
+    ;set = incorrect
+    set = correct
+  |} in
+  print_or_fail config;
+  [%expect {|
+  [ { name = "foo"; arg = None; bindings = [ ("set", "correct") ] } ]
+  |}]
+;;
+
 let%expect_test "parsing no bindings" =
   let config = {|[empty]
   [filled]

@@ -90,7 +90,19 @@ let rec parse_sections acc lines =
        parse_sections acc rest)
 ;;
 
+let strip_comment =
+  let from_char_to_end c = Re.(compile (seq [ c; rep any ])) in
+  let hash_comment = from_char_to_end @@ Re.char '#' in
+  let semicolon_comment = from_char_to_end @@ Re.char ';' in
+  let by = "" in
+  let all = false in
+  fun line ->
+    line
+    |> Re.replace_string ~all ~by hash_comment
+    |> Re.replace_string ~all ~by semicolon_comment
+;;
+
 let parse s =
-  let lines = String.split ~on:'\n' s in
+  let lines = s |> String.split ~on:'\n' |> List.map ~f:strip_comment in
   parse_sections [] lines |> Result.ok
 ;;

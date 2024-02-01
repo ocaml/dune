@@ -31,7 +31,7 @@ let error { current_file = file; include_stack } =
 let load_sexps ~context:{ current_file; include_stack } (loc, fn) =
   let include_stack = (loc, current_file) :: include_stack in
   let dir = Path.Source.parent_exn current_file in
-  let current_file = Path.Source.relative dir fn in
+  let current_file = Path.Source.relative ~error_loc:loc dir fn in
   let open Memo.O in
   let* exists = Fs_memo.file_exists (In_source_dir current_file) in
   if not exists

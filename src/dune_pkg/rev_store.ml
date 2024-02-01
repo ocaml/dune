@@ -254,62 +254,68 @@ let load_or_create ~dir =
   t
 ;;
 
+module Commit = struct
+  type t =
+    { path : Path.Local.t
+    ; rev : Rev.t
+    }
+
+  let compare { path; rev } t =
+    let open Ordering.O in
+    let= () = Path.Local.compare path t.path in
+    Rev.compare rev t.rev
+  ;;
+
+  let to_dyn { path; rev } =
+    Dyn.record [ "path", Path.Local.to_dyn path; "rev", Rev.to_dyn rev ]
+  ;;
+end
+
 module File = struct
   module T = struct
-    module Blob = struct
-      type t =
-        { path : Path.Local.t
-        ; size : int
-        ; hash : string
-        }
-
-      let compare { path; size; hash } t =
-        let open Ordering.O in
-        let= () = Path.Local.compare path t.path in
-        let= () = Int.compare size t.size in
-        String.compare hash t.hash
-      ;;
-
-      let to_dyn { path; size; hash } =
-        Dyn.record
-          [ "path", Path.Local.to_dyn path
-          ; "size", Dyn.int size
-          ; "hash", Dyn.string hash
-          ]
-      ;;
-    end
-
-    module Commit = struct
-      type t =
-        { path : Path.Local.t
-        ; rev : Rev.t
-        }
-
-      let compare { path; rev } t =
-        let open Ordering.O in
-        let= () = Path.Local.compare path t.path in
-        Rev.compare rev t.rev
-      ;;
-
-      let to_dyn { path; rev } =
-        Dyn.record [ "path", Path.Local.to_dyn path; "rev", Rev.to_dyn rev ]
-      ;;
-    end
-
     type t =
-      | Blob of Blob.t
+      { path : Path.Local.t
+      ; size : int
+      ; hash : string
+      }
+
+    let compare { path; size; hash } t =
+      let open Ordering.O in
+      let= () = Path.Local.compare path t.path in
+      let= () = Int.compare size t.size in
+      String.compare hash t.hash
+    ;;
+
+    let to_dyn { path; size; hash } =
+      Dyn.record
+        [ "path", Path.Local.to_dyn path; "size", Dyn.int size; "hash", Dyn.string hash ]
+    ;;
+  end
+
+  include T
+
+  let path t = t.path
+
+  module C = Comparable.Make (T)
+  module Set = C.Set
+end
+
+module Entry = struct
+  module T = struct
+    type t =
+      | File of File.t
       | Commit of Commit.t
 
     let compare a b =
       match a, b with
-      | Blob a, Blob b -> Blob.compare a b
+      | File a, File b -> File.compare a b
       | Commit a, Commit b -> Commit.compare a b
-      | Blob _, Commit _ -> Ordering.Lt
-      | Commit _, Blob _ -> Ordering.Gt
+      | File _, Commit _ -> Ordering.Lt
+      | Commit _, File _ -> Ordering.Gt
     ;;
 
     let to_dyn = function
-      | Blob b -> Dyn.variant "Blob" [ Blob.to_dyn b ]
+      | File b -> Dyn.variant "File" [ File.to_dyn b ]
       | Commit c -> Dyn.variant "Commit" [ Commit.to_dyn c ]
     ;;
   end
@@ -345,7 +351,7 @@ module File = struct
         match Re.Group.get m 1 with
         | "blob" ->
           Some
-            (Blob
+            (File
                { hash = Re.Group.get m 2
                ; size = Int.of_string_exn @@ Re.Group.get m 3
                ; path = Path.Local.of_string @@ Re.Group.get m 4
@@ -357,10 +363,6 @@ module File = struct
                ; path = Path.Local.of_string @@ Re.Group.get m 4
                })
         | _ -> None)
-  ;;
-
-  let path = function
-    | Blob { path; _ } | Commit { path; _ } -> path
   ;;
 end
 
@@ -406,20 +408,20 @@ module At_rev = struct
     { repo : repo
     ; revision : Rev.t
     ; source : string
-    ; files_at_rev : File.Set.t
+    ; entries_at_rev : Entry.Set.t
     ; submodules : (Path.Local.t * t) list
     }
 
-  let files_at_rev repo (Rev.Rev rev) =
+  let entries_at_rev repo (Rev.Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
-    >>| List.filter_map ~f:File.parse
-    >>| File.Set.of_list
+    >>| List.filter_map ~f:Entry.parse
+    >>| Entry.Set.of_list
   ;;
 
   let path_commit_map files =
-    File.Set.fold files ~init:Path.Local.Map.empty ~f:(fun file m ->
+    Entry.Set.fold files ~init:Path.Local.Map.empty ~f:(fun file m ->
       match file with
-      | Blob _ -> m
+      | File _ -> m
       | Commit { path; rev } ->
         (match Path.Local.Map.add m path rev with
          | Ok m -> m
@@ -436,7 +438,7 @@ module At_rev = struct
   ;;
 
   let rec of_rev repo ~add_remote ~revision ~source =
-    let* files_at_rev = files_at_rev repo revision in
+    let* entries_at_rev = entries_at_rev repo revision in
     let* git_modules =
       let git_modules_path = Path.Local.of_string ".gitmodules" in
       show repo [ `Path (revision, git_modules_path) ]
@@ -445,7 +447,7 @@ module At_rev = struct
       match git_modules with
       | None -> Fiber.return []
       | Some git_modules_content ->
-        let commit_paths = path_commit_map files_at_rev in
+        let commit_paths = path_commit_map entries_at_rev in
         parse_submodules git_modules_content
         (* It's not safe to do a parallel map because adding a remote
            requires getting the lock (which we're now holding) *)
@@ -468,7 +470,7 @@ module At_rev = struct
             let+ at_rev = of_rev repo ~add_remote ~revision ~source in
             path, at_rev)
     in
-    { repo; revision; source; files_at_rev; submodules }
+    { repo; revision; source; entries_at_rev; submodules }
   ;;
 
   let submodule_path submodules path =
@@ -478,14 +480,14 @@ module At_rev = struct
       |> Option.map ~f:(fun path_in_at_rev -> path_in_at_rev, at_rev))
   ;;
 
-  let content { repo; revision; source = _; files_at_rev = _; submodules } path =
+  let content { repo; revision; source = _; entries_at_rev = _; submodules } path =
     match submodule_path submodules path with
     | None -> show repo [ `Path (revision, path) ]
     | Some (path, { revision; _ }) -> show repo [ `Path (revision, path) ]
   ;;
 
   let rec directory_entries
-    { repo = _; source = _; files_at_rev; revision = _; submodules }
+    { repo = _; source = _; entries_at_rev; revision = _; submodules }
     path
     =
     match submodule_path submodules path with
@@ -494,33 +496,39 @@ module At_rev = struct
       (* TODO: there are much better ways of implementing this:
          1. using libgit or ocamlgit
          2. possibly using [$ git archive] *)
-      File.Set.filter files_at_rev ~f:(fun (file : File.t) ->
-        match file with
-        | Commit _ -> false
-        | Blob file ->
+      Entry.Set.to_list entries_at_rev
+      |> List.filter_map ~f:(fun (entry : Entry.t) ->
+        match entry with
+        | Commit _ -> None
+        | File file ->
           (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
              "foo" is indeed a descendant of itself. So we filter it manually. *)
-          (not (Path.Local.equal file.path path))
-          && Path.Local.is_descendant file.path ~of_:path)
+          if (not (Path.Local.equal file.path path))
+             && Path.Local.is_descendant file.path ~of_:path
+          then Some file
+          else None)
+      |> File.Set.of_list
   ;;
 
   let repo_equal = equal
 
-  let rec equal { repo; revision = Rev revision; source; files_at_rev; submodules } t =
+  let rec equal { repo; revision = Rev revision; source; entries_at_rev; submodules } t =
     let (Rev revision') = t.revision in
     repo_equal repo t.repo
     && String.equal revision revision'
     && String.equal source t.source
-    && File.Set.equal files_at_rev t.files_at_rev
+    && Entry.Set.equal entries_at_rev t.entries_at_rev
     && List.equal (Tuple.T2.equal Path.Local.equal equal) submodules t.submodules
   ;;
 
-  let opam_url { revision = Rev rev; source; repo = _; files_at_rev = _; submodules = _ } =
+  let opam_url
+    { revision = Rev rev; source; repo = _; entries_at_rev = _; submodules = _ }
+    =
     OpamUrl.parse (sprintf "%s#%s" source rev)
   ;;
 
   let check_out
-    { repo = { dir }; revision = Rev rev; source = _; files_at_rev = _; submodules = _ }
+    { repo = { dir }; revision = Rev rev; source = _; entries_at_rev = _; submodules = _ }
     ~target
     =
     (* TODO iterate over submodules to output sources *)
@@ -767,10 +775,7 @@ let content_of_files t files =
   | [] -> Fiber.return []
   | _ :: _ ->
     let+ out =
-      List.filter_map files ~f:(fun (file : File.t) ->
-        match file with
-        | Commit _ -> None
-        | Blob file -> Some (`Object file.hash))
+      List.map files ~f:(fun (file : File.t) -> `Object file.hash)
       |> show t
       >>| function
       | Some s -> s
@@ -784,11 +789,8 @@ let content_of_files t files =
         assert (pos = String.length out);
         acc
       | (file : File.t) :: files ->
-        (match file with
-         | Commit _ -> loop acc pos files
-         | Blob file ->
-           let acc = String.sub out ~pos ~len:file.size :: acc in
-           loop acc (pos + file.size) files)
+        let acc = String.sub out ~pos ~len:file.size :: acc in
+        loop acc (pos + file.size) files
     in
     List.rev (loop [] 0 files)
 ;;

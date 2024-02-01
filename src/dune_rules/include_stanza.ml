@@ -24,11 +24,7 @@ let error { current_file = file; include_stack } =
         "File %s is included from %s"
         (Path.Source.to_string_maybe_quoted file)
         (line_loc last)
-    ; Pp.vbox
-        (Pp.concat_map rest ~sep:Pp.cut ~f:(fun x ->
-           Pp.box
-             ~indent:3
-             (Pp.seq (Pp.verbatim "-> ") (Pp.textf "included from %s" (line_loc x)))))
+    ; Pp.chain rest ~f:(fun x -> Pp.textf "included from %s" (line_loc x))
     ]
 ;;
 

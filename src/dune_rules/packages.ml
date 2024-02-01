@@ -10,17 +10,24 @@ let mlds_by_package_def =
     ~input:(module Super_context.As_memo_key)
     (fun sctx ->
       let ctx = Super_context.context sctx in
-      let* dune_files = Context.name ctx |> Only_packages.filtered_stanzas in
-      Memo.parallel_map dune_files ~f:(fun dune_file ->
+      Context.name ctx
+      |> Only_packages.filtered_stanzas
+      >>= Memo.parallel_map ~f:(fun dune_file ->
         Dune_file.stanzas dune_file
         |> Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Documentation.T d ->
-            let dir =
-              Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
+            let+ mlds =
+              let* dc =
+                let dir =
+                  Path.Build.append_source
+                    (Context.build_dir ctx)
+                    (Dune_file.dir dune_file)
+                in
+                Dir_contents.get sctx ~dir
+              in
+              Dir_contents.mlds dc d
             in
-            let* dc = Dir_contents.get sctx ~dir in
-            let+ mlds = Dir_contents.mlds dc d in
             let name = Package.name d.package in
             Some (name, mlds)
           | _ -> Memo.return None)

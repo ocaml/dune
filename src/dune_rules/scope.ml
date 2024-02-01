@@ -134,16 +134,17 @@ module DB = struct
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
-      List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
-        match stanza with
-        | Library (_, { project; visibility = Public p; _ }) ->
-          Some (Public_lib.name p, Project project)
-        | Library _ | Library_redirect _ -> None
-        | Deprecated_library_name s ->
-          let old_name = Deprecated_library_name.old_public_name s in
-          Some (old_name, Name s.new_public_name))
-      |> Lib_name.Map.of_list
-      |> function
+      match
+        List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
+          match stanza with
+          | Library (_, { project; visibility = Public p; _ }) ->
+            Some (Public_lib.name p, Project project)
+          | Library _ | Library_redirect _ -> None
+          | Deprecated_library_name s ->
+            let old_name = Deprecated_library_name.old_public_name s in
+            Some (old_name, Name s.new_public_name))
+        |> Lib_name.Map.of_list
+      with
       | Ok x -> x
       | Error (name, _, _) ->
         (match

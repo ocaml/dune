@@ -16,7 +16,7 @@ These guides will help you use Dune's features in your project.
    ../instrumentation
    ../jsoo
    ../melange
-   ../toplevel-integration
    ../variants
    ../tests
    bundle
+   toplevel

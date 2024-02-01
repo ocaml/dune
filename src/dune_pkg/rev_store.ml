@@ -417,16 +417,14 @@ module At_rev = struct
   ;;
 
   let path_commit_map files =
-    files
-    |> File.Set.fold ~init:Path.Local.Map.empty ~f:(fun file m ->
+    File.Set.fold files ~init:Path.Local.Map.empty ~f:(fun file m ->
       match file with
       | Blob _ -> m
       | Commit { path; rev } ->
         (match Path.Local.Map.add m path rev with
          | Ok m -> m
-         | Error existing_rev ->
+         | Error (Rev existing_rev) ->
            let (Rev found_rev) = rev in
-           let (Rev existing_rev) = existing_rev in
            User_error.raise
              [ Pp.textf
                  "Path %s specified multiple times as submodule pointing to different \
@@ -438,17 +436,20 @@ module At_rev = struct
   ;;
 
   let rec of_rev repo ~add_remote ~revision ~source =
-    let git_modules_path = Path.Local.of_string ".gitmodules" in
     let* files_at_rev = files_at_rev repo revision in
-    let* git_modules = show repo [ `Path (revision, git_modules_path) ] in
+    let* git_modules =
+      let git_modules_path = Path.Local.of_string ".gitmodules" in
+      show repo [ `Path (revision, git_modules_path) ]
+    in
     let+ submodules =
       match git_modules with
       | None -> Fiber.return []
       | Some git_modules_content ->
         let commit_paths = path_commit_map files_at_rev in
-        git_modules_content
-        |> parse_submodules
-        |> Fiber.parallel_map ~f:(fun { path; source } ->
+        parse_submodules git_modules_content
+        (* It's not safe to do a parallel map because adding a remote
+           requires getting the lock (which we're now holding) *)
+        |> Fiber.sequential_map ~f:(fun { path; source } ->
           match Path.Local.Map.find commit_paths path with
           | None ->
             User_error.raise

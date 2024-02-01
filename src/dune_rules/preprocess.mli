@@ -66,10 +66,11 @@ module Instrumentation : sig
     { backend : Loc.t * Lib_name.t
     ; flags : String_with_vars.t list
     ; deps : Dep_conf.t list
+    ; loc : Loc.t
     }
 
   (** [instrumentation] multi field *)
-  val instrumentation : (Loc.t * t list) Dune_lang.Decoder.fields_parser
+  val instrumentation : t list Dune_lang.Decoder.fields_parser
 end
 
 module Per_module : sig
@@ -91,7 +92,6 @@ module Per_module : sig
 
   val add_instrumentation
     :  With_instrumentation.t t
-    -> loc:Loc.t
     -> Instrumentation.t
     -> With_instrumentation.t t
 

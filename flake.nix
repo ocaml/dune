@@ -170,7 +170,6 @@
           slim-melange = makeDuneDevShell {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
-              pkgs.ocamlPackages.rescript-syntax
             ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
@@ -219,7 +218,6 @@
               ]) ++ (with pkgs.ocamlPackages; [
                 ocamllsp.outputs.packages.${system}.default
                 pkgs.ocamlPackages.melange
-                rescript-syntax
                 js_of_ocaml-compiler
                 js_of_ocaml
                 utop

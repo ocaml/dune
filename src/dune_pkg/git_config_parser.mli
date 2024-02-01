@@ -1,3 +1,5 @@
+(** simplistic parser for git config files *)
+
 type bindings = string * string
 
 type section =

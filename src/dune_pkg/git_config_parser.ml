@@ -16,22 +16,45 @@ let strip =
 ;;
 
 let parse_section_bindings =
-  let binding_re =
+  let binding_name = Re.(seq [ alpha; rep alnum ]) in
+  let binding_assignment_re =
     Re.(
       compile
-      @@ seq [ rep space; group (rep1 (diff any (char '='))); char '='; group (rep1 any) ])
+      @@ seq
+           [ bol
+           ; rep space
+           ; group binding_name
+           ; rep space
+           ; char '='
+           ; rep space
+           ; group (rep1 any)
+           ; rep space
+           ; eol
+           ])
+  in
+  let binding_boolean_re =
+    Re.(compile @@ seq [ bol; rep space; group binding_name; rep space; eol ])
   in
   fun lines ->
     List.filter_map lines ~f:(fun line ->
-      Re.exec_opt binding_re line
-      |> Option.map ~f:(fun m ->
-        let name = Re.Group.get m 1 |> strip in
-        let value = Re.Group.get m 2 |> strip in
-        name, value))
+      let binding_assignment =
+        Re.exec_opt binding_assignment_re line
+        |> Option.map ~f:(fun m ->
+          let name = Re.Group.get m 1 in
+          let value = Re.Group.get m 2 in
+          name, value)
+      in
+      match binding_assignment with
+      | Some _ as v -> v
+      | None ->
+        Re.exec_opt binding_boolean_re line
+        |> Option.map ~f:(fun m ->
+          let name = Re.Group.get m 1 in
+          name, "true"))
 ;;
 
 let parse_section_header =
-  let identifier = Re.(rep1 (diff any blank)) in
+  let identifier = Re.(rep1 (alt [ alnum; char '.'; char '-' ])) in
   let section_re =
     Re.(
       compile
@@ -43,7 +66,10 @@ let parse_section_header =
   in
   fun line ->
     Re.exec_opt section_re line
-    |> Option.map ~f:(fun m -> Re.Group.get m 1, Re.Group.get_opt m 2)
+    |> Option.map ~f:(fun m ->
+      (* names are case-insensitive, thus normalizing *)
+      let section_name = Re.Group.get m 1 |> String.lowercase in
+      section_name, Re.Group.get_opt m 2)
 ;;
 
 let rec parse_sections acc lines =

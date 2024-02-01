@@ -61,6 +61,16 @@ let%expect_test "parsing with equal" =
   |}]
 ;;
 
+let%expect_test "parsing without equal" =
+  let config = {|[foo]
+    enabled
+    |} in
+  print_or_fail config;
+  [%expect {|
+  [ { name = "foo"; arg = None; bindings = [ ("enabled", "true") ] } ]
+  |}]
+;;
+
 let%expect_test "parsing multiple bindings" =
   let config = {|[foo]
     bar = baz
@@ -133,5 +143,16 @@ let%expect_test "parsing named section" =
   [%expect
     {|
   [ { name = "foo"; arg = Some "name"; bindings = [ ("bar", "baz") ] } ]
+  |}]
+;;
+
+let%expect_test "case sensitivity" =
+  let config = {|[fOO "nAmE"]
+    bar = baz
+    |} in
+  print_or_fail config;
+  [%expect
+    {|
+  [ { name = "foo"; arg = Some "nAmE"; bindings = [ ("bar", "baz") ] } ]
   |}]
 ;;

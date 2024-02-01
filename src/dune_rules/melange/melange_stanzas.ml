@@ -107,9 +107,10 @@ module Emit = struct
            "runtime_deps"
            (located (repeat Dep_conf.decode_no_files))
            ~default:(loc, [])
-       and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
+       and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
-       and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
+       and+ loc_instrumentation, instrumentation =
+         Preprocess.Instrumentation.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
        and+ emit_stdlib = field "emit_stdlib" bool ~default:true
@@ -124,16 +125,11 @@ module Emit = struct
            let f libname = Preprocess.With_instrumentation.Ordinary libname in
            Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
          in
-         List.fold_left
-           instrumentation
-           ~init
-           ~f:(fun accu { Stanza_common.backend; flags; deps } ->
-             Preprocess.Per_module.add_instrumentation
-               accu
-               ~loc:loc_instrumentation
-               ~flags
-               ~deps
-               backend)
+         List.fold_left instrumentation ~init ~f:(fun accu instrumentation ->
+           Preprocess.Per_module.add_instrumentation
+             accu
+             ~loc:loc_instrumentation
+             instrumentation)
        in
        { loc
        ; target

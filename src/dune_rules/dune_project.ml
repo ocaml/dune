@@ -36,7 +36,8 @@ type t =
   ; warnings : Warning.Settings.t
   ; use_standard_c_and_cxx_flags : bool option
   ; file_key : File_key.t
-  ; dialects : Dialect.DB.t
+  ; base_dialects : Dialect.DB.t
+  ; dialects : (Loc.t * Dialect.t) list
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
   ; subst_config : (Loc.t * Subst_config.t) option
@@ -70,9 +71,13 @@ let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
-let dialects t = t.dialects
 let explicit_js_mode t = t.explicit_js_mode
 let dune_version t = t.dune_version
+
+let dialects t =
+  List.fold_left t.dialects ~init:t.base_dialects ~f:(fun acc (loc, dialect) ->
+    Dialect.DB.add acc ~loc dialect)
+;;
 
 let to_dyn
   { name
@@ -103,6 +108,7 @@ let to_dyn
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
+  ; base_dialects = _
   }
   =
   let open Dyn in
@@ -125,7 +131,7 @@ let to_dyn
     ; "warnings", Warning.Settings.to_dyn warnings
     ; "use_standard_c_and_cxx_flags", option bool use_standard_c_and_cxx_flags
     ; "file_key", string file_key
-    ; "dialects", Dialect.DB.to_dyn dialects
+    ; "dialects", (Dyn.list (Dyn.pair Loc.to_dyn Dialect.to_dyn)) dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
     ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
@@ -440,7 +446,7 @@ let infer ~dir info packages =
   ; warnings = Warning.Settings.empty
   ; use_standard_c_and_cxx_flags = use_standard_c_and_cxx_flags_default ~lang
   ; file_key
-  ; dialects = Dialect.DB.builtin
+  ; dialects = []
   ; explicit_js_mode
   ; format_config = None
   ; subst_config = None
@@ -448,6 +454,7 @@ let infer ~dir info packages =
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
+  ; base_dialects = Dialect.DB.builtin
   }
 ;;
 
@@ -489,6 +496,7 @@ let encode : t -> Dune_lang.t list =
       ; root = _
       ; expand_aliases_in_sandbox
       ; opam_file_location = _
+      ; base_dialects = _
       } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -547,9 +555,7 @@ let encode : t -> Dune_lang.t list =
       [ string "lang"; string "dune"; Dune_lang.Syntax.Version.encode dune_version ]
   in
   let dialects =
-    if Dialect.DB.is_default dialects
-    then []
-    else Dialect.DB.fold ~f:(fun d ls -> Dialect.encode d :: ls) ~init:[] dialects
+    List.fold_left ~f:(fun ls (_loc, d) -> Dialect.encode d :: ls) ~init:[] dialects
   in
   let formatting =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
@@ -854,16 +860,13 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        in
        let root = dir in
        let file_key = File_key.make ~name ~root in
-       let dialects =
-         let dialects =
-           match String.Map.find explicit_extensions Melange_syntax.name with
-           | Some extension -> (extension.loc, Dialect.rescript) :: dialects
-           | None -> dialects
-         in
-         List.fold_left
-           dialects
-           ~init:Dialect.DB.builtin
-           ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
+       let base_dialects =
+         (* CR-rgrinberg: instead of this hackery, we should introduce a proper
+            dialect API for extensions to use *)
+         match String.Map.find explicit_extensions Melange_syntax.name with
+         | Some extension ->
+           Dialect.DB.add Dialect.DB.builtin ~loc:extension.loc Dialect.rescript
+         | None -> Dialect.DB.builtin
        in
        { name
        ; file_key
@@ -893,6 +896,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location
+       ; base_dialects
        }
 ;;
 

@@ -307,5 +307,4 @@ module DB = struct
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
   let builtin = of_list [ ocaml; reason ]
-  let is_default t = phys_equal t builtin
 end

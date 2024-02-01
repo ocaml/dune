@@ -119,7 +119,7 @@ let subst_string s path ~map =
     Some (Buffer.contents buf)
 ;;
 
-let subst_file path ~map =
+let subst_file path ~map opam_package_files =
   match Io.with_file_in path ~f:Io.read_all_unless_large with
   | Error () ->
     let hints =
@@ -133,11 +133,12 @@ let subst_file path ~map =
     in
     User_warning.emit ~hints [ Pp.textf "Ignoring large file: %s" (Path.to_string path) ]
   | Ok s ->
-    let s =
-      if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
-      then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
-      else s
+    let is_opam_file =
+      match Path.as_in_source_tree path with
+      | None -> false
+      | Some path -> Path.Source.Set.mem opam_package_files path
     in
+    let s = if is_opam_file then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s else s in
     (match subst_string s ~map path with
      | None -> ()
      | Some s -> Io.write_file path s)
@@ -384,9 +385,14 @@ let subst vcs =
   in
   let watermarks = make_watermark_map ~commit ~version ~dune_project ~info in
   Dune_project.subst ~map:watermarks ~version dune_project;
+  let opam_package_files =
+    Dune_project.packages dune_project.project
+    |> Package.Name.Map.fold ~init:Path.Source.Set.empty ~f:(fun package acc ->
+      Path.Source.Set.add acc (Package.opam_file package))
+  in
   List.iter files ~f:(fun path ->
     if is_a_source_file path && not (Path.equal path Dune_project.filename)
-    then subst_file path ~map:watermarks)
+    then subst_file path ~map:watermarks opam_package_files)
 ;;
 
 let subst () =

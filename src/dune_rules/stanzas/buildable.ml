@@ -121,13 +121,16 @@ let decode (for_ : for_) =
       let f libname = Preprocess.With_instrumentation.Ordinary libname in
       Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
     in
-    List.fold_left instrumentation ~init ~f:(fun accu ((backend, flags), deps) ->
-      Preprocess.Per_module.add_instrumentation
-        accu
-        ~loc:loc_instrumentation
-        ~flags
-        ~deps
-        backend)
+    List.fold_left
+      instrumentation
+      ~init
+      ~f:(fun accu { Stanza_common.backend; flags; deps } ->
+        Preprocess.Per_module.add_instrumentation
+          accu
+          ~loc:loc_instrumentation
+          ~flags
+          ~deps
+          backend)
   in
   let foreign_stubs =
     foreign_stubs

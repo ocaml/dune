@@ -221,6 +221,52 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v
              @ [ String_with_vars.make_pform loc (Var Input_file) ]) )
 ;;
 
+module Instrumentation = struct
+  type t =
+    { backend : Loc.t * Lib_name.t
+    ; flags : String_with_vars.t list
+    ; deps : Dep_conf.t list
+    ; loc : Loc.t
+    }
+
+  let instrumentation =
+    multi_field
+      "instrumentation"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7)
+       >>> fields
+           @@
+           let+ backend, flags =
+             field "backend"
+             @@ let+ libname = located Lib_name.decode
+                and+ flags =
+                  let* current_ver = Dune_lang.Syntax.get_exn Stanza.syntax in
+                  let version_check flag =
+                    let ver = 2, 8 in
+                    if current_ver >= ver
+                    then flag
+                    else (
+                      let what =
+                        "The possibility to pass arguments to instrumentation backends"
+                      in
+                      Dune_lang.Syntax.Error.since
+                        (String_with_vars.loc flag)
+                        Stanza.syntax
+                        ver
+                        ~what)
+                  in
+                  repeat (String_with_vars.decode >>| version_check)
+                in
+                libname, flags
+           and+ deps =
+             field
+               "deps"
+               ~default:[]
+               (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
+           and+ loc = Dune_lang.Decoder.loc in
+           { backend; deps; flags; loc })
+  ;;
+end
+
 module Per_module = struct
   module Per_module = Module_name.Per_item
 
@@ -247,7 +293,7 @@ module Per_module = struct
     if Per_module.is_constant t then Per_module.get t dummy_name else No_preprocessing
   ;;
 
-  let add_instrumentation t ~loc ~flags ~deps libname =
+  let add_instrumentation t { Instrumentation.flags; loc; deps; backend = libname } =
     Per_module.map t ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
@@ -256,6 +302,8 @@ module Per_module = struct
         in
         Pps { loc; pps; flags = []; staged = false }
       | Pps ({ pps; _ } as t) ->
+        (* CR-rgrinberg: Maybe we shouldn't drop the loc of the instrumentation
+           stanza? *)
         let pps =
           With_instrumentation.Instrumentation_backend { libname; deps; flags } :: pps
         in
@@ -310,3 +358,37 @@ module Per_module = struct
     >>| List.flatten
   ;;
 end
+
+let preprocess_fields =
+  let open Dune_lang.Decoder in
+  let+ preprocess = field "preprocess" Per_module.decode ~default:(Per_module.default ())
+  and+ preprocessor_deps =
+    field_o
+      "preprocessor_deps"
+      (let+ loc = loc
+       and+ l = repeat Dep_conf.decode in
+       loc, l)
+  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+  let preprocessor_deps =
+    match preprocessor_deps with
+    | None -> []
+    | Some (loc, deps) ->
+      let deps_might_be_used =
+        Module_name.Per_item.exists preprocess ~f:(fun p ->
+          match p with
+          | Action _ | Pps _ -> true
+          | No_preprocessing | Future_syntax _ -> false)
+      in
+      if not deps_might_be_used
+      then
+        User_warning.emit
+          ~loc
+          ~is_error:(syntax >= (2, 0))
+          [ Pp.text
+              "This preprocessor_deps field will be ignored because no preprocessor that \
+               might use them is configured."
+          ];
+      deps
+  in
+  preprocess, preprocessor_deps
+;;

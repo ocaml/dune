@@ -52,7 +52,7 @@ let decode (for_ : for_) =
       :: foreign_stubs
   in
   let+ loc = loc
-  and+ preprocess, preprocessor_deps = Stanza_common.preprocess_fields
+  and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
   and+ lint = field "lint" Lint.decode ~default:Lint.default
   and+ foreign_stubs =
     multi_field
@@ -110,7 +110,7 @@ let decode (for_ : for_) =
     field_o
       "ctypes"
       (Dune_lang.Syntax.since Ctypes_field.syntax (0, 1) >>> Ctypes_field.decode)
-  and+ loc_instrumentation, instrumentation = Stanza_common.instrumentation
+  and+ instrumentation = Preprocess.Instrumentation.instrumentation
   and+ empty_module_interface_if_absent =
     field_b
       "empty_module_interface_if_absent"
@@ -121,13 +121,7 @@ let decode (for_ : for_) =
       let f libname = Preprocess.With_instrumentation.Ordinary libname in
       Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
     in
-    List.fold_left instrumentation ~init ~f:(fun accu ((backend, flags), deps) ->
-      Preprocess.Per_module.add_instrumentation
-        accu
-        ~loc:loc_instrumentation
-        ~flags
-        ~deps
-        backend)
+    List.fold_left instrumentation ~init ~f:Preprocess.Per_module.add_instrumentation
   in
   let foreign_stubs =
     foreign_stubs

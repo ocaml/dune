@@ -388,6 +388,7 @@ let parse_submodules lines =
         let url = List.find_map bindings ~f:(find_key "url") in
         (match path, url with
          | Some path, Some source ->
+           (* CR-rginberg: we need to handle this *)
            let path = Path.Local.of_string path in
            Some { path; source }
          | _, _ ->
@@ -471,6 +472,7 @@ module At_rev = struct
 
   let submodule_path submodules path =
     List.find_map submodules ~f:(fun (submodule_path, at_rev) ->
+      (* CR-rgrinberg: should be Path.Local.descendant *)
       Path.drop_prefix (Path.of_local path) ~prefix:(Path.of_local submodule_path)
       |> Option.map ~f:(fun path_in_at_rev -> path_in_at_rev, at_rev))
   ;;
@@ -486,6 +488,7 @@ module At_rev = struct
     path
     =
     match submodule_path submodules path with
+    | Some (path_in_at_rev, at_rev) -> directory_entries at_rev path_in_at_rev
     | None ->
       (* TODO: there are much better ways of implementing this:
          1. using libgit or ocamlgit
@@ -498,7 +501,6 @@ module At_rev = struct
              "foo" is indeed a descendant of itself. So we filter it manually. *)
           (not (Path.Local.equal file.path path))
           && Path.Local.is_descendant file.path ~of_:path)
-    | Some (path_in_at_rev, at_rev) -> directory_entries at_rev path_in_at_rev
   ;;
 
   let repo_equal = equal

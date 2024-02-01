@@ -211,7 +211,7 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
-  let stanzas = Dune_file.stanzas dune_file in
+  let* stanzas = Dune_file.stanzas dune_file in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas

@@ -768,6 +768,7 @@ The following sections describe the available stanzas and their meanings.
 .. include:: stanzas/test.rst
 .. include:: stanzas/toplevel.rst
 .. include:: stanzas/vendored_dirs.rst
+.. include:: stanzas/dynamic_include.rst
 
 .. _dune-workspace:
 

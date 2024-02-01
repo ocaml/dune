@@ -99,12 +99,12 @@ let test_rule
 
 let collect_stanzas =
   let stanzas dir ~f =
-    let+ stanzas = Dune_load.stanzas_in_dir dir in
-    match stanzas with
-    | None -> []
+    Dune_load.stanzas_in_dir dir
+    >>= function
+    | None -> Memo.return []
     | Some (d : Dune_file.t) ->
       Dune_file.find_stanzas d Cram_stanza.key
-      |> List.filter_map ~f:(fun c -> Option.some_if (f c) (dir, c))
+      >>| List.filter_map ~f:(fun c -> Option.some_if (f c) (dir, c))
   in
   let rec collect_whole_subtree acc dir =
     let* acc =

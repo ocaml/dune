@@ -181,7 +181,12 @@ end = struct
                  ~dir:(Some dir))))
         |> List.filter_opt
       in
-      { Install_conf.section = Section Bin
+      let loc =
+        match public_names with
+        | [] -> assert false
+        | (loc, _) :: _ -> loc
+      in
+      { Install_conf.section = loc, Section Bin
       ; files
       ; dirs = []
       ; package

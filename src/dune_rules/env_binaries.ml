@@ -20,13 +20,13 @@ let impl dir =
       >>= function
       | None -> Memo.return []
       | Some stanzas ->
-        let+ profile = Per_context.profile ctx in
-        (match
-           match Dune_file.find_stanzas stanzas Dune_env.key with
-           | [ config ] -> Some config
-           | [] -> None
-           | _ :: _ :: _ -> assert false
-         with
+        let* profile = Per_context.profile ctx in
+        Dune_file.find_stanzas stanzas Dune_env.key
+        >>| (function
+               | [ config ] -> Some config
+               | [] -> None
+               | _ :: _ :: _ -> assert false)
+        >>| (function
          | None -> []
          | Some stanza ->
            (match Dune_env.find_opt stanza ~profile with

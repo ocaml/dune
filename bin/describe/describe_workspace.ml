@@ -536,7 +536,7 @@ module Crawl = struct
          their direct library dependencies *)
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Dune_file.stanzas dune_file
-        |> Memo.parallel_map ~f:(fun stanza ->
+        >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Executables.T exes ->
             let dir =

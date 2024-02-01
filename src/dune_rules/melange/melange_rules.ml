@@ -576,12 +576,11 @@ let rec under_melange_emit_target ~dir =
     >>= (function
      | None -> under_melange_emit_target ~dir:parent
      | Some stanzas ->
-       (match
-          Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-          |> List.find_map ~f:(fun mel ->
-            let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
-            Option.some_if (Path.Build.equal target_dir dir) mel)
-        with
+       Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
+       >>| List.find_map ~f:(fun mel ->
+         let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
+         Option.some_if (Path.Build.equal target_dir dir) mel)
+       >>= (function
         | None -> under_melange_emit_target ~dir:parent
         | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
 ;;
@@ -638,14 +637,14 @@ let setup_emit_js_rules sctx ~dir =
   | None ->
     (* this should probably be handled by [Dir_status] *)
     Dune_load.stanzas_in_dir dir
-    >>| (function
-     | None -> Gen_rules.no_rules
+    >>= (function
+     | None -> Memo.return Gen_rules.no_rules
      | Some dune_file ->
-       let build_dir_only_sub_dirs =
+       let+ build_dir_only_sub_dirs =
          Dune_file.find_stanzas dune_file Melange_stanzas.Emit.key
-         |> List.map ~f:(fun (mel : Melange_stanzas.Emit.t) -> mel.target)
-         |> Subdir_set.of_list
-         |> Gen_rules.Build_only_sub_dirs.singleton ~dir
+         >>| List.map ~f:(fun (mel : Melange_stanzas.Emit.t) -> mel.target)
+         >>| Subdir_set.of_list
+         >>| Gen_rules.Build_only_sub_dirs.singleton ~dir
        in
        Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty))
 ;;

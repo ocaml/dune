@@ -1,7 +1,7 @@
 open Import
 
 type t =
-  { section : Section_with_site.t
+  { section : Loc.t * Section_with_site.t
   ; files : Install_entry.File.t list
   ; dirs : Install_entry.Dir.t list
   ; source_trees : Install_entry.Dir.t list
@@ -19,7 +19,7 @@ let decode =
   let open Dune_lang.Decoder in
   fields
     (let+ loc = loc
-     and+ section = field "section" Section_with_site.decode
+     and+ section = field "section" (located Section_with_site.decode)
      and+ files = field_o "files" (repeat Install_entry.File.decode)
      and+ dirs =
        field_o

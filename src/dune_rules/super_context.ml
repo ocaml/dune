@@ -94,15 +94,16 @@ end = struct
 
   let get_env_stanza ~dir =
     let open Memo.O in
-    let+ stanzas = Dune_load.stanzas_in_dir dir in
-    Option.value ~default:Dune_env.empty
-    @@
-    let open Option.O in
-    let* stanzas = stanzas in
-    match Dune_file.find_stanzas stanzas Dune_env.key with
-    | [] -> None
-    | [ x ] -> Some x
-    | _ :: _ -> assert false
+    Dune_load.stanzas_in_dir dir
+    >>= (function
+           | None -> Memo.return None
+           | Some dune_file ->
+             Dune_file.find_stanzas dune_file Dune_env.key
+             >>| (function
+              | [] -> None
+              | [ x ] -> Some x
+              | _ :: _ -> assert false))
+    >>| Option.value ~default:Dune_env.empty
   ;;
 
   let get_impl t dir =

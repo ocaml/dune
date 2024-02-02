@@ -551,7 +551,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
 
 let library_rules
   (lib : Library.t)
-  ~local_lib:_
+  ~local_lib
   ~cctx
   ~source_modules
   ~dir_contents
@@ -607,7 +607,7 @@ let library_rules
           ~requires:requires_compile
           ~dir_contents
           ~vlib_stubs_o_files)
-  (* and+ () = Odoc.setup_library_odoc_rules cctx local_lib *)
+  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }

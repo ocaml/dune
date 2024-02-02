@@ -7,4 +7,5 @@ Dune will read several kinds of files: ``dune`` files, ``dune-project`` files,
 .. toctree::
    :maxdepth: 2
 
+   dune-project/index
    config/index

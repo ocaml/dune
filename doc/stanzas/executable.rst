@@ -40,7 +40,7 @@ Executables can also be linked as object or shared object files. See `linking
 modes`_ for more information.
 
 Starting from Dune 3.0, it's possible to automatically generate empty interface
-files for executables. See `executables_implicit_empty_intf`_.
+files for executables. See :ref:`executables_implicit_empty_intf`.
 
 ``<optional-fields>`` are:
 

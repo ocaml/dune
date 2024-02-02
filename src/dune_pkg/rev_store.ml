@@ -738,8 +738,7 @@ let rec add_repo ({ dir } as t) ~source ~branch =
       match exists, branch with
       | true, Some branch -> Fiber.return branch
       | true, None ->
-        let head_branch = read_head_branch t handle in
-        (match head_branch with
+        (match read_head_branch t handle with
          | Some head_branch -> Fiber.return head_branch
          | None ->
            (* the rev store is in some sort of unexpected state *)
@@ -750,9 +749,9 @@ let rec add_repo ({ dir } as t) ~source ~branch =
         let+ () = remote_add t ~branch ~handle ~source in
         branch
       | false, None ->
-        let* head_branch = query_head_branch t source in
-        let branch =
-          match head_branch with
+        let* branch =
+          query_head_branch t source
+          >>| function
           | Some head_branch -> head_branch
           | None ->
             User_error.raise

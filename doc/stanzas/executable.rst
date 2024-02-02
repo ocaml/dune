@@ -40,7 +40,8 @@ Executables can also be linked as object or shared object files. See `linking
 modes`_ for more information.
 
 Starting from Dune 3.0, it's possible to automatically generate empty interface
-files for executables. See :ref:`executables_implicit_empty_intf`.
+files for executables. See
+:doc:`/reference/files/dune-project/executables_implicit_empty_intf`.
 
 ``<optional-fields>`` are:
 
@@ -166,7 +167,7 @@ available.
   into an application. This mode can be used to write a plugin in OCaml for a
   non-OCaml application.
 - ``js`` for producing JavaScript from bytecode executables, see
-  :ref:`explicit-js-mode`.
+  :doc:`/reference/files/dune-project/explicit_js_mode`.
 - ``plugin`` for producing a plugin (``.cmxs`` if native or ``.cma`` if
   bytecode).
 

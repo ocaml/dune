@@ -48,7 +48,8 @@ Here is a complete list of supported subfields:
   Note that, for C stubs, Dune unconditionally adds the flags present in the
   OCaml config fields ``ocamlc_cflags`` and ``ocamlc_cppflags`` to the compiler
   command line. This behavior can be disabled since Dune 2.8 via the
-  ``dune-project`` option :ref:`always-add-cflags`.
+  ``dune-project`` option
+  :doc:`files/dune-project/use_standard_c_and_cxx_flags`.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
   via the ``-I`` flag. You can use :doc:`../concepts/variables` in this field
   and refer to a library source directory using the ``(lib library-name)``
@@ -196,9 +197,9 @@ object files manually and place them next to the OCaml source code.
 Flags
 -----
 
-Depending on the :ref:`always-add-cflags` option, the base `:standard` set of
-flags for C will contain only ``ocamlc_cflags`` or both ``ocamlc_cflags`` and
-``ocamlc_cppflags``.
+Depending on the :doc:`files/dune-project/use_standard_c_and_cxx_flags` option,
+the base `:standard` set of flags for C will contain only ``ocamlc_cflags`` or
+both ``ocamlc_cflags`` and ``ocamlc_cppflags``.
 
 There are multiple levels where one can declare custom flags (using the
 :doc:`ordered-set-language`), and each level inherits the flags of the previous

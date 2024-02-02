@@ -1,5 +1,3 @@
-.. _map-workspace-root:
-
 map_workspace_root
 -------------------
 

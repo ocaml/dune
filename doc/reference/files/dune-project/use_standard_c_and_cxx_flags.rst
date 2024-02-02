@@ -1,5 +1,3 @@
-.. _always-add-cflags:
-
 use_standard_c_and_cxx_flags
 ----------------------------
 

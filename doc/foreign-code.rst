@@ -292,8 +292,8 @@ descriptions by referencing them as the module specified in optional
   instructions in your ``dune`` file on how to build the vendored foreign
   library; see the :ref:`foreign_library` stanza. Usually the ``<flags>`` should
   contain ``:standard`` in order to add the default flags used by the OCaml
-  compiler for C files :ref:`always-add-cflags`.
-
+  compiler for C files
+  :doc:`/reference/files/dune-project/use_standard_c_and_cxx_flags`.
 
 .. _foreign-sandboxing:
 

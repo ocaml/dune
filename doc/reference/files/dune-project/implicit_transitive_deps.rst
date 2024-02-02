@@ -1,5 +1,3 @@
-.. _implicit_transitive_deps:
-
 implicit_transitive_deps
 ------------------------
 

@@ -1,5 +1,3 @@
-.. _wrapped-executables:
-
 wrapped_executables
 -------------------
 

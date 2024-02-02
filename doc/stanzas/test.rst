@@ -54,4 +54,5 @@ you can use the following stanza:
     (action (run %{test} -e)))
 
 Starting from Dune 2.9, it's possible to automatically generate empty interface
-files for test executables. See :ref:`executables_implicit_empty_intf`.
+files for test executables. See
+:doc:`/reference/files/dune-project/executables_implicit_empty_intf`.

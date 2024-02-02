@@ -1,5 +1,3 @@
-.. _explicit-js-mode:
-
 explicit_js_mode
 ----------------
 

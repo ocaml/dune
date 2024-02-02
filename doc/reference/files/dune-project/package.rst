@@ -1,5 +1,3 @@
-.. _package:
-
 package
 -------
 
@@ -123,6 +121,6 @@ ones listed in :token:`~pkg-dep:filter`. This also applies to version numbers.
 For example, to generate ``depends: [ pkg { = version } ]``, use ``(depends
 (pkg (= :version)))``.
 
-Note that the use of a ``using`` stanza (see :ref:`using <using>`) doesn't
+Note that the use of a ``using`` stanza (see :doc:`using`) doesn't
 automatically add the associated library or tool as a dependency. They have to
 be added explicitly.

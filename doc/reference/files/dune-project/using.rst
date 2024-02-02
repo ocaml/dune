@@ -1,5 +1,3 @@
-.. _using:
-
 using
 -----
 
@@ -15,8 +13,7 @@ using
    `<version>` describes the configuration language's version. Note that this
    version has nothing to do with the version of the associated tool or
    library. In particular, adding a ``using`` stanza will not result in a build
-   dependency in the generated ``.opam`` file. See :ref:`generate_opam_files
-   <generate_opam_files>`.
+   dependency in the generated ``.opam`` file. See :doc:`generate_opam_files`.
 
    Example:
 

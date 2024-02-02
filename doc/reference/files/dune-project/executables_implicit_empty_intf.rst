@@ -1,5 +1,3 @@
-.. _executables_implicit_empty_intf:
-
 executables_implicit_empty_intf
 -------------------------------
 

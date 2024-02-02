@@ -1,5 +1,3 @@
-.. _generate_opam_files:
-
 generate_opam_files
 -------------------
 
@@ -128,4 +126,4 @@ With these fields, every time one calls Dune to execute some rules (either via
 generated.
 
 Some or all of these fields may be overridden for each package of the project,
-see :ref:`package`.
+see :doc:`/reference/files/dune-project/package`.

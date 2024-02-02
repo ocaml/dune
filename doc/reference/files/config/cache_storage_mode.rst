@@ -1,5 +1,3 @@
-.. _cache_storage_mode:
-
 cache-storage-mode
 ------------------
 

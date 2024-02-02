@@ -1,5 +1,3 @@
-.. _cache_check_probability:
-
 cache-check-probability
 -----------------------
 

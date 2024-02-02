@@ -1,5 +1,3 @@
-.. _terminal-persistence:
-
 terminal-persistence
 --------------------
 

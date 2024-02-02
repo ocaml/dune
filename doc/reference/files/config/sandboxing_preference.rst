@@ -1,5 +1,3 @@
-.. _sandboxing_preference:
-
 sandboxing_preference
 ---------------------
 

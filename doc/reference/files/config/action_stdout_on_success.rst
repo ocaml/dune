@@ -1,5 +1,3 @@
-.. _action_stdout_on_success:
-
 action_stdout_on_success
 ------------------------
 

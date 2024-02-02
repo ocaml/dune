@@ -366,40 +366,45 @@ module Entry = struct
   ;;
 end
 
-(* a submodule in [.gitmodules] can also have a [branch] but given we only need
-   to resolve the commit
-   object, we don't have to care about the tracking branch *)
-type submodule =
-  { path : Path.Local.t
-  ; source : string
-  }
+module Submodule = struct
+  (* a submodule in [.gitmodules] can also have a [branch] but given we only
+     need to resolve the commit object, we don't have to care about the
+     tracking branch *)
+  type t =
+    { path : Path.Local.t
+    ; source : string
+    }
 
-let parse_submodules lines =
-  match Git_config_parser.parse lines with
-  | Error err -> User_error.raise [ Pp.textf "Failed to parse submodules: %s" err ]
-  | Ok cfg ->
-    List.filter_map cfg ~f:(fun { name; arg = _; bindings } ->
-      match name with
-      | "submodule" ->
-        let find_key key (k, v) =
-          match String.equal k key with
-          | true -> Some v
-          | false -> None
-        in
-        let path = List.find_map bindings ~f:(find_key "path") in
-        let url = List.find_map bindings ~f:(find_key "url") in
-        (match path, url with
-         | Some path, Some source ->
-           (* CR-rginberg: we need to handle this *)
-           let path = Path.Local.of_string path in
-           Some { path; source }
-         | _, _ ->
-           (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
-           User_error.raise
-             ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
-             [ Pp.text "Submodule definition missing path or url" ])
-      | _otherwise -> None)
-;;
+  let parse lines =
+    match Git_config_parser.parse lines with
+    | Error err ->
+      (* CR-rgrinberg: the loc needs to be pulled from the git URL *)
+      User_error.raise [ Pp.textf "Failed to parse submodules: %s" err ]
+    | Ok cfg ->
+      List.filter_map cfg ~f:(fun { name; arg = _; bindings } ->
+        match name with
+        | "submodule" ->
+          let find_key key (k, v) =
+            match String.equal k key with
+            | true -> Some v
+            | false -> None
+          in
+          let path = List.find_map bindings ~f:(find_key "path") in
+          let url = List.find_map bindings ~f:(find_key "url") in
+          (match path, url with
+           | Some path, Some source ->
+             (* CR-rginberg: we need to handle submodule paths that try to escape
+                the repo *)
+             let path = Path.Local.of_string path in
+             Some { path; source }
+           | _, _ ->
+             (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
+             User_error.raise
+               ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
+               [ Pp.text "Submodule definition missing path or url" ])
+        | _otherwise -> None)
+  ;;
+end
 
 module At_rev = struct
   type repo = t
@@ -418,9 +423,9 @@ module At_rev = struct
     >>| Entry.Set.of_list
   ;;
 
-  let path_commit_map files =
-    Entry.Set.fold files ~init:Path.Local.Map.empty ~f:(fun file m ->
-      match file with
+  let path_commit_map entries =
+    Entry.Set.fold entries ~init:Path.Local.Map.empty ~f:(fun entry m ->
+      match entry with
       | File _ -> m
       | Commit { path; rev } ->
         (match Path.Local.Map.add m path rev with
@@ -448,10 +453,10 @@ module At_rev = struct
       | None -> Fiber.return []
       | Some git_modules_content ->
         let commit_paths = path_commit_map entries_at_rev in
-        parse_submodules git_modules_content
+        Submodule.parse git_modules_content
         (* It's not safe to do a parallel map because adding a remote
            requires getting the lock (which we're now holding) *)
-        |> Fiber.sequential_map ~f:(fun { path; source } ->
+        |> Fiber.sequential_map ~f:(fun { Submodule.path; source } ->
           match Path.Local.Map.find commit_paths path with
           | None ->
             User_error.raise

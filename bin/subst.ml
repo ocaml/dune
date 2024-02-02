@@ -359,7 +359,7 @@ let subst vcs =
       | Some n -> n.loc_of_arg, n.arg
     in
     let package_named_after_project =
-      let packages = Dune_project.packages dune_project.project in
+      let packages = Dune_project.including_hidden_packages dune_project.project in
       Package.Name.Map.find packages name
     in
     let metadata_from_dune_project () = Dune_project.info dune_project.project in

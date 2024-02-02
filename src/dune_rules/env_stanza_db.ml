@@ -22,7 +22,7 @@ module Node = struct
   ;;
 
   let in_dir ~dir =
-    Only_packages.stanzas_in_dir dir
+    Dune_load.stanzas_in_dir dir
     >>| function
     | None -> None
     | Some stanzas ->
@@ -129,7 +129,7 @@ module Inherit = struct
         (sprintf "%s-root" name)
         ~input:(module Path.Source)
         (fun dir ->
-          let* projects_by_root = Dune_load.load () >>| Dune_load.projects_by_root
+          let* projects_by_root = Dune_load.projects_by_root ()
           and* envs = Memo.Lazy.force for_context in
           let project = Path.Source.Map.find_exn projects_by_root dir in
           let root = root context project in

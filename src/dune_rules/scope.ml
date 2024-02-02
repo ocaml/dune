@@ -333,8 +333,8 @@ module DB = struct
       let scopes =
         Memo.Lazy.create
         @@ fun () ->
-        let* projects_by_root = Dune_load.load () >>| Dune_load.projects_by_root in
-        let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
+        let* projects_by_root = Dune_load.projects_by_root () in
+        let* stanzas = Dune_load.dune_files (Context.name context) in
         create_from_stanzas ~projects_by_root ~context stanzas
       in
       Context.name context, scopes)
@@ -434,7 +434,7 @@ module DB = struct
     let memo = Memo.create "lib-entries-map" ~input:(module Input) make_map in
     fun (ctx : Context.t) pkg_name ->
       let* public_libs = public_libs ctx in
-      let* stanzas = Only_packages.filtered_stanzas (Context.name ctx) in
+      let* stanzas = Dune_load.dune_files (Context.name ctx) in
       let+ map = Memo.exec memo (Context.build_dir ctx, public_libs, stanzas) in
       Package.Name.Map.Multi.find map pkg_name
   ;;

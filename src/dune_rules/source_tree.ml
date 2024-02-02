@@ -272,6 +272,9 @@ end = struct
       | Some p -> p
       | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty
     in
+    let project =
+      Only_packages.filter_packages_in_project project ~vendored:(dir_status = Vendored)
+    in
     let* dirs_visited =
       Readdir.File.of_source_path (In_source_dir path)
       >>| function
@@ -324,6 +327,10 @@ end = struct
                ~dir:path
                ~files:(Readdir.files readdir)
                ~infer_from_opam_files:false
+             >>| Option.map
+                   ~f:
+                     (Only_packages.filter_packages_in_project
+                        ~vendored:(dir_status = Vendored))
              >>| Option.value ~default:parent_dir.project
          in
          let+ dir, visited =

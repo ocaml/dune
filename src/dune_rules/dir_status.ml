@@ -232,7 +232,7 @@ end = struct
        | true -> Memo.return Lock_dir
        | false ->
          let build_dir_is_project_root = build_dir_is_project_root st_dir in
-         Only_packages.stanzas_in_dir dir
+         Dune_load.stanzas_in_dir dir
          >>= (function
           | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
           | None ->

@@ -45,6 +45,7 @@ type t =
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
+  ; including_hidden_packages : Package.t Package.Name.Map.t
   }
 
 let key = Univ_map.Key.create ~name:"dune-project" Dyn.opaque
@@ -103,6 +104,7 @@ let to_dyn
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
+  ; including_hidden_packages = _
   }
   =
   let open Dyn in
@@ -448,6 +450,7 @@ let infer ~dir info packages =
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
+  ; including_hidden_packages = packages
   }
 ;;
 
@@ -489,6 +492,7 @@ let encode : t -> Dune_lang.t list =
       ; root = _
       ; expand_aliases_in_sandbox
       ; opam_file_location = _
+      ; including_hidden_packages = _
       } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -893,6 +897,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location
+       ; including_hidden_packages = packages
        }
 ;;
 
@@ -956,3 +961,10 @@ let update_execution_parameters t ep =
 ;;
 
 let opam_file_location t = t.opam_file_location
+
+let filter_packages t ~f =
+  let packages = Package.Name.Map.filter t.packages ~f:(fun p -> f (Package.name p)) in
+  { t with packages }
+;;
+
+let including_hidden_packages t = t.including_hidden_packages

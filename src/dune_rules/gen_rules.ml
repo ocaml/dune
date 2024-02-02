@@ -324,7 +324,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   let* () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
   and+ stanzas =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
-    Only_packages.stanzas_in_dir dir
+    Dune_load.stanzas_in_dir dir
     >>= function
     | Some d -> Memo.return (Some d)
     | None ->

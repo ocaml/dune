@@ -7,7 +7,6 @@ type t
 
 val dir : t -> Path.Source.t
 val stanzas : t -> Stanza.t list
-val set_stanzas : t -> Stanza.t list -> t
 val project : t -> Dune_project.t
 val equal : t -> t -> bool
 val hash : t -> int
@@ -17,7 +16,8 @@ val fold_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> '
 
 val eval
   :  (Path.Source.t * Dune_project.t * Dune_file0.t) Appendable_list.t
-  -> (Context_name.t -> t list Memo.t) Staged.t Memo.t
+  -> Only_packages.t
+  -> t list Per_context.t Memo.t
 
 module Memo_fold : sig
   val fold_stanzas

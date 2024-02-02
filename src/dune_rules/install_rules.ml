@@ -486,8 +486,8 @@ end = struct
 
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
-    let* stanzas = Only_packages.filtered_stanzas (Context.name ctx) in
-    let* packages = Only_packages.get () in
+    let* stanzas = Dune_load.dune_files (Context.name ctx) in
+    let* packages = Dune_load.packages () in
     let+ init =
       Package.Name.Map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
         let opam_file = Package_paths.opam_file ctx pkg in
@@ -971,7 +971,7 @@ let install_entries sctx package =
 
 let packages =
   let f sctx =
-    let* packages = Only_packages.get () in
+    let* packages = Dune_load.packages () in
     let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
@@ -1199,7 +1199,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
   in
   let* () =
-    let* all_packages = Only_packages.get () in
+    let* all_packages = Dune_load.packages () in
     let context = Context.build_context ctx in
     let target_alias = Dep_conf_eval.package_install ~context ~pkg:package in
     let open Action_builder.O in
@@ -1312,7 +1312,7 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      Only_packages.get ()
+      Dune_load.packages ()
       >>| Package.Name.Map.values
       >>= Memo.parallel_map ~f:(scheme sctx)
       >>| Scheme.all
@@ -1348,8 +1348,8 @@ let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
-  let* packages = Only_packages.packages_of_project project in
-  Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name package ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _name package ->
     let* () = gen_package_install_file_rules sctx package in
     gen_install_alias sctx package)
 ;;

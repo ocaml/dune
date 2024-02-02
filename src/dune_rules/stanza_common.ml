@@ -20,7 +20,7 @@ module Pkg = struct
   ;;
 
   let default (project : Dune_project.t) stanza =
-    let packages = Dune_project.packages project in
+    let packages = Dune_project.including_hidden_packages project in
     match Package.Name.Map.values packages with
     | [ pkg ] -> Ok pkg
     | [] ->
@@ -50,7 +50,7 @@ module Pkg = struct
   ;;
 
   let resolve (project : Dune_project.t) name =
-    let packages = Dune_project.packages project in
+    let packages = Dune_project.including_hidden_packages project in
     match Package.Name.Map.find packages name with
     | Some pkg -> Ok pkg
     | None ->

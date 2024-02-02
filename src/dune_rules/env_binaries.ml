@@ -16,7 +16,7 @@ let impl dir =
     Code_error.raise "no context for this directory" [ "dir", Path.Build.to_dyn dir ]
   | Some ctx ->
     let* binaries =
-      Only_packages.stanzas_in_dir dir
+      Dune_load.stanzas_in_dir dir
       >>= function
       | None -> Memo.return []
       | Some stanzas ->

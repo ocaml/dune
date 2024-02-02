@@ -11,7 +11,7 @@ let mlds_by_package_def =
     (fun sctx ->
       let ctx = Super_context.context sctx in
       Context.name ctx
-      |> Only_packages.filtered_stanzas
+      |> Dune_load.dune_files
       >>= Memo.parallel_map ~f:(fun dune_file ->
         Dune_file.stanzas dune_file
         |> Memo.parallel_map ~f:(fun stanza ->

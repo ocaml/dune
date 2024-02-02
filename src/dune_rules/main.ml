@@ -3,8 +3,7 @@ open Import
 let () = Inline_tests.linkme
 
 type build_system =
-  { conf : Dune_load.t
-  ; contexts : Context.t list
+  { contexts : Context.t list
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
@@ -104,11 +103,10 @@ let init
 
 let get () =
   let open Memo.O in
-  let* conf = Dune_load.load () in
   let* contexts = Context.DB.all () in
   let* scontexts = Memo.Lazy.force Super_context.all in
   let* () = Super_context.all_init_deferred () in
-  Memo.return { conf; contexts; scontexts }
+  Memo.return { contexts; scontexts }
 ;;
 
 let find_context_exn t ~name =

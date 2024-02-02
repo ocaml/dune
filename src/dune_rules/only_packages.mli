@@ -1,7 +1,5 @@
 (** Restrict the set of visible packages *)
 
-open Import
-
 module Clflags : sig
   type t =
     | No_restriction
@@ -15,16 +13,8 @@ module Clflags : sig
   val set : t -> unit
 end
 
-(** Returns the filtered set of packages. This function is memoized. *)
-val get : unit -> Package.t Package.Name.Map.t Memo.t
+type t = Package.t Package.Name.Map.t option
 
-(** Returns the package restrictions. This function is memoized. *)
-val get_mask : unit -> Package.t Package.Name.Map.t option Memo.t
-
-(** Apply the package mask to the packages defined by the project *)
-val packages_of_project : Dune_project.t -> Package.t Package.Name.Map.t Memo.t
-
-(** Apply the package mask to the stanzas in the workspace *)
-val filtered_stanzas : Context_name.t -> Dune_file.t list Memo.t
-
-val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t
+val mask : Package.t Package.Name.Map.t -> vendored:Package.Name.Set.t -> t
+val filter_packages : t -> Package.t Package.Name.Map.t -> Package.t Package.Name.Map.t
+val filter_packages_in_project : vendored:bool -> Dune_project.t -> Dune_project.t

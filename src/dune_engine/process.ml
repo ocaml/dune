@@ -25,14 +25,11 @@ module Failure_mode = struct
   ;;
 
   let map_result : type a b. (a, b) t -> int -> f:(unit -> a) -> b =
-    fun mode t ~f ->
+    fun mode code ~f ->
     match mode with
     | Strict -> f ()
-    | Accept _ ->
-      (match t with
-       | 0 -> Ok (f ())
-       | n -> Error n)
-    | Return -> f (), t
+    | Return -> f (), code
+    | Accept accept -> if Predicate.test accept code then Ok (f ()) else Error code
   ;;
 end
 

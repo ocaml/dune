@@ -83,7 +83,7 @@ let run t args =
 ;;
 
 let git_accept () : (_, _) Process.Failure_mode.t =
-  Accept (Predicate.create (fun x -> Int.equal x 0 || Int.equal x 128))
+  Accept (Predicate.create (fun x -> Int.equal x 0))
 ;;
 
 let run_git t args =

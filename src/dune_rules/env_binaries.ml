@@ -22,11 +22,10 @@ let impl dir =
       | Some stanzas ->
         let+ profile = Per_context.profile ctx in
         (match
-           Dune_file.stanzas stanzas
-           |> List.find_map ~f:(fun stanza ->
-             match Stanza.repr stanza with
-             | Dune_env.T config -> Some config
-             | _ -> None)
+           match Dune_file.find_stanzas stanzas Dune_env.key with
+           | [ config ] -> Some config
+           | [] -> None
+           | _ :: _ :: _ -> assert false
          with
          | None -> []
          | Some stanza ->

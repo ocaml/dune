@@ -255,46 +255,70 @@ let load_or_create ~dir =
 ;;
 
 module Commit = struct
-  type t =
-    { path : Path.Local.t
-    ; rev : Rev.t
-    }
+  module T = struct
+    type t =
+      { path : Path.Local.t
+      ; rev : Rev.t
+      }
 
-  let compare { path; rev } t =
-    let open Ordering.O in
-    let= () = Path.Local.compare path t.path in
-    Rev.compare rev t.rev
-  ;;
+    let compare { path; rev } t =
+      let open Ordering.O in
+      let= () = Path.Local.compare path t.path in
+      Rev.compare rev t.rev
+    ;;
 
-  let to_dyn { path; rev } =
-    Dyn.record [ "path", Path.Local.to_dyn path; "rev", Rev.to_dyn rev ]
-  ;;
+    let to_dyn { path; rev } =
+      Dyn.record [ "path", Path.Local.to_dyn path; "rev", Rev.to_dyn rev ]
+    ;;
+  end
+
+  include T
+  module C = Comparable.Make (T)
+  module Set = C.Set
 end
 
 module File = struct
   module T = struct
     type t =
-      { path : Path.Local.t
-      ; size : int
-      ; hash : string
-      }
+      | Redirect of
+          { path : Path.Local.t
+          ; to_ : t
+          }
+      | Direct of
+          { path : Path.Local.t
+          ; size : int
+          ; hash : string
+          }
 
-    let compare { path; size; hash } t =
-      let open Ordering.O in
-      let= () = Path.Local.compare path t.path in
-      let= () = Int.compare size t.size in
-      String.compare hash t.hash
-    ;;
+    let compare = Poly.compare
 
-    let to_dyn { path; size; hash } =
-      Dyn.record
-        [ "path", Path.Local.to_dyn path; "size", Dyn.int size; "hash", Dyn.string hash ]
+    let to_dyn = function
+      | Redirect _ -> Dyn.opaque ()
+      | Direct { path; size; hash } ->
+        Dyn.record
+          [ "path", Path.Local.to_dyn path
+          ; "size", Dyn.int size
+          ; "hash", Dyn.string hash
+          ]
     ;;
   end
 
   include T
 
-  let path t = t.path
+  let path = function
+    | Redirect p -> p.path
+    | Direct p -> p.path
+  ;;
+
+  let rec size = function
+    | Direct t -> t.size
+    | Redirect t -> size t.to_
+  ;;
+
+  let rec hash = function
+    | Direct t -> t.hash
+    | Redirect t -> hash t.to_
+  ;;
 
   module C = Comparable.Make (T)
   module Set = C.Set
@@ -352,10 +376,11 @@ module Entry = struct
         | "blob" ->
           Some
             (File
-               { hash = Re.Group.get m 2
-               ; size = Int.of_string_exn @@ Re.Group.get m 3
-               ; path = Path.Local.of_string @@ Re.Group.get m 4
-               })
+               (Direct
+                  { hash = Re.Group.get m 2
+                  ; size = Int.of_string_exn @@ Re.Group.get m 3
+                  ; path = Path.Local.of_string @@ Re.Group.get m 4
+                  }))
         | "commit" ->
           Some
             (Commit
@@ -413,46 +438,50 @@ module At_rev = struct
     { repo : repo
     ; revision : Rev.t
     ; source : string
-    ; entries_at_rev : Entry.Set.t
-    ; submodules : (Path.Local.t * t) list
+    ; files : File.Set.t
     }
 
-  let entries_at_rev repo (Rev.Rev rev) =
+  let files_and_submodules repo (Rev.Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
-    >>| List.filter_map ~f:Entry.parse
-    >>| Entry.Set.of_list
+    >>| List.fold_left
+          ~init:(File.Set.empty, Commit.Set.empty)
+          ~f:(fun (files, commits) line ->
+            match Entry.parse line with
+            | None -> files, commits
+            | Some (File file) -> File.Set.add files file, commits
+            | Some (Commit commit) -> files, Commit.Set.add commits commit)
   ;;
 
-  let path_commit_map entries =
-    Entry.Set.fold entries ~init:Path.Local.Map.empty ~f:(fun entry m ->
-      match entry with
-      | File _ -> m
-      | Commit { path; rev } ->
-        (match Path.Local.Map.add m path rev with
-         | Ok m -> m
-         | Error (Rev existing_rev) ->
-           let (Rev found_rev) = rev in
-           User_error.raise
-             [ Pp.textf
-                 "Path %s specified multiple times as submodule pointing to different \
-                  commits: %s and %s"
-                 (Path.Local.to_string path)
-                 found_rev
-                 existing_rev
-             ]))
+  let path_commit_map submodules =
+    Commit.Set.fold
+      submodules
+      ~init:Path.Local.Map.empty
+      ~f:(fun { Commit.path; rev } m ->
+        match Path.Local.Map.add m path rev with
+        | Ok m -> m
+        | Error (Rev existing_rev) ->
+          let (Rev found_rev) = rev in
+          User_error.raise
+            [ Pp.textf
+                "Path %s specified multiple times as submodule pointing to different \
+                 commits: %s and %s"
+                (Path.Local.to_string path)
+                found_rev
+                existing_rev
+            ])
   ;;
 
   let rec of_rev repo ~add_remote ~revision ~source =
-    let* entries_at_rev = entries_at_rev repo revision in
+    let* files, submodules = files_and_submodules repo revision in
     let* git_modules =
       let git_modules_path = Path.Local.of_string ".gitmodules" in
       show repo [ `Path (revision, git_modules_path) ]
     in
-    let+ submodules =
+    let+ files =
       match git_modules with
-      | None -> Fiber.return []
+      | None -> Fiber.return files
       | Some git_modules_content ->
-        let commit_paths = path_commit_map entries_at_rev in
+        let commit_paths = path_commit_map submodules in
         Submodule.parse git_modules_content
         (* It's not safe to do a parallel map because adding a remote
            requires getting the lock (which we're now holding) *)
@@ -473,69 +502,49 @@ module At_rev = struct
           | Some revision ->
             let* () = add_remote source in
             let+ at_rev = of_rev repo ~add_remote ~revision ~source in
-            path, at_rev)
+            File.Set.map at_rev.files ~f:(fun file ->
+              let path = Path.Local.append path (File.path file) in
+              File.Redirect { path; to_ = file }))
+        >>| File.Set.union_all
     in
-    { repo; revision; source; entries_at_rev; submodules }
+    { repo; revision; source; files }
   ;;
 
-  let submodule_path submodules path =
-    List.find_map submodules ~f:(fun (submodule_path, at_rev) ->
-      (* CR-rgrinberg: should be Path.Local.descendant *)
-      Path.drop_prefix (Path.of_local path) ~prefix:(Path.of_local submodule_path)
-      |> Option.map ~f:(fun path_in_at_rev -> path_in_at_rev, at_rev))
+  let content { repo; revision; source = _; files = _ } path =
+    show repo [ `Path (revision, path) ]
   ;;
 
-  let content { repo; revision; source = _; entries_at_rev = _; submodules } path =
-    match submodule_path submodules path with
-    | None -> show repo [ `Path (revision, path) ]
-    | Some (path, { revision; _ }) -> show repo [ `Path (revision, path) ]
-  ;;
-
-  let rec directory_entries
-    { repo = _; source = _; entries_at_rev; revision = _; submodules }
-    path
-    =
-    match submodule_path submodules path with
-    | Some (path_in_at_rev, at_rev) -> directory_entries at_rev path_in_at_rev
-    | None ->
-      (* TODO: there are much better ways of implementing this:
-         1. using libgit or ocamlgit
-         2. possibly using [$ git archive] *)
-      Entry.Set.to_list entries_at_rev
-      |> List.filter_map ~f:(fun (entry : Entry.t) ->
-        match entry with
-        | Commit _ -> None
-        | File file ->
-          (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
-             "foo" is indeed a descendant of itself. So we filter it manually. *)
-          if (not (Path.Local.equal file.path path))
-             && Path.Local.is_descendant file.path ~of_:path
-          then Some file
-          else None)
-      |> File.Set.of_list
+  let directory_entries { repo = _; source = _; files; revision = _ } path =
+    (* TODO: there are much better ways of implementing this:
+       1. using libgit or ocamlgit
+       2. possibly using [$ git archive] *)
+    File.Set.to_list files
+    |> List.filter_map ~f:(fun (file : File.t) ->
+      let file_path = File.path file in
+      (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
+         "foo" is indeed a descendant of itself. So we filter it manually. *)
+      if (not (Path.Local.equal file_path path))
+         && Path.Local.is_descendant file_path ~of_:path
+      then Some file
+      else None)
+    |> File.Set.of_list
   ;;
 
   let repo_equal = equal
 
-  let rec equal { repo; revision = Rev revision; source; entries_at_rev; submodules } t =
+  let equal { repo; revision = Rev revision; source; files } t =
     let (Rev revision') = t.revision in
     repo_equal repo t.repo
     && String.equal revision revision'
     && String.equal source t.source
-    && Entry.Set.equal entries_at_rev t.entries_at_rev
-    && List.equal (Tuple.T2.equal Path.Local.equal equal) submodules t.submodules
+    && File.Set.equal files t.files
   ;;
 
-  let opam_url
-    { revision = Rev rev; source; repo = _; entries_at_rev = _; submodules = _ }
-    =
+  let opam_url { revision = Rev rev; source; repo = _; files = _ } =
     OpamUrl.parse (sprintf "%s#%s" source rev)
   ;;
 
-  let check_out
-    { repo = { dir }; revision = Rev rev; source = _; entries_at_rev = _; submodules = _ }
-    ~target
-    =
+  let check_out { repo = { dir }; revision = Rev rev; source = _; files = _ } ~target =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let tar = Lazy.force tar in
@@ -779,7 +788,7 @@ let content_of_files t files =
   | [] -> Fiber.return []
   | _ :: _ ->
     let+ out =
-      List.map files ~f:(fun (file : File.t) -> `Object file.hash)
+      List.map files ~f:(fun file -> `Object (File.hash file))
       |> show t
       >>| function
       | Some s -> s
@@ -793,8 +802,9 @@ let content_of_files t files =
         assert (pos = String.length out);
         acc
       | (file : File.t) :: files ->
-        let acc = String.sub out ~pos ~len:file.size :: acc in
-        loop acc (pos + file.size) files
+        let size = File.size file in
+        let acc = String.sub out ~pos ~len:size :: acc in
+        loop acc (pos + size) files
     in
     List.rev (loop [] 0 files)
 ;;

@@ -88,7 +88,8 @@ which you can dive deeper into Dune's capabilities:
 * The ``dune-project`` file specifies metadata about the project, including its
   name, packaging data (including dependencies), and information about the
   authors and maintainers. Open this in your editor to fill in the
-  placeholder values. See :ref:`dune-project` for details.
+  placeholder values. See :doc:`/reference/files/dune-project/index` for
+  details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
   the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
   details on testing.

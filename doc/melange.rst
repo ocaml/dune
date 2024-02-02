@@ -20,8 +20,8 @@ JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
 used with Melange by adding ``melange`` to ``(modes ...)`` in the
 :doc:`/reference/files/dune/library` stanza.
 
-Melange support is still experimental in Dune and needs to be enabled
-in the :ref:`dune-project` file:
+Melange support is still experimental in Dune and needs to be enabled in the
+:doc:`/reference/files/dune-project/index` file:
 
 .. code:: dune
 
@@ -36,8 +36,9 @@ Simple Project
 Let's start by looking at a simple project with Melange and Dune. Subsequent
 sections explain the different concepts used here in further detail.
 
-First, make sure that the :ref:`dune-project` file specifies at least
-version 3.8 of the dune language and the Melange extension is enabled:
+First, make sure that the :doc:`/reference/files/dune-project/index` file
+specifies at least version 3.8 of the dune language and the Melange extension
+is enabled:
 
 .. code:: dune
 

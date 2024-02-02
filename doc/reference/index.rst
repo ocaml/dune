@@ -6,6 +6,7 @@ These documents specify the various features and languages present in Dune.
 .. toctree::
    :maxdepth: 2
 
+   files/index
    lexical-conventions
    ordered-set-language
    boolean-language
@@ -31,4 +32,3 @@ These documents specify the various features and languages present in Dune.
    ../caching
    ../dune-libs
    ../rpc
-   files/index

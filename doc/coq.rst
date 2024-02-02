@@ -33,22 +33,24 @@ API.
 Since Coq 8.16, plugins need to be "public" libraries in Dune's terminology,
 that is to say, they must declare a ``public_name`` field.
 
-A *Coq project* is an informal term for a :ref:`dune-project` containing a
-collection of Coq theories and plugins.
+A *Coq project* is an informal term for a
+:doc:`/reference/files/dune-project/index` containing a collection of Coq
+theories and plugins.
 
 The ``.v`` files of a theory need not be present as source files. They may also
 be Dune targets of other rules.
 
 To enable Coq support in a Dune project, specify the :ref:`Coq language
-version<coq-lang>` in the :ref:`dune-project` file. For example, adding
+version<coq-lang>` in the :doc:`/reference/files/dune-project/index` file. For
+example, adding
 
 .. code:: dune
 
     (using coq 0.8)
 
-to a :ref:`dune-project` file enables using the ``coq.theory`` stanza and other
-``coq.*`` stanzas. See the :ref:`Dune Coq language<coq-lang>` section for more
-details.
+to a :doc:`/reference/files/dune-project/index` file enables using the
+``coq.theory`` stanza and other ``coq.*`` stanzas. See the :ref:`Dune Coq
+language<coq-lang>` section for more details.
 
 .. _coq-theory:
 
@@ -218,10 +220,11 @@ Dune organises it's knowledge about Coq theories in 3 databases:
   a *workspace*. Only public theories coming from scopes are added to the
   database of all public theories in the current workspace.
 
-  The public theory database allows theories to depend on theories that are in a
-  different scope. Thus, you can depend on theories belonging to another
-  :ref:`dune-project` as long as they share a common scope under another
-  :ref:`dune-project` file or a :ref:`dune-workspace` file.
+  The public theory database allows theories to depend on theories that are in
+  a different scope. Thus, you can depend on theories belonging to another
+  :doc:`/reference/files/dune-project/index` as long as they share a common
+  scope under another :doc:`/reference/files/dune-project/index` file or a
+  :doc:`/reference/files/dune-workspace/index` file.
 
   Doing so is usually as simple as placing a Coq project within the scope of
   another. This process is termed *composition*. See the :ref:`interproject
@@ -273,10 +276,10 @@ Public and Private Theories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A *public theory* is a :ref:`coq-theory` stanza that is visible outside the
-scope of a :ref:`dune-project` file.
+scope of a :doc:`/reference/files/dune-project/index` file.
 
-A *private theory* is a :ref:`coq-theory` stanza that is limited to the scope of
-the :ref:`dune-project` file it is in.
+A *private theory* is a :ref:`coq-theory` stanza that is limited to the scope
+of the :doc:`/reference/files/dune-project/index` file it is in.
 
 A private theory may depend on both private and public theories; however, a
 public theory may only depend on other public theories.
@@ -317,8 +320,8 @@ Limitations
 Coq Language Version
 ~~~~~~~~~~~~~~~~~~~~
 
-The Coq lang can be modified by adding the following to a :ref:`dune-project`
-file:
+The Coq lang can be modified by adding the following to a
+:doc:`/reference/files/dune-project/index` file:
 
 .. code:: dune
 
@@ -421,7 +424,8 @@ Simple Project
 ~~~~~~~~~~~~~~
 
 Let us start with a simple project. First, make sure we have a
-:ref:`dune-project` file with a :ref:`Coq lang<coq-lang>` stanza present:
+:doc:`/reference/files/dune-project/index` file with a :ref:`Coq
+lang<coq-lang>` stanza present:
 
 .. code:: dune
 
@@ -651,8 +655,8 @@ Let us build a simple Coq plugin to demonstrate how Dune can handle this setup.
       ├── dune
       └── UsingMyPlugin.v
 
-Our :ref:`dune-project` will need to have a package for the plugin to sit in,
-otherwise Coq will not be able to find it.
+Our :doc:`/reference/files/dune-project/index` will need to have a package for
+the plugin to sit in, otherwise Coq will not be able to find it.
 
 .. code:: dune
 

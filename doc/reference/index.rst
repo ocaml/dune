@@ -31,3 +31,4 @@ These documents specify the various features and languages present in Dune.
    ../caching
    ../dune-libs
    ../rpc
+   files/index

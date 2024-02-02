@@ -9,4 +9,5 @@ Dune will read several kinds of files: ``dune`` files, ``dune-project`` files,
 
    dune/index
    dune-project/index
+   dune-workspace/index
    config/index

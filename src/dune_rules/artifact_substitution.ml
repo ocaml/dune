@@ -638,6 +638,8 @@ let copy ~conf ~input_file ~input ~output =
 ;;
 
 let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
+  (* CR-rgrinberg: our copying here is slow. If we scan the file and detect no
+     substitutions, we should go directly to [Io.copy_file] *)
   let open Fiber.O in
   let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize

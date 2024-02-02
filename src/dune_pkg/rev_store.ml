@@ -743,7 +743,7 @@ let rec add_repo ({ dir } as t) ~source ~branch =
          | None ->
            (* the rev store is in some sort of unexpected state *)
            Code_error.raise
-             (sprintf "Could not load default branch of repository '%s'" source)
+             (sprintf "Could not load default branch of repository")
              [ "source", Dyn.string source; "handle", Dyn.string handle ])
       | false, Some branch ->
         let+ () = remote_add t ~branch ~handle ~source in

@@ -51,6 +51,8 @@ Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.
 
+.. _modes:
+
 Modes
 ~~~~~
 

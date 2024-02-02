@@ -77,7 +77,7 @@ files for executables. See
   should consider when building this executable. Modules not listed here will be
   ignored and cannot be used inside the executable described by the current
   stanza. It is interpreted in the same way as the ``(modules ...)`` field of
-  `library`_.
+  :doc:`library`.
 
 - ``(root_module <module>)`` specifies a ``root_module`` that collects all
   listed dependencies in ``libraries``. See the documentation for
@@ -87,9 +87,9 @@ files for executables. See
   Before Dune 2.0, it formerly was ``(byte exe)``.
 
 - ``(preprocess <preprocess-spec>)`` is the same as the ``(preprocess ...)``
-  field of `library`_.
+  field of :doc:`library`.
 
-  ``(preprocessor_deps ...)`` field of `library`_.
+  ``(preprocessor_deps ...)`` field of :doc:`library`.
 - ``(preprocessor_deps (<deps-conf list>))`` is the same as the
 
 - ``js_of_ocaml``: See the section about :ref:`jsoo-field`
@@ -98,15 +98,15 @@ files for executables. See
   :doc:`/concepts/ocaml-flags`.
 
 - ``(modules_without_implementation <modules>)`` is the same as the
-  corresponding field of `library`_.
+  corresponding field of :doc:`library`.
 
 - ``(allow_overlapping_dependencies)`` is the same as the corresponding field of
-  `library`_.
+  :doc:`library`.
 
-- ``(optional)`` is the same as the corresponding field of `library`_.
+- ``(optional)`` is the same as the corresponding field of :doc:`library`.
 
 - ``(enabled_if <blang expression>)`` is the same as the corresponding field of
-  `library`_.
+  :doc:`library`.
 
 - ``(promote <options>)`` allows promoting the linked executables to the source
   tree. The options are the same as for the :ref:`rule promote mode <promote>`.

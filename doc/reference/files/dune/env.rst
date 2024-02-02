@@ -26,7 +26,7 @@ Fields supported in ``<settings>`` are:
   See :ref:`executables stanza <shared-exe-fields>`.
 
 - ``(c_flags <flags>)`` and ``(cxx_flags <flags>)`` specify compilation flags
-  for C and C++ stubs, respectively. See `library`_ for more details.
+  for C and C++ stubs, respectively. See :doc:`library` for more details.
 
 - ``(env-vars (<var1> <val1>) .. (<varN> <valN>))`` will add the corresponding
   variables to the environment where the build commands are executed and are
@@ -37,18 +37,18 @@ Fields supported in ``<settings>`` are:
   Menhir extension.
 
 - ``(menhir (flags <flags) (explain <blang expression>))`` specifies the Menhir
-  settings. See `menhir`_ for more details. This field was introduced in version
+  settings. See :doc:`menhir` for more details. This field was introduced in version
   3.0 of the Menhir extension.
 
 - ``(js_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
-  specifies ``js_of_ocaml`` flags. See `jsoo-field`_ for more details.
+  specifies ``js_of_ocaml`` flags. See :ref:`jsoo-field` for more details.
 
 - ``(js_of_ocaml (compilation_mode <mode>))`` controls whether to use separate
   compilation or not where ``<mode>`` is either ``whole_program`` or
   ``separate``.
 
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
-  :ref:`inline_tests` and tests (`tests-stanza`_) run for the `js` mode.
+  :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the `js` mode.
 
 - ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries of the
   form ``(<filepath> as <name>)``. ``(<filepath> as <name>)`` makes the binary

@@ -48,7 +48,7 @@ Where ``<optional-fields>`` are:
   the MDX test executable.
 
 - ``(enabled_if <blang expression>)``  is the same as the corresponding field of
-  `library`_.
+  :doc:`library`.
 
 - ``(package <package>)`` specifies which package to attach this stanza to
   (similarly to when ``(package)`` is attached to a ``(rule)`` stanza). When

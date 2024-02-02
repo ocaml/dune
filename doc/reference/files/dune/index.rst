@@ -24,34 +24,36 @@ The syntax of ``dune`` files is described in
 
 The following pages describe the available stanzas and their meanings.
 
-.. include:: ../../../stanzas/alias.rst
-.. include:: ../../../stanzas/cinaps.rst
-.. include:: ../../../stanzas/copy_files.rst
-.. include:: ../../../stanzas/coq_theory.rst
-.. include:: ../../../stanzas/cram.rst
-.. include:: ../../../stanzas/data_only_dirs.rst
-.. include:: ../../../stanzas/deprecated_library_name.rst
-.. include:: ../../../stanzas/dirs.rst
-.. include:: ../../../stanzas/documentation.rst
-.. include:: ../../../stanzas/env.rst
-.. include:: ../../../stanzas/executable.rst
-.. include:: ../../../stanzas/external_variant.rst
-.. include:: ../../../stanzas/foreign_library.rst
-.. include:: ../../../stanzas/generate_sites_module.rst
-.. include:: ../../../stanzas/ignored_subdirs.rst
-.. include:: ../../../stanzas/include.rst
-.. include:: ../../../stanzas/include_subdirs.rst
-.. include:: ../../../stanzas/install.rst
-.. include:: ../../../stanzas/jbuild_version.rst
-.. include:: ../../../stanzas/library.rst
-.. include:: ../../../stanzas/mdx.rst
-.. include:: ../../../stanzas/menhir.rst
-.. include:: ../../../stanzas/ocamllex.rst
-.. include:: ../../../stanzas/ocamlyacc.rst
-.. include:: ../../../stanzas/plugin.rst
-.. include:: ../../../stanzas/rule.rst
-.. include:: ../../../stanzas/subdir.rst
-.. include:: ../../../stanzas/test.rst
-.. include:: ../../../stanzas/toplevel.rst
-.. include:: ../../../stanzas/vendored_dirs.rst
-.. include:: ../../../stanzas/dynamic_include.rst
+.. toctree::
+
+  alias
+  cinaps
+  copy_files
+  coq_theory
+  cram
+  data_only_dirs
+  deprecated_library_name
+  dirs
+  documentation
+  dynamic_include
+  env
+  executable
+  external_variant
+  foreign_library
+  generate_sites_module
+  ignored_subdirs
+  include
+  include_subdirs
+  install
+  jbuild_version
+  library
+  mdx
+  menhir
+  ocamllex
+  ocamlyacc
+  plugin
+  rule
+  subdir
+  test
+  toplevel
+  vendored_dirs

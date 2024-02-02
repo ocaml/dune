@@ -19,7 +19,7 @@ details.
 
 - ``(alias <alias-name>)`` specifies an alias to which to attach the targets.
 
-- ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
+- ``(mode <mode>)`` specifies how to handle the targets. See :ref:`modes` for
   details.
 
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The

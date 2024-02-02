@@ -19,5 +19,5 @@ run this toplevel with:
    $ dune exec ./tt.exe
 
 ``(preprocess (pps ...))`` is the same as the ``(preprocess (pps ...))`` field
-of `library`_. Currently, ``action`` and ``future_syntax`` are not supported in
-the toplevel.
+of :doc:`library`. Currently, ``action`` and ``future_syntax`` are not
+supported in the toplevel.

@@ -64,14 +64,14 @@ files for executables. See
   specifies the package the executables are part of it.
 
 - ``(libraries <library-dependencies>)`` specifies the library dependencies. See
-  :doc:`reference/library-dependencies` for more details.
+  :doc:`/reference/library-dependencies` for more details.
 
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms.
 
 - ``(link_deps (<deps-conf list>))`` specifies the dependencies used only by the
   linker, i.e., when using a version script. See
-  :doc:`concepts/dependency-spec` for more details.
+  :doc:`/concepts/dependency-spec` for more details.
 
 - ``(modules <modules>)`` specifies which modules in the current directory Dune
   should consider when building this executable. Modules not listed here will be
@@ -95,7 +95,7 @@ files for executables. See
 - ``js_of_ocaml``: See the section about :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags``, and ``ocamlopt_flags``: See
-  :doc:`concepts/ocaml-flags`.
+  :doc:`/concepts/ocaml-flags`.
 
 - ``(modules_without_implementation <modules>)`` is the same as the
   corresponding field of `library`_.
@@ -116,7 +116,7 @@ files for executables. See
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
   C or C++ stubs, to be linked into the executable. See
-  :doc:`reference/foreign` for more details.
+  :doc:`/reference/foreign` for more details.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be linked into the executable. See the section
@@ -261,7 +261,7 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
-``<flags>`` is specified in the :doc:`reference/ordered-set-language`.
+``<flags>`` is specified in the :doc:`/reference/ordered-set-language`.
 
 The default value for ``(flags ...)`` depends on the selected build profile. The
 build profile ``dev`` (the default) will enable sourcemap and the pretty

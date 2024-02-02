@@ -11,7 +11,7 @@ Cram
    cases, the values from all applicable ``cram`` stanzas are merged together
    to get the final values for all the fields.
 
-   .. seealso:: :doc:`reference/cram`
+   .. seealso:: :doc:`/reference/cram`
 
    .. dune:field:: deps
       :param: <dep-spec>
@@ -33,7 +33,7 @@ Cram
          (cram
           (deps ../foo.exe))
 
-      .. seealso:: :doc:`concepts/dependency-spec`.
+      .. seealso:: :doc:`/concepts/dependency-spec`.
 
    .. dune:field:: applies_to
       :param: <predicate-lang>
@@ -52,14 +52,14 @@ Cram
           (applies_to * \ foo bar)
           (deps ../foo.exe))
 
-      .. seealso:: :doc:`reference/predicate-language`
+      .. seealso:: :doc:`/reference/predicate-language`
 
    .. dune:field:: enabled_if
       :param: <blang>
 
       Control whether the tests are enabled.
 
-      .. seealso:: :doc:`reference/boolean-language`, :doc:`concepts/variables`
+      .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 
    .. dune:field:: alias
       :param: <name>
@@ -73,7 +73,7 @@ Cram
 
       Specify that the tests must be run while holding the following locks.
 
-      .. seealso:: :doc:`concepts/locks`
+      .. seealso:: :doc:`/concepts/locks`
 
    .. dune:field:: package
       :param: <name>

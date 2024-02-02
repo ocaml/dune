@@ -13,7 +13,7 @@ The syntax is as follows:
      <optional-fields>)
 
 ``<action>`` is what you run to produce the targets from the dependencies. See
-:doc:`reference/actions/index` for more details.
+:doc:`/reference/actions/index` for more details.
 
 ``<optional-fields>`` are:
 
@@ -24,7 +24,7 @@ The syntax is as follows:
   `inferred rules`_.
 
 - ``(deps <deps-conf list>)`` specifies the dependencies of the rule. See
-  :doc:`concepts/dependency-spec` for more details.
+  :doc:`/concepts/dependency-spec` for more details.
 
 - ``(mode <mode>)`` specifies how to handle the targets. See `modes`_ for
   details.
@@ -32,7 +32,7 @@ The syntax is as follows:
 - ``(fallback)`` is deprecated and is the same as ``(mode fallback)``.
 
 - ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See :doc:`concepts/locks` for more details.
+  the following locks. See :doc:`/concepts/locks` for more details.
 
 - ``(alias <alias-name>)`` specifies this rule's alias. Building this alias
   means building the targets of this rule.
@@ -44,8 +44,8 @@ The syntax is as follows:
 
 - ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
   be true for the rule to be considered. The condition is specified using the
-  :doc:`reference/boolean-language`, and the field allows for
-  :doc:`concepts/variables` to appear in the expressions.
+  :doc:`/reference/boolean-language`, and the field allows for
+  :doc:`/concepts/variables` to appear in the expressions.
 
 Please note: contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
@@ -77,7 +77,7 @@ using the ``mode`` field. The following modes are available:
     the current directory. This feature has been available since Dune 1.8.
   - ``(only <predicate>)`` means that only a subset of the targets should be
     promoted. The argument is similar to the argument of :ref:`(dirs ...)
-    <dune-subdirs>`, specified using the :doc:`reference/predicate-language`.
+    <dune-subdirs>`, specified using the :doc:`/reference/predicate-language`.
     This feature has been available since Dune 1.10.
 
 There are two use cases for ``promote`` rules. The first one is when the
@@ -92,7 +92,7 @@ are never ignored.
 Inferred Rules
 ~~~~~~~~~~~~~~
 
-When using the action DSL (see :doc:`reference/actions/index`), the
+When using the action DSL (see :doc:`/reference/actions/index`), the
 dependencies and targets are usually obvious.
 
 For instance:

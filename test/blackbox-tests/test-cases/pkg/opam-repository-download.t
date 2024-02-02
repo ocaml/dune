@@ -251,17 +251,21 @@ And create it as a separate repo, this time with the packages in the root:
   $ git init --quiet
   $ git add -A
   $ git commit -m "Initial subrepo commit" --quiet
+  $ SUBMODULE_REVISION=$(git rev-parse HEAD)
+  $ SUBMODULE_LOCATION=$(pwd)
   $ cd ..
 
 In our mock repository, we make sure to add the submodule as `packages`:
 
   $ cd mock-opam-repository
   $ git init --quiet
-  $ GIT_ALLOW_PROTOCOL=file git submodule add ../remote-submodule packages
+  $ GIT_ALLOW_PROTOCOL=file git submodule add ${SUBMODULE_LOCATION} packages
   Cloning into '$TESTCASE_ROOT/mock-opam-repository/packages'...
   done.
   $ git commit -m "Initial opam-repo commit" --quiet
   $ git submodule init
+  $ git ls-tree -r HEAD | grep "commit ${SUBMODULE_REVISION}" > /dev/null && echo "Submodule exists at expected revision"
+  Submodule exists at expected revision
   $ cd ..
 
 We'll use the mock repository as source:
@@ -280,10 +284,6 @@ however due to some issues this currently fails:
 
   $ rm -r dune.lock
   $ dune pkg lock
-  Error: Unable to solve dependencies for the following lock directories:
-  Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: baz.dev
-  - bar -> (problem)
-      No known implementations at all
-  [1]
+  Solution for dune.lock:
+  - bar.0.0.1
+  - foo.0.0.1

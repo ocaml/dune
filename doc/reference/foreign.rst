@@ -153,7 +153,8 @@ The ``foreign_library`` stanza supports all :ref:`foreign-stubs` fields.
 The ``archive_name`` field specifies the archive's name. You can refer
 to the same archive name from multiple OCaml libraries and executables, so a
 foreign archive is a bit like a foreign library, hence the name of the stanza.
-The ``enabled_if`` field has the same meaning as in the :ref:`library` stanza.
+The ``enabled_if`` field has the same meaning as in the
+:doc:`/reference/files/dune/library` stanza.
 
 Foreign archives are particularly useful when embedding a library written in
 a foreign language and/or built with another build system. See

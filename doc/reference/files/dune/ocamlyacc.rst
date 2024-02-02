@@ -1,5 +1,3 @@
-.. _ocamlyacc:
-
 ocamlyacc
 ---------
 

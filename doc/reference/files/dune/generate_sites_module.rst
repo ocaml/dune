@@ -1,5 +1,3 @@
-.. _generate_sites_module:
-
 generate_sites_module
 ---------------------
 

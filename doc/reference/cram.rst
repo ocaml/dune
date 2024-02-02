@@ -158,9 +158,9 @@ are files with a ``.t`` extension. Directory tests are files named ``run.t``
 within a directory with a name that ends with ``.t``.
 
 A Cram test begins its execution in a temporary directory where its
-dependencies (as listed in the corresponding :ref:`cram stanzas <cram-stanza>`,
-if any) are available. In the case of a directory test, the contents of the
-directory are also available.
+dependencies (as listed in the corresponding :doc:`cram stanzas
+<files/dune/cram>`, if any) are available. In the case of a directory test, the
+contents of the directory are also available.
 
 File tests have the nice property that they are self-contained: everything
 happens in a single file. This is handy because it does not make a deep file

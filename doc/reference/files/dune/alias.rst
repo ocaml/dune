@@ -1,5 +1,3 @@
-.. _alias-stanza:
-
 alias
 -----
 

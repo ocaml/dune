@@ -124,7 +124,8 @@ Terminology
      compilation flags. In Dune, each directory has an environment attached to
      it. Inside a scope, each directory inherits the environment from its
      parent. At the root of every scope, a default environment is used. At any
-     point, the environment can be altered using an :ref:`dune-env` stanza.
+     point, the environment can be altered using an
+     :doc:`/reference/files/dune/env` stanza.
 
    build profile
      A global setting that influences various defaults. It can be set from the

@@ -45,10 +45,10 @@ package
    .. dune:field:: deprecated_package_names
       :param: <name list>
 
-      A list of names that can be used with the :ref:`deprecated-library-name`
-      stanza to migrate legacy libraries from other build systems that do not
-      follow Dune's convention of prefixing the library's public name with the
-      package name.
+      A list of names that can be used with the
+      :doc:`../dune/deprecated_library_name` stanza to migrate legacy libraries
+      from other build systems that do not follow Dune's convention of
+      prefixing the library's public name with the package name.
 
    .. dune:field:: license
 
@@ -100,7 +100,7 @@ package
       section ``<section>``.
 
 Adding libraries to different packages is done via the ``public_name`` and
-``package`` fields. See :ref:`library` section for details.
+``package`` fields. See :doc:`../dune/library` section for details.
 
 The list of dependencies :token:`~pkg-dep:dep_specification` is modelled after
 opam's own language. The syntax is a list of the following elements:

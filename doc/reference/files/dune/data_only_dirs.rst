@@ -1,5 +1,3 @@
-.. _dune-data_only_dirs:
-
 data_only_dirs
 --------------
 

@@ -1,5 +1,3 @@
-.. _include_subdirs:
-
 include_subdirs
 ---------------
 

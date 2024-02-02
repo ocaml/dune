@@ -1,5 +1,3 @@
-.. _documentation-stanza:
-
 documentation
 -------------
 

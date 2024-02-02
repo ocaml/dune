@@ -71,6 +71,7 @@ Dune supports two modes of compilation:
 
 The separate compilation mode will be selected when the build profile
 is ``dev``, which is the default. It can also be explicitly specified
-in an ``env`` stanza. See :ref:`dune-env` for more information.
+in an ``env`` stanza. See :doc:`/reference/files/dune/env` for more
+information.
 
 .. _js_of_ocaml: http://ocsigen.org/js_of_ocaml/

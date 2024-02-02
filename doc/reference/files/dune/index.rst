@@ -1,5 +1,3 @@
-.. _dune-files:
-
 dune
 ====
 

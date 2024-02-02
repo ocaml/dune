@@ -1,5 +1,3 @@
-.. _executable:
-
 executable
 ----------
 

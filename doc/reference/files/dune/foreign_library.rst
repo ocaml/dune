@@ -1,5 +1,3 @@
-.. _foreign_library:
-
 foreign_library
 ---------------
 

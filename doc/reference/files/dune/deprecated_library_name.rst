@@ -1,5 +1,3 @@
-.. _deprecated-library-name:
-
 deprecated_library_name
 -----------------------
 

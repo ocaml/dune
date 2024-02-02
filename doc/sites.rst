@@ -28,9 +28,9 @@ Defining a Site
 ---------------
 
 A site is defined in a package :doc:`/reference/files/dune-project/package` in
-the ``dune-project`` file. It consists of a name and a :ref:`section<install>`
-(e.g ``lib``, ``share``, ``etc``) where the site will be installed as a
-sub-directory.
+the ``dune-project`` file. It consists of a name and a :doc:`section
+</reference/files/dune/install>` (e.g ``lib``, ``share``, ``etc``) where the
+site will be installed as a sub-directory.
 
 .. code:: dune
 
@@ -47,7 +47,7 @@ Adding Files to a Site
 
 Here the package ``mygui`` defines a site named ``themes`` that will be located
 in the section ``share``. This package can add files to this ``site`` using the
-:ref:`install stanza<install>`:
+:doc:`install stanza </reference/files/dune/install>`:
 
 .. code:: dune
 
@@ -81,7 +81,8 @@ Getting the Locations of a Site at Runtime
 ------------------------------------------
 
 The executable ``mygui`` will be able to get the locations of the ``themes``
-site using the :ref:`generate sites module stanza<generate_sites_module>`
+site using the :doc:`generate_sites_module stanza
+</reference/files/dune/generate_sites_module>`.
 
 .. code:: dune
 

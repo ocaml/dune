@@ -1,5 +1,3 @@
-.. _library:
-
 library
 -------
 
@@ -26,7 +24,7 @@ expose only the modules you want.
 Please note: by default, libraries and other things that consume OCaml/Reason
 modules only consume modules from the directory where the stanza appear. In
 order to declare a multi-directory library, you need to use the
-:ref:`include_subdirs` stanza.
+:doc:`include_subdirs` stanza.
 
 ``<optional-fields>`` are:
 

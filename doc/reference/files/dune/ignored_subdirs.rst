@@ -1,5 +1,3 @@
-.. _dune-ignored_subdirs:
-
 ignored_subdirs
 ---------------
 

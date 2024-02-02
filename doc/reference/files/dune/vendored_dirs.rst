@@ -1,5 +1,3 @@
-.. _dune-vendored_dirs:
-
 vendored_dirs
 -------------
 

@@ -68,8 +68,8 @@ env
 
 The ``env`` stanza can be used to set the base environment for all contexts in
 this workspace. This environment has the lowest precedence of all other ``env``
-stanzas. The syntax for this stanza is the same as Dune's :ref:`dune-env`
-stanza.
+stanzas. The syntax for this stanza is the same as Dune's
+:doc:`/reference/files/dune/env` stanza.
 
 ``config`` stanzas
 ------------------
@@ -106,7 +106,7 @@ the description of an opam switch, as follows:
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
-  field has the same options as the :ref:`dune-env` stanza.
+  field has the same options as the :doc:`/reference/files/dune/env` stanza.
 
 - ``(toolchain <findlib_toolchain>)`` sets a ``findlib`` toolchain for the
   context.

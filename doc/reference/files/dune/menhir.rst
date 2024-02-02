@@ -1,5 +1,3 @@
-.. _menhir:
-
 menhir
 ------
 
@@ -16,7 +14,7 @@ This will enable support for Menhir stanzas in the current project. If the
 language version is absent, Dune will automatically add this line with the
 latest Menhir version once a Menhir stanza is used anywhere.
 
-The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`)
+The basic form for defining menhir-git_ parsers (analogous to :doc:`ocamlyacc`)
 is:
 
 .. code:: dune

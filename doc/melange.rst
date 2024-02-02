@@ -18,7 +18,7 @@ be installed with opam:
 Dune can build projects using Melange, and it allows the user to produce
 JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
 used with Melange by adding ``melange`` to ``(modes ...)`` in the
-:ref:`library` stanza.
+:doc:`/reference/files/dune/library` stanza.
 
 Melange support is still experimental in Dune and needs to be enabled
 in the :ref:`dune-project` file:
@@ -27,8 +27,8 @@ in the :ref:`dune-project` file:
 
     (using melange 0.1)
 
-Once that's in place, you can use the Melange mode in :ref:`library` stanzas
-``melange.emit`` stanzas.
+Once that's in place, you can use the Melange mode in
+:doc:`/reference/files/dune/library` stanzas ``melange.emit`` stanzas.
 
 Simple Project
 ==============
@@ -44,7 +44,8 @@ version 3.8 of the dune language and the Melange extension is enabled:
   (lang dune 3.14)
   (using melange 0.1)
 
-Next, write a :ref:`dune<dune-files>` file with a :ref:`melange-emit` stanza:
+Next, write a :doc:`/reference/files/dune/index` file with a
+:ref:`melange-emit` stanza:
 
 .. code:: dune
 
@@ -100,7 +101,8 @@ melange.emit
 
 The ``melange.emit`` stanza allows the user to produce JavaScript files
 from Melange libraries and entry-point modules. It's similar to the OCaml
-:ref:`executable` stanza, with the exception that there is no linking step.
+:doc:`/reference/files/dune/executable` stanza, with the exception that there
+is no linking step.
 
 .. code:: dune
 
@@ -232,10 +234,10 @@ The resulting layout in ``_build/default/output`` will be as follows:
 
 - ``(root_module <module>)`` specifies a ``root_module`` that collects all
   listed dependencies in ``libraries``. See the documentation for
-  ``root_module`` in the :ref:`library` stanza.
+  ``root_module`` in the :doc:`/reference/files/dune/library` stanza.
 
-- ``(allow_overlapping_dependencies)`` is the same as the corresponding field of
-  :ref:`library`.
+- ``(allow_overlapping_dependencies)`` is the same as the corresponding field
+  of :doc:`/reference/files/dune/library`.
 
 - ``(enabled_if <blang expression>)`` conditionally disables a melange emit
   stanza. The JavaScript files associated with the stanza won't be built. The
@@ -280,12 +282,12 @@ together with other JavaScript packages. To avoid having Dune inspect
 unnecessary folders in ``node_modules``, it is recommended to explicitly
 include only the folders that are relevant for Melange builds.
 
-This can be accomplished by combining :ref:`subdir` and :ref:`dune-subdirs`
-stanzas in a ``dune`` file next to the ``node_modules`` folder. The
-:ref:`dune-vendored_dirs` stanza can be used to avoid warnings in Melange
-libraries during the application build. The :ref:`dune-data_only_dirs` stanza
-can be useful as well if you need to override the build rules in one of the
-packages.
+This can be accomplished by combining :doc:`/reference/files/dune/subdir` and
+:doc:`/reference/files/dune/subdir` stanzas in a ``dune`` file next to the
+``node_modules`` folder. The :doc:`/reference/files/dune/vendored_dirs` stanza
+can be used to avoid warnings in Melange libraries during the application
+build. The :doc:`/reference/files/dune/data_only_dirs` stanza can be useful as
+well if you need to override the build rules in one of the packages.
 
 .. code:: dune
 

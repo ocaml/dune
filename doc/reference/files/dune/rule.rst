@@ -78,8 +78,8 @@ using the ``mode`` field. The following modes are available:
   - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
     the current directory. This feature has been available since Dune 1.8.
   - ``(only <predicate>)`` means that only a subset of the targets should be
-    promoted. The argument is similar to the argument of :ref:`(dirs ...)
-    <dune-subdirs>`, specified using the :doc:`/reference/predicate-language`.
+    promoted. The argument is similar to the argument of :doc:`subdir`,
+    specified using the :doc:`/reference/predicate-language`.
     This feature has been available since Dune 1.10.
 
 There are two use cases for ``promote`` rules. The first one is when the

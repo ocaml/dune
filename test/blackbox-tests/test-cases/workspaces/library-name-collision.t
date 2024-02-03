@@ -11,8 +11,7 @@ Showcase that using same library name in two workspaces is not possible at the m
   > (context default)
   > 
   > (context
-  >  (opam
-  >   (switch $(opam switch show))
+  >  (default
   >   (name alt-context)))
   > EOF
   $ cat > a/dune << EOF

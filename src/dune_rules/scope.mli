@@ -26,6 +26,6 @@ module DB : sig
       | Deprecated_library_name of Deprecated_library_name.t
   end
 
-  val lib_entries_of_package : Context.t -> Package.Name.t -> Lib_entry.t list Memo.t
+  val lib_entries_of_package : Context_name.t -> Package.Name.t -> Lib_entry.t list Memo.t
   val with_all : Context.t -> f:((Dune_project.t -> t) -> 'a) -> 'a Memo.t
 end

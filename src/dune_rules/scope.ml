@@ -380,7 +380,7 @@ module DB = struct
   end
 
   let lib_entries_of_package =
-    let make_map (build_dir, public_libs, stanzas) =
+    let make_map build_dir public_libs stanzas =
       let+ libs =
         Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
@@ -420,22 +420,19 @@ module DB = struct
              (List.sort ~compare:(fun a b ->
                 Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
     in
-    let module Input = struct
-      type t = Path.Build.t * Lib.DB.t * Dune_file.t list
-
-      let equal =
-        Tuple.T3.equal Path.Build.equal Lib.DB.equal (List.equal Dune_file.equal)
-      ;;
-
-      let hash = Tuple.T3.hash Path.Build.hash Lib.DB.hash (List.hash Dune_file.hash)
-      let to_dyn = Dyn.opaque
-    end
+    let per_context =
+      Per_context.create_by_name ~name:"scope-db" (fun ctx ->
+        Memo.lazy_ (fun () ->
+          let* public_libs =
+            let* ctx = Context.DB.get ctx in
+            public_libs ctx
+          and* stanzas = Dune_load.dune_files ctx in
+          make_map (Context_name.build_dir ctx) public_libs stanzas)
+        |> Memo.Lazy.force)
+      |> Staged.unstage
     in
-    let memo = Memo.create "lib-entries-map" ~input:(module Input) make_map in
-    fun (ctx : Context.t) pkg_name ->
-      let* public_libs = public_libs ctx in
-      let* stanzas = Dune_load.dune_files (Context.name ctx) in
-      let+ map = Memo.exec memo (Context.build_dir ctx, public_libs, stanzas) in
+    fun (ctx : Context_name.t) pkg_name ->
+      let+ map = per_context ctx in
       Package.Name.Map.Multi.find map pkg_name
   ;;
 end

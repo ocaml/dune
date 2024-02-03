@@ -591,7 +591,9 @@ let entry_modules_by_lib sctx lib =
 
 let entry_modules sctx ~pkg =
   let* l =
-    libs_of_pkg (Super_context.context sctx) ~pkg
+    Super_context.context sctx
+    |> Context.name
+    |> libs_of_pkg ~pkg
     >>| List.filter ~f:(fun lib ->
       Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private |> not)
   in
@@ -720,7 +722,7 @@ let setup_pkg_rules_def memo_name f =
 
 let setup_pkg_odocl_rules_def =
   let f (sctx, pkg) =
-    let* libs = libs_of_pkg (Super_context.context sctx) ~pkg in
+    let* libs = Super_context.context sctx |> Context.name |> libs_of_pkg ~pkg in
     let* requires =
       let libs = (libs :> Lib.t list) in
       Lib.closure libs ~linking:false
@@ -797,7 +799,7 @@ let setup_lib_html_rules sctx lib =
 let setup_pkg_html_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
-    let* libs = libs_of_pkg ctx ~pkg in
+    let* libs = Context.name ctx |> libs_of_pkg ~pkg in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx)
     and* pkg_odocs =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
@@ -828,7 +830,9 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
     let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
     Output_format.alias output ~dir
   in
-  let* libs = libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Lib lib) in
+  let* libs =
+    Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
+  in
   Pkg name :: libs
   |> List.map ~f:(Dep.format_alias output ctx)
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)

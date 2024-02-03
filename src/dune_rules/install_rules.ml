@@ -706,7 +706,9 @@ end = struct
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
+    let* lib_entries =
+      Scope.DB.lib_entries_of_package (Context.name ctx) (Package.name pkg)
+    in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -788,7 +790,7 @@ end = struct
     let ctx = Super_context.context sctx in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      let+ entries = Scope.DB.lib_entries_of_package ctx pkg_name in
+      let+ entries = Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name in
       List.partition_map entries ~f:(function
         | Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->

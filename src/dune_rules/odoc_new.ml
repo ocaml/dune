@@ -227,7 +227,7 @@ let add_rule sctx =
 *)
 let libs_maps_def =
   let f (ctx, libs) =
-    let* db = Scope.DB.public_libs ctx
+    let* db = Scope.DB.public_libs (Context.name ctx)
     and* all_packages_entries =
       let* findlib = Findlib.create (Context.name ctx) in
       Memo.parallel_map ~f:(Findlib.find findlib) libs
@@ -442,7 +442,7 @@ module Valid = struct
       let+ libs_list =
         let+ libs_list =
           let+ libs_list =
-            let* stdlib = stdlib_lib ctx in
+            let* stdlib = stdlib_lib (Context.name ctx) in
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
@@ -973,7 +973,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
   let ctx = Super_context.context sctx in
   let* maps = Valid.libs_maps ctx ~all in
   let* requires =
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     link_requires stdlib_opt libs
   in
   let* deps =
@@ -1086,7 +1086,7 @@ let parse_odoc_deps =
 let compile_odocs sctx ~all ~quiet artifacts parent libs =
   let* requires =
     let ctx = Super_context.context sctx in
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     let requires = compile_requires stdlib_opt libs in
     Resolve.Memo.bind requires ~f:(fun libs ->
       let+ libs = Valid.filter_libs ctx ~all libs in

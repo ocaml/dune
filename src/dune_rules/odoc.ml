@@ -28,7 +28,7 @@ let find_project_by_key =
 ;;
 
 module Scope_key : sig
-  val of_string : Context.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
+  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
   let of_string context s =
@@ -979,7 +979,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
@@ -1010,7 +1010,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in

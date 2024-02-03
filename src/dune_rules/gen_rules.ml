@@ -121,8 +121,10 @@ end = struct
           rules)
         enabled_if
     | Foreign.Library.T lib ->
-      let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
-      empty_none
+      Expander.eval_blang expander lib.enabled_if
+      >>= if_available (fun () ->
+        let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
+        empty_none)
     | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->

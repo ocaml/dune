@@ -112,12 +112,13 @@ end = struct
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      (* XXX why are we setting up private doc rules for disabled libraries? *)
-      let* () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-      and+ enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
+      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () ->
+          let+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
+          and+ rules = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+          rules)
         enabled_if
     | Foreign.Library.T lib ->
       let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in

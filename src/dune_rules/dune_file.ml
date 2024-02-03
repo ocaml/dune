@@ -237,12 +237,6 @@ module Script = struct
     ; project : Dune_project.t
     }
 
-  let script_equal t { dir; file; project } =
-    Path.Source.equal t.dir dir
-    && Path.Source.equal t.file file
-    && Dune_project.equal t.project project
-  ;;
-
   open Memo.O
 
   type t =
@@ -250,16 +244,11 @@ module Script = struct
     ; from_parent : Dune_lang.Ast.t list
     }
 
-  let equal t { script; from_parent } =
-    script_equal t.script script
-    && List.equal Dune_lang.Ast.equal t.from_parent from_parent
-  ;;
-
   (* CR-rgrinberg: context handling code should be aware of this special
      directory *)
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
-  let eval_one (context, { script = { dir; file; project }; from_parent }) =
+  let eval_one ~context { script = { dir; file; project }; from_parent } =
     let generated_dune_file =
       Path.Build.append_source
         (Path.Build.relative generated_dune_files_dir (Context_name.to_string context))
@@ -300,19 +289,6 @@ module Script = struct
     |> Io.Untracked.with_lexbuf_from_file ~f:(Dune_lang.Parser.parse ~mode:Many)
     |> List.rev_append from_parent
     |> parse ~dir ~file:(Some file) ~project
-  ;;
-
-  let eval_one =
-    let module Input = struct
-      type nonrec t = Context_name.t * t
-
-      let equal = Tuple.T2.equal Context_name.equal equal
-      let hash = Tuple.T2.hash Context_name.hash Poly.hash
-      let to_dyn = Dyn.opaque
-    end
-    in
-    let memo = Memo.create "Script.eval_one" ~input:(module Input) eval_one in
-    fun ~context t -> Memo.exec memo (context, t)
   ;;
 end
 

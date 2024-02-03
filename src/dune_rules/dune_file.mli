@@ -8,8 +8,6 @@ type t
 val dir : t -> Path.Source.t
 val stanzas : t -> Stanza.t list
 val project : t -> Dune_project.t
-val equal : t -> t -> bool
-val hash : t -> int
 val to_dyn : t -> Dyn.t
 val find_stanzas : t -> 'a Stanza.Key.t -> 'a list
 val fold_stanzas : t list -> init:'acc -> f:(t -> Stanza.t -> 'acc -> 'acc) -> 'acc

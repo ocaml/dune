@@ -19,7 +19,7 @@ let resolve_libs t public_libs =
 
 let setup_rules ~sctx ~dir t =
   let meta = meta_file ~dir t in
-  let* public_libs = Scope.DB.public_libs (Super_context.context sctx) in
+  let* public_libs = Super_context.context sctx |> Context.name |> Scope.DB.public_libs in
   Super_context.add_rule
     sctx
     ~dir
@@ -39,7 +39,9 @@ let setup_rules ~sctx ~dir t =
 
 let install_rules ~sctx ~package_db ~dir ({ name; site = loc, (pkg, site); _ } as t) =
   let* skip_files =
-    let* public_libs = Scope.DB.public_libs (Super_context.context sctx) in
+    let* public_libs =
+      Super_context.context sctx |> Context.name |> Scope.DB.public_libs
+    in
     if t.optional
     then Resolve.Memo.is_error (resolve_libs t public_libs)
     else Memo.return false

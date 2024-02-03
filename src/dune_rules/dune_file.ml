@@ -108,14 +108,6 @@ module Memo_fold = Make_fold (Memo)
 module Id_fold = Make_fold (Monad.Id)
 
 let fold_stanzas t ~init ~f = Id_fold.fold_stanzas t ~init ~f
-
-let equal t { dir; project; stanzas } =
-  Path.Source.equal t.dir dir
-  && Dune_project.equal t.project project
-  && List.equal Stanza.equal t.stanzas stanzas
-;;
-
-let hash = Poly.hash
 let to_dyn = Dyn.opaque
 
 let find_stanzas t key =

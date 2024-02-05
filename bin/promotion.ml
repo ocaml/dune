@@ -16,8 +16,7 @@ let files_to_promote ~common files : Diff_promotion.files_to_promote =
 
 let display_files files_to_promote =
   let open Fiber.O in
-  Diff_promotion.load_db ()
-  |> Diff_promotion.filter_db files_to_promote
+  Diff_promotion.load_db files_to_promote
   |> Fiber.parallel_map ~f:(fun file ->
     Diff_promotion.diff_for_file file
     >>| function
@@ -61,6 +60,15 @@ module Apply = struct
 end
 
 module Diff = struct
+  let display files_to_promote =
+    let open Fiber.O in
+    Diff_promotion.load_db files_to_promote
+    |> Fiber.parallel_map ~f:(fun file ->
+      Diff_promotion.diff_for_file file >>| Result.to_option)
+    >>| List.filter_opt
+    >>| List.iter ~f:Dune_engine.Print_diff.Diff.print
+  ;;
+
   let info = Cmd.info ~doc:"List promotions to be applied" "diff"
 
   let term =
@@ -68,7 +76,7 @@ module Diff = struct
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go ~common ~config (fun () -> Diff_promotion.display files_to_promote)
+    Scheduler.go ~common ~config (fun () -> display files_to_promote)
   ;;
 
   let command = Cmd.v info term

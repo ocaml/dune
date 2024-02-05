@@ -23,7 +23,7 @@ let find_project_by_key =
     Memo.create "project-by-keys" ~input:(module Input) make_map
   in
   fun key ->
-    let* { projects; _ } = Dune_load.load () in
+    let* projects = Dune_load.load () >>| Dune_load.projects in
     let+ map = Memo.exec memo projects in
     Dune_project.File_key.Map.find_exn map key
 ;;

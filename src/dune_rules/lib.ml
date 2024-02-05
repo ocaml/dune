@@ -858,13 +858,14 @@ end = struct
   let projects_by_package =
     Memo.lazy_ (fun () ->
       let open Memo.O in
-      let+ { projects; _ } = Dune_load.load () in
-      List.concat_map projects ~f:(fun project ->
+      Dune_load.load ()
+      >>| Dune_load.projects
+      >>| List.concat_map ~f:(fun project ->
         Dune_project.packages project
         |> Package.Name.Map.to_list_map ~f:(fun _ (pkg : Package.t) ->
           let name = Package.name pkg in
           name, project))
-      |> Package.Name.Map.of_list_exn)
+      >>| Package.Name.Map.of_list_exn)
   ;;
 
   let instantiate_impl (db, name, info, hidden) =

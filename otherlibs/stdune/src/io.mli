@@ -9,7 +9,16 @@ val input_lines : in_channel -> string list
     unrelated channels because it uses a statically-allocated global buffer. *)
 val copy_channels : in_channel -> out_channel -> unit
 
-val read_all : in_channel -> string
+(** Try to read everything from a channel. Returns [Error ()] if the contents
+    are larger than [Sys.max_string_length]. This is generally a problem only
+    on 32-bit systems.
+    Overflow detection does not happen in the following cases:
+    - channel is not a file (for example, a pipe)
+    - if the detected size is unreliable (/proc)
+    - race condition with another process changing the size of the underlying
+      file.
+      In these cases, an exception might be raised by [Buffer] functions. *)
+val read_all_unless_large : in_channel -> (string, unit) result
 
 include Io_intf.S with type path = Path.t
 module String_path : Io_intf.S with type path = string

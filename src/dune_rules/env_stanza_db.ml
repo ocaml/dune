@@ -23,10 +23,11 @@ module Node = struct
 
   let in_dir ~dir =
     Dune_load.stanzas_in_dir dir
-    >>| function
-    | None -> None
+    >>= function
+    | None -> Memo.return None
     | Some stanzas ->
-      (match Dune_file.find_stanzas stanzas Dune_env.key with
+      Dune_file.find_stanzas stanzas Dune_env.key
+      >>| (function
        | [ config ] -> Some config
        | _ -> None)
   ;;

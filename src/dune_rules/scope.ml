@@ -307,7 +307,7 @@ module DB = struct
 
   let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
     let stanzas, coq_stanzas =
-      Dune_file.fold_stanzas
+      Dune_file.fold_static_stanzas
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
@@ -375,7 +375,7 @@ module DB = struct
   let lib_entries_of_package =
     let make_map build_dir public_libs stanzas =
       let+ libs =
-        Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =

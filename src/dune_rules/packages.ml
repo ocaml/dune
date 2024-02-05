@@ -14,7 +14,7 @@ let mlds_by_package_def =
       |> Dune_load.dune_files
       >>= Memo.parallel_map ~f:(fun dune_file ->
         Dune_file.stanzas dune_file
-        |> Memo.parallel_map ~f:(fun stanza ->
+        >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Documentation.T d ->
             let+ mlds =

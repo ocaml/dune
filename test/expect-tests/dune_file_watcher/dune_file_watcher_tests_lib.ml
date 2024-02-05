@@ -4,8 +4,8 @@ open Base
 open Stdune
 
 let critical_section mutex ~f =
-  Mutex.lock mutex;
-  Exn.protect ~f ~finally:(fun () -> Mutex.unlock mutex)
+  Stdlib.Mutex.lock mutex;
+  Exn.protect ~f ~finally:(fun () -> Stdlib.Mutex.unlock mutex)
 ;;
 
 let init () =

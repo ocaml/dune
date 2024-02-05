@@ -1,3 +1,21 @@
+3.13.1 (2024-02-05)
+-------------------
+
+- Fix performance regression for incremental builds (#9769, fixes #9738,
+  @rgrinberg)
+
+- Fix `dune ocaml top-module` to correctly handle absolute paths. (#8249, fixes
+  #7370, @Alizter)
+
+- subst: ignore broken symlinks when looking at source files (#9810, fixes
+  #9593, @emillon)
+
+- subst: do not fail on 32-bit systems when large files are encountered. Just
+  log a warning in this case. (#9811, fixes #9538, @emillon)
+
+- boot: sort directory entries in readdir. This makes the dune binary
+  reproducible in terms of filesystem order. (#9861, fixes #9794, @emillon)
+
 3.13.0 (2024-01-16)
 -------------------
 

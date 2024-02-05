@@ -1113,17 +1113,19 @@ end = struct
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
-  let to_status ~db ~name =
+  let find_in_parent ~db ~name =
     let open Memo.O in
+    let+ res =
+      match db.parent with
+      | None -> Memo.return Status.Not_found
+      | Some db -> find_internal db name
+    in
+    res
+  ;;
+
+  let to_status ~db ~name =
     function
-    | [] ->
-      (* todo: make function with Not_found below *)
-      let+ res =
-        match db.parent with
-        | None -> Memo.return Status.Not_found
-        | Some db -> find_internal db name
-      in
-      res
+    | [] -> find_in_parent ~db ~name
     | info :: [] -> instantiate db name info ~hidden:None
     | _ :: _ :: _ ->
       (* todo: handle by adding an error to Error module above *) failwith "ERROR"
@@ -1140,8 +1142,8 @@ end = struct
     | Found libs ->
       (match libs with
        | [] | _ :: [] ->
-         (* In case we have 0 or 1 results found, convert to status directly.
-            The reason is that this allows to provide better errors later on,
+         (* In case we have 0 or 1 results found, convert to [Status.t] directly.
+            This allows to provide better errors later on,
             e.g. `Library "foo" in _build/default is hidden (unsatisfied 'enabled_if') *)
          to_status ~db ~name libs
        | _ :: _ :: _ ->
@@ -1155,13 +1157,7 @@ end = struct
          in
          to_status ~db ~name filtered_libs)
     | Invalid e -> Memo.return (Status.Invalid e)
-    | Not_found ->
-      let+ res =
-        match db.parent with
-        | None -> Memo.return Status.Not_found
-        | Some db -> find_internal db name
-      in
-      res
+    | Not_found -> find_in_parent ~db ~name
     | Hidden { lib = info; reason = hidden; path = _ } ->
       (match db.parent with
        | None -> Memo.return Status.Not_found

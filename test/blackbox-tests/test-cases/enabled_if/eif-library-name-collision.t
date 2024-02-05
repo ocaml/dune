@@ -57,3 +57,59 @@ But not for public libraries
   - b/dune:3
   - a/dune:3
   [1]
+
+
+In the same context
+
+  $ cat > a/dune << EOF
+  > (library
+  >  (name foo))
+  > EOF
+
+  $ cat > b/dune << EOF
+  > (library
+  >  (name foo))
+  > EOF
+
+  $ dune build
+  Error: exception Failure("ERROR")
+  Raised at Stdlib.failwith in file "stdlib.ml", line 29, characters 17-33
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  Re-raised at Stdune__Exn.raise_with_backtrace in file
+    "otherlibs/stdune/src/exn.ml", line 38, characters 27-56
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  -> required by ("<unnamed>", ())
+  -> required by ("load-dir", In_build_dir "alt-context/a")
+  -> required by ("<unnamed>", ())
+  -> required by
+     ("build-alias", { dir = In_build_dir "alt-context"; name = "default" })
+  -> required by ("toplevel", ())
+  
+  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  little-death that brings total obliteration.  I will fully express my cases. 
+  Execution will pass over me and through me.  And when it has gone past, I
+  will unwind the stack along its path.  Where the cases are handled there will
+  be nothing.  Only I will remain.
+  [1]

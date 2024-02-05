@@ -99,7 +99,7 @@
 (subdir
  github3766.t
  (executable
-  (libraries stdune spawn)
+  (libraries stdune spawn unix)
   (name test)))
 
 (subdir

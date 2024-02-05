@@ -1792,6 +1792,42 @@ module Compile = struct
   ;;
 end
 
+module Local : sig
+  type t = private lib
+
+  val of_lib : lib -> t option
+  val of_lib_exn : lib -> t
+  val to_lib : t -> lib
+  val obj_dir : t -> Path.Build.t Obj_dir.t
+  val info : t -> Path.Build.t Lib_info.t
+  val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
+  val hash : t -> int
+
+  include Comparable_intf.S with type key := t
+end = struct
+  type nonrec t = t
+
+  let to_lib t = t
+  let of_lib (t : lib) = Option.some_if (is_local t) t
+
+  let of_lib_exn t =
+    match of_lib t with
+    | Some l -> l
+    | None -> Code_error.raise "Lib.Local.of_lib_exn" [ "l", to_dyn t ]
+  ;;
+
+  let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
+  let info t = Lib_info.as_local_exn t.info
+
+  module Set = Set
+  module Map = Map
+
+  let to_dyn = to_dyn
+  let equal = equal
+  let hash = hash
+end
+
 (* Databases *)
 
 module DB = struct
@@ -1907,6 +1943,21 @@ module DB = struct
   ;;
 
   let available t name = Resolve_names.available_internal t name
+
+  let available_library_stanza t ~dir name =
+    let open Memo.O in
+    available t name
+    >>= function
+    | false -> Memo.return false
+    | true ->
+      find t name
+      >>| (function
+       | None -> assert false
+       | Some lib ->
+         (match Local.of_lib lib with
+          | None -> false
+          | Some info -> Path.Build.equal dir (Lib_info.src_dir (Local.info info))))
+  ;;
 
   let get_compile_info t ~allow_overlaps name =
     let open Memo.O in
@@ -2110,39 +2161,3 @@ let to_dune_lib
   in
   Dune_package.Lib.of_dune_lib ~info ~main_module_name
 ;;
-
-module Local : sig
-  type t = private lib
-
-  val of_lib : lib -> t option
-  val of_lib_exn : lib -> t
-  val to_lib : t -> lib
-  val obj_dir : t -> Path.Build.t Obj_dir.t
-  val info : t -> Path.Build.t Lib_info.t
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-  val hash : t -> int
-
-  include Comparable_intf.S with type key := t
-end = struct
-  type nonrec t = t
-
-  let to_lib t = t
-  let of_lib (t : lib) = Option.some_if (is_local t) t
-
-  let of_lib_exn t =
-    match of_lib t with
-    | Some l -> l
-    | None -> Code_error.raise "Lib.Local.of_lib_exn" [ "l", to_dyn t ]
-  ;;
-
-  let obj_dir t = Obj_dir.as_local_exn (Lib_info.obj_dir t.info)
-  let info t = Lib_info.as_local_exn t.info
-
-  module Set = Set
-  module Map = Map
-
-  let to_dyn = to_dyn
-  let equal = equal
-  let hash = hash
-end

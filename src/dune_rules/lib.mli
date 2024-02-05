@@ -123,7 +123,15 @@ module DB : sig
 
   val find : t -> Lib_name.t -> lib option Memo.t
   val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.t
+
+  (** [available db lib_name] returns [true] if there is any library available
+      in the database with name [lib_name], regardless if it is enabled or not. *)
   val available : t -> Lib_name.t -> bool Memo.t
+
+  (** [available_library_stanza db ~dir lib_name], similar to [available], but only
+      returns [true] if there is a library available with name [lib_name], and the stanza
+      directory where the library is defined matches [dir]. *)
+  val available_library_stanza : t -> dir:Path.Build.t -> Lib_name.t -> bool Memo.t
 
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)

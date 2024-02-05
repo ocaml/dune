@@ -115,17 +115,7 @@ end = struct
       let* enabled_if =
         let libs = Scope.libs scope in
         let name = Library.best_name lib in
-        Lib.DB.available libs name
-        >>= function
-        | false -> Memo.return false
-        | true ->
-          Lib.DB.find libs name
-          >>| (function
-           | None -> assert false
-           | Some lib ->
-             (match Lib.Local.of_lib lib with
-              | None -> false
-              | Some info -> Path.Build.equal dir (Lib_info.src_dir (Lib.Local.info info))))
+        Lib.DB.available_library_stanza libs ~dir name
       in
       if_available_buildable
         ~loc:lib.buildable.loc

@@ -1113,6 +1113,22 @@ end = struct
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
+  let to_status ~db ~name =
+    let open Memo.O in
+    function
+    | [] ->
+      (* todo: make function with Not_found below *)
+      let+ res =
+        match db.parent with
+        | None -> Memo.return Status.Not_found
+        | Some db -> find_internal db name
+      in
+      res
+    | info :: [] -> instantiate db name info ~hidden:None
+    | _ :: _ :: _ ->
+      (* todo: handle by adding an error to Error module above *) failwith "ERROR"
+  ;;
+
   let resolve_name db name =
     let open Memo.O in
     db.resolve name
@@ -1122,24 +1138,22 @@ end = struct
       let db' = Option.value db' ~default:db in
       find_internal db' name'
     | Found libs ->
-      let filtered_libs =
-        List.filter libs ~f:(fun lib ->
-          match Lib_info.enabled lib with
-          | Disabled_because_of_enabled_if -> false
-          | Normal | Optional -> true)
-      in
-      (match filtered_libs with
-       | [] ->
-         (* todo: make function with Not_found below *)
-         let+ res =
-           match db.parent with
-           | None -> Memo.return Status.Not_found
-           | Some db -> find_internal db name
+      (match libs with
+       | [] | _ :: [] ->
+         (* In case we have 0 or 1 results found, convert to status directly.
+            The reason is that this allows to provide better errors later on,
+            e.g. `Library "foo" in _build/default is hidden (unsatisfied 'enabled_if') *)
+         to_status ~db ~name libs
+       | _ :: _ :: _ ->
+         (* If there are multiple results found, we optimistically pre-filter to
+            remove those that are disabled *)
+         let filtered_libs =
+           List.filter libs ~f:(fun lib ->
+             match Lib_info.enabled lib with
+             | Disabled_because_of_enabled_if -> false
+             | Normal | Optional -> true)
          in
-         res
-       | info :: [] -> instantiate db name info ~hidden:None
-       | _ :: _ ->
-         (* todo: handle by adding an error to Error module above *) failwith "ERROR")
+         to_status ~db ~name filtered_libs)
     | Invalid e -> Memo.return (Status.Invalid e)
     | Not_found ->
       let+ res =

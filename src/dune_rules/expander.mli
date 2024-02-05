@@ -61,9 +61,9 @@ val extend_env : t -> env:Env.t -> t
 
 val expand
   :  t
-  -> mode:'a String_with_vars.Mode.t
+  -> mode:('deferred, 'value) String_with_vars.Mode.t
   -> String_with_vars.t
-  -> 'a Action_builder.t
+  -> 'value Action_builder.t
 
 val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
@@ -74,7 +74,13 @@ module No_deps : sig
       dependencies, such as [%{dep:...}] *)
 
   val expand_pform : t -> Value.t list Memo.t String_with_vars.expander
-  val expand : t -> mode:'a String_with_vars.Mode.t -> String_with_vars.t -> 'a Memo.t
+
+  val expand
+    :  t
+    -> mode:('deferred, 'value) String_with_vars.Mode.t
+    -> String_with_vars.t
+    -> 'value Memo.t
+
   val expand_path : t -> String_with_vars.t -> Path.t Memo.t
   val expand_str : t -> String_with_vars.t -> string Memo.t
 end

@@ -62,3 +62,7 @@ val split_while : 'a t -> f:('a -> bool) -> 'a t * 'a t
 val truncate : max_length:int -> 'a t -> [> `Not_truncated of 'a t | `Truncated of 'a t ]
 val of_seq : 'a Seq.t -> 'a t
 val to_seq : 'a t -> 'a Seq.t
+
+(** [list_intersperse t ~sep] returns [t] with [sep] inserted between each pair
+    of consecutive values. *)
+val intersperse : 'a t -> sep:'a -> 'a t

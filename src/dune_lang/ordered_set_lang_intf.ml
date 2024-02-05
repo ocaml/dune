@@ -59,8 +59,8 @@ module type Action_builder = sig
 
   val expand
     :  String_with_vars.t
-    -> mode:'a String_with_vars.Mode.t
+    -> mode:(_, 'value) String_with_vars.Mode.t
     -> dir:Path.t
     -> f:Value.t list t String_with_vars.expander
-    -> 'a t
+    -> 'value t
 end

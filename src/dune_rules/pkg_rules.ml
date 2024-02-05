@@ -587,7 +587,9 @@ module Action_expander = struct
       | Sys_ocaml_version ->
         sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
-      | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | Prefix ->
+        Memo.return
+          [ Value.String (Path.build paths.target_dir |> Path.to_absolute_filename) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String "1" ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
@@ -597,7 +599,7 @@ module Action_expander = struct
       | Section_dir section ->
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir (Path.build dir) ]
+        Memo.return [ Value.String (Path.build dir |> Path.to_absolute_filename) ]
     ;;
 
     let expand_pkg_macro ~loc (paths : Paths.t) deps macro_invocation =

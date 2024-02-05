@@ -9,7 +9,7 @@ module New () = Dune_console
 
 module type New_console = module type of Dune_console
 
-(* In order to keep tests accross different backends consistent, we create some
+(* In order to keep tests across different backends consistent, we create some
    generic test scripts here that take the created [Console]. We then test these
    for each backend.
 

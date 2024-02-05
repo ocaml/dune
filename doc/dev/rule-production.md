@@ -22,7 +22,7 @@ As we work on Dune, we expect that `dune_engine` will become more and
 more agnostic. Even though it is not completely agnostic, we have
 successfully been using it to build Jane Street code base, using the
 Jane Street rules on top of this core. So it's already more general
-than Dune iself.
+than Dune itself.
 
 For the purpose of this design doc, we will treat `dune_engine` as a
 completely general library that doesn't know about `dune` files.

@@ -97,7 +97,7 @@ let make ~frames_per_second (module Base : S) : (module Dune_console.Backend) =
            gets the current time and compares it with the last recorded time.
            This lets us compute the elapsed time.
 
-           Next we check that the elapsed time is larger than our specifed
+           Next we check that the elapsed time is larger than our specified
            [frame_rate]. If this is the case then we can handle any pending user
            events and continue the loop as soon as possible.
 

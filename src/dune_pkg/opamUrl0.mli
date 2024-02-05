@@ -11,7 +11,7 @@ val rev : t -> string option
 val base_url : t -> string
 val is_version_control : t -> bool
 
-(** [is_file t] is true iff [t] is a url begining with "file://" *)
+(** [is_file t] is true iff [t] is a url beginning with "file://" *)
 val is_local : t -> bool
 
 (* [local_or_git_only t loc] returns [`Path p] for a URL pointing to a local

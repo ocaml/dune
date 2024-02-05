@@ -81,7 +81,7 @@ module Handler : sig
              requests/notifications. It's job is to initialize the session
              state. *)
     -> ?on_upgrade:('a Session.t -> Menu.t -> unit Fiber.t)
-         (** called immediately after the client has finished negotitation *)
+         (** called immediately after the client has finished negotiation *)
     -> version:int * int
          (** version of the rpc. it's expected to support all earlier versions *)
     -> unit

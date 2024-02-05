@@ -1,1 +1,1 @@
-Definition from_boot : AnotherBegining := Universe.
+Definition from_boot : AnotherBeginning := Universe.

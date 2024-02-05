@@ -1,4 +1,4 @@
-Compilation of libraries with pulic-names
+Compilation of libraries with public-names
 
   $ dune build --display short
         ocamlc a/.a.objs/byte/a.{cmi,cmo,cmt}

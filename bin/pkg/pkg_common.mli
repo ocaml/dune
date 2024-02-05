@@ -56,7 +56,7 @@ module Lock_dirs_arg : sig
       [Lock_dirs_arg.lock_dirs_of_workspace].
 
       There are two mutually exclusive cases:
-      - The user passed a list of lick directories as positonal
+      - The user passed a list of lick directories as positional
         arguments.contents
       - The user passed the ["--all"] flag, in which case all lock directories
         of the workspace are considered. *)
@@ -73,6 +73,6 @@ module Lock_dirs_arg : sig
   val lock_dirs_of_workspace : t -> Workspace.t -> Path.Source.t list
 end
 
-(** [pp_packages lock_dir] returns a list of pretty-printed packages occuring in
+(** [pp_packages lock_dir] returns a list of pretty-printed packages occurring in
     [lock_dir]. *)
 val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> 'a Pp.t

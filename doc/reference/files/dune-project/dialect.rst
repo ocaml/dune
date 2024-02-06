@@ -55,7 +55,7 @@ dialect
          ``%{input-file}`` and output the formatted source code on its standard
          output.
 
-         If the field is not present, the behaviour depends on the presence of
+         If the field is not present, the behavior depends on the presence of
          ``(preprocess)``: if it is also not present (that is, the dialect
          consists of valid OCaml code), then the dialect will be formatted as
          any other OCaml code. Otherwise no special formatting will be done.

@@ -17,15 +17,9 @@ Show that the merlin config knows about melange.compile_flags
   $ touch bar.ml $lib.ml
   $ dune build @check
 
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "42"
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-    $TESTCASE_ROOT)
+  $ dune ocaml merlin dump-config "$PWD" | grep -i 42
      +42)))
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-    $TESTCASE_ROOT)
      +42)))
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-    $TESTCASE_ROOT)
      +42)))
 
   $ cat >dune <<EOF
@@ -36,14 +30,8 @@ Show that the merlin config knows about melange.compile_flags
 
   $ dune build @check
 
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "42"
-    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
-    $TESTCASE_ROOT)
+  $ dune ocaml merlin dump-config "$PWD" | grep -i 42
      +42)))
-    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
-    $TESTCASE_ROOT)
      +42)))
-    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
-    $TESTCASE_ROOT)
      +42)))
 

@@ -5,7 +5,7 @@ This file is used to set Dune's global configuration, which is applicable
 across projects and workspaces.
 
 The configuration file is normally ``~/.config/dune/config`` on Unix systems
-and ``%LOCALAPPDATA%/dune/config`` on Windows. However, for most Dune commands
+and ``%LOCALAPPDATA%/dune/config`` on Windows. However, for most Dune commands,
 it is possible to specify an alternative configuration file with the
 ``--config-file`` option. Command-line flags take precedence over the contents
 of the ``config`` file.  If ``--no-config`` or ``-p`` is passed, Dune will not

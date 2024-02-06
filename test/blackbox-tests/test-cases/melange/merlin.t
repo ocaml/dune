@@ -47,7 +47,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ cat >dune <<EOF
   > (melange.emit
   >  (target "$target")
-  >  (compile_flags :standard -bs-D DEBUG=true )
+  >  (compile_flags :standard -mel-g )
   >  (modules main))
   > EOF
 

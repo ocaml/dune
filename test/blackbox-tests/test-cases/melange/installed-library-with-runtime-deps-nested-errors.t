@@ -18,7 +18,7 @@ Test errors when public library runtime dependencies escape the dune file dir
   >  (melange.runtime_deps ../../runtime.js))
   > EOF
   $ cat > lib/packages/foo/src/foo.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let () = Js.log2 "dirname:" dirname
   > EOF
 

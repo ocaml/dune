@@ -12,6 +12,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (target output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps assets/file.txt assets/file.txt))
   > EOF
@@ -22,7 +23,7 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ cat > a/main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content
@@ -61,6 +62,7 @@ Test depending on non-existing paths
   >  (alias non-existing-mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps doesnt-exist.txt))
   > EOF
@@ -83,6 +85,7 @@ Test depend on non-file dependencies
   >  (alias non-existing-mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps (sandbox none)))
   > EOF
@@ -101,11 +104,12 @@ Test depending on paths that "escape" the melange.emit directory
   >  (alias mel)
   >  (target another-output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps ../a/assets/file.txt))
   > EOF
   $ cat > another/main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content
@@ -137,11 +141,12 @@ Test depending on external paths
   >  (alias mel)
   >  (target external-output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps /etc/hosts))
   > EOF
   $ cat > external/main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

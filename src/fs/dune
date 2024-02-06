@@ -1,3 +1,3 @@
 (library
  (name fs)
- (libraries dune_engine stdune memo))
+ (libraries dune_engine stdune memo unix))

@@ -37,7 +37,7 @@ Let's start by looking at a simple project with Melange and Dune. Subsequent
 sections explain the different concepts used here in further detail.
 
 First, make sure that the :doc:`/reference/files/dune-project/index` file
-specifies at least version 3.8 of the dune language and the Melange extension
+specifies at least version 3.8 of the Dune language, and the Melange extension
 is enabled:
 
 .. code:: dune

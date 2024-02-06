@@ -68,13 +68,14 @@ Test depending on non-existing paths
   > EOF
 
   $ dune build @non-existing-mel
-  File "another/dune", line 1, characters 0-151:
+  File "another/dune", line 1, characters 0-177:
   1 | (melange.emit
   2 |  (alias non-existing-mel)
   3 |  (target another-output)
   4 |  (emit_stdlib false)
-  5 |  (preprocess (pps melange.ppx))
-  6 |  (runtime_deps doesnt-exist.txt))
+  5 |  (libraries melange.node)
+  6 |  (preprocess (pps melange.ppx))
+  7 |  (runtime_deps doesnt-exist.txt))
   Error: No rule found for another/doesnt-exist.txt
   [1]
 
@@ -90,8 +91,8 @@ Test depend on non-file dependencies
   >  (runtime_deps (sandbox none)))
   > EOF
   $ dune build @non-existing-mel
-  File "another/dune", line 6, characters 15-29:
-  6 |  (runtime_deps (sandbox none)))
+  File "another/dune", line 7, characters 15-29:
+  7 |  (runtime_deps (sandbox none)))
                      ^^^^^^^^^^^^^^
   Error: only files are allowed in this position
   [1]
@@ -153,6 +154,75 @@ Test depending on external paths
   > EOF
 
   $ dune build @mel --display=short
+          melc external/external-output/node_modules/melange.js/caml.js
+          melc external/external-output/node_modules/melange.js/caml_array.js
+          melc external/external-output/node_modules/melange.js/caml_array_extern.js
+          melc external/external-output/node_modules/melange.js/caml_bytes.js
+          melc external/external-output/node_modules/melange.js/caml_exceptions.js
+          melc external/external-output/node_modules/melange.js/caml_external_polyfill.js
+          melc external/external-output/node_modules/melange.js/caml_float.js
+          melc external/external-output/node_modules/melange.js/caml_float_extern.js
+          melc external/external-output/node_modules/melange.js/caml_format.js
+          melc external/external-output/node_modules/melange.js/caml_gc.js
+          melc external/external-output/node_modules/melange.js/caml_hash.js
+          melc external/external-output/node_modules/melange.js/caml_hash_primitive.js
+          melc external/external-output/node_modules/melange.js/caml_int32.js
+          melc external/external-output/node_modules/melange.js/caml_int32_extern.js
+          melc external/external-output/node_modules/melange.js/caml_int64.js
+          melc external/external-output/node_modules/melange.js/caml_int64_extern.js
+          melc external/external-output/node_modules/melange.js/caml_io.js
+          melc external/external-output/node_modules/melange.js/caml_js_exceptions.js
+          melc external/external-output/node_modules/melange.js/caml_lexer.js
+          melc external/external-output/node_modules/melange.js/caml_md5.js
+          melc external/external-output/node_modules/melange.js/caml_module.js
+          melc external/external-output/node_modules/melange.js/caml_nativeint_extern.js
+          melc external/external-output/node_modules/melange.js/caml_obj.js
+          melc external/external-output/node_modules/melange.js/caml_oo.js
+          melc external/external-output/node_modules/melange.js/caml_oo_curry.js
+          melc external/external-output/node_modules/melange.js/caml_option.js
+          melc external/external-output/node_modules/melange.js/caml_parser.js
+          melc external/external-output/node_modules/melange.js/caml_splice_call.js
+          melc external/external-output/node_modules/melange.js/caml_string.js
+          melc external/external-output/node_modules/melange.js/caml_string_extern.js
+          melc external/external-output/node_modules/melange.js/caml_sys.js
+          melc external/external-output/node_modules/melange.js/caml_undefined_extern.js
+          melc external/external-output/node_modules/melange.js/curry.js
+          melc external/external-output/node_modules/melange.js/js.js
+          melc external/external-output/node_modules/melange.js/js_OO.js
+          melc external/external-output/node_modules/melange.js/js__.js
+          melc external/external-output/node_modules/melange.js/js_array.js
+          melc external/external-output/node_modules/melange.js/js_bigint.js
+          melc external/external-output/node_modules/melange.js/js_console.js
+          melc external/external-output/node_modules/melange.js/js_date.js
+          melc external/external-output/node_modules/melange.js/js_dict.js
+          melc external/external-output/node_modules/melange.js/js_exn.js
+          melc external/external-output/node_modules/melange.js/js_float.js
+          melc external/external-output/node_modules/melange.js/js_global.js
+          melc external/external-output/node_modules/melange.js/js_int.js
+          melc external/external-output/node_modules/melange.js/js_internal.js
+          melc external/external-output/node_modules/melange.js/js_json.js
+          melc external/external-output/node_modules/melange.js/js_map.js
+          melc external/external-output/node_modules/melange.js/js_mapper_runtime.js
+          melc external/external-output/node_modules/melange.js/js_math.js
+          melc external/external-output/node_modules/melange.js/js_null.js
+          melc external/external-output/node_modules/melange.js/js_nullable.js
+          melc external/external-output/node_modules/melange.js/js_promise.js
+          melc external/external-output/node_modules/melange.js/js_re.js
+          melc external/external-output/node_modules/melange.js/js_set.js
+          melc external/external-output/node_modules/melange.js/js_string.js
+          melc external/external-output/node_modules/melange.js/js_typed_array.js
+          melc external/external-output/node_modules/melange.js/js_types.js
+          melc external/external-output/node_modules/melange.js/js_undefined.js
+          melc external/external-output/node_modules/melange.js/js_weakmap.js
+          melc external/external-output/node_modules/melange.js/js_weakset.js
+          melc external/external-output/node_modules/melange.js/melange_mini_stdlib.js
+          melc external/external-output/node_modules/melange.node/node.js
+          melc external/external-output/node_modules/melange.node/node_buffer.js
+          melc external/external-output/node_modules/melange.node/node_child_process.js
+          melc external/external-output/node_modules/melange.node/node_fs.js
+          melc external/external-output/node_modules/melange.node/node_module.js
+          melc external/external-output/node_modules/melange.node/node_path.js
+          melc external/external-output/node_modules/melange.node/node_process.js
            ppx external/main.pp.ml
           melc external/.external-output.mobjs/melange/melange__Main.{cmi,cmj,cmt}
           melc external/external-output/external/main.js

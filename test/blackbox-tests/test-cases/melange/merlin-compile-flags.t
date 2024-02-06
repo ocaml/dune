@@ -18,9 +18,15 @@ Show that the merlin config knows about melange.compile_flags
   $ dune build @check
 
   $ dune ocaml merlin dump-config "$PWD" | grep -i "42"
-     DEBUG=true)))
-     DEBUG=true)))
-     DEBUG=true)))
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+    $TESTCASE_ROOT)
+     +42)))
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+    $TESTCASE_ROOT)
+     +42)))
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+    $TESTCASE_ROOT)
+     +42)))
 
   $ cat >dune <<EOF
   > (melange.emit
@@ -31,7 +37,13 @@ Show that the merlin config knows about melange.compile_flags
   $ dune build @check
 
   $ dune ocaml merlin dump-config "$PWD" | grep -i "42"
-     DEBUG=true)))
-     DEBUG=true)))
-     DEBUG=true)))
+    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+    $TESTCASE_ROOT)
+     +42)))
+    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+    $TESTCASE_ROOT)
+     +42)))
+    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+    $TESTCASE_ROOT)
+     +42)))
 

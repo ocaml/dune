@@ -67,12 +67,14 @@ The runtime_dep index.txt was copied to the build folder
   assets
   globbed
   main.js
+  node_modules
 
   $ dune build output/assets/file.txt --display=short
   $ ls _build/default/output
   assets
   globbed
   main.js
+  node_modules
   $ ls _build/default/output/globbed
   a.txt
   b.txt

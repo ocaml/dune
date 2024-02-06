@@ -50,9 +50,10 @@ include Alias_builder.Alias_rec (struct
           | None -> Action_builder.return found_in_source
           | Some stanzas ->
             let+ in_melange_target_dirs =
-              let melange_target_dirs =
+              let* melange_target_dirs =
                 Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-                |> List.map ~f:(fun mel ->
+                |> Action_builder.of_memo
+                >>| List.map ~f:(fun mel ->
                   Melange_stanzas.Emit.target_dir ~dir:build_path mel)
               in
               Action_builder.List.map

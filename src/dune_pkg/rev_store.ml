@@ -177,7 +177,7 @@ let ref_type =
            ])
   in
   fun t ~source ~ref ->
-    let command = [ "ls-remote"; source; ref ] in
+    let command = [ "ls-remote"; "--heads"; "--tags"; source; ref ] in
     let+ hits = run_capture_lines t ~display:!Dune_engine.Clflags.display command in
     List.find_map hits ~f:(fun line ->
       match Re.exec_opt re line with

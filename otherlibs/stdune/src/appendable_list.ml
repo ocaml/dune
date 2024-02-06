@@ -39,6 +39,59 @@ let to_list_rev =
 
 let to_list xs = List.rev (to_list_rev xs)
 
+let length =
+  let rec loop1 len t stack =
+    match t with
+    | Empty -> loop0 len stack
+    | Singleton _ -> loop0 (len + 1) stack
+    | Cons (_, xs) -> loop1 (len + 1) xs stack
+    | List xs -> loop0 (len + List.length xs) stack
+    | Append (xs, ys) -> loop1 len xs (ys :: stack)
+    | Concat [] -> loop0 len stack
+    | Concat (x :: xs) -> loop1 len x (Concat xs :: stack)
+  and loop0 len stack =
+    match stack with
+    | [] -> len
+    | t :: stack -> loop1 len t stack
+  in
+  fun t -> loop1 0 t []
+;;
+
+let iter =
+  let rec loop1 f t stack =
+    match t with
+    | Empty -> loop0 f stack
+    | Singleton x ->
+      f x;
+      loop0 f stack
+    | Cons (x, xs) ->
+      f x;
+      loop1 f xs stack
+    | List xs ->
+      List.iter xs ~f;
+      loop0 f stack
+    | Append (xs, ys) -> loop1 f xs (ys :: stack)
+    | Concat [] -> loop0 f stack
+    | Concat (x :: xs) -> loop1 f x (Concat xs :: stack)
+  and loop0 f stack =
+    match stack with
+    | [] -> ()
+    | t :: stack -> loop1 f t stack
+  in
+  fun t ~f -> loop1 f t []
+;;
+
+let to_immutable_array (type a) (t : a t) =
+  let len = length t in
+  let arr = Array.make len (Obj.magic 0 : a) in
+  let i = ref 0 in
+  iter t ~f:(fun x ->
+    arr.(!i) <- x;
+    incr i);
+  assert (!i = len);
+  Array.Immutable.of_array_unsafe arr
+;;
+
 let rec is_empty = function
   | List (_ :: _) | Singleton _ | Cons _ -> false
   | Append (x, y) -> is_empty x && is_empty y

@@ -2,6 +2,15 @@
 Overview
 ********
 
+.. TODO(diataxis)
+
+   Split into:
+
+   - info on the index page
+   - :doc:`glossary`
+   - :doc:`reference/files`
+   - a history page that could also explain the various actors
+
 Introduction
 ============
 

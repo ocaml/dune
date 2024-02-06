@@ -9,7 +9,7 @@ open Import
 val solver_env
   :  solver_env_from_current_system:Dune_pkg.Solver_env.t option
   -> solver_env_from_context:Dune_pkg.Solver_env.t option
-  -> unset_solver_vars_from_context:Dune_pkg.Variable_name.Set.t option
+  -> unset_solver_vars_from_context:Dune_lang.Package_variable_name.Set.t option
   -> Dune_pkg.Solver_env.t
 
 module Version_preference : sig
@@ -22,7 +22,7 @@ end
 val unset_solver_vars_of_workspace
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
-  -> Dune_pkg.Variable_name.Set.t option
+  -> Dune_lang.Package_variable_name.Set.t option
 
 val repositories_of_workspace
   :  Workspace.t
@@ -43,7 +43,7 @@ val get_repos
   -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
-val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t
+val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Memo.t
 
 module Lock_dirs_arg : sig
   (** [Lock_dirs_arg.t] is the type of lock directory arguments. This can be

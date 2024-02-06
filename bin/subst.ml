@@ -1,23 +1,33 @@
 open Import
 
-let is_a_source_file path =
-  (match Path.extension path with
-   | ".flv"
-   | ".gif"
-   | ".ico"
-   | ".jpeg"
-   | ".jpg"
-   | ".mov"
-   | ".mp3"
-   | ".mp4"
-   | ".otf"
-   | ".pdf"
-   | ".png"
-   | ".ttf"
-   | ".woff" -> false
-   | _ -> true)
-  && (Path.stat_exn path).st_kind = Unix.S_REG
+let is_path_a_source_file path =
+  match Path.extension path with
+  | ".flv"
+  | ".gif"
+  | ".ico"
+  | ".jpeg"
+  | ".jpg"
+  | ".mov"
+  | ".mp3"
+  | ".mp4"
+  | ".otf"
+  | ".pdf"
+  | ".png"
+  | ".ttf"
+  | ".woff" -> false
+  | _ -> true
 ;;
+
+let is_kind_a_source_file path =
+  match Path.stat path with
+  | Ok st -> st.st_kind = S_REG
+  | Error (ENOENT, "stat", _) ->
+    (* broken symlink *)
+    false
+  | Error e -> Unix_error.Detailed.raise e
+;;
+
+let is_a_source_file path = is_path_a_source_file path && is_kind_a_source_file path
 
 let subst_string s path ~map =
   let len = String.length s in
@@ -110,15 +120,27 @@ let subst_string s path ~map =
 ;;
 
 let subst_file path ~map =
-  let s = Io.read_file path in
-  let s =
-    if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
-    then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
-    else s
-  in
-  match subst_string s ~map path with
-  | None -> ()
-  | Some s -> Io.write_file path s
+  match Io.with_file_in path ~f:Io.read_all_unless_large with
+  | Error () ->
+    let hints =
+      if Sys.word_size = 32
+      then
+        [ Pp.textf
+            "Dune has been built as a 32-bit binary so the maximum size \"dune subst\" \
+             can operate on is 16MiB."
+        ]
+      else []
+    in
+    User_warning.emit ~hints [ Pp.textf "Ignoring large file: %s" (Path.to_string path) ]
+  | Ok s ->
+    let s =
+      if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
+      then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
+      else s
+    in
+    (match subst_string s ~map path with
+     | None -> ()
+     | Some s -> Io.write_file path s)
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)
@@ -133,6 +155,7 @@ module Dune_project = struct
 
   type t =
     { contents : string
+    ; project_file : Path.Source.t
     ; name : Package.Name.t simple_field option
     ; version : string simple_field option
     ; project : Dune_project.t
@@ -145,10 +168,11 @@ module Dune_project = struct
     let+ project = Dune_project.load ~dir ~files ~infer_from_opam_files in
     let open Option.O in
     let* project = project in
-    let file = Dune_project.file project |> Path.Source.to_string |> Path.in_source in
-    let contents = Io.read_file file in
+    let* project_file = Dune_project.file project in
+    let project_file = project_file in
+    let contents = Io.read_file (Path.source project_file) in
     let sexp =
-      let lb = Lexbuf.from_string contents ~fname:(Path.to_string file) in
+      let lb = Lexbuf.from_string contents ~fname:(Path.Source.to_string project_file) in
       Dune_lang.Parser.parse lb ~mode:Many_as_one
     in
     let parser =
@@ -162,7 +186,7 @@ module Dune_project = struct
            (let+ name = simple_field "name" Package.Name.decode
             and+ version = simple_field "version" string
             and+ () = junk_everything in
-            Some { contents; name; version; project }))
+            Some { contents; name; version; project; project_file }))
     in
     Dune_lang.Decoder.parse parser Univ_map.empty sexp
   ;;
@@ -244,8 +268,8 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     | Some value -> Ok (String.concat ~sep value)
   in
   let make_dev_repo_value = function
-    | Some (Package.Source_kind.Host h) -> Ok (Package.Source_kind.Host.homepage h)
-    | Some (Package.Source_kind.Url url) -> Ok url
+    | Some (Source_kind.Host h) -> Ok (Source_kind.Host.homepage h)
+    | Some (Source_kind.Url url) -> Ok url
     | None -> Error (sprintf "variable dev-repo not found in dune-project file")
   in
   let make_version = function
@@ -253,20 +277,20 @@ let make_watermark_map ~commit ~version ~dune_project ~info =
     | None -> Error "repository does not contain any version information"
   in
   String.Map.of_list_exn
-    [ "NAME", Ok (Dune_project.Name.to_string_hum name)
+    [ "NAME", Ok (Dune_project_name.to_string_hum name)
     ; "VERSION", make_version version
     ; "VERSION_NUM", make_version version_num
     ; ( "VCS_COMMIT_ID"
       , match commit with
         | None -> Error "repository does not contain any commits"
         | Some s -> Ok s )
-    ; "PKG_MAINTAINER", make_separated "maintainer" ", " @@ Package.Info.maintainers info
-    ; "PKG_AUTHORS", make_separated "authors" ", " @@ Package.Info.authors info
-    ; "PKG_HOMEPAGE", make_value "homepage" @@ Package.Info.homepage info
-    ; "PKG_ISSUES", make_value "bug-reports" @@ Package.Info.bug_reports info
-    ; "PKG_DOC", make_value "doc" @@ Package.Info.documentation info
-    ; "PKG_LICENSE", make_separated "license" ", " @@ Package.Info.license info
-    ; "PKG_REPO", make_dev_repo_value @@ Package.Info.source info
+    ; "PKG_MAINTAINER", make_separated "maintainer" ", " @@ Package_info.maintainers info
+    ; "PKG_AUTHORS", make_separated "authors" ", " @@ Package_info.authors info
+    ; "PKG_HOMEPAGE", make_value "homepage" @@ Package_info.homepage info
+    ; "PKG_ISSUES", make_value "bug-reports" @@ Package_info.bug_reports info
+    ; "PKG_DOC", make_value "doc" @@ Package_info.documentation info
+    ; "PKG_LICENSE", make_separated "license" ", " @@ Package_info.license info
+    ; "PKG_REPO", make_dev_repo_value @@ Package_info.source info
     ]
 ;;
 
@@ -291,6 +315,7 @@ let subst vcs =
     | Some dune_project -> dune_project
     | None ->
       User_error.raise
+        ~loc:(Loc.in_dir (Path.source Path.Source.root))
         [ Pp.text
             "There is no dune-project file in the current directory, please add one with \
              a (name <name>) field in it."
@@ -304,9 +329,12 @@ let subst vcs =
             |> Pp.hovbox
           ]
   in
-  (match Dune_project.subst_config dune_project.project with
-   | Dune_lang.Subst_config.Disabled ->
+  (let loc, subst_config = Dune_project.subst_config dune_project.project in
+   match subst_config with
+   | `Enabled -> ()
+   | `Disabled ->
      User_error.raise
+       ~loc
        [ Pp.concat
            ~sep:Pp.space
            [ User_message.command "dune subst"
@@ -317,13 +345,13 @@ let subst vcs =
          [ Pp.text
              "If you wish to re-enable it, change to (subst enabled) in the dune-project \
               file."
-         ]
-   | Enabled -> ());
+         ]);
   let info =
     let loc, name =
       match dune_project.name with
       | None ->
         User_error.raise
+          ~loc:(Loc.in_file (Path.source dune_project.project_file))
           [ Pp.textf
               "The project name is not defined, please add a (name <name>) field to your \
                dune-project file."
@@ -331,7 +359,7 @@ let subst vcs =
       | Some n -> n.loc_of_arg, n.arg
     in
     let package_named_after_project =
-      let packages = Dune_project.packages dune_project.project in
+      let packages = Dune_project.including_hidden_packages dune_project.project in
       Package.Name.Map.find packages name
     in
     let metadata_from_dune_project () = Dune_project.info dune_project.project in

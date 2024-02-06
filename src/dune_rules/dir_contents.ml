@@ -2,7 +2,6 @@ open Import
 
 (* we need to convince ocamldep that we don't depend on the menhir rules *)
 module Menhir = struct end
-open Dune_file
 open Memo.O
 
 let loc_of_dune_file st_dir =
@@ -10,7 +9,7 @@ let loc_of_dune_file st_dir =
      let open Option.O in
      let* dune_file = Source_tree.Dir.dune_file st_dir in
      (* TODO not really correct. we need to know the [(subdir ..)] that introduced this *)
-     Source_tree.Dune_file.path dune_file
+     Dune_file0.path dune_file
    with
    | Some s -> s
    | None -> Path.Source.relative (Source_tree.Dir.path st_dir) "_unknown_")
@@ -128,31 +127,28 @@ let build_mlds_map stanzas ~dir ~files =
         | _ -> acc)
       |> Memo.return)
   in
-  Memo.parallel_map stanzas ~f:(fun x ->
-    match Stanza.repr x with
-    | Documentation.T doc ->
-      let+ mlds =
-        let+ mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.Unordered_string.eval
-          doc.mld_files
-          ~standard:mlds
-          ~key:Fun.id
-          ~parse:(fun ~loc s ->
-            match Filename.Map.find mlds s with
-            | Some s -> s
-            | None ->
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "%s.mld doesn't exist in %s"
-                    s
-                    (Path.to_string_maybe_quoted
-                       (Path.drop_optional_build_context (Path.build dir)))
-                ])
-      in
-      Some (doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ -> Memo.return None)
-  >>| List.filter_opt
+  Dune_file.find_stanzas stanzas Documentation.key
+  >>= Memo.parallel_map ~f:(fun (doc : Documentation.t) ->
+    let+ mlds =
+      let+ mlds = Memo.Lazy.force mlds in
+      Ordered_set_lang.Unordered_string.eval
+        doc.mld_files
+        ~standard:mlds
+        ~key:Fun.id
+        ~parse:(fun ~loc s ->
+          match Filename.Map.find mlds s with
+          | Some s -> s
+          | None ->
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "%s.mld doesn't exist in %s"
+                  s
+                  (Path.to_string_maybe_quoted
+                     (Path.drop_optional_build_context (Path.build dir)))
+              ])
+    in
+    doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
 ;;
 
 module rec Load : sig
@@ -268,9 +264,12 @@ end = struct
             let+ ocaml = Context.ocaml ctx in
             ocaml.lib_config
           in
+          let stanzas = Dune_file.stanzas d in
+          let project = Dune_file.project d in
           let+ files, rules =
             Rules.collect (fun () ->
-              load_text_files sctx st_dir d.stanzas ~src_dir:d.dir ~dir)
+              let src_dir = Dune_file.dir d in
+              stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
           in
           let dirs = [ { Source_file_dir.dir; path_to_root = []; files } ] in
           let ml =
@@ -279,32 +278,31 @@ end = struct
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir in
-              Ml_sources.make
-                d.stanzas
-                ~expander
-                ~dir
-                ~libs
-                ~project:d.project
-                ~lib_config
-                ~loc
-                ~include_subdirs
-                ~lookup_vlib
-                ~dirs)
+              stanzas
+              >>= Ml_sources.make
+                    ~expander
+                    ~dir
+                    ~libs
+                    ~project
+                    ~lib_config
+                    ~loc
+                    ~include_subdirs
+                    ~lookup_vlib
+                    ~dirs)
           in
           { Standalone_or_root.root =
               { kind = Standalone
               ; dir
               ; text_files = files
               ; ml
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d.stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                    let dune_version = Dune_project.dune_version d.project in
-                    Memo.return (Foreign_sources.make d.stanzas ~dune_version ~dirs))
+                    let dune_version = Dune_project.dune_version project in
+                    stanzas >>| Foreign_sources.make ~dune_version ~dirs)
               ; coq =
                   Memo.lazy_ (fun () ->
-                    Coq_sources.of_dir d.stanzas ~dir ~include_subdirs ~dirs
-                    |> Memo.return)
+                    stanzas >>| Coq_sources.of_dir ~dir ~include_subdirs ~dirs)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -328,16 +326,18 @@ end = struct
         ~human_readable_description:(fun () -> human_readable_description dir)
         (fun () ->
           let ctx = Super_context.context sctx in
+          let stanzas = Dune_file.stanzas dune_file in
+          let project = Dune_file.project dune_file in
           let+ (files, subdirs), rules =
             Rules.collect (fun () ->
               Memo.fork_and_join
                 (fun () ->
-                  load_text_files
-                    sctx
-                    source_dir
-                    dune_file.stanzas
-                    ~src_dir:dune_file.dir
-                    ~dir)
+                  stanzas
+                  >>= load_text_files
+                        sctx
+                        source_dir
+                        ~src_dir:(Dune_file.dir dune_file)
+                        ~dir)
                 (fun () ->
                   Memo.parallel_map
                     components
@@ -361,29 +361,27 @@ end = struct
             Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-              let project = dune_file.project in
               let* expander = Super_context.expander sctx ~dir in
-              Ml_sources.make
-                dune_file.stanzas
-                ~expander
-                ~dir
-                ~project
-                ~libs
-                ~lib_config
-                ~loc
-                ~lookup_vlib
-                ~include_subdirs
-                ~dirs)
+              stanzas
+              >>= Ml_sources.make
+                    ~expander
+                    ~dir
+                    ~project
+                    ~libs
+                    ~lib_config
+                    ~loc
+                    ~lookup_vlib
+                    ~include_subdirs
+                    ~dirs)
           in
           let foreign_sources =
             Memo.lazy_ (fun () ->
-              let dune_version = Dune_project.dune_version dune_file.project in
-              Memo.return (Foreign_sources.make dune_file.stanzas ~dune_version ~dirs))
+              let dune_version = Dune_project.dune_version project in
+              stanzas >>| Foreign_sources.make ~dune_version ~dirs)
           in
           let coq =
             Memo.lazy_ (fun () ->
-              Coq_sources.of_dir dune_file.stanzas ~dir ~dirs ~include_subdirs
-              |> Memo.return)
+              stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
           in
           let subdirs =
             List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
@@ -392,7 +390,7 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
               ; coq
               })
           in
@@ -402,7 +400,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file.stanzas ~dir ~files)
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
             ; coq
             }
           in

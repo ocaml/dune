@@ -397,7 +397,15 @@ end = struct
                Action_builder.return (Ok (Path.relative dir s))
              | In_path ->
                Action_builder.of_memo
-                 (Artifacts.binary ~loc:(Some loc) (Expander.artifacts env.expander) s))
+               @@
+               let open Memo.O in
+               let* where =
+                 let+ project = Dune_load.find_project ~dir:env.dir in
+                 if Dune_project.dune_version project >= (3, 14)
+                 then Artifacts.Original_path
+                 else Install_dir
+               in
+               Artifacts.binary ~loc:(Some loc) ~where (Expander.artifacts env.expander) s)
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in

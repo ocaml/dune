@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let available_exes ~dir (exes : Dune_file.Executables.t) =
+let available_exes ~dir (exes : Executables.t) =
   let* compile_info =
     let* scope = Scope.DB.find_by_dir dir in
     let dune_version =
@@ -44,8 +44,8 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
   in
   let eval_blang ~dir = Expander.With_reduced_var_set.eval_blang ~dir ~context in
-  Memo.List.map stanzas ~f:(fun (d : Dune_file.t) ->
-    let dir = Path.Build.append_source (Context.build_dir context) d.dir in
+  Memo.List.map stanzas ~f:(fun d ->
+    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
     let binaries_from_install ~enabled_if files =
       let* unexpanded_file_bindings =
         Install_entry.File.to_file_bindings_unexpanded files ~expand:(expand ~dir) ~dir
@@ -71,13 +71,15 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         y)
       >>| Filename.Map.map ~f:Appendable_list.singleton
     in
-    Memo.List.map d.stanzas ~f:(fun stanza ->
+    Dune_file.static_stanzas d
+    |> Memo.List.map ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Install_conf.T { section = Section Bin; files; enabled_if; _ } ->
+      | Install_conf.T { section = _loc, Section Bin; files; enabled_if; _ } ->
         let enabled_if = eval_blang ~dir enabled_if in
         binaries_from_install ~enabled_if files
-      | Dune_file.Executables.T
-          ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
+      | Executables.T
+          ({ install_conf = Some { section = _loc, Section Bin; files; _ }; _ } as exes)
+        ->
         let enabled_if =
           let enabled_if = eval_blang ~dir exes.enabled_if in
           match exes.optional with
@@ -102,8 +104,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
-          get_installed_binaries ~context stanzas)
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
       in
       Artifacts.create context ~local_bins |> Memo.return
     in

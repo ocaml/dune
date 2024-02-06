@@ -3,6 +3,8 @@
 Variables for Artifacts
 -----------------------
 
+.. TODO(diataxis) move to :doc:`../concepts/variables`
+
 For specific situations where one needs to refer to individual compilation
 artifacts, special variables (see :doc:`../concepts/variables`) are provided,
 so the user doesn't need to be aware of the particular naming conventions or

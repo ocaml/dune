@@ -2,29 +2,6 @@
 
 open Import
 
-module Name : sig
-  (** Invariants: - Named s -> s <> "" and s does not contain '.' or '/' -
-      Anonymous p -> p is a local path in the source tree *)
-  type t = private
-    | Named of string
-    | Anonymous of Path.Source.t
-
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-  val compare : t -> t -> Ordering.t
-
-  (** Convert to a string that is suitable for human readable messages *)
-  val to_string_hum : t -> string
-
-  (** Convert to/from an encoded string that is suitable to use in filenames *)
-  val to_encoded_string : t -> string
-
-  val of_encoded_string : string -> t
-
-  module Infix : Comparator.OPS with type t = t
-  module Map : Map.S with type key = t
-end
-
 type t
 
 module File_key : sig
@@ -41,7 +18,7 @@ end
 val to_dyn : t -> Dyn.t
 val file_key : t -> File_key.t
 val packages : t -> Package.t Package.Name.Map.t
-val name : t -> Name.t
+val name : t -> Dune_project_name.t
 val root : t -> Path.Source.t
 val stanza_parser : t -> Dune_lang.Stanza.t list Dune_lang.Decoder.t
 val generate_opam_files : t -> bool
@@ -56,12 +33,12 @@ val use_standard_c_and_cxx_flags : t -> bool option
 val dialects : t -> Dialect.DB.t
 val explicit_js_mode : t -> bool
 val format_config : t -> Format_config.t
-val subst_config : t -> Subst_config.t
+val subst_config : t -> Loc.t * Config.Toggle.t
 val equal : t -> t -> bool
 val hash : t -> int
 
 (** Return the path of the project file. *)
-val file : t -> Path.Source.t
+val file : t -> Path.Source.t option
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select
@@ -123,7 +100,7 @@ val load
 
     - [info] defaults to the empty package info
     - [package] defaults to the empty map of packages *)
-val anonymous : dir:Path.Source.t -> Package.Info.t -> Package.t Package.Name.Map.t -> t
+val anonymous : dir:Path.Source.t -> Package_info.t -> Package.t Package.Name.Map.t -> t
 
 (** "dune-project" *)
 val filename : Filename.t
@@ -132,9 +109,6 @@ val filename : Filename.t
     [dune-project] file. The default value is the latest version of the dune
     language. *)
 val default_dune_language_version : Dune_lang.Syntax.Version.t ref
-
-(** Set the project we are currently parsing dune files for *)
-val set : t -> ('a, 'k) Dune_lang.Decoder.parser -> ('a, 'k) Dune_lang.Decoder.parser
 
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 val get : unit -> (t option, 'k) Dune_lang.Decoder.parser
@@ -153,7 +127,7 @@ val executables_implicit_empty_intf : t -> bool
 val accept_alternative_dune_file_name : t -> bool
 val strict_package_deps : t -> bool
 val cram : t -> bool
-val info : t -> Package.Info.t
+val info : t -> Package_info.t
 val warnings : t -> Warning.Settings.t
 
 (** Update the execution parameters according to what is written in the
@@ -164,6 +138,8 @@ val encode : t -> Dune_lang.t list
 val dune_site_extension : unit Extension.t
 val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
 val allow_approximate_merlin : t -> Loc.t option
+val filter_packages : t -> f:(Package.Name.t -> bool) -> t
+val including_hidden_packages : t -> Package.t Package.Name.Map.t
 
 module Melange_syntax : sig
   val name : string

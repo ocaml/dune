@@ -105,13 +105,13 @@ let solve
 
 let lock ~version_preference ~lock_dirs_arg =
   let open Fiber.O in
-  let* workspace = Memo.run (Workspace.workspace ())
-  and* solver_env_from_current_system =
+  let* solver_env_from_current_system =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
+  and* workspace, local_packages =
+    Memo.both (Workspace.workspace ()) find_local_packages |> Memo.run
   in
-  let* local_packages = find_local_packages in
   solve
     workspace
     ~local_packages

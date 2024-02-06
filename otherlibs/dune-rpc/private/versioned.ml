@@ -53,7 +53,7 @@ let raise_version_bug ~method_ ~selected ~verb ~known =
     "bug with version negotiation; selected bad method version"
     [ "message", Dyn.String ("version is " ^ verb)
     ; "method", Dyn.String method_
-    ; "implemented versions", Dyn.List (List.map ~f:(fun i -> Dyn.Int i) known)
+    ; "implemented versions", Dyn.list Dyn.int known
     ; "selected version", Dyn.Int selected
     ]
 ;;

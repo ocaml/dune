@@ -1,6 +1,6 @@
 open Import
 
-let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
+let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let test_kind (loc, name) =
     let files = Dir_contents.text_files dir_contents in
     let expected_basename = name ^ ".expected" in
@@ -19,8 +19,8 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
     if Dune_project.dune_version (Scope.project scope) < (3, 0)
     then [ `exe ]
     else
-      Dune_file.Executables.Link_mode.Map.to_list t.exes.modes
-      |> List.filter_map ~f:(fun ((mode : Dune_file.Executables.Link_mode.t), _) ->
+      Executables.Link_mode.Map.to_list t.exes.modes
+      |> List.filter_map ~f:(fun ((mode : Executables.Link_mode.t), _) ->
         match mode with
         | Byte_complete -> Some `exe
         | Other { kind = Exe; mode = Native | Best } -> Some `exe

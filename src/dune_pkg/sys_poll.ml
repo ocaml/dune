@@ -48,33 +48,51 @@ let run_capture_line ~path ~prog ~args =
   | Some prog -> Process.run_capture_line ~display:Quiet Strict prog args >>| norm
 ;;
 
+module Config_override_variables = struct
+  let string_option_config name =
+    let config =
+      Dune_config.Config.make ~name ~of_string:(fun s -> Ok (Some s)) ~default:None
+    in
+    fun () -> Dune_config.Config.get config
+  ;;
+
+  let os = string_option_config "os"
+  let arch = string_option_config "arch"
+end
+
 (* CR-rgrinberg: do we need to call [uname] for every single option? Can't we
    call [uname -a] and extract everything from there *)
 let uname ~path args = run_capture_line ~path ~prog:"uname" ~args
 let lsb_release ~path args = run_capture_line ~path ~prog:"lsb_release" ~args
 
 let arch ~path =
-  (match Sys.os_type with
-   | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
-   | "Win32" ->
-     Fiber.return
-     @@
-       (match OpamStubs.getArchitecture () with
-       | OpamStubs.AMD64 -> Some "x86_64"
-       | ARM -> Some "arm32"
-       | ARM64 -> Some "arm64"
-       | IA64 -> Some "ia64"
-       | Intel -> Some "x86_32"
-       | Unknown -> None)
-   | _ -> Fiber.return None)
-  >>| apply_or_skip_empty normalise_arch
+  match Config_override_variables.arch () with
+  | Some arch -> Fiber.return (Some arch)
+  | None ->
+    (match Sys.os_type with
+     | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
+     | "Win32" ->
+       Fiber.return
+       @@
+         (match OpamStubs.getArchitecture () with
+         | OpamStubs.AMD64 -> Some "x86_64"
+         | ARM -> Some "arm32"
+         | ARM64 -> Some "arm64"
+         | IA64 -> Some "ia64"
+         | Intel -> Some "x86_32"
+         | Unknown -> None)
+     | _ -> Fiber.return None)
+    >>| apply_or_skip_empty normalise_arch
 ;;
 
 let os ~path =
-  (match Sys.os_type with
-   | "Unix" -> uname ~path [ "-s" ]
-   | s -> Fiber.return (norm s))
-  >>| apply_or_skip_empty normalise_os
+  match Config_override_variables.os () with
+  | Some os -> Fiber.return (Some os)
+  | None ->
+    (match Sys.os_type with
+     | "Unix" -> uname ~path [ "-s" ]
+     | s -> Fiber.return (norm s))
+    >>| apply_or_skip_empty normalise_os
 ;;
 
 let maybe_read_lines p =
@@ -225,12 +243,12 @@ let solver_env_from_current_system t =
   (* TODO this will rerun `uname` multiple times with the same arguments
      unless it is memoized *)
   Fiber.all
-    [ entry Variable_name.arch arch
-    ; entry Variable_name.os os
-    ; entry Variable_name.os_version os_version
-    ; entry Variable_name.os_distribution os_distribution
-    ; entry Variable_name.os_family os_family
-    ; entry Variable_name.sys_ocaml_version sys_ocaml_version
+    [ entry Package_variable_name.arch arch
+    ; entry Package_variable_name.os os
+    ; entry Package_variable_name.os_version os_version
+    ; entry Package_variable_name.os_distribution os_distribution
+    ; entry Package_variable_name.os_family os_family
+    ; entry Package_variable_name.sys_ocaml_version sys_ocaml_version
     ]
   >>| List.fold_left ~init:Solver_env.empty ~f:(fun solver_env (var, data) ->
     match data with

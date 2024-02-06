@@ -275,7 +275,7 @@ struct
     if r = len then Bytes.unsafe_to_string buf else Bytes.sub_string buf ~pos:0 ~len:r
   ;;
 
-  let read_all =
+  let read_all_unless_large =
     (* We use 65536 because that is the size of OCaml's IO buffers. *)
     let chunk_size = 65536 in
     (* Generic function for channels such that seeking is unsupported or
@@ -286,7 +286,7 @@ struct
         loop ()
       in
       try loop () with
-      | End_of_file -> Buffer.contents buffer
+      | End_of_file -> Ok (Buffer.contents buffer)
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we
@@ -295,6 +295,7 @@ struct
          regular files so this optimizations seems worth it. *)
       match in_channel_length t with
       | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
+      | n when n > Sys.max_string_length -> Error ()
       | n ->
         (* For some files [in_channel_length] returns an invalid value. For
            instance for files in /proc it returns [0] and on Windows the
@@ -307,7 +308,7 @@ struct
            end of the file *)
         let s = eagerly_input_string t n in
         (match input_char t with
-         | exception End_of_file -> s
+         | exception End_of_file -> Ok s
          | c ->
            (* The [+ chunk_size] is to make sure there is at least [chunk_size]
               free space so that the first [Buffer.add_channel buffer t
@@ -318,7 +319,17 @@ struct
            read_all_generic t buffer)
   ;;
 
-  let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
+  let path_to_dyn path = String.to_dyn (Path.to_string path)
+
+  let read_file ?binary fn =
+    match with_file_in fn ~f:read_all_unless_large ?binary with
+    | Ok x -> x
+    | Error () ->
+      Code_error.raise
+        "read_file: file is larger than Sys.max_string_length"
+        [ "fn", path_to_dyn fn ]
+  ;;
+
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 

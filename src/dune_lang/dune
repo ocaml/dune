@@ -5,6 +5,8 @@
   stdune
   dune_glob
   dune_rpc_private
+  dune_config
+  opam_format
   ocaml
   dune_util
   dyn

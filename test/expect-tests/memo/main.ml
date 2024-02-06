@@ -486,11 +486,11 @@ let%expect_test "Memo.Poly" =
   let (s2 : string Function.input) = S (Type_eq.Id.create (), "hi again") in
   let run_int i =
     let res = run (M.eval i) in
-    Dyn.to_string (Dyn.List (List.map res ~f:Int.to_dyn))
+    Dyn.to_string (Dyn.list Dyn.int res)
   in
   let run_string s =
     let res = run (M.eval s) in
-    Dyn.to_string (Dyn.List (List.map res ~f:String.to_dyn))
+    Dyn.to_string (Dyn.list Dyn.string res)
   in
   printf "----- First-time calls -----\n";
   printf "%d -> %s\n" (Function.get i1) (run_int i1);

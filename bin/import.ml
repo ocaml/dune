@@ -29,13 +29,17 @@ include struct
   module Context = Context
   module Workspace = Workspace
   module Package = Package
+  module Source_kind = Source_kind
+  module Package_info = Package_info
   module Section = Install.Section
   module Dune_project = Dune_project
+  module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
   module Resolve = Resolve
-  module Sub_dirs = Sub_dirs
+  module Source_dir_status = Source_dir_status
   module Source_tree = Source_tree
   module Dune_file = Dune_file
+  module Library = Library
 end
 
 include struct

@@ -4,19 +4,7 @@ include Format
 
 type 'a t = Format.formatter -> 'a -> unit
 
-(* Only in the stdlib since 4.02, so we copy. *)
-let rec list ?(pp_sep = pp_print_cut) pp ppf = function
-  | [] -> ()
-  | [v] -> pp ppf v
-  | v :: vs ->
-    pp ppf v;
-    pp_sep ppf ();
-    list ~pp_sep pp ppf vs
-
-(* want this name to make sure we don't use pp_print_list from stdlib
-   accidentally *)
-let pp_print_list = list
-
+let list = pp_print_list
 let str = pp_print_string
 let sexp fmt s pp x = fprintf fmt "@[<3>(%s@ %a)@]" s pp x
 let pair pp1 pp2 fmt (v1,v2) =

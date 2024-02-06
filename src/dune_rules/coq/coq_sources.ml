@@ -44,7 +44,7 @@ let coq_modules_of_files ~dirs =
 let library t ~name = Coq_lib_name.Map.find_exn t.libraries name
 let directories t ~name = Coq_lib_name.Map.find_exn t.directories name
 
-let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
+let check_no_unqualified (loc, (qualif_mode : Include_subdirs.t)) =
   if qualif_mode = Include Unqualified
   then
     User_error.raise

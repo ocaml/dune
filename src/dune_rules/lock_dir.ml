@@ -3,6 +3,71 @@ open Memo.O
 open Dune_pkg
 include Dune_pkg.Lock_dir
 
+module Sys_vars = struct
+  type t =
+    { os : string option Memo.Lazy.t
+    ; os_version : string option Memo.Lazy.t
+    ; os_distribution : string option Memo.Lazy.t
+    ; os_family : string option Memo.Lazy.t
+    ; arch : string option Memo.Lazy.t
+    ; sys_ocaml_version : string option Memo.Lazy.t
+    }
+
+  let poll =
+    let vars =
+      lazy
+        (let path = Env_path.path (Global.env ()) in
+         Sys_poll.make ~path)
+    in
+    let sys_poll_memo key =
+      Memo.lazy_ ~name:"sys-poll-vars" ~cutoff:(Option.equal String.equal) (fun () ->
+        let vars = Lazy.force vars in
+        Memo.of_reproducible_fiber @@ key vars)
+    in
+    { os = sys_poll_memo Sys_poll.os
+    ; os_version = sys_poll_memo Sys_poll.os_version
+    ; os_distribution = sys_poll_memo Sys_poll.os_distribution
+    ; os_family = sys_poll_memo Sys_poll.os_family
+    ; arch = sys_poll_memo Sys_poll.arch
+    ; sys_ocaml_version = sys_poll_memo Sys_poll.sys_ocaml_version
+    }
+  ;;
+
+  (* A pform expander for expanding a subset of the variables in "lang dune" (ie. the
+     same variables available in dune files) based on the OPAM variables polled
+     by this module. OPAM variables are converted to their equivalent dune
+     values, for example "os = macos" will be converted to "system = macosx". *)
+  let expand t ~(source : Dune_sexp.Template.Pform.t) (pform : Pform.t) =
+    match pform with
+    | Macro _ ->
+      User_error.raise
+        ~loc:source.loc
+        [ Pp.text "Macros are not allowed in this position." ]
+    | Var var ->
+      (* Convert values into the corresponding values that would be returned by
+         "ocamlc -config". We can't actually run "ocamlc -config" here because
+         ocamlc might not be installed yet. *)
+      (match var with
+       | Architecture ->
+         let+ arch = Memo.Lazy.force t.arch in
+         (match arch with
+          | Some "x86_64" -> Some "amd64"
+          | other -> other)
+       | System ->
+         let+ os = Memo.Lazy.force t.os in
+         (match os with
+          | Some "macos" -> Some "macosx"
+          | other -> other)
+       | _ ->
+         User_error.raise
+           ~loc:source.loc
+           [ Pp.textf
+               "%s isn't allowed in this position."
+               (Dune_sexp.Template.Pform.describe source)
+           ])
+  ;;
+end
+
 module Load = Make_load (struct
     include Memo
 
@@ -25,17 +90,36 @@ module Load = Make_load (struct
     ;;
   end)
 
+let select_lock_dir lock_dir_selection =
+  let* workspace = Workspace.workspace () in
+  let expander ~source pform =
+    Sys_vars.expand Sys_vars.poll ~source pform
+    >>| function
+    | None ->
+      User_error.raise
+        ~loc:source.loc
+        [ Pp.textf
+            "Unable to compute value for variable %S"
+            (Dune_sexp.Template.Pform.describe source)
+        ]
+    | Some variable_value -> [ Value.String variable_value ]
+  in
+  Workspace.Lock_dir_selection.eval lock_dir_selection ~dir:workspace.dir ~f:expander
+;;
+
 let get_path ctx =
-  let+ workspace = Workspace.workspace () in
+  let* workspace = Workspace.workspace () in
   match
     List.find_map workspace.contexts ~f:(fun ctx' ->
       match Context_name.equal (Workspace.Context.name ctx') ctx with
       | false -> None
       | true -> Some ctx')
   with
-  | None -> Some default_path
-  | Some (Default { lock_dir; _ }) -> Some (Option.value lock_dir ~default:default_path)
-  | Some (Opam _) -> None
+  | None -> Memo.return (Some default_path)
+  | Some (Default { lock_dir = Some lock_dir_selection; _ }) ->
+    select_lock_dir lock_dir_selection >>| Option.some
+  | Some (Default { lock_dir = None; _ }) -> Memo.return (Some default_path)
+  | Some (Opam _) -> Memo.return None
 ;;
 
 let get_workspace_lock_dir ctx =

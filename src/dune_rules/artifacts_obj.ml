@@ -12,10 +12,10 @@ let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
 let make ~dir ~lib_config ~libs ~exes =
   let+ libraries =
-    Memo.List.map libs ~f:(fun ((lib : Dune_file.Library.t), _, _, _) ->
+    Memo.List.map libs ~f:(fun ((lib : Library.t), _, _, _) ->
       let* lib_config = lib_config in
       let name = Lib_name.of_local lib.name in
-      let+ info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+      let+ info = Library.to_lib_info lib ~dir ~lib_config in
       name, info)
     >>| Lib_name.Map.of_list_exn
   in

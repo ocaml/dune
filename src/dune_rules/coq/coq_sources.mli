@@ -16,7 +16,7 @@ val extract : t -> Extraction.t -> Coq_module.t
 val of_dir
   :  Stanza.t list
   -> dir:Path.Build.t
-  -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
+  -> include_subdirs:Loc.t * Include_subdirs.t
   -> dirs:Source_file_dir.t list
   -> t
 

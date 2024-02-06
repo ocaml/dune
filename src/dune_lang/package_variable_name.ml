@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 module T = struct
   type t = OpamVariable.t
@@ -46,3 +47,16 @@ let with_test = of_string "with-test"
 let with_doc = of_string "with-doc"
 let version = of_string "version"
 let name = of_string "name"
+let build = of_string "build"
+let post = of_string "post"
+let one_of t xs = List.mem xs ~equal t
+let dev = of_string "dev"
+
+module Project = struct
+  let encode name = Dune_sexp.Encoder.string (":" ^ to_string name)
+
+  let decode =
+    Dune_sexp.Decoder.atom_matching ~desc:"variable" (fun s ->
+      if String.is_prefix s ~prefix:":" then Some (of_string (String.drop s 1)) else None)
+  ;;
+end

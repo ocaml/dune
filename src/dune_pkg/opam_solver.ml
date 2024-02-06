@@ -24,10 +24,10 @@ let add_self_to_filter_env package env variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> env variable
   | Global ->
-    let var_name = Variable_name.of_opam (OpamVariable.Full.variable variable) in
-    if Variable_name.(equal var_name name)
+    let var_name = Package_variable_name.of_opam (OpamVariable.Full.variable variable) in
+    if Package_variable_name.(equal var_name name)
     then Some (OpamVariable.S (OpamPackage.Name.to_string (OpamPackage.name package)))
-    else if Variable_name.(equal var_name version)
+    else if Package_variable_name.(equal var_name version)
     then Some (S (OpamPackage.Version.to_string (OpamPackage.version package)))
     else env variable
 ;;
@@ -277,7 +277,7 @@ let opam_variable_to_slang ~loc packages variable =
     if not (is_valid_package_variable_name variable_string)
     then invalid_variable_error ~loc variable;
     let pform =
-      let name = Variable_name.of_string variable_string in
+      let name = Package_variable_name.of_string variable_string in
       let scope : Package_variable.Scope.t =
         match package_name with
         | None -> Self
@@ -416,8 +416,8 @@ let simplify_filter get_solver_var =
   OpamFilter.partial_eval (fun var ->
     match OpamVariable.Full.scope var with
     | Global ->
-      let name = OpamVariable.Full.variable var |> Variable_name.of_opam in
-      if Variable_name.equal name Variable_name.with_test
+      let name = OpamVariable.Full.variable var |> Package_variable_name.of_opam in
+      if Package_variable_name.equal name Package_variable_name.with_test
       then
         (* We don't generate lockfiles for local packages, and we don't include
            test dependencies for non-local packages, so "with-test" always
@@ -527,7 +527,7 @@ let opam_package_to_lock_file_pkg
       |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
     in
     let opam_file = Resolved_package.opam_file resolved_package in
-    let loc = Loc.in_file (Resolved_package.file resolved_package) in
+    let loc = Resolved_package.loc resolved_package in
     opam_file, loc
   in
   let extra_sources =
@@ -671,6 +671,7 @@ let solve_package_list packages context =
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
        (* CR-rgrinberg: needs to include locations *)
        User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
+     | User_error.E _ -> reraise exn
      | unexpected_exn ->
        Code_error.raise
          "Unexpected exception raised while solving dependencies"

@@ -46,9 +46,9 @@ module DB = struct
 
   module Library_related_stanza = struct
     type t =
-      | Library of Path.Build.t * Dune_file.Library.t
-      | Library_redirect of Dune_file.Library_redirect.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Library of Path.Build.t * Library.t
+      | Library_redirect of Library_redirect.Local.t
+      | Deprecated_library_name of Deprecated_library_name.t
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
@@ -60,13 +60,11 @@ module DB = struct
           let old_public_name = Lib_name.of_local s.old_name in
           Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
         | Deprecated_library_name s ->
-          let old_public_name = Dune_file.Deprecated_library_name.old_public_name s in
+          let old_public_name = Deprecated_library_name.old_public_name s in
           Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
-        | Library (dir, (conf : Dune_file.Library.t)) ->
-          let+ info =
-            Dune_file.Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local
-          in
-          Dune_file.Library.best_name conf, Found_or_redirect.found info)
+        | Library (dir, (conf : Library.t)) ->
+          let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
+          Library.best_name conf, Found_or_redirect.found info)
       >>| Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
           match v1, v2 with
@@ -136,16 +134,17 @@ module DB = struct
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
-      List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
-        match stanza with
-        | Library (_, { project; visibility = Public p; _ }) ->
-          Some (Dune_file.Public_lib.name p, Project project)
-        | Library _ | Library_redirect _ -> None
-        | Deprecated_library_name s ->
-          let old_name = Dune_file.Deprecated_library_name.old_public_name s in
-          Some (old_name, Name s.new_public_name))
-      |> Lib_name.Map.of_list
-      |> function
+      match
+        List.filter_map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
+          match stanza with
+          | Library (_, { project; visibility = Public p; _ }) ->
+            Some (Public_lib.name p, Project project)
+          | Library _ | Library_redirect _ -> None
+          | Deprecated_library_name s ->
+            let old_name = Deprecated_library_name.old_public_name s in
+            Some (old_name, Name s.new_public_name))
+        |> Lib_name.Map.of_list
+      with
       | Ok x -> x
       | Error (name, _, _) ->
         (match
@@ -153,9 +152,8 @@ module DB = struct
              let named p loc = Option.some_if (name = p) loc in
              match stanza with
              | Library (_, { buildable = { loc; _ }; visibility = Public p; _ })
-             | Deprecated_library_name
-                 { Dune_file.Library_redirect.loc; old_name = p, _; _ } ->
-               named (Dune_file.Public_lib.name p) loc
+             | Deprecated_library_name { Library_redirect.loc; old_name = p, _; _ } ->
+               named (Public_lib.name p) loc
              | _ -> None)
          with
          | [] | [ _ ] -> assert false
@@ -266,9 +264,10 @@ module DB = struct
       { project; db; coq_db; root })
   ;;
 
-  let create ~(context : Context.t) ~projects_by_root stanzas coq_stanzas =
+  let create ~context ~projects_by_root stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
+    let* context = Context.DB.get context in
     let build_dir = Context.build_dir context in
     let* lib_config =
       let+ ocaml = Context.ocaml context in
@@ -306,22 +305,21 @@ module DB = struct
     value, public_libs
   ;;
 
-  let create_from_stanzas ~projects_by_root ~(context : Context.t) stanzas =
+  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
     let stanzas, coq_stanzas =
-      Dune_file.fold_stanzas
+      Dune_file.fold_static_stanzas
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
-          let build_dir = Context.build_dir context in
+          let build_dir = Context_name.build_dir context in
           match Stanza.repr stanza with
-          | Dune_file.Library.T lib ->
-            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
+          | Library.T lib ->
+            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
-          | Dune_file.Deprecated_library_name.T d ->
-            Deprecated_library_name d :: acc, coq_acc
-          | Dune_file.Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
+          | Deprecated_library_name.T d -> Deprecated_library_name d :: acc, coq_acc
+          | Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
-            let ctx_dir = Path.Build.append_source build_dir dune_file.dir in
+            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             acc, (ctx_dir, coq_lib) :: coq_acc
           | _ -> acc, coq_acc)
     in
@@ -329,27 +327,19 @@ module DB = struct
   ;;
 
   let all =
-    Memo.Lazy.create
-    @@ fun () ->
-    let+ contexts = Context.DB.all () in
-    Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
-      let scopes =
-        Memo.Lazy.create
-        @@ fun () ->
-        let* projects_by_root = Dune_load.load () >>| Dune_load.projects_by_root in
-        let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
-        create_from_stanzas ~projects_by_root ~context stanzas
-      in
-      Context.name context, scopes)
+    Per_context.create_by_name ~name:"scope" (fun context ->
+      Memo.Lazy.create (fun () ->
+        let* projects_by_root = Dune_load.projects_by_root ()
+        and* stanzas = Dune_load.dune_files context in
+        create_from_stanzas ~projects_by_root ~context stanzas)
+      |> Memo.Lazy.force)
+    |> Staged.unstage
   ;;
 
-  let create_from_stanzas (context : Context.t) =
-    let* all = Memo.Lazy.force all in
-    Context_name.Map.find_exn all (Context.name context) |> Memo.Lazy.force
-  ;;
+  let create_from_stanzas (context : Context_name.t) = all context
 
   let with_all context ~f =
-    let+ scopes, _ = create_from_stanzas context in
+    let+ scopes, _ = create_from_stanzas (Context.name context) in
     let find = find_by_project scopes in
     f find
   ;;
@@ -361,7 +351,7 @@ module DB = struct
 
   let find_by_dir dir =
     let* context = Context.DB.by_dir dir in
-    let+ scopes, _ = create_from_stanzas context in
+    let+ scopes, _ = create_from_stanzas (Context.name context) in
     find_by_dir scopes dir
   ;;
 
@@ -373,45 +363,46 @@ module DB = struct
   module Lib_entry = struct
     type t =
       | Library of Lib.Local.t
-      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+      | Deprecated_library_name of Deprecated_library_name.t
 
     let name = function
       | Library lib -> Lib.Local.to_lib lib |> Lib.name
       | Deprecated_library_name { old_name = old_public_name, _; _ } ->
-        Dune_file.Public_lib.name old_public_name
+        Public_lib.name old_public_name
     ;;
   end
 
   let lib_entries_of_package =
-    let make_map (build_dir, public_libs, stanzas) =
+    let make_map build_dir public_libs stanzas =
       let+ libs =
-        Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
-          | Dune_file.Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
+          | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
-              let* scope = find_by_dir (Path.Build.append_source build_dir d.dir) in
+              let* scope =
+                find_by_dir (Path.Build.append_source build_dir (Dune_file.dir d))
+              in
               let db = libs scope in
-              Lib.DB.find db (Dune_file.Library.best_name lib)
+              Lib.DB.find db (Library.best_name lib)
             in
             (match lib with
              | None -> acc
              | Some lib ->
                let name = Package.name pkg in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Library.T { visibility = Public pub; _ } ->
-            let+ lib = Lib.DB.find public_libs (Dune_file.Public_lib.name pub) in
+          | Library.T { visibility = Public pub; _ } ->
+            let+ lib = Lib.DB.find public_libs (Public_lib.name pub) in
             (match lib with
              | None ->
                (* Skip hidden or unavailable libraries. TODO we should assert
                   that the library name is always found somehow *)
                acc
              | Some lib ->
-               let package = Dune_file.Public_lib.package pub in
+               let package = Public_lib.package pub in
                let name = Package.name package in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Dune_file.Deprecated_library_name.T
-              ({ old_name = old_public_name, _; _ } as d) ->
-            let package = Dune_file.Public_lib.package old_public_name in
+          | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
+            let package = Public_lib.package old_public_name in
             let name = Package.name package in
             Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
           | _ -> Memo.return acc)
@@ -422,22 +413,19 @@ module DB = struct
              (List.sort ~compare:(fun a b ->
                 Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
     in
-    let module Input = struct
-      type t = Path.Build.t * Lib.DB.t * Dune_file.t list
-
-      let equal =
-        Tuple.T3.equal Path.Build.equal Lib.DB.equal (List.equal Dune_file.equal)
-      ;;
-
-      let hash = Tuple.T3.hash Path.Build.hash Lib.DB.hash (List.hash Dune_file.hash)
-      let to_dyn = Dyn.opaque
-    end
+    let per_context =
+      Per_context.create_by_name ~name:"scope-db" (fun ctx ->
+        Memo.lazy_ (fun () ->
+          let* public_libs =
+            let* ctx = Context.DB.get ctx in
+            public_libs (Context.name ctx)
+          and* stanzas = Dune_load.dune_files ctx in
+          make_map (Context_name.build_dir ctx) public_libs stanzas)
+        |> Memo.Lazy.force)
+      |> Staged.unstage
     in
-    let memo = Memo.create "lib-entries-map" ~input:(module Input) make_map in
-    fun (ctx : Context.t) pkg_name ->
-      let* public_libs = public_libs ctx in
-      let* stanzas = Only_packages.filtered_stanzas (Context.name ctx) in
-      let+ map = Memo.exec memo (Context.build_dir ctx, public_libs, stanzas) in
+    fun (ctx : Context_name.t) pkg_name ->
+      let+ map = per_context ctx in
       Package.Name.Map.Multi.find map pkg_name
   ;;
 end

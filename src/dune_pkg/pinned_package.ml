@@ -55,7 +55,7 @@ let discover_layout loc ~stat name =
         | `Absent_or_unrecognized ->
           let file = Path.Local.relative opam_file_or_dir "opam" in
           (match stat file with
-           | `File -> opam_file, Some (Path.Local.relative opam_file_or_dir "files")
+           | `File -> file, Some (Path.Local.relative opam_file_or_dir "files")
            | `Dir -> must_be_a_file file
            | `Absent_or_unrecognized -> abort ()))
      | `Absent_or_unrecognized -> abort ())
@@ -79,16 +79,6 @@ let resolve_package loc name (url : OpamUrl.t) version =
       Resolved_package.local_fs package ~dir ~opam_file_path ~files_dir |> Fiber.return
     | `Git ->
       let* rev = Opam_repo.Source.of_opam_url loc url >>= Opam_repo.Source.rev in
-      let opam_file =
-        match
-          Rev_store.At_rev.directory_entries rev (Path.Local.of_string ".")
-          |> Rev_store.File.Set.find ~f:(fun file ->
-            Path.Local.equal (Rev_store.File.path file) (Path.Local.of_string "opam"))
-        with
-        | Some s -> s
-        | None ->
-          User_error.raise ~loc [ Pp.text "unable to find opam file in this repository" ]
-      in
       let stat path =
         match
           Rev_store.File.Set.is_empty (Rev_store.At_rev.directory_entries rev path)
@@ -106,17 +96,26 @@ let resolve_package loc name (url : OpamUrl.t) version =
              then `File
              else `Absent_or_unrecognized)
       in
-      let opam_file_path, files_dir = discover_layout ~stat in
+      let opam_file, files_dir = discover_layout ~stat in
       let+ opam_file_contents =
         (* CR-rgrinberg: not efficient to make such individual calls *)
-        Rev_store.At_rev.content rev opam_file_path
+        Rev_store.At_rev.content rev opam_file
         >>| function
         | Some p -> p
         | None ->
+          let files =
+            match Path.Local.parent opam_file with
+            | None -> []
+            | Some parent ->
+              Rev_store.At_rev.directory_entries rev parent
+              |> Rev_store.File.Set.to_list_map ~f:Rev_store.File.path
+          in
           Code_error.raise
             ~loc
             "unable to find file"
-            [ "opam_file_path", Path.Local.to_dyn opam_file_path ]
+            [ "opam_file_path", Path.Local.to_dyn opam_file
+            ; "files", Dyn.list Path.Local.to_dyn files
+            ]
       in
       Resolved_package.git_repo package ~opam_file ~opam_file_contents rev ~files_dir
   in

@@ -5,7 +5,7 @@ let def name dyn =
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 ;;
 
-let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
+let rule sctx ~requires_link (exes : Executables.t) =
   let open Action_builder.O in
   let* () = Action_builder.return () in
   let* locals, externals =
@@ -90,7 +90,7 @@ let rule sctx ~requires_link (exes : Dune_file.Executables.t) =
           ]))
 ;;
 
-let gen_rules sctx (exes : Dune_file.Executables.t) ~dir ~requires_link =
+let gen_rules sctx (exes : Executables.t) ~dir ~requires_link =
   Memo.Option.iter exes.bootstrap_info ~f:(fun fname ->
     Super_context.add_rule
       sctx

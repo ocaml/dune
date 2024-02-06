@@ -44,18 +44,17 @@ include Alias_builder.Alias_rec (struct
             =
             f ~path:build_path
           and* stanzas_in_dir =
-            Action_builder.of_memo (Only_packages.stanzas_in_dir build_path)
+            Action_builder.of_memo (Dune_load.stanzas_in_dir build_path)
           in
           match stanzas_in_dir with
           | None -> Action_builder.return found_in_source
           | Some stanzas ->
             let+ in_melange_target_dirs =
-              let melange_target_dirs =
-                List.filter_map stanzas.stanzas ~f:(fun stanza ->
-                  match Stanza.repr stanza with
-                  | Melange_stanzas.Emit.T mel ->
-                    Some (Melange_stanzas.Emit.target_dir ~dir:build_path mel)
-                  | _ -> None)
+              let* melange_target_dirs =
+                Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
+                |> Action_builder.of_memo
+                >>| List.map ~f:(fun mel ->
+                  Melange_stanzas.Emit.target_dir ~dir:build_path mel)
               in
               Action_builder.List.map
                 melange_target_dirs
@@ -71,6 +70,6 @@ include Alias_builder.Alias_rec (struct
       >>= function
       | None -> Action_builder.return Alias_builder.Alias_status.Not_defined
       | Some src_dir ->
-        Map_reduce.map_reduce src_dir ~traverse:Sub_dirs.Status.Set.normal_only ~f
+        Map_reduce.map_reduce src_dir ~traverse:Source_dir_status.Set.normal_only ~f
     ;;
   end)

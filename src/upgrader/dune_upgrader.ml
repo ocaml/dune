@@ -1,8 +1,14 @@
 open! Stdune
-module Dune_project = Dune_rules.Dune_project
-module Source_tree = Dune_rules.Source_tree
+
+include struct
+  open Dune_rules
+  module Dune_project = Dune_project
+  module Source_tree = Source_tree
+  module Source_dir_status = Source_dir_status
+  module Dune_file0 = Dune_file0
+end
+
 module Console = Dune_console
-module Sub_dirs = Dune_rules.Sub_dirs
 
 type rename_and_edit =
   { original_file : Path.Source.t
@@ -140,9 +146,13 @@ module Common = struct
   ;;
 
   let ensure_project_file_exists project ~lang_version =
-    let fn = Path.source (Dune_project.file project) in
-    if not (Path.exists fn)
-    then (
+    match Dune_project.file project with
+    | Some _ -> ()
+    | None ->
+      let fn =
+        Path.Source.relative (Dune_project.root project) Dune_project.filename
+        |> Path.source
+      in
       Console.print [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];
       Io.write_lines
         fn
@@ -156,7 +166,7 @@ module Common = struct
                 [ Dune_lang.to_string
                     (List [ Dune_lang.atom "name"; Dune_lang.atom_or_quoted_string s ])
                 ])
-           ]))
+           ])
   ;;
 end
 
@@ -240,12 +250,12 @@ module V2 = struct
   ;;
 
   let update_project_file todo project =
-    let sexps, comments = read_and_parse (Dune_project.file project) in
+    let project_file = Option.value_exn (Dune_project.file project) in
+    let sexps, comments = read_and_parse project_file in
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps |> Ast_tools.bump_lang_version v |> update_formatting in
     let new_file_contents = string_of_sexps ~version:v sexps comments in
-    (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
-    todo.to_edit <- (Dune_project.file project, new_file_contents) :: todo.to_edit
+    todo.to_edit <- (project_file, new_file_contents) :: todo.to_edit
   ;;
 
   let upgrade_dune_file todo fn sexps comments =
@@ -256,10 +266,10 @@ module V2 = struct
   ;;
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.filenames dir) Source_tree.Dune_file.fname
+    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file0.fname
     then (
       let path = Source_tree.Dir.path dir in
-      let fn = Path.Source.relative path Source_tree.Dune_file.fname in
+      let fn = Path.Source.relative path Dune_file0.fname in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lang.Dune_file_script.is_script
       then
         User_warning.emit
@@ -333,7 +343,7 @@ let detect_project_version project dir =
     then Dune2_project
     else if project_dune_version >= (1, 0)
     then Dune1_project
-    else if in_tree Source_tree.Dune_file.fname
+    else if in_tree Dune_file0.fname
     then Dune1_project
     else Unknown)
 ;;
@@ -351,7 +361,7 @@ let upgrade () =
                   type t = Source_tree.Dir.t * project_version
                 end))
          in
-        M.map_reduce ~traverse:Sub_dirs.Status.Set.normal_only ~f:(fun dir ->
+        M.map_reduce ~traverse:Source_dir_status.Set.normal_only ~f:(fun dir ->
           let project = Source_tree.Dir.project dir in
           let detected_version = detect_project_version project dir in
           Memo.return (Appendable_list.singleton (dir, detected_version))))

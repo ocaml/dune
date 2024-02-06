@@ -20,7 +20,8 @@ module Pkg = struct
   ;;
 
   let default (project : Dune_project.t) stanza =
-    match Package.Name.Map.values (Dune_project.packages project) with
+    let packages = Dune_project.including_hidden_packages project in
+    match Package.Name.Map.values packages with
     | [ pkg ] -> Ok pkg
     | [] ->
       Error
@@ -37,7 +38,7 @@ module Pkg = struct
         (User_error.make
            [ Pp.text "I can't determine automatically which package this stanza is for."
            ; Pp.text "I have the choice between these ones:"
-           ; listing (Package.Name.Map.values (Dune_project.packages project))
+           ; listing (Package.Name.Map.values packages)
            ; Pp.textf "You need to add a (package ...) field to this (%s) stanza." stanza
            ])
   ;;
@@ -49,7 +50,7 @@ module Pkg = struct
   ;;
 
   let resolve (project : Dune_project.t) name =
-    let packages = Dune_project.packages project in
+    let packages = Dune_project.including_hidden_packages project in
     match Package.Name.Map.find packages name with
     | Some pkg -> Ok pkg
     | None ->
@@ -122,82 +123,6 @@ module Pkg = struct
         | Some name -> resolve p name |> Result.map ~f:Option.some)
   ;;
 end
-
-let preprocess_fields =
-  let+ preprocess =
-    field
-      "preprocess"
-      Preprocess.Per_module.decode
-      ~default:(Preprocess.Per_module.default ())
-  and+ preprocessor_deps =
-    field_o
-      "preprocessor_deps"
-      (let+ loc = loc
-       and+ l = repeat Dep_conf.decode in
-       loc, l)
-  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
-  let preprocessor_deps =
-    match preprocessor_deps with
-    | None -> []
-    | Some (loc, deps) ->
-      let deps_might_be_used =
-        Module_name.Per_item.exists preprocess ~f:(fun p ->
-          match (p : _ Preprocess.t) with
-          | Action _ | Pps _ -> true
-          | No_preprocessing | Future_syntax _ -> false)
-      in
-      if not deps_might_be_used
-      then
-        User_warning.emit
-          ~loc
-          ~is_error:(syntax >= (2, 0))
-          [ Pp.text
-              "This preprocessor_deps field will be ignored because no preprocessor that \
-               might use them is configured."
-          ];
-      deps
-  in
-  preprocess, preprocessor_deps
-;;
-
-let instrumentation =
-  located
-    (multi_field
-       "instrumentation"
-       (Dune_lang.Syntax.since Stanza.syntax (2, 7)
-        >>> fields
-              (let+ backend =
-                 field
-                   "backend"
-                   (let+ libname = located Lib_name.decode
-                    and+ flags =
-                      let* current_ver = Dune_lang.Syntax.get_exn Stanza.syntax in
-                      let version_check flag =
-                        let ver = 2, 8 in
-                        if current_ver >= ver
-                        then flag
-                        else (
-                          let what =
-                            "The possibility to pass arguments to instrumentation \
-                             backends"
-                          in
-                          Dune_lang.Syntax.Error.since
-                            (String_with_vars.loc flag)
-                            Stanza.syntax
-                            ver
-                            ~what)
-                      in
-                      repeat (String_with_vars.decode >>| version_check)
-                    in
-                    libname, flags)
-               and+ deps =
-                 field
-                   "deps"
-                   ~default:[]
-                   (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
-               in
-               backend, deps)))
-;;
 
 module Modules_settings = struct
   type t =

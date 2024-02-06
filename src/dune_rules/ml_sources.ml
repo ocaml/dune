@@ -1,12 +1,11 @@
 open Import
-open Dune_file
 open Memo.O
 module Modules_group = Modules
 
 module Origin = struct
   type t =
-    | Library of Dune_file.Library.t
-    | Executables of Dune_file.Executables.t
+    | Library of Library.t
+    | Executables of Executables.t
     | Melange of Melange_stanzas.Emit.t
 
   let loc = function
@@ -153,7 +152,7 @@ end
 type t =
   { modules : Modules.t
   ; artifacts : Artifacts_obj.t Memo.Lazy.t
-  ; include_subdirs : Dune_file.Include_subdirs.t
+  ; include_subdirs : Include_subdirs.t
   }
 
 let include_subdirs t = t.include_subdirs
@@ -272,7 +271,7 @@ let make_lib_modules
   ~lookup_vlib
   ~(lib : Library.t)
   ~modules
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
+  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
   ~version
   =
   let open Resolve.Memo.O in
@@ -414,7 +413,7 @@ let modules_of_stanzas =
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, sources, modules, obj_dir)
       | Executables.T exes | Tests.T { exes; _ } ->
-        let obj_dir = Dune_file.Executables.obj_dir ~dir exes in
+        let obj_dir = Executables.obj_dir ~dir exes in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
@@ -466,7 +465,7 @@ let make
   ~lib_config
   ~loc
   ~lookup_vlib
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Dune_file.Include_subdirs.t))
+  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
   ~dirs
   =
   let+ modules_of_stanzas =

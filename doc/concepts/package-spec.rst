@@ -1,6 +1,11 @@
 Package Specification
 =====================
 
+.. TODO(diataxis)
+   - reference: packages
+   - howto: preparing an opam package
+   - tutorial: from zero to opam
+
 Installation is the process of copying freshly built libraries,
 binaries, and other files from the build directory to the system. Dune
 offers two ways of doing this: via opam or directly via the ``install``

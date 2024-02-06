@@ -107,24 +107,24 @@ end = struct
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
     let dir = ctx_dir in
     let toplevel_setup = Toplevel.Stanza.setup in
-    let open Dune_file in
     match Stanza.repr stanza with
     | Toplevel_stanza.T toplevel ->
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      (* XXX why are we setting up private doc rules for disabled libraries? *)
-      let* () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-      and+ enabled_if =
-        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
-      in
+      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () ->
+          let+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
+          and+ rules = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+          rules)
         enabled_if
     | Foreign.Library.T lib ->
-      let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
-      empty_none
+      Expander.eval_blang expander lib.enabled_if
+      >>= if_available (fun () ->
+        let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
+        empty_none)
     | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->
@@ -209,14 +209,9 @@ let define_all_alias ~dir ~project ~js_targets =
   Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let gen_rules_for_stanzas
-  sctx
-  dir_contents
-  cctxs
-  expander
-  { Dune_file.dir = src_dir; stanzas; project }
-  ~dir:ctx_dir
-  =
+let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
+  let src_dir = Dune_file.dir dune_file in
+  let* stanzas = Dune_file.stanzas dune_file in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas
@@ -295,15 +290,16 @@ let gen_rules_for_stanzas
         Coq_rules.setup_extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
       | Coq_stanza.Coqpp.T m -> Coq_rules.setup_coqpp_rules ~sctx ~dir:ctx_dir m
       | _ -> Memo.return ())
-  and+ () = define_all_alias ~dir:ctx_dir ~project ~js_targets in
+  and+ () =
+    let project = Dune_file.project dune_file in
+    define_all_alias ~dir:ctx_dir ~project ~js_targets
+  in
   cctxs
 ;;
 
 let gen_format_and_cram_rules sctx ~expander ~dir source_dir =
   let+ () = Format_rules.setup_alias ~dir
-  and+ () =
-    Source_tree.Dir.cram_tests source_dir >>= Cram_rules.rules ~sctx ~expander ~dir
-  in
+  and+ () = Cram_rules.rules source_dir ~sctx ~expander ~dir in
   ()
 ;;
 
@@ -331,7 +327,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   let* () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
   and+ stanzas =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
-    Only_packages.stanzas_in_dir dir
+    Dune_load.stanzas_in_dir dir
     >>= function
     | Some d -> Memo.return (Some d)
     | None ->
@@ -384,17 +380,19 @@ let gen_project_rules =
       | Named _ -> Memo.return ()
       | Anonymous _ ->
         (match
-           Dune_project.dune_version project >= (2, 8)
-           && Dune_project.generate_opam_files project
+           if Dune_project.dune_version project >= (2, 8)
+              && Dune_project.generate_opam_files project
+           then Dune_project.file project
+           else None
          with
-         | false -> Memo.return ()
-         | true ->
+         | None -> Memo.return ()
+         | Some project_file ->
            Warning_emit.emit
              missing_project_name
              (Warning_emit.Context.project project)
              (fun () ->
                 let+ () = Memo.return () in
-                let loc = Loc.in_file (Path.source (Dune_project.file project)) in
+                let loc = Loc.in_file (Path.source project_file) in
                 User_message.make
                   ~loc
                   [ Pp.text

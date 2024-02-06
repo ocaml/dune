@@ -1,5 +1,5 @@
-(lang dune 3.5)
-;          ^^^
+(lang dune 3.12)
+;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)

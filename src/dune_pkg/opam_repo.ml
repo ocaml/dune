@@ -244,7 +244,7 @@ let load_packages_from_git rev_store opam_packages =
     ~f:(fun (opam_file, package, rev, files_dir) opam_file_contents ->
       Resolved_package.git_repo
         package
-        ~opam_file
+        ~opam_file:(Rev_store.File.path opam_file)
         ~opam_file_contents
         rev
         ~files_dir:(Some files_dir))
@@ -296,9 +296,8 @@ let all_package_versions t opam_package_name =
 
 let load_all_versions ts opam_package_name =
   let from_git, from_dirs =
-    List.map ts ~f:(fun t ->
+    List.concat_map ts ~f:(fun t ->
       all_package_versions t opam_package_name |> List.rev_map ~f:(fun pkg -> t, pkg))
-    |> List.concat
     |> List.fold_left ~init:OpamPackage.Version.Map.empty ~f:(fun acc (repo, pkg) ->
       let version =
         let pkg =

@@ -1,7 +1,5 @@
 open Import
 open Memo.O
-module Executables = Dune_file.Executables
-module Buildable = Dune_file.Buildable
 
 let first_exe (exes : Executables.t) = snd (List.hd exes.names)
 
@@ -11,7 +9,7 @@ let linkages
   ~(exes : Executables.t)
   ~explicit_js_mode
   =
-  let module L = Dune_file.Executables.Link_mode in
+  let module L = Executables.Link_mode in
   let l =
     let has_native = Result.is_ok ocaml.ocamlopt in
     let modes =
@@ -122,7 +120,7 @@ let executables_rules
   ~scope
   ~compile_info
   ~embed_in_plugin_libraries
-  (exes : Dune_file.Executables.t)
+  (exes : Executables.t)
   =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
@@ -277,7 +275,7 @@ let executables_rules
       ~modes:`Exe )
 ;;
 
-let compile_info ~scope (exes : Dune_file.Executables.t) =
+let compile_info ~scope (exes : Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     (* TODO resolution should be delayed *)
@@ -299,7 +297,7 @@ let compile_info ~scope (exes : Dune_file.Executables.t) =
     ~merlin_ident
 ;;
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Dune_file.Executables.t) =
+let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
   let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules

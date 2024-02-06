@@ -11,10 +11,12 @@ Demonstrate an optional executable available from more than one definition
   > (executable
   >  (public_name foo)
   >  (enabled_if true))
+  > EOF
   $ cat >b/dune <<EOF
   > (executable
   >  (public_name foo)
   >  (enabled_if true))
+  > EOF
   $ cat >dune <<EOF
   > (rule
   >  (alias foo)

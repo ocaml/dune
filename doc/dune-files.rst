@@ -2,6 +2,13 @@
 Stanza Reference
 ****************
 
+.. TODO(diataxis)
+
+   Recycle this content into:
+
+   - :doc:`reference/stanzas`
+   - :doc:`reference/files`
+
 .. _dune-project:
 
 dune-project
@@ -14,7 +21,7 @@ contents of all configuration files read by Dune and looks like:
 
 .. code:: dune
 
-   (lang dune 3.13)
+   (lang dune 3.14)
 
 Additionally, they can contains the following stanzas.
 
@@ -761,6 +768,7 @@ The following sections describe the available stanzas and their meanings.
 .. include:: stanzas/test.rst
 .. include:: stanzas/toplevel.rst
 .. include:: stanzas/vendored_dirs.rst
+.. include:: stanzas/dynamic_include.rst
 
 .. _dune-workspace:
 
@@ -786,7 +794,7 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 
 .. code:: dune
 
-    (lang dune 3.13)
+    (lang dune 3.14)
     (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))

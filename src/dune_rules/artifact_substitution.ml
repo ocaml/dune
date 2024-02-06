@@ -117,7 +117,7 @@ module Conf = struct
 
   let of_context (context : Context.t) =
     let open Memo.O in
-    let get_vcs = Source_tree.nearest_vcs in
+    let get_vcs = Vcs_db.nearest_vcs in
     let name = Context.name context in
     let get_location = Install.Paths.get_local_location name in
     let get_config_path = function
@@ -140,7 +140,7 @@ module Conf = struct
 
   let of_install ~relocatable ~roots ~(context : Context.t) =
     let open Memo.O in
-    let get_vcs = Source_tree.nearest_vcs in
+    let get_vcs = Vcs_db.nearest_vcs in
     let hardcoded_ocaml_path =
       match relocatable with
       | Some prefix -> Memo.return @@ Relocatable prefix
@@ -638,6 +638,8 @@ let copy ~conf ~input_file ~input ~output =
 ;;
 
 let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
+  (* CR-rgrinberg: our copying here is slow. If we scan the file and detect no
+     substitutions, we should go directly to [Io.copy_file] *)
   let open Fiber.O in
   let* ic, oc = Fiber.return (Io.setup_copy ?chmod ~src ~dst ()) in
   Fiber.finalize

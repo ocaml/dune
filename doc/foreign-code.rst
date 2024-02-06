@@ -2,6 +2,14 @@
 Dealing with Foreign Libraries
 ******************************
 
+.. TODO(diataxis)
+
+   There are various types of content here:
+
+   - how-to guide for adding C stubs to an existing library
+   - tutorial for ctypes
+   - reference for ctypes field
+
 The OCaml programming language can interface with libraries written in foreign
 languages such as C. This section explains how to do this with Dune. Note that
 it does not cover how to write the C stubs themselves, but this is covered by
@@ -92,7 +100,7 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.14)
   (using ctypes 0.3)
 
 

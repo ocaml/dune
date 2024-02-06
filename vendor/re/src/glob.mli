@@ -27,8 +27,10 @@ exception Parse_error
 val glob :
   ?anchored:bool ->
   ?pathname:bool ->
+  ?match_backslashes:bool ->
   ?period:bool ->
   ?expand_braces:bool ->
+  ?double_asterisk:bool ->
   string ->
   Core.t
 (** Implements the semantics of shells patterns. The returned regular
@@ -48,6 +50,11 @@ val glob :
     and not by an asterisk ('*') or a question mark ('?') metacharacter, nor by a bracket
     expression ('[]') containing a slash. Defaults to true.
 
+    [match_backslashes]: If this flag is set, a forward slash will also match a
+    backslash (useful when globbing Windows paths). Note that a backslash in the
+    pattern will continue to escape the following character. Defaults to
+    [false].
+
     [period]: If this flag is set, a leading period in string has to be matched exactly by
     a period in pattern. A period is considered to be leading if it is the first
     character in string, or if both [pathname] is set and the period immediately follows a
@@ -55,7 +62,11 @@ val glob :
 
     If [expand_braces] is true, braced sets will expand into multiple globs,
     e.g. a\{x,y\}b\{1,2\} matches axb1, axb2, ayb1, ayb2.  As specified for bash, brace
-    expansion is purely textual and can be nested. Defaults to false. *)
+    expansion is purely textual and can be nested. Defaults to false.
+
+    [double_asterisk]: If this flag is set, double asterisks ('**') will match slash
+    characters, even if [pathname] is set. The [period] flag still applies. Default to
+    true. *)
 
 val glob' : ?anchored:bool -> bool -> string -> Core.t
 (** Same, but allows to choose whether dots at the beginning of a

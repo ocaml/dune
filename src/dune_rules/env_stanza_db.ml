@@ -22,14 +22,14 @@ module Node = struct
   ;;
 
   let in_dir ~dir =
-    Only_packages.stanzas_in_dir dir
-    >>| function
-    | None -> None
+    Dune_load.stanzas_in_dir dir
+    >>= function
+    | None -> Memo.return None
     | Some stanzas ->
-      List.find_map stanzas.stanzas ~f:(fun stanza ->
-        match Stanza.repr stanza with
-        | Dune_env.T config -> Some config
-        | _ -> None)
+      Dune_file.find_stanzas stanzas Dune_env.key
+      >>| (function
+       | [ config ] -> Some config
+       | _ -> None)
   ;;
 
   let rec by_dir dir =
@@ -130,7 +130,7 @@ module Inherit = struct
         (sprintf "%s-root" name)
         ~input:(module Path.Source)
         (fun dir ->
-          let* projects_by_root = Dune_load.load () >>| Dune_load.projects_by_root
+          let* projects_by_root = Dune_load.projects_by_root ()
           and* envs = Memo.Lazy.force for_context in
           let project = Path.Source.Map.find_exn projects_by_root dir in
           let root = root context project in

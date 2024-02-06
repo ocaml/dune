@@ -254,11 +254,11 @@ module E = struct
     | TSeq (l', x, _kind) ->
       Format.fprintf ch "@[<2>(Seq@ ";
       print_state_lst ch l' x;
-      Format.fprintf ch " %a)@]" pp x
+      Format.fprintf ch "@ %a)@]" pp x
     | TExp (marks, {def = Eps; _}) ->
-      Format.fprintf ch "(Exp %d (%a) (eps))" y.id Marks.pp_marks marks
+      Format.fprintf ch "@[<2>(Exp@ %d@ (%a)@ (eps))@]" y.id Marks.pp_marks marks
     | TExp (marks, x) ->
-      Format.fprintf ch "(Exp %d (%a) %a)" x.id Marks.pp_marks marks pp x
+      Format.fprintf ch "@[<2>(Exp@ %d@ (%a)@ %a)@]" x.id Marks.pp_marks marks pp x
 
   and print_state_lst ch l y =
     match l with
@@ -268,7 +268,7 @@ module E = struct
       print_state_rec ch e y;
       List.iter
         (fun e ->
-           Format.fprintf ch " | ";
+           Format.fprintf ch "@ | ";
            print_state_rec ch e y)
         rem
 

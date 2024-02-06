@@ -18,6 +18,10 @@ module Package_version = Package_version
 module Pkg_workspace = Workspace
 module Local_package = Local_package
 module Package_universe = Package_universe
-module Variable_name = Variable_name
 module Variable_value = Variable_value
 module Resolved_package = Resolved_package
+
+module Private = struct
+  (* only exposed for tests *)
+  module Git_config_parser = Git_config_parser
+end

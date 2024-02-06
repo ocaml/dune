@@ -4,6 +4,13 @@
 How to Load Additional Files at Runtime
 ***************************************
 
+.. TODO(diataxis)
+
+   Split between:
+
+   - an how-to guide
+   - some reference material
+
 There are many ways for applications to load files at runtime and Dune provides
 a well-tested, key-in-hand portable system for doing so. The Dune model works by
 defining ``sites`` where files will be installed and looked up at runtime. At
@@ -26,7 +33,7 @@ consists of a name and a :ref:`section<install>` (e.g ``lib``, ``share``,
 
 .. code:: dune
 
-   (lang dune 3.13)
+   (lang dune 3.14)
    (using dune_site 0.1)
    (name mygui)
 
@@ -225,7 +232,7 @@ Main Executable (C)
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.14)
   (using dune_site 0.1)
   (name app)
 
@@ -285,7 +292,7 @@ The Plugin "plugin1"
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.14)
   (using dune_site 0.1)
 
   (generate_opam_files true)

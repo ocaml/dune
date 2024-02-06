@@ -3,6 +3,46 @@ open OpamParserTypes.FullPos
 
 type t = opamfile
 
+let loc_of_opam_pos
+  ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
+    OpamParserTypes.FullPos.pos)
+  =
+  let start =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = start_line
+    ; pos_bol = 0
+    ; pos_cnum = start_column
+    }
+  in
+  let stop =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = stop_line
+    ; pos_bol = 0
+    ; pos_cnum = stop_column
+    }
+  in
+  Loc.create ~start ~stop
+;;
+
+let read_from_string_exn ~contents path =
+  try
+    OpamFile.OPAM.read_from_string
+      contents
+      ~filename:(Path.to_string path |> OpamFilename.of_string |> OpamFile.make)
+  with
+  | OpamPp.Bad_version (_, message) ->
+    User_error.raise
+      ~loc:(Loc.in_file path)
+      [ Pp.text "unexpected version"; Pp.text message ]
+  | OpamPp.Bad_format (pos, message) ->
+    let loc =
+      match pos with
+      | None -> Loc.in_file path
+      | Some pos -> loc_of_opam_pos pos
+    in
+    User_error.raise ~loc [ Pp.text "unable to parse opam file"; Pp.text message ]
+;;
+
 let parse_gen entry (lb : Lexing.lexbuf) =
   try entry OpamLexer.token lb with
   | OpamLexer.Error msg -> User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text msg ]

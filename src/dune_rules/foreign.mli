@@ -157,6 +157,7 @@ module Library : sig
     { archive_name : Archive.Name.t
     ; archive_name_loc : Loc.t
     ; stubs : Stubs.t
+    ; enabled_if : Blang.t
     }
 
   val decode : t Dune_lang.Decoder.t

@@ -37,32 +37,30 @@ module File = struct
       | Some s -> Dune_lang.pp s
     ;;
 
-    let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t) =
-      a.name = b.name
-    ;;
+    let libraries_conflict (a : Library.t) (b : Library.t) = a.name = b.name
 
-    let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
+    let executables_conflict (a : Dune_rules.Executables.t) (b : Dune_rules.Executables.t)
+      =
       let a_names = String.Set.of_list_map ~f:snd a.names in
       let b_names = String.Set.of_list_map ~f:snd b.names in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
     ;;
 
-    let tests_conflict (a : Dune_file.Tests.t) (b : Dune_file.Tests.t) =
+    let tests_conflict (a : Dune_rules.Tests.t) (b : Dune_rules.Tests.t) =
       executables_conflict a.exes b.exes
     ;;
 
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
-      let open Dune_file in
       match Stanza.repr a, Stanza.repr b with
-      | Executables.T a, Executables.T b -> executables_conflict a b
+      | Dune_rules.Executables.T a, Dune_rules.Executables.T b -> executables_conflict a b
       | Library.T a, Library.T b -> libraries_conflict a b
-      | Tests.T a, Tests.T b -> tests_conflict a b
+      | Dune_rules.Tests.T a, Dune_rules.Tests.T b -> tests_conflict a b
       (* NOTE No other stanza types currently supported *)
       | _ -> false
     ;;
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
-      let of_ast = Dune_file.of_ast project in
+      let of_ast = Dune_rules.Stanzas.of_ast project in
       (let open Option.O in
        let* a_ast = Cst.abstract a in
        let+ b_ast = Cst.abstract b in
@@ -188,7 +186,7 @@ module Init_context = struct
       | None ->
         Dune_project.anonymous
           ~dir:Path.Source.root
-          Package.Info.empty
+          Package_info.empty
           Package.Name.Map.empty
     in
     let dir =
@@ -380,7 +378,7 @@ module Component = struct
           Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
-        let info = Package.Info.example in
+        let info = Package_info.example in
         Dune_project.anonymous ~dir info packages
         |> Dune_project.set_generate_opam_files opam_file_gen
         |> Dune_project.encode

@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-module Library = Dune_file.Library
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
@@ -22,14 +21,19 @@ module Package_paths = struct
     else None
   ;;
 
-  let meta_file (ctx : Context.t) pkg =
-    Path.Build.append_source (Context.build_dir ctx) (Package.meta_file pkg)
-  ;;
+  let meta_fn pkg = "META." ^ Package.Name.to_string pkg
 
   let deprecated_meta_file (ctx : Context.t) pkg name =
+    let meta_fn = meta_fn name in
+    let pkg_dir = Package.dir pkg in
     Path.Build.append_source
       (Context.build_dir ctx)
-      (Package.deprecated_meta_file pkg name)
+      (Path.Source.relative pkg_dir meta_fn)
+  ;;
+
+  let meta_file (ctx : Context.t) pkg =
+    let name = Package.name pkg in
+    deprecated_meta_file ctx pkg name
   ;;
 
   let build_dir (ctx : Context.t) (pkg : Package.t) =
@@ -75,11 +79,11 @@ module Stanzas_to_entries : sig
     :  Super_context.t
     -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
 end = struct
-  let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
+  let lib_ppxs sctx ~scope ~(lib : Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
-      let name = Dune_file.Library.best_name lib in
+      let name = Library.best_name lib in
       let+ ppx_exe = Resolve.Memo.read_memo (Preprocessing.ppx_exe sctx ~scope name) in
       [ ppx_exe ]
   ;;
@@ -139,7 +143,7 @@ end = struct
       let+ ocaml = Context.ocaml ctx in
       ocaml.lib_config
     in
-    let* info = Dune_file.Library.to_lib_info lib ~dir ~lib_config in
+    let* info = Library.to_lib_info lib ~dir ~lib_config in
     let make_entry =
       let in_sub_dir = function
         | None -> lib_subdir
@@ -233,7 +237,7 @@ end = struct
     in
     let { Lib_config.has_native; ext_obj; _ } = lib_config in
     let { Lib_mode.Map.ocaml = { Mode.Dict.byte; native } as ocaml; melange } =
-      Dune_file.Mode_conf.Lib.Set.eval lib.modes ~has_native
+      Mode_conf.Lib.Set.eval lib.modes ~has_native
     in
     let+ melange_runtime_entries = additional_deps lib.melange_runtime_deps
     and+ public_headers = additional_deps lib.public_headers
@@ -327,14 +331,13 @@ end = struct
 
   let keep_if expander ~scope stanza =
     let+ keep =
-      let open Dune_file in
       match Stanza.repr stanza with
       | Library.T lib ->
         let* enabled_if = Expander.eval_blang expander lib.enabled_if in
         if enabled_if
         then
           if lib.optional
-          then Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+          then Lib.DB.available (Scope.libs scope) (Library.best_name lib)
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -394,7 +397,7 @@ end = struct
       fun fb ~kind ->
         let src = File_binding.Expanded.src fb in
         let dst = File_binding.Expanded.dst fb in
-        Install_entry_with_site.make_with_site ?dst ~kind i.section section src
+        Install_entry_with_site.make_with_site ?dst ~kind (snd i.section) section src
     in
     let+ files =
       let* files_expanded =
@@ -446,19 +449,18 @@ end = struct
       let+ stanza = keep_if expander stanza ~scope in
       let open Option.O in
       let* stanza = stanza in
-      let+ package = Dune_file.stanza_package stanza in
+      let+ package = Stanzas.stanza_package stanza in
       stanza, package
     in
     match stanza_and_package with
     | None -> Memo.return None
     | Some (stanza, package) ->
       let new_entries =
-        let open Dune_file in
         match Stanza.repr stanza with
         | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i
         | Library.T lib ->
-          let sub_dir = Dune_file.Library.sub_dir lib in
+          let sub_dir = Library.sub_dir lib in
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
@@ -484,8 +486,8 @@ end = struct
 
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
-    let* stanzas = Only_packages.filtered_stanzas (Context.name ctx) in
-    let* packages = Only_packages.get () in
+    let* stanzas = Dune_load.dune_files (Context.name ctx) in
+    let* packages = Dune_load.packages () in
     let+ init =
       Package.Name.Map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
         let opam_file = Package_paths.opam_file ctx pkg in
@@ -534,8 +536,10 @@ end = struct
             else acc))
     and+ l =
       let* package_db = Package_db.create (Context.name ctx) in
-      Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-        let dir = Path.Build.append_source (Context.build_dir ctx) dune_file.dir in
+      Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
+        let dir =
+          Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
+        in
         let named_entries =
           let* expander = Super_context.expander sctx ~dir
           and* scope = Scope.DB.find_by_dir dir in
@@ -615,7 +619,7 @@ end = struct
             ; loc
             ; project = _
             } ->
-          let old_public_name = Dune_file.Public_lib.name old_public_name in
+          let old_public_name = Public_lib.name old_public_name in
           Memo.return
             (Some
                ( old_public_name
@@ -702,32 +706,34 @@ end = struct
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
+    let* lib_entries =
+      Scope.DB.lib_entries_of_package (Context.name ctx) (Package.name pkg)
+    in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
-      let meta_template = Package_paths.meta_template ctx pkg in
       Action_builder.write_file_dyn
         dune_package_file
         (let open Action_builder.O in
          let+ pkg =
-           Action_builder.if_file_exists
-             (Path.build meta_template)
-             ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-             ~else_:
-               (Action_builder.of_memo
-                  (Memo.bind (Memo.return ()) ~f:(fun () ->
-                     make_dune_package sctx lib_entries pkg)))
+           Package_paths.meta_template ctx pkg
+           |> Path.build
+           |> Action_builder.if_file_exists
+                ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
+                ~else_:
+                  (Action_builder.of_memo
+                     (Memo.bind (Memo.return ()) ~f:(fun () ->
+                        make_dune_package sctx lib_entries pkg)))
          in
          Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in
-    let deprecated_dune_packages =
-      List.filter_map lib_entries ~f:(function
-        | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
-          -> Some (Lib_name.package_name (Dune_file.Public_lib.name old_public_name), t)
-        | _ -> None)
-      |> Package.Name.Map.of_list_multi
-    in
     let* () =
+      let deprecated_dune_packages =
+        List.filter_map lib_entries ~f:(function
+          | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
+            -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
+          | _ -> None)
+        |> Package.Name.Map.of_list_multi
+      in
       Package.deprecated_package_names pkg
       |> Package.Name.Map.foldi ~init:(Memo.return ()) ~f:(fun name loc acc ->
         acc
@@ -743,13 +749,13 @@ end = struct
                 ~f:
                   (fun
                     acc
-                    { Dune_file.Library_redirect.old_name = old_public_name, _
+                    { Library_redirect.old_name = old_public_name, _
                     ; new_public_name = _, new_public_name
                     ; loc
                     ; _
                     }
                   ->
-                  let old_public_name = Dune_file.Public_lib.name old_public_name in
+                  let old_public_name = Public_lib.name old_public_name in
                   Lib_name.Map.add_exn
                     acc
                     old_public_name
@@ -784,11 +790,11 @@ end = struct
     let ctx = Super_context.context sctx in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      let+ entries = Scope.DB.lib_entries_of_package ctx pkg_name in
+      let+ entries = Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name in
       List.partition_map entries ~f:(function
         | Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
-          (match Dune_file.Public_lib.sub_dir public with
+          (match Public_lib.sub_dir public with
            | None -> Left (deprecated_package, entry)
            | Some _ -> Right entry)
         | entry -> Right entry)
@@ -967,7 +973,7 @@ let install_entries sctx package =
 
 let packages =
   let f sctx =
-    let* packages = Only_packages.get () in
+    let* packages = Dune_load.packages () in
     let packages = Package.Name.Map.values packages in
     let+ l =
       Memo.parallel_map packages ~f:(fun (pkg : Package.t) ->
@@ -1195,7 +1201,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
   in
   let* () =
-    let* all_packages = Only_packages.get () in
+    let* all_packages = Dune_load.packages () in
     let context = Context.build_context ctx in
     let target_alias = Dep_conf_eval.package_install ~context ~pkg:package in
     let open Action_builder.O in
@@ -1308,7 +1314,7 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      Only_packages.get ()
+      Dune_load.packages ()
       >>| Package.Name.Map.values
       >>= Memo.parallel_map ~f:(scheme sctx)
       >>| Scheme.all
@@ -1344,8 +1350,8 @@ let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
-  let* packages = Only_packages.packages_of_project project in
-  Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name package ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _name package ->
     let* () = gen_package_install_file_rules sctx package in
     gen_install_alias sctx package)
 ;;

@@ -4,6 +4,13 @@
 Coq
 ***
 
+.. TODO(diataxis)
+
+   This looks like there are several components in there:
+
+   - reference info for stanzas and variables
+   - tutorials (the examples part)
+
 .. contents:: Table of Contents
     :depth: 3
 
@@ -417,7 +424,7 @@ Let us start with a simple project. First, make sure we have a
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.14)
   (using coq 0.8)
 
 Next we need a :ref:`dune<dune-files>` file with a :ref:`coq-theory` stanza:
@@ -647,7 +654,7 @@ otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.14)
   (using coq 0.8)
 
   (package

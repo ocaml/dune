@@ -10,6 +10,7 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (emit_stdlib false)
   >  (target output)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps assets/file.txt (glob_files_rec ./globbed/*.txt)))
   > EOF
@@ -23,7 +24,7 @@ Test simple interactions between melange.emit and copy_files
   $ echo b.txt > globbed/b.txt
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content
@@ -66,12 +67,14 @@ The runtime_dep index.txt was copied to the build folder
   assets
   globbed
   main.js
+  node_modules
 
   $ dune build output/assets/file.txt --display=short
   $ ls _build/default/output
   assets
   globbed
   main.js
+  node_modules
   $ ls _build/default/output/globbed
   a.txt
   b.txt

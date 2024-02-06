@@ -7,7 +7,7 @@ formatting
 
    Control automatic formatting. Several forms are accepted:
 
-   - To disable automatic formatting completely (equivalent to the behaviour in
+   - To disable automatic formatting completely (equivalent to the behavior in
      language 1.x):
 
      .. code:: dune
@@ -21,7 +21,7 @@ formatting
         (formatting
          (enabled_for <languages>))
 
-     The list of `<languages>` can be either ``dune`` (formatting of dune
+     The list of `<languages>` can be either ``dune`` (formatting of ``dune``
      files) or a :term:`dialect` name.
 
    .. seealso:: :doc:`/howto/formatting`

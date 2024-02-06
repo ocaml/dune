@@ -152,14 +152,21 @@ let run_capture_zero_separated_lines { dir } args =
   if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
-let mem { dir } ~rev =
+let cat_file { dir } command =
   let git = Lazy.force Vcs.git in
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  [ "cat-file"; "-t"; rev ]
+  "cat-file" :: command
   |> Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git
   >>| Result.is_ok
+;;
+
+let mem repo ~rev = cat_file repo [ "-t"; rev ]
+
+let mem_path repo rev path =
+  let (Rev.Rev rev) = rev in
+  cat_file repo [ "-e"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
 ;;
 
 let ref_type =
@@ -391,46 +398,6 @@ module Entry = struct
   ;;
 end
 
-module Submodule = struct
-  (* a submodule in [.gitmodules] can also have a [branch] but given we only
-     need to resolve the commit object, we don't have to care about the
-     tracking branch *)
-  type t =
-    { path : Path.Local.t
-    ; source : string
-    }
-
-  let parse lines =
-    match Git_config_parser.parse lines with
-    | Error err ->
-      (* CR-rgrinberg: the loc needs to be pulled from the git URL *)
-      User_error.raise [ Pp.textf "Failed to parse submodules: %s" err ]
-    | Ok cfg ->
-      List.filter_map cfg ~f:(fun { name; arg = _; bindings } ->
-        match name with
-        | "submodule" ->
-          let find_key key (k, v) =
-            match String.equal k key with
-            | true -> Some v
-            | false -> None
-          in
-          let path = List.find_map bindings ~f:(find_key "path") in
-          let url = List.find_map bindings ~f:(find_key "url") in
-          (match path, url with
-           | Some path, Some source ->
-             (* CR-rginberg: we need to handle submodule paths that try to escape
-                the repo *)
-             let path = Path.Local.of_string path in
-             Some { path; source }
-           | _, _ ->
-             (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
-             User_error.raise
-               ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
-               [ Pp.text "Submodule definition missing path or url" ])
-        | _otherwise -> None)
-  ;;
-end
-
 module At_rev = struct
   type repo = t
 
@@ -440,6 +407,98 @@ module At_rev = struct
     ; source : string
     ; files : File.Set.t
     }
+
+  module Config = struct
+    type bindings = string * string
+
+    type section =
+      { name : string
+      ; arg : string option
+      ; bindings : bindings list
+      }
+
+    type t = section list
+
+    module KV = struct
+      module T = struct
+        type t = string * string option
+
+        let compare = Tuple.T2.compare String.compare (Option.compare String.compare)
+        let to_dyn = Tuple.T2.to_dyn Dyn.string (Dyn.option Dyn.string)
+      end
+
+      include Comparable.Make (T)
+    end
+
+    let parse line =
+      let open Option.O in
+      let* key, value = String.lsplit2 ~on:'=' line in
+      let+ section, key = String.lsplit2 ~on:'.' key in
+      let arg, binding =
+        match String.rsplit2 ~on:'.' key with
+        | None -> None, key
+        | Some (arg, binding) -> Some arg, binding
+      in
+      section, arg, binding, value
+    ;;
+
+    let config repo revision path : t Fiber.t =
+      let (Rev.Rev rev) = revision in
+      [ "config"; "--list"; "--blob"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
+      |> run_capture_lines repo ~display:Quiet
+      >>| List.fold_left ~init:KV.Map.empty ~f:(fun acc line ->
+        match parse line with
+        | None ->
+          Code_error.raise "Couldn't parse git config line" [ "line", Dyn.string line ]
+        | Some (section, arg, binding, value) ->
+          KV.Map.update acc (section, arg) ~f:(function
+            | None -> Some [ binding, value ]
+            | Some xs -> Some ((binding, value) :: xs)))
+      >>| KV.Map.foldi ~init:[] ~f:(fun (name, arg) bindings acc ->
+        let section = { name; arg; bindings } in
+        section :: acc)
+    ;;
+  end
+
+  module Submodule = struct
+    (* a submodule in [.gitmodules] can also have a [branch] but given we only
+       need to resolve the commit object, we don't have to care about the
+       tracking branch *)
+    type t =
+      { path : Path.Local.t
+      ; source : string
+      }
+
+    let parse repo revision =
+      let submodule_path = Path.Local.of_string ".gitmodules" in
+      let* has_submodules = mem_path repo revision submodule_path in
+      match has_submodules with
+      | false -> Fiber.return []
+      | true ->
+        let+ cfg = Config.config repo revision submodule_path in
+        List.filter_map cfg ~f:(function
+          | { Config.name = "submodule"; arg = _; bindings } ->
+            let find_key key (k, v) =
+              match String.equal k key with
+              | true -> Some v
+              | false -> None
+            in
+            let path = List.find_map bindings ~f:(find_key "path") in
+            let url = List.find_map bindings ~f:(find_key "url") in
+            (match path, url with
+             | Some path, Some source ->
+               (* CR-rginberg: we need to handle submodule paths that try to escape
+                  the repo *)
+               let path = Path.Local.of_string path in
+               Some { path; source }
+             | _, _ ->
+               (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
+               User_error.raise
+                 ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
+                 [ Pp.text "Submodule definition missing path or url" ])
+          | _otherwise -> None)
+    ;;
+  end
 
   let files_and_submodules repo (Rev.Rev rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
@@ -473,39 +532,34 @@ module At_rev = struct
 
   let rec of_rev repo ~add_remote ~revision ~source =
     let* files, submodules = files_and_submodules repo revision in
-    let* git_modules =
-      let git_modules_path = Path.Local.of_string ".gitmodules" in
-      show repo [ `Path (revision, git_modules_path) ]
-    in
     let+ files =
-      match git_modules with
-      | None -> Fiber.return files
-      | Some git_modules_content ->
-        let commit_paths = path_commit_map submodules in
-        Submodule.parse git_modules_content
-        (* It's not safe to do a parallel map because adding a remote
-           requires getting the lock (which we're now holding) *)
-        |> Fiber.sequential_map ~f:(fun { Submodule.path; source } ->
-          match Path.Local.Map.find commit_paths path with
-          | None ->
-            User_error.raise
-              ~hints:
-                [ Pp.text
-                    "Make sure the submodule is initialized and committed in the source \
-                     repository"
-                ]
-              [ Pp.textf
-                  "Submodule definition %s references non-existing path %s in repo"
-                  source
-                  (Path.Local.to_string path)
+      let commit_paths = path_commit_map submodules in
+      let* submodules = Submodule.parse repo revision in
+      (* It's not safe to do a parallel map because adding a remote
+         requires getting the lock (which we're now holding) *)
+      submodules
+      |> Fiber.sequential_map ~f:(fun { Submodule.path; source } ->
+        match Path.Local.Map.find commit_paths path with
+        | None ->
+          User_error.raise
+            ~hints:
+              [ Pp.text
+                  "Make sure the submodule is initialized and committed in the source \
+                   repository"
               ]
-          | Some revision ->
-            let* () = add_remote source in
-            let+ at_rev = of_rev repo ~add_remote ~revision ~source in
-            File.Set.map at_rev.files ~f:(fun file ->
-              let path = Path.Local.append path (File.path file) in
-              File.Redirect { path; to_ = file }))
-        >>| File.Set.union_all
+            [ Pp.textf
+                "Submodule definition %s references non-existing path %s in repo"
+                source
+                (Path.Local.to_string path)
+            ]
+        | Some revision ->
+          let* () = add_remote source in
+          let+ at_rev = of_rev repo ~add_remote ~revision ~source in
+          File.Set.map at_rev.files ~f:(fun file ->
+            let path = Path.Local.append path (File.path file) in
+            File.Redirect { path; to_ = file }))
+      >>| List.cons files
+      >>| File.Set.union_all
     in
     { repo; revision; source; files }
   ;;

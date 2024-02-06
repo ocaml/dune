@@ -134,6 +134,18 @@ module Error = struct
       ]
   ;;
 
+  let duplicated ~loc ~name ~dir_a ~dir_b =
+    User_error.make
+      ~loc
+      [ Pp.textf
+          "A library with name %S is defined in two folders: %s and %s. Either change \
+           one of the names, or enable them conditionally using the 'enabled_if' field."
+          (Lib_name.to_string name)
+          (Path.to_string_maybe_quoted dir_a)
+          (Path.to_string_maybe_quoted dir_b)
+      ]
+  ;;
+
   (* diml: it is not very clear what a "default implementation cycle" is *)
   let default_implementation_cycle cycle =
     make
@@ -1123,12 +1135,14 @@ end = struct
     res
   ;;
 
-  let to_status ~db ~name =
-    function
+  let to_status ~db ~name = function
     | [] -> find_in_parent ~db ~name
     | info :: [] -> instantiate db name info ~hidden:None
-    | _ :: _ :: _ ->
-      (* todo: handle by adding an error to Error module above *) failwith "ERROR"
+    | a :: b :: _ ->
+      let loc = Lib_info.loc b in
+      let dir_a = Lib_info.src_dir a in
+      let dir_b = Lib_info.src_dir b in
+      Memo.return (Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b))
   ;;
 
   let resolve_name db name =

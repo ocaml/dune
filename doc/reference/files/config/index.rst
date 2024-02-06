@@ -1,7 +1,7 @@
 config
 ======
 
-This file is used to set the global configuration of Dune which is applicable
+This file is used to set Dune's global configuration, which is applicable
 across projects and workspaces.
 
 The configuration file is normally ``~/.config/dune/config`` on Unix systems

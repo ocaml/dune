@@ -25,7 +25,7 @@ ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange=1.0.0"
+"melange=3.0.0-414"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \

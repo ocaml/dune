@@ -283,7 +283,13 @@ let refresh_and_remove_write_permissions ~allow_dirs path =
       (match stats.st_kind with
        | S_LNK ->
          (match Path.Untracked.stat_exn path with
-          | stats -> refresh stats ~allow_dirs:false path
+          | stats ->
+            let allow_dirs =
+              match stats.st_kind with
+              | S_DIR -> true
+              | _ -> false
+            in
+            refresh stats ~allow_dirs path
           | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
           | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
        | S_REG ->

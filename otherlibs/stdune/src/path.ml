@@ -57,25 +57,9 @@ end = struct
   let to_string t = t
   let hash = String.hash
   let compare = String.compare
+  let equal = String.equal
   let root = "."
   let is_root t = Ordering.is_eq (compare t root)
-
-  let to_list =
-    let rec loop t acc i j =
-      if i = 0
-      then String.take t j :: acc
-      else (
-        match t.[i - 1] with
-        | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
-        | _ -> loop t acc (i - 1) j)
-    in
-    fun t ->
-      if is_root t
-      then []
-      else (
-        let len = String.length t in
-        loop t [] len len)
-  ;;
 
   let parent t =
     if is_root t
@@ -226,18 +210,136 @@ end = struct
     t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
   ;;
 
-  let reach t ~from =
-    let rec loop t from =
-      match t, from with
-      | a :: t, b :: from when a = b -> loop t from
-      | _ ->
-        (match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
-         | [] -> "."
-         | l -> String.concat l ~sep:"/")
-    in
-    loop (to_list t) (to_list from)
-  ;;
+  module Reach = struct
+    (* count the number of times we need to do ".." *)
+    let parent_remaining_components pos from =
+      let len = String.length from in
+      if pos >= len
+      then 0
+      else (
+        let count = ref 1 in
+        let pos = if Char.equal from.[pos] '/' then pos + 1 else pos in
+        for i = pos to len - 1 do
+          if Char.equal from.[i] '/' then incr count
+        done;
+        !count)
+    ;;
 
+    (* generate a sequence of ".." separated by "/" [times] in [buf] starting at [i] *)
+    let gen_blit_go_up buf i times =
+      if times > 0
+      then (
+        Bytes.blit_string ~src:".." ~src_pos:0 ~dst:buf ~dst_pos:!i ~len:2;
+        i := !i + 2;
+        for _ = 1 to times - 1 do
+          Bytes.blit_string ~src:"/.." ~src_pos:0 ~dst:buf ~dst_pos:!i ~len:3;
+          i := !i + 3
+        done)
+    ;;
+
+    (* because the ".." above are so common, we precompute the first 20 cases *)
+    let blit_go_up_table =
+      Array.init 20 ~f:(fun i ->
+        List.init (i + 1) ~f:(fun _ -> "..") |> String.concat ~sep:"/")
+    ;;
+
+    let blit_go_up buf i times =
+      if times > 0
+      then
+        if times > Array.length blit_go_up_table
+        then (* doing the work in a single blit is fastest *)
+          gen_blit_go_up buf i times
+        else (
+          let src = blit_go_up_table.(times - 1) in
+          let len = String.length src in
+          Bytes.blit_string ~src ~src_pos:0 ~dst:buf ~dst_pos:!i ~len;
+          i := !i + len)
+    ;;
+
+    (* the size of the "../.." string we need to generate *)
+    let go_up_components_buffer_size times = (times * 2) + max 0 (times - 1)
+
+    let reach_root ~from i =
+      let go_up_this_many_times = parent_remaining_components i from in
+      if go_up_this_many_times = 0
+      then "."
+      else if go_up_this_many_times <= Array.length blit_go_up_table
+      then blit_go_up_table.(go_up_this_many_times - 1)
+      else (
+        let size = go_up_components_buffer_size go_up_this_many_times in
+        let buf = Bytes.create size in
+        let i = ref 0 in
+        blit_go_up buf i go_up_this_many_times;
+        assert (Int.equal !i size);
+        Bytes.unsafe_to_string buf)
+    ;;
+
+    (* if we have "a/b" and "a", we need to skip over the "a", even if the last
+       component position is [0] *)
+    let extend_to_comp smaller bigger pos comp =
+      if pos = String.length smaller && bigger.[pos] = '/' then pos else comp
+    ;;
+
+    let make_from_common_prefix t from i =
+      let t_len = String.length t in
+      let i = if i < t_len && t.[i] = '/' then i + 1 else i in
+      let t_len = t_len - i in
+      let go_up_this_many_times = parent_remaining_components i from in
+      if t_len = 0
+      then reach_root ~from i
+      else (
+        let size = go_up_components_buffer_size go_up_this_many_times in
+        let add_extra_slash = size > 0 && t_len > 0 in
+        (* the final length of the buffer we need to compute *)
+        let size = t_len + if add_extra_slash then size + 1 else size in
+        (* our position inside the buffer *)
+        let j = ref 0 in
+        let buf = Bytes.create size in
+        blit_go_up buf j go_up_this_many_times;
+        if add_extra_slash
+        then (
+          Bytes.set buf !j '/';
+          incr j);
+        Bytes.blit_string ~src:t ~src_pos:i ~dst:buf ~dst_pos:!j ~len:t_len;
+        j := !j + t_len;
+        assert (Int.equal !j size);
+        Bytes.unsafe_to_string buf)
+    ;;
+
+    let rec common_prefix t from i comp =
+      if Int.equal i (String.length t)
+      then (
+        (* the case where we exhausted [t] first. *)
+        let i = extend_to_comp t from i comp in
+        make_from_common_prefix t from i)
+      else if Int.equal i (String.length from)
+      then (
+        (* we exhausted [from] first *)
+        let i = extend_to_comp from t i comp in
+        make_from_common_prefix t from i)
+      else if Char.equal t.[i] from.[i]
+      then (
+        (* eat another common character. *)
+        let comp =
+          (* if we find '/', then we advance the last common component position *)
+          if t.[i] = '/' then i else comp
+        in
+        common_prefix t from (i + 1) comp)
+      else make_from_common_prefix t from comp
+    ;;
+
+    let reach t ~from =
+      if is_root from
+      then t
+      else if is_root t
+      then reach_root ~from 0
+      else if equal t from
+      then "."
+      else common_prefix t from 0 0
+    ;;
+  end
+
+  let reach = Reach.reach
   let extend_basename t ~suffix = t ^ suffix
   let extension t = Filename.extension t
 

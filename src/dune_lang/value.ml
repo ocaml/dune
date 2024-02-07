@@ -9,6 +9,11 @@ type t =
 let true_ = String "true"
 let false_ = String "false"
 
+let of_bool = function
+  | true -> true_
+  | false -> false_
+;;
+
 let compare x y =
   match x, y with
   | String x, String y -> String.compare x y

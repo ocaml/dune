@@ -19,6 +19,7 @@ val to_path_in_build_or_external : ?error_loc:Loc.t -> t -> dir:Path.Build.t -> 
 
 val true_ : t
 val false_ : t
+val of_bool : bool -> t
 
 module L : sig
   val strings : string list -> t list

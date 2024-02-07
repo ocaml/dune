@@ -55,7 +55,7 @@ let add_packages_env context ~base stanzas packages =
               Package_db.find_package package_db pkg_name
               >>| function
               | None ->
-                (* Really ugly to supress errors like this. Instead,
+                (* Really ugly to suppress errors like this. Instead,
                    executables that rely on sites should declare that
                    in their dependencies *)
                 acc

@@ -233,7 +233,7 @@ end = struct
          (Some "Init")
   ;;
 
-  (* [Boostrap.t] determines, for a concrete Coq module, how the Coq
+  (* [Bootstrap.t] determines, for a concrete Coq module, how the Coq
      "standard library" is being handled. See the main modes above. *)
   let make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
     let* scope = Scope.DB.find_by_dir dir in
@@ -318,7 +318,7 @@ let directories_of_lib ~sctx lib =
        EJGA: We need to understand how this interacts with globally
        installed stuff, that's more tricky than it looks actually!
 
-       This fuction is used in order to determine the -nI flags that
+       This function is used in order to determine the -nI flags that
        Coq native compiler will pass to OCaml so it can find the .cmxs
        files. For things in user-contrib we don't need to pass these
        flags but only because Coq has a very large hack adding this
@@ -856,7 +856,7 @@ let extraction_context
       ~f:(Coq_lib.DB.resolve coq_lib_db ~coq_lang_version)
   in
   (* Extraction requires a boot library so we do this unconditionally
-     for now. We must do this because it can happne that
+     for now. We must do this because it can happen that
      s.buildable.theories is empty *)
   let boot =
     let* coq_lib_db = coq_lib_db in

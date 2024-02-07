@@ -1608,7 +1608,7 @@ let index_info_of_external_fallback sctx location fallback =
    2. External findlib directories
    3. Private libraries
 
-   We actually use the same function for private libaries as for
+   We actually use the same function for private libraries as for
    dune packages.
 *)
 let standard_index_contents b entry_modules =

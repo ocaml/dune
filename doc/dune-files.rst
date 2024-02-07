@@ -1095,7 +1095,7 @@ Specifies how Dune handles the terminal when a rebuild is triggered in watch mod
 
 where ``<setting>`` is one of:
 
-- ``preserve`` does not clear the terminal screen beteween rebuilds.
+- ``preserve`` does not clear the terminal screen between rebuilds.
 
 - ``clear-on-rebuild`` clears the terminal screen between rebuilds.
 

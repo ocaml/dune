@@ -31,7 +31,7 @@ let re =
 ;;
 
 module Patch = struct
-  (* CR-someday alizter: more parsed infromation about the patch should go here.
+  (* CR-someday alizter: more parsed information about the patch should go here.
      Eventually we wish to replace the patch command inside the patch action with a pure
      OCaml implementation. *)
   type t =

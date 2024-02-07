@@ -735,7 +735,7 @@ a "clean build". Afterwards, the build will be run 5 more times and are termed
 the "Null builds".
 
 In each run of the CI, there will be an ``ocaml-benchmarks`` status in the
-sumamry. Clicking ``Details`` will show a bench report.
+summary. Clicking ``Details`` will show a bench report.
 
 The report contains the following information:
 

@@ -188,7 +188,15 @@ type failure =
 
 let label = "dune-fetch"
 
-let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
+let unpack ~target ~archive =
+  OpamSystem.extract_job ~dir:(Path.to_string target) (Path.to_string archive)
+  |> Fiber_job.run
+  >>| function
+  | None -> Ok ()
+  | Some exn -> Error exn
+;;
+
+let with_download url checksum ~f =
   let url = OpamUrl.to_string url in
   let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:(Filename.basename url) in
   let output = Path.relative temp_dir "download" in
@@ -211,25 +219,31 @@ let fetch_curl ~unpack ~checksum ~target (url : OpamUrl.t) =
     in
     (match checksum with
      | `Mismatch m -> Fiber.return @@ Error (Checksum_mismatch m)
-     | `New _ | `Match ->
-       (match unpack with
-        | false ->
-          Io.copy_file ~src:output ~dst:target ();
-          Fiber.return @@ Ok ()
-        | true ->
-          Fiber_job.run
-            (OpamSystem.extract_job ~dir:(Path.to_string target) (Path.to_string output))
-          >>| (function
-           | None -> Ok ()
-           | Some exn ->
-             let exn =
-               User_message.make
-                 [ Pp.textf "failed to unpackage archive downloaded from %s" url
-                 ; Pp.text "reason:"
-                 ; Exn.pp exn
-                 ]
-             in
-             Error (Unavailable (Some exn)))))
+     | `New _ | `Match -> f output)
+;;
+
+let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
+  with_download url checksum ~f:(fun output ->
+    match unpack_flag with
+    | false ->
+      Path.mkdir_p (Path.parent_exn target);
+      Path.rename output target;
+      Fiber.return @@ Ok ()
+    | true ->
+      unpack ~target ~archive:output
+      >>| (function
+       | Ok () -> Ok ()
+       | Error exn ->
+         let exn =
+           User_message.make
+             [ Pp.textf
+                 "failed to unpackage archive downloaded from %s"
+                 (OpamUrl.to_string url)
+             ; Pp.text "reason:"
+             ; Exn.pp exn
+             ]
+         in
+         Error (Unavailable (Some exn))))
 ;;
 
 let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =

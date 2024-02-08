@@ -26,7 +26,7 @@ val describe : t -> string option Memo.t
 val commit_id : t -> string option Memo.t
 
 (** List of files committed in the repo *)
-val files : t -> Path.t list Memo.t
+val files : t -> Path.Source.t list Memo.t
 
 (** VCS commands *)
 val git : Path.t Lazy.t

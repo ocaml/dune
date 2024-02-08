@@ -11,7 +11,7 @@ These documents specify the various features and languages present in Dune.
    boolean-language
    predicate-language
    library-dependencies
-   actions
+   actions/index
    foreign
    cli
    preprocessing-spec

@@ -1,5 +1,5 @@
-User Actions
-============
+Actions
+=======
 
 .. highlight:: dune
 
@@ -11,7 +11,7 @@ in ``src/foo/dune`` will be run from ``$build/<context>/src/foo``.
 
 The argument of ``(action ...)`` fields is a small DSL that's interpreted by
 Dune directly and doesn't require an external shell. All atoms in the DSL
-support :doc:`../concepts/variables`. Moreover, you don't need to specify
+support :doc:`/concepts/variables`. Moreover, you don't need to specify
 dependencies explicitly for the special ``%{<kind>:...}`` forms; these are
 recognized and automatically handled by Dune.
 
@@ -104,8 +104,8 @@ The following constructions are available:
 
    Specifies the list of expected exit codes for the programs executed in
    ``<DSL>``. ``<pred>`` is a predicate on integer values, and it's specified
-   using the :doc:`predicate-language`. ``<DSL>`` can only contain nested
-   occurrences of ``run``, ``bash``, ``system``, ``chdir``, ``setenv``,
+   using the :doc:`/reference/predicate-language`. ``<DSL>`` can only contain
+   nested occurrences of ``run``, ``bash``, ``system``, ``chdir``, ``setenv``,
    ``ignore-<outputs>``, ``with-stdin-from``, and ``with-<outputs>-to``.
 
    Example::
@@ -225,7 +225,7 @@ The following constructions are available:
    :param: <file1> <file2>
 
    ``(diff <file1> <file2>)`` is similar to ``(run diff <file1> <file2>)`` but
-   is better and allows promotion. See :doc:`../concepts/promotion` for more
+   is better and allows promotion. See :doc:`/concepts/promotion` for more
    details.
 
    Example::
@@ -249,7 +249,7 @@ The following constructions are available:
    :param: <file1> <file2>
 
    ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1> <file2>)`` but
-   allows promotion. See :doc:`../concepts/promotion` for more details.
+   allows promotion. See :doc:`/concepts/promotion` for more details.
 
    Example::
 

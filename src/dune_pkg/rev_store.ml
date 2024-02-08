@@ -568,11 +568,11 @@ module At_rev = struct
     show repo [ `Path (revision, path) ]
   ;;
 
-  let directory_entries { repo = _; source = _; files; revision = _ } path =
+  let directory_entries_recursive t path =
     (* TODO: there are much better ways of implementing this:
        1. using libgit or ocamlgit
        2. possibly using [$ git archive] *)
-    File.Set.to_list files
+    File.Set.to_list t.files
     |> List.filter_map ~f:(fun (file : File.t) ->
       let file_path = File.path file in
       (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
@@ -582,6 +582,22 @@ module At_rev = struct
       then Some file
       else None)
     |> File.Set.of_list
+  ;;
+
+  let directory_entries_immediate t path =
+    (* TODO: there are much better ways of implementing this:
+       1. using libgit or ocamlgit
+       2. possibly using [$ git archive] *)
+    File.Set.filter t.files ~f:(fun (file : File.t) ->
+      match Path.Local.parent (File.path file) with
+      | None -> false
+      | Some p -> Path.Local.equal p path)
+  ;;
+
+  let directory_entries t ~recursive path =
+    (if recursive then directory_entries_recursive else directory_entries_immediate)
+      t
+      path
   ;;
 
   let repo_equal = equal

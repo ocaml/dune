@@ -8,7 +8,8 @@
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
    ../utils/refmt.exe
-   ../utils/webserver_oneshot.exe)))
+   ../utils/webserver_oneshot.exe
+   ../utils/sherlodoc.exe)))
 
 (cram
  (applies_to pp-cwd)

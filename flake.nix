@@ -8,9 +8,8 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      # We use melange 1.0 because later versions do not work on OCaml < 5.0.
-      # melange 1.0 has a non-reproducible test causing issues. This branch removes that test.
-      url = "github:alizter/melange/melange-1.0-without-failing-test";
+      # When moving the compiler tests to OCaml 5.1, change to v3-51
+      url = "github:melange-re/melange/v3-414";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -170,7 +169,6 @@
           slim-melange = makeDuneDevShell {
             extraBuildInputs = [
               pkgs.ocamlPackages.melange
-              pkgs.ocamlPackages.rescript-syntax
             ];
             meta.description = ''
               Provides a minimal shell environment built purely from nixpkgs
@@ -219,7 +217,6 @@
               ]) ++ (with pkgs.ocamlPackages; [
                 ocamllsp.outputs.packages.${system}.default
                 pkgs.ocamlPackages.melange
-                rescript-syntax
                 js_of_ocaml-compiler
                 js_of_ocaml
                 utop

@@ -49,12 +49,12 @@ let%expect_test "with-outputs-to" =
     ( Action.Outputs.Outputs
     , "foo"
     , Action.File_perm.Normal
-    , Progn [ Bash "first sometinhg"; Bash "then"; Bash "echo Hello world" ] )
+    , Progn [ Bash "first something"; Bash "then"; Bash "echo Hello world" ] )
   |> print;
   [%expect
     {|
     {
-      bash -e -u -o pipefail -c 'first sometinhg';
+      bash -e -u -o pipefail -c 'first something';
       bash -e -u -o pipefail -c then;
       bash -e -u -o pipefail -c 'echo Hello world';
     } &> foo |}]

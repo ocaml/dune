@@ -2,22 +2,14 @@ open Import
 open Memo.O
 
 (* This module implements the first stage of evaluating dune files. In other
-   words, only what is to traverse the source tree. The implementation is
-   somewhat messy right now, but it can be described as the following pipeline:
+   words, only what is to traverse the source tree. It can be described as the
+   following pipeline:
 
    1. Determine whether the dune file is OCaml or dune syntax.
 
    2. If it's OCaml syntax, there's nothing we can do because the source tree
    cannot evaluate the script without a context. If it's dune syntax, decode it
-   into the following AST:
-
-   {[ type t =
-     | Data_only_dirs of Predicate_lang.t
-     | Vendored_dirs of Predicate_lang.t
-     | Normal_dirs of Predicate_lang.t
-     | Subdir of Path.Local.t * t list
-     | Include of Path.Local.t
-   }]
+   into [Ast.t list]
 
    3. Resolve and expand all the includes. This eliminates the [Include]
    constructor.
@@ -30,6 +22,9 @@ open Memo.O
 
    After the last step, we're left with [Dir_map.t]. Which contains all the
    expanded stanzas for the current dune file and all subdirectories.
+
+   The implementation is quite similar to description above, except that 4-5
+   are somewhat mixed together.
 *)
 
 let fname = "dune"
@@ -136,68 +131,48 @@ module Dir_map = struct
   let merge_all = List.fold_left ~f:merge ~init:empty
 end
 
-let descendant_path =
-  Dune_lang.Decoder.plain_string (fun ~loc fn ->
-    if Filename.is_relative fn
-    then Path.Local.parse_string_exn ~loc fn |> Path.Local.explode
-    else (
-      let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
-      let hints = [ Pp.textf "sub-directory path must be relative" ] in
-      User_error.raise ~loc ~hints msg))
-;;
+module Ast = struct
+  type t =
+    | Ignored_sub_dirs of Loc.t * Predicate_lang.Glob.t
+    | Data_only_dirs of Loc.t * Predicate_lang.Glob.t
+    | Vendored_dirs of Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t
+    | Dirs of Loc.t * Predicate_lang.Glob.t
+    | Subdir of Path.Local.t * t list
+    | Include of
+        { loc : Loc.t
+        ; file : string
+        }
+    | Leftovers of Dune_lang.Ast.t list
 
-let strict_subdir field_name =
-  let open Dune_lang.Decoder in
-  plain_string (fun ~loc dn ->
-    let msg = [ Pp.textf "invalid sub-directory name %S" dn ] in
-    if Filename.dirname dn <> Filename.current_dir_name
-    then (
-      let msg = [ Pp.textf "only immediate sub-directories may be specified." ] in
-      let hints =
-        [ Pp.textf
-            "to ignore %s, write \"(%s %s)\" in %s/dune"
-            dn
-            field_name
-            (Filename.basename dn)
-            (Filename.dirname dn)
-        ]
-      in
-      User_error.raise ~loc ~hints msg)
-    else if match dn with
-            | "" | "." ->
-              let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
-              User_error.raise ~loc ~hints msg
-            | ".." -> true
-            | _ -> false
-    then User_error.raise ~loc msg
-    else loc, dn)
-;;
+  open Dune_lang.Decoder
 
-let strict_subdir_glob field_name =
-  let open Dune_lang.Decoder in
-  let+ globs =
-    repeat
-      (let+ loc, l = strict_subdir field_name in
-       Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l))
-  in
-  Predicate_lang.or_ globs
-;;
+  let strict_subdir field_name =
+    let open Dune_lang.Decoder in
+    plain_string (fun ~loc dn ->
+      let msg = [ Pp.textf "invalid sub-directory name %S" dn ] in
+      if Filename.dirname dn <> Filename.current_dir_name
+      then (
+        let msg = [ Pp.textf "only immediate sub-directories may be specified." ] in
+        let hints =
+          [ Pp.textf
+              "to ignore %s, write \"(%s %s)\" in %s/dune"
+              dn
+              field_name
+              (Filename.basename dn)
+              (Filename.dirname dn)
+          ]
+        in
+        User_error.raise ~loc ~hints msg)
+      else if match dn with
+              | "" | "." ->
+                let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
+                User_error.raise ~loc ~hints msg
+              | ".." -> true
+              | _ -> false
+      then User_error.raise ~loc msg
+      else loc, dn)
+  ;;
 
-let decode =
-  (* CR-rgrinberg: introduce an explicit AST to make this less opaque *)
-  let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
-    let data_only =
-      match data_only, ignored_sub_dirs with
-      | None, [] -> None
-      | Some (loc, data_only), [] -> Some (loc, data_only)
-      | None, (loc, _) :: _ ->
-        let ignored_sub_dirs = List.map ~f:snd ignored_sub_dirs in
-        Some (loc, Predicate_lang.or_ ignored_sub_dirs)
-      | Some _data_only, _ :: _ -> assert false
-    in
-    { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
-  in
-  let open Dune_lang.Decoder in
   let ignored_sub_dirs =
     let ignored =
       let+ l = enter (repeat (strict_subdir "ignored_sub_dirs")) in
@@ -213,43 +188,227 @@ let decode =
             "ignored_subdirs is deprecated in 1.6. Use dirs to specify visible \
              directories or data_only_dirs for ignoring only dune files."
         ];
-    ignored
-  in
-  let dirs =
-    located (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.Glob.decode)
-  in
-  let data_only_dirs =
-    located
-      (Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> strict_subdir_glob "data_only_dirs")
-  in
+    Ignored_sub_dirs (loc, ignored)
+  ;;
+
+  let ignored_sub_dirs ~inside_subdir =
+    match inside_subdir with
+    | false -> ignored_sub_dirs
+    | true ->
+      let+ loc = loc in
+      User_error.raise
+        ~loc
+        [ Pp.textf "ignored_subdirs is not allowed under subdir. Use dirs instead" ]
+  ;;
+
+  let strict_subdir_glob field_name =
+    let open Dune_lang.Decoder in
+    let+ globs =
+      repeat
+        (let+ loc, l = strict_subdir field_name in
+         Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l))
+    in
+    Predicate_lang.or_ globs
+  ;;
+
   let vendored_dirs =
-    (* let decode = Predicate_lang.Glob.decode in *)
-    located
-      (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> strict_subdir_glob "vendored_dirs")
-  in
-  let rec subdir () =
+    let+ loc, vendored =
+      Dune_lang.Syntax.since Stanza.syntax (1, 11)
+      >>> strict_subdir_glob "vendored_dirs"
+      |> located
+    in
+    Vendored_dirs (loc, vendored)
+  ;;
+
+  let dirs =
+    let+ loc, dirs =
+      Dune_lang.Syntax.since Stanza.syntax (1, 6)
+      >>> Predicate_lang.Glob.decode
+      |> located
+    in
+    Dirs (loc, dirs)
+  ;;
+
+  let data_only_dirs =
+    let+ loc, glob =
+      located
+        (Dune_lang.Syntax.since Stanza.syntax (1, 6)
+         >>> strict_subdir_glob "data_only_dirs")
+    in
+    Data_only_dirs (loc, glob)
+  ;;
+
+  let descendant_path =
+    Dune_lang.Decoder.plain_string (fun ~loc fn ->
+      if Filename.is_relative fn
+      then Path.Local.parse_string_exn ~loc fn
+      else (
+        let msg = [ Pp.textf "invalid sub-directory path %S" fn ] in
+        let hints = [ Pp.textf "sub-directory path must be relative" ] in
+        User_error.raise ~loc ~hints msg))
+  ;;
+
+  let rec subdir ~inside_include =
     let* () = Dune_lang.Syntax.since Stanza.syntax (2, 5) in
+    let* loc = loc in
+    let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let required_version = 2, 7 in
+    if inside_include && dune_version < required_version
+    then
+      Dune_lang.Syntax.Error.since
+        loc
+        Stanza.syntax
+        required_version
+        ~what:"Using a `subdir' stanza within an `include'd file";
     let* subdir = descendant_path in
-    let+ node = fields (decode ~allow_ignored_subdirs:false) in
-    Dir_map.make_at_path subdir node
-  and decode ~allow_ignored_subdirs =
-    let+ dirs = field_o "dirs" dirs
-    and+ data_only = field_o "data_only_dirs" data_only_dirs
+    let+ stanzas = decode ~inside_subdir:true ~inside_include in
+    Subdir (subdir, stanzas)
+
+  and decode_include =
+    let+ loc = loc
+    and+ file = relative_file in
+    Include { loc; file }
+
+  and decode ~inside_subdir ~inside_include =
+    fields
+    @@
+    let+ subdirs = multi_field "subdir" (subdir ~inside_include)
+    and+ dirs = field_o "dirs" dirs
     and+ ignored_sub_dirs =
-      let parser =
-        if allow_ignored_subdirs
-        then ignored_sub_dirs
-        else
-          let+ loc = loc in
-          User_error.raise
-            ~loc
-            [ Pp.textf "ignored_subdirs is not allowed under subdir. Use dirs instead" ]
-      in
-      multi_field "ignored_subdirs" (located parser)
+      multi_field "ignored_subdirs" (ignored_sub_dirs ~inside_subdir)
     and+ vendored_dirs = field_o "vendored_dirs" vendored_dirs
-    and+ subdirs = multi_field "subdir" (subdir ())
+    and+ data_only_dirs = field_o "data_only_dirs" data_only_dirs
+    and+ include_stanza = multi_field "include" decode_include
     and+ rest = leftover_fields in
-    match data_only, dirs, ignored_sub_dirs with
+    let ast =
+      List.concat
+        [ Option.to_list dirs
+        ; Option.to_list vendored_dirs
+        ; subdirs
+        ; ignored_sub_dirs
+        ; include_stanza
+        ; Option.to_list data_only_dirs
+        ]
+    in
+    match rest with
+    | [] -> ast
+    | rest -> Leftovers rest :: ast
+  ;;
+
+  let statically_evaluated_stanzas =
+    (* This list must be kept in sync with [decode]
+       [include] is excluded b/c it's also a normal stanza *)
+    [ "data_only_dirs"; "vendored_dirs"; "ignored_sub_dirs"; "subdir"; "dirs" ]
+  ;;
+
+  let decode ~inside_subdir ~inside_include =
+    enter (decode ~inside_subdir ~inside_include)
+  ;;
+end
+
+let statically_evaluated_stanzas = Ast.statically_evaluated_stanzas
+
+type decoder = { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }
+
+let rec evaluate_includes
+  ~(decoder : decoder)
+  ~context
+  ~inside_subdir
+  ~inside_include
+  (prefix : string)
+  (stanzas : Ast.t list)
+  =
+  Memo.parallel_map stanzas ~f:(function
+    | Include { loc; file } ->
+      let inside_include = true in
+      let file = Filename.concat prefix file in
+      let* ast, context = Include_stanza.load_sexps ~context (loc, file) in
+      Ast.decode ~inside_subdir ~inside_include
+      |> decoder.decode ast
+      |> evaluate_includes ~decoder ~context prefix ~inside_subdir ~inside_include
+    | Subdir (subdir, stanzas) ->
+      (* CR-rgrinberg: there's no strict need to resolve the includes for sub
+         directories here. We could delay it until we actually need the stanzas
+         for the sub directories. *)
+      let prefix = Filename.concat prefix (Path.Local.to_string subdir) in
+      let+ stanzas =
+        evaluate_includes
+          ~decoder
+          ~context
+          ~inside_subdir:true
+          ~inside_include
+          prefix
+          stanzas
+      in
+      [ Ast.Subdir (subdir, stanzas) ]
+    | stanza -> Memo.return [ stanza ])
+  >>| List.concat
+;;
+
+module Group = struct
+  (* Process the ast into a less raw form that enforces various cross-stanza
+     invariants. For example, some stanzas cannot appear together. Other
+     stanzas may not appear more than once *)
+
+  type t =
+    { ignored_sub_dirs : (Loc.t * Predicate_lang.Glob.t) list
+    ; data_only_dirs : (Loc.t * Predicate_lang.Glob.t) option
+    ; vendored_dirs : (Loc.t * Predicate_lang.Glob.Element.t Predicate_lang.t) option
+    ; dirs : (Loc.t * Predicate_lang.Glob.t) option
+    ; leftovers : Dune_lang.Ast.t list
+    ; subdirs : (Path.Local.t * Ast.t list) list
+    }
+
+  let empty =
+    { ignored_sub_dirs = []
+    ; data_only_dirs = None
+    ; vendored_dirs = None
+    ; dirs = None
+    ; subdirs = []
+    ; leftovers = []
+    }
+  ;;
+
+  let no_dupes name loc acc new_ =
+    match acc with
+    | None -> loc, new_
+    | Some _ ->
+      User_error.raise ~loc [ Pp.textf "may not set the %S stanza more than once" name ]
+  ;;
+
+  let subdir_status { ignored_sub_dirs; data_only_dirs; vendored_dirs; dirs; _ } =
+    let data_only =
+      match data_only_dirs, ignored_sub_dirs with
+      | None, [] -> None
+      | Some (loc, data_only_dirs), [] -> Some (loc, data_only_dirs)
+      | None, (loc, _) :: _ ->
+        let ignored_sub_dirs = List.map ~f:snd ignored_sub_dirs in
+        Some (loc, Predicate_lang.or_ ignored_sub_dirs)
+      | Some _data_only, _ :: _ -> assert false
+    in
+    { Source_dir_status.Map.normal = dirs; data_only; vendored = vendored_dirs }
+  ;;
+
+  let combine t (ast : Ast.t) =
+    match ast with
+    | Ignored_sub_dirs (loc, glob) ->
+      { t with ignored_sub_dirs = (loc, glob) :: t.ignored_sub_dirs }
+    | Data_only_dirs (loc, glob) ->
+      { t with
+        data_only_dirs = Some (no_dupes "data_only_dirs" loc t.data_only_dirs glob)
+      }
+    | Vendored_dirs (loc, glob) ->
+      { t with vendored_dirs = Some (no_dupes "vendored_dirs" loc t.vendored_dirs glob) }
+    | Dirs (loc, glob) -> { t with dirs = Some (no_dupes "dirs" loc t.dirs glob) }
+    | Subdir (path, stanzas) -> { t with subdirs = (path, stanzas) :: t.subdirs }
+    | Leftovers stanzas -> { t with leftovers = List.rev_append stanzas t.leftovers }
+    | Include _ -> assert false
+  ;;
+
+  let of_ast (ast : Ast.t list) =
+    let t = List.fold_left ast ~init:empty ~f:combine in
+    let t = { t with leftovers = List.rev t.leftovers } in
+    match t.data_only_dirs, t.dirs, t.ignored_sub_dirs with
     | _, Some (loc, _), _ :: _ ->
       User_error.raise
         ~loc
@@ -260,87 +419,21 @@ let decode =
         [ Pp.text
             "Cannot have both data_only_dirs and ignored_subdirs stanza in a dune file. "
         ]
-    | _ ->
-      Dir_map.merge_all
-        (let subdir_status = make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs in
-         Dir_map.singleton { Dir_map.Per_dir.sexps = rest; subdir_status } :: subdirs)
-  in
-  enter (fields (decode ~allow_ignored_subdirs:true))
-;;
+    | _ -> t
+  ;;
+end
 
-type decoder = { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }
-
-let decode_includes ~context (decoder : decoder) =
-  let rec subdir ~loc:subdir_loc ~context ~path ~inside_include sexps =
-    let name, path, nodes =
-      decoder.decode sexps
-      @@
-      let open Dune_lang.Decoder in
-      enter
-      @@ let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-         let* name, path =
-           plain_string (fun ~loc s ->
-             Dune_lang.Ast.atom_or_quoted_string loc s, s :: path)
-         in
-         let+ nodes = repeat raw in
-         let required_version = 2, 7 in
-         if inside_include && dune_version < required_version
-         then
-           Dune_lang.Syntax.Error.since
-             subdir_loc
-             Stanza.syntax
-             required_version
-             ~what:"Using a `subdir' stanza within an `include'd file";
-         name, path, nodes
-    in
-    let open Memo.O in
-    let+ nodes =
-      (* CR-rgrinberg: there's no strict need to resolve the includes for sub
-         directories here. We could delay it until we actually need the stanzas
-         for the sub directories. *)
-      decode ~context ~path ~inside_include nodes
-    in
-    Dune_lang.Ast.List
-      (subdir_loc, Atom (Loc.none, Dune_lang.Atom.of_string "subdir") :: name :: nodes)
-  and decode ~context ~path ~inside_include (sexps : Dune_lang.Ast.t list) =
-    let sexps, subdirs, includes =
-      decoder.decode sexps
-      @@
-      let open Dune_lang.Decoder in
-      enter
-      @@ fields
-      @@ let+ includes =
-           multi_field
-             "include"
-             (let+ loc = loc
-              and+ fn = relative_file in
-              let fn =
-                List.fold_left ~init:fn path ~f:(fun fn dir -> Filename.concat dir fn)
-              in
-              loc, fn)
-         and+ subdirs =
-           multi_field
-             "subdir"
-             (let+ loc = loc
-              and+ stanzas = repeat raw in
-              loc, stanzas)
-         and+ sexps = leftover_fields in
-         sexps, subdirs, includes
-    in
-    let open Memo.O in
-    let+ includes, subdirs =
-      Memo.fork_and_join
-        (fun () ->
-          Memo.parallel_map includes ~f:(fun (loc, fn) ->
-            let* sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
-            decode ~context ~path ~inside_include:true sexps))
-        (fun () ->
-          Memo.parallel_map subdirs ~f:(fun (loc, sexps) ->
-            subdir ~loc ~context ~path ~inside_include sexps))
-    in
-    List.concat (sexps :: subdirs :: includes)
+let rec to_dir_map ast =
+  let group = Group.of_ast ast in
+  let node =
+    let subdir_status = Group.subdir_status group in
+    Dir_map.singleton { Dir_map.Per_dir.sexps = group.leftovers; subdir_status }
   in
-  fun sexps -> decode ~context ~path:[] ~inside_include:false sexps
+  let subdirs =
+    List.map group.subdirs ~f:(fun (path, stanzas) ->
+      Dir_map.make_at_path (Path.Local.explode path) (to_dir_map stanzas))
+  in
+  Dir_map.merge_all (node :: subdirs)
 ;;
 
 let decode ~file project sexps =
@@ -351,9 +444,18 @@ let decode ~file project sexps =
           Dune_lang.Decoder.parse d Univ_map.empty (Dune_lang.Ast.List (Loc.none, ast)))
     }
   in
-  let open Memo.O in
-  let+ sexps = decode_includes ~context:(Include_stanza.in_file file) decoder sexps in
-  decoder.decode sexps decode
+  let context = Include_stanza.in_src_file file in
+  let inside_include = false in
+  let inside_subdir = false in
+  Ast.decode ~inside_include ~inside_subdir
+  |> decoder.decode sexps
+  |> evaluate_includes
+       ~decoder
+       ~context
+       ~inside_subdir
+       ~inside_include
+       Filename.current_dir_name
+  >>| to_dir_map
 ;;
 
 type t =

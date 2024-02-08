@@ -106,7 +106,7 @@ Including those in the _build/ directory:
   mytest
   runtest
 
-These are context sensative:
+These are context sensitive:
 
   $ cat > dune-workspace << EOF
   > (lang dune 3.9)

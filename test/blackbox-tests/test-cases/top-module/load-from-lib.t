@@ -1,4 +1,4 @@
-We try to load a module defined in a library with a dependnecy
+We try to load a module defined in a library with a dependency
 
   $ cat >dune-project <<EOF
   > (lang dune 3.3)

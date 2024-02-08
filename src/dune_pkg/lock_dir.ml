@@ -435,7 +435,7 @@ module Write_disk = struct
     | Ok _ -> Error `Not_directory
   ;;
 
-  (* Removes the exitsing lock directory at the specified path if it exists and
+  (* Removes the existing lock directory at the specified path if it exists and
      is a valid lock directory. Checks the validity of the existing lockdir (if
      any) and raises if it's invalid before constructing the returned thunk, so
      validation can happen separately from executing the side effect that removes

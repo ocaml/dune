@@ -139,16 +139,12 @@ let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
       ~ext_dll:lib_config.ext_dll)
 ;;
 
-let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) =
-  let { Dune_rules.Main.conf; contexts = _; _ } = build_system in
+let libs db (context : Context.t) =
   let open Memo.O in
-  let* dune_files =
-    Dune_rules.Dune_load.dune_files conf
-    |> Dune_rules.Dune_load.Dune_files.eval ~context:(Context.name context)
-  in
+  let* dune_files = Context.name context |> Dune_rules.Dune_load.dune_files in
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
     Dune_file.stanzas dune_file
-    |> Memo.parallel_map ~f:(fun stanza ->
+    >>= Memo.parallel_map ~f:(fun stanza ->
       let dir = Dune_file.dir dune_file in
       match Stanza.repr stanza with
       | Dune_rules.Executables.T exes ->
@@ -191,11 +187,11 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
   >>| List.concat
 ;;
 
-let external_resolved_libs setup (context : Context.t) =
+let external_resolved_libs (context : Context.t) =
   let open Memo.O in
   let* scope = Dune_rules.Scope.DB.find_by_dir (Context.build_dir context) in
   let db = Dune_rules.Scope.libs scope in
-  libs db context setup
+  libs db context
   >>| List.filter ~f:(fun (x : Item.t) ->
     not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
 ;;
@@ -225,7 +221,7 @@ let term =
     |> Context.name
     |> Dune_engine.Context_name.to_string
   in
-  external_resolved_libs setup (Super_context.context super_context)
+  external_resolved_libs (Super_context.context super_context)
   >>| to_dyn context_name
   >>| Describe_format.print_dyn format
 ;;

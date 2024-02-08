@@ -10,28 +10,28 @@ Show that the merlin config knows about melange.compile_flags
   > (library
   >  (name $lib)
   >  (private_modules bar)
-  >  (melange.compile_flags :standard -bs-D DEBUG=true )
+  >  (melange.compile_flags :standard -w +42)
   >  (modes melange))
   > EOF
 
   $ touch bar.ml $lib.ml
   $ dune build @check
 
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "DEBUG"
-     DEBUG=true)))
-     DEBUG=true)))
-     DEBUG=true)))
+  $ dune ocaml merlin dump-config "$PWD" | grep -i 42
+     +42)))
+     +42)))
+     +42)))
 
   $ cat >dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (compile_flags :standard -bs-D DEBUG=true ))
+  >  (compile_flags :standard -w +42 ))
   > EOF
 
   $ dune build @check
 
-  $ dune ocaml merlin dump-config "$PWD" | grep -i "DEBUG"
-     DEBUG=true)))
-     DEBUG=true)))
-     DEBUG=true)))
+  $ dune ocaml merlin dump-config "$PWD" | grep -i 42
+     +42)))
+     +42)))
+     +42)))
 

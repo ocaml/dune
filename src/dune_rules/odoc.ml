@@ -22,13 +22,13 @@ let find_project_by_key =
     Memo.create "project-by-keys" ~input:(module Input) make_map
   in
   fun key ->
-    let* projects = Dune_load.load () >>| Dune_load.projects in
+    let* projects = Dune_load.projects () in
     let+ map = Memo.exec memo projects in
     Dune_project.File_key.Map.find_exn map key
 ;;
 
 module Scope_key : sig
-  val of_string : Context.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
+  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
   let of_string context s =
@@ -561,7 +561,7 @@ module Toplevel_index = struct
 end
 
 let setup_toplevel_index_rule sctx output =
-  let* packages = Only_packages.get () in
+  let* packages = Dune_load.packages () in
   let index = Toplevel_index.of_packages packages in
   let content = Toplevel_index.content output index in
   let ctx = Super_context.context sctx in
@@ -591,7 +591,9 @@ let entry_modules_by_lib sctx lib =
 
 let entry_modules sctx ~pkg =
   let* l =
-    libs_of_pkg (Super_context.context sctx) ~pkg
+    Super_context.context sctx
+    |> Context.name
+    |> libs_of_pkg ~pkg
     >>| List.filter ~f:(fun lib ->
       Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private |> not)
   in
@@ -720,7 +722,7 @@ let setup_pkg_rules_def memo_name f =
 
 let setup_pkg_odocl_rules_def =
   let f (sctx, pkg) =
-    let* libs = libs_of_pkg (Super_context.context sctx) ~pkg in
+    let* libs = Super_context.context sctx |> Context.name |> libs_of_pkg ~pkg in
     let* requires =
       let libs = (libs :> Lib.t list) in
       Lib.closure libs ~linking:false
@@ -797,7 +799,7 @@ let setup_lib_html_rules sctx lib =
 let setup_pkg_html_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
-    let* libs = libs_of_pkg ctx ~pkg in
+    let* libs = Context.name ctx |> libs_of_pkg ~pkg in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx)
     and* pkg_odocs =
       let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
@@ -828,7 +830,9 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
     let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
     Output_format.alias output ~dir
   in
-  let* libs = libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Lib lib) in
+  let* libs =
+    Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
+  in
   Pkg name :: libs
   |> List.map ~f:(Dep.format_alias output ctx)
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
@@ -918,8 +922,8 @@ let setup_package_odoc_rules sctx ~pkg =
 ;;
 
 let gen_project_rules sctx project =
-  let* packages = Only_packages.packages_of_project project in
-  Package.Name.Map_traversals.parallel_iter packages ~f:(fun _ (pkg : Package.t) ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg)
 ;;
@@ -946,7 +950,7 @@ let has_rules ?(directory_targets = Path.Build.Map.empty) m =
 
 let with_package pkg ~f =
   let pkg = Package.Name.of_string pkg in
-  let* packages = Only_packages.get () in
+  let* packages = Dune_load.packages () in
   match Package.Name.Map.find packages pkg with
   | Some pkg -> has_rules (f pkg)
   | None -> Memo.return Gen_rules.no_rules
@@ -975,7 +979,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
@@ -991,7 +995,7 @@ let gen_rules sctx ~dir rest =
               setup_lib_odocl_rules sctx lib ~requires
             | Some pkg -> setup_pkg_odocl_rules sctx ~pkg)
        and+ () =
-         let* packages = Only_packages.get () in
+         let* packages = Dune_load.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with
@@ -1006,7 +1010,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
@@ -1020,7 +1024,7 @@ let gen_rules sctx ~dir rest =
             | None -> setup_lib_html_rules sctx lib
             | Some pkg -> setup_pkg_html_rules sctx ~pkg)
        and+ () =
-         let* packages = Only_packages.get () in
+         let* packages = Dune_load.packages () in
          match
            Package.Name.Map.find packages (Package.Name.of_string lib_unique_name_or_pkg)
          with

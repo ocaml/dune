@@ -12,6 +12,10 @@ show_pkg() {
   find $pkg_root/$1 | sort | sed "s#$pkg_root/$1##"
 }
 
+strip_sandbox() {
+  sed -E 's#[^ ]*.sandbox/[^/]+#$SANDBOX#g'
+}
+
 show_pkg_targets() {
   find $pkg_root/$1/target | sort | sed "s#$pkg_root/$1/target##"
 }
@@ -104,6 +108,10 @@ make_project() {
   (allow_empty)
   (depends $@))
 EOF
+}
+
+print_source() {
+  cat dune.lock/$1.pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
 }
 
 solve() {

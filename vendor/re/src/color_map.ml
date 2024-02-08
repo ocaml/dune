@@ -24,7 +24,7 @@ let flatten cm =
     Bytes.set c i (Char.chr !v);
     Bytes.set color_repr !v (Char.chr i)
   done;
-  (c, Bytes.sub color_repr 0 (!v + 1), !v + 1)
+  (Bytes.unsafe_to_string c, Bytes.sub_string color_repr 0 (!v + 1), !v + 1)
 
 (* mark all the endpoints of the intervals of the char set with the 1 byte *)
 let split s cm =

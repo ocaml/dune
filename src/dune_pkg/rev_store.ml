@@ -14,7 +14,12 @@ let lock_path { dir } =
   Path.relative parent "rev-store.lock"
 ;;
 
-type rev = Rev of string
+module Rev = struct
+  type t = Rev of string
+
+  let compare (Rev a) (Rev b) = String.compare a b
+  let to_dyn (Rev r) = Dyn.variant "Rev" [ Dyn.string r ]
+end
 
 let tar =
   lazy
@@ -147,14 +152,21 @@ let run_capture_zero_separated_lines { dir } args =
   if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
 ;;
 
-let mem { dir } ~rev =
+let cat_file { dir } command =
   let git = Lazy.force Vcs.git in
   let failure_mode = Vcs.git_accept () in
   let stderr_to = make_stderr () in
   let stdout_to = make_stdout () in
-  [ "cat-file"; "-t"; rev ]
+  "cat-file" :: command
   |> Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git
   >>| Result.is_ok
+;;
+
+let mem repo ~rev = cat_file repo [ "-t"; rev ]
+
+let mem_path repo rev path =
+  let (Rev.Rev rev) = rev in
+  cat_file repo [ "-e"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
 ;;
 
 let ref_type =
@@ -172,7 +184,7 @@ let ref_type =
            ])
   in
   fun t ~source ~ref ->
-    let command = [ "ls-remote"; source; ref ] in
+    let command = [ "ls-remote"; "--heads"; "--tags"; source; ref ] in
     let+ hits = run_capture_lines t ~display:!Dune_engine.Clflags.display command in
     List.find_map hits ~f:(fun line ->
       match Re.exec_opt re line with
@@ -192,7 +204,7 @@ let show =
       "show"
       :: List.map revs_and_paths ~f:(function
         | `Object o -> o
-        | `Path (Rev r, path) -> sprintf "%s:%s" r (Path.Local.to_string path))
+        | `Path (Rev.Rev r, path) -> sprintf "%s:%s" r (Path.Local.to_string path))
     in
     let stderr_to = make_stderr () in
     Process.run_capture ~dir ~display:Quiet ~stderr_to failure_mode git command
@@ -214,7 +226,7 @@ let show =
           +
           match cmd with
           | `Object o -> String.length o
-          | `Path (Rev r, path) ->
+          | `Path (Rev.Rev r, path) ->
             String.length r + String.length (Path.Local.to_string path) + 1
         in
         let new_remaining = cmd_len_remaining - cmd_len in
@@ -249,24 +261,93 @@ let load_or_create ~dir =
   t
 ;;
 
-module File = struct
+module Commit = struct
   module T = struct
     type t =
       { path : Path.Local.t
-      ; size : int
-      ; hash : string
+      ; rev : Rev.t
       }
 
-    let compare { path; size; hash } t =
+    let compare { path; rev } t =
       let open Ordering.O in
       let= () = Path.Local.compare path t.path in
-      let= () = Int.compare size t.size in
-      String.compare hash t.hash
+      Rev.compare rev t.rev
     ;;
 
-    let to_dyn { hash; path; size } =
-      Dyn.record
-        [ "path", Path.Local.to_dyn path; "size", Dyn.int size; "hash", Dyn.string hash ]
+    let to_dyn { path; rev } =
+      Dyn.record [ "path", Path.Local.to_dyn path; "rev", Rev.to_dyn rev ]
+    ;;
+  end
+
+  include T
+  module C = Comparable.Make (T)
+  module Set = C.Set
+end
+
+module File = struct
+  module T = struct
+    type t =
+      | Redirect of
+          { path : Path.Local.t
+          ; to_ : t
+          }
+      | Direct of
+          { path : Path.Local.t
+          ; size : int
+          ; hash : string
+          }
+
+    let compare = Poly.compare
+
+    let to_dyn = function
+      | Redirect _ -> Dyn.opaque ()
+      | Direct { path; size; hash } ->
+        Dyn.record
+          [ "path", Path.Local.to_dyn path
+          ; "size", Dyn.int size
+          ; "hash", Dyn.string hash
+          ]
+    ;;
+  end
+
+  include T
+
+  let path = function
+    | Redirect p -> p.path
+    | Direct p -> p.path
+  ;;
+
+  let rec size = function
+    | Direct t -> t.size
+    | Redirect t -> size t.to_
+  ;;
+
+  let rec hash = function
+    | Direct t -> t.hash
+    | Redirect t -> hash t.to_
+  ;;
+
+  module C = Comparable.Make (T)
+  module Set = C.Set
+end
+
+module Entry = struct
+  module T = struct
+    type t =
+      | File of File.t
+      | Commit of Commit.t
+
+    let compare a b =
+      match a, b with
+      | File a, File b -> File.compare a b
+      | Commit a, Commit b -> Commit.compare a b
+      | File _, Commit _ -> Ordering.Lt
+      | Commit _, File _ -> Ordering.Gt
+    ;;
+
+    let to_dyn = function
+      | File b -> Dyn.variant "File" [ File.to_dyn b ]
+      | Commit c -> Dyn.variant "Commit" [ Commit.to_dyn c ]
     ;;
   end
 
@@ -301,55 +382,240 @@ module File = struct
         match Re.Group.get m 1 with
         | "blob" ->
           Some
-            { hash = Re.Group.get m 2
-            ; size = Int.of_string_exn @@ Re.Group.get m 3
-            ; path = Path.Local.of_string @@ Re.Group.get m 4
-            }
+            (File
+               (Direct
+                  { hash = Re.Group.get m 2
+                  ; size = Int.of_string_exn @@ Re.Group.get m 3
+                  ; path = Path.Local.of_string @@ Re.Group.get m 4
+                  }))
+        | "commit" ->
+          Some
+            (Commit
+               { rev = Rev (Re.Group.get m 2)
+               ; path = Path.Local.of_string @@ Re.Group.get m 4
+               })
         | _ -> None)
   ;;
-
-  let path t = t.path
 end
 
 module At_rev = struct
-  type nonrec t =
-    { repo : t
-    ; revision : rev
+  type repo = t
+
+  type t =
+    { repo : repo
+    ; revision : Rev.t
     ; source : string
-    ; files_at_rev : File.Set.t
+    ; files : File.Set.t
     }
 
-  let content { repo; revision; source = _; files_at_rev = _ } path =
+  module Config = struct
+    type bindings = string * string
+
+    type section =
+      { name : string
+      ; arg : string option
+      ; bindings : bindings list
+      }
+
+    type t = section list
+
+    module KV = struct
+      module T = struct
+        type t = string * string option
+
+        let compare = Tuple.T2.compare String.compare (Option.compare String.compare)
+        let to_dyn = Tuple.T2.to_dyn Dyn.string (Dyn.option Dyn.string)
+      end
+
+      include Comparable.Make (T)
+    end
+
+    let parse line =
+      let open Option.O in
+      let* key, value = String.lsplit2 ~on:'=' line in
+      let+ section, key = String.lsplit2 ~on:'.' key in
+      let arg, binding =
+        match String.rsplit2 ~on:'.' key with
+        | None -> None, key
+        | Some (arg, binding) -> Some arg, binding
+      in
+      section, arg, binding, value
+    ;;
+
+    let config repo revision path : t Fiber.t =
+      let (Rev.Rev rev) = revision in
+      [ "config"; "--list"; "--blob"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
+      |> run_capture_lines repo ~display:Quiet
+      >>| List.fold_left ~init:KV.Map.empty ~f:(fun acc line ->
+        match parse line with
+        | None ->
+          Code_error.raise "Couldn't parse git config line" [ "line", Dyn.string line ]
+        | Some (section, arg, binding, value) ->
+          KV.Map.update acc (section, arg) ~f:(function
+            | None -> Some [ binding, value ]
+            | Some xs -> Some ((binding, value) :: xs)))
+      >>| KV.Map.foldi ~init:[] ~f:(fun (name, arg) bindings acc ->
+        let section = { name; arg; bindings } in
+        section :: acc)
+    ;;
+  end
+
+  module Submodule = struct
+    (* a submodule in [.gitmodules] can also have a [branch] but given we only
+       need to resolve the commit object, we don't have to care about the
+       tracking branch *)
+    type t =
+      { path : Path.Local.t
+      ; source : string
+      }
+
+    let parse repo revision =
+      let submodule_path = Path.Local.of_string ".gitmodules" in
+      let* has_submodules = mem_path repo revision submodule_path in
+      match has_submodules with
+      | false -> Fiber.return []
+      | true ->
+        let+ cfg = Config.config repo revision submodule_path in
+        List.filter_map cfg ~f:(function
+          | { Config.name = "submodule"; arg = _; bindings } ->
+            let find_key key (k, v) =
+              match String.equal k key with
+              | true -> Some v
+              | false -> None
+            in
+            let path = List.find_map bindings ~f:(find_key "path") in
+            let url = List.find_map bindings ~f:(find_key "url") in
+            (match path, url with
+             | Some path, Some source ->
+               (* CR-rginberg: we need to handle submodule paths that try to escape
+                  the repo *)
+               let path = Path.Local.of_string path in
+               Some { path; source }
+             | _, _ ->
+               (* CR-Leonidas-from-XIV: Loc.t for the .gitmodules? *)
+               User_error.raise
+                 ~hints:[ Pp.text "Make sure all git submodules specify path & url" ]
+                 [ Pp.text "Submodule definition missing path or url" ])
+          | _otherwise -> None)
+    ;;
+  end
+
+  let files_and_submodules repo (Rev.Rev rev) =
+    run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
+    >>| List.fold_left
+          ~init:(File.Set.empty, Commit.Set.empty)
+          ~f:(fun (files, commits) line ->
+            match Entry.parse line with
+            | None -> files, commits
+            | Some (File file) -> File.Set.add files file, commits
+            | Some (Commit commit) -> files, Commit.Set.add commits commit)
+  ;;
+
+  let path_commit_map submodules =
+    Commit.Set.fold
+      submodules
+      ~init:Path.Local.Map.empty
+      ~f:(fun { Commit.path; rev } m ->
+        match Path.Local.Map.add m path rev with
+        | Ok m -> m
+        | Error (Rev existing_rev) ->
+          let (Rev found_rev) = rev in
+          User_error.raise
+            [ Pp.textf
+                "Path %s specified multiple times as submodule pointing to different \
+                 commits: %s and %s"
+                (Path.Local.to_string path)
+                found_rev
+                existing_rev
+            ])
+  ;;
+
+  let rec of_rev repo ~add_remote ~revision ~source =
+    let* files, submodules = files_and_submodules repo revision in
+    let+ files =
+      let commit_paths = path_commit_map submodules in
+      let* submodules = Submodule.parse repo revision in
+      (* It's not safe to do a parallel map because adding a remote
+         requires getting the lock (which we're now holding) *)
+      submodules
+      |> Fiber.sequential_map ~f:(fun { Submodule.path; source } ->
+        match Path.Local.Map.find commit_paths path with
+        | None ->
+          User_error.raise
+            ~hints:
+              [ Pp.text
+                  "Make sure the submodule is initialized and committed in the source \
+                   repository"
+              ]
+            [ Pp.textf
+                "Submodule definition %s references non-existing path %s in repo"
+                source
+                (Path.Local.to_string path)
+            ]
+        | Some revision ->
+          let* () = add_remote source in
+          let+ at_rev = of_rev repo ~add_remote ~revision ~source in
+          File.Set.map at_rev.files ~f:(fun file ->
+            let path = Path.Local.append path (File.path file) in
+            File.Redirect { path; to_ = file }))
+      >>| List.cons files
+      >>| File.Set.union_all
+    in
+    { repo; revision; source; files }
+  ;;
+
+  let content { repo; revision; source = _; files = _ } path =
     show repo [ `Path (revision, path) ]
   ;;
 
-  let directory_entries { repo = _; source = _; files_at_rev; revision = _ } path =
+  let directory_entries_recursive t path =
     (* TODO: there are much better ways of implementing this:
        1. using libgit or ocamlgit
        2. possibly using [$ git archive] *)
-    File.Set.filter files_at_rev ~f:(fun (file : File.t) ->
+    File.Set.to_list t.files
+    |> List.filter_map ~f:(fun (file : File.t) ->
+      let file_path = File.path file in
       (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
          "foo" is indeed a descendant of itself. So we filter it manually. *)
-      (not (Path.Local.equal file.path path))
-      && Path.Local.is_descendant file.path ~of_:path)
+      if (not (Path.Local.equal file_path path))
+         && Path.Local.is_descendant file_path ~of_:path
+      then Some file
+      else None)
+    |> File.Set.of_list
   ;;
 
-  let equal { repo; revision = Rev revision; source; files_at_rev } t =
+  let directory_entries_immediate t path =
+    (* TODO: there are much better ways of implementing this:
+       1. using libgit or ocamlgit
+       2. possibly using [$ git archive] *)
+    File.Set.filter t.files ~f:(fun (file : File.t) ->
+      match Path.Local.parent (File.path file) with
+      | None -> false
+      | Some p -> Path.Local.equal p path)
+  ;;
+
+  let directory_entries t ~recursive path =
+    (if recursive then directory_entries_recursive else directory_entries_immediate)
+      t
+      path
+  ;;
+
+  let repo_equal = equal
+
+  let equal { repo; revision = Rev revision; source; files } t =
     let (Rev revision') = t.revision in
-    equal repo t.repo
+    repo_equal repo t.repo
     && String.equal revision revision'
     && String.equal source t.source
-    && File.Set.equal files_at_rev t.files_at_rev
+    && File.Set.equal files t.files
   ;;
 
-  let opam_url { revision = Rev rev; source; repo = _; files_at_rev = _ } =
+  let opam_url { revision = Rev rev; source; repo = _; files = _ } =
     OpamUrl.parse (sprintf "%s#%s" source rev)
   ;;
 
-  let check_out
-    { repo = { dir }; revision = Rev rev; source = _; files_at_rev = _ }
-    ~target
-    =
+  let check_out { repo = { dir }; revision = Rev rev; source = _; files = _ } ~target =
+    (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let tar = Lazy.force tar in
     let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
@@ -390,43 +656,39 @@ module Remote = struct
     ; handle : string
     ; source : string
     ; default_branch : string
+    ; add_remote : string -> unit Fiber.t
     }
 
   type uninit = t
 
-  let update ({ repo; handle; source = _; default_branch = _ } as t) =
+  let update ({ repo; handle; source = _; default_branch = _; add_remote = _ } as t) =
     let+ () = run repo ~display:!Dune_engine.Clflags.display [ "fetch"; handle ] in
     t
   ;;
 
   let don't_update t = t
-  let default_branch { repo = _; handle = _; source = _; default_branch } = default_branch
 
-  let equal { repo; handle; source; default_branch } t =
+  let default_branch { repo = _; handle = _; source = _; default_branch; add_remote = _ } =
+    default_branch
+  ;;
+
+  let equal { repo; handle; source; default_branch; add_remote = _ } t =
     equal repo t.repo
     && String.equal handle t.handle
     && String.equal source t.source
     && String.equal default_branch t.default_branch
   ;;
 
-  let files_at_rev repo (Rev rev) =
-    run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
-    >>| List.filter_map ~f:File.parse
-    >>| File.Set.of_list
-  ;;
-
-  let rev_of_name { repo; handle; source; default_branch = _ } ~name =
+  let rev_of_name { repo; handle; source; default_branch = _; add_remote } ~name =
     (* TODO handle non-existing name *)
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in
-    let revision = Rev rev in
-    let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.repo; revision; source; files_at_rev }
+    let revision = Rev.Rev rev in
+    At_rev.of_rev repo ~add_remote ~revision ~source >>| Option.some
   ;;
 
-  let rev_of_ref { repo; handle = _; source; default_branch = _ } ~ref =
-    let revision = Rev ref in
-    let+ files_at_rev = files_at_rev repo revision in
-    Some { At_rev.repo; revision; source; files_at_rev }
+  let rev_of_ref { repo; handle = _; source; default_branch = _; add_remote } ~ref =
+    let revision = Rev.Rev ref in
+    At_rev.of_rev repo ~add_remote ~revision ~source >>| Option.some
   ;;
 end
 
@@ -537,13 +799,17 @@ let remote_add t ~branch ~handle ~source =
     ]
 ;;
 
-let add_repo ({ dir } as t) ~source ~branch =
+let remote_name ~source ~branch =
   let decoded_remote =
     match branch with
     | None -> source
     | Some branch -> sprintf "%s %s" source branch
   in
-  let handle = decoded_remote |> Dune_digest.string |> Dune_digest.to_string in
+  decoded_remote |> Dune_digest.string |> Dune_digest.to_string
+;;
+
+let rec add_repo ({ dir } as t) ~source ~branch =
+  let handle = remote_name ~source ~branch in
   let lock = lock_path t in
   with_flock lock ~f:(fun () ->
     let* exists = remote_exists dir ~name:handle in
@@ -551,21 +817,20 @@ let add_repo ({ dir } as t) ~source ~branch =
       match exists, branch with
       | true, Some branch -> Fiber.return branch
       | true, None ->
-        let head_branch = read_head_branch t handle in
-        (match head_branch with
+        (match read_head_branch t handle with
          | Some head_branch -> Fiber.return head_branch
          | None ->
            (* the rev store is in some sort of unexpected state *)
            Code_error.raise
-             (sprintf "Could not load default branch of repository '%s'" source)
+             (sprintf "Could not load default branch of repository")
              [ "source", Dyn.string source; "handle", Dyn.string handle ])
       | false, Some branch ->
         let+ () = remote_add t ~branch ~handle ~source in
         branch
       | false, None ->
-        let* head_branch = query_head_branch t source in
-        let branch =
-          match head_branch with
+        let* branch =
+          query_head_branch t source
+          >>| function
           | Some head_branch -> head_branch
           | None ->
             User_error.raise
@@ -580,7 +845,12 @@ let add_repo ({ dir } as t) ~source ~branch =
         let+ () = remote_add t ~branch ~handle ~source in
         branch
     in
-    { Remote.repo = t; handle; source; default_branch })
+    let add_remote source =
+      let* remote = add_repo t ~branch:None ~source in
+      let+ (_ : Remote.t) = Remote.update remote in
+      ()
+    in
+    { Remote.repo = t; handle; source; default_branch; add_remote })
 ;;
 
 let content_of_files t files =
@@ -588,7 +858,7 @@ let content_of_files t files =
   | [] -> Fiber.return []
   | _ :: _ ->
     let+ out =
-      List.map files ~f:(fun (file : File.t) -> `Object file.hash)
+      List.map files ~f:(fun file -> `Object (File.hash file))
       |> show t
       >>| function
       | Some s -> s
@@ -602,8 +872,9 @@ let content_of_files t files =
         assert (pos = String.length out);
         acc
       | (file : File.t) :: files ->
-        let acc = String.sub out ~pos ~len:file.size :: acc in
-        loop acc (pos + file.size) files
+        let size = File.size file in
+        let acc = String.sub out ~pos ~len:size :: acc in
+        loop acc (pos + size) files
     in
     List.rev (loop [] 0 files)
 ;;

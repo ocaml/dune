@@ -27,6 +27,9 @@ type t =
 val get : t -> int -> string
 (** Raise [Not_found] if the group did not match *)
 
+val get_opt : t -> int -> string option
+(** Similar to {!get}, but returns an option instead of using an exception. *)
+
 val offset : t -> int -> int * int
 (** Raise [Not_found] if the group did not match *)
 

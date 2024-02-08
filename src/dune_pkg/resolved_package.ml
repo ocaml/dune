@@ -20,10 +20,15 @@ let set_url t url =
   { t with opam_file }
 ;;
 
-let read_opam_file package ~opam_file_path ~opam_file_contents =
-  Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
+let add_opam_package_to_opam_file package opam_file =
+  opam_file
   |> OpamFile.OPAM.with_version (OpamPackage.version package)
   |> OpamFile.OPAM.with_name (OpamPackage.name package)
+;;
+
+let read_opam_file package ~opam_file_path ~opam_file_contents =
+  Opam_file.read_from_string_exn ~contents:opam_file_contents opam_file_path
+  |> add_opam_package_to_opam_file package
 ;;
 
 let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
@@ -67,6 +72,12 @@ let scan_files_entries path =
          ])
 ;;
 
+let dune_package loc opam_file opam_package =
+  let opam_file = add_opam_package_to_opam_file opam_package opam_file in
+  let package = OpamFile.OPAM.package opam_file in
+  { opam_file; package; loc; extra_files = Inside_files_dir None }
+;;
+
 open Fiber.O
 
 let get_opam_package_files resolved_packages =
@@ -87,7 +98,7 @@ let get_opam_package_files resolved_packages =
           match files_dir with
           | None -> []
           | Some files_dir ->
-            Rev_store.At_rev.directory_entries rev files_dir
+            Rev_store.At_rev.directory_entries rev ~recursive:true files_dir
             |> Rev_store.File.Set.to_list
             |> List.map ~f:(fun file -> idx, files_dir, file))
       in

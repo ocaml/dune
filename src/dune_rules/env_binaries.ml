@@ -16,18 +16,17 @@ let impl dir =
     Code_error.raise "no context for this directory" [ "dir", Path.Build.to_dyn dir ]
   | Some ctx ->
     let* binaries =
-      Only_packages.stanzas_in_dir dir
+      Dune_load.stanzas_in_dir dir
       >>= function
       | None -> Memo.return []
       | Some stanzas ->
-        let+ profile = Per_context.profile ctx in
-        (match
-           Dune_file.stanzas stanzas
-           |> List.find_map ~f:(fun stanza ->
-             match Stanza.repr stanza with
-             | Dune_env.T config -> Some config
-             | _ -> None)
-         with
+        let* profile = Per_context.profile ctx in
+        Dune_file.find_stanzas stanzas Dune_env.key
+        >>| (function
+               | [ config ] -> Some config
+               | [] -> None
+               | _ :: _ :: _ -> assert false)
+        >>| (function
          | None -> []
          | Some stanza ->
            (match Dune_env.find_opt stanza ~profile with

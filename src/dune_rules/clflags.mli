@@ -16,7 +16,7 @@ val capture_outputs : bool ref
 (** Print debug info about artifact substitution *)
 val debug_artifact_substitution : bool ref
 
-(** Wether we are ignoring "dune.lock/". *)
+(** Whether we are ignoring "dune.lock/". *)
 val ignore_lock_dir : bool ref
 
 type on_missing_dune_project_file =

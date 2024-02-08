@@ -1,4 +1,4 @@
-Testing the usage of the (dirs ...) stanza in the precense of a sub-directory
+Testing the usage of the (dirs ...) stanza in the presence of a sub-directory
 
 Building as usual should work.
   $ cat > dune << EOF

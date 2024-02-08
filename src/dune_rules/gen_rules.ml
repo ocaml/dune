@@ -112,16 +112,19 @@ end = struct
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      (* XXX why are we setting up private doc rules for disabled libraries? *)
-      let* () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-      and+ enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
+      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () ->
+          let+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
+          and+ rules = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+          rules)
         enabled_if
     | Foreign.Library.T lib ->
-      let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
-      empty_none
+      Expander.eval_blang expander lib.enabled_if
+      >>= if_available (fun () ->
+        let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
+        empty_none)
     | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->
@@ -208,7 +211,7 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
-  let stanzas = Dune_file.stanzas dune_file in
+  let* stanzas = Dune_file.stanzas dune_file in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas
@@ -324,7 +327,7 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   let* () = gen_format_and_cram_rules sctx ~expander ~dir source_dir
   and+ stanzas =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
-    Only_packages.stanzas_in_dir dir
+    Dune_load.stanzas_in_dir dir
     >>= function
     | Some d -> Memo.return (Some d)
     | None ->

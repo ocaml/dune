@@ -71,14 +71,15 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         y)
       >>| Filename.Map.map ~f:Appendable_list.singleton
     in
-    Dune_file.stanzas d
+    Dune_file.static_stanzas d
     |> Memo.List.map ~f:(fun stanza ->
       match Stanza.repr stanza with
-      | Install_conf.T { section = Section Bin; files; enabled_if; _ } ->
+      | Install_conf.T { section = _loc, Section Bin; files; enabled_if; _ } ->
         let enabled_if = eval_blang ~dir enabled_if in
         binaries_from_install ~enabled_if files
       | Executables.T
-          ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
+          ({ install_conf = Some { section = _loc, Section Bin; files; _ }; _ } as exes)
+        ->
         let enabled_if =
           let enabled_if = eval_blang ~dir exes.enabled_if in
           match exes.optional with
@@ -103,8 +104,7 @@ let all =
     let artifacts =
       let local_bins =
         Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
-          let* stanzas = Only_packages.filtered_stanzas (Context.name context) in
-          get_installed_binaries ~context stanzas)
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
       in
       Artifacts.create context ~local_bins |> Memo.return
     in

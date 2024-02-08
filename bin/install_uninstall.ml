@@ -81,7 +81,7 @@ module Workspace = struct
   let get () =
     let open Memo.O in
     Memo.run
-      (let+ packages = Dune_rules.Dune_load.load () >>| Dune_rules.Dune_load.packages
+      (let+ packages = Dune_rules.Dune_load.packages ()
        and+ contexts = Context.DB.all () in
        { packages; contexts })
   ;;
@@ -208,11 +208,20 @@ module File_ops_real (W : sig
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let open Fiber.O in
     let plain_copy () =
+      (* CR-rgrinberg: we have fast paths for copying that we aren't making use
+         of here *)
       seek_in ic 0;
       Io.copy_channels ic oc;
       Fiber.return ()
     in
     match f ic with
+    | None -> plain_copy ()
+    (* XXX should we really be catching everything here? *)
+    | exception _ ->
+      User_warning.emit
+        ~loc:(Loc.in_file src)
+        [ Pp.text "Failed to parse file, not adding version and locations information." ];
+      plain_copy ()
     | Some { need_version; callback } ->
       let* version =
         if need_version
@@ -231,13 +240,6 @@ module File_ops_real (W : sig
       callback ppf ?version;
       Format.pp_print_flush ppf ();
       Fiber.return ()
-    | None -> plain_copy ()
-    (* XXX should we really be catching everything here? *)
-    | exception _ ->
-      User_warning.emit
-        ~loc:(Loc.in_file src)
-        [ Pp.text "Failed to parse file, not adding version and locations information." ];
-      plain_copy ()
   ;;
 
   let process_meta ic =
@@ -340,6 +342,7 @@ module File_ops_real (W : sig
     match (special_file : Special_file.t option) with
     | None -> Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
     | Some sf ->
+      (* CR-rgrinberg: slow copying *)
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
       Fiber.finalize
         ~finally:(fun () ->
@@ -461,7 +464,242 @@ let cmd_what = function
   | Uninstall -> "uninstall"
 ;;
 
-let install_uninstall ~what =
+let run
+  what
+  context
+  common
+  pkgs
+  sections
+  (config : Dune_config.t)
+  ~dry_run
+  ~destdir
+  ~relocatable
+  ~create_install_files
+  ~prefix_from_command_line
+  ~(from_command_line : _ Install.Roots.t)
+  =
+  let open Fiber.O in
+  let* workspace = Workspace.get () in
+  let contexts =
+    match context with
+    | None ->
+      (match Common.x common with
+       | Some findlib_toolchain ->
+         let contexts =
+           List.filter workspace.contexts ~f:(fun (ctx : Context.t) ->
+             match Context.findlib_toolchain ctx with
+             | None -> false
+             | Some ctx_findlib_toolchain ->
+               Dune_engine.Context_name.equal ctx_findlib_toolchain findlib_toolchain)
+         in
+         contexts
+       | None -> workspace.contexts)
+    | Some name ->
+      (match
+         List.find workspace.contexts ~f:(fun c ->
+           Dune_engine.Context_name.equal (Context.name c) name)
+       with
+       | Some ctx -> [ ctx ]
+       | None ->
+         User_error.raise
+           [ Pp.textf "Context %S not found!" (Dune_engine.Context_name.to_string name) ])
+  in
+  let* pkgs =
+    match pkgs with
+    | _ :: _ -> Fiber.return pkgs
+    | [] ->
+      Package.Name.Map.values workspace.packages
+      |> Fiber.parallel_map ~f:(fun pkg ->
+        package_is_vendored pkg
+        >>| function
+        | true -> None
+        | false -> Some (Package.name pkg))
+      >>| List.filter_opt
+  in
+  let install_files, missing_install_files =
+    List.concat_map pkgs ~f:(fun pkg ->
+      List.map contexts ~f:(fun (ctx : Context.t) ->
+        let fn =
+          let fn =
+            resolve_package_install
+              workspace
+              ~findlib_toolchain:(Context.findlib_toolchain ctx)
+              pkg
+          in
+          Path.append_source (Path.build (Context.build_dir ctx)) fn
+        in
+        if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
+    |> List.partition_map ~f:Fun.id
+  in
+  if missing_install_files <> []
+  then
+    User_error.raise
+      [ Pp.textf "The following <package>.install are missing:"
+      ; Pp.enumerate missing_install_files ~f:(fun p -> Pp.text (Path.to_string p))
+      ]
+      ~hints:
+        [ Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "try running"
+            ; User_message.command "dune build [-p <pkg>] @install"
+            ]
+          |> Pp.hovbox
+        ];
+  (match contexts, prefix_from_command_line, from_command_line.lib_root with
+   | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
+     User_error.raise
+       [ Pp.concat
+           ~sep:Pp.space
+           [ Pp.text "Cannot specify"
+           ; User_message.command "--prefix"
+           ; Pp.text "or"
+           ; User_message.command "--libdir"
+           ; Pp.text "when installing into multiple contexts!"
+           ]
+       ]
+   | _ -> ());
+  let install_files_by_context =
+    let module CMap = Map.Make (Context) in
+    CMap.of_list_multi install_files
+    |> CMap.to_list_map ~f:(fun context install_files ->
+      let entries_per_package =
+        List.map install_files ~f:(fun (package, install_file) ->
+          let entries =
+            Install.Entry.load_install_file install_file (fun local ->
+              Path.append_local (Path.source Path.Source.root) local)
+            |> List.filter ~f:(fun (entry : Path.t Install.Entry.t) ->
+              Sections.should_install sections entry.section)
+          in
+          match
+            List.filter_map entries ~f:(fun entry ->
+              (* CR rgrinberg: this is ignoring optional entries *)
+              Option.some_if (not (Path.exists entry.src)) entry.src)
+          with
+          | [] -> package, entries
+          | missing_files ->
+            User_error.raise
+              [ Pp.textf
+                  "The following files which are listed in %s cannot be installed \
+                   because they do not exist:"
+                  (Path.to_string_maybe_quoted install_file)
+              ; Pp.enumerate missing_files ~f:(fun p ->
+                  Pp.verbatim (Path.to_string_maybe_quoted p))
+              ])
+      in
+      context, entries_per_package)
+  in
+  let destdir =
+    Option.map
+      ~f:Path.of_string
+      (if create_install_files
+       then
+         (* CR-rgrinberg: why are we silently ignoring an argument instead
+            of erroring given that they mutually exclusive? *)
+         Some (Option.value ~default:"_destdir" destdir)
+       else destdir)
+  in
+  let relocatable =
+    if relocatable
+    then (
+      match prefix_from_command_line with
+      | Some dir -> Some (Path.of_string dir)
+      | None ->
+        User_error.raise
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Option"
+              ; User_message.command "--prefix"
+              ; Pp.text "is needed with"
+              ; User_message.command "--relocation"
+              ]
+            |> Pp.hovbox
+          ])
+    else None
+  in
+  let verbosity =
+    match config.display with
+    | Simple display -> display.verbosity
+    | Tui -> Quiet
+  in
+  let open Fiber.O in
+  let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
+  let files_deleted_in = ref Path.Set.empty in
+  let+ () =
+    Fiber.sequential_iter
+      install_files_by_context
+      ~f:(fun (context, entries_per_package) ->
+        let roots = get_dirs context ~prefix_from_command_line ~from_command_line in
+        let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
+        Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
+          let+ entries =
+            let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
+            (* CR rgrinberg: why don't we install things concurrently? *)
+            Fiber.sequential_map entries ~f:(fun entry ->
+              let special_file = Special_file.of_entry entry in
+              let dst =
+                Install.Entry.relative_installed_path entry ~paths
+                |> interpret_destdir ~destdir
+              in
+              let dir = Path.parent_exn dst in
+              match what with
+              | Uninstall ->
+                Ops.remove_file_if_exists dst;
+                files_deleted_in := Path.Set.add !files_deleted_in dir;
+                Fiber.return entry
+              | Install ->
+                let* copy =
+                  match special_file with
+                  | _ when not create_install_files -> Fiber.return true
+                  | Some Special_file.META | Some Special_file.Dune_package ->
+                    Fiber.return true
+                  | None ->
+                    Artifact_substitution.test_file ~src:entry.src ()
+                    >>| (function
+                     | Some_substitution -> true
+                     | No_substitution -> false)
+                in
+                (match copy with
+                 | false -> Fiber.return entry
+                 | true ->
+                   let+ () =
+                     (match Path.is_directory dst with
+                      | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
+                      | false -> Ops.remove_file_if_exists dst);
+                     print_line
+                       ~verbosity
+                       "%s %s"
+                       (if create_install_files then "Copying to" else "Installing")
+                       (Path.to_string_maybe_quoted dst);
+                     Ops.mkdir_p dir;
+                     let executable = Section.should_set_executable_bit entry.section in
+                     Ops.copy_file
+                       ~src:entry.src
+                       ~dst
+                       ~executable
+                       ~special_file
+                       ~package
+                       ~conf
+                   in
+                   Install.Entry.set_src entry dst))
+          in
+          if create_install_files
+          then (
+            let fn =
+              resolve_package_install
+                workspace
+                ~findlib_toolchain:(Context.findlib_toolchain context)
+                package
+            in
+            Io.write_file (Path.source fn) (Install.Entry.gen_install_file entries))))
+  in
+  Path.Set.to_list !files_deleted_in
+  (* This [List.rev] is to ensure we process children directories before
+     their parents *)
+  |> List.rev
+  |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn)
+;;
+
+let make ~what =
   let doc = Format.asprintf "%a packages defined in the workspace." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let absolute_path =
@@ -589,157 +827,8 @@ let install_uninstall ~what =
     let builder = Common.Builder.disable_log_file builder in
     let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* workspace = Workspace.get () in
-      let contexts =
-        match context with
-        | None ->
-          (match Common.x common with
-           | Some findlib_toolchain ->
-             let contexts =
-               List.filter workspace.contexts ~f:(fun (ctx : Context.t) ->
-                 match Context.findlib_toolchain ctx with
-                 | None -> false
-                 | Some ctx_findlib_toolchain ->
-                   Dune_engine.Context_name.equal ctx_findlib_toolchain findlib_toolchain)
-             in
-             contexts
-           | None -> workspace.contexts)
-        | Some name ->
-          (match
-             List.find workspace.contexts ~f:(fun c ->
-               Dune_engine.Context_name.equal (Context.name c) name)
-           with
-           | Some ctx -> [ ctx ]
-           | None ->
-             User_error.raise
-               [ Pp.textf
-                   "Context %S not found!"
-                   (Dune_engine.Context_name.to_string name)
-               ])
-      in
-      let* pkgs =
-        match pkgs with
-        | [] ->
-          Package.Name.Map.values workspace.packages
-          |> Fiber.parallel_map ~f:(fun pkg ->
-            package_is_vendored pkg
-            >>| function
-            | true -> None
-            | false -> Some (Package.name pkg))
-          >>| List.filter_opt
-        | l -> Fiber.return l
-      in
-      let install_files, missing_install_files =
-        List.concat_map pkgs ~f:(fun pkg ->
-          List.map contexts ~f:(fun (ctx : Context.t) ->
-            let fn =
-              let fn =
-                resolve_package_install
-                  workspace
-                  ~findlib_toolchain:(Context.findlib_toolchain ctx)
-                  pkg
-              in
-              Path.append_source (Path.build (Context.build_dir ctx)) fn
-            in
-            if Path.exists fn then Left (ctx, (pkg, fn)) else Right fn))
-        |> List.partition_map ~f:Fun.id
-      in
-      if missing_install_files <> []
-      then
-        User_error.raise
-          [ Pp.textf "The following <package>.install are missing:"
-          ; Pp.enumerate missing_install_files ~f:(fun p -> Pp.text (Path.to_string p))
-          ]
-          ~hints:
-            [ Pp.concat
-                ~sep:Pp.space
-                [ Pp.text "try running"
-                ; User_message.command "dune build [-p <pkg>] @install"
-                ]
-              |> Pp.hovbox
-            ];
-      (match contexts, prefix_from_command_line, libdir_from_command_line with
-       | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-         User_error.raise
-           [ Pp.concat
-               ~sep:Pp.space
-               [ Pp.text "Cannot specify"
-               ; User_message.command "--prefix"
-               ; Pp.text "or"
-               ; User_message.command "--libdir"
-               ; Pp.text "when installing into multiple contexts!"
-               ]
-           ]
-       | _ -> ());
-      let install_files_by_context =
-        let module CMap = Map.Make (Context) in
-        CMap.of_list_multi install_files
-        |> CMap.to_list_map ~f:(fun context install_files ->
-          let entries_per_package =
-            List.map install_files ~f:(fun (package, install_file) ->
-              let entries =
-                Install.Entry.load_install_file install_file (fun local ->
-                  Path.append_local (Path.source Path.Source.root) local)
-              in
-              let entries =
-                List.filter entries ~f:(fun (entry : Path.t Install.Entry.t) ->
-                  Sections.should_install sections entry.section)
-              in
-              match
-                List.filter_map entries ~f:(fun entry ->
-                  (* CR rgrinberg: this is ignoring optional entries *)
-                  Option.some_if (not (Path.exists entry.src)) entry.src)
-              with
-              | [] -> package, entries
-              | missing_files ->
-                User_error.raise
-                  [ Pp.textf
-                      "The following files which are listed in %s cannot be installed \
-                       because they do not exist:"
-                      (Path.to_string_maybe_quoted install_file)
-                  ; Pp.enumerate missing_files ~f:(fun p ->
-                      Pp.verbatim (Path.to_string_maybe_quoted p))
-                  ])
-          in
-          context, entries_per_package)
-      in
-      let destdir =
-        Option.map
-          ~f:Path.of_string
-          (if create_install_files
-           then Some (Option.value ~default:"_destdir" destdir)
-           else destdir)
-      in
-      let relocatable =
-        if relocatable
-        then (
-          match prefix_from_command_line with
-          | Some dir -> Some (Path.of_string dir)
-          | None ->
-            User_error.raise
-              [ Pp.concat
-                  ~sep:Pp.space
-                  [ Pp.text "Option"
-                  ; User_message.command "--prefix"
-                  ; Pp.text "is needed with"
-                  ; User_message.command "--relocation"
-                  ]
-                |> Pp.hovbox
-              ])
-        else None
-      in
-      let verbosity =
-        match config.display with
-        | Simple display -> display.verbosity
-        | Tui -> Quiet
-      in
-      let open Fiber.O in
-      let (module Ops) = file_operations ~verbosity ~dry_run ~workspace in
-      let files_deleted_in = ref Path.Set.empty in
       let from_command_line =
-        let open Install.Roots in
-        { lib_root = libdir_from_command_line
+        { Install.Roots.lib_root = libdir_from_command_line
         ; etc_root = etcdir_from_command_line
         ; doc_root = docdir_from_command_line
         ; man = mandir_from_command_line
@@ -748,90 +837,22 @@ let install_uninstall ~what =
         ; libexec_root = libexecdir_from_command_line
         ; share_root = datadir_from_command_line
         }
-        |> map ~f:(Option.map ~f:Path.of_string)
-        |> complete
+        |> Install.Roots.map ~f:(Option.map ~f:Path.of_string)
+        |> Install.Roots.complete
       in
-      let+ () =
-        Fiber.sequential_iter
-          install_files_by_context
-          ~f:(fun (context, entries_per_package) ->
-            let roots = get_dirs context ~prefix_from_command_line ~from_command_line in
-            let conf =
-              Artifact_substitution.Conf.of_install ~relocatable ~roots ~context
-            in
-            Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
-              let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
-              let+ entries =
-                (* CR rgrinberg: why don't we install things concurrently? *)
-                Fiber.sequential_map entries ~f:(fun entry ->
-                  let special_file = Special_file.of_entry entry in
-                  let dst =
-                    Install.Entry.relative_installed_path entry ~paths
-                    |> interpret_destdir ~destdir
-                  in
-                  let dir = Path.parent_exn dst in
-                  match what with
-                  | Install ->
-                    let* copy =
-                      match special_file with
-                      | _ when not create_install_files -> Fiber.return true
-                      | None ->
-                        let open Artifact_substitution in
-                        let+ status = test_file ~src:entry.src () in
-                        (match status with
-                         | Some_substitution -> true
-                         | No_substitution -> false)
-                      | Some Special_file.META | Some Special_file.Dune_package ->
-                        Fiber.return true
-                    in
-                    let msg =
-                      if create_install_files then "Copying to" else "Installing"
-                    in
-                    if copy
-                    then
-                      let* () =
-                        (match Path.is_directory dst with
-                         | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
-                         | false -> Ops.remove_file_if_exists dst);
-                        print_line
-                          ~verbosity
-                          "%s %s"
-                          msg
-                          (Path.to_string_maybe_quoted dst);
-                        Ops.mkdir_p dir;
-                        let executable =
-                          Section.should_set_executable_bit entry.section
-                        in
-                        Ops.copy_file
-                          ~src:entry.src
-                          ~dst
-                          ~executable
-                          ~special_file
-                          ~package
-                          ~conf
-                      in
-                      Fiber.return (Install.Entry.set_src entry dst)
-                    else Fiber.return entry
-                  | Uninstall ->
-                    Ops.remove_file_if_exists dst;
-                    files_deleted_in := Path.Set.add !files_deleted_in dir;
-                    Fiber.return entry)
-              in
-              if create_install_files
-              then (
-                let fn =
-                  resolve_package_install
-                    workspace
-                    ~findlib_toolchain:(Context.findlib_toolchain context)
-                    package
-                in
-                Io.write_file (Path.source fn) (Install.Entry.gen_install_file entries))))
-      in
-      Path.Set.to_list !files_deleted_in
-      (* This [List.rev] is to ensure we process children directories before
-         their parents *)
-      |> List.rev
-      |> List.iter ~f:(Ops.remove_dir_if_exists ~if_non_empty:Warn))
+      run
+        what
+        context
+        common
+        pkgs
+        sections
+        config
+        ~dry_run
+        ~destdir
+        ~relocatable
+        ~create_install_files
+        ~prefix_from_command_line
+        ~from_command_line)
   in
   Cmd.v
     (Cmd.info
@@ -841,5 +862,5 @@ let install_uninstall ~what =
     term
 ;;
 
-let install = install_uninstall ~what:Install
-let uninstall = install_uninstall ~what:Uninstall
+let install = make ~what:Install
+let uninstall = make ~what:Uninstall

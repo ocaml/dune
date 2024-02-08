@@ -403,7 +403,9 @@ module Crawl = struct
       immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
-    let* scope = Scope.DB.find_by_project (Super_context.context sctx) project in
+    let* scope =
+      Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
+    in
     let* modules_ = modules ~obj_dir ~deps_of modules_ in
     let+ requires =
       let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -518,7 +520,7 @@ module Crawl = struct
   (* Builds a workspace description for the provided dune setup and context *)
   let workspace
     options
-    ({ Dune_rules.Main.conf; contexts = _; scontexts } : Dune_rules.Main.build_system)
+    ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
     (context : Context.t)
     dirs
     : Descr.Workspace.t Memo.t
@@ -527,16 +529,14 @@ module Crawl = struct
     let sctx = Context_name.Map.find_exn scontexts context_name in
     let open Memo.O in
     let* dune_files =
-      Dune_load.dune_files conf
-      |> Dune_load.Dune_files.eval ~context:context_name
-      >>| List.filter ~f:(dune_file_is_in_dirs dirs)
+      Dune_load.dune_files context_name >>| List.filter ~f:(dune_file_is_in_dirs dirs)
     in
     let* exes, exe_libs =
       (* the list of workspace items that describe executables, and the list of
          their direct library dependencies *)
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Dune_file.stanzas dune_file
-        |> Memo.parallel_map ~f:(fun stanza ->
+        >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Executables.T exes ->
             let dir =
@@ -557,9 +557,11 @@ module Crawl = struct
     in
     let* project_libs =
       (* the list of libraries declared in the project *)
-      Dune_load.projects conf
-      |> Memo.parallel_map ~f:(fun project ->
-        Scope.DB.find_by_project context project >>| Scope.libs >>= Lib.DB.all)
+      Dune_load.projects ()
+      >>= Memo.parallel_map ~f:(fun project ->
+        Scope.DB.find_by_project (Context.name context) project
+        >>| Scope.libs
+        >>= Lib.DB.all)
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
     in

@@ -1,14 +1,5 @@
 open Stdune
-
-module Re = struct
-  include Dune_re
-
-  module Group = struct
-    include Group
-
-    let get_opt group n = if Group.test group n then Some (get group n) else None
-  end
-end
+module Re = Dune_re
 
 include struct
   open Dune_engine
@@ -40,7 +31,7 @@ let re =
 ;;
 
 module Patch = struct
-  (* CR-someday alizter: more parsed infromation about the patch should go here.
+  (* CR-someday alizter: more parsed information about the patch should go here.
      Eventually we wish to replace the patch command inside the patch action with a pure
      OCaml implementation. *)
   type t =

@@ -17,12 +17,20 @@ end
 
 type t = E : 'a * (module T with type t = 'a) -> t
 
+module Key = struct
+  type stanza = t
+  type nonrec 'a t = t -> 'a option
+
+  let get (t : _ t) (x : stanza) = t x
+end
+
 module type S = sig
   type stanza := t
   type t
   type repr += T of t
 
   val make_stanza : t -> stanza
+  val key : t Key.t
 end
 
 let repr (E (a, (module T))) = T.repr a
@@ -45,9 +53,16 @@ struct
     type _ witness += W : t witness
   end
 
-  include T
-
   let make_stanza (a : S.t) = E (a, (module T))
+
+  let key : S.t Key.t =
+    fun t ->
+    match repr t with
+    | T x -> Some x
+    | _ -> None
+  ;;
+
+  include T
 end
 
 let compare (E (x, (module X))) (E (y, (module Y))) =

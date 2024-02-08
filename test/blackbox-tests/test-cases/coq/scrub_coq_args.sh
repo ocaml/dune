@@ -2,7 +2,7 @@
 
 # This script is used for scrubbing the output of Dune actions calling Coq
 # binaries. It contains some common patterns which are scurbbed for any
-# non-reproducable paths and the arguments are displayed line by line.
+# non-reproducible paths and the arguments are displayed line by line.
 
 # \f (form feed) is used as a delayed new line for sed
 

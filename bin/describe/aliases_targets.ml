@@ -123,7 +123,7 @@ module Targets_cmd = struct
       match Path.Build.equal (Path.Build.parent_exn path) dir with
       | false -> None
       | true ->
-        (* directory targets can be distinguied by the trailing path seperator
+        (* directory targets can be distinguied by the trailing path separator
         *)
         Some
           (match kind with

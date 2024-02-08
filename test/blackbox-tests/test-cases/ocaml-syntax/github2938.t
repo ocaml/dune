@@ -9,8 +9,9 @@ dune syntax.
   > let () = Jbuild_plugin.V1.send {|(dirs foo)|}
   > EOF
   $ dune build
-  File "_build/.dune/default/dune", line 1, characters 1-5:
+  File "_build/.dune/default/dune", line 1, characters 0-10:
   1 | (dirs foo)
-       ^^^^
-  Error: Unknown constructor dirs
+      ^^^^^^^^^^
+  Error: stanza "dirs" may not appear in (include ..) or be generated with
+  OCaml syntax dune files
   [1]

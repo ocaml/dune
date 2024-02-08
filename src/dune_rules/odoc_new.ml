@@ -227,7 +227,7 @@ let add_rule sctx =
 *)
 let libs_maps_def =
   let f (ctx, libs) =
-    let* db = Scope.DB.public_libs ctx
+    let* db = Scope.DB.public_libs (Context.name ctx)
     and* all_packages_entries =
       let* findlib = Findlib.create (Context.name ctx) in
       Memo.parallel_map ~f:(Findlib.find findlib) libs
@@ -399,7 +399,7 @@ module Valid = struct
     let run (ctx, all, projects) =
       let* libs_and_pkgs =
         let* mask =
-          let+ mask = Only_packages.get_mask () in
+          let+ mask = Dune_load.mask () in
           Option.map ~f:Package.Name.Map.keys mask
         in
         Scope.DB.with_all ctx ~f:(fun find ->
@@ -442,7 +442,7 @@ module Valid = struct
       let+ libs_list =
         let+ libs_list =
           let+ libs_list =
-            let* stdlib = stdlib_lib ctx in
+            let* stdlib = stdlib_lib (Context.name ctx) in
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
@@ -485,7 +485,7 @@ module Valid = struct
   ;;
 
   let get ctx ~all =
-    let* projects = Dune_load.load () >>| Dune_load.projects in
+    let* projects = Dune_load.projects () in
     Memo.exec valid_libs_and_packages (ctx, all, projects)
   ;;
 
@@ -973,7 +973,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
   let ctx = Super_context.context sctx in
   let* maps = Valid.libs_maps ctx ~all in
   let* requires =
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     link_requires stdlib_opt libs
   in
   let* deps =
@@ -1086,7 +1086,7 @@ let parse_odoc_deps =
 let compile_odocs sctx ~all ~quiet artifacts parent libs =
   let* requires =
     let ctx = Super_context.context sctx in
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     let requires = compile_requires stdlib_opt libs in
     Resolve.Memo.bind requires ~f:(fun libs ->
       let+ libs = Valid.filter_libs ctx ~all libs in
@@ -1247,7 +1247,7 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
 ;;
 
 let pkg_mlds sctx pkg =
-  let* pkgs = Only_packages.get () in
+  let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
   then Packages.mlds sctx pkg >>| List.map ~f:Path.build
   else (
@@ -1608,7 +1608,7 @@ let index_info_of_external_fallback sctx location fallback =
    2. External findlib directories
    3. Private libraries
 
-   We actually use the same function for private libaries as for
+   We actually use the same function for private libraries as for
    dune packages.
 *)
 let standard_index_contents b entry_modules =
@@ -1952,8 +1952,8 @@ let setup_all_html_rules sctx ~all =
 
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
-  Only_packages.packages_of_project project
-  >>= Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  Dune_project.packages project
+  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

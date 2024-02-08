@@ -94,16 +94,16 @@ end = struct
 
   let get_env_stanza ~dir =
     let open Memo.O in
-    let+ stanzas = Only_packages.stanzas_in_dir dir in
-    Option.value ~default:Dune_env.empty
-    @@
-    let open Option.O in
-    let* stanzas = stanzas in
-    Dune_file.stanzas stanzas
-    |> List.find_map ~f:(fun stanza ->
-      match Stanza.repr stanza with
-      | Dune_env.T config -> Some config
-      | _ -> None)
+    Dune_load.stanzas_in_dir dir
+    >>= (function
+           | None -> Memo.return None
+           | Some dune_file ->
+             Dune_file.find_stanzas dune_file Dune_env.key
+             >>| (function
+              | [] -> None
+              | [ x ] -> Some x
+              | _ :: _ -> assert false))
+    >>| Option.value ~default:Dune_env.empty
   ;;
 
   let get_impl t dir =
@@ -296,11 +296,12 @@ let make_root_env (context : Context.t) ~(host : t option) =
 ;;
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
+  let context_name = Context.name context in
   let* env =
     let base = make_root_env context ~host in
-    Site_env.add_packages_env (Context.name context) ~base stanzas packages
+    Site_env.add_packages_env context_name ~base stanzas packages
   in
-  let public_libs = Scope.DB.public_libs context in
+  let public_libs = Scope.DB.public_libs context_name in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
     let artifacts_host, public_libs_host, context_host =
@@ -308,7 +309,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       | None -> artifacts, public_libs, Memo.return context
       | Some host ->
         let artifacts = host >>= Artifacts_db.get in
-        let public_libs = host >>= Scope.DB.public_libs in
+        let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
         artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
@@ -349,7 +350,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
     let open Memo.O in
-    let* packages = Only_packages.get ()
+    let* packages = Dune_load.packages ()
     and* contexts = Context.DB.all () in
     let rec sctxs =
       lazy
@@ -368,8 +369,7 @@ let all =
           Some sctx
       in
       let* host, stanzas =
-        Memo.fork_and_join host (fun () ->
-          Only_packages.filtered_stanzas (Context.name context))
+        Memo.fork_and_join host (fun () -> Dune_load.dune_files (Context.name context))
       in
       create ~host ~context ~packages ~stanzas
     in

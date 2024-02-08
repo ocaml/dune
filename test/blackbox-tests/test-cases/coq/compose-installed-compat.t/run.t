@@ -1,7 +1,7 @@
 We make sure that Coq lang versions < 0.8 can still somewhat compose with
 installed theories. The way this was done before was due to `-boot` not being
 passed to Coq. This meant that we essentially have `-Q "" user-contrib` being
-passed. In order to restore this behaviour for Coq lang < 0.8 we explicilty add
+passed. In order to restore this behaviour for Coq lang < 0.8 we explicitly add
 that flag. This PR makes sure that this is indeed the case.
 
 We configure COQLIB to be lib/coq. Coq will search for user-contrib from here.
@@ -36,10 +36,6 @@ so this also tests that it won't be a problem.
   (warnings (deprecated_coq_lang_lt_08 disabled))
   Leaving directory 'B'
   $ dune install --root B --prefix=$PWD --display=short
-  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
-  3.8 and will be removed in an upcoming Dune version.
-  Hint: To disable this warning, add the following to your dune-project file:
-  (warnings (deprecated_coq_lang_lt_08 disabled))
   Installing $TESTCASE_ROOT/lib/B/META
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi

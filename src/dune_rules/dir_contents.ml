@@ -127,31 +127,28 @@ let build_mlds_map stanzas ~dir ~files =
         | _ -> acc)
       |> Memo.return)
   in
-  Memo.parallel_map stanzas ~f:(fun x ->
-    match Stanza.repr x with
-    | Documentation.T doc ->
-      let+ mlds =
-        let+ mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.Unordered_string.eval
-          doc.mld_files
-          ~standard:mlds
-          ~key:Fun.id
-          ~parse:(fun ~loc s ->
-            match Filename.Map.find mlds s with
-            | Some s -> s
-            | None ->
-              User_error.raise
-                ~loc
-                [ Pp.textf
-                    "%s.mld doesn't exist in %s"
-                    s
-                    (Path.to_string_maybe_quoted
-                       (Path.drop_optional_build_context (Path.build dir)))
-                ])
-      in
-      Some (doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ -> Memo.return None)
-  >>| List.filter_opt
+  Dune_file.find_stanzas stanzas Documentation.key
+  >>= Memo.parallel_map ~f:(fun (doc : Documentation.t) ->
+    let+ mlds =
+      let+ mlds = Memo.Lazy.force mlds in
+      Ordered_set_lang.Unordered_string.eval
+        doc.mld_files
+        ~standard:mlds
+        ~key:Fun.id
+        ~parse:(fun ~loc s ->
+          match Filename.Map.find mlds s with
+          | Some s -> s
+          | None ->
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "%s.mld doesn't exist in %s"
+                  s
+                  (Path.to_string_maybe_quoted
+                     (Path.drop_optional_build_context (Path.build dir)))
+              ])
+    in
+    doc, List.map (Filename.Map.values mlds) ~f:(Path.Build.relative dir))
 ;;
 
 module rec Load : sig
@@ -272,7 +269,7 @@ end = struct
           let+ files, rules =
             Rules.collect (fun () ->
               let src_dir = Dune_file.dir d in
-              load_text_files sctx st_dir stanzas ~src_dir ~dir)
+              stanzas >>= load_text_files sctx st_dir ~src_dir ~dir)
           in
           let dirs = [ { Source_file_dir.dir; path_to_root = []; files } ] in
           let ml =
@@ -281,31 +278,31 @@ end = struct
               let loc = loc_of_dune_file st_dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir in
-              Ml_sources.make
-                stanzas
-                ~expander
-                ~dir
-                ~libs
-                ~project
-                ~lib_config
-                ~loc
-                ~include_subdirs
-                ~lookup_vlib
-                ~dirs)
+              stanzas
+              >>= Ml_sources.make
+                    ~expander
+                    ~dir
+                    ~libs
+                    ~project
+                    ~lib_config
+                    ~loc
+                    ~include_subdirs
+                    ~lookup_vlib
+                    ~dirs)
           in
           { Standalone_or_root.root =
               { kind = Standalone
               ; dir
               ; text_files = files
               ; ml
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~dir ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
                     let dune_version = Dune_project.dune_version project in
-                    Memo.return (Foreign_sources.make stanzas ~dune_version ~dirs))
+                    stanzas >>| Foreign_sources.make ~dune_version ~dirs)
               ; coq =
                   Memo.lazy_ (fun () ->
-                    Coq_sources.of_dir stanzas ~dir ~include_subdirs ~dirs |> Memo.return)
+                    stanzas >>| Coq_sources.of_dir ~dir ~include_subdirs ~dirs)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -335,12 +332,12 @@ end = struct
             Rules.collect (fun () ->
               Memo.fork_and_join
                 (fun () ->
-                  load_text_files
-                    sctx
-                    source_dir
-                    stanzas
-                    ~src_dir:(Dune_file.dir dune_file)
-                    ~dir)
+                  stanzas
+                  >>= load_text_files
+                        sctx
+                        source_dir
+                        ~src_dir:(Dune_file.dir dune_file)
+                        ~dir)
                 (fun () ->
                   Memo.parallel_map
                     components
@@ -365,26 +362,26 @@ end = struct
               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
               let* expander = Super_context.expander sctx ~dir in
-              Ml_sources.make
-                stanzas
-                ~expander
-                ~dir
-                ~project
-                ~libs
-                ~lib_config
-                ~loc
-                ~lookup_vlib
-                ~include_subdirs
-                ~dirs)
+              stanzas
+              >>= Ml_sources.make
+                    ~expander
+                    ~dir
+                    ~project
+                    ~libs
+                    ~lib_config
+                    ~loc
+                    ~lookup_vlib
+                    ~include_subdirs
+                    ~dirs)
           in
           let foreign_sources =
             Memo.lazy_ (fun () ->
               let dune_version = Dune_project.dune_version project in
-              Memo.return (Foreign_sources.make stanzas ~dune_version ~dirs))
+              stanzas >>| Foreign_sources.make ~dune_version ~dirs)
           in
           let coq =
             Memo.lazy_ (fun () ->
-              Coq_sources.of_dir stanzas ~dir ~dirs ~include_subdirs |> Memo.return)
+              stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
           in
           let subdirs =
             List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
@@ -393,7 +390,7 @@ end = struct
               ; text_files = files
               ; ml
               ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
               ; coq
               })
           in
@@ -403,7 +400,7 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map stanzas ~dir ~files)
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
             ; coq
             }
           in

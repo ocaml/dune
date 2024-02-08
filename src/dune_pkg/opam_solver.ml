@@ -686,8 +686,14 @@ module Solver_result = struct
     }
 end
 
-let solve_lock_dir solver_env version_preference repos ~local_packages ~constraints =
-  let* pinned_packages = Pinned_package.resolve_pins local_packages in
+let solve_lock_dir
+  solver_env
+  version_preference
+  repos
+  ~local_packages
+  ~pins:pinned_packages
+  ~constraints
+  =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =

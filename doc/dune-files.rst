@@ -2,6 +2,13 @@
 Stanza Reference
 ****************
 
+.. TODO(diataxis)
+
+   Recycle this content into:
+
+   - :doc:`reference/stanzas`
+   - :doc:`reference/files`
+
 .. _dune-project:
 
 dune-project
@@ -761,6 +768,7 @@ The following sections describe the available stanzas and their meanings.
 .. include:: stanzas/test.rst
 .. include:: stanzas/toplevel.rst
 .. include:: stanzas/vendored_dirs.rst
+.. include:: stanzas/dynamic_include.rst
 
 .. _dune-workspace:
 
@@ -1087,7 +1095,7 @@ Specifies how Dune handles the terminal when a rebuild is triggered in watch mod
 
 where ``<setting>`` is one of:
 
-- ``preserve`` does not clear the terminal screen beteween rebuilds.
+- ``preserve`` does not clear the terminal screen between rebuilds.
 
 - ``clear-on-rebuild`` clears the terminal screen between rebuilds.
 

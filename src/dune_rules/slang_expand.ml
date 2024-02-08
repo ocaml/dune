@@ -40,10 +40,7 @@ let rec eval_rec (t : Slang.t) ~dir ~f : (Value.t list list, _) result Memo.t =
         | Ok false -> eval_rec else_ ~dir ~f)
      | Has_undefined_var t ->
        let+ result = eval_rec t ~dir ~f in
-       Ok
-         (match result with
-          | Ok _ -> [ [ Value.false_ ] ]
-          | Error (Undefined_pkg_var _) -> [ [ Value.true_ ] ])
+       Ok [ [ Result.is_error result |> Value.of_bool ] ]
      | Catch_undefined_var { value; fallback } ->
        let* value = eval_rec value ~dir ~f in
        (match value with
@@ -76,10 +73,7 @@ let rec eval_rec (t : Slang.t) ~dir ~f : (Value.t list list, _) result Memo.t =
        in
        loop (Ok [ [ Value.false_ ] ]) blangs
      | Blang b ->
-       let+ result = eval_blang_rec b ~dir ~f in
-       Result.map result ~f:(function
-         | true -> [ [ Value.true_ ] ]
-         | false -> [ [ Value.false_ ] ]))
+       eval_blang_rec b ~dir ~f >>| Result.map ~f:(fun bool -> [ [ Value.of_bool bool ] ]))
 
 and eval_to_bool (t : Slang.t) ~dir ~f =
   let+ result = eval_rec t ~dir ~f in

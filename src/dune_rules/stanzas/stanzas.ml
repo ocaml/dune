@@ -15,6 +15,22 @@ let () =
 module Include = struct
   type t = Loc.t * string
 
+  let decode =
+    let+ loc = loc
+    and+ fn = relative_file in
+    loc, fn
+  ;;
+
+  include Stanza.Make (struct
+      type nonrec t = t
+
+      include Poly
+    end)
+end
+
+module Dynamic_include = struct
+  type t = Include.t
+
   include Stanza.Make (struct
       type nonrec t = t
 
@@ -30,6 +46,16 @@ type constructors = Stanza.Parser.t list
 let stanzas : constructors =
   [ Site_stanzas.all
   ; Cram_stanza.stanza
+  ; List.map Dune_file0.statically_evaluated_stanzas ~f:(fun stanza ->
+      ( stanza
+      , let* loc = loc in
+        User_error.raise
+          ~loc
+          [ Pp.textf
+              "stanza %S may not appear in (include ..) or be generated with OCaml \
+               syntax dune files"
+              stanza
+          ] ))
   ; [ ( "library"
       , let+ x = Library.decode in
         let base = [ Library.make_stanza x ] in
@@ -107,6 +133,10 @@ let stanzas : constructors =
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name.make_stanza t ] )
+    ; ( "dynamic_include"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (3, 14)
+        and+ include_ = Include.decode in
+        [ Dynamic_include.make_stanza include_ ] )
     ]
   ]
   |> List.concat

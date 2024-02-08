@@ -48,7 +48,7 @@ let match_line line =
 ]}
 *)
 
-(** XXX Character classes *)
+(* XXX Character classes *)
 
 exception Parse_error
 exception Not_supported
@@ -60,10 +60,10 @@ val re : ?opts:(opt list) -> string -> Core.t
 (** Parsing of a Posix extended regular expression *)
 
 val compile : Core.t -> Core.re
-(** Regular expression compilation *)
+(** [compile r] is defined as [Core.compile (Core.longest r)] *)
 
 val compile_pat : ?opts:(opt list) -> string -> Core.re
-(** [compile r] is defined as [Core.compile (Core.longest r)] *)
+(** [compile_pat ?opts regex] compiles the Posix extended regular expression [regexp] *)
 
 (*
 Deviation from the standard / ambiguities in the standard

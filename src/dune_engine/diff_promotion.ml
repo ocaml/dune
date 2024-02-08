@@ -26,6 +26,8 @@ module File = struct
     ; dst : Path.Source.t
     }
 
+  let source t = t.dst
+
   let compare { src; staging; dst } t =
     let open Ordering.O in
     let= () = Path.Build.compare src t.src in

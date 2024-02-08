@@ -99,15 +99,12 @@ let test_rule
 
 let collect_stanzas =
   let stanzas dir ~f =
-    let+ stanzas = Only_packages.stanzas_in_dir dir in
-    match stanzas with
-    | None -> []
+    Dune_load.stanzas_in_dir dir
+    >>= function
+    | None -> Memo.return []
     | Some (d : Dune_file.t) ->
-      Dune_file.stanzas d
-      |> List.filter_map ~f:(fun x ->
-        match Stanza.repr x with
-        | Cram_stanza.T c -> Option.some_if (f c) (dir, c)
-        | _ -> None)
+      Dune_file.find_stanzas d Cram_stanza.key
+      >>| List.filter_map ~f:(fun c -> Option.some_if (f c) (dir, c))
   in
   let rec collect_whole_subtree acc dir =
     let* acc =
@@ -131,7 +128,7 @@ let rules ~sctx ~expander ~dir tests =
   let open Memo.O in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
-    Only_packages.get_mask ()
+    Dune_load.mask ()
     >>| function
     | None -> fun _packages f -> f ()
     | Some only ->

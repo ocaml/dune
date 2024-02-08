@@ -15,8 +15,9 @@ Example using melange.emit, copy_files and include_subdirs
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target app)
-  >  (preprocess (pps melange.ppx))
   >  (emit_stdlib false)
+  >  (libraries melange.node)
+  >  (preprocess (pps melange.ppx))
   >  (alias mel))
   > 
   > (subdir
@@ -29,7 +30,7 @@ Example using melange.emit, copy_files and include_subdirs
   > EOF
 
   $ cat > src/main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "../file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

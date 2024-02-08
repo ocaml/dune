@@ -1,19 +1,24 @@
-# Bug #4632
+The interaction and order of overriding DUNE_PROFILE, --profile, and --release.
 
-  $ dune build -p
-  dune: option '-p' needs an argument
-  Usage: dune build [OPTION]… [TARGET]…
-  Try 'dune build --help' or 'dune --help' for more information.
-  [1]
+Bug #4632
 
-  $ dune build --root . --verbose 2>&1 | grep "; profile"
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > EOF
+
+  $ dune build --verbose 2>&1 | grep "; profile"
    ; profile = Dev
 
-  $ dune build -p foo --verbose 2>&1 | grep "; profile"
+  $ dune build --release --verbose 2>&1 | grep "; profile"
    ; profile = Release
 
-  $ DUNE_PROFILE="bar" dune build --root . --verbose 2>&1 | grep "; profile"
-   ; profile = User_defined "bar"
+  $ export DUNE_PROFILE=envvar
 
-  $ DUNE_PROFILE="bar" dune build -p foo --verbose 2>&1 | grep "; profile"
+  $ dune build --verbose 2>&1 | grep "; profile"
+   ; profile = User_defined "envvar"
+
+  $ dune build --release --verbose 2>&1 | grep "; profile"
    ; profile = Release
+
+  $ dune build --profile cmdline --verbose 2>&1 | grep "; profile"
+   ; profile = User_defined "cmdline"

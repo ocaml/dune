@@ -52,17 +52,14 @@ let current_group dir = function
   | Is_component_of_a_group_but_not_the_root { group_root; _ } -> Group_root group_root
 ;;
 
-let get_include_subdirs stanzas =
-  List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
-    match Stanza.repr stanza with
-    | Include_subdirs.T (loc, x) ->
-      if Option.is_some acc
-      then
-        User_error.raise
-          ~loc
-          [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ];
-      Some (loc, x)
-    | _ -> acc)
+let get_include_subdirs include_stanzas =
+  match include_stanzas with
+  | [] -> None
+  | [ (loc, x) ] -> Some (loc, x)
+  | _ :: (loc, _) :: _ ->
+    User_error.raise
+      ~loc
+      [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ]
 ;;
 
 let find_module_stanza stanzas =
@@ -147,16 +144,18 @@ end = struct
       | Lock_dir | Generated | Source_only _ | Standalone _ | Group_root _ ->
         Memo.return Appendable_list.empty
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
+        let* stanzas =
+          match stanzas with
+          | None -> Memo.return []
+          | Some dune_file -> Dune_file.stanzas dune_file
+        in
         walk_children st_dir ~dir ~local
         >>| Appendable_list.( @ )
               (Appendable_list.singleton
                  { Group_component.dir
                  ; path_to_group_root = List.rev local
                  ; source_dir = st_dir
-                 ; stanzas =
-                     (match stanzas with
-                      | None -> []
-                      | Some d -> Dune_file.stanzas d)
+                 ; stanzas
                  })
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
@@ -173,7 +172,9 @@ end = struct
   ;;
 
   let has_dune_file ~dir st_dir ~build_dir_is_project_root (d : Dune_file.t) =
-    match get_include_subdirs (Dune_file.stanzas d) with
+    Dune_file.find_stanzas d Include_subdirs.key
+    >>| get_include_subdirs
+    >>= function
     | Some (loc, Include mode) ->
       let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
       Memo.return
@@ -193,7 +194,8 @@ end = struct
          | No_group -> Memo.return @@ Standalone (st_dir, d)
          | Group_root group_root ->
            let+ () =
-             match find_module_stanza (Dune_file.stanzas d) with
+             let* stanzas = Dune_file.stanzas d in
+             match find_module_stanza stanzas with
              | None -> Memo.return ()
              | Some loc ->
                get ~dir:group_root
@@ -235,7 +237,7 @@ end = struct
        | true -> Memo.return Lock_dir
        | false ->
          let build_dir_is_project_root = build_dir_is_project_root st_dir in
-         Only_packages.stanzas_in_dir dir
+         Dune_load.stanzas_in_dir dir
          >>= (function
           | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
           | None ->
@@ -260,12 +262,15 @@ let directory_targets t ~dir =
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) ->
-    extract_directory_targets ~dir (Dune_file.stanzas dune_file)
+    Dune_file.stanzas dune_file >>= extract_directory_targets ~dir
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
       extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
     in
-    let* init = f ~dir (Dune_file.stanzas dune_file) Path.Build.Map.empty in
+    let* init =
+      let* stanzas = Dune_file.stanzas dune_file in
+      f ~dir stanzas Path.Build.Map.empty
+    in
     components
     >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
       f ~dir stanzas acc)

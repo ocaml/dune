@@ -133,7 +133,7 @@ let plugins_code packages buf pkg sites =
 
 let setup_rules sctx ~dir (def : Generate_sites_module_stanza.t) =
   let open Memo.O in
-  let* packages = Only_packages.get () in
+  let* packages = Dune_load.packages () in
   let impl () =
     let buf = Buffer.create 1024 in
     if def.sourceroot then sourceroot_code buf;

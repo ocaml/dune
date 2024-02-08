@@ -82,7 +82,7 @@ let map_exe t p =
 
 let extend_env t ~env =
   (* [t.local_env] has precedence over [t.env], so we cannot extend [env] if
-     there are already local bidings.. *)
+     there are already local bindings.. *)
   assert (Env.Var.Map.is_empty t.local_env);
   { t with env = Env.extend_env t.env env }
 ;;
@@ -113,7 +113,13 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
   in
   let project = Scope.project scope in
   match
-    Package.Name.Map.find (Dune_project.packages project) (Package.Name.of_string s)
+    let name = Package.Name.of_string s in
+    let packages =
+      (* CR-rgrinberg: craziness to preserve buggy behavior people are relying
+         on at the moment *)
+      Dune_project.including_hidden_packages project
+    in
+    Package.Name.Map.find packages name
   with
   | Some p -> Memo.return (value_from_version (Package.version p))
   | None when Dune_project.dune_version project < (2, 9) ->

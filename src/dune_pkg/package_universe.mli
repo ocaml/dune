@@ -10,7 +10,7 @@ val create
   -> Lock_dir.t
   -> (t, User_message.t) result
 
-(** Returns the dependencies of the specified package within teh package
+(** Returns the dependencies of the specified package within the package
     universe *)
 val opam_package_dependencies_of_package
   :  t

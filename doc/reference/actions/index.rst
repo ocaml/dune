@@ -52,7 +52,7 @@ The following constructions are available:
    :caption: Comparing files
 
    diff
-   diff?
+   diffq
    cmp
 
 .. toctree::

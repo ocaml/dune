@@ -11,7 +11,7 @@ type t =
   ; mode : Rule.Mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
-  ; origin : origin
+  ; only_sources : Blang.t
   ; syntax_version : Dune_lang.Syntax.Version.t
   }
 
@@ -21,6 +21,13 @@ include Stanza.Make (struct
     include Poly
   end)
 
+let decode_only_sources =
+  let* blang = peek in
+  match blang with
+  | Some _ -> Blang.decode
+  | None -> return Blang.true_
+;;
+
 let long_form =
   let check = Dune_lang.Syntax.since Stanza.syntax (2, 7) in
   let+ alias = field_o "alias" (check >>> Dune_lang.Alias.decode)
@@ -28,14 +35,19 @@ let long_form =
   and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (2, 8)) ()
   and+ files = field "files" (check >>> String_with_vars.decode)
   and+ only_sources =
-    field_b "only_sources" ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 14))
+    field_o
+      "only_sources"
+      (Dune_lang.Syntax.since Stanza.syntax (3, 14) >>> decode_only_sources)
   and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-  let origin =
-    match only_sources with
-    | true -> Source
-    | false -> Build
-  in
-  { add_line_directive = false; alias; mode; enabled_if; files; origin; syntax_version }
+  let only_sources = Option.value only_sources ~default:Blang.false_ in
+  { add_line_directive = false
+  ; alias
+  ; mode
+  ; enabled_if
+  ; files
+  ; only_sources
+  ; syntax_version
+  }
 ;;
 
 let decode =
@@ -50,7 +62,7 @@ let decode =
     ; mode = Standard
     ; enabled_if = Blang.true_
     ; files
-    ; origin = Build
+    ; only_sources = Blang.false_
     ; syntax_version
     }
 ;;

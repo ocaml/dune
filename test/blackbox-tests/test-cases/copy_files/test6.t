@@ -30,3 +30,16 @@ Show the difference when `only_sources` is used
   $ dune build target/in-build.txt
   Error: Don't know how to build target/in-build.txt
   [1]
+
+A blang expression can be used:
+
+  $ cat >target/dune <<EOF
+  > (copy_files
+  >  (only_sources (= x x))
+  >  (files ../foo/*.txt))
+  > EOF
+
+  $ dune build target/in-source.txt
+  $ dune build target/in-build.txt
+  Error: Don't know how to build target/in-build.txt
+  [1]

@@ -10,7 +10,7 @@ type t =
   ; mode : Rule.Mode.t
   ; enabled_if : Blang.t
   ; files : String_with_vars.t
-  ; origin : origin
+  ; only_sources : Blang.t
   ; syntax_version : Dune_lang.Syntax.Version.t
   }
 

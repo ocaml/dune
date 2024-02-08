@@ -218,11 +218,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            not the current directory."
       ];
   (* add rules *)
+  let* only_sources = Expander.eval_blang expander def.only_sources in
   let* files =
     let dir =
-      match def.origin with
-      | Source -> src_in_src
-      | Build -> src_in_build
+      match only_sources with
+      | true -> src_in_src
+      | false -> src_in_build
     in
     Build_system.eval_pred (File_selector.of_glob ~dir glob)
   in

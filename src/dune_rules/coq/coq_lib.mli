@@ -64,7 +64,7 @@ module DB : sig
 
   (** Note the invariant for the [create_*] functions: DB resolution can't be
       used yet at the stage they are called from [Scope] and the scope build
-      process, is not finised. Instead, resolution of dependencies will be done
+      process, is not finished. Instead, resolution of dependencies will be done
       in [resolve_*] below and properly memoized. *)
   val create_from_coqlib_stanzas
     :  parent:t option

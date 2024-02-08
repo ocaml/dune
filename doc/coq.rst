@@ -116,7 +116,7 @@ The semantics of the fields are:
 
 - ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
   default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
-  flags are passed separately depending on which mode is targed. See the section
+  flags are passed separately depending on which mode is target. See the section
   on :ref:`documentation using coqdoc<coqdoc>` for more information.
 
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to

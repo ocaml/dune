@@ -90,7 +90,7 @@ let test_message
    will no longer be displayed.
 
    We will begin with the 4th property and then test different combinations of transitive
-   and immediate deps to assertain the satsifaction of properties 1-3.
+   and immediate deps to assertain the satisfaction of properties 1-3.
 *)
 
 (* When --transitive is not passed, we include a helper message to inform the user that

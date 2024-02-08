@@ -100,8 +100,8 @@ difference between a propagated export_env versus the initial env.
 We can now observe how the environment updates are applied a second time.
 
 We currently have the following issues:
-- The leading and traling seperators are missing.
-- The initial enviornment is missing.
+- The leading and trailing separators are missing.
+- The initial environment is missing.
 
   $ EXPORTED_ENV_VAR="I have not been exported yet." \
   > prepend_without_trailing_sep="foo:bar" \

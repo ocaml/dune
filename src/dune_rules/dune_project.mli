@@ -94,6 +94,13 @@ val load
   -> infer_from_opam_files:bool
   -> t option Memo.t
 
+val gen_load
+  :  read:(Path.Source.t -> string Memo.t)
+  -> dir:Path.Source.t
+  -> files:Filename.Set.t
+  -> infer_from_opam_files:bool
+  -> t option Memo.t
+
 (** Create an anonymous project at the given directory
 
     Optional arguments:
@@ -129,6 +136,7 @@ val strict_package_deps : t -> bool
 val cram : t -> bool
 val info : t -> Package_info.t
 val warnings : t -> Warning.Settings.t
+val sources : t -> Dune_pkg.Pin_stanza.DB.t
 
 (** Update the execution parameters according to what is written in the
     [dune-project] file. *)

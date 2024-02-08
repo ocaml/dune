@@ -82,7 +82,7 @@ let map_exe t p =
 
 let extend_env t ~env =
   (* [t.local_env] has precedence over [t.env], so we cannot extend [env] if
-     there are already local bidings.. *)
+     there are already local bindings.. *)
   assert (Env.Var.Map.is_empty t.local_env);
   { t with env = Env.extend_env t.env env }
 ;;

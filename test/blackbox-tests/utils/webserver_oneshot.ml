@@ -38,7 +38,7 @@ let main content_file port_file ~simulate_not_found =
   Http.Server.start server;
   let port = Http.Server.port server in
   (* Create the port file immediately before starting the server. This way
-     clients can use the existance of the port file to know roughly when the
+     clients can use the existence of the port file to know roughly when the
      server is ready to accept connections. Note that there is technically a
      small delay between creating the port file and the server being ready
      which we can remove if it ends up causing us problems. *)

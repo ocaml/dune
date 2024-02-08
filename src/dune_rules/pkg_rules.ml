@@ -803,7 +803,7 @@ module Action_expander = struct
       and+ dst =
         Expander.expand_pform_gen ~mode:Single expander dst
         >>| Value.to_path ~dir
-        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc dst)
+        >>| Expander0.as_in_build_dir ~what:"substitute" ~loc:(String_with_vars.loc dst)
       in
       Substitute.action expander ~src ~dst
     | Withenv (updates, action) -> expand_withenv expander updates action

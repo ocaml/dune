@@ -8,9 +8,8 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      # We use melange 1.0 because later versions do not work on OCaml < 5.0.
-      # melange 1.0 has a non-reproducible test causing issues. This branch removes that test.
-      url = "github:alizter/melange/melange-1.0-without-failing-test";
+      # When moving the compiler tests to OCaml 5.1, change to v3-51
+      url = "github:melange-re/melange/v3-414";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };

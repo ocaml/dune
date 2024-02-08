@@ -3,11 +3,6 @@
  (alias runtest-melange))
 
 (cram
- (deps %{bin:rescript_syntax})
- (applies_to rescript-syntax)
- (runtest_alias false))
-
-(cram
  (deps %{bin:melc_stdlib_prefix})
  (applies_to merlin))
 

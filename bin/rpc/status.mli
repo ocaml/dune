@@ -1,2 +1,2 @@
-(** dune rpc status comamnd *)
+(** dune rpc status command *)
 val cmd : unit Cmdliner.Cmd.t

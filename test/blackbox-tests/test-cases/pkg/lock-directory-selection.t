@@ -119,6 +119,7 @@ Test that cond statements can have a default value:
   > (lang dune 3.13)
   > (lock_dir
   >  (solver_env
+  >   (arch amd64)
   >   (os linux))
   >  (repositories mock))
   > (repository

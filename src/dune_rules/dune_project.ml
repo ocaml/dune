@@ -42,6 +42,7 @@ type t =
   ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
+  ; sources : Dune_pkg.Pin_stanza.DB.t
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
@@ -69,6 +70,12 @@ let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
+
+let sources t =
+  let packages = Package.Name.Map.map t.packages ~f:Package.to_local_package in
+  Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources packages
+;;
+
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -101,6 +108,7 @@ let to_dyn
   ; subst_config
   ; strict_package_deps
   ; allow_approximate_merlin
+  ; sources = _
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
@@ -424,6 +432,7 @@ let infer ~dir info packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
+  ; sources = Dune_pkg.Pin_stanza.DB.empty (Project { dir })
   ; packages
   ; root
   ; info
@@ -459,6 +468,7 @@ let anonymous ~dir info packages = infer ~dir info packages
 let encode : t -> Dune_lang.t list =
   fun { name
       ; allow_approximate_merlin = _
+      ; sources
       ; version
       ; dune_version
       ; info
@@ -570,6 +580,7 @@ let encode : t -> Dune_lang.t list =
   let version =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
+  let sources = Dune_pkg.Pin_stanza.DB.encode sources in
   [ lang_stanza; name ]
   @ flags
   @ version
@@ -578,6 +589,7 @@ let encode : t -> Dune_lang.t list =
   @ dialects
   @ packages
   @ subst_config
+  @ sources
 ;;
 
 module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
@@ -715,6 +727,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
+     and+ sources = Dune_pkg.Pin_stanza.DB.decode (Project { dir })
      and+ explicit_extensions =
        multi_field
          "using"
@@ -894,6 +907,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; subst_config
        ; strict_package_deps
        ; allow_approximate_merlin
+       ; sources
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location
@@ -901,17 +915,17 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        }
 ;;
 
-let load_dune_project ~dir opam_packages : t Memo.t =
+let load_dune_project ~read ~dir opam_packages : t Memo.t =
   let file = Path.Source.relative dir filename in
   let open Memo.O in
-  let* f =
-    Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
-      parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file))
+  let* lexbuf =
+    let+ contents = read file in
+    Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
   in
-  f opam_packages
+  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
 ;;
 
-let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
+let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
@@ -920,12 +934,15 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
       | Some name ->
         let opam_file = Path.Source.relative dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
-        let pkg = Package.load_opam_file opam_file name in
+        let pkg =
+          let+ contents = read opam_file in
+          Package.load_opam_file_with_contents ~contents opam_file name
+        in
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
   if Filename.Set.mem files filename
-  then load_dune_project ~dir opam_packages >>| Option.some
+  then load_dune_project ~read ~dir opam_packages >>| Option.some
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
@@ -933,6 +950,11 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
     in
     Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None
+;;
+
+let load =
+  let read source = Fs_memo.file_contents (Path.Outside_build_dir.In_source_dir source) in
+  gen_load ~read
 ;;
 
 let set_parsing_context t parser =

@@ -1,4 +1,4 @@
-Afer the parsing non-ascii characters could be compared through expressions.
+After the parsing non-ascii characters could be compared through expressions.
 Linked to the issue #9728
 
   $ echo '(lang dune 3.0)' > dune-project

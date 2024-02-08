@@ -267,7 +267,7 @@ let all_packages_versions_in_dir loc ~dir opam_package_name =
 
 let all_packages_versions_at_rev rev opam_package_name =
   Paths.package_root opam_package_name
-  |> Rev_store.At_rev.directory_entries rev
+  |> Rev_store.At_rev.directory_entries rev ~recursive:true
   |> Rev_store.File.Set.to_list
   |> List.filter_map ~f:(fun file ->
     let path = Rev_store.File.path file in

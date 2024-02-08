@@ -1,4 +1,4 @@
-(** dummy context for storing auxilary stuff without polluting the rest *)
+(** dummy context for storing auxiliary stuff without polluting the rest *)
 
 open Import
 

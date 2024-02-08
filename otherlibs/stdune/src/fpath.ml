@@ -117,6 +117,7 @@ let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
 
 type unlink_status =
   | Success
+  | Does_not_exist
   | Is_a_directory
   | Error of exn
 
@@ -125,6 +126,7 @@ let unlink t =
   | () -> Success
   | exception exn ->
     (match exn with
+     | Unix.Unix_error (ENOENT, _, _) -> Does_not_exist
      | Unix.Unix_error (error, _, _) ->
        (match error, Platform.OS.value with
         | EISDIR, _ | EPERM, Darwin -> Is_a_directory

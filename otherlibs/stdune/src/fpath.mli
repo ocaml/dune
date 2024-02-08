@@ -32,6 +32,7 @@ val unlink_no_err : string -> unit
 
 type unlink_status =
   | Success
+  | Does_not_exist
   | Is_a_directory
   | Error of exn
 

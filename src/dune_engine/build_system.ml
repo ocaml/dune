@@ -571,6 +571,7 @@ end = struct
               let remove_target_file path =
                 match Path.Build.unlink path with
                 | Success -> ()
+                | Does_not_exist -> ()
                 | Is_a_directory ->
                   (* If target changed from a directory to a file, delete
                      in anyway. *)

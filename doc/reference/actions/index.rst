@@ -25,29 +25,42 @@ source code.
 The following constructions are available:
 
 .. toctree::
+   :caption: Running commands
 
    run
+   system
+   bash
    dynamic-run
    chdir
    setenv
-   with-outputs-to
-   ignore-outputs
-   with-stdin-from
    with-accepted-exit-codes
-   progn
-   concurrent
+
+.. toctree::
+   :caption: Input and output
+
    echo
-   write-file
+   with-outputs-to
+   with-stdin-from
+   ignore-outputs
    cat
    copy
    copy#
-   system
-   bash
+   write-file
+   pipe-outputs
+
+.. toctree::
+   :caption: Comparing files
+
    diff
    diff?
    cmp
+
+.. toctree::
+   :caption: Control structures
+
+   progn
+   concurrent
    no-infer
-   pipe-outputs
 
 Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the DSL being executed. So for instance, if you

@@ -907,7 +907,7 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:Lib.requires libs
+  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in

@@ -2,7 +2,7 @@
 
    We implement file-watching support under Windows using ReadDirectoryChangesW
    and I/O completion ports. The notification of events is pull-based (one needs
-   to retrive them explicitly, there is no callback that is invoked on each
+   to retrieve them explicitly, there is no callback that is invoked on each
    notification).
 
    The main type is [fsenv] which keeps track of the state of a file watcher
@@ -16,7 +16,7 @@
    When the first watch is created a native (not OCaml) thread is triggered
    which runs the main event loop, waiting for notifications from the I/O
    completion port. When a notification arrives, it is recorded in the [fsenv]
-   and it will stay there until the user retrives it by calling [wait].  We
+   and it will stay there until the user retrieves it by calling [wait].  We
    notify the user that new notifications have arrived by signalling an event
    object which causes the [wait] function to return.
 
@@ -255,7 +255,7 @@ static WCHAR* get_final_path(HANDLE handle) {
   return buf;
 }
 
-/* Takes owernship of [path]. Return NULL if the path is already being watched
+/* Takes ownership of [path]. Return NULL if the path is already being watched
    or if an error occurs. */
 static struct watch* add_watch(struct fsenv* fsenv, char* path, struct watch** lst) {
   DEBUG("adding: %s", path);

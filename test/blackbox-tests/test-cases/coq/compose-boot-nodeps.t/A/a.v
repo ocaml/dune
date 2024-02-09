@@ -1,1 +1,1 @@
-Inductive AnotherBegining := Of | The | Universe.
+Inductive AnotherBeginning := Of | The | Universe.

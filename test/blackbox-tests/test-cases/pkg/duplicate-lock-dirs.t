@@ -1,4 +1,4 @@
-We configure the same lock directroy twice:
+We configure the same lock directory twice:
 
   $ cat >dune-workspace <<EOF
   > (lang dune 3.11)

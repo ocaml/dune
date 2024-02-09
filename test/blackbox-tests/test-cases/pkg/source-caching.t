@@ -34,7 +34,7 @@ This command is expected to download the source:
   $ makepkg bar
 
 This command isn't expected to download the source. It will not be available as
-the server will dissapear after serving the first command.
+the server will disappear after serving the first command.
   $ build_pkg bar 2>&1 | sed -ne '/Error:/,$ p'
   Error: curl returned an invalid error code 7
          

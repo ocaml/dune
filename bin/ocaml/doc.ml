@@ -6,7 +6,7 @@ let doc = "Build and view the documentation of an OCaml project"
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune ocaml doc) builds and then opens the documention of an OCaml project in the users default browser.|}
+      {|$(b,dune ocaml doc) builds and then opens the documentation of an OCaml project in the users default browser.|}
   ; `Blocks Common.help_secs
   ]
 ;;

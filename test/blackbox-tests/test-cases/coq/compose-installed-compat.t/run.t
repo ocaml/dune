@@ -1,7 +1,7 @@
 We make sure that Coq lang versions < 0.8 can still somewhat compose with
 installed theories. The way this was done before was due to `-boot` not being
 passed to Coq. This meant that we essentially have `-Q "" user-contrib` being
-passed. In order to restore this behaviour for Coq lang < 0.8 we explicilty add
+passed. In order to restore this behaviour for Coq lang < 0.8 we explicitly add
 that flag. This PR makes sure that this is indeed the case.
 
 We configure COQLIB to be lib/coq. Coq will search for user-contrib from here.

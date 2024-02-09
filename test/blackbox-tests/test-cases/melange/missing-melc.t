@@ -30,7 +30,6 @@ For melange.emit stanzas, an error is shown
   Error: Program melc not found in the tree or in PATH
   Error: Program melc not found in the tree or in PATH
   Error: Program melc not found in the tree or in PATH
-  Error: Program melc not found in the tree or in PATH
 
 For libraries, if no melange.emit stanza is found, build does not fail
 

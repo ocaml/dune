@@ -11,3 +11,4 @@ the rest of the OCaml ecosystem.
    ocaml-ecosystem
    opam-integration
    bootstrap
+   mental-model

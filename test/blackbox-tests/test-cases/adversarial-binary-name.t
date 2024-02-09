@@ -1,4 +1,4 @@
-Some macros treat ':' as an argument delimeter but others do not. A consequence
+Some macros treat ':' as an argument delimiter but others do not. A consequence
 of this is macro arguments which intentionally include a ':' character may look
 like a sequence of multiple arguments but are treated as a single argument by
 macros that don't split their argument on ':'. This tests that we maintain this

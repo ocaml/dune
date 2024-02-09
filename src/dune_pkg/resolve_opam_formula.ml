@@ -122,7 +122,7 @@ let formula_to_package_names version_by_package_name opam_formula =
          | Error e -> loop (e :: errors) xs)
     in
     (* a list of conjunctions where each conjunction represents on set of
-       packages with version constrainst that completely satisfies the
+       packages with version constraint that completely satisfies the
        dependency formula *)
     OpamFormula.to_dnf opam_formula |> loop []
   in

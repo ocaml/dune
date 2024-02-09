@@ -23,4 +23,4 @@ Note that currently dune incorrectly substitutes relative paths for pforms that
 appear in string interpolations.
   $ dune build 2>&1 | strip_sandbox
   --prefix $SANDBOX/_private/default/.pkg/test/target
-  --prefix=../target
+  $SANDBOX/_private/default/.pkg/test/target

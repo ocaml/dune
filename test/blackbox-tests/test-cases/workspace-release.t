@@ -1,4 +1,4 @@
-Here we test how workspace files modify the enviornment when building a package in and out
+Here we test how workspace files modify the environment when building a package in and out
 of --release mode.
 
   $ cat > dune-project <<EOF

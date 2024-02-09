@@ -14,8 +14,12 @@ end
 module At_rev : sig
   type t
 
+  module Config : sig
+    val parse : string -> (string * string option * string * string) option
+  end
+
   val content : t -> Path.Local.t -> string option Fiber.t
-  val directory_entries : t -> Path.Local.t -> File.Set.t
+  val directory_entries : t -> recursive:bool -> Path.Local.t -> File.Set.t
   val equal : t -> t -> bool
   val opam_url : t -> OpamUrl.t
   val check_out : t -> target:Path.t -> unit Fiber.t

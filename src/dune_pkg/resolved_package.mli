@@ -22,4 +22,5 @@ val local_fs
   -> files_dir:Path.Local.t option
   -> t
 
+val dune_package : Loc.t -> OpamFile.OPAM.t -> OpamPackage.t -> t
 val get_opam_package_files : t list -> File_entry.t list list Fiber.t

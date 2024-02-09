@@ -802,7 +802,7 @@ let search_db_for_lib sctx lib =
   let dir = Paths.html ctx target in
   let* odocs = odoc_artefacts sctx target in
   let odocls = List.map odocs ~f:(fun odoc -> odoc.odocl_file) in
-  Sherlodoc.search_db sctx ~dir odocls
+  Sherlodoc.search_db sctx ~dir ~external_odocls:[] odocls
 ;;
 
 let setup_lib_html_rules sctx ~search_db lib =
@@ -826,7 +826,7 @@ let setup_pkg_html_rules_def =
     let all_odocs = pkg_odocs @ lib_odocs in
     let* search_db =
       let odocls = List.map all_odocs ~f:(fun artefact -> artefact.odocl_file) in
-      Sherlodoc.search_db sctx ~dir odocls
+      Sherlodoc.search_db sctx ~dir ~external_odocls:[] odocls
     in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx ~search_db) in
     let* () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_all ~search_db sctx) in

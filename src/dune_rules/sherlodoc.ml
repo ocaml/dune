@@ -10,20 +10,22 @@ let resolve_sherlodoc sctx ~dir =
   Super_context.resolve_program sctx ~dir "sherlodoc" ~loc:None
 ;;
 
-let add_index_db_rule sctx ~dir odocls =
+let add_index_db_rule sctx ~dir ~external_odocls odocls =
   let program = resolve_sherlodoc sctx ~dir in
   let action =
     Command.run_dyn_prog
       ~dir:(Path.build dir)
       program
-      [ A "index"
-      ; Deps (List.map ~f:Path.build odocls)
-      ; A "--favoured-prefixes"
-      ; A {|""|}
-      ; A "--format=js"
-      ; A "--db"
-      ; Target (Paths.db_dot_js ~dir)
-      ]
+      Command.Args.
+        [ A "index"
+        ; Deps (List.map ~f:Path.build external_odocls)
+        ; S (List.map ~f:(fun ext -> S [ A "--favoured"; Dep (Path.build ext) ]) odocls)
+        ; A "--favoured-prefixes"
+        ; A {|""|}
+        ; A "--format=js"
+        ; A "--db"
+        ; Target (Paths.db_dot_js ~dir)
+        ]
   in
   Super_context.add_rule sctx ~dir action
 ;;
@@ -61,7 +63,7 @@ let odoc_args sctx ~search_db ~dir_sherlodoc_dot_js =
      else Command.Args.empty)
 ;;
 
-let search_db sctx ~dir odocls =
-  let+ () = add_index_db_rule sctx ~dir odocls in
+let search_db sctx ~dir ~external_odocls odocls =
+  let+ () = add_index_db_rule sctx ~dir ~external_odocls odocls in
   Paths.db_dot_js ~dir
 ;;

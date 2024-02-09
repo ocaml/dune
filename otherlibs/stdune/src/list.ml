@@ -242,3 +242,12 @@ let truncate ~max_length xs =
   in
   loop [] 0 xs
 ;;
+
+let intersperse xs ~sep =
+  let rec loop acc = function
+    | [] -> rev acc
+    | [ x ] -> rev (x :: acc)
+    | x :: xs -> loop (sep :: x :: acc) xs
+  in
+  loop [] xs
+;;

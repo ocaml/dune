@@ -1,7 +1,7 @@
 open Import
 
 let is_path_a_source_file path =
-  match Path.extension path with
+  match Path.extension (Path.source path) with
   | ".flv"
   | ".gif"
   | ".ico"
@@ -19,7 +19,7 @@ let is_path_a_source_file path =
 ;;
 
 let is_kind_a_source_file path =
-  match Path.stat path with
+  match Path.stat (Path.source path) with
   | Ok st -> st.st_kind = S_REG
   | Error (ENOENT, "stat", _) ->
     (* broken symlink *)
@@ -119,8 +119,8 @@ let subst_string s path ~map =
     Some (Buffer.contents buf)
 ;;
 
-let subst_file path ~map =
-  match Io.with_file_in path ~f:Io.read_all_unless_large with
+let subst_file path ~map opam_package_files =
+  match Io.with_file_in (Path.source path) ~f:Io.read_all_unless_large with
   | Error () ->
     let hints =
       if Sys.word_size = 32
@@ -131,13 +131,16 @@ let subst_file path ~map =
         ]
       else []
     in
-    User_warning.emit ~hints [ Pp.textf "Ignoring large file: %s" (Path.to_string path) ]
+    User_warning.emit
+      ~hints
+      [ Pp.textf "Ignoring large file: %s" (Path.Source.to_string path) ]
   | Ok s ->
     let s =
-      if Path.is_root (Path.parent_exn path) && Package.is_opam_file path
+      if Path.Source.Set.mem opam_package_files path
       then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
       else s
     in
+    let path = Path.source path in
     (match subst_string s ~map path with
      | None -> ()
      | Some s -> Io.write_file path s)
@@ -161,7 +164,7 @@ module Dune_project = struct
     ; project : Dune_project.t
     }
 
-  let filename = Path.in_source Dune_project.filename
+  let filename = Path.Source.of_string Dune_project.filename
 
   let load ~dir ~files ~infer_from_opam_files =
     let open Memo.O in
@@ -243,8 +246,8 @@ module Dune_project = struct
              replace_text !ofs !ofs version_field)
            else replace_text !ofs !ofs ("\n" ^ version_field))
     in
-    let s = Option.value (subst_string s ~map filename) ~default:s in
-    if s <> t.contents then Io.write_file filename s
+    let s = Option.value (subst_string s ~map (Path.source filename)) ~default:s in
+    if s <> t.contents then Io.write_file (Path.source filename) s
   ;;
 end
 
@@ -306,6 +309,7 @@ let subst vcs =
     (let files =
        (* Filter-out files form sub-directories *)
        List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
+         let fn = Path.source fn in
          if Path.is_root (Path.parent_exn fn)
          then String.Set.add acc (Path.to_string fn)
          else acc)
@@ -384,9 +388,14 @@ let subst vcs =
   in
   let watermarks = make_watermark_map ~commit ~version ~dune_project ~info in
   Dune_project.subst ~map:watermarks ~version dune_project;
+  let opam_package_files =
+    Dune_project.packages dune_project.project
+    |> Package.Name.Map.fold ~init:Path.Source.Set.empty ~f:(fun package acc ->
+      Path.Source.Set.add acc (Package.opam_file package))
+  in
   List.iter files ~f:(fun path ->
-    if is_a_source_file path && not (Path.equal path Dune_project.filename)
-    then subst_file path ~map:watermarks)
+    if is_a_source_file path && not (Path.Source.equal path Dune_project.filename)
+    then subst_file path ~map:watermarks opam_package_files)
 ;;
 
 let subst () =

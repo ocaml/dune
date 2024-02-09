@@ -32,7 +32,7 @@ Whenever an invalid package name is used, dune crashes when building @doc
         Rule
           { targets =
               { root = In_build_dir "default/_doc/_html/x"
-              ; files = set { "index.html" }
+              ; files = set { "db.js" }
               ; dirs = set {}
               }
           }

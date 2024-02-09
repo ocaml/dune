@@ -42,4 +42,4 @@ is equivalent to:
 
 The difference between ``copy_files`` and ``copy_files#`` is the same as the
 difference between the ``copy`` and ``copy#`` actions. See
-:doc:`reference/actions` section for more details.
+:doc:`reference/actions/index` section for more details.

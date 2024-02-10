@@ -371,6 +371,13 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  reach "default/META.foo" ~from:"default";
+  [%expect {|
+"META.foo"
+|}]
+;;
+
+let%expect_test _ =
   relative (Path.of_string "relative") "/absolute/path";
   [%expect {|
 External "/absolute/path"

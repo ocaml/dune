@@ -261,9 +261,8 @@ module Loader = struct
     in
     let rec loop ~loc ~full_name (meta : Meta.Simplified.t) acc =
       let vars = Vars.of_meta_rules meta.vars in
-      let pkg_dir = Vars.get vars "directory" Ps.empty in
       let external_location : Dune_package.External_location.t =
-        match pkg_dir with
+        match Vars.get vars "directory" Ps.empty with
         | None | Some "" -> loc
         | Some pkg_dir ->
           if pkg_dir.[0] = '+' || pkg_dir.[0] = '^'
@@ -278,15 +277,18 @@ module Loader = struct
               Relative_to_stdlib (Path.Local.relative sub pkg_dir))
           else Absolute (Path.of_filename_relative_to_initial_cwd pkg_dir)
       in
-      let dir = dir_of_loc external_location in
-      let pkg : Findlib.Package.t =
-        { Findlib.Package.meta_file; name = full_name; dir; vars }
-      in
-      let* lib =
-        let+ dir_contents = Fs.dir_contents pkg.dir in
-        to_dune_library pkg ~dir_contents ~ext_lib:db.ext_lib ~external_location
-      in
       let* (entry : Dune_package.Entry.t) =
+        let pkg : Findlib.Package.t =
+          { Findlib.Package.meta_file
+          ; name = full_name
+          ; dir = dir_of_loc external_location
+          ; vars
+          }
+        in
+        let* lib =
+          let+ dir_contents = Fs.dir_contents pkg.dir in
+          to_dune_library pkg ~dir_contents ~ext_lib:db.ext_lib ~external_location
+        in
         let+ exists =
           Findlib.Package.exists
             pkg
@@ -306,14 +308,11 @@ module Loader = struct
     in
     let name = Option.value_exn meta.name in
     let+ entries = loop ~loc ~full_name:name meta Lib_name.Map.empty in
-    let dir = dir_of_loc loc in
     { Dune_package.name = Lib_name.package_name name
     ; version =
-        (let open Option.O in
-         let* e = Lib_name.Map.find entries name in
-         Dune_package.Entry.version e)
+        Lib_name.Map.find entries name |> Option.bind ~f:Dune_package.Entry.version
     ; entries
-    ; dir
+    ; dir = dir_of_loc loc
     ; sections = Section.Map.empty
     ; sites = Site.Map.empty
     ; files = []

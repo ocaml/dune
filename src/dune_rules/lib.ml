@@ -71,13 +71,11 @@ end = struct
   type t = Entry.t list
 
   let pp t =
-    Pp.vbox
-      (Pp.concat
-         ~sep:Pp.cut
-         (List.map t ~f:(fun x ->
-            Pp.box
-              ~indent:3
-              (Pp.seq (Pp.verbatim "-> ") (Pp.seq (Pp.text "required by ") (Entry.pp x))))))
+    Pp.concat_map t ~sep:Pp.cut ~f:(fun x ->
+      [ Pp.verbatim "-> "; Pp.text "required by "; Entry.pp x ]
+      |> Pp.concat
+      |> Pp.box ~indent:3)
+    |> Pp.vbox
   ;;
 end
 

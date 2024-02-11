@@ -410,8 +410,8 @@ and resolve_result =
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
   | Ignore
-  | (* Redirect (None, lib) looks up lib in the same database *)
-    Redirect of db option * (Loc.t * Lib_name.t)
+  | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
+  | Redirect of db * (Loc.t * Lib_name.t)
 
 let equal_db : db -> db -> bool = phys_equal
 let lib_config (t : lib) = t.lib_config
@@ -1118,18 +1118,14 @@ end = struct
     db.resolve name
     >>= function
     | Ignore -> Memo.return Status.Ignore
-    | Redirect (db', (_, name')) ->
-      let db' = Option.value db' ~default:db in
-      find_internal db' name'
+    | Redirect_in_the_same_db (_, name') -> find_internal db name'
+    | Redirect (db', (_, name')) -> find_internal db' name'
     | Found info -> instantiate db name info ~hidden:None
     | Invalid e -> Memo.return (Status.Invalid e)
     | Not_found ->
-      let+ res =
-        match db.parent with
-        | None -> Memo.return Status.Not_found
-        | Some db -> find_internal db name
-      in
-      res
+      (match db.parent with
+       | None -> Memo.return Status.Not_found
+       | Some db -> find_internal db name)
     | Hidden { lib = info; reason = hidden; path = _ } ->
       (match db.parent with
        | None -> Memo.return Status.Not_found
@@ -1770,11 +1766,13 @@ module DB = struct
       | Hidden of Lib_info.external_ Hidden.t
       | Invalid of User_message.t
       | Ignore
-      | Redirect of db option * (Loc.t * Lib_name.t)
+      | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
+      | Redirect of db * (Loc.t * Lib_name.t)
 
     let found f = Found f
     let not_found = Not_found
     let redirect db lib = Redirect (db, lib)
+    let redirect_in_the_same_db lib = Redirect_in_the_same_db lib
 
     let to_dyn x =
       let open Dyn in
@@ -1785,6 +1783,8 @@ module DB = struct
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
       | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
+      | Redirect_in_the_same_db (_, name) ->
+        variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;
   end
 
@@ -1809,7 +1809,8 @@ module DB = struct
           Findlib.find findlib name
           >>| function
           | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
-          | Ok (Deprecated_library_name d) -> Redirect (None, (d.loc, d.new_public_name))
+          | Ok (Deprecated_library_name d) ->
+            Redirect_in_the_same_db (d.loc, d.new_public_name)
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
           | Error e ->
             (match e with

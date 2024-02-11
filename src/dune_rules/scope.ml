@@ -103,7 +103,7 @@ module DB = struct
         Memo.return
           (match Lib_name.Map.find map name with
            | None -> Lib.DB.Resolve_result.not_found
-           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
+           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
            | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
       ~lib_config
@@ -119,8 +119,8 @@ module DB = struct
     | None -> Lib.DB.Resolve_result.not_found
     | Some (Project project) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
+      Lib.DB.Resolve_result.redirect scope.db (Loc.none, name)
+    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
   let public_theories ~find_db ~installed_theories coq_stanzas =

@@ -29,3 +29,10 @@ let pp v =
 ;;
 
 let equal = OpamHash.equal
+
+include Comparable.Make (struct
+    type nonrec t = t
+
+    let compare x y = Ordering.of_int (OpamHash.compare x y)
+    let to_dyn = to_dyn
+  end)

@@ -88,6 +88,7 @@ let init
          let open Dune_engine.Build_config.Gen_rules.Context_type in
          (Private_context.t, Empty)
          :: (Install.Context.install_context, Empty)
+         :: (Fetch_rules.context, Empty)
          :: List.map contexts ~f:(fun ctx -> ctx, With_sources)))
     ~cache_config
     ~cache_debug_flags

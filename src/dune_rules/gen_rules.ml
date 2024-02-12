@@ -687,5 +687,7 @@ let gen_rules ctx ~dir components =
           (Memo.return rules)))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
+  else if Context_name.equal ctx Fetch_rules.context.name
+  then Fetch_rules.gen_rules ~dir ~components
   else gen_rules ctx (Super_context.find_exn ctx) ~dir components
 ;;

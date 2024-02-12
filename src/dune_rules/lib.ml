@@ -427,26 +427,22 @@ let is_local t =
 ;;
 
 let main_module_name t =
-  let main_module_name = Lib_info.main_module_name t.info in
-  match main_module_name with
+  match Lib_info.main_module_name t.info with
   | This mmn -> Resolve.Memo.return mmn
   | From _ ->
     let+ vlib = Memo.return (Option.value_exn t.implements) in
-    let main_module_name = Lib_info.main_module_name vlib.info in
-    (match main_module_name with
+    (match Lib_info.main_module_name vlib.info with
      | This x -> x
      | From _ -> assert false)
 ;;
 
 let wrapped t =
-  let wrapped = Lib_info.wrapped t.info in
-  match wrapped with
+  match Lib_info.wrapped t.info with
   | None -> Resolve.Memo.return None
   | Some (This wrapped) -> Resolve.Memo.return (Some wrapped)
   | Some (From _) ->
     let+ vlib = Memo.return (Option.value_exn t.implements) in
-    let wrapped = Lib_info.wrapped vlib.info in
-    (match wrapped with
+    (match Lib_info.wrapped vlib.info with
      | Some (From _) (* can't inherit this value in virtual libs *) | None ->
        assert false (* will always be specified in dune package *)
      | Some (This x) -> Some x)
@@ -1011,8 +1007,7 @@ end = struct
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
     let* project =
-      let status = Lib_info.status info in
-      match Lib_info.Status.project status with
+      match Lib_info.status info |> Lib_info.Status.project with
       | Some _ as project -> Memo.return project
       | None ->
         let+ projects_by_package = Memo.Lazy.force projects_by_package in
@@ -1105,7 +1100,7 @@ end = struct
     >>= function
     | Ignore -> Memo.return None
     | Found lib ->
-      Resolve.Memo.of_result (check_private_deps lib ~loc ~private_deps) >>| Option.some
+      check_private_deps lib ~loc ~private_deps |> Resolve.Memo.of_result >>| Option.some
     | Not_found -> Error.not_found ~loc ~name >>| Option.some
     | Invalid why -> Resolve.Memo.of_result (Error why) >>| Option.some
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
@@ -1144,8 +1139,8 @@ end = struct
   let resolve_simple_deps db names ~private_deps : t list Resolve.Memo.t =
     Resolve.Memo.List.filter_map names ~f:(fun dep ->
       let open Memo.O in
-      let+ dep = resolve_dep db ~private_deps dep in
-      match dep with
+      resolve_dep db ~private_deps dep
+      >>| function
       | None -> Resolve.return None
       | Some r -> Resolve.map r ~f:Option.some)
   ;;
@@ -1259,23 +1254,20 @@ end = struct
     let+ res, src_fn =
       let+ select =
         Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
-          let forbidden = Lib_name.Set.to_list forbidden in
-          let* exists = Memo.List.exists forbidden ~f:(available_internal db) in
-          if exists
-          then Memo.return None
-          else
-            Resolve.Memo.peek
-              (let deps =
-                 Lib_name.Set.fold required ~init:[] ~f:(fun x acc -> (loc, x) :: acc)
-               in
-               resolve_simple_deps ~private_deps db deps)
-            >>| function
-            | Ok ts -> Some (ts, file)
-            | Error () -> None)
+          Lib_name.Set.to_list forbidden
+          |> Memo.List.exists ~f:(available_internal db)
+          >>= function
+          | true -> Memo.return None
+          | false ->
+            Lib_name.Set.fold required ~init:[] ~f:(fun x acc -> (loc, x) :: acc)
+            |> resolve_simple_deps ~private_deps db
+            |> Resolve.Memo.peek
+            >>| (function
+             | Ok ts -> Some (ts, file)
+             | Error () -> None))
       in
       let get which =
-        let res = select |> Option.map ~f:which in
-        match res with
+        match select |> Option.map ~f:which with
         | Some rs -> Resolve.return rs
         | None -> Error.no_solution_found_for_select ~loc
       in
@@ -1289,13 +1281,13 @@ end = struct
       let open Memo.O in
       match dep with
       | Re_export lib ->
-        let+ lib = resolve_dep db lib ~private_deps in
-        (match lib with
+        resolve_dep db lib ~private_deps
+        >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_re_exports acc lib)
       | Direct lib ->
-        let+ lib = resolve_dep db lib ~private_deps in
-        (match lib with
+        resolve_dep db lib ~private_deps
+        >>| (function
          | None -> acc
          | Some lib -> Resolved.Builder.add_resolved acc lib)
       | Select select ->
@@ -1332,27 +1324,25 @@ end = struct
         Loc.span (fst first) last
       in
       let pps =
-        let* pps =
-          Resolve.Memo.List.filter_map pps ~f:(fun (loc, name) ->
-            let open Memo.O in
-            let+ lib = resolve_dep db (loc, name) ~private_deps:Allow_all in
-            match lib with
-            | None -> Resolve.return None
-            | Some lib ->
-              let open Resolve.O in
-              let* lib = lib in
-              (match allow_only_ppx_deps, Lib_info.kind lib.info with
-               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
-               | _ -> Resolve.return (Some lib)))
-        in
-        linking_closure_with_overlap_checks None pps ~forbidden_libraries:Map.empty
+        Resolve.Memo.List.filter_map pps ~f:(fun (loc, name) ->
+          let open Memo.O in
+          resolve_dep db (loc, name) ~private_deps:Allow_all
+          >>| function
+          | None -> Resolve.return None
+          | Some lib ->
+            let open Resolve.O in
+            let* lib = lib in
+            (match allow_only_ppx_deps, Lib_info.kind lib.info with
+             | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+             | _ -> Resolve.return (Some lib)))
+        >>= linking_closure_with_overlap_checks None ~forbidden_libraries:Map.empty
       in
       let runtime_deps =
         let* pps = pps in
         Resolve.List.concat_map pps ~f:(fun pp ->
           let open Resolve.O in
-          let* ppx_runtime_deps = pp.ppx_runtime_deps in
-          Resolve.List.map ppx_runtime_deps ~f:(fun dep ->
+          pp.ppx_runtime_deps
+          >>= Resolve.List.map ~f:(fun dep ->
             check_private_deps ~loc ~private_deps dep |> Resolve.of_result))
         |> Memo.return
       in
@@ -1877,13 +1867,13 @@ module DB = struct
 
   let get_compile_info t ~allow_overlaps name =
     let open Memo.O in
-    let+ find = find_even_when_hidden t name in
-    match find with
+    find_even_when_hidden t name
+    >>| function
+    | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
     | None ->
       Code_error.raise
         "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Lib_name.to_dyn name ]
-    | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
   ;;
 
   let resolve_user_written_deps
@@ -1908,12 +1898,11 @@ module DB = struct
     let requires_link =
       Memo.Lazy.create (fun () ->
         let* forbidden_libraries =
-          let* l =
-            Resolve.Memo.List.map forbidden_libraries ~f:(fun (loc, name) ->
-              let+ lib = resolve t (loc, name) in
-              lib, loc)
-          in
-          match Map.of_list l with
+          Resolve.Memo.List.map forbidden_libraries ~f:(fun (loc, name) ->
+            let+ lib = resolve t (loc, name) in
+            lib, loc)
+          >>| Map.of_list
+          >>= function
           | Ok res -> Resolve.Memo.return res
           | Error (lib, _, loc) ->
             Error.make
@@ -1979,7 +1968,8 @@ module DB = struct
     let* l =
       Memo.Lazy.force t.all
       >>= Memo.parallel_map ~f:(find t)
-      >>| fun libs -> List.filter_opt libs |> Set.of_list
+      >>| List.filter_opt
+      >>| Set.of_list
     in
     match recursive, t.parent with
     | true, Some t ->
@@ -2052,11 +2042,7 @@ let to_dune_lib
   let name = mangled_name lib in
   let remove_public_dep_prefix paths =
     let prefix = Lib_info.src_dir lib.info in
-    List.map
-      ~f:(fun path ->
-        let local_dep = Path.drop_prefix_exn ~prefix path in
-        Path.of_local local_dep)
-      paths
+    List.map paths ~f:(fun path -> Path.drop_prefix_exn ~prefix path |> Path.of_local)
   in
   let public_headers = remove_public_dep_prefix public_headers in
   let melange_runtime_deps = remove_public_dep_prefix melange_runtime_deps in

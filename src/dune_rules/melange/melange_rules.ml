@@ -428,6 +428,7 @@ let setup_js_rules_libraries
         (Scope.libs scope)
         lib_name
         ~allow_overlaps:mel.allow_overlapping_dependencies
+        ~dir
     in
     let info = Lib.info lib in
     let loc = Lib_info.loc info in

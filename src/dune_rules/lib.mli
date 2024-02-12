@@ -139,6 +139,7 @@ module DB : sig
   val get_compile_info
     :  t
     -> allow_overlaps:bool
+    -> dir:Path.Build.t
     -> Lib_name.t
     -> (lib * Compile.t) Memo.t
 

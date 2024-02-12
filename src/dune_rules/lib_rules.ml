@@ -634,6 +634,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       (Scope.libs scope)
       (Library.best_name lib)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
+      ~dir
   in
   let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =

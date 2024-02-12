@@ -1961,11 +1961,23 @@ module DB = struct
           | Some info -> Path.Build.equal dir (Lib_info.src_dir (Local.info info))))
   ;;
 
-  let get_compile_info t ~allow_overlaps name =
+  let get_compile_info t ~allow_overlaps ~dir name =
     let open Memo.O in
     find_even_when_hidden t name
     >>| function
-    | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
+    | Some lib ->
+      (match Local.of_lib lib with
+       | None ->
+         Code_error.raise
+           "Lib.DB.get_compile_info got library that is not local"
+           [ "name", Lib_name.to_dyn name ]
+       | Some info ->
+         (match Path.Build.equal dir (Lib_info.src_dir (Local.info info)) with
+          | true -> lib, Compile.for_lib ~allow_overlaps t lib
+          | false ->
+            Code_error.raise
+              "Lib.DB.get_compile_info got library that doesn't match build dir"
+              [ "name", Lib_name.to_dyn name; "dir", Path.Build.to_dyn dir ]))
     | None ->
       Code_error.raise
         "Lib.DB.get_compile_info got library that doesn't exist"

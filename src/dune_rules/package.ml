@@ -150,7 +150,7 @@ let encode
             "deprecated_package_names"
             Name.encode
             (Name.Map.keys deprecated_package_names)
-        ; field_l "sits" (pair Site.encode Section.encode) (Site.Map.to_list sites)
+        ; field_l "sites" (pair Site.encode Section.encode) (Site.Map.to_list sites)
         ; field_b "allow_empty" allow_empty
         ]
   in

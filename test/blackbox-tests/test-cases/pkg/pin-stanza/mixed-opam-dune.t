@@ -36,16 +36,14 @@ should favor the dune metadata in such a case.
   $  cat dune.lock/bar.pkg | sed "/source/,//d"
   (version dev)
   
-  (build
-   (run dune build -p %{pkg-self:name}))
+  (dune)
   
   
   (dev)
   $  cat dune.lock/foo.pkg | sed "/source/,//d"
   (version dev)
   
-  (build
-   (run dune build -p %{pkg-self:name}))
+  (dune)
   
   
   (dev)

@@ -521,11 +521,11 @@ let opam_package_to_lock_file_pkg
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
+  let resolved_package =
+    (Table.find_exn candidates_cache name).resolved
+    |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
+  in
   let opam_file, loc =
-    let resolved_package =
-      (Table.find_exn candidates_cache name).resolved
-      |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
-    in
     let opam_file = Resolved_package.opam_file resolved_package in
     let loc = Resolved_package.loc resolved_package in
     opam_file, loc
@@ -594,39 +594,43 @@ let opam_package_to_lock_file_pkg
     Solver_env.get solver_env variable_name
   in
   let build_command =
-    let subst_step =
-      OpamFile.OPAM.substs opam_file
-      |> List.map ~f:(fun x ->
-        let x = OpamFilename.Base.to_string x in
-        let input = String_with_vars.make_text Loc.none (x ^ ".in") in
-        let output = String_with_vars.make_text Loc.none x in
-        Action.Substitute (input, output))
-    in
-    let patch_step =
-      OpamFile.OPAM.patches opam_file
-      |> List.map ~f:(fun (basename, filter) ->
-        let action =
-          Action.Patch
-            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
-        in
-        match filter with
-        | None -> action
-        | Some filter ->
-          Action.When
-            ( filter_to_blang ~package:opam_package ~loc:Loc.none filter
-              |> Slang.simplify_blang
-            , action ))
-    in
-    let build_step =
-      opam_commands_to_actions
-        get_solver_var
-        loc
-        opam_package
-        (OpamFile.OPAM.build opam_file)
-    in
-    List.concat [ subst_step; patch_step; build_step ]
-    |> make_action
-    |> Option.map ~f:build_env
+    if Resolved_package.dune_build resolved_package
+    then Some Lock_dir.Build_command.Dune
+    else (
+      let subst_step =
+        OpamFile.OPAM.substs opam_file
+        |> List.map ~f:(fun x ->
+          let x = OpamFilename.Base.to_string x in
+          let input = String_with_vars.make_text Loc.none (x ^ ".in") in
+          let output = String_with_vars.make_text Loc.none x in
+          Action.Substitute (input, output))
+      in
+      let patch_step =
+        OpamFile.OPAM.patches opam_file
+        |> List.map ~f:(fun (basename, filter) ->
+          let action =
+            Action.Patch
+              (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
+          in
+          match filter with
+          | None -> action
+          | Some filter ->
+            Action.When
+              ( filter_to_blang ~package:opam_package ~loc:Loc.none filter
+                |> Slang.simplify_blang
+              , action ))
+      in
+      let build_step =
+        opam_commands_to_actions
+          get_solver_var
+          loc
+          opam_package
+          (OpamFile.OPAM.build opam_file)
+      in
+      List.concat [ subst_step; patch_step; build_step ]
+      |> make_action
+      |> Option.map ~f:build_env
+      |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
   let install_command =
     OpamFile.OPAM.install opam_file

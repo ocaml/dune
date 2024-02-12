@@ -10,6 +10,7 @@ module Lock_dir : sig
     ; unset_solver_vars : Dune_lang.Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
+    ; sources : string list
     }
 
   val equal : t -> t -> bool
@@ -106,6 +107,7 @@ type t = private
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
+  ; sources : Dune_pkg.Pin_stanza.DB.t
   }
 
 val equal : t -> t -> bool

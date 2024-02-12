@@ -3,16 +3,8 @@ from docutils.nodes import literal, Text
 from sphinx import addnodes
 from sphinx.domains import Domain, Index, ObjType
 from sphinx.directives import ObjectDescription
-from sphinx.roles import XRefRole
 from collections import defaultdict
 from sphinx.util.nodes import make_refnode
-
-
-def set_xref_text(node, new_text):
-    assert type(node) is literal, type(mode)
-    (child,) = node.children
-    assert type(child) is Text, type(child)
-    node.children = [Text(new_text)]
 
 
 class StanzaIndex(Index):
@@ -171,7 +163,6 @@ class DuneDomain(Domain):
         "field": FieldDirective,
         "action": ActionDirective,
     }
-    roles = {"ref": XRefRole()}
     indices = {StanzaIndex, FieldIndex}
     initial_data = {"stanzas": [], "fields": []}
     object_types = {"action": ObjType("action")}
@@ -227,20 +218,6 @@ class DuneDomain(Domain):
         assert matches, f"dune domain: found no {typ} named {name}"
         assert len(matches) == 1, f"dune domain: found several {typ} named {name}"
         return matches[0]
-
-    def resolve_xref(self, env, fromdocname, builder, typ, target, node, contnode):
-        """
-        Replace dune:ref:`action-x` by a link to where x is defined.
-        The text of is changed so that it is (x) rather than action-x.
-        """
-        if not target.startswith("action-"):
-            # target is not from this domain
-            return None
-
-        action_name = target.removeprefix("action-")
-        todocname, targ = self.find_object("action", action_name)
-        set_xref_text(contnode, f"({action_name})")
-        return make_refnode(builder, fromdocname, todocname, targ, contnode, targ)
 
 
 def setup(app):

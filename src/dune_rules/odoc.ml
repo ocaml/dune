@@ -28,7 +28,7 @@ let find_project_by_key =
 ;;
 
 module Scope_key : sig
-  val of_string : Context.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
+  val of_string : Context_name.t -> string -> (Lib_name.t * Lib.DB.t) Memo.t
   val to_string : Lib_name.t -> Dune_project.t -> string
 end = struct
   let of_string context s =
@@ -432,9 +432,12 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
   >>= Dep.setup_deps ctx (Lib local_lib)
 ;;
 
-let setup_generate sctx (odoc_file : odoc_artefact) out =
+let setup_generate sctx ~search_db odoc_file out =
   let ctx = Super_context.context sctx in
   let odoc_support_path = Paths.odoc_support ctx in
+  let search_args =
+    Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:(Paths.html_root ctx)
+  in
   let run_odoc =
     run_odoc
       sctx
@@ -442,7 +445,8 @@ let setup_generate sctx (odoc_file : odoc_artefact) out =
       "html-generate"
       ~quiet:false
       ~flags_for:None
-      [ A "-o"
+      [ search_args
+      ; A "-o"
       ; Path (Path.build (Paths.html_root ctx))
       ; A "--support-uri"
       ; Path (Path.build odoc_support_path)
@@ -456,8 +460,8 @@ let setup_generate sctx (odoc_file : odoc_artefact) out =
   add_rule sctx run_odoc
 ;;
 
-let setup_generate_all sctx odoc_file =
-  Output_format.iter ~f:(setup_generate sctx odoc_file)
+let setup_generate_all sctx ~search_db odoc_file =
+  Output_format.iter ~f:(setup_generate sctx ~search_db odoc_file)
 ;;
 
 let setup_css_rule sctx =
@@ -591,7 +595,9 @@ let entry_modules_by_lib sctx lib =
 
 let entry_modules sctx ~pkg =
   let* l =
-    libs_of_pkg (Super_context.context sctx) ~pkg
+    Super_context.context sctx
+    |> Context.name
+    |> libs_of_pkg ~pkg
     >>| List.filter ~f:(fun lib ->
       Lib.Local.info lib |> Lib_info.status |> Lib_info.Status.is_private |> not)
   in
@@ -720,7 +726,7 @@ let setup_pkg_rules_def memo_name f =
 
 let setup_pkg_odocl_rules_def =
   let f (sctx, pkg) =
-    let* libs = libs_of_pkg (Super_context.context sctx) ~pkg in
+    let* libs = Super_context.context sctx |> Context.name |> libs_of_pkg ~pkg in
     let* requires =
       let libs = (libs :> Lib.t list) in
       Lib.closure libs ~linking:false
@@ -775,12 +781,12 @@ let setup_lib_html_rules_def =
   in
   let f (sctx, lib) =
     let ctx = Super_context.context sctx in
-    let* odocs = odoc_artefacts sctx (Lib lib) in
-    let* () = Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_all sctx odoc) in
+    let target = Lib lib in
+    let* odocs = odoc_artefacts sctx target in
     Output_format.iter ~f:(fun output ->
       let paths = out_files ctx output odocs in
       Rules.Produce.Alias.add_deps
-        (Dep.format_alias output ctx (Lib lib))
+        (Dep.format_alias output ctx target)
         (Action_builder.paths paths))
   in
   Memo.With_implicit_output.create
@@ -790,25 +796,42 @@ let setup_lib_html_rules_def =
     f
 ;;
 
-let setup_lib_html_rules sctx lib =
+let search_db_for_lib sctx lib =
+  let target = Lib lib in
+  let ctx = Super_context.context sctx in
+  let dir = Paths.html ctx target in
+  let* odocs = odoc_artefacts sctx target in
+  let odocls = List.map odocs ~f:(fun odoc -> odoc.odocl_file) in
+  Sherlodoc.search_db sctx ~dir odocls
+;;
+
+let setup_lib_html_rules sctx ~search_db lib =
+  let target = Lib lib in
+  let* odocs = odoc_artefacts sctx target in
+  let* () =
+    Memo.parallel_iter odocs ~f:(fun odoc -> setup_generate_all sctx ~search_db odoc)
+  in
   Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib)
 ;;
 
 let setup_pkg_html_rules_def =
   let f (sctx, pkg) =
     let ctx = Super_context.context sctx in
-    let* libs = libs_of_pkg ctx ~pkg in
-    let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx)
-    and* pkg_odocs =
-      let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
-      let+ () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_all sctx) in
-      pkg_odocs
-    and* lib_odocs =
-      Memo.parallel_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
+    let* libs = Context.name ctx |> libs_of_pkg ~pkg in
+    let dir = Paths.html ctx (Pkg pkg) in
+    let* pkg_odocs = odoc_artefacts sctx (Pkg pkg) in
+    let* lib_odocs =
+      Memo.List.concat_map libs ~f:(fun lib -> odoc_artefacts sctx (Lib lib))
     in
-    let odocs = List.concat (pkg_odocs :: lib_odocs) in
+    let all_odocs = pkg_odocs @ lib_odocs in
+    let* search_db =
+      let odocls = List.map all_odocs ~f:(fun artefact -> artefact.odocl_file) in
+      Sherlodoc.search_db sctx ~dir odocls
+    in
+    let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx ~search_db) in
+    let* () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_all ~search_db sctx) in
     Output_format.iter ~f:(fun output ->
-      let paths = out_files ctx output odocs in
+      let paths = out_files ctx output all_odocs in
       Rules.Produce.Alias.add_deps
         (Dep.format_alias output ctx (Pkg pkg))
         (Action_builder.paths paths))
@@ -828,7 +851,9 @@ let setup_package_aliases_format sctx (pkg : Package.t) (output : Output_format.
     let dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
     Output_format.alias output ~dir
   in
-  let* libs = libs_of_pkg ctx ~pkg:name >>| List.map ~f:(fun lib -> Lib lib) in
+  let* libs =
+    Context.name ctx |> libs_of_pkg ~pkg:name >>| List.map ~f:(fun lib -> Lib lib)
+  in
   Pkg name :: libs
   |> List.map ~f:(Dep.format_alias output ctx)
   |> Dune_engine.Dep.Set.of_list_map ~f:(fun f -> Dune_engine.Dep.alias f)
@@ -963,7 +988,11 @@ let gen_rules sctx ~dir rest =
   | [ "_html" ] ->
     let ctx = Super_context.context sctx in
     let directory_targets = Path.Build.Map.singleton (Paths.odoc_support ctx) Loc.none in
-    has_rules ~directory_targets (setup_css_rule sctx >>> setup_toplevel_index_rules sctx)
+    has_rules
+      ~directory_targets
+      (Sherlodoc.sherlodoc_dot_js sctx ~dir:(Paths.html_root ctx)
+       >>> setup_css_rule sctx
+       >>> setup_toplevel_index_rules sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
       let* _mlds, rules = package_mlds sctx ~pkg in
@@ -975,7 +1004,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
@@ -1006,7 +1035,7 @@ let gen_rules sctx ~dir rest =
       ((* TODO we can be a better with the error handling in the case where
           lib_unique_name_or_pkg is neither a valid pkg or lnu *)
        let ctx = Super_context.context sctx in
-       let* lib, lib_db = Scope_key.of_string ctx lib_unique_name_or_pkg in
+       let* lib, lib_db = Scope_key.of_string (Context.name ctx) lib_unique_name_or_pkg in
        (* jeremiedimino: why isn't [None] some kind of error here? *)
        let* lib =
          let+ lib = Lib.DB.find lib_db lib in
@@ -1017,7 +1046,10 @@ let gen_rules sctx ~dir rest =
          | None -> Memo.return ()
          | Some lib ->
            (match Lib_info.package (Lib.Local.info lib) with
-            | None -> setup_lib_html_rules sctx lib
+            | None ->
+              (* lib with no package above it *)
+              let* search_db = search_db_for_lib sctx lib in
+              setup_lib_html_rules sctx ~search_db lib
             | Some pkg -> setup_pkg_html_rules sctx ~pkg)
        and+ () =
          let* packages = Dune_load.packages () in

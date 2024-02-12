@@ -9,6 +9,11 @@ type t =
 let true_ = String "true"
 let false_ = String "false"
 
+let of_bool = function
+  | true -> true_
+  | false -> false_
+;;
+
 let compare x y =
   match x, y with
   | String x, String y -> String.compare x y
@@ -67,7 +72,6 @@ module L = struct
   let to_dyn = Dyn.list to_dyn
   let to_strings t ~dir = List.map t ~f:(to_string ~dir)
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
-  let concat ts ~dir = List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "
 
   let deps_only =
     List.filter_map ~f:(function
@@ -78,4 +82,35 @@ module L = struct
   let strings = List.map ~f:(fun x -> String x)
   let paths = List.map ~f:(fun x -> Path x)
   let dirs = List.map ~f:(fun x -> Dir x)
+end
+
+module Deferred_concat = struct
+  type value = t
+  type t = value list
+
+  let singleton value = [ value ]
+  let parts values = values
+
+  let concat_values values ~sep =
+    match sep with
+    | None -> values
+    | Some sep -> List.intersperse values ~sep:(String sep)
+  ;;
+
+  let concat ts ~sep =
+    match sep with
+    | None -> List.concat_map ts ~f:parts
+    | Some sep ->
+      List.map ts ~f:parts |> List.intersperse ~sep:[ String sep ] |> List.concat
+  ;;
+
+  let force_string values ~dir =
+    List.map values ~f:(to_string ~dir) |> String.concat ~sep:""
+  ;;
+
+  let force t ~dir =
+    match t with
+    | [ x ] -> x
+    | _ -> String (force_string t ~dir)
+  ;;
 end

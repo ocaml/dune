@@ -8,7 +8,8 @@
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
    ../utils/refmt.exe
-   ../utils/webserver_oneshot.exe)))
+   ../utils/webserver_oneshot.exe
+   ../utils/sherlodoc.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -99,7 +100,7 @@
 (subdir
  github3766.t
  (executable
-  (libraries stdune spawn)
+  (libraries stdune spawn unix)
   (name test)))
 
 (subdir
@@ -131,3 +132,9 @@
 (cram
  (applies_to reason)
  (deps %{bin:refmt}))
+
+(cram
+ (applies_to github4194)
+ (enabled_if
+  (not %{arch_sixtyfour}))
+ (deps %{bin:ocaml}))

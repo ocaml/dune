@@ -42,7 +42,7 @@ let helper_attr = A.(fg yellow)
 (* style for user feedback like message count, or scrollbar position *)
 let user_feedback_attr = A.(fg cyan)
 
-(* Here we keep some persistent state about the program that we udpate each time we
+(* Here we keep some persistent state about the program that we update each time we
    render. This allows other components to "react" to changes using [Lwd]. *)
 
 let term_size = Lwd.var (0, 0)
@@ -304,7 +304,7 @@ module Console_backend = struct
 
   let render (state : Dune_threaded_console.state) =
     let size = Term.size (term ()) in
-    (* Update the persistant values tracked by other components. *)
+    (* Update the persistent values tracked by other components. *)
     set_state state;
     (* This is a standard [Lwd] routine for creating a document. *)
     let root = Lwd.observe document in

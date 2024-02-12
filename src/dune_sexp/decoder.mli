@@ -275,7 +275,7 @@ val field_o
   -> 'a t
   -> 'a option fields_parser
 
-(** [fields_mutually_exlusive] is for mutually exclusive fields. If [default] is
+(** [fields_mutually_exclusive] is for mutually exclusive fields. If [default] is
     provided, allow the fields' absence. *)
 val fields_mutually_exclusive
   :  ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)

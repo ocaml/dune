@@ -66,6 +66,17 @@ let parse_deps_exn ~file lines =
        String.extract_blank_separated_words deps)
 ;;
 
+let transitive_deps =
+  let transive_dep obj_dir m =
+    (match Module.kind m with
+     | Alias _ -> None
+     | _ -> if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl)
+    |> Option.map ~f:(fun ml_kind ->
+      Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) |> Path.build)
+  in
+  fun obj_dir modules -> List.filter_map modules ~f:(transive_dep obj_dir)
+;;
+
 let deps_of
   ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
   ~ml_kind
@@ -78,17 +89,21 @@ let deps_of
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
   let open Memo.O in
   let* () =
-    (* perhaps delay this further? *)
-    let* ocaml = Context.ocaml context in
+    let ocamldep =
+      (let open Memo.O in
+       let+ ocaml = Context.ocaml context in
+       ocaml.ocamldep)
+      |> Action_builder.of_memo
+    in
     Super_context.add_rule
       sctx
       ~dir
       (let open Action_builder.With_targets.O in
        let flags, sandbox =
-         Option.value (Module.pp_flags unit) ~default:(Action_builder.return [], sandbox)
+         Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
        in
-       Command.run
-         ocaml.ocamldep
+       Command.run_dyn_prog
+         ocamldep
          ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
          [ A "-modules"
@@ -100,26 +115,15 @@ let deps_of
   in
   let+ () =
     let produce_all_deps =
-      let transitive_deps modules =
-        let transive_dep m =
-          let ml_kind m =
-            match Module.kind m with
-            | Alias _ -> None
-            | _ -> if Module.has m ~ml_kind:Intf then Some Ml_kind.Intf else Some Impl
-          in
-          ml_kind m
-          |> Option.map ~f:(fun ml_kind -> Path.build (dep (Transitive (m, ml_kind))))
-        in
-        List.filter_map modules ~f:transive_dep
-      in
       let open Action_builder.O in
       let paths =
-        let+ lines = Action_builder.lines_of (Path.build ocamldep_output) in
-        let immediate_deps =
-          parse_deps_exn ~file:(Module.File.path source) lines
-          |> parse_module_names ~dir:md.dir ~unit ~modules
+        let+ immediate_deps =
+          Path.build ocamldep_output
+          |> Action_builder.lines_of
+          >>| parse_deps_exn ~file:(Module.File.path source)
+          >>| parse_module_names ~dir:md.dir ~unit ~modules
         in
-        ( transitive_deps immediate_deps
+        ( transitive_deps obj_dir immediate_deps
         , List.map immediate_deps ~f:(fun m ->
             Module.obj_name m |> Module_name.Unique.to_string) )
       in

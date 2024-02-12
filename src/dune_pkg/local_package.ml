@@ -2,7 +2,15 @@ open! Import
 module Package_constraint = Dune_lang.Package_constraint
 module Digest = Dune_digest
 
-type pins = (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
+type pin =
+  { loc : Loc.t
+  ; version : Package_version.t
+  ; url : Loc.t * OpamUrl.t
+  ; name : Package_name.t
+  ; origin : [ `Dune | `Opam ]
+  }
+
+type pins = pin Package_name.Map.t
 
 type t =
   { name : Package_name.t
@@ -82,7 +90,7 @@ module For_solver = struct
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
-    ; pins : (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
+    ; pins : pins
     }
 
   let to_opam_file { name; dependencies; conflicts; conflict_class; depopts; pins = _ } =

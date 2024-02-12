@@ -47,7 +47,7 @@ let add_packages_env context ~base stanzas packages =
       in
       let+ package_sections =
         let* package_db = Package_db.create context in
-        Dune_file.Memo_fold.fold_stanzas
+        Dune_file.Memo_fold.fold_static_stanzas
           stanzas
           ~init:Package.Name.Map.empty
           ~f:(fun _ stanza acc ->
@@ -55,7 +55,7 @@ let add_packages_env context ~base stanzas packages =
               Package_db.find_package package_db pkg_name
               >>| function
               | None ->
-                (* Really ugly to supress errors like this. Instead,
+                (* Really ugly to suppress errors like this. Instead,
                    executables that rely on sites should declare that
                    in their dependencies *)
                 acc
@@ -66,7 +66,7 @@ let add_packages_env context ~base stanzas packages =
                 add_in_package_section acc pkg_name section
             in
             match Stanza.repr stanza with
-            | Install_conf.T { section = Site { pkg; site; loc }; _ } ->
+            | Install_conf.T { section = _loc, Site { pkg; site; loc }; _ } ->
               add_in_package_sites pkg site loc
             | Plugin.T { site = loc, (pkg, site); _ } -> add_in_package_sites pkg site loc
             | _ -> Memo.return acc)

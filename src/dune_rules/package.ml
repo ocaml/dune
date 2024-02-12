@@ -310,10 +310,8 @@ let default name dir =
   }
 ;;
 
-let load_opam_file file name =
-  let open Memo.O in
+let load_opam_file_with_contents ~contents:opam_file_string file name =
   let loc = Loc.in_file (Path.source file) in
-  let+ opam_file_string = Fs_memo.file_contents (In_source_dir file) in
   let opam =
     let opam =
       let lexbuf =
@@ -337,29 +335,31 @@ let load_opam_file file name =
   in
   let open Option.O in
   let get_one name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
+    let* value =
+      let* opam = opam in
+      Opam_file.get_field opam name
+    in
     match value.pelem with
     | String s -> Some s
     | _ -> None
   in
   let get_many name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
+    let* value =
+      let* opam = opam in
+      Opam_file.get_field opam name
+    in
     match value.pelem with
     | String s -> Some [ s ]
     | List l ->
-      let+ l =
-        List.fold_left
-          l.pelem
-          ~init:(Some [])
-          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
-            let* acc = acc in
-            match v.pelem with
-            | String s -> Some (s :: acc)
-            | _ -> None)
-      in
-      List.rev l
+      List.fold_left
+        l.pelem
+        ~init:(Some [])
+        ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
+          let* acc = acc in
+          match v.pelem with
+          | String s -> Some (s :: acc)
+          | _ -> None)
+      >>| List.rev
     | _ -> None
   in
   let dir = Path.Source.parent_exn file in
@@ -441,14 +441,16 @@ let to_local_package t =
             Dune_pkg.Package_version.of_opam_package_version (OpamPackage.version pkg)
           in
           let loc = Loc.in_file (Path.source file) in
-          name, (loc, version, url))
+          ( name
+          , { Dune_pkg.Local_package.loc; version; url = loc, url; name; origin = `Opam }
+          ))
         |> Name.Map.of_list
       with
       | Ok x -> x
-      | Error (pkg, (loc, _, _), _) ->
+      | Error (_, pkg, _) ->
         User_error.raise
-          ~loc
-          [ Pp.textf "package %s is already pinned" (Name.to_string pkg) ]
+          ~loc:pkg.loc
+          [ Pp.textf "package %s is already pinned" (Name.to_string pkg.name) ]
     in
     { Dune_pkg.Local_package.name = name t
     ; version = t.version

@@ -125,8 +125,10 @@ end = struct
           rules)
         enabled_if
     | Foreign.Library.T lib ->
-      let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
-      empty_none
+      Expander.eval_blang expander lib.enabled_if
+      >>= if_available (fun () ->
+        let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
+        empty_none)
     | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->
@@ -213,7 +215,7 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
-  let stanzas = Dune_file.stanzas dune_file in
+  let* stanzas = Dune_file.stanzas dune_file in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
     let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas

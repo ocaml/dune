@@ -128,7 +128,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
           | None -> Memo.return Libs_and_ppxs.empty
           | Some (d : Dune_file.t) ->
             Dune_file.stanzas d
-            |> Memo.List.fold_left ~init:Libs_and_ppxs.empty ~f:(add_stanza db ~dir))
+            >>= Memo.List.fold_left ~init:Libs_and_ppxs.empty ~f:(add_stanza db ~dir))
     in
     Appendable_list.to_list libs, Appendable_list.to_list pps
 ;;

@@ -397,7 +397,7 @@ end = struct
       fun fb ~kind ->
         let src = File_binding.Expanded.src fb in
         let dst = File_binding.Expanded.dst fb in
-        Install_entry_with_site.make_with_site ?dst ~kind i.section section src
+        Install_entry_with_site.make_with_site ?dst ~kind (snd i.section) section src
     in
     let+ files =
       let* files_expanded =
@@ -536,7 +536,7 @@ end = struct
             else acc))
     and+ l =
       let* package_db = Package_db.create (Context.name ctx) in
-      Dune_file.fold_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
+      Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
         let dir =
           Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
         in
@@ -706,7 +706,9 @@ end = struct
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let* lib_entries = Scope.DB.lib_entries_of_package ctx (Package.name pkg) in
+    let* lib_entries =
+      Scope.DB.lib_entries_of_package (Context.name ctx) (Package.name pkg)
+    in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -788,7 +790,7 @@ end = struct
     let ctx = Super_context.context sctx in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      let+ entries = Scope.DB.lib_entries_of_package ctx pkg_name in
+      let+ entries = Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name in
       List.partition_map entries ~f:(function
         | Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->

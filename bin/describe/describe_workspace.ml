@@ -403,7 +403,9 @@ module Crawl = struct
       immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
-    let* scope = Scope.DB.find_by_project (Super_context.context sctx) project in
+    let* scope =
+      Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
+    in
     let* modules_ = modules ~obj_dir ~deps_of modules_ in
     let+ requires =
       let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -534,7 +536,7 @@ module Crawl = struct
          their direct library dependencies *)
       Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_file.t) ->
         Dune_file.stanzas dune_file
-        |> Memo.parallel_map ~f:(fun stanza ->
+        >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
           | Executables.T exes ->
             let dir =
@@ -557,7 +559,9 @@ module Crawl = struct
       (* the list of libraries declared in the project *)
       Dune_load.projects ()
       >>= Memo.parallel_map ~f:(fun project ->
-        Scope.DB.find_by_project context project >>| Scope.libs >>= Lib.DB.all)
+        Scope.DB.find_by_project (Context.name context) project
+        >>| Scope.libs
+        >>= Lib.DB.all)
       >>| Lib.Set.union_all
       >>| Lib.Set.filter ~f:(lib_is_in_dirs dirs)
     in

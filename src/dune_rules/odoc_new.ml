@@ -227,7 +227,7 @@ let add_rule sctx =
 *)
 let libs_maps_def =
   let f (ctx, libs) =
-    let* db = Scope.DB.public_libs ctx
+    let* db = Scope.DB.public_libs (Context.name ctx)
     and* all_packages_entries =
       let* findlib = Findlib.create (Context.name ctx) in
       Memo.parallel_map ~f:(Findlib.find findlib) libs
@@ -442,7 +442,7 @@ module Valid = struct
       let+ libs_list =
         let+ libs_list =
           let+ libs_list =
-            let* stdlib = stdlib_lib ctx in
+            let* stdlib = stdlib_lib (Context.name ctx) in
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
@@ -907,7 +907,7 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:Lib.requires libs
+  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in
@@ -973,7 +973,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
   let ctx = Super_context.context sctx in
   let* maps = Valid.libs_maps ctx ~all in
   let* requires =
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     link_requires stdlib_opt libs
   in
   let* deps =
@@ -1009,12 +1009,15 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
 ;;
 
 (* Output the actual html *)
-let html_generate sctx all (a : Artifact.t) =
+let html_generate sctx all ~search_db (a : Artifact.t) =
   let ctx = Super_context.context sctx in
   let html_output = Paths.html_root ctx ~all in
   let support_relative =
     let odoc_support_path = Paths.odoc_support ctx ~all in
     Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
+  in
+  let search_args =
+    Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:(Index.html_dir ctx ~all [])
   in
   let run_odoc =
     Odoc.run_odoc
@@ -1025,6 +1028,7 @@ let html_generate sctx all (a : Artifact.t) =
       ~flags_for:None
       [ Command.Args.A "-o"
       ; Path (Path.build html_output)
+      ; search_args
       ; A "--support-uri"
       ; A support_relative
       ; A "--theme-uri"
@@ -1086,7 +1090,7 @@ let parse_odoc_deps =
 let compile_odocs sctx ~all ~quiet artifacts parent libs =
   let* requires =
     let ctx = Super_context.context sctx in
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     let requires = compile_requires stdlib_opt libs in
     Resolve.Memo.bind requires ~f:(fun libs ->
       let+ libs = Valid.filter_libs ctx ~all libs in
@@ -1608,7 +1612,7 @@ let index_info_of_external_fallback sctx location fallback =
    2. External findlib directories
    3. Private libraries
 
-   We actually use the same function for private libaries as for
+   We actually use the same function for private libraries as for
    dune packages.
 *)
 let standard_index_contents b entry_modules =
@@ -1833,7 +1837,7 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
   inner [] tree
 ;;
 
-let hierarchical_html_rules sctx all tree =
+let hierarchical_html_rules sctx all tree ~search_db =
   let ctx = Super_context.context sctx in
   Index_tree.fold ~init:(Memo.return []) tree ~f:(fun index (ii : Index_tree.info) dirs ->
     let* dirs = dirs in
@@ -1843,7 +1847,7 @@ let hierarchical_html_rules sctx all tree =
       List.filter ~f:Artifact.is_visible (index_artifact :: all_artifacts)
     in
     let* new_dirs =
-      Memo.List.filter_map artifacts ~f:(fun a -> html_generate sctx true a)
+      Memo.List.filter_map artifacts ~f:(fun a -> html_generate ~search_db sctx true a)
     in
     let+ () =
       let html_files =
@@ -1924,6 +1928,20 @@ let static_html_rule ctx ~all =
 let setup_all_html_rules sctx ~all =
   let ctx = Super_context.context sctx in
   let* tree = full_tree sctx ~all in
+  let* search_db =
+    let dir = Index.html_dir ctx ~all [] in
+    let odocls =
+      Index_tree.fold tree ~init:[] ~f:(fun index ii acc ->
+        let index_artifact = Artifact.index ctx ~all:true index in
+        let new_artifacts =
+          index_artifact :: Index_tree.all_artifacts ii
+          |> List.filter_map ~f:(fun a ->
+            if Artifact.is_visible a then Some (Artifact.odocl_file a) else None)
+        in
+        new_artifacts @ acc)
+    in
+    Sherlodoc.search_db sctx ~dir odocls
+  in
   let+ () =
     let html =
       let artifact = Artifact.index ctx ~all [] in
@@ -1943,8 +1961,12 @@ let setup_all_html_rules sctx ~all =
     Rules.Produce.Alias.add_deps
       (Dep.html_alias (Index.html_dir ctx ~all []))
       (Action_builder.deps deps)
-  and+ dirs = hierarchical_html_rules sctx all tree
-  and+ () = setup_css_rule sctx ~all in
+  and+ dirs = hierarchical_html_rules sctx all tree ~search_db
+  and+ () = setup_css_rule sctx ~all
+  and+ () =
+    let dir = Index.html_dir ctx ~all [] in
+    Sherlodoc.sherlodoc_dot_js sctx ~dir
+  in
   Paths.odoc_support ctx ~all :: dirs
 ;;
 

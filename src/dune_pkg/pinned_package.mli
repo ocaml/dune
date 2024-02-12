@@ -6,6 +6,6 @@
     Pins are defined using the [pin-depends] field of opam files. We traverse
     all local packages to collect such fields and then fetch and return all the
     opam files they correspond to *)
-val resolve_pins
-  :  Local_package.For_solver.t Package_name.Map.t
-  -> Resolved_package.t Package_name.Map.t Fiber.t
+
+val collect : Local_package.t Package_name.Map.t -> Local_package.pin Package_name.Map.t
+val resolve_package : Local_package.pin -> Resolved_package.t Fiber.t

@@ -83,7 +83,7 @@ module Without_vars = struct
      to each directory that will be searched for files matching the glob. If the
      glob is not recursive, this list will be of length 1. The returned file
      selectors will expand globs relative to [base_dir], and the corresponding
-     prefixes are the paths to each directory relative to [base_dir] exactly as writen in
+     prefixes are the paths to each directory relative to [base_dir] exactly as written in
      the glob. The relative paths are required to construct relative paths to the files
      found by expanding the glob. *)
   let file_selectors_with_prefixes { glob; dir; prefix; recursive } ~loc =

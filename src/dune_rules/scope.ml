@@ -105,7 +105,7 @@ module DB = struct
         Memo.return
           (match Lib_name.Map.find map name with
            | None -> Lib.DB.Resolve_result.not_found
-           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect None lib
+           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
            | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
       ~lib_config
@@ -121,8 +121,8 @@ module DB = struct
     | None -> Lib.DB.Resolve_result.not_found
     | Some (Project project) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
+      Lib.DB.Resolve_result.redirect scope.db (Loc.none, name)
+    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
   let public_theories ~find_db ~installed_theories coq_stanzas =
@@ -266,9 +266,10 @@ module DB = struct
       { project; db; coq_db; root })
   ;;
 
-  let create ~(context : Context.t) ~projects_by_root stanzas coq_stanzas =
+  let create ~context ~projects_by_root stanzas coq_stanzas =
     let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
+    let* context = Context.DB.get context in
     let build_dir = Context.build_dir context in
     let* lib_config =
       let+ ocaml = Context.ocaml context in
@@ -306,13 +307,13 @@ module DB = struct
     value, public_libs
   ;;
 
-  let create_from_stanzas ~projects_by_root ~(context : Context.t) stanzas =
+  let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
     let stanzas, coq_stanzas =
-      Dune_file.fold_stanzas
+      Dune_file.fold_static_stanzas
         stanzas
         ~init:([], [])
         ~f:(fun dune_file stanza (acc, coq_acc) ->
-          let build_dir = Context.build_dir context in
+          let build_dir = Context_name.build_dir context in
           match Stanza.repr stanza with
           | Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
@@ -328,27 +329,19 @@ module DB = struct
   ;;
 
   let all =
-    Memo.Lazy.create
-    @@ fun () ->
-    let+ contexts = Context.DB.all () in
-    Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
-      let scopes =
-        Memo.Lazy.create
-        @@ fun () ->
-        let* projects_by_root = Dune_load.projects_by_root () in
-        let* stanzas = Dune_load.dune_files (Context.name context) in
-        create_from_stanzas ~projects_by_root ~context stanzas
-      in
-      Context.name context, scopes)
+    Per_context.create_by_name ~name:"scope" (fun context ->
+      Memo.Lazy.create (fun () ->
+        let* projects_by_root = Dune_load.projects_by_root ()
+        and* stanzas = Dune_load.dune_files context in
+        create_from_stanzas ~projects_by_root ~context stanzas)
+      |> Memo.Lazy.force)
+    |> Staged.unstage
   ;;
 
-  let create_from_stanzas (context : Context.t) =
-    let* all = Memo.Lazy.force all in
-    Context_name.Map.find_exn all (Context.name context) |> Memo.Lazy.force
-  ;;
+  let create_from_stanzas (context : Context_name.t) = all context
 
   let with_all context ~f =
-    let+ scopes, _ = create_from_stanzas context in
+    let+ scopes, _ = create_from_stanzas (Context.name context) in
     let find = find_by_project scopes in
     f find
   ;;
@@ -360,7 +353,7 @@ module DB = struct
 
   let find_by_dir dir =
     let* context = Context.DB.by_dir dir in
-    let+ scopes, _ = create_from_stanzas context in
+    let+ scopes, _ = create_from_stanzas (Context.name context) in
     find_by_dir scopes dir
   ;;
 
@@ -382,9 +375,9 @@ module DB = struct
   end
 
   let lib_entries_of_package =
-    let make_map (build_dir, public_libs, stanzas) =
+    let make_map build_dir public_libs stanzas =
       let+ libs =
-        Dune_file.Memo_fold.fold_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
+        Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let+ lib =
@@ -422,22 +415,19 @@ module DB = struct
              (List.sort ~compare:(fun a b ->
                 Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
     in
-    let module Input = struct
-      type t = Path.Build.t * Lib.DB.t * Dune_file.t list
-
-      let equal =
-        Tuple.T3.equal Path.Build.equal Lib.DB.equal (List.equal Dune_file.equal)
-      ;;
-
-      let hash = Tuple.T3.hash Path.Build.hash Lib.DB.hash (List.hash Dune_file.hash)
-      let to_dyn = Dyn.opaque
-    end
+    let per_context =
+      Per_context.create_by_name ~name:"scope-db" (fun ctx ->
+        Memo.lazy_ (fun () ->
+          let* public_libs =
+            let* ctx = Context.DB.get ctx in
+            public_libs (Context.name ctx)
+          and* stanzas = Dune_load.dune_files ctx in
+          make_map (Context_name.build_dir ctx) public_libs stanzas)
+        |> Memo.Lazy.force)
+      |> Staged.unstage
     in
-    let memo = Memo.create "lib-entries-map" ~input:(module Input) make_map in
-    fun (ctx : Context.t) pkg_name ->
-      let* public_libs = public_libs ctx in
-      let* stanzas = Dune_load.dune_files (Context.name ctx) in
-      let+ map = Memo.exec memo (Context.build_dir ctx, public_libs, stanzas) in
+    fun (ctx : Context_name.t) pkg_name ->
+      let+ map = per_context ctx in
       Package.Name.Map.Multi.find map pkg_name
   ;;
 end

@@ -27,22 +27,9 @@ To create a directory-local opam switch with the dependencies necessary to build
 Bootstrapping
 =============
 
-In order to build itself, Dune uses a micro dune written as a single
-``boot/duneboot.ml`` file. This micro build system cannot read ``dune`` files
-and instead has the configuration hard-coded in ``boot/libs.ml``. This latter
-file is automatically updated during development when we modify the ``dune``
-files in the repository. ``boot/duneboot.ml`` itself is built with a single
-invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
-
-``boot/duneboot.ml`` builds a ``dune.exe`` binary in the ``_boot`` directory
-and uses this binary to build everything else. As a convenience, ``dune.exe``
-at the root of the source tree executes this binary.
-
-Running:
-```
-make dev
-```
-bootstraps (if necessary) and runs ``./dune.exe build @install``.
+Dune uses Dune as its build system, which requires some specific commands to
+work. Running ``make dev`` bootstraps (if necessary) and runs ``./dune.exe
+build @install``.
 
 If you want to just run the bootstrapping step itself, build the ``bootstrap``
 phony target with
@@ -65,12 +52,15 @@ Here are the most common commands you'll be running:
    # run a particular cram foo.t:
    $ ./dune.exe build @foo
 
+
 Note that tests are currently written for version 4.14.1 of the OCaml compiler.
 Some tests depend on the specific wording of compilation errors which can change
 between compiler versions, so to reliably run the tests make sure that
-`ocaml.4.14.1` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
+``ocaml.4.14.1`` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
 the root of the Dune repo contains the current compiler version for which tests
 are written.
+
+.. seealso:: :doc:`explanation/bootstrap`
 
 Writing Tests
 =============
@@ -745,7 +735,7 @@ a "clean build". Afterwards, the build will be run 5 more times and are termed
 the "Null builds".
 
 In each run of the CI, there will be an ``ocaml-benchmarks`` status in the
-sumamry. Clicking ``Details`` will show a bench report.
+summary. Clicking ``Details`` will show a bench report.
 
 The report contains the following information:
 

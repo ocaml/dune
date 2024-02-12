@@ -132,17 +132,34 @@ let concat_rev = function
 ;;
 
 module Mode = struct
-  type _ t =
-    | Single : Value.t t
-    | Many : Value.t list t
-    | At_least_one : (Value.t * Value.t list) t
+  type (_, _) t =
+    | Single : (Value.Deferred_concat.t, Value.t) t
+    | Many : (Value.Deferred_concat.t list, Value.t list) t
+    | At_least_one
+        : ( Value.Deferred_concat.t * Value.Deferred_concat.t list
+            , Value.t * Value.t list )
+            t
 
-  let string : type a. a t -> string -> a =
+  let string
+    : type deferred_concat value. (deferred_concat, value) t -> string -> deferred_concat
+    =
+    let deferred_concat_string s = Value.Deferred_concat.singleton (Value.String s) in
     fun t s ->
+      match t with
+      | Single -> deferred_concat_string s
+      | Many -> [ deferred_concat_string s ]
+      | At_least_one -> deferred_concat_string s, []
+  ;;
+
+  let deferred_concat
+    : type deferred_concat value.
+      (deferred_concat, value) t -> Value.Deferred_concat.t -> deferred_concat
+    =
+    fun t v ->
     match t with
-    | Single -> Value.String s
-    | Many -> [ Value.String s ]
-    | At_least_one -> Value.String s, []
+    | Single -> v
+    | Many -> [ v ]
+    | At_least_one -> v, []
   ;;
 
   let invalid_multivalue ~source l ~what =
@@ -158,14 +175,34 @@ module Mode = struct
       ]
   ;;
 
-  let value : type a. source:Template.Pform.t -> a t -> Value.t list -> a =
+  let values_from_pform
+    : type deferred_concat value.
+      source:Template.Pform.t
+      -> (deferred_concat, value) t
+      -> Value.t list
+      -> deferred_concat
+    =
     fun ~source t x ->
-    match t, x with
+    match t, List.map x ~f:Value.Deferred_concat.singleton with
     | Many, x -> x
     | Single, [ x ] -> x
     | At_least_one, x :: l -> x, l
     | Single, _ -> invalid_multivalue ~source x ~what:"a single"
     | At_least_one, [] -> invalid_multivalue ~source x ~what:"at least one"
+  ;;
+
+  let force
+    : type deferred_concat value.
+      (deferred_concat, value) t -> deferred_concat -> dir:Path.t -> value
+    =
+    fun t v ~dir ->
+    match t with
+    | Single -> Value.Deferred_concat.force ~dir v
+    | Many -> List.map v ~f:(Value.Deferred_concat.force ~dir)
+    | At_least_one ->
+      let x, xs = v in
+      ( Value.Deferred_concat.force ~dir x
+      , List.map xs ~f:(Value.Deferred_concat.force ~dir) )
   ;;
 end
 
@@ -247,14 +284,25 @@ let is_prefix t ~prefix:want =
 module type Expander = sig
   type 'a app
 
-  val expand : t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
+  val expand
+    :  t
+    -> mode:(_, 'value) Mode.t
+    -> dir:Path.t
+    -> f:Value.t list app expander
+    -> 'value app
 
   val expand_result
     :  t
-    -> mode:'a Mode.t
+    -> mode:(_, 'value) Mode.t
     -> dir:Path.t
     -> f:(Value.t list, 'error) result app expander
-    -> ('a, 'error) result app
+    -> ('value, 'error) result app
+
+  val expand_result_deferred_concat
+    :  t
+    -> mode:('deferred_concat, _) Mode.t
+    -> f:(Value.t list, 'error) result app expander
+    -> ('deferred_concat, 'error) result app
 
   val expand_as_much_as_possible
     :  t
@@ -266,27 +314,34 @@ end
 module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = struct
   open A.O
 
-  let expand_result
-    : type a.
+  let expand_result_deferred_concat
+    : type deferred_concat value.
       t
-      -> mode:a Mode.t
-      -> dir:Path.t
+      -> mode:(deferred_concat, value) Mode.t
       -> f:(Value.t list, 'error) result A.t expander
-      -> (a, 'error) result A.t
+      -> (deferred_concat, 'error) result A.t
     =
-    fun t ~mode ~dir ~f ->
+    fun t ~mode ~f ->
     match t.parts with
+    (* Special case where a list of values may be returned if [mode] is [Multi] or [At_least_one] *)
+    | [ Pform (source, p) ] when not t.quoted ->
+      let+ v = f ~source p in
+      Result.map v ~f:(fun v -> Mode.values_from_pform mode ~source v)
     (* Optimizations for some common cases *)
     | [] -> A.return (Ok (Mode.string mode ""))
     | [ Text s ] -> A.return (Ok (Mode.string mode s))
-    | [ Pform (source, p) ] when not t.quoted ->
-      let+ v = f ~source p in
-      Result.map v ~f:(Mode.value mode ~source)
+    (* General case covering quoted variables and strings made up of text parts
+       and variable parts. *)
     | _ ->
+      (* Quoted strings with vars concatenate variable contents with spaces
+         and unquoted ones concatenate variable contents with no spaces (unless
+         the entire string with vars is a single variable in which case it
+         resolves to multiple values and no concatenation occurs). *)
+      let inner_sep = if t.quoted then Some " " else None in
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return (Ok [ s ])
+            | Text s -> A.return (Ok (Value.Deferred_concat.singleton (Value.String s)))
             | Error (_, msg) ->
               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
@@ -295,18 +350,32 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
             | Pform (source, p) ->
               let+ v = f ~source p in
               Result.map v ~f:(fun v ->
-                if t.quoted
-                then [ Value.L.concat ~dir v ]
-                else (
-                  let vs = Mode.value Many v ~source in
-                  List.map ~f:(Value.to_string ~dir) vs))))
+                Value.Deferred_concat.concat_values v ~sep:inner_sep)))
       in
       Result.map (Result.List.all chunks) ~f:(fun chunks ->
-        Mode.string mode (String.concat (List.concat chunks) ~sep:""))
+        Value.Deferred_concat.concat chunks ~sep:None |> Mode.deferred_concat mode)
+  ;;
+
+  let expand_result
+    : type deferred_concat value.
+      t
+      -> mode:(deferred_concat, value) Mode.t
+      -> dir:Path.t
+      -> f:(Value.t list, 'error) result A.t expander
+      -> (value, 'error) result A.t
+    =
+    fun t ~mode ~dir ~f ->
+    let+ result = expand_result_deferred_concat t ~mode ~f in
+    Result.map result ~f:(Mode.force mode ~dir)
   ;;
 
   let expand
-    : type a. t -> mode:a Mode.t -> dir:Path.t -> f:Value.t list A.t expander -> a A.t
+    : type deferred_concat value.
+      t
+      -> mode:(deferred_concat, value) Mode.t
+      -> dir:Path.t
+      -> f:Value.t list A.t expander
+      -> value A.t
     =
     fun t ~mode ~dir ~f ->
     let f : (Value.t list, Nothing.t) result A.t expander =
@@ -329,8 +398,12 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
               | Some v ->
                 Text
                   (if t.quoted
-                   then Value.L.concat v ~dir
-                   else Value.to_string ~dir (Mode.value Single v ~source)))))
+                   then
+                     Value.Deferred_concat.concat_values v ~sep:(Some " ")
+                     |> Value.Deferred_concat.force_string ~dir
+                   else
+                     Mode.values_from_pform Single v ~source
+                     |> Value.Deferred_concat.force_string ~dir))))
     in
     let commit_text acc_text acc =
       let s = concat_rev acc_text in

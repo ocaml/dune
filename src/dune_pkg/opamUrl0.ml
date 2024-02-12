@@ -1,6 +1,15 @@
 include OpamUrl
 open Stdune
 
+module T = struct
+  type nonrec t = t
+
+  let to_dyn t = Dyn.string (OpamUrl.to_string t)
+  let compare x y = Ordering.of_int (OpamUrl.compare x y)
+end
+
+include T
+
 let decode_loc =
   let open Dune_sexp.Decoder in
   map_validate (located string) ~f:(fun (loc, s) ->
@@ -32,3 +41,5 @@ let local_or_git_only url loc =
       [ Pp.textf "Could not determine location of repository %s" @@ OpamUrl.to_string url
       ]
 ;;
+
+include Comparable.Make (T)

@@ -95,7 +95,9 @@ let load () =
   let packages = Only_packages.filter_packages mask packages in
   let projects = List.rev_map projects ~f:snd in
   let dune_files =
-    let without_ctx = Memo.lazy_ (fun () -> Dune_file.eval dune_files mask) in
+    let without_ctx =
+      Memo.lazy_ ~name:"dune-files-eval" (fun () -> Dune_file.eval dune_files mask)
+    in
     Per_context.create_by_name ~name:"dune-files" (fun ctx ->
       Memo.Lazy.create (fun () ->
         let* f = Memo.Lazy.force without_ctx in

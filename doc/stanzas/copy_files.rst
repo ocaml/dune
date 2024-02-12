@@ -25,6 +25,9 @@ details.
 - ``(enabled_if <blang expression>)`` conditionally disables this stanza. The
   condition is specified using the :doc:`reference/boolean-language`.
 
+- ``(only_sources <blang expression>)`` specifies that the glob in ``files``
+  gets applied over the source tree, and not the build tree.
+
 The short form:
 
 .. code:: dune
@@ -39,4 +42,4 @@ is equivalent to:
 
 The difference between ``copy_files`` and ``copy_files#`` is the same as the
 difference between the ``copy`` and ``copy#`` actions. See
-:doc:`reference/actions` section for more details.
+:doc:`reference/actions/index` section for more details.

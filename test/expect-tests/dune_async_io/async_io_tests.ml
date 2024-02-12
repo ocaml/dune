@@ -28,8 +28,8 @@ let%expect_test "read readiness" =
      assert (Bytes.to_string bytes = "0");
      Unix.close w;
      let+ () = Async_io.close r in
-     print_endline "succesful read");
-  [%expect {| succesful read |}]
+     print_endline "successful read");
+  [%expect {| successful read |}]
 ;;
 
 let%expect_test "write readiness" =
@@ -45,8 +45,8 @@ let%expect_test "write readiness" =
      assert (Unix.write w (Bytes.of_string "0") 0 1 = 1);
      Unix.close r;
      let+ () = Async_io.close w in
-     print_endline "succesful write");
-  [%expect {| succesful write |}]
+     print_endline "successful write");
+  [%expect {| successful write |}]
 ;;
 
 let%expect_test "first ready" =
@@ -72,8 +72,8 @@ let%expect_test "first ready" =
      Unix.close r2;
      let* () = Async_io.close w1 in
      let+ () = Async_io.close w2 in
-     print_endline "succesful write");
-  [%expect {| succesful write |}]
+     print_endline "successful write");
+  [%expect {| successful write |}]
 ;;
 
 let%expect_test "cancel task" =

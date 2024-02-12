@@ -32,10 +32,9 @@ module Stdlib = struct
 
   let encode ~src_dir { modules; unwrapped; exit_module; main_module_name } =
     let open Dune_lang.Encoder in
-    let module E = Common.Encode in
     record_fields
-      [ E.main_module_name main_module_name
-      ; E.modules modules ~src_dir
+      [ Common.Encode.main_module_name main_module_name
+      ; Common.Encode.modules modules ~src_dir
       ; field_o "exit_module" Module_name.encode exit_module
       ; field_l "unwrapped" Module_name.encode (Module_name.Set.to_list unwrapped)
       ]
@@ -43,10 +42,9 @@ module Stdlib = struct
 
   let decode ~src_dir =
     let open Dune_lang.Decoder in
-    let open Common.Decode in
     fields
-      (let+ main_module_name = main_module_name
-       and+ modules = modules ~src_dir ()
+      (let+ main_module_name = Common.Decode.main_module_name
+       and+ modules = Common.Decode.modules ~src_dir ()
        and+ exit_module = field_o "exit_module" Module_name.decode
        and+ unwrapped = field ~default:[] "unwrapped" (repeat Module_name.decode) in
        let unwrapped = Module_name.Set.of_list unwrapped in
@@ -86,11 +84,10 @@ module Stdlib = struct
      compilation unit name of such modules, so they cannot be wrapped. *)
   let special_compiler_module (stdlib : Ocaml_stdlib.t) m =
     let name = Module.name m in
-    let name_str = Module_name.to_string name in
     Predicate_lang.Glob.test
       stdlib.internal_modules
       ~standard:Predicate_lang.false_
-      name_str
+      (Module_name.to_string name)
     ||
     match stdlib.exit_module with
     | None -> false
@@ -100,7 +97,8 @@ module Stdlib = struct
   let make ~(stdlib : Ocaml_stdlib.t) ~modules ~wrapped ~main_module_name =
     let modules =
       match wrapped with
-      | Wrapped.Simple true | Yes_with_transition _ ->
+      | Wrapped.Simple false -> modules
+      | Simple true | Yes_with_transition _ ->
         Module_name.Map.map modules ~f:(fun m ->
           if Module.name m = main_module_name || special_compiler_module stdlib m
           then m
@@ -108,7 +106,6 @@ module Stdlib = struct
             let path = [ main_module_name; Module.name m ] in
             let m = Module.set_path m path in
             Module.set_obj_name m (Module_name.Path.wrap path)))
-      | Simple false -> modules
     in
     let unwrapped = stdlib.modules_before_stdlib in
     let exit_module = stdlib.exit_module in
@@ -405,7 +402,7 @@ module Group = struct
          | Module m -> Dune_lang.atom "module" :: Module.encode ~src_dir m))
   ;;
 
-  let parents_modules acc modules m =
+  let parents_modules =
     let rec loop acc modules = function
       | [] -> acc
       | p :: ps ->
@@ -416,7 +413,7 @@ module Group = struct
          | Some (Module _) -> acc
          | Some (Group g) -> loop (g :: acc) g.modules ps)
     in
-    loop acc modules (Module.path m)
+    fun acc modules m -> loop acc modules (Module.path m)
   ;;
 
   let parents (t : t) m = parents_modules [ t ] t.modules m
@@ -425,11 +422,7 @@ module Group = struct
     let rec parallel_map ({ alias; modules; name = _ } as t) ~f =
       let open Memo.O in
       let+ alias, modules =
-        Memo.fork_and_join
-          (fun () ->
-            let+ alias = f alias in
-            alias)
-          (fun () -> parallel_map_modules modules ~f)
+        Memo.fork_and_join (fun () -> f alias) (fun () -> parallel_map_modules modules ~f)
       in
       { t with alias; modules }
 
@@ -659,10 +652,9 @@ module Wrapped = struct
 
   let encode { group; wrapped_compat; wrapped; toplevel_module = _ } ~src_dir =
     let open Dune_lang.Encoder in
-    let module E = Common.Encode in
     record_fields
       [ field_l "group" Fun.id (Group.encode ~src_dir group)
-      ; E.modules ~name:"wrapped_compat" ~src_dir wrapped_compat
+      ; Common.Encode.modules ~name:"wrapped_compat" ~src_dir wrapped_compat
       ; field "wrapped" Wrapped.encode wrapped
       ]
   ;;
@@ -830,23 +822,21 @@ let singleton m = with_obj_map (Singleton m)
 
 let decode ~src_dir =
   let open Dune_lang.Decoder in
-  let+ modules =
-    sum
-      [ ( "singleton"
-        , let+ m = Module.decode ~src_dir in
-          Singleton m )
-      ; ( "unwrapped"
-        , let+ modules = Unwrapped.decode ~src_dir in
-          Unwrapped modules )
-      ; ( "wrapped"
-        , let+ w = Wrapped.decode ~src_dir in
-          Wrapped w )
-      ; ( "stdlib"
-        , let+ stdlib = Stdlib.decode ~src_dir in
-          Stdlib stdlib )
-      ]
-  in
-  with_obj_map modules
+  sum
+    [ ( "singleton"
+      , let+ m = Module.decode ~src_dir in
+        Singleton m )
+    ; ( "unwrapped"
+      , let+ modules = Unwrapped.decode ~src_dir in
+        Unwrapped modules )
+    ; ( "wrapped"
+      , let+ w = Wrapped.decode ~src_dir in
+        Wrapped w )
+    ; ( "stdlib"
+      , let+ stdlib = Stdlib.decode ~src_dir in
+        Stdlib stdlib )
+    ]
+  >>| with_obj_map
 ;;
 
 let rec to_dyn t =
@@ -944,26 +934,24 @@ let find_dep =
       | `Impl_or_lib -> Some m
       | `Vlib -> Option.some_if (Module.visibility m = Public) m)
   in
+  let raise_parent_cycle = function
+    | Ok s -> from_impl_or_lib s
+    | Error `Parent_cycle -> raise_notrace Parent_cycle
+  in
   let rec find_dep t ~of_ name : Module.t list =
     if Module.name of_ = name
     then []
     else (
       let result =
         match t.modules with
-        | Unwrapped w ->
-          (match Unwrapped.find_dep w ~of_ name with
-           | Ok s -> from_impl_or_lib s
-           | Error `Parent_cycle -> raise_notrace Parent_cycle)
-        | Wrapped w ->
-          (match Wrapped.find_dep w ~of_ name with
-           | Ok s -> from_impl_or_lib s
-           | Error `Parent_cycle -> raise_notrace Parent_cycle)
+        | Singleton _ -> find t name |> Option.to_list |> from_impl_or_lib
+        | Unwrapped w -> Unwrapped.find_dep w ~of_ name |> raise_parent_cycle
+        | Wrapped w -> Wrapped.find_dep w ~of_ name |> raise_parent_cycle
         | Stdlib s -> Stdlib.find_dep s ~of_ name |> Option.to_list |> from_impl_or_lib
         | Impl { vlib; impl } ->
           (match find_dep impl ~of_ name with
            | [] -> find_dep vlib ~of_ name |> List.map ~f:(fun m -> `Vlib, m)
            | xs -> from_impl_or_lib xs)
-        | _ -> find t name |> Option.to_list |> from_impl_or_lib
       in
       find_dep_result result)
   in

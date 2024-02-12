@@ -1,6 +1,14 @@
 open! Import
 
-type pins = (Loc.t * Package_version.t * OpamUrl.t) Package_name.Map.t
+type pin =
+  { loc : Loc.t
+  ; version : Package_version.t
+  ; url : Loc.t * OpamUrl.t
+  ; name : Package_name.t
+  ; origin : [ `Dune | `Opam ]
+  }
+
+type pins = pin Package_name.Map.t
 
 (** Information about a local package that's relevant for package management.
     This is intended to represent local packages defined in a dune-project file

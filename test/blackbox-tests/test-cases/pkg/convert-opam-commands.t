@@ -284,7 +284,7 @@ Package with package conjunction and string selections inside variable interpola
   > EOF
   Solution for dune.lock:
   - package-conjunction-and-string-selection.0.0.1
-Note that "enable" is not a true opam variable. Opam desugars occurances of
+Note that "enable" is not a true opam variable. Opam desugars occurrences of
 "pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope
 is omitted then it's treated like a regular variable. That explains why the
 opam syntax `"--%{enable}%-feature"` is converted to

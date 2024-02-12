@@ -444,7 +444,7 @@ let decode ~file project sexps =
           Dune_lang.Decoder.parse d Univ_map.empty (Dune_lang.Ast.List (Loc.none, ast)))
     }
   in
-  let context = Include_stanza.in_file file in
+  let context = Include_stanza.in_src_file file in
   let inside_include = false in
   let inside_subdir = false in
   Ast.decode ~inside_include ~inside_subdir

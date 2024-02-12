@@ -235,10 +235,7 @@ let findlib_dynload cctx lib loc =
     let open Memo.O in
     (* This shouldn't fail since findlib.dynload depends on dynlink and
        findlib. That's why it's ok to use a dummy location. *)
-    let* db =
-      let ctx = Compilation_context.context cctx in
-      Scope.DB.public_libs ctx
-    in
+    let* db = Compilation_context.context cctx |> Context.name |> Scope.DB.public_libs in
     let open Resolve.Memo.O in
     let+ dynlink = Lib.DB.resolve db (loc, Lib_name.of_string "dynlink")
     and+ findlib = Lib.DB.resolve db (loc, Lib_name.of_string "findlib") in

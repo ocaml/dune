@@ -4,7 +4,7 @@ open Fiber.O
 let () = Dune_tests_common.init ()
 
 let push_log = function
-  | `Ok -> printfn "Sucessful push."
+  | `Ok -> printfn "Successful push."
   | `Closed -> printfn "Couldn't push! Bus was closed."
 ;;
 
@@ -47,10 +47,11 @@ let%expect_test "Push followed by pop and then close" =
     and* () = pop event_bus in
     let* () = close event_bus in
     Fiber.return ());
-  [%expect {|
+  [%expect
+    {|
     Created bus.
     Popped "Hello".
-    Sucessful push.
+    Successful push.
     Closed bus. |}]
 ;;
 
@@ -127,10 +128,11 @@ let%expect_test "Push and pop with a delayed close" =
     and* () = pop event_bus
     and* () = Test_scheduler.yield scheduler >>> close event_bus in
     Fiber.return ());
-  [%expect {|
+  [%expect
+    {|
     Created bus.
     Popped "Hello".
-    Sucessful push.
+    Successful push.
     Closed bus. |}]
 ;;
 
@@ -148,7 +150,7 @@ let%expect_test "2 pushes together with 2 pops then a close" =
     Created bus.
     Popped "Hello".
     Popped "World!".
-    Sucessful push.
-    Sucessful push.
+    Successful push.
+    Successful push.
     Closed bus. |}]
 ;;

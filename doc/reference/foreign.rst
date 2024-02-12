@@ -138,6 +138,7 @@ described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
     (foreign_library
      (archive_name arch1)
      (language c)
+     (enabled_if true)
      (names src4 src5)
      (include_dir headers))
 
@@ -147,10 +148,11 @@ object files into an archive ``arch1``, whose full name is typically
 ``libarch1.a`` for static linking and ``dllarch1.so`` for dynamic
 linking.
 
-The ``foreign_library`` stanza supports all :ref:`foreign-stubs` fields plus
-the ``archive_name`` field, which specifies the archive's name. You can refer
+The ``foreign_library`` stanza supports all :ref:`foreign-stubs` fields.
+The ``archive_name`` field specifies the archive's name. You can refer
 to the same archive name from multiple OCaml libraries and executables, so a
 foreign archive is a bit like a foreign library, hence the name of the stanza.
+The ``enabled_if`` field has the same meaning as in the :ref:`library` stanza.
 
 Foreign archives are particularly useful when embedding a library written in
 a foreign language and/or built with another build system. See

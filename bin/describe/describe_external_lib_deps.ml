@@ -144,7 +144,7 @@ let libs db (context : Context.t) =
   let* dune_files = Context.name context |> Dune_rules.Dune_load.dune_files in
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
     Dune_file.stanzas dune_file
-    |> Memo.parallel_map ~f:(fun stanza ->
+    >>= Memo.parallel_map ~f:(fun stanza ->
       let dir = Dune_file.dir dune_file in
       match Stanza.repr stanza with
       | Dune_rules.Executables.T exes ->

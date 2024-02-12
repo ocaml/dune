@@ -722,20 +722,22 @@ module Action_expander = struct
       Result.map prog ~f:(map_exe t)
     ;;
 
+    let slang_expander t sw =
+      String_expander.Memo.expand_result_deferred_concat sw ~mode:Many ~f:(expand_pform t)
+    ;;
+
     let eval_blang t blang =
       Slang_expand.eval_blang
         blang
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(fun sw ~dir ->
-          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
+        ~f:(slang_expander t)
     ;;
 
     let eval_slangs_located t slangs =
       Slang_expand.eval_multi_located
         slangs
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(fun sw ~dir ->
-          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
+        ~f:(slang_expander t)
     ;;
   end
 
@@ -765,20 +767,15 @@ module Action_expander = struct
          User_error.raise
            ?loc
            [ Pp.text "\"run\" action must have at least one argument" ]
-       | (prog_loc, `Concat prog) :: args ->
+       | (prog_loc, prog) :: args ->
          let+ exe =
-           let prog =
-             match prog with
-             | [ Path prog ] -> Value.Path prog
-             | [ Dir prog ] -> Value.Dir prog
-             | prog ->
-               String (List.map prog ~f:(Value.to_string ~dir) |> String.concat ~sep:"")
-           in
+           let prog = Value.Deferred_concat.force prog ~dir in
            Expander.expand_exe_value expander prog ~loc:prog_loc
          in
          let args =
-           Array.Immutable.of_list_map args ~f:(fun (_, `Concat arg) ->
-             Array.Immutable.of_list_map arg ~f:(fun (arg : Value.t) ->
+           Array.Immutable.of_list_map args ~f:(fun (_loc, arg) ->
+             Value.Deferred_concat.parts arg
+             |> Array.Immutable.of_list_map ~f:(fun (arg : Value.t) ->
                match arg with
                | String s -> Run_with_path.Spec.String s
                | Path p | Dir p -> Path p))
@@ -803,7 +800,7 @@ module Action_expander = struct
       and+ dst =
         Expander.expand_pform_gen ~mode:Single expander dst
         >>| Value.to_path ~dir
-        >>| Expander0.as_in_build_dir ~what:"subsitute" ~loc:(String_with_vars.loc dst)
+        >>| Expander0.as_in_build_dir ~what:"substitute" ~loc:(String_with_vars.loc dst)
       in
       Substitute.action expander ~src ~dst
     | Withenv (updates, action) -> expand_withenv expander updates action

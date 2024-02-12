@@ -25,8 +25,8 @@ The syntax is as follows:
 ``<optional-fields>`` are:
 
 - ``<action>``, an action for constructing the alias. See
-  :doc:`reference/actions` for more details. Note that this is removed in Dune
-  2.0, so users must port their code to use the ``rule`` stanza with the
+  :doc:`reference/actions/index` for more details. Note that this is removed in
+  Dune 2.0, so users must port their code to use the ``rule`` stanza with the
   ``alias`` field instead.
 
 - ``(package <name>)`` indicates that this alias stanza is part of package

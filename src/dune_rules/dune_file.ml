@@ -406,7 +406,7 @@ module Eval = struct
       Memo.push_stack_frame
         ~human_readable_description:(fun () ->
           Pp.textf
-            "dynamic_include %s in directroy %s"
+            "dynamic_include %s in directory %s"
             (Include_stanza.file_path include_context loc include_file
              |> Path.build
              |> Path.drop_optional_build_context

@@ -422,11 +422,7 @@ module Group = struct
     let rec parallel_map ({ alias; modules; name = _ } as t) ~f =
       let open Memo.O in
       let+ alias, modules =
-        Memo.fork_and_join
-          (fun () ->
-            let+ alias = f alias in
-            alias)
-          (fun () -> parallel_map_modules modules ~f)
+        Memo.fork_and_join (fun () -> f alias) (fun () -> parallel_map_modules modules ~f)
       in
       { t with alias; modules }
 

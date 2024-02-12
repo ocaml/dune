@@ -206,60 +206,12 @@ Voila! This should print "Hello, world!" in the command line.
 Building a Hello World Program Using Lwt
 ========================================
 
-Lwt is a concurrent library in OCaml. 
-
-In a directory of your choice, write this ``dune`` file:
-
-.. code:: dune
-
-    (executable
-     (name hello_world)
-     (libraries lwt.unix))
-
-This ``hello_world.ml`` file:
-
-.. code:: ocaml
-
-    Lwt_main.run (Lwt_io.printf "Hello, world!\n")
-
-And build it with:
-
-.. code:: console
-
-  $ dune build hello_world.exe
-
-The executable will be built as ``_build/default/hello_world.exe``
+.. seealso:: :doc:`cookbook/external-library`
 
 Building a Hello World Program Using Core and Jane Street PPXs
 ==============================================================
 
-Write this ``dune`` file:
-
-.. code:: dune
-
-    (executable
-     (name hello_world)
-     (libraries core)
-     (preprocess (pps ppx_jane)))
-
-This ``hello_world.ml`` file:
-
-.. code:: ocaml
-
-    open Core
-
-    let () =
-      Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
-      |> print_endline
-
-And build it with:
-
-.. code:: console
-
-  $ dune build hello_world.exe
-
-The executable will be built as ``_build/default/hello_world.exe``
-
+.. seealso:: :doc:`/cookbook/ppx-rewriter`
 
 Defining a Library Using Lwt and ``ocaml-re``
 =============================================

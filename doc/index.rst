@@ -5,6 +5,7 @@ Welcome to Dune's Documentation!
    :maxdepth: 2
 
    getting-started/index
+   cookbook/index
    howto/index
    reference/index
    explanation/index

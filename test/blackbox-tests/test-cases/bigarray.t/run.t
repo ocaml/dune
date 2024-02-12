@@ -30,4 +30,9 @@ This test uses `(libraries (re_export bigarray))` similarly
   Welcome to b
 This test uses a `(select )` construct and should always select bigarray support
   $ dune exec c/c.exe
-  Welcome to c WITH bigarray support
+  Welcome to c WITHOUT bigarray support
+
+This test is the same as c but with the order of the branches in `select` reversed
+This shouldn't matter but it does
+  $ dune exec d/d.exe
+  Welcome to d WITH bigarray support

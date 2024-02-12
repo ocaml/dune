@@ -1,11 +1,11 @@
 (executable
- (name c)
+ (name d)
  (libraries
   (select
-   c.ml
+   d.ml
    from
    ;; Depending on the order of the two lines below, output changes
    ;; the first is always selected...?
-   (!bigarray -> c.nobigarray.ml)
-   (bigarray -> c.bigarray.ml)
-   (-> c.dummy.ml))))
+   (bigarray -> d.bigarray.ml)
+   (!bigarray -> d.nobigarray.ml)
+   (-> d.dummy.ml))))

@@ -71,4 +71,33 @@ In the same context
   >  (name foo))
   > EOF
 
+If no public lib is available, the build finishes fine as there are no consumers of the libraries
+
   $ dune build
+
+Let's add an exe to consume the library to trigger the error
+
+  $ cat > dune << EOF
+  > (executable
+  >  (name main)
+  >  (libraries foo))
+  > EOF
+
+  $ cat > main.ml <<EOF
+  > let () = Foo.x
+  > EOF
+
+  $ dune build
+  File "a/dune", line 1, characters 0-21:
+  1 | (library
+  2 |  (name foo))
+  Error: A library with name "foo" is defined in two folders:
+  _build/alt-context/b and _build/alt-context/a. Either change one of the
+  names, or enable them conditionally using the 'enabled_if' field.
+  File "a/dune", line 1, characters 0-21:
+  1 | (library
+  2 |  (name foo))
+  Error: A library with name "foo" is defined in two folders: _build/default/b
+  and _build/default/a. Either change one of the names, or enable them
+  conditionally using the 'enabled_if' field.
+  [1]

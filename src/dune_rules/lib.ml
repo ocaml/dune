@@ -1878,7 +1878,8 @@ module DB = struct
           Findlib.find findlib name
           >>| function
           | Ok (Library pkg) -> Found [ Dune_package.Lib.info pkg ]
-          | Ok (Deprecated_library_name d) -> Redirect_in_the_same_db (d.loc, d.new_public_name)
+          | Ok (Deprecated_library_name d) ->
+            Redirect_in_the_same_db (d.loc, d.new_public_name)
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
           | Error e ->
             (match e with

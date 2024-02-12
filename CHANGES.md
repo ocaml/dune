@@ -5,6 +5,49 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.14.0 (2024-02-12)
+-------------------
+
+### Added
+
+- Introduce a `(dynamic_include ..)` stanza. This is like `(include foo)` but
+  allows `foo` to be the target of a rule. Currently, there are some
+  limitations on the stanzas that can be generated. For example, public
+  executables, libraries are currently forbidden. (#9913, @rgrinberg)
+
+- Introduce `$ dune promotion list` to print the list of available promotions.
+  (#9705, @moyodiallo)
+
+- If Sherlodoc is installed, add a search bar in generated HTML docs (#9772,
+  @EmileTrotignon)
+
+- Add `only_sources` field to `copy_files` stanza (#9827, fixes #9709,
+  @jchavarri)
+
+- The `(foreign_library)` stanza now supports the `(enabled_if)` field. (#9914,
+  @nojb)
+
+### Fixed
+
+- Fix `$ dune install -p` incorrectly recognizing packages that are supposed to
+  be filtered (#9879, fixes #4814, @rgrinberg)
+
+- subst: correctly handle opam files in opam/ subdirectory (#9895, fixes #9862,
+  @emillon)
+
+- Odoc private rules are not set up if a library is not available due to
+  `enabled_if` (#9897, @rgrinberg and @jchavarri)
+
+### Changed
+
+- When dune language 3.14 is enabled, resolve the binary in `(run %{bin:..}
+  ..)` from where the binary is built. (#9708, @rgrinberg)
+
+- boot: remove single-command bootstrap. This was an alternative bootstrap
+  strategy that was used in certain conditions. Removal makes the bootstrap a
+  bit slower on Linux when only a single core is available, but bootstrap is
+  now reproducible in all cases. (#9735, fixes #9507, @emillon)
+
 3.13.1 (2024-02-05)
 -------------------
 

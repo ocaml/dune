@@ -335,29 +335,31 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
   in
   let open Option.O in
   let get_one name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
+    let* value =
+      let* opam = opam in
+      Opam_file.get_field opam name
+    in
     match value.pelem with
     | String s -> Some s
     | _ -> None
   in
   let get_many name =
-    let* opam = opam in
-    let* value = Opam_file.get_field opam name in
+    let* value =
+      let* opam = opam in
+      Opam_file.get_field opam name
+    in
     match value.pelem with
     | String s -> Some [ s ]
     | List l ->
-      let+ l =
-        List.fold_left
-          l.pelem
-          ~init:(Some [])
-          ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
-            let* acc = acc in
-            match v.pelem with
-            | String s -> Some (s :: acc)
-            | _ -> None)
-      in
-      List.rev l
+      List.fold_left
+        l.pelem
+        ~init:(Some [])
+        ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
+          let* acc = acc in
+          match v.pelem with
+          | String s -> Some (s :: acc)
+          | _ -> None)
+      >>| List.rev
     | _ -> None
   in
   let dir = Path.Source.parent_exn file in

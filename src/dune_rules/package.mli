@@ -9,7 +9,7 @@ module Name : sig
 
   include module type of Dune_lang.Package_name with type t := t
 
-  val of_opam_file_basename : string -> t option
+  val of_opam_file_basename : Filename.t -> t option
 
   module Map_traversals : sig
     val parallel_iter : 'a Map.t -> f:(t -> 'a -> unit Memo.t) -> unit Memo.t

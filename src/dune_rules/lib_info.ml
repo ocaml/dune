@@ -258,14 +258,6 @@ module Enabled_status = struct
     | Normal
     | Optional
     | Disabled_because_of_enabled_if
-
-  let to_dyn x =
-    let open Dyn in
-    match x with
-    | Normal -> variant "Normal" []
-    | Optional -> variant "Optional" []
-    | Disabled_because_of_enabled_if -> variant "Disabled_because_of_enabled_if" []
-  ;;
 end
 
 type 'path native_archives =
@@ -326,7 +318,7 @@ type 'path t =
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
-  ; enabled : Enabled_status.t
+  ; enabled : Enabled_status.t Memo.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
@@ -595,7 +587,7 @@ let to_dyn
   ; foreign_dll_files
   ; jsoo_runtime
   ; preprocess = _
-  ; enabled
+  ; enabled = _
   ; virtual_deps
   ; dune_version
   ; sub_systems
@@ -634,7 +626,6 @@ let to_dyn
     ; "jsoo_runtime", list path jsoo_runtime
     ; "requires", list Lib_dep.to_dyn requires
     ; "ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps
-    ; "enabled", Enabled_status.to_dyn enabled
     ; "virtual_deps", list (snd Lib_name.to_dyn) virtual_deps
     ; "dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version
     ; "sub_systems", Sub_system_name.Map.to_dyn Dyn.opaque sub_systems

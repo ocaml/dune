@@ -1052,13 +1052,13 @@ end = struct
          })
     in
     let t = Lazy.force t in
-    let res =
-      let hidden =
+    let+ res =
+      let+ hidden =
         match hidden with
-        | Some _ -> hidden
+        | Some _ -> Memo.return hidden
         | None ->
-          let enabled = Lib_info.enabled info in
-          (match enabled with
+          Lib_info.enabled info
+          >>| (function
            | Normal -> None
            | Disabled_because_of_enabled_if -> Some "unsatisfied 'enabled_if'"
            | Optional ->
@@ -1073,7 +1073,7 @@ end = struct
       | None -> Status.Found t
       | Some reason -> Hidden (Hidden.of_lib t ~reason)
     in
-    Memo.return res
+    res
   ;;
 
   module Input = struct

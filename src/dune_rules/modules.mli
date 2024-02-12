@@ -24,8 +24,7 @@ val impl : t -> vlib:t -> t
 val find_dep
   :  t
   -> of_:Module.t
-  -> Module_name.t
-  -> (Module.t list, [ `Parent_cycle ]) result
+  -> (Module_name.t -> (Module.t list, [ `Parent_cycle ]) result) Staged.t
 
 val find : t -> Module_name.t -> Module.t option
 val compat_for_exn : t -> Module.t -> Module.t

@@ -484,16 +484,17 @@ module Group = struct
     ;;
   end
 
-  let find_dep t ~of_ name =
+  let find_dep t ~of_ =
     match Module.kind of_ with
-    | Alias _ -> Ok []
+    | Alias _ -> Staged.stage (fun _ -> Ok [])
     | Wrapped_compat ->
       let li = lib_interface t in
-      Ok (if Module_name.equal name (Module.name li) then [ li ] else [])
+      Staged.stage (fun name ->
+        Ok (if Module_name.equal name (Module.name li) then [ li ] else []))
     | _ ->
       (* TODO don't recompute this *)
       let parents = parents t of_ |> List.map ~f:(fun g -> g.modules, Some g.name) in
-      Find_dep.find_dep_of_parents parents name
+      Staged.stage (Find_dep.find_dep_of_parents parents)
   ;;
 
   module For_alias = struct
@@ -580,16 +581,16 @@ module Unwrapped = struct
 
   let parents t m = Group.parents_modules [] t m
 
-  let find_dep t ~of_ name =
+  let find_dep t ~of_ =
     match Module.kind of_ with
-    | Alias _ -> Ok []
+    | Alias _ -> Staged.stage (fun _ -> Ok [])
     | Wrapped_compat -> assert false
     | _ ->
       let parents =
         (t, None)
         :: List.map (parents t of_) ~f:(fun (g : Group.t) -> g.modules, Some g.name)
       in
-      Group.Find_dep.find_dep_of_parents parents name
+      Staged.stage (Group.Find_dep.find_dep_of_parents parents)
   ;;
 
   let fold t ~init ~f = Group.fold_modules t ~init ~f
@@ -743,7 +744,7 @@ module Wrapped = struct
   ;;
 
   let find t name = Group.find t.group name
-  let find_dep t ~of_ name = Group.find_dep t.group ~of_ name
+  let find_dep t ~of_ = Group.find_dep t.group ~of_
   let group_interfaces (t : t) m = Group.group_interfaces t.group m
   let alias_for t m = Group.alias_for t.group m
 end
@@ -926,7 +927,10 @@ let rec find t name =
 
 exception Parent_cycle
 
-let find_dep =
+let find_dep
+  :  t -> of_:Module.t
+  -> (Module_name.t -> (Module.t list, [ `Parent_cycle ]) result) Staged.t
+  =
   let from_impl_or_lib = List.map ~f:(fun m -> `Impl_or_lib, m) in
   let find_dep_result =
     List.filter_map ~f:(fun (from, m) ->
@@ -938,27 +942,34 @@ let find_dep =
     | Ok s -> from_impl_or_lib s
     | Error `Parent_cycle -> raise_notrace Parent_cycle
   in
-  let rec find_dep t ~of_ name : Module.t list =
-    if Module.name of_ = name
-    then []
-    else (
-      let result =
-        match t.modules with
-        | Singleton _ -> find t name |> Option.to_list |> from_impl_or_lib
-        | Unwrapped w -> Unwrapped.find_dep w ~of_ name |> raise_parent_cycle
-        | Wrapped w -> Wrapped.find_dep w ~of_ name |> raise_parent_cycle
-        | Stdlib s -> Stdlib.find_dep s ~of_ name |> Option.to_list |> from_impl_or_lib
-        | Impl { vlib; impl } ->
-          (match find_dep impl ~of_ name with
-           | [] -> find_dep vlib ~of_ name |> List.map ~f:(fun m -> `Vlib, m)
+  let rec find_dep t ~of_ : (Module_name.t -> Module.t list) Staged.t =
+    let find_dep =
+      match t.modules with
+      | Singleton _ -> fun name -> find t name |> Option.to_list |> from_impl_or_lib
+      | Unwrapped w ->
+        fun name ->
+          (Unwrapped.find_dep w ~of_ |> Staged.unstage) name |> raise_parent_cycle
+      | Wrapped w ->
+        fun name -> (Wrapped.find_dep w ~of_ |> Staged.unstage) name |> raise_parent_cycle
+      | Stdlib s ->
+        fun name -> Stdlib.find_dep s ~of_ name |> Option.to_list |> from_impl_or_lib
+      | Impl { vlib; impl } ->
+        let find_dep_impl = find_dep impl ~of_ |> Staged.unstage in
+        let find_dep_vlib = find_dep vlib ~of_ |> Staged.unstage in
+        fun name ->
+          (match find_dep_impl name with
+           | [] -> find_dep_vlib name |> List.map ~f:(fun m -> `Vlib, m)
            | xs -> from_impl_or_lib xs)
-      in
-      find_dep_result result)
+    in
+    Staged.stage (fun name ->
+      (if Module.name of_ = name then [] else find_dep name) |> find_dep_result)
   in
-  fun t ~of_ name ->
-    match find_dep t ~of_ name with
-    | s -> Ok s
-    | exception Parent_cycle -> Error `Parent_cycle
+  fun t ~of_ ->
+    let find_dep = Staged.unstage (find_dep t ~of_) in
+    Staged.stage (fun name ->
+      match find_dep name with
+      | s -> Ok s
+      | exception Parent_cycle -> Error `Parent_cycle)
 ;;
 
 let make_singleton m mangle =

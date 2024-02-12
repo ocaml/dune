@@ -806,7 +806,6 @@ let with_obj_map modules =
 ;;
 
 let obj_map t = Lazy.force t.obj_map
-let equal (x : t) (y : t) = Poly.equal x.modules y.modules
 
 let rec encode t ~src_dir =
   let open Dune_sexp in

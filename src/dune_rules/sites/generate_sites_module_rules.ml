@@ -133,8 +133,8 @@ let plugins_code packages buf pkg sites =
 
 let setup_rules sctx ~dir (def : Generate_sites_module_stanza.t) =
   let open Memo.O in
-  let* packages = Dune_load.packages () in
-  let impl () =
+  let impl =
+    let+ packages = Dune_load.packages () in
     let buf = Buffer.create 1024 in
     if def.sourceroot then sourceroot_code buf;
     if def.relocatable then relocatable_code buf;
@@ -162,7 +162,7 @@ let setup_rules sctx ~dir (def : Generate_sites_module_stanza.t) =
     Super_context.add_rule
       sctx
       ~dir
-      (Action_builder.write_file_dyn file (Action_builder.delayed impl))
+      (Action_builder.write_file_dyn file (Action_builder.of_memo impl))
   in
   module_
 ;;

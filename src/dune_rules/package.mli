@@ -46,7 +46,6 @@ val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 val opam_file : t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
-val is_opam_file : Path.t -> bool
 val set_has_opam_file : t -> opam_file -> t
 val version : t -> Package_version.t option
 val depends : t -> Dependency.t list

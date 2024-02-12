@@ -143,7 +143,7 @@ end = struct
       let+ ocaml = Context.ocaml ctx in
       ocaml.lib_config
     in
-    let* info = Library.to_lib_info lib ~dir ~lib_config in
+    let info = Library.to_lib_info lib ~dir ~lib_config in
     let make_entry =
       let in_sub_dir = function
         | None -> lib_subdir

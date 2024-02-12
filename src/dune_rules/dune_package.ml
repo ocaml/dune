@@ -238,7 +238,7 @@ module Lib = struct
        let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
-         let enabled = Lib_info.Enabled_status.Normal in
+         let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with
            | Private (_, _) -> Lib_info.Status.Installed_private

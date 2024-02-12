@@ -149,7 +149,7 @@ val requires : _ t -> Lib_dep.t list
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
 val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
-val enabled : _ t -> Enabled_status.t
+val enabled : _ t -> Enabled_status.t Memo.t
 val orig_src_dir : 'path t -> 'path option
 val version : _ t -> Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
@@ -211,7 +211,7 @@ val create
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
   -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
-  -> enabled:Enabled_status.t
+  -> enabled:Enabled_status.t Memo.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option

@@ -375,7 +375,18 @@ module Component = struct
     let dune_project ~opam_file_gen dir (common : Options.Common.t) =
       let cst =
         let package =
-          Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
+          Package.create
+            ~name:(Package.Name.of_string (Atom.to_string common.name))
+            ~dir
+            ~synopsis:(Some "A short synopsis")
+            ~description:(Some "A longer description")
+            ~tags:[ "topics"; "to describe"; "your"; "project" ]
+            ~depends:
+              [ { Package.Dependency.name = Package.Name.of_string "ocaml"
+                ; constraint_ = None
+                }
+              ; { name = Package.Name.of_string "dune"; constraint_ = None }
+              ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info = Package_info.example in

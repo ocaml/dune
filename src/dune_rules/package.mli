@@ -5,5 +5,3 @@ include module type of Dune_lang.Package with type t = Dune_lang.Package.t
 
 (** Construct a package description from an opam file and its contents *)
 val load_opam_file_with_contents : contents:string -> Path.Source.t -> Name.t -> t
-
-val to_local_package : t -> Dune_pkg.Local_package.t

@@ -12,9 +12,7 @@ let resolve_project_sources sources =
     Dune_project.gen_load ~read ~files ~dir:Path.Source.root ~infer_from_opam_files:false
     >>| Option.map ~f:(fun project ->
       let sources = Dune_project.sources project in
-      let packages =
-        Dune_project.packages project |> Package.Name.Map.map ~f:Package.to_local_package
-      in
+      let packages = Dune_project.packages project in
       sources, packages)
     |> Memo.run
   in

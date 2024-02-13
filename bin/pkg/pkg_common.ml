@@ -98,7 +98,8 @@ let get_repos repos ~repositories =
 
 let find_local_packages =
   let open Memo.O in
-  Dune_rules.Dune_load.packages () >>| Package.Name.Map.map ~f:Package.to_local_package
+  Dune_rules.Dune_load.packages ()
+  >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
 let pp_packages packages =

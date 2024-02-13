@@ -50,3 +50,8 @@ let named loc name =
 
 let decode = Dune_lang.Decoder.plain_string (fun ~loc s -> named loc s)
 let encode n = Dune_lang.Encoder.string (to_string_hum n)
+
+let name = function
+  | Anonymous _ -> None
+  | Named s -> Some s
+;;

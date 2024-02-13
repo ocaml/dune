@@ -97,10 +97,6 @@ module Dir0 = struct
       ]
   ;;
 
-  let create ~project ~path ~status ~files ~sub_dirs ~dune_file =
-    { path; status; files; sub_dirs; project; dune_file }
-  ;;
-
   let path t = t.path
   let status t = t.status
   let filenames t = t.files
@@ -173,10 +169,8 @@ end = struct
               Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited ~path info
             in
             let subdirs =
-              let sub_dir =
-                make_subdir ~dir_status ~virtual_:false (Path.Source.relative dir fn)
-              in
-              Filename.Map.add_exn subdirs fn sub_dir
+              make_subdir ~dir_status ~virtual_:false (Path.Source.relative dir fn)
+              |> Filename.Map.add_exn subdirs fn
             in
             dirs_visited_acc, subdirs)
     ;;
@@ -244,8 +238,7 @@ end = struct
         ~dune_file
         ~path
     in
-    ( Dir0.create ~project ~status:dir_status ~path ~files ~sub_dirs ~dune_file
-    , dirs_visited )
+    { Dir0.project; status = dir_status; path; files; sub_dirs; dune_file }, dirs_visited
   ;;
 
   let root () =

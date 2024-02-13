@@ -8,6 +8,7 @@ include struct
   module Substs = Substs
   module Checksum = Checksum
   module Source = Source
+  module Build_command = Lock_dir.Build_command
 end
 
 module Variable = struct
@@ -194,7 +195,7 @@ module Pkg = struct
 
   type t =
     { id : Id.t
-    ; build_command : Dune_lang.Action.t option
+    ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
     ; info : Pkg_info.t
@@ -918,22 +919,37 @@ module Action_expander = struct
     }
   ;;
 
-  let expand =
-    let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy in
-    fun context (pkg : Pkg.t) action ->
-      let+ action =
-        let* expander = expander context pkg in
-        expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
-      in
-      (* TODO copying is needed for build systems that aren't dune and those
-         with an explicit install step *)
-      Action.Full.make ~sandbox action
-      |> Action_builder.return
-      |> Action_builder.with_no_targets
+  let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
+
+  let expand context (pkg : Pkg.t) action =
+    let+ action =
+      let* expander = expander context pkg in
+      expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
+    in
+    (* TODO copying is needed for build systems that aren't dune and those
+       with an explicit install step *)
+    Action.Full.make ~sandbox action
+    |> Action_builder.return
+    |> Action_builder.with_no_targets
+  ;;
+
+  let dune_exe context =
+    Which.which ~path:(Env_path.path Env.initial) "dune"
+    >>| function
+    | Some s -> Ok s
+    | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(expand context pkg)
+    Option.map pkg.build_command ~f:(function
+      | Action action -> expand context pkg action
+      | Dune ->
+        (* CR-rgrinberg: respect [dune subst] settings. *)
+        Command.run_dyn_prog
+          (Action_builder.of_memo (dune_exe context))
+          ~dir:(Path.build pkg.paths.source_dir)
+          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+        |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =

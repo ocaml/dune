@@ -303,17 +303,6 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
           Local_package.for_solver pkg
           |> Local_package.For_solver.to_opam_file
           |> OpamFile.OPAM.with_url (OpamFile.URL.create (snd package.url))
-          |> OpamFile.OPAM.with_build
-               [ (* CR-rgrinberg: this needs to be addressed in a more
-                    principled manner *)
-                 (let cmd =
-                    ([ "dune"; "build"; "-p" ]
-                     |> List.map ~f:(fun x -> OpamTypes.CString x))
-                    @ [ OpamTypes.CIdent "name" ]
-                    |> List.map ~f:(fun x -> x, None)
-                  in
-                  cmd, None)
-               ]
         in
         let opam_package =
           OpamPackage.create

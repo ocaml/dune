@@ -2,7 +2,6 @@ include Stdune
 include Dune_vcs
 module Console = Dune_console
 module Digest = Dune_digest
-module Section = Install.Section
 
 include struct
   open Dune_findlib.Findlib
@@ -97,6 +96,7 @@ include struct
   module Warning = Warning
   module Source_kind = Source_kind
   module Package_info = Package_info
+  module Section = Section
 end
 
 include Dune_engine.No_io

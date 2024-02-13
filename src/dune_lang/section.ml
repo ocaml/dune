@@ -1,4 +1,4 @@
-open! Import
+open Stdune
 include Dune_section
 
 let compare : t -> t -> Ordering.t = Poly.compare

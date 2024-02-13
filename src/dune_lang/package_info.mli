@@ -13,12 +13,12 @@ val example : t
 
 val empty : t
 val to_dyn : t Dyn.builder
-val encode_fields : t -> Dune_lang.t list
+val encode_fields : t -> Dune_sexp.t list
 
 val decode
-  :  ?since:Dune_lang.Syntax.Version.t
+  :  ?since:Dune_sexp.Syntax.Version.t
   -> unit
-  -> t Dune_lang.Decoder.fields_parser
+  -> t Dune_sexp.Decoder.fields_parser
 
 val superpose : t -> t -> t
 

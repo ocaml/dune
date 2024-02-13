@@ -217,10 +217,13 @@ let glob_predicate repr : Predicate_lang.Glob.t =
 
 let default_files_of_version version =
   let md_files = glob_predicate "*.md" in
-  let mld_files = glob_predicate "*.mld" in
-  let mld_support_since = 0, 4 in
-  match Syntax.Version.Infix.(version >= mld_support_since) with
-  | true -> Predicate_lang.or_ [ md_files; mld_files ]
+  match
+    let mld_support_since = 0, 4 in
+    Syntax.Version.Infix.(version >= mld_support_since)
+  with
+  | true ->
+    let mld_files = glob_predicate "*.mld" in
+    Predicate_lang.or_ [ md_files; mld_files ]
   | false -> md_files
 ;;
 
@@ -281,8 +284,6 @@ let () =
     stanza and context *)
 let files_to_mdx t ~sctx ~dir =
   let open Memo.O in
-  let src_dir = Path.Build.drop_build_context_exn dir in
-  let+ src_dir_files = Source_tree.files_of src_dir >>| Path.Source.Set.to_list in
   let must_mdx src_path =
     let file = Path.Source.basename src_path in
     let standard = default_files_of_version t.version in
@@ -291,7 +292,10 @@ let files_to_mdx t ~sctx ~dir =
   let build_path src_path =
     Path.Build.append_source (Context.build_dir (Super_context.context sctx)) src_path
   in
-  List.filter_map src_dir_files ~f:(fun src_path ->
+  Path.Build.drop_build_context_exn dir
+  |> Source_tree.files_of
+  >>| Path.Source.Set.to_list
+  >>| List.filter_map ~f:(fun src_path ->
     if must_mdx src_path then Some (build_path src_path) else None)
 ;;
 
@@ -299,8 +303,10 @@ let files_to_mdx t ~sctx ~dir =
     [stanza]. *)
 let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_gen src =
   let { loc; version; _ } = stanza in
-  let mdx_dir = Path.Build.relative dir ".mdx" in
-  let files = Files.from_source_file ~mdx_dir src in
+  let files =
+    let mdx_dir = Path.Build.relative dir ".mdx" in
+    Files.from_source_file ~mdx_dir src
+  in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
   let open Memo.O in
   let* () = Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files)
@@ -313,11 +319,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
         let* dep_set = Deps.read files in
         Action_builder.of_memo
           (let open Memo.O in
-           let+ dsr = Deps.to_dep_set dep_set ~version ~dir in
            let src_path_msg =
              Pp.seq (Pp.text "Source path: ") (Path.pp (Path.build src))
            in
-           match dsr with
+           Deps.to_dep_set dep_set ~version ~dir
+           >>| function
            | Result.Ok r -> r
            | Error (`Absolute str) ->
              User_error.raise
@@ -347,13 +353,6 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
                ; Pp.seq (Pp.text "Included path: ") (Pp.text str)
                ])
       in
-      let dyn_deps = Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d) in
-      let mdx_package_deps =
-        stanza.packages
-        |> List.map ~f:(fun (loc, pkg) ->
-          Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
-      in
-      let mdx_generic_deps = Bindings.to_list stanza.deps in
       let executable, command_line =
         (* The old mdx stanza calls the [ocaml-mdx] executable, new ones the
            generated executable *)
@@ -376,13 +375,21 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
             ] )
       in
       let deps, sandbox =
+        let mdx_generic_deps = Bindings.to_list stanza.deps in
+        let mdx_package_deps =
+          stanza.packages
+          |> List.map ~f:(fun (loc, pkg) ->
+            Dep_conf.Package (Package.Name.to_string pkg |> String_with_vars.make_text loc))
+        in
         Dep_conf_eval.unnamed ~expander (mdx_package_deps @ mdx_generic_deps)
       in
       let+ action =
         Action_builder.with_no_targets deps
         >>> Action_builder.with_no_targets
               (Action_builder.env_var "MDX_RUN_NON_DETERMINISTIC")
-        >>> Action_builder.with_no_targets (Action_builder.dyn_deps dyn_deps)
+        >>> Action_builder.with_no_targets
+              (Action_builder.map mdx_input_dependencies ~f:(fun d -> (), d)
+               |> Action_builder.dyn_deps)
         >>> Command.run_dyn_prog
               ~dir:(Path.build dir)
               ~stdout_to:files.corrected
@@ -397,54 +404,46 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
     Super_context.add_rule sctx ~loc ~dir (mdx_action ~loc)
   in
   (* Attach the diff action to the @runtest for the src and corrected files *)
-  let diff_action = Files.diff_action files in
-  Super_context.add_alias_action
-    sctx
-    (Alias.make Alias0.runtest ~dir)
-    ~loc
-    ~dir
-    diff_action
+  Files.diff_action files
+  |> Super_context.add_alias_action sctx (Alias.make Alias0.runtest ~dir) ~loc ~dir
 ;;
 
 let name = "mdx_gen"
 
 let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let loc = t.loc in
-  let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let file = Path.Build.relative dir "mdx_gen.ml-gen" in
   (* Libs from the libraries field should have their include directories sent to
      mdx *)
-  let open Resolve.Memo.O in
-  let directory_args =
-    let* libs_to_include =
-      Resolve.Memo.List.filter_map t.libraries ~f:(function
-        | Direct lib | Re_export lib ->
-          let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
-          Some lib
-        | _ -> Resolve.Memo.return None)
-    in
-    let+ mode =
-      Resolve.Memo.lift_memo
-      @@
-      let open Memo.O in
-      let+ ocaml = Context.ocaml (Super_context.context sctx) in
-      Ocaml_toolchain.best_mode ocaml
-    in
-    let libs_include_paths = Lib_flags.L.include_paths libs_to_include (Ocaml mode) in
-    let open Command.Args in
-    let args =
-      Path.Set.to_list_map libs_include_paths ~f:(fun p -> S [ A "--directory"; Path p ])
-    in
-    S args
-  in
-  let open Command.Args in
-  let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in
-  (* We call mdx to generate the testing executable source *)
   let action =
+    let open Resolve.Memo.O in
+    let directory_args =
+      let* libs_to_include =
+        Resolve.Memo.List.filter_map t.libraries ~f:(function
+          | Direct lib | Re_export lib ->
+            let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
+            Some lib
+          | _ -> Resolve.Memo.return None)
+      in
+      let+ mode =
+        let open Memo.O in
+        Super_context.context sctx
+        |> Context.ocaml
+        >>| Ocaml_toolchain.best_mode
+        |> Resolve.Memo.lift_memo
+      in
+      let open Command.Args in
+      S
+        (Lib_flags.L.include_paths libs_to_include (Ocaml mode)
+         |> Path.Set.to_list_map ~f:(fun p -> S [ A "--directory"; Path p ]))
+    in
+    let open Command.Args in
+    let prelude_args = S (List.concat_map t.preludes ~f:(Prelude.to_args ~dir)) in
+    let stdout_to = Path.Build.relative dir "mdx_gen.ml-gen" in
+    (* We call mdx to generate the testing executable source *)
     Command.run_dyn_prog
       ~dir:(Path.build dir)
       mdx_prog
-      ~stdout_to:file
+      ~stdout_to
       [ A "dune-gen"
       ; prelude_args
       ; Resolve.Memo.args directory_args
@@ -455,28 +454,31 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let* () = Super_context.add_rule sctx ~loc ~dir action in
   (* We build the generated executable linking in the libs from the libraries
      field *)
-  let obj_dir = Obj_dir.make_exe ~dir ~name in
   let main_module_name = Module_name.of_string name in
-  let module_ = Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ] in
-  let modules = Modules.singleton_exe module_ in
-  let flags = Ocaml_flags.default ~dune_version ~profile:Release in
+  let dune_version = Scope.project scope |> Dune_project.dune_version in
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
-  let names = [ t.loc, name ] in
-  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
-  let compile_info =
-    Lib.DB.resolve_user_written_deps
-      (Scope.libs scope)
-      (`Exe names)
-      ~allow_overlaps:false
-      ~forbidden_libraries:[]
-      (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
-      ~pps:[]
-      ~dune_version
-      ~merlin_ident
-  in
   let* cctx =
+    let compile_info =
+      let names = [ t.loc, name ] in
+      let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
+      Lib.DB.resolve_user_written_deps
+        (Scope.libs scope)
+        (`Exe names)
+        ~allow_overlaps:false
+        ~forbidden_libraries:[]
+        (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
+        ~pps:[]
+        ~dune_version
+        ~merlin_ident
+    in
     let requires_compile = Lib.Compile.direct_requires compile_info
     and requires_link = Lib.Compile.requires_link compile_info in
+    let obj_dir = Obj_dir.make_exe ~dir ~name in
+    let modules =
+      Module.generated ~kind:Impl ~src_dir:dir [ main_module_name ]
+      |> Modules.singleton_exe
+    in
+    let flags = Ocaml_flags.default ~dune_version ~profile:Release in
     Compilation_context.create
       ~super_context:sctx
       ~scope

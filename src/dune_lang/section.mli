@@ -1,4 +1,4 @@
-open Import
+open Stdune
 include module type of Dune_section with type t = Dune_section.t
 
 val compare : t -> t -> Ordering.t

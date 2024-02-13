@@ -790,59 +790,57 @@ end = struct
     let ctx = Super_context.context sctx in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      let+ entries = Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name in
-      List.partition_map entries ~f:(function
-        | Deprecated_library_name
+      Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name
+      >>| List.partition_map ~f:(function
+        | Scope.DB.Lib_entry.Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
           (match Public_lib.sub_dir public with
            | None -> Left (deprecated_package, entry)
            | Some _ -> Right entry)
         | entry -> Right entry)
     in
-    let template =
-      let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
-      let meta_template_lines_or_fail =
-        (* XXX this should really be lazy as it's only necessary for the then
-           clause. There's no way to express this in the action builder
-           however. *)
-        let vlib =
-          List.find_map entries ~f:(function
-            | Library lib ->
-              let info = Lib.Local.info lib in
-              Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
-            | Deprecated_library_name _ -> None)
-        in
-        match vlib with
-        | None -> Action_builder.lines_of meta_template
-        | Some vlib ->
-          Action_builder.fail
-            { fail =
-                (fun () ->
-                  let name = Lib.name (Lib.Local.to_lib vlib) in
-                  User_error.raise
-                    ~loc:(Loc.in_file meta_template)
-                    [ Pp.textf
-                        "Package %s defines virtual library %s and has a META template. \
-                         This is not allowed."
-                        (Package.Name.to_string pkg_name)
-                        (Lib_name.to_string name)
-                    ])
-            }
-      in
-      Action_builder.if_file_exists
-        meta_template
-        ~then_:meta_template_lines_or_fail
-        ~else_:(Action_builder.return [ "# DUNE_GEN" ])
-    in
     let ctx = Super_context.context sctx in
     let meta = Package_paths.meta_file ctx pkg in
     let* () =
+      let template =
+        let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
+        let meta_template_lines_or_fail =
+          let open Action_builder.O in
+          let* () = Action_builder.return () in
+          match
+            List.find_map entries ~f:(function
+              | Library lib ->
+                let info = Lib.Local.info lib in
+                Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
+              | Deprecated_library_name _ -> None)
+          with
+          | None -> Action_builder.lines_of meta_template
+          | Some vlib ->
+            Action_builder.fail
+              { fail =
+                  (fun () ->
+                    let name = Lib.name (Lib.Local.to_lib vlib) in
+                    User_error.raise
+                      ~loc:(Loc.in_file meta_template)
+                      [ Pp.textf
+                          "Package %s defines virtual library %s and has a META \
+                           template. This is not allowed."
+                          (Package.Name.to_string pkg_name)
+                          (Lib_name.to_string name)
+                      ])
+              }
+        in
+        Action_builder.if_file_exists
+          meta_template
+          ~then_:meta_template_lines_or_fail
+          ~else_:(Action_builder.return [ "# DUNE_GEN" ])
+      in
       Super_context.add_rule
         sctx
         ~dir:(Context.build_dir ctx)
         (let open Action_builder.O in
-         (let* template = template in
-          let+ meta =
+         (let+ template = template
+          and+ meta =
             Action_builder.of_memo
               (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
           in
@@ -870,16 +868,13 @@ end = struct
         (Action_builder.write_file_dyn
            meta
            (let open Action_builder.O in
-            let+ meta =
-              let entries =
-                match Package.Name.Map.find deprecated_packages name with
-                | None -> []
-                | Some entries -> entries
+            let+ pp =
+              let+ meta =
+                Package.Name.Map.find deprecated_packages name
+                |> Option.value ~default:[]
+                |> Gen_meta.gen ~package:pkg ~add_directory_entry:false
+                |> Action_builder.of_memo
               in
-              Action_builder.of_memo
-                (Gen_meta.gen ~package:pkg entries ~add_directory_entry:false)
-            in
-            let pp =
               let open Pp.O in
               Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
             in
@@ -1166,13 +1161,16 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Action_builder.map
       entries
       ~f:(List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src))
+    |> Action_builder.memoize "entries"
   in
   let* dune_project = Dune_load.find_project ~dir:pkg_build_dir in
   let strict_package_deps = Dune_project.strict_package_deps dune_project in
   let packages =
     let open Action_builder.O in
-    let* files = files in
-    let+ packages = Action_builder.of_memo (package_deps package files) in
+    let+ packages =
+      let* files = files in
+      Action_builder.of_memo (package_deps package files)
+    in
     (match strict_package_deps with
      | false -> ()
      | true ->
@@ -1183,8 +1181,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
          in
          let specified_deps =
            Package.depends package
-           |> List.map ~f:(fun (dep : Package.Dependency.t) -> dep.name)
-           |> Package.Name.Set.of_list
+           |> Package.Name.Set.of_list_map ~f:(fun (dep : Package.Dependency.t) ->
+             dep.name)
          in
          Package.Name.Set.diff effective_deps specified_deps
        in
@@ -1202,8 +1200,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let install_file_deps =
     let open Action_builder.O in
-    let* files = files in
-    Path.Set.of_list_map files ~f:Path.build |> Action_builder.path_set
+    files >>| Path.Set.of_list_map ~f:Path.build >>= Action_builder.path_set
   in
   let* () =
     let* all_packages = Dune_load.packages () in
@@ -1224,8 +1221,8 @@ let gen_package_install_file_rules sctx (package : Package.t) =
               in
               Dep_conf_eval.package_install ~context ~pkg |> Dep.alias) )))
   in
-  let findlib_toolchain = Context.findlib_toolchain ctx in
   let action =
+    let findlib_toolchain = Context.findlib_toolchain ctx in
     let install_file =
       Path.Build.relative
         pkg_build_dir
@@ -1272,11 +1269,10 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       List.map entries ~f:(fun (e : Install.Entry.Sourced.t) ->
         Install.Entry.set_src e.entry (Path.build e.entry.src))
     in
-    Action_builder.with_file_targets
-      ~file_targets:[ install_file ]
-      (let+ entries = entries in
-       let action = gen_install_file entries ~dst:install_file in
-       Action.Full.make action)
+    entries
+    >>| gen_install_file ~dst:install_file
+    >>| Action.Full.make
+    |> Action_builder.with_file_targets ~file_targets:[ install_file ]
   in
   Super_context.add_rule
     sctx

@@ -376,9 +376,9 @@ let gen_project_rules =
             version
             ~what:"This field"
     and+ () =
-      match Dune_project.name project with
-      | Named _ -> Memo.return ()
-      | Anonymous _ ->
+      match Dune_project_name.name (Dune_project.name project) with
+      | Some _ -> Memo.return ()
+      | None ->
         (match
            if Dune_project.dune_version project >= (2, 8)
               && Dune_project.generate_opam_files project

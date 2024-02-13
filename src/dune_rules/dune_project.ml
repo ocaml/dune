@@ -628,8 +628,8 @@ let parse_packages
         name, pkg)
       |> Memo.map ~f:Package.Name.Map.of_list_exn
     else (
-      (match packages, name with
-       | [ p ], Some (Named name) ->
+      (match packages, Option.bind ~f:Dune_project_name.name name with
+       | [ p ], Some name ->
          if Package.Name.to_string (Package.name p) <> name
          then
            User_error.raise

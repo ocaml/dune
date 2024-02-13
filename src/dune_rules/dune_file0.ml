@@ -321,8 +321,10 @@ let rec evaluate_includes
   Memo.parallel_map stanzas ~f:(function
     | Include { loc; file } ->
       let inside_include = true in
-      let file = Filename.concat prefix file in
-      let* ast, context = Include_stanza.load_sexps ~context (loc, file) in
+      let* ast, context =
+        let file = Filename.concat prefix file in
+        Include_stanza.load_sexps ~context (loc, file)
+      in
       Ast.decode ~inside_subdir ~inside_include
       |> decoder.decode ast
       |> evaluate_includes ~decoder ~context prefix ~inside_subdir ~inside_include

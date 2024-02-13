@@ -389,29 +389,43 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
+  fun stanzas
+    ~expander
+    ~project
+    ~dir
+    ~libs
+    ~lookup_vlib
+    ~modules
+    ~include_subdirs
+    ~lib_config ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
-        (* jeremiedimino: this [Resolve.get] means that if the user writes an
-           invalid [implements] field, we will get an error immediately even if
-           the library is not built. We should change this to carry the
-           [Or_exn.t] a bit longer. *)
-        let+ sources, modules =
-          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-          make_lib_modules
-            ~expander
-            ~dir
-            ~libs
-            ~lookup_vlib
-            ~modules
-            ~lib
-            ~include_subdirs
-            ~version:lib.dune_version
-          >>= Resolve.read_memo
-        in
-        let obj_dir = Library.obj_dir lib ~dir in
-        `Library (lib, sources, modules, obj_dir)
+        let* lib_config = lib_config in
+        let info = Library.to_lib_info lib ~dir ~lib_config in
+        let* enabled_if = Lib_info.enabled info in
+        (match enabled_if with
+         | Disabled_because_of_enabled_if -> Memo.return `Skip
+         | Normal | Optional ->
+           (* jeremiedimino: this [Resolve.get] means that if the user writes an
+              invalid [implements] field, we will get an error immediately even if
+              the library is not built. We should change this to carry the
+              [Or_exn.t] a bit longer. *)
+           let+ sources, modules =
+             let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+             make_lib_modules
+               ~expander
+               ~dir
+               ~libs
+               ~lookup_vlib
+               ~modules
+               ~lib
+               ~include_subdirs
+               ~version:lib.dune_version
+             >>= Resolve.read_memo
+           in
+           let obj_dir = Library.obj_dir lib ~dir in
+           `Library (lib, sources, modules, obj_dir))
       | Executables.T exes | Tests.T { exes; _ } ->
         let obj_dir = Executables.obj_dir ~dir exes in
         let+ sources, modules =
@@ -541,6 +555,7 @@ let make
       ~lookup_vlib
       ~modules
       ~include_subdirs:(loc_include_subdirs, include_subdirs)
+      ~lib_config
   in
   let modules = Modules.make modules_of_stanzas in
   let artifacts =

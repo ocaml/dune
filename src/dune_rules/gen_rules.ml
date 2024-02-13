@@ -112,18 +112,8 @@ end = struct
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      let* enabled_if =
-        let libs = Scope.libs scope in
-        let name = Library.best_name lib in
-        Lib.DB.available_library_stanza libs ~dir name
-      in
-      if_available_buildable
-        ~loc:lib.buildable.loc
-        (fun () ->
-          let+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-          and+ rules = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
-          rules)
-        enabled_if
+      let* cctx, merlin = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+      Memo.return { empty_none with merlin; cctx = Some (lib.buildable.loc, cctx) }
     | Foreign.Library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->

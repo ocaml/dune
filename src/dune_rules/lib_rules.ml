@@ -556,6 +556,7 @@ let library_rules
   ~source_modules
   ~dir_contents
   ~compile_info
+  ~ctx_dir
   =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -570,61 +571,73 @@ let library_rules
   let* requires_compile = Compilation_context.requires_compile cctx in
   let ocaml = Compilation_context.ocaml cctx in
   let stdlib_dir = ocaml.lib_config.stdlib_dir in
-  let top_sorted_modules =
-    let impl_only = Modules.impl_only modules in
-    Dep_graph.top_closed_implementations
-      (Compilation_context.dep_graphs cctx).impl
-      impl_only
-  in
-  let* () =
-    Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
-  in
-  let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
-  let* () = gen_wrapped_compat_modules lib cctx
-  and* () = Module_compilation.build_all cctx
-  and* expander = Super_context.expander sctx ~dir
-  and* lib_info =
+  let* lib_info =
     let lib_config = ocaml.lib_config in
     let info = Library.to_lib_info lib ~dir ~lib_config in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info
   in
-  let+ () =
-    Memo.when_
-      (not (Library.is_virtual lib))
-      (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
-  and+ () =
-    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-    Memo.when_
-      (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
-      (fun () ->
-        build_stubs
-          lib
-          ~cctx
-          ~dir
-          ~expander
-          ~requires:requires_compile
-          ~dir_contents
-          ~vlib_stubs_o_files)
-  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
-  and+ () =
-    Sub_system.gen_rules
-      { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+  let* enabled_if = Lib_info.enabled lib_info in
+  let enabled =
+    match enabled_if with
+    | Disabled_because_of_enabled_if -> false
+    | Normal | Optional -> true
   in
-  ( cctx
-  , Merlin.make
-      ~requires:requires_compile
-      ~stdlib_dir
-      ~flags
-      ~modules
-      ~source_dirs:Path.Source.Set.empty
-      ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
-      ~libname:(Some (snd lib.name))
-      ~obj_dir
-      ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Lib.Compile.merlin_ident compile_info)
-      ~modes:(`Lib (Lib_info.modes lib_info)) )
+  match enabled with
+  | false -> Memo.return (cctx, None)
+  | true ->
+    let top_sorted_modules =
+      let impl_only = Modules.impl_only modules in
+      Dep_graph.top_closed_implementations
+        (Compilation_context.dep_graphs cctx).impl
+        impl_only
+    in
+    let* () =
+      Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
+    in
+    let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
+    let* () = gen_wrapped_compat_modules lib cctx
+    and* () = Module_compilation.build_all cctx
+    and* expander = Super_context.expander sctx ~dir in
+    let+ () =
+      Memo.when_
+        (not (Library.is_virtual lib))
+        (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
+    and+ () =
+      let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
+      Memo.when_
+        (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
+        (fun () ->
+          build_stubs
+            lib
+            ~cctx
+            ~dir
+            ~expander
+            ~requires:requires_compile
+            ~dir_contents
+            ~vlib_stubs_o_files)
+    and+ () = Odoc.setup_library_odoc_rules cctx local_lib
+    and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
+    and+ () =
+      Sub_system.gen_rules
+        { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+    in
+    ( cctx
+    , Some
+        (Merlin.make
+           ~requires:requires_compile
+           ~stdlib_dir
+           ~flags
+           ~modules
+           ~source_dirs:Path.Source.Set.empty
+           ~preprocess:
+             (Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
+           ~libname:(Some (snd lib.name))
+           ~obj_dir
+           ~dialects:(Dune_project.dialects (Scope.project scope))
+           ~ident:(Lib.Compile.merlin_ident compile_info)
+           ~modes:(`Lib (Lib_info.modes lib_info))) )
 ;;
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
@@ -649,7 +662,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       | Some _ ->
         Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
-    library_rules lib ~local_lib ~cctx ~source_modules ~dir_contents ~compile_info
+    library_rules
+      lib
+      ~local_lib
+      ~cctx
+      ~source_modules
+      ~dir_contents
+      ~compile_info
+      ~ctx_dir:dir
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f

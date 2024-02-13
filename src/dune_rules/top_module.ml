@@ -48,8 +48,11 @@ let find_module sctx src =
          @@ fun () ->
          match stanza with
          | `Executables exes ->
-           Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
-         | `Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
+           let* cctx, merlin =
+             Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
+           in
+           Memo.return (cctx, Some merlin)
+         | `Library lib -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
        in
        let modules = Compilation_context.modules cctx in
        let module_ =

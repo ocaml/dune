@@ -165,16 +165,19 @@ module Module = struct
       in
       let pps () =
         let module Merlin = Dune_rules.Merlin in
-        let pps = Merlin.pp_config merlin ctx ~expander in
-        let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
-        let pp = Dune_rules.Module_name.Per_item.get pps module_name in
-        match pp with
-        | None -> None, None
-        | Some pp_flags ->
-          let args = Merlin.Processed.pp_args pp_flags in
-          (match Merlin.Processed.pp_kind pp_flags with
-           | Pp -> Some args, None
-           | Ppx -> None, Some args)
+        match merlin with
+        | None -> Memo.return (None, None)
+        | Some merlin ->
+          let pps = Merlin.pp_config merlin ctx ~expander in
+          let+ pps, _ = Action_builder.evaluate_and_collect_facts pps in
+          let pp = Dune_rules.Module_name.Per_item.get pps module_name in
+          (match pp with
+           | None -> None, None
+           | Some pp_flags ->
+             let args = Merlin.Processed.pp_args pp_flags in
+             (match Merlin.Processed.pp_kind pp_flags with
+              | Pp -> Some args, None
+              | Ppx -> None, Some args))
       in
       let+ (pp, ppx), files_to_load = Memo.fork_and_join pps files_to_load in
       let code =

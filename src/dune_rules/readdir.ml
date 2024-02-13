@@ -14,9 +14,9 @@ module File = struct
     ;;
 
     let compare { ino; dev } t =
-      let open Ordering.O in
-      let= () = Int.compare ino t.ino in
-      Int.compare dev t.dev
+      match Int.compare ino t.ino with
+      | Ordering.Eq -> Int.compare dev t.dev
+      | _ as e -> e
     ;;
   end
 

@@ -95,7 +95,7 @@ let of_source_path_impl path =
       Fs_cache.Dir_contents.to_list dir_contents
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
         let path = Path.Source.relative path fn in
-        if Path.Source.is_in_build_dir path || is_temp_file fn
+        if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
         then Memo.return List.Skip
         else
           let+ is_directory, file =
@@ -115,11 +115,7 @@ let of_source_path_impl path =
                | Ok _ | Error _ -> false, File.dummy)
             | _ -> Memo.return (false, File.dummy)
           in
-          if is_directory
-          then List.Right (fn, file)
-          else if is_special kind
-          then Skip
-          else Left fn)
+          if is_directory then List.Right (fn, file) else Left fn)
       >>| List.filter_partition_map ~f:Fun.id
     in
     { path; files = Filename.Set.of_list files; dirs } |> Result.ok

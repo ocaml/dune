@@ -128,19 +128,20 @@ let for_solver
 ;;
 
 let of_package (t : Dune_lang.Package.t) =
-  let open Dune_lang.Package in
-  let loc = loc t in
-  let version = version t in
-  match original_opam_file t with
+  let module Package = Dune_lang.Package in
+  let loc = Package.loc t in
+  let version = Package.version t in
+  let name = Package.name t in
+  match Package.original_opam_file t with
   | None ->
-    { name = name t
+    { name
     ; version
-    ; dependencies = depends t
-    ; conflicts = conflicts t
-    ; depopts = depopts t
+    ; dependencies = Package.depends t
+    ; conflicts = Package.conflicts t
+    ; depopts = Package.depopts t
     ; loc
     ; conflict_class = []
-    ; pins = Name.Map.empty
+    ; pins = Package_name.Map.empty
     }
   | Some { file; contents = opam_file_string } ->
     let opam_file =
@@ -172,15 +173,7 @@ let of_package (t : Dune_lang.Package.t) =
       | Error (_, pkg, _) ->
         User_error.raise
           ~loc:pkg.loc
-          [ Pp.textf "package %s is already pinned" (Name.to_string pkg.name) ]
+          [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ]
     in
-    { name = name t
-    ; version
-    ; dependencies
-    ; conflicts
-    ; depopts
-    ; loc
-    ; conflict_class
-    ; pins
-    }
+    { name; version; dependencies; conflicts; depopts; loc; conflict_class; pins }
 ;;

@@ -1,4 +1,7 @@
-open Import
+open Stdune
+module Stringlike = Dune_util.Stringlike
+
+module type Stringlike = Dune_util.Stringlike
 
 let valid_format_doc =
   Pp.text

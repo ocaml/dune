@@ -1024,13 +1024,13 @@ let symlinked_entries sctx package =
 let symlinked_entries =
   let memo =
     Memo.create
-      ~input:(module Super_context.As_memo_key.And_package)
+      ~input:(module Super_context.As_memo_key.And_package_name)
       ~human_readable_description:(fun (_, pkg) ->
         Pp.textf
           "Computing installable artifacts for package %s"
-          (Package.Name.to_string (Package.name pkg)))
+          (Package.Name.to_string pkg))
       "symlinked_entries"
-      (fun (sctx, pkg) -> symlinked_entries sctx (Package.name pkg))
+      (fun (sctx, pkg) -> symlinked_entries sctx pkg)
   in
   fun sctx pkg -> Memo.exec memo (sctx, pkg)
 ;;
@@ -1159,7 +1159,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   let install_paths =
     Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
   in
-  let entries = Action_builder.of_memo (symlinked_entries sctx package >>| fst) in
+  let entries = Action_builder.of_memo (symlinked_entries sctx package_name >>| fst) in
   let ctx = Super_context.context sctx in
   let pkg_build_dir = Package_paths.build_dir ctx package in
   let files =
@@ -1293,11 +1293,11 @@ let gen_package_install_file_rules sctx (package : Package.t) =
 
 let memo =
   Memo.create
-    ~input:(module Super_context.As_memo_key.And_package)
+    ~input:(module Super_context.As_memo_key.And_package_name)
     ~human_readable_description:(fun (_, pkg) ->
       Pp.textf
         "Computing installable artifacts for package %s"
-        (Package.Name.to_string (Package.name pkg)))
+        (Package.Name.to_string pkg))
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
       Memo.return
@@ -1321,7 +1321,7 @@ let scheme_per_ctx_memo =
     (fun sctx ->
       Dune_load.packages ()
       >>| Package.Name.Map.values
-      >>= Memo.parallel_map ~f:(scheme sctx)
+      >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
       >>| Scheme.all
       >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
 ;;

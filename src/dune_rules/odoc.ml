@@ -898,13 +898,9 @@ let package_mlds =
   let memo =
     Memo.create
       "package-mlds"
-      ~input:(module Super_context.As_memo_key.And_package)
+      ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
         Rules.collect (fun () ->
-          (* CR-someday jeremiedimino: it is weird that we drop the
-             [Package.t] and go back to a package name here. Need to try and
-             change that one day. *)
-          let pkg = Package.name pkg in
           let* mlds = Packages.mlds sctx pkg in
           let mlds = check_mlds_no_dupes ~pkg ~mlds in
           let ctx = Super_context.context sctx in
@@ -928,7 +924,6 @@ let setup_package_odoc_rules sctx ~pkg =
   let ctx = Super_context.context sctx in
   (* CR-someday jeremiedimino: it is weird that we drop the [Package.t] and go
      back to a package name here. Need to try and change that one day. *)
-  let pkg = Package.name pkg in
   let* odocs =
     Filename.Map.values mlds
     |> Memo.parallel_map ~f:(fun mld ->
@@ -995,10 +990,13 @@ let gen_rules sctx ~dir rest =
        >>> setup_toplevel_index_rules sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
+      let pkg = Package.name pkg in
       let* _mlds, rules = package_mlds sctx ~pkg in
       Rules.produce rules)
   | [ "_odoc"; "pkg"; pkg ] ->
-    with_package pkg ~f:(fun pkg -> setup_package_odoc_rules sctx ~pkg)
+    with_package pkg ~f:(fun pkg ->
+      let pkg = Package.name pkg in
+      setup_package_odoc_rules sctx ~pkg)
   | [ "_odocls"; lib_unique_name_or_pkg ] ->
     has_rules
       ((* TODO we can be a better with the error handling in the case where

@@ -405,11 +405,11 @@ module As_memo_key = struct
   let hash = hash
   let to_dyn = to_dyn_concise
 
-  module And_package = struct
-    type nonrec t = t * Package.t
+  module And_package_name = struct
+    type nonrec t = t * Package.Name.t
 
-    let hash = Tuple.T2.hash hash Package.hash
-    let equal (x1, y1) (x2, y2) = equal x1 x2 && Package.equal y1 y2
-    let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.to_dyn p ]
+    let hash = Tuple.T2.hash hash Package.Name.hash
+    let equal (x1, y1) (x2, y2) = equal x1 x2 && Package.Name.equal y1 y2
+    let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.Name.to_dyn p ]
   end
 end

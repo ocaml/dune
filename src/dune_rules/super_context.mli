@@ -89,5 +89,5 @@ val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 
 module As_memo_key : sig
   include Memo.Input with type t = t
-  module And_package : Memo.Input with type t = t * Package.t
+  module And_package_name : Memo.Input with type t = t * Package.Name.t
 end

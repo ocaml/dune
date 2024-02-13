@@ -1,6 +1,7 @@
 (** General warning mechanism for dune rules *)
 
-open Import
+open Dune_config
+module Syntax := Dune_sexp.Syntax
 
 type t
 

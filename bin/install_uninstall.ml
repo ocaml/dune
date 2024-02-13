@@ -367,24 +367,23 @@ module File_ops_real (W : sig
   ;;
 
   let remove_dir_if_exists ~if_non_empty dir =
-    if Path.exists dir
-    then (
-      match Path.readdir_unsorted dir with
-      | Ok [] ->
-        print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
-        print_unix_error (fun () -> Path.rmdir dir)
-      | Error (e, _, _) ->
-        User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
-      | _ ->
-        let dir = Path.to_string_maybe_quoted dir in
-        (match if_non_empty with
-         | Warn ->
-           User_message.prerr
-             (User_error.make
-                [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
-         | Fail ->
-           User_error.raise
-             [ Pp.textf "Please delete non-empty directory %s manually." dir ]))
+    match Path.readdir_unsorted dir with
+    | Error (Unix.ENOENT, _, _) -> ()
+    | Ok [] ->
+      print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
+      print_unix_error (fun () -> Path.rmdir dir)
+    | Error (e, _, _) ->
+      User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
+    | _ ->
+      let dir = Path.to_string_maybe_quoted dir in
+      (match if_non_empty with
+       | Warn ->
+         User_message.prerr
+           (User_error.make
+              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
+       | Fail ->
+         User_error.raise
+           [ Pp.textf "Please delete non-empty directory %s manually." dir ])
   ;;
 
   let mkdir_p p =

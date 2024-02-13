@@ -85,51 +85,48 @@ let gen_rules_output
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in
     let output = Path.Build.relative output_dir input_basename in
-    let formatter =
-      let ext = Path.Source.extension file in
-      let open Option.O in
-      let* dialect, kind = Dialect.DB.find_by_extension dialects ext in
-      let* () =
-        Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
-      in
-      let+ loc, action, extra_deps =
-        match Dialect.format dialect kind with
-        | Some _ as action -> action
-        | None ->
-          (match Dialect.preprocess dialect kind with
-           | None -> Dialect.format Dialect.ocaml kind
-           | Some _ -> None)
-      in
-      let extra_deps =
-        match extra_deps with
-        | [] -> Action_builder.return ()
-        | extra_deps -> depend_on_files ~named:extra_deps (Path.build dir)
-      in
-      let open Action_builder.With_targets.O in
-      Action_builder.with_no_targets extra_deps
-      >>> Preprocessing.action_for_pp_with_target
-            ~sandbox:Sandbox_config.default
-            ~loc
-            ~expander
-            ~action
-            ~src:input
-            ~target:output
-    in
-    Memo.Option.iter formatter ~f:(fun action ->
+    (let open Option.O in
+     let* dialect, kind =
+       Path.Source.extension file |> Dialect.DB.find_by_extension dialects
+     in
+     let* () =
+       Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
+     in
+     let+ loc, action, extra_deps =
+       match Dialect.format dialect kind with
+       | Some _ as action -> action
+       | None ->
+         (match Dialect.preprocess dialect kind with
+          | None -> Dialect.format Dialect.ocaml kind
+          | Some _ -> None)
+     in
+     let extra_deps =
+       match extra_deps with
+       | [] -> Action_builder.return ()
+       | extra_deps -> depend_on_files ~named:extra_deps (Path.build dir)
+     in
+     let open Action_builder.With_targets.O in
+     Action_builder.with_no_targets extra_deps
+     >>> Preprocessing.action_for_pp_with_target
+           ~sandbox:Sandbox_config.default
+           ~loc
+           ~expander
+           ~action
+           ~src:input
+           ~target:output)
+    |> Memo.Option.iter ~f:(fun action ->
       Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
       >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
   in
   let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
   let* () =
-    match source_dir with
-    | None -> Memo.return ()
-    | Some source_dir ->
+    Memo.Option.iter source_dir ~f:(fun source_dir ->
       Source_tree.Dir.filenames source_dir
       |> Memo.parallel_iter_set
            (module Filename.Set)
            ~f:(fun file ->
-             setup_formatting
-               (Path.Source.relative (Source_tree.Dir.path source_dir) file))
+             Path.Source.relative (Source_tree.Dir.path source_dir) file
+             |> setup_formatting))
   and* () =
     match Format_config.includes config Dune with
     | false -> Memo.return ()
@@ -140,20 +137,14 @@ let gen_rules_output
           Dune_file0.path f
           |> Memo.Option.iter ~f:(fun path ->
             let input_basename = Path.Source.basename path in
-            let input = Path.Build.relative dir input_basename in
+            let input = Path.build (Path.Build.relative dir input_basename) in
             let output = Path.Build.relative output_dir input_basename in
-            Super_context.add_rule
-              sctx
-              ~mode:Standard
-              ~loc
-              ~dir
-              (Action_builder.with_file_targets ~file_targets:[ output ]
-               @@
-               let open Action_builder.O in
-               let input = Path.build input in
-               let+ () = Action_builder.path input in
-               Action.Full.make (action ~version input output))
-            >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)))
+            (let open Action_builder.O in
+             let+ () = Action_builder.path input in
+             Action.Full.make (action ~version input output))
+            |> Action_builder.with_file_targets ~file_targets:[ output ]
+            |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
+            >>> add_diff sctx loc alias_formatted ~dir ~input ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;

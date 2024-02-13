@@ -1181,7 +1181,12 @@ let gen_package_install_file_rules sctx (package : Package.t) =
            Package.Id.Set.to_list packages
            |> Package.Name.Set.of_list_map ~f:Package.Id.name
          in
-         Package.missing_deps package ~effective_deps
+         let specified_deps =
+           Package.depends package
+           |> List.map ~f:(fun (dep : Package.Dependency.t) -> dep.name)
+           |> Package.Name.Set.of_list
+         in
+         Package.Name.Set.diff effective_deps specified_deps
        in
        if not (Package.Name.Set.is_empty missing_deps)
        then (

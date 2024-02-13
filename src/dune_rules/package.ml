@@ -397,13 +397,6 @@ let equal =
   Poly.equal
 ;;
 
-let missing_deps (t : t) ~effective_deps =
-  let specified_deps =
-    List.map t.depends ~f:(fun (dep : Dependency.t) -> dep.name) |> Name.Set.of_list
-  in
-  Name.Set.diff effective_deps specified_deps
-;;
-
 let to_local_package t =
   match t.original_opam_file with
   | None ->

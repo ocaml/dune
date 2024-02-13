@@ -4,7 +4,6 @@ module Opam_file = Dune_pkg.Opam_file
 module Dependency = Dune_pkg.Package_dependency
 
 let opam_ext = ".opam"
-let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
 
 module Name = struct
   include Dune_lang.Package_name

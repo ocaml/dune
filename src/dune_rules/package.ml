@@ -387,11 +387,6 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
   }
 ;;
 
-let equal =
-  (* TODO get rid of this *)
-  Poly.equal
-;;
-
 let to_local_package t =
   match t.original_opam_file with
   | None ->

@@ -36,7 +36,6 @@ type t
 val loc : t -> Loc.t
 val deprecated_package_names : t -> Loc.t Name.Map.t
 val sites : t -> Section.t Site.Map.t
-val equal : t -> t -> bool
 val name : t -> Name.t
 val dir : t -> Path.Source.t
 val set_inside_opam_dir : t -> dir:Path.Source.t -> t

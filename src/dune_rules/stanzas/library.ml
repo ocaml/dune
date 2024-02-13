@@ -472,7 +472,7 @@ let to_lib_info
   in
   let main_module_name = main_module_name conf in
   let name = best_name conf in
-  let+ enabled =
+  let enabled =
     let+ enabled_if_result =
       Blang_expand.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun ~source:_ pform ->
         let+ value =

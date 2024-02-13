@@ -585,7 +585,7 @@ let library_rules
   and* expander = Super_context.expander sctx ~dir
   and* lib_info =
     let lib_config = ocaml.lib_config in
-    let* info = Library.to_lib_info lib ~dir ~lib_config in
+    let info = Library.to_lib_info lib ~dir ~lib_config in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info

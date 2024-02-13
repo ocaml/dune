@@ -409,6 +409,8 @@ end
 type db =
   { parent : db option
   ; resolve : Lib_name.t -> resolve_result Memo.t
+  ; instantiate :
+      (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
@@ -858,6 +860,11 @@ module rec Resolve_names : sig
     -> lib list
     -> forbidden_libraries:Loc.t Map.t
     -> lib list Resolve.Memo.t
+
+  val make_instantiate
+    :  db Lazy.t
+    -> (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t)
+         Staged.t
 end = struct
   open Resolve_names
 
@@ -873,7 +880,8 @@ end = struct
       >>| Package.Name.Map.of_list_exn)
   ;;
 
-  let instantiate_impl (db, name, info, hidden) =
+  let instantiate_impl db (name, info, hidden) =
+    let db = Lazy.force db in
     let open Memo.O in
     let unique_id = Id.make ~name ~path:(Lib_info.src_dir info) in
     let status = Lib_info.status info in
@@ -1056,13 +1064,13 @@ end = struct
          })
     in
     let t = Lazy.force t in
-    let res =
-      let hidden =
+    let+ res =
+      let+ hidden =
         match hidden with
-        | Some _ -> hidden
+        | Some _ -> Memo.return hidden
         | None ->
-          let enabled = Lib_info.enabled info in
-          (match enabled with
+          Lib_info.enabled info
+          >>| (function
            | Normal -> None
            | Disabled_because_of_enabled_if -> Some "unsatisfied 'enabled_if'"
            | Optional ->
@@ -1077,33 +1085,44 @@ end = struct
       | None -> Status.Found t
       | Some reason -> Hidden (Hidden.of_lib t ~reason)
     in
-    Memo.return res
+    res
   ;;
 
-  let memo =
-    let module Input = struct
-      type t = db * Lib_name.t * Path.t Lib_info.t * string option
+  module Input = struct
+    type t = Lib_name.t * Path.t Lib_info.t * string option
 
-      let to_dyn = Dyn.opaque
-      let hash x = Poly.hash x
+    let equal (x, _, _) (y, _, _) = Lib_name.equal x y
+    let hash (x, _, _) = Lib_name.hash x
+    let to_dyn = Dyn.opaque
+  end
 
-      let equal (db, lib_name, info, hidden) (db', lib_name', info', hidden') =
-        equal_db db db'
-        && Lib_name.equal lib_name lib_name'
-        && Lib_info.equal info info'
-        && Option.equal String.equal hidden hidden'
-      ;;
+  let make_instantiate db =
+    let module Non_rec = struct
+      module Rec : sig
+        val memo
+          :  Lib_name.t
+          -> Path.t Lib_info.t
+          -> hidden:string option
+          -> Status.t Memo.t
+      end = struct
+        let memo =
+          let memo =
+            Memo.create
+              "db-instantiate"
+              ~input:(module Input)
+              (instantiate_impl db)
+              ~human_readable_description:(fun (name, info, _hidden) ->
+                Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info })
+          in
+          fun name info ~hidden -> Memo.exec memo (name, info, hidden)
+        ;;
+      end
     end
     in
-    Memo.create
-      "lib-instantiate"
-      ~input:(module Input)
-      instantiate_impl
-      ~human_readable_description:(fun (_db, name, info, _hidden) ->
-        Dep_path.Entry.Lib.pp { name; path = Lib_info.src_dir info })
+    Staged.stage Non_rec.Rec.memo
   ;;
 
-  let instantiate db name info ~hidden = Memo.exec memo (db, name, info, hidden)
+  let instantiate db name info ~hidden = (Lazy.force db.instantiate) name info ~hidden
   let find_internal db (name : Lib_name.t) = resolve_name db name
 
   let resolve_dep db (loc, name) ~private_deps : t Resolve.t option Memo.t =
@@ -1863,7 +1882,17 @@ module DB = struct
   let hash = Poly.hash
 
   let create ~parent ~resolve ~all ~lib_config ~instrument_with () =
-    { parent; resolve; all = Memo.lazy_ all; lib_config; instrument_with }
+    let rec t =
+      lazy
+        { parent
+        ; resolve
+        ; all = Memo.lazy_ all
+        ; lib_config
+        ; instrument_with
+        ; instantiate
+        }
+    and instantiate = lazy (Resolve_names.make_instantiate t |> Staged.unstage) in
+    Lazy.force t
   ;;
 
   let create_from_findlib =

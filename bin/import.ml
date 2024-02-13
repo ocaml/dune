@@ -29,9 +29,6 @@ include struct
   module Context = Context
   module Workspace = Workspace
   module Package = Package
-  module Source_kind = Source_kind
-  module Package_info = Package_info
-  module Section = Install.Section
   module Dune_project = Dune_project
   module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
@@ -69,6 +66,9 @@ include struct
   module Lib_name = Lib_name
   module Package_name = Package_name
   module Package_version = Package_version
+  module Source_kind = Source_kind
+  module Package_info = Package_info
+  module Section = Section
 end
 
 module Log = Dune_util.Log

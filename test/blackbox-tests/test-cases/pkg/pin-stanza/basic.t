@@ -36,8 +36,7 @@ We print the source separately for ease of post processing the output.
   $ cat dune.lock/foo.pkg | sed "/source/,//d"
   (version 1.0.0)
   
-  (build
-   (run dune build -p %{pkg-self:name}))
+  (dune)
   
   
   (dev)

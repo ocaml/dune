@@ -12,7 +12,6 @@ type kind =
 
 type t
 
-val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 
 (** The contents of the dune file without the OCaml syntax *)

@@ -14,9 +14,15 @@ module Pkg_info : sig
   val default_version : Package_version.t
 end
 
+module Build_command : sig
+  type t =
+    | Action of Action.t
+    | Dune (** pinned dune packages do not need to define a command *)
+end
+
 module Pkg : sig
   type t =
-    { build_command : Action.t option
+    { build_command : Build_command.t option
     ; install_command : Action.t option
     ; depends : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t

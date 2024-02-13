@@ -1,11 +1,11 @@
-open Import
+open Stdune
 
 type t
 
 include Comparable_intf.S with type key := t
 include Dune_sexp.Conv.S with type t := t
 module Infix : Comparator.OPS with type t = t
-include Stringlike with type t := t
+include Dune_util.Stringlike with type t := t
 
 val dune_site_syntax : Dune_sexp.Syntax.t
 
@@ -24,6 +24,6 @@ module Modulelike (S : sig
 
     (** The string is always a correct module name, except not capitalized *)
     val make : string -> t
-  end) : Stringlike with type t = S.t
+  end) : Dune_util.Stringlike with type t = S.t
 
 val valid_format_doc : User_message.Style.t Pp.t

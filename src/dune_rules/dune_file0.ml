@@ -39,12 +39,6 @@ let dyn_of_kind = function
   | Ocaml_script -> Dyn.variant "Ocaml_script" []
 ;;
 
-let equal_kind x y =
-  match x, y with
-  | Plain, Plain | Ocaml_script, Ocaml_script -> true
-  | _, _ -> false
-;;
-
 module Dir_map = struct
   module Per_dir = struct
     type t =
@@ -56,14 +50,6 @@ module Dir_map = struct
       let open Dyn in
       record
         [ "sexps", list Dune_lang.to_dyn (List.map ~f:Dune_lang.Ast.remove_locs sexps) ]
-    ;;
-
-    let equal { sexps; subdir_status } t =
-      List.equal Dune_sexp.Ast.equal sexps t.sexps
-      && Source_dir_status.Map.equal
-           (Option.equal (Tuple.T2.equal Loc.equal Predicate_lang.Glob.equal))
-           subdir_status
-           t.subdir_status
     ;;
 
     let empty =
@@ -97,10 +83,6 @@ module Dir_map = struct
     { data : Per_dir.t
     ; nodes : t Filename.Map.t
     }
-
-  let rec equal { data; nodes } t =
-    Per_dir.equal data t.data && Filename.Map.equal ~equal nodes t.nodes
-  ;;
 
   let rec to_dyn { data; nodes } =
     let open Dyn in
@@ -321,8 +303,10 @@ let rec evaluate_includes
   Memo.parallel_map stanzas ~f:(function
     | Include { loc; file } ->
       let inside_include = true in
-      let file = Filename.concat prefix file in
-      let* ast, context = Include_stanza.load_sexps ~context (loc, file) in
+      let* ast, context =
+        let file = Filename.concat prefix file in
+        Include_stanza.load_sexps ~context (loc, file)
+      in
       Ast.decode ~inside_subdir ~inside_include
       |> decoder.decode ast
       |> evaluate_includes ~decoder ~context prefix ~inside_subdir ~inside_include
@@ -472,12 +456,6 @@ let to_dyn { path; kind; plain } =
     ; "kind", dyn_of_kind kind
     ; "plain", Dir_map.to_dyn plain
     ]
-;;
-
-let equal { path; kind; plain } t =
-  Option.equal Path.Source.equal path t.path
-  && equal_kind kind t.kind
-  && Dir_map.equal plain t.plain
 ;;
 
 let get_static_sexp t = (Dir_map.root t.plain).sexps

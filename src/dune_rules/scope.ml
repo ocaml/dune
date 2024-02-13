@@ -52,20 +52,19 @@ module DB = struct
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let open Memo.O in
-    let+ (map : Found_or_redirect.t Lib_name.Map.t) =
-      Memo.List.map stanzas ~f:(fun stanza ->
+    let (map : Found_or_redirect.t Lib_name.Map.t) =
+      List.map stanzas ~f:(fun stanza ->
         match (stanza : Library_related_stanza.t) with
         | Library_redirect s ->
           let old_public_name = Lib_name.of_local s.old_name in
-          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
+          Found_or_redirect.redirect old_public_name s.new_public_name
         | Deprecated_library_name s ->
           let old_public_name = Deprecated_library_name.old_public_name s in
-          Memo.return (Found_or_redirect.redirect old_public_name s.new_public_name)
+          Found_or_redirect.redirect old_public_name s.new_public_name
         | Library (dir, (conf : Library.t)) ->
-          let+ info = Library.to_lib_info conf ~dir ~lib_config >>| Lib_info.of_local in
+          let info = Library.to_lib_info conf ~dir ~lib_config |> Lib_info.of_local in
           Library.best_name conf, Found_or_redirect.found [ info ])
-      >>| Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
+      |> Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
           match v1, v2 with
           | Found info1, Found info2 ->
@@ -227,7 +226,6 @@ module DB = struct
     stanzas
     coq_stanzas
     =
-    let open Memo.O in
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
         let project =
@@ -239,7 +237,7 @@ module DB = struct
         Dune_project.root project, stanza)
       |> Path.Source.Map.of_list_multi
     in
-    let+ db_by_project_dir =
+    let db_by_project_dir =
       Path.Source.Map.merge
         projects_by_root
         stanzas_by_project_dir
@@ -247,8 +245,8 @@ module DB = struct
           let project = Option.value_exn project in
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
-      |> Path_source_map_traversals.parallel_map ~f:(fun _dir (project, stanzas) ->
-        let+ db =
+      |> Path.Source.Map.map ~f:(fun (project, stanzas) ->
+        let db =
           create_db_from_stanzas stanzas ~instrument_with ~parent:public_libs ~lib_config
         in
         project, db)
@@ -276,7 +274,7 @@ module DB = struct
       ocaml.lib_config
     in
     let instrument_with = Context.instrument_with context in
-    let* public_libs =
+    let+ public_libs =
       let+ installed_libs = Lib.DB.installed context in
       public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
     in
@@ -291,7 +289,7 @@ module DB = struct
       Memo.Lazy.map installed_theories ~f:(fun installed_theories ->
         public_theories ~find_db:(fun _ -> public_libs) ~installed_theories coq_stanzas)
     in
-    let+ by_dir =
+    let by_dir =
       scopes_by_dir
         ~instrument_with
         ~build_dir

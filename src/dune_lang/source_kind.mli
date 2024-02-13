@@ -21,5 +21,5 @@ type t =
 
 val to_dyn : t Dyn.builder
 val to_string : t -> string
-val decode : t Dune_lang.Decoder.t
-val encode : t Dune_lang.Encoder.t
+val decode : t Dune_sexp.Decoder.t
+val encode : t Dune_sexp.Encoder.t

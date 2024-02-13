@@ -119,7 +119,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let implements = None in
     let orig_src_dir = None in
     let main_module_name : Lib_info.Main_module_name.t = This None in
-    let enabled = Lib_info.Enabled_status.Normal in
+    let enabled = Memo.return Lib_info.Enabled_status.Normal in
     let requires =
       Findlib.Package.requires t
       |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))

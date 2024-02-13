@@ -581,15 +581,17 @@ let encode : t -> Dune_lang.t list =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
   let sources = Dune_pkg.Pin_stanza.DB.encode sources in
-  [ lang_stanza; name ]
-  @ flags
-  @ version
-  @ Package_info.encode_fields info
-  @ formatting
-  @ dialects
-  @ packages
-  @ subst_config
-  @ sources
+  List.concat
+    [ [ lang_stanza; name ]
+    ; flags
+    ; version
+    ; Package_info.encode_fields info
+    ; formatting
+    ; dialects
+    ; packages
+    ; subst_config
+    ; sources
+    ]
 ;;
 
 module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)

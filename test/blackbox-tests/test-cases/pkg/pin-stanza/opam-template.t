@@ -37,6 +37,5 @@ command is currently not respected when the package is pinned.
   $ cat dune.lock/opam-template.pkg | sed "/source/,//d"
   (version dev)
   
-  (build
-   (run dune build -p %{pkg-self:name}))
+  (dune)
   

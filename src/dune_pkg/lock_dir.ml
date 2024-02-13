@@ -42,9 +42,58 @@ module Pkg_info = struct
   let default_version = Package_version.of_string "dev"
 end
 
+module Build_command = struct
+  type t =
+    | Action of Action.t
+    | Dune
+
+  let equal x y =
+    match x, y with
+    | Dune, Dune -> true
+    | Action x, Action y -> Action.equal x y
+    | _, _ -> false
+  ;;
+
+  let remove_locs = function
+    | Dune -> Dune
+    | Action a -> Action (Action.remove_locs a)
+  ;;
+
+  let to_dyn = function
+    | Dune -> Dyn.variant "Dune" []
+    | Action a -> Dyn.variant "Action" [ Action.to_dyn a ]
+  ;;
+
+  module Fields = struct
+    let dune = "dune"
+    let build = "build"
+  end
+
+  let encode t =
+    let open Encoder in
+    match t with
+    | None -> field_o Fields.build Encoder.unit None
+    | Some Dune -> field_b Fields.dune true
+    | Some (Action a) -> field Fields.build Action.encode a
+  ;;
+
+  let decode =
+    let open Decoder in
+    fields_mutually_exclusive
+      ~default:None
+      [ ( Fields.build
+        , let+ pkg = Action.decode_pkg in
+          Some (Action pkg) )
+      ; ( Fields.dune
+        , let+ () = return () in
+          Some Dune )
+      ]
+  ;;
+end
+
 module Pkg = struct
   type t =
-    { build_command : Action.t option
+    { build_command : Build_command.t option
     ; install_command : Action.t option
     ; depends : (Loc.t * Package_name.t) list
     ; info : Pkg_info.t
@@ -52,7 +101,8 @@ module Pkg = struct
     }
 
   let equal { build_command; install_command; depends; info; exported_env } t =
-    Option.equal Action.equal_no_locs build_command t.build_command
+    Option.equal Build_command.equal build_command t.build_command
+    (* CR-rgrinberg: why do we ignore locations? *)
     && Option.equal Action.equal_no_locs install_command t.install_command
     && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) depends t.depends
     && Pkg_info.equal info t.info
@@ -67,14 +117,14 @@ module Pkg = struct
     ; exported_env =
         List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
     ; depends = List.map depends ~f:(fun (_, pkg) -> Loc.none, pkg)
-    ; build_command = Option.map build_command ~f:Action.remove_locs
+    ; build_command = Option.map build_command ~f:Build_command.remove_locs
     ; install_command = Option.map install_command ~f:Action.remove_locs
     }
   ;;
 
   let to_dyn { build_command; install_command; depends; info; exported_env } =
     Dyn.record
-      [ "build_command", Dyn.option Action.to_dyn build_command
+      [ "build_command", Dyn.option Build_command.to_dyn build_command
       ; "install_command", Dyn.option Action.to_dyn install_command
       ; "depends", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) depends
       ; "info", Pkg_info.to_dyn info
@@ -97,7 +147,6 @@ module Pkg = struct
   module Fields = struct
     let version = "version"
     let install = "install"
-    let build = "build"
     let depends = "depends"
     let source = "source"
     let dev = "dev"
@@ -111,7 +160,7 @@ module Pkg = struct
     @@ fields
     @@ let+ version = field Fields.version Package_version.decode
        and+ install_command = field_o Fields.install Action.decode_pkg
-       and+ build_command = field_o Fields.build Action.decode_pkg
+       and+ build_command = Build_command.decode
        and+ depends =
          field ~default:[] Fields.depends (repeat (located Package_name.decode))
        and+ source = field_o Fields.source Source.decode
@@ -160,7 +209,7 @@ module Pkg = struct
     record_fields
       [ field Fields.version Package_version.encode version
       ; field_o Fields.install Action.encode install_command
-      ; field_o Fields.build Action.encode build_command
+      ; Build_command.encode build_command
       ; field_l Fields.depends Package_name.encode (List.map depends ~f:snd)
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev

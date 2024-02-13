@@ -6,6 +6,7 @@ val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
 val loc : t -> Loc.t
 val set_url : t -> OpamUrl.t -> t
+val dune_build : t -> bool
 
 val git_repo
   :  OpamPackage.t

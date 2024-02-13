@@ -219,7 +219,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
         { pkg with
           build_command =
-            Some Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ])
+            Some
+              (Action
+                 Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ]))
         ; install_command =
             Some
               (Action.System
@@ -309,7 +311,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ; packages =
         map
           { "a" :
-              { build_command = Some [ "progn"; [ "echo"; "hello" ] ]
+              { build_command = Some Action [ "progn"; [ "echo"; "hello" ] ]
               ; install_command = Some [ "system"; "echo 'world'" ]
               ; depends = []
               ; info =

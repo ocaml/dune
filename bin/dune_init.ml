@@ -533,7 +533,7 @@ module Component = struct
 
     let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
-      let dir = Path.root in
+      let dir = Path.Source.root in
       let name =
         Package.Name.parse_string_exn (Loc.none, Dune_lang.Atom.to_string common.name)
       in
@@ -541,16 +541,19 @@ module Component = struct
         let package_files =
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
-            let opam_file = Package.file ~dir ~name in
+            let opam_file = Path.source @@ Package_name.file name ~dir in
             [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
-          | Esy -> [ File.make_text dir "package.json" "" ]
+          | Esy -> [ File.make_text (Path.source dir) "package.json" "" ]
         in
+        let dir = Path.source dir in
         { dir; files = dune_project_file dir opts :: package_files }
       in
       let component_targets =
-        match (template : Options.Project.Template.t) with
-        | Exec -> proj_exec dir opts
-        | Lib -> proj_lib dir opts
+        (match (template : Options.Project.Template.t) with
+         | Exec -> proj_exec
+         | Lib -> proj_lib)
+          (Path.source dir)
+          opts
       in
       proj_target :: component_targets
     ;;

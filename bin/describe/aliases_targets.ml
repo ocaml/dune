@@ -50,8 +50,8 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
           Action_builder.of_memo
           @@
           let open Memo.O in
-          let* exists = Source_tree.find_dir src_dir in
-          match exists with
+          Source_tree.find_dir src_dir
+          >>= function
           | Some _ -> Memo.return ()
           | None ->
             (* The directory didn't exist. We therefore check if it was a

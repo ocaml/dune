@@ -1975,7 +1975,7 @@ let setup_all_html_rules sctx ~all =
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
   Dune_project.packages project
-  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  |> Package_map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

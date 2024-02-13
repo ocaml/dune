@@ -129,7 +129,7 @@ let package_fields package ~project =
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
       | [] -> None
-      | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
+      | _ :: _ -> Some (k, list Dune_pkg.Package_dependency.opam_depend v))
   in
   let fields = [ optional; dep_fields ] in
   let fields =
@@ -143,7 +143,7 @@ let dune_name = Package.Name.of_string "dune"
 let odoc_name = Package.Name.of_string "odoc"
 
 let insert_dune_dep depends dune_version =
-  let constraint_ : Package.Dependency.Constraint.t =
+  let constraint_ : Package_constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
     Uop (Gte, String_literal dune_version)
   in
@@ -174,7 +174,7 @@ let insert_dune_dep depends dune_version =
   loop [] depends
 ;;
 
-let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool = function
+let rec already_requires_odoc : Package_constraint.t -> bool = function
   | Uop _ | Bop _ -> true
   | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
@@ -182,9 +182,7 @@ let rec already_requires_odoc : Package.Dependency.Constraint.t -> bool = functi
 ;;
 
 let insert_odoc_dep depends =
-  let with_doc : Package.Dependency.Constraint.t =
-    Bvar Dune_lang.Package_variable_name.with_doc
-  in
+  let with_doc : Package_constraint.t = Bvar Dune_lang.Package_variable_name.with_doc in
   let odoc_dep = { Package.Dependency.name = odoc_name; constraint_ = Some with_doc } in
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)
@@ -319,14 +317,14 @@ let add_opam_file_rule sctx ~project ~pkg =
 let add_opam_file_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
-    Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
+    Package_map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
       add_opam_file_rule sctx ~project ~pkg))
 ;;
 
 let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
-    Package.Name.Map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
+    Package_map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
       let* () =
         add_alias_rule (Context.build_context (Super_context.context sctx)) ~project ~pkg
       in

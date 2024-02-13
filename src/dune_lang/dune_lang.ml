@@ -39,3 +39,4 @@ module Warning = Warning
 module Source_kind = Source_kind
 module Package_info = Package_info
 module Section = Section
+module Package = Package

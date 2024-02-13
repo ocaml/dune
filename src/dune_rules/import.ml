@@ -97,6 +97,8 @@ include struct
   module Source_kind = Source_kind
   module Package_info = Package_info
   module Section = Section
+  module Package_dependency = Package_dependency
+  module Package_constraint = Package_constraint
 end
 
 include Dune_engine.No_io

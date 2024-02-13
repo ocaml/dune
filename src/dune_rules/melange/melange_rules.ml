@@ -422,12 +422,11 @@ let setup_js_rules_libraries
   let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
   Memo.parallel_iter requires_link ~f:(fun lib ->
     let open Memo.O in
-    let lib_name = Lib.name lib in
-    let* lib, lib_compile_info =
-      Lib.DB.get_compile_info
-        (Scope.libs scope)
-        lib_name
+    let lib_compile_info =
+      Lib.Compile.for_lib
         ~allow_overlaps:mel.allow_overlapping_dependencies
+        (Scope.libs scope)
+        lib
     in
     let info = Lib.info lib in
     let loc = Lib_info.loc info in

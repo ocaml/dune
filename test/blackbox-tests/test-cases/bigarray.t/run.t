@@ -31,3 +31,6 @@ This test uses `(libraries (re_export bigarray))` similarly
 This test uses a `(select )` construct and should always select bigarray support
   $ dune exec c/c.exe
   Welcome to c WITH bigarray support
+This test uses a `(select )` construct and should always select bigarray supprot (the evaluation of `select` order differ from the previous test)
+  $ dune exec d/d.exe
+  Welcome to d WITH bigarray support

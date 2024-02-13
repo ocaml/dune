@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 type t =
   { source : Source_kind.t option
@@ -71,7 +72,7 @@ let to_dyn { source; license; authors; homepage; bug_reports; documentation; mai
 let encode_fields
   { source; authors; license; homepage; documentation; bug_reports; maintainers }
   =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   record_fields
     [ field_o "source" Source_kind.encode source
     ; field_l "authors" string (Option.value ~default:[] authors)
@@ -84,37 +85,28 @@ let encode_fields
 ;;
 
 let decode ?since () =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let v default = Option.value since ~default in
   let+ source =
-    field_o
-      "source"
-      (Dune_lang.Syntax.since Stanza.syntax (v (1, 7)) >>> Source_kind.decode)
+    field_o "source" (Syntax.since Stanza.syntax (v (1, 7)) >>> Source_kind.decode)
   and+ authors =
-    field_o "authors" (Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> repeat string)
+    field_o "authors" (Syntax.since Stanza.syntax (v (1, 9)) >>> repeat string)
   and+ license =
     field_o
       "license"
-      (Dune_lang.Syntax.since Stanza.syntax (v (1, 9))
+      (Syntax.since Stanza.syntax (v (1, 9))
        >>> let* l = repeat1 string in
            (if List.length l > 1
-            then
-              Dune_lang.Syntax.since
-                ~what:"Parsing several licenses"
-                Stanza.syntax
-                (v (3, 2))
+            then Syntax.since ~what:"Parsing several licenses" Stanza.syntax (v (3, 2))
             else return ())
            >>> return l)
-  and+ homepage =
-    field_o "homepage" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+  and+ homepage = field_o "homepage" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ documentation =
-    field_o "documentation" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    field_o "documentation" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ bug_reports =
-    field_o "bug_reports" (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =
-    field_o
-      "maintainers"
-      (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
+    field_o "maintainers" (Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
   in
   { source; authors; license; homepage; documentation; bug_reports; maintainers }
 ;;

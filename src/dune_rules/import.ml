@@ -95,6 +95,8 @@ include struct
   module Toggle = Toggle
   module Site = Site
   module Warning = Warning
+  module Source_kind = Source_kind
+  module Package_info = Package_info
 end
 
 include Dune_engine.No_io

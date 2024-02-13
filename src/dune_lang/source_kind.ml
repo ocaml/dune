@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 
 module Host = struct
   type kind =
@@ -76,10 +77,10 @@ module Host = struct
               ~loc
               [ Pp.textf "%s repository must be of form user/repo" name ]
         in
-        let open Dune_lang.Decoder in
+        let open Decoder in
         (match since with
          | None -> return ()
-         | Some v -> Dune_lang.Syntax.since Stanza.syntax v)
+         | Some v -> Syntax.since Stanza.syntax v)
         >>> plain_string of_string
       in
       let constr = to_string kind in
@@ -89,7 +90,7 @@ module Host = struct
   let encode { user; repo; kind } =
     let forge = to_string kind in
     let path = user ^ "/" ^ repo in
-    let open Dune_lang.Encoder in
+    let open Encoder in
     pair string string (forge, path)
   ;;
 
@@ -121,14 +122,14 @@ let to_string = function
 ;;
 
 let encode =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   function
   | Url url -> pair string string ("uri", url)
   | Host host -> Host.encode host
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   sum
     (( "uri"
      , let+ s = string in

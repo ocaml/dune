@@ -283,24 +283,19 @@ let has_opam_file t = t.has_opam_file
 let allow_empty t = t.allow_empty
 let map_depends t ~f = { t with depends = f t.depends }
 
-let default name dir =
-  let depends =
-    [ { Dependency.name = Name.of_string "ocaml"; constraint_ = None }
-    ; { name = Name.of_string "dune"; constraint_ = None }
-    ]
-  in
+let create ~name ~dir ~depends ~synopsis ~description ~tags =
   let id = { Id.name; dir } in
   { id
   ; loc = Loc.none
   ; version = None
-  ; synopsis = Some "A short synopsis"
-  ; description = Some "A longer description"
+  ; synopsis
+  ; description
   ; depends
   ; conflicts = []
   ; info = Package_info.empty
   ; depopts = []
   ; has_opam_file = Exists false
-  ; tags = [ "topics"; "to describe"; "your"; "project" ]
+  ; tags
   ; deprecated_package_names = Name.Map.empty
   ; sites = Site.Map.empty
   ; allow_empty = false

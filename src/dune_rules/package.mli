@@ -67,8 +67,14 @@ val has_opam_file : t -> opam_file
 val allow_empty : t -> bool
 val map_depends : t -> f:(Dependency.t list -> Dependency.t list) -> t
 
-(** Construct a default package (e.g., for project initialization) *)
-val default : Name.t -> Path.Source.t -> t
+val create
+  :  name:Name.t
+  -> dir:Path.Source.t
+  -> depends:Dependency.t list
+  -> synopsis:string option
+  -> description:string option
+  -> tags:string list
+  -> t
 
 (** Construct a package description from an opam file and its contents *)
 val load_opam_file_with_contents : contents:string -> Path.Source.t -> Name.t -> t

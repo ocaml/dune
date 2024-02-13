@@ -93,6 +93,7 @@ include struct
   module Relop = Relop
   module Package_variable_name = Package_variable_name
   module Toggle = Toggle
+  module Site = Site
 end
 
 include Dune_engine.No_io

@@ -1174,11 +1174,12 @@ end = struct
        | _ :: _ :: _ ->
          (* If there are multiple results found, we optimistically pre-filter to
             remove those that are disabled *)
-         let filtered_libs =
-           List.filter libs ~f:(fun lib ->
-             match Lib_info.enabled lib with
-             | Disabled_because_of_enabled_if -> false
-             | Normal | Optional -> true)
+         let* filtered_libs =
+           Memo.List.filter libs ~f:(fun lib ->
+             let* enabled = Lib_info.enabled lib in
+             match enabled with
+             | Disabled_because_of_enabled_if -> Memo.return false
+             | Normal | Optional -> Memo.return true)
          in
          to_status ~db ~name filtered_libs)
     | Invalid e -> Memo.return (Status.Invalid e)

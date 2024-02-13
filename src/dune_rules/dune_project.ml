@@ -70,12 +70,7 @@ let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
-
-let sources t =
-  let packages = Package.Name.Map.map t.packages ~f:Package.to_local_package in
-  Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources packages
-;;
-
+let sources t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources t.packages
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects

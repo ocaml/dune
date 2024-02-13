@@ -35,3 +35,4 @@ module Relop = Relop
 module Cond = Cond
 module Toggle = Toggle
 module Site = Site
+module Warning = Warning

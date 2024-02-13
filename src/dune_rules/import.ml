@@ -94,6 +94,7 @@ include struct
   module Package_variable_name = Package_variable_name
   module Toggle = Toggle
   module Site = Site
+  module Warning = Warning
 end
 
 include Dune_engine.No_io

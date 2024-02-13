@@ -1,4 +1,7 @@
-open Import
+open Stdune
+open Dune_config
+module Stringlike = Dune_util.Stringlike
+module Syntax = Dune_sexp.Syntax
 
 module Name = struct
   include String
@@ -56,7 +59,7 @@ module Settings = struct
     in
     let open Dune_sexp.Decoder in
     let warning w =
-      Dune_lang.Syntax.since Stanza.syntax w.since
+      Syntax.since Stanza.syntax w.since
       >>> string
       |> map_validate ~f:(fun s ->
         match Config.Toggle.of_string s with

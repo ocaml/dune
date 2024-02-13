@@ -377,6 +377,16 @@ module Component = struct
         let package =
           Package.create
             ~name:(Package.Name.of_string (Atom.to_string common.name))
+            ~loc:Loc.none
+            ~version:None
+            ~conflicts:[]
+            ~depopts:[]
+            ~info:Package_info.empty
+            ~sites:Site.Map.empty
+            ~allow_empty:false
+            ~deprecated_package_names:Package.Name.Map.empty
+            ~has_opam_file:(Exists false)
+            ~original_opam_file:None
             ~dir
             ~synopsis:(Some "A short synopsis")
             ~description:(Some "A longer description")

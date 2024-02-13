@@ -56,4 +56,4 @@ chosen due to the latter's conflict with "ocaml-system".
   $ dune pkg lock
   Solution for dune.lock:
   - ocaml.0.0.1
-  - ocaml-base-compiler.0.0.1
+  - ocaml-system.0.0.1

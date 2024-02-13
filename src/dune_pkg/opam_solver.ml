@@ -229,17 +229,21 @@ module Context_for_dune = struct
 
   let filter_deps t package filtered_formula =
     let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+    (* Add additional constraints to the formula. This works in two steps.
+       First identify all the additional constraints applied to packages which
+       appear in the current package's dependency formula. Then each additional
+       constnraint is and-ed with the current package's dependency formula. *)
     let filtered_formula =
-      OpamFormula.map_up_formula
-        (fun formula ->
-          match formula with
-          | Atom (pkg, _) ->
-            let name = Package_name.of_opam_package_name pkg in
-            (match Package_name.Map.find t.constraints name with
-             | None -> formula
-             | Some additional -> OpamFormula.And (formula, additional))
-          | _ -> formula)
+      OpamFormula.fold_left
+        (fun additional_formulae (pkg, _) ->
+          let name = Package_name.of_opam_package_name pkg in
+          match Package_name.Map.find t.constraints name with
+          | None -> additional_formulae
+          | Some additional -> additional :: additional_formulae)
+        []
         filtered_formula
+      |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
+        OpamFormula.And (acc, additional))
     in
     let package_is_local = Package_name.Map.mem t.local_packages name in
     Resolve_opam_formula.apply_filter

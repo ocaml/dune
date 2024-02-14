@@ -204,13 +204,13 @@ end = struct
 
   let contents
     readdir
+    ~path
     ~parent_dune_file
     ~dirs_visited
     ~project
     ~(dir_status : Source_dir_status.t)
     =
     let files = Readdir.files readdir in
-    let path = Readdir.path readdir in
     let+ dune_file =
       Dune_file0.load ~dir:path dir_status project ~files ~parent:parent_dune_file
     in
@@ -268,7 +268,7 @@ end = struct
         | Ok file -> Dirs_visited.singleton path file
         | Error unix_error -> error_unable_to_load ~path unix_error
       in
-      contents readdir ~parent_dune_file:None ~dirs_visited ~project ~dir_status
+      contents readdir ~path ~parent_dune_file:None ~dirs_visited ~project ~dir_status
     in
     { Output.dir; visited }
   ;;
@@ -300,12 +300,12 @@ end = struct
        | Some (parent_dir, dirs_visited, dir_status, virtual_) ->
          let* readdir =
            if virtual_
-           then Memo.return (Readdir.empty path)
+           then Memo.return Readdir.empty
            else
              Readdir.of_source_path path
              >>| function
              | Ok dir -> dir
-             | Error _ -> Readdir.empty path
+             | Error _ -> Readdir.empty
          in
          let* project =
            if dir_status = Data_only
@@ -325,6 +325,7 @@ end = struct
            let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
            contents
              readdir
+             ~path
              ~parent_dune_file:parent_dir.dune_file
              ~dirs_visited
              ~project

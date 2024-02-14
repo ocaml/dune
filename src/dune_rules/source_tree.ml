@@ -211,18 +211,17 @@ end = struct
     ;;
   end
 
-  let contents readdir ~dirs_visited ~project ~(dir_status : Source_dir_status.t) =
+  let contents
+    readdir
+    ~parent_dune_file
+    ~dirs_visited
+    ~project
+    ~(dir_status : Source_dir_status.t)
+    =
     let files = Readdir.files readdir in
     let path = Readdir.path readdir in
     let+ dune_file =
-      let* parent =
-        match Path.Source.parent path with
-        | None -> Memo.return None
-        | Some parent ->
-          let+ parent = find_dir parent in
-          Option.bind parent ~f:(fun p -> p.dune_file)
-      in
-      Dune_file0.load ~dir:path dir_status project ~files ~parent
+      Dune_file0.load ~dir:path dir_status project ~files ~parent:parent_dune_file
     in
     let dirs_visited, sub_dirs =
       let sub_dirs =
@@ -274,7 +273,9 @@ end = struct
       | Ok file -> Dirs_visited.singleton path file
       | Error unix_error -> error_unable_to_load ~path unix_error
     in
-    let+ dir, visited = contents readdir ~dirs_visited ~project ~dir_status in
+    let+ dir, visited =
+      contents readdir ~parent_dune_file:None ~dirs_visited ~project ~dir_status
+    in
     { Output.dir; visited }
   ;;
 
@@ -328,7 +329,12 @@ end = struct
          in
          let+ dir, visited =
            let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
-           contents readdir ~dirs_visited ~project ~dir_status
+           contents
+             readdir
+             ~parent_dune_file:parent_dir.dune_file
+             ~dirs_visited
+             ~project
+             ~dir_status
          in
          Some { Output.dir; visited })
   ;;

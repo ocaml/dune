@@ -43,7 +43,7 @@ let find_module sctx src =
      | Some stanza ->
        let* scope = Scope.DB.find_by_dir dir in
        let* expander = Super_context.expander sctx ~dir in
-       let+ cctx, merlin =
+       let* available =
          drop_rules
          @@ fun () ->
          match stanza with
@@ -51,21 +51,24 @@ let find_module sctx src =
            let* cctx, merlin =
              Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
            in
-           Memo.return (cctx, Some merlin)
+           Memo.return (Some (cctx, Some merlin))
          | `Library lib -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
        in
-       let modules = Compilation_context.modules cctx in
-       let module_ =
-         match Modules.find modules module_name with
-         | Some m -> m
-         | None ->
-           User_error.raise
-             [ Pp.textf
-                 "Could not find module corresponding to source file %s"
-                 (Path.Build.to_string_maybe_quoted src)
-             ]
-       in
-       Some (module_, cctx, merlin))
+       (match available with
+        | None -> Memo.return None
+        | Some (cctx, merlin) ->
+          let modules = Compilation_context.modules cctx in
+          let module_ =
+            match Modules.find modules module_name with
+            | Some m -> m
+            | None ->
+              User_error.raise
+                [ Pp.textf
+                    "Could not find module corresponding to source file %s"
+                    (Path.Build.to_string_maybe_quoted src)
+                ]
+          in
+          Memo.return (Some (module_, cctx, merlin))))
 ;;
 
 let module_deps cctx module_ =

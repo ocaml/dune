@@ -141,7 +141,7 @@ module DB : sig
     -> allow_overlaps:bool
     -> dir:Path.Build.t
     -> Lib_name.t
-    -> (lib * Compile.t) Memo.t
+    -> (lib * Compile.t) option Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 

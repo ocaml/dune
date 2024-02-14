@@ -642,35 +642,41 @@ let library_rules
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in
-  let* local_lib, compile_info =
+  let* available =
     Lib.DB.get_compile_info
       (Scope.libs scope)
       (Library.best_name lib)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
       ~dir
   in
-  let local_lib = Lib.Local.of_lib_exn local_lib in
-  let f () =
-    let* source_modules =
-      Dir_contents.ocaml dir_contents
-      >>| Ml_sources.modules ~for_:(Library (Library.best_name lib))
+  match available with
+  | None -> Memo.return None
+  | Some (local_lib, compile_info) ->
+    let local_lib = Lib.Local.of_lib_exn local_lib in
+    let f () =
+      let* source_modules =
+        Dir_contents.ocaml dir_contents
+        >>| Ml_sources.modules ~for_:(Library (Library.best_name lib))
+      in
+      let* cctx = cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info in
+      let* () =
+        match buildable.ctypes with
+        | None -> Memo.return ()
+        | Some _ ->
+          Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
+      in
+      library_rules
+        lib
+        ~local_lib
+        ~cctx
+        ~source_modules
+        ~dir_contents
+        ~compile_info
+        ~ctx_dir:dir
     in
-    let* cctx = cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info in
-    let* () =
-      match buildable.ctypes with
-      | None -> Memo.return ()
-      | Some _ ->
-        Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
+    let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
+    let* res =
+      Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f
     in
-    library_rules
-      lib
-      ~local_lib
-      ~cctx
-      ~source_modules
-      ~dir_contents
-      ~compile_info
-      ~ctx_dir:dir
-  in
-  let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f
+    Memo.return (Some res)
 ;;

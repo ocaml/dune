@@ -112,8 +112,11 @@ end = struct
       let+ () = toplevel_setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      let* cctx, merlin = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
-      Memo.return { empty_none with merlin; cctx = Some (lib.buildable.loc, cctx) }
+      let* available = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+      (match available with
+       | None -> Memo.return empty_none
+       | Some (cctx, merlin) ->
+         Memo.return { empty_none with merlin; cctx = Some (lib.buildable.loc, cctx) })
     | Foreign.Library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->

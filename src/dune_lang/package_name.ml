@@ -63,4 +63,17 @@ module Opam_compatible = struct
   let to_package_name s = s
 end
 
+let opam_ext = ".opam"
+let opam_fn (t : t) = to_string t ^ opam_ext
 let is_opam_compatible s = Option.is_some (Opam_compatible.of_string_opt (to_string s))
+let file t ~dir = Path.Source.relative dir (to_string t ^ opam_ext)
+
+let decode_opam_compatible =
+  Dune_sexp.Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
+;;
+
+let of_opam_file_basename basename =
+  let open Option.O in
+  let* name = String.drop_suffix basename ~suffix:opam_ext in
+  of_string_opt name
+;;

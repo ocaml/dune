@@ -5,11 +5,7 @@ open Stdune
 module Name : sig
   type t = Package_name.t
 
-  val opam_fn : t -> Filename.t
-
   include module type of Package_name with type t := t
-
-  val of_opam_file_basename : Filename.t -> t option
 end
 
 module Id : sig
@@ -34,7 +30,6 @@ val sites : t -> Section.t Site.Map.t
 val name : t -> Name.t
 val dir : t -> Path.Source.t
 val set_inside_opam_dir : t -> dir:Path.Source.t -> t
-val file : dir:Path.t -> name:Name.t -> Path.t
 val encode : Name.t -> t Dune_sexp.Encoder.t
 val decode : dir:Path.Source.t -> t Dune_sexp.Decoder.t
 val opam_file : t -> Path.Source.t

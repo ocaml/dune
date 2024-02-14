@@ -51,7 +51,9 @@ module DB = struct
   let equal = Poly.equal
 
   let add_opam_pins t pins =
-    let pins = Pinned_package.collect pins in
+    let pins =
+      Package_name.Map.map pins ~f:Local_package.of_package |> Pinned_package.collect
+    in
     { t with
       map =
         Package_name.Map.fold pins ~init:t.map ~f:(fun (pin : Local_package.pin) acc ->
@@ -136,11 +138,11 @@ module Scan_project = struct
   type t =
     read:(Path.Source.t -> string Fiber.t)
     -> files:Filename.Set.t
-    -> (DB.t * Local_package.t Package_name.Map.t) option Fiber.t
+    -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 
   type state =
     { mutable traversed :
-        (DB.t * Local_package.t Package_name.Map.t) option Fiber.Ivar.t OpamUrl.Map.t
+        (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.Ivar.t OpamUrl.Map.t
     }
 
   let make_state () = { traversed = OpamUrl.Map.empty }
@@ -300,7 +302,8 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     | Some pkg ->
       let resolved_package =
         let opam_file =
-          Local_package.for_solver pkg
+          Local_package.of_package pkg
+          |> Local_package.for_solver
           |> Local_package.For_solver.to_opam_file
           |> OpamFile.OPAM.with_url (OpamFile.URL.create (snd package.url))
         in

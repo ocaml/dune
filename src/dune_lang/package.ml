@@ -1,25 +1,6 @@
 open Stdune
 open Dune_sexp
-
-let opam_ext = ".opam"
-
-module Name = struct
-  include Package_name
-
-  let of_opam_file_basename basename =
-    let open Option.O in
-    let* name = String.drop_suffix basename ~suffix:opam_ext in
-    of_string_opt name
-  ;;
-
-  let opam_fn (t : t) = to_string t ^ opam_ext
-
-  module Infix = Comparator.Operators (String)
-
-  let decode_opam_compatible =
-    Dune_sexp.Decoder.map ~f:Opam_compatible.to_package_name Opam_compatible.decode
-  ;;
-end
+module Name = Package_name
 
 module Id = struct
   module T = struct
@@ -35,8 +16,7 @@ module Id = struct
     ;;
 
     let to_dyn { dir; name } =
-      let open Dyn in
-      record [ "name", Name.to_dyn name; "dir", Path.Source.to_dyn dir ]
+      Dyn.record [ "name", Name.to_dyn name; "dir", Path.Source.to_dyn dir ]
     ;;
   end
 
@@ -44,7 +24,6 @@ module Id = struct
 
   let hash { name; dir } = Tuple.T2.hash Name.hash Path.Source.hash (name, dir)
   let name t = t.name
-  let default_opam_file { name; dir } = Path.Source.relative dir (Name.opam_fn name)
 
   module C = Comparable.Make (T)
   module Set = C.Set
@@ -102,11 +81,7 @@ let info t = t.info
 let description t = t.description
 let id t = t.id
 let original_opam_file t = t.original_opam_file
-
-let set_inside_opam_dir t ~dir =
-  { t with opam_file = Path.Source.relative dir (Name.opam_fn t.id.name) }
-;;
-
+let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
 let set_version_and_info t ~version ~info = { t with version; info }
 
 let encode
@@ -205,7 +180,7 @@ let decode =
        and+ lang_version = Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let id = { Id.name; dir } in
-       let opam_file = Id.default_opam_file id in
+       let opam_file = Name.file id.name ~dir:id.dir in
        { id
        ; loc
        ; synopsis
@@ -270,7 +245,6 @@ let to_dyn
 ;;
 
 let opam_file t = t.opam_file
-let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 let sites t = t.sites
 let has_opam_file t = t.has_opam_file
 let allow_empty t = t.allow_empty
@@ -309,7 +283,7 @@ let create
   ; deprecated_package_names
   ; sites
   ; allow_empty
-  ; opam_file = Id.default_opam_file id
+  ; opam_file = Name.file name ~dir
   ; original_opam_file
   }
 ;;

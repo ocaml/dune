@@ -84,3 +84,4 @@ module For_solver : sig
 end
 
 val for_solver : t -> For_solver.t
+val of_package : Dune_lang.Package.t -> t

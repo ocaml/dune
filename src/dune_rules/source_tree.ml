@@ -124,17 +124,7 @@ module rec Memoized : sig
 end = struct
   open Memoized
 
-  module Get_subdir : sig
-    (** Get all the sub directories of [path].*)
-    val all
-      :  dirs_visited:Dirs_visited.t
-      -> dirs:(Filename.t * Readdir.File.t) list
-      -> sub_dirs:Source_dir_status.Spec.t
-      -> parent_status:Source_dir_status.t
-      -> dune_file:Dune_file0.t option (** to interpret [(subdir ..)] stanzas *)
-      -> path:Path.Source.t
-      -> Dirs_visited.Per_fn.t * Dir0.sub_dir Filename.Map.t
-  end = struct
+  module Get_subdir = struct
     let status ~status_map ~(parent_status : Source_dir_status.t) dir
       : Source_dir_status.t option
       =
@@ -169,7 +159,8 @@ end = struct
               Dirs_visited.Per_fn.add dirs_visited_acc dirs_visited ~path info
             in
             let subdirs =
-              make_subdir ~dir_status ~virtual_:false (Path.Source.relative dir fn)
+              Path.Source.relative dir fn
+              |> make_subdir ~dir_status ~virtual_:false
               |> Filename.Map.add_exn subdirs fn
             in
             dirs_visited_acc, subdirs)
@@ -240,40 +231,43 @@ end = struct
     { Dir0.project; status = dir_status; path; files; sub_dirs; dune_file }, dirs_visited
   ;;
 
+  let error_unable_to_load ~path unix_error =
+    User_error.raise
+      [ Pp.textf "Unable to load source %s." (Path.Source.to_string_maybe_quoted path)
+      ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+      ]
+  ;;
+
   let root () =
     let path = Path.Source.root in
     let dir_status : Source_dir_status.t = Normal in
-    let error_unable_to_load ~path unix_error =
-      User_error.raise
-        [ Pp.textf "Unable to load source %s." (Path.Source.to_string_maybe_quoted path)
-        ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
-        ]
-    in
-    let* readdir =
-      Readdir.of_source_path path
-      >>| function
-      | Ok dir -> dir
-      | Error unix_error -> error_unable_to_load ~path unix_error
-    in
-    let* project =
-      Dune_project.load
-        ~dir:path
-        ~files:(Readdir.files readdir)
-        ~infer_from_opam_files:true
-      >>| function
-      | Some p -> p
-      | None -> Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty
-    in
-    let project =
-      Only_packages.filter_packages_in_project project ~vendored:(dir_status = Vendored)
-    in
-    let* dirs_visited =
-      Readdir.File.of_source_path (In_source_dir path)
-      >>| function
-      | Ok file -> Dirs_visited.singleton path file
-      | Error unix_error -> error_unable_to_load ~path unix_error
-    in
     let+ dir, visited =
+      let* readdir =
+        Readdir.of_source_path path
+        >>| function
+        | Ok dir -> dir
+        | Error unix_error -> error_unable_to_load ~path unix_error
+      in
+      let* project =
+        Dune_project.load
+          ~dir:path
+          ~files:(Readdir.files readdir)
+          ~infer_from_opam_files:true
+        >>| (function
+               | Some p -> p
+               | None ->
+                 Dune_project.anonymous
+                   ~dir:path
+                   Package_info.empty
+                   Package.Name.Map.empty)
+        >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
+      in
+      let* dirs_visited =
+        Readdir.File.of_source_path (In_source_dir path)
+        >>| function
+        | Ok file -> Dirs_visited.singleton path file
+        | Error unix_error -> error_unable_to_load ~path unix_error
+      in
       contents readdir ~parent_dune_file:None ~dirs_visited ~project ~dir_status
     in
     { Output.dir; visited }

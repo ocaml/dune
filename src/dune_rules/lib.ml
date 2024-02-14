@@ -1976,21 +1976,6 @@ module DB = struct
 
   let available t name = Resolve_names.available_internal t name
 
-  let available_library_stanza t ~dir name =
-    let open Memo.O in
-    available t name
-    >>= function
-    | false -> Memo.return false
-    | true ->
-      find t name
-      >>| (function
-       | None -> assert false
-       | Some lib ->
-         (match Local.of_lib lib with
-          | None -> false
-          | Some info -> Path.Build.equal dir (Lib_info.src_dir (Local.info info))))
-  ;;
-
   let get_compile_info t ~allow_overlaps ~dir name =
     let open Memo.O in
     find t name

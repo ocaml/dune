@@ -129,13 +129,8 @@ module DB : sig
       in the database with name [lib_name], regardless if it is enabled or not. *)
   val available : t -> Lib_name.t -> bool Memo.t
 
-  (** [available_library_stanza db ~dir lib_name], similar to [available], but only
-      returns [true] if there is a library available with name [lib_name], and the stanza
-      directory where the library is defined matches [dir]. *)
-  val available_library_stanza : t -> dir:Path.Build.t -> Lib_name.t -> bool Memo.t
-
-  (** Retrieve the compile information for the given library. Works for
-      libraries that are optional and not available as well. *)
+  (** [get_compile_info db ~allow_overlaps ~dir lib_name] retrieves the compile
+      information for the given library, if it exists. Otherwise returns [None]. *)
   val get_compile_info
     :  t
     -> allow_overlaps:bool

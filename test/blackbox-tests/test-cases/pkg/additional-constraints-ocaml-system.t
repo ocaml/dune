@@ -50,9 +50,7 @@ Now make a workspace file adding the constarint on ocaml-system:
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
 
-Solve again. Note that this currently doesn't work. The inclusion of the
-constraint "ocaml-system" should have prevented "ocaml-base-compiler" from being
-chosen due to the latter's conflict with "ocaml-system".
+Solve again. This time ocaml-system is chosen.
   $ dune pkg lock
   Solution for dune.lock:
   - ocaml.0.0.1

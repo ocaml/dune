@@ -177,6 +177,7 @@ module Init_context = struct
   let make path =
     let open Memo.O in
     let+ project =
+      (* CR-rgrinberg: why not get the project from the source tree? *)
       Dune_project.load
         ~dir:Path.Source.root
         ~files:Filename.Set.empty

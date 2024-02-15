@@ -7,6 +7,7 @@ open Import
 val search_db
   :  Super_context.t
   -> dir:Path.Build.t
+  -> external_odocls:Path.Build.t list
   -> Path.Build.t list
   -> Path.Build.t Memo.t
 

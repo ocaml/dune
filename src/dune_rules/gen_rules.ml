@@ -106,10 +106,9 @@ end = struct
      being handled directly in the stanza. *)
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
     let dir = ctx_dir in
-    let toplevel_setup = Toplevel.Stanza.setup in
     match Stanza.repr stanza with
     | Toplevel_stanza.T toplevel ->
-      let+ () = toplevel_setup ~sctx ~dir ~toplevel in
+      let+ () = Toplevel.Stanza.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
       let* available = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in

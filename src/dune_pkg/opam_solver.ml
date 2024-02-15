@@ -54,7 +54,7 @@ module Context_for_dune = struct
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
-    ; candidates_cache : (Package_name.t, candidates) Table.t
+    ; candidates_cache : (Package_name.t, candidates) Fiber_cache.t
     ; (* The solver can call this function several times on the same package.
          If the package contains an invalid "available" filter we want to print a
          warning, but only once per package. This field will keep track of the
@@ -76,7 +76,7 @@ module Context_for_dune = struct
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
-    let candidates_cache = Table.create (module Package_name) 1 in
+    let candidates_cache = Fiber_cache.create (module Package_name) in
     let constraints =
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
         constraint_.name, constraint_)
@@ -209,16 +209,10 @@ module Context_for_dune = struct
       Fiber.return [ version, Ok local_package ]
     | None ->
       let+ res =
-        match Table.find t.candidates_cache key with
-        | Some res -> Fiber.return res
-        | None ->
-          let+ res =
-            match Package_name.Map.find t.pinned_packages key with
-            | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
-            | None -> repo_candidate t name
-          in
-          Table.set t.candidates_cache key res;
-          res
+        Fiber_cache.find_or_add t.candidates_cache key ~f:(fun () ->
+          match Package_name.Map.find t.pinned_packages key with
+          | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
+          | None -> repo_candidate t name)
       in
       res.available
   ;;
@@ -741,6 +735,7 @@ let solve_lock_dir
       in
       List.filter solution ~f:(Fun.negate is_local_package)
     in
+    let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
     let ocaml, pkgs =
       let pkgs =
         List.map opam_packages_to_lock ~f:(fun opam_package ->
@@ -750,7 +745,7 @@ let solve_lock_dir
             version_by_package_name
             opam_package
             ~pinned_package_names
-            ~candidates_cache:context.candidates_cache)
+            ~candidates_cache)
       in
       let ocaml =
         (* This doesn't allow the compiler to live in the source tree. Oh
@@ -817,7 +812,7 @@ let solve_lock_dir
             |> OpamPackage.Name.to_string
             |> Package_name.of_string
           in
-          let candidates = Table.find_exn context.candidates_cache package_name in
+          let candidates = Table.find_exn candidates_cache package_name in
           OpamPackage.Version.Map.find
             (OpamPackage.version opam_package)
             candidates.resolved)

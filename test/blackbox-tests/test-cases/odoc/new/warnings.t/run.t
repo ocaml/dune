@@ -30,9 +30,9 @@ These packages are in a nested env, the option is disabled, should success with 
 In release mode, no error:
 
   $ dune build -p foo_doc,foo_lib @doc-new
-  (cd _build/default/_doc_new/odoc/local/foo_doc && odoc compile -o page-foo.odoc ../../../../foo_doc/foo.mld -I ../../../index/local/foo_doc --parent 'page-"foo_doc"')
-  File "../../../../foo_doc/foo.mld", line 4, characters 0-0:
-  Warning: End of text is not allowed in '[...]' (code).
   (cd _build/default/_doc_new/odoc/local/foo_lib && odoc compile -I . -I ../../stdlib -o foo.odoc ../../../../foo_lib/.foo.objs/byte/foo.cmti -I ../../../index/local/foo_lib --parent 'page-"foo_lib"')
   File "foo_lib/foo.mli", line 1, characters 7-7:
+  Warning: End of text is not allowed in '[...]' (code).
+  (cd _build/default/_doc_new/odoc/local/foo_doc && odoc compile -o page-foo.odoc ../../../../foo_doc/foo.mld -I ../../../index/local/foo_doc --parent 'page-"foo_doc"')
+  File "../../../../foo_doc/foo.mld", line 4, characters 0-0:
   Warning: End of text is not allowed in '[...]' (code).

@@ -19,7 +19,7 @@ js_of_ocaml-compiler \
 menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
-"odoc>=2.0.1" \
+"odoc>=2.4.0" \
 "ppx_expect>=v0.16.0" \
 ppx_inline_test \
 ppxlib \

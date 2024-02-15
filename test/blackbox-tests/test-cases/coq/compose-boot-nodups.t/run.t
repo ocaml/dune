@@ -6,7 +6,7 @@ Testing composition with two boot libraries
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Cannot have more than one boot theory in scope:
-  - B at B/dune:1
   - A at A/dune:1
+  - B at B/dune:1
   -> required by alias default
   [1]

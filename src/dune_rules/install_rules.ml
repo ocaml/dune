@@ -129,6 +129,35 @@ end = struct
     | true -> Lib_info.foreign_dll_files lib
   ;;
 
+  let make_entry lib_subdir =
+    let in_sub_dir = function
+      | None -> lib_subdir
+      | Some subdir ->
+        Some
+          (match lib_subdir with
+           | None -> subdir
+           | Some lib_subdir -> Filename.concat lib_subdir subdir)
+    in
+    fun section ~loc ?sub_dir ?dst fn ->
+      let entry =
+        Install.Entry.make
+          section
+          fn
+          ~kind:`File
+          ~dst:
+            (let dst =
+               match dst with
+               | Some s -> s
+               | None -> Path.Build.basename fn
+             in
+             let sub_dir = in_sub_dir sub_dir in
+             match sub_dir with
+             | None -> dst
+             | Some dir -> sprintf "%s/%s" dir dst)
+      in
+      Install.Entry.Sourced.create ~loc entry
+  ;;
+
   let lib_install_files
     sctx
     ~scope
@@ -143,40 +172,13 @@ end = struct
       let+ ocaml = Context.ocaml ctx in
       ocaml.lib_config
     in
+    let make_entry ?(loc = loc) = make_entry lib_subdir ~loc in
     let info = Library.to_lib_info lib ~dir ~lib_config in
-    let make_entry =
-      let in_sub_dir = function
-        | None -> lib_subdir
-        | Some subdir ->
-          Some
-            (match lib_subdir with
-             | None -> subdir
-             | Some lib_subdir -> Filename.concat lib_subdir subdir)
-      in
-      fun section ?(loc = loc) ?sub_dir ?dst fn ->
-        let entry =
-          Install.Entry.make
-            section
-            fn
-            ~kind:`File
-            ~dst:
-              (let dst =
-                 match dst with
-                 | Some s -> s
-                 | None -> Path.Build.basename fn
-               in
-               let sub_dir = in_sub_dir sub_dir in
-               match sub_dir with
-               | None -> dst
-               | Some dir -> sprintf "%s/%s" dir dst)
-        in
-        Install.Entry.Sourced.create ~loc entry
-    in
     let lib_name = Library.best_name lib in
     let* installable_modules =
-      let* ml_sources = Dir_contents.ocaml dir_contents in
-      let modules = Ml_sources.modules ml_sources ~for_:(Library lib_name) in
-      let+ impl = Virtual_rules.impl sctx ~lib ~scope in
+      let+ modules =
+        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library lib_name)
+      and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       let modules = Vimpl.impl_modules impl modules in
       Modules.split_by_lib modules
     in
@@ -215,10 +217,8 @@ end = struct
     let* additional_deps =
       let+ expander = Super_context.expander sctx ~dir:lib_src_dir in
       fun (loc, deps) ->
-        let+ deps =
-          Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
-        in
-        Path.Set.to_list_map deps ~f:(fun path ->
+        Lib_file_deps.eval deps ~expander ~loc ~paths:(Disallow_external lib_name)
+        >>| Path.Set.to_list_map ~f:(fun path ->
           let path =
             let path = path |> Path.as_in_build_dir_exn in
             check_runtime_deps_relative_path ~lib_info:info ~loc (Path.Build.local path);

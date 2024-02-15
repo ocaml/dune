@@ -1,4 +1,4 @@
-Showcase that using same library name in two workspaces is possible for private libraries
+Showcase that using same library name in two contexts is possible for private libraries
 
   $ mkdir -p a b
   $ cat > dune-project << EOF

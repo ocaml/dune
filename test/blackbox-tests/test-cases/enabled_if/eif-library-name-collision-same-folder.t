@@ -1,4 +1,4 @@
-Showcase that using same library name in two workspaces inside the same folder
+Showcase that using same library name in two contexts inside the same folder
 is not possible at the moment
 
   $ cat > dune-project << EOF

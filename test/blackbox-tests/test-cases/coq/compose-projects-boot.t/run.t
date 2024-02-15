@@ -62,7 +62,7 @@ to fix this currently.
   - Coq at B/Coq/dune:2
   -> required by alias B/default
   Error: Multiple rules generated for
-  _build/install/default/lib/coq/theories/Init/Prelude.v:
+  _build/install/default/lib/coq/theories/Init/Prelude.vo:
   - Coq/dune:1
   - B/Coq/dune:2
   -> required by _build/default/B/Foo.install

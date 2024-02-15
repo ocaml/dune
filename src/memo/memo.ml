@@ -1552,24 +1552,24 @@ let push_stack_frame ~human_readable_description f =
 ;;
 
 module Lazy = struct
-  type 'a t = unit -> 'a Fiber.t
+  type 'a t = 'a Fiber.t
 
-  let of_val a () = Fiber.return a
+  let of_val a = Fiber.return a
 
   module Expert = struct
     let create ?cutoff ?name ?human_readable_description f =
       let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
-      cell, fun () -> Cell.read cell
+      cell, Cell.read cell
     ;;
   end
 
   let create ?cutoff ?name ?human_readable_description f =
     let cell = lazy_cell ?cutoff ?name ?human_readable_description f in
-    fun () -> Cell.read cell
+    Cell.read cell
   ;;
 
-  let force f = f ()
-  let map t ~f = create (fun () -> Fiber.map ~f (t ()))
+  let force f = f
+  let map t ~f = create (fun () -> Fiber.map ~f t)
 end
 
 let lazy_ = Lazy.create

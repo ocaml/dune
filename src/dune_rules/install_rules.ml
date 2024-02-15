@@ -799,7 +799,6 @@ end = struct
            | Some _ -> Right entry)
         | entry -> Right entry)
     in
-    let ctx = Super_context.context sctx in
     let meta = Package_paths.meta_file ctx pkg in
     let* () =
       let template =

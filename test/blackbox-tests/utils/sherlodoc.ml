@@ -36,8 +36,9 @@ let () =
     let deps, target = parse_index_args index_args in
     Out_channel.with_open_bin target (fun oc ->
       Out_channel.output_string oc "/* Sherlodoc DB for: */\n";
-      List.iter deps ~f:(fun dep -> Printf.fprintf oc "/*   - %s */\n" dep) ;
-      List.iter !args_favored ~f:(fun dep -> Printf.fprintf oc "/*   - --favored %s */\n" dep))
+      List.iter deps ~f:(fun dep -> Printf.fprintf oc "/*   - %s */\n" dep);
+      List.iter !args_favored ~f:(fun dep ->
+        Printf.fprintf oc "/*   - --favored %s */\n" dep))
   | _ :: args ->
     Printf.ksprintf failwith "sherlodoc(fake): %s" (String.concat ~sep:"," args)
 ;;

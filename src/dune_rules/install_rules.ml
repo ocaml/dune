@@ -1177,7 +1177,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
          in
          let specified_deps =
            Package.depends package
-           |> Package.Name.Set.of_list_map ~f:(fun (dep : Package.Dependency.t) ->
+           |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) ->
              dep.name)
          in
          Package.Name.Set.diff effective_deps specified_deps

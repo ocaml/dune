@@ -9,7 +9,7 @@ module Well_formed_name = struct
   module T = struct
     include Package_name.Opam_compatible
 
-    let module_ = "Package.Dependency.Name"
+    let module_ = "Package_dependency.Name"
     let description = "package dependency"
     let description_of_valid_string = Some description_of_valid_string
 

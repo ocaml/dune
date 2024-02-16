@@ -66,13 +66,14 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
     let dir = Obj_dir.melange_dir obj_dir in
     Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
   in
-  let open Resolve.O in
   Command.Args.memo
   @@ Resolve.args
-  @@ let+ requires_link = requires_link in
-     let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
-     Command.Args.S
-       [ Lib_flags.L.include_flags ~project requires_link Melange; Hidden_deps deps ]
+  @@
+  let open Resolve.O in
+  let+ requires_link = requires_link in
+  let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
+  Command.Args.S
+    [ Lib_flags.L.include_flags ~project requires_link Melange; Hidden_deps deps ]
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
@@ -117,14 +118,13 @@ let js_targets_of_modules modules ~module_systems ~output =
 
 let js_targets_of_libs sctx libs ~module_systems ~target_dir =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
+    let open Memo.O in
     let of_lib lib =
-      let open Memo.O in
       let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
       let output = output_of_lib ~target_dir lib in
       List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
     in
     Resolve.Memo.List.concat_map libs ~f:(fun lib ->
-      let open Memo.O in
       let* base = of_lib lib in
       match Lib.implements lib with
       | None -> Resolve.Memo.return base
@@ -255,7 +255,6 @@ let setup_emit_cmj_rules
             modules
           |> Action_builder.path_set
         and+ () =
-          let open Action_builder.O in
           let* deps =
             Resolve.Memo.read
             @@

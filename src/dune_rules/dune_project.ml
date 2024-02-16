@@ -609,7 +609,6 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
 let parse_packages
   (name : Dune_project_name.t option)
   ~info
-  ~dir
   ~version
   packages
   opam_file_location
@@ -686,9 +685,7 @@ let parse_packages
         (match opam_file_location with
          | `Inside_opam_directory ->
            Package.Name.Map.map packages ~f:(fun p ->
-             let dir = Path.Source.relative dir "opam" in
-             let p = Package.set_inside_opam_dir p ~dir in
-             generated_opam_file p)
+             Package.set_inside_opam_dir p |> generated_opam_file)
          | `Relative_to_project ->
            Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
              match dune, opam with
@@ -812,7 +809,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          parse_packages
            name
            ~info
-           ~dir
            ~version
            packages
            opam_file_location

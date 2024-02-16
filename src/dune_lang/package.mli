@@ -29,7 +29,7 @@ val deprecated_package_names : t -> Loc.t Name.Map.t
 val sites : t -> Section.t Site.Map.t
 val name : t -> Name.t
 val dir : t -> Path.Source.t
-val set_inside_opam_dir : t -> dir:Path.Source.t -> t
+val set_inside_opam_dir : t -> t
 val encode : Name.t -> t Dune_sexp.Encoder.t
 val decode : dir:Path.Source.t -> t Dune_sexp.Decoder.t
 val opam_file : t -> Path.Source.t

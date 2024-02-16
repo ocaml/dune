@@ -81,7 +81,11 @@ let info t = t.info
 let description t = t.description
 let id t = t.id
 let original_opam_file t = t.original_opam_file
-let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
+
+let set_inside_opam_dir t =
+  { t with opam_file = Name.file t.id.name ~dir:(Path.Source.relative t.id.dir "opam") }
+;;
+
 let set_version_and_info t ~version ~info = { t with version; info }
 
 let encode

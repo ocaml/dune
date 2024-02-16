@@ -456,12 +456,27 @@ let setup_js_rules_libraries
         let* vlib = Resolve.Memo.read_memo vlib in
         let* includes =
           let+ requires_link =
-            Lib.Compile.for_lib
-              ~allow_overlaps:mel.allow_overlapping_dependencies
-              (Scope.libs scope)
-              vlib
-            |> Lib.Compile.requires_link
-            |> Memo.Lazy.force
+            let+ requires_link =
+              Lib.Compile.for_lib
+                ~allow_overlaps:mel.allow_overlapping_dependencies
+                (Scope.libs scope)
+                vlib
+              |> Lib.Compile.requires_link
+              |> Memo.Lazy.force
+            in
+            let open Resolve.O in
+            let+ requires_link = requires_link in
+            (* Whenever a `concrete_lib` implementation contains a field
+               `(implements virt_lib)`, we also set up the JS targets for the
+               modules defined in `virt_lib`.
+
+               In the cases where `virt_lib` (concrete) modules depend on any
+               virtual modules (i.e. programming against the interface), we
+               need to make sure that the JS rules that dune emits for
+               `virt_lib` depend on `concrete_lib`, such that Melange can find
+               the correct `.cmj` file, which is needed to emit the correct
+               path in `import` / `require`. *)
+            lib :: requires_link
           in
           cmj_includes ~requires_link ~scope
         in

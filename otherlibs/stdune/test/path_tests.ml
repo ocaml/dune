@@ -378,6 +378,13 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  reach "default/av" ~from:"default/avdevice";
+  [%expect {|
+"../av"
+|}]
+;;
+
+let%expect_test _ =
   relative (Path.of_string "relative") "/absolute/path";
   [%expect {|
 External "/absolute/path"

@@ -38,15 +38,25 @@ let filteri l ~f =
   filteri l 0
 ;;
 
-let concat_map t ~f =
+let rev_concat =
+  let rec loop acc = function
+    | [] -> acc
+    | x :: xs -> loop (rev_append x acc) xs
+  in
+  fun t -> loop [] t
+;;
+
+let rev_concat_map t ~f =
   let rec aux f acc = function
-    | [] -> rev acc
+    | [] -> acc
     | x :: l ->
       let xs = f x in
       aux f (rev_append xs acc) l
   in
   aux f [] t
 ;;
+
+let concat_map t ~f = rev (rev_concat_map t ~f)
 
 let rev_partition_map =
   let rec loop l accl accr ~f =

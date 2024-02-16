@@ -326,11 +326,11 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       Dune_stats.finish event;
       Fiber.return ())
     (fun () ->
-      (match url.backend with
-       | `http -> fetch_curl
-       | _ -> fetch_others)
-        ~unpack
-        ~checksum
-        ~target
-        url)
+      match url.backend with
+      | `git ->
+        let* rev_store = Rev_store.get in
+        let* source = Opam_repo.Source.of_opam_url Loc.none url in
+        fetch_git rev_store ~target source
+      | `http -> fetch_curl ~unpack ~checksum ~target url
+      | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;

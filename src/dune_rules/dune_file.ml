@@ -450,7 +450,7 @@ module Eval = struct
     (* CR-rgrinberg: all this evaluation complexity is to share
        some work in multi context builds. Is it worth it? *)
     let+ dune_syntax, ocaml_syntax =
-      Appendable_list.to_list dune_files
+      Appendable_list.to_list_rev dune_files
       |> Memo.parallel_map ~f:(fun (dir, project, dune_file) ->
         let mask = Mask.combine mask (Mask.ignore_promote project) in
         let eval = { dir; project; mask } in
@@ -467,10 +467,10 @@ module Eval = struct
           set_dynamic_stanzas dune_file ~eval:script.eval ~dynamic_includes)
       in
       let dune_syntax =
-        List.map dune_syntax ~f:(fun (eval, t, dynamic_includes) ->
+        List.rev_map dune_syntax ~f:(fun (eval, t, dynamic_includes) ->
           set_dynamic_stanzas t ~eval ~dynamic_includes)
       in
-      dune_syntax @ ocaml_syntax
+      List.rev_append dune_syntax ocaml_syntax
   ;;
 end
 

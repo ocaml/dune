@@ -66,7 +66,7 @@ let load () =
     in
     Source_tree_map_reduce.map_reduce ~traverse:Source_dir_status.Set.all ~f
   in
-  let projects = Appendable_list.to_list projects in
+  let projects = Appendable_list.to_list_rev projects in
   let packages, vendored_packages =
     List.fold_left
       projects

@@ -9,6 +9,7 @@ type 'a t = 'a list
 val rev_concat : 'a list list -> 'a list
 val is_empty : _ t -> bool
 val is_non_empty : _ t -> bool
+val rev_filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val filter_opt : 'a option t -> 'a t
 val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t

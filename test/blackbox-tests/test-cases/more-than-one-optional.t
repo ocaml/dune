@@ -24,10 +24,10 @@ Demonstrate an optional executable available from more than one definition
   > EOF
 
   $ dune build @foo
-  File "a/dune", line 2, characters 14-17:
+  File "b/dune", line 2, characters 14-17:
   2 |  (public_name foo)
                     ^^^
   Error: binary "foo" is available from more than one definition. It is also
   available in:
-  - b/dune:2
+  - a/dune:2
   [1]

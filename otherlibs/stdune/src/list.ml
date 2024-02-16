@@ -14,9 +14,9 @@ let is_non_empty = function
   | _ -> true
 ;;
 
-let filter_map l ~f =
+let rev_filter_map l ~f =
   let rec loop acc = function
-    | [] -> rev acc
+    | [] -> acc
     | x :: xs ->
       (match f x with
        | None -> loop acc xs
@@ -25,6 +25,7 @@ let filter_map l ~f =
   loop [] l
 ;;
 
+let filter_map l ~f = rev (rev_filter_map l ~f)
 let filter_opt l = filter_map ~f:Fun.id l
 
 let filteri l ~f =

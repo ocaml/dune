@@ -220,7 +220,12 @@ let of_opam_repo_dir_path loc opam_repo_dir_path =
 
 let of_git_repo (source : Source.t) =
   let+ at_rev = Source.rev source in
-  let serializable = Some (at_rev |> Rev_store.At_rev.opam_url |> OpamUrl.to_string) in
+  let serializable =
+    Some
+      (sprintf "%s#%s" source.url (Rev_store.At_rev.rev at_rev)
+       |> OpamUrl.of_string
+       |> OpamUrl.to_string)
+  in
   { source = Repo at_rev; serializable; loc = source.loc }
 ;;
 

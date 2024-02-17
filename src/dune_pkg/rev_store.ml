@@ -672,13 +672,6 @@ module Remote = struct
     default_branch
   ;;
 
-  let equal { repo; handle; source; default_branch; add_remote = _ } t =
-    equal repo t.repo
-    && String.equal handle t.handle
-    && String.equal source t.source
-    && String.equal default_branch t.default_branch
-  ;;
-
   let rev_of_name { repo; handle; source; default_branch = _; add_remote } ~name =
     (* TODO handle non-existing name *)
     let* rev = run_capture_line repo [ "rev-parse"; sprintf "%s/%s" handle name ] in

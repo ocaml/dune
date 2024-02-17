@@ -25,7 +25,7 @@ ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange>=3.0.0"
+"melange"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -74,13 +74,21 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
+.PHONY: melange
+melange:
+	opam pin add -n melange.dev https://github.com/melange-re/melange.git#v4-414-dev
+
 .PHONY: dev-deps
-dev-deps:
+dev-deps: melange
 	opam install -y $(TEST_DEPS)
 
 .PHONY: coverage-deps
 coverage-deps:
 	opam install -y bisect_ppx
+
+.PHONY: dev-deps-sans-melange
+dev-deps-sans-melange:
+	opam install -y $(TEST_DEPS)
 
 .PHONY: dev-switch
 dev-switch:
@@ -108,6 +116,9 @@ test-melange: $(BIN)
 
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
+
+test-all-sans-melange: $(BIN)
+	$(BIN) build @runtest @runtest-js @runtest-coq
 
 test-coverage: $(BIN)
 	- $(BIN) build --instrument-with bisect_ppx --force @runtest

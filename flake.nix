@@ -8,8 +8,8 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      # When moving the compiler tests to OCaml 5.1, change to v3-51
-      url = "github:melange-re/melange/v3-414";
+      # When moving the compiler tests to OCaml 5.1, change to v4-51-dev
+      url = "github:melange-re/melange/v4-414-dev";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };

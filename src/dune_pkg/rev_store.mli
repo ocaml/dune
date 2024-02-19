@@ -33,8 +33,6 @@ module Remote : sig
   (** handle representing a particular git repository *)
   type t
 
-  val equal : t -> t -> bool
-
   (** [update remote] will fetch the most current revisions from the remote *)
   val update : uninit -> t Fiber.t
 

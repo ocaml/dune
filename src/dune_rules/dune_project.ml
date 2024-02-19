@@ -427,7 +427,7 @@ let infer ~dir info packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
-  ; sources = Dune_pkg.Pin_stanza.DB.empty (Project { dir })
+  ; sources = Dune_pkg.Pin_stanza.DB.empty
   ; packages
   ; root
   ; info
@@ -724,7 +724,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ sources = Dune_pkg.Pin_stanza.DB.decode (Project { dir })
+     and+ sources = Dune_pkg.Pin_stanza.DB.decode ~dir
      and+ explicit_extensions =
        multi_field
          "using"

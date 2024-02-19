@@ -663,7 +663,12 @@ module Remote = struct
   type uninit = t
 
   let update ({ repo; handle; source = _; default_branch = _; add_remote = _ } as t) =
-    let+ () = run repo ~display:!Dune_engine.Clflags.display [ "fetch"; handle ] in
+    let+ () =
+      run
+        repo
+        ~display:!Dune_engine.Clflags.display
+        [ "fetch"; "--no-write-fetch-head"; handle ]
+    in
     t
   ;;
 

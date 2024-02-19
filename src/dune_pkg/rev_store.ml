@@ -620,6 +620,10 @@ module At_rev = struct
     let git = Lazy.force Vcs.git in
     let tar = Lazy.force tar in
     let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
+    Fiber.finalize ~finally:(fun () ->
+      let+ () = Fiber.return () in
+      Temp.destroy Dir temp_dir)
+    @@ fun () ->
     let archive_file = Path.relative temp_dir "archive.tar" in
     let stdout_to = Process.Io.file archive_file Process.Io.Out in
     let stderr_to = make_stderr () in
@@ -632,22 +636,28 @@ module At_rev = struct
     in
     let stdout_to = make_stdout () in
     let stderr_to = make_stderr () in
-    let+ () =
-      let args = [ "xf"; Path.to_string archive_file ] in
-      let+ (), exit_code =
-        Process.run ~dir:target ~display:Quiet ~stdout_to ~stderr_to failure_mode tar args
-      in
-      if exit_code <> 0
-      then
-        Code_error.raise
-          "tar returned non-zero exit code"
-          [ "exit code", Dyn.int exit_code
-          ; "dir", Path.to_dyn target
-          ; "tar", Path.to_dyn tar
-          ; "args", Dyn.list Dyn.string args
-          ]
+    (* We untar things into a temp dir to make sure we don't create garbage
+       in the build dir until we know can produce the files *)
+    let target_in_temp_dir = Path.relative temp_dir "dir" in
+    Path.mkdir_p target_in_temp_dir;
+    let args =
+      [ "xf"; Path.to_string archive_file; "-C"; Path.to_string target_in_temp_dir ]
     in
-    ()
+    let+ (), exit_code =
+      Process.run ~display:Quiet ~stdout_to ~stderr_to failure_mode tar args
+    in
+    if exit_code = 0
+    then (
+      Path.mkdir_p (Path.parent_exn target);
+      Path.rename target_in_temp_dir target)
+    else
+      Code_error.raise
+        "tar returned non-zero exit code"
+        [ "exit code", Dyn.int exit_code
+        ; "dir", Path.to_dyn target
+        ; "tar", Path.to_dyn tar
+        ; "args", Dyn.list Dyn.string args
+        ]
   ;;
 end
 

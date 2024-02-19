@@ -212,7 +212,7 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#doc -c make doc
 
-  coq:
+  coq-816:
     name: Coq 8.16.1
     runs-on: ubuntu-latest
     steps:
@@ -228,6 +228,28 @@ jobs:
 
       - name: Install Coq
         run: opam install coq.8.16.1 coq-native
+
+      - run: opam exec -- make test-coq
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled
+
+  coq-818:
+    name: Coq 8.18.0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use OCaml 4.14.x
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.14.x
+          opam-pin: false
+          opam-depext: false
+          dune-cache: true
+
+      - name: Install Coq
+        run: opam install coq.8.18.0 coq-native
 
       - run: opam exec -- make test-coq
         env:

@@ -141,44 +141,34 @@ module Scan_project = struct
     -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 
   type state =
-    { mutable traversed :
-        (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.Ivar.t OpamUrl.Map.t
+    { traversed :
+        (OpamUrl.t, (DB.t * Dune_lang.Package.t Package_name.Map.t) option) Fiber_cache.t
     }
 
-  let make_state () = { traversed = OpamUrl.Map.empty }
+  let make_state () = { traversed = Fiber_cache.create (module OpamUrl) }
 
   let eval_url t state (loc, url) =
-    let open Fiber.O in
-    let* () = Fiber.return () in
-    match OpamUrl.Map.find state.traversed url with
-    | Some x -> Fiber.Ivar.read x
-    | None ->
-      let ivar = Fiber.Ivar.create () in
-      state.traversed <- OpamUrl.Map.add_exn state.traversed url ivar;
-      let* res =
-        let open Fiber.O in
-        let* mount = Mount.of_opam_url loc url in
-        let* files =
-          Mount.readdir mount Path.Local.root
-          >>| Filename.Map.filter ~f:(function
-            | `File -> true
-            | `Dir -> false)
-          >>| Filename.Set.of_keys
-        in
-        let read path =
-          let path = Path.Source.to_local path in
-          Mount.read mount path
-          >>| function
-          | Some s -> s
-          | None ->
-            Code_error.raise
-              "expected file to exist"
-              [ "path", Path.Local.to_dyn path; "url", OpamUrl.to_dyn url ]
-        in
-        t ~read ~files
+    Fiber_cache.find_or_add state.traversed url ~f:(fun () ->
+      let open Fiber.O in
+      let* mount = Mount.of_opam_url loc url in
+      let* files =
+        Mount.readdir mount Path.Local.root
+        >>| Filename.Map.filter ~f:(function
+          | `File -> true
+          | `Dir -> false)
+        >>| Filename.Set.of_keys
       in
-      let+ () = Fiber.Ivar.fill ivar res in
-      res
+      let read path =
+        let path = Path.Source.to_local path in
+        Mount.read mount path
+        >>| function
+        | Some s -> s
+        | None ->
+          Code_error.raise
+            "expected file to exist"
+            [ "path", Path.Local.to_dyn path; "url", OpamUrl.to_dyn url ]
+      in
+      t ~read ~files)
   ;;
 end
 

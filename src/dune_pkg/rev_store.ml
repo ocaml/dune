@@ -408,6 +408,11 @@ module At_rev = struct
     ; files : File.Set.t
     }
 
+  let rev t =
+    let (Rev r) = t.revision in
+    r
+  ;;
+
   module Config = struct
     type bindings = string * string
 
@@ -608,10 +613,6 @@ module At_rev = struct
     && String.equal revision revision'
     && String.equal source t.source
     && File.Set.equal files t.files
-  ;;
-
-  let opam_url { revision = Rev rev; source; repo = _; files = _ } =
-    OpamUrl.parse (sprintf "%s#%s" source rev)
   ;;
 
   let check_out { repo = { dir }; revision = Rev rev; source = _; files = _ } ~target =

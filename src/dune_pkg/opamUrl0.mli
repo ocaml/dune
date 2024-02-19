@@ -23,7 +23,18 @@ val local_or_git_only : t -> Loc.t -> [ `Path of Path.t | `Git ]
 module Map : Map.S with type key = t
 module Set : Set.S with type elt = t and type 'a map = 'a Map.t
 
-val find_revision
+val remote : t -> Rev_store.t -> Rev_store.Remote.t
+
+type resolve =
+  | Resolved of Rev_store.Object.resolved
+  | Unresolved of Rev_store.Object.t
+
+val resolve : t -> Rev_store.t -> (resolve, User_message.t) result Fiber.t
+
+val fetch_revision
   :  t
+  -> resolve
   -> Rev_store.t
   -> (Rev_store.At_rev.t, User_message.t) result Fiber.t
+
+val set_rev : t -> Rev_store.Object.t -> t

@@ -44,19 +44,11 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode_loc f (loc, x) =
-    Dune_lang.List
-      (* TODO use something better for locs here *)
-      [ Dune_lang.atom_or_quoted_string (Loc.to_file_colon_line loc); f x ]
-  ;;
-
-  let encode { target; url; checksum; kind } _ encode_target : Dune_lang.t =
+  let encode { target; url = _, url; checksum; kind } _ encode_target : Dune_lang.t =
     List
       ([ Dune_lang.atom_or_quoted_string name
        ; encode_target target
-       ; encode_loc
-           (fun url -> Dune_lang.atom_or_quoted_string (OpamUrl.to_string url))
-           url
+       ; Dune_lang.atom_or_quoted_string (OpamUrl.to_string url)
        ; Dune_lang.atom_or_quoted_string
            (match kind with
             | `File -> "file"
@@ -65,11 +57,8 @@ module Spec = struct
        @
        match checksum with
        | None -> []
-       | Some checksum ->
-         [ encode_loc
-             (fun x -> Checksum.to_string x |> Dune_lang.atom_or_quoted_string)
-             checksum
-         ])
+       | Some (_, checksum) ->
+         [ Checksum.to_string checksum |> Dune_lang.atom_or_quoted_string ])
   ;;
 
   let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =

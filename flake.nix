@@ -26,9 +26,22 @@
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
           ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
-            utop = osuper.utop.overrideAttrs (o: {
-              dontGzipMan = true;
+            mdx = osuper.mdx.overrideAttrs (_: {
+              # https://github.com/NixOS/nixpkgs/pull/290291
+              propagatedBuildInputs = with oself; [
+                astring
+                fmt
+                logs
+                csexp
+                ocaml-version
+                camlp-streams
+                re
+                findlib
+              ];
             });
+            utop = osuper.utop.overrideAttrs {
+              dontGzipMan = true;
+            };
           });
         })
         melange.overlays.default
@@ -95,7 +108,7 @@
                     })
                 else pkgs;
 
-              inherit (pkgs) writeScriptBin stdenv lib;
+              inherit (slimPkgs) writeScriptBin stdenv lib;
 
               duneScript =
                 writeScriptBin "dune" ''
@@ -209,7 +222,7 @@
                 ccls
               ]) ++ (with pkgs.ocamlPackages; [
                 ocamllsp.outputs.packages.${system}.default
-                # pkgs.ocamlPackages.melange
+                pkgs.ocamlPackages.melange
                 js_of_ocaml-compiler
                 js_of_ocaml
                 utop

@@ -21,15 +21,19 @@
     , ocamllsp
     , melange
     }:
-    let package = "dune";
-    in flake-utils.lib.eachDefaultSystem (system:
+    flake-utils.lib.eachDefaultSystem (system:
     let
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
-          ocamlPackages = self.ocaml-ng.ocamlPackages_4_14;
+          ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+            utop = osuper.utop.overrideAttrs (o: {
+              dontGzipMan = true;
+            });
+          });
         })
         melange.overlays.default
       ];
+
       ocamlformat =
         let
           ocamlformat_version =
@@ -56,7 +60,7 @@
 
       packages = rec {
         default = with pkgs; stdenv.mkDerivation {
-          pname = package;
+          pname = "dune";
           version = "n/a";
           src = ./.;
           nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
@@ -75,16 +79,6 @@
 
       devShells =
         let
-          pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
-            (self: super: {
-              ocamlPackages = self.ocaml-ng.ocamlPackages_4_14.overrideScope' (oself: osuper: {
-                utop = osuper.utop.overrideAttrs {
-                  dontGzipMan = true;
-                };
-              });
-            })
-            melange.overlays.default
-          ];
           makeDuneDevShell =
             { extraBuildInputs ? [ ]
             , meta ? null
@@ -95,7 +89,7 @@
                 if duneFromScope then
                   pkgs.extend
                     (self: super: {
-                      ocamlPackages = super.ocamlPackages.overrideScope' (oself: osuper: {
+                      ocamlPackages = super.ocamlPackages.overrideScope (oself: osuper: {
                         dune_3 = packages.default;
                       });
                     })
@@ -212,19 +206,14 @@
             makeDuneDevShell {
               extraBuildInputs = (with pkgs; [
                 # dev tools
-                patdiff
                 ccls
               ]) ++ (with pkgs.ocamlPackages; [
                 ocamllsp.outputs.packages.${system}.default
-                pkgs.ocamlPackages.melange
+                # pkgs.ocamlPackages.melange
                 js_of_ocaml-compiler
                 js_of_ocaml
                 utop
                 core_bench
-                mdx
-                odoc
-                ppx_expect
-                ctypes
               ]);
               meta.description = ''
                 Provides a shell environment where `dune` is provided and built

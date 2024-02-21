@@ -38,15 +38,29 @@ let%bench_fun ("reach" [@params
   fun () -> ignore (Path.reach t ~from)
 ;;
 
-let%bench_fun ("relative" [@params
-                            t
-                            = [ "left root", (".", long_path)
-                              ; "right root", (long_path, ".")
-                              ; "short paths", (short_path, short_path)
-                              ; "long paths", (long_path, long_path)
-                              ]])
+let%bench_fun ("Path.Local.relative" [@params
+                                       t
+                                       = [ "left root", (".", long_path)
+                                         ; "right root", (long_path, ".")
+                                         ; "short paths", (short_path, short_path)
+                                         ; "long paths", (long_path, long_path)
+                                         ]])
   =
   let x, y = t in
   let x = Path.Local.of_string x in
   fun () -> ignore (Path.Local.relative x y)
+;;
+
+let%bench_fun ("Path.Local.append" [@params
+                                     t
+                                     = [ "left root", (".", long_path)
+                                       ; "right root", (long_path, ".")
+                                       ; "short paths", (short_path, short_path)
+                                       ; "long paths", (long_path, long_path)
+                                       ]])
+  =
+  let x, y = t in
+  let x = Path.Local.of_string x in
+  let y = Path.Local.of_string y in
+  fun () -> ignore (Path.Local.append x y)
 ;;

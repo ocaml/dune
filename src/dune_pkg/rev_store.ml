@@ -21,13 +21,6 @@ module Rev = struct
   let to_dyn (Rev r) = Dyn.variant "Rev" [ Dyn.string r ]
 end
 
-let tar =
-  lazy
-    (match Bin.which ~path:(Env_path.path Env.initial) "tar" with
-     | Some x -> x
-     | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
-;;
-
 let rec attempt_to_lock flock lock ~max_retries =
   let sleep_duration = 0.1 in
   match Flock.lock_non_block flock lock with
@@ -618,7 +611,7 @@ module At_rev = struct
   let check_out { repo = { dir }; revision = Rev rev; source = _; files = _ } ~target =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
-    let tar = Lazy.force tar in
+    let tar = Lazy.force Tar.bin in
     let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
     Fiber.finalize ~finally:(fun () ->
       let+ () = Fiber.return () in

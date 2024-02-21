@@ -189,11 +189,18 @@ type failure =
 let label = "dune-fetch"
 
 let unpack ~target ~archive =
-  OpamSystem.extract_job ~dir:(Path.to_string target) (Path.to_string archive)
-  |> Fiber_job.run
-  >>| function
-  | None -> Ok ()
-  | Some exn -> Error exn
+  let* () = Fiber.return () in
+  Path.mkdir_p target;
+  let+ (), ret =
+    Process.run
+      ~display:Quiet
+      Return
+      (Lazy.force Tar.bin)
+      [ "xf"; Path.to_string archive; "-C"; Path.to_string target ]
+  in
+  match ret with
+  | 0 -> Ok ()
+  | _ -> Error (Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
 let with_download url checksum ~f =
@@ -233,14 +240,14 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
       unpack ~target ~archive:output
       >>| (function
        | Ok () -> Ok ()
-       | Error exn ->
+       | Error msg ->
          let exn =
            User_message.make
              [ Pp.textf
                  "failed to unpackage archive downloaded from %s"
                  (OpamUrl.to_string url)
              ; Pp.text "reason:"
-             ; Exn.pp exn
+             ; msg
              ]
          in
          Error (Unavailable (Some exn))))

@@ -49,8 +49,6 @@ module Builder : sig
   val term : t Cmdliner.Term.t
 end
 
-val build : Builder.t -> t
-
 (** [init] creates a [Common.t] by executing a sequence of side-effecting actions to
     initialize Dune's working environment based on the options determined in the\
     [Builder.t].

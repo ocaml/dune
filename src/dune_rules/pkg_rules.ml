@@ -207,14 +207,19 @@ module Pkg = struct
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
   let top_closure depends =
-    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    match
+      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    with
+    | Ok s -> s
+    | Error cycle ->
+      User_error.raise
+        [ Pp.text "the following packages form a cycle:"
+        ; Pp.chain cycle ~f:(fun pkg ->
+            Pp.verbatim (Package.Name.to_string pkg.info.name))
+        ]
   ;;
 
-  let deps_closure t =
-    match top_closure t.depends with
-    | Ok s -> s
-    | Error _ -> assert false
-  ;;
+  let deps_closure t = top_closure t.depends
 
   let source_files t ~loc =
     let skip_dir = function
@@ -1602,9 +1607,6 @@ let all_packages context =
     | `System_provided -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
-  >>| function
-  | Error _ -> assert false
-  | Ok closure -> closure
 ;;
 
 let which context =

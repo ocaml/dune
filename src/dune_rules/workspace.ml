@@ -12,7 +12,7 @@ module Lock_dir = struct
     ; unset_solver_vars : Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
-    ; sources : string list
+    ; pins : (Loc.t * string) list
     }
 
   let to_dyn
@@ -22,7 +22,7 @@ module Lock_dir = struct
     ; unset_solver_vars
     ; repositories
     ; constraints
-    ; sources
+    ; pins
     }
     =
     Dyn.record
@@ -36,7 +36,7 @@ module Lock_dir = struct
             Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
             (List.map repositories ~f:snd) )
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
-      ; "sources", (Dyn.list Dyn.string) sources
+      ; "pins", (Dyn.list Dyn.string) (List.map pins ~f:snd)
       ]
   ;;
 
@@ -47,7 +47,7 @@ module Lock_dir = struct
     ; unset_solver_vars
     ; repositories
     ; constraints
-    ; sources
+    ; pins
     }
     =
     Poly.hash
@@ -57,7 +57,7 @@ module Lock_dir = struct
       , unset_solver_vars
       , repositories
       , constraints
-      , sources )
+      , pins )
   ;;
 
   let equal
@@ -67,7 +67,7 @@ module Lock_dir = struct
     ; unset_solver_vars
     ; repositories
     ; constraints
-    ; sources
+    ; pins
     }
     t
     =
@@ -83,7 +83,7 @@ module Lock_dir = struct
          repositories
          t.repositories
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
-    && List.equal String.equal sources t.sources
+    && List.equal (Tuple.T2.equal Loc.equal String.equal) pins t.pins
   ;;
 
   let decode ~dir =
@@ -108,7 +108,7 @@ module Lock_dir = struct
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
-      and+ sources = field ~default:[] "sources" (repeat string) in
+      and+ pins = field ~default:[] "pins" (repeat (located string)) in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
           unset_solver_vars
@@ -133,7 +133,7 @@ module Lock_dir = struct
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
       ; constraints
-      ; sources
+      ; pins
       }
     in
     fields decode
@@ -596,7 +596,7 @@ type t =
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
-  ; sources : Dune_pkg.Pin_stanza.DB.t
+  ; sources : Dune_pkg.Pin_stanza.DB.Workspace.t
   }
 
 let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; sources; dir } =
@@ -609,7 +609,7 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; sources; d
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
     ; "dir", Path.Source.to_dyn dir
-    ; "sources", Dune_pkg.Pin_stanza.DB.to_dyn sources
+    ; "sources", Dune_pkg.Pin_stanza.DB.Workspace.to_dyn sources
     ]
 ;;
 
@@ -621,7 +621,7 @@ let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; source
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
   && Path.Source.equal dir w.dir
-  && Dune_pkg.Pin_stanza.DB.equal sources w.sources
+  && Dune_pkg.Pin_stanza.DB.Workspace.equal sources w.sources
 ;;
 
 let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; sources } =
@@ -633,7 +633,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; sources
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs
     , Path.Source.hash dir
-    , Dune_pkg.Pin_stanza.DB.hash sources )
+    , Dune_pkg.Pin_stanza.DB.Workspace.hash sources )
 ;;
 
 let find_lock_dir t path =
@@ -801,7 +801,7 @@ let step1 clflags =
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
   and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
-  and+ sources = Dune_pkg.Pin_stanza.DB.decode Workspace in
+  and+ sources = Dune_pkg.Pin_stanza.DB.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
     create_final_config
@@ -907,7 +907,7 @@ let default clflags =
   ; repos = default_repositories
   ; lock_dirs = []
   ; dir = Path.Source.root
-  ; sources = Dune_pkg.Pin_stanza.DB.empty Workspace
+  ; sources = Dune_pkg.Pin_stanza.DB.Workspace.empty
   }
 ;;
 

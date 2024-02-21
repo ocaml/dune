@@ -122,9 +122,7 @@
                 export DUNE_SOURCE_ROOT=$PWD
               '';
               inherit meta;
-              nativeBuildInputs =
-                testNativeBuildInputs ++
-                lib.optionals (!duneFromScope) [ duneScript ];
+              nativeBuildInputs = testNativeBuildInputs ++ [ duneScript ];
               inputsFrom = [ slimPkgs.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with slimPkgs.ocamlPackages; [
                 merlin

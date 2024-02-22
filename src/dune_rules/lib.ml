@@ -422,11 +422,7 @@ let implements t = Option.map ~f:Memo.return t.implements
 let requires t = Memo.return t.requires
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
 let pps t = Memo.return t.pps
-
-let is_local t =
-  let obj_dir = Lib_info.obj_dir t.info in
-  Path.is_managed (Obj_dir.byte_dir obj_dir)
-;;
+let is_local t = Lib_info.obj_dir t.info |> Obj_dir.byte_dir |> Path.is_managed
 
 let main_module_name t =
   match Lib_info.main_module_name t.info with

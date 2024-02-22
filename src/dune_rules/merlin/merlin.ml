@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let remove_extension file =
   let dir = Path.Build.parent_exn file in
@@ -464,17 +465,13 @@ module Unprocessed = struct
   ;;
 
   let src_dirs sctx lib =
-    let info = Lib.info lib in
-    match
-      let obj_dir = Lib_info.obj_dir info in
-      Path.is_managed (Obj_dir.byte_dir obj_dir)
-    with
-    | false -> Memo.return (Path.Set.singleton (Lib_info.src_dir info))
+    match Lib.is_local lib with
+    | false -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
     | true ->
-      let open Memo.O in
-      let+ modules = Dir_contents.modules_of_lib sctx lib in
-      let modules = Option.value_exn modules in
-      Path.Set.map ~f:Path.drop_optional_build_context (Modules.source_dirs modules)
+      Dir_contents.modules_of_lib sctx lib
+      >>| Option.value_exn
+      >>| Modules.source_dirs
+      >>| Path.Set.map ~f:Path.drop_optional_build_context
   ;;
 
   module Per_item_action_builder =

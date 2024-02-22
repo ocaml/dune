@@ -106,9 +106,4 @@ module DB : sig
   val get : Context_name.t -> t Memo.t
   val all : unit -> t list Memo.t
   val by_dir : Path.Build.t -> t Memo.t
-
-  val create_db
-    :  name:string
-    -> (t -> 'a Memo.t)
-    -> (Context_name.t -> 'a Memo.t) Staged.t
 end

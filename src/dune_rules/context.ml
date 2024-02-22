@@ -659,21 +659,6 @@ module DB = struct
     Memo.exec memo
   ;;
 
-  let create_db ~name f =
-    let map =
-      Memo.lazy_ ~name (fun () ->
-        let+ map = all () in
-        Context_name.Map.of_list_map_exn map ~f:(fun context ->
-          context.builder.name, Memo.lazy_ ~name (fun () -> f context)))
-    in
-    Staged.stage (fun context ->
-      let* map = Memo.Lazy.force map in
-      match Context_name.Map.find map context with
-      | Some v -> Memo.Lazy.force v
-      | None ->
-        Code_error.raise "invalid context" [ "context", Context_name.to_dyn context ])
-  ;;
-
   let by_dir dir =
     let context =
       match Install.Context.of_path dir with

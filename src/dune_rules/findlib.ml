@@ -473,14 +473,17 @@ end
 type t = DB.t
 
 let create =
-  Context.DB.create_db ~name:"findlib" (fun context ->
-    let open Memo.O in
-    let* paths = Context.findlib_paths context
-    and* lib_config =
-      let+ ocaml = Context.ocaml context in
-      ocaml.lib_config
-    in
-    DB.create ~paths ~lib_config)
+  Per_context.create_by_name ~name:"findlib" (fun context ->
+    Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let* context = Context.DB.get context in
+      let* paths = Context.findlib_paths context
+      and* lib_config =
+        let+ ocaml = Context.ocaml context in
+        ocaml.lib_config
+      in
+      DB.create ~paths ~lib_config)
+    |> Memo.Lazy.force)
   |> Staged.unstage
 ;;
 

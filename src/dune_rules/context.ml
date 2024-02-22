@@ -408,9 +408,14 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
       let env = Env_path.extend_env_concat_path builder.env env in
       which, { builder with env }
   in
-  let ocamlpath =
-    let ocamlpath = Findlib_config.ocamlpath_of_env builder.env in
-    Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain
+  let* ocamlpath =
+    (* CR-rgrinberg: we're forcing this too early *)
+    match kind with
+    | Lock _ -> Pkg_rules.ocamlpath builder.name
+    | Default | Opam _ ->
+      let ocamlpath = Findlib_config.ocamlpath_of_env builder.env in
+      Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain
+      |> Memo.return
   in
   let* findlib =
     let findlib_toolchain =

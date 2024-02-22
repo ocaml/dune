@@ -1622,6 +1622,16 @@ let which context =
     Filename.Map.find artifacts program)
 ;;
 
+let ocamlpath context =
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
+  Env.Map.find env Dune_findlib.Config.ocamlpath_var
+  |> Option.value ~default:[]
+  |> List.map ~f:(function
+    | Value.Dir p | Path p -> p
+    | String s -> Path.of_filename_relative_to_initial_cwd s)
+;;
+
 let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 

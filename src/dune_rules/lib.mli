@@ -91,8 +91,6 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t = db
 
-  val equal : t -> t -> bool
-  val hash : t -> int
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig

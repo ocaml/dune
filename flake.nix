@@ -26,19 +26,9 @@
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
           ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
-            mdx = osuper.mdx.overrideAttrs (_: {
-              # https://github.com/NixOS/nixpkgs/pull/290291
-              propagatedBuildInputs = with oself; [
-                astring
-                fmt
-                logs
-                csexp
-                ocaml-version
-                camlp-streams
-                re
-                findlib
-              ];
-            });
+            mdx = osuper.mdx.override {
+              logs = oself.logs;
+            };
             utop = osuper.utop.overrideAttrs {
               dontGzipMan = true;
             };

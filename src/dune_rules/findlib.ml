@@ -429,12 +429,12 @@ module Public = struct
   open Memo.O
 
   let find t name =
-    let+ p = find_root_package t (Lib_name.package_name name) in
-    let open Result.O in
-    let* p = p in
-    match Lib_name.Map.find p.entries name with
-    | Some x -> Ok x
-    | None -> Error Unavailable_reason.Not_found
+    Lib_name.package_name name
+    |> find_root_package t
+    >>| Result.bind ~f:(fun (p : Dune_package.t) ->
+      match Lib_name.Map.find p.entries name with
+      | Some x -> Ok x
+      | None -> Error Unavailable_reason.Not_found)
   ;;
 
   let load_all_packages (t : DB.t) =
@@ -446,23 +446,23 @@ module Public = struct
   ;;
 
   let all_packages t =
-    let+ root_packages = load_all_packages t in
-    List.fold_left root_packages ~init:[] ~f:(fun acc (_, x) ->
+    load_all_packages t
+    >>| List.fold_left ~init:[] ~f:(fun acc (_, x) ->
       match x with
       | Ok (p : Dune_package.t) ->
         Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
       | Error _ -> acc)
-    |> List.sort ~compare:(fun a b ->
+    >>| List.sort ~compare:(fun a b ->
       Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
   ;;
 
   let all_broken_packages t =
-    let+ packages = load_all_packages t in
-    List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
+    load_all_packages t
+    >>| List.fold_left ~init:[] ~f:(fun acc (name, x) ->
       match x with
       | Ok _ | Error Unavailable_reason.Not_found -> acc
       | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
-    |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
+    >>| List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
   ;;
 end
 

@@ -16,17 +16,16 @@ module Kind = struct
 
   let initial_ocamlpath = lazy (Findlib_config.ocamlpath_of_env Env.initial)
 
-  let ocamlpath t ~env ~findlib_toolchain =
-    let env_ocamlpath = Findlib_config.ocamlpath_of_env env in
+  let ocamlpath t ~ocamlpath ~findlib_toolchain =
     match t, findlib_toolchain with
-    | Default, None -> Option.value ~default:[] env_ocamlpath
+    | Default, None -> Option.value ~default:[] ocamlpath
     | _, _ ->
       let initial_ocamlpath = Lazy.force initial_ocamlpath in
       (* If we are not in the default context, we can only use the OCAMLPATH
          variable if it is specific to this build context *)
       (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
          build contexts *)
-      (match env_ocamlpath, initial_ocamlpath with
+      (match ocamlpath, initial_ocamlpath with
        | None, None -> []
        | Some s, None ->
          (* [OCAMLPATH] set for the target context, unset in the
@@ -410,7 +409,8 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
       which, { builder with env }
   in
   let ocamlpath =
-    Kind.ocamlpath kind ~env:builder.env ~findlib_toolchain:builder.findlib_toolchain
+    let ocamlpath = Findlib_config.ocamlpath_of_env builder.env in
+    Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain
   in
   let* findlib =
     let findlib_toolchain =

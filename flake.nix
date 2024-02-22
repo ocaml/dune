@@ -45,6 +45,7 @@
           });
         })
         melange.overlays.default
+        ocamllsp.overlays.default
       ];
 
       ocamlformat =
@@ -219,7 +220,7 @@
                 # dev tools
                 ccls
               ]) ++ (with pkgs.ocamlPackages; [
-                ocamllsp.outputs.packages.${system}.default
+                pkgs.ocamlPackages.ocaml-lsp
                 pkgs.ocamlPackages.melange
                 js_of_ocaml-compiler
                 js_of_ocaml

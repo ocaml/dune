@@ -421,7 +421,17 @@ let implements t = Option.map ~f:Memo.return t.implements
 let requires t = Memo.return t.requires
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
 let pps t = Memo.return t.pps
-let is_local t = Lib_info.obj_dir t.info |> Obj_dir.byte_dir |> Path.is_managed
+
+let is_local t =
+  match Lib_info.obj_dir t.info |> Obj_dir.byte_dir with
+  | External _ -> false
+  | In_source_tree _ -> true
+  | In_build_dir dir ->
+    (match Path.Build.extract_build_context dir with
+     | None -> true
+     | Some (name, _) ->
+       not (Context_name.equal (Context_name.of_string name) Private_context.t.name))
+;;
 
 let main_module_name t =
   match Lib_info.main_module_name t.info with

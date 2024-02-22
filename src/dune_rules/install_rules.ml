@@ -659,7 +659,7 @@ end = struct
             Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
-          let+ sub_systems =
+          let+ dune_lib =
             Lib.to_dune_lib
               lib
               ~dir:(Path.build (lib_root lib))
@@ -669,7 +669,7 @@ end = struct
               ~public_headers
             >>= Resolve.read_memo
           in
-          Some (name, Dune_package.Entry.Library sub_systems))
+          Some (name, Dune_package.Entry.Library dune_lib))
     in
     let entries =
       List.fold_left entries ~init:Lib_name.Map.empty ~f:(fun acc x ->

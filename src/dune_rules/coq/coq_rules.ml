@@ -519,7 +519,8 @@ let coqdep_invalid phase line =
    Note that coqdep escapes a few more things, including spaces, $, #,
    [], ?, %, homedir... How to handle that seems tricky.
 *)
-let unescape_coqdep string = Re.replace_string (Re.compile (Re.str "\\:")) ~by:":" string
+let escaped_colon = Re.compile (Re.str "\\:")
+let unescape_coqdep string = Re.replace_string escaped_colon ~by:":" string
 
 let parse_line ~dir line =
   match String.lsplit2 line ~on:':' with

@@ -413,7 +413,6 @@ and resolve_result =
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
   | Redirect of db * (Loc.t * Lib_name.t)
 
-let equal_db : db -> db -> bool = phys_equal
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
 let info t = t.info
@@ -1796,9 +1795,6 @@ module DB = struct
   end
 
   type t = db
-
-  let equal = equal_db
-  let hash = Poly.hash
 
   let create ~parent ~resolve ~all ~lib_config ~instrument_with () =
     let rec t =

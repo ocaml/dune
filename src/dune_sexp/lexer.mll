@@ -16,11 +16,12 @@ end
 
 type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
-let error ?(delta = 0) lexbuf message =
+let error ?(delta = 0) ?(delta_stop = 0) lexbuf message =
   let start = Lexing.lexeme_start_p lexbuf in
+  let stop = Lexing.lexeme_end_p lexbuf in
   let loc =
     Loc.create ~start:{ start with pos_cnum = start.pos_cnum + delta }
-      ~stop:(Lexing.lexeme_end_p lexbuf)
+      ~stop:{ stop with pos_cnum = stop.pos_cnum + delta_stop }
   in
   User_error.raise ~loc [ Pp.text message ]
 
@@ -143,6 +144,8 @@ let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
 let atom_char = [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 let varname_char = atom_char # [ ':' '%' '{' '}' ]
+
+let non_ascii = ['\128'-'\255']
 
 rule token with_comments = parse
   | newline
@@ -352,13 +355,30 @@ and template_variable = parse
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
-  | (varname_char* as skip) (_ as other)
-  | (varname_char+ ':' ((':' | varname_char)*) as skip) (_ as other)
+  | (varname_char* as skip) (non_ascii* as maybe_utf) (_ as other)
+  | (varname_char+ ':' ((':' | varname_char)*) as skip) (non_ascii* as maybe_utf) (_ as other)
   {
-    error
-      ~delta:(String.length skip)
-      lexbuf
-      (Printf.sprintf "The character %C is not allowed inside %%{...} forms" other)
+    let utf_len = String.length maybe_utf in
+    let uchar =
+      if utf_len > 1 then
+        let uchar_len = Escape.Utf8.next_utf8_length maybe_utf 0 in
+            if uchar_len <= utf_len && Escape.Utf8.is_utf8_valid maybe_utf 0 uchar_len then
+              Some (String.sub maybe_utf ~pos:0 ~len:uchar_len, uchar_len)
+            else None
+      else None
+    in
+    match uchar with
+    | Some (uchar, len) ->
+      error
+        ~delta:(String.length skip)
+        ~delta_stop:(-len)
+        lexbuf
+        (Printf.sprintf "The character %s is not allowed inside %%{...} forms" uchar)
+    | _ ->
+      error
+        ~delta:(String.length skip)
+        lexbuf
+        (Printf.sprintf "The character %C is not allowed inside %%{...} forms" other)
   }
 
 {

@@ -591,9 +591,9 @@ end = struct
       Install.Paths.get_local_location ctx_name section pkg_name)
   ;;
 
-  (* TODO delay the library resolution errors here. We should still be load
-     the [dune-package] file rule even if some libraries are missing *)
   let make_dune_package sctx lib_entries (pkg : Package.t) =
+    Action_builder.of_memo
+    @@
     let pkg_name = Package.name pkg in
     let ctx = Super_context.context sctx in
     let pkg_root =
@@ -718,10 +718,7 @@ end = struct
            |> Path.build
            |> Action_builder.if_file_exists
                 ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-                ~else_:
-                  (Action_builder.of_memo
-                     (Memo.bind (Memo.return ()) ~f:(fun () ->
-                        make_dune_package sctx lib_entries pkg)))
+                ~else_:(make_dune_package sctx lib_entries pkg)
          in
          Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in

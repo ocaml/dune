@@ -43,3 +43,53 @@ let local_or_git_only url loc =
 ;;
 
 include Comparable.Make (T)
+
+let find_revision t rev_store =
+  let url = base_url t in
+  let rev = rev t in
+  let not_found () =
+    Error
+      (User_message.make
+         [ (match rev with
+            | None -> Pp.textf "default branch not found in %s" url
+            | Some rev -> Pp.textf "revision %S not found in %s" rev url)
+         ])
+  in
+  let open Fiber.O in
+  let remote = Rev_store.remote rev_store ~url in
+  let* rev =
+    match
+      match rev with
+      | None -> `Default_branch
+      | Some revision ->
+        (match Rev_store.Object.of_sha1 revision with
+         | Some sha1 -> `Object sha1
+         | None -> `Ref revision)
+    with
+    | `Default_branch ->
+      Rev_store.Remote.default_branch remote
+      >>| (function
+       | Some s -> Ok (`Resolved s)
+       | None ->
+         Error
+           (User_message.make
+              [ Pp.textf
+                  "no revision specified in %S and remote has no default branch"
+                  (to_string t)
+              ]))
+    | `Object obj -> Fiber.return (Ok (`Unresolved obj))
+    | `Ref revision ->
+      Rev_store.resolve_revision rev_store remote ~revision
+      >>| (function
+       | None -> not_found ()
+       | Some o -> Ok (`Resolved o))
+  in
+  match rev with
+  | Error e -> Fiber.return @@ Error e
+  | Ok (`Resolved o) -> Rev_store.fetch_resolved rev_store remote o >>| Result.ok
+  | Ok (`Unresolved o) ->
+    Rev_store.fetch_object rev_store remote o
+    >>| (function
+     | None -> not_found ()
+     | Some rev -> Ok rev)
+;;

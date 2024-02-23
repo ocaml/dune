@@ -208,8 +208,8 @@ let%expect_test "downloading, tarball with no checksum match" =
 
 let download_git rev_store url ~target =
   let open Fiber.O in
-  let+ res = Fetch.fetch_git rev_store ~target url in
-  match res with
+  Fetch.fetch_git rev_store ~target url
+  >>| function
   | Error _ ->
     let errs = [ Pp.text "Failure while downloading" ] in
     User_error.raise ~loc:Loc.none errs
@@ -228,8 +228,7 @@ let%expect_test "downloading via git" =
     let open Fiber.O in
     let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
     let* (_commit : string) = Rev_store_tests.create_repo_at source in
-    let* source = Dune_pkg.Opam_repo.Source.Private.of_opam_url rev_store Loc.none url in
-    let+ () = download_git rev_store source ~target in
+    let+ () = download_git rev_store url ~target in
     print_endline (Io.read_file entry));
   [%expect {| just some content |}]
 ;;

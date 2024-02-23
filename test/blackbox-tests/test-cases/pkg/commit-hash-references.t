@@ -41,6 +41,5 @@ Depend on foo from the repo
 
 Which foo will we get?
 
-  $ dune pkg lock
-  Solution for dune.lock:
-  - foo.1.0
+  $ dune pkg lock 2>&1 | head -1 | sed "s/$AMBIGUOUS_REF/AMBIGUOUS_REF/g"
+  revision "AMBIGUOUS_REF" not found in

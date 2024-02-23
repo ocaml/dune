@@ -189,18 +189,9 @@ type failure =
 let label = "dune-fetch"
 
 let unpack ~target ~archive =
-  let* () = Fiber.return () in
-  Path.mkdir_p target;
-  let+ (), ret =
-    Process.run
-      ~display:Quiet
-      Return
-      (Lazy.force Tar.bin)
-      [ "xf"; Path.to_string archive; "-C"; Path.to_string target ]
-  in
-  match ret with
-  | 0 -> Ok ()
-  | _ -> Error (Pp.textf "unable to extract %S" (Path.to_string archive))
+  Tar.extract ~archive ~target
+  >>| Result.map_error ~f:(fun () ->
+    Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
 let with_download url checksum ~f =

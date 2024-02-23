@@ -3,6 +3,7 @@ module Scheduler = Dune_engine.Scheduler
 module Checksum = Dune_pkg.Checksum
 module Fetch = Dune_pkg.Fetch
 
+let plaintext_md = "tar-inputs/plaintext.md"
 let () = Dune_tests_common.init ()
 
 let url ~port ~filename =
@@ -15,6 +16,8 @@ let calculate_checksum ~filename = OpamHash.compute filename |> Checksum.of_opam
 let wrong_checksum =
   OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
 ;;
+
+let archive = "tarball.tar.gz"
 
 let subdir destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
@@ -78,14 +81,14 @@ let run thunk =
 ;;
 
 let%expect_test "downloading simple file" =
-  let filename = "plaintext.md" in
+  let filename = plaintext_md in
   let port, server = serve_once ~filename in
   let destination = "destination.md" in
   run
     (download
        ~unpack:false
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination)
        ~checksum:(calculate_checksum ~filename));
   Thread.join server;
@@ -117,14 +120,13 @@ let%expect_test "downloading simple file" =
 ;;
 
 let%expect_test "downloading but the checksums don't match" =
-  let filename = "plaintext.md" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:plaintext_md in
   let destination = "destination.md" in
   run
     (download
        ~unpack:false
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination)
        ~checksum:wrong_checksum);
   Thread.join server;
@@ -142,10 +144,9 @@ let%expect_test "downloading but the checksums don't match" =
 ;;
 
 let%expect_test "downloading, without any checksum" =
-  let filename = "plaintext.md" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:plaintext_md in
   let destination = "destination.md" in
-  run (download ~unpack:false ~port ~filename ~target:(subdir destination));
+  run (download ~unpack:false ~port ~filename:"" ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   [%expect {|
@@ -154,8 +155,7 @@ let%expect_test "downloading, without any checksum" =
 ;;
 
 let%expect_test "downloading, tarball" =
-  let filename = "tarball.tar.gz" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:archive in
   let destination = "tarball" in
   run
     (download
@@ -165,7 +165,7 @@ let%expect_test "downloading, tarball" =
        ~unpack:true
        ~checksum:wrong_checksum
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
@@ -184,10 +184,9 @@ let%expect_test "downloading, tarball" =
 let%expect_test "downloading, tarball with no checksum match" =
   (* This test ensures that the contents of the extracted tarball are in the
      correct location. *)
-  let filename = "tarball.tar.gz" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:archive in
   let target = subdir "tarball" in
-  run (download ~reproducible:false ~unpack:true ~port ~filename ~target);
+  run (download ~reproducible:false ~unpack:true ~port ~filename:"" ~target);
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   (* print all the files in the target directory *)
@@ -203,7 +202,8 @@ let%expect_test "downloading, tarball with no checksum match" =
     Finished successfully, no checksum verification
     ------
     files in target dir:
-    plaintext.md |}]
+    plaintext.md
+    file2.md |}]
 ;;
 
 let download_git rev_store url ~target =

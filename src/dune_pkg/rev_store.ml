@@ -676,14 +676,13 @@ module At_rev = struct
   let check_out { repo = { dir; _ }; revision = Sha1 rev; files = _ } ~target =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
-    let tar = Lazy.force Tar.bin in
     let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
     Fiber.finalize ~finally:(fun () ->
       let+ () = Fiber.return () in
       Temp.destroy Dir temp_dir)
     @@ fun () ->
-    let archive_file = Path.relative temp_dir "archive.tar" in
-    let stdout_to = Process.Io.file archive_file Process.Io.Out in
+    let archive = Path.relative temp_dir "archive.tar" in
+    let stdout_to = Process.Io.file archive Process.Io.Out in
     let stderr_to = make_stderr () in
     let* () =
       let args = [ "archive"; "--format=tar"; rev ] in
@@ -692,30 +691,15 @@ module At_rev = struct
       in
       if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
     in
-    let stdout_to = make_stdout () in
-    let stderr_to = make_stderr () in
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)
     let target_in_temp_dir = Path.relative temp_dir "dir" in
-    Path.mkdir_p target_in_temp_dir;
-    let args =
-      [ "xf"; Path.to_string archive_file; "-C"; Path.to_string target_in_temp_dir ]
-    in
-    let+ (), exit_code =
-      Process.run ~display:Quiet ~stdout_to ~stderr_to failure_mode tar args
-    in
-    if exit_code = 0
-    then (
+    Tar.extract ~archive ~target:target_in_temp_dir
+    >>| function
+    | Error () -> User_error.raise [ Pp.text "failed to untar archive created by git" ]
+    | Ok () ->
       Path.mkdir_p (Path.parent_exn target);
-      Path.rename target_in_temp_dir target)
-    else
-      Code_error.raise
-        "tar returned non-zero exit code"
-        [ "exit code", Dyn.int exit_code
-        ; "dir", Path.to_dyn target
-        ; "tar", Path.to_dyn tar
-        ; "args", Dyn.list Dyn.string args
-        ]
+      Path.rename target_in_temp_dir target
   ;;
 end
 

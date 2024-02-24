@@ -45,7 +45,7 @@ val ocaml : t -> Ocaml_toolchain.t Memo.t
 val build_context : t -> Build_context.t
 val kind : t -> Kind.t
 val findlib_paths : t -> Path.t list Memo.t
-val installed_env : t -> Env.t
+val installed_env : t -> Env.t Memo.t
 val default_ocamlpath : t -> Path.t list Memo.t
 val findlib_toolchain : t -> Context_name.t option
 val instrument_with : t -> Lib_name.t list
@@ -98,7 +98,7 @@ val map_exe : t -> Path.t -> Path.t
 
 (** Query where build artifacts should be installed if the user doesn't specify
     an explicit installation directory. *)
-val roots : t -> Path.t option Install.Roots.t
+val roots : t -> Path.t option Install.Roots.t Memo.t
 
 val host : t -> t Memo.t
 

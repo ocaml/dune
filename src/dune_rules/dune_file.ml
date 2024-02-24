@@ -334,7 +334,7 @@ module Script = struct
         ~target:generated_dune_file
     in
     let* () =
-      let* env = Context.host context >>| Context.installed_env in
+      let* env = Context.host context >>= Context.installed_env in
       let ocaml = Action.Prog.ok_exn ocaml.ocaml in
       let args =
         [ "-I"; "+compiler-libs"; Path.to_absolute_filename (Path.build wrapper) ]

@@ -9,5 +9,4 @@ what Dune is, how it works, and how to use it.
 
    ../overview
    ../quick-start
-   ../dune-files
    ../usage

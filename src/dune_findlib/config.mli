@@ -9,7 +9,7 @@ val ocamlfind_ignore_dups_in : Env.Var.t
 
 (** Finds the library search paths for this configuration, prepending
     [OCAMLPATH] if set *)
-val ocamlpath : t -> Path.t list
+val ocamlpath : t -> Path.t list Memo.t
 
 (** Finds program [prog] for this configuration, if it exists *)
 val tool : t -> prog:string -> Path.t option Memo.t
@@ -24,6 +24,6 @@ val env : t -> Env.t
 val discover_from_env
   :  env:Env.t
   -> which:(Filename.t -> Path.t option Memo.t)
-  -> ocamlpath:Path.t list
+  -> ocamlpath:Path.t list Memo.t
   -> findlib_toolchain:string option
   -> t option Memo.t

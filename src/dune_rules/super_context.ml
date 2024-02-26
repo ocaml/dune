@@ -275,30 +275,40 @@ let make_default_env_node
             make ~inherit_from:None ~config_stanza:env_nodes.workspace)))
 ;;
 
-let make_root_env (context : Context.t) ~(host : t option) =
-  let name = Context.name context in
-  let roots =
-    Install.Roots.make ~relative:Path.Build.relative (Install.Context.dir ~context:name)
-  in
-  Context.installed_env context
-  |> Install.Roots.add_to_env roots
-  |> Env.update ~var:Env_path.var ~f:(fun _PATH ->
-    let context, _PATH =
-      match host with
-      | None -> context, _PATH
-      | Some host ->
-        let context = Env_tree.context host in
-        let _PATH = Env.get (Context.installed_env context) Env_path.var in
-        context, _PATH
+let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
+  let open Memo.O in
+  let* env =
+    let roots =
+      let context = Context.name context in
+      Install.Context.dir ~context |> Install.Roots.make ~relative:Path.Build.relative
     in
-    let name = Context.name context in
-    Some (Bin.cons_path (Path.build (Install.Context.bin_dir ~context:name)) ~_PATH))
+    Context.installed_env context >>| Install.Roots.add_to_env roots
+  in
+  let+ host_context, _PATH =
+    let _PATH = Env.get env Env_path.var in
+    match host with
+    | None -> Memo.return (context, _PATH)
+    | Some host ->
+      let context = Env_tree.context host in
+      let+ _PATH =
+        let+ env = Context.installed_env context in
+        Env.get env Env_path.var
+      in
+      context, _PATH
+  in
+  Env.add
+    env
+    ~var:Env_path.var
+    ~value:
+      (Install.Context.bin_dir ~context:(Context.name host_context)
+       |> Path.build
+       |> Bin.cons_path ~_PATH)
 ;;
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
   let* env =
-    let base = make_root_env context ~host in
+    let* base = make_root_env context ~host in
     Site_env.add_packages_env context_name ~base stanzas packages
   in
   let public_libs = Scope.DB.public_libs context_name in

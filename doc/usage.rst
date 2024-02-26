@@ -143,16 +143,16 @@ file is found, only parent ``dune-workspace`` files will be considered when
 looking for the root; however, if a `dune-project` file is found both parent
 ``dune-workspace`` and ``dune-project`` files will be considered.
 
-A ``dune-workspace`` file is also a configuration file. Dune will read
-it unless the ``--workspace`` command line option is used.  See the
-section :ref:`dune-workspace` for the syntax of this file. The scope
-of ``dune-project`` files is wider than the scope ``dune-workspace``
-files. For instance, a ``dune-project`` file may specify the name of
-the project which is a universal property of the project, while a
-``dune-workspace`` file may specify an opam switch name which is valid
-only on a given machine. For this reason, it is common and recommended
-to commit ``dune-project`` files in repositories, while it is less
-common to commit ``dune-workspace`` files.
+A ``dune-workspace`` file is also a configuration file. Dune will read it
+unless the ``--workspace`` command line option is used. See
+:doc:`/reference/files/dune-workspace/index` for the syntax of this file. The
+scope of ``dune-project`` files is wider than the scope ``dune-workspace``
+files. For instance, a ``dune-project`` file may specify the name of the
+project which is a universal property of the project, while a
+``dune-workspace`` file may specify an opam switch name which is valid only on
+a given machine. For this reason, it is common and recommended to commit
+``dune-project`` files in repositories, while it is less common to commit
+``dune-workspace`` files.
 
 
 Current Directory
@@ -437,8 +437,8 @@ command:
 This command takes a list of package names to install.  If no packages
 are specified, Dune will install all available packages in the
 workspace.  When several build contexts are specified via a
-:ref:`dune-workspace` file, Dune performs the installation in all the
-build contexts.
+:doc:`/reference/files/dune-workspace/index` file, Dune performs the
+installation in all the build contexts.
 
 Destination Directory
 ---------------------

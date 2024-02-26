@@ -6,11 +6,14 @@ end
    making this work in 4.08, as OCaml now includes a `List.t` type. *)
 type 'a t = 'a list
 
+val rev_concat : 'a list list -> 'a list
 val is_empty : _ t -> bool
 val is_non_empty : _ t -> bool
+val rev_filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 val filter_opt : 'a option t -> 'a t
 val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t
+val rev_concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 val partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 val rev_partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t

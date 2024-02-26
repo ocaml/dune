@@ -352,25 +352,20 @@ module Loader = struct
     | Some pkg -> Memo.return (Some (Ok pkg))
     | None ->
       let dir = Path.relative findlib_dir (Package.Name.to_string name) in
-      Fs.dir_exists dir
+      (let dune = Path.relative dir Dune_package.fn in
+       Fs.file_exists dune
+       >>= function
+       | true -> Dune_package.Or_meta.load dune
+       | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
       >>= (function
-       | false -> Memo.return None
-       | true ->
-         (let dune = Path.relative dir Dune_package.fn in
-          Fs.file_exists dune
-          >>= function
-          | true -> Dune_package.Or_meta.load dune
-          | false -> Memo.return (Ok Dune_package.Or_meta.Use_meta))
-         >>= (function
-          | Error e ->
-            Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
-          | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
-          | Ok Use_meta ->
-            Path.relative dir Findlib.Package.meta_fn
-            |> load_meta
-                 ~findlib_dir
-                 ~dir:(Path.Local.of_string (Package.Name.to_string name))
-            >>| Option.map ~f:(fun pkg -> Ok pkg)))
+       | Error e -> Memo.return (Some (Error (Unavailable_reason.Invalid_dune_package e)))
+       | Ok (Dune_package.Or_meta.Dune_package p) -> Memo.return (Some (Ok p))
+       | Ok Use_meta ->
+         Path.relative dir Findlib.Package.meta_fn
+         |> load_meta
+              ~findlib_dir
+              ~dir:(Path.Local.of_string (Package.Name.to_string name))
+         >>| Option.map ~f:(fun pkg -> Ok pkg))
   ;;
 
   let lookup_and_load (db : DB.t) name =
@@ -434,12 +429,12 @@ module Public = struct
   open Memo.O
 
   let find t name =
-    let+ p = find_root_package t (Lib_name.package_name name) in
-    let open Result.O in
-    let* p = p in
-    match Lib_name.Map.find p.entries name with
-    | Some x -> Ok x
-    | None -> Error Unavailable_reason.Not_found
+    Lib_name.package_name name
+    |> find_root_package t
+    >>| Result.bind ~f:(fun (p : Dune_package.t) ->
+      match Lib_name.Map.find p.entries name with
+      | Some x -> Ok x
+      | None -> Error Unavailable_reason.Not_found)
   ;;
 
   let load_all_packages (t : DB.t) =
@@ -451,23 +446,23 @@ module Public = struct
   ;;
 
   let all_packages t =
-    let+ root_packages = load_all_packages t in
-    List.fold_left root_packages ~init:[] ~f:(fun acc (_, x) ->
+    load_all_packages t
+    >>| List.fold_left ~init:[] ~f:(fun acc (_, x) ->
       match x with
       | Ok (p : Dune_package.t) ->
         Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
       | Error _ -> acc)
-    |> List.sort ~compare:(fun a b ->
+    >>| List.sort ~compare:(fun a b ->
       Lib_name.compare (Dune_package.Entry.name a) (Dune_package.Entry.name b))
   ;;
 
   let all_broken_packages t =
-    let+ packages = load_all_packages t in
-    List.fold_left packages ~init:[] ~f:(fun acc (name, x) ->
+    load_all_packages t
+    >>| List.fold_left ~init:[] ~f:(fun acc (name, x) ->
       match x with
       | Ok _ | Error Unavailable_reason.Not_found -> acc
       | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
-    |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
+    >>| List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)
   ;;
 end
 
@@ -478,14 +473,17 @@ end
 type t = DB.t
 
 let create =
-  Context.DB.create_db ~name:"findlib" (fun context ->
-    let open Memo.O in
-    let* paths = Context.findlib_paths context
-    and* lib_config =
-      let+ ocaml = Context.ocaml context in
-      ocaml.lib_config
-    in
-    DB.create ~paths ~lib_config)
+  Per_context.create_by_name ~name:"findlib" (fun context ->
+    Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let* context = Context.DB.get context in
+      let* paths = Context.findlib_paths context
+      and* lib_config =
+        let+ ocaml = Context.ocaml context in
+        ocaml.lib_config
+      in
+      DB.create ~paths ~lib_config)
+    |> Memo.Lazy.force)
   |> Staged.unstage
 ;;
 

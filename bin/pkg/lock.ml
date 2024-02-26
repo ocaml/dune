@@ -29,6 +29,15 @@ let solve_lock_dir
   =
   let open Fiber.O in
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+  let project_sources =
+    match lock_dir with
+    | None -> project_sources
+    | Some lock_dir ->
+      let workspace =
+        Pin_stanza.DB.Workspace.extract workspace.sources ~names:lock_dir.pins
+      in
+      Pin_stanza.DB.combine_exn workspace project_sources
+  in
   let solver_env =
     solver_env
       ~solver_env_from_context:
@@ -126,7 +135,7 @@ let solve
 let project_sources =
   let open Memo.O in
   Dune_rules.Dune_load.projects ()
-  >>| List.fold_left ~init:(Pin_stanza.DB.empty Workspace) ~f:(fun acc project ->
+  >>| List.fold_left ~init:Pin_stanza.DB.empty ~f:(fun acc project ->
     Pin_stanza.DB.combine_exn acc (Dune_project.sources project))
 ;;
 

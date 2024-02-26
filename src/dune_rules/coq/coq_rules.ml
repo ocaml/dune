@@ -525,7 +525,8 @@ let coqdep_invalid phase line =
    Note that coqdep escapes a few more things, including spaces, $, #,
    [], ?, %, homedir... How to handle that seems tricky.
 *)
-let unescape_coqdep string = Re.replace_string (Re.compile (Re.str "\\:")) ~by:":" string
+let escaped_colon = Re.compile (Re.str "\\:")
+let unescape_coqdep string = Re.replace_string escaped_colon ~by:":" string
 
 let parse_line ~dir line =
   match String.lsplit2 line ~on:':' with
@@ -569,6 +570,26 @@ let get_dep_map ~dir ~wrapper_name : Path.t list Dep_map.t Action_builder.t =
       ]
 ;;
 
+(* EJGA: Would be nice to have a functor in [Stdune.Tuple] to do this *)
+module DWInput : Memo.Input with type t = Path.Build.t * string = struct
+  type t = Path.Build.t * string
+
+  let hash = Tuple.T2.hash Path.Build.hash String.hash
+  let equal = Tuple.T2.equal Path.Build.equal String.equal
+  let to_dyn = Tuple.T2.to_dyn Path.Build.to_dyn String.to_dyn
+end
+
+(* EJGA: with this code, we have a combined memo node that will be
+   re-executed iff [dir], [wrapper_name], or the deps of the original
+   action builder (the [.v.d] file from [dep_theory_file ~dir
+   ~wrapper_name]) change *)
+let memo_get_dep_map =
+  Action_builder.create_memo
+    "coq_dep_map"
+    ~input:(module DWInput)
+    (fun (dir, wrapper_name) -> get_dep_map ~dir ~wrapper_name)
+;;
+
 let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
   let open Action_builder.O in
   let vo_target =
@@ -579,7 +600,7 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
     in
     Path.set_extension ~ext (Coq_module.source coq_module)
   in
-  let* dep_map = get_dep_map ~dir ~wrapper_name in
+  let* dep_map = Action_builder.exec_memo memo_get_dep_map (dir, wrapper_name) in
   let* boot_type = Resolve.Memo.read boot_type in
   match Dep_map.find dep_map vo_target with
   | None ->

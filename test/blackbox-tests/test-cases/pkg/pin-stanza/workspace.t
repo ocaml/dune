@@ -5,6 +5,12 @@ It should be possible to include custom repos from the workspace:
   $ mkrepo
   $ add_mock_repo_if_needed
 
+  $ mkdir _foo
+  $ cat >_foo/dune-project <<EOF
+  > (lang dune 3.13)
+  > (package (name foo))
+  > EOF
+
   $ cat >dune-workspace<<EOF
   > (lang dune 3.10)
   > (pin
@@ -12,7 +18,7 @@ It should be possible to include custom repos from the workspace:
   >  (url "file://$PWD/_foo")
   >  (package (name foo)))
   > (lock_dir
-  >  (sources foo)
+  >  (pins foo)
   >  (repositories mock))
   > (repository
   >  (name mock)
@@ -35,8 +41,5 @@ Note that sources in the projects are overriden by the workspace
   > EOF
 
   $ dune pkg lock
-  File "dune-workspace", line 3, characters 2-6:
-  3 |  (name foo)
-        ^^^^
-  Error: Unknown field name
-  [1]
+  Solution for dune.lock:
+  - foo.dev

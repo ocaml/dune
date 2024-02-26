@@ -45,22 +45,12 @@ module Lib = struct
     ; external_location : External_location.t option
     }
 
-  let make ~info ~main_module_name ~external_location =
-    let obj_dir = Lib_info.obj_dir info in
-    let dir = Obj_dir.dir obj_dir in
-    let map_path p =
-      if Path.is_managed p then Path.relative dir (Path.basename p) else p
-    in
-    let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; external_location }
-  ;;
-
   let of_dune_lib ~info ~main_module_name =
-    make ~info ~main_module_name ~external_location:None
+    { info; main_module_name; external_location = None }
   ;;
 
   let of_findlib info external_location =
-    make ~info ~main_module_name:None ~external_location:(Some external_location)
+    { info; main_module_name = None; external_location = Some external_location }
   ;;
 
   let dir_of_name name =

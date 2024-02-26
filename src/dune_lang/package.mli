@@ -16,8 +16,6 @@ module Id : sig
   include Comparable_intf.S with type key := t
 end
 
-module Dependency = Package_dependency
-
 type opam_file =
   | Exists of bool
   | Generated
@@ -37,9 +35,9 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 val set_has_opam_file : t -> opam_file -> t
 val version : t -> Package_version.t option
-val depends : t -> Dependency.t list
-val conflicts : t -> Dependency.t list
-val depopts : t -> Dependency.t list
+val depends : t -> Package_dependency.t list
+val conflicts : t -> Package_dependency.t list
+val depopts : t -> Package_dependency.t list
 val tags : t -> string list
 val synopsis : t -> string option
 val info : t -> Package_info.t
@@ -54,7 +52,7 @@ val set_version_and_info
 
 val has_opam_file : t -> opam_file
 val allow_empty : t -> bool
-val map_depends : t -> f:(Dependency.t list -> Dependency.t list) -> t
+val map_depends : t -> f:(Package_dependency.t list -> Package_dependency.t list) -> t
 
 type original_opam_file =
   { file : Path.Source.t
@@ -65,9 +63,9 @@ val create
   :  name:Name.t
   -> loc:Loc.t
   -> version:Package_version.t option
-  -> conflicts:Dependency.t list
-  -> depends:Dependency.t list
-  -> depopts:Dependency.t list
+  -> conflicts:Package_dependency.t list
+  -> depends:Package_dependency.t list
+  -> depopts:Package_dependency.t list
   -> info:Package_info.t
   -> has_opam_file:opam_file
   -> dir:Path.Source.t

@@ -41,17 +41,15 @@ type original_opam_file =
   ; contents : string
   }
 
-module Dependency = Package_dependency
-
 type t =
   { id : Id.t
   ; opam_file : Path.Source.t
   ; loc : Loc.t
   ; synopsis : string option
   ; description : string option
-  ; depends : Dependency.t list
-  ; conflicts : Dependency.t list
-  ; depopts : Dependency.t list
+  ; depends : Package_dependency.t list
+  ; conflicts : Package_dependency.t list
+  ; depopts : Package_dependency.t list
   ; info : Package_info.t
   ; version : Package_version.t option
   ; has_opam_file : opam_file
@@ -111,9 +109,9 @@ let encode
         [ field "name" Name.encode name
         ; field_o "synopsis" string synopsis
         ; field_o "description" string description
-        ; field_l "depends" Dependency.encode depends
-        ; field_l "conflicts" Dependency.encode conflicts
-        ; field_l "depopts" Dependency.encode depopts
+        ; field_l "depends" Package_dependency.encode depends
+        ; field_l "conflicts" Package_dependency.encode conflicts
+        ; field_l "depopts" Package_dependency.encode depopts
         ; field_o "version" Package_version.encode version
         ; field "tags" (list string) ~default:[] tags
         ; field_l
@@ -153,9 +151,9 @@ let decode =
        and+ description = field_o "description" string
        and+ version =
          field_o "version" (Syntax.since Stanza.syntax (2, 5) >>> Package_version.decode)
-       and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
-       and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
-       and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
+       and+ depends = field ~default:[] "depends" (repeat Package_dependency.decode)
+       and+ conflicts = field ~default:[] "conflicts" (repeat Package_dependency.decode)
+       and+ depopts = field ~default:[] "depopts" (repeat Package_dependency.decode)
        and+ info = Package_info.decode ~since:(2, 0) ()
        and+ tags = field "tags" (enter (repeat string)) ~default:[]
        and+ deprecated_package_names =
@@ -231,9 +229,9 @@ let to_dyn
     [ "id", Id.to_dyn id
     ; "synopsis", option string synopsis
     ; "description", option string description
-    ; "depends", list Dependency.to_dyn depends
-    ; "conflicts", list Dependency.to_dyn conflicts
-    ; "depopts", list Dependency.to_dyn depopts
+    ; "depends", list Package_dependency.to_dyn depends
+    ; "conflicts", list Package_dependency.to_dyn conflicts
+    ; "depopts", list Package_dependency.to_dyn depopts
     ; "info", Package_info.to_dyn info
     ; "has_opam_file", dyn_of_opam_file has_opam_file
     ; "tags", list string tags

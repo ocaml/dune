@@ -58,11 +58,11 @@ to fix this currently.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang_lt_08 disabled))
   Error: Cannot have more than one boot theory in scope:
-  - Coq at Coq/dune:1
   - Coq at B/Coq/dune:2
+  - Coq at Coq/dune:1
   -> required by alias B/default
   Error: Multiple rules generated for
-  _build/install/default/lib/coq/theories/Init/Prelude.v:
+  _build/install/default/lib/coq/theories/Init/Prelude.vo:
   - Coq/dune:1
   - B/Coq/dune:2
   -> required by _build/default/B/Foo.install

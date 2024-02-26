@@ -1,0 +1,11 @@
+(melange.emit
+ (target output)
+ (emit_stdlib false)
+ (libraries bar impl2)
+ (modules foo))
+
+(library
+ (name bar)
+ (libraries impl1)
+ (modes melange)
+ (modules))

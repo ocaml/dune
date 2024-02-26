@@ -100,11 +100,12 @@ Terminology
      See :doc:`concepts/scopes` for more details.
 
    build context
-     A specific configuration written in a :ref:`dune-workspace` file, which
-     has a corresponding subdirectory in the ``<root>/_build`` directory. It
-     contains all the workspace's build artifacts. Without this specific
-     configuration from the user, there is always a ``default`` build context
-     that corresponds to the executed Dune environment.
+     A specific configuration written in a
+     :doc:`/reference/files/dune-workspace/index` file, which has a
+     corresponding subdirectory in the ``<root>/_build`` directory. It contains
+     all the workspace's build artifacts. Without this specific configuration
+     from the user, there is always a ``default`` build context that
+     corresponds to the executed Dune environment.
 
    build context root
      The root of a build context named ``foo`` is ``<root>/_build/<foo>``.
@@ -124,7 +125,8 @@ Terminology
      compilation flags. In Dune, each directory has an environment attached to
      it. Inside a scope, each directory inherits the environment from its
      parent. At the root of every scope, a default environment is used. At any
-     point, the environment can be altered using an :ref:`dune-env` stanza.
+     point, the environment can be altered using an
+     :doc:`/reference/files/dune/env` stanza.
 
    build profile
      A global setting that influences various defaults. It can be set from the

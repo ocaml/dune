@@ -1,1 +1,1 @@
-print_endline Virt.t
+let () = print_endline Vlib_impl.hello

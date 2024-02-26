@@ -66,7 +66,7 @@ let load () =
     in
     Source_tree_map_reduce.map_reduce ~traverse:Source_dir_status.Set.all ~f
   in
-  let projects = Appendable_list.to_list projects in
+  let projects = Appendable_list.to_list_rev projects in
   let packages, vendored_packages =
     List.fold_left
       projects
@@ -83,10 +83,10 @@ let load () =
           Package.Name.Map.union acc_packages packages ~f:(fun name a b ->
             User_error.raise
               [ Pp.textf
-                  "Too many opam files for package %S:"
+                  "The package %S is defined more than once:"
                   (Package.Name.to_string name)
-              ; Pp.textf "- %s" (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-              ; Pp.textf "- %s" (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc a))
+              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc b))
               ])
         in
         acc_packages, vendored)

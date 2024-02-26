@@ -114,10 +114,16 @@ windows_*)
     opamrun pin remove ppx_expect --no-action
     opamrun pin remove time_now --no-action
 
-    opamrun exec -- make dev-deps
+    # This should have been:
+    #   opam exec -- make dev-deps
+    # but melange requires ocaml 4.14 (DKML hasn't been updated as of 2022-11)
+    opamrun exec -- make dev-deps-sans-melange
 
     echo ======== Run test suite on Unix
-    opamrun exec -- make test
+    # This should have been:
+    #   opam exec -- make test
+    # but melange requires ocaml 4.14 (DKML hasn't been updated as of 2022-11)
+    opamrun exec -- make test-all-sans-melange
 esac
 
 echo ======== Build configurator

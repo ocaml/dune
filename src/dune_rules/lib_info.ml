@@ -373,61 +373,13 @@ let main_module_name t = t.main_module_name
 let orig_src_dir t = t.orig_src_dir
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 let set_version t version = { t with version }
+let entry_modules t = t.entry_modules
 
 let eval_native_archives_exn (type path) (t : path t) ~modules =
   match t.native_archives, modules with
   | Files f, _ -> f
   | Needs_module_info _, None -> Code_error.raise "missing module information" []
   | Needs_module_info f, Some modules -> if Modules.has_impl modules then [ f ] else []
-;;
-
-let for_dune_package
-  t
-  ~name
-  ~ppx_runtime_deps
-  ~requires
-  ~foreign_objects
-  ~obj_dir
-  ~implements
-  ~default_implementation
-  ~sub_systems
-  ~melange_runtime_deps
-  ~public_headers
-  ~modules
-  =
-  let foreign_objects = Source.External foreign_objects in
-  let orig_src_dir =
-    match !Clflags.store_orig_src_dir with
-    | false -> t.orig_src_dir
-    | true ->
-      Some
-        (match t.orig_src_dir with
-         | Some src_dir -> src_dir
-         | None ->
-           (match Path.drop_build_context t.src_dir with
-            | None -> t.src_dir
-            | Some src_dir ->
-              Path.source src_dir |> Path.to_absolute_filename |> Path.of_string))
-  in
-  let native_archives = Files (eval_native_archives_exn t ~modules:(Some modules)) in
-  let modules = Source.External (Some modules) in
-  let melange_runtime_deps = File_deps.External melange_runtime_deps in
-  let public_headers = File_deps.External public_headers in
-  { t with
-    ppx_runtime_deps
-  ; name
-  ; requires
-  ; foreign_objects
-  ; obj_dir
-  ; implements
-  ; default_implementation
-  ; sub_systems
-  ; orig_src_dir
-  ; native_archives
-  ; modules
-  ; melange_runtime_deps
-  ; public_headers
-  }
 ;;
 
 let user_written_deps t =
@@ -655,4 +607,55 @@ let package t =
   | Private (_, p) -> Option.map p ~f:Package.name
 ;;
 
-let entry_modules t = t.entry_modules
+let for_dune_package
+  t
+  ~name
+  ~ppx_runtime_deps
+  ~requires
+  ~foreign_objects
+  ~obj_dir
+  ~implements
+  ~default_implementation
+  ~sub_systems
+  ~melange_runtime_deps
+  ~public_headers
+  ~modules
+  =
+  let foreign_objects = Source.External foreign_objects in
+  let orig_src_dir =
+    match !Clflags.store_orig_src_dir with
+    | false -> t.orig_src_dir
+    | true ->
+      Some
+        (match t.orig_src_dir with
+         | Some src_dir -> src_dir
+         | None ->
+           (match Path.drop_build_context t.src_dir with
+            | None -> t.src_dir
+            | Some src_dir ->
+              Path.source src_dir |> Path.to_absolute_filename |> Path.of_string))
+  in
+  let native_archives = Files (eval_native_archives_exn t ~modules:(Some modules)) in
+  let modules = Source.External (Some modules) in
+  let melange_runtime_deps = File_deps.External melange_runtime_deps in
+  let public_headers = File_deps.External public_headers in
+  { t with
+    ppx_runtime_deps
+  ; name
+  ; requires
+  ; foreign_objects
+  ; obj_dir
+  ; implements
+  ; default_implementation
+  ; sub_systems
+  ; orig_src_dir
+  ; native_archives
+  ; modules
+  ; melange_runtime_deps
+  ; public_headers
+  }
+  |> map_path
+       ~f:
+         (let dir = Obj_dir.dir obj_dir in
+          fun p -> if Path.is_managed p then Path.relative dir (Path.basename p) else p)
+;;

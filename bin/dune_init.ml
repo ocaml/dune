@@ -393,7 +393,7 @@ module Component = struct
             ~description:(Some "A longer description")
             ~tags:[ "topics"; "to describe"; "your"; "project" ]
             ~depends:
-              [ { Package.Dependency.name = Package.Name.of_string "ocaml"
+              [ { Package_dependency.name = Package.Name.of_string "ocaml"
                 ; constraint_ = None
                 }
               ; { name = Package.Name.of_string "dune"; constraint_ = None }

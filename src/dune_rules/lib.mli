@@ -14,7 +14,7 @@ val name : t -> Lib_name.t
 val lib_config : t -> Lib_config.t
 val implements : t -> t Resolve.Memo.t option
 
-(** Same as [Path.is_managed (obj_dir t)] *)
+(** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
 val is_local : t -> bool
 
 val info : t -> Path.t Lib_info.t
@@ -91,8 +91,6 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t = db
 
-  val equal : t -> t -> bool
-  val hash : t -> int
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig

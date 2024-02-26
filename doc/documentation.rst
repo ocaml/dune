@@ -30,7 +30,7 @@ files following the syntax described in the section ``Text formatting`` of
 the `OCaml manual <http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html>`_.
 
 Additional documentation pages may be attached to a package using the
-:ref:`documentation-stanza` stanza.
+:doc:`/reference/files/dune/documentation` stanza.
 
 Building Documentation
 ======================
@@ -63,8 +63,8 @@ found in ``_build/default/_doc/_html/<library>``.
 Documentation Stanza: Examples
 ------------------------------
 
-The :ref:`documentation-stanza` stanza will attach all the ``.mld`` files in
-the current directory in a project with a single package.
+The :doc:`/reference/files/dune/documentation` stanza will attach all the
+``.mld`` files in the current directory in a project with a single package.
 
 .. code-block:: dune
 
@@ -115,8 +115,8 @@ Passing Options to ``odoc``
      (<profile>
       (odoc <optional-fields>)))
 
-See :ref:`dune-env` for more details on the ``(env ...)`` stanza.
-``<optional-fields>`` are:
+See :doc:`/reference/files/dune/env` for more details on the ``(env ...)``
+stanza. ``<optional-fields>`` are:
 
 - ``(warnings <mode>)`` specifies how warnings should be handled. ``<mode>``
   can be: ``fatal`` or ``nonfatal``. The default value is ``nonfatal``. This

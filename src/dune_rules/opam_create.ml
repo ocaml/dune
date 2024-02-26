@@ -150,10 +150,10 @@ let insert_dune_dep depends dune_version =
   let rec loop acc = function
     | [] ->
       let dune_dep =
-        { Package.Dependency.name = dune_name; constraint_ = Some constraint_ }
+        { Package_dependency.name = dune_name; constraint_ = Some constraint_ }
       in
       dune_dep :: List.rev acc
-    | (dep : Package.Dependency.t) :: rest ->
+    | (dep : Package_dependency.t) :: rest ->
       if Package.Name.equal dep.name dune_name
       then (
         let dep =
@@ -183,10 +183,10 @@ let rec already_requires_odoc : Package_constraint.t -> bool = function
 
 let insert_odoc_dep depends =
   let with_doc : Package_constraint.t = Bvar Dune_lang.Package_variable_name.with_doc in
-  let odoc_dep = { Package.Dependency.name = odoc_name; constraint_ = Some with_doc } in
+  let odoc_dep = { Package_dependency.name = odoc_name; constraint_ = Some with_doc } in
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)
-    | (dep : Package.Dependency.t) :: rest ->
+    | (dep : Package_dependency.t) :: rest ->
       if Package.Name.equal dep.name odoc_name
          && Option.forall ~f:already_requires_odoc dep.constraint_
       then (* Stop now as odoc will be required anyway *)

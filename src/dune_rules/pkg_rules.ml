@@ -207,14 +207,19 @@ module Pkg = struct
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
   let top_closure depends =
-    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    match
+      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    with
+    | Ok s -> s
+    | Error cycle ->
+      User_error.raise
+        [ Pp.text "the following packages form a cycle:"
+        ; Pp.chain cycle ~f:(fun pkg ->
+            Pp.verbatim (Package.Name.to_string pkg.info.name))
+        ]
   ;;
 
-  let deps_closure t =
-    match top_closure t.depends with
-    | Ok s -> s
-    | Error _ -> assert false
-  ;;
+  let deps_closure t = top_closure t.depends
 
   let source_files t ~loc =
     let skip_dir = function
@@ -1602,9 +1607,6 @@ let all_packages context =
     | `System_provided -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
-  >>| function
-  | Error _ -> assert false
-  | Ok closure -> closure
 ;;
 
 let which context =
@@ -1618,6 +1620,16 @@ let which context =
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
     Filename.Map.find artifacts program)
+;;
+
+let ocamlpath context =
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
+  Env.Map.find env Dune_findlib.Config.ocamlpath_var
+  |> Option.value ~default:[]
+  |> List.map ~f:(function
+    | Value.Dir p | Path p -> p
+    | String s -> Path.of_filename_relative_to_initial_cwd s)
 ;;
 
 let lock_dir_active = Lock_dir.lock_dir_active

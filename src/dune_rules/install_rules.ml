@@ -75,13 +75,14 @@ module Stanzas_to_entries : sig
     :  Super_context.t
     -> Install.Entry.Sourced.t list Package.Name.Map.t Memo.t
 end = struct
-  let lib_ppxs sctx ~scope ~(lib : Library.t) =
+  let lib_ppxs ctx ~scope ~(lib : Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
-      let name = Library.best_name lib in
-      let+ ppx_exe = Resolve.Memo.read_memo (Preprocessing.ppx_exe sctx ~scope name) in
-      [ ppx_exe ]
+      Library.best_name lib
+      |> Preprocessing.ppx_exe ctx ~scope
+      |> Resolve.Memo.read_memo
+      >>| List.singleton
   ;;
 
   let lib_files ~dir_contents ~dir ~lib_config lib =
@@ -885,11 +886,10 @@ let symlink_source_dir ~dir ~dst =
 ;;
 
 let symlink_installed_artifacts_to_build_install
-  sctx
+  (ctx : Build_context.t)
   (entries : Install.Entry.Sourced.t list)
   ~install_paths
   =
-  let ctx = Super_context.context sctx |> Context.build_context in
   let install_dir = Install.Context.dir ~context:ctx.name in
   Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
     let entry = s.entry in
@@ -994,8 +994,9 @@ let symlinked_entries sctx package =
     let roots = Install.Roots.opam_from_prefix Path.root ~relative:Path.relative in
     Install.Paths.make ~relative:Path.relative ~package ~roots
   in
+  let build_context = Super_context.context sctx |> Context.build_context in
   install_entries sctx package
-  >>= symlink_installed_artifacts_to_build_install sctx ~install_paths
+  >>= symlink_installed_artifacts_to_build_install build_context ~install_paths
   >>| List.rev_concat
   >>| List.split
 ;;

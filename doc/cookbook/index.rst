@@ -15,3 +15,4 @@ This is a set of "recipes" that show how Dune works.
    using-cppo
    c-stubs
    pkg-config
+   generator

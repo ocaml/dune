@@ -16,3 +16,5 @@ This is a set of "recipes" that show how Dune works.
    c-stubs
    pkg-config
    generator
+   tests
+   toplevel

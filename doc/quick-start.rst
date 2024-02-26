@@ -203,25 +203,11 @@ step:
 
 Voila! This should print "Hello, world!" in the command line.
 
-Building a Hello World Program Using Lwt
-========================================
+Going Further
+=============
 
-.. seealso:: :doc:`cookbook/external-library`
-
-Building a Hello World Program Using Core and Jane Street PPXs
-==============================================================
-
-.. seealso:: :doc:`/cookbook/ppx-rewriter`
-
-Defining a Library Using Lwt and ``ocaml-re``
-=============================================
-
-.. seealso:: :doc:`/cookbook/define-library`
-
-Building a Hello World Program in Bytecode
-============================================
-
-.. seealso:: :doc:`/cookbook/bytecode-executable`
+The :doc:`cookbook/index` contains some examples of small projects that
+demonstrate Dune's features.
 
 Setting the OCaml Compilation Flags Globally
 ============================================

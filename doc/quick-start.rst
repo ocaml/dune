@@ -209,27 +209,6 @@ Going Further
 The :doc:`cookbook/index` contains some examples of small projects that
 demonstrate Dune's features.
 
-Setting the OCaml Compilation Flags Globally
-============================================
-
-Write this ``dune`` file at the root of your project:
-
-.. code:: dune
-
-    (env
-     (dev
-      (flags (:standard -w +42)))
-     (release
-      (ocamlopt_flags (:standard -O3))))
-
-`dev` and `release` correspond to build profiles. The build profile
-can be selected from the command line with ``--profile foo`` or from a
-`dune-workspace` file by writing:
-
-.. code:: dune
-
-    (profile foo)
-
 Using Cppo
 ==========
 

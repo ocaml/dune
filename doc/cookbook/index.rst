@@ -11,3 +11,4 @@ This is a set of "recipes" that show how Dune works.
    ppx-rewriter
    define-library
    bytecode-executable
+   setting-flags

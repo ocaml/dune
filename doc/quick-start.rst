@@ -216,51 +216,12 @@ Building a Hello World Program Using Core and Jane Street PPXs
 Defining a Library Using Lwt and ``ocaml-re``
 =============================================
 
-Write this ``dune`` file:
-
-.. code:: dune
-
-    (library
-     (name        mylib)
-     (public_name mylib)
-     (libraries re lwt))
-
-The library will be composed of all the modules in the same directory.
-Outside of the library, module ``Foo`` will be accessible as
-``Mylib.Foo``, unless you write an explicit ``mylib.ml`` file.
-
-You can then use this library in any other directory by adding ``mylib``
-to the ``(libraries ...)`` field.
+.. seealso:: :doc:`/cookbook/define-library`
 
 Building a Hello World Program in Bytecode
 ============================================
 
-In a directory of your choice, write this ``dune`` file:
-
-.. code:: dune
-
-    ;; This declares the hello_world executable implemented by hello_world.ml
-    ;; to be build as native (.exe) or bytecode (.bc) version.
-    (executable
-     (name hello_world)
-     (modes byte exe))
-
-This ``hello_world.ml`` file:
-
-.. code:: ocaml
-
-    print_endline "Hello, world!"
-
-And build it with:
-
-.. code:: console
-
-  $ dune build hello_world.bc
-
-The executable will be built as ``_build/default/hello_world.bc``.
-The executable can be built and run in a single
-step with ``dune exec ./hello_world.bc``. This bytecode version allows the usage of 
-``ocamldebug``.
+.. seealso:: :doc:`/cookbook/bytecode-executable`
 
 Setting the OCaml Compilation Flags Globally
 ============================================

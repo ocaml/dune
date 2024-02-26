@@ -9,3 +9,5 @@ This is a set of "recipes" that show how Dune works.
    hello-world
    external-library
    ppx-rewriter
+   define-library
+   bytecode-executable

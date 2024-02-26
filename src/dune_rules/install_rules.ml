@@ -9,36 +9,32 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 ;;
 
 module Package_paths = struct
-  let opam_file (ctx : Context.t) (pkg : Package.t) =
+  let opam_file (ctx : Build_context.t) (pkg : Package.t) =
     let opam_file = Package.opam_file pkg in
     let exists =
       match Package.has_opam_file pkg with
       | Exists b -> b
       | Generated -> true
     in
-    if exists
-    then Some (Path.Build.append_source (Context.build_dir ctx) opam_file)
-    else None
+    if exists then Some (Path.Build.append_source ctx.build_dir opam_file) else None
   ;;
 
   let meta_fn pkg = "META." ^ Package.Name.to_string pkg
 
-  let deprecated_meta_file (ctx : Context.t) pkg name =
+  let deprecated_meta_file (ctx : Build_context.t) pkg name =
     let meta_fn = meta_fn name in
     let pkg_dir = Package.dir pkg in
-    Path.Build.append_source
-      (Context.build_dir ctx)
-      (Path.Source.relative pkg_dir meta_fn)
+    Path.Build.append_source ctx.build_dir (Path.Source.relative pkg_dir meta_fn)
   ;;
 
-  let meta_file (ctx : Context.t) pkg =
+  let meta_file ctx pkg =
     let name = Package.name pkg in
     deprecated_meta_file ctx pkg name
   ;;
 
-  let build_dir (ctx : Context.t) (pkg : Package.t) =
+  let build_dir (ctx : Build_context.t) (pkg : Package.t) =
     let dir = Package.dir pkg in
-    Path.Build.append_source (Context.build_dir ctx) dir
+    Path.Build.append_source ctx.build_dir dir
   ;;
 
   let dune_package_file ctx pkg =
@@ -484,8 +480,8 @@ end = struct
   ;;
 
   let stanzas_to_entries sctx =
-    let ctx = Super_context.context sctx in
-    let* stanzas = Dune_load.dune_files (Context.name ctx) in
+    let ctx = Context.build_context (Super_context.context sctx) in
+    let* stanzas = Dune_load.dune_files ctx.name in
     let* packages = Dune_load.packages () in
     let+ init =
       Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
@@ -524,7 +520,7 @@ end = struct
         >>| function
         | None -> init
         | Some dir ->
-          let pkg_dir = Path.Build.append_source (Context.build_dir ctx) pkg_dir in
+          let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
           Source_tree.Dir.filenames dir
           |> Filename.Set.fold ~init ~f:(fun fn acc ->
             if is_odig_doc_file fn
@@ -534,11 +530,9 @@ end = struct
               Install.Entry.Sourced.create entry :: acc)
             else acc))
     and+ l =
-      let* package_db = Package_db.create (Context.name ctx) in
+      let* package_db = Package_db.create ctx.name in
       Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
-        let dir =
-          Path.Build.append_source (Context.build_dir ctx) (Dune_file.dir dune_file)
-        in
+        let dir = Path.Build.append_source ctx.build_dir (Dune_file.dir dune_file) in
         let named_entries =
           let* expander = Super_context.expander sctx ~dir
           and* scope = Scope.DB.find_by_dir dir in
@@ -703,11 +697,9 @@ end = struct
   ;;
 
   let gen_dune_package sctx (pkg : Package.t) =
-    let ctx = Super_context.context sctx in
+    let ctx = Super_context.context sctx |> Context.build_context in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let* lib_entries =
-      Scope.DB.lib_entries_of_package (Context.name ctx) (Package.name pkg)
-    in
+    let* lib_entries = Scope.DB.lib_entries_of_package ctx.name (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -758,12 +750,11 @@ end = struct
                     (Dune_package.Entry.Deprecated_library_name
                        { loc; old_public_name; new_public_name }))
           in
-          let context_name = Context.name ctx in
-          let sections = sections context_name [] pkg in
+          let sections = sections ctx.name [] pkg in
           { Dune_package.version = Package.version pkg
           ; name
           ; entries
-          ; dir = Path.build (Install.Context.lib_dir ~context:context_name ~package:name)
+          ; dir = Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
           ; sections
           ; sites = Package.sites pkg
           ; files = []
@@ -777,16 +768,16 @@ end = struct
                (Dune_package.Or_meta.pp ~dune_version)
                (Dune_package dune_pkg))
         in
-        Super_context.add_rule sctx ~dir:(Context.build_dir ctx) ~loc action_with_targets)
+        Super_context.add_rule sctx ~dir:ctx.build_dir ~loc action_with_targets)
     in
-    Super_context.add_rule sctx ~dir:(Context.build_dir ctx) action
+    Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
   let gen_meta_file sctx (pkg : Package.t) =
-    let ctx = Super_context.context sctx in
+    let ctx = Super_context.context sctx |> Context.build_context in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      Scope.DB.lib_entries_of_package (Context.name ctx) pkg_name
+      Scope.DB.lib_entries_of_package ctx.name pkg_name
       >>| List.partition_map ~f:(function
         | Scope.DB.Lib_entry.Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
@@ -832,7 +823,7 @@ end = struct
       in
       Super_context.add_rule
         sctx
-        ~dir:(Context.build_dir ctx)
+        ~dir:ctx.build_dir
         (let open Action_builder.O in
          (let+ template = template
           and+ meta =
@@ -858,7 +849,7 @@ end = struct
       let meta = Package_paths.deprecated_meta_file ctx pkg name in
       Super_context.add_rule
         sctx
-        ~dir:(Context.build_dir ctx)
+        ~dir:ctx.build_dir
         ~loc
         (Action_builder.write_file_dyn
            meta
@@ -1148,8 +1139,9 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     Install.Paths.make ~relative:Path.relative ~package:package_name ~roots
   in
   let entries = Action_builder.of_memo (symlinked_entries sctx package_name >>| fst) in
-  let ctx = Super_context.context sctx in
-  let pkg_build_dir = Package_paths.build_dir ctx package in
+  let context = Super_context.context sctx in
+  let build_context = Context.build_context context in
+  let pkg_build_dir = Package_paths.build_dir build_context package in
   let files =
     Action_builder.map
       entries
@@ -1197,8 +1189,9 @@ let gen_package_install_file_rules sctx (package : Package.t) =
   in
   let* () =
     let* all_packages = Dune_load.packages () in
-    let context = Context.build_context ctx in
-    let target_alias = Dep_conf_eval.package_install ~context ~pkg:package in
+    let target_alias =
+      Dep_conf_eval.package_install ~context:build_context ~pkg:package
+    in
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
@@ -1212,10 +1205,10 @@ let gen_package_install_file_rules sctx (package : Package.t) =
                 let name = Package.Id.name pkg in
                 Package.Name.Map.find_exn all_packages name
               in
-              Dep_conf_eval.package_install ~context ~pkg |> Dep.alias) )))
+              Dep_conf_eval.package_install ~context:build_context ~pkg |> Dep.alias) )))
   in
   let action =
-    let findlib_toolchain = Context.findlib_toolchain ctx in
+    let findlib_toolchain = Context.findlib_toolchain context in
     let install_file =
       Path.Build.relative
         pkg_build_dir
@@ -1271,7 +1264,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     sctx
     ~dir:pkg_build_dir
     ~mode:
-      (if promote_install_file ctx
+      (if promote_install_file context
        then Promote { lifetime = Until_clean; into = None; only = None }
        else
          (* We must ignore the source file since it might be copied to the source
@@ -1326,15 +1319,15 @@ let symlink_rules sctx ~dir =
 ;;
 
 let gen_install_alias sctx (package : Package.t) =
-  let ctx = Super_context.context sctx in
+  let context = Super_context.context sctx in
   let name = Package.name package in
-  if Context.implicit ctx
+  if Context.implicit context
   then Memo.return ()
   else (
     let install_fn =
-      install_file ~package:name ~findlib_toolchain:(Context.findlib_toolchain ctx)
+      install_file ~package:name ~findlib_toolchain:(Context.findlib_toolchain context)
     in
-    let path = Package_paths.build_dir ctx package in
+    let path = Package_paths.build_dir (Context.build_context context) package in
     let install_alias = Alias.make Alias0.install ~dir:path in
     let install_file = Path.relative (Path.build path) install_fn in
     Rules.Produce.Alias.add_deps install_alias (Action_builder.path install_file))

@@ -71,29 +71,30 @@ end = struct
           Memo.lazy_ ~name:"restrict-by-child-default" (fun () ->
             restrict (Dir_set.descend dirs dir) v))
       | false ->
-        Memo.return
-          (String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-             Memo.lazy_ ~name:"restrict-by-child-non-default-outer" (fun () ->
-               restrict
-                 v
-                 (Memo.lazy_ ~name:"restrict-by-child-non-default-inner" (fun () ->
-                    let* t = Memo.Lazy.force t in
-                    descend t dir)))))
+        Dir_set.exceptions dirs
+        |> String.Map.mapi ~f:(fun dir v ->
+          Memo.lazy_ ~name:"restrict-by-child-non-default-outer" (fun () ->
+            restrict
+              v
+              (Memo.lazy_ ~name:"restrict-by-child-non-default-inner" (fun () ->
+                 let* t = Memo.Lazy.force t in
+                 descend t dir))))
+        |> Memo.return
     in
     { rules_here; by_child }
   ;;
 
   let restrict dirs t = restrict (Dir_set.forget_root dirs) t
 
-  let singleton path rules =
-    let rec go = function
+  let singleton =
+    let rec go rules = function
       | [] -> { by_child = String.Map.empty; rules_here = Memo.Lazy.of_val (Some rules) }
       | x :: xs ->
-        { by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs))
+        { by_child = String.Map.singleton x (Memo.Lazy.of_val (go rules xs))
         ; rules_here = Memo.Lazy.of_val None
         }
     in
-    go (Path.Build.explode path)
+    fun path rules -> go rules (Path.Build.explode path)
   ;;
 
   let finite ~union_rules m =
@@ -101,21 +102,23 @@ end = struct
       union ~union_rules (singleton path rules) acc)
   ;;
 
-  let get_rules t ~dir =
+  let get_rules =
     let rec loop dir t =
       match dir with
       | [] -> Memo.return t
       | x :: dir -> descend t x >>= loop dir
     in
-    let* t = loop (Path.Build.explode dir) t in
-    let+ rules = Memo.Lazy.force t.rules_here in
-    rules, String.Set.of_list (String.Map.keys t.by_child)
+    fun t ~dir ->
+      let* t = loop (Path.Build.explode dir) t in
+      let+ rules = Memo.Lazy.force t.rules_here in
+      rules, String.Set.of_keys t.by_child
   ;;
 end
 
 let evaluate ~union_rules =
   let rec loop ~env = function
     | Empty -> Memo.return (Evaluated.empty ())
+    | Thunk f -> f () >>= loop ~env
     | Union (x, y) ->
       let+ x = loop ~env x
       and+ y = loop ~env y in
@@ -134,17 +137,16 @@ let evaluate ~union_rules =
           paths
           (Memo.lazy_ ~name:"evaluate-restrict" (fun () -> loop ~env:paths rules)))
     | Finite rules ->
-      let violations =
-        List.filter (Path.Build.Map.keys rules) ~f:(fun p -> not (Dir_set.mem env p))
-      in
-      (match violations with
+      (match
+         Path.Build.Map.foldi rules ~init:[] ~f:(fun p _ acc ->
+           if Dir_set.mem env p then acc else p :: acc)
+       with
        | [] -> ()
-       | _ :: _ ->
+       | violations ->
          Code_error.raise
            "Scheme attempted to generate rules in a directory it promised not to touch"
            [ "directories", (Dyn.list Path.Build.to_dyn) violations ]);
       Memo.return (Evaluated.finite ~union_rules rules)
-    | Thunk f -> f () >>= loop ~env
   in
   fun t -> loop ~env:Dir_set.universal t
 ;;

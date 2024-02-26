@@ -12,3 +12,4 @@ This is a set of "recipes" that show how Dune works.
    define-library
    bytecode-executable
    setting-flags
+   using-cppo

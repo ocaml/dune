@@ -88,27 +88,29 @@ which you can dive deeper into Dune's capabilities:
 * The ``dune-project`` file specifies metadata about the project, including its
   name, packaging data (including dependencies), and information about the
   authors and maintainers. Open this in your editor to fill in the
-  placeholder values. See :ref:`dune-project` for details.
+  placeholder values. See :doc:`/reference/files/dune-project/index` for
+  details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
   the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
   details on testing.
 * The ``lib`` directory will hold the library you write to provide your executable's core
   functionality. Add modules to your library by creating new
-  ``.ml`` files in this directory. See :ref:`library` for details on specifying
-  libraries manually.
+  ``.ml`` files in this directory. See :doc:`/reference/files/dune/library` for
+  details on specifying libraries manually.
 * The ``bin`` directory holds a skeleton for the executable program. Within the
   modules in this directory, you can access the modules in your ``lib`` under
   the namespace ``project_name.Mod``, where ``project_name`` is replaced with
   the name of your project and ``Mod`` corresponds to the name of the file in
   the ``lib`` directory. You can run the executable with ``dune exec
   project_name``.  See :ref:`hello-world-program` for an example of specifying
-  an executable manually and :ref:`executable` for details.
+  an executable manually and :doc:`/reference/files/dune/executable` for
+  details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
   worry about this, but you can see :doc:`explanation/opam-integration` for
   details.
 * The ``dune`` files in each directory specify the component to be built with
-  the files in that directory. For details on ``dune`` files, see :ref:`dune-files`.
+  the files in that directory. For details on ``dune`` files, see :doc:`/reference/files/dune/index`.
 
 Initializing a Library
 ----------------------
@@ -156,7 +158,7 @@ All of the subcomponents generated are the same as those described in
 
 * There is no ``bin`` directory generated.
 * The ``dune`` file in the ``lib`` directory specifies that the library should
-  be *public*. See :ref:`library` for details.
+  be *public*. See :doc:`/reference/files/dune/library` for details.
 
 .. _hello-world-program:
 

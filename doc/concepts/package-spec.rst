@@ -144,4 +144,4 @@ Other Files
 ^^^^^^^^^^^
 
 For all other kinds of elements, you must attach them manually via
-an :ref:`install` stanza.
+an :doc:`/reference/files/dune/install` stanza.

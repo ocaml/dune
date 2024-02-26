@@ -44,7 +44,7 @@ For an Existing Package
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 If you already have an opam file (or several of them), you can convert it by
-following the rules in :ref:`package`.
+following the rules in :doc:`/reference/files/dune-project/package`.
 
 For example, if your opam file looks like:
 

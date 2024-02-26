@@ -82,9 +82,9 @@ This alias corresponds to the default argument for ``dune build``: ``dune
 build`` is equivalent to ``dune build @@default``. Similarly, ``dune build
 dir`` is equivalent to ``dune build @@dir/default``.
 
-When a directory doesn't explicitly define what the ``default`` alias
-means via an :ref:`alias-stanza` stanza, the following implicit
-definition is assumed:
+When a directory doesn't explicitly define what the ``default`` alias means via
+an :doc:`files/dune/alias` stanza, the following implicit definition is
+assumed:
 
 .. code:: dune
 

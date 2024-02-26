@@ -32,14 +32,16 @@ let interpret_destdir ~destdir path =
 ;;
 
 let get_dirs context ~prefix_from_command_line ~from_command_line =
+  let open Fiber.O in
   let module Roots = Install.Roots in
   let prefix_from_command_line = Option.map ~f:Path.of_string prefix_from_command_line in
-  let roots =
+  let+ roots =
     match prefix_from_command_line with
-    | None -> Context.roots context
+    | None -> Memo.run (Context.roots context)
     | Some prefix ->
       Roots.opam_from_prefix prefix ~relative:Path.relative
       |> Roots.map ~f:(fun s -> Some s)
+      |> Fiber.return
   in
   let roots = Roots.first_has_priority from_command_line roots in
   let must_be_defined name v =
@@ -667,7 +669,7 @@ let run
     Fiber.sequential_iter
       install_files_by_context
       ~f:(fun (context, entries_per_package) ->
-        let roots = get_dirs context ~prefix_from_command_line ~from_command_line in
+        let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
           let+ entries =

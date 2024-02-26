@@ -14,3 +14,4 @@ This is a set of "recipes" that show how Dune works.
    setting-flags
    using-cppo
    c-stubs
+   pkg-config

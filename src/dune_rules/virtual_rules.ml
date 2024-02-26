@@ -92,6 +92,7 @@ let impl sctx ~(lib : Library.t) ~scope =
              let dir = Lib_info.src_dir info in
              Dir_contents.get sctx ~dir
            in
+           let* ocaml = Context.ocaml (Super_context.context sctx) in
            let* modules =
              let* preprocess =
                (* TODO wrong, this should be delayed *)
@@ -101,7 +102,6 @@ let impl sctx ~(lib : Library.t) ~scope =
                     ~instrumentation_backend:
                       (Lib.DB.instrumentation_backend (Scope.libs scope)))
              in
-             let* ocaml = Context.ocaml (Super_context.context sctx) in
              let pp_spec =
                Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
              in
@@ -110,10 +110,7 @@ let impl sctx ~(lib : Library.t) ~scope =
              >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
            in
            let+ foreign_objects =
-             let* ext_obj =
-               let+ ocaml = Context.ocaml (Super_context.context sctx) in
-               ocaml.lib_config.ext_obj
-             in
+             let ext_obj = ocaml.lib_config.ext_obj in
              let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
              let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
              foreign_sources

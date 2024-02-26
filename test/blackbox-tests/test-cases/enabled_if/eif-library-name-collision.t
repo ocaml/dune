@@ -54,8 +54,8 @@ But not for public libraries
 
   $ dune build
   Error: Library foo is defined twice:
-  - b/dune:3
   - a/dune:3
+  - b/dune:3
   [1]
 
 
@@ -88,16 +88,16 @@ Let's add an exe to consume the library to trigger the error
   > EOF
 
   $ dune build
-  File "a/dune", line 1, characters 0-21:
+  File "b/dune", line 1, characters 0-21:
   1 | (library
   2 |  (name foo))
   Error: A library with name "foo" is defined in two folders:
-  _build/alt-context/b and _build/alt-context/a. Either change one of the
+  _build/alt-context/a and _build/alt-context/b. Either change one of the
   names, or enable them conditionally using the 'enabled_if' field.
-  File "a/dune", line 1, characters 0-21:
+  File "b/dune", line 1, characters 0-21:
   1 | (library
   2 |  (name foo))
-  Error: A library with name "foo" is defined in two folders: _build/default/b
-  and _build/default/a. Either change one of the names, or enable them
+  Error: A library with name "foo" is defined in two folders: _build/default/a
+  and _build/default/b. Either change one of the names, or enable them
   conditionally using the 'enabled_if' field.
   [1]

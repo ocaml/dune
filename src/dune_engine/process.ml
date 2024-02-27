@@ -853,7 +853,7 @@ let await { response_file; pid; _ } =
   let+ process_info, termination_reason =
     Scheduler.wait_for_build_process pid ~is_process_group_leader:true
   in
-  Option.iter response_file ~f:Path.unlink;
+  Option.iter response_file ~f:Path.unlink_exn;
   process_info, termination_reason
 ;;
 

@@ -195,6 +195,7 @@ module Build : sig
   val chmod : t -> mode:int -> unit
 
   val lstat : t -> Unix.stats
+  val unlink : t -> Fpath.unlink_status
   val unlink_no_err : t -> unit
 
   module Table : Hashtbl.S with type key = t
@@ -356,7 +357,7 @@ val is_dir_sep : char -> bool
 val is_directory : t -> bool
 
 val rmdir : t -> unit
-val unlink : t -> unit
+val unlink_exn : t -> unit
 val unlink_no_err : t -> unit
 val link : t -> t -> unit
 

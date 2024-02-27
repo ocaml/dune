@@ -12,13 +12,14 @@ We turn it into a single-file test:
   $ mv sometest.t.bak/run.t sometest.t
   $ rm -r sometest.t.bak
 
-FIXME: Dune should detect the change:
+Dune detects the change:
   $ dune build @sometest
-  Error: _build/default/sometest.t: Is a directory
-  -> required by _build/default/sometest.t
-  -> required by alias sometest
-  [1]
 
-After a clean it works as expected:
-  $ dune clean
+The other way. Turn the file test into a directory test:
+
+  $ mv sometest.t sometest.t.bak
+  $ mkdir sometest.t
+  $ mv sometest.t.bak sometest.t/run.t
+
+And this works:
   $ dune build @sometest

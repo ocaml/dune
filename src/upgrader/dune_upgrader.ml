@@ -397,7 +397,7 @@ let upgrade () =
             (Path.Source.to_string_maybe_quoted new_file)
         ];
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-        Path.unlink (Path.source p));
+        Path.unlink_exn (Path.source p));
       Io.write_file (Path.source new_file) contents ~binary:true);
     if !v1_updates && not last
     then (

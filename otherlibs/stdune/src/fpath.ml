@@ -113,10 +113,29 @@ let win32_unlink fn =
      | _ -> raise e)
 ;;
 
-let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+
+type unlink_status =
+  | Success
+  | Does_not_exist
+  | Is_a_directory
+  | Error of exn
+
+let unlink t =
+  match unlink_exn t with
+  | () -> Success
+  | exception exn ->
+    (match exn with
+     | Unix.Unix_error (ENOENT, _, _) -> Does_not_exist
+     | Unix.Unix_error (error, _, _) ->
+       (match error, Platform.OS.value with
+        | EISDIR, _ | EPERM, Darwin -> Is_a_directory
+        | _ -> Error exn)
+     | _ -> Error exn)
+;;
 
 let unlink_no_err t =
-  try unlink t with
+  try unlink_exn t with
   | _ -> ()
 ;;
 
@@ -157,7 +176,7 @@ let rm_rf fn =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> unlink fn
+  | _ -> unlink_exn fn
 ;;
 
 let traverse_files =

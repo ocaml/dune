@@ -567,10 +567,27 @@ end = struct
           in
           let* () =
             maybe_async_rule_file_op (fun () ->
+              let remove_target_dir dir = Path.rm_rf (Path.build dir) in
+              let remove_target_file path =
+                match Path.Build.unlink path with
+                | Success -> ()
+                | Does_not_exist -> ()
+                | Is_a_directory ->
+                  (* If target changed from a directory to a file, delete
+                     in anyway. *)
+                  remove_target_dir path
+                | Error exn ->
+                  Log.info
+                    [ Pp.textf
+                        "Error while removing target %s: %s"
+                        (Path.Build.to_string path)
+                        (Printexc.to_string exn)
+                    ]
+              in
               Targets.Validated.iter
                 targets
-                ~file:Path.Build.unlink_no_err
-                ~dir:(fun dir -> Path.rm_rf (Path.build dir)))
+                ~file:remove_target_file
+                ~dir:remove_target_dir)
           in
           let* produced_targets, dynamic_deps_stages =
             (* Step III. Try to restore artifacts from the shared cache. *)

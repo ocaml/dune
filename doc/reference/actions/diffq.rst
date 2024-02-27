@@ -3,8 +3,7 @@ diff?
 
 .. highlight:: dune
 
-.. dune:action:: diff?
-   :param: <file1> <file2>
+.. describe:: (diff? <file1> <file2>)
 
    ``(diff? <file1> <file2>)`` is similar to ``(diff <file1> <file2>)`` except
    that ``<file2>`` should be produced by a part of the same action rather than

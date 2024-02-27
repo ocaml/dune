@@ -3,8 +3,7 @@ chdir
 
 .. highlight:: dune
 
-.. dune:action:: chdir
-   :param: <dir> <DSL>
+.. describe:: (chdir <dir> <DSL>)
 
    Run an action in a different directory.
 

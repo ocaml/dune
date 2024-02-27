@@ -3,8 +3,7 @@ with-stdin-from
 
 .. highlight:: dune
 
-.. dune:action:: with-stdin-from
-   :param: <file> <DSL>
+.. describe:: (with-stdin-from <file> <DSL>)
 
    Redirect the input from a file.
 

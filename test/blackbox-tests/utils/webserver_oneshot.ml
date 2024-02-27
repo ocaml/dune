@@ -1,18 +1,23 @@
-(* An http server which serves the contents of a given file a single time and then terminates *)
+(* An http server which serves the contents of a given file a single time and
+   then terminates *)
+
+open Stdune
 
 module Args = struct
   type t =
-    { content_file : string
+    { content_files : string list
     ; port_file : string
     ; simulate_not_found : bool
     }
 
   let parse () =
-    let content_file = ref "" in
+    let content_files = ref [] in
     let port_file = ref "" in
     let simulate_not_found = ref false in
     let specs =
-      [ "--content-file", Arg.Set_string content_file, "File to serve"
+      [ ( "--content-file"
+        , Arg.String (fun file -> content_files := file :: !content_files)
+        , "File to serve" )
       ; ( "--port-file"
         , Arg.Set_string port_file
         , "The server will write its port number to this file" )
@@ -24,14 +29,14 @@ module Args = struct
       (fun _anon_arg -> failwith "unexpected anonymous argument")
       "Run a webserver on a random port which serves the contents of a  single file a \
        single time, then terminates.";
-    { content_file = !content_file
+    { content_files = List.rev !content_files
     ; port_file = !port_file
     ; simulate_not_found = !simulate_not_found
     }
   ;;
 end
 
-let main content_file port_file ~simulate_not_found =
+let main content_files port_file ~simulate_not_found =
   let host = Unix.inet_addr_loopback in
   let addr = Unix.ADDR_INET (host, 0) in
   let server = Http.Server.make addr in
@@ -44,13 +49,14 @@ let main content_file port_file ~simulate_not_found =
      which we can remove if it ends up causing us problems. *)
   Out_channel.with_open_text port_file (fun out_channel ->
     Out_channel.output_string out_channel (Printf.sprintf "%d\n" port));
-  Http.Server.accept server ~f:(fun out_channel ->
-    if simulate_not_found
-    then Http.Server.respond out_channel ~status:`Not_found ~content:""
-    else Http.Server.respond_file out_channel ~file:content_file)
+  List.iter content_files ~f:(fun content_file ->
+    Http.Server.accept server ~f:(fun out_channel ->
+      if simulate_not_found
+      then Http.Server.respond out_channel ~status:`Not_found ~content:""
+      else Http.Server.respond_file out_channel ~file:content_file))
 ;;
 
 let () =
-  let { Args.content_file; port_file; simulate_not_found } = Args.parse () in
-  main content_file port_file ~simulate_not_found
+  let { Args.content_files; port_file; simulate_not_found } = Args.parse () in
+  main content_files port_file ~simulate_not_found
 ;;

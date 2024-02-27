@@ -78,7 +78,7 @@ let compute_missing_checksum_of_fetch
   let open Fiber.O in
   match checksum with
   | Some _ -> Fiber.return fetch
-  | None when OpamUrl.is_local url -> Fiber.return fetch
+  | None when OpamUrl.is_local url || OpamUrl.is_version_control url -> Fiber.return fetch
   | None ->
     if not pinned
        (* No point in warning this about pinned packages. The user explicitly

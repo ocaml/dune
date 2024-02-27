@@ -530,7 +530,7 @@ end = struct
               let entry = Install.Entry.make Doc ~kind:`File odig_file in
               Install.Entry.Sourced.create entry :: acc)
             else acc))
-    and+ l =
+    and+ entries =
       let* package_db = Package_db.create ctx.name in
       Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->
         let dir = Path.Build.append_source ctx.build_dir (Dune_file.dir dune_file) in
@@ -542,7 +542,7 @@ end = struct
         named_entries :: acc)
       |> Memo.all_concurrently
     in
-    List.fold_left l ~init ~f:(fun acc named_entries ->
+    List.fold_left entries ~init ~f:(fun acc named_entries ->
       match named_entries with
       | None -> acc
       | Some (name, entries) -> Package.Name.Map.Multi.add_all acc name entries)

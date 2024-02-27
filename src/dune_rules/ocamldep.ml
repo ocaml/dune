@@ -15,9 +15,10 @@ end
 open Modules_data
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
+  let find_dep = Staged.unstage (Modules.find_dep modules ~of_:unit) in
   List.concat_map words ~f:(fun m ->
     let m = Module_name.of_string m in
-    match Modules.find_dep modules ~of_:unit m with
+    match find_dep m with
     | Ok s -> s
     | Error `Parent_cycle ->
       User_error.raise

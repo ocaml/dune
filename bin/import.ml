@@ -29,9 +29,6 @@ include struct
   module Context = Context
   module Workspace = Workspace
   module Package = Package
-  module Source_kind = Source_kind
-  module Package_info = Package_info
-  module Section = Install.Section
   module Dune_project = Dune_project
   module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
@@ -69,6 +66,9 @@ include struct
   module Lib_name = Lib_name
   module Package_name = Package_name
   module Package_version = Package_version
+  module Source_kind = Source_kind
+  module Package_info = Package_info
+  module Section = Section
 end
 
 module Log = Dune_util.Log
@@ -186,13 +186,12 @@ module Scheduler = struct
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
-      let insignificant_changes = Common.insignificant_changes common in
       let signal_watcher = Common.signal_watcher common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes
+        ~insignificant_changes:`Ignore
         ~signal_watcher
         ~watch_exclusions
     in
@@ -217,12 +216,11 @@ module Scheduler = struct
     let stats = Common.stats common in
     let config =
       let signal_watcher = Common.signal_watcher common in
-      let insignificant_changes = Common.insignificant_changes common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes
+        ~insignificant_changes:`Ignore
         ~signal_watcher
         ~watch_exclusions
     in

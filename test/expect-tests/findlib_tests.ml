@@ -167,7 +167,7 @@ let conf () =
     let open Memo.O in
     Findlib_config.discover_from_env
       ~which:(fun _ -> assert false)
-      ~ocamlpath:[]
+      ~ocamlpath:(Memo.return [])
       ~env:
         (Env.initial
          |> Env.add
@@ -201,9 +201,14 @@ let%expect_test _ =
               }
         ; preds = set { "tlc" }
         }
-    ; ocamlpath = []
     ; toolchain = Some "tlc"
     } |}];
   print_dyn (Env.to_dyn (Findlib_config.env conf));
-  [%expect {| map { "FOO_BAR" : "my variable" } |}]
+  [%expect {| map { "FOO_BAR" : "my variable" } |}];
+  Findlib_config.ocamlpath conf
+  |> Memo.run
+  |> Test_scheduler.(run (create ()))
+  |> Dyn.(list Path.to_dyn)
+  |> print_dyn;
+  [%expect {| [] |}]
 ;;

@@ -8,6 +8,7 @@ include struct
   module Substs = Substs
   module Checksum = Checksum
   module Source = Source
+  module Build_command = Lock_dir.Build_command
 end
 
 module Variable = struct
@@ -194,7 +195,7 @@ module Pkg = struct
 
   type t =
     { id : Id.t
-    ; build_command : Dune_lang.Action.t option
+    ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
     ; info : Pkg_info.t
@@ -206,14 +207,19 @@ module Pkg = struct
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
   let top_closure depends =
-    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    match
+      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+    with
+    | Ok s -> s
+    | Error cycle ->
+      User_error.raise
+        [ Pp.text "the following packages form a cycle:"
+        ; Pp.chain cycle ~f:(fun pkg ->
+            Pp.verbatim (Package.Name.to_string pkg.info.name))
+        ]
   ;;
 
-  let deps_closure t =
-    match top_closure t.depends with
-    | Ok s -> s
-    | Error _ -> assert false
-  ;;
+  let deps_closure t = top_closure t.depends
 
   let source_files t ~loc =
     let skip_dir = function
@@ -722,20 +728,22 @@ module Action_expander = struct
       Result.map prog ~f:(map_exe t)
     ;;
 
+    let slang_expander t sw =
+      String_expander.Memo.expand_result_deferred_concat sw ~mode:Many ~f:(expand_pform t)
+    ;;
+
     let eval_blang t blang =
       Slang_expand.eval_blang
         blang
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(fun sw ~dir ->
-          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
+        ~f:(slang_expander t)
     ;;
 
     let eval_slangs_located t slangs =
       Slang_expand.eval_multi_located
         slangs
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(fun sw ~dir ->
-          String_expander.Memo.expand_result sw ~mode:Many ~f:(expand_pform t) ~dir)
+        ~f:(slang_expander t)
     ;;
   end
 
@@ -765,20 +773,15 @@ module Action_expander = struct
          User_error.raise
            ?loc
            [ Pp.text "\"run\" action must have at least one argument" ]
-       | (prog_loc, `Concat prog) :: args ->
+       | (prog_loc, prog) :: args ->
          let+ exe =
-           let prog =
-             match prog with
-             | [ Path prog ] -> Value.Path prog
-             | [ Dir prog ] -> Value.Dir prog
-             | prog ->
-               String (List.map prog ~f:(Value.to_string ~dir) |> String.concat ~sep:"")
-           in
+           let prog = Value.Deferred_concat.force prog ~dir in
            Expander.expand_exe_value expander prog ~loc:prog_loc
          in
          let args =
-           Array.Immutable.of_list_map args ~f:(fun (_, `Concat arg) ->
-             Array.Immutable.of_list_map arg ~f:(fun (arg : Value.t) ->
+           Array.Immutable.of_list_map args ~f:(fun (_loc, arg) ->
+             Value.Deferred_concat.parts arg
+             |> Array.Immutable.of_list_map ~f:(fun (arg : Value.t) ->
                match arg with
                | String s -> Run_with_path.Spec.String s
                | Path p | Dir p -> Path p))
@@ -921,22 +924,37 @@ module Action_expander = struct
     }
   ;;
 
-  let expand =
-    let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy in
-    fun context (pkg : Pkg.t) action ->
-      let+ action =
-        let* expander = expander context pkg in
-        expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
-      in
-      (* TODO copying is needed for build systems that aren't dune and those
-         with an explicit install step *)
-      Action.Full.make ~sandbox action
-      |> Action_builder.return
-      |> Action_builder.with_no_targets
+  let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
+
+  let expand context (pkg : Pkg.t) action =
+    let+ action =
+      let* expander = expander context pkg in
+      expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
+    in
+    (* TODO copying is needed for build systems that aren't dune and those
+       with an explicit install step *)
+    Action.Full.make ~sandbox action
+    |> Action_builder.return
+    |> Action_builder.with_no_targets
+  ;;
+
+  let dune_exe context =
+    Which.which ~path:(Env_path.path Env.initial) "dune"
+    >>| function
+    | Some s -> Ok s
+    | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(expand context pkg)
+    Option.map pkg.build_command ~f:(function
+      | Action action -> expand context pkg action
+      | Dune ->
+        (* CR-rgrinberg: respect [dune subst] settings. *)
+        Command.run_dyn_prog
+          (Action_builder.of_memo (dune_exe context))
+          ~dir:(Path.build pkg.paths.source_dir)
+          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+        |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =
@@ -1369,84 +1387,6 @@ module Install_action = struct
   ;;
 end
 
-module Fetch = struct
-  module Spec = struct
-    type ('path, 'target) t =
-      { target_dir : 'target
-      ; url : Loc.t * OpamUrl.t
-      ; checksum : (Loc.t * Checksum.t) option
-      }
-
-    let name = "source-fetch"
-    let version = 1
-    let bimap t _ g = { t with target_dir = g t.target_dir }
-    let is_useful_to ~memoize = memoize
-
-    let encode_loc f (loc, x) =
-      Dune_lang.List
-        (* TODO use something better for locs here *)
-        [ Dune_lang.atom_or_quoted_string (Loc.to_file_colon_line loc); f x ]
-    ;;
-
-    let encode { target_dir; url; checksum } _ target : Dune_lang.t =
-      List
-        ([ Dune_lang.atom_or_quoted_string name
-         ; target target_dir
-         ; encode_loc
-             (fun url -> Dune_lang.atom_or_quoted_string (OpamUrl.to_string url))
-             url
-         ]
-         @
-         match checksum with
-         | None -> []
-         | Some checksum ->
-           [ encode_loc
-               (fun x -> Checksum.to_string x |> Dune_lang.atom_or_quoted_string)
-               checksum
-           ])
-    ;;
-
-    let action { target_dir; url = loc_url, url; checksum } ~ectx:_ ~eenv:_ =
-      let open Fiber.O in
-      let* () = Fiber.return () in
-      (let checksum = Option.map checksum ~f:snd in
-       Dune_pkg.Fetch.fetch ~unpack:true ~checksum ~target:(Path.build target_dir) url)
-      >>= function
-      | Ok () -> Fiber.return ()
-      | Error (Checksum_mismatch actual_checksum) ->
-        (match checksum with
-         | None ->
-           User_error.raise
-             ~loc:loc_url
-             [ Pp.text "No checksum provided. It should be:"
-             ; Checksum.pp actual_checksum
-             ]
-         | Some (loc, _) ->
-           User_error.raise
-             ~loc
-             [ Pp.text "Invalid checksum, got"; Dune_pkg.Checksum.pp actual_checksum ])
-      | Error (Unavailable message) ->
-        let loc = loc_url in
-        (match message with
-         | None -> User_error.raise ~loc [ Pp.text "Unknown fetch failure" ]
-         | Some msg -> User_error.raise ~loc [ User_message.pp msg ])
-    ;;
-  end
-
-  let action ~url ~checksum ~target_dir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = { Spec.target_dir; checksum; url }
-    end
-    in
-    Action.Extension (module M)
-  ;;
-end
-
 let add_env env action =
   Action_builder.With_targets.map action ~f:(Action.Full.add_env env)
 ;;
@@ -1462,16 +1402,12 @@ let source_rules (pkg : Pkg.t) =
     | None -> Memo.return (Dep.Set.empty, [])
     | Some (Fetch { url = (loc, _) as url; checksum }) ->
       let fetch =
-        Fetch.action ~url ~target_dir:pkg.paths.source_dir ~checksum
-        |> Action.Full.make
-        |> Action_builder.With_targets.return
-        |> Action_builder.With_targets.add_directories
-             ~directory_targets:[ pkg.paths.source_dir ]
+        Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
       in
       Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
     | Some (External_copy (loc, source_root)) ->
-      let source_root = Path.external_ source_root in
       let+ source_files, rules =
+        let source_root = Path.external_ source_root in
         Pkg.source_files pkg ~loc
         >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
           let src = Path.append_local source_root file in
@@ -1489,13 +1425,7 @@ let source_rules (pkg : Pkg.t) =
         | External_copy (loc, src) ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | Fetch { url = (loc, _) as url; checksum } ->
-          let rule =
-            Fetch.action ~url ~target_dir:pkg.paths.source_dir ~checksum
-            |> Action.Full.make
-            |> Action_builder.With_targets.return
-            |> Action_builder.With_targets.add_directories
-                 ~directory_targets:[ pkg.paths.source_dir ]
-          in
+          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File url checksum in
           loc, rule
       in
       Path.build extra_source, rule)
@@ -1677,9 +1607,6 @@ let all_packages context =
     | `System_provided -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
-  >>| function
-  | Error _ -> assert false
-  | Ok closure -> closure
 ;;
 
 let which context =
@@ -1693,6 +1620,16 @@ let which context =
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
     Filename.Map.find artifacts program)
+;;
+
+let ocamlpath context =
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
+  Env.Map.find env Dune_findlib.Config.ocamlpath_var
+  |> Option.value ~default:[]
+  |> List.map ~f:(function
+    | Value.Dir p | Path p -> p
+    | String s -> Path.of_filename_relative_to_initial_cwd s)
 ;;
 
 let lock_dir_active = Lock_dir.lock_dir_active

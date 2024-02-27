@@ -177,6 +177,7 @@ module Init_context = struct
   let make path =
     let open Memo.O in
     let+ project =
+      (* CR-rgrinberg: why not get the project from the source tree? *)
       Dune_project.load
         ~dir:Path.Source.root
         ~files:Filename.Set.empty
@@ -375,7 +376,28 @@ module Component = struct
     let dune_project ~opam_file_gen dir (common : Options.Common.t) =
       let cst =
         let package =
-          Package.default (Package.Name.of_string (Atom.to_string common.name)) dir
+          Package.create
+            ~name:(Package.Name.of_string (Atom.to_string common.name))
+            ~loc:Loc.none
+            ~version:None
+            ~conflicts:[]
+            ~depopts:[]
+            ~info:Package_info.empty
+            ~sites:Site.Map.empty
+            ~allow_empty:false
+            ~deprecated_package_names:Package.Name.Map.empty
+            ~has_opam_file:(Exists false)
+            ~original_opam_file:None
+            ~dir
+            ~synopsis:(Some "A short synopsis")
+            ~description:(Some "A longer description")
+            ~tags:[ "topics"; "to describe"; "your"; "project" ]
+            ~depends:
+              [ { Package_dependency.name = Package.Name.of_string "ocaml"
+                ; constraint_ = None
+                }
+              ; { name = Package.Name.of_string "dune"; constraint_ = None }
+              ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info = Package_info.example in
@@ -512,7 +534,7 @@ module Component = struct
 
     let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
-      let dir = Path.root in
+      let dir = Path.Source.root in
       let name =
         Package.Name.parse_string_exn (Loc.none, Dune_lang.Atom.to_string common.name)
       in
@@ -520,16 +542,19 @@ module Component = struct
         let package_files =
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
-            let opam_file = Package.file ~dir ~name in
+            let opam_file = Path.source @@ Package_name.file name ~dir in
             [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
-          | Esy -> [ File.make_text dir "package.json" "" ]
+          | Esy -> [ File.make_text (Path.source dir) "package.json" "" ]
         in
+        let dir = Path.source dir in
         { dir; files = dune_project_file dir opts :: package_files }
       in
       let component_targets =
-        match (template : Options.Project.Template.t) with
-        | Exec -> proj_exec dir opts
-        | Lib -> proj_lib dir opts
+        (match (template : Options.Project.Template.t) with
+         | Exec -> proj_exec
+         | Lib -> proj_lib)
+          (Path.source dir)
+          opts
       in
       proj_target :: component_targets
     ;;

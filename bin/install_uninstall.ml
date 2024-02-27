@@ -32,14 +32,16 @@ let interpret_destdir ~destdir path =
 ;;
 
 let get_dirs context ~prefix_from_command_line ~from_command_line =
+  let open Fiber.O in
   let module Roots = Install.Roots in
   let prefix_from_command_line = Option.map ~f:Path.of_string prefix_from_command_line in
-  let roots =
+  let+ roots =
     match prefix_from_command_line with
-    | None -> Context.roots context
+    | None -> Memo.run (Context.roots context)
     | Some prefix ->
       Roots.opam_from_prefix prefix ~relative:Path.relative
       |> Roots.map ~f:(fun s -> Some s)
+      |> Fiber.return
   in
   let roots = Roots.first_has_priority from_command_line roots in
   let must_be_defined name v =
@@ -367,24 +369,23 @@ module File_ops_real (W : sig
   ;;
 
   let remove_dir_if_exists ~if_non_empty dir =
-    if Path.exists dir
-    then (
-      match Path.readdir_unsorted dir with
-      | Ok [] ->
-        print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
-        print_unix_error (fun () -> Path.rmdir dir)
-      | Error (e, _, _) ->
-        User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
-      | _ ->
-        let dir = Path.to_string_maybe_quoted dir in
-        (match if_non_empty with
-         | Warn ->
-           User_message.prerr
-             (User_error.make
-                [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
-         | Fail ->
-           User_error.raise
-             [ Pp.textf "Please delete non-empty directory %s manually." dir ]))
+    match Path.readdir_unsorted dir with
+    | Error (Unix.ENOENT, _, _) -> ()
+    | Ok [] ->
+      print_line "Deleting empty directory %s" (Path.to_string_maybe_quoted dir);
+      print_unix_error (fun () -> Path.rmdir dir)
+    | Error (e, _, _) ->
+      User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
+    | _ ->
+      let dir = Path.to_string_maybe_quoted dir in
+      (match if_non_empty with
+       | Warn ->
+         User_message.prerr
+           (User_error.make
+              [ Pp.textf "Directory %s is not empty, cannot delete (ignoring)." dir ])
+       | Fail ->
+         User_error.raise
+           [ Pp.textf "Please delete non-empty directory %s manually." dir ])
   ;;
 
   let mkdir_p p =
@@ -462,6 +463,46 @@ let pp_what fmt = function
 let cmd_what = function
   | Install -> "install"
   | Uninstall -> "uninstall"
+;;
+
+let install_entry
+  ~ops
+  ~conf
+  ~package
+  ~dir
+  ~create_install_files
+  (entry : Path.t Install.Entry.t)
+  ~dst
+  ~verbosity
+  =
+  let module Ops = (val ops : File_operations) in
+  let open Fiber.O in
+  let special_file = Special_file.of_entry entry in
+  (match special_file with
+   | _ when not create_install_files -> Fiber.return true
+   | Some Special_file.META | Some Special_file.Dune_package -> Fiber.return true
+   | None ->
+     Artifact_substitution.test_file ~src:entry.src ()
+     >>| (function
+      | Some_substitution -> true
+      | No_substitution -> false))
+  >>= function
+  | false -> Fiber.return entry
+  | true ->
+    let+ () =
+      (match Path.is_directory dst with
+       | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
+       | false -> Ops.remove_file_if_exists dst);
+      print_line
+        ~verbosity
+        "%s %s"
+        (if create_install_files then "Copying to" else "Installing")
+        (Path.to_string_maybe_quoted dst);
+      Ops.mkdir_p dir;
+      let executable = Section.should_set_executable_bit entry.section in
+      Ops.copy_file ~src:entry.src ~dst ~executable ~special_file ~package ~conf
+    in
+    Install.Entry.set_src entry dst
 ;;
 
 let run
@@ -628,15 +669,14 @@ let run
     Fiber.sequential_iter
       install_files_by_context
       ~f:(fun (context, entries_per_package) ->
-        let roots = get_dirs context ~prefix_from_command_line ~from_command_line in
+        let* roots = get_dirs context ~prefix_from_command_line ~from_command_line in
         let conf = Artifact_substitution.Conf.of_install ~relocatable ~roots ~context in
         Fiber.sequential_iter entries_per_package ~f:(fun (package, entries) ->
           let+ entries =
-            let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
             (* CR rgrinberg: why don't we install things concurrently? *)
             Fiber.sequential_map entries ~f:(fun entry ->
-              let special_file = Special_file.of_entry entry in
               let dst =
+                let paths = Install.Paths.make ~relative:Path.relative ~package ~roots in
                 Install.Entry.relative_installed_path entry ~paths
                 |> interpret_destdir ~destdir
               in
@@ -647,40 +687,15 @@ let run
                 files_deleted_in := Path.Set.add !files_deleted_in dir;
                 Fiber.return entry
               | Install ->
-                let* copy =
-                  match special_file with
-                  | _ when not create_install_files -> Fiber.return true
-                  | Some Special_file.META | Some Special_file.Dune_package ->
-                    Fiber.return true
-                  | None ->
-                    Artifact_substitution.test_file ~src:entry.src ()
-                    >>| (function
-                     | Some_substitution -> true
-                     | No_substitution -> false)
-                in
-                (match copy with
-                 | false -> Fiber.return entry
-                 | true ->
-                   let+ () =
-                     (match Path.is_directory dst with
-                      | true -> Ops.remove_dir_if_exists ~if_non_empty:Fail dst
-                      | false -> Ops.remove_file_if_exists dst);
-                     print_line
-                       ~verbosity
-                       "%s %s"
-                       (if create_install_files then "Copying to" else "Installing")
-                       (Path.to_string_maybe_quoted dst);
-                     Ops.mkdir_p dir;
-                     let executable = Section.should_set_executable_bit entry.section in
-                     Ops.copy_file
-                       ~src:entry.src
-                       ~dst
-                       ~executable
-                       ~special_file
-                       ~package
-                       ~conf
-                   in
-                   Install.Entry.set_src entry dst))
+                install_entry
+                  ~ops:(module Ops)
+                  ~conf
+                  ~package
+                  ~dir
+                  ~create_install_files
+                  ~dst
+                  ~verbosity
+                  entry)
           in
           if create_install_files
           then (
@@ -690,7 +705,7 @@ let run
                 ~findlib_toolchain:(Context.findlib_toolchain context)
                 package
             in
-            Io.write_file (Path.source fn) (Install.Entry.gen_install_file entries))))
+            Install.Entry.gen_install_file entries |> Io.write_file (Path.source fn))))
   in
   Path.Set.to_list !files_deleted_in
   (* This [List.rev] is to ensure we process children directories before

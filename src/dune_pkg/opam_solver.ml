@@ -54,12 +54,12 @@ module Context_for_dune = struct
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
-    ; candidates_cache : (Package_name.t, candidates) Table.t
+    ; candidates_cache : (Package_name.t, candidates) Fiber_cache.t
     ; (* The solver can call this function several times on the same package.
          If the package contains an invalid "available" filter we want to print a
          warning, but only once per package. This field will keep track of the
          packages for which we've printed a warning. *)
-      mutable available_cache : bool OpamPackage.Map.t
+      available_cache : (OpamPackage.t, bool) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
     }
 
@@ -76,12 +76,21 @@ module Context_for_dune = struct
       let major, minor = Dune_lang.Stanza.latest_version in
       OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
     in
-    let candidates_cache = Table.create (module Package_name) 1 in
+    let candidates_cache = Fiber_cache.create (module Package_name) in
     let constraints =
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
         constraint_.name, constraint_)
       |> Package_name.Map.of_list_multi
       |> Package_name.Map.map ~f:Package_dependency.list_to_opam_filtered_formula
+    in
+    let available_cache =
+      Table.create
+        (module struct
+          include OpamPackage
+
+          let to_dyn = Opam_dyn.package
+        end)
+        1
     in
     { repos
     ; version_preference
@@ -91,7 +100,7 @@ module Context_for_dune = struct
     ; dune_version
     ; stats_updater
     ; candidates_cache
-    ; available_cache = OpamPackage.Map.empty
+    ; available_cache
     ; constraints
     }
   ;;
@@ -121,39 +130,33 @@ module Context_for_dune = struct
 
   let is_opam_available t opam =
     let package = OpamFile.OPAM.package opam in
-    match OpamPackage.Map.find_opt package t.available_cache with
-    | Some s -> s
-    | None ->
-      let res =
-        let available = OpamFile.OPAM.available opam in
-        match
-          let available_vars_resolved =
-            OpamFilter.partial_eval
-              (add_self_to_filter_env
-                 package
-                 (Solver_stats.Updater.wrap_env
-                    t.stats_updater
-                    (Solver_env.to_env t.solver_env)))
-              available
-          in
-          eval_to_bool available_vars_resolved
-        with
-        | Ok available -> available
-        | Error (`Not_a_bool msg) ->
-          (let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
-           let available_string = OpamFilter.to_string available in
-           User_warning.emit
-             [ Pp.textf
-                 "Ignoring package %s as its \"available\" filter can't be resolved to a \
-                  boolean value."
-                 package_string
-             ; Pp.textf "available: %s" available_string
-             ; Pp.text msg
-             ]);
-          false
-      in
-      t.available_cache <- OpamPackage.Map.add package res t.available_cache;
-      res
+    Table.find_or_add t.available_cache package ~f:(fun (_ : OpamPackage.t) ->
+      let available = OpamFile.OPAM.available opam in
+      match
+        let available_vars_resolved =
+          OpamFilter.partial_eval
+            (add_self_to_filter_env
+               package
+               (Solver_stats.Updater.wrap_env
+                  t.stats_updater
+                  (Solver_env.to_env t.solver_env)))
+            available
+        in
+        eval_to_bool available_vars_resolved
+      with
+      | Ok available -> available
+      | Error (`Not_a_bool msg) ->
+        (let package_string = OpamFile.OPAM.package opam |> OpamPackage.to_string in
+         let available_string = OpamFilter.to_string available in
+         User_warning.emit
+           [ Pp.textf
+               "Ignoring package %s as its \"available\" filter can't be resolved to a \
+                boolean value."
+               package_string
+           ; Pp.textf "available: %s" available_string
+           ; Pp.text msg
+           ]);
+        false)
   ;;
 
   let available_or_error t opam_file =
@@ -206,16 +209,10 @@ module Context_for_dune = struct
       Fiber.return [ version, Ok local_package ]
     | None ->
       let+ res =
-        match Table.find t.candidates_cache key with
-        | Some res -> Fiber.return res
-        | None ->
-          let+ res =
-            match Package_name.Map.find t.pinned_packages key with
-            | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
-            | None -> repo_candidate t name
-          in
-          Table.set t.candidates_cache key res;
-          res
+        Fiber_cache.find_or_add t.candidates_cache key ~f:(fun () ->
+          match Package_name.Map.find t.pinned_packages key with
+          | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
+          | None -> repo_candidate t name)
       in
       res.available
   ;;
@@ -229,17 +226,21 @@ module Context_for_dune = struct
 
   let filter_deps t package filtered_formula =
     let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+    (* Add additional constraints to the formula. This works in two steps.
+       First identify all the additional constraints applied to packages which
+       appear in the current package's dependency formula. Then each additional
+       constnraint is and-ed with the current package's dependency formula. *)
     let filtered_formula =
-      OpamFormula.map_up_formula
-        (fun formula ->
-          match formula with
-          | Atom (pkg, _) ->
-            let name = Package_name.of_opam_package_name pkg in
-            (match Package_name.Map.find t.constraints name with
-             | None -> formula
-             | Some additional -> OpamFormula.And (formula, additional))
-          | _ -> formula)
+      OpamFormula.fold_left
+        (fun additional_formulae (pkg, _) ->
+          let name = Package_name.of_opam_package_name pkg in
+          match Package_name.Map.find t.constraints name with
+          | None -> additional_formulae
+          | Some additional -> additional :: additional_formulae)
+        []
         filtered_formula
+      |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
+        OpamFormula.And (acc, additional))
     in
     let package_is_local = Package_name.Map.mem t.local_packages name in
     Resolve_opam_formula.apply_filter
@@ -521,11 +522,11 @@ let opam_package_to_lock_file_pkg
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
   in
+  let resolved_package =
+    (Table.find_exn candidates_cache name).resolved
+    |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
+  in
   let opam_file, loc =
-    let resolved_package =
-      (Table.find_exn candidates_cache name).resolved
-      |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
-    in
     let opam_file = Resolved_package.opam_file resolved_package in
     let loc = Resolved_package.loc resolved_package in
     opam_file, loc
@@ -594,39 +595,43 @@ let opam_package_to_lock_file_pkg
     Solver_env.get solver_env variable_name
   in
   let build_command =
-    let subst_step =
-      OpamFile.OPAM.substs opam_file
-      |> List.map ~f:(fun x ->
-        let x = OpamFilename.Base.to_string x in
-        let input = String_with_vars.make_text Loc.none (x ^ ".in") in
-        let output = String_with_vars.make_text Loc.none x in
-        Action.Substitute (input, output))
-    in
-    let patch_step =
-      OpamFile.OPAM.patches opam_file
-      |> List.map ~f:(fun (basename, filter) ->
-        let action =
-          Action.Patch
-            (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
-        in
-        match filter with
-        | None -> action
-        | Some filter ->
-          Action.When
-            ( filter_to_blang ~package:opam_package ~loc:Loc.none filter
-              |> Slang.simplify_blang
-            , action ))
-    in
-    let build_step =
-      opam_commands_to_actions
-        get_solver_var
-        loc
-        opam_package
-        (OpamFile.OPAM.build opam_file)
-    in
-    List.concat [ subst_step; patch_step; build_step ]
-    |> make_action
-    |> Option.map ~f:build_env
+    if Resolved_package.dune_build resolved_package
+    then Some Lock_dir.Build_command.Dune
+    else (
+      let subst_step =
+        OpamFile.OPAM.substs opam_file
+        |> List.map ~f:(fun x ->
+          let x = OpamFilename.Base.to_string x in
+          let input = String_with_vars.make_text Loc.none (x ^ ".in") in
+          let output = String_with_vars.make_text Loc.none x in
+          Action.Substitute (input, output))
+      in
+      let patch_step =
+        OpamFile.OPAM.patches opam_file
+        |> List.map ~f:(fun (basename, filter) ->
+          let action =
+            Action.Patch
+              (String_with_vars.make_text Loc.none (OpamFilename.Base.to_string basename))
+          in
+          match filter with
+          | None -> action
+          | Some filter ->
+            Action.When
+              ( filter_to_blang ~package:opam_package ~loc:Loc.none filter
+                |> Slang.simplify_blang
+              , action ))
+      in
+      let build_step =
+        opam_commands_to_actions
+          get_solver_var
+          loc
+          opam_package
+          (OpamFile.OPAM.build opam_file)
+      in
+      List.concat [ subst_step; patch_step; build_step ]
+      |> make_action
+      |> Option.map ~f:build_env
+      |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
   let install_command =
     OpamFile.OPAM.install opam_file
@@ -730,6 +735,7 @@ let solve_lock_dir
       in
       List.filter solution ~f:(Fun.negate is_local_package)
     in
+    let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
     let ocaml, pkgs =
       let pkgs =
         List.map opam_packages_to_lock ~f:(fun opam_package ->
@@ -739,7 +745,7 @@ let solve_lock_dir
             version_by_package_name
             opam_package
             ~pinned_package_names
-            ~candidates_cache:context.candidates_cache)
+            ~candidates_cache)
       in
       let ocaml =
         (* This doesn't allow the compiler to live in the source tree. Oh
@@ -806,7 +812,7 @@ let solve_lock_dir
             |> OpamPackage.Name.to_string
             |> Package_name.of_string
           in
-          let candidates = Table.find_exn context.candidates_cache package_name in
+          let candidates = Table.find_exn candidates_cache package_name in
           OpamPackage.Version.Map.find
             (OpamPackage.version opam_package)
             candidates.resolved)

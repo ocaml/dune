@@ -22,5 +22,5 @@ val fetch
 val fetch_git
   :  Rev_store.t
   -> target:Path.t
-  -> Opam_repo.Source.t
+  -> OpamUrl.t
   -> (unit, failure) result Fiber.t

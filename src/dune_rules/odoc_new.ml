@@ -907,7 +907,7 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:Lib.requires libs
+  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in
@@ -1930,17 +1930,21 @@ let setup_all_html_rules sctx ~all =
   let* tree = full_tree sctx ~all in
   let* search_db =
     let dir = Index.html_dir ctx ~all [] in
-    let odocls =
-      Index_tree.fold tree ~init:[] ~f:(fun index ii acc ->
+    let external_odocls, odocls =
+      Index_tree.fold tree ~init:([], []) ~f:(fun index ii acc ->
+        let externals, odocls = acc in
+        let is_external = Index.is_external index in
         let index_artifact = Artifact.index ctx ~all:true index in
         let new_artifacts =
           index_artifact :: Index_tree.all_artifacts ii
           |> List.filter_map ~f:(fun a ->
             if Artifact.is_visible a then Some (Artifact.odocl_file a) else None)
         in
-        new_artifacts @ acc)
+        if is_external
+        then new_artifacts @ externals, odocls
+        else externals, new_artifacts @ odocls)
     in
-    Sherlodoc.search_db sctx ~dir odocls
+    Sherlodoc.search_db sctx ~dir ~external_odocls odocls
   in
   let+ () =
     let html =
@@ -1975,7 +1979,7 @@ let setup_all_html_rules sctx ~all =
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
   Dune_project.packages project
-  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  |> Package_map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

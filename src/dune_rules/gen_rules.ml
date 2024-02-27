@@ -106,10 +106,9 @@ end = struct
      being handled directly in the stanza. *)
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =
     let dir = ctx_dir in
-    let toplevel_setup = Toplevel.Stanza.setup in
     match Stanza.repr stanza with
     | Toplevel_stanza.T toplevel ->
-      let+ () = toplevel_setup ~sctx ~dir ~toplevel in
+      let+ () = Toplevel.Stanza.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
       let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
@@ -376,9 +375,9 @@ let gen_project_rules =
             version
             ~what:"This field"
     and+ () =
-      match Dune_project.name project with
-      | Named _ -> Memo.return ()
-      | Anonymous _ ->
+      match Dune_project_name.name (Dune_project.name project) with
+      | Some _ -> Memo.return ()
+      | None ->
         (match
            if Dune_project.dune_version project >= (2, 8)
               && Dune_project.generate_opam_files project
@@ -687,5 +686,7 @@ let gen_rules ctx ~dir components =
           (Memo.return rules)))
   else if Context_name.equal ctx Private_context.t.name
   then private_context ~dir components ctx
+  else if Context_name.equal ctx Fetch_rules.context.name
+  then Fetch_rules.gen_rules ~dir ~components
   else gen_rules ctx (Super_context.find_exn ctx) ~dir components
 ;;

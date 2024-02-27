@@ -593,7 +593,6 @@ module Builder = struct
     ; separate_error_messages : bool
     ; stop_on_first_error : bool
     ; require_dune_project_file : bool
-    ; insignificant_changes : [ `React | `Ignore ]
     ; watch_exclusions : string list
     ; build_dir : string
     ; store_digest_preimage : bool
@@ -963,15 +962,6 @@ module Builder = struct
                of the build in a deterministic order. $(b,twice) reports each error \
                twice: once as soon as the error is discovered and then again at the end \
                of the build, in a deterministic order.")
-    and+ react_to_insignificant_changes =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "react-to-insignificant-changes" ]
-            ~doc:
-              "React to insignificant file system changes; this is only useful for \
-               benchmarking dune.")
     and+ separate_error_messages =
       Arg.(
         value
@@ -1033,7 +1023,6 @@ module Builder = struct
     ; separate_error_messages
     ; stop_on_first_error
     ; require_dune_project_file
-    ; insignificant_changes = (if react_to_insignificant_changes then `React else `Ignore)
     ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
     ; store_digest_preimage
@@ -1083,7 +1072,6 @@ let signal_watcher t =
 
 let watch_exclusions t = t.builder.watch_exclusions
 let stats t = t.stats
-let insignificant_changes t = t.builder.insignificant_changes
 
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to

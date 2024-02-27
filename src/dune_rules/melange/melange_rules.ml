@@ -66,13 +66,14 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
     let dir = Obj_dir.melange_dir obj_dir in
     Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
   in
-  let open Resolve.O in
   Command.Args.memo
   @@ Resolve.args
-  @@ let+ requires_link = requires_link in
-     let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
-     Command.Args.S
-       [ Lib_flags.L.include_flags ~project requires_link Melange; Hidden_deps deps ]
+  @@
+  let open Resolve.O in
+  let+ requires_link = requires_link in
+  let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
+  Command.Args.S
+    [ Lib_flags.L.include_flags ~project requires_link Melange; Hidden_deps deps ]
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
@@ -117,14 +118,13 @@ let js_targets_of_modules modules ~module_systems ~output =
 
 let js_targets_of_libs sctx libs ~module_systems ~target_dir =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
+    let open Memo.O in
     let of_lib lib =
-      let open Memo.O in
       let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
       let output = output_of_lib ~target_dir lib in
       List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
     in
     Resolve.Memo.List.concat_map libs ~f:(fun lib ->
-      let open Memo.O in
       let* base = of_lib lib in
       match Lib.implements lib with
       | None -> Resolve.Memo.return base
@@ -255,7 +255,6 @@ let setup_emit_cmj_rules
             modules
           |> Action_builder.path_set
         and+ () =
-          let open Action_builder.O in
           let* deps =
             Resolve.Memo.read
             @@
@@ -422,12 +421,11 @@ let setup_js_rules_libraries
   let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
   Memo.parallel_iter requires_link ~f:(fun lib ->
     let open Memo.O in
-    let lib_name = Lib.name lib in
-    let* lib, lib_compile_info =
-      Lib.DB.get_compile_info
-        (Scope.libs scope)
-        lib_name
+    let lib_compile_info =
+      Lib.Compile.for_lib
         ~allow_overlaps:mel.allow_overlapping_dependencies
+        (Scope.libs scope)
+        lib
     in
     let info = Lib.info lib in
     let loc = Lib_info.loc info in
@@ -458,12 +456,27 @@ let setup_js_rules_libraries
         let* vlib = Resolve.Memo.read_memo vlib in
         let* includes =
           let+ requires_link =
-            Lib.Compile.for_lib
-              ~allow_overlaps:mel.allow_overlapping_dependencies
-              (Scope.libs scope)
-              vlib
-            |> Lib.Compile.requires_link
-            |> Memo.Lazy.force
+            let+ requires_link =
+              Lib.Compile.for_lib
+                ~allow_overlaps:mel.allow_overlapping_dependencies
+                (Scope.libs scope)
+                vlib
+              |> Lib.Compile.requires_link
+              |> Memo.Lazy.force
+            in
+            let open Resolve.O in
+            let+ requires_link = requires_link in
+            (* Whenever a `concrete_lib` implementation contains a field
+               `(implements virt_lib)`, we also set up the JS targets for the
+               modules defined in `virt_lib`.
+
+               In the cases where `virt_lib` (concrete) modules depend on any
+               virtual modules (i.e. programming against the interface), we
+               need to make sure that the JS rules that dune emits for
+               `virt_lib` depend on `concrete_lib`, such that Melange can find
+               the correct `.cmj` file, which is needed to emit the correct
+               path in `import` / `require`. *)
+            lib :: requires_link
           in
           cmj_includes ~requires_link ~scope
         in

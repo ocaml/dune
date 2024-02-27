@@ -75,7 +75,6 @@ let unset_solver_vars_of_workspace workspace ~lock_dir_path =
 ;;
 
 let get_repos repos ~repositories =
-  let open Fiber.O in
   let module Repository = Dune_pkg.Pkg_workspace.Repository in
   repositories
   |> Fiber.parallel_map ~f:(fun (loc, name) ->
@@ -90,15 +89,14 @@ let get_repos repos ~repositories =
       let loc, opam_url = Repository.opam_url repo in
       let module Opam_repo = Dune_pkg.Opam_repo in
       (match Dune_pkg.OpamUrl.local_or_git_only opam_url loc with
-       | `Git ->
-         let* source = Opam_repo.Source.of_opam_url loc opam_url in
-         Opam_repo.of_git_repo source
+       | `Git -> Opam_repo.of_git_repo loc opam_url
        | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
 ;;
 
 let find_local_packages =
   let open Memo.O in
-  Dune_rules.Dune_load.packages () >>| Package.Name.Map.map ~f:Package.to_local_package
+  Dune_rules.Dune_load.packages ()
+  >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
 let pp_packages packages =

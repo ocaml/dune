@@ -45,15 +45,6 @@ This test if the sherlodoc js files are generated
 
   $ cat ./_build/default/_doc_new/html/docs/db.js
   /* Sherlodoc DB for: */
-  /*   - ../../index/page-docs.odocl */
-  /*   - ../../index/local/page-local.odocl */
-  /*   - ../../odoc/local/bar/bar.odocl */
-  /*   - ../../index/local/bar/page-bar.odocl */
-  /*   - ../../odoc/local/foo/foo2.odocl */
-  /*   - ../../odoc/local/foo/foo.odocl */
-  /*   - ../../index/local/foo/page-foo.odocl */
-  /*   - ../../odoc/local/foo/byte/foo_byte.odocl */
-  /*   - ../../index/local/foo/byte/page-byte.odocl */
   /*   - ../../odoc/stdlib/arith_status.odocl */
   /*   - ../../odoc/stdlib/big_int.odocl */
   /*   - ../../odoc/stdlib/bigarray.odocl */
@@ -74,6 +65,15 @@ This test if the sherlodoc js files are generated
   /*   - ../../odoc/stdlib/topdirs.odocl */
   /*   - ../../odoc/stdlib/unix.odocl */
   /*   - ../../odoc/stdlib/unixLabels.odocl */
+  /*   - --favored ../../index/page-docs.odocl */
+  /*   - --favored ../../index/local/page-local.odocl */
+  /*   - --favored ../../odoc/local/bar/bar.odocl */
+  /*   - --favored ../../index/local/bar/page-bar.odocl */
+  /*   - --favored ../../odoc/local/foo/foo2.odocl */
+  /*   - --favored ../../odoc/local/foo/foo.odocl */
+  /*   - --favored ../../index/local/foo/page-foo.odocl */
+  /*   - --favored ../../odoc/local/foo/byte/foo_byte.odocl */
+  /*   - --favored ../../index/local/foo/byte/page-byte.odocl */
   $ dune runtest
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">

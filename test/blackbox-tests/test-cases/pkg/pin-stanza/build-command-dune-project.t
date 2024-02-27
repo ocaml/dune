@@ -1,5 +1,10 @@
 Demonstrate the build command we construct for different types of projects:
 
+  $ . ../helpers.sh
+
+  $ mkrepo
+  $ add_mock_repo_if_needed
+
   $ mkdir _template _dune-only _mixed
 
   $ cat >_template/dune-project <<EOF
@@ -46,14 +51,11 @@ Demonstrate the build command we construct for different types of projects:
   - mixed.dev
   - template.dev
   $ build_command() {
-  > cat dune.lock/$1.pkg | awk '/build/{ p=1 } /^$/{ if (p) {exit} } { if (p) { print $0 } }'
+  > grep "(dune)" dune.lock/$1.pkg
   > }
-  $ build_command "dune-only"
-  (build
-   (run dune build -p %{pkg-self:name}))
-  $ build_command "mixed"
-  (build
-   (run dune build -p %{pkg-self:name}))
-  $ build_command "template"
-  (build
-   (run dune build -p %{pkg-self:name}))
+  $ build_command dune-only
+  (dune)
+  $ build_command mixed
+  (dune)
+  $ build_command template
+  (dune)

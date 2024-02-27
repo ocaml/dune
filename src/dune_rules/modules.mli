@@ -5,7 +5,6 @@ open Import
 type t
 
 val to_dyn : t -> Dyn.t
-val equal : t -> t -> bool
 
 val lib
   :  obj_dir:Path.Build.t

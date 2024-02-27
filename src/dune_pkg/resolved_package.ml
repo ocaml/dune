@@ -9,8 +9,10 @@ type nonrec t =
   ; package : OpamPackage.t
   ; extra_files : extra_files
   ; loc : Loc.t
+  ; dune_build : bool
   }
 
+let dune_build t = t.dune_build
 let loc t = t.loc
 let package t = t.package
 let opam_file t = t.opam_file
@@ -35,7 +37,12 @@ let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
   let opam_file_path = Path.of_local opam_file in
   let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
   let loc = Loc.in_file opam_file_path in
-  { loc; package; opam_file; extra_files = Git_files (files_dir, rev) }
+  { dune_build = false
+  ; loc
+  ; package
+  ; opam_file
+  ; extra_files = Git_files (files_dir, rev)
+  }
 ;;
 
 let local_fs package ~dir ~opam_file_path ~files_dir =
@@ -46,7 +53,12 @@ let local_fs package ~dir ~opam_file_path ~files_dir =
     read_opam_file package ~opam_file_path ~opam_file_contents
   in
   let loc = Loc.in_file opam_file_path in
-  { loc; package; extra_files = Inside_files_dir files_dir; opam_file }
+  { dune_build = false
+  ; loc
+  ; package
+  ; extra_files = Inside_files_dir files_dir
+  ; opam_file
+  }
 ;;
 
 (* Scan a path recursively down retrieving a list of all files together with their
@@ -75,7 +87,7 @@ let scan_files_entries path =
 let dune_package loc opam_file opam_package =
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in
-  { opam_file; package; loc; extra_files = Inside_files_dir None }
+  { dune_build = true; opam_file; package; loc; extra_files = Inside_files_dir None }
 ;;
 
 open Fiber.O

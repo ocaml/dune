@@ -6,12 +6,13 @@ These documents specify the various features and languages present in Dune.
 .. toctree::
    :maxdepth: 2
 
+   files/index
    lexical-conventions
    ordered-set-language
    boolean-language
    predicate-language
    library-dependencies
-   actions
+   actions/index
    foreign
    cli
    preprocessing-spec

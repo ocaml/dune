@@ -452,7 +452,8 @@ let as_local_exn (t : Path.t t) =
   match t with
   | Local _ -> assert false
   | Local_as_path e -> Local e
-  | External _ -> Code_error.raise "Obj_dir.as_local_exn: external dir" []
+  | External e ->
+    Code_error.raise "Obj_dir.as_local_exn: external dir" [ "t", External.to_dyn e ]
 ;;
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)

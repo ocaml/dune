@@ -20,7 +20,8 @@ Folder Structure
 Dune Configuration
 ------------------
 
-See the section on :doc:`../reference/actions` for more details on :dune:ref:`action-progn` and :dune:ref:`action-with-<outputs>-to`.
+See :doc:`/reference/actions/progn` and
+:doc:`/reference/actions/with-outputs-to`.
 
 .. code:: dune
 

@@ -280,6 +280,111 @@ let%expect_test _ =
 ;;
 
 let%expect_test _ =
+  reach "foo" ~from:"foo";
+  [%expect {|
+"."
+|}]
+;;
+
+let%expect_test _ =
+  reach "bar/foo" ~from:"bar/foo";
+  [%expect {|
+"."
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/b/x" ~from:"a/b/y";
+  [%expect {|
+"../x"
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/b" ~from:"a/b/x";
+  [%expect {|
+".."
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/b/x" ~from:"a/b";
+  [%expect {|
+"x"
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/b/x/z" ~from:"a/b/y";
+  [%expect {|
+"../x/z"
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/b/y" ~from:"a/b/x/z";
+  [%expect {|
+"../../y"
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/bbb" ~from:"a/b";
+  [%expect {|
+"../bbb"
+|}]
+;;
+
+let%expect_test _ =
+  reach "" ~from:"";
+  [%expect {|
+"."
+|}]
+;;
+
+let%expect_test _ =
+  reach "" ~from:"foo";
+  [%expect {|
+".."
+|}]
+;;
+
+let%expect_test _ =
+  reach "foo" ~from:"";
+  [%expect {|
+"foo"
+|}]
+;;
+
+let%expect_test _ =
+  reach "x/foo" ~from:"bar/x";
+  [%expect {|
+"../../x/foo"
+|}]
+;;
+
+let%expect_test _ =
+  reach "a/x" ~from:"x/b";
+  [%expect {|
+"../../a/x"
+|}]
+;;
+
+let%expect_test _ =
+  reach "default/META.foo" ~from:"default";
+  [%expect {|
+"META.foo"
+|}]
+;;
+
+let%expect_test _ =
+  reach "default/av" ~from:"default/avdevice";
+  [%expect {|
+"../av"
+|}]
+;;
+
+let%expect_test _ =
   relative (Path.of_string "relative") "/absolute/path";
   [%expect {|
 External "/absolute/path"

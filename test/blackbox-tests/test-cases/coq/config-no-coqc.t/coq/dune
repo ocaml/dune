@@ -1,0 +1,21 @@
+(rule
+ (deps extracted/CRelationClasses.mli.patch extracted/patch.sh)
+ (package example-coq)
+ (target CRelationClasses.mli)
+ (action
+  (with-stdout-to %{target} (run %{dep:extracted/patch.sh} %{dep:extracted/CRelationClasses.mli})
+)))
+
+(copy_files extracted/CRelationClasses.ml)
+(copy_files extracted/Datatypes.{ml,mli})
+(copy_files extracted/Foo.{ml,mli})
+
+(library
+ (name extracted)
+ (public_name example-coq.coq)
+ (modules (:standard))
+ (libraries zarith coq-core.kernel)
+ (wrapped false)
+ (flags (:standard -rectypes -w -27-32-33-39-67-37-20-34))
+)
+

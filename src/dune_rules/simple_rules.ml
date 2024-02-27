@@ -218,7 +218,15 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            not the current directory."
       ];
   (* add rules *)
-  let* files = Build_system.eval_pred (File_selector.of_glob ~dir:src_in_build glob) in
+  let* only_sources = Expander.eval_blang expander def.only_sources in
+  let* files =
+    let dir =
+      match only_sources with
+      | true -> src_in_src
+      | false -> src_in_build
+    in
+    Build_system.eval_pred (File_selector.of_glob ~dir glob)
+  in
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)

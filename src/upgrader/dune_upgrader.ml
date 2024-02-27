@@ -3,6 +3,7 @@ open! Stdune
 include struct
   open Dune_rules
   module Dune_project = Dune_project
+  module Dune_project_name = Dune_project_name
   module Source_tree = Source_tree
   module Source_dir_status = Source_dir_status
   module Dune_file0 = Dune_file0
@@ -160,9 +161,9 @@ module Common = struct
         (List.concat
            [ [ sprintf "(lang dune %s)" (Dune_lang.Syntax.Version.to_string lang_version)
              ]
-           ; (match Dune_project.name project with
-              | Anonymous _ -> []
-              | Named s ->
+           ; (match Dune_project.name project |> Dune_project_name.name with
+              | None -> []
+              | Some s ->
                 [ Dune_lang.to_string
                     (List [ Dune_lang.atom "name"; Dune_lang.atom_or_quoted_string s ])
                 ])

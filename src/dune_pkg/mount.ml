@@ -14,7 +14,7 @@ let of_opam_url loc url =
   match OpamUrl.local_or_git_only url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
-    let+ rev = Opam_repo.Source.of_opam_url loc url >>= Opam_repo.Source.rev in
+    let+ rev = Opam_repo.of_git_repo loc url >>| Opam_repo.revision in
     Git rev
 ;;
 

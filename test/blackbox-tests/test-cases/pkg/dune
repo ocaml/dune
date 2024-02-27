@@ -34,8 +34,12 @@
 
 (cram
  (deps %{bin:webserver_oneshot})
- (applies_to compute-checksums-when-missing e2e source-caching))
+ (applies_to compute-checksums-when-missing e2e source-caching tarball))
 
 (cram
- (deps %{bin:tar} %{bin:md5sum})
+ (deps %{bin:md5sum})
  (applies_to source-caching))
+
+(cram
+ (deps %{bin:tar})
+ (applies_to source-caching tarball))

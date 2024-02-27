@@ -14,9 +14,9 @@ let is_non_empty = function
   | _ -> true
 ;;
 
-let filter_map l ~f =
+let rev_filter_map l ~f =
   let rec loop acc = function
-    | [] -> rev acc
+    | [] -> acc
     | x :: xs ->
       (match f x with
        | None -> loop acc xs
@@ -25,6 +25,7 @@ let filter_map l ~f =
   loop [] l
 ;;
 
+let filter_map l ~f = rev (rev_filter_map l ~f)
 let filter_opt l = filter_map ~f:Fun.id l
 
 let filteri l ~f =
@@ -38,15 +39,25 @@ let filteri l ~f =
   filteri l 0
 ;;
 
-let concat_map t ~f =
+let rev_concat =
+  let rec loop acc = function
+    | [] -> acc
+    | x :: xs -> loop (rev_append x acc) xs
+  in
+  fun t -> loop [] t
+;;
+
+let rev_concat_map t ~f =
   let rec aux f acc = function
-    | [] -> rev acc
+    | [] -> acc
     | x :: l ->
       let xs = f x in
       aux f (rev_append xs acc) l
   in
   aux f [] t
 ;;
+
+let concat_map t ~f = rev (rev_concat_map t ~f)
 
 let rev_partition_map =
   let rec loop l accl accr ~f =
@@ -241,4 +252,13 @@ let truncate ~max_length xs =
     | hd :: tl -> loop (hd :: acc) (length + 1) tl
   in
   loop [] 0 xs
+;;
+
+let intersperse xs ~sep =
+  let rec loop acc = function
+    | [] -> rev acc
+    | [ x ] -> rev (x :: acc)
+    | x :: xs -> loop (sep :: x :: acc) xs
+  in
+  loop [] xs
 ;;

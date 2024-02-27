@@ -24,7 +24,6 @@ val dump_memo_graph_with_timing : t -> bool
 val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
-val insignificant_changes : t -> [ `React | `Ignore ]
 
 module Action_runner : sig
   type t =
@@ -48,8 +47,6 @@ module Builder : sig
   val default_target : t -> Arg.Dep.t
   val term : t Cmdliner.Term.t
 end
-
-val build : Builder.t -> t
 
 (** [init] creates a [Common.t] by executing a sequence of side-effecting actions to
     initialize Dune's working environment based on the options determined in the\

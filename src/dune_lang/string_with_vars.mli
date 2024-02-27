@@ -63,11 +63,15 @@ module Mode : sig
       precise result type from the expansion, and do some validation to make
       sure we aren't expanding into multiple values in cases where it's not
       allowed. *)
-  type _ t =
-    | Single : Value.t t (** Expansion must produce a single value *)
-    | Many : Value.t list t (** Expansion may produce any number of values *)
-    | At_least_one : (Value.t * Value.t list) t
-    (** Expansion may produce 1 or more values *)
+  type (_, _) t =
+    | Single : (Value.Deferred_concat.t, Value.t) t
+    (** Expansion must produce a single value *)
+    | Many : (Value.Deferred_concat.t list, Value.t list) t
+    (** Expansion may produce any number of values *)
+    | At_least_one
+        : ( Value.Deferred_concat.t * Value.Deferred_concat.t list
+            , Value.t * Value.t list )
+            t (** Expansion may produce 1 or more values *)
 end
 
 type yes_no_unknown =
@@ -103,16 +107,27 @@ module type Expander = sig
   (** [expand ~f] attempts to expand all percent forms in a template. If [f]
       returns [None] for any variable (no substitution was found), then this
       function will raise. *)
-  val expand : t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list app expander -> 'a app
+  val expand
+    :  t
+    -> mode:(_, 'value) Mode.t
+    -> dir:Path.t
+    -> f:Value.t list app expander
+    -> 'value app
 
   (** Behaves the same as [expand] except the pform expander [f] returns a
       result and errors are propagated *)
   val expand_result
     :  t
-    -> mode:'a Mode.t
+    -> mode:(_, 'value) Mode.t
     -> dir:Path.t
     -> f:(Value.t list, 'error) result app expander
-    -> ('a, 'error) result app
+    -> ('value, 'error) result app
+
+  val expand_result_deferred_concat
+    :  t
+    -> mode:('deferred_concat, _) Mode.t
+    -> f:(Value.t list, 'error) result app expander
+    -> ('deferred_concat, 'error) result app
 
   (** [expand_as_much_as_possible] expands all variables for which [f] returns
       [None] and left other unexpanded. *)

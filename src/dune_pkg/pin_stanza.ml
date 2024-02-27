@@ -16,6 +16,15 @@ module Package = struct
     and+ version = field_o "version" Package_version.decode in
     { name; version; loc }
   ;;
+
+  let to_local_package t ~url ~origin =
+    { Local_package.url
+    ; version = Option.value ~default:Package_version.dev t.version
+    ; loc = t.loc
+    ; origin
+    ; name = t.name
+    }
+  ;;
 end
 
 type t =
@@ -25,13 +34,22 @@ type t =
 
 let url t = t.url
 
-let decode =
+let common_fields =
   let open Dune_lang.Decoder in
-  fields
-  @@
   let+ url = field "url" OpamUrl.decode_loc
   and+ packages = multi_field "package" Package.decode in
   { url; packages }
+;;
+
+let decode = Dune_lang.Decoder.fields common_fields
+
+let decode_with_name =
+  let open Dune_lang.Decoder in
+  fields
+  @@
+  let+ t = common_fields
+  and+ name = field "name" (located string) in
+  name, t
 ;;
 
 module DB = struct
@@ -45,13 +63,15 @@ module DB = struct
     ; context : context
     }
 
-  let empty context = { all = []; map = Package_name.Map.empty; context }
+  let empty = { all = []; map = Package_name.Map.empty; context = Workspace }
   let to_dyn = Dyn.opaque
   let hash = Poly.hash
   let equal = Poly.equal
 
   let add_opam_pins t pins =
-    let pins = Pinned_package.collect pins in
+    let pins =
+      Package_name.Map.map pins ~f:Local_package.of_package |> Pinned_package.collect
+    in
     { t with
       map =
         Package_name.Map.fold pins ~init:t.map ~f:(fun (pin : Local_package.pin) acc ->
@@ -64,33 +84,31 @@ module DB = struct
     }
   ;;
 
-  let decode context =
+  let package_map_of_list list ~pin =
+    match Package_name.Map.of_list list with
+    | Ok map -> map
+    | Error (name, p, _) ->
+      let pin : Local_package.pin = pin p in
+      User_error.raise
+        ~loc:pin.loc
+        [ Pp.textf "package %S is already defined" (Package_name.to_string name) ]
+  ;;
+
+  let gen_decode context =
     let open Dune_lang.Decoder in
     let+ all = multi_field "pin" decode in
     let map =
-      match
-        List.concat_map all ~f:(fun source ->
-          List.map source.packages ~f:(fun (package : Package.t) ->
-            let name = package.name in
-            let package =
-              { Local_package.url = source.url
-              ; version = Option.value ~default:Package_version.dev package.version
-              ; loc = package.loc
-              ; origin = `Dune
-              ; name
-              }
-            in
-            name, (package, context)))
-        |> Package_name.Map.of_list
-      with
-      | Ok map -> map
-      | Error (name, (pin, _), _) ->
-        User_error.raise
-          ~loc:pin.loc
-          [ Pp.textf "package %S is already defined" (Package_name.to_string name) ]
+      List.concat_map all ~f:(fun source ->
+        List.map source.packages ~f:(fun (package : Package.t) ->
+          let name = package.name in
+          let package = Package.to_local_package package ~url:source.url ~origin:`Dune in
+          name, (package, context)))
+      |> package_map_of_list ~pin:fst
     in
     { all; map; context }
   ;;
+
+  let decode ~dir = gen_decode (Project { dir })
 
   let super_context ((_, ctx) as x) ((_, ctx') as x') =
     match ctx, ctx' with
@@ -130,53 +148,84 @@ module DB = struct
   ;;
 
   let encode _ = (* CR-rgrinberg: needed for dune init *) []
+
+  module Workspace = struct
+    type nonrec t = Local_package.pin Package_name.Map.t String.Map.t
+
+    let empty = String.Map.empty
+
+    let decode =
+      let open Dune_lang.Decoder in
+      let+ pins = Dune_lang.Decoder.multi_field "pin" decode_with_name in
+      match
+        String.Map.of_list_map pins ~f:(fun ((loc, name), pin) ->
+          let packages =
+            List.map pin.packages ~f:(fun (package : Package.t) ->
+              let package = Package.to_local_package package ~url:pin.url ~origin:`Dune in
+              package.name, package)
+            |> package_map_of_list ~pin:Fun.id
+          in
+          name, (loc, packages))
+      with
+      | Ok s -> String.Map.map ~f:snd s
+      | Error (name, ((loc, _), _), _) ->
+        User_error.raise ~loc [ Pp.textf "a pin named %S already defined" name ]
+    ;;
+
+    let extract (t : t) ~names =
+      let map =
+        List.concat_map names ~f:(fun (loc, name) ->
+          match String.Map.find t name with
+          | None -> User_error.raise ~loc [ Pp.textf "pin %S doesn't exist" name ]
+          | Some packages ->
+            Package_name.Map.to_list_map packages ~f:(fun name package ->
+              name, (package, Workspace)))
+        |> package_map_of_list ~pin:fst
+      in
+      { all = []; map; context = Workspace }
+    ;;
+
+    let equal = String.Map.equal ~equal:Poly.equal
+    let to_dyn = Dyn.opaque
+    let hash = Poly.hash
+  end
 end
 
 module Scan_project = struct
   type t =
     read:(Path.Source.t -> string Fiber.t)
     -> files:Filename.Set.t
-    -> (DB.t * Local_package.t Package_name.Map.t) option Fiber.t
+    -> (DB.t * Dune_lang.Package.t Package_name.Map.t) option Fiber.t
 
   type state =
-    { mutable traversed :
-        (DB.t * Local_package.t Package_name.Map.t) option Fiber.Ivar.t OpamUrl.Map.t
+    { traversed :
+        (OpamUrl.t, (DB.t * Dune_lang.Package.t Package_name.Map.t) option) Fiber_cache.t
     }
 
-  let make_state () = { traversed = OpamUrl.Map.empty }
+  let make_state () = { traversed = Fiber_cache.create (module OpamUrl) }
 
   let eval_url t state (loc, url) =
-    let open Fiber.O in
-    let* () = Fiber.return () in
-    match OpamUrl.Map.find state.traversed url with
-    | Some x -> Fiber.Ivar.read x
-    | None ->
-      let ivar = Fiber.Ivar.create () in
-      state.traversed <- OpamUrl.Map.add_exn state.traversed url ivar;
-      let* res =
-        let open Fiber.O in
-        let* mount = Mount.of_opam_url loc url in
-        let* files =
-          Mount.readdir mount Path.Local.root
-          >>| Filename.Map.filter ~f:(function
-            | `File -> true
-            | `Dir -> false)
-          >>| Filename.Set.of_keys
-        in
-        let read path =
-          let path = Path.Source.to_local path in
-          Mount.read mount path
-          >>| function
-          | Some s -> s
-          | None ->
-            Code_error.raise
-              "expected file to exist"
-              [ "path", Path.Local.to_dyn path; "url", OpamUrl.to_dyn url ]
-        in
-        t ~read ~files
+    Fiber_cache.find_or_add state.traversed url ~f:(fun () ->
+      let open Fiber.O in
+      let* mount = Mount.of_opam_url loc url in
+      let* files =
+        Mount.readdir mount Path.Local.root
+        >>| Filename.Map.filter ~f:(function
+          | `File -> true
+          | `Dir -> false)
+        >>| Filename.Set.of_keys
       in
-      let+ () = Fiber.Ivar.fill ivar res in
-      res
+      let read path =
+        let path = Path.Source.to_local path in
+        Mount.read mount path
+        >>| function
+        | Some s -> s
+        | None ->
+          Code_error.raise
+            "expected file to exist"
+            [ "path", Path.Local.to_dyn path; "url", OpamUrl.to_dyn url ]
+      in
+      t ~read ~files)
   ;;
 end
 
@@ -300,20 +349,10 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
     | Some pkg ->
       let resolved_package =
         let opam_file =
-          Local_package.for_solver pkg
+          Local_package.of_package pkg
+          |> Local_package.for_solver
           |> Local_package.For_solver.to_opam_file
           |> OpamFile.OPAM.with_url (OpamFile.URL.create (snd package.url))
-          |> OpamFile.OPAM.with_build
-               [ (* CR-rgrinberg: this needs to be addressed in a more
-                    principled manner *)
-                 (let cmd =
-                    ([ "dune"; "build"; "-p" ]
-                     |> List.map ~f:(fun x -> OpamTypes.CString x))
-                    @ [ OpamTypes.CIdent "name" ]
-                    |> List.map ~f:(fun x -> x, None)
-                  in
-                  cmd, None)
-               ]
         in
         let opam_package =
           OpamPackage.create

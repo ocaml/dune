@@ -14,9 +14,9 @@ module File = struct
     ;;
 
     let compare { ino; dev } t =
-      let open Ordering.O in
-      let= () = Int.compare ino t.ino in
-      Int.compare dev t.dev
+      match Int.compare ino t.ino with
+      | Ordering.Eq -> Int.compare dev t.dev
+      | _ as e -> e
     ;;
   end
 
@@ -31,32 +31,24 @@ module File = struct
 end
 
 type t =
-  { path : Path.Source.t
-  ; files : Filename.Set.t
+  { files : Filename.Set.t
   ; dirs : (Filename.t * File.t) list
   }
 
-let path t = t.path
 let files t = t.files
 let dirs t = t.dirs
 
 let equal =
   let dirs_equal (s1, f1) (s2, f2) = Filename.equal s1 s2 && File.compare f1 f2 = Eq in
-  fun x y ->
-    Path.Source.equal x.path y.path
-    && Filename.Set.equal x.files y.files
-    && List.equal dirs_equal x.dirs y.dirs
+  fun x y -> Filename.Set.equal x.files y.files && List.equal dirs_equal x.dirs y.dirs
 ;;
 
-let empty path = { path; files = Filename.Set.empty; dirs = [] }
+let empty = { files = Filename.Set.empty; dirs = [] }
 
-let to_dyn { path; files; dirs } =
+let to_dyn { files; dirs } =
   let open Dyn in
   record
-    [ "path", Path.Source.to_dyn path
-    ; "files", Filename.Set.to_dyn files
-    ; "dirs", list (pair string File.to_dyn) dirs
-    ]
+    [ "files", Filename.Set.to_dyn files; "dirs", list (pair string File.to_dyn) dirs ]
 ;;
 
 (* Returns [true] for special files such as character devices of sockets; see
@@ -95,7 +87,7 @@ let of_source_path_impl path =
       Fs_cache.Dir_contents.to_list dir_contents
       |> Memo.parallel_map ~f:(fun (fn, (kind : File_kind.t)) ->
         let path = Path.Source.relative path fn in
-        if Path.Source.is_in_build_dir path || is_temp_file fn
+        if is_special kind || Path.Source.is_in_build_dir path || is_temp_file fn
         then Memo.return List.Skip
         else
           let+ is_directory, file =
@@ -115,14 +107,10 @@ let of_source_path_impl path =
                | Ok _ | Error _ -> false, File.dummy)
             | _ -> Memo.return (false, File.dummy)
           in
-          if is_directory
-          then List.Right (fn, file)
-          else if is_special kind
-          then Skip
-          else Left fn)
+          if is_directory then List.Right (fn, file) else Left fn)
       >>| List.filter_partition_map ~f:Fun.id
     in
-    { path; files = Filename.Set.of_list files; dirs } |> Result.ok
+    { files = Filename.Set.of_list files; dirs } |> Result.ok
 ;;
 
 (* Having a cutoff here speeds up incremental rebuilds quite a bit when a

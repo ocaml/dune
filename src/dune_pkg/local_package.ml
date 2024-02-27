@@ -126,3 +126,54 @@ let for_solver
   =
   { For_solver.name; dependencies; conflicts; conflict_class; depopts; pins }
 ;;
+
+let of_package (t : Dune_lang.Package.t) =
+  let module Package = Dune_lang.Package in
+  let loc = Package.loc t in
+  let version = Package.version t in
+  let name = Package.name t in
+  match Package.original_opam_file t with
+  | None ->
+    { name
+    ; version
+    ; dependencies = Package.depends t
+    ; conflicts = Package.conflicts t
+    ; depopts = Package.depopts t
+    ; loc
+    ; conflict_class = []
+    ; pins = Package_name.Map.empty
+    }
+  | Some { file; contents = opam_file_string } ->
+    let opam_file =
+      Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
+    in
+    let convert_filtered_formula filtered_formula =
+      Package_dependency.list_of_opam_filtered_formula loc filtered_formula
+    in
+    let dependencies = convert_filtered_formula (OpamFile.OPAM.depends opam_file) in
+    let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
+    let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
+    let conflict_class =
+      OpamFile.OPAM.conflict_class opam_file
+      |> List.map ~f:Package_name.of_opam_package_name
+    in
+    let pins =
+      match
+        OpamFile.OPAM.pin_depends opam_file
+        |> List.map ~f:(fun (pkg, url) ->
+          let name = Package_name.of_opam_package_name (OpamPackage.name pkg) in
+          let version =
+            Package_version.of_opam_package_version (OpamPackage.version pkg)
+          in
+          let loc = Loc.in_file (Path.source file) in
+          name, { loc; version; url = loc, url; name; origin = `Opam })
+        |> Package_name.Map.of_list
+      with
+      | Ok x -> x
+      | Error (_, pkg, _) ->
+        User_error.raise
+          ~loc:pkg.loc
+          [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ]
+    in
+    { name; version; dependencies; conflicts; depopts; loc; conflict_class; pins }
+;;

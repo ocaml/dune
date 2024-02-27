@@ -70,12 +70,7 @@ let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
-
-let sources t =
-  let packages = Package.Name.Map.map t.packages ~f:Package.to_local_package in
-  Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources packages
-;;
-
+let sources t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources t.packages
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -432,7 +427,7 @@ let infer ~dir info packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
-  ; sources = Dune_pkg.Pin_stanza.DB.empty (Project { dir })
+  ; sources = Dune_pkg.Pin_stanza.DB.empty
   ; packages
   ; root
   ; info
@@ -581,15 +576,17 @@ let encode : t -> Dune_lang.t list =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
   let sources = Dune_pkg.Pin_stanza.DB.encode sources in
-  [ lang_stanza; name ]
-  @ flags
-  @ version
-  @ Package_info.encode_fields info
-  @ formatting
-  @ dialects
-  @ packages
-  @ subst_config
-  @ sources
+  List.concat
+    [ [ lang_stanza; name ]
+    ; flags
+    ; version
+    ; Package_info.encode_fields info
+    ; formatting
+    ; dialects
+    ; packages
+    ; subst_config
+    ; sources
+    ]
 ;;
 
 module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
@@ -631,8 +628,8 @@ let parse_packages
         name, pkg)
       |> Memo.map ~f:Package.Name.Map.of_list_exn
     else (
-      (match packages, name with
-       | [ p ], Some (Named name) ->
+      (match packages, Option.bind ~f:Dune_project_name.name name with
+       | [ p ], Some name ->
          if Package.Name.to_string (Package.name p) <> name
          then
            User_error.raise
@@ -727,7 +724,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ sources = Dune_pkg.Pin_stanza.DB.decode (Project { dir })
+     and+ sources = Dune_pkg.Pin_stanza.DB.decode ~dir
      and+ explicit_extensions =
        multi_field
          "using"

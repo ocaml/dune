@@ -52,6 +52,13 @@ val rm_rf : string -> unit
 
 val is_root : string -> bool
 
+val traverse
+  :  dir:string
+  -> init:'acc
+  -> on_file:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> on_dir:(dir:string -> Filename.t -> 'acc -> 'acc)
+  -> 'acc
+
 val traverse_files
   :  dir:string
   -> init:'acc

@@ -802,7 +802,7 @@ let search_db_for_lib sctx lib =
   let dir = Paths.html ctx target in
   let* odocs = odoc_artefacts sctx target in
   let odocls = List.map odocs ~f:(fun odoc -> odoc.odocl_file) in
-  Sherlodoc.search_db sctx ~dir odocls
+  Sherlodoc.search_db sctx ~dir ~external_odocls:[] odocls
 ;;
 
 let setup_lib_html_rules sctx ~search_db lib =
@@ -826,7 +826,7 @@ let setup_pkg_html_rules_def =
     let all_odocs = pkg_odocs @ lib_odocs in
     let* search_db =
       let odocls = List.map all_odocs ~f:(fun artefact -> artefact.odocl_file) in
-      Sherlodoc.search_db sctx ~dir odocls
+      Sherlodoc.search_db sctx ~dir ~external_odocls:[] odocls
     in
     let* () = Memo.parallel_iter libs ~f:(setup_lib_html_rules sctx ~search_db) in
     let* () = Memo.parallel_iter pkg_odocs ~f:(setup_generate_all ~search_db sctx) in
@@ -898,13 +898,9 @@ let package_mlds =
   let memo =
     Memo.create
       "package-mlds"
-      ~input:(module Super_context.As_memo_key.And_package)
+      ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
         Rules.collect (fun () ->
-          (* CR-someday jeremiedimino: it is weird that we drop the
-             [Package.t] and go back to a package name here. Need to try and
-             change that one day. *)
-          let pkg = Package.name pkg in
           let* mlds = Packages.mlds sctx pkg in
           let mlds = check_mlds_no_dupes ~pkg ~mlds in
           let ctx = Super_context.context sctx in
@@ -928,7 +924,6 @@ let setup_package_odoc_rules sctx ~pkg =
   let ctx = Super_context.context sctx in
   (* CR-someday jeremiedimino: it is weird that we drop the [Package.t] and go
      back to a package name here. Need to try and change that one day. *)
-  let pkg = Package.name pkg in
   let* odocs =
     Filename.Map.values mlds
     |> Memo.parallel_map ~f:(fun mld ->
@@ -944,7 +939,7 @@ let setup_package_odoc_rules sctx ~pkg =
 
 let gen_project_rules sctx project =
   Dune_project.packages project
-  |> Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  |> Package_map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg)
 ;;
@@ -995,10 +990,13 @@ let gen_rules sctx ~dir rest =
        >>> setup_toplevel_index_rules sctx)
   | [ "_mlds"; pkg ] ->
     with_package pkg ~f:(fun pkg ->
+      let pkg = Package.name pkg in
       let* _mlds, rules = package_mlds sctx ~pkg in
       Rules.produce rules)
   | [ "_odoc"; "pkg"; pkg ] ->
-    with_package pkg ~f:(fun pkg -> setup_package_odoc_rules sctx ~pkg)
+    with_package pkg ~f:(fun pkg ->
+      let pkg = Package.name pkg in
+      setup_package_odoc_rules sctx ~pkg)
   | [ "_odocls"; lib_unique_name_or_pkg ] ->
     has_rules
       ((* TODO we can be a better with the error handling in the case where

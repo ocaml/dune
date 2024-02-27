@@ -88,12 +88,12 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context.
 - ``bin:<program>`` expands ``<path>`` to ``program``. If ``program``
-  is installed by a workspace package (see :ref:`install` stanzas),
-  the locally built binary will be used, otherwise it will be searched
-  in the ``<path>`` of the current build context. Note that ``(run
-  %{bin:program} ...)`` and ``(run program ...)`` behave in the same
-  way. ``%{bin:...}`` is only necessary when you are using ``(bash
-  ...)`` or ``(system ...)``.
+  is installed by a workspace package (see :doc:`/reference/files/dune/install`
+  stanzas), the locally built binary will be used, otherwise it will be
+  searched in the ``<path>`` of the current build context. Note that ``(run
+  %{bin:program} ...)`` and ``(run program ...)`` behave in the same way.
+  ``%{bin:...}`` is only necessary when you are using ``(bash ...)`` or
+  ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
 - ``lib:<public-library-name>:<file>`` expands to the file's installation path
@@ -172,8 +172,8 @@ creates a cycle.
 Some cycles might be more complex. In any case, when you see such an
 error, the easiest thing to do is move the file that's being read
 to a different directory, preferably a standalone one. You can use the
-:ref:`subdir` stanza to keep the logic self-contained in the same
-``dune`` file:
+:doc:`/reference/files/dune/subdir` stanza to keep the logic self-contained in
+the same ``dune`` file:
 
 .. code:: dune
 

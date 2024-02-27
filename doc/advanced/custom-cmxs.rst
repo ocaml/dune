@@ -12,8 +12,8 @@ For the specific cases where this extra flexibility is needed, one can use
 not associated to any library.
 
 Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
-``d.cmx``. Note how we use a :ref:`library` stanza to set up the compilation of
-``d.cmx``.
+``d.cmx``. Note how we use a :doc:`/reference/files/dune/library` stanza to set
+up the compilation of ``d.cmx``.
 
 .. code:: dune
 

@@ -55,25 +55,11 @@ let%expect_test "adding remotes" =
     let remote_path = Path.relative cwd "git-remote" in
     let* _head = create_repo_at remote_path in
     let opam_url = remote_path |> Path.to_string |> OpamUrl.parse in
-    let* (src : Opam_repo.Source.t) = Opam_repo.Source.of_opam_url Loc.none opam_url in
-    let source = Opam_repo.Source.url src in
-    let* remote = Rev_store.add_repo rev_store ~source ~branch:None in
-    let* (_ : Rev_store.Remote.t) = Rev_store.Remote.update remote in
-    print_endline "Creating first remote succeeded";
-    [%expect {|
-    Creating first remote succeeded
-    |}];
-    let* remote' = Rev_store.add_repo rev_store ~source ~branch:None in
-    let (_ : Rev_store.Remote.t) = Rev_store.Remote.don't_update remote' in
-    print_endline "Adding same remote without update succeeded";
-    [%expect {|
-    Adding same remote without update succeeded
-    |}];
-    let* remote'' = Rev_store.add_repo rev_store ~source ~branch:None in
-    let* (_ : Rev_store.Remote.t) = Rev_store.Remote.update remote'' in
-    print_endline "Adding same remote with update succeeded";
-    [%expect {|
-    Adding same remote with update succeeded
-    |}];
-    Fiber.return ())
+    Dune_pkg.OpamUrl.find_revision opam_url rev_store
+    >>| function
+    | Error _ -> print_endline "Unable to find revision"
+    | Ok _ -> print_endline "Successfully found remote");
+  [%expect {|
+    Successfully found remote
+     |}]
 ;;

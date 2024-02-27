@@ -1,7 +1,7 @@
 package
 -------
 
-.. dune:stanza:: package
+.. describe:: (package ...)
 
    Define package-specific metadata.
 

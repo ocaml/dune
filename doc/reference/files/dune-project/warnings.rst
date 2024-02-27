@@ -1,7 +1,7 @@
 warnings
 --------
 
-.. dune:stanza:: warnings
+.. describe:: (warnings ...)
 
    .. versionadded:: 3.11
 

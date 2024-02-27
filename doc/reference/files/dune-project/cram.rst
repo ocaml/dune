@@ -1,8 +1,7 @@
 cram
 ----
 
-.. dune:stanza:: cram
-   :param: <status>
+.. describe:: (cram <status>)
 
    Define whether Cram-style tests are enabled for the project.
 

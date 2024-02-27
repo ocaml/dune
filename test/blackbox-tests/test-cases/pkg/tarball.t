@@ -14,10 +14,16 @@ Demonstrate that we should support tarballs with and without a root directory
 
   $ make_lockdir
 
+CR-rgrinberg: no idea why, but curl doesn't like it when we run the server
+twice in one test (even on different ports)
+
+  $ webserver_oneshot  --port-file port.txt \
+  >   --content-file tarball1.tar.gz \
+  >   --content-file tarball2.tar.gz &
+  $ until test -f port.txt; do sleep 0.1; done
+  $ port=$(cat port.txt)
+
   $ runtest() {
-  > webserver_oneshot --content-file $1 --port-file port.txt &
-  > until test -f port.txt; do sleep 0.1; done
-  > port=$(cat port.txt)
   > make_lockpkg foo <<EOF
   > (version 0.1.0)
   > (source (fetch (url http://0.0.0.0:$port)))
@@ -25,7 +31,6 @@ Demonstrate that we should support tarballs with and without a root directory
   > EOF
   > build_pkg foo
   > rm -rf _build
-  > wait
   > }
   $ runtest tarball1.tar.gz
   .
@@ -34,3 +39,5 @@ Demonstrate that we should support tarballs with and without a root directory
   .
   ./_source
   ./_source/foo
+
+  $ wait

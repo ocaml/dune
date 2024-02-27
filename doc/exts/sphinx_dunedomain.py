@@ -35,32 +35,6 @@ class StanzaIndex(Index):
         return content, True
 
 
-class FieldIndex(Index):
-    name = "fieldindex"
-    localname = "Fields"
-
-    def generate(self, docnames=None):
-        content = defaultdict(list)
-
-        fields = {
-            name: (dispname, typ, docname, anchor)
-            for (name, dispname, typ, docname, anchor) in self.domain.data["fields"]
-        }
-
-        for (
-            dispname,
-            typ,
-            docname,
-            anchor,
-        ) in fields.values():
-            content[dispname[0].lower()].append(
-                (dispname, 0, docname, anchor, docname, "", typ)
-            )
-
-        content = sorted(content.items())
-        return content, True
-
-
 class StanzaDirective(ObjectDescription):
     """
     The stanza directive.
@@ -102,47 +76,14 @@ class StanzaDirective(ObjectDescription):
         domain.add_stanza(sig)
 
 
-class FieldDirective(ObjectDescription):
-    """
-    The field directive.
-
-    A field is part of a stanza, or of another field. This nesting is tracked
-    by `env.current_path`.
-    """
-
-    option_spec = {
-        "param": directives.unchanged_required,
-    }
-
-    def handle_signature(self, sig, signode):
-        param = self.options.get("param", "...")
-        text = f"({sig} {param})"
-        signode += addnodes.desc_name(text=text)
-        return sig
-
-    def before_content(self, *args):
-        self.env.current_path.append(self.arguments[0])
-
-    def after_content(self, *args):
-        self.env.current_path.pop()
-
-    def add_target_and_index(self, name_cls, sig, signode):
-        path = self.env.current_path
-        path_string = "-".join(path)
-        signode["ids"].append(f"field-{path_string}-{sig}")
-        domain = self.env.get_domain("dune")
-        domain.add_field(path, sig)
-
-
 class DuneDomain(Domain):
     name = "dune"
 
     directives = {
         "stanza": StanzaDirective,
-        "field": FieldDirective,
     }
-    indices = {StanzaIndex, FieldIndex}
-    initial_data = {"stanzas": [], "fields": []}
+    indices = {StanzaIndex}
+    initial_data = {"stanzas": []}
 
     def get_full_qualified_name(self, node):
         return f"stanza.{node.arguments[0]}"
@@ -159,17 +100,6 @@ class DuneDomain(Domain):
         self.data["stanzas"].append(
             (name, signature, "Stanza", self.env.docname, anchor, 0)
         )
-
-    def add_field(self, path, field):
-        path_string = "-".join(path)
-        name = f"field.{path_string}.{field}"
-        anchor = f"field-{path_string}-{field}"
-        rpath = path[::-1]
-        pretty_path = f"({rpath[0]})"
-        for s in rpath[1:]:
-            pretty_path = f"({s} {pretty_path})"
-        typ = f"Field in {pretty_path}"
-        self.data["fields"].append((name, field, typ, self.env.docname, anchor))
 
     def setup(self):
         super().setup()

@@ -510,8 +510,6 @@ let setup_coqdep_for_theory_rule
      >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
 ;;
 
-module Dep_map = Stdune.Map.Make (Path)
-
 let coqdep_invalid phase line =
   Code_error.raise
     "coqdep returned invalid output"
@@ -540,33 +538,32 @@ let parse_line ~dir line =
       | vo :: _ -> vo
     in
     (* let depname, ext = Filename.split_extension ff in *)
-    let target = Path.relative (Path.build dir) target in
+    let target = Path.Build.relative dir target in
     (* EJGA: XXX using `String.extract_blank_separated_words` works
        for OCaml, but not for Coq as we don't use `-modules` *)
     let deps = unescape_coqdep deps |> String.extract_blank_separated_words in
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)
-    let deps = List.map ~f:(Path.relative (Path.build dir)) deps in
+    let deps = List.map ~f:(Path.Build.relative dir) deps in
     target, deps
 ;;
 
-let get_dep_map ~dir ~wrapper_name : Path.t list Dep_map.t Action_builder.t =
+let get_dep_map ~dir ~wrapper_name : Path.Build.t list Path.Build.Map.t Action_builder.t =
   let file = dep_theory_file ~dir ~wrapper_name in
   let open Action_builder.O in
   let f = parse_line ~dir in
   Action_builder.lines_of (Path.build file)
   >>| fun lines ->
-  List.map ~f lines
-  |> Dep_map.of_list
+  Path.Build.Map.of_list_map ~f lines
   |> function
   | Ok map -> map
   | Error (k, r1, r2) ->
     Code_error.raise
       "get_dep_map: duplicate keys"
       [ "lines", Dyn.list Dyn.string lines
-      ; "key", Path.to_dyn k
-      ; "entry 1", Dyn.list Path.to_dyn r1
-      ; "entry 2", Dyn.list Path.to_dyn r2
+      ; "key", Path.Build.to_dyn k
+      ; "entry 1", Dyn.string r1
+      ; "entry 2", Dyn.string r2
       ]
 ;;
 
@@ -585,6 +582,7 @@ end
    ~wrapper_name]) change *)
 let memo_get_dep_map =
   Action_builder.create_memo
+    ~cutoff:(Path.Build.Map.equal ~equal:(List.equal Path.Build.equal))
     "coq_dep_map"
     ~input:(module DWInput)
     (fun (dir, wrapper_name) -> get_dep_map ~dir ~wrapper_name)
@@ -598,20 +596,21 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
       | Coq_mode.VosOnly -> ".vos"
       | _ -> ".vo"
     in
-    Path.set_extension ~ext (Coq_module.source coq_module)
+    Path.set_extension ~ext (Coq_module.source coq_module) |> Path.as_in_build_dir_exn
   in
   let* dep_map = Action_builder.exec_memo memo_get_dep_map (dir, wrapper_name) in
   let* boot_type = Resolve.Memo.read boot_type in
-  match Dep_map.find dep_map vo_target with
+  match Path.Build.Map.find dep_map vo_target with
   | None ->
     Code_error.raise
       "Dep_map.find failed for"
       [ "coq_module", Coq_module.to_dyn coq_module
-      ; "dep_map", Dep_map.to_dyn (Dyn.list Path.to_dyn) dep_map
+      ; "dep_map", Path.Build.Map.to_dyn (Dyn.list Path.Build.to_dyn) dep_map
       ]
   | Some deps ->
     (* Inject prelude deps *)
     let deps =
+      let deps = List.rev_map ~f:Path.build deps in
       let prelude = "Init/Prelude.vo" in
       match boot_type with
       | Bootstrap.No_stdlib | Bootstrap.Implicit -> deps

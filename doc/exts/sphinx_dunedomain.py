@@ -134,38 +134,15 @@ class FieldDirective(ObjectDescription):
         domain.add_field(path, sig)
 
 
-class ActionDirective(ObjectDescription):
-    """
-    The action directive.
-    """
-
-    option_spec = {
-        "param": directives.unchanged_required,
-    }
-
-    def handle_signature(self, sig, signode):
-        param = self.options.get("param", "...")
-        text = f"({sig} {param})"
-        signode += addnodes.desc_name(text=text)
-        return sig
-
-    def add_target_and_index(self, name_cls, sig, signode):
-        signode["ids"].append(f"action-{sig}")
-        domain = self.env.get_domain("dune")
-        domain.add_action(name_cls)
-
-
 class DuneDomain(Domain):
     name = "dune"
 
     directives = {
         "stanza": StanzaDirective,
         "field": FieldDirective,
-        "action": ActionDirective,
     }
     indices = {StanzaIndex, FieldIndex}
     initial_data = {"stanzas": [], "fields": []}
-    object_types = {"action": ObjType("action")}
 
     def get_full_qualified_name(self, node):
         return f"stanza.{node.arguments[0]}"
@@ -173,14 +150,8 @@ class DuneDomain(Domain):
     def get_stanzas(self):
         return self.data["stanzas"]
 
-    def get_actions(self):
-        return [
-            (f"action.{name}", name, "action", docname, f"action-{name}", 0)
-            for name, docname in self.actions.items()
-        ]
-
     def get_objects(self):
-        return self.get_stanzas() + self.get_actions()
+        return self.get_stanzas()
 
     def add_stanza(self, signature):
         name = f"stanza.{signature}"
@@ -200,12 +171,8 @@ class DuneDomain(Domain):
         typ = f"Field in {pretty_path}"
         self.data["fields"].append((name, field, typ, self.env.docname, anchor))
 
-    def add_action(self, name):
-        self.actions[name] = self.env.docname
-
     def setup(self):
         super().setup()
-        self.actions = {}
         self.env.current_path = []
 
     def find_object(self, typ, name):

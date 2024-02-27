@@ -174,3 +174,11 @@ Pin to an invalid opam file
   Error: unexpected version
   unsupported or missing file format version; should be 2.0 or older
   [1]
+
+Pin to an HTTP archive doesn't work
+
+  $ runtest "http://0.0.0.0/tarball.tgz"
+  File "foo.opam", line 1, characters 0-0:
+  Error: Could not determine location of repository http://0.0.0.0/tarball.tgz
+  Hint: Specify either a file path or git repo via SSH/HTTPS
+  [1]

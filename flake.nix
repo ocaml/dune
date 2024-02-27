@@ -43,8 +43,22 @@
               owner = "emillon";
               repo = "rstfmt";
               rev = "refs/heads/all-extra";
-              hash = "sha256-7/WV5hZwucgoYLnraCjXYj0qPGocUxUHMqPnCBg7Aj8=";
+              hash = "sha256-rUlZCq3QZ9vrKtsNhKCPHaXLE34xLbaiEVY5k5Hq65Q=";
             };
+            postPatch = ''
+              sed -i \
+                -e '/VersionChange/a\' \
+                -e '    _add_directive("dune:field", sphinx.directives.ObjectDescription, raw=False)' \
+                rstfmt/rst_extras.py
+              sed -i \
+                -e '/VersionChange/a\' \
+                -e '    _add_directive("dune:stanza", sphinx.directives.ObjectDescription, raw=False)' \
+                rstfmt/rst_extras.py
+              sed -i \
+                -e '/VersionChange/a\' \
+                -e '    _add_directive("dune:action", sphinx.directives.ObjectDescription, raw=False)' \
+                rstfmt/rst_extras.py
+            '';
           };
         })
       ];

@@ -1,28 +1,31 @@
-generate_opam_files
--------------------
+#####################
+ generate_opam_files
+#####################
 
 .. dune:stanza:: generate_opam_files
 
-   Use metadata specified in the ``dune-project`` file to generate ``.opam``
-   files.
+   Use metadata specified in the ``dune-project`` file to generate
+   ``.opam`` files.
 
-   To enable this integration, add the following field to the ``dune-project``
-   file:
+   To enable this integration, add the following field to the
+   ``dune-project`` file:
 
    .. code:: dune
 
       (generate_opam_files)
 
-   .. seealso:: :doc:`/howto/opam-file-generation`
+   .. seealso::
 
-Dune uses the following global fields to set the metadata for all packages
-defined in the project:
+      :doc:`/howto/opam-file-generation`
+
+Dune uses the following global fields to set the metadata for all
+packages defined in the project:
 
 .. dune:stanza:: license
    :param: <strings>
 
-   Specify the license of the project, ideally as an identifier from the `SPDX
-   License List <https://spdx.org/licenses/>`__.
+   Specify the license of the project, ideally as an identifier from the
+   `SPDX License List <https://spdx.org/licenses/>`__.
 
    Example:
 
@@ -67,16 +70,16 @@ defined in the project:
 
    .. list-table::
 
-     * - Service
-       - Syntax
-     * - `Github <https://github.com>`_
-       - ``(github user/repo)``
-     * - `Bitbucket <https://bitbucket.org>`_
-       - ``(bitbucket user/repo)``
-     * - `Gitlab <https://gitlab.com>`_
-       - ``(gitlab user/repo)``
-     * - `Sourcehut <https://sr.ht>`_
-       - ``(sourcehut user/repo)``
+      -  -  Service
+         -  Syntax
+      -  -  `Github <https://github.com>`_
+         -  ``(github user/repo)``
+      -  -  `Bitbucket <https://bitbucket.org>`_
+         -  ``(bitbucket user/repo)``
+      -  -  `Gitlab <https://gitlab.com>`_
+         -  ``(gitlab user/repo)``
+      -  -  `Sourcehut <https://sr.ht>`_
+         -  ``(sourcehut user/repo)``
 
    Examples:
 
@@ -95,7 +98,8 @@ defined in the project:
 
    Where bugs should be reported.
 
-   If a hosting service is used in ``(source)``, a default value is provided.
+   If a hosting service is used in ``(source)``, a default value is
+   provided.
 
    Example:
 
@@ -108,7 +112,8 @@ defined in the project:
 
    The homepage of the project.
 
-   If a hosting service is used in ``(source)``, a default value is provided.
+   If a hosting service is used in ``(source)``, a default value is
+   provided.
 
    Example:
 
@@ -121,9 +126,9 @@ defined in the project:
 
    Where the documentation is hosted.
 
-With these fields, every time one calls Dune to execute some rules (either via
-``dune build``, ``dune runtest``, or something else), the opam files get
-generated.
+With these fields, every time one calls Dune to execute some rules
+(either via ``dune build``, ``dune runtest``, or something else), the
+opam files get generated.
 
-Some or all of these fields may be overridden for each package of the project,
-see :doc:`/reference/files/dune-project/package`.
+Some or all of these fields may be overridden for each package of the
+project, see :doc:`/reference/files/dune-project/package`.

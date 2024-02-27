@@ -1,77 +1,80 @@
 .. _melange_main:
 
-***********************************
-JavaScript Compilation With Melange
-***********************************
+#####################################
+ JavaScript Compilation With Melange
+#####################################
 
-Introduction
-============
+**************
+ Introduction
+**************
 
 `Melange <https://github.com/melange-re/melange>`_ compiles OCaml to
-JavaScript. It produces one JavaScript file per OCaml module. Melange can
-be installed with opam:
+JavaScript. It produces one JavaScript file per OCaml module. Melange
+can be installed with opam:
 
 .. code:: console
 
    $ opam install melange
 
 Dune can build projects using Melange, and it allows the user to produce
-JavaScript files by defining a :ref:`melange-emit` stanza. Dune libraries can be
-used with Melange by adding ``melange`` to ``(modes ...)`` in the
-:doc:`/reference/files/dune/library` stanza.
+JavaScript files by defining a :ref:`melange-emit` stanza. Dune
+libraries can be used with Melange by adding ``melange`` to ``(modes
+...)`` in the :doc:`/reference/files/dune/library` stanza.
 
-Melange support is still experimental in Dune and needs to be enabled in the
-:doc:`/reference/files/dune-project/index` file:
+Melange support is still experimental in Dune and needs to be enabled in
+the :doc:`/reference/files/dune-project/index` file:
 
 .. code:: dune
 
-    (using melange 0.1)
+   (using melange 0.1)
 
 Once that's in place, you can use the Melange mode in
 :doc:`/reference/files/dune/library` stanzas ``melange.emit`` stanzas.
 
-Simple Project
-==============
+****************
+ Simple Project
+****************
 
-Let's start by looking at a simple project with Melange and Dune. Subsequent
-sections explain the different concepts used here in further detail.
+Let's start by looking at a simple project with Melange and Dune.
+Subsequent sections explain the different concepts used here in further
+detail.
 
-First, make sure that the :doc:`/reference/files/dune-project/index` file
-specifies at least version 3.8 of the Dune language, and the Melange extension
-is enabled:
+First, make sure that the :doc:`/reference/files/dune-project/index`
+file specifies at least version 3.8 of the Dune language, and the
+Melange extension is enabled:
 
 .. code:: dune
 
-  (lang dune 3.14)
-  (using melange 0.1)
+   (lang dune 3.14)
+   (using melange 0.1)
 
 Next, write a :doc:`/reference/files/dune/index` file with a
 :ref:`melange-emit` stanza:
 
 .. code:: dune
 
-  (melange.emit
-   (target output))
+   (melange.emit
+    (target output))
 
 Finally, add a source file to build:
 
 .. code:: console
 
-  $ echo 'Js.log "hello from melange"' > hello.ml
+   $ echo 'Js.log "hello from melange"' > hello.ml
 
 After running ``dune build @melange`` or just ``dune build``, Dune
 produces the following file structure:
 
 .. code::
 
-  .
-  ├── _build
-  │   └── default
-  │       └── output
-  │           └── hello.js
-  ├── dune
-  ├── dune-project
-  └── hello.ml
+   .
+   ├── _build
+   │   └── default
+   │       └── output
+   │           └── hello.js
+   ├── dune
+   ├── dune-project
+   └── hello.ml
 
 The resulting JavaScript can now be run:
 
@@ -80,220 +83,232 @@ The resulting JavaScript can now be run:
    $ node _build/default/output/hello.js
    hello from melange
 
-
-Libraries
-=========
+***********
+ Libraries
+***********
 
 Adding Melange support to Dune libraries is done as follows:
 
-- ``(modes melange)``: adding ``melange`` to  ``modes`` is required. This
-  field also supports the :doc:`reference/ordered-set-language`.
+-  ``(modes melange)``: adding ``melange`` to ``modes`` is required.
+   This field also supports the :doc:`reference/ordered-set-language`.
 
-- ``(melange.runtime_deps <deps>)``: optionally, define any runtime dependencies
-  using ``melange.runtime_deps``. This field is analog to the ``runtime_deps``
-  field used in ``melange.emit`` stanzas.
+-  ``(melange.runtime_deps <deps>)``: optionally, define any runtime
+   dependencies using ``melange.runtime_deps``. This field is analog to
+   the ``runtime_deps`` field used in ``melange.emit`` stanzas.
 
 .. _melange-emit:
 
-melange.emit
-============
+**************
+ melange.emit
+**************
 
 .. versionadded:: 3.8
 
 The ``melange.emit`` stanza allows the user to produce JavaScript files
-from Melange libraries and entry-point modules. It's similar to the OCaml
-:doc:`/reference/files/dune/executable` stanza, with the exception that there
-is no linking step.
+from Melange libraries and entry-point modules. It's similar to the
+OCaml :doc:`/reference/files/dune/executable` stanza, with the exception
+that there is no linking step.
 
 .. code:: dune
 
-    (melange.emit
-     (target <target>)
-     <optional-fields>)
+   (melange.emit
+    (target <target>)
+    <optional-fields>)
 
-``<target>`` is the name of the folder where resulting JavaScript artifacts will
-be placed. In particular, the folder will be placed under
+``<target>`` is the name of the folder where resulting JavaScript
+artifacts will be placed. In particular, the folder will be placed under
 ``_build/default/$path-to-directory-of-melange-emit-stanza``.
 
-The result of building a  ``melange.emit`` stanza will match the file structure
-of the source tree. For example, given the following source tree:
+The result of building a ``melange.emit`` stanza will match the file
+structure of the source tree. For example, given the following source
+tree:
 
 .. code::
 
-    ├── dune # (melange.emit (target output) (libraries lib))
-    ├── app.ml
-    └── lib
-        ├── dune # (library (name lib) (modes melange))
-        └── helper.ml
+   ├── dune # (melange.emit (target output) (libraries lib))
+   ├── app.ml
+   └── lib
+       ├── dune # (library (name lib) (modes melange))
+       └── helper.ml
 
 The resulting layout in ``_build/default/output`` will be as follows:
 
 .. code::
 
-    output
-    ├── app.js
-    └── lib
-        ├── lib.js
-        └── helper.js
+   output
+   ├── app.js
+   └── lib
+       ├── lib.js
+       └── helper.js
 
 ``<optional-fields>`` are:
 
-- ``(alias <alias-name>)`` specifies an alias to which to attach the targets of
-  the ``melange.emit`` stanza.
+-  ``(alias <alias-name>)`` specifies an alias to which to attach the
+   targets of the ``melange.emit`` stanza.
 
-  - These targets include the ``.js`` files generated by the stanza
-    modules, the targets for the ``.js`` files of any library that the stanza
-    depends on, and any copy rules for runtime dependencies (see
-    ``runtime_deps`` field below).
+   -  These targets include the ``.js`` files generated by the stanza
+      modules, the targets for the ``.js`` files of any library that the
+      stanza depends on, and any copy rules for runtime dependencies
+      (see ``runtime_deps`` field below).
 
-  - By default, all stanzas will have their targets attached to an alias
-    ``melange``. The behavior of this default alias is exclusive: if an alias
-    is explicitly defined in the stanza, the targets from this stanza will
-    be excluded from the ``melange`` alias.
+   -  By default, all stanzas will have their targets attached to an
+      alias ``melange``. The behavior of this default alias is
+      exclusive: if an alias is explicitly defined in the stanza, the
+      targets from this stanza will be excluded from the ``melange``
+      alias.
 
-  - The targets of ``melange.emit`` are also attached to the Dune default
-    alias (``@all``), regardless of whether the ``(alias ...)`` field is present.
+   -  The targets of ``melange.emit`` are also attached to the Dune
+      default alias (``@all``), regardless of whether the ``(alias
+      ...)`` field is present.
 
-- ``(module_systems <module_systems>)`` specifies the JavaScript import and
-  export format used. The values allowed for ``<module_systems>`` are ``es6``
-  and ``commonjs``.
+-  ``(module_systems <module_systems>)`` specifies the JavaScript import
+   and export format used. The values allowed for ``<module_systems>``
+   are ``es6`` and ``commonjs``.
 
-  - ``es6`` will follow `JavaScript modules <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules>`_,
-    and will produce ``import`` and ``export`` statements.
+   -  ``es6`` will follow `JavaScript modules
+      <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules>`_,
+      and will produce ``import`` and ``export`` statements.
 
-  - ``commonjs`` will follow `CommonJS modules <https://nodejs.org/api/modules.html>`_,
-    and will produce `require` calls and export values with ``module.exports``.
+   -  ``commonjs`` will follow `CommonJS modules
+      <https://nodejs.org/api/modules.html>`_, and will produce
+      `require` calls and export values with ``module.exports``.
 
-  - If no extension is specified, the resulting JavaScript files will use
-    ``.js``. You can specify a different extension with a pair
-    ``(<module_system> <extension>)``, e.g. ``(module_systems (es6 mjs))``.
+   -  If no extension is specified, the resulting JavaScript files will
+      use ``.js``. You can specify a different extension with a pair
+      ``(<module_system> <extension>)``, e.g. ``(module_systems (es6
+      mjs))``.
 
-  - Multiple module systems can be used in the same field as long as their
-    extensions are different. For example,
-    ``(module_systems commonjs (es6 mjs))`` will produce one set of JavaScript
-    files using CommonJS and the ``.js`` extension, and another using ES6 and
-    the ``.mjs`` extension.
+   -  Multiple module systems can be used in the same field as long as
+      their extensions are different. For example, ``(module_systems
+      commonjs (es6 mjs))`` will produce one set of JavaScript files
+      using CommonJS and the ``.js`` extension, and another using ES6
+      and the ``.mjs`` extension.
 
-- ``(modules <modules>)`` specifies what modules will be built with Melange. By
-  default, if this field is not defined, Dune will use all the ``.ml/.re`` files
-  in the same directory as the ``dune`` file. This includes module sources
-  present in the file system as well as modules generated by user rules. You can
-  restrict this list by using an explicit ``(modules <modules>)`` field.
-  ``<modules>`` uses the :doc:`reference/ordered-set-language`, where elements
-  are module names and don't need to start with an uppercase letter. For
-  instance, to exclude module ``Foo``, use ``(modules :standard \ foo)``.
+-  ``(modules <modules>)`` specifies what modules will be built with
+   Melange. By default, if this field is not defined, Dune will use all
+   the ``.ml/.re`` files in the same directory as the ``dune`` file.
+   This includes module sources present in the file system as well as
+   modules generated by user rules. You can restrict this list by using
+   an explicit ``(modules <modules>)`` field. ``<modules>`` uses the
+   :doc:`reference/ordered-set-language`, where elements are module
+   names and don't need to start with an uppercase letter. For instance,
+   to exclude module ``Foo``, use ``(modules :standard \ foo)``.
 
-- ``(libraries <library-dependencies>)`` specifies Melange library dependencies.
-  Melange libraries can only use the simple form, like
-  ``(libraries foo pkg.bar)``. Keep in mind the following limitations:
+-  ``(libraries <library-dependencies>)`` specifies Melange library
+   dependencies. Melange libraries can only use the simple form, like
+   ``(libraries foo pkg.bar)``. Keep in mind the following limitations:
 
-  - The ``re_export`` form is not supported.
+   -  The ``re_export`` form is not supported.
 
-  - All the libraries included in ``<library-dependencies>`` have to support
-    the ``melange`` mode (see the section about libraries below).
+   -  All the libraries included in ``<library-dependencies>`` have to
+      support the ``melange`` mode (see the section about libraries
+      below).
 
+-  ``(package <package>)`` allows the user to define the JavaScript
+   package to which the artifacts produced by the ``melange.emit``
+   stanza will belong.
 
-- ``(package <package>)`` allows the user to define the JavaScript package to
-  which the artifacts produced by the ``melange.emit`` stanza will belong.
+-  ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should
+   be copied to the build folder together with the ``.js`` files
+   generated from the sources. These runtime dependencies can include
+   assets like CSS files, images, fonts, external JavaScript files, etc.
+   ``runtime_deps`` adhere to the formats in
+   :doc:`concepts/dependency-spec`. For example ``(runtime_deps
+   ./path/to/file.css (glob_files_rec ./fonts/*))``.
 
-- ``(runtime_deps <paths-to-deps>)`` specifies dependencies that should be
-  copied to the build folder together with the ``.js`` files generated from the
-  sources. These runtime dependencies can include assets like CSS files, images,
-  fonts, external JavaScript files, etc. ``runtime_deps`` adhere to the formats
-  in :doc:`concepts/dependency-spec`. For example
-  ``(runtime_deps ./path/to/file.css (glob_files_rec ./fonts/*))``.
+-  ``(emit_stdlib <bool>)`` allows the user to specify whether the
+   Melange standard library should be included as a dependency of the
+   stanza or not. The default is ``true``. If this option is ``false``,
+   the Melange standard library and runtime JavaScript files won't be
+   produced in the target directory.
 
-- ``(emit_stdlib <bool>)`` allows the user to specify whether the Melange
-  standard library should be included as a dependency of the stanza or not. The
-  default is ``true``. If this option is ``false``, the Melange standard library
-  and runtime JavaScript files won't be produced in the target directory.
+-  ``(promote <options>)`` promotes the generated ``.js`` files to the
+   source tree. The options are the same as for the :ref:`rule promote
+   mode <promote>`. Adding ``(promote (until-clean))`` to a
+   ``melange.emit`` stanza will cause Dune to copy the ``.js`` files to
+   the source tree and ``dune clean`` to delete them.
 
-- ``(promote <options>)`` promotes the generated ``.js`` files to the
-  source tree. The options are the same as for the
-  :ref:`rule promote mode <promote>`.
-  Adding ``(promote (until-clean))`` to a ``melange.emit`` stanza will cause
-  Dune to copy the ``.js`` files to the source tree and ``dune clean`` to
-  delete them.
+-  ``(preprocess <preprocess-spec>)`` specifies how to preprocess files
+   when needed. The default is ``no_preprocessing``. Additional options
+   are described in the :doc:`reference/preprocessing-spec` section.
 
-- ``(preprocess <preprocess-spec>)`` specifies how to preprocess files when
-  needed. The default is ``no_preprocessing``. Additional options are described
-  in the :doc:`reference/preprocessing-spec` section.
+-  ``(preprocessor_deps (<deps-conf list>))`` specifies extra
+   preprocessor dependencies, e.g., if the preprocessor reads a
+   generated file. The dependency specification is described in the
+   :doc:`concepts/dependency-spec` section.
 
-- ``(preprocessor_deps (<deps-conf list>))`` specifies extra preprocessor
-  dependencies, e.g., if the preprocessor reads a generated file.
-  The dependency specification is described in the :doc:`concepts/dependency-spec`
-  section.
+-  ``(compile_flags <flags>)`` specifies compilation flags specific to
+   ``melc``, the main Melange executable. ``<flags>`` is described in
+   detail in the :doc:`reference/ordered-set-language` section. It also
+   supports ``(:include ...)`` forms. The value for this field can also
+   be taken from ``env`` stanzas. It's therefore recommended to add
+   flags with e.g. ``(compile_flags :standard <my options>)`` rather
+   than replace them.
 
-- ``(compile_flags <flags>)`` specifies compilation flags specific to
-  ``melc``, the main Melange executable.
-  ``<flags>`` is described in detail in the
-  :doc:`reference/ordered-set-language` section. It also supports
-  ``(:include ...)`` forms. The value for this field can also be taken
-  from ``env`` stanzas. It's therefore recommended to add flags
-  with e.g. ``(compile_flags :standard <my options>)`` rather than
-  replace them.
+-  ``(root_module <module>)`` specifies a ``root_module`` that collects
+   all listed dependencies in ``libraries``. See the documentation for
+   ``root_module`` in the :doc:`/reference/files/dune/library` stanza.
 
-- ``(root_module <module>)`` specifies a ``root_module`` that collects all
-  listed dependencies in ``libraries``. See the documentation for
-  ``root_module`` in the :doc:`/reference/files/dune/library` stanza.
+-  ``(allow_overlapping_dependencies)`` is the same as the corresponding
+   field of :doc:`/reference/files/dune/library`.
 
-- ``(allow_overlapping_dependencies)`` is the same as the corresponding field
-  of :doc:`/reference/files/dune/library`.
+-  ``(enabled_if <blang expression>)`` conditionally disables a melange
+   emit stanza. The JavaScript files associated with the stanza won't be
+   built. The condition is specified using the
+   :doc:`reference/boolean-language`.
 
-- ``(enabled_if <blang expression>)`` conditionally disables a melange emit
-  stanza. The JavaScript files associated with the stanza won't be built. The
-  condition is specified using the :doc:`reference/boolean-language`.
-
-Recommended Practices
-=====================
+***********************
+ Recommended Practices
+***********************
 
 Keep Bundles Small by Reducing the Number of ``melange.emit`` Stanzas
----------------------------------------------------------------------
+=====================================================================
 
 It is recommended to minimize the number of ``melange.emit`` stanzas
-that a project defines: using multiple ``melange.emit`` stanzas will cause
-multiple copies of the JavaScript files to be generated if the same libraries
-are used across them. As an example:
+that a project defines: using multiple ``melange.emit`` stanzas will
+cause multiple copies of the JavaScript files to be generated if the
+same libraries are used across them. As an example:
 
 .. code:: dune
 
-  (melange.emit
-   (target app1)
-   (libraries foo))
+   (melange.emit
+    (target app1)
+    (libraries foo))
 
-  (melange.emit
-   (target app2)
-   (libraries foo))
+   (melange.emit
+    (target app2)
+    (libraries foo))
 
-The JavaScript artifacts for library ``foo`` will be emitted twice in the
-``_build`` folder. They will be present under ``_build/default/app1``
-and ``_build/default/app2``.
+The JavaScript artifacts for library ``foo`` will be emitted twice in
+the ``_build`` folder. They will be present under
+``_build/default/app1`` and ``_build/default/app2``.
 
-This can have unexpected impact on bundle size when using tools like Webpack or
-Esbuild, as these tools will not be able to see shared library code as such,
-as it would be replicated across the paths of the different stanzas
-``target`` folders.
-
+This can have unexpected impact on bundle size when using tools like
+Webpack or Esbuild, as these tools will not be able to see shared
+library code as such, as it would be replicated across the paths of the
+different stanzas ``target`` folders.
 
 Faster Builds With ``subdir`` and ``dirs`` Stanzas
---------------------------------------------------
+==================================================
 
-Melange libraries might be installed from the ``npm`` package repository,
-together with other JavaScript packages. To avoid having Dune inspect
-unnecessary folders in ``node_modules``, it is recommended to explicitly
-include only the folders that are relevant for Melange builds.
+Melange libraries might be installed from the ``npm`` package
+repository, together with other JavaScript packages. To avoid having
+Dune inspect unnecessary folders in ``node_modules``, it is recommended
+to explicitly include only the folders that are relevant for Melange
+builds.
 
-This can be accomplished by combining :doc:`/reference/files/dune/subdir` and
-:doc:`/reference/files/dune/subdir` stanzas in a ``dune`` file next to the
-``node_modules`` folder. The :doc:`/reference/files/dune/vendored_dirs` stanza
-can be used to avoid warnings in Melange libraries during the application
-build. The :doc:`/reference/files/dune/data_only_dirs` stanza can be useful as
-well if you need to override the build rules in one of the packages.
+This can be accomplished by combining
+:doc:`/reference/files/dune/subdir` and
+:doc:`/reference/files/dune/subdir` stanzas in a ``dune`` file next to
+the ``node_modules`` folder. The
+:doc:`/reference/files/dune/vendored_dirs` stanza can be used to avoid
+warnings in Melange libraries during the application build. The
+:doc:`/reference/files/dune/data_only_dirs` stanza can be useful as well
+if you need to override the build rules in one of the packages.
 
 .. code:: dune
 
-  (subdir
-   node_modules
-   (vendored_dirs reason-react)
-   (dirs reason-react))
-
+   (subdir
+    node_modules
+    (vendored_dirs reason-react)
+    (dirs reason-react))

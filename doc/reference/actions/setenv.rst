@@ -1,5 +1,6 @@
-setenv
-------
+########
+ setenv
+########
 
 .. highlight:: dune
 
@@ -8,8 +9,10 @@ setenv
 
    Run an action with an environment variable set.
 
-   Example::
+   Example:
 
-     (setenv
-       VAR value
-       (bash "echo $VAR"))
+   .. code::
+
+      (setenv
+        VAR value
+        (bash "echo $VAR"))

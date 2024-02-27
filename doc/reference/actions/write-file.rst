@@ -1,5 +1,6 @@
-write-file
-----------
+############
+ write-file
+############
 
 .. highlight:: dune
 
@@ -8,6 +9,8 @@ write-file
 
    Writes ``<string>`` to ``<file>``.
 
-   Example::
+   Example:
 
-   (write-file users.txt jane,joe)
+   .. code::
+
+      (write-file users.txt jane,joe)

@@ -1,14 +1,18 @@
-run
----
+#####
+ run
+#####
 
 .. highlight:: dune
 
 .. dune:action:: run
    :param: <prog> <args>
 
-   Execute a program. ``<prog>`` is resolved locally if it is available in the
-   current workspace, otherwise it is resolved using the ``PATH``.
+   Execute a program. ``<prog>`` is resolved locally if it is available
+   in the current workspace, otherwise it is resolved using the
+   ``PATH``.
 
-   Example::
+   Example:
 
-   (run capnp compile -o %{bin:capnpc-ocaml} schema.capnp)
+   .. code::
+
+      (run capnp compile -o %{bin:capnpc-ocaml} schema.capnp)

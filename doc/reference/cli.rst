@@ -1,8 +1,10 @@
-Command Line Interface
-======================
+########################
+ Command Line Interface
+########################
 
 This is a short overview of the commands available in Dune. Reference
-documentation for each command is available through ``dune COMMAND --help``.
+documentation for each command is available through ``dune COMMAND
+--help``.
 
 .. describe:: dune build
 
@@ -42,7 +44,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
 .. describe:: dune exec
 
-   Execute a command in a similar environment as if installation was performed.
+   Execute a command in a similar environment as if installation was
+   performed.
 
 .. describe:: dune fmt
 
@@ -98,8 +101,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
       .. describe:: dune ocaml merlin dump-config
 
-         Prints the entire content of the Merlin configuration for the given
-         folder in a user friendly form.
+         Prints the entire content of the Merlin configuration for the
+         given folder in a user friendly form.
 
       .. describe:: dune ocaml merlin start-session
 
@@ -111,12 +114,13 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune ocaml top
 
-      Print a list of toplevel directives for including directories and loading
-      ``.cma`` files.
+      Print a list of toplevel directives for including directories and
+      loading ``.cma`` files.
 
    .. describe:: dune ocaml top-module
 
-      Print a list of toplevel directives for loading a module into the toplevel.
+      Print a list of toplevel directives for loading a module into the
+      toplevel.
 
    .. describe:: dune ocaml utop
 
@@ -136,11 +140,11 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    .. describe:: dune promotion apply
 
-           Promote files from the last run.
+      Promote files from the last run.
 
    .. describe:: dune promotion diff
 
-           List promotions to be applied.
+      List promotions to be applied.
 
 .. describe:: dune promote
 
@@ -172,8 +176,8 @@ documentation for each command is available through ``dune COMMAND --help``.
 
 .. describe:: dune top
 
-   Print a list of toplevel directives for including directories and loading
-   ``.cma`` files.
+   Print a list of toplevel directives for including directories and
+   loading ``.cma`` files.
 
 .. describe:: dune uninstall
 

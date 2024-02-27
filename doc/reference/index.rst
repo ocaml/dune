@@ -1,7 +1,9 @@
-Reference Manual
-================
+##################
+ Reference Manual
+##################
 
-These documents specify the various features and languages present in Dune.
+These documents specify the various features and languages present in
+Dune.
 
 .. toctree::
    :maxdepth: 2

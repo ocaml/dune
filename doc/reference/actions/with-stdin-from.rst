@@ -1,5 +1,6 @@
-with-stdin-from
----------------
+#################
+ with-stdin-from
+#################
 
 .. highlight:: dune
 
@@ -8,7 +9,9 @@ with-stdin-from
 
    Redirect the input from a file.
 
-   Example::
+   Example:
 
-     (with-stdin-from data.txt
-      (run ./tests.exe))
+   .. code::
+
+      (with-stdin-from data.txt
+       (run ./tests.exe))

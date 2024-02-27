@@ -1,5 +1,6 @@
-version
--------
+#########
+ version
+#########
 
 .. dune:stanza:: version
    :param: <version>

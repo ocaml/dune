@@ -1,5 +1,6 @@
-Welcome to Dune's Documentation!
-================================
+##################################
+ Welcome to Dune's Documentation!
+##################################
 
 .. toctree::
    :maxdepth: 2

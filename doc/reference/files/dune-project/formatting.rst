@@ -1,5 +1,6 @@
-formatting
-----------
+############
+ formatting
+############
 
 .. dune:stanza:: formatting
 
@@ -7,21 +8,23 @@ formatting
 
    Control automatic formatting. Several forms are accepted:
 
-   - To disable automatic formatting completely (equivalent to the behavior in
-     language 1.x):
+   -  To disable automatic formatting completely (equivalent to the
+      behavior in language 1.x):
 
-     .. code:: dune
+      .. code:: dune
 
-        (formatting disabled)
+         (formatting disabled)
 
-   - To restrict the languages that are considered for formatting:
+   -  To restrict the languages that are considered for formatting:
 
-     .. code:: dune
+      .. code:: dune
 
-        (formatting
-         (enabled_for <languages>))
+         (formatting
+          (enabled_for <languages>))
 
-     The list of `<languages>` can be either ``dune`` (formatting of ``dune``
-     files) or a :term:`dialect` name.
+      The list of `<languages>` can be either ``dune`` (formatting of
+      ``dune`` files) or a :term:`dialect` name.
 
-   .. seealso:: :doc:`/howto/formatting`
+   .. seealso::
+
+      :doc:`/howto/formatting`

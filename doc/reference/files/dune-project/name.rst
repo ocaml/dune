@@ -1,5 +1,6 @@
-name
-----
+######
+ name
+######
 
 .. dune:stanza:: name
    :param: <string>

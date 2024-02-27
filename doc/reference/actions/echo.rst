@@ -1,5 +1,6 @@
-echo
-----
+######
+ echo
+######
 
 .. highlight:: dune
 
@@ -8,6 +9,8 @@ echo
 
    Output a string on ``stdout``.
 
-   Example::
+   Example:
 
-   (echo "Hello, world")
+   .. code::
+
+      (echo "Hello, world")

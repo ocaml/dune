@@ -1,14 +1,16 @@
-OCaml Syntax
-============
+##############
+ OCaml Syntax
+##############
 
-.. TODO(diataxis)
+..
+   TODO(diataxis)
    - reference: files
    - howto: using dynamic features
 
 If a ``dune`` file starts with ``(* -*- tuareg -*- *)``, then it is
-interpreted as an OCaml script that generates the ``dune`` file as described
-in the rest of this section. The code in the script will have access to a
-`Jbuild_plugin
+interpreted as an OCaml script that generates the ``dune`` file as
+described in the rest of this section. The code in the script will have
+access to a `Jbuild_plugin
 <https://github.com/ocaml/dune/blob/master/plugin/jbuild_plugin.mli>`__
 module containing details about the build context it's executed in.
 

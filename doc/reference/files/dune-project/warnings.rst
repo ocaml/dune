@@ -1,5 +1,6 @@
-warnings
---------
+##########
+ warnings
+##########
 
 .. dune:stanza:: warnings
 

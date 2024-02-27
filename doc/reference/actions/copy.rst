@@ -1,5 +1,6 @@
-copy
-----
+######
+ copy
+######
 
 .. highlight:: dune
 
@@ -10,6 +11,8 @@ copy
    ``module_name.xxx.ml`` :ref:`naming convention <merlin-filenames>` to
    preserve Merlin's functionality.
 
-   Example::
+   Example:
 
-   (copy data.txt.template data.txt)
+   .. code::
+
+      (copy data.txt.template data.txt)

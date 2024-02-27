@@ -1,14 +1,15 @@
-install
--------
+#########
+ install
+#########
 
-Dune supports installing packages on the system, i.e., copying freshly built
-artifacts from the workspace to the system. The ``install`` stanza takes three
-pieces of information:
+Dune supports installing packages on the system, i.e., copying freshly
+built artifacts from the workspace to the system. The ``install`` stanza
+takes three pieces of information:
 
-- The list of files or directories to install
-- The package to attach these files. This field is optional if your project
-  contains a single package.
-- The section in which the files will be installed
+-  The list of files or directories to install
+-  The package to attach these files. This field is optional if your
+   project contains a single package.
+-  The section in which the files will be installed
 
 For instance:
 
@@ -19,233 +20,266 @@ For instance:
     (section share)
     (package mypackage))
 
-Indicate that the file ``hello.txt`` in the current directory is to be installed
-in ``<prefix>/share/mypackage``.
+Indicate that the file ``hello.txt`` in the current directory is to be
+installed in ``<prefix>/share/mypackage``.
 
 The following sections are available:
 
 .. list-table::
    :header-rows: 1
 
-   * - Section
-     - Target
-     - Remarks
-   * - ``lib``
-     - ``<prefix>/lib/<pkgname>/``
-     -
-   * - ``lib_root``
-     - ``<prefix>/lib/``
-     -
-   * - ``libexec``
-     - ``<prefix>/lib/<pkgname>/``
-     - executable bit is set
-   * - ``libexec_root``
-     - ``<prefix>/lib/``
-     - executable bit is set
-   * - ``bin``
-     - ``<prefix>/bin/``
-     - executable bit is set
-   * - ``sbin``
-     - ``<prefix>/sbin/``
-     - executable bit is set
-   * - ``toplevel``
-     - ``<prefix>/lib/toplevel/``
-     -
-   * - ``share``
-     - ``<prefix>/share/<pkgname>/``
-     -
-   * - ``share_root``
-     - ``<prefix>/share/``
-     -
-   * - ``etc``
-     - ``<prefix>/etc/<pkgname>/``
-     -
-   * - ``stublibs``
-     - ``<prefix>/lib/stublibs/``
-     - executable bit is set
-   * - ``doc``
-     - ``<prefix>/doc/<pkgname>/``
-     -
-   * - ``man``
-     - ``<prefix>/man/manX/``
-     - (see below)
-   * - ``misc``
-     - absolute destination
-     - (see below)
-   * - ``(site (<package> <site>))``
-     - ``<site>`` directory of ``<package>``
-     - (see below)
+   -  -  Section
+      -  Target
+      -  Remarks
+
+   -  -  ``lib``
+      -  ``<prefix>/lib/<pkgname>/``
+      -
+
+   -  -  ``lib_root``
+      -  ``<prefix>/lib/``
+      -
+
+   -  -  ``libexec``
+      -  ``<prefix>/lib/<pkgname>/``
+      -  executable bit is set
+
+   -  -  ``libexec_root``
+      -  ``<prefix>/lib/``
+      -  executable bit is set
+
+   -  -  ``bin``
+      -  ``<prefix>/bin/``
+      -  executable bit is set
+
+   -  -  ``sbin``
+      -  ``<prefix>/sbin/``
+      -  executable bit is set
+
+   -  -  ``toplevel``
+      -  ``<prefix>/lib/toplevel/``
+      -
+
+   -  -  ``share``
+      -  ``<prefix>/share/<pkgname>/``
+      -
+
+   -  -  ``share_root``
+      -  ``<prefix>/share/``
+      -
+
+   -  -  ``etc``
+      -  ``<prefix>/etc/<pkgname>/``
+      -
+
+   -  -  ``stublibs``
+      -  ``<prefix>/lib/stublibs/``
+      -  executable bit is set
+
+   -  -  ``doc``
+      -  ``<prefix>/doc/<pkgname>/``
+      -
+
+   -  -  ``man``
+      -  ``<prefix>/man/manX/``
+      -  (see below)
+
+   -  -  ``misc``
+      -  absolute destination
+      -  (see below)
+
+   -  -  ``(site (<package> <site>))``
+      -  ``<site>`` directory of ``<package>``
+      -  (see below)
 
 Additional remarks:
 
-- For ``man``, the exact destination is inferred from the file extension. For
-  example, ``foo.1`` is installed as ``<prefix>/man/man1/foo.1``.
-- ``misc`` only works when using opam. In that case, the user will be prompted
-  before installation. This mechanism is deprecated.
-- In the case of ``(site)``, if the prefix isn't the same as the one used when installing ``<package>``, ``<package>`` won't find the files.
+-  For ``man``, the exact destination is inferred from the file
+   extension. For example, ``foo.1`` is installed as
+   ``<prefix>/man/man1/foo.1``.
 
-Normally, Dune uses the file's basename to determine the file's name once
-installed; however, you can change that by using the form ``(<filename> as
-<destination>)`` in the ``files`` field. For instance, to install a file
-``mylib.el`` as ``<prefix>/emacs/site-lisp/mylib.el``, you must write the
-following:
+-  ``misc`` only works when using opam. In that case, the user will be
+   prompted before installation. This mechanism is deprecated.
+
+-  In the case of ``(site)``, if the prefix isn't the same as the one
+   used when installing ``<package>``, ``<package>`` won't find the
+   files.
+
+Normally, Dune uses the file's basename to determine the file's name
+once installed; however, you can change that by using the form
+``(<filename> as <destination>)`` in the ``files`` field. For instance,
+to install a file ``mylib.el`` as ``<prefix>/emacs/site-lisp/mylib.el``,
+you must write the following:
 
 .. code:: dune
 
-    (install
-     (section share_root)
-     (files   (mylib.el as emacs/site-lisp/mylib.el)))
+   (install
+    (section share_root)
+    (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
 The mode of installed files is fully determined by the section they are
-installed in. If the section above is documented as with the executable bit
-set, they are installed with mode ``0o755`` (``rwxr-xr-x``); otherwise they are
-installed with mode ``0o644`` (``rw-r--r--``).
+installed in. If the section above is documented as with the executable
+bit set, they are installed with mode ``0o755`` (``rwxr-xr-x``);
+otherwise they are installed with mode ``0o644`` (``rw-r--r--``).
 
-Note that all files in the install stanza must be specified by relative paths
-only. It is an error to specify files by absolute paths.
+Note that all files in the install stanza must be specified by relative
+paths only. It is an error to specify files by absolute paths.
 
 Also note that as of dune-lang 3.11 (i.e., ``(lang dune 3.11)`` in
-``dune-project``) it is deprecated to use the ``as`` keyword to specify a
-destination beginning with ``..``. Dune intends for files associated with a
-package to only be installed under specific directories in the file system
-implied by the installation section (e.g., ``share``, ``bin``, ``doc``, etc.)
-and the package name. Starting destination paths with ``..`` allows packages to
-install files to arbitrary locations on the file system. In 3.11, this behaviour
-is still supported (as some projects may depend on it) but will generate a
-warning and will be removed in a future version of Dune.
+``dune-project``) it is deprecated to use the ``as`` keyword to specify
+a destination beginning with ``..``. Dune intends for files associated
+with a package to only be installed under specific directories in the
+file system implied by the installation section (e.g., ``share``,
+``bin``, ``doc``, etc.) and the package name. Starting destination paths
+with ``..`` allows packages to install files to arbitrary locations on
+the file system. In 3.11, this behaviour is still supported (as some
+projects may depend on it) but will generate a warning and will be
+removed in a future version of Dune.
 
-Including Files in the Install Stanza
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+***************************************
+ Including Files in the Install Stanza
+***************************************
 
-You can include external files from the ``files`` and ``dirs`` fields of the
-install stanza:
-
-.. code:: dune
-
-    (install
-     (files (include foo.sexp))
-     (section share))
-
-Here the file ``foo.sexp`` must contain a single S-expression list, whose
-elements will be included in the list of files or directories to install. That
-is, elements may be of the form:
-
-- ``<filename>``
-- ``(<filename> as <destination>)``
-- ``(include <filename>)``
-
-Included files may be generated by rules. Here is an example of a rule which
-generates a file by listing all the files in a subdirectory ``resources``:
+You can include external files from the ``files`` and ``dirs`` fields of
+the install stanza:
 
 .. code:: dune
 
-    (rule
-     (deps (source_tree resources))
-     (action
-      (with-stdout-to foo.sexp
-      (system "echo '(' resources/* ')'"))))
+   (install
+    (files (include foo.sexp))
+    (section share))
 
-Globs in the Install Stanza
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Here the file ``foo.sexp`` must contain a single S-expression list,
+whose elements will be included in the list of files or directories to
+install. That is, elements may be of the form:
 
-You can use globs to specify files to install by using the terms ``(glob_files
-<glob>)`` and ``(glob_files_rec <glob>)`` inside the ``files`` field of the
-install stanza (but not inside the ``dirs`` field). See the :ref:`glob <glob>`
-for details of the glob syntax. The ``(glob_files <glob>)`` term will expand its
-argument within a single directory, whereas the ``(glob_files_rec <glob>)`` term
-will recursively expand its argument within all subdirectories.
+-  ``<filename>``
+-  ``(<filename> as <destination>)``
+-  ``(include <filename>)``
+
+Included files may be generated by rules. Here is an example of a rule
+which generates a file by listing all the files in a subdirectory
+``resources``:
+
+.. code:: dune
+
+   (rule
+    (deps (source_tree resources))
+    (action
+     (with-stdout-to foo.sexp
+     (system "echo '(' resources/* ')'"))))
+
+*****************************
+ Globs in the Install Stanza
+*****************************
+
+You can use globs to specify files to install by using the terms
+``(glob_files <glob>)`` and ``(glob_files_rec <glob>)`` inside the
+``files`` field of the install stanza (but not inside the ``dirs``
+field). See the :ref:`glob <glob>` for details of the glob syntax. The
+``(glob_files <glob>)`` term will expand its argument within a single
+directory, whereas the ``(glob_files_rec <glob>)`` term will recursively
+expand its argument within all subdirectories.
 
 For example:
 
 .. code:: dune
 
-    (install
-     (files
-      (glob_files style/*.css)
-      (glob_files_rec content/*.html))
-     (section share))
+   (install
+    (files
+     (glob_files style/*.css)
+     (glob_files_rec content/*.html))
+    (section share))
 
 This example will install:
 
-- All files matching ``*.css`` in the ``style`` directory.
+-  All files matching ``*.css`` in the ``style`` directory.
+-  All files matching ``*.html`` in the ``content`` directory, or any of
+   its descendant subdirectories.
 
-- All files matching ``*.html`` in the ``content`` directory, or any of its
-  descendant subdirectories.
-
-Note that the paths to files are preserved after installation. Suppose the
-source directory contained the files ``style/foo.css`` and
+Note that the paths to files are preserved after installation. Suppose
+the source directory contained the files ``style/foo.css`` and
 ``content/bar/baz.html``. The example above will place these files in
-``share/<package>/style/foo.css`` and ``share/<package>/content/bar/baz.html``
-respectively where ``<package>`` is the name of the package (ie.
-``dune-project`` would contain ``(package (name <package>))``).
+``share/<package>/style/foo.css`` and
+``share/<package>/content/bar/baz.html`` respectively where
+``<package>`` is the name of the package (ie. ``dune-project`` would
+contain ``(package (name <package>))``).
 
-The ``with_prefix`` keyword can be used to change the destination path of files
-matched by a glob, similar to the ``as`` keyword in the ``(files ...)`` field.
-``with_prefix`` changes the prefix of a path before the component matched by the
-``*`` to some new value. For example:
+The ``with_prefix`` keyword can be used to change the destination path
+of files matched by a glob, similar to the ``as`` keyword in the
+``(files ...)`` field. ``with_prefix`` changes the prefix of a path
+before the component matched by the ``*`` to some new value. For
+example:
 
 .. code:: dune
 
-    (install
-     (files
-      (glob_files (style/*.css with_prefix web/stylesheets))
-      (glob_files_rec (content/*.html with_prefix web/documents)))
-     (section share))
+   (install
+    (files
+     (glob_files (style/*.css with_prefix web/stylesheets))
+     (glob_files_rec (content/*.html with_prefix web/documents)))
+    (section share))
 
 Continuing the example above, this would result in the source file at
-``style/foo.css`` being installed to ``share/<package>/web/stylesheets/foo.css``
-and ``content/bar/baz.html`` being installed to
-``share/<package>/web/documents/bar/baz.html``. Note in the latter case
-``with_prefix`` only replaced the ``content`` component of the path and not the
-``bar`` component since since it replaces the prefix of the glob - not the
-prefix of paths matching the glob.
+``style/foo.css`` being installed to
+``share/<package>/web/stylesheets/foo.css`` and ``content/bar/baz.html``
+being installed to ``share/<package>/web/documents/bar/baz.html``. Note
+in the latter case ``with_prefix`` only replaced the ``content``
+component of the path and not the ``bar`` component since since it
+replaces the prefix of the glob - not the prefix of paths matching the
+glob.
 
-Installing Globs from Parent Directories
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+******************************************
+ Installing Globs from Parent Directories
+******************************************
 
-The default treatment of paths in globs creates a complication where referring
-to globs in a parent directory such as ``(glob_files ../*.txt)`` would attempt
-to install the matched files outside the designated install directory. For
-example writing:
+The default treatment of paths in globs creates a complication where
+referring to globs in a parent directory such as ``(glob_files
+../*.txt)`` would attempt to install the matched files outside the
+designated install directory. For example writing:
 
 .. code:: dune
 
-    (install
-     (files (glob_files ../*.txt))
-     (section share))
+   (install
+    (files (glob_files ../*.txt))
+    (section share))
 
 ...would cause Dune to attempt to install the matching files to
-``share/<package>/../``, ie. ``share`` where ``<package>`` is the name of the
-package (i.e., ``dune-project`` would contain ``(package (name <package>))``).
-This is probably not what the user intends, and installing files to relative
-paths beginning with ``..`` is deprecated from version 3.11 of Dune and will
-become an error in a future version.
+``share/<package>/../``, ie. ``share`` where ``<package>`` is the name
+of the package (i.e., ``dune-project`` would contain ``(package (name
+<package>))``). This is probably not what the user intends, and
+installing files to relative paths beginning with ``..`` is deprecated
+from version 3.11 of Dune and will become an error in a future version.
 
-The solution is to use ``with_prefix`` to replace the ``..`` with some other
-path. For example:
+The solution is to use ``with_prefix`` to replace the ``..`` with some
+other path. For example:
 
 .. code:: dune
 
-    (install
-     (files (glob_files (../*.txt with_prefix .)))
-     (section share))
+   (install
+    (files (glob_files (../*.txt with_prefix .)))
+    (section share))
 
 ...would install the matched files to ``share/<package>/`` instead.
 
-Handling of the .exe Extension on Windows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*******************************************
+ Handling of the .exe Extension on Windows
+*******************************************
 
-Under Microsoft Windows, executables must be suffixed with ``.exe``. Dune tries
-to ensure that executables are always installed with this extension on Windows.
+Under Microsoft Windows, executables must be suffixed with ``.exe``.
+Dune tries to ensure that executables are always installed with this
+extension on Windows.
 
-More precisely, when installing a file via an ``(install ...)`` stanza, Dune
-implicitly adds the ``.exe`` extension to the destination, if the source file
-has extension ``.exe`` or ``.bc`` and if it's not already present
+More precisely, when installing a file via an ``(install ...)`` stanza,
+Dune implicitly adds the ``.exe`` extension to the destination, if the
+source file has extension ``.exe`` or ``.bc`` and if it's not already
+present
 
-Installing Source Directories
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*******************************
+ Installing Source Directories
+*******************************
 
-To install entire source directories, the ``source_tree`` field can be used:
+To install entire source directories, the ``source_tree`` field can be
+used:
 
 .. code:: dune
 
@@ -253,12 +287,13 @@ To install entire source directories, the ``source_tree`` field can be used:
     (section doc)
     (source_trees manual))
 
-This example results in the contents of the ``manual`` directory being installed
-under ``<prefix>/doc/<package>/manual/``.
+This example results in the contents of the ``manual`` directory being
+installed under ``<prefix>/doc/<package>/manual/``.
 
-As with ``(files ...)`` the destination can be changed with the ``as`` keyword.
-For example if you want to install all the files in the ``manual`` directory
-directly into ``<prefix>/doc/<package>/`` you can write:
+As with ``(files ...)`` the destination can be changed with the ``as``
+keyword. For example if you want to install all the files in the
+``manual`` directory directly into ``<prefix>/doc/<package>/`` you can
+write:
 
 .. code:: dune
 
@@ -274,11 +309,11 @@ It's also possible to specify multiple directories:
     (section doc)
     (source_trees manual examples))
 
-This would result in the local directories ``manual`` and ``examples`` being
-installed to ``<prefix>/doc/<package>/manual/`` and
+This would result in the local directories ``manual`` and ``examples``
+being installed to ``<prefix>/doc/<package>/manual/`` and
 ``<prefix>/doc/<package>/examples/`` respectively.
 
 Unlike with ``(files ...)`` it is an error to begin the destination (the
-right-hand side of ``as``) with ``..``. (This is because support for installing
-source directories was added to Dune after destinations beginning with ``..``
-were deprecated.)
+right-hand side of ``as``) with ``..``. (This is because support for
+installing source directories was added to Dune after destinations
+beginning with ``..`` were deprecated.)

@@ -29,7 +29,7 @@ Make a dune file and build the project, using the "flags" field to exercise OSL.
   File "dune", line 3, characters 8-18:
   3 |  (flags (:include)))
               ^^^^^^^^^^
-  Error: Not enough arguments for :include
+  Error: Not enough arguments for ":include"
   [1]
 
   $ test '(:include x)'
@@ -41,7 +41,7 @@ Make a dune file and build the project, using the "flags" field to exercise OSL.
   File "dune", line 3, characters 20-21:
   3 |  (flags (:include x y)))
                           ^
-  Error: Too many arguments for :include
+  Error: Too many arguments for ":include"
   [1]
 
   $ test '(x y)'

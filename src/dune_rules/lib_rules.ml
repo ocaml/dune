@@ -556,6 +556,7 @@ let library_rules
   ~source_modules
   ~dir_contents
   ~compile_info
+  ~ctx_dir
   =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -607,6 +608,7 @@ let library_rules
           ~requires:requires_compile
           ~dir_contents
           ~vlib_stubs_o_files)
+  and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
   and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
@@ -648,7 +650,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       | Some _ ->
         Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
-    library_rules lib ~local_lib ~cctx ~source_modules ~dir_contents ~compile_info
+    library_rules
+      lib
+      ~local_lib
+      ~cctx
+      ~source_modules
+      ~dir_contents
+      ~compile_info
+      ~ctx_dir:dir
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f

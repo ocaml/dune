@@ -109,12 +109,7 @@ val expand_and_eval_set
 val eval_blang : t -> Blang.t -> bool Memo.t
 val map_exe : t -> Path.t -> Path.t
 val artifacts : t -> Artifacts.t
-
-val expand_locks
-  :  base:[ `Of_expander | `This of Path.t ]
-  -> t
-  -> Locks.t
-  -> Path.t list Action_builder.t
+val expand_locks : t -> Locks.t -> Path.t list Action_builder.t
 
 val foreign_flags
   : (dir:Path.Build.t -> string list Action_builder.t Foreign_language.Dict.t Memo.t)

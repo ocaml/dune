@@ -1181,10 +1181,10 @@ end = struct
             remove those that are disabled *)
          let* filtered_libs =
            Memo.List.filter libs ~f:(fun lib ->
-             let* enabled = Lib_info.enabled lib in
+             let+ enabled = Lib_info.enabled lib in
              match enabled with
-             | Disabled_because_of_enabled_if -> Memo.return false
-             | Normal | Optional -> Memo.return true)
+             | Disabled_because_of_enabled_if -> false
+             | Normal | Optional -> true)
          in
          to_status ~db ~name filtered_libs)
     | Invalid e -> Memo.return (Status.Invalid e)

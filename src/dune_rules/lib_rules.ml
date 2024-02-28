@@ -578,8 +578,8 @@ let library_rules
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info
   in
-  let* enabled_if = Lib_info.enabled lib_info in
-  let enabled =
+  let* enabled =
+    let+ enabled_if = Lib_info.enabled lib_info in
     match enabled_if with
     | Disabled_because_of_enabled_if -> false
     | Normal | Optional -> true

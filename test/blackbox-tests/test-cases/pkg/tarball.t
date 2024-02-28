@@ -37,7 +37,6 @@ twice in one test (even on different ports)
   ./foo
   $ runtest tarball2.tar.gz
   .
-  ./_source
-  ./_source/foo
+  ./foo
 
   $ wait

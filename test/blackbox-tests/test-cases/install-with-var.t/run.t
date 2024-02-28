@@ -4,10 +4,9 @@
   > (install
   >  (section man)
   >  (files
-  >     (man-page-a.1 as man-page-a.%{context_name}.1) ; incorrect usage!
-  >     (man-page-b.1 as man1/man-page-b.%{context_name}.1)
-  >     another-man-page.3)
-  > )
+  >   (man-page-a.1 as man-page-a.%{context_name}.1) ; incorrect usage!
+  >   (man-page-b.1 as man1/man-page-b.%{context_name}.1)
+  >   another-man-page.3))
   > EOF
 
   $ dune build @install
@@ -29,26 +28,24 @@ Some variables are restricted in [dst] of [bin] section because evaluating
 them could cause a dependency cycle (also, most of them make no sense in [dst] anyway).
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files (foobar.txt as "%{env:FOO=foobar}/foo.txt"))
-  >  )
+  > (install
+  >  (section bin)
+  >  (files (foobar.txt as "%{env:FOO=foobar}/foo.txt")))
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 25-42:
-  3 |   (files (foobar.txt as "%{env:FOO=foobar}/foo.txt"))
-                               ^^^^^^^^^^^^^^^^^
+  File "dune", line 3, characters 24-41:
+  3 |  (files (foobar.txt as "%{env:FOO=foobar}/foo.txt")))
+                              ^^^^^^^^^^^^^^^^^
   Error: %{env:..} isn't allowed in this position.
   [1]
 
 This is not a problem outside of bin section:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section man)
-  >   (files (foobar.txt as "%{env:FOO=foobar}/foo.txt"))
-  >  )
+  > (install
+  >  (section man)
+  >  (files (foobar.txt as "%{env:FOO=foobar}/foo.txt")))
   > EOF
 
   $ dune build @install
@@ -58,16 +55,15 @@ addition of .exe suffix to dst on Windows is conditional on the
 extension of [src]:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files (%{env:FOO=foobar.txt} as foo.txt))
-  >  )    
+  > (install
+  >  (section bin)
+  >  (files (%{env:FOO=foobar.txt} as foo.txt)))
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 10-31:
-  3 |   (files (%{env:FOO=foobar.txt} as foo.txt))
-                ^^^^^^^^^^^^^^^^^^^^^
+  File "dune", line 3, characters 9-30:
+  3 |  (files (%{env:FOO=foobar.txt} as foo.txt)))
+               ^^^^^^^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
   the macro %{env:..} in its basename.
   [1]
@@ -75,10 +71,9 @@ extension of [src]:
 This is fine if the destination extension is already .exe:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files (%{env:FOO=foobar.txt} as foo.exe))
-  >  )    
+  > (install
+  >  (section bin)
+  >  (files (%{env:FOO=foobar.txt} as foo.exe)))
   > EOF
 
   $ dune build @install
@@ -86,10 +81,9 @@ This is fine if the destination extension is already .exe:
 Or if the extension of source is clearly not .exe:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files (%{env:FOO=foobar}.txt as foo))
-  >  )    
+  > (install
+  >  (section bin)
+  >  (files (%{env:FOO=foobar}.txt as foo)))
   > EOF
 
   $ dune build @install
@@ -97,16 +91,15 @@ Or if the extension of source is clearly not .exe:
 Exe basename needs to be fully known if dst is missing though:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files %{env:FOO=foobar}.txt)
-  >  )    
+  > (install
+  >  (section bin)
+  >  (files %{env:FOO=foobar}.txt))
   > EOF
 
   $ dune build @install
-  File "dune", line 3, characters 9-26:
-  3 |   (files %{env:FOO=foobar}.txt)
-               ^^^^^^^^^^^^^^^^^
+  File "dune", line 3, characters 8-25:
+  3 |  (files %{env:FOO=foobar}.txt))
+              ^^^^^^^^^^^^^^^^^
   Error: Because this file is installed in the 'bin' section, you cannot use
   the macro %{env:..} in its basename.
   [1]
@@ -114,10 +107,9 @@ Exe basename needs to be fully known if dst is missing though:
 When basename is fully known, all is well:
 
   $ cat > dune <<EOF
-  >  (install
-  >   (section bin)
-  >   (files %{env:FOO=.}/foobar.txt)
-  >  )    
+  > (install
+  >  (section bin)
+  >  (files %{env:FOO=.}/foobar.txt))
   > EOF
 
   $ dune build @install

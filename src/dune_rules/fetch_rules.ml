@@ -5,7 +5,9 @@ module Gen_rules = Build_config.Gen_rules
 include struct
   open Dune_pkg
   module Checksum = Checksum
+  module Rev_store = Rev_store
   module Pkg = Lock_dir.Pkg
+  module OpamUrl = OpamUrl
 end
 
 let context_name = Context_name.of_string "_fetch"
@@ -31,6 +33,36 @@ type kind =
   | `Directory
   ]
 
+let resolve_url =
+  (* Before we fetch any git repo, we make sure to convert the URL to fetch the
+     git object directly. The object is used to compute the fetch action digest
+     which is helpful to avoid refetching the same objects. *)
+  let git url =
+    Memo.of_reproducible_fiber
+    @@
+    let open Fiber.O in
+    let* rev_store = Rev_store.get in
+    let+ git_object =
+      OpamUrl.resolve url rev_store
+      >>| function
+      | Ok (Resolved r) -> (r :> Rev_store.Object.t)
+      | Ok (Unresolved r) -> r
+      | Error m -> raise (User_error.E m)
+    in
+    (* We fetch the object directly to make sure that there are no races
+       between us resolving a branch or tag and then upstream modifying its
+       meaning. *)
+    Dune_pkg.OpamUrl.set_rev url git_object
+  in
+  let memo =
+    Memo.create "resolve-git-url" ~input:(module OpamUrl) ~cutoff:OpamUrl.equal git
+  in
+  fun (url : OpamUrl.t) ->
+    match url.backend with
+    | `git -> Memo.exec memo url
+    | _ -> Memo.return url
+;;
+
 module Spec = struct
   type ('path, 'target) t =
     { target : 'target
@@ -54,6 +86,9 @@ module Spec = struct
             | `File -> "file"
             | `Directory -> "directory")
        ]
+       @ (match OpamUrl.rev url with
+          | None -> []
+          | Some rev -> [ Dune_lang.atom_or_quoted_string rev ])
        @
        match checksum with
        | None -> []
@@ -156,11 +191,11 @@ let find_checksum, find_url =
   find_checksum, find_url
 ;;
 
-let gen_rules_for_checksum_or_url url checksum =
+let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
   let checksum_or_url =
     match checksum with
     | Some (_, checksum) -> `Checksum checksum
-    | None -> `Url (snd url)
+    | None -> `Url url
   in
   let directory_targets =
     let target_dir = make_target ~kind:`Directory checksum_or_url in
@@ -169,19 +204,21 @@ let gen_rules_for_checksum_or_url url checksum =
   let rules =
     Rules.collect_unit
     @@ fun () ->
+    let* url = resolve_url url in
     (* CR-rgrinberg: it's possible to share the downloading step between the
        directory and file actions. Though it's unlikely to be of any use in real
        world situations. *)
     let rule =
-      let info = Rule.Info.of_loc_opt (Some (fst url)) in
+      let info = Rule.Info.of_loc_opt (Some loc_url) in
       fun { Action_builder.With_targets.build; targets } ->
         Rules.Produce.rule (Rule.make ~info ~targets build)
     in
     let make_target = make_target checksum_or_url in
     let action ~target ~kind =
-      action ~url ~checksum ~target ~kind
+      action ~url:(loc_url, url) ~checksum ~target ~kind
       |> Action.Full.make
-      |> Action_builder.With_targets.return
+      |> Action_builder.return
+      |> Action_builder.with_no_targets
     in
     let dir_rule =
       let target = make_target ~kind:`Directory in

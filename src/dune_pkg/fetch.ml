@@ -277,7 +277,10 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_git rev_store ~target (url : OpamUrl.t) =
-  OpamUrl.find_revision url rev_store
+  OpamUrl.resolve url rev_store
+  >>= (function
+         | Error _ as e -> Fiber.return e
+         | Ok r -> OpamUrl.fetch_revision url r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->

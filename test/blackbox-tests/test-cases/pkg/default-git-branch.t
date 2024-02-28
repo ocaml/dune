@@ -42,3 +42,4 @@ Change the default branch
 And now rebuild
 
   $ build_pkg foo
+  branch 1

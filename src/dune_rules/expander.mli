@@ -67,6 +67,7 @@ val expand
 val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
+val expand_str_partial : t -> String_with_vars.t -> String_with_vars.t Action_builder.t
 
 module No_deps : sig
   (** Same as [expand_xxx] but disallow percent forms that introduce action
@@ -88,28 +89,6 @@ module With_deps_if_necessary : sig
   (** Same as [expand_xxx] but stay in the [Memo] monad if possible. *)
 
   val expand_path : t -> String_with_vars.t -> Path.t list Deps.t
-end
-
-module With_reduced_var_set : sig
-  val expand
-    :  context:Context.t
-    -> dir:Path.Build.t
-    -> String_with_vars.t
-    -> Value.t Memo.t
-
-  val expand_str
-    :  context:Context.t
-    -> dir:Path.Build.t
-    -> String_with_vars.t
-    -> string Memo.t
-
-  val expand_str_partial
-    :  context:Context.t
-    -> dir:Path.Build.t
-    -> String_with_vars.t
-    -> String_with_vars.t Memo.t
-
-  val eval_blang : context:Context.t -> dir:Path.Build.t -> Blang.t -> bool Memo.t
 end
 
 val expand_ordered_set_lang

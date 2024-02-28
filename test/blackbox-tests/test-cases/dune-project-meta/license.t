@@ -65,5 +65,5 @@ Reject empty license
   File "dune-project", line 4, characters 0-9:
   4 | (license)
       ^^^^^^^^^
-  Error: Not enough arguments for license
+  Error: Not enough arguments for "license"
   [1]

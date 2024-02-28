@@ -60,6 +60,8 @@ let test_rule
     Memo.parallel_iter aliases ~f:(fun alias ->
       Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test ->
+    (* CR-rgrinberg: this is wrong, we should be using the expander associated
+       with the stanza that introduced the [enabled_if] *)
     Expander.eval_blang expander (Blang.And enabled_if)
     >>= (function
      | false ->
@@ -164,25 +166,20 @@ let rules ~sctx ~expander ~dir tests =
             with
             | false -> Memo.return (runtest_alias, acc)
             | true ->
-              let+ deps, sandbox =
+              let+ expander = Super_context.expander sctx ~dir in
+              let deps, sandbox =
                 match stanza.deps with
-                | None -> Memo.return (acc.deps, acc.sandbox)
+                | None -> acc.deps, acc.sandbox
                 | Some deps ->
-                  let+ (deps : unit Action_builder.t), _, sandbox =
-                    let+ expander = Super_context.expander sctx ~dir in
+                  let (deps : unit Action_builder.t), _, sandbox =
                     Dep_conf_eval.named ~expander deps
                   in
                   deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
               in
               let locks =
-                (* Locks must be relative to the cram stanza directory and not
-                   the individual tests directories *)
-                let base = `This (Path.build dir) in
                 let open Action_builder.O in
                 let+ more_locks =
-                  (* XXX wrong expander? this should be the expander in the
-                     directory of the cram stanzas *)
-                  Expander.expand_locks ~base expander stanza.locks >>| Path.Set.of_list
+                  Expander.expand_locks expander stanza.locks >>| Path.Set.of_list
                 and+ locks = acc.locks in
                 Path.Set.union locks more_locks
               in

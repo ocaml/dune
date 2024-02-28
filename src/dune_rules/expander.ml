@@ -919,17 +919,9 @@ let eval_blang t blang =
   Blang_expand.eval ~f:(No_deps.expand_pform t) ~dir:(Path.build t.dir) blang
 ;;
 
-let expand_lock ~base expander (Locks.Lock sw) =
-  let open Memo.O in
-  match base with
-  | `Of_expander -> No_deps.expand_path expander sw
-  | `This base ->
-    let+ str = No_deps.expand_str expander sw in
-    Path.relative base str
-;;
-
-let expand_locks ~base expander locks =
-  Memo.List.map locks ~f:(expand_lock ~base expander) |> Action_builder.of_memo
+let expand_locks t (locks : Locks.t) =
+  Memo.List.map locks ~f:(fun (Lock x) -> No_deps.expand_path t x)
+  |> Action_builder.of_memo
 ;;
 
 let () =

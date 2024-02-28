@@ -396,8 +396,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog ~mdx_prog_ge
               executable
               command_line
       and+ locks =
-        Expander.expand_locks expander ~base:`Of_expander stanza.locks
-        |> Action_builder.with_no_targets
+        Expander.expand_locks expander stanza.locks |> Action_builder.with_no_targets
       in
       Action.Full.add_locks locks action |> Action.Full.add_sandbox sandbox
     in

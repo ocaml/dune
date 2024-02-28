@@ -7,7 +7,7 @@ module Spec = struct
     ; alias : Alias.Name.Set.t
     ; deps : unit Action_builder.t list
     ; sandbox : Sandbox_config.t
-    ; enabled_if : Blang.t list
+    ; enabled_if : (Expander.t * Blang.t) list
     ; locks : Path.Set.t Action_builder.t
     ; packages : Package.Name.Set.t
     }
@@ -15,7 +15,7 @@ module Spec = struct
   let empty =
     { loc = Loc.none
     ; alias = Alias.Name.Set.empty
-    ; enabled_if = [ Blang.true_ ]
+    ; enabled_if = []
     ; locks = Action_builder.return Path.Set.empty
     ; deps = []
     ; sandbox = Sandbox_config.needs_sandboxing
@@ -48,7 +48,6 @@ let missing_run_t (error : Cram_test.t) =
 
 let test_rule
   ~sctx
-  ~expander
   ~dir
   ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
   (test : (Cram_test.t, error) result)
@@ -61,7 +60,11 @@ let test_rule
     Memo.parallel_iter aliases ~f:(fun alias ->
       Alias_rules.add sctx ~alias ~loc (missing_run_t test))
   | Ok test ->
-    Expander.eval_blang expander (Blang.And enabled_if)
+    (* Morally, this is equivalent to evaluating them all concurrently and
+       taking the conjunction, but we do it this way to avoid evaluating things
+       unnecessarily *)
+    Memo.List.for_all enabled_if ~f:(fun (expander, blang) ->
+      Expander.eval_blang expander blang)
     >>= (function
      | false ->
        Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
@@ -123,7 +126,7 @@ let collect_stanzas =
     | Some dir -> collect_whole_subtree [ acc ] dir
 ;;
 
-let rules ~sctx ~expander ~dir tests =
+let rules ~sctx ~dir tests =
   let open Memo.O in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
@@ -163,25 +166,20 @@ let rules ~sctx ~expander ~dir tests =
             with
             | false -> Memo.return (runtest_alias, acc)
             | true ->
-              let+ deps, sandbox =
+              let+ expander = Super_context.expander sctx ~dir in
+              let deps, sandbox =
                 match stanza.deps with
-                | None -> Memo.return (acc.deps, acc.sandbox)
+                | None -> acc.deps, acc.sandbox
                 | Some deps ->
-                  let+ (deps : unit Action_builder.t), _, sandbox =
-                    let+ expander = Super_context.expander sctx ~dir in
+                  let (deps : unit Action_builder.t), _, sandbox =
                     Dep_conf_eval.named ~expander deps
                   in
                   deps :: acc.deps, Sandbox_config.inter acc.sandbox sandbox
               in
               let locks =
-                (* Locks must be relative to the cram stanza directory and not
-                   the individual tests directories *)
-                let base = `This (Path.build dir) in
                 let open Action_builder.O in
                 let+ more_locks =
-                  (* XXX wrong expander? this should be the expander in the
-                     directory of the cram stanzas *)
-                  Expander.expand_locks ~base expander stanza.locks >>| Path.Set.of_list
+                  Expander.expand_locks expander stanza.locks >>| Path.Set.of_list
                 and+ locks = acc.locks in
                 Path.Set.union locks more_locks
               in
@@ -216,7 +214,7 @@ let rules ~sctx ~expander ~dir tests =
                           ; Pp.text (Loc.to_file_colon_line loc')
                           ]))
               in
-              let enabled_if = stanza.enabled_if :: acc.enabled_if in
+              let enabled_if = (expander, stanza.enabled_if) :: acc.enabled_if in
               let alias =
                 match stanza.alias with
                 | None -> acc.alias
@@ -241,7 +239,7 @@ let rules ~sctx ~expander ~dir tests =
       in
       { acc with alias }
     in
-    with_package_mask spec.packages (fun () -> test_rule ~sctx ~expander ~dir spec test))
+    with_package_mask spec.packages (fun () -> test_rule ~sctx ~dir spec test))
 ;;
 
 let cram_tests dir =
@@ -284,9 +282,9 @@ let cram_tests dir =
     file_tests @ dir_tests
 ;;
 
-let rules ~sctx ~expander ~dir source_dir =
+let rules ~sctx ~dir source_dir =
   cram_tests source_dir
   >>= function
   | [] -> Memo.return ()
-  | tests -> rules ~sctx ~expander ~dir tests
+  | tests -> rules ~sctx ~dir tests
 ;;

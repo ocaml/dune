@@ -6,6 +6,35 @@ A {e glob} is a way of referring to a set of files that match a certain
 pattern, such as "files with the [.ml] extension" or "files with [test] in
 their name".
 
+The glob syntax is interpreted as follows:
+- [\<char>] matches exactly [<char>], even if it's a special character
+  ([*], [?], ...).
+- [*] matches any sequence of characters, except if it comes first, in which
+  case it matches any character that is not [.] followed by anything.
+- [**] matches any character that is not [.] followed by anything, except if
+  it comes first, in which case it matches anything.
+- [?] matches any single character.
+- [[<set>]] matches any character that is part of [<set>].
+- [[!<set>]] matches any character that is not part of [<set>].
+- [{<glob1>,<glob2>,...,<globn>}] matches any string that is matched by one of
+  [<glob1>] [<glob2>] etc.
+
+{t
+	| Syntax            | Files matched                      | Files not matched       |
+	|-------------------|------------------------------------|-------------------------|
+	| [ x ]             | [ x ]                              | [ y ]                   |
+	| [ \* ]            | [ * ]                              | [ x ]                   |
+	| [ file*.txt ]     | [ file1.txt ], [ file2.txt ]       | [ f.txt ]               |
+	| [ *.txt ]         | [ f.txt ]                          | [ .hidden.txt ]         |
+	| [ a** ]           | [ aml ]                            | [ a.ml ]                |
+	| [ ** ]            | [ a/b ], [ a.b ]                   | (none)                  |
+	| [ a?.txt ]        | [ a1.txt ], [ a2.txt ]             | [ b1.txt ], [ a10.txt ] |
+	| [ f[xyz].txt ]    | [ fx.txt ], [ fy.txt ], [ fz.txt ] | [ f2.txt ], [ f.txt ]   |
+	| [ f[!xyz].txt ]   | [ f2.txt ], [ fa.txt ]             | [ fx.txt ], [ f.txt ]   |
+	| [ a.{ml,mli} ]    | [ a.ml ], [ a.mli ]                | [ a.txt ], [ b.ml ]     |
+	| [ ../a.{ml,mli} ] | [ ../a.ml ], [ ../a.mli ]          | [ a.ml ]                |
+}
+
 [dune-glob] exposes an abstraction so that we can refer to the first group as
 [*.ml] and the second one as [*test*].
 

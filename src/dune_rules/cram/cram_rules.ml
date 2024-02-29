@@ -38,6 +38,7 @@ let missing_run_t (error : Cram_test.t) =
             | Dir { dir; file = _ } -> dir
           in
           User_error.raise
+            ~loc:(Loc.in_dir (Path.source dir))
             [ Pp.textf
                 "Cram test directory %s does not contain a run.t file."
                 (Path.Source.to_string dir)
@@ -81,18 +82,16 @@ let test_rule
              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
              ()
          and+ locks = locks >>| Path.Set.to_list in
-         let action =
-           Action.progn
-             [ Cram_exec.action (Path.build script)
-             ; Diff
-                 { Diff.optional = true
-                 ; mode = Text
-                 ; file1 = Path.build script
-                 ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-                 }
-             ]
-         in
-         Action.Full.make action ~locks ~sandbox
+         Action.progn
+           [ Cram_exec.action (Path.build script)
+           ; Diff
+               { Diff.optional = true
+               ; mode = Text
+               ; file1 = Path.build script
+               ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
+               }
+           ]
+         |> Action.Full.make ~locks ~sandbox
        in
        Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
 ;;

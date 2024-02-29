@@ -114,10 +114,7 @@ end = struct
       let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () ->
-          let+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-          and+ rules = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
-          rules)
+        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
         enabled_if
     | Foreign.Library.T lib ->
       Expander.eval_blang expander lib.enabled_if

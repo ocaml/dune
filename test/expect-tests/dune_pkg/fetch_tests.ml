@@ -194,6 +194,7 @@ let%expect_test "downloading, tarball with no checksum match" =
     print_endline "------\nfiles in target dir:";
     Dune_engine.No_io.Path.Untracked.readdir_unsorted target
     |> Result.value ~default:[]
+    |> List.sort ~compare:String.compare
     |> List.iter ~f:print_endline
   in
   [%expect
@@ -202,8 +203,8 @@ let%expect_test "downloading, tarball with no checksum match" =
     Finished successfully, no checksum verification
     ------
     files in target dir:
-    plaintext.md
-    file2.md |}]
+    file2.md
+    plaintext.md |}]
 ;;
 
 let download_git rev_store url ~target =

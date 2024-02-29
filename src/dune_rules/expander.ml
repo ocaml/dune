@@ -44,6 +44,8 @@ end
 
 type value = Value.t list Deps.t
 
+let lookup_artifacts = Fdecl.create Dyn.opaque
+
 type t =
   { dir : Path.Build.t
   ; env : Env.t
@@ -55,7 +57,6 @@ type t =
   ; scope : Scope.t
   ; scope_host : Scope.t
   ; context : Context.t
-  ; lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) option
   ; expanding_what : Expanding_what.t
   }
 
@@ -70,7 +71,6 @@ let set_local_env_var t ~var ~value =
 let set_dir t ~dir = { t with dir }
 let set_scope t ~scope ~scope_host = { t with scope; scope_host }
 let set_artifacts t ~artifacts_host = { t with artifacts_host }
-let set_lookup_ml_sources t ~f = { t with lookup_artifacts = Some f }
 let set_expanding_what t x = { t with expanding_what = x }
 
 let map_exe t p =
@@ -155,46 +155,41 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
          ])
 ;;
 
-let expand_artifact ~source t a s =
-  match t.lookup_artifacts with
-  | None -> isn't_allowed_in_this_position ~source
-  | Some lookup ->
-    let path = Path.Build.relative t.dir s in
-    let name = Path.Build.basename path in
-    let dir = Path.Build.parent_exn path in
-    let does_not_exist ~loc ~what name =
-      User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
+let expand_artifact ~source t artifact arg =
+  let path = Path.Build.relative t.dir arg in
+  let loc = Dune_lang.Template.Pform.loc source in
+  let name = Path.Build.basename path in
+  let dir = Path.Build.parent_exn path in
+  if Path.Build.is_root dir
+  then User_error.raise ~loc [ Pp.text "cannot escape the workspace root directory" ];
+  let does_not_exist ~what name =
+    User_error.raise ~loc [ Pp.textf "%s %s does not exist." what name ]
+  in
+  let* artifacts =
+    let lookup = Fdecl.get lookup_artifacts in
+    Action_builder.of_memo (lookup ~dir)
+  in
+  match artifact with
+  | Pform.Artifact.Mod kind ->
+    let name =
+      Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
     in
-    let* artifacts = Action_builder.of_memo (lookup ~dir) in
-    (match a with
-     | Pform.Artifact.Mod kind ->
-       let name =
-         Module_name.of_string_allow_invalid (Dune_lang.Template.Pform.loc source, name)
-       in
-       (match Artifacts_obj.lookup_module artifacts name with
-        | None ->
-          does_not_exist
-            ~loc:(Dune_lang.Template.Pform.loc source)
-            ~what:"Module"
-            (Module_name.to_string name)
-        | Some (t, m) ->
-          (match Obj_dir.Module.cm_file t m ~kind:(Ocaml kind) with
-           | None -> Action_builder.return [ Value.String "" ]
-           | Some path -> dep (Path.build path)))
-     | Lib mode ->
-       let name = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name) in
-       (match Artifacts_obj.lookup_library artifacts name with
-        | None ->
-          does_not_exist
-            ~loc:(Dune_lang.Template.Pform.loc source)
-            ~what:"Library"
-            (Lib_name.to_string name)
-        | Some lib ->
-          Mode.Dict.get (Lib_info.archives lib) mode
-          |> Action_builder.List.map ~f:(fun fn ->
-            let fn = Path.build fn in
-            let+ () = Action_builder.path fn in
-            Value.Path fn)))
+    (match Artifacts_obj.lookup_module artifacts name with
+     | None -> does_not_exist ~what:"Module" (Module_name.to_string name)
+     | Some (t, m) ->
+       (match Obj_dir.Module.cm_file t m ~kind:(Ocaml kind) with
+        | None -> Action_builder.return [ Value.String "" ]
+        | Some path -> dep (Path.build path)))
+  | Lib mode ->
+    let name = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, name) in
+    (match Artifacts_obj.lookup_library artifacts name with
+     | None -> does_not_exist ~what:"Library" (Lib_name.to_string name)
+     | Some lib ->
+       Mode.Dict.get (Lib_info.archives lib) mode
+       |> Action_builder.List.map ~f:(fun fn ->
+         let fn = Path.build fn in
+         let+ () = Action_builder.path fn in
+         Value.Path fn))
 ;;
 
 let foreign_flags = Fdecl.create Dyn.opaque
@@ -764,7 +759,6 @@ let make_root
   ; lib_artifacts_host
   ; artifacts_host
   ; context
-  ; lookup_artifacts = None
   ; expanding_what = Nothing_special
   }
 ;;

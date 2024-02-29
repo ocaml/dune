@@ -191,7 +191,11 @@ This test checks error handling.
 
   $ dune build %{cma:../x}
   File "command line", line 1, characters 0-11:
-  Error: Library x does not exist.
+  Error: cannot escape the workspace root directory
+  [1]
+  $ dune build %{cma:../../x}
+  Error: path outside the workspace: ../../x from default
+  -> required by %{cma:../../x} at command line:1
   [1]
 
 This test checks that everything still works if we invoke dune from a

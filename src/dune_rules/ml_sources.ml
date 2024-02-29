@@ -401,8 +401,10 @@ let modules_of_stanzas =
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
-        let* lib_config = lib_config in
-        let info = Library.to_lib_info lib ~dir ~lib_config in
+        let* info =
+          let+ lib_config = lib_config in
+          Library.to_lib_info lib ~dir ~lib_config
+        in
         let* enabled_if = Lib_info.enabled info in
         (match enabled_if with
          | Disabled_because_of_enabled_if -> Memo.return `Skip

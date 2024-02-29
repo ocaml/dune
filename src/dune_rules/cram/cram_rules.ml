@@ -81,18 +81,16 @@ let test_rule
              let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
              ()
          and+ locks = locks >>| Path.Set.to_list in
-         let action =
-           Action.progn
-             [ Cram_exec.action (Path.build script)
-             ; Diff
-                 { Diff.optional = true
-                 ; mode = Text
-                 ; file1 = Path.build script
-                 ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-                 }
-             ]
-         in
-         Action.Full.make action ~locks ~sandbox
+         Action.progn
+           [ Cram_exec.action (Path.build script)
+           ; Diff
+               { Diff.optional = true
+               ; mode = Text
+               ; file1 = Path.build script
+               ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
+               }
+           ]
+         |> Action.Full.make ~locks ~sandbox
        in
        Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
 ;;

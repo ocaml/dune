@@ -1,11 +1,7 @@
 Most tests have two versions: one where the variable is used inside a dune file,
 and one where the same variables are used in the command line.
 
-  $ cat >sdune <<'EOF'
-  > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
-  > EOF
-  $ chmod +x sdune
+  $ export DUNE_SANDBOX=symlink
 
 We begin with a that tries to build several modules defined in the current
 directory.
@@ -16,8 +12,8 @@ directory.
 - d belongs to a wrapped library (transition mode) : in this case, both the
 prefixed and unprefixed modules are built.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t1
+  $ dune clean
+  $ dune build --display short @t1
       ocamldep .a1.objs/a1__A.impl.d
         ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
@@ -29,7 +25,7 @@ prefixed and unprefixed modules are built.
 
 Command line version.
 
-  $ ./sdune build --verbose %{cmo:a} %{cmo:b} %{cmo:c} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cmo:a} %{cmo:b} %{cmo:c} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/.a1.objs/byte/a1__A.cmo
   - _build/default/.b.eobjs/byte/dune__exe__B.cmo
@@ -37,15 +33,15 @@ Command line version.
 
 The next test tries to build a .cmi file (of a module in a wrapped library).
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t2
+  $ dune clean
+  $ dune build --display short @t2
       ocamldep .a1.objs/a1__A.impl.d
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
 
 Command line version.
 
-  $ ./sdune build --verbose %{cmi:a} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cmi:a} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/.a1.objs/byte/a1__A.cmi
 
@@ -58,7 +54,7 @@ The next test tries to build a module that does not exist.
   >  (name t)
   >  (deps %{cmo:foo}))
   > EOF
-  $ ./sdune build --root ex1 @t
+  $ dune build --root ex1 @t
   Entering directory 'ex1'
   File "dune", line 3, characters 7-17:
   3 |  (deps %{cmo:foo}))
@@ -69,15 +65,15 @@ The next test tries to build a module that does not exist.
 
 Command line version; note that the error message is slightly different.
 
-  $ ./sdune build %{cmo:xxxx}
+  $ dune build %{cmo:xxxx}
   File "command line", line 1, characters 0-11:
   Error: Module Xxxx does not exist.
   [1]
 
 The next test builds a native .cmxa.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t4
+  $ dune clean
+  $ dune build --display short @t4
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
       ocamldep .a1.objs/a1__A.impl.d
       ocamlopt .a1.objs/native/a1.{cmx,o}
@@ -87,7 +83,7 @@ The next test builds a native .cmxa.
 
 Command line version.
 
-  $ ./sdune build --verbose %{cmxa:a1} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cmxa:a1} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/a1.cmxa
 
@@ -100,7 +96,7 @@ This test tries to build a non-existent .cma.
   >  (name t)
   >  (deps %{cma:bar}))
   > EOF
-  $ ./sdune build --root ex2 @t
+  $ dune build --root ex2 @t
   Entering directory 'ex2'
   File "dune", line 3, characters 7-17:
   3 |  (deps %{cma:bar}))
@@ -111,7 +107,7 @@ This test tries to build a non-existent .cma.
 
 Command line version.
 
-  $ ./sdune build %{cma:bar_}
+  $ dune build %{cma:bar_}
   File "command line", line 1, characters 0-11:
   Error: Library bar_ does not exist.
   [1]
@@ -119,8 +115,8 @@ Command line version.
 This test tries to build a .cma in a subdirectory, where a different project is
 defined. The library is public in this case, but we use the local name.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t6
+  $ dune clean
+  $ dune build --display short @t6
         ocamlc sub2/.bar2.objs/byte/bar2.{cmi,cmo,cmt}
       ocamldep sub2/.bar2.objs/bar2__Y2.impl.d
         ocamlc sub2/.bar2.objs/byte/bar2__Y2.{cmi,cmo,cmt}
@@ -128,44 +124,44 @@ defined. The library is public in this case, but we use the local name.
 
 Command line version.
 
-  $ ./sdune build --verbose %{cma:sub2/bar2} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cma:sub2/bar2} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/sub2/bar2.cma
 
 This test builds a .cmo in a subdirectory (same project).
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t7
+  $ dune clean
+  $ dune build --display short @t7
       ocamldep sub/.bar.objs/bar__X.impl.d
         ocamlc sub/.bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc sub/.bar.objs/byte/bar__X.{cmi,cmo,cmt}
 
 Command line version.
 
-  $ ./sdune build --verbose %{cmo:sub/x} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cmo:sub/x} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/sub/.bar.objs/byte/bar__X.cmo
 
 This test builds a module in a subdirectory (different project) belonging to a
 private library.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t8
+  $ dune clean
+  $ dune build --display short @t8
       ocamldep sub3/.c1.objs/c1__X.impl.d
         ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
         ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
 
 COmmand line version.
 
-  $ ./sdune build --verbose %{cmo:sub3/x} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cmo:sub3/x} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/sub3/.c1.objs/byte/c1__X.cmo
 
 This test builds a private library in a subdirectory belonging to a different
 project.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t9
+  $ dune clean
+  $ dune build --display short @t9
         ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
       ocamldep sub3/.c1.objs/c1__X.impl.d
         ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
@@ -173,29 +169,33 @@ project.
 
 Command line version.
 
-  $ ./sdune build --verbose %{cma:sub3/c1} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cma:sub3/c1} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/sub3/c1.cma
 
 This test builds a library in the current directory that has the same name as a
 public library defined in a subdirectory.
 
-  $ ./sdune clean
-  $ ./sdune build --display short @t10
+  $ dune clean
+  $ dune build --display short @t10
         ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
         ocamlc c1.cma
 
 Command line version.
 
-  $ ./sdune build --verbose %{cma:c1} 2>&1 | grep -A100 'Actual targets'
+  $ dune build --verbose %{cma:c1} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/c1.cma
 
 This test checks error handling.
 
-  $ ./sdune build %{cma:../x}
+  $ dune build %{cma:../x}
   File "command line", line 1, characters 0-11:
-  Error: Library x does not exist.
+  Error: cannot escape the workspace root directory
+  [1]
+  $ dune build %{cma:../../x}
+  Error: path outside the workspace: ../../x from default
+  -> required by %{cma:../../x} at command line:1
   [1]
 
 This test checks that everything still works if we invoke dune from a
@@ -210,7 +210,7 @@ subdirectory.
 The following test checks that the variables can be used in the (action) field
 of a (rule).
 
-  $ ./sdune build --display short _build/default/my.cmxs
+  $ dune build --display short _build/default/my.cmxs
         ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
       ocamldep .plugin.objs/plugin__X1.impl.d
       ocamldep .plugin.objs/plugin__X2.impl.d
@@ -240,7 +240,7 @@ This test is no longer failing. It should fail because
   >  (deps %{cmo:x2})
   >  (action (with-stdout-to %{target} (progn))))
   > EOF
-  $ ./sdune build --root deps-fail t
+  $ dune build --root deps-fail t
   Entering directory 'deps-fail'
   File "dune", line 3, characters 7-16:
   3 |  (deps %{cmo:x2})
@@ -255,7 +255,7 @@ new files for Dir_contents, for example copy_files:
   $ cat > deps-fail/dune << EOF
   > (copy_files "%{cmo:x2}")
   > EOF
-  $ ./sdune build --root deps-fail t
+  $ dune build --root deps-fail t
   Entering directory 'deps-fail'
   File "dune", line 1, characters 13-22:
   1 | (copy_files "%{cmo:x2}")

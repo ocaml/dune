@@ -304,7 +304,7 @@ let make_lib_modules
       let* resolved =
         let* libs = libs in
         Library.best_name lib
-        |> Lib.DB.find_even_when_hidden libs
+        |> Lib.DB.find libs
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn

@@ -26,21 +26,23 @@ module DB = struct
   module Found_or_redirect : sig
     type t = private
       | Found of Lib_info.external_ list
-      | Redirect of (Loc.t * Lib_name.t)
+      | Redirect of (Loc.t * Lib_name.t) list
 
     val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
+    val redirect_many : (Loc.t * Lib_name.t) list -> t
     val found : Lib_info.external_ list -> t
   end = struct
     type t =
       | Found of Lib_info.external_ list
-      | Redirect of (Loc.t * Lib_name.t)
+      | Redirect of (Loc.t * Lib_name.t) list
 
     let redirect from (loc, to_) =
       if Lib_name.equal from to_
       then Code_error.raise ~loc "Invalid redirect" [ "to_", Lib_name.to_dyn to_ ]
-      else from, Redirect (loc, to_)
+      else from, Redirect [ loc, to_ ]
     ;;
 
+    let redirect_many x = Redirect x
     let found x = Found x
   end
 
@@ -69,11 +71,12 @@ module DB = struct
           match v1, v2 with
           | Found info1, Found info2 ->
             Ok (Found_or_redirect.found (List.rev_append info1 info2))
-          | Found info, Redirect (loc, _) | Redirect (loc, _), Found info ->
+          | Found info, Redirect redirect | Redirect redirect, Found info ->
+            let loc, _ = List.hd redirect in
             (* todo: should this not be an error? *)
             Error (loc, Lib_info.loc (List.hd info))
-          | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
-            if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
+          | Redirect redirect1, Redirect redirect2 ->
+            Ok (Found_or_redirect.redirect_many (List.rev_append redirect1 redirect2))
         in
         match res with
         | Ok x -> x
@@ -121,7 +124,7 @@ module DB = struct
     | Some (Project project) ->
       let scope = find_by_project (Fdecl.get t) project in
       Lib.DB.Resolve_result.redirect scope.db (Loc.none, name)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
+    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db [ name ]
   ;;
 
   let public_theories ~find_db ~installed_theories coq_stanzas =

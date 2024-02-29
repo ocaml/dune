@@ -422,7 +422,7 @@ and resolve_result =
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
   | Ignore
-  | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
+  | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
   | Redirect of db * (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config
@@ -1167,7 +1167,28 @@ end = struct
     db.resolve name
     >>= function
     | Ignore -> Memo.return Status.Ignore
-    | Redirect_in_the_same_db (_, name') -> find_internal db name'
+    | Redirect_in_the_same_db redirects ->
+      let result = List.map ~f:(fun (_, name') -> find_internal db name') redirects in
+      let* statuses =
+        Memo.List.map result ~f:(fun redirect ->
+          let* r = redirect in
+          Memo.return r)
+      in
+      Memo.return
+        (List.fold_left statuses ~init:Status.Not_found ~f:(fun acc status ->
+           match acc, status with
+           | Status.Found a, Status.Found b ->
+             let a = info a in
+             let b = info b in
+             let loc = Lib_info.loc b in
+             let dir_a = Lib_info.src_dir a in
+             let dir_b = Lib_info.src_dir b in
+             Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b)
+           | Invalid _, _ -> acc
+           | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
+           | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib
+           | (Hidden _ | Ignore | Not_found), (Hidden _ | Ignore | Not_found | Invalid _)
+             -> acc))
     | Redirect (db', (_, name')) -> find_internal db' name'
     | Found libs ->
       (match libs with
@@ -1860,7 +1881,7 @@ module DB = struct
       | Hidden of Lib_info.external_ Hidden.t
       | Invalid of User_message.t
       | Ignore
-      | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
+      | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
       | Redirect of db * (Loc.t * Lib_name.t)
 
     let found f = Found f
@@ -1877,8 +1898,10 @@ module DB = struct
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
       | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
-      | Redirect_in_the_same_db (_, name) ->
-        variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
+      | Redirect_in_the_same_db redirects ->
+        variant
+          "Redirect_in_the_same_db"
+          [ (Dyn.list (fun (_, name) -> Lib_name.to_dyn name)) redirects ]
     ;;
   end
 
@@ -1911,7 +1934,7 @@ module DB = struct
           >>| function
           | Ok (Library pkg) -> Found [ Dune_package.Lib.info pkg ]
           | Ok (Deprecated_library_name d) ->
-            Redirect_in_the_same_db (d.loc, d.new_public_name)
+            Redirect_in_the_same_db [ d.loc, d.new_public_name ]
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
           | Error e ->
             (match e with

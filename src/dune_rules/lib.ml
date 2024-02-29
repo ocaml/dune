@@ -1898,7 +1898,7 @@ module DB = struct
 
   let get_compile_info t ~allow_overlaps name =
     let open Memo.O in
-    find_even_when_hidden t name
+    find t name
     >>| function
     | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
     | None ->

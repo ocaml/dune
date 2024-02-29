@@ -37,10 +37,6 @@ For private libraries
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:1
-  - b/dune:1
-  [1]
 
 For public libraries
 

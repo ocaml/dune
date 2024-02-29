@@ -38,6 +38,7 @@ let missing_run_t (error : Cram_test.t) =
             | Dir { dir; file = _ } -> dir
           in
           User_error.raise
+            ~loc:(Loc.in_dir (Path.source dir))
             [ Pp.textf
                 "Cram test directory %s does not contain a run.t file."
                 (Path.Source.to_string dir)

@@ -445,7 +445,7 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     let remove_intermediate_file () =
       if optional
       then (
-        try Path.unlink (Path.build file2) with
+        try Path.unlink_exn (Path.build file2) with
         | Unix.Unix_error (ENOENT, _, _) -> ())
     in
     if diff_eq_files diff

@@ -189,18 +189,9 @@ type failure =
 let label = "dune-fetch"
 
 let unpack ~target ~archive =
-  let* () = Fiber.return () in
-  Path.mkdir_p target;
-  let+ (), ret =
-    Process.run
-      ~display:Quiet
-      Return
-      (Lazy.force Tar.bin)
-      [ "xf"; Path.to_string archive; "-C"; Path.to_string target ]
-  in
-  match ret with
-  | 0 -> Ok ()
-  | _ -> Error (Pp.textf "unable to extract %S" (Path.to_string archive))
+  Tar.extract ~archive ~target
+  >>| Result.map_error ~f:(fun () ->
+    Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
 let with_download url checksum ~f =
@@ -286,7 +277,10 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
 ;;
 
 let fetch_git rev_store ~target (url : OpamUrl.t) =
-  OpamUrl.find_revision url rev_store
+  OpamUrl.resolve url rev_store
+  >>= (function
+         | Error _ as e -> Fiber.return e
+         | Ok r -> OpamUrl.fetch_revision url r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->

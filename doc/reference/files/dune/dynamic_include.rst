@@ -10,10 +10,13 @@ For instance:
 
 .. code:: dune
 
-   (subdir b (dynamic_include ../a/foo.inc))
+   (subdir b
+    (dynamic_include ../a/foo.inc))
    (subdir a
-    (with-stdout-to foo.inc
-     (echo "(rule (with-stdout-to file) (echo bar))")))
+    (rule
+     (write-file
+      foo.inc
+      "(rule (write-file file bar))")))
 
 In the example above, the dynamic rule loading and generation are split into
 different directories to avoid rule loading cycles as rules are loaded per

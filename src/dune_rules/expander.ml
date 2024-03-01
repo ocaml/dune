@@ -279,8 +279,8 @@ let expand_read_macro ~dir ~source s ~read =
 
 let file_of_lib db context ~loc ~lib ~file =
   let open Resolve.Memo.O in
-  let* lib = Lib.DB.resolve db (loc, lib) in
   let+ dir =
+    let* lib = Lib.DB.resolve db (loc, lib) in
     let info = Lib.info lib in
     match Lib.is_local lib with
     | false -> Resolve.Memo.return @@ Lib_info.src_dir info

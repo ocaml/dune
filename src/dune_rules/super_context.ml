@@ -423,3 +423,15 @@ module As_memo_key = struct
     let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.Name.to_dyn p ]
   end
 end
+
+let () =
+  Fdecl.set Artifacts_db.expander (fun ~dir ->
+    let* ctx = Context.DB.by_dir dir in
+    let* t = find_exn (Context.name ctx) in
+    expander t ~dir);
+  Fdecl.set Artifacts.expand (fun ~dir sw ->
+    let* ctx = Context.DB.by_dir dir in
+    let* t = find_exn (Context.name ctx) in
+    let* expander = expander t ~dir in
+    Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst)
+;;

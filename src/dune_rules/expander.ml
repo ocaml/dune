@@ -712,32 +712,19 @@ let expand_pform t ~source pform =
     ~human_readable_description:(fun () -> describe_source ~source)
 ;;
 
-let expand_pform_no_deps t ~source pform =
-  Memo.push_stack_frame
-    (fun () ->
-      match
-        match
-          expand_pform_gen
-            ~context:t.context
-            ~bindings:t.bindings
-            ~dir:t.dir
-            ~source
-            pform
-        with
-        | Direct v -> v
-        | Need_full_expander f -> f t
-      with
-      | With _ -> isn't_allowed_in_this_position ~source
-      | Without x -> x)
-    ~human_readable_description:(fun () -> describe_source ~source)
-;;
-
 let expand t ~mode template =
   String_expander.Action_builder.expand
     ~dir:(Path.build t.dir)
     ~mode
     template
     ~f:(expand_pform t)
+;;
+
+let expand_str_partial t template =
+  String_expander.Action_builder.expand_as_much_as_possible
+    ~dir:(Path.build t.dir)
+    template
+    ~f:(fun ~source pform -> expand_pform t ~source pform >>| Option.some)
 ;;
 
 let make_root
@@ -784,6 +771,26 @@ let expand_str t sw =
 
 module No_deps = struct
   open Memo.O
+
+  let expand_pform_no_deps t ~source pform =
+    Memo.push_stack_frame
+      (fun () ->
+        match
+          match
+            expand_pform_gen
+              ~context:t.context
+              ~bindings:t.bindings
+              ~dir:t.dir
+              ~source
+              pform
+          with
+          | Direct v -> v
+          | Need_full_expander f -> f t
+        with
+        | With _ -> isn't_allowed_in_this_position ~source
+        | Without x -> x)
+      ~human_readable_description:(fun () -> describe_source ~source)
+  ;;
 
   let expand_pform = expand_pform_no_deps
 
@@ -835,60 +842,6 @@ module With_deps_if_necessary = struct
   ;;
 end
 
-module With_reduced_var_set = struct
-  open Memo.O
-
-  let expand_pform_opt ~context ~bindings ~dir ~source pform =
-    let open Memo.O in
-    Memo.push_stack_frame
-      (fun () ->
-        match expand_pform_gen ~context ~bindings ~dir ~source pform with
-        | Need_full_expander _ | Direct (With _) -> Memo.return None
-        | Direct (Without x) -> x >>| Option.some)
-      ~human_readable_description:(fun () -> describe_source ~source)
-  ;;
-
-  let expand_pform ~context ~bindings ~dir ~source pform =
-    expand_pform_opt ~context ~bindings ~dir ~source pform
-    >>| function
-    | Some v -> v
-    | None -> isn't_allowed_in_this_position ~source
-  ;;
-
-  let expand ~context ~dir sw =
-    String_expander.Memo.expand
-      ~dir:(Path.build dir)
-      ~mode:Single
-      sw
-      ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
-  ;;
-
-  let expand_str ~context ~dir sw =
-    let+ v =
-      String_expander.Memo.expand
-        ~dir:(Path.build dir)
-        ~mode:Single
-        sw
-        ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
-    in
-    Value.to_string v ~dir:(Path.build dir)
-  ;;
-
-  let expand_str_partial ~context ~dir sw =
-    String_expander.Memo.expand_as_much_as_possible
-      ~dir:(Path.build dir)
-      sw
-      ~f:(expand_pform_opt ~context ~bindings:Pform.Map.empty ~dir)
-  ;;
-
-  let eval_blang ~context ~dir blang =
-    Blang_expand.eval
-      ~f:(expand_pform ~context ~bindings:Pform.Map.empty ~dir)
-      ~dir:(Path.build dir)
-      blang
-  ;;
-end
-
 let expand_ordered_set_lang =
   let module Expander =
     Ordered_set_lang.Unexpanded.Expand (struct
@@ -924,9 +877,4 @@ let expand_lock ~base expander (Locks.Lock sw) =
 
 let expand_locks ~base expander locks =
   Memo.List.map locks ~f:(expand_lock ~base expander) |> Action_builder.of_memo
-;;
-
-let () =
-  Fdecl.set Artifacts.expand (fun ~context ~dir sw ->
-    With_reduced_var_set.expand_str ~context ~dir sw)
 ;;

@@ -4,14 +4,14 @@ open Memo.O
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
-  ; coq_db : Coq_lib.DB.t Memo.Lazy.t
+  ; coq_db : Coq_lib.DB.t Memo.t
   ; root : Path.Build.t
   }
 
 let root t = t.root
 let project t = t.project
 let libs t = t.db
-let coq_libs t = Memo.Lazy.force t.coq_db
+let coq_libs t = t.coq_db
 
 module DB = struct
   type scope = t
@@ -122,14 +122,6 @@ module DB = struct
     | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
-  let public_theories ~find_db ~installed_theories coq_stanzas =
-    List.filter_map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
-      if Option.is_some stanza.package
-      then Some (stanza, Coq_lib.DB.Entry.Theory dir)
-      else None)
-    |> Coq_lib.DB.create_from_coqlib_stanzas ~find_db ~parent:(Some installed_theories)
-  ;;
-
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
@@ -188,39 +180,13 @@ module DB = struct
 
   module Path_source_map_traversals = Memo.Make_map_traversals (Path.Source.Map)
 
-  let coq_scopes_by_dir db_by_project_dir projects_by_dir public_theories coq_stanzas =
-    let coq_stanzas_by_project_dir =
-      List.map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
-        let project = stanza.project in
-        Dune_project.root project, (dir, stanza))
-      |> Path.Source.Map.of_list_multi
-    in
-    let parent = Some public_theories in
-    let find_db dir = snd (Find_closest_source_dir.find_by_dir db_by_project_dir ~dir) in
-    Path.Source.Map.merge
-      projects_by_dir
-      coq_stanzas_by_project_dir
-      ~f:(fun _dir project coq_stanzas ->
-        assert (Option.is_some project);
-        let coq_stanzas = Option.value coq_stanzas ~default:[] in
-        List.map coq_stanzas ~f:(fun (dir, (stanza : Coq_stanza.Theory.t)) ->
-          let (entry : Coq_lib.DB.Entry.t) =
-            match stanza.package with
-            | None -> Theory dir
-            | Some _ -> Redirect public_theories
-          in
-          stanza, entry)
-        |> Coq_lib.DB.create_from_coqlib_stanzas ~parent ~find_db
-        |> Option.some)
-  ;;
-
   let scopes_by_dir
     ~build_dir
     ~lib_config
     ~projects_by_root
     ~public_libs
-    ~public_theories
     ~instrument_with
+    context
     stanzas
     coq_stanzas
     =
@@ -249,16 +215,12 @@ module DB = struct
         in
         project, db)
     in
-    let coq_scopes_by_dir =
-      Memo.Lazy.map public_theories ~f:(fun public_theories ->
-        coq_scopes_by_dir db_by_project_dir projects_by_root public_theories coq_stanzas)
-    in
-    let coq_db_find dir =
-      Memo.Lazy.map coq_scopes_by_dir ~f:(fun x -> Path.Source.Map.find_exn x dir)
+    let coq_scopes =
+      Coq_scope.make context ~public_libs coq_stanzas ~db_by_project_dir ~projects_by_root
     in
     Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
       let root = Path.Build.append_source build_dir (Dune_project.root project) in
-      let coq_db = coq_db_find dir in
+      let coq_db = Coq_scope.find coq_scopes ~dir in
       { project; db; coq_db; root })
   ;;
 
@@ -276,25 +238,14 @@ module DB = struct
       let+ installed_libs = Lib.DB.installed context in
       public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
     in
-    let public_theories =
-      let installed_theories =
-        Memo.lazy_
-        @@ fun () ->
-        let+ coqpaths_of_coq = Coq_path.of_coq_install context
-        and+ coqpaths_of_env = Context.installed_env context >>= Coq_path.of_env in
-        Coq_lib.DB.create_from_coqpaths (coqpaths_of_env @ coqpaths_of_coq)
-      in
-      Memo.Lazy.map installed_theories ~f:(fun installed_theories ->
-        public_theories ~find_db:(fun _ -> public_libs) ~installed_theories coq_stanzas)
-    in
     let by_dir =
       scopes_by_dir
-        ~instrument_with
         ~build_dir
         ~lib_config
         ~projects_by_root
         ~public_libs
-        ~public_theories
+        ~instrument_with
+        context
         stanzas
         coq_stanzas
     in

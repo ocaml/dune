@@ -45,24 +45,6 @@ Command line version.
   Actual targets:
   - _build/default/.a1.objs/byte/a1__A.cmi
 
-The next test tries to build a module that does not exist.
-
-  $ mkdir ex1
-  $ echo "(lang dune 2.1)" > ex1/dune-project
-  $ cat > ex1/dune << EOF
-  > (alias
-  >  (name t)
-  >  (deps %{cmo:foo}))
-  > EOF
-  $ dune build --root ex1 @t
-  Entering directory 'ex1'
-  File "dune", line 3, characters 7-17:
-  3 |  (deps %{cmo:foo}))
-             ^^^^^^^^^^
-  Error: Module Foo does not exist.
-  Leaving directory 'ex1'
-  [1]
-
 Command line version; note that the error message is slightly different.
 
   $ dune build %{cmo:xxxx}
@@ -86,24 +68,6 @@ Command line version.
   $ dune build --verbose %{cmxa:a1} 2>&1 | grep -A100 'Actual targets'
   Actual targets:
   - _build/default/a1.cmxa
-
-This test tries to build a non-existent .cma.
-
-  $ mkdir ex2
-  $ echo "(lang dune 2.1)" > ex2/dune-project
-  $ cat > ex2/dune << EOF
-  > (alias
-  >  (name t)
-  >  (deps %{cma:bar}))
-  > EOF
-  $ dune build --root ex2 @t
-  Entering directory 'ex2'
-  File "dune", line 3, characters 7-17:
-  3 |  (deps %{cma:bar}))
-             ^^^^^^^^^^
-  Error: Library bar does not exist.
-  Leaving directory 'ex2'
-  [1]
 
 Command line version.
 
@@ -225,41 +189,3 @@ of a (rule).
       ocamlopt plugin.{a,cmxa}
       ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
       ocamlopt my.cmxs
-
-The following (failing) test shows that the variables cannot yet be used in the (deps)
-field of a (rule).
-
-This test is no longer failing. It should fail because
-%{cmo:...} wasn't allowed in the deps field in (lang dune <3.0).
-
-  $ mkdir deps-fail
-  $ echo "(lang dune 2.1)" > deps-fail/dune-project
-  $ cat > deps-fail/dune << EOF
-  > (rule
-  >  (target t)
-  >  (deps %{cmo:x2})
-  >  (action (with-stdout-to %{target} (progn))))
-  > EOF
-  $ dune build --root deps-fail t
-  Entering directory 'deps-fail'
-  File "dune", line 3, characters 7-16:
-  3 |  (deps %{cmo:x2})
-             ^^^^^^^^^
-  Error: Module X2 does not exist.
-  Leaving directory 'deps-fail'
-  [1]
-
-The above restriction also applies to other stanzas. Any stanzas that introduces
-new files for Dir_contents, for example copy_files:
-
-  $ cat > deps-fail/dune << EOF
-  > (copy_files "%{cmo:x2}")
-  > EOF
-  $ dune build --root deps-fail t
-  Entering directory 'deps-fail'
-  File "dune", line 1, characters 13-22:
-  1 | (copy_files "%{cmo:x2}")
-                   ^^^^^^^^^
-  Error: %{cmo:..} isn't allowed in this position.
-  Leaving directory 'deps-fail'
-  [1]

@@ -20,7 +20,12 @@ type 'old_name t =
   }
 
 module Local : sig
-  type nonrec t = (Loc.t * Lib_name.Local.t) t
+  type info =
+    { lib_name : Loc.t * Lib_name.Local.t
+    ; enabled : Blang.t
+    }
+
+  type nonrec t = info t
 
   include Stanza.S with type t := t
 

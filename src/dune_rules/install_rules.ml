@@ -85,10 +85,10 @@ end = struct
       >>| List.singleton
   ;;
 
-  let lib_files ~dir_contents ~dir ~lib_config lib =
+  let lib_files ~dir_contents ~dir ~lib_config ~sentinel lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
+      Some (Ml_sources.modules ml_sources ~for_:(Library sentinel))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -179,9 +179,13 @@ end = struct
         ~lib_config
     in
     let lib_name = Library.best_name lib in
+    let sentinel =
+      let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+      Library.to_sentinel ~src_dir lib
+    in
     let* installable_modules =
       let+ modules =
-        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library lib_name)
+        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library sentinel)
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -305,7 +309,7 @@ end = struct
           if Module.kind m = Virtual then [] else common m |> set_dir m)
       in
       modules_vlib @ modules_impl
-    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
+    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config ~sentinel info
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
@@ -330,7 +334,7 @@ end = struct
       ]
   ;;
 
-  let keep_if expander ~scope stanza =
+  let keep_if ~expander ~scope ~dir stanza =
     let+ keep =
       match Stanza.repr stanza with
       | Library.T lib ->
@@ -338,7 +342,12 @@ end = struct
         if enabled_if
         then
           if lib.optional
-          then Lib.DB.available (Scope.libs scope) (Library.best_name lib)
+          then (
+            let sentinel =
+              let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+              Library.to_sentinel ~src_dir lib
+            in
+            Lib.DB.available (Scope.libs scope) sentinel)
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -447,7 +456,7 @@ end = struct
   ;;
 
   let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
-    (let+ stanza = keep_if expander stanza ~scope in
+    (let+ stanza = keep_if ~expander ~scope ~dir stanza in
      let open Option.O in
      let* stanza = stanza in
      let+ package = Stanzas.stanza_package stanza in
@@ -619,8 +628,8 @@ end = struct
             (Some
                ( old_public_name
                , Dune_package.Entry.Deprecated_library_name
-                   { loc; old_public_name; new_public_name } ))
-        | Library lib ->
+                   (Path.build pkg_root, { loc; old_public_name; new_public_name }) ))
+        | Library (sentinel, lib) ->
           let info = Lib.Local.info lib in
           let dir = Lib_info.src_dir info in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -652,7 +661,8 @@ end = struct
             |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
-            Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)
+            Dir_contents.ocaml dir_contents
+            >>| Ml_sources.modules ~for_:(Library sentinel)
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =
@@ -732,6 +742,9 @@ end = struct
         acc
         >>>
         let dune_pkg =
+          let dir =
+            Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
+          in
           let entries =
             match Package.Name.Map.find deprecated_dune_packages name with
             | None -> Lib_name.Map.empty
@@ -753,13 +766,13 @@ end = struct
                     acc
                     old_public_name
                     (Dune_package.Entry.Deprecated_library_name
-                       { loc; old_public_name; new_public_name }))
+                       (dir, { loc; old_public_name; new_public_name })))
           in
           let sections = sections ctx.name [] pkg in
           { Dune_package.version = Package.version pkg
           ; name
           ; entries
-          ; dir = Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
+          ; dir
           ; sections
           ; sites = Package.sites pkg
           ; files = []
@@ -800,7 +813,7 @@ end = struct
           let* () = Action_builder.return () in
           match
             List.find_map entries ~f:(function
-              | Library lib ->
+              | Library (_, lib) ->
                 let info = Lib.Local.info lib in
                 Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
               | Deprecated_library_name _ -> None)

@@ -583,7 +583,7 @@ let libs_of_pkg ctx ~pkg =
   List.filter_map entries ~f:(fun (entry : Scope.DB.Lib_entry.t) ->
     match entry with
     | Deprecated_library_name _ -> None
-    | Library lib ->
+    | Library (_, lib) ->
       (match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
        | None -> Some lib
        | Some _ -> None))
@@ -951,7 +951,11 @@ let setup_private_library_doc_alias sctx ~scope ~dir (l : Library.t) =
   | Private _ ->
     let ctx = Super_context.context sctx in
     let* lib =
-      Lib.DB.find_even_when_hidden (Scope.libs scope) (Library.best_name l)
+      let sentinel =
+        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        Library.to_sentinel ~src_dir l
+      in
+      Lib.DB.find_sentinel_even_when_hidden (Scope.libs scope) sentinel
       >>| Option.value_exn
     in
     let lib = Lib (Lib.Local.of_lib_exn lib) in

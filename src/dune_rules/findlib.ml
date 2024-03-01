@@ -23,10 +23,11 @@ end
 let builtin_for_dune : Dune_package.t =
   let entry =
     Dune_package.Entry.Deprecated_library_name
-      { loc = Loc.of_pos __POS__
-      ; old_public_name = Lib_name.of_string "dune.configurator"
-      ; new_public_name = Lib_name.of_string "dune-configurator"
-      }
+      ( Path.external_ Path.External.initial_cwd
+      , { loc = Loc.of_pos __POS__
+        ; old_public_name = Lib_name.of_string "dune.configurator"
+        ; new_public_name = Lib_name.of_string "dune-configurator"
+        } )
   in
   { name = Opam_package.Name.of_string "dune"
   ; entries = Lib_name.Map.singleton (Dune_package.Entry.name entry) entry
@@ -206,10 +207,16 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                     | Error e -> Error e))))
     in
     let modules = Lib_info.Source.External None in
+    let name = t.name in
+    let sentinel =
+      let enabled_if = Blang.true_ in
+      Lib_info.Sentinel.external_ ~loc ~src_dir ~enabled_if name
+    in
     Lib_info.create
       ~loc
       ~path_kind:External
-      ~name:t.name
+      ~name
+      ~sentinel
       ~kind
       ~status
       ~src_dir

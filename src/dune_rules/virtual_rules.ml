@@ -95,6 +95,7 @@ let impl sctx ~(lib : Library.t) ~scope =
          | External modules, External fa -> Memo.return (modules, fa)
          | Local, Local ->
            let name = Lib.name vlib in
+           let sentinel = Lib.sentinel vlib in
            let vlib = Lib.Local.of_lib_exn vlib in
            let* dir_contents =
              let info = Lib.Local.info vlib in
@@ -115,7 +116,7 @@ let impl sctx ~(lib : Library.t) ~scope =
                Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
              in
              Dir_contents.ocaml dir_contents
-             >>| Ml_sources.modules ~for_:(Library name)
+             >>| Ml_sources.modules ~for_:(Library sentinel)
              >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
            in
            let+ foreign_objects =

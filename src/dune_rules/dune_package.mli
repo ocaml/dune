@@ -42,7 +42,7 @@ end
 module Entry : sig
   type t =
     | Library of Lib.t
-    | Deprecated_library_name of Deprecated_library_name.t
+    | Deprecated_library_name of Path.t * Deprecated_library_name.t
     | Hidden_library of Lib.t
     (** Only for external libraries that:
 
@@ -53,6 +53,7 @@ module Entry : sig
         Dune itself never produces hidden libraries. *)
 
   val name : t -> Lib_name.t
+  val sentinel : t -> Lib_info.Sentinel.t
   val version : t -> Package_version.t option
   val loc : t -> Loc.t
   val to_dyn : t Dyn.builder

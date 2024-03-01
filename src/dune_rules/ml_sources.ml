@@ -31,7 +31,7 @@ module Modules = struct
   type component = Modules.t * Path.Build.t Obj_dir.t
 
   type t =
-    { libraries : component Lib_name.Map.t
+    { libraries : component Lib_info.Sentinel.Map.t
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
     ; (* Map from modules to the origin they are part of *)
@@ -39,7 +39,7 @@ module Modules = struct
     }
 
   let empty =
-    { libraries = Lib_name.Map.empty
+    { libraries = Lib_info.Sentinel.Map.empty
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
     ; rev_map = Module_name.Path.Map.empty
@@ -50,6 +50,7 @@ module Modules = struct
     { stanza : 'stanza
     ; sources : (Loc.t * Module.Source.t) Module_trie.t
     ; modules : Modules_group.t
+    ; dir : Path.Build.t
     ; obj_dir : Path.Build.t Obj_dir.t
     }
 
@@ -61,18 +62,33 @@ module Modules = struct
 
   let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries =
-      match
-        Lib_name.Map.of_list_map libs ~f:(fun part ->
-          Library.best_name part.stanza, (part.modules, part.obj_dir))
-      with
-      | Ok x -> x
-      | Error (name, _, part) ->
-        User_error.raise
-          ~loc:part.stanza.buildable.loc
-          [ Pp.textf
-              "Library %S appears for the second time in this directory"
-              (Lib_name.to_string name)
-          ]
+      let _, libraries =
+        List.fold_left
+          libs
+          ~init:(Lib_name.Set.empty, Lib_info.Sentinel.Map.empty)
+          ~f:(fun (lib_set, acc) part ->
+            let name = Library.best_name part.stanza in
+            match Lib_name.Set.mem lib_set name with
+            | true ->
+              User_error.raise
+                ~loc:part.stanza.buildable.loc
+                [ Pp.textf
+                    "Library %S appears for the second time in this directory"
+                    (Lib_name.to_string name)
+                ]
+            | false ->
+              let acc =
+                let sentinel =
+                  let src_dir =
+                    Path.drop_optional_build_context_src_exn (Path.build part.dir)
+                  in
+                  Library.to_sentinel ~src_dir part.stanza
+                in
+                Lib_info.Sentinel.Map.add_exn acc sentinel (part.modules, part.obj_dir)
+              in
+              Lib_name.Set.add lib_set name, acc)
+      in
+      libraries
     in
     let executables =
       match
@@ -221,14 +237,14 @@ let modules_of_files ~path ~dialects ~dir ~files =
 ;;
 
 type for_ =
-  | Library of Lib_name.t
+  | Library of Lib_info.Sentinel.t
   | Exe of { first_exe : string }
   | Melange of { target : string }
 
 let dyn_of_for_ =
   let open Dyn in
   function
-  | Library n -> variant "Library" [ Lib_name.to_dyn n ]
+  | Library n -> variant "Library" [ Lib_info.Sentinel.to_dyn n ]
   | Exe { first_exe } -> variant "Exe" [ record [ "first_exe", string first_exe ] ]
   | Melange { target } -> variant "Melange" [ record [ "target", string target ] ]
 ;;
@@ -236,7 +252,7 @@ let dyn_of_for_ =
 let modules_and_obj_dir t ~for_ =
   match
     match for_ with
-    | Library name -> Lib_name.Map.find t.modules.libraries name
+    | Library sentinel -> Lib_info.Sentinel.Map.find t.modules.libraries sentinel
     | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
     | Melange { target } -> String.Map.find t.modules.melange_emits target
   with
@@ -244,7 +260,9 @@ let modules_and_obj_dir t ~for_ =
   | None ->
     let map =
       match for_ with
-      | Library _ -> Lib_name.Map.keys t.modules.libraries |> Dyn.list Lib_name.to_dyn
+      | Library _ ->
+        Lib_info.Sentinel.Map.keys t.modules.libraries
+        |> Dyn.list Lib_info.Sentinel.to_dyn
       | Exe _ -> String.Map.keys t.modules.executables |> Dyn.(list string)
       | Melange _ -> String.Map.keys t.modules.melange_emits |> Dyn.(list string)
     in
@@ -264,7 +282,7 @@ let virtual_modules ~lookup_vlib vlib =
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let+ t = lookup_vlib ~dir:src_dir in
-      modules t ~for_:(Library (Lib.name vlib))
+      modules t ~for_:(Library (Lib.sentinel vlib))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =
@@ -314,8 +332,11 @@ let make_lib_modules
       let open Memo.O in
       let* resolved =
         let* libs = libs in
-        Library.best_name lib
-        |> Lib.DB.find_even_when_hidden libs
+        let sentinel =
+          let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+          Library.to_sentinel ~src_dir lib
+        in
+        Lib.DB.find_sentinel_even_when_hidden libs sentinel
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn
@@ -422,7 +443,7 @@ let modules_of_stanzas =
       then Modules_group.make_wrapped ~obj_dir ~modules `Exe
       else Modules_group.exe_unwrapped modules ~obj_dir
     in
-    `Executables { Modules.stanza = exes; sources; modules; obj_dir }
+    `Executables { Modules.stanza = exes; sources; modules; obj_dir; dir }
   in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
@@ -458,7 +479,7 @@ let modules_of_stanzas =
              >>= Resolve.read_memo
            in
            let obj_dir = Library.obj_dir lib ~dir in
-           `Library { Modules.stanza = lib; sources; modules; obj_dir }
+           `Library { Modules.stanza = lib; sources; modules; dir; obj_dir }
          | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
          | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
          | Melange_stanzas.Emit.T mel ->
@@ -480,7 +501,7 @@ let modules_of_stanzas =
                ~modules
                `Melange
            in
-           `Melange_emit { Modules.stanza = mel; sources; modules; obj_dir }
+           `Melange_emit { Modules.stanza = mel; sources; modules; dir; obj_dir }
          | _ -> Memo.return `Skip))
     >>| filter_partition_map
 ;;

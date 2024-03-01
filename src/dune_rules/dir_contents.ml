@@ -451,13 +451,19 @@ end
 include Load
 
 let modules_of_local_lib sctx lib =
-  let info = Lib.Local.info lib in
-  let* t =
-    let dir = Lib_info.src_dir info in
-    get sctx ~dir
+  let+ sources =
+    let* t =
+      let info = Lib.Local.info lib in
+      let dir = Lib_info.src_dir info in
+      get sctx ~dir
+    in
+    ocaml t
   in
-  let name = Lib_info.name info in
-  ocaml t >>| Ml_sources.modules ~for_:(Library name)
+  let sentinel =
+    let lib = Lib.Local.to_lib lib in
+    Lib.sentinel lib
+  in
+  Ml_sources.modules sources ~for_:(Library sentinel)
 ;;
 
 let modules_of_lib sctx lib =

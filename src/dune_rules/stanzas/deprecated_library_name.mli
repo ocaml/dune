@@ -15,3 +15,4 @@ val decode : t Dune_lang.Decoder.t
 include Stanza.S with type t := t
 
 val old_public_name : t -> Lib_name.t
+val to_sentinel : src_dir:Path.Source.t -> t -> Lib_info.Sentinel.t

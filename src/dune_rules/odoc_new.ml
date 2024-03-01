@@ -265,8 +265,8 @@ let libs_maps_def =
          | Some location ->
            let info = Dune_package.Lib.info l in
            let name = Lib_info.name info in
-           let pkg = Lib_info.package info in
-           Lib.DB.find db name
+           let sentinel = Lib_info.sentinel info in
+           Lib.DB.find_sentinel db sentinel
            >>| (function
             | None -> maps
             | Some lib ->
@@ -283,6 +283,7 @@ let libs_maps_def =
                   maps.loc_of_lib
               in
               let loc_of_pkg =
+                let pkg = Lib_info.package info in
                 match pkg with
                 | None -> maps.loc_of_pkg
                 | Some pkg_name ->

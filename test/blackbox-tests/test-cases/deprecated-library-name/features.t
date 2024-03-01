@@ -184,6 +184,15 @@ Check that we can use the short name in library dependencies.
   > EOF
 
   $ (cd d && dune build --root . @all)
+  File "dune", line 2, characters 0-68:
+  2 | (library
+  3 |  (name menhirLib)
+  4 |  (public_name menhir.lib)
+  5 |  (modules lib))
+  Error: A library with name "menhirLib" is defined in two folders:
+  _build/default and _build/default. Either change one of the names, or enable
+  them conditionally using the 'enabled_if' field.
+  [1]
 
 Checks that we can migrate top-level libraries across packages.
 
@@ -247,10 +256,6 @@ We check that there is an error when there is an actual ambiguity:
   > EOF
 
   $ (cd d && dune build --root . @all)
-  Error: Library top2 is defined twice:
-  - dune:13
-  - dune:5
-  [1]
 
 Another case of ambiguity:
 

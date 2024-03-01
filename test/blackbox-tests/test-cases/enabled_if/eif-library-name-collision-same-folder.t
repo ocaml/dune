@@ -29,9 +29,11 @@ in the same dune file
   > EOF
 
   $ dune build --display=short
-  Error: Library foo is defined twice:
-  - dune:4
-  - dune:1
+  File "dune", line 4, characters 0-69:
+  4 | (library
+  5 |  (name foo)
+  6 |  (enabled_if (= %{context_name} "alt-context")))
+  Error: Library "foo" appears for the second time in this directory
   [1]
 
 For public libraries
@@ -48,7 +50,12 @@ For public libraries
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - dune:7
-  - dune:3
+  File "dune", line 1, characters 0-0:
+  Error: Module "Foo" is used in several stanzas:
+  - dune:1
+  - dune:5
+  To fix this error, you must specify an explicit "modules" field in every
+  library, executable, and executables stanzas in this dune file. Note that
+  each module cannot appear in more than one "modules" field - it must belong
+  to a single library or executable.
   [1]

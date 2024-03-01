@@ -98,10 +98,10 @@ module DB : sig
     type t
 
     val not_found : t
-    val found : Lib_info.external_ -> t
+    val found : Lib_info.external_ list -> t
     val to_dyn : t Dyn.builder
     val redirect : db -> Loc.t * Lib_name.t -> t
-    val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
+    val redirect_in_the_same_db : (Loc.t * Lib_name.t) list -> t
   end
 
   (** Create a new library database. [resolve] is used to resolve library names

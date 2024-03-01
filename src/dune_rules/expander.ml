@@ -556,7 +556,7 @@ let ocaml_config_macro source macro_invocation context =
      | Int x -> string (string_of_int x)
      | String x -> string x
      | Words x -> strings x
-     | Prog_and_args x -> strings (x.prog :: x.args))
+     | Prog_and_args x -> Value.Path (Path.of_string x.prog) :: strings x.args)
 ;;
 
 let env_macro t source macro_invocation =

@@ -609,7 +609,11 @@ let library_rules
           ~dir_contents
           ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
-  and+ () = Odoc.setup_library_odoc_rules cctx local_lib
+  and+ () =
+    let* enabled_if = Lib_info.enabled lib_info in
+    match enabled_if with
+    | Disabled_because_of_enabled_if -> Memo.return ()
+    | Normal | Optional -> Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }

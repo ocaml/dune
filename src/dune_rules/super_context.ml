@@ -16,16 +16,18 @@ let equal : t -> t -> bool = phys_equal
 let to_dyn_concise t = Context.to_dyn_concise t.context
 let to_dyn t = Context.to_dyn t.context
 
+let set_context context path =
+  let path = Path.Build.drop_build_context_exn path in
+  Path.Build.append_source (Context.build_dir context) path
+;;
+
 let artifacts_host t ~dir =
-  let artifacts t ~dir = t.get_node dir >>= Env_node.artifacts in
-  match t.host with
-  | None -> artifacts t ~dir
-  | Some host ->
-    let dir =
-      Path.Build.drop_build_context_exn dir
-      |> Path.Build.append_source (Context.build_dir host.context)
-    in
-    artifacts host ~dir
+  let t, dir =
+    match t.host with
+    | None -> t, dir
+    | Some host -> host, set_context host.context dir
+  in
+  t.get_node dir >>= Env_node.artifacts
 ;;
 
 let scope_host ~scope (context : Context.t) =
@@ -33,10 +35,8 @@ let scope_host ~scope (context : Context.t) =
   | None -> Memo.return scope
   | Some host ->
     let* dir =
-      let root = Scope.root scope in
-      let src = Path.Build.drop_build_context_exn root in
       let+ host = host in
-      Path.Build.append_source (Context.build_dir host) src
+      set_context host (Scope.root scope)
     in
     Scope.DB.find_by_dir dir
 ;;

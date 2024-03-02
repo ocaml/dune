@@ -449,7 +449,7 @@ let ocaml_config_var (var : Pform.Var.t) (ocaml_config : Ocaml_config.t) =
   | _ -> Code_error.raise "not a ocaml_config variables" [ "var", Pform.Var.to_dyn var ]
 ;;
 
-let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
+let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
   let open Memo.O in
   let ocaml = Context.ocaml context in
   match var with
@@ -462,7 +462,6 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
   | Partition
   | Impl_files
   | Intf_files
-  | Inline_tests
   | Test
   | Corrected_suffix ->
     (* These would be part of [bindings] *)
@@ -541,6 +540,10 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
        User_error.raise ~loc [ Pp.text "No toolchain defined for this context" ])
     |> string
     |> Memo.return
+    |> static
+  | Inline_tests ->
+    (let+ inline_tests = Env_stanza_db.inline_tests ~dir in
+     Dune_env.Inline_tests.to_string inline_tests |> string)
     |> static
 ;;
 
@@ -668,7 +671,7 @@ let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pfor
   | Some x -> Direct x
   | None ->
     (match pform with
-     | Var var -> expand_pform_var context ~source var
+     | Var var -> expand_pform_var context ~dir ~source var
      | Macro macro_invocation -> expand_pform_macro context ~dir ~source macro_invocation)
 ;;
 

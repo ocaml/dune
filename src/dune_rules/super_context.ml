@@ -49,14 +49,8 @@ let expander_for_artifacts context ~scope ~external_env ~root_expander ~dir =
 ;;
 
 let extend_expander t ~dir ~expander_for_artifacts =
-  let+ artifacts_host = artifacts_host t ~dir
-  and+ bindings =
-    let+ inline_tests = Env_stanza_db.inline_tests ~dir in
-    let str = Dune_env.Inline_tests.to_string inline_tests in
-    Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
-  in
-  Expander.add_bindings ~bindings expander_for_artifacts
-  |> Expander.set_artifacts ~artifacts_host
+  let+ artifacts_host = artifacts_host t ~dir in
+  Expander.set_artifacts expander_for_artifacts ~artifacts_host
 ;;
 
 let expander t ~dir =

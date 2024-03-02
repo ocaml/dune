@@ -7,7 +7,6 @@ type t
 val make
   :  dir:Path.Build.t
   -> inherit_from:t Memo.Lazy.t option
-  -> scope:Scope.t
   -> config_stanza:Dune_env.t
   -> profile:Profile.t
   -> expander:Expander.t Memo.t
@@ -15,7 +14,6 @@ val make
   -> default_artifacts:Artifacts.t
   -> t
 
-val scope : t -> Scope.t
 val external_env : t -> Env.t Memo.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This

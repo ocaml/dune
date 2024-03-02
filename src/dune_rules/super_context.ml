@@ -62,8 +62,8 @@ let extend_expander t ~dir ~expander_for_artifacts =
 let expander t ~dir =
   let* expander_for_artifacts =
     let* node = t.get_node dir in
-    let scope = Env_node.scope node in
     let* external_env = Env_node.external_env node in
+    let* scope = Scope.DB.find_by_dir dir in
     expander_for_artifacts
       t.context
       ~scope
@@ -116,7 +116,6 @@ let get_impl t dir =
   let profile = Context.profile t.context in
   Env_node.make
     ~dir
-    ~scope
     ~config_stanza
     ~inherit_from:(Some inherit_from)
     ~profile
@@ -226,7 +225,6 @@ let make_default_env_node
   let make ~inherit_from ~config_stanza =
     let config_stanza = Option.value config_stanza ~default:Dune_env.empty in
     let dir = context.build_dir in
-    let+ scope = Scope.DB.find_by_dir dir in
     let expander =
       let* () = Memo.return () in
       Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
@@ -234,7 +232,6 @@ let make_default_env_node
     Dune_env.fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
-      ~scope
       ~inherit_from
       ~config_stanza
       ~profile
@@ -247,7 +244,7 @@ let make_default_env_node
     ~inherit_from:
       (Some
          (Memo.lazy_ (fun () ->
-            make ~inherit_from:None ~config_stanza:env_nodes.workspace)))
+            make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
 let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
@@ -321,7 +318,8 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         profile
         (Context.env_nodes context)
         ~root_env:env
-        ~artifacts)
+        ~artifacts
+      |> Memo.return)
   in
   create
     ~context

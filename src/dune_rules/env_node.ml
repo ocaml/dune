@@ -17,7 +17,7 @@ let expand_str_lazy expander sw =
   | Some s -> Memo.return s
   | None ->
     let open Memo.O in
-    let* expander = Memo.Lazy.force expander in
+    let* expander = expander in
     Expander.No_deps.expand_str expander sw
 ;;
 
@@ -27,7 +27,7 @@ let make
   ~scope
   ~config_stanza
   ~profile
-  ~expander_for_artifacts
+  ~expander
   ~default_env
   ~default_artifacts
   =
@@ -45,10 +45,7 @@ let make
     Memo.lazy_ (fun () ->
       Memo.parallel_map
         config_binaries
-        ~f:
-          (File_binding.Unexpanded.expand
-             ~dir
-             ~f:(expand_str_lazy expander_for_artifacts)))
+        ~f:(File_binding.Unexpanded.expand ~dir ~f:(expand_str_lazy expander)))
   in
   let external_env =
     inherited ~field:external_env ~root:default_env (fun env ->

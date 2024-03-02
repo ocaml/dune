@@ -10,7 +10,7 @@ val make
   -> scope:Scope.t
   -> config_stanza:Dune_env.t
   -> profile:Profile.t
-  -> expander_for_artifacts:Expander.t Memo.Lazy.t
+  -> expander:Expander.t Memo.t
   -> default_env:Env.t
   -> default_artifacts:Artifacts.t
   -> t

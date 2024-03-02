@@ -751,9 +751,10 @@ let make_root
 ;;
 
 let expand_path t sw =
-  let+ v = expand t ~mode:Single sw in
   let loc = String_with_vars.loc sw in
-  let path = Value.to_path v ~error_loc:loc ~dir:(Path.build t.dir) in
+  let+ path =
+    expand t ~mode:Single sw >>| Value.to_path ~error_loc:loc ~dir:(Path.build t.dir)
+  in
   let context_root = (Context.build_context t.context).build_dir in
   (match Path.as_in_build_dir path with
    | Some p when not (Path.Build.is_descendant p ~of_:context_root) ->
@@ -764,10 +765,7 @@ let expand_path t sw =
   path
 ;;
 
-let expand_str t sw =
-  let+ v = expand t ~mode:Single sw in
-  Value.to_string v ~dir:(Path.build t.dir)
-;;
+let expand_str t sw = expand t ~mode:Single sw >>| Value.to_string ~dir:(Path.build t.dir)
 
 module No_deps = struct
   open Memo.O
@@ -799,13 +797,12 @@ module No_deps = struct
   ;;
 
   let expand_path t sw =
-    let+ v = expand t ~mode:Single sw in
-    Value.to_path v ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
+    expand t ~mode:Single sw
+    >>| Value.to_path ~error_loc:(String_with_vars.loc sw) ~dir:(Path.build t.dir)
   ;;
 
   let expand_str t sw =
-    let+ v = expand t ~mode:Single sw in
-    Value.to_string v ~dir:(Path.build t.dir)
+    expand t ~mode:Single sw >>| Value.to_string ~dir:(Path.build t.dir)
   ;;
 end
 
@@ -837,8 +834,12 @@ module With_deps_if_necessary = struct
 
   let expand_path t sw =
     let+ vs = expand t ~mode:Many sw in
-    List.map vs ~f:(fun v ->
-      Value.to_path_in_build_or_external v ~error_loc:(String_with_vars.loc sw) ~dir:t.dir)
+    List.map
+      vs
+      ~f:
+        (Value.to_path_in_build_or_external
+           ~error_loc:(String_with_vars.loc sw)
+           ~dir:t.dir)
   ;;
 end
 

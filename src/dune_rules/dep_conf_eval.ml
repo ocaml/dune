@@ -234,7 +234,7 @@ let rec dep expander : Dep_conf.t -> _ = function
     Other
       (let+ () =
          let* pkg = Expander.expand_str expander p in
-         let context = Context.build_context (Expander.context expander) in
+         let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
          let* dune_version =
            Action_builder.of_memo

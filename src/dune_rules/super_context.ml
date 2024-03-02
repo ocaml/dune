@@ -60,10 +60,10 @@ let extend_expander t ~dir ~expander_for_artifacts =
 ;;
 
 let expander t ~dir =
-  let* node = t.get_node dir in
-  let* external_env = Env_node.external_env node in
   let* expander_for_artifacts =
+    let* node = t.get_node dir in
     let scope = Env_node.scope node in
+    let* external_env = Env_node.external_env node in
     expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
   in
   extend_expander t ~dir ~expander_for_artifacts

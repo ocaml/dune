@@ -386,32 +386,34 @@ end = struct
       String.is_prefix fn ~prefix)
   ;;
 
-  let entries_of_install_stanza ~dir ~expander ~package_db (i : Install_conf.t) =
+  let entries_of_install_stanza ~dir ~expander ~package_db (install_conf : Install_conf.t)
+    =
     let expand = Expander.No_deps.expand expander ~mode:Single in
     let make_entry =
       let section = Package_db.section_of_site package_db in
       fun fb ~kind ->
         let src = File_binding.Expanded.src fb in
         let dst = File_binding.Expanded.dst fb in
-        Install_entry_with_site.make_with_site ?dst ~kind (snd i.section) section src
+        Install_entry_with_site.make_with_site
+          ?dst
+          ~kind
+          (snd install_conf.section)
+          section
+          src
     in
     let+ files =
-      let* files_expanded =
-        Install_entry.File.to_file_bindings_expanded i.files ~expand ~dir
-      in
-      Memo.List.map files_expanded ~f:(fun fb ->
+      Install_entry.File.to_file_bindings_expanded install_conf.files ~expand ~dir
+      >>= Memo.List.map ~f:(fun fb ->
         let+ entry = make_entry ~kind:`File fb in
         let loc = File_binding.Expanded.src_loc fb in
         Install.Entry.Sourced.create ~loc entry)
     and+ files_from_dirs =
-      let* dirs_expanded =
-        Install_entry.Dir.to_file_bindings_expanded
-          i.dirs
-          ~expand
-          ~dir
-          ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
-      in
-      Memo.List.map dirs_expanded ~f:(fun fb ->
+      Install_entry.Dir.to_file_bindings_expanded
+        install_conf.dirs
+        ~expand
+        ~dir
+        ~relative_dst_path_starts_with_parent_error_when:`Deprecation_warning_from_3_11
+      >>= Memo.List.map ~f:(fun fb ->
         let loc = File_binding.Expanded.src_loc fb in
         let+ entry = make_entry ~kind:`Directory fb in
         Install.Entry.Sourced.create ~loc entry)
@@ -421,7 +423,7 @@ end = struct
          this case as installing source trees was added in the same dune version
          that we deprecated starting a destination install path with "..". *)
       Install_entry.Dir.to_file_bindings_expanded
-        i.source_trees
+        install_conf.source_trees
         ~expand
         ~dir
         ~relative_dst_path_starts_with_parent_error_when:`Always_error
@@ -441,17 +443,15 @@ end = struct
   ;;
 
   let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
-    let* stanza_and_package =
-      let+ stanza = keep_if expander stanza ~scope in
-      let open Option.O in
-      let* stanza = stanza in
-      let+ package = Stanzas.stanza_package stanza in
-      stanza, package
-    in
-    match stanza_and_package with
+    (let+ stanza = keep_if expander stanza ~scope in
+     let open Option.O in
+     let* stanza = stanza in
+     let+ package = Stanzas.stanza_package stanza in
+     stanza, package)
+    >>= function
     | None -> Memo.return None
     | Some (stanza, package) ->
-      let new_entries =
+      let+ entries =
         match Stanza.repr stanza with
         | Install_conf.T i | Executables.T { install_conf = Some i; _ } ->
           entries_of_install_stanza ~dir ~expander ~package_db i
@@ -460,23 +460,20 @@ end = struct
           let* dir_contents = Dir_contents.get sctx ~dir in
           lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
         | Coq_stanza.Theory.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
-        | Documentation.T d ->
-          let* dc = Dir_contents.get sctx ~dir in
-          let+ mlds = Dir_contents.mlds dc d in
-          List.map mlds ~f:(fun mld ->
-            let entry =
-              Install.Entry.make
-                ~kind:`File
-                ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
-                Section.Doc
-                mld
-            in
-            Install.Entry.Sourced.create ~loc:d.loc entry)
+        | Documentation.T stanza ->
+          Dir_contents.get sctx ~dir
+          >>= Dir_contents.mlds ~stanza
+          >>| List.rev_map ~f:(fun mld ->
+            Install.Entry.make
+              ~kind:`File
+              ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+              Section.Doc
+              mld
+            |> Install.Entry.Sourced.create ~loc:stanza.loc)
         | Plugin.T t -> Plugin_rules.install_rules ~sctx ~package_db ~dir t
         | _ -> Memo.return []
       in
       let name = Package.name package in
-      let+ entries = new_entries in
       Some (name, entries)
   ;;
 

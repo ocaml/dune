@@ -92,7 +92,7 @@ let get_impl t dir =
   let* scope = Scope.DB.find_by_dir dir in
   let inherit_from =
     if Path.Build.equal dir (Scope.root scope)
-    then Memo.lazy_ (fun () -> Memo.Lazy.force t.default_env)
+    then t.default_env
     else (
       match Path.Build.parent dir with
       | None ->

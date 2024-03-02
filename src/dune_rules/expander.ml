@@ -522,7 +522,15 @@ let expand_pform_var (context : Context.t) ~source (var : Pform.Var.t) =
     string_of_bool !Clflags.ignore_promoted_rules |> string |> Memo.return |> static
   | Project_root ->
     Need_full_expander
-      (fun t -> Without (Memo.return [ Value.Dir (Path.build (Scope.root t.scope)) ]))
+      (fun t ->
+        Without
+          (let+ project = Dune_load.find_project ~dir:t.dir in
+           [ Value.Dir
+               (Path.Build.append_source
+                  (Context.build_dir t.context)
+                  (Dune_project.root project)
+                |> Path.build)
+           ]))
   | Cc -> Need_full_expander (fun t -> With (cc t).c)
   | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
   | Toolchain ->

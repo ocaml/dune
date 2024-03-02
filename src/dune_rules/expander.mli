@@ -5,7 +5,7 @@ open Import
 type t
 
 val dir : t -> Path.Build.t
-val context : t -> Context.t
+val context : t -> Context_name.t
 
 val make_root
   :  scope:Scope.t

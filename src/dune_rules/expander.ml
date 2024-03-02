@@ -62,7 +62,7 @@ type t =
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
-let context t = t.context
+let context t = Context.name t.context
 
 let set_local_env_var t ~var ~value =
   { t with local_env = Env.Var.Map.set t.local_env var value }

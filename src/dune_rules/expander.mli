@@ -92,9 +92,8 @@ module With_deps_if_necessary : sig
 end
 
 val expand_ordered_set_lang
-  :  Ordered_set_lang.Unexpanded.t
-  -> dir:Path.t
-  -> f:Value.t list Action_builder.t String_with_vars.expander
+  :  t
+  -> Ordered_set_lang.Unexpanded.t
   -> Ordered_set_lang.t Action_builder.t
 
 (** Expand forms of the form (:standard \ foo bar). Expansion is only possible

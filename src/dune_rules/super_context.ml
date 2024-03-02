@@ -89,27 +89,29 @@ let get_env_stanza ~dir =
 ;;
 
 let get_impl t dir =
-  let* scope = Scope.DB.find_by_dir dir in
   let inherit_from =
-    if Path.Build.equal dir (Scope.root scope)
-    then t.default_env
-    else (
-      match Path.Build.parent dir with
-      | None ->
-        Code_error.raise
-          "Super_context.Env.get called on invalid directory"
-          [ "dir", Path.Build.to_dyn dir ]
-      | Some parent -> Memo.lazy_ (fun () -> t.get_node parent))
+    Memo.lazy_ (fun () ->
+      let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
+      if Path.Source.equal (Path.Build.drop_build_context_exn dir) scope_root
+      then Memo.Lazy.force t.default_env
+      else (
+        match Path.Build.parent dir with
+        | Some parent -> t.get_node parent
+        | None ->
+          Code_error.raise
+            "Super_context.Env.get called on invalid directory"
+            [ "dir", Path.Build.to_dyn dir ]))
   in
   let+ config_stanza = get_env_stanza ~dir in
   let expander =
     Memo.lazy_ (fun () ->
       let* external_env = t.get_node dir >>= Env_node.external_env in
+      let* scope = Scope.DB.find_by_dir dir in
       expander_for_artifacts
         t.context
         ~scope
-        ~root_expander:t.root_expander
         ~external_env
+        ~root_expander:t.root_expander
         ~dir)
     |> Memo.Lazy.force
   in

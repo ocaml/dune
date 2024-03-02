@@ -849,16 +849,18 @@ let expand_ordered_set_lang =
       include String_expander.Action_builder
     end)
   in
-  Expander.expand
+  fun t osl ->
+    let dir = Path.build (dir t) in
+    Expander.expand osl ~dir ~f:(expand_pform t)
 ;;
 
 let expand_and_eval_set t set ~standard =
-  let dir = Path.build (dir t) in
   let+ standard =
+    (* This optimization builds [standard] if it's unused by the expander. *)
     if Ordered_set_lang.Unexpanded.has_special_forms set
     then standard
     else Action_builder.return []
-  and+ set = expand_ordered_set_lang set ~dir ~f:(expand_pform t) in
+  and+ set = expand_ordered_set_lang t set in
   Ordered_set_lang.eval set ~standard ~eq:String.equal ~parse:(fun ~loc:_ s -> s)
 ;;
 

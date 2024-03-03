@@ -286,9 +286,9 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
     let* base = make_root_env context ~host in
     Site_env.add_packages_env context_name ~base stanzas packages
   in
-  let public_libs = Scope.DB.public_libs context_name in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
+    let public_libs = Scope.DB.public_libs context_name in
     let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
       | None -> artifacts, public_libs, Memo.return context
@@ -314,11 +314,10 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
-    let profile = Context.profile context in
     Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
         (Context.build_context context)
-        profile
+        (Context.profile context)
         (Context.env_nodes context)
         ~root_env:env
         ~artifacts)
@@ -347,9 +346,10 @@ let all =
         | None -> Memo.return None
         | Some h ->
           let+ sctx =
-            let* h = h in
-            Memo.Lazy.force
-              (Context_name.Map.find_exn (Lazy.force sctxs) (Context.name h))
+            h
+            >>| Context.name
+            >>| Context_name.Map.find_exn (Lazy.force sctxs)
+            >>= Memo.Lazy.force
           in
           Some sctx
       in

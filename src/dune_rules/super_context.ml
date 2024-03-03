@@ -48,15 +48,9 @@ let expander_for_artifacts context ~scope ~external_env ~root_expander ~dir =
   |> Expander.set_dir ~dir
 ;;
 
-let extend_expander t ~dir ~expander_for_artifacts =
-  let+ artifacts_host = artifacts_host t ~dir in
-  Expander.set_artifacts expander_for_artifacts ~artifacts_host
-;;
-
 let expander t ~dir =
-  let* expander_for_artifacts =
-    let* node = t.get_node dir in
-    let* external_env = Env_node.external_env node in
+  let+ expander_for_artifacts =
+    let* external_env = t.get_node dir >>= Env_node.external_env in
     let* scope = Scope.DB.find_by_dir dir in
     expander_for_artifacts
       t.context
@@ -64,8 +58,8 @@ let expander t ~dir =
       ~external_env
       ~root_expander:t.root_expander
       ~dir
-  in
-  extend_expander t ~dir ~expander_for_artifacts
+  and+ artifacts_host = artifacts_host t ~dir in
+  Expander.set_artifacts expander_for_artifacts ~artifacts_host
 ;;
 
 let get_env_stanza ~dir =

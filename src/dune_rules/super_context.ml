@@ -41,24 +41,18 @@ let scope_host ~scope (context : Context.t) =
     Scope.DB.find_by_dir dir
 ;;
 
-let expander_for_artifacts context ~scope ~external_env ~root_expander ~dir =
-  let+ scope_host = scope_host ~scope context in
-  Expander.extend_env root_expander ~env:external_env
+let expander_for_artifacts t ~dir =
+  let* external_env = t.get_node dir >>= Env_node.external_env in
+  let* scope = Scope.DB.find_by_dir dir in
+  let+ scope_host = scope_host ~scope t.context in
+  Expander.extend_env t.root_expander ~env:external_env
   |> Expander.set_scope ~scope ~scope_host
   |> Expander.set_dir ~dir
 ;;
 
 let expander t ~dir =
-  let+ expander_for_artifacts =
-    let* external_env = t.get_node dir >>= Env_node.external_env in
-    let* scope = Scope.DB.find_by_dir dir in
-    expander_for_artifacts
-      t.context
-      ~scope
-      ~external_env
-      ~root_expander:t.root_expander
-      ~dir
-  and+ artifacts_host = artifacts_host t ~dir in
+  let* expander_for_artifacts = expander_for_artifacts t ~dir in
+  let+ artifacts_host = artifacts_host t ~dir in
   Expander.set_artifacts expander_for_artifacts ~artifacts_host
 ;;
 
@@ -92,16 +86,7 @@ let get_impl t dir =
   in
   let+ config_stanza = get_env_stanza ~dir in
   let expander =
-    Memo.lazy_ (fun () ->
-      let* external_env = t.get_node dir >>= Env_node.external_env in
-      let* scope = Scope.DB.find_by_dir dir in
-      expander_for_artifacts
-        t.context
-        ~scope
-        ~external_env
-        ~root_expander:t.root_expander
-        ~dir)
-    |> Memo.Lazy.force
+    Memo.lazy_ (fun () -> expander_for_artifacts t ~dir) |> Memo.Lazy.force
   in
   let profile = Context.profile t.context in
   Env_node.make

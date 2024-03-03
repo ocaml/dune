@@ -294,9 +294,9 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~scope_host
       ~context
       ~env
-      ~lib_artifacts:public_libs
+      ~public_libs
       ~artifacts_host
-      ~lib_artifacts_host:public_libs_host
+      ~public_libs_host
   and+ artifacts = artifacts in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)

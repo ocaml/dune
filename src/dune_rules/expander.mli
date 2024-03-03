@@ -12,8 +12,8 @@ val make_root
   -> scope_host:Scope.t
   -> context:Context.t
   -> env:Env.t
-  -> lib_artifacts:Lib.DB.t
-  -> lib_artifacts_host:Lib.DB.t
+  -> public_libs:Lib.DB.t
+  -> public_libs_host:Lib.DB.t
   -> artifacts_host:Artifacts.t
   -> t
 

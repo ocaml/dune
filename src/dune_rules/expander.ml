@@ -50,8 +50,8 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; lib_artifacts : Lib.DB.t
-  ; lib_artifacts_host : Lib.DB.t
+  ; public_libs : Lib.DB.t
+  ; public_libs_host : Lib.DB.t
   ; artifacts_host : Artifacts.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
@@ -336,8 +336,8 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
     else (
       let artifacts, context =
         if lib_exec
-        then t.lib_artifacts_host, Context.host t.context
-        else t.lib_artifacts, Memo.return t.context
+        then t.public_libs_host, Context.host t.context
+        else t.public_libs, Memo.return t.context
       in
       file_of_lib artifacts context ~loc ~lib ~file)
   in
@@ -743,8 +743,8 @@ let make_root
   ~scope_host
   ~(context : Context.t)
   ~env
-  ~lib_artifacts
-  ~lib_artifacts_host
+  ~public_libs
+  ~public_libs_host
   ~artifacts_host
   =
   { dir = Context.build_dir context
@@ -753,8 +753,8 @@ let make_root
   ; bindings = Pform.Map.empty
   ; scope
   ; scope_host
-  ; lib_artifacts
-  ; lib_artifacts_host
+  ; public_libs
+  ; public_libs_host
   ; artifacts_host
   ; context
   ; expanding_what = Nothing_special

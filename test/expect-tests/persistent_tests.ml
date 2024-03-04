@@ -28,7 +28,7 @@ let%expect_test "persistent digests" =
     ---
 
     DIGEST-DB version 6
-    a4ae8e07cf52a9fb38c47c32b6d59fa6
+    a6df9e528c50debc9264b7a95489392e
     ---
 
     INSTALL-COOKIE version 1
@@ -40,7 +40,7 @@ let%expect_test "persistent digests" =
     ---
 
     COPY-LINE-DIRECTIVE-MAP version 1
-    7e311b06ebde9ff1708e4c3a1d3f5633
+    7dac5b11f6f654bb6f230392493b363f
     ---
 
     merlin-conf version 4
@@ -48,6 +48,6 @@ let%expect_test "persistent digests" =
     ---
 
     INCREMENTAL-DB version 5
-    fa67cc9b60c9f3a1b9b1ad93a56df691
+    1cc656a4502ef88e70adab1f3c9a868e
     --- |}]
 ;;

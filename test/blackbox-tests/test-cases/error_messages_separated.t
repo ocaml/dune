@@ -36,9 +36,9 @@ Actual tests
 
 We check that the errors reported for different files are separated by
 blank lines. If a file generates several errors (which is the case for
-the `a.ml` file, then no blank lines are inserted between them,
-because this is the exact message that is reported by the Ocaml
-compiler, and we do not parse or modify such messages.
+the `a.ml` file), then there already is a blank line between each error,
+as it is the exact message reported by OCaml (since 5.1.0).
+We do not parse or modify such messages.
 
 Without the --display-separate-messages flag, no blank line is put
 between error messages for different files, as expected.
@@ -50,10 +50,12 @@ between error messages for different files, as expected.
   1 | let f x y z = ()
             ^
   Error (warning 27 [unused-var-strict]): unused variable x.
+  
   File "a.ml", line 1, characters 8-9:
   1 | let f x y z = ()
               ^
   Error (warning 27 [unused-var-strict]): unused variable y.
+  
   File "a.ml", line 1, characters 10-11:
   1 | let f x y z = ()
                 ^
@@ -78,10 +80,12 @@ message either.
   1 | let f x y z = ()
             ^
   Error (warning 27 [unused-var-strict]): unused variable x.
+  
   File "a.ml", line 1, characters 8-9:
   1 | let f x y z = ()
               ^
   Error (warning 27 [unused-var-strict]): unused variable y.
+  
   File "a.ml", line 1, characters 10-11:
   1 | let f x y z = ()
                 ^

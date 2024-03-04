@@ -224,7 +224,7 @@ end
 let path_stat path =
   let* () = Watcher.watch ~try_to_watch_via_parent:true path in
   match Fs_cache.read Fs_cache.Untracked.path_stat path with
-  | Ok { st_dev = _; st_ino = _; st_kind } as result when st_kind = S_DIR ->
+  | Ok { st_dev = _; st_ino = _; st_kind = S_DIR } as result ->
     (* If [path] is a directory, we conservatively watch it directly too,
        because its stats may change in a way that doesn't trigger an event in
        the parent. We probably don't care about such changes for now because

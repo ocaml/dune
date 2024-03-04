@@ -166,7 +166,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
        Dune will notice its deletion. Furthermore, if we used a tracked version,
        [Path.mkdir_p] below would generate an unnecessary file-system event. *)
     match Fs_cache.(read Untracked.path_stat) (In_source_dir dst_dir) with
-    | Ok { st_kind; _ } when st_kind = S_DIR -> ()
+    | Ok { st_kind = S_DIR; _ } -> ()
     | Error (ENOENT, _, _) -> Path.mkdir_p (Path.source dst_dir)
     | Ok _ | Error _ ->
       (* Try to delete any unexpected stuff out of the way. In future, we might

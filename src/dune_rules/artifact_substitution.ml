@@ -655,7 +655,7 @@ let copy_file_non_atomic ~conf ?chmod ~src ~dst () =
 let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
   let up_to_date =
     match Path.Untracked.stat dst with
-    | Ok { st_kind; _ } when st_kind = S_DIR ->
+    | Ok { st_kind = S_DIR; _ } ->
       (match delete_dst_if_it_is_a_directory with
        | true ->
          Path.rm_rf dst;

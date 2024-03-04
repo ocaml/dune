@@ -1434,7 +1434,7 @@ module Invalidation = struct
        e.g. if there is a global reset because of [Event_queue_overflow], it may
        be better to ensure that this reason is included. *)
     match List.truncate ~max_length:max_elements details with
-    | `Not_truncated details when List.length details = 0 ->
+    | `Not_truncated [] ->
       [ "Restarting for an unknown reason, please report it as a bug" ]
     | `Not_truncated details -> details
     | `Truncated truncated_details ->

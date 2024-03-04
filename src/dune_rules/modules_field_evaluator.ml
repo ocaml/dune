@@ -34,11 +34,12 @@ let eval0 =
      they are only removed from a set (for jbuild file compatibility) *)
   let expand_and_eval t set ~parse ~key ~standard =
     let open Action_builder.O in
-    let dir = Path.build (Expander.dir t) in
-    let+ set = Expander.expand_ordered_set_lang set ~dir ~f:(Expander.expand_pform t) in
+    let+ set = Expander.expand_ordered_set_lang t set in
     let fake_modules = ref Module_name.Map.empty in
-    let parse ~loc x = parse ~loc ~fake_modules x in
-    let r = Unordered.eval_loc set ~parse ~key ~standard in
+    let r =
+      let parse ~loc x = parse ~loc ~fake_modules x in
+      Unordered.eval_loc set ~parse ~key ~standard
+    in
     r, !fake_modules
   in
   let parse ~all_modules ~loc ~fake_modules s =

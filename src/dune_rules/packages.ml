@@ -16,19 +16,17 @@ let mlds_by_package_def =
         Dune_file.stanzas dune_file
         >>= Memo.parallel_map ~f:(fun stanza ->
           match Stanza.repr stanza with
-          | Documentation.T d ->
+          | Documentation.T stanza ->
             let+ mlds =
-              let* dc =
-                let dir =
-                  Path.Build.append_source
-                    (Context.build_dir ctx)
-                    (Dune_file.dir dune_file)
-                in
-                Dir_contents.get sctx ~dir
-              in
-              Dir_contents.mlds dc d
+              (let dir =
+                 Path.Build.append_source
+                   (Context.build_dir ctx)
+                   (Dune_file.dir dune_file)
+               in
+               Dir_contents.get sctx ~dir)
+              >>= Dir_contents.mlds ~stanza
             in
-            let name = Package.name d.package in
+            let name = Package.name stanza.package in
             Some (name, mlds)
           | _ -> Memo.return None)
         >>| List.filter_opt)

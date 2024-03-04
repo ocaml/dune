@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - bench/fix-melange-bench-grep
+      - bench/fix-melange-pupilfirst
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -79,19 +79,13 @@ jobs:
           # Mention @jchavarri in the commit comment
           alert-comment-cc-users: '@jchavarri'
 
-      - name: Clone pupilfirst repo
-        run: git clone https://github.com/jchavarri/pupilfirst.git
-
-      - name: Checkout dune-melange branch
-        working-directory: pupilfirst
-        run: git checkout b6fe6fa27814336b9e92f965449f3e010e148c4b
+      - name: Clone pupilfirst fork
+        run: git clone --depth 1 https://github.com/jchavarri/pupilfirst.git
 
       - name: Install all deps
         working-directory: pupilfirst
         run: |
-          yarn install
-          opam install -y reason melange reactjs-jsx-ppx rescript-syntax
-          opam pin add -y graphql_ppx https://github.com/jchavarri/graphql-ppx.git\#2598910886f1d2d3869406ae7eb787341d8dce6b
+          opam install -y . --deps-only
 
       - name: Run pupilfirst benchmark
         working-directory: pupilfirst

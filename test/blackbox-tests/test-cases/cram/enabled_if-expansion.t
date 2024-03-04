@@ -30,7 +30,3 @@ stanza was defined.
   > EOF
 
   $ dune runtest
-  File "sub/foo.t", line 1, characters 0-0:
-  Error: Files _build/default/sub/foo.t and _build/default/sub/foo.t.corrected
-  differ.
-  [1]

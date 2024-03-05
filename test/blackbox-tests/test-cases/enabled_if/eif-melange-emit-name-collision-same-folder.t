@@ -4,8 +4,6 @@ in the same dune file
   $ cat > dune-project << EOF
   > (lang dune 3.13)
   > (using melange 0.1)
-  > (package (name bar) (allow_empty))
-  > (package (name baz) (allow_empty))
   > EOF
 
   $ cat > dune-workspace << EOF

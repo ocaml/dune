@@ -11,8 +11,7 @@ Cram
 
    .. seealso:: :doc:`/reference/cram`
 
-   .. dune:field:: deps
-      :param: <dep-spec>
+   .. describe:: (deps <dep-spec>)
 
       Specify the dependencies of the test.
 
@@ -33,8 +32,7 @@ Cram
 
       .. seealso:: :doc:`/concepts/dependency-spec`.
 
-   .. dune:field:: applies_to
-      :param: <predicate-lang>
+   .. describe:: (applies_to <predicate-lang>)
 
       Specify the scope of this ``cram`` stanza. By default it applies to all the
       Cram tests in the current directory. The special ``:whole_subtree`` value
@@ -52,34 +50,29 @@ Cram
 
       .. seealso:: :doc:`/reference/predicate-language`
 
-   .. dune:field:: enabled_if
-      :param: <blang>
+   .. describe:: (enabled_if <blang>)
 
       Control whether the tests are enabled.
 
       .. seealso:: :doc:`/reference/boolean-language`, :doc:`/concepts/variables`
 
-   .. dune:field:: alias
-      :param: <name>
+   .. describe:: (alias <name>)
 
       Alias that can be used to run the test. In addition to the user alias,
       every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
       own ``@foo`` alias to make it convenient to run individually.
 
-   .. dune:field:: locks
-      :param: <lock-names>
+   .. describe:: (locks <lock-names>)
 
       Specify that the tests must be run while holding the following locks.
 
       .. seealso:: :doc:`/concepts/locks`
 
-   .. dune:field:: package
-      :param: <name>
+   .. describe:: (package <name>)
 
       Attach the tests selected by this stanza to the specified package.
 
-   .. dune:field:: runtest_alias
-      :param: <true|false>
+   .. describe:: (runtest_alias <true|false>)
 
       .. versionadded:: 3.12
 

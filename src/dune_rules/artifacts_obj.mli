@@ -7,8 +7,8 @@ val empty : t
 val make
   :  dir:Path.Build.t
   -> lib_config:Lib_config.t Memo.t
-  -> libs:(Library.t * _ * Modules.t * Path.Build.t Obj_dir.t) list
-  -> exes:(_ * _ * Modules.t * Path.Build.t Obj_dir.t) list
+  -> libs:(Library.t * _ * Modules.t * Path.Build.t Obj_dir.t * Modules.enabled) list
+  -> exes:(_ * _ * Modules.t * Path.Build.t Obj_dir.t * Modules.enabled) list
   -> t Memo.t
 
 val lookup_module : t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option

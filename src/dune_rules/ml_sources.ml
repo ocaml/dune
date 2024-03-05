@@ -45,6 +45,7 @@ module Modules = struct
     * (Loc.t * Module.Source.t) Module_trie.t
     * Modules_group.t
     * Path.Build.t Obj_dir.t
+    * Modules.enabled
 
   type groups =
     { libraries : Library.t group_part list
@@ -52,42 +53,102 @@ module Modules = struct
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
+  let enabled_of_bool = Modules.enabled_of_bool
+
   let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries =
       match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir) ->
+        Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
           Library.best_name lib, (m, obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (lib2, _, _, _)) ->
+      | Error (name, (_, _, _, _, Enabled), (lib2, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:lib2.buildable.loc
           [ Pp.textf
               "Library %S appears for the second time in this directory"
               (Lib_name.to_string name)
           ]
+      | Error _ ->
+        (* In this case, there are two libraries with the same name in the same
+           folder, but at least one of them is disabled under the current context,
+           so we filter all duplicates out *)
+        (match
+           libs
+           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
+             match enabled with
+             | Modules.Enabled -> true
+             | Disabled -> false)
+           |> Lib_name.Map.of_list_map ~f:(fun (lib, _, m, obj_dir, _) ->
+             Library.best_name lib, (m, obj_dir))
+         with
+         | Ok x -> x
+         | Error (name, _, (lib2, _, _, _, _)) ->
+           User_error.raise
+             ~loc:lib2.buildable.loc
+             [ Pp.textf
+                 "Library %S appears for the second time in this directory"
+                 (Lib_name.to_string name)
+             ])
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun ((exes : Executables.t), _, m, obj_dir) ->
+        String.Map.of_list_map exes ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
           snd (List.hd exes.names), (m, obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (exes2, _, _, _)) ->
+      | Error (name, (_, _, _, _, Enabled), (exes2, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:exes2.buildable.loc
           [ Pp.textf "Executable %S appears for the second time in this directory" name ]
+      | Error _ ->
+        (* In this case, there are two exes with the same name in the same
+           folder, but at least one of them is disabled under the current context,
+           so we filter all duplicates out *)
+        (match
+           exes
+           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
+             match enabled with
+             | Modules.Enabled -> true
+             | Disabled -> false)
+           |> String.Map.of_list_map ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
+             snd (List.hd exes.names), (m, obj_dir))
+         with
+         | Ok x -> x
+         | Error (name, _, (exes2, _, _, _, _)) ->
+           User_error.raise
+             ~loc:exes2.buildable.loc
+             [ Pp.textf "Executable %S appears for the second time in this directory" name
+             ])
     in
     let melange_emits =
       match
-        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir) ->
+        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
           mel.target, (m, obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (mel, _, _, _)) ->
+      | Error (name, (_, _, _, _, Enabled), (mel, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:mel.loc
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
+      | Error _ ->
+        (* In this case, there are two exes with the same name in the same
+           folder, but at least one of them is disabled under the current context,
+           so we filter all duplicates out *)
+        (match
+           emits
+           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
+             match enabled with
+             | Modules.Enabled -> true
+             | Disabled -> false)
+           |> String.Map.of_list_map ~f:(fun (mel, _, m, obj_dir, _) ->
+             mel.Melange_stanzas.Emit.target, (m, obj_dir))
+         with
+         | Ok x -> x
+         | Error (name, _, (mel, _, _, _, _)) ->
+           User_error.raise
+             ~loc:mel.loc
+             [ Pp.textf "Target %S appears for the second time in this directory" name ])
     in
     let rev_map =
       let modules =
@@ -96,9 +157,9 @@ module Modules = struct
             (Module.Source.path m, origin) :: acc)
         in
         List.concat
-          [ List.concat_map libs ~f:(fun (l, m, _, _) -> by_path (Library l) m)
-          ; List.concat_map exes ~f:(fun (e, m, _, _) -> by_path (Executables e) m)
-          ; List.concat_map emits ~f:(fun (l, m, _, _) -> by_path (Melange l) m)
+          [ List.concat_map libs ~f:(fun (l, m, _, _, _) -> by_path (Library l) m)
+          ; List.concat_map exes ~f:(fun (e, m, _, _, _) -> by_path (Executables e) m)
+          ; List.concat_map emits ~f:(fun (l, m, _, _, _) -> by_path (Melange l) m)
           ]
       in
       match Module_name.Path.Map.of_list modules with
@@ -393,6 +454,8 @@ let modules_of_stanzas =
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
+        let* enabled = Expander.eval_blang expander lib.enabled_if in
+        let enabled = Modules.enabled_of_bool enabled in
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
@@ -411,9 +474,11 @@ let modules_of_stanzas =
           >>= Resolve.read_memo
         in
         let obj_dir = Library.obj_dir lib ~dir in
-        `Library (lib, sources, modules, obj_dir)
+        `Library (lib, sources, modules, obj_dir, enabled)
       | Executables.T exes | Tests.T { exes; _ } ->
         let obj_dir = Executables.obj_dir ~dir exes in
+        let* enabled = Expander.eval_blang expander exes.enabled_if in
+        let enabled = Modules.enabled_of_bool enabled in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
@@ -434,9 +499,11 @@ let modules_of_stanzas =
           then Modules_group.make_wrapped ~obj_dir ~modules `Exe
           else Modules_group.exe_unwrapped modules ~obj_dir
         in
-        `Executables (exes, sources, modules, obj_dir)
+        `Executables (exes, sources, modules, obj_dir, enabled)
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+        let* enabled = Expander.eval_blang expander mel.enabled_if in
+        let enabled = Modules.enabled_of_bool enabled in
         let+ sources, modules =
           Modules_field_evaluator.eval
             ~expander
@@ -451,7 +518,7 @@ let modules_of_stanzas =
         let modules =
           Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
         in
-        `Melange_emit (mel, sources, modules, obj_dir)
+        `Melange_emit (mel, sources, modules, obj_dir, enabled)
       | _ -> Memo.return `Skip)
     >>| filter_partition_map
 ;;

@@ -12,7 +12,7 @@ let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
 let make ~dir ~lib_config ~libs ~exes =
   let+ libraries =
-    Memo.List.map libs ~f:(fun ((lib : Library.t), _, _, _) ->
+    Memo.List.map libs ~f:(fun ((lib : Library.t), _, _, _, _) ->
       let+ lib_config = lib_config in
       let name = Lib_name.of_local lib.name in
       let info = Library.to_lib_info lib ~dir ~lib_config in
@@ -28,9 +28,9 @@ let make ~dir ~lib_config ~libs ~exes =
       List.fold_left
         exes
         ~init:Module_name.Map.empty
-        ~f:(fun modules (_, _, m, obj_dir) -> by_name modules obj_dir m)
+        ~f:(fun modules (_, _, m, obj_dir, _) -> by_name modules obj_dir m)
     in
-    List.fold_left libs ~init ~f:(fun modules (_, _, m, obj_dir) ->
+    List.fold_left libs ~init ~f:(fun modules (_, _, m, obj_dir, _) ->
       by_name modules obj_dir m)
   in
   { libraries; modules }

@@ -710,7 +710,13 @@ module At_rev = struct
   let check_out { repo = { dir; _ }; revision = Sha1 rev; files = _ } ~target =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
-    let temp_dir = Temp.create Dir ~prefix:"rev-store" ~suffix:rev in
+    let temp_dir =
+      Temp.temp_in_dir
+        Dir
+        ~dir:(Lazy.force Temp_dir.in_build)
+        ~prefix:"rev-store"
+        ~suffix:rev
+    in
     Fiber.finalize ~finally:(fun () ->
       let+ () = Fiber.return () in
       Temp.destroy Dir temp_dir)

@@ -734,6 +734,7 @@ module Build = struct
   let of_local t = t
   let chmod t ~mode = Unix.chmod (to_string t) mode
   let lstat t = Unix.lstat (to_string t)
+  let unlink t = Fpath.unlink (to_string t)
   let unlink_no_err t = Fpath.unlink_no_err (to_string t)
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
@@ -1134,7 +1135,7 @@ let is_directory t =
 ;;
 
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Fpath.unlink (to_string t)
+let unlink_exn t = Fpath.unlink_exn (to_string t)
 
 let link src dst =
   match Unix.link (to_string src) (to_string dst) with

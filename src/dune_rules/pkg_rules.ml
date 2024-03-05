@@ -1327,7 +1327,7 @@ module Install_action = struct
                 section, file)
               |> Section.Map.of_list_multi
             in
-            let+ () = Async.async (fun () -> Path.unlink install_file) in
+            let+ () = Async.async (fun () -> Path.unlink_exn install_file) in
             map
         in
         (* TODO we should make sure that overwrites aren't allowed *)

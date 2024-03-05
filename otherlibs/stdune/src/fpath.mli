@@ -27,8 +27,18 @@ val follow_symlink : string -> (string, follow_symlink_error) result
     [Error Max_depth_exceeded] on some intermediate path). *)
 val follow_symlinks : string -> string option
 
-val unlink : string -> unit
+val unlink_exn : string -> unit
 val unlink_no_err : string -> unit
+
+type unlink_status =
+  | Success
+  | Does_not_exist
+  | Is_a_directory
+  | Error of exn
+
+(** Unlink and return error, if any. *)
+val unlink : string -> unlink_status
+
 val initial_cwd : string
 
 type clear_dir_result =

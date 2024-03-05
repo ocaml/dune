@@ -5,7 +5,7 @@ let def name dyn =
   Pp.box ~indent:2 (Pp.textf "let %s = " name ++ Dyn.pp dyn)
 ;;
 
-let rule sctx ~requires_link (exes : Executables.t) =
+let rule sctx ~requires_link =
   let open Action_builder.O in
   let* () = Action_builder.return () in
   let* locals, externals =
@@ -66,13 +66,6 @@ let rule sctx ~requires_link (exes : Executables.t) =
        (Pp.concat
           ~sep:Pp.cut
           [ def
-              "executables"
-              (List
-                 (* @@DRA Want to be using the public_name here, not the
-                    internal name *)
-                 (List.map ~f:(fun (_, x) -> Dyn.String x) exes.names))
-          ; Pp.nop
-          ; def
               "external_libraries"
               (List
                  (List.filter_map externals ~f:(fun x ->
@@ -98,5 +91,5 @@ let gen_rules sctx (exes : Executables.t) ~dir ~requires_link =
       ~dir
       (Action_builder.write_file_dyn
          (Path.Build.relative dir fname)
-         (rule sctx ~requires_link exes)))
+         (rule sctx ~requires_link)))
 ;;

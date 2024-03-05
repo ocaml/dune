@@ -15,6 +15,7 @@ let rule sctx ~requires_link (exes : Executables.t) =
       | Some x -> Left x
       | None -> Right lib)
   in
+  let build_flags = [] in
   let link_flags =
     let win_link_flags =
       [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ]
@@ -82,6 +83,11 @@ let rule sctx ~requires_link (exes : Executables.t) =
                     else Some (Lib_name.to_dyn name))))
           ; Pp.nop
           ; def "local_libraries" (List locals)
+          ; Pp.nop
+          ; def
+              "build_flags"
+              (let open Dyn in
+               list (pair string (list string)) build_flags)
           ; Pp.nop
           ; def
               "link_flags"

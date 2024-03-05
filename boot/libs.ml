@@ -97,6 +97,8 @@ let local_libraries =
   ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)
   ]
 
+let build_flags = []
+
 let link_flags =
   [ ("macosx",
     [ "-cclib"

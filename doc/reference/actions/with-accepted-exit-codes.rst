@@ -3,8 +3,7 @@ with-accepted-exit-codes
 
 .. highlight:: dune
 
-.. dune:action:: with-accepted-exit-codes
-   :param: <pred> <DSL>
+.. describe:: (with-accepted-exit-codes <pred> <DSL>)
 
    .. versionadded:: 2.0
 

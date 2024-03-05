@@ -89,10 +89,7 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
        Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
      | Original_path ->
        let+ expanded =
-         File_binding.Unexpanded.expand
-           binding
-           ~dir
-           ~f:(Fdecl.get expand ~context:t.context ~dir)
+         File_binding.Unexpanded.expand binding ~dir ~f:(Fdecl.get expand ~dir)
        in
        let src = File_binding.Expanded.src expanded in
        Ok (Path.build src))

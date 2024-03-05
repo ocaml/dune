@@ -101,16 +101,17 @@ let dirs t =
 let text_files t = t.text_files
 let foreign_sources t = Memo.Lazy.force t.foreign_sources
 
-let mlds t (doc : Documentation.t) =
+let mlds t ~(stanza : Documentation.t) =
   let+ map = Memo.Lazy.force t.mlds in
   match
-    List.find_map map ~f:(fun (doc', x) -> Option.some_if (Loc.equal doc.loc doc'.loc) x)
+    List.find_map map ~f:(fun (stanza', x) ->
+      Option.some_if (Loc.equal stanza.loc stanza'.loc) x)
   with
   | Some x -> x
   | None ->
     Code_error.raise
       "Dir_contents.mlds"
-      [ "doc", Loc.to_dyn_hum doc.loc
+      [ "doc", Loc.to_dyn_hum stanza.loc
       ; ( "available"
         , Dyn.(list Loc.to_dyn_hum)
             (List.map map ~f:(fun ((d : Documentation.t), _) -> d.loc)) )
@@ -451,16 +452,19 @@ include Load
 
 let modules_of_local_lib sctx lib =
   let info = Lib.Local.info lib in
-  let dir = Lib_info.src_dir info in
-  let* t = get sctx ~dir in
-  let+ ml_sources = ocaml t in
+  let* t =
+    let dir = Lib_info.src_dir info in
+    get sctx ~dir
+  in
   let name = Lib_info.name info in
-  Ml_sources.modules ml_sources ~for_:(Library name)
+  ocaml t >>| Ml_sources.modules ~for_:(Library name)
 ;;
 
 let modules_of_lib sctx lib =
-  let info = Lib.info lib in
-  match Lib_info.modules info with
+  match
+    let info = Lib.info lib in
+    Lib_info.modules info
+  with
   | External modules -> Memo.return modules
   | Local ->
     let+ modules = modules_of_local_lib sctx (Lib.Local.of_lib_exn lib) in

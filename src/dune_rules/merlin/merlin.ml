@@ -415,7 +415,7 @@ module Unprocessed = struct
        | Some args ->
          let action =
            let action = Action_unexpanded.Run args in
-           let chdir = Expander.context expander |> Context.build_dir in
+           let chdir = Expander.context expander |> Context_name.build_dir in
            Action_unexpanded.expand_no_targets
              ~loc
              ~expander

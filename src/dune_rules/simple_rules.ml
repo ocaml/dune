@@ -53,7 +53,7 @@ let rule_kind ~(rule : Rule_conf.t) ~(action : _ Action_builder.With_targets.t) 
 
 let interpret_and_add_locks ~expander locks action =
   let open Action_builder.O in
-  Expander.expand_locks expander ~base:`Of_expander locks
+  Expander.expand_locks expander locks
   >>= function
   | [] -> action
   | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)

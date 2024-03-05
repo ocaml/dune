@@ -15,8 +15,7 @@
 
   $ dune build
   Error: Dependency cycle between:
-     dynamic_include b/dune in directory a
-  -> dynamic_include a/dune in directory b
+     dynamic_include a/dune in directory b
   -> dynamic_include b/dune in directory a
-  -> required by alias default
+  -> dynamic_include a/dune in directory b
   [1]

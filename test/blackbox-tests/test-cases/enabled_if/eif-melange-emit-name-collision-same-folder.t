@@ -29,7 +29,7 @@ in the same dune file
   > let () = print_endline "foo"
   > EOF
 
-  $ dune build --display=short
+  $ dune build
   File "dune", line 4, characters 0-76:
   4 | (melange.emit
   5 |  (target foo)

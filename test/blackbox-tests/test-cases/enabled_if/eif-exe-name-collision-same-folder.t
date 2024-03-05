@@ -28,7 +28,7 @@ in the same dune file
   > let () = print_endline "foo"
   > EOF
 
-  $ dune build --display=short
+  $ dune build
   File "dune", line 4, characters 0-72:
   4 | (executable
   5 |  (name foo)

@@ -56,12 +56,12 @@ module Modules = struct
   let enabled_of_bool = Modules.enabled_of_bool
 
   let make { libraries = libs; executables = exes; melange_emits = emits } =
-    let libraries =
+    let libraries, libs =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
           Library.best_name lib, (m, obj_dir))
       with
-      | Ok x -> x
+      | Ok x -> x, libs
       | Error (name, (_, _, _, _, Enabled), (lib2, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:lib2.buildable.loc
@@ -73,16 +73,17 @@ module Modules = struct
         (* In this case, there are two libraries with the same name in the same
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
+        let libs =
+          List.filter libs ~f:(fun (_, _, _, _, enabled) ->
+            match enabled with
+            | Modules.Enabled -> true
+            | Disabled -> false)
+        in
         (match
-           libs
-           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
-             match enabled with
-             | Modules.Enabled -> true
-             | Disabled -> false)
-           |> Lib_name.Map.of_list_map ~f:(fun (lib, _, m, obj_dir, _) ->
+           Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
              Library.best_name lib, (m, obj_dir))
          with
-         | Ok x -> x
+         | Ok x -> x, libs
          | Error (name, _, (lib2, _, _, _, _)) ->
            User_error.raise
              ~loc:lib2.buildable.loc
@@ -91,12 +92,12 @@ module Modules = struct
                  (Lib_name.to_string name)
              ])
     in
-    let executables =
+    let executables, exes =
       match
         String.Map.of_list_map exes ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
           snd (List.hd exes.names), (m, obj_dir))
       with
-      | Ok x -> x
+      | Ok x -> x, exes
       | Error (name, (_, _, _, _, Enabled), (exes2, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:exes2.buildable.loc
@@ -105,46 +106,50 @@ module Modules = struct
         (* In this case, there are two exes with the same name in the same
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
+        let exes =
+          List.filter exes ~f:(fun (_, _, _, _, enabled) ->
+            match enabled with
+            | Modules.Enabled -> true
+            | Disabled -> false)
+        in
         (match
-           exes
-           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
-             match enabled with
-             | Modules.Enabled -> true
-             | Disabled -> false)
-           |> String.Map.of_list_map ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
-             snd (List.hd exes.names), (m, obj_dir))
+           String.Map.of_list_map
+             exes
+             ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
+               snd (List.hd exes.names), (m, obj_dir))
          with
-         | Ok x -> x
+         | Ok x -> x, exes
          | Error (name, _, (exes2, _, _, _, _)) ->
            User_error.raise
              ~loc:exes2.buildable.loc
              [ Pp.textf "Executable %S appears for the second time in this directory" name
              ])
     in
-    let melange_emits =
+    let melange_emits, emits =
       match
         String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
           mel.target, (m, obj_dir))
       with
-      | Ok x -> x
+      | Ok x -> x, emits
       | Error (name, (_, _, _, _, Enabled), (mel, _, _, _, Enabled)) ->
         User_error.raise
           ~loc:mel.loc
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
       | Error _ ->
-        (* In this case, there are two exes with the same name in the same
+        (* In this case, there are two melange.emits with the same name in the same
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
+        let emits =
+          List.filter emits ~f:(fun (_, _, _, _, enabled) ->
+            match enabled with
+            | Modules.Enabled -> true
+            | Disabled -> false)
+        in
         (match
-           emits
-           |> List.filter ~f:(fun (_, _, _, _, enabled) ->
-             match enabled with
-             | Modules.Enabled -> true
-             | Disabled -> false)
-           |> String.Map.of_list_map ~f:(fun (mel, _, m, obj_dir, _) ->
+           String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
              mel.Melange_stanzas.Emit.target, (m, obj_dir))
          with
-         | Ok x -> x
+         | Ok x -> x, emits
          | Error (name, _, (mel, _, _, _, _)) ->
            User_error.raise
              ~loc:mel.loc

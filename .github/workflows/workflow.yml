@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
+          - macos-14
           - ubuntu-latest
           - windows-latest
         # Please keep the list in sync with the minimal version of OCaml in

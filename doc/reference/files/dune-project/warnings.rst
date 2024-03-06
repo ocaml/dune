@@ -7,7 +7,6 @@ warnings
 
    Configure Dune warnings for the project.
 
-   .. dune:field:: <name>
-      :param: <enabled | disabled>
+   .. describe:: (<name> <enabled | disabled>)
 
       Enable or disable the warning <name> for the current project.

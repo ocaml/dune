@@ -1264,13 +1264,3 @@ let canonical_path t (group : Group.t) m =
   | Impl { impl = { modules = Wrapped w; _ }; _ } | Wrapped w -> w.group.name :: path
   | _ -> Module.path m
 ;;
-
-type enabled =
-  | Enabled
-  | Disabled
-
-let enabled_of_bool b =
-  match b with
-  | true -> Enabled
-  | false -> Disabled
-;;

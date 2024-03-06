@@ -45,15 +45,13 @@ module Modules = struct
     * (Loc.t * Module.Source.t) Module_trie.t
     * Modules_group.t
     * Path.Build.t Obj_dir.t
-    * Modules.enabled
+    * Toggle.t
 
   type groups =
     { libraries : Library.t group_part list
     ; executables : Executables.t group_part list
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
-
-  let enabled_of_bool = Modules.enabled_of_bool
 
   let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries, libs =
@@ -62,7 +60,7 @@ module Modules = struct
           Library.best_name lib, (m, obj_dir))
       with
       | Ok x -> x, libs
-      | Error (name, (_, _, _, _, Enabled), (lib2, _, _, _, Enabled)) ->
+      | Error (name, (_, _, _, _, `Enabled), (lib2, _, _, _, `Enabled)) ->
         User_error.raise
           ~loc:lib2.buildable.loc
           [ Pp.textf
@@ -74,10 +72,7 @@ module Modules = struct
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
         let libs =
-          List.filter libs ~f:(fun (_, _, _, _, enabled) ->
-            match enabled with
-            | Modules.Enabled -> true
-            | Disabled -> false)
+          List.filter libs ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
         in
         (match
            Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
@@ -98,7 +93,7 @@ module Modules = struct
           snd (List.hd exes.names), (m, obj_dir))
       with
       | Ok x -> x, exes
-      | Error (name, (_, _, _, _, Enabled), (exes2, _, _, _, Enabled)) ->
+      | Error (name, (_, _, _, _, `Enabled), (exes2, _, _, _, `Enabled)) ->
         User_error.raise
           ~loc:exes2.buildable.loc
           [ Pp.textf "Executable %S appears for the second time in this directory" name ]
@@ -107,10 +102,7 @@ module Modules = struct
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
         let exes =
-          List.filter exes ~f:(fun (_, _, _, _, enabled) ->
-            match enabled with
-            | Modules.Enabled -> true
-            | Disabled -> false)
+          List.filter exes ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
         in
         (match
            String.Map.of_list_map
@@ -131,7 +123,7 @@ module Modules = struct
           mel.target, (m, obj_dir))
       with
       | Ok x -> x, emits
-      | Error (name, (_, _, _, _, Enabled), (mel, _, _, _, Enabled)) ->
+      | Error (name, (_, _, _, _, `Enabled), (mel, _, _, _, `Enabled)) ->
         User_error.raise
           ~loc:mel.loc
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
@@ -140,10 +132,7 @@ module Modules = struct
            folder, but at least one of them is disabled under the current context,
            so we filter all duplicates out *)
         let emits =
-          List.filter emits ~f:(fun (_, _, _, _, enabled) ->
-            match enabled with
-            | Modules.Enabled -> true
-            | Disabled -> false)
+          List.filter emits ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
         in
         (match
            String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
@@ -460,7 +449,7 @@ let modules_of_stanzas =
       match Stanza.repr stanza with
       | Library.T lib ->
         let* enabled = Expander.eval_blang expander lib.enabled_if in
-        let enabled = Modules.enabled_of_bool enabled in
+        let enabled = Toggle.of_bool enabled in
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
@@ -483,7 +472,7 @@ let modules_of_stanzas =
       | Executables.T exes | Tests.T { exes; _ } ->
         let obj_dir = Executables.obj_dir ~dir exes in
         let* enabled = Expander.eval_blang expander exes.enabled_if in
-        let enabled = Modules.enabled_of_bool enabled in
+        let enabled = Toggle.of_bool enabled in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
@@ -508,7 +497,7 @@ let modules_of_stanzas =
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let* enabled = Expander.eval_blang expander mel.enabled_if in
-        let enabled = Modules.enabled_of_bool enabled in
+        let enabled = Toggle.of_bool enabled in
         let+ sources, modules =
           Modules_field_evaluator.eval
             ~expander

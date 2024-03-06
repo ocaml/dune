@@ -4,11 +4,6 @@ open Import
 
 type t
 
-type enabled =
-  | Enabled
-  | Disabled
-
-val enabled_of_bool : bool -> enabled
 val to_dyn : t -> Dyn.t
 
 val lib

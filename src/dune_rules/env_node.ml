@@ -33,7 +33,7 @@ let make
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
       (match inherit_from with
-       | None -> Memo.return root
+       | None -> root
        | Some t -> Memo.Lazy.force t >>= field)
       >>= extend)
   in

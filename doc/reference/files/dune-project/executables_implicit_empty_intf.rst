@@ -1,7 +1,7 @@
 executables_implicit_empty_intf
 -------------------------------
 
-.. dune:stanza:: executables_implicit_empty_intf
+.. describe:: (executables_implicit_empty_intf ...)
 
    .. versionadded:: 2.9
 

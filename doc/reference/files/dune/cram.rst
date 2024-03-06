@@ -1,7 +1,7 @@
 Cram
 ----
 
-.. dune:stanza:: cram
+.. describe:: (cram ...)
 
    Configure Cram tests in the current directory (and subdirectories).
 

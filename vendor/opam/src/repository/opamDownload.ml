@@ -321,7 +321,7 @@ module SWHID = struct
             (log "SWH fallback for %s"
                (OpamUrl.to_string (OpamFile.URL.url urlf));
              get_url ?max_tries swhid @@+ function
-             | Not_available _ as error -> Done error
+             | (Not_available _ | Checksum_mismatch _) as error -> Done error
              | Up_to_date _ -> assert false
              | Result url ->
                let hash = OpamSWHID.hash swhid in

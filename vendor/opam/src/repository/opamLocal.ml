@@ -107,7 +107,7 @@ let rsync_dirs ?args ?exclude_vcdirs url dst =
     Done (Not_available (None, Printf.sprintf "Directory %s does not exist" src_s))
   else
   rsync ?args ?exclude_vcdirs src_s dst_s @@| function
-  | Not_available _ as na -> na
+  | (Not_available _ | Checksum_mismatch _) as error -> error
   | Result _ ->
     if OpamFilename.exists_dir dst then Result dst
     else Not_available (None, dst_s)
@@ -171,6 +171,9 @@ module B = struct
     | Not_available _ ->
       finalise ();
       Done (OpamRepositoryBackend.Update_err (Failure "rsync failed"))
+    | Checksum_mismatch h ->
+      finalise ();
+      Done (OpamRepositoryBackend.Update_err (Failure ("incorrect hash: " ^ (OpamHash.to_string h))))
     | Up_to_date _ ->
       finalise (); Done OpamRepositoryBackend.Update_empty
     | Result _ ->
@@ -207,7 +210,7 @@ module B = struct
     in
     rsync remote_url.OpamUrl.path dir
     @@| function
-    | Not_available _ as na -> na
+    | (Not_available _ | Checksum_mismatch _) as error -> error
     | (Result _ | Up_to_date _) as r ->
       let res x = match r with
         | Result _ -> Result x

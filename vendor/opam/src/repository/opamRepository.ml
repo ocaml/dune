@@ -87,6 +87,7 @@ let fetch_from_cache =
         | None ->
           (OpamLocal.rsync_file url file @@| function
             | Result _ | Up_to_date _-> ()
+            | Checksum_mismatch h -> raise (OpamDownload.Checksum_mismatch h)
             | Not_available (s,l) -> raise (OpamDownload.Download_fail (s,l)))
       end
     | #OpamUrl.version_control ->
@@ -114,9 +115,10 @@ let fetch_from_cache =
         | [] -> let m = "cache miss" in Done (Not_available (Some m, m))
         | root_cache_url::other_caches ->
           OpamProcess.Job.catch
-            (function Failure _
-                    | OpamDownload.Download_fail _ ->
-                      try_cache_dl other_caches
+            (function
+              Failure _
+              | OpamDownload.Download_fail _
+              | OpamDownload.Checksum_mismatch _ -> try_cache_dl other_caches
                     | e -> raise e)
           @@ fun () ->
           dl_from_cache_job root_cache_url checksum tmpfile
@@ -278,6 +280,7 @@ let pull_tree_t
                   | Result _ | Up_to_date _ -> None
                   | Not_available (Some s,l) -> Some (s,l)
                   | Not_available (None, _) -> assert false
+                  | Checksum_mismatch _ -> assert false
                 ) (copies ())
             in
             if failing = [] then Done (Up_to_date msg) else
@@ -422,6 +425,7 @@ let pull_file_to_cache label ~cache_dir ?(cache_urls=[]) checksums remote_urls =
         pull_from_mirrors label (Some cache_dir) tmpdir checksums remote_urls
         @@| function
         | _, Up_to_date _ -> assert false
+        | _, Checksum_mismatch _ -> assert false
         | url, Result (Some _) -> Result (OpamUrl.to_string url)
         | _, Result None -> let m = "is a directory" in Not_available (Some m, m)
         | _, (Not_available _ as na) -> na)

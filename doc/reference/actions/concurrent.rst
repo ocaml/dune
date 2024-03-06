@@ -3,8 +3,7 @@ concurrent
 
 .. highlight:: dune
 
-.. dune:action:: concurrent
-   :param: <DSL>...
+.. describe:: (concurrent <DSL> ...)
 
    Execute several commands concurrently and collect all resulting errors, if any.
 

@@ -5,22 +5,20 @@ dialect
 
    Declare a new :term:`dialect`.
 
-   .. dune:field:: name
-      :param: <name>
+   .. describe:: (name <name>)
 
       The name of the dialect being defined. It must be unique in a given
       project.
 
       This field is required.
 
-   .. dune:field:: implementation
+   .. describe:: (implementation ...)
 
       Details related to the implementation files (corresponding to `*.ml`).
 
       .. versionchanged:: 3.9 This field is made optional.
 
-      .. dune:field:: extension
-         :param: <string>
+      .. describe:: (extension <string>)
 
          Specify the file extension used for this dialect.
 
@@ -31,8 +29,7 @@ dialect
 
          This field is required.
 
-      .. dune:field:: preprocess
-         :param: <action>
+      .. describe:: (preprocess <action>)
 
          Run `<action>` to produce a valid OCaml abstract syntax tree.
 
@@ -46,8 +43,7 @@ dialect
 
          .. seealso:: :ref:`preprocessing-actions`
 
-      .. dune:field:: format
-         :param: <action>
+      .. describe:: (format <action>)
 
          Run `<action>` to format source code for this dialect.
 
@@ -62,7 +58,7 @@ dialect
 
          .. seealso:: :doc:`/howto/formatting`
 
-   .. dune:field:: interface
+   .. describe:: (interface ...)
 
       Details related to the interface files (corresponding to `*.mli`).
 

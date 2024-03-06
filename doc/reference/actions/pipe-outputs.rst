@@ -3,8 +3,7 @@ pipe-<outputs>
 
 .. highlight:: dune
 
-.. dune:action:: pipe-<outputs>
-   :param: <DSL> <DSL> <DSL>...
+.. describe:: (pipe-<outputs> <DSL> <DSL> <DSL>...)
 
    .. versionadded:: 2.7
 

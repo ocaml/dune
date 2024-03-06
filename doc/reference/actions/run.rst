@@ -3,8 +3,7 @@ run
 
 .. highlight:: dune
 
-.. dune:action:: run
-   :param: <prog> <args>
+.. describe:: (run <prog> <args>)
 
    Execute a program. ``<prog>`` is resolved locally if it is available in the
    current workspace, otherwise it is resolved using the ``PATH``.

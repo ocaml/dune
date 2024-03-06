@@ -3,8 +3,7 @@ write-file
 
 .. highlight:: dune
 
-.. dune:action:: write-file
-   :param: <file> <string>
+.. describe:: (write-file <file> <string>)
 
    Writes ``<string>`` to ``<file>``.
 

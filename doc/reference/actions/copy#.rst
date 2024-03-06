@@ -3,8 +3,7 @@ copy#
 
 .. highlight:: dune
 
-.. dune:action:: copy#
-   :param: <src> <dst>
+.. describe:: (copy# <src> <dst>)
 
    Copy a file and add a line directive at the beginning.
 

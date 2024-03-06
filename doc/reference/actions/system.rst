@@ -3,8 +3,7 @@ system
 
 .. highlight:: dune
 
-.. dune:action:: system
-   :param: <cmd>
+.. describe:: (system <cmd>)
 
    Execute a command using the system shell: ``sh`` on Unix and ``cmd`` on Windows.
 

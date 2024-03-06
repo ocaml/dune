@@ -3,8 +3,7 @@ echo
 
 .. highlight:: dune
 
-.. dune:action:: echo
-   :param: <string>
+.. describe:: (echo <string>)
 
    Output a string on ``stdout``.
 

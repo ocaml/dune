@@ -3,8 +3,7 @@ bash
 
 .. highlight:: dune
 
-.. dune:action:: bash
-   :param: <cmd>
+.. describe:: (bash <cmd>)
 
    Execute a command using ``/bin/bash``. This is obviously not very portable.
 

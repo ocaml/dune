@@ -3,8 +3,7 @@ progn
 
 .. highlight:: dune
 
-.. dune:action:: progn
-   :param: <DSL>...
+.. describe:: (progn <DSL> ...)
 
    Execute several commands in sequence.
 

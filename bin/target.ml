@@ -168,15 +168,18 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
 ;;
 
 let expand_path_from_root (root : Workspace_root.t) sctx sv =
-  let ctx = Super_context.context sctx in
-  let dir =
-    Path.Build.relative
-      (Context.build_dir ctx)
-      (String.concat ~sep:Filename.dir_sep root.to_cwd)
+  let+ s =
+    let* expander =
+      let dir =
+        let ctx = Super_context.context sctx in
+        Path.Build.relative
+          (Context.build_dir ctx)
+          (String.concat ~sep:Filename.dir_sep root.to_cwd)
+      in
+      Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir)
+    in
+    Dune_rules.Expander.expand_str expander sv
   in
-  let* expander = Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir) in
-  let expander = Dune_rules.Dir_contents.add_sources_to_expander sctx expander in
-  let+ s = Dune_rules.Expander.expand_str expander sv in
   root.reach_from_root_prefix ^ s
 ;;
 

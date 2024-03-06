@@ -1,8 +1,7 @@
 subst
 -----
 
-.. dune:stanza:: subst
-   :param: <bool>
+.. describe:: (subst <bool>)
 
    .. versionadded: 3.0
 

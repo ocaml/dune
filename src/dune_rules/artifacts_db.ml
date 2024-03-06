@@ -35,28 +35,39 @@ let available_exes ~dir (exes : Executables.t) =
   Resolve.is_ok available
 ;;
 
+let expander = Fdecl.create Dyn.opaque
+
 let get_installed_binaries ~(context : Context.t) stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
   let open Memo.O in
-  let expand ~dir sw = Expander.With_reduced_var_set.expand ~context ~dir sw in
-  let expand_str ~dir sw = Expander.With_reduced_var_set.expand_str ~context ~dir sw in
-  let expand_str_partial ~dir sw =
-    Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
-  in
-  let eval_blang ~dir = Expander.With_reduced_var_set.eval_blang ~dir ~context in
   Memo.List.map stanzas ~f:(fun d ->
     let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let* expander = (Fdecl.get expander) ~dir in
+    let expand_value sw =
+      Expander.expand expander ~mode:Single sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let expand_str sw =
+      Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst
+    in
+    let expand_str_partial sw =
+      Expander.expand_str_partial expander sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let eval_blang = Expander.eval_blang expander in
     let binaries_from_install ~enabled_if files =
       let* unexpanded_file_bindings =
-        Install_entry.File.to_file_bindings_unexpanded files ~expand:(expand ~dir) ~dir
+        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
       in
       Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
         let+ p =
           File_binding.Unexpanded.destination_relative_to_install_path
             fb
             ~section:Bin
-            ~expand:(expand_str ~dir)
-            ~expand_partial:(expand_str_partial ~dir)
+            ~expand:expand_str
+            ~expand_partial:expand_str_partial
         in
         let dst = Path.Local.of_string (Install.Entry.Dst.to_string p) in
         if Path.Local.is_root (Path.Local.parent_exn dst)
@@ -75,13 +86,13 @@ let get_installed_binaries ~(context : Context.t) stanzas =
     |> Memo.List.map ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Install_conf.T { section = _loc, Section Bin; files; enabled_if; _ } ->
-        let enabled_if = eval_blang ~dir enabled_if in
+        let enabled_if = eval_blang enabled_if in
         binaries_from_install ~enabled_if files
       | Executables.T
           ({ install_conf = Some { section = _loc, Section Bin; files; _ }; _ } as exes)
         ->
         let enabled_if =
-          let enabled_if = eval_blang ~dir exes.enabled_if in
+          let enabled_if = eval_blang exes.enabled_if in
           match exes.optional with
           | false -> enabled_if
           | true ->

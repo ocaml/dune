@@ -1,8 +1,7 @@
 using
 -----
 
-.. dune:stanza:: using
-   :param: <plugin> <version>
+.. describe:: (using <plugin> <version>)
 
    Enable a dune language extension.
 

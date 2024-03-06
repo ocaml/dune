@@ -1,7 +1,7 @@
 formatting
 ----------
 
-.. dune:stanza:: formatting
+.. describe:: (formatting ...)
 
    .. versionadded:: 2.0
 

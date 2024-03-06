@@ -518,7 +518,6 @@ let sandbox_of_setting = function
 ;;
 
 let action_for_pp ~sandbox ~loc ~expander ~action ~src =
-  let chdir = Expander.context expander |> Context.build_dir in
   let expander =
     let bindings = Pform.Map.singleton (Var Input_file) [ Value.Path (Path.build src) ] in
     Expander.add_bindings expander ~bindings
@@ -527,7 +526,7 @@ let action_for_pp ~sandbox ~loc ~expander ~action ~src =
   Action_builder.path (Path.build src)
   >>> Action_unexpanded.expand_no_targets
         action
-        ~chdir
+        ~chdir:(Expander.context expander |> Context_name.build_dir)
         ~loc
         ~expander
         ~deps:[]

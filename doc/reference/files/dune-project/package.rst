@@ -1,98 +1,90 @@
 package
 -------
 
-.. dune:stanza:: package
+.. describe:: (package ...)
 
    Define package-specific metadata.
 
-   .. dune:field:: name
-      :param: <string>
+   .. describe:: (name <string>)
 
       The name of the package.
 
       This must be specified.
 
-   .. dune:field:: synopsis
-      :param: <string>
+   .. describe:: (synopsis <string>)
 
       A short package description.
 
-   .. dune:field:: description
-      :param: <string>
+   .. describe:: (description <string>)
 
       A longer package description.
 
-   .. dune:field:: depends
-      :param: <dep-specification>
+   .. describe:: (depends <dep-specification>)
 
       Package dependencies, as :token:`~pkg-dep:dep_specification`.
 
-   .. dune:field:: conflicts
-      :param: <dep-specification>
+   .. describe:: (conflicts <dep-specification>)
 
       Package conflicts, as :token:`~pkg-dep:dep_specification`.
 
-   .. dune:field:: depopts
-      :param: <dep-specification>
+   .. describe:: (depopts <dep-specification>)
 
       Optional package dependencies, as :token:`~pkg-dep:dep_specification`.
 
-   .. dune:field:: tags
-      :param: <tags>
+   .. describe:: (tags <tags>)
 
       A list of tags.
 
-   .. dune:field:: deprecated_package_names
-      :param: <name list>
+   .. describe:: (deprecated_package_names <name list>)
 
       A list of names that can be used with the
       :doc:`../dune/deprecated_library_name` stanza to migrate legacy libraries
       from other build systems that do not follow Dune's convention of
       prefixing the library's public name with the package name.
 
-   .. dune:field:: license
+   .. describe:: (license ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: authors
+   .. describe:: (authors ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: maintainers
+   .. describe:: (maintainers ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: source
+   .. describe:: (source ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: bug_reports
+   .. describe:: (bug_reports ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: homepage
+   .. describe:: (homepage ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: documentation
+   .. describe:: (documentation ...)
 
       .. versionadded:: 2.0
 
       The same as (and takes precedences over) the corresponding global field.
 
-   .. dune:field:: sites
+   .. describe:: (sites ...)
 
       Define a site.
 

@@ -27,7 +27,7 @@ val ocaml : t -> Ml_sources.t Memo.t
 val artifacts : t -> Artifacts_obj.t Memo.t
 
 (** All mld files attached to this documentation stanza *)
-val mlds : t -> Documentation.t -> Path.Build.t list Memo.t
+val mlds : t -> stanza:Documentation.t -> Path.Build.t list Memo.t
 
 val coq : t -> Coq_sources.t Memo.t
 
@@ -65,9 +65,3 @@ type triage =
     However, if the directory is part of a group, this function simply returns
     the root of the group. *)
 val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.t
-
-(** Add expansion that depend on OCaml artifacts/sources.
-
-    This function live in super_context.ml or expander.ml because it would
-    introduce a dependency cycle. *)
-val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t

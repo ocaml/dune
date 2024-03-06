@@ -20,3 +20,4 @@ These guides will help you use Dune's features in your project.
    ../tests
    bundle
    toplevel
+   rule-generation

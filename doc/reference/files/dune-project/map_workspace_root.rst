@@ -1,8 +1,7 @@
 map_workspace_root
 -------------------
 
-.. dune:stanza:: map_workspace_root
-   :param: <bool>
+.. describe:: (map_workspace_root <bool>)
 
    Control references to the file system locations where the project has been
    built.

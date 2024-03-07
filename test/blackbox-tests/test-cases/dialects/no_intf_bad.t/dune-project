@@ -1,0 +1,7 @@
+(lang dune 3.8)
+
+(dialect
+ (name mlfi)
+ (implementation
+  (extension mf)
+  (format (run fmt %{input-file}))))

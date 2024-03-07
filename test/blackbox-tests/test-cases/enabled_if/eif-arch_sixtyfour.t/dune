@@ -1,0 +1,4 @@
+(executable
+ (name hello)
+ (enabled_if
+  (= %{arch_sixtyfour} %{arch_sixtyfour})))

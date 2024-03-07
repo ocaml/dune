@@ -27,6 +27,7 @@ work on Dune.
 
 Here are the following commands you can use:
 
+- make bootstrap to build the bootstrapped version of dune
 - make dev       to build the dune binary
 - make test      to build and run the testsuite
 - make doc       to build the Dune manual (requires sphinx)

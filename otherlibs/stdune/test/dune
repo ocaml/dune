@@ -1,0 +1,19 @@
+(library
+ (name stdune_unit_tests)
+ (inline_tests
+  (deps
+   (source_tree ../unit-tests/findlib-db)
+   (source_tree ../unit-tests/toolchain.d)))
+ (libraries
+  stdune
+  dune_tests_common
+  unix
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

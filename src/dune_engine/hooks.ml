@@ -2,19 +2,14 @@ open Import
 
 module type S = sig
   val always : (unit -> unit) -> unit
-
   val once : (unit -> unit) -> unit
-
   val run : unit -> unit
 end
 
 module Make () = struct
   let persistent_hooks = ref []
-
   let one_off_hooks = ref []
-
   let always hook = persistent_hooks := hook :: !persistent_hooks
-
   let once hook = one_off_hooks := hook :: !one_off_hooks
 
   let run () =
@@ -33,8 +28,8 @@ module Make () = struct
     | exns ->
       let exns = List.rev exns in
       let open Dyn in
-      Code_error.raise "hooks failed"
-        [ ("exns", (list Exn_with_backtrace.to_dyn) exns) ]
+      Code_error.raise "hooks failed" [ "exns", (list Exn_with_backtrace.to_dyn) exns ]
+  ;;
 end
 
 module End_of_build = Make ()

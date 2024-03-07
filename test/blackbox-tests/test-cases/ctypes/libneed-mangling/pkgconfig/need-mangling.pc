@@ -1,0 +1,12 @@
+prefix=/replaceme
+# pos-config does not interpret prefix relative to the .pc file so we need to
+# insert it everywhere.
+exec_prefix=${prefix}
+libdir=${prefix}/libneed-mangling
+includedir=${prefix}/libneed-mangling
+Name: need-mangling
+Description: An example library for testing dune ctypes
+Requires:
+Version: 1.00.00
+Libs: -L${prefix}/libneed-mangling -lneed-mangling
+Cflags: -I${prefix}/libneed-mangling

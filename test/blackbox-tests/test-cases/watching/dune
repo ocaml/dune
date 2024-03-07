@@ -1,8 +1,17 @@
 (cram
+ (deps helpers.sh))
+
+(cram
  ; see https://github.com/ocaml/dune/pull/4728
  (enabled_if
   (<> "macosx" %{ocaml-config:system}))
- (deps helpers.sh))
+ (applies_to * \ path-pwd))
+
+(cram
+ ; see https://github.com/ocaml/dune/pull/4728
+ (enabled_if
+  (= "macosx" %{ocaml-config:system}))
+ (applies_to path-pwd))
 
 (cram
  (applies_to what-dune-watches)

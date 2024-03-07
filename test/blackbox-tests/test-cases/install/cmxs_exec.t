@@ -17,7 +17,7 @@
 
   $ test -x _build/install/default/lib/foo/foo.cmxs
 
-  $ dune install --prefix prefix
+  $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Installing prefix/lib/foo/foo.a
@@ -37,7 +37,7 @@ directory instead of a file.
   $ rm -rf prefix
 
   $ mkdir -p prefix/lib/foo/foo.a
-  $ dune install --prefix prefix
+  $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Deleting empty directory prefix/lib/foo/foo.a
@@ -56,7 +56,7 @@ Test the error message if a destination is a non-empty directory instead of a fi
 
   $ mkdir -p prefix/lib/foo/foo.a
   $ touch prefix/lib/foo/foo.a/file
-  $ dune install --prefix prefix
+  $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
   Installing prefix/lib/foo/dune-package
   Error: Please delete non-empty directory prefix/lib/foo/foo.a manually.
@@ -66,7 +66,7 @@ Test the error message if a destination is a file instead of a directory.
 
   $ rm -rf prefix
   $ mkdir -p prefix/lib; touch prefix/lib/foo
-  $ dune install --prefix prefix
+  $ dune install --prefix prefix --display short
   Installing prefix/lib/foo/META
   Error: Please delete file prefix/lib/foo manually.
   [1]

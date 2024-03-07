@@ -1,0 +1,5 @@
+(library
+ (modes melange)
+ (name lib1)
+ (libraries pkg2.npm)
+ (public_name pkg1.lib1))

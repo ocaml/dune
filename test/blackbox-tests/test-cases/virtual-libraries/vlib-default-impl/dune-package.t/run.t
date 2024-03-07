@@ -44,21 +44,17 @@ Check that default implementation data is installed in the dune package file.
     (wrapped
      (group
       (alias
-       (name A)
        (obj_name a)
-       (path A)
        (visibility public)
        (kind alias)
-       (impl))
+       (source (path A) (impl (path a.ml-gen))))
       (name A)
       (modules
        (module
-        (name X)
         (obj_name a__X)
-        (path X)
         (visibility public)
         (kind virtual)
-        (intf))))
+        (source (path X) (intf (path x.mli))))))
      (wrapped true))))
   (library
    (name a.default-impl)
@@ -78,19 +74,17 @@ Check that default implementation data is installed in the dune package file.
     (wrapped
      (group
       (alias
-       (name A__a_default__)
        (obj_name a__a_default__)
-       (path A__a_default__)
        (visibility public)
        (kind alias)
-       (impl))
+       (source
+        (path A__a_default__)
+        (impl (path default-impl/a__a_default__.ml-gen))))
       (name A)
       (modules
        (module
-        (name X)
         (obj_name a__X)
-        (path X)
         (visibility public)
         (kind impl_vmodule)
-        (impl))))
+        (source (path X) (impl (path default-impl/x.ml))))))
      (wrapped true))))

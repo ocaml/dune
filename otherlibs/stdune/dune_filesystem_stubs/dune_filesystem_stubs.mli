@@ -12,14 +12,12 @@ module Unix_error : sig
     type nonrec t = t * string * string
 
     val raise : t -> 'a
-
     val create : Unix.error -> syscall:string -> arg:string -> t
 
     (** Apply a function to an argument, catching a detailed Unix error. *)
     val catch : ('a -> 'b) -> 'a -> ('b, t) result
 
     val equal : t -> t -> bool
-
     val to_string_hum : t -> string
   end
 end
@@ -36,16 +34,15 @@ module File_kind : sig
     | S_SOCK
 
   val to_string : t -> string
-
   val to_string_hum : t -> string
-
   val equal : t -> t -> bool
 end
 
 (** [read_directory_with_kinds] is similar to [Sys.readdir], while additionally
     returning kinds of the filesystem entries. *)
-val read_directory_with_kinds :
-  string -> ((string * File_kind.t) list, Unix_error.Detailed.t) Result.t
+val read_directory_with_kinds
+  :  string
+  -> ((string * File_kind.t) list, Unix_error.Detailed.t) Result.t
 
 (** [read_directory_with_kinds d] returns all the filesystem entries in [d]
     except for "." and "..", similar to [Sys.readdir]. *)

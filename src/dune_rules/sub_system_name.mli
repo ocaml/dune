@@ -5,9 +5,7 @@ open Import
 type t
 
 val hash : t -> int
-
 val equal : t -> t -> bool
 
 include Comparable_intf.S with type key := t
-
-include Stringlike_intf.S with type t := t
+include Stringlike with type t := t

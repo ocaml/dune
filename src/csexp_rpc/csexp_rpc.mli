@@ -20,11 +20,10 @@ module Session : sig
       writing *)
   type t
 
-  val create : socket:bool -> in_channel -> out_channel -> t Fiber.t
+  val close : t -> unit Fiber.t
 
-  (* [write t x] writes the s-expression when [x] is [Some sexp], and closes the
-     session if [x = None ] *)
-  val write : t -> Sexp.t list option -> unit Fiber.t
+  (** [write t xs] writes the s-expressions [xs]. *)
+  val write : t -> Sexp.t list -> (unit, [ `Closed ]) result Fiber.t
 
   (** If [read] returns [None], the session is closed and all subsequent reads
       will return [None] *)
@@ -35,12 +34,9 @@ module Client : sig
   (** RPC Client *)
   type t
 
-  val create : Unix.sockaddr -> t Fiber.t
-
+  val create : Unix.sockaddr -> t
   val stop : t -> unit
-
   val connect_exn : t -> Session.t Fiber.t
-
   val connect : t -> (Session.t, Exn_with_backtrace.t) result Fiber.t
 end
 
@@ -48,15 +44,17 @@ module Server : sig
   (** RPC Server *)
   type t
 
-  val create : Unix.sockaddr -> backlog:int -> (t, [ `Already_in_use ]) result
+  val create : Unix.sockaddr list -> backlog:int -> (t, [ `Already_in_use ]) result
 
   (** [ready t] returns a fiber that completes when clients can start connecting
       to the server *)
   val ready : t -> unit Fiber.t
 
-  val stop : t -> unit
-
+  val stop : t -> unit Fiber.t
   val serve : t -> Session.t Fiber.Stream.In.t Fiber.t
+  val listening_address : t -> Unix.sockaddr list
+end
 
-  val listening_address : t -> Unix.sockaddr
+module Private : sig
+  module Io_buffer : module type of Io_buffer
 end

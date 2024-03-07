@@ -21,18 +21,18 @@ Test installation when multiple contexts are defined
 Cannot install into a specific prefix with multiple contexts defined:
 
   $ dune install --prefix _install
-  Error: Cannot specify --prefix or --libdir when installing into multiple
+  Error: Cannot specify '--prefix' or '--libdir' when installing into multiple
   contexts!
   [1]
 
 One must pass a --context argument:
 
-  $ dune install --prefix _install/a --context a
+  $ dune install --prefix _install/a --context a --display short
   Installing _install/a/lib/a/META
   Installing _install/a/lib/a/dune-package
   Installing _install/a/share/a/hello
 
-  $ dune install --prefix _install/b --context b
+  $ dune install --prefix _install/b --context b --display short
   Installing _install/b/lib/a/META
   Installing _install/b/lib/a/dune-package
   Installing _install/b/share/a/hello

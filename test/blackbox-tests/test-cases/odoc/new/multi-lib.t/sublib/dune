@@ -1,0 +1,4 @@
+(library
+ (name odoctest2_sublib)
+ (public_name odoctest2.sublib))
+

@@ -6,12 +6,12 @@
   fiber
   csexp_rpc
   dune_stats
-  xdg
-  memo
+  dune_rpc_client
+  dune_console
   dune_util
   dune_rpc_private
   dune_rpc_server
-  dune_engine
-  dune_rules
-  dune_lang)
- (synopsis "Dune's rpc server + a usable client"))
+  dune_engine)
+ (synopsis "Dune's rpc server + a usable client")
+ (instrumentation
+  (backend bisect_ppx)))

@@ -1,0 +1,18 @@
+(library
+ (name dune_engine_test)
+ (inline_tests)
+ (libraries
+  dune_tests_common
+  dune_lang
+  predicate_lang
+  stdune
+  dune_engine
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

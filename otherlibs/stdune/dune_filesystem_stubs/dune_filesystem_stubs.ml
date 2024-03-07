@@ -4,7 +4,7 @@ module Unix_error = struct
   (* CR-someday amokhov: It would be nice to derive this instead. For now let's
      trust I haven't messed this up. *)
   let equal (x : t) (y : t) =
-    match (x, y) with
+    match x, y with
     | E2BIG, E2BIG -> true
     | E2BIG, _ | _, E2BIG -> false
     | EACCES, EACCES -> true
@@ -142,25 +142,28 @@ module Unix_error = struct
     | EOVERFLOW, EOVERFLOW -> true
     | EOVERFLOW, _ | _, EOVERFLOW -> false
     | EUNKNOWNERR x, EUNKNOWNERR y -> Int.equal x y
+  ;;
 
   module Detailed = struct
     type nonrec t = t * string * string
 
     let raise (e, x, y) = raise (Unix.Unix_error (e, x, y))
-
-    let create error ~syscall ~arg = (error, syscall, arg)
+    let create error ~syscall ~arg = error, syscall, arg
 
     let catch f x =
       match f x with
       | res -> Ok res
       | exception Unix.Unix_error (error, syscall, arg) ->
         Error (create error ~syscall ~arg)
+    ;;
 
     let equal (a1, b1, c1) (a2, b2, c2) =
       equal a1 a2 && String.equal b1 b2 && String.equal c1 c2
+    ;;
 
     let to_string_hum (error, syscall, arg) =
       Format.sprintf "%s(%s): %s" syscall arg (Unix.error_message error)
+    ;;
   end
 end
 
@@ -182,6 +185,7 @@ module File_kind = struct
     | S_LNK -> "S_LNK"
     | S_FIFO -> "S_FIFO"
     | S_SOCK -> "S_SOCK"
+  ;;
 
   let to_string_hum = function
     | S_REG -> "regular file"
@@ -191,9 +195,10 @@ module File_kind = struct
     | S_LNK -> "symbolic link"
     | S_FIFO -> "named pipe"
     | S_SOCK -> "socket"
+  ;;
 
   let equal x y =
-    match (x, y) with
+    match x, y with
     | S_REG, S_REG -> true
     | S_REG, _ | _, S_REG -> false
     | S_DIR, S_DIR -> true
@@ -207,6 +212,7 @@ module File_kind = struct
     | S_FIFO, S_FIFO -> true
     | S_FIFO, _ | _, S_FIFO -> false
     | S_SOCK, S_SOCK -> true
+  ;;
 
   module Option = struct
     [@@@warning "-37"]
@@ -232,6 +238,7 @@ module File_kind = struct
       | S_FIFO -> some S_FIFO
       | S_SOCK -> some S_SOCK
       | UNKNOWN -> none ()
+    ;;
   end
 end
 
@@ -244,21 +251,26 @@ module Readdir_result = struct
     | Entry of string * File_kind.Option.t
 end
 
-external readdir_with_kind_if_available_unix :
-  Unix.dir_handle -> Readdir_result.t = "caml__dune_filesystem_stubs__readdir"
+external readdir_with_kind_if_available_unix
+  :  Unix.dir_handle
+  -> Readdir_result.t
+  = "caml__dune_filesystem_stubs__readdir"
 
 let readdir_with_kind_if_available_win32 : Unix.dir_handle -> Readdir_result.t =
- fun dir ->
+  fun dir ->
   (* Windows also gives us the information about file kind and it's discarded by
      [readdir]. We could do better here, but the Windows code is more
      complicated. (there's an additional OCaml abstraction layer) *)
   match Unix.readdir dir with
   | exception End_of_file -> Readdir_result.End_of_directory
   | entry -> Entry (entry, UNKNOWN)
+;;
 
 let readdir_with_kind_if_available : Unix.dir_handle -> Readdir_result.t =
-  if Stdlib.Sys.win32 then readdir_with_kind_if_available_win32
+  if Stdlib.Sys.win32
+  then readdir_with_kind_if_available_win32
   else readdir_with_kind_if_available_unix
+;;
 
 let read_directory_with_kinds_exn dir_path =
   let dir = Unix.opendir dir_path in
@@ -272,7 +284,8 @@ let read_directory_with_kinds_exn dir_path =
         | Entry (base, kind) ->
           let k kind = loop ((base, kind) :: acc) in
           let skip () = loop acc in
-          File_kind.Option.elim kind
+          File_kind.Option.elim
+            kind
             ~none:(fun () ->
               match Unix.lstat (Filename.concat dir_path base) with
               | exception Unix.Unix_error _ ->
@@ -283,9 +296,11 @@ let read_directory_with_kinds_exn dir_path =
             ~some:k
       in
       loop [])
+;;
 
 let read_directory_with_kinds dir_path =
   Unix_error.Detailed.catch read_directory_with_kinds_exn dir_path
+;;
 
 let read_directory_exn dir_path =
   let dir = Unix.opendir dir_path in
@@ -299,6 +314,6 @@ let read_directory_exn dir_path =
         | Entry (base, _) -> loop (base :: acc)
       in
       loop [])
+;;
 
-let read_directory dir_path =
-  Unix_error.Detailed.catch read_directory_exn dir_path
+let read_directory dir_path = Unix_error.Detailed.catch read_directory_exn dir_path

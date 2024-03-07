@@ -1,7 +1,7 @@
 Test melange.compile_flags, ocamlc_flags and ocamlopt_flags fields on melange.emit stanza
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -10,8 +10,8 @@ Create dune file that uses melange.compile_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs)
+  >  (alias mel)
+  >  (modules main)
   >  (compile_flags -w -14-26))
   > EOF
 
@@ -24,7 +24,7 @@ The code in main contains unused var (warning 26) and illegal backlash (warning 
 
 Building does not fail, warnings are silenced
 
-  $ dune build output/main.js
+  $ dune build @mel
   $ node _build/default/output/main.js
   hello
 
@@ -33,16 +33,15 @@ Update dune file to use ocamlc_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs)
+  >  (modules main)
   >  (ocamlc_flags -w -14-26))
   > EOF
 
 Building should fail as ocamlc flags are not supported in melange emit stanzas
 
   $ dune build output/main.js
-  File "dune", line 5, characters 2-14:
-  5 |  (ocamlc_flags -w -14-26))
+  File "dune", line 4, characters 2-14:
+  4 |  (ocamlc_flags -w -14-26))
         ^^^^^^^^^^^^
   Error: Unknown field ocamlc_flags
   [1]
@@ -52,16 +51,15 @@ Update dune file to use ocamlopt_flags
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (entries main)
-  >  (module_system commonjs)
+  >  (modules main)
   >  (ocamlopt_flags -w -14-26))
   > EOF
 
 Building should fail as ocamlopt flags are not supported in melange emit stanzas
 
   $ dune build output/main.js
-  File "dune", line 5, characters 2-16:
-  5 |  (ocamlopt_flags -w -14-26))
+  File "dune", line 4, characters 2-16:
+  4 |  (ocamlopt_flags -w -14-26))
         ^^^^^^^^^^^^^^
   Error: Unknown field ocamlopt_flags
   [1]

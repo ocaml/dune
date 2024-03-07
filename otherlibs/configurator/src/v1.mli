@@ -1,7 +1,7 @@
 type t
 
-val create :
-     ?dest_dir:string
+val create
+  :  ?dest_dir:string
   -> ?ocamlc:string
   -> ?log:(string -> unit)
   -> string (** name, such as library name *)
@@ -14,8 +14,8 @@ val ocaml_config_var_exn : t -> string -> string
 
 (** [c_test t ?c_flags ?link_flags c_code] try to compile and link the C code
     given in [c_code]. Return whether compilation was successful. *)
-val c_test :
-     t
+val c_test
+  :  t
   -> ?c_flags:string list (** default: [] *)
   -> ?link_flags:string list (** default: [] *)
   -> string
@@ -24,7 +24,7 @@ val c_test :
 module C_define : sig
   module Type : sig
     type t =
-      | Switch  (** defined/undefined *)
+      | Switch (** defined/undefined *)
       | Int
       | String
   end
@@ -42,8 +42,8 @@ module C_define : sig
         # C.C_define.import c ~includes:"caml/config.h" ["ARCH_SIXTYFOUR", Switch];;
         - (string * Configurator.C_define.Value.t) list = ["ARCH_SIXTYFOUR", Switch true]
       v} *)
-  val import :
-       t
+  val import
+    :  t
     -> ?prelude:string
          (** Define extra code be used with extracting values below. Note that
              the compiled code is never executed. *)
@@ -61,8 +61,8 @@ module C_define : sig
 
       If not specified, it is inferred from the name given to [create] and the
       filename. *)
-  val gen_header_file :
-       t
+  val gen_header_file
+    :  t
     -> fname:string
     -> ?protection_var:string
     -> (string * Value.t) list
@@ -70,41 +70,46 @@ module C_define : sig
 end
 
 module Pkg_config : sig
-  type configurator = t
+    type configurator = t
+    type t
 
-  type t
+    (** Search pkg-config in PATH. Prefers the [PKG_CONFIG_PATH] environment
+        variable if set. Returns [None] if pkg-config is not found. *)
+    val get : configurator -> t option
 
-  (** Search pkg-config in the PATH. Returns [None] if pkg-config is not found. *)
-  val get : configurator -> t option
+    type package_conf =
+      { libs : string list
+      ; cflags : string list
+      }
 
-  type package_conf =
-    { libs : string list
-    ; cflags : string list
-    }
+    (** [query t ~package] query pkg-config for the [package]. The package must
+        not contain a version constraint. Multiple, unversioned packages are
+        separated with spaces, for example "gtk+-3.0 gtksourceview-3.0". If set,
+        the [PKG_CONFIG_ARGN] environment variable specifies a list of arguments
+        to pass to pkg-config. Returns [None] if [package] is not available *)
+    val query : t -> package:string -> package_conf option
 
-  (** [query t ~package] query pkg-config for the [package]. The package must
-      not contain a version constraint. Multiple, unversioned packages are
-      separated with spaces, for example "gtk+-3.0 gtksourceview-3.0". Returns
-      [None] if [package] is not available *)
-  val query : t -> package:string -> package_conf option
-
-  val query_expr : t -> package:string -> expr:string -> package_conf option
+    val query_expr : t -> package:string -> expr:string -> package_conf option
     [@@ocaml.deprecated "please use [query_expr_err]"]
 
-  (** [query_expr_err t ~package ~expr] query pkg-config for the [package].
-      [expr] may contain a version constraint, for example "gtk+-3.0 >= 3.18".
-      [package] must be just the name of the package. If [expr] is specified,
-      [package] must be specified as well. Returns [Error error_msg] if
-      [package] is not available *)
-  val query_expr_err :
-    t -> package:string -> expr:string -> (package_conf, string) result
-end
-with type configurator := t
+    (** [query_expr_err t ~package ~expr] query pkg-config for the [package].
+        [expr] may contain a version constraint, for example "gtk+-3.0 >= 3.18".
+        [package] must be just the name of the package. If [expr] is specified,
+        [package] must be specified as well. If set, the [PKG_CONFIG_ARGN]
+        environment variable specifies a list of arguments to pass to pkg-config.
+        Returns [Error error_msg] if [package] is not available *)
+    val query_expr_err
+      :  t
+      -> package:string
+      -> expr:string
+      -> (package_conf, string) result
+  end
+  with type configurator := t
 
 module Flags : sig
   (** [write_sexp fname s] writes the list of strings [s] to the file [fname] in
       an appropriate format so that it can used in [dune] files with
-      [(:include \[fname\])]. *)
+      [(:include [fname])]. *)
   val write_sexp : string -> string list -> unit
 
   (** [write_lines fname s] writes the list of string [s] to the file [fname]
@@ -145,30 +150,28 @@ module Process : sig
       logged.
 
       @param dir change to [dir] before running the command.
-      @param env
-        specify additional environment variables as a list of the form
-        NAME=VALUE. *)
-  val run :
-    t -> ?dir:string -> ?env:string list -> string -> string list -> result
+      @param env specify additional environment variables as a list of the form
+                 NAME=VALUE. *)
+  val run : t -> ?dir:string -> ?env:string list -> string -> string list -> result
 
   (** [run_capture_exn t prog args] same as [run t prog args] but returns
       [stdout] and {!die} if the error code is nonzero or there is some output
       on [stderr]. *)
-  val run_capture_exn :
-    t -> ?dir:string -> ?env:string list -> string -> string list -> string
+  val run_capture_exn
+    :  t
+    -> ?dir:string
+    -> ?env:string list
+    -> string
+    -> string list
+    -> string
 
   (** [run_ok t prog args] same as [run t prog args] but only cares whether the
       execution terminated successfully (i.e., returned an error code of [0]). *)
-  val run_ok :
-    t -> ?dir:string -> ?env:string list -> string -> string list -> bool
+  val run_ok : t -> ?dir:string -> ?env:string list -> string -> string list -> bool
 end
 
 (** Typical entry point for configurator programs *)
-val main :
-     ?args:(Arg.key * Arg.spec * Arg.doc) list
-  -> name:string
-  -> (t -> unit)
-  -> unit
+val main : ?args:(Arg.key * Arg.spec * Arg.doc) list -> name:string -> (t -> unit) -> unit
 
 (** Abort execution. If raised from within [main], the argument of [die] is
     printed as [Error: <message>]. *)

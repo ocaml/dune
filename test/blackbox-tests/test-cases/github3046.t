@@ -25,10 +25,12 @@ are given as parameters
 `dune init lib foo --public="some/invalid&name!"` returns an informative parsing error
 
   $ dune init lib foo --public="some/invalid&name!"
-  dune: option '--public': invalid component name `some/invalid&name!'
-        Library names must be non-empty and composed only of the
-        following
-        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  dune: option '--public': Public names are composed of an opam package name
+        and optional
+        dot-separated string suffixes.
+        Package names can contain letters, numbers, '-', '_' and '+', and need
+        to
+        contain at least a letter.
   Usage: dune init library [OPTION]… NAME [PATH]
   Try 'dune init library --help' or 'dune --help' for more information.
   [1]

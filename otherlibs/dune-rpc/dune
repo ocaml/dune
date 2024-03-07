@@ -8,4 +8,6 @@
   xdg
   ordering
   pp
-  (re_export dune_rpc_private)))
+  (re_export dune_rpc_private))
+ (instrumentation
+  (backend bisect_ppx)))

@@ -18,6 +18,16 @@ make update-dkml
 ```
 
 Of course that only works if there are updates available.
+And it will only do updates for the latest OCaml compiler.
+
+### Can we test more than one OCaml compiler?
+
+Technically no; `setup-dkml` follows the supported OCaml compiler of DKML. What
+we've done in this project is rename the directories that supported the older
+DKML versions (`4.12.1`). Essentially, the older DKML versions are frozen and
+will no longer get updates. You may want to eventually drop the older DKML
+versions by removing those directories and removing those versions from
+`workflow.yml`.
 
 ### What is the version of MSVC targeted? What is the required environment to execute the `desktop-ci-*` targets in the main `Makefile`?
 

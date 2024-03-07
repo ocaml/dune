@@ -18,7 +18,6 @@ type 'a t =
   | Future_syntax of Loc.t
 
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
 module Without_instrumentation : sig
@@ -56,23 +55,31 @@ module Pp_flag_consumer : sig
     | Merlin
 end
 
-val remove_future_syntax :
-     'a t
+val remove_future_syntax
+  :  'a t
   -> for_:Pp_flag_consumer.t
   -> Ocaml.Version.t
   -> 'a Without_future_syntax.t
 
+module Instrumentation : sig
+  type t =
+    { backend : Loc.t * Lib_name.t
+    ; flags : String_with_vars.t list
+    ; deps : Dep_conf.t list
+    ; loc : Loc.t
+    }
+
+  (** [instrumentation] multi field *)
+  val instrumentation : t list Dune_lang.Decoder.fields_parser
+end
+
 module Per_module : sig
   type 'a preprocess := 'a t
-
   type 'a t = 'a preprocess Module_name.Per_item.t
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-
   val decode : Without_instrumentation.t t Dune_lang.Decoder.t
-
   val no_preprocessing : unit -> 'a t
-
   val default : unit -> 'a t
 
   (** [find module_name] find the preprocessing specification for a given module *)
@@ -83,26 +90,27 @@ module Per_module : sig
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
   val single_preprocess : 'a t -> 'a preprocess
 
-  val add_instrumentation :
-       With_instrumentation.t t
-    -> loc:Loc.t
-    -> flags:String_with_vars.t list
-    -> deps:Dep_conf.t list
-    -> Loc.t * Lib_name.t
+  val add_instrumentation
+    :  With_instrumentation.t t
+    -> Instrumentation.t
     -> With_instrumentation.t t
 
-  val without_instrumentation :
-    With_instrumentation.t t -> Without_instrumentation.t t
+  val without_instrumentation : With_instrumentation.t t -> Without_instrumentation.t t
 
-  val with_instrumentation :
-       With_instrumentation.t t
+  val with_instrumentation
+    :  With_instrumentation.t t
     -> instrumentation_backend:
          (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
     -> Without_instrumentation.t t Resolve.Memo.t
 
-  val instrumentation_deps :
-       With_instrumentation.t t
+  val instrumentation_deps
+    :  With_instrumentation.t t
     -> instrumentation_backend:
          (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
     -> Dep_conf.t list Resolve.Memo.t
 end
+
+(** [preprocess] and [preprocessor_deps] fields *)
+val preprocess_fields
+  : (Without_instrumentation.t Per_module.t * Dep_conf.t list)
+      Dune_lang.Decoder.fields_parser

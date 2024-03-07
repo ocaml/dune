@@ -2,7 +2,7 @@ open Import
 open Dune_rpc
 
 module Build_outcome = struct
-  type t = Dune_engine.Scheduler.Run.Build_outcome.t =
+  type t = Scheduler.Run.Build_outcome.t =
     | Success
     | Failure
 
@@ -14,6 +14,7 @@ module Build_outcome = struct
     sum variants (function
       | Success -> case () success
       | Failure -> case () failure)
+  ;;
 end
 
 module Status = struct
@@ -30,6 +31,7 @@ module Status = struct
       sum variants (function
         | Uninitialized -> case () uninitialized
         | Menu m -> case m menu)
+    ;;
   end
 
   type t = { clients : (Id.t * Menu.t) list }
@@ -39,20 +41,22 @@ module Status = struct
     let to_ clients = { clients } in
     let from { clients } = clients in
     iso (list (pair Id.sexp Menu.sexp)) to_ from
+  ;;
 
   let v1 = Decl.Request.make_current_gen ~req:Conv.unit ~resp:sexp ~version:1
-
   let decl = Decl.Request.make ~method_:"status" ~generations:[ v1 ]
 end
 
 module Build = struct
   let v1 =
-    Decl.Request.make_current_gen ~req:(Conv.list Conv.string)
-      ~resp:Build_outcome.sexp ~version:1
+    Decl.Request.make_current_gen
+      ~req:(Conv.list Conv.string)
+      ~resp:Build_outcome.sexp
+      ~version:1
+  ;;
 
   let decl = Decl.Request.make ~method_:"build" ~generations:[ v1 ]
 end
 
 let build = Build.decl
-
 let status = Status.decl

@@ -1,0 +1,6 @@
+(library
+ (name dune_site_toplevel_linker)
+ (modes byte)
+ (public_name dune-site.toplevel)
+ (implements dune-site.linker)
+ (libraries compiler-libs.toplevel))

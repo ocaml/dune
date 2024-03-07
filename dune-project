@@ -1,5 +1,5 @@
-(lang dune 3.5)
-;          ^^^
+(lang dune 3.12)
+;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
@@ -34,19 +34,19 @@
   (js_of_ocaml-compiler (< 3.6.0))
   (jbuilder (= transition)))
  (description "
-dune is a build system that was designed to simplify the release of
+Dune is a build system that was designed to simplify the release of
 Jane Street packages. It reads metadata from \"dune\" files following a
 very simple s-expression syntax.
 
-dune is fast, has very low-overhead, and supports parallel builds on
+Dune is fast, has very low-overhead, and supports parallel builds on
 all platforms. It has no system dependencies; all you need to build
 dune or packages using dune is OCaml. You don't need make or bash
 as long as the packages themselves don't use bash explicitly.
 
-dune supports multi-package development by simply dropping multiple
-repositories into the same directory.
+Dune is composable; supporting multi-package development by simply
+dropping multiple repositories into the same directory.
 
-It also supports multi-context builds, such as building against
+Dune also supports multi-context builds, such as building against
 several opam roots/switches simultaneously. This helps maintaining
 packages across several versions of OCaml and gives cross-compilation
 for free.
@@ -129,6 +129,8 @@ execution of the action.
  (synopsis "Glob string matching language supported by dune")
  (depends
   (stdune (= :version))
+  dyn
+  ordering
   (dune-private-libs (= :version)))
  (description "\
 dune-glob provides a parser and interpreter for globs as \
@@ -188,24 +190,17 @@ understood by dune language."))
   base-unix
   (dyn (= :version))
   (ordering (= :version))
-  (pp (>= 1.1.0))
+  (pp (>= 1.2.0))
   (csexp (>= 1.5.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 
 (package
  (name ocamlc-loc)
  (synopsis "Parse ocaml compiler output into structured form")
+ (conflicts
+  (ocaml-lsp-server (< 1.15.0)))
  (depends
   (ocaml (>= 4.08.0))
-  (dyn (= :version)))
- (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
-
-(package
- (name fiber)
- (synopsis "Structured concurrency library")
- (depends
-  (ocaml (>= 4.08.0))
-  (stdune (= :version))
   (dyn (= :version)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

@@ -1,0 +1,11 @@
+(library
+ (name dune_site_backend)
+ (public_name dune-site.linker)
+ ; The linker module is virtual because it has two implementations
+ ; for load.
+ ; dune-site.dynlink implements it using Dynlink.loadfile
+ ; dune-site.toplevel implements it using
+ ; Topdirs.loadfile (before 4.13.0) or Toploop.loadfile (otherwise).
+ ; dune-site.toplevel is needed for OCaml toplevels with plugins.
+ (virtual_modules linker)
+ (default_implementation dune-site.dynlink))

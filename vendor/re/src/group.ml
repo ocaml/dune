@@ -11,8 +11,8 @@ let offset t i =
   if 2 * i + 1 >= Array.length t.marks then raise Not_found;
   let m1 = t.marks.(2 * i) in
   if m1 = -1 then raise Not_found;
-  let p1 = t.gpos.(m1) - 1 in
-  let p2 = t.gpos.(t.marks.(2 * i + 1)) - 1 in
+  let p1 = t.gpos.(m1) in
+  let p2 = t.gpos.(t.marks.(2 * i + 1)) in
   (p1, p2)
 
 let get t i =
@@ -30,6 +30,11 @@ let test t i =
     let idx = t.marks.(2 * i) in
     idx <> -1
 
+let get_opt t i =
+  if test t i
+  then Some (get t i)
+  else None
+
 let dummy_offset = (-1, -1)
 
 let all_offset t =
@@ -39,7 +44,7 @@ let all_offset t =
     if m1 <> -1 then begin
       let p1 = t.gpos.(m1) in
       let p2 = t.gpos.(t.marks.(2 * i + 1)) in
-      res.(i) <- (p1 - 1, p2 - 1)
+      res.(i) <- (p1, p2)
     end
   done;
   res
@@ -53,7 +58,7 @@ let all t =
     if m1 <> -1 then begin
       let p1 = t.gpos.(m1) in
       let p2 = t.gpos.(t.marks.(2 * i + 1)) in
-      res.(i) <- String.sub t.s (p1 - 1) (p2 - p1)
+      res.(i) <- String.sub t.s p1 (p2 - p1)
     end
   done;
   res

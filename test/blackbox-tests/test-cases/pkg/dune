@@ -1,0 +1,45 @@
+(cram
+ (alias pkg)
+ (applies_to :whole_subtree))
+
+(cram
+ (deps helpers.sh)
+ (applies_to :whole_subtree))
+
+(cram
+ (deps %{bin:patch})
+ (applies_to patch opam-package-with-patch))
+
+(cram
+ (deps %{bin:git})
+ (applies_to :whole_subtree))
+
+(cram
+ (applies_to rev-store-lock-linux)
+ (enabled_if
+  (= %{system} linux))
+ (deps %{bin:strace}))
+
+(cram
+ (deps %{bin:git} %{bin:awk} %{bin:cmp})
+ (applies_to git-repo))
+
+(cram
+ (deps %{bin:make})
+ (applies_to make))
+
+(cram
+ (deps %{bin:which})
+ (applies_to pkg-deps))
+
+(cram
+ (deps %{bin:webserver_oneshot})
+ (applies_to compute-checksums-when-missing e2e source-caching tarball))
+
+(cram
+ (deps %{bin:md5sum})
+ (applies_to source-caching))
+
+(cram
+ (deps %{bin:tar})
+ (applies_to source-caching tarball))

@@ -1,6 +1,5 @@
 (melange.emit
- (package pkg)
  (target output)
- (entries c)
- (libraries app)
- (module_system commonjs))
+ (modules c)
+ (alias mel)
+ (libraries app))

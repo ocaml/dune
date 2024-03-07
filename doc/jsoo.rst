@@ -4,10 +4,14 @@
 JavaScript Compilation With Js_of_ocaml
 ***************************************
 
+.. TODO(diataxis)
+
+   This is an how-to guide.
+
 Js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
 translating OCaml bytecode to JS files. The compiler can be installed with opam:
 
-.. code:: bash
+.. code:: console
 
    $ opam install js_of_ocaml-compiler
 
@@ -21,19 +25,19 @@ libraries/executables to JS.
 To build a JS executable, just define an executable as you would normally.
 Consider this example:
 
-.. code:: bash
+.. code:: console
 
-   echo 'print_endline "hello from js"' > foo.ml
+   $ echo 'print_endline "hello from js"' > foo.ml
 
 With the following ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
   (executable (name foo) (modes js))
 
 And then request the ``.js`` target:
 
-.. code:: bash
+.. code:: console
 
    $ dune build ./foo.bc.js
    $ node _build/default/foo.bc.js
@@ -45,7 +49,7 @@ executable targets.
 If you're using the Js_of_ocaml syntax extension, you must remember to add the
 appropriate PPX in the ``preprocess`` field:
 
-.. code:: scheme
+.. code:: dune
 
   (executable
    (name foo)
@@ -67,6 +71,7 @@ Dune supports two modes of compilation:
 
 The separate compilation mode will be selected when the build profile
 is ``dev``, which is the default. It can also be explicitly specified
-in an ``env`` stanza. See :ref:`dune-env` for more information.
+in an ``env`` stanza. See :doc:`/reference/files/dune/env` for more
+information.
 
 .. _js_of_ocaml: http://ocsigen.org/js_of_ocaml/

@@ -11,10 +11,7 @@ module Mode : sig
 end
 
 val parse : mode:'a Mode.t -> ?lexer:Lexer.t -> Lexing.lexbuf -> 'a
-
-val parse_string :
-  fname:string -> mode:'a Mode.t -> ?lexer:Lexer.t -> string -> 'a
-
+val parse_string : fname:string -> mode:'a Mode.t -> ?lexer:Lexer.t -> string -> 'a
 val load : ?lexer:Lexer.t -> Path.t -> mode:'a Mode.t -> 'a
 
 (** Insert comments in a concrete syntax tree. Comments are inserted based on

@@ -3,5 +3,10 @@
  (alias runtest-melange))
 
 (cram
- (deps %{bin:rescript_syntax})
- (applies_to rescript_syntax))
+ (deps %{bin:melc_stdlib_prefix})
+ (applies_to merlin))
+
+(cram
+ (deps
+  (package odoc))
+ (applies_to odoc))

@@ -1,24 +1,14 @@
-(** Loads dune files from the file system.
+(** Loads dune files from the workspace and query the workspace for various
+    global data such as dune files, projects, pcakages.
 
-    Also responsible for evaluating dune files written in OCaml syntax. *)
+    All the functions here are memoized. *)
 
 open Import
 
-module Dune_files : sig
-  (** A partially evaluated dune file. The context's ocamlc is used to evaluate
-      dune files in ocaml syntax *)
-  type t
-
-  val eval : t -> context:Context.t -> Dune_file.t list Memo.t
-
-  val in_dir : Path.Build.t -> Dune_file.t option Memo.t
-end
-
-type conf = private
-  { dune_files : Dune_files.t
-  ; packages : Package.t Package.Name.Map.t
-  ; projects : Dune_project.t list
-  }
-
-(** Load all dune files. This function is memoized. *)
-val load : unit -> conf Memo.t
+val dune_files : Context_name.t -> Dune_file.t list Memo.t
+val projects_by_root : unit -> Dune_project.t Path.Source.Map.t Memo.t
+val find_project : dir:Path.Build.t -> Dune_project.t Memo.t
+val stanzas_in_dir : Path.Build.t -> Dune_file.t option Memo.t
+val mask : unit -> Only_packages.t Memo.t
+val packages : unit -> Package.t Package.Name.Map.t Memo.t
+val projects : unit -> Dune_project.t list Memo.t

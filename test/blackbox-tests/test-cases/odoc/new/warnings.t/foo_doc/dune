@@ -1,0 +1,2 @@
+(documentation
+ (package foo_doc))

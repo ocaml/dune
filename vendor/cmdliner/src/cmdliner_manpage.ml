@@ -27,8 +27,7 @@ let s_arguments = "ARGUMENTS"
 let s_options = "OPTIONS"
 let s_common_options = "COMMON OPTIONS"
 let s_exit_status = "EXIT STATUS"
-let s_exit_status_intro =
-  `P "$(tname) exits with the following status:"
+let s_exit_status_intro = `P "$(iname) exits with:"
 
 let s_environment = "ENVIRONMENT"
 let s_environment_intro =
@@ -315,34 +314,35 @@ let pp_plain_blocks ~errs subst ppf ts =
   let b = Buffer.create 1024 in
   let markup t = doc_to_plain ~errs b ~subst t in
   let pp_tokens ppf t = pp_tokens ~spaces:true ppf t in
-  let rec loop = function
+  let rec blank_line = function
+  | `Noblank :: ts -> loop ts
+  | ts -> Format.pp_print_cut ppf (); loop ts
+  and loop = function
   | [] -> ()
   | t :: ts ->
-      begin match t with
-      | `Noblank -> ()
-      | `Blocks bs -> loop bs (* not T.R. *)
-      | `P s -> pf ppf "%a@[%a@]@," pp_indent p_indent pp_tokens (markup s)
-      | `S s -> pf ppf "@[%a@]" pp_tokens (markup s)
-      | `Pre s -> pf ppf "%a@[%a@]@," pp_indent p_indent pp_lines (markup s)
+      match t with
+      | `Noblank -> loop ts
+      | `Blocks bs -> loop (bs @ ts)
+      | `P s ->
+          pf ppf "%a@[%a@]@," pp_indent p_indent pp_tokens (markup s);
+          blank_line ts
+      | `S s -> pf ppf "@[%a@]@," pp_tokens (markup s); loop ts
+      | `Pre s ->
+          pf ppf "%a@[%a@]@," pp_indent p_indent pp_lines (markup s);
+          blank_line ts
       | `I (label, s) ->
-          let label = markup label in
-          let s = markup s in
+          let label = markup label and s = markup s in
           pf ppf "@[%a@[%a@]" pp_indent p_indent pp_tokens label;
-          if s = "" then pf ppf "@]@," else
-          let ll = String.length label in
-          begin match ll < l_indent with
-          | true ->
-              pf ppf "%a@[%a@]@]" pp_indent (l_indent - ll) pp_tokens s
-          | false ->
-              pf ppf "@\n%a@[%a@]@]"
-                pp_indent (p_indent + l_indent) pp_tokens s
+          begin match s with
+          | "" -> pf ppf "@]@,"
+          | s ->
+              let ll = String.length label in
+              if ll < l_indent
+              then (pf ppf "%a@[%a@]@]@," pp_indent (l_indent - ll) pp_tokens s)
+              else (pf ppf "@\n%a@[%a@]@]@,"
+                      pp_indent (p_indent + l_indent) pp_tokens s)
           end;
-          match ts with `I _ :: _ -> pf ppf "@," | _ -> ()
-      end;
-      begin match ts with
-      | `Noblank :: ts -> loop ts
-      | ts -> Format.pp_print_cut ppf (); loop ts
-      end
+          blank_line ts
   in
   loop ts
 
@@ -436,6 +436,14 @@ let pp_to_temp_file pp_v v =
     Some file
   with Sys_error _ -> None
 
+let tmp_file_for_pager () =
+  try
+    let exec = Filename.basename Sys.argv.(0) in
+    let file = Filename.temp_file exec "tty" in
+    at_exit (fun () -> try Sys.remove file with Sys_error e -> ());
+    Some file
+  with Sys_error _ -> None
+
 let find_cmd cmds =
   let test, null = match Sys.os_type with
   | "Win32" -> "where", " NUL"
@@ -446,8 +454,7 @@ let find_cmd cmds =
 
 let pp_to_pager print ppf v =
   let pager =
-    let cmds = ["less"," -R"; "more", ""] in
-    (* Fundamentally env var lookups should try to cut the exec name. *)
+    let cmds = ["less", ""; "more", ""] in
     let cmds = try (Sys.getenv "PAGER", "") :: cmds with Not_found -> cmds in
     let cmds = try (Sys.getenv "MANPAGER", "") :: cmds with Not_found -> cmds in
     find_cmd cmds
@@ -455,7 +462,10 @@ let pp_to_pager print ppf v =
   match pager with
   | None -> print `Plain ppf v
   | Some (pager, opts) ->
-      let pager = pager ^ opts in
+      let pager = match Sys.win32 with
+      | false -> "LESS=FRX " ^ pager ^ opts
+      | true -> "set LESS=FRX && " ^ pager ^ opts
+      in
       let groffer =
         let cmds =
           ["mandoc", " -m man -K utf-8 -T utf8";
@@ -474,7 +484,17 @@ let pp_to_pager print ppf v =
           let groffer = groffer ^ opts in
           begin match pp_to_temp_file (print `Groff) v with
           | None -> None
-          | Some f -> Some (strf "%s < %s | %s" groffer f pager)
+          | Some f when Sys.win32 ->
+              (* For some obscure reason the pipe below does not
+                 work. We need to use a temporary file.
+                 https://github.com/dbuenzli/cmdliner/issues/166 *)
+              begin match tmp_file_for_pager () with
+              | None -> None
+              | Some tmp ->
+                  Some (strf "%s <%s >%s && %s <%s" groffer f tmp pager tmp)
+              end
+          | Some f ->
+              Some (strf "%s < %s | %s" groffer f pager)
           end
       in
       match cmd with

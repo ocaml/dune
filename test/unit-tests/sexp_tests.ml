@@ -25,21 +25,28 @@ let () =
         | _ -> false
       in
       let valid_dune_atom = Dune_lang.Atom.is_valid s in
-      if valid_dune_atom <> parser_recognizes_as_atom then (
+      if valid_dune_atom <> parser_recognizes_as_atom
+      then (
         Printf.eprintf
           "Dune_lang.Atom.is_valid error:\n\
            - s = %S\n\
            - Dune_lang.Atom.is_valid s = %B\n\
            - parser_recognizes_as_atom = %B\n"
-          s valid_dune_atom parser_recognizes_as_atom;
+          s
+          valid_dune_atom
+          parser_recognizes_as_atom;
         exit 1);
-      if printed_as_atom && not parser_recognizes_as_atom then (
+      if printed_as_atom && not parser_recognizes_as_atom
+      then (
         Printf.eprintf
           "Dune_lang.Atom.atom_or_quoted_string error:\n\
            - s = %S\n\
            - printed_as_atom = %B\n\
            - parser_recognizes_as_atom = %B\n"
-          s printed_as_atom parser_recognizes_as_atom;
+          s
+          printed_as_atom
+          parser_recognizes_as_atom;
         exit 1)
     done
   done
+;;

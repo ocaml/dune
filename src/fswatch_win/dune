@@ -1,0 +1,6 @@
+(library
+ (name fswatch_win)
+ (libraries stdune dune_util)
+ (foreign_stubs
+  (language c)
+  (names fswatch_win_stubs)))

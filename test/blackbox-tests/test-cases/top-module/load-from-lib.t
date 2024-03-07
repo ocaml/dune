@@ -1,4 +1,4 @@
-We try to load a module defined in a library with a dependnecy
+We try to load a module defined in a library with a dependency
 
   $ cat >dune-project <<EOF
   > (lang dune 3.3)
@@ -56,3 +56,13 @@ We try to load a module defined in a library with a dependnecy
 
   $ ls _build/default/mydummylib/*.cma
   _build/default/mydummylib/mydummylib.cma
+
+  $ dune ocaml top-module $PWD/foo/foo.ml
+  #directory "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml";;
+  #directory "$TESTCASE_ROOT/_build/default/mydummylib/.mydummylib.objs/byte";;
+  #load "$TESTCASE_ROOT/_build/default/mydummylib/mydummylib.cma";;
+  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/foo/.foo.objs/byte/foo__Bar.cmo";;
+  #load "$TESTCASE_ROOT/_build/default/.topmod/foo/foo.ml/foo.cmo";;
+  open Foo__
+  ;;

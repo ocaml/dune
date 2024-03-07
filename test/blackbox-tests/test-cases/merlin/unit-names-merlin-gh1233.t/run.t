@@ -5,7 +5,7 @@
   42
 
   $ dune ocaml merlin dump-config $PWD
-  Foo
+  Foo: _build/default/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -22,10 +22,11 @@
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
 
   $ dune ocaml merlin dump-config $PWD/foo
-  Bar
+  Bar: _build/default/foo/bar
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -39,8 +40,9 @@
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
-  Foo
+     -keep-locs
+     -g)))
+  Foo: _build/default/foo/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -53,7 +55,8 @@
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))
 
 FIXME : module Foo is not unbound
 This test is disabled because it depends on root detection and is not reproducible.

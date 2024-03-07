@@ -1,7 +1,7 @@
 Test error message for modules belonging to melange.emit and another stanza
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
@@ -10,8 +10,7 @@ Test error message for modules belonging to melange.emit and another stanza
   >  (name lib)
   >  (modes melange))
   > (melange.emit
-  >  (target output)
-  >  (module_system commonjs))
+  >  (target output))
   > EOF
 
   $ cat > main.ml <<EOF

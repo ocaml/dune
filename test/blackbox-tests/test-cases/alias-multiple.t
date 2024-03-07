@@ -38,7 +38,7 @@ We now update the dune file to use multiple aliases
   File "dune", line 2, characters 10-11:
   2 |  (alias a b)
                 ^
-  Error: Too many argument for alias
+  Error: Too many arguments for alias
   [1]
 
 That doesn't work so we use the aliases field
@@ -82,8 +82,7 @@ not allowed
   2 |  (alias a)
   3 |  (aliases b)
   4 |  (action (echo "I have run")))
-  Error: The 'alias' and 'aliases' fields are mutually exclusive. Please use
-  only the 'aliases' field.
+  Error: fields "alias" and "aliases" are mutually exclusive.
   [1]
 
 Even if the aliases list is empty
@@ -100,6 +99,5 @@ Even if the aliases list is empty
   2 |  (alias a)
   3 |  (aliases)
   4 |  (action (echo "I have run")))
-  Error: The 'alias' and 'aliases' fields are mutually exclusive. Please use
-  only the 'aliases' field.
+  Error: fields "alias" and "aliases" are mutually exclusive.
   [1]

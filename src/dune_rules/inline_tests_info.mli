@@ -5,6 +5,7 @@ module Backend : sig
     { loc : Loc.t
     ; runner_libraries : (Loc.t * Lib_name.t) list
     ; flags : Ordered_set_lang.Unexpanded.t
+    ; list_partitions_flags : Ordered_set_lang.Unexpanded.t option
     ; generate_runner : (Loc.t * Action_unexpanded.t) option
     ; extends : (Loc.t * Lib_name.t) list
     }
@@ -20,10 +21,9 @@ module Mode_conf : sig
     | Best
 
   val compare : t -> t -> ordering
-
   val to_dyn : t -> Dyn.t
-
   val decode : t Dune_lang.Decoder.t
+  val to_string : t -> string
 
   module Map : Map.S with type key = t
 
@@ -31,7 +31,6 @@ module Mode_conf : sig
     include Set.S with type elt = t and type 'a map = 'a Map.t
 
     val decode : t Dune_lang.Decoder.t
-
     val default : t
   end
 end

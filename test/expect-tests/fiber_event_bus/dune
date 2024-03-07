@@ -1,0 +1,19 @@
+(library
+ (name fiber_event_bus_tests)
+ (modules fiber_event_bus_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  fiber
+  fiber_event_bus
+  test_scheduler
+  dune_tests_common
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

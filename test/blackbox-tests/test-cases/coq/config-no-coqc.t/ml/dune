@@ -1,0 +1,7 @@
+(library
+ (name bar)
+ (public_name example-ocaml.bar)
+ (modules bar)
+ (wrapped false)
+ (flags (:standard -rectypes -w -27-32-33-39-67-37-20-34))
+)

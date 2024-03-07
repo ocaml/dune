@@ -1,7 +1,6 @@
 (** Loading build rules *)
 
 open Import
-module Action_builder := Action_builder0
 
 (** A way to determine the [Loc.t] of the current rule. Set by [Build_system]. *)
 val set_current_rule_loc : (unit -> Loc.t option Memo.t) -> unit
@@ -20,12 +19,13 @@ module Loaded : sig
     ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
     }
 
+  (* CR-someday amokhov: Switch to [Filename_set.Source.t] and [Filename_set.External.t]
+     or something similar to avoid handling filename sets unanchored to their directory. *)
   type t =
-    | Source of { files : Path.Source.Set.t }
-    | External of { files : Path.External.Set.t }
+    | Source of { filenames : Filename.Set.t }
+    | External of { filenames : Filename.Set.t }
     | Build of build
-    | Build_under_directory_target of
-        { directory_target_ancestor : Path.Build.t }
+    | Build_under_directory_target of { directory_target_ancestor : Path.Build.t }
 
   val no_rules : allowed_subdirs:Path.Unspecified.w Dir_set.t -> t
 end
@@ -33,14 +33,13 @@ end
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.t
 
-val alias_exists : Alias.t -> bool Memo.t
-
 (** Return the rule that has the given file has target, if any *)
 val get_rule : Path.t -> Rule.t option Memo.t
 
 (** Return the definition of an alias. *)
-val get_alias_definition :
-  Alias.t -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
+val get_alias_definition
+  :  Alias.t
+  -> (Loc.t * Rules.Dir_rules.Alias_spec.item) list Memo.t
 
 type target_type =
   | File
@@ -59,7 +58,8 @@ val is_target : Path.t -> is_target Memo.t
     This is similar to:
 
     {[
-      is_target p >>= function
+      is_target p
+      >>= function
       | No | Yes File -> false
       | Yes Directory | under_directory_target_so_cannot_say -> true
     ]}
@@ -67,14 +67,6 @@ val is_target : Path.t -> is_target Memo.t
     Except that it forces less rules to be computed, thus creating less
     opportunities for creating computation cycles. *)
 val is_under_directory_target : Path.t -> bool Memo.t
-
-(** List of all buildable direct targets. This does not include files and
-    directories produced under a directory target.
-
-    If argument is [None], load the root, otherwise only load targets from the
-    nearest subdirectory. *)
-val all_direct_targets :
-  Path.Source.t option -> target_type Path.Build.Map.t Memo.t
 
 type rule_or_source =
   | Source of Digest.t

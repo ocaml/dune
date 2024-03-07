@@ -60,8 +60,6 @@
     archive(native) = "foobar_runtime_lib2.cmxa"
     plugin(byte) = "foobar_runtime_lib2.cma"
     plugin(native) = "foobar_runtime_lib2.cmxs"
-    linkopts(javascript) = "+foobar/runtime-lib2/foobar_runtime.js
-                            +foobar/runtime-lib2/foobar_runtime2.js"
     jsoo_runtime = "foobar_runtime.js foobar_runtime2.js"
   )
   package "sub" (

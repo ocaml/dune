@@ -42,7 +42,7 @@ Ensure directory targets are produced.
   Error: Rule failed to produce directory "output"
   [1]
 
-Error message when the matching directory target doesn't contain a requested path.
+Error message when the matching directory target is empty.
 
   $ cat > dune <<EOF
   > (rule
@@ -57,6 +57,25 @@ Error message when the matching directory target doesn't contain a requested pat
   2 |   (deps (sandbox always))
   3 |   (targets (dir output))
   4 |   (action (bash "mkdir output")))
+  Error: Rule produced directory "output" that contains no files nor non-empty
+  subdirectories
+  [1]
+
+Error message when the matching directory target doesn't contain a requested path.
+
+  $ cat > dune <<EOF
+  > (rule
+  >   (deps (sandbox always))
+  >   (targets (dir output))
+  >   (action (bash "mkdir output && touch output/y")))
+  > EOF
+
+  $ dune build output/x
+  File "dune", line 1, characters 0-108:
+  1 | (rule
+  2 |   (deps (sandbox always))
+  3 |   (targets (dir output))
+  4 |   (action (bash "mkdir output && touch output/y")))
   Error: This rule defines a directory target "output" that matches the
   requested path "output/x" but the rule's action didn't produce it
   [1]
@@ -123,7 +142,7 @@ Print rules:
 
   $ dune rules output
   ((deps ((File (In_build_dir _build/default/src_x))))
-   (targets ((files ()) (directories (default/output))))
+   (targets ((files ()) (directories (_build/default/output))))
    (context default)
    (action
     (chdir
@@ -322,14 +341,6 @@ since the produced directory has the same contents.
   a
   b:
   new-b
-
-There is no shared cache support for directory targets at the moment, which is
-why we rerun the first action.
-
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm _build/default/output/a
-  $ dune build contents
-  running
 
 Check that Dune clears stale files from directory targets.
 

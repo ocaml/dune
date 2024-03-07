@@ -1,3 +1,8 @@
 (library
  (name dune_digest)
- (libraries dune_metrics stdune))
+ (libraries dune_metrics stdune unix)
+ (foreign_stubs
+  (names dune_digest_stubs)
+  (language c))
+ (instrumentation
+  (backend bisect_ppx)))

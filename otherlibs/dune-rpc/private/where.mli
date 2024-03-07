@@ -6,22 +6,19 @@ type t =
   ]
 
 val rpc_socket_relative_to_build_dir : string
-
 val to_string : t -> string
-
 val compare : t -> t -> Ordering.t
-
 val to_dyn : t -> Dyn.t
-
 val sexp : t Conv.value
-
+val env_var : Env.Var.t
 val add_to_env : t -> Env.t -> Env.t
+val of_env : Env.t -> (t, [ `Exn of exn | `Missing ]) result
 
 module type S = sig
   type 'a fiber
 
-  val get :
-       env:(string -> string option)
+  val get
+    :  env:(string -> string option)
     -> build_dir:string
     -> (t option, exn) result fiber
 
@@ -32,19 +29,21 @@ type error = Invalid_where of string
 
 exception E of error
 
-module Make (Fiber : sig
-  type 'a t
+module Make
+    (Fiber : sig
+       type 'a t
 
-  val return : 'a -> 'a t
+       val return : 'a -> 'a t
 
-  module O : sig
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+       module O : sig
+         val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+         val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+       end
+     end)
+    (_ : sig
+       val read_file : string -> (string, exn) result Fiber.t
 
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-  end
-end) (_ : sig
-  val read_file : string -> (string, exn) result Fiber.t
-
-  val analyze_path :
-    string -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
-end) : S with type 'a fiber := 'a Fiber.t
+       val analyze_path
+         :  string
+         -> ([ `Unix_socket | `Normal_file | `Other ], exn) result Fiber.t
+     end) : S with type 'a fiber := 'a Fiber.t

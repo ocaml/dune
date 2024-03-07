@@ -11,6 +11,6 @@ include to require the example.h header.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
-  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
+  $ mkdir -p $TARGET/pkgconfig && install $LIBEX/*example* $TARGET
   $ dune exec ./example.exe
   4

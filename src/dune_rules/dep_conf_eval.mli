@@ -6,16 +6,23 @@ open Import
 val package_install : context:Build_context.t -> pkg:Package.t -> Alias.t
 
 (** Evaluates unnamed dependency specifications. *)
-val unnamed :
-     ?sandbox:Sandbox_config.t
+val unnamed
+  :  ?sandbox:Sandbox_config.t
   -> expander:Expander.t
   -> Dep_conf.t list
   -> unit Action_builder.t * Sandbox_config.t
 
+(** Evaluates unnamed dependency specifications. Returns the paths to the newly
+    evaluated dependencies. *)
+val unnamed_get_paths
+  :  expander:Expander.t
+  -> Dep_conf.t list
+  -> Path.Set.t Action_builder.t * Sandbox_config.t option
+
 (** Evaluates named dependency specifications. Return the action build that
     register dependencies as well as an expander that can be used to expand to
     expand variables from the bindings. *)
-val named :
-     expander:Expander.t
+val named
+  :  expander:Expander.t
   -> Dep_conf.t Bindings.t
   -> unit Action_builder.t * Expander.t * Sandbox_config.t

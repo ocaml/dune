@@ -19,7 +19,6 @@ module type Implicit_output = sig
   type t
 
   val name : string
-
   val union : t -> t -> t
 end
 

@@ -1,0 +1,6 @@
+(library
+ (name dune_rpc_client)
+ (libraries stdune unix fiber csexp_rpc dune_util xdg dune_rpc_private)
+ (synopsis "Dune's rpc server + a usable client")
+ (instrumentation
+  (backend bisect_ppx)))

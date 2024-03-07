@@ -1,14 +1,14 @@
 Test melange.emit promotion
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
   $ mkdir lib
   $ cat > lib/dune <<EOF
   > (library
-  >  (modes melange)
+  >  (modes :standard melange)
   >  (name mylib))
   > EOF
 
@@ -19,11 +19,10 @@ Test melange.emit promotion
   $ cat > dune <<EOF
   > (melange.emit
   >  (alias dist)
-  >  (entries hello)
+  >  (modules hello)
   >  (promote (until-clean))
   >  (target dist)
-  >  (libraries mylib)
-  >  (module_system commonjs))
+  >  (libraries mylib))
   > EOF
 
   $ cat > hello.ml <<EOF
@@ -34,11 +33,17 @@ Test melange.emit promotion
 
   $ dune build @dist
 
+Library has `(modes :standard)` so it also builds for bytecode / native
+
+  $ dune build lib/.mylib.objs/byte/mylib.cmo
+  $ dune build lib/.mylib.objs/native/mylib.cmx
+
 Targets are promoted to the source tree
 
   $ ls ./dist
   hello.js
   lib
+  node_modules
   $ ls ./dist/lib
   mylib.js
 
@@ -50,4 +55,5 @@ Targets are promoted to the source tree
   $ dune clean
   $ ls ./dist
   lib
+  node_modules
   $ ls ./dist/lib

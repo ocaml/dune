@@ -1,0 +1,15 @@
+(cram
+ (enabled_if
+  ;; On macos it looks like dune has a chance to miss filesystem events if they
+  ;; occur too close together in time. Tests of `dune exec -w` run a program with a
+  ;; visible side effect (touching a file), and wait for the side effect before
+  ;; modifying the program to trigger a rebuild/rerun. On macos, these changes can
+  ;; sometimes go undetected. Adding a delay (e.g. `sleep 1`) before modifying the
+  ;; program seems to guarantee a rebuild will be triggered, but that is too
+  ;; unreliable to depend on in a test so these tests are disabled on macos.
+  ;; (<> "macosx" %{ocaml-config:system})
+  ;; disabled until it works in CI
+  false))
+
+(cram
+ (deps wait-for-file.sh))

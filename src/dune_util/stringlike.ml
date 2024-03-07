@@ -6,8 +6,8 @@ module Make (S : Stringlike_intf.S_base) = struct
   let of_string s : t =
     match S.of_string_opt s with
     | Some s -> s
-    | None ->
-      Code_error.raise ("Invalid " ^ S.module_ ^ ".t") [ ("s", Dyn.string s) ]
+    | None -> Code_error.raise ("Invalid " ^ S.module_ ^ ".t") [ "s", Dyn.string s ]
+  ;;
 
   let error_message s = Printf.sprintf "%S is an invalid %s." s S.description
 
@@ -23,16 +23,15 @@ module Make (S : Stringlike_intf.S_base) = struct
       | Some m -> [ m ]
     in
     User_error.make ~loc ~hints (Pp.text (error_message s) :: valid_desc)
+  ;;
 
   let of_string_user_error (loc, s) =
     match of_string_opt s with
     | Some s -> Ok s
     | None -> Error (user_error (loc, s))
+  ;;
 
-  let parse_string_exn (loc, s) =
-    match of_string_user_error (loc, s) with
-    | Ok s -> s
-    | Error err -> raise (User_error.E err)
+  let parse_string_exn (loc, s) = of_string_user_error (loc, s) |> User_error.ok_exn
 
   let conv =
     ( (fun s ->
@@ -40,19 +39,21 @@ module Make (S : Stringlike_intf.S_base) = struct
         | Some x -> Ok x
         | None -> Error (`Msg (error_message s)))
     , fun fmt t -> Format.pp_print_string fmt (to_string t) )
+  ;;
 
   let decode =
     let open Dune_sexp.Decoder in
     map_validate (located string) ~f:of_string_user_error
+  ;;
 
   let decode_loc =
     let open Dune_sexp.Decoder in
     map_validate (located string) ~f:(fun ((loc, _) as s) ->
-        let open Result.O in
-        let+ t = of_string_user_error s in
-        (loc, t))
+      let open Result.O in
+      let+ t = of_string_user_error s in
+      loc, t)
+  ;;
 
   let encode t = Dune_sexp.Encoder.(string (to_string t))
-
   let to_dyn t = Dyn.string (to_string t)
 end

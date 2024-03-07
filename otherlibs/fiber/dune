@@ -1,5 +1,0 @@
-(library
- (name fiber)
- (public_name fiber)
- (libraries stdune dyn)
- (synopsis "Monadic concurrency library"))

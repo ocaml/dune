@@ -1,6 +1,6 @@
 (library
  (name dune_unit_tests)
- (modules :standard \ vcs_tests findlib_tests)
+ (modules :standard \ findlib_tests persistent_tests)
  (libraries
   ocaml_config
   spawn
@@ -38,6 +38,8 @@
   stdune
   dune_engine
   dune_rules
+  dune_lang
+  dune_findlib
   memo
   test_scheduler
   ;; This is because of the (implicit_transitive_deps false)
@@ -51,26 +53,22 @@
   (pps ppx_expect)))
 
 (library
- (name vcs_tests)
- (inline_tests
-  (deps
-   ;; the dependency on hg is optional, but i'm not sure how to express that.
-   ;; %{bin:hg}
-   %{bin:git}))
- (modules vcs_tests)
+ (name persistent_tests)
+ (modules persistent_tests)
+ (inline_tests)
+ (preprocess
+  (pps ppx_expect))
  (libraries
-  dune_tests_common
-  stdune
   dune_util
+  dyn
+  stdune
   dune_engine
-  fiber
-  memo
+  dune_rules
+  dune_digest
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config
   ppx_expect.config_types
   ppx_expect.common
   base
-  ppx_inline_test.config)
- (preprocess
-  (pps ppx_expect)))
+  ppx_inline_test.config))

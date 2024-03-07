@@ -166,7 +166,7 @@ Per-context setting takes precedence over per-workspace setting.
 Next, we check the backend can be used when it is installed.
 
   $ dune build ppx/hello.install
-  $ dune install hello --prefix _install 2>/dev/null
+  $ dune install hello --prefix _install
   $ grep instrumentation.backend _install/lib/hello/dune-package
    (instrumentation.backend hello.ppx))
   $ mkdir -p installed

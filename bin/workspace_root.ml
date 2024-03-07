@@ -13,14 +13,17 @@ module Kind = struct
     | Dune_workspace -> 1
     | Dune_project -> 2
     | Cwd -> 3
+  ;;
 
   let lowest_priority = max_int
 
   let of_dir_contents files =
-    if String.Set.mem files Workspace.filename then Some Dune_workspace
-    else if String.Set.mem files Dune_engine.Dune_project.filename then
-      Some Dune_project
+    if String.Set.mem files Workspace.filename
+    then Some Dune_workspace
+    else if Filename.Set.mem files Dune_project.filename
+    then Some Dune_project
     else None
+  ;;
 end
 
 type t =
@@ -40,18 +43,15 @@ end
 
 let find () =
   let cwd = Sys.getcwd () in
-  let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir :
-      Candidate.t option =
+  let rec loop counter ~(candidate : Candidate.t option) ~to_cwd dir : Candidate.t option =
     match Sys.readdir dir with
     | exception Sys_error msg ->
       User_warning.emit
         [ Pp.textf
-            "Unable to read directory %s. Will not look for root in parent \
-             directories."
+            "Unable to read directory %s. Will not look for root in parent directories."
             dir
         ; Pp.textf "Reason: %s" msg
-        ; Pp.text
-            "To remove this warning, set your root explicitly using --root."
+        ; Pp.text "To remove this warning, set your root explicitly using --root."
         ];
       candidate
     | files ->
@@ -69,24 +69,28 @@ let find () =
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
-    if counter > String.length cwd then candidate
-    else
+    if counter > String.length cwd
+    then candidate
+    else (
       let parent = Filename.dirname dir in
-      if parent = dir then candidate
-      else
+      if parent = dir
+      then candidate
+      else (
         let base = Filename.basename dir in
-        loop (counter + 1) parent ~candidate ~to_cwd:(base :: to_cwd)
+        loop (counter + 1) parent ~candidate ~to_cwd:(base :: to_cwd)))
   in
   loop 0 ~to_cwd:[] cwd ~candidate:None
+;;
 
 let create ~default_is_cwd ~specified_by_user =
   match
     match specified_by_user with
     | Some dn -> Some { Candidate.kind = Explicit; dir = dn; to_cwd = [] }
-    | None -> (
+    | None ->
       let cwd = { Candidate.kind = Cwd; dir = "."; to_cwd = [] } in
-      if Dune_util.Config.inside_dune then Some cwd
-      else
+      if Dune_util.Execution_env.inside_dune
+      then Some cwd
+      else (
         match find () with
         | Some s -> Some s
         | None -> if default_is_cwd then Some cwd else None)
@@ -95,8 +99,7 @@ let create ~default_is_cwd ~specified_by_user =
     { kind
     ; dir
     ; to_cwd
-    ; reach_from_root_prefix =
-        String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+    ; reach_from_root_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
     }
   | None ->
     User_error.raise
@@ -106,8 +109,9 @@ let create ~default_is_cwd ~specified_by_user =
       ; Pp.verbatim "    dune init project NAME"
       ; Pp.nop
       ; Pp.text
-          "Otherwise, please make sure to run dune inside an existing project \
-           or workspace. For more information about how dune identifies the \
-           root of the current workspace/project, please refer to \
+          "Otherwise, please make sure to run dune inside an existing project or \
+           workspace. For more information about how dune identifies the root of the \
+           current workspace/project, please refer to \
            https://dune.readthedocs.io/en/stable/usage.html#finding-the-root"
       ]
+;;

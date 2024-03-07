@@ -1,4 +1,6 @@
 (library
  (name dune_rpc_lwt)
  (public_name dune-rpc-lwt)
- (libraries result csexp dune_rpc lwt lwt.unix unix))
+ (libraries result csexp dune_rpc lwt lwt.unix unix)
+ (instrumentation
+  (backend bisect_ppx)))

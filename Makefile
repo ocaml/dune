@@ -15,32 +15,34 @@ core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
-"mdx>=2.1.0" \
+"mdx>=2.3.0" \
 menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
-"odoc>=2.0.1" \
-"ppx_expect.v0.15.0" \
+"odoc>=2.4.0" \
+"ppx_expect>=v0.16.0" \
 ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange>=0.3.1" \
-"mel>=0.3.1"
-
+"melange"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
-"dkml-workflows>=1.1.0" \
+"dkml-workflows>=1.2.0" \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.0
+TEST_OCAMLVERSION := 4.14.1
 
 -include Makefile.dev
 
 .PHONY: help
 help:
 	@cat doc/make-help.txt
+
+.PHONY: bootstrap
+bootstrap:
+	$(MAKE) -B $(BIN)
 
 .PHONY: release
 release: $(BIN)
@@ -74,11 +76,15 @@ dev-depext:
 
 .PHONY: melange
 melange:
-	opam pin add melange-compiler-libs https://github.com/melange-re/melange-compiler-libs.git#426463a77d0b70ecf0108c98e6a86d325cd01472
-	opam pin add melange https://github.com/melange-re/melange.git#685e546e290d317a884a4d48c7835467422c6426
+	opam pin add -n melange.dev https://github.com/melange-re/melange.git#v4-414-dev
 
+.PHONY: dev-deps
 dev-deps: melange
 	opam install -y $(TEST_DEPS)
+
+.PHONY: coverage-deps
+coverage-deps:
+	opam install -y bisect_ppx
 
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange:
@@ -113,6 +119,10 @@ test-all: $(BIN)
 
 test-all-sans-melange: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
+
+test-coverage: $(BIN)
+	- $(BIN) build --instrument-with bisect_ppx --force @runtest
+	bisect-ppx-report send-to Coveralls
 
 .PHONY: check
 check: $(BIN)
@@ -220,7 +230,3 @@ docker-build-image:
 .PHONY: docker-compose
 docker-compose:
 	docker compose -f docker/dev.yml run dune bash
-
-.PHONY: bootstrap
-bootstrap:
-	$(BIN) build @install -p dune --profile dune-bootstrap

@@ -1,97 +1,128 @@
 open Import
 open Memo.O
 
-let get_installed_binaries ~(context : Context.t) stanzas =
+let available_exes ~dir (exes : Executables.t) =
+  let* compile_info =
+    let* scope = Scope.DB.find_by_dir dir in
+    let dune_version =
+      let project = Scope.project scope in
+      Dune_project.dune_version project
+    in
+    let libs = Scope.libs scope in
+    let+ pps =
+      (* Instead of making the binary unavailable, this will just
+         fail when loading artifacts. This is clearly bad but
+         "optional" executables shouldn't be used. *)
+      Preprocess.Per_module.with_instrumentation
+        exes.buildable.preprocess
+        ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
+      |> Resolve.Memo.read_memo
+      >>| Preprocess.Per_module.pps
+    in
+    let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names) in
+    Lib.DB.resolve_user_written_deps
+      libs
+      (`Exe exes.names)
+      exes.buildable.libraries
+      ~pps
+      ~dune_version
+      ~forbidden_libraries:exes.forbidden_libraries
+      ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+      ~merlin_ident
+  in
   let open Memo.O in
-  let install_dir = Local_install_path.bin_dir ~context:context.name in
-  let expand_str ~dir sw =
-    Expander.With_reduced_var_set.expand_str ~context ~dir sw
-  in
-  let expand_str_partial ~dir sw =
-    Expander.With_reduced_var_set.expand_str_partial ~context ~dir sw
-  in
-  Memo.List.map stanzas ~f:(fun (d : Dune_file.t) ->
-      let dir = Path.Build.append_source context.build_dir d.dir in
-      let binaries_from_install files =
-        let* unexpanded_file_bindings =
-          Dune_file.Install_conf.File_entry.to_file_bindings_unexpanded files
-            ~expand_str:(expand_str ~dir) ~dir
-        in
-        Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
-            let+ p =
-              File_binding.Unexpanded.destination_relative_to_install_path fb
-                ~section:Bin ~expand:(expand_str ~dir)
-                ~expand_partial:(expand_str_partial ~dir)
-            in
-            let p = Path.Local.of_string (Install.Dst.to_string p) in
-            if Path.Local.is_root (Path.Local.parent_exn p) then
-              Some (Path.Build.append_local install_dir p)
-            else None)
-        >>| List.filter_opt >>| Path.Build.Set.of_list
+  let+ available = Lib.Compile.direct_requires compile_info in
+  Resolve.is_ok available
+;;
+
+let expander = Fdecl.create Dyn.opaque
+
+let get_installed_binaries ~(context : Context.t) stanzas =
+  let merge _ x y = Some (Appendable_list.( @ ) x y) in
+  let open Memo.O in
+  Memo.List.map stanzas ~f:(fun d ->
+    let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
+    let* expander = (Fdecl.get expander) ~dir in
+    let expand_value sw =
+      Expander.expand expander ~mode:Single sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let expand_str sw =
+      Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst
+    in
+    let expand_str_partial sw =
+      Expander.expand_str_partial expander sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let eval_blang = Expander.eval_blang expander in
+    let binaries_from_install ~enabled_if files =
+      let* unexpanded_file_bindings =
+        Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir
       in
-      Memo.List.map d.stanzas ~f:(fun stanza ->
-          match (stanza : Stanza.t) with
-          | Dune_file.Install { section = Section Bin; files; _ } ->
-            binaries_from_install files
-          | Dune_file.Executables
-              ({ install_conf = Some { section = Section Bin; files; _ }; _ } as
-              exes) -> (
-            let* enabled_if =
-              Expander.With_reduced_var_set.eval_blang ~context ~dir
-                exes.enabled_if
-            in
-            match enabled_if with
-            | false -> Memo.return Path.Build.Set.empty
-            | true -> (
-              match exes.optional with
-              | false -> binaries_from_install files
-              | true ->
-                let* compile_info =
-                  let* scope = Scope.DB.find_by_dir dir in
-                  let project = Scope.project scope in
-                  let dune_version = Dune_project.dune_version project in
-                  let+ pps =
-                    Resolve.Memo.read_memo
-                      (Preprocess.Per_module.with_instrumentation
-                         exes.buildable.preprocess
-                         ~instrumentation_backend:
-                           (Lib.DB.instrumentation_backend (Scope.libs scope)))
-                    >>| Preprocess.Per_module.pps
-                  in
-                  let merlin_ident =
-                    Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-                  in
-                  Lib.DB.resolve_user_written_deps (Scope.libs scope)
-                    (`Exe exes.names) exes.buildable.libraries ~pps
-                    ~dune_version
-                    ~allow_overlaps:
-                      exes.buildable.allow_overlapping_dependencies
-                    ~merlin_ident
-                in
-                let* available =
-                  let open Memo.O in
-                  let+ available = Lib.Compile.direct_requires compile_info in
-                  Resolve.is_ok available
-                in
-                if available then binaries_from_install files
-                else Memo.return Path.Build.Set.empty))
-          | _ -> Memo.return Path.Build.Set.empty)
-      >>| Path.Build.Set.union_all)
-  >>| Path.Build.Set.union_all >>| Artifacts.Bin.Local.create
+      Memo.List.map unexpanded_file_bindings ~f:(fun fb ->
+        let+ p =
+          File_binding.Unexpanded.destination_relative_to_install_path
+            fb
+            ~section:Bin
+            ~expand:expand_str
+            ~expand_partial:expand_str_partial
+        in
+        let dst = Path.Local.of_string (Install.Entry.Dst.to_string p) in
+        if Path.Local.is_root (Path.Local.parent_exn dst)
+        then (
+          let origin = { Artifacts.binding = fb; dir; dst; enabled_if } in
+          Some (Path.Local.basename dst, origin))
+        else None)
+      >>| List.filter_opt
+      >>| Filename.Map.of_list_reduce ~f:(fun _ y ->
+        (* CR-rgrinberg: we shouldn't allow duplicate bindings, but where's the
+           correct place for this validation? *)
+        y)
+      >>| Filename.Map.map ~f:Appendable_list.singleton
+    in
+    Dune_file.static_stanzas d
+    |> Memo.List.map ~f:(fun stanza ->
+      match Stanza.repr stanza with
+      | Install_conf.T { section = _loc, Section Bin; files; enabled_if; _ } ->
+        let enabled_if = eval_blang enabled_if in
+        binaries_from_install ~enabled_if files
+      | Executables.T
+          ({ install_conf = Some { section = _loc, Section Bin; files; _ }; _ } as exes)
+        ->
+        let enabled_if =
+          let enabled_if = eval_blang exes.enabled_if in
+          match exes.optional with
+          | false -> enabled_if
+          | true ->
+            enabled_if
+            >>= (function
+             | false -> Memo.return false
+             | true -> available_exes ~dir exes)
+        in
+        binaries_from_install ~enabled_if files
+      | _ -> Memo.return Filename.Map.empty)
+    >>| Filename.Map.union_all ~f:merge)
+  >>| Filename.Map.union_all ~f:merge
+;;
 
 let all =
-  Memo.lazy_ @@ fun () ->
+  Memo.lazy_ ~name:"Artifacts_db.all"
+  @@ fun () ->
   let+ contexts = Context.DB.all () in
   Context_name.Map.of_list_map_exn contexts ~f:(fun context ->
-      let artifacts =
-        Memo.lazy_ @@ fun () ->
-        let* public_libs = Scope.DB.public_libs context in
-        let* stanzas = Only_packages.filtered_stanzas context in
-        let+ local_bins = get_installed_binaries ~context stanzas in
-        Artifacts.create context ~public_libs ~local_bins
+    let artifacts =
+      let local_bins =
+        Memo.lazy_ ~name:"get_installed_binaries" (fun () ->
+          Context.name context |> Dune_load.dune_files >>= get_installed_binaries ~context)
       in
-      (context.name, artifacts))
+      Artifacts.create context ~local_bins |> Memo.return
+    in
+    Context.name context, artifacts)
+;;
 
 let get (context : Context.t) =
   let* all = Memo.Lazy.force all in
-  Context_name.Map.find_exn all context.name |> Memo.Lazy.force
+  Context_name.Map.find_exn all (Context.name context)
+;;

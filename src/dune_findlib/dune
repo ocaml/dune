@@ -1,0 +1,3 @@
+(library
+ (name dune_findlib)
+ (libraries stdune dune_lang dune_engine memo ocaml dune_meta_parser unix fs))

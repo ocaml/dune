@@ -87,6 +87,7 @@ We want to see mangled names in the dune-package file as well:
     (byte __private__/secret/secret.cma)
     (native __private__/secret/secret.cmxs))
    (native_archives __private__/secret/secret.a)
+     (source (path Secret) (impl (path __private__/secret/secret.ml))))))
 
 Cmi for secret library must not be visible for normal users. Hence they must be
 hidden.

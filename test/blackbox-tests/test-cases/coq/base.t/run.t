@@ -1,10 +1,17 @@
-  $ dune build --display short --debug-dependency-path @all
-        coqdep bar.v.d
-        coqdep foo.v.d
+  $ dune build --display short --debug-dependency-path @all --always-show-command-line
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
+        coqdep .basic.theory.d
           coqc foo.{glob,vo}
           coqc bar.{glob,vo}
 
   $ dune build --debug-dependency-path @default
+  Warning: Coq Language Versions lower than 0.8 have been deprecated in Dune
+  3.8 and will be removed in an upcoming Dune version.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (deprecated_coq_lang_lt_08 disabled))
   lib: [
     "_build/install/default/lib/base/META"
     "_build/install/default/lib/base/dune-package"

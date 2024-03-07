@@ -4,6 +4,18 @@
 Writing and Running Tests
 *************************
 
+.. TODO(diataxis)
+
+   This is mostly a guide, or rather several of them. There is also some
+   reference in it.
+
+   Something we can do is split this into:
+
+   - one how-to guide per test technique
+   - a "choosing a test technique" how-to guide
+   - reference for ``inline_tests.backend``
+   - reference for cram tests
+
 Dune tries to streamline the testing story as much as possible, so
 you can focus on the tests themselves and not bother with setting
 up various test frameworks.
@@ -34,7 +46,7 @@ Note that in any case, ``dune runtest`` is simply shorthand for building the
 ``runtest`` alias, so you can always ask Dune to run the tests in conjunction
 with other targets by passing ``@runtest`` to ``dune build``. For instance:
 
-.. code:: bash
+.. code:: console
 
    $ dune build @install @runtest
    $ dune build @install @test/runtest
@@ -47,9 +59,9 @@ If you would only like to run a single test for your project, you may use ``dune
 exec`` to run the test executable (for the sake of this example,
 ``project/tests/myTest.ml``):
 
-.. code:: bash
+.. code:: console
 
-   dune exec project/tests/myTest.exe
+  $ dune exec project/tests/myTest.exe
 
 To run :ref:`cram-tests`, you can use the alias that is created for the test.
 The name of the alias corresponds to the name of the test without the ``.t``
@@ -57,7 +69,7 @@ extension. For directory tests, this is the name of the directory without the
 ``.t`` extension. Assuming a ``cram-test.t`` or ``cram-test.t/run.t`` file
 exists, it can be run with:
 
-.. code:: bash
+.. code:: console
 
    $ dune build @cram-test
 
@@ -93,7 +105,7 @@ follows:
 The file must be preprocessed with the ``ppx_inline_test`` PPX rewriter,
 so for instance the ``dune`` file might look like this:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -102,7 +114,7 @@ so for instance the ``dune`` file might look like this:
 In order to tell Dune that our library contains inline tests, 
 we have to add an ``inline_tests`` field:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -112,7 +124,7 @@ we have to add an ``inline_tests`` field:
 We can now build and execute this test by running ``dune runtest``. For
 instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    [...]
@@ -128,8 +140,8 @@ rewriter. To use such a framework, you must tell Dune about it,
 as it cannot guess. You can do that by adding a ``backend``
 field:
 
-.. code:: scheme
-	
+.. code:: dune
+
    (library
     (name foo)
     (inline_tests (backend qtest.lib)))
@@ -137,6 +149,11 @@ field:
 In the example above, the name `qtest.lib` comes from the `public_name` field
 in `qtest`'s own `dune` file.
 
+Note that using ``ppx_inline_test`` requires that the opam package
+``ppx_inline_test`` be installed in your switch. If you use ``ppx_inline_test``
+in a package then that package must `unconditionally` depend on
+``ppx_inline_test`` (ie. ``ppx_inline_test`` can't be a ``with-test``
+dependency).
 
 Inline Expectation Tests
 ------------------------
@@ -176,7 +193,7 @@ expectation tests is always as follows:
 Dune makes this workflow very easy. Simply add ``ppx_expect`` to
 your list of PPX rewriters as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -187,7 +204,7 @@ Then calling ``dune runtest`` will run these tests, and in case of
 mismatch, Dune will print a diff of the original source file and
 the suggested correction. For instance:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    [...]
@@ -203,14 +220,14 @@ the suggested correction. For instance:
 
 In order to accept the correction, simply run:
 
-.. code:: bash
+.. code:: console
 
    $ dune promote
 
 You can also make Dune automatically accept the correction after
 running the tests by typing:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest --auto-promote
 
@@ -220,12 +237,12 @@ promotion, which in turn makes the workflow even smoother.
 
 Running a Subset of the Test Suite
 ----------------------------------
-	
+
 You may also run a group of tests located under a directory with:
 
-.. code:: bash
+.. code:: console
 
-   dune runtest mylib/tests
+  $ dune runtest mylib/tests
 
 The above command will run all tests defined in tests and its subdirectories.
 
@@ -260,7 +277,7 @@ Specifying Inline Test Dependencies
 
 If your tests are reading files, you must tell Dune by adding
 a ``deps`` field the ``inline_tests`` field. The argument of this
-``deps`` field follows the usual :ref:`deps-field`. For instance:
+``deps`` field follows the usual :doc:`concepts/dependency-spec`. For instance:
 
 .. code:: ocaml
 
@@ -285,13 +302,14 @@ as:
     (inline_tests (flags (-foo bar)))
     (preprocess (pps ppx_expect)))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
+The argument of the ``flags`` field follows the
+:doc:`reference/ordered-set-language`.
 
 
 Passing Special Arguments to the Test Executable
 ------------------------------------------------
 
-To control how the test executable is built, it’s possible to customize a subset
+To control how the test executable is built, it's possible to customize a subset
 of compilation options for an executable using the ``executable`` field. Dune
 gives you this ability by simply specifying command line arguments as flags.
 You can specify such flags by using ``flags`` field. For instance:
@@ -306,8 +324,7 @@ You can specify such flags by using ``flags`` field. For instance:
       (flags (-foo bar))))
      (preprocess (pps ppx_expect))))
 
-The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
-
+The argument of the ``flags`` field follows the :doc:`reference/ordered-set-language`.
 
 Using Additional Libraries in the Test Runner
 ---------------------------------------------
@@ -337,9 +354,9 @@ are doing), forcing the linker to load your test module, since the test
 runner doesn't depend on anything itself. This field supports
 ``(:include ...)`` forms.
 
-.. code:: ocaml
+.. code:: dune
 
-	 (library
+   (library
     (name foo)
     (inline_tests
      (executable
@@ -358,35 +375,36 @@ empty library with your chosen backend's name.
 
 In order to define a library as an inline tests backend, simply add an
 ``inline_tests.backend`` field to the library stanza. An inline tests
-backend is specified by three parameters:
+backend is specified by four parameters:
 
 1. How to create the test runner
 2. How to build the test runner
 3. How to run the test runner
+4. Optionally how to run the test runner to list partitions
 
-These three parameters can be specified inside the
+These four parameters can be specified inside the
 ``inline_tests.backend`` field, which accepts the following fields:
 
-.. code:: scheme
+.. code:: dune
 
-   (generate_runner   <action>)
-   (runner_libraries (<ocaml-libraries>))
-   (flags             <flags>)
-   (extends          (<backends>))
+   (generate_runner       <action>)
+   (runner_libraries     (<ocaml-libraries>))
+   (flags                 <flags>)
+   (list_partitions_flags <flags>)
+   (extends              (<backends>))
 
 For instance:
 
-``<action>`` follows the :ref:`user-actions` specification. It
-describes an action that should be executed in the library's directory 
-using this backend for their tests. It's expected that the
-action will produce some OCaml code on its standard output. This code will
-constitute the test runner. The action can use the following
-additional variables:
+``<action>`` follows the :doc:`reference/actions/index` specification. It
+describes an action that should be executed in the library's directory using
+this backend for their tests. It's expected that the action will produce some
+OCaml code on its standard output. This code will constitute the test runner.
+The action can use the following additional variables:
 
-- ``%{library-name}`` — the name of the library being tested
-- ``%{impl-files}`` — the list of implementation files in the
+- ``%{library-name}`` --- the name of the library being tested
+- ``%{impl-files}`` --- the list of implementation files in the
   library, i.e., all the ``.ml`` and ``.re`` files
-- ``%{intf-files}`` — the list of interface files in the library,
+- ``%{intf-files}`` --- the list of interface files in the library,
   i.e., all the ``.mli`` and ``.rei`` files
 
 The ``runner_libraries`` field specifies what OCaml libraries the test
@@ -398,6 +416,11 @@ field.
 If your test runner needs specific flags, you should pass them in the
 ``flags`` field. You can use the ``%{library-name}`` variable in this
 field.
+
+If your test runner supports test partitions, you should pass the
+flags necessary for listing partitions in the
+``list_partitions_flags`` field. In such scenario, the ``flags`` field
+will also accepts a ``%{partition}`` variable.
 
 Finally, a backend can be an extension of another backend. In this
 case, you must specify this in the ``extends`` field. For instance,
@@ -423,7 +446,7 @@ In this example, we put tests in comments of the form:
 
 The backend for such a framework looks like this:
 
-.. code:: lisp
+.. code:: dune
 
    (library
     (name simple_tests)
@@ -445,7 +468,7 @@ to this alias in any directory in order to define custom tests. For instance, if
 you have a binary ``tests.exe`` that you want to run as part of
 running your test suite, simply add this to a ``dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
     (alias  runtest)
@@ -455,7 +478,7 @@ Hence to define a test, a pair of alias and executable stanzas are required.
 To simplify this common pattern, Dune provides a :ref:`tests-stanza` stanza to
 define multiple tests and their aliases at once:
 
-.. code:: scheme
+.. code:: dune
 
    (tests (names test1 test2))
 
@@ -469,7 +492,7 @@ which in essence is the same as running the ``diff`` tool, except that
 it's more integrated in Dune, especially with the ``promote``
 command. For instance, let's consider this test:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
    (with-stdout-to tests.output (run ./tests.exe)))
@@ -485,7 +508,7 @@ generated ``test.output`` file to ``tests.expected`` in the source tree.
 
 Alternatively, the :ref:`tests-stanza` also supports this style of tests.
 
-.. code:: scheme
+.. code:: dune
 
    (tests (names tests))
 
@@ -495,18 +518,17 @@ expected test.
 This provides a nice way of dealing with the usual *write code*,
 *run*, and *promote* cycle of testing. For instance:
 
-.. code:: bash
+.. code:: console
 
     $ dune runtest
-       [...]
-       -tests.expected
-       +tests.output
-       File "tests.expected", line 1, characters 0-1:
-       -Hello, world!
-       +Good bye!
-       $ dune promote
-    
-       Promoting _build/default/tests.output to tests.expected.
+    [...]
+    -tests.expected
+    +tests.output
+    File "tests.expected", line 1, characters 0-1:
+    -Hello, world!
+    +Good bye!
+    $ dune promote
+    Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs than the standard ``diff``
@@ -524,7 +546,7 @@ for testing binaries. Cram tests are automatically discovered from files or dire
 with a ``.t`` extension. By default, this has been enabled since Dune 3.0. For
 older versions, it must be manually enabled in the ``dune-project`` file:
 
-.. code:: scheme
+.. code:: dune
 
    (lang dune 2.7)
    (cram enable)
@@ -535,28 +557,24 @@ File Tests
 
 To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
 
-.. code:: bash
+.. code:: cram
 
    Simplest possible Cram test
      $ echo "testing"
 
-This simple example demonstrates two components of Cram tests:
-
-* Comments - Anything that doesn't start with a 2 space indentation is a comment
-* Commands - A command starts with 2 spaces followed by a ``$``. It's executed
-  in the shell and the output is diffed against the output below. In this
-  example, there's no output yet.
+This simple example demonstrates two components of Cram tests: comments and
+commands. See :doc:`reference/cram` for a description of the syntax.
 
 To run the test and promote the results:
 
-.. code:: bash
+.. code:: console
 
    $ dune runtest
    $ dune promote
 
 We now see the output of the command:
 
-.. code:: bash
+.. code:: cram
 
    Simplest possible cram test
      $ echo "testing"
@@ -568,13 +586,13 @@ than what is recorded in the test script.
 
 For example, here's an example of how we'd test the ``wc`` utility. ``wc.t``:
 
-.. code:: bash
+.. code:: cram
 
    We create a test artifact called "foo"
      $ cat >foo <<EOF
      > foo
      > bar
-	  > baz
+     > baz
      > EOF
 
    After creating the fixture, we want to verify that ``wc`` gives us the right
@@ -601,72 +619,24 @@ possible to define rules using ``dune`` files in such a directory.
 
 We convert the ``wc`` test above into a directory test ``wc.t``:
 
-.. code:: bash
+.. code:: console
 
    $ ls wc.t
-     run.t foo.txt bar/
+   run.t foo.txt bar/
 
 This defines a directory test ``wc.t`` which must include a ``run.t`` file as
 the test script, with ``fool.txt`` and ``bar`` are test artifacts. We may then
 access their contents in the test script ``run.t``:
 
-.. code:: bash
+.. code:: cram
 
-   $ wc -l foo | awk '{ print $1 }'
-   4
-   $ wc -l $(ls bar) | awk '{ print $1 }'
-   1231
+   Testing wc:
+     $ wc -l foo | awk '{ print $1 }'
+     4
+     $ wc -l $(ls bar) | awk '{ print $1 }'
+     1231
 
-
-Test Options
-------------
-
-When testing binaries, it's important to to specify a dependency on the binary
-for two reasons:
-
-- Dune must know to re-run the test when a dependency changes
-- The dependencies must be specified to guarantee that they're visible to the
-  test when running it.
-
-We can specify dependencies using the ``deps`` field using the usual syntax:
-
-.. code:: bash
-
-   (cram
-    (deps ../foo.exe))
-    
-This introduces a dependency on ``foo.exe`` on all Cram tests in this directory.
-To apply the stanza to a particular test, it's possible to use ``applies_to``
-field:
-
-.. code::
-
-   (cram
-    (applies_to * \ foo bar)
-    (deps ../foo.exe))
-
-We use the :ref:`predicate-lang` to apply this stanza to all tests in this
-directory, except for ``foo.t`` and ``bar.t``. The ``applies_to`` field also
-accepts the special value ``:whole_subtree`` in order to apply the options to all tests
-in all subdirectories (recursively). This is useful to apply common options to
-an entire test suite.
-
-The ``cram`` stanza accepts the following fields:
-
-- ``enabled_if`` - controls whether the tests are enabled
-- ``alias`` - alias that can be used to run the test. In addition to the user
-  alias, every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
-  own ``@foo`` alias to make it convenient to run individually.
-- ``(locks (<lock-names>))`` specify that the tests must be run while
-  holding the following locks. See the :ref:`locks` section for more details.
-- ``deps`` - dependencies of the test
-- ``(package <package-name>)`` - attach the tests selected by this stanza to the
-  specified package
-
-A single test may be configured by more than one ``cram`` stanza. In such cases,
-the values from all applicable ``cram`` stanzas are merged together to get the
-final values for all the fields.
-
+.. seealso:: :doc:`(cram) stanza reference </reference/files/dune/cram>`
 
 Testing an OCaml Program
 ------------------------
@@ -674,7 +644,7 @@ Testing an OCaml Program
 The most common testing situation involves testing an executable that is defined
 in Dune. For example:
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name wc)
@@ -696,7 +666,7 @@ tests are executed in a clean environment. This is why all Cram tests are
 sandboxed. To respect sandboxing, every test should specify dependency on any
 artifact that might rely on using the ``deps`` field.
 
-See :ref:`dune-action-plugin` for details about the sandboxing mechanism.
+See :doc:`concepts/sandboxing` for details about the sandboxing mechanism.
 
 
 Test Output Sanitation
@@ -706,7 +676,7 @@ In some situations, Cram tests emit non portable or non-deterministic output. We
 recommend sanitising such outputs using pipes. For example, we can scrub the
 OCaml magic number using ``sed`` as follows:
 
-.. code:: bash
+.. code:: console
 
    $ ocamlc -config | grep "cmi_magic_number:" | sed 's/Caml.*/$SPECIAL_CODE/'
    cmi_magic_number: $SPECIAL_CODE
@@ -720,7 +690,7 @@ default list of paths is:
 To add additional paths to this sanitation mechanism, it's sufficient to modify
 the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
 
-.. code:: bash
+.. code:: console
 
    $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
    $ echo $HOME

@@ -2,6 +2,8 @@
 Dune Libraries
 **************
 
+.. TODO(diataxis) Move into :doc:`reference/dune-libs`
+
 .. _configurator:
 
 Configurator
@@ -66,7 +68,7 @@ example:
 Usually, the module above would be named ``discover.ml``. The next step is to
 invoke it as an executable and tell Dune about the targets that it produces:
 
-.. code-block:: lisp
+.. code-block:: dune
 
   (executable
    (name discover)
@@ -79,7 +81,7 @@ invoke it as an executable and tell Dune about the targets that it produces:
 Another common pattern is to produce a flags file with Configurator and then
 use this flag file using ``:include``:
 
-.. code-block:: lisp
+.. code-block:: dune
 
   (library
    (name mylib)
@@ -150,9 +152,9 @@ file, the version is obtained by querying the version control
 system. For instance, the following Git command is used in Git
 repositories:
 
-.. code:: bash
+.. code:: console
 
-          git describe --always --dirty --abbrev=7
+   $ git describe --always --dirty --abbrev=7
 
 which produces a human readable version string of the form
 ``<version>-<commits-since-version>-<hash>[-dirty]``.
@@ -168,6 +170,7 @@ all the binaries and everything that depends on them, such as tests. Instead,
 Dune leaves a placeholder inside the binary and fills it during installation or
 promotion.
 
+.. _dune-action-plugin:
 
 (Experimental) Dune Action Plugin
 =================================
@@ -177,4 +180,5 @@ your own risk.*
 
 ``Dune-action-plugin`` provides a monadic interface to express program
 dependencies directly inside the source code. Programs using this feature
-should be declared using ``dynamic-run`` construction instead of usual ``run``.
+should be declared using :doc:`/reference/actions/dynamic-run` instead of usual
+:doc:`/reference/actions/run`.

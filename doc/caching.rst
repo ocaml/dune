@@ -2,6 +2,8 @@
 Dune Cache
 **********
 
+.. TODO(diataxis) This is reference material with some explanation.
+
 Dune implements a cache of build results that is shared across different
 workspaces. Before executing a build rule, Dune looks it up in the shared
 cache, and if it finds a matching entry, Dune skips the rule's execution and
@@ -22,8 +24,9 @@ Choose the one that is more convenient for you:
 * Run Dune with the ``--cache=enabled`` flag.
 
 By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
-systems and ``"HOME\\Local Settings\\Cache"`` on Windows. You can change the
-default location by setting the environment variable ``DUNE_CACHE_ROOT``.
+systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.
+You can change the default location by setting the environment variable
+``DUNE_CACHE_ROOT``.
 
 
 Cache Storage Mode
@@ -94,4 +97,4 @@ Some build rules are inherently not reproducible because they involve running
 non-deterministic commands that, for example, depend on the current time or
 download files from the Internet. To prevent Dune from caching such rules, mark
 them as non-reproducible by using ``(deps (universe))``. Please see
-:ref:`deps-field`.
+:doc:`concepts/dependency-spec`.

@@ -1,180 +1,98 @@
-(** Action builder *)
+open Import
 
-open! Import
+type 'a t
 
-include module type of Action_builder0
-
-module With_targets : sig
-  type 'a build := 'a t
-
-  type nonrec 'a t =
-    { build : 'a t
-    ; targets : Targets.t
-    }
-
-  val map_build : 'a t -> f:('a build -> 'b build) -> 'b t
-
-  val return : 'a -> 'a t
-
-  val add : 'a t -> file_targets:Path.Build.t list -> 'a t
-
-  val add_directories : 'a t -> directory_targets:Path.Build.t list -> 'a t
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
-  val write_file_dyn :
-    ?perm:Action.File_perm.t -> Path.Build.t -> string t -> Action.Full.t t
-
-  val all : 'a t list -> 'a list t
-
-  (** [memoize name t] is an action builder that behaves like [t] except that
-      its result is computed only once. *)
-  val memoize : string -> 'a t -> 'a t
-
-  module O : sig
-    val ( >>> ) : unit t -> 'a t -> 'a t
-
-    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-  end
+module O : sig
+  val ( >>> ) : unit t -> 'a t -> 'a t
+  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+  val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+  val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
+  val ( and* ) : 'a t -> 'b t -> ('a * 'b) t
+  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
 
-(** Add targets to an action builder, turning a target-less [Action_builder.t]
-    into [Action_builder.With_targets.t]. *)
-val with_targets : 'a t -> targets:Targets.t -> 'a With_targets.t
+val return : 'a -> 'a t
+val bind : 'a t -> f:('a -> 'b t) -> 'b t
+val map : 'a t -> f:('a -> 'b) -> 'b t
+val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+val both : 'a t -> 'b t -> ('a * 'b) t
+val all : 'a t list -> 'a list t
+val all_unit : unit t list -> unit t
 
-(** Like [with_targets] but specifies a list of file targets. *)
-val with_file_targets :
-  'a t -> file_targets:Path.Build.t list -> 'a With_targets.t
+module List : Monad.List with type 'a t := 'a t
 
-(** Create a value of [With_targets.t] with the empty set of targets. *)
-val with_no_targets : 'a t -> 'a With_targets.t
+(** [memoize ?cutoff name t] is an action builder that behaves like [t] except
+    that its result is computed only once.
 
-(** CR-someday diml: this API is not great, what about:
+    If the caller provides the [cutoff] equality check, we will use it to check
+    if the result of the computation has changed. If it didn't, we will be able
+    to skip the recomputation of values that depend on it. *)
+val memoize : ?cutoff:('a -> 'a -> bool) -> string -> 'a t -> 'a t
 
-    {[
-      module Action_with_deps : sig
-        type t
-        val add_file_dependency : t -> Path.t -> t
-      end
+type ('input, 'output) memo
 
-      (** Same as
-          [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
-          but better as [p] is statically known *)
+(** Same as [Memo.create] but for [Action_builder] *)
+val create_memo
+  :  string
+  -> input:(module Memo.Input with type t = 'i)
+  -> ?cutoff:('o -> 'o -> bool)
+  -> ?human_readable_description:('i -> User_message.Style.t Pp.t)
+  -> ('i -> 'o t)
+  -> ('i, 'o) memo
 
-      val record_dependency
-        :  Path.t
-        -> ('a, Action_with_deps.t) t
-        -> ('a, Action_with_deps.t) t
-    ]} *)
+(** Same as [Memo.exec] but for [Action_builder]'s memos *)
+val exec_memo : ('i, 'o) memo -> 'i -> 'o t
 
-(** [path p] records [p] as a file that is read by the action produced by the
-    action builder. *)
-val path : Path.t -> unit t
+(** [goal t] ignores all facts that have been accumulated about the dependencies
+    of [t]. For example, [goal (path p)] declares that a path [p] contributes to
+    the "goal" of the resulting action builder, which means [p] must be built,
+    but the contents of [p] is irrelevant. *)
+val goal : 'a t -> 'a t
 
-val dep : Dep.t -> unit t
+(** An action builder with no dependencies. Consider passing [Memo.of_thunk] to delay
+    forcing the computation until the action's dependencies need to be determined.
 
-val deps : Dep.Set.t -> unit t
+    If you're thinking of using [Process.run] here, check that: (i) you don't in
+    fact need [Command.run], and that (ii) [Process.run] only reads the declared
+    build rule dependencies. *)
+val of_memo : 'a Memo.t -> 'a t
 
-val dyn_deps : ('a * Dep.Set.t) t -> 'a t
+(** Record the given set as dependencies of the action produced by the action builder. *)
+val record : 'a -> Dep.Set.t -> f:(Dep.t -> Dep.Fact.t Memo.t) -> 'a t
 
-val paths : Path.t list -> unit t
+(** Record a given Memo computation as a "dependency" of the action builder, i.e., require
+    that it must succeed. Consider passing [Memo.of_thunk] to delay forcing the computation
+    until the action's dependencies need to be determined. *)
+val record_success : unit Memo.t -> unit t
 
-val path_set : Path.Set.t -> unit t
+module Expert : sig
+  (** Like [record] but records a dependency on a *source* file. Evaluating the resulting
+      [t] in the [Eager] mode will raise a user error if the file can't be digested.
 
-(** Evaluate a predicate against all targets and record all the matched files as
-    dependencies of the action produced by the action builder. *)
-val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
+      This function is in the [Expert] module because depending on files in the source
+      directory is usually a mistake. As of 2023-11-14, we use this function only for
+      setting up the rules that copy files from the source to the build directory. *)
+  val record_dep_on_source_file_exn
+    :  'a
+    -> ?loc:(unit -> Loc.t option Memo.t)
+    -> Path.Source.t
+    -> 'a t
+end
 
-(** Like [paths_matching], but don't return the resulting set. The action
-    dependency is still registered. *)
-val paths_matching_unit : loc:Loc.t -> File_selector.t -> unit t
+(** {1 Evaluation} *)
 
-(** [paths_existing paths] will require as dependencies the files that actually
-    exist. *)
-val paths_existing : Path.t list -> unit t
+(** Evaluate a [t] and collect the set of its dependencies. This avoids doing the build
+    work required for finding the facts about those dependencies, so you should use this
+    function if you don't need the facts. *)
+val evaluate_and_collect_deps : 'a t -> ('a * Dep.Set.t) Memo.t
 
-(** [env_var v] records [v] as an environment variable that is read by the
-    action produced by the action builder. *)
-val env_var : string -> unit t
+(** Evaluate a [t] and collect the set of its dependencies along with facts about them.
+    Note that finding [t]'s facts requires building all of [t]'s dependencies. *)
+val evaluate_and_collect_facts : 'a t -> ('a * Dep.Facts.t) Memo.t
 
-val alias : Alias.t -> unit t
-
-val dep_on_alias_if_exists : Alias.t -> bool t
-
-(** Depend on an alias recursively. Return [true] if the alias is defined in at
-    least one directory, and [false] otherwise. *)
-val dep_on_alias_rec :
-  Alias.Name.t -> Context_name.t -> Source_tree.Dir.t -> bool t
-
-(** Compute the set of source of all files present in the sub-tree starting at
-    [dir] and record them as dependencies. *)
-val source_tree : dir:Path.t -> Path.Set.t t
-
-(** Record dynamic dependencies *)
-val dyn_paths : ('a * Path.t list) t -> 'a t
-
-val dyn_paths_unit : Path.t list t -> unit t
-
-val dyn_path_set : ('a * Path.Set.t) t -> 'a t
-
-val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
-
-(** [contents path] returns a description that when run will return the contents
-    of the file at [path]. *)
-val contents : Path.t -> string t
-
-(** [lines_of path] returns a description that when run will return the contents
-    of the file at [path] as a list of lines. *)
-val lines_of : Path.t -> string list t
-
-(** Load an S-expression from a file *)
-val read_sexp : Path.t -> Dune_lang.Ast.t t
-
-(** Evaluates to [true] if the file is present on the file system or is the
-    target of a rule. It doesn't add the path as dependency *)
-val file_exists : Path.t -> bool t
-
-(** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
-    [file_exists p] evaluates to [true], and [else_] otherwise. *)
-val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
-
-(** Create a file with the given contents. *)
-val write_file :
-     ?perm:Action.File_perm.t
-  -> Path.Build.t
-  -> string
-  -> Action.Full.t With_targets.t
-
-val write_file_dyn :
-     ?perm:Action.File_perm.t
-  -> Path.Build.t
-  -> string t
-  -> Action.Full.t With_targets.t
-
-val with_stdout_to :
-     ?perm:Action.File_perm.t
-  -> Path.Build.t
-  -> Action.Full.t t
-  -> Action.Full.t With_targets.t
-
-val copy : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-
-val symlink : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-
-val symlink_dir : src:Path.t -> dst:Path.Build.t -> Action.Full.t With_targets.t
-
-val create_file :
-  ?perm:Action.File_perm.t -> Path.Build.t -> Action.Full.t With_targets.t
-
-(** Merge a list of actions accumulating the sets of their targets. *)
-val progn : Action.Full.t With_targets.t list -> Action.Full.t With_targets.t
-
-(** A version of [dyn_of_memo] that makes it convenient to declare dynamic
-    action dependencies. *)
-val dyn_of_memo_deps : ('a * Dep.Set.t) Memo.t t -> 'a t
+(** only used in the public rules *)
+val push_stack_frame
+  :  human_readable_description:(unit -> User_message.Style.t Pp.t)
+  -> (unit -> 'a t)
+  -> 'a t

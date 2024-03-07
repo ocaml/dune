@@ -1,0 +1,6 @@
+(lang dune 3.8)
+
+(package
+ (name pkg2))
+
+(using melange 0.1)

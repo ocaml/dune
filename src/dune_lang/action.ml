@@ -1,46 +1,38 @@
 open Stdune
 open Dune_sexp
+open Dune_util.Action
 
 module Action_plugin = struct
   let syntax =
-    Syntax.create ~name:"action-plugin" ~desc:"action plugin extension"
+    Syntax.create
+      ~name:"action-plugin"
+      ~desc:"action plugin extension"
       ~experimental:true
-      [ ((0, 1), `Since (2, 0)) ]
+      [ (0, 1), `Since (2, 0) ]
+  ;;
 end
 
 module Diff = struct
-  module Mode = struct
-    type t =
-      | Binary
-      | Text
-  end
-
-  type ('path, 'target) t =
-    { optional : bool
-    ; mode : Mode.t
-    ; file1 : 'path
-    ; file2 : 'target
-    }
-
-  let map t ~path ~target =
-    { t with file1 = path t.file1; file2 = target t.file2 }
+  include Diff
 
   let decode path target ~optional =
     let open Decoder in
     let+ file1 = path
     and+ file2 = target in
-    { optional; file1; file2; mode = Text }
+    { Diff.optional; file1; file2; mode = Text }
+  ;;
 
   let decode_binary path target =
     let open Decoder in
     let+ () = Syntax.since Stanza.syntax (1, 0)
     and+ file1 = path
     and+ file2 = target in
-    { optional = false; file1; file2; mode = Binary }
+    { Diff.optional = false; file1; file2; mode = Binary }
+  ;;
 end
 
 module Outputs = struct
-  type t =
+  type t = Outputs.t =
     | Stdout
     | Stderr
     | Outputs
@@ -49,31 +41,112 @@ module Outputs = struct
     | Stdout -> "stdout"
     | Stderr -> "stderr"
     | Outputs -> "outputs"
+  ;;
 end
 
 module Inputs = struct
-  type t = Stdin
+  type t = Inputs.t = Stdin
 
   let to_string = function
     | Stdin -> "stdin"
+  ;;
 end
 
 module File_perm = struct
-  type t =
+  type t = File_perm.t =
     | Normal
     | Executable
 
   let suffix = function
     | Normal -> ""
     | Executable -> "-executable"
+  ;;
 
   let to_unix_perm = function
     | Normal -> 0o666
     | Executable -> 0o777
+  ;;
+end
+
+module Env_update = struct
+  module Op = struct
+    type t =
+      | Eq
+      | PlusEq
+      | EqPlus
+      | ColonEq
+      | EqColon
+      | EqPlusEq
+
+    let equal a b =
+      match a, b with
+      | Eq, Eq
+      | PlusEq, PlusEq
+      | EqPlus, EqPlus
+      | ColonEq, ColonEq
+      | EqColon, EqColon
+      | EqPlusEq, EqPlusEq -> true
+      | _ -> false
+    ;;
+
+    let all =
+      [ "=", Eq
+      ; "+=", PlusEq
+      ; "=+", EqPlus
+      ; ":=", ColonEq
+      ; "=:", EqColon
+      ; "=+=", EqPlusEq
+      ]
+    ;;
+
+    let to_dyn t =
+      List.find_map all ~f:(fun (k, t') ->
+        if equal t t' then Some (Dyn.string k) else None)
+      |> Option.value_exn
+    ;;
+  end
+
+  type 'a t =
+    { op : Op.t
+    ; var : Env.Var.t
+    ; value : 'a
+    }
+
+  let map t ~f = { t with value = f t.value }
+
+  let equal
+    value_equal
+    { op; var; value }
+    { op = other_op; var = other_var; value = other_value }
+    =
+    Op.equal op other_op
+    && Ordering.is_eq (Env.Var.compare var other_var)
+    && value_equal value other_value
+  ;;
+
+  let to_dyn value_to_dyn { op; var; value } =
+    Dyn.record
+      [ "op", Op.to_dyn op; "var", Env.Var.to_dyn var; "value", value_to_dyn value ]
+  ;;
+
+  let decode =
+    let open Decoder in
+    let env_update_op = enum Op.all in
+    let+ op, var, value = triple env_update_op string String_with_vars.decode in
+    { op; var; value }
+  ;;
+
+  let encode { op; var; value } =
+    let op =
+      List.find_map Op.all ~f:(fun (k, v) -> if Poly.equal v op then Some k else None)
+      |> Option.value_exn
+    in
+    List [ atom op; atom var; String_with_vars.encode value ]
+  ;;
 end
 
 type t =
-  | Run of String_with_vars.t * String_with_vars.t list
+  | Run of Slang.t list
   | With_accepted_exit_codes of int Predicate_lang.t * t
   | Dynamic_run of String_with_vars.t * String_with_vars.t list
   | Chdir of String_with_vars.t * t
@@ -85,6 +158,7 @@ type t =
   | Redirect_in of Inputs.t * String_with_vars.t * t
   | Ignore of Outputs.t * t
   | Progn of t list
+  | Concurrent of t list
   | Echo of String_with_vars.t list
   | Cat of String_with_vars.t list
   | Copy of String_with_vars.t * String_with_vars.t
@@ -98,12 +172,18 @@ type t =
   | No_infer of t
   | Pipe of Outputs.t * t list
   | Cram of String_with_vars.t
+  | Patch of String_with_vars.t
+  | Substitute of String_with_vars.t * String_with_vars.t
+  | Withenv of String_with_vars.t Env_update.t list * t
+  | When of Slang.blang * t
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
 let translate_to_ignore fn output action =
-  if is_dev_null fn then Ignore (output, action)
+  if is_dev_null fn
+  then Ignore (output, action)
   else Redirect_out (output, fn, Normal, action)
+;;
 
 let two_or_more decode =
   let open Decoder in
@@ -111,167 +191,225 @@ let two_or_more decode =
   and+ n2 = decode
   and+ rest = repeat decode in
   n1 :: n2 :: rest
+;;
 
-let decode =
+let decode_with_accepted_exit_codes =
+  let rec is_ok loc ~nesting_support ~nesting_support_version = function
+    | Run _ | Bash _ | System _ -> true
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t)
+    | Redirect_in (_, _, t)
+    | Redirect_out (_, _, _, t)
+    | No_infer t ->
+      if nesting_support
+      then is_ok loc ~nesting_support ~nesting_support_version t
+      else
+        Syntax.Error.since
+          loc
+          Stanza.syntax
+          nesting_support_version
+          ~what:"nesting modifiers under 'with-accepted-exit-codes'"
+    | _ -> false
+  in
+  let quote = List.map ~f:String.quoted in
+  fun t ->
+    let open Decoder in
+    Syntax.since Stanza.syntax (2, 0)
+    >>> let+ codes = Predicate_lang.decode_one Decoder.int
+        and+ version = Syntax.get_exn Stanza.syntax
+        and+ loc, t = located t in
+        match
+          let nesting_support_version = 2, 2 in
+          let nesting_support =
+            Syntax.Version.Infix.(version >= nesting_support_version)
+          in
+          is_ok loc ~nesting_support ~nesting_support_version t, nesting_support
+        with
+        | true, _ -> With_accepted_exit_codes (codes, t)
+        | false, true ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Only %s can be nested under \"with-accepted-exit-codes\""
+                (String.enumerate_and
+                 @@ quote
+                      [ "run"
+                      ; "bash"
+                      ; "system"
+                      ; "chdir"
+                      ; "setenv"
+                      ; "ignore-<outputs>"
+                      ; "with-stdin-from"
+                      ; "with-<outputs>-to"
+                      ; "no-infer"
+                      ])
+            ]
+        | false, false ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "with-accepted-exit-codes can only be used with %s"
+                (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
+            ]
+;;
+
+let sw = String_with_vars.decode
+
+let cstrs_dune_file t =
   let open Decoder in
-  let sw = String_with_vars.decode in
-  Decoder.fix (fun t ->
-      sum
-        [ ( "run"
-          , let+ prog = sw
-            and+ args = repeat sw in
-            Run (prog, args) )
-        ; ( "with-accepted-exit-codes"
-          , let open Decoder in
-            Syntax.since Stanza.syntax (2, 0)
-            >>> let+ codes = Predicate_lang.decode_one Decoder.int
-                and+ version = Syntax.get_exn Stanza.syntax
-                and+ loc, t = located t in
-                let nesting_support_version = (2, 2) in
-                let nesting_support =
-                  Syntax.Version.Infix.(version >= nesting_support_version)
-                in
-                let rec is_ok = function
-                  | Run _ | Bash _ | System _ -> true
-                  | Chdir (_, t)
-                  | Setenv (_, _, t)
-                  | Ignore (_, t)
-                  | Redirect_in (_, _, t)
-                  | Redirect_out (_, _, _, t)
-                  | No_infer t ->
-                    if nesting_support then is_ok t
-                    else
-                      Syntax.Error.since loc Stanza.syntax
-                        nesting_support_version
-                        ~what:
-                          "nesting modifiers under 'with-accepted-exit-codes'"
-                  | _ -> false
-                in
-                let quote = List.map ~f:(Printf.sprintf "\"%s\"") in
-                match (is_ok t, nesting_support) with
-                | true, _ -> With_accepted_exit_codes (codes, t)
-                | false, true ->
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "Only %s can be nested under \
-                         \"with-accepted-exit-codes\""
-                        (Stdune.String.enumerate_and
-                           (quote
-                              [ "run"
-                              ; "bash"
-                              ; "system"
-                              ; "chdir"
-                              ; "setenv"
-                              ; "ignore-<outputs>"
-                              ; "with-stdin-from"
-                              ; "with-<outputs>-to"
-                              ; "no-infer"
-                              ]))
-                    ]
-                | false, false ->
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "with-accepted-exit-codes can only be used with %s"
-                        (Stdune.String.enumerate_or
-                           (quote [ "run"; "bash"; "system" ]))
-                    ] )
-        ; ( "dynamic-run"
-          , Syntax.since Action_plugin.syntax (0, 1)
-            >>> let+ prog = sw
-                and+ args = repeat sw in
-                Dynamic_run (prog, args) )
-        ; ( "chdir"
-          , let+ dn = sw
+  [ "with-accepted-exit-codes", decode_with_accepted_exit_codes t
+  ; ( "dynamic-run"
+    , Syntax.since Action_plugin.syntax (0, 1)
+      >>> let+ prog = sw
+          and+ args = repeat sw in
+          Dynamic_run (prog, args) )
+  ; ( "chdir"
+    , let+ dn = sw
+      and+ t = t in
+      Chdir (dn, t) )
+  ; ( "setenv"
+    , let+ k = sw
+      and+ v = sw
+      and+ t = t in
+      Setenv (k, v, t) )
+  ; ( "with-stdout-to"
+    , let+ fn = sw
+      and+ t = t in
+      translate_to_ignore fn Stdout t )
+  ; ( "with-stderr-to"
+    , let+ fn = sw
+      and+ t = t in
+      translate_to_ignore fn Stderr t )
+  ; ( "with-outputs-to"
+    , let+ fn = sw
+      and+ t = t in
+      translate_to_ignore fn Outputs t )
+  ; ( "with-stdin-from"
+    , Syntax.since Stanza.syntax (2, 0)
+      >>> let+ fn = sw
+          and+ t = t in
+          Redirect_in (Stdin, fn, t) )
+  ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
+  ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
+  ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
+  ; ("progn", repeat t >>| fun l -> Progn l)
+  ; ( "concurrent"
+    , Syntax.since Stanza.syntax (3, 8) >>> repeat t >>| fun l -> Concurrent l )
+  ; ( "echo"
+    , let+ x = sw
+      and+ xs = repeat sw in
+      Echo (x :: xs) )
+  ; ( "cat"
+    , let* xs = repeat1 sw in
+      (if List.length xs > 1
+       then Syntax.since ~what:"Passing several arguments to 'cat'" Stanza.syntax (3, 4)
+       else return ())
+      >>> return (Cat xs) )
+  ; ( "copy"
+    , let+ src = sw
+      and+ dst = sw in
+      Copy (src, dst) )
+  ; ( "copy#"
+    , let+ src = sw
+      and+ dst = sw in
+      Copy_and_add_line_directive (src, dst) )
+  ; ( "copy-and-add-line-directive"
+    , let+ src = sw
+      and+ dst = sw in
+      Copy_and_add_line_directive (src, dst) )
+  ; ("system", sw >>| fun cmd -> System cmd)
+  ; ("bash", sw >>| fun cmd -> Bash cmd)
+  ; ( "write-file"
+    , let+ fn = sw
+      and+ s = sw in
+      Write_file (fn, Normal, s) )
+  ; ( "diff"
+    , let+ diff = Diff.decode sw sw ~optional:false in
+      Diff diff )
+  ; ( "diff?"
+    , let+ diff = Diff.decode sw sw ~optional:true in
+      Diff diff )
+  ; ( "cmp"
+    , let+ diff = Diff.decode_binary sw sw in
+      Diff diff )
+  ; ("no-infer", Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t)
+  ; ( "pipe-stdout"
+    , Syntax.since Stanza.syntax (2, 7)
+      >>> let+ ts = two_or_more t in
+          Pipe (Stdout, ts) )
+  ; ( "pipe-stderr"
+    , Syntax.since Stanza.syntax (2, 7)
+      >>> let+ ts = two_or_more t in
+          Pipe (Stderr, ts) )
+  ; ( "pipe-outputs"
+    , Syntax.since Stanza.syntax (2, 7)
+      >>> let+ ts = two_or_more t in
+          Pipe (Outputs, ts) )
+  ; ( "cram"
+    , Syntax.since Stanza.syntax (2, 7)
+      >>> let+ script = sw in
+          Cram script )
+  ]
+;;
+
+let decode_dune_file =
+  let dune_file_specific =
+    let open Decoder in
+    [ ( "run"
+      , (* In regular dune files the "run" action is parsed as a command and
+           argument list rather than with the slang dsl parser which is still
+           experimental. *)
+        let+ prog = sw
+        and+ args = repeat sw in
+        let slang =
+          Slang.Literal prog :: List.map args ~f:(fun arg -> Slang.Literal arg)
+        in
+        Run slang )
+    ]
+  in
+  Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ dune_file_specific)
+;;
+
+let decode_pkg =
+  let cstrs_pkg t =
+    let open Decoder in
+    [ ( "patch"
+      , Syntax.since Pkg.syntax (0, 1)
+        >>> let+ input = sw in
+            Patch input )
+    ; ( "substitute"
+      , Syntax.since Pkg.syntax (0, 1)
+        >>> let+ input = sw
+            and+ output = sw in
+            Substitute (input, output) )
+    ; ( "withenv"
+      , Syntax.since Pkg.syntax (0, 1)
+        >>> let+ ops = enter (repeat Env_update.decode)
             and+ t = t in
-            Chdir (dn, t) )
-        ; ( "setenv"
-          , let+ k = sw
-            and+ v = sw
-            and+ t = t in
-            Setenv (k, v, t) )
-        ; ( "with-stdout-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Stdout t )
-        ; ( "with-stderr-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Stderr t )
-        ; ( "with-outputs-to"
-          , let+ fn = sw
-            and+ t = t in
-            translate_to_ignore fn Outputs t )
-        ; ( "with-stdin-from"
-          , Syntax.since Stanza.syntax (2, 0)
-            >>> let+ fn = sw
-                and+ t = t in
-                Redirect_in (Stdin, fn, t) )
-        ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
-        ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
-        ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
-        ; ("progn", repeat t >>| fun l -> Progn l)
-        ; ( "echo"
-          , let+ x = sw
-            and+ xs = repeat sw in
-            Echo (x :: xs) )
-        ; ( "cat"
-          , let* xs = repeat1 sw in
-            (if List.length xs > 1 then
-             Syntax.since ~what:"Passing several arguments to 'cat'"
-               Stanza.syntax (3, 4)
-            else return ())
-            >>> return (Cat xs) )
-        ; ( "copy"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy (src, dst) )
-        ; ( "copy#"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy_and_add_line_directive (src, dst) )
-        ; ( "copy-and-add-line-directive"
-          , let+ src = sw
-            and+ dst = sw in
-            Copy_and_add_line_directive (src, dst) )
-        ; ("system", sw >>| fun cmd -> System cmd)
-        ; ("bash", sw >>| fun cmd -> Bash cmd)
-        ; ( "write-file"
-          , let+ fn = sw
-            and+ s = sw in
-            Write_file (fn, Normal, s) )
-        ; ( "diff"
-          , let+ diff = Diff.decode sw sw ~optional:false in
-            Diff diff )
-        ; ( "diff?"
-          , let+ diff = Diff.decode sw sw ~optional:true in
-            Diff diff )
-        ; ( "cmp"
-          , let+ diff = Diff.decode_binary sw sw in
-            Diff diff )
-        ; ( "no-infer"
-          , Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t )
-        ; ( "pipe-stdout"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Stdout, ts) )
-        ; ( "pipe-stderr"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Stderr, ts) )
-        ; ( "pipe-outputs"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ ts = two_or_more t in
-                Pipe (Outputs, ts) )
-        ; ( "cram"
-          , Syntax.since Stanza.syntax (2, 7)
-            >>> let+ script = sw in
-                Cram script )
-        ])
+            Withenv (ops, t) )
+    ; ( "when"
+      , Syntax.since Stanza.syntax (0, 1)
+        >>> let+ condition = Slang.decode_blang
+            and+ action = t in
+            When (condition, action) )
+    ; ( "run"
+      , let+ args =
+          (* Although a single [Slang.t] evaluates to a list of strings, individual
+             terms of the command are represented by individual [Slang.t]s, hence
+             the [repeat] below. *)
+          repeat Slang.decode
+        in
+        Run args )
+    ]
+  in
+  Decoder.fix @@ fun t -> Decoder.sum (cstrs_dune_file t @ cstrs_pkg t)
+;;
 
 let rec encode =
   let sw = String_with_vars.encode in
   function
-  | Run (a, xs) -> List (atom "run" :: sw a :: List.map xs ~f:sw)
+  | Run xs -> List (atom "run" :: List.map xs ~f:Slang.encode)
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
@@ -283,22 +421,16 @@ let rec encode =
   | Setenv (k, v, r) -> List [ atom "setenv"; sw k; sw v; encode r ]
   | Redirect_out (outputs, fn, perm, r) ->
     List
-      [ atom
-          (sprintf "with-%s-to%s"
-             (Outputs.to_string outputs)
-             (File_perm.suffix perm))
+      [ atom (sprintf "with-%s-to%s" (Outputs.to_string outputs) (File_perm.suffix perm))
       ; sw fn
       ; encode r
       ]
   | Redirect_in (inputs, fn, r) ->
-    List
-      [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
-      ; sw fn
-      ; encode r
-      ]
+    List [ atom (sprintf "with-%s-from" (Inputs.to_string inputs)); sw fn; encode r ]
   | Ignore (outputs, r) ->
     List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
   | Progn l -> List (atom "progn" :: List.map l ~f:encode)
+  | Concurrent l -> List (atom "concurrent" :: List.map l ~f:encode)
   | Echo xs -> List (atom "echo" :: List.map xs ~f:sw)
   | Cat xs -> List (atom "cat" :: List.map xs ~f:sw)
   | Copy (x, y) -> List [ atom "copy"; sw x; sw y ]
@@ -318,10 +450,15 @@ let rec encode =
     List [ atom "diff?"; sw file1; sw file2 ]
   | No_infer r -> List [ atom "no-infer"; encode r ]
   | Pipe (outputs, l) ->
-    List
-      (atom (sprintf "pipe-%s" (Outputs.to_string outputs))
-      :: List.map l ~f:encode)
+    List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Cram script -> List [ atom "cram"; sw script ]
+  | Patch i -> List [ atom "patch"; sw i ]
+  | Substitute (i, o) -> List [ atom "substitute"; sw i; sw o ]
+  | Withenv (ops, t) ->
+    List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
+  | When (condition, action) ->
+    List [ atom "when"; Slang.encode_blang condition; encode action ]
+;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
    seen by the action and [Path.t] seen by dune.
@@ -342,6 +479,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Redirect_in (_, _, t)
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t)
+    | Withenv (_, t)
+    | When (_, t)
     | No_infer t -> loop t
     | Run _
     | Echo _
@@ -354,41 +493,92 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Write_file _
     | Mkdir _
     | Diff _
+    | Substitute _
+    | Patch _
     | Cram _ -> false
-    | Pipe (_, ts) | Progn ts ->
+    | Pipe (_, ts) | Progn ts | Concurrent ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
-          let have_dyn = loop t in
-          if acc && have_dyn then
-            User_error.raise ~loc
-              [ Pp.text
-                  "Multiple 'dynamic-run' commands within single action are \
-                   not supported."
-              ]
-          else acc || have_dyn)
+        let have_dyn = loop t in
+        if acc && have_dyn
+        then
+          User_error.raise
+            ~loc
+            [ Pp.text
+                "Multiple 'dynamic-run' commands within single action are not supported."
+            ]
+        else acc || have_dyn)
   in
   ignore (loop action)
+;;
 
 let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
 
+let rec blang_map_string_with_vars ~f = function
+  | Blang.Const _ as c -> c
+  | Not blang -> Not (blang_map_string_with_vars ~f blang)
+  | Expr sw -> Expr (f sw)
+  | And blangs -> And (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Or blangs -> Or (List.map blangs ~f:(blang_map_string_with_vars ~f))
+  | Compare (op, a, b) -> Compare (op, f a, f b)
+;;
+
+let rec slang_map_string_with_vars ~f = function
+  | Slang.Nil -> Slang.Nil
+  | Literal sw -> Literal (f sw)
+  | Form (loc, form) ->
+    let form =
+      match form with
+      | Slang.Concat ts -> Slang.Concat (List.map ts ~f:(slang_map_string_with_vars ~f))
+      | When (condition, t) ->
+        When
+          ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+          , slang_map_string_with_vars t ~f )
+      | If { condition; then_; else_ } ->
+        If
+          { condition =
+              blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+          ; then_ = slang_map_string_with_vars then_ ~f
+          ; else_ = slang_map_string_with_vars else_ ~f
+          }
+      | Has_undefined_var t -> Has_undefined_var (slang_map_string_with_vars t ~f)
+      | Catch_undefined_var { value; fallback } ->
+        Catch_undefined_var
+          { value = slang_map_string_with_vars value ~f
+          ; fallback = slang_map_string_with_vars fallback ~f
+          }
+      | And_absorb_undefined_var blangs ->
+        And_absorb_undefined_var
+          (List.map
+             blangs
+             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
+      | Or_absorb_undefined_var blangs ->
+        Or_absorb_undefined_var
+          (List.map
+             blangs
+             ~f:(blang_map_string_with_vars ~f:(slang_map_string_with_vars ~f)))
+      | Blang b -> Blang (blang_map_string_with_vars b ~f:(slang_map_string_with_vars ~f))
+    in
+    Form (loc, form)
+;;
+
 let rec map_string_with_vars t ~f =
   match t with
-  | Run (sw, xs) -> Run (f sw, xs)
+  | Run xs -> Run (List.map ~f:(slang_map_string_with_vars ~f) xs)
   | With_accepted_exit_codes (lang, t) ->
     With_accepted_exit_codes (lang, map_string_with_vars t ~f)
   | Dynamic_run (sw, sws) -> Dynamic_run (f sw, List.map sws ~f)
   | Chdir (sw, t) -> Chdir (f sw, map_string_with_vars ~f t)
   | Setenv (sw1, sw2, t) -> Setenv (f sw1, f sw2, map_string_with_vars t ~f)
-  | Redirect_out (o, sw, p, t) ->
-    Redirect_out (o, f sw, p, map_string_with_vars t ~f)
+  | Redirect_out (o, sw, p, t) -> Redirect_out (o, f sw, p, map_string_with_vars t ~f)
   | Redirect_in (i, sw, t) -> Redirect_in (i, f sw, t)
   | Ignore (o, t) -> Ignore (o, map_string_with_vars t ~f)
   | Progn xs -> Progn (List.map xs ~f:(map_string_with_vars ~f))
-  | Echo xs -> Echo xs
+  | Concurrent xs -> Concurrent (List.map xs ~f:(map_string_with_vars ~f))
+  | Echo xs -> Echo (List.map ~f xs)
   | Cat xs -> Cat (List.map ~f xs)
   | Copy (sw1, sw2) -> Copy (f sw1, f sw2)
   | Symlink (sw1, sw2) -> Symlink (f sw1, f sw2)
-  | Copy_and_add_line_directive (sw1, sw2) ->
-    Copy_and_add_line_directive (f sw1, f sw2)
+  | Copy_and_add_line_directive (sw1, sw2) -> Copy_and_add_line_directive (f sw1, f sw2)
   | System sw -> System (f sw)
   | Bash sw -> Bash (f sw)
   | Write_file (sw1, perm, sw2) -> Write_file (f sw1, perm, f sw2)
@@ -397,28 +587,39 @@ let rec map_string_with_vars t ~f =
   | No_infer t -> No_infer (map_string_with_vars t ~f)
   | Pipe (o, ts) -> Pipe (o, List.map ts ~f:(map_string_with_vars ~f))
   | Cram sw -> Cram (f sw)
+  | Patch i -> Patch (f i)
+  | Substitute (i, o) -> Substitute (f i, f o)
+  | Withenv (ops, t) ->
+    Withenv
+      ( List.map ops ~f:(fun (op : _ Env_update.t) -> { op with value = f op.value })
+      , map_string_with_vars t ~f )
+  | When (condition, t) ->
+    When
+      ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
+      , map_string_with_vars t ~f )
+;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs
-
 let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
+let equal_no_locs t1 t2 = Ordering.is_eq (compare_no_locs t1 t2)
 
 open Decoder
 
-let decode =
+let make_decode decode =
   (let+ loc, action = located decode in
    validate ~loc action;
    action)
   <|> let+ loc = loc in
-      User_error.raise ~loc
+      User_error.raise
+        ~loc
         [ Pp.textf
-            "if you meant for this to be executed with bash, write (bash \
-             \"...\") instead"
+            "if you meant for this to be executed with bash, write (bash \"...\") instead"
         ]
+;;
 
+let decode_dune_file = make_decode decode_dune_file
+let decode_pkg = make_decode decode_pkg
 let to_dyn a = to_dyn (encode a)
-
 let equal x y = Poly.equal x y
-
 let chdir dir t = Chdir (dir, t)
-
-let run prog args = Run (prog, args)
+let run prog args = Run (Slang.Literal prog :: List.map args ~f:(fun x -> Slang.Literal x))

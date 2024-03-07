@@ -1,0 +1,19 @@
+(library
+ (name stdune)
+ (public_name stdune)
+ (synopsis
+  "Standard library of Dune.\nThis library offers no backwards compatibility guarantees. Use at your own risk.")
+ (libraries
+  unix
+  csexp
+  (re_export ordering)
+  (re_export dyn)
+  (re_export pp)
+  (re_export dune_filesystem_stubs))
+ (library_flags
+  (:include flags/sexp))
+ (foreign_stubs
+  (language c)
+  (names wait4_stubs platform_stubs copyfile_stubs signal_stubs))
+ (instrumentation
+  (backend bisect_ppx)))

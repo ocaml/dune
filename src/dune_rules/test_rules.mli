@@ -1,7 +1,7 @@
 open Import
 
-val rules :
-     Dune_file.Tests.t
+val rules
+  :  Tests.t
   -> sctx:Super_context.t
   -> dir:Path.Build.t
   -> scope:Scope.t

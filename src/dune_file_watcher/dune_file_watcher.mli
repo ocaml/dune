@@ -8,15 +8,15 @@ module Fs_memo_event : sig
      about events:
 
      - If a file is renamed, we receive [Created] and [Deleted] events with
-     corresponding paths.
+       corresponding paths.
 
      - If a directory is renamed then in addition to the [Created] and [Deleted]
-     events for the directory itself, we receive events about all file and
-     directory paths in the corresponding file tree.
+       events for the directory itself, we receive events about all file and
+       directory paths in the corresponding file tree.
 
      - Similarly, if a directory is deleted, we receive the [Deleted] event for
-     the directory itself, as well as deletion events for all watched paths in
-     the corresponding file tree.
+       the directory itself, as well as deletion events for all watched paths in
+       the corresponding file tree.
 
      Not all of these assumptions we can currently uphold. In particular,
      directory renames probably just give "created" and "deleted" for the
@@ -26,7 +26,7 @@ module Fs_memo_event : sig
     | Created
     | Deleted
     | File_changed
-    | Unknown  (** Treated conservatively as any possible event. *)
+    | Unknown (** Treated conservatively as any possible event. *)
 
   type t = private
     { path : Path.t
@@ -50,18 +50,22 @@ module Scheduler : sig
   (** Hook into the fiber scheduler. *)
   type t =
     { spawn_thread : (unit -> unit) -> unit
-          (** We spawn threads through this function in case the scheduler wants
-              to block signals *)
+    (** We spawn threads through this function in case the scheduler wants
+        to block signals *)
     ; thread_safe_send_emit_events_job : (unit -> Event.t list) -> unit
-          (** Send some events to the scheduler. The events are sent in the form
-              of a thunk to be executed on the scheduler thread, so that we can
-              do some bookkeeping that needs to happen there. *)
+    (** Send some events to the scheduler. The events are sent in the form
+        of a thunk to be executed on the scheduler thread, so that we can
+        do some bookkeeping that needs to happen there. *)
     }
 end
 
 (** Create a new file watcher with default settings. *)
-val create_default :
-  ?fsevents_debounce:float -> scheduler:Scheduler.t -> unit -> t
+val create_default
+  :  ?fsevents_debounce:float
+  -> watch_exclusions:string list
+  -> scheduler:Scheduler.t
+  -> unit
+  -> t
 
 (** The action that needs to be taken to shutdown the watcher. *)
 val shutdown : t -> [ `Kill of Pid.t | `No_op | `Thunk of unit -> unit ]
@@ -76,5 +80,5 @@ val emit_sync : t -> Sync_id.t
 val add_watch : t -> Path.t -> (unit, [ `Does_not_exist ]) result
 
 module For_tests : sig
-  val should_exclude : string -> bool
+  val should_exclude : watch_exclusions:string list -> string -> bool
 end

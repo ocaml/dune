@@ -115,7 +115,10 @@ Test subst and files with unicode (#3879)
   > EOF
 
   $ dune subst
-  Error: dune subst has been disabled in this project. Any use of it is
+  File "dune-project", line 5, characters 7-15:
+  5 | (subst disabled)
+             ^^^^^^^^
+  Error: 'dune subst' has been disabled in this project. Any use of it is
   forbidden.
   Hint: If you wish to re-enable it, change to (subst enabled) in the
   dune-project file.

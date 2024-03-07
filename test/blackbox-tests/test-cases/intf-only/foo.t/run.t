@@ -1,9 +1,9 @@
 Successes:
 
   $ dune build --display short --debug-dep
-      ocamldep .foo.objs/foo.ml.d
+      ocamldep .foo.objs/foo.impl.d
         ocamlc .foo.objs/byte/foo__.{cmi,cmo,cmt}
-      ocamldep .foo.objs/intf.mli.d
+      ocamldep .foo.objs/foo__Intf.intf.d
       ocamlopt .foo.objs/native/foo__.{cmx,o}
         ocamlc .foo.objs/byte/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}

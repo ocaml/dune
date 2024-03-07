@@ -1,0 +1,5 @@
+;; A little binary to test out Windows file watcher library
+
+(executable
+ (name dune_fswatch_win)
+ (libraries fswatch_win stdune dyn))

@@ -9,5 +9,6 @@ let extend_build_path_prefix_map env how map =
     | Some existing_rules ->
       Some
         (match how with
-        | `Existing_rules_have_precedence -> new_rules ^ ":" ^ existing_rules
-        | `New_rules_have_precedence -> existing_rules ^ ":" ^ new_rules))
+         | `Existing_rules_have_precedence -> new_rules ^ ":" ^ existing_rules
+         | `New_rules_have_precedence -> existing_rules ^ ":" ^ new_rules))
+;;

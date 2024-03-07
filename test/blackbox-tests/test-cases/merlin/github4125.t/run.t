@@ -1,5 +1,6 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ unset OPAMCONFIRMLEVEL
 
 We call `$(opam switch show)` so that this test always uses an existing switch
 
@@ -21,7 +22,7 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   lib-foo
 
   $ dune ocaml merlin dump-config "$PWD"
-  Foo
+  Foo: _build/cross/foo
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -34,4 +35,5 @@ We call `$(opam switch show)` so that this test always uses an existing switch
      -strict-sequence
      -strict-formats
      -short-paths
-     -keep-locs)))
+     -keep-locs
+     -g)))

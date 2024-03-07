@@ -18,7 +18,6 @@
     non-obvious. *)
 
 type t
-
 type file_info = string * UnixLabels.stats
 
 module Event : sig
@@ -32,9 +31,9 @@ module Event : sig
     | Unlinked of string
     | Modified of string
     | Moved of move
-        (** Queue overflow means that you are not consuming events fast enough
-            and just lost some of them. This means that some changes to files
-            you want might go unnoticed *)
+    (** Queue overflow means that you are not consuming events fast enough
+        and just lost some of them. This means that some changes to files
+        you want might go unnoticed *)
     | Queue_overflow
 
   val to_string : t -> string
@@ -57,8 +56,8 @@ type modify_event_selector =
 
     [send_emit_events_job_to_scheduler f] is expected to run the job [f] in the
     scheduler, and then process the events returned by that job. *)
-val create :
-     spawn_thread:((unit -> unit) -> unit)
+val create
+  :  spawn_thread:((unit -> unit) -> unit)
   -> modify_event_selector:modify_event_selector
   -> log_error:(string -> unit)
   -> send_emit_events_job_to_scheduler:((unit -> Event.t list) -> unit)

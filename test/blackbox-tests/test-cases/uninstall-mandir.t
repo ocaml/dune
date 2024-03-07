@@ -35,7 +35,7 @@ Create a prefix
 -------------------------------------------------------------------------------
 Install the project
 
-  $ dune install --prefix=install -p test test | dune_cmd sanitize
+  $ dune install --prefix=install -p test test --display short | dune_cmd sanitize
   Installing install/lib/test/META
   Installing install/lib/test/dune-package
   Installing install/lib/test/opam
@@ -50,7 +50,7 @@ Simulate another tool being installed and creating some manpages in the prefix
 Uninstall the project; since the manpage directory contains pages from other
 tools, dune should not remove it, nor complain about it being non-empty.
 
-  $ dune uninstall --prefix=install -p test test | dune_cmd sanitize
+  $ dune uninstall --prefix=install --display short -p test test | dune_cmd sanitize
   Deleting install/lib/test/META
   Deleting install/lib/test/dune-package
   Deleting install/lib/test/opam

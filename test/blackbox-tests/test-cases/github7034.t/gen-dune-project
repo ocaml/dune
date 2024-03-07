@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+PACKAGE_NAME=$1
+VERSION=$2
+
+cat <<EOF
+(lang dune $VERSION)
+(package (name $PACKAGE_NAME))
+EOF

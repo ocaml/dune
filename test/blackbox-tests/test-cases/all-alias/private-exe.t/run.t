@@ -1,7 +1,7 @@
 @all builds private exe's
 
   $ dune build @all --display short
-      ocamldep .foo.eobjs/foo.ml.d
+      ocamldep .foo.eobjs/foo.impl.d
         ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
       ocamlopt .foo.eobjs/native/foo.{cmx,o}
         ocamlc foo.bc

@@ -45,7 +45,7 @@ tests that the "old_public_name" field is evaluated lazily
 
   $ (cd a
   > dune build @install --root .
-  > dune install --prefix $PWD/../_install)
+  > dune install --prefix $PWD/../_install --display short)
   Installing $TESTCASE_ROOT/a/../_install/lib/a/META
   Installing $TESTCASE_ROOT/a/../_install/lib/a/dune-package
 
@@ -68,7 +68,7 @@ deprecated library will be resolved in the installed world only.
 
   $ (cd b
   > dune build @install --root .
-  > dune install --prefix $PWD/../_install 2>&1 | dune_cmd sanitize)
+  > dune install --prefix $PWD/../_install 2>&1 --display short | dune_cmd sanitize)
   Installing $TESTCASE_ROOT/b/../_install/lib/b/META
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b$ext_lib
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cma

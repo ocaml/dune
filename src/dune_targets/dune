@@ -1,0 +1,3 @@
+(library
+ (name dune_targets)
+ (libraries stdune fiber chrome_trace dyn dune_digest unix))

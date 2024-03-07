@@ -6,24 +6,24 @@ module Vars = struct
   let of_lines lines =
     let rec loop acc = function
       | [] -> Ok acc
-      | line :: lines -> (
-        match String.index line ':' with
-        | Some i ->
-          let x =
-            (* skipping 2 chars because we also need to skip the space *)
-            (String.take line i, String.drop line (i + 2))
-          in
-          loop (x :: acc) lines
-        | None -> Error (Printf.sprintf "Unrecognized line: %S" line))
+      | line :: lines ->
+        (match String.index line ':' with
+         | Some i ->
+           let x =
+             (* skipping 2 chars because we also need to skip the space *)
+             String.take line i, String.drop line (i + 2)
+           in
+           loop (x :: acc) lines
+         | None -> Error (Printf.sprintf "Unrecognized line: %S" line))
     in
     match loop [] lines with
     | Error _ as e -> e
-    | Ok s -> (
-      match String.Map.of_list s with
-      | Ok _ as s -> s
-      | Error (var, _, _) -> Error (sprintf "Variable %S present twice." var))
+    | Ok s ->
+      (match String.Map.of_list s with
+       | Ok _ as s -> s
+       | Error (var, _, _) -> Error (sprintf "Variable %S present twice." var))
+  ;;
 
   let of_list_exn = String.Map.of_list_exn
-
   let find t x = String.Map.find t x
 end

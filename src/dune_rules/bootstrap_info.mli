@@ -6,9 +6,9 @@
 open Import
 
 (** Generate the rules to handle the stanza *)
-val gen_rules :
-     Super_context.t
-  -> Dune_file.Executables.t
+val gen_rules
+  :  Super_context.t
+  -> Executables.t
   -> dir:Path.Build.t
-  -> Lib.Compile.t
+  -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> unit Memo.t

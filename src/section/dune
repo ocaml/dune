@@ -1,4 +1,0 @@
-(library
- (name dune_section)
- (public_name dune-private-libs.dune-section)
- (synopsis "[Internal] section definition"))

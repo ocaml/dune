@@ -1,0 +1,6 @@
+{1 [dune] - Fast, portable, and opinionated build system }
+
+The documentation for [dune] is available here:
+
+- {{: https://dune.readthedocs.io/en/stable/} latest release}
+- {{: https://dune.readthedocs.io/en/latest/} development version}

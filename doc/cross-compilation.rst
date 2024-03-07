@@ -4,6 +4,10 @@
 Cross-Compilation
 *****************
 
+.. TODO(diataxis)
+
+   This can be turned into an how-to guide.
+
 Dune allows for cross-compilation by defining build contexts with multiple
 targets. Targets are specified by adding a ``targets`` field to the build
 context definition.
@@ -35,9 +39,9 @@ In particular:
 For example, the following workspace file defines three different targets for
 the ``default`` build context:
 
-.. code:: scheme
+.. code:: dune
 
-    (context (default (targets (native windows android))))
+    (context (default (targets native windows android)))
 
 This configuration defines three build contexts:
 
@@ -57,9 +61,9 @@ Note that instead of writing a ``dune-workspace`` file, you can also use the
 ``dune-workspace`` file is the same as writing the following ``dune-workspace``
 file:
 
-.. code:: scheme
+.. code:: dune
 
-   (context (default (targets (foo))))
+   (context (default (targets foo)))
 
 If you have a ``dune-workspace`` and pass a ``-x foo`` option, ``foo`` will be
 added as target of all context stanzas.
@@ -77,7 +81,7 @@ context.
 To clarify this with an example, let's assume that you have the following
 ``src/dune`` file:
 
-.. code:: scheme
+.. code:: dune
 
     (executable (name foo))
     (rule (with-stdout-to blah (run ./foo.exe)))
@@ -95,6 +99,6 @@ Some packages might still have to be updated to support cross-compilation. For
 instance if the ``foo.exe`` program in the previous example was using
 ``Sys.os_type``, it should instead take it as a command line argument:
 
-.. code:: lisp
+.. code:: dune
 
   (rule (with-stdout-to blah (run ./foo.exe -os-type %{os_type})))

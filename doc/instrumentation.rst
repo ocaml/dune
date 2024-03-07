@@ -2,6 +2,14 @@
 Instrumentation
 ***************
 
+.. TODO(diataxis)
+
+   Split between:
+
+   - reference about ``(instrumentation)``
+   - :doc:`howto/code-coverage`
+   - specific reference about ``(instrumentation.backend)``
+
 In this section, we'll explain how to define and use instrumentation backends
 (such as ``bisect_ppx`` or ``landmarks``) so that you can enable and disable
 coverage via ``dune-workspace`` files or by passing a command-line flag or
@@ -18,7 +26,7 @@ libraries and executables for which the user has requested instrumentation.
 To request instrumentation, one must add the following field to a library or
 executable stanza:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name ...)
@@ -31,7 +39,7 @@ The backend ``<name>`` can be passed into arguments using ``<args>``.
 This field can be repeated multiple times in order to support various
 backends. For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name foo)
@@ -56,7 +64,7 @@ no plan to add support for them in the future.
 - ``(deps <deps-conf list>)`` specifies extra instrumentation dependencies, for
   instance, if it reads a generated file. The dependencies are only applied
   when the instrumentation is actually enabled. The specification of
-  dependencies is described in the :ref:`deps-field` section.
+  dependencies is described in :doc:`concepts/dependency-spec`.
 
 Enabling/Disabling Instrumentation
 ==================================
@@ -66,14 +74,14 @@ Activating an instrumentation backend can be done via the command line or the
 
 Via the command line, it is done as follows:
 
-.. code:: bash
+.. code:: console
 
    $ dune build --instrument-with <names>
 
 Here ``<names>`` is a comma-separated list of instrumentation backends. For
 example:
 
-.. code:: bash
+.. code:: console
 
    $ dune build --instrument-with bisect_ppx,landmarks
 
@@ -86,16 +94,16 @@ It's also possible to enable instrumentation backends via the
 To enable an instrumentation backend globally, type the following in your
 ``dune-workspace`` file:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.7)
+   (lang dune 3.14)
    (instrument_with bisect_ppx)
 
 or for each context individually:
 
-.. code:: scheme
+.. code:: dune
 
-   (lang dune 3.7)
+   (lang dune 3.14)
    (context default)
    (context (default (name coverage) (instrument_with bisect_ppx)))
    (context (default (name profiling) (instrument_with landmarks)))
@@ -116,7 +124,7 @@ Currently, Dune will only support ``ppx`` instrumentation tools, and the
 instrumentation library must specify the ``ppx`` rewriters that instruments the
 code. This can be done as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     ...

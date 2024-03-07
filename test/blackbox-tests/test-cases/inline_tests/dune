@@ -1,0 +1,13 @@
+(cram
+ (applies_to github6607 reason-expect concurrent-fail)
+ (deps
+  (package ppx_expect)))
+
+(cram
+ (applies_to reason-expect)
+ (deps %{bin:refmt}))
+
+(cram
+ (applies_to github6607)
+ (deps
+  (package stdune)))

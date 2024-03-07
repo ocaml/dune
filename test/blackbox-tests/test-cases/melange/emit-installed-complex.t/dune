@@ -1,0 +1,4 @@
+(melange.emit
+ (target dist)
+ (alias dist)
+ (libraries lib))

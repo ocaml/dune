@@ -2,6 +2,14 @@
 Dealing with Foreign Libraries
 ******************************
 
+.. TODO(diataxis)
+
+   There are various types of content here:
+
+   - how-to guide for adding C stubs to an existing library
+   - tutorial for ctypes
+   - reference for ctypes field
+
 The OCaml programming language can interface with libraries written in foreign
 languages such as C. This section explains how to do this with Dune. Note that
 it does not cover how to write the C stubs themselves, but this is covered by
@@ -25,7 +33,7 @@ Adding C/C++ Stubs to an OCaml Library
 To add C stubs to an OCaml library, simply list the C files without the ``.c``
 extension in the :ref:`foreign-stubs` field. For instance:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name mylib)
@@ -44,7 +52,8 @@ Header Files
 ------------
 
 C/C++ source files may include header files in the same directory as the C/C++
-source files or in the same directory group when using :ref:`include_subdirs`.
+source files or in the same directory group when using
+:doc:`/reference/files/dune/include_subdirs`.
 
 The header files must have the ``.h`` extension.
 
@@ -52,9 +61,10 @@ Installing Header Files
 -----------------------
 
 It is sometimes desirable to install header files with the library. For that
-you have two choices: install them explicitly with an :ref:`install` stanza or
-use the ``install_c_headers`` field of the :ref:`library` stanza. This field
-takes a list of header files names without the ``.h`` extension. When a library
+you have two choices: install them explicitly with an
+:doc:`/reference/files/dune/install` stanza or use the ``install_c_headers``
+field of the :doc:`/reference/files/dune/library` stanza. This field takes a
+list of header files names without the ``.h`` extension. When a library
 installs header files, they are made visible to users of the library via the
 include search path.
 
@@ -63,7 +73,7 @@ include search path.
 Stub Generation with Dune Ctypes
 ================================
 
-Beginning in Dune 3.0, it's possible to use the ctypes_ stanza to generate
+Beginning in Dune 3.0, it's possible to use the ctypes_ field to generate
 bindings for C libraries without writing any C code.
 
 Note that Dune support for this feature is experimental and is not subject to
@@ -90,17 +100,17 @@ A Toy Example
 To begin, you must declare the ``ctypes`` extension in your ``dune-project``
 file:
 
-.. code:: scheme
+.. code:: dune
 
-  (lang dune 3.7)
-  (using ctypes 0.1)
+  (lang dune 3.14)
+  (using ctypes 0.3)
 
 
 Next, here is a ``dune`` file you can use to define an OCaml program that binds
 a C system library called ``libfoo``, which offers ``foo.h`` in a standard
 location.
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name foo)
@@ -112,16 +122,16 @@ location.
      (build_flags_resolver pkg_config)
      (headers (include "foo.h"))
      (type_description
-      (instance Type)
+      (instance Types)
       (functor Type_description))
      (function_description
       (concurrency unlocked)
-      (instance Function)
+      (instance Functions)
       (functor Function_description))
      (generated_types Types_generated)
      (generated_entry_point C)))
 
-This stanza will introduce a module named ``C`` into your project, with the
+This field will introduce a module named ``C`` into your project, with the
 sub-modules ``Types`` and ``Functions`` that will have your fully-bound C
 types, constants, and functions.
 
@@ -193,13 +203,13 @@ and build and link the example ``foo.exe`` program.
 Complete information about the ``ctypes`` combinators used above is available
 at the ctypes_ project.
 
-Ctypes Stanza Reference
+Ctypes Field Reference
 ------------------------
 
-The ``ctypes`` stanza can be used in any ``executable(s)`` or ``library``
+The ``ctypes`` field can be used in any ``executable(s)`` or ``library``
 stanza.
 
-.. code:: scheme
+.. code:: dune
 
   ((executable|library)
     ...
@@ -226,7 +236,7 @@ stanza.
   library functions written in the ``ctypes`` domain-specific language you wish
   to bind. The ``instance`` module is the name of the instantiated functor,
   inserted into the top-level of the ``generated_entry_point`` module. The
-  ``function_description`` stanza can be repeated. This is useful if you need
+  ``function_description`` field can be repeated. This is useful if you need
   to specify sets of functions with different concurrency policies (see below).
 
 The instantiated types described above can be accessed from the function
@@ -235,11 +245,11 @@ descriptions by referencing them as the module specified in optional
 
 ``<optional-ctypes-fields>`` are:
 
-- ``(build_flags_resolver <pkg_config|vendored-stanza>)`` tells Dune how to
+- ``(build_flags_resolver <pkg_config|vendored-field>)`` tells Dune how to
   compile and link your foreign library. Specifying ``pkg_config`` will use
   the pkg-config_ tool to query the compilation and link flags for
   ``external_library_name``. For vendored libraries, provide the build and link
-  flags using ``vendored`` stanza. If ``build_flags_resolver`` is not
+  flags using ``vendored`` field. If ``build_flags_resolver`` is not
   specified, the default of ``pkg_config`` will be used.
 
 - ``(generated_types <module-name>)`` is the name of an intermediate module. By
@@ -248,19 +258,21 @@ descriptions by referencing them as the module specified in optional
   module(s).
 
 - ``(generated_entry_point <module-name>)`` is the name of a generated module
-  that your instantiated ``Types`` and ``Function`` modules will instantiated
+  that your instantiated ``Types`` and ``Functions`` modules will instantiated
   under. We suggest calling it ``C``.
 
 - Headers can be added to the generated C files:
+
    - ``(headers (include "include1" "include2" ...))`` adds ``#include
-     <include1>``, ``#include <include2>``. It uses the :ref:`ordered-set-language`.
+     <include1>``, ``#include <include2>``. It uses the
+     :doc:`reference/ordered-set-language`.
    - ``(headers (preamble <preamble>)`` adds directly the preamble. Variables
      can be used in ``<preamble>`` such as ``%{read: }``.
 
 - Since the Dune's ``ctypes`` feature is still experimental, it could be useful to
   add additional dependencies in order to make sure that local
-  headers or libraries are available: ``(deps <deps-conf list>)``. See the
-  :ref:`deps-field` section for more details.
+  headers or libraries are available: ``(deps <deps-conf list>)``. See
+  :doc:`concepts/dependency-spec` for more details.
 
 ``<optional-function-description-fields>`` are:
 
@@ -275,15 +287,15 @@ descriptions by referencing them as the module specified in optional
   not accessed or returned by function calls. With ``return_errno``, all
   functions will return the tuple ``(retval, errno)``.
 
-``<vendored-stanza>`` is:
+``<vendored-field>`` is:
 
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
   and link flags for binding your vendored code. You must also provide
   instructions in your ``dune`` file on how to build the vendored foreign
-  library; see the :ref:`foreign_library` stanza. Usually the ``<flags>`` should
-  contain ``:standard`` in order to add the default flags used by the OCaml
-  compiler for C files :ref:`always-add-cflags`.
-
+  library; see the :doc:`/reference/files/dune/foreign_library` stanza. Usually
+  the ``<flags>`` should contain ``:standard`` in order to add the default
+  flags used by the OCaml compiler for C files
+  :doc:`/reference/files/dune-project/use_standard_c_and_cxx_flags`.
 
 .. _foreign-sandboxing:
 
@@ -299,7 +311,7 @@ To do that, follow the following procedure:
 
 - Put all the foreign code in a sub-directory
 - Tell Dune not to interpret configuration files in this directory via an
-  :ref:`data_only_dirs <dune-data_only_dirs>` stanza
+  :doc:`/reference/files/dune/data_only_dirs` stanza
 - Write a custom rule that:
 
   - depends on this directory recursively via :ref:`source_tree <source_tree>`
@@ -320,14 +332,14 @@ The first step is to put the sources of ``libfoo`` in your project,
 for instance in ``src/libfoo``. Then tell Dune to consider
 ``src/libfoo`` as raw data by writing the following in ``src/dune``:
 
-.. code:: scheme
+.. code:: dune
 
    (data_only_dirs libfoo)
 
 The next step is to setup the rule to build ``libfoo``. For this,
 writing the following code ``src/dune``:
 
-.. code:: scheme
+.. code:: dune
 
    (rule
     (deps (source_tree libfoo))
@@ -340,13 +352,13 @@ writing the following code ``src/dune``:
       (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``. The build is done in a ``no-infer`` action because
-``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by an
-external build system.
+declared as ``targets``. The build is done in a
+:doc:`/reference/actions/no-infer` action because ``libfoo/libfoo.a`` and
+``libfoo/libfoo.so`` are dependencies produced by an external build system.
 
 The last step is to attach these archives to an OCaml library as follows:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name bar)

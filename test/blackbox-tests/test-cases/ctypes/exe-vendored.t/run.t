@@ -8,6 +8,6 @@ This is the version that builds into an executable.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ TARGET=./vendor
-  $ mkdir -p $TARGET && install $LIBEX/* $TARGET
+  $ mkdir -p $TARGET && install $LIBEX/*example* $TARGET
   $ dune exec ./example.exe
   4

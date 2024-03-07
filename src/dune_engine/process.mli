@@ -1,18 +1,20 @@
 (** Running external programs *)
 
 open Import
+module Action_output_on_success := Execution_parameters.Action_output_on_success
+module Action_output_limit := Execution_parameters.Action_output_limit
 
 val with_directory_annot : Path.t User_message.Annots.Key.t
 
-(** How to handle sub-process failures *)
-type ('a, 'b) failure_mode =
-  | Strict : ('a, 'a) failure_mode
-      (** Fail if the process exits with anything else than [0] *)
-  | Accept : int Predicate.t -> ('a, ('a, int) result) failure_mode
-      (** Accept the following non-zero exit codes, and return [Error code] if
-          the process exists with one of these codes. *)
-  | Return : ('a, 'a * int) failure_mode
-      (** Accept any error code and return it. *)
+module Failure_mode : sig
+  (** How to handle sub-process failures *)
+  type ('a, 'b) t =
+    | Strict : ('a, 'a) t (** Fail if the process exits with anything else than [0] *)
+    | Accept : int Predicate.t -> ('a, ('a, int) result) t
+    (** Accept the following non-zero exit codes, and return [Error code] if
+        the process exits with one of these codes. *)
+    | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
+end
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)
@@ -26,16 +28,19 @@ module Io : sig
 
   type 'a t
 
-  val stdout : output t
-
-  val make_stdout : Execution_parameters.Action_output_on_success.t -> output t
+  val make_stdout
+    :  output_on_success:Action_output_on_success.t
+    -> output_limit:Action_output_limit.t
+    -> output t
 
   val stderr : output t
 
-  val make_stderr : Execution_parameters.Action_output_on_success.t -> output t
+  val make_stderr
+    :  output_on_success:Action_output_on_success.t
+    -> output_limit:Action_output_limit.t
+    -> output t
 
   val stdin : input t
-
   val null : 'a mode -> 'a t
 
   (** Return a buffered channel for this output. The channel is created lazily. *)
@@ -65,13 +70,13 @@ type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
   ; name : string option
-        (** name when emitting stats. defaults to the basename of the executable *)
-  ; categories : string list  (** additional categories when emitting stats *)
+  (** name when emitting stats. defaults to the basename of the executable *)
+  ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
   }
 
-val create_metadata :
-     ?loc:Loc.t
+val create_metadata
+  :  ?loc:Loc.t
   -> ?annots:User_message.Annots.t
   -> ?name:string
   -> ?categories:string list
@@ -85,70 +90,77 @@ val set_temp_dir_when_running_actions : bool ref
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination. [stdout_to] [stderr_to] are released *)
-val run :
-     ?dir:Path.t
+val run
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (unit, 'a) failure_mode
+  -> (unit, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
 
-val run_with_times :
-     ?dir:Path.t
+val run_with_times
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
+  -> (Proc.Times.t, 'a) Failure_mode.t
   -> Path.t
   -> string list
-  -> Proc.Times.t Fiber.t
+  -> 'a Fiber.t
 
 (** Run a command and capture its output *)
-val run_capture :
-     ?dir:Path.t
+val run_capture
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string, 'a) failure_mode
+  -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
 
-val run_capture_line :
-     ?dir:Path.t
+val run_capture_line
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string, 'a) failure_mode
+  -> (string, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
 
-val run_capture_lines :
-     ?dir:Path.t
+val run_capture_lines
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string list, 'a) failure_mode
+  -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t
 
-val run_capture_zero_separated :
-     ?dir:Path.t
+val run_capture_zero_separated
+  :  ?dir:Path.t
+  -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> ?env:Env.t
   -> ?metadata:metadata
-  -> (string list, 'a) failure_mode
+  -> (string list, 'a) Failure_mode.t
   -> Path.t
   -> string list
   -> 'a Fiber.t

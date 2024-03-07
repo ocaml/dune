@@ -9,6 +9,7 @@ module Json = struct
     | `List of t list
     | `Bool of bool
     | `Assoc of (string * t) list
+    | `Null
     ]
 end
 
@@ -16,20 +17,18 @@ module Timestamp : sig
   type t
 
   val to_json : t -> Json.t
-
   val of_float_seconds : float -> t
-
   val to_float_seconds : t -> float
 end = struct
   type t = float
 
   let of_float_seconds x = x
-
   let to_float_seconds x = x
 
   let to_json f =
     let n = int_of_float @@ (f *. 1_000_000.) in
     `Int n
+  ;;
 end
 
 module Id = struct
@@ -43,10 +42,10 @@ module Id = struct
   let to_string = function
     | `String s -> s
     | `Int i -> string_of_int i
+  ;;
 
   let to_json (t : t) = (t :> Json.t)
-
-  let field id = ("id", to_json id)
+  let field id = "id", to_json id
 end
 
 module Stack_frame = struct
@@ -54,7 +53,6 @@ module Stack_frame = struct
     type t = string list
 
     let create t = t
-
     let to_json t = `List (List.map t ~f:(fun s -> `String s))
   end
 
@@ -67,13 +65,14 @@ module Stack_frame = struct
   let create ?parent ~name ~category () = { parent; name; category }
 
   let to_json { parent; name; category } : Json.t =
-    let json = [ ("name", `String name); ("category", `String category) ] in
+    let json = [ "name", `String name; "category", `String category ] in
     let json =
       match parent with
       | None -> json
       | Some id -> ("parent", Id.to_json id) :: json
     in
     `Assoc json
+  ;;
 end
 
 module Event = struct
@@ -92,12 +91,12 @@ module Event = struct
     ; stackframe : [ `Id of Id.t | `Raw of Stack_frame.Raw.t ] option
     }
 
-  let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ?stackframe
-      ~ts ~name () =
+  let common_fields ?tts ?cname ?(cat = []) ?(pid = 0) ?(tid = 0) ?stackframe ~ts ~name ()
+    =
     { tts; cname; cat; ts; pid; tid; name; stackframe }
+  ;;
 
   let set_ts t ts = { t with ts }
-
   let ts t = t.ts
 
   type scope =
@@ -176,64 +175,63 @@ module Event = struct
         }
     | Metadata of metadata
 
-  let phase s = ("ph", `String s)
+  let phase s = "ph", `String s
 
   let add_field_opt to_field field fields =
     match field with
     | None -> fields
     | Some f -> to_field f :: fields
+  ;;
 
-  let json_fields_of_common_fields
-      { name; cat; ts; tts; pid; tid; cname; stackframe } =
+  let json_fields_of_common_fields { name; cat; ts; tts; pid; tid; cname; stackframe } =
     let fields =
-      [ ("name", `String name)
-      ; ("cat", `String (String.concat ~sep:"," cat))
-      ; ("ts", Timestamp.to_json ts)
-      ; ("pid", `Int pid)
-      ; ("tid", `Int tid)
+      [ "name", `String name
+      ; "cat", `String (String.concat ~sep:"," cat)
+      ; "ts", Timestamp.to_json ts
+      ; "pid", `Int pid
+      ; "tid", `Int tid
       ]
     in
-    let fields =
-      add_field_opt (fun cname -> ("cname", `String cname)) cname fields
-    in
-    let fields =
-      add_field_opt (fun tts -> ("tts", Timestamp.to_json tts)) tts fields
-    in
+    let fields = add_field_opt (fun cname -> "cname", `String cname) cname fields in
+    let fields = add_field_opt (fun tts -> "tts", Timestamp.to_json tts) tts fields in
     add_field_opt
       (fun stackframe ->
         match stackframe with
-        | `Id id -> ("sf", Id.to_json id)
-        | `Raw r -> ("stack", Stack_frame.Raw.to_json r))
-      stackframe fields
+        | `Id id -> "sf", Id.to_json id
+        | `Raw r -> "stack", Stack_frame.Raw.to_json r)
+      stackframe
+      fields
+  ;;
 
   let json_of_scope = function
     | Global -> `String "g"
     | Process -> `String "p"
     | Thread -> `String "t"
+  ;;
 
-  let args_field fields = ("args", `Assoc fields)
+  let args_field fields = "args", `Assoc fields
 
   let json_fields_of_metadata m =
     let fields =
-      let common pid name = [ ("name", `String name); ("pid", `Int pid) ] in
+      let common pid name = [ "name", `String name; "pid", `Int pid ] in
       match m with
       | Process_name { pid; name } ->
-        args_field [ ("name", `String name) ] :: common pid "thread_name"
+        args_field [ "name", `String name ] :: common pid "thread_name"
       | Process_labels { pid; labels } ->
-        args_field [ ("labels", `String labels) ] :: common pid "process_labels"
+        args_field [ "labels", `String labels ] :: common pid "process_labels"
       | Thread_name { tid; pid; name } ->
         ("tid", `Int tid)
-        :: args_field [ ("name", `String name) ]
+        :: args_field [ "name", `String name ]
         :: common pid "process_name"
       | Process_sort_index { pid; sort_index } ->
-        args_field [ ("sort_index", `Int sort_index) ]
-        :: common pid "process_sort_index"
+        args_field [ "sort_index", `Int sort_index ] :: common pid "process_sort_index"
       | Thread_sort_index { pid; sort_index; tid } ->
         ("tid", `Int tid)
-        :: args_field [ ("sort_index", `Int sort_index) ]
+        :: args_field [ "sort_index", `Int sort_index ]
         :: common pid "thread_sort_index"
     in
     phase "M" :: fields
+  ;;
 
   let to_json_fields : t -> (string * Json.t) list = function
     | Counter (common, args, id) ->
@@ -245,23 +243,19 @@ module Event = struct
       let fields = phase "B" :: args_field args :: fields in
       add_field_opt Id.field id fields
     | Duration_end { pid; tid; ts; args } ->
-      let fields =
-        [ ("tid", `Int tid); ("pid", `Int pid); ("ts", `Float ts); phase "E" ]
-      in
+      let fields = [ "tid", `Int tid; "pid", `Int pid; "ts", `Float ts; phase "E" ] in
       add_field_opt args_field args fields
     | Complete { common; dur; args; tdur } ->
       let fields = json_fields_of_common_fields common in
       let fields = phase "X" :: ("dur", Timestamp.to_json dur) :: fields in
       let fields =
-        add_field_opt (fun tdur -> ("tdur", Timestamp.to_json tdur)) tdur fields
+        add_field_opt (fun tdur -> "tdur", Timestamp.to_json tdur) tdur fields
       in
       add_field_opt args_field args fields
     | Instant (common, scope, args) ->
       let fields = json_fields_of_common_fields common in
       let fields = phase "i" :: fields in
-      let fields =
-        add_field_opt (fun s -> ("s", json_of_scope s)) scope fields
-      in
+      let fields = add_field_opt (fun s -> "s", json_of_scope s) scope fields in
       add_field_opt args_field args fields
     | Async { common; async; scope; id; args } ->
       let fields = json_fields_of_common_fields common in
@@ -278,7 +272,7 @@ module Event = struct
         in
         ph :: fields
       in
-      let fields = add_field_opt (fun s -> ("scope", `String s)) scope fields in
+      let fields = add_field_opt (fun s -> "scope", `String s) scope fields in
       add_field_opt args_field args fields
     | Object { common; object_kind; id; scope } ->
       let fields = json_fields_of_common_fields common in
@@ -286,30 +280,29 @@ module Event = struct
       let fields =
         let ph, args =
           match object_kind with
-          | New -> ("N", None)
-          | Destroy -> ("D", None)
+          | New -> "N", None
+          | Destroy -> "D", None
           | Snapshot { cat; args } ->
             let snapshot =
               add_field_opt
-                (fun cat -> ("cat", `String (String.concat ~sep:"," cat)))
-                cat args
+                (fun cat -> "cat", `String (String.concat ~sep:"," cat))
+                cat
+                args
             in
-            ("O", Some [ ("snapshot", `Assoc snapshot) ])
+            "O", Some [ "snapshot", `Assoc snapshot ]
         in
         let fields = phase ph :: fields in
         add_field_opt args_field args fields
       in
-      add_field_opt (fun s -> ("scope", `String s)) scope fields
+      add_field_opt (fun s -> "scope", `String s) scope fields
     | Metadata m -> json_fields_of_metadata m
+  ;;
 
   let to_json t = `Assoc (to_json_fields t)
-
   let counter ?id common args = Counter (common, args, id)
-
   let complete ?tdur ?args ~dur common = Complete { common; tdur; dur; args }
-
-  let async ?scope ?args id async common =
-    Async { common; args; scope; id; async }
+  let async ?scope ?args id async common = Async { common; args; scope; id; async }
+  let instant ?args ?scope common = Instant (common, scope, args)
 end
 
 module Output_object = struct
@@ -321,9 +314,7 @@ module Output_object = struct
     }
 
   let to_json { displayTimeUnit; traceEvents; extra_fields; stackFrames } =
-    let json =
-      [ ("traceEvents", `List (List.map traceEvents ~f:Event.to_json)) ]
-    in
+    let json = [ "traceEvents", `List (List.map traceEvents ~f:Event.to_json) ] in
     let json =
       match displayTimeUnit with
       | None -> json
@@ -331,8 +322,8 @@ module Output_object = struct
         ( "displayTimeUnit"
         , `String
             (match u with
-            | `Ms -> "ms"
-            | `Ns -> "ns") )
+             | `Ms -> "ms"
+             | `Ns -> "ns") )
         :: json
     in
     let json : (string * Json.t) list =
@@ -341,8 +332,8 @@ module Output_object = struct
       | Some frames ->
         let frames =
           List.map frames ~f:(fun (id, frame) ->
-              let id = Id.to_string id in
-              (id, Stack_frame.to_json frame))
+            let id = Id.to_string id in
+            id, Stack_frame.to_json frame)
         in
         ("stackFrames", `Assoc frames) :: json
     in
@@ -352,7 +343,9 @@ module Output_object = struct
       | Some extra_fields -> json @ extra_fields
     in
     `Assoc json
+  ;;
 
   let create ?displayTimeUnit ?extra_fields ?stackFrames ~traceEvents () =
     { displayTimeUnit; extra_fields; traceEvents; stackFrames }
+  ;;
 end

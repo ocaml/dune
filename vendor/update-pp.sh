@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-version=32daa4011584d9aa457b41286a445473973771e0
+version=0021887f75a6017486908cfd837b2ee126e063e7
 
 set -e -o pipefail
 
@@ -20,6 +20,8 @@ mkdir -p pp/src
 SRC=$TMP/pp
 
 cp -v $SRC/src/pp.{ml,mli} pp/src
+cp -v $SRC/LICENSE.md pp/
 
 git checkout pp/src/dune
+git checkout pp/LICENSE.md
 git add -A .

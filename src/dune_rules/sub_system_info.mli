@@ -10,7 +10,6 @@ type sub_system = t = ..
     sub-system. *)
 module type S = sig
   type t
-
   type sub_system += T of t
 
   (** Name of the sub-system *)
@@ -32,12 +31,6 @@ end
 
 module Register (_ : S) : sig end
 
-val record_parser :
-     unit
-  -> ( sub_system Sub_system_name.Map.t
-     , Dune_lang.Decoder.fields )
-     Dune_lang.Decoder.parser
-
+val record_parser : t Sub_system_name.Map.t Dune_lang.Decoder.fields_parser
 val get : Sub_system_name.t -> (module S)
-
 val equal : t -> t -> bool

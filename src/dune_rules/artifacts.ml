@@ -1,106 +1,133 @@
 open Import
 open Memo.O
 
-module Bin = struct
-  let bin_dir_basename = ".bin"
+let bin_dir_basename = ".bin"
+let local_bin p = Path.Build.relative p bin_dir_basename
 
-  let local_bin p = Path.Build.relative p bin_dir_basename
+type origin =
+  { binding : File_binding.Unexpanded.t
+  ; dir : Path.Build.t
+  ; dst : Path.Local.t
+  ; enabled_if : bool Memo.t
+  }
 
-  type t =
-    { context : Context.t
-    ; (* Mapping from executable names to their actual path in the workspace.
-         The keys are the executable names without the .exe, even on Windows. *)
-      local_bins : Path.Build.t String.Map.t
-    }
+type where =
+  | Install_dir
+  | Original_path
 
-  let binary t ?hint ~loc name =
-    if not (Filename.is_relative name) then
-      Memo.return (Ok (Path.of_filename_relative_to_initial_cwd name))
-    else
-      match String.Map.find t.local_bins name with
-      | Some path -> Memo.return (Ok (Path.build path))
-      | None -> (
-        Context.which t.context name >>| function
-        | Some p -> Ok p
-        | None ->
-          Error
-            (let context = t.context.name in
-             Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ()))
+type path =
+  | Resolved of Path.Build.t
+  | Origin of origin list
 
-  let binary_available t name =
-    if not (Filename.is_relative name) then
-      Path.of_filename_relative_to_initial_cwd name
-      |> Path.as_outside_build_dir_exn |> Fs_memo.file_exists
-    else
-      match String.Map.find t.local_bins name with
-      | Some _ -> Memo.return true
-      | None -> (
-        Context.which t.context name >>| function
-        | Some _ -> true
-        | None -> false)
-
-  let add_binaries t ~dir l =
-    let local_bins =
-      List.fold_left l ~init:t.local_bins ~f:(fun acc fb ->
-          let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
-          String.Map.set acc (Path.Build.basename path) path)
-    in
-    { t with local_bins }
-
-  module Local = struct
-    type t = Path.Build.t String.Map.t
-
-    let equal = String.Map.equal ~equal:Path.Build.equal
-
-    let create =
-      Path.Build.Set.fold ~init:String.Map.empty ~f:(fun path acc ->
-          let name = Path.Build.basename path in
-          let key =
-            if Sys.win32 then
-              Option.value ~default:name
-                (String.drop_suffix name ~suffix:".exe")
-            else name
-          in
-          String.Map.set acc key path)
-  end
-
-  let create ~(context : Context.t) ~local_bins = { context; local_bins }
-end
-
-module Public_libs = struct
-  type t =
-    { context : Context.t
-    ; public_libs : Lib.DB.t
-    }
-
-  let create ~context ~public_libs = { context; public_libs }
-
-  let file_of_lib t ~loc ~lib ~file =
-    let open Resolve.Memo.O in
-    let+ lib = Lib.DB.resolve t.public_libs (loc, lib) in
-    if Lib.is_local lib then
-      let package, rest = Lib_name.split (Lib.name lib) in
-      let lib_install_dir =
-        Local_install_path.lib_dir ~context:t.context.name ~package
-      in
-      let lib_install_dir =
-        match rest with
-        | [] -> lib_install_dir
-        | _ -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
-      in
-      Path.build (Path.Build.relative lib_install_dir file)
-    else
-      let info = Lib.info lib in
-      let src_dir = Lib_info.src_dir info in
-      Path.relative src_dir file
-end
+type local_bins = path Filename.Map.t
 
 type t =
-  { public_libs : Public_libs.t
-  ; bin : Bin.t
+  { context : Context.t
+  ; (* Mapping from executable names to their actual path in the workspace.
+       The keys are the executable names without the .exe, even on Windows.
+       Enumerating binaries from install stanzas may involve expanding globs,
+       but the artifacts database is depended on by the logic which expands
+       globs. The computation of this field is deferred to break the cycle. *)
+    local_bins : local_bins Memo.Lazy.t
   }
 
-let create (context : Context.t) ~public_libs ~local_bins =
-  { public_libs = Public_libs.create ~context ~public_libs
-  ; bin = Bin.create ~context ~local_bins
-  }
+let force { local_bins; _ } =
+  let+ (_ : local_bins) = Memo.Lazy.force local_bins in
+  ()
+;;
+
+let expand = Fdecl.create Dyn.opaque
+
+let analyze_binary t name =
+  match Filename.is_relative name with
+  | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
+  | true ->
+    let* local_bins = Memo.Lazy.force t.local_bins in
+    let which () =
+      Context.which t.context name
+      >>| function
+      | None -> `None
+      | Some path -> `Resolved path
+    in
+    (match Filename.Map.find local_bins name with
+     | Some (Resolved p) -> Memo.return (`Resolved (Path.build p))
+     | None -> which ()
+     | Some (Origin origins) ->
+       Memo.parallel_map origins ~f:(fun origin ->
+         origin.enabled_if
+         >>| function
+         | true -> Some origin
+         | false -> None)
+       >>| List.filter_opt
+       >>= (function
+        | [] -> which ()
+        | [ x ] -> Memo.return (`Origin x)
+        | x :: rest ->
+          let loc x = File_binding.Unexpanded.loc x.binding in
+          User_error.raise
+            ~loc:(loc x)
+            [ Pp.textf
+                "binary %S is available from more than one definition. It is also \
+                 available in:"
+                name
+            ; Pp.enumerate rest ~f:(fun x -> Pp.verbatim (Loc.to_file_colon_line (loc x)))
+            ]))
+;;
+
+let binary t ?hint ?(where = Install_dir) ~loc name =
+  analyze_binary t name
+  >>= function
+  | `Resolved path -> Memo.return @@ Ok path
+  | `None ->
+    let context = Context.name t.context in
+    Memo.return
+    @@ Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
+  | `Origin { dir; binding; dst; enabled_if = _ } ->
+    (match where with
+     | Install_dir ->
+       let install_dir = Install.Context.bin_dir ~context:(Context.name t.context) in
+       Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
+     | Original_path ->
+       let+ expanded =
+         File_binding.Unexpanded.expand binding ~dir ~f:(Fdecl.get expand ~dir)
+       in
+       let src = File_binding.Expanded.src expanded in
+       Ok (Path.build src))
+;;
+
+let binary_available t name =
+  analyze_binary t name
+  >>| function
+  | `None -> false
+  | `Resolved _ | `Origin _ -> true
+;;
+
+let add_binaries t ~dir l =
+  let local_bins =
+    Memo.lazy_ ~name:"Artifacts.Bin.add_binaries" (fun () ->
+      let+ local_bins = Memo.Lazy.force t.local_bins in
+      List.fold_left l ~init:local_bins ~f:(fun acc fb ->
+        let path = File_binding.Expanded.dst_path fb ~dir:(local_bin dir) in
+        Filename.Map.set acc (Path.Build.basename path) (Resolved path)))
+  in
+  { t with local_bins }
+;;
+
+let create =
+  let drop_suffix name =
+    if Sys.win32
+    then Option.value ~default:name (String.drop_suffix name ~suffix:".exe")
+    else name
+  in
+  fun (context : Context.t)
+    ~(local_bins : origin Appendable_list.t Filename.Map.t Memo.Lazy.t) ->
+    let local_bins =
+      Memo.lazy_ (fun () ->
+        let+ local_bins = Memo.Lazy.force local_bins in
+        Filename.Map.to_list_map local_bins ~f:(fun name sources ->
+          let sources = Appendable_list.to_list sources in
+          drop_suffix name, Origin sources)
+        |> Filename.Map.of_list_exn)
+    in
+    { context; local_bins }
+;;

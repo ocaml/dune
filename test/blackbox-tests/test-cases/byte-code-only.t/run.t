@@ -2,7 +2,7 @@
         ocamlc bin/.toto.eobjs/byte/dune__exe__Toto.{cmi,cmo,cmt}
         ocamlc src/.foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc build-info/.build_info.objs/byte/build_info.{cmi,cmo,cmt}
-      ocamldep build-info/.build_info.objs/build_info_data.mli.d
+      ocamldep build-info/.build_info.objs/build_info__Build_info_data.intf.d
         ocamlc bin/toto.exe
         ocamlc bin/toto.bc
         ocamlc src/foo.cma

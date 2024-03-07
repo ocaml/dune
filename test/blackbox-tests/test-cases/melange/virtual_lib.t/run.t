@@ -1,5 +1,6 @@
-Virtual library with a single module are not yet supported for melange libs
+Test virtual lib in an exe / melange environment
 
-  $ dune build output/c.js
-  $ node _build/default/output/c.js
-  hello from melange
+  $ dune build @mel
+  $ output=_build/default/output/mel.js
+  $ test -f "$output" && node "$output"
+  Hello from melange

@@ -49,7 +49,6 @@ We also forbid submodules from depending on their interface modules:
 Or their parent interface modules:
 
   $ rm -rf baz
-  $ touch baz.ml
   $ mkdir -p baz/foo/
   $ cat >baz/foo/z.ml <<EOF
   > let () = Baz.f

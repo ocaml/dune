@@ -1,7 +1,7 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
   $ dune build @install
-  $ dune install --dry-run 2>&1 --prefix _install | dune_cmd sanitize
+  $ dune install --dry-run --display short 2>&1 --prefix _install | dune_cmd sanitize
   Removing (if it exists) _install/lib/mylib/META
   Installing _install/lib/mylib/META
   Creating directory _install/lib/mylib
@@ -47,7 +47,7 @@
   Creating directory _install/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmxs to _install/lib/mylib/mylib.cmxs (executable: true)
 
-  $ dune uninstall --dry-run --prefix _install 2>&1 | dune_cmd sanitize
+  $ dune uninstall --dry-run --prefix _install --display short 2>&1 | dune_cmd sanitize
   Removing (if it exists) _install/lib/mylib/META
   Removing (if it exists) _install/lib/mylib/dune-package
   Removing (if it exists) _install/lib/mylib/mylib$ext_lib

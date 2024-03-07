@@ -11,16 +11,17 @@ let%expect_test "directory digest version" =
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
   let stats = { Digest.Stats_for_digest.st_kind = S_DIR; st_perm = 1 } in
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
-  | Ok digest ->
-    let digest = Digest.to_string digest in
-    if String.equal digest expected then print_endline "[PASS]"
-    else
-      printfn
-        "[FAIL] new digest value. please update the version and this test.\n%s"
-        digest
-  | Unexpected_kind | Unix_error _ ->
-    print_endline "[FAIL] unable to calculate digest");
+   | Ok digest ->
+     let digest = Digest.to_string digest in
+     if String.equal digest expected
+     then print_endline "[PASS]"
+     else
+       printfn
+         "[FAIL] new digest value. please update the version and this test.\n%s"
+         digest
+   | Unexpected_kind | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
+;;
 
 let%expect_test "directories with symlinks" =
   let dir = Temp.create Dir ~prefix:"digest-tests" ~suffix:"" in
@@ -30,7 +31,8 @@ let%expect_test "directories with symlinks" =
   Unix.symlink "bar" (Path.to_string (Path.relative dir "foo"));
   Unix.symlink "bar" (Path.to_string (Path.relative sub "foo"));
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
-  | Ok _ -> print_endline "[PASS]"
-  | Unexpected_kind -> print_endline "[FAIL] unexpected kind"
-  | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
+   | Ok _ -> print_endline "[PASS]"
+   | Unexpected_kind -> print_endline "[FAIL] unexpected kind"
+   | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
+;;

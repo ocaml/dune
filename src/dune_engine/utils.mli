@@ -7,11 +7,15 @@ open Import
 val system_shell_exn : needed_to:string -> Path.t * string
 
 (** Raise an error about a program not found in the PATH or in the tree *)
-val program_not_found :
-  ?context:Context_name.t -> ?hint:string -> loc:Loc.t option -> string -> _
+val program_not_found
+  :  ?context:Context_name.t
+  -> ?hint:string
+  -> loc:Loc.t option
+  -> string
+  -> _
 
-val program_not_found_message :
-     ?context:Context_name.t
+val program_not_found_message
+  :  ?context:Context_name.t
   -> ?hint:string
   -> loc:Loc.t option
   -> string

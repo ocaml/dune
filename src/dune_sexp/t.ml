@@ -9,6 +9,7 @@ type t =
 
 let atom_or_quoted_string s =
   if Atom.is_valid s then Atom (Atom.of_string s) else Quoted_string s
+;;
 
 let atom s = Atom (Atom.of_string s)
 
@@ -16,9 +17,9 @@ let rec to_string t =
   match t with
   | Atom (A s) -> s
   | Quoted_string s -> Escape.quoted s
-  | List l ->
-    Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
+  | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
   | Template t -> Template.to_string t
+;;
 
 let rec pp = function
   | Atom (A s) -> Pp.verbatim s
@@ -26,25 +27,26 @@ let rec pp = function
   | List [] -> Pp.verbatim "()"
   | List l ->
     let open Pp.O in
-    Pp.box ~indent:1
-      (Pp.char '('
-      ++ Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp)
-      ++ Pp.char ')')
+    Pp.box
+      ~indent:1
+      (Pp.char '(' ++ Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp) ++ Pp.char ')')
   | Template t -> Template.pp t
+;;
 
 module Deprecated = struct
   let pp ppf t = Pp.to_fmt ppf (pp t)
 
   let pp_print_quoted_string ppf s =
-    if String.contains s '\n' then (
+    if String.contains s '\n'
+    then (
       match String.split s ~on:'\n' with
       | [] -> Format.pp_print_string ppf (Escape.quoted s)
       | first :: rest ->
         Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Escape.escaped first);
-        List.iter rest ~f:(fun s ->
-            Format.fprintf ppf "@,\\n%s" (Escape.escaped s));
+        List.iter rest ~f:(fun s -> Format.fprintf ppf "@,\\n%s" (Escape.escaped s));
         Format.fprintf ppf "@}\"@]")
     else Format.pp_print_string ppf (Escape.quoted s)
+  ;;
 
   let rec pp_split_strings ppf = function
     | Atom (A s) -> Format.pp_print_string ppf s
@@ -56,12 +58,13 @@ module Deprecated = struct
       Format.pp_open_hvbox ppf 0;
       pp_split_strings ppf first;
       List.iter rest ~f:(fun sexp ->
-          Format.pp_print_space ppf ();
-          pp_split_strings ppf sexp);
+        Format.pp_print_space ppf ();
+        pp_split_strings ppf sexp);
       Format.pp_close_box ppf ();
       Format.pp_print_string ppf ")";
       Format.pp_close_box ppf ()
     | Template t -> Template.pp_split_strings ppf t
+  ;;
 
   type formatter_state =
     | In_atom
@@ -73,30 +76,32 @@ module Deprecated = struct
     Format.pp_set_mark_tags ppf true;
     let ofuncs = Format.pp_get_formatter_out_functions ppf () in
     let tfuncs = Format.pp_get_formatter_stag_functions ppf () in
-    Format.pp_set_formatter_stag_functions ppf
+    Format.pp_set_formatter_stag_functions
+      ppf
       { tfuncs with
         mark_open_stag =
           (function
-          | Format.String_tag "atom" ->
-            state := In_atom :: !state;
-            ""
-          | Format.String_tag "makefile-action" ->
-            state := In_makefile_action :: !state;
-            ""
-          | Format.String_tag "makefile-stuff" ->
-            state := In_makefile_stuff :: !state;
-            ""
-          | s -> tfuncs.mark_open_stag s)
+            | Format.String_tag "atom" ->
+              state := In_atom :: !state;
+              ""
+            | Format.String_tag "makefile-action" ->
+              state := In_makefile_action :: !state;
+              ""
+            | Format.String_tag "makefile-stuff" ->
+              state := In_makefile_stuff :: !state;
+              ""
+            | s -> tfuncs.mark_open_stag s)
       ; mark_close_stag =
           (function
-          | Format.String_tag "atom"
-          | Format.String_tag "makefile-action"
-          | Format.String_tag "makefile-stuff" ->
-            state := List.tl !state;
-            ""
-          | s -> tfuncs.mark_close_stag s)
+            | Format.String_tag "atom"
+            | Format.String_tag "makefile-action"
+            | Format.String_tag "makefile-stuff" ->
+              state := List.tl !state;
+              ""
+            | s -> tfuncs.mark_close_stag s)
       };
-    Format.pp_set_formatter_out_functions ppf
+    Format.pp_set_formatter_out_functions
+      ppf
       { ofuncs with
         out_newline =
           (fun () ->
@@ -111,9 +116,10 @@ module Deprecated = struct
           (fun n ->
             ofuncs.out_spaces
               (match !state with
-              | In_atom :: _ -> max 0 (n - 2)
-              | _ -> n))
+               | In_atom :: _ -> max 0 (n - 2)
+               | _ -> n))
       }
+  ;;
 end
 
 let rec to_dyn =
@@ -123,3 +129,4 @@ let rec to_dyn =
   | List s -> List (List.map s ~f:to_dyn)
   | Quoted_string s -> string s
   | Template t -> variant "template" [ string (Template.to_string t) ]
+;;

@@ -6,7 +6,7 @@ This executable is disabled, any attempt to build it should fail:
   Error: Don't know how to build dis.exe
   [1]
   $ dune exec ./dis.exe
-  Error: Program "./dis.exe" not found!
+  Error: Program './dis.exe' not found!
   [1]
 
 This one is enabled

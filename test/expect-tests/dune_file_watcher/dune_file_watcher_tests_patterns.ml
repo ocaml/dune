@@ -1,8 +1,13 @@
 let printf = Printf.printf
 
 let test string =
-  printf "should_exclude(%s) = %s\n" string
-    (Dune_file_watcher.For_tests.should_exclude string |> Bool.to_string)
+  printf
+    "should_exclude(%s) = %b\n"
+    string
+    (Dune_file_watcher.For_tests.should_exclude
+       string
+       ~watch_exclusions:Dune_config_file.Dune_config.standard_watch_exclusions)
+;;
 
 let%expect_test _ =
   test "file.ml";
@@ -18,6 +23,7 @@ let%expect_test _ =
   test "dir/#file#";
   test "dir/#subdir#/file";
   test ".#file";
+  test ".#foobar.ml";
   test "dir/.#file";
   test "dir/.#subdir/file";
   [%expect
@@ -35,6 +41,8 @@ let%expect_test _ =
     should_exclude(dir/#file#) = true
     should_exclude(dir/#subdir#/file) = false
     should_exclude(.#file) = true
+    should_exclude(.#foobar.ml) = true
     should_exclude(dir/.#file) = true
     should_exclude(dir/.#subdir/file) = true
   |}]
+;;

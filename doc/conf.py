@@ -16,11 +16,19 @@
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
 
+import os
+import sys
+sys.path.append(os.path.abspath('exts'))
+
+from sphinx.highlighting import lexers
+from dune_lexer import DuneLexer
+from opam_lexer import OpamLexer
+from cram_lexer import CramLexer
+
+lexers[DuneLexer.name] = DuneLexer(startinline=True)
+lexers[OpamLexer.name] = OpamLexer()
+lexers[CramLexer.name] = CramLexer()
 
 # -- General configuration ------------------------------------------------
 
@@ -32,7 +40,7 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx_copybutton'
+    'sphinx_copybutton',
 ]
 
 # Add any paths that contain templates here, relative to this directory.

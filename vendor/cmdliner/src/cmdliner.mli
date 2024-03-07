@@ -347,7 +347,7 @@ module Term : sig
       {- [$(mname)] the main term's name.}} *)
 
   val name : info -> string
-  [@@ocaml.deprecated "Use Cmd.info_name instead."]
+  [@@ocaml.deprecated "Use Cmd.name instead."]
   (** [name ti] is the name of the term information. *)
 
  (** {2:evaluation Evaluation} *)
@@ -606,7 +606,7 @@ module Cmd : sig
     ?man:Manpage.block list -> ?envs:Env.info list -> ?exits:Exit.info list ->
     ?sdocs:string -> ?docs:string -> ?doc:string -> ?version:string ->
     string -> info
-  (** [info name ?sdocs ?man ?docs ?doc ?version] is a term information
+  (** [info ?sdocs ?man ?docs ?doc ?version name] is a term information
       such that:
       {ul
       {- [name] is the name of the command.}
@@ -636,7 +636,10 @@ module Cmd : sig
       markup language} in which the following variables are recognized:
       {ul
       {- [$(tname)] the (term's) command's name.}
-      {- [$(mname)] the main command name.}} *)
+      {- [$(mname)] the main command name.}
+      {- [$(iname)] the command invocation from main command to the
+         command name.}}
+  *)
 
   (** {1:cmds Commands} *)
 
@@ -720,9 +723,9 @@ module Cmd : sig
   (** The type for successful evaluation results. *)
 
   type eval_error =
-  [ `Parse (** A parse error occured. *)
-  | `Term (** A term evaluation error occured. *)
-  | `Exn (** An uncaught exception occured. *) ]
+  [ `Parse (** A parse error occurred. *)
+  | `Term (** A term evaluation error occurred. *)
+  | `Exn (** An uncaught exception occurred. *) ]
   (** The type for erroring evaluation results. *)
 
   val eval_value :
@@ -734,14 +737,14 @@ module Cmd : sig
       {ul
       {- [argv] the command line arguments to parse (defaults to {!Sys.argv})}
       {- [env] the function used for environment variable lookup (defaults
-         to {!Sys.getenv}.}
+         to {!Sys.getenv}).}
       {- [catch] if [true] (default) uncaught exceptions
          are intercepted and their stack trace is written to the [err]
          formatter}
       {- [help] is the formatter used to print help or version messages
          (defaults to {!Format.std_formatter})}
       {- [err] is the formatter used to print error messages
-         (defaults to {!Format.err_formatter}.}} *)
+         (defaults to {!Format.err_formatter}).}} *)
 
   val eval_peek_opts :
     ?version_opt:bool -> ?env:(string -> string option) ->

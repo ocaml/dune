@@ -1,4 +1,5 @@
-Dune should not allow mod.ml and mod/ in the same directory:
+When (include_subdirs qualified) is enabled, we should forbid the same module
+to be defined by both a normal compilation unit and a directory of modules
 
   $ cat >dune-project <<EOF
   > (lang dune 3.7)
@@ -17,6 +18,12 @@ Dune should not allow mod.ml and mod/ in the same directory:
   $ touch mod/baz.ml
 
   $ dune build foo.exe
+  File "dune", line 1, characters 0-0:
+  Error: The following module and module group cannot co-exist in the same
+  executable or library because they correspond to the same module path
+  - module mod.ml
+  - module group mod/
+  [1]
 
 Another type of overlap:
 
@@ -24,3 +31,9 @@ Another type of overlap:
   $ touch mod/mod.ml
 
   $ dune build foo.exe
+  File "dune", line 1, characters 0-0:
+  Error: The following module and module group cannot co-exist in the same
+  executable or library because they correspond to the same module path
+  - module mod.ml
+  - module group mod/
+  [1]

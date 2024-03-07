@@ -28,13 +28,12 @@ val universal : 'w t
 val trivial : bool -> 'w t
 
 val is_empty : 'w t -> bool
-
 val is_universal : 'w t -> bool
 
 (** [descend t comp] is the set [t'] such that for all path [p], [p] is in [t']
     iff [comp/p] is in [t]. [comp] must be a path component, i.e. without
     directory separator characters. *)
-val descend : 'w t -> string -> Path.Local.w t
+val descend : 'w t -> Filename.t -> Path.Local.w t
 
 (** [exceptions t] is the set of all bindings of the form [(comp, t')] such
     that:
@@ -43,17 +42,17 @@ val descend : 'w t -> string -> Path.Local.w t
 
     Sets of directories for which [exceptions t] is not finite cannot be
     represented by this module. *)
-val exceptions : 'w t -> Path.Local.w t String.Map.t
+val exceptions : 'w t -> Path.Local.w t Filename.Map.t
 
 (** Default membership value for paths that are neither empty nor part of the
     exceptions. I.e. for all non-empty path [p] whose first component is not in
     [exceptions t], [mem t p = default t]. *)
 val default : 'w t -> bool
 
-val create :
-     default:bool
+val create
+  :  default:bool
   -> here:bool
-  -> exceptions:Path.Unspecified.w t String.Map.t
+  -> exceptions:Path.Unspecified.w t Filename.Map.t
   -> Path.Unspecified.w t
 
 (** [singleton p] is the set containing only [p] *)
@@ -63,29 +62,19 @@ val singleton : 'w Path.Local_gen.t -> 'w t
 val subtree : 'w Path.Local_gen.t -> 'w t
 
 val is_subset : 'w t -> of_:'w t -> bool
-
 val union : 'w t -> 'w t -> 'w t
-
 val union_all : 'w t list -> 'w t
-
 val inter : 'w t -> 'w t -> 'w t
-
 val inter_all : 'w t list -> 'w t
-
 val diff : 'w t -> 'w t -> 'w t
-
 val negate : 'w t -> 'w t
-
 val to_dyn : 'w t -> Dyn.t
-
 val forget_root : 'w t -> Path.Unspecified.w t
 
 type toplevel_subdirs =
   | Infinite
-  | Finite of String.Set.t
+  | Finite of Filename.Set.t
 
 val toplevel_subdirs : 'w t -> toplevel_subdirs
-
 val of_list : 'w Path.Local_gen.t list -> 'w t
-
 val just_the_root : 'w t

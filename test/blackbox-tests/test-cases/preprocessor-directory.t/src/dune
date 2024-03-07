@@ -1,0 +1,11 @@
+; An executable which invokes a rewriter to exercise the logic for choosing the
+; directory in which to invoke the rewriter. This project has two files named
+; "rewrite.sh". One next to this dune file, and one in the project root. This
+; project is designed to work in both the case where the rewriter is invoked
+; from the project root (the behaviour in dune <= 3.7) and from the directory
+; containing the dune file that specifies the preprocessing logic.
+(executable
+ (public_name foo)
+ (preprocessor_deps rewrite.sh ../rewrite.sh)
+ (preprocess
+  (pps ppx_inline_test -- -pp ./rewrite.sh)))

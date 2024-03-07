@@ -18,9 +18,10 @@ type t =
 
 let rec rm_rf dir =
   Array.iter (Sys.readdir dir) ~f:(fun fn ->
-      let fn = dir ^/ fn in
-      if Sys.is_directory fn then rm_rf fn else Unix.unlink fn);
+    let fn = dir ^/ fn in
+    if Sys.is_directory fn then rm_rf fn else Unix.unlink fn);
   Unix.rmdir dir
+;;
 
 module Temp = struct
   (* Copied from filename.ml and adapted for directories *)
@@ -30,6 +31,7 @@ module Temp = struct
   let gen_name ~temp_dir ~prefix ~suffix =
     let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
     temp_dir ^/ Printf.sprintf "%s%06x%s" prefix rnd suffix
+  ;;
 
   let create ~prefix ~suffix ~mk =
     let temp_dir = Filename.get_temp_dir_name () in
@@ -40,28 +42,25 @@ module Temp = struct
       | exception Unix.Unix_error _ when counter < 1000 -> try_name (counter + 1)
     in
     try_name 0
+  ;;
 
   let create_temp_dir ~prefix ~suffix =
     let dir = create ~prefix ~suffix ~mk:(fun name -> Unix.mkdir name 0o700) in
     at_exit (fun () -> rm_rf dir);
     dir
+  ;;
 end
 
 module Flags = struct
   let extract_words = String.extract_words
-
-  let extract_comma_space_separated_words =
-    String.extract_comma_space_separated_words
-
+  let extract_comma_space_separated_words = String.extract_comma_space_separated_words
   let extract_blank_separated_words = String.extract_blank_separated_words
-
   let write_lines path s = Io.write_lines path s
 
   let write_sexp path s =
-    let sexp =
-      Dune_lang.List (List.map s ~f:(fun s -> Dune_lang.Quoted_string s))
-    in
+    let sexp = Dune_lang.List (List.map s ~f:(fun s -> Dune_lang.Quoted_string s)) in
     Io.write_file path (Dune_lang.to_string sexp)
+  ;;
 end
 
 module Find_in_path = struct
@@ -71,27 +70,31 @@ module Find_in_path = struct
     match Sys.getenv "PATH" with
     | exception Not_found -> []
     | s -> String.split s ~on:path_sep
+  ;;
 
   let exe = if Sys.win32 then ".exe" else ""
-
   let prog_not_found prog = die "Program %s not found in PATH" prog
 
   let best_prog dir prog =
     let fn = dir ^/ prog ^ ".opt" ^ exe in
-    if Sys.file_exists fn then Some fn
-    else
+    if Sys.file_exists fn
+    then Some fn
+    else (
       let fn = dir ^/ prog ^ exe in
-      if Sys.file_exists fn then Some fn else None
+      if Sys.file_exists fn then Some fn else None)
+  ;;
 
   let find_ocaml_prog prog =
     match List.find_map (get_path ()) ~f:(fun dir -> best_prog dir prog) with
     | None -> prog_not_found prog
     | Some fn -> fn
+  ;;
 
   let which prog =
     List.find_map (get_path ()) ~f:(fun dir ->
-        let fn = dir ^/ prog ^ exe in
-        Option.some_if (Sys.file_exists fn) fn)
+      let fn = dir ^/ prog ^ exe in
+      Option.some_if (Sys.file_exists fn) fn)
+  ;;
 end
 
 let logf t fmt = Printf.ksprintf t.log fmt
@@ -100,6 +103,7 @@ let gen_id t =
   let n = t.counter in
   t.counter <- n + 1;
   n
+;;
 
 let quote_if_needed =
   let need_quote = function
@@ -107,8 +111,8 @@ let quote_if_needed =
     | _ -> false
   in
   fun s ->
-    if String.is_empty s || String.exists ~f:need_quote s then Filename.quote s
-    else s
+    if String.is_empty s || String.exists ~f:need_quote s then Filename.quote s else s
+;;
 
 module Process = struct
   type result =
@@ -119,6 +123,7 @@ module Process = struct
 
   let command_line prog args =
     String.concat ~sep:" " (List.map (prog :: args) ~f:quote_if_needed)
+  ;;
 
   let run_process t ?dir ?env prog args =
     let prog_command_line = command_line prog args in
@@ -161,10 +166,8 @@ module Process = struct
           ~finally:(fun () -> Sys.chdir old_dir)
     in
     match status with
-    | Unix.WSIGNALED signal ->
-      die "signal %d killed process: %s" signal prog_command_line
-    | WSTOPPED signal ->
-      die "signal %d stopped process: %s" signal prog_command_line
+    | Unix.WSIGNALED signal -> die "signal %d killed process: %s" signal prog_command_line
+    | WSTOPPED signal -> die "signal %d stopped process: %s" signal prog_command_line
     | WEXITED exit_code ->
       logf t "-> process exited with code %d" exit_code;
       let stdout = Io.read_file stdout_fn in
@@ -174,11 +177,13 @@ module Process = struct
       logf t "-> stderr:";
       List.iter (String.split_lines stderr) ~f:(logf t " | %s");
       { exit_code; stdout; stderr }
+  ;;
 
   (* [cmd] which cannot be quoted (such as [t.c_compiler] which contains some
      flags) followed by additional arguments. *)
   let command_args cmd args =
     String.concat ~sep:" " (cmd :: List.map args ~f:quote_if_needed)
+  ;;
 
   let run_command t ?dir ?(env = []) cmd =
     logf t "run: %s" cmd;
@@ -196,8 +201,14 @@ module Process = struct
       | _ -> "env " ^ String.concat ~sep:" " env
     in
     let exit_code =
-      Printf.ksprintf Sys.command "%s%s %s > %s 2> %s" in_dir with_env cmd
-        (Filename.quote stdout_fn) (Filename.quote stderr_fn)
+      Printf.ksprintf
+        Sys.command
+        "%s%s %s > %s 2> %s"
+        in_dir
+        with_env
+        cmd
+        (Filename.quote stdout_fn)
+        (Filename.quote stderr_fn)
     in
     let stdout = Io.read_file stdout_fn in
     let stderr = Io.read_file stderr_fn in
@@ -207,34 +218,34 @@ module Process = struct
     logf t "-> stderr:";
     List.iter (String.split_lines stderr) ~f:(logf t " | %s");
     { exit_code; stdout; stderr }
+  ;;
 
   let run_command_capture_exn t ?dir ?env cmd =
     let { exit_code; stdout; stderr } = run_command t ?dir ?env cmd in
-    if exit_code <> 0 then die "command exited with code %d: %s" exit_code cmd
-    else if not (String.is_empty stderr) then
-      die "command has non-empty stderr: %s" cmd
+    if exit_code <> 0
+    then die "command exited with code %d: %s" exit_code cmd
+    else if not (String.is_empty stderr)
+    then die "command has non-empty stderr: %s" cmd
     else stdout
+  ;;
 
-  let run_command_ok t ?dir ?env cmd =
-    (run_command t ?dir ?env cmd).exit_code = 0
-
-  let run t ?dir ?env prog args =
-    run_command t ?dir ?env (command_line prog args)
+  let run_command_ok t ?dir ?env cmd = (run_command t ?dir ?env cmd).exit_code = 0
+  let run t ?dir ?env prog args = run_command t ?dir ?env (command_line prog args)
 
   let run_capture_exn t ?dir ?env prog args =
     run_command_capture_exn t ?dir ?env (command_line prog args)
+  ;;
 
-  let run_ok t ?dir ?env prog args =
-    run_command_ok t ?dir ?env (command_line prog args)
+  let run_ok t ?dir ?env prog args = run_command_ok t ?dir ?env (command_line prog args)
 end
 
 let ocaml_config_var t var = Ocaml_config.Vars.find t.ocamlc_config var
 
 let ocaml_config_var_exn t var =
   match Ocaml_config.Vars.find t.ocamlc_config var with
-  | None ->
-    die "variable %S not found in the output of `%s`" var t.ocamlc_config_cmd
+  | None -> die "variable %S not found in the output of `%s`" var t.ocamlc_config_cmd
   | Some s -> s
+;;
 
 type config =
   { ocamlc : string
@@ -243,9 +254,11 @@ type config =
 
 let dune_is_too_old ~min:v =
   die
-    "You seem to be running dune < %s. This version of dune-configurator \
-     requires at least dune %s."
-    v v
+    "You seem to be running dune < %s. This version of dune-configurator requires at \
+     least dune %s."
+    v
+    v
+;;
 
 let read_dot_dune_configurator_file ~build_dir =
   let file = Filename.concat build_dir ".dune/configurator.v2" in
@@ -279,24 +292,22 @@ let read_dot_dune_configurator_file ~build_dir =
         match field "ocaml_config_vars" with
         | List bindings ->
           List.map bindings ~f:(function
-            | List [ Atom k; Atom v ] -> (k, v)
+            | List [ Atom k; Atom v ] -> k, v
             | _ -> die "invalid output")
         | _ -> die "invalid output"
       in
       Ocaml_config.Vars.of_list_exn bindings
     in
     { ocamlc; vars }
+;;
 
 let fill_in_fields_that_depends_on_ocamlc_config t =
   let get = ocaml_config_var_exn t in
-  let get_flags var =
-    get var |> String.trim |> Flags.extract_blank_separated_words
-  in
+  let get_flags var = get var |> String.trim |> Flags.extract_blank_separated_words in
   let c_compiler, c_libraries =
     match Ocaml_config.Vars.find t.ocamlc_config "c_compiler" with
-    | Some c_comp ->
-      (c_comp ^ " " ^ get "ocamlc_cflags", get_flags "native_c_libraries")
-    | None -> (get "bytecomp_c_compiler", get_flags "bytecomp_c_libraries")
+    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags", get_flags "native_c_libraries"
+    | None -> get "bytecomp_c_compiler", get_flags "bytecomp_c_libraries"
   in
   { t with
     ext_obj = get "ext_obj"
@@ -305,6 +316,7 @@ let fill_in_fields_that_depends_on_ocamlc_config t =
   ; ccomp_type = get "ccomp_type"
   ; c_libraries
   }
+;;
 
 let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
   let dest_dir =
@@ -312,9 +324,7 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     | Some dir -> dir
     | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
   in
-  let { ocamlc; vars = ocamlc_config } =
-    read_dot_dune_configurator_file ~build_dir
-  in
+  let { ocamlc; vars = ocamlc_config } = read_dot_dune_configurator_file ~build_dir in
   let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
   fill_in_fields_that_depends_on_ocamlc_config
     { name
@@ -329,6 +339,7 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     ; ccomp_type = ""
     ; c_libraries = []
     }
+;;
 
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
   let inside_dune =
@@ -336,7 +347,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
     | exception Not_found -> None
     | n -> Some n
   in
-  match (ocamlc, inside_dune) with
+  match ocamlc, inside_dune with
   | None, Some build_dir when build_dir <> "1" ->
     create_from_inside_dune ~dest_dir ~log ~build_dir ~name
   | _ ->
@@ -372,15 +383,16 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
       in
       match Ocaml_config.Vars.of_lines ocamlc_config_output with
       | Ok x -> x
-      | Error msg ->
-        die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
+      | Error msg -> die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
     in
     fill_in_fields_that_depends_on_ocamlc_config { t with ocamlc_config }
+;;
 
 let is_msvc t =
   match t.ccomp_type with
   | "msvc" -> true
   | _ -> false
+;;
 
 let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
@@ -394,9 +406,7 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   let run_ok args =
     Process.run_command_ok t ~dir (Process.command_args t.c_compiler args)
   in
-  let output_flag =
-    if is_msvc t then [ "-Fe" ^ exe_fname ] else [ "-o"; exe_fname ]
-  in
+  let output_flag = if is_msvc t then [ "-Fe" ^ exe_fname ] else [ "-o"; exe_fname ] in
   let ok =
     run_ok
       (List.concat
@@ -409,6 +419,7 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
          ])
   in
   if ok then Ok () else Error ()
+;;
 
 let compile_c_prog t ?(c_flags = []) code =
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
@@ -420,11 +431,12 @@ let compile_c_prog t ?(c_flags = []) code =
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let ok =
-    let output_flag =
-      if is_msvc t then [ "-Fo" ^ obj_fname ] else [ "-o"; obj_fname ]
-    in
-    Process.run_command_ok t ~dir
-      (Process.command_args t.c_compiler
+    let output_flag = if is_msvc t then [ "-Fo" ^ obj_fname ] else [ "-o"; obj_fname ] in
+    Process.run_command_ok
+      t
+      ~dir
+      (Process.command_args
+         t.c_compiler
          (List.concat
             [ c_flags
             ; [ "-I"; t.stdlib_dir ]
@@ -434,11 +446,13 @@ let compile_c_prog t ?(c_flags = []) code =
             ]))
   in
   if ok then Ok obj_fname else Error ()
+;;
 
 let c_test t ?c_flags ?link_flags code =
   match compile_and_link_c_prog t ?c_flags ?link_flags code with
   | Ok _ -> true
   | Error _ -> false
+;;
 
 module C_define = struct
   module Type = struct
@@ -451,6 +465,7 @@ module C_define = struct
       | Switch -> "bool"
       | Int -> "int"
       | String -> "string"
+    ;;
   end
 
   module Value = struct
@@ -467,7 +482,8 @@ module C_define = struct
     List.iter includes ~f:(pr "#include <%s>");
     pr "";
     Option.iter prelude ~f:(pr "%s");
-    if has_type Type.Int then
+    if has_type Type.Int
+    then
       pr
         {|
 #define DUNE_ABS(x) ((x >= 0)? x: -(x))
@@ -484,18 +500,18 @@ module C_define = struct
 #define DUNE_SIGN(x) ((x >= 0)? '0': '-')
 |};
     List.iteri vars ~f:(fun i (name, t) ->
-        match t with
-        | Type.Int ->
-          let c_arr_i =
-            let b = Buffer.create 8 in
-            let is = string_of_int i in
-            for i = 0 to String.length is - 1 do
-              Printf.bprintf b "'%c', " is.[i]
-            done;
-            Buffer.contents b
-          in
-          pr
-            {|
+      match t with
+      | Type.Int ->
+        let c_arr_i =
+          let b = Buffer.create 8 in
+          let is = string_of_int i in
+          for i = 0 to String.length is - 1 do
+            Printf.bprintf b "'%c', " is.[i]
+          done;
+          Buffer.contents b
+        in
+        pr
+          {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
   DUNE_SIGN((%s)),
@@ -503,69 +519,83 @@ const char s%i[] = {
   '-', 'E', 'N', 'D'
 };
 |}
-            i c_arr_i name name
-        | String -> pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
-        | Switch ->
-          pr
-            {|
+          i
+          c_arr_i
+          name
+          name
+      | String -> pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
+      | Switch ->
+        pr
+          {|
 #ifdef %s
 const char *s%i = "BEGIN-%i-true-END";
 #else
 const char *s%i = "BEGIN-%i-false-END";
 #endif
 |}
-            name i i i i);
+          name
+          i
+          i
+          i
+          i);
     Buffer.contents buf
+  ;;
 
   let extract_values obj_file vars =
     let values =
       Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
       |> List.fold_left ~init:Int.Map.empty ~f:(fun acc (key, v) ->
-             Int.Map.update acc key ~f:(function
-               | None -> Some [ v ]
-               | Some vs -> Some (v :: vs)))
+        Int.Map.update acc key ~f:(function
+          | None -> Some [ v ]
+          | Some vs -> Some (v :: vs)))
     in
     List.mapi vars ~f:(fun i (name, t) ->
-        let raw_vals =
-          match Int.Map.find values i with
-          | Some v -> v
-          | None -> die "Unable to get value for %s" name
+      let raw_vals =
+        match Int.Map.find values i with
+        | Some v -> v
+        | None -> die "Unable to get value for %s" name
+      in
+      let parse_val_or_exn f =
+        let f x =
+          match f x with
+          | Some s -> s
+          | None ->
+            die
+              "Unable to read variable %S of type %s. Invalid value %S in %s found"
+              name
+              (Type.name t)
+              x
+              obj_file
         in
-        let parse_val_or_exn f =
-          let f x =
-            match f x with
-            | Some s -> s
-            | None ->
-              die
-                "Unable to read variable %S of type %s. Invalid value %S in %s \
-                 found"
-                name (Type.name t) x obj_file
-          in
-          let vs =
-            List.map ~f:(fun x -> (x, f x)) raw_vals
-            |> List.sort_uniq ~cmp:(fun (_, x) (_, y) -> compare x y)
-          in
-          match vs with
-          | [] -> assert false
-          | [ (_, v) ] -> v
-          | vs ->
-            let vs = List.map ~f:fst vs in
-            die "Duplicate values for %s:\n%s" name
-              (vs |> List.map ~f:(sprintf "- %s") |> String.concat ~sep:"\n")
+        let vs =
+          List.map ~f:(fun x -> x, f x) raw_vals
+          |> List.sort_uniq ~cmp:(fun (_, x) (_, y) -> compare x y)
         in
-        let value =
-          match t with
-          | Type.Switch -> Value.Switch (parse_val_or_exn Bool.of_string)
-          | Int -> Value.Int (parse_val_or_exn Int.of_string)
-          | String -> String (parse_val_or_exn Option.some)
-        in
-        (name, value))
+        match vs with
+        | [] -> assert false
+        | [ (_, v) ] -> v
+        | vs ->
+          let vs = List.map ~f:fst vs in
+          die
+            "Duplicate values for %s:\n%s"
+            name
+            (vs |> List.map ~f:(sprintf "- %s") |> String.concat ~sep:"\n")
+      in
+      let value =
+        match t with
+        | Type.Switch -> Value.Switch (parse_val_or_exn Bool.of_string)
+        | Int -> Value.Int (parse_val_or_exn Int.of_string)
+        | String -> String (parse_val_or_exn Option.some)
+      in
+      name, value)
+  ;;
 
   let import t ?prelude ?c_flags ~includes vars =
     let program = extract_program ?prelude ("stdio.h" :: includes) vars in
     match compile_c_prog t ?c_flags program with
     | Error _ -> die "failed to compile program"
     | Ok obj -> extract_values obj vars
+  ;;
 
   let gen_header_file t ~fname ?protection_var vars =
     let protection_var =
@@ -582,17 +612,15 @@ const char *s%i = "BEGIN-%i-false-END";
     let vars = List.sort vars ~cmp:(fun (a, _) (b, _) -> compare a b) in
     let lines =
       List.map vars ~f:(fun (name, value) ->
-          match (value : Value.t) with
-          | Switch false -> sprintf "#undef  %s" name
-          | Switch true -> sprintf "#define %s" name
-          | Int n -> sprintf "#define %s (%d)" name n
-          | String s -> sprintf "#define %s %S" name s)
+        match (value : Value.t) with
+        | Switch false -> sprintf "#undef  %s" name
+        | Switch true -> sprintf "#define %s" name
+        | Int n -> sprintf "#define %s (%d)" name n
+        | String s -> sprintf "#define %s %S" name s)
     in
     let lines =
       List.concat
-        [ [ sprintf "#ifndef %s" protection_var
-          ; sprintf "#define %s" protection_var
-          ]
+        [ [ sprintf "#ifndef %s" protection_var; sprintf "#define %s" protection_var ]
         ; lines
         ; [ "#endif" ]
         ]
@@ -602,26 +630,42 @@ const char *s%i = "BEGIN-%i-false-END";
     let tmp_fname = fname ^ ".tmp" in
     Io.write_lines tmp_fname lines;
     Sys.rename tmp_fname fname
+  ;;
 end
 
 let which t prog =
   logf t "which: %s" prog;
   let x = Find_in_path.which prog in
-  logf t "-> %s"
+  logf
+    t
+    "-> %s"
     (match x with
-    | None -> "not found"
-    | Some fn -> "found: " ^ quote_if_needed fn);
+     | None -> "not found"
+     | Some fn -> "found: " ^ quote_if_needed fn);
   x
+;;
 
 module Pkg_config = struct
   type nonrec t =
     { pkg_config : string
+    ; pkg_config_args : string list
     ; configurator : t
     }
 
   let get c =
-    Option.map (which c "pkg-config") ~f:(fun pkg_config ->
-        { pkg_config; configurator = c })
+    let pkg_config_exe_name =
+      match Sys.getenv "PKG_CONFIG" with
+      | s -> s
+      | exception Not_found -> "pkg-config"
+    in
+    let pkg_config_args =
+      match Sys.getenv "PKG_CONFIG_ARGN" with
+      | s -> String.split ~on:' ' s
+      | exception Not_found -> []
+    in
+    Option.map (which c pkg_config_exe_name) ~f:(fun pkg_config ->
+      { pkg_config; pkg_config_args; configurator = c })
+  ;;
 
   type package_conf =
     { libs : string list
@@ -635,14 +679,13 @@ module Pkg_config = struct
       match expr with
       | Some e -> e
       | None ->
-        if
-          String.exists package ~f:(function
-            | '=' | '>' | '<' -> true
-            | _ -> false)
+        if String.exists package ~f:(function
+             | '=' | '>' | '<' -> true
+             | _ -> false)
         then
           warn
-            "Package name %S contains invalid characters. Use \
-             Pkg_config.query_expr to construct proper queries"
+            "Package name %S contains invalid characters. Use Pkg_config.query_expr to \
+             construct proper queries"
             package;
         package
     in
@@ -650,51 +693,56 @@ module Pkg_config = struct
       match ocaml_config_var c "system" with
       | Some "macosx" ->
         let open Option.O in
-        which c "brew" >>= fun brew ->
+        which c "brew"
+        >>= fun brew ->
         let new_pkg_config_path =
-          let prefix =
-            String.trim (Process.run_capture_exn c ~dir brew [ "--prefix" ])
-          in
-          let p =
-            sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package
-          in
+          let prefix = String.trim (Process.run_capture_exn c ~dir brew [ "--prefix" ]) in
+          let p = sprintf "%s/opt/%s/lib/pkgconfig" (quote_if_needed prefix) package in
           Option.some_if
             (match Sys.is_directory p with
-            | s -> s
-            | exception Sys_error _ -> false)
+             | s -> s
+             | exception Sys_error _ -> false)
             p
         in
-        new_pkg_config_path >>| fun new_pkg_config_path ->
+        new_pkg_config_path
+        >>| fun new_pkg_config_path ->
         let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
         let pkg_config_path =
           match Sys.getenv _PKG_CONFIG_PATH with
           | s -> s ^ ":"
           | exception Not_found -> ""
         in
-        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path
-        ]
+        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path ]
       | _ -> None
     in
     let pc_flags = "--print-errors" in
     let { Process.exit_code; stderr; _ } =
       Process.run_process c ~dir ?env t.pkg_config [ pc_flags; expr ]
     in
-    if exit_code = 0 then
+    if exit_code = 0
+    then (
       let run what =
         match
           String.trim
-            (Process.run_capture_exn c ~dir ?env t.pkg_config [ what; package ])
+            (Process.run_capture_exn
+               c
+               ~dir
+               ?env
+               t.pkg_config
+               (t.pkg_config_args @ [ what; package ]))
         with
         | "" -> []
         | s -> String.extract_blank_separated_words s
       in
-      Ok { libs = run "--libs"; cflags = run "--cflags" }
+      Ok { libs = run "--libs"; cflags = run "--cflags" })
     else Error stderr
+  ;;
 
   let query t ~package = Result.to_option @@ gen_query t ~package ~expr:None
 
   let query_expr t ~package ~expr =
     Result.to_option @@ gen_query t ~package ~expr:(Some expr)
+  ;;
 
   let query_expr_err t ~package ~expr = gen_query t ~package ~expr:(Some expr)
 end
@@ -704,8 +752,8 @@ let main ?(args = []) ~name f =
     match Sys.getenv "INSIDE_DUNE" with
     | exception Not_found ->
       die
-        "Configurator scripts must be run with Dune. To manually run a script, \
-         use $ dune exec."
+        "Configurator scripts must be run with Dune. To manually run a script, use $ \
+         dune exec."
     | "1" -> dune_is_too_old ~min:"2.3"
     | s -> s
   in
@@ -713,12 +761,12 @@ let main ?(args = []) ~name f =
   let dest_dir = ref None in
   let args =
     Arg.align
-      ([ ("-verbose", Arg.Set verbose, " be verbose")
+      ([ "-verbose", Arg.Set verbose, " be verbose"
        ; ( "-dest-dir"
          , Arg.String (fun s -> dest_dir := Some s)
          , "DIR save temporary files to this directory" )
        ]
-      @ args)
+       @ args)
   in
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s" s)) in
   let usage = sprintf "%s [OPTIONS]" (Filename.basename Sys.executable_name) in
@@ -727,16 +775,20 @@ let main ?(args = []) ~name f =
   let log s = log_db := s :: !log_db in
   try
     let t =
-      create_from_inside_dune ~dest_dir:!dest_dir
+      create_from_inside_dune
+        ~dest_dir:!dest_dir
         ~log:(if !verbose then prerr_endline else log)
-        ~build_dir ~name
+        ~build_dir
+        ~name
     in
     f t
-  with exn -> (
+  with
+  | exn ->
     let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");
-    match exn with
-    | Fatal_error msg ->
-      eprintf "Error: %s\n%!" msg;
-      exit 1
-    | _ -> Exn.raise_with_backtrace exn bt)
+    (match exn with
+     | Fatal_error msg ->
+       eprintf "Error: %s\n%!" msg;
+       exit 1
+     | _ -> Exn.raise_with_backtrace exn bt)
+;;

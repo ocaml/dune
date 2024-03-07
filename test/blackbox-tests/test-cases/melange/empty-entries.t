@@ -1,14 +1,14 @@
-Test (entries) field can be left empty
+Test (modules) field can be left empty
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.6)
+  > (lang dune 3.8)
   > (using melange 0.1)
   > EOF
 
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
-  >  (module_system commonjs))
+  >  (alias mel))
   > EOF
 
   $ cat > hello.ml <<EOF
@@ -16,6 +16,6 @@ Test (entries) field can be left empty
   >   print_endline "hello"
   > EOF
 
-  $ dune build output/hello.js
+  $ dune build @mel
   $ node _build/default/output/hello.js
   hello

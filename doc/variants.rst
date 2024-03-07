@@ -2,6 +2,8 @@
 Virtual Libraries & Variants
 ****************************
 
+.. TODO(diataxis) This is a guide, with reference info in it.
+
 Virtual libraries correspond to Dune's ability to compile parameterised
 libraries and delay the selection of concrete implementations until linking an
 executable.
@@ -28,7 +30,7 @@ ordinary library stanza, and the version of the Dune language must be at least
 1.5. This field defines modules for which only an interface would be present
 (mli only):
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name clock)
@@ -50,7 +52,7 @@ Implementation
 
 An implementation for a library is defined as:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name clock_unix)
@@ -65,7 +67,7 @@ the virtual library.
 Other libraries may then depend on the virtual library as if it was a regular
 library:
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name calendar)
@@ -74,7 +76,7 @@ library:
 But when it comes to creating an executable, we must now select a valid
 implementation for every virtual library that we've used:
 
-.. code:: scheme
+.. code:: dune
 
    (executable
     (name birthday-reminder)
@@ -95,7 +97,7 @@ Default Implementation
 A virtual library may select a default implementation, which is enabled after
 variant resolution if no suitable implementation has been found.
 
-.. code:: scheme
+.. code:: dune
 
    (library
     (name time)

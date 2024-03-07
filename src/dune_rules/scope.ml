@@ -27,18 +27,27 @@ module DB = struct
     type t = private
       | Found of Lib_info.external_
       | Redirect of (Loc.t * Lib_name.t)
+      | Deprecated_library_name of (Loc.t * Lib_name.t)
 
     val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
+    val deprecated_library_name : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
     val found : Lib_info.external_ -> t
   end = struct
     type t =
       | Found of Lib_info.external_
       | Redirect of (Loc.t * Lib_name.t)
+      | Deprecated_library_name of (Loc.t * Lib_name.t)
 
     let redirect from (loc, to_) =
       if Lib_name.equal from to_
       then Code_error.raise ~loc "Invalid redirect" [ "to_", Lib_name.to_dyn to_ ]
       else from, Redirect (loc, to_)
+    ;;
+
+    let deprecated_library_name from (loc, to_) =
+      if Lib_name.equal from to_
+      then Code_error.raise ~loc "Invalid redirect" [ "to_", Lib_name.to_dyn to_ ]
+      else from, Deprecated_library_name (loc, to_)
     ;;
 
     let found x = Found x
@@ -60,7 +69,7 @@ module DB = struct
           Found_or_redirect.redirect old_public_name s.new_public_name
         | Deprecated_library_name s ->
           let old_public_name = Deprecated_library_name.old_public_name s in
-          Found_or_redirect.redirect old_public_name s.new_public_name
+          Found_or_redirect.deprecated_library_name old_public_name s.new_public_name
         | Library (dir, (conf : Library.t)) ->
           let info = Library.to_lib_info conf ~dir ~lib_config |> Lib_info.of_local in
           Library.best_name conf, Found_or_redirect.found info)
@@ -68,9 +77,11 @@ module DB = struct
         let res =
           match v1, v2 with
           | Found info1, Found info2 -> Error (Lib_info.loc info1, Lib_info.loc info2)
-          | Found info, Redirect (loc, _) | Redirect (loc, _), Found info ->
+          | Found info, (Deprecated_library_name (loc, _) | Redirect (loc, _))
+          | (Deprecated_library_name (loc, _) | Redirect (loc, _)), Found info ->
             Error (loc, Lib_info.loc info)
-          | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
+          | ( (Deprecated_library_name (loc1, lib1) | Redirect (loc1, lib1))
+            , (Deprecated_library_name (loc2, lib2) | Redirect (loc2, lib2)) ) ->
             if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
         in
         match res with
@@ -103,6 +114,8 @@ module DB = struct
           (match Lib_name.Map.find map name with
            | None -> Lib.DB.Resolve_result.not_found
            | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
+           | Some (Deprecated_library_name lib) ->
+             Lib.DB.Resolve_result.deprecated_library_name lib
            | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
       ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
       ~lib_config

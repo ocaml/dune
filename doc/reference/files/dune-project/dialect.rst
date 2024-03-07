@@ -1,7 +1,7 @@
 dialect
 -------
 
-.. dune:stanza:: dialect
+.. describe:: (dialect ...)
 
    Declare a new :term:`dialect`.
 

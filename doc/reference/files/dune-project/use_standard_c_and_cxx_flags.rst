@@ -1,7 +1,7 @@
 use_standard_c_and_cxx_flags
 ----------------------------
 
-.. dune:stanza:: use_standard_c_and_cxx_flags
+.. describe:: (use_standard_c_and_cxx_flags ...)
 
    .. versionadded:: 2.8
 

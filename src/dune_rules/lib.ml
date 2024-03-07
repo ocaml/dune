@@ -1154,10 +1154,10 @@ end = struct
 
   let available_internal db (name : Lib_name.t) =
     let open Memo.O in
-    resolve_dep db (Loc.none, name) ~private_deps:Allow_all
+    find_internal db name
     >>| function
-    | Some x -> Resolve.is_ok x
-    | None -> false
+    | Ignore | Found _ -> true
+    | Not_found | Invalid _ | Hidden _ -> false
   ;;
 
   let resolve_simple_deps db names ~private_deps : t list Resolve.Memo.t =

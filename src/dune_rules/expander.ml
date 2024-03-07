@@ -48,7 +48,7 @@ let lookup_artifacts = Fdecl.create Dyn.opaque
 
 type t =
   { dir : Path.Build.t
-  ; env : Env.t
+  ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; public_libs : Lib.DB.t
   ; public_libs_host : Lib.DB.t
@@ -83,8 +83,16 @@ let map_exe t p =
 let extend_env t ~env =
   (* [t.local_env] has precedence over [t.env], so we cannot extend [env] if
      there are already local bindings.. *)
+  let env =
+    Memo.Lazy.create (fun () ->
+      let open Memo.O in
+      let+ env = env
+      and+ base = t.env in
+      Env.extend_env base env)
+    |> Memo.Lazy.force
+  in
   assert (Env.Var.Map.is_empty t.local_env);
-  { t with env = Env.extend_env t.env env }
+  { t with env }
 ;;
 
 let add_bindings_full t ~bindings =
@@ -584,7 +592,10 @@ let env_macro t source macro_invocation =
     (match Env.Var.Map.find t.local_env var with
      | Some v -> Deps.With (v >>| string)
      | None ->
-       Deps.Without (Env.get t.env var |> Option.value ~default |> string |> Memo.return))
+       Deps.Without
+         (let open Memo.O in
+          let+ env = t.env in
+          Env.get env var |> Option.value ~default |> string))
 ;;
 
 let expand_pform_macro

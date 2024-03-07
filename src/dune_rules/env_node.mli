@@ -10,8 +10,8 @@ val make
   -> config_stanza:Dune_env.t
   -> profile:Profile.t
   -> expander:Expander.t Memo.t
-  -> default_env:Env.t
-  -> default_artifacts:Artifacts.t
+  -> default_env:Env.t Memo.t
+  -> default_artifacts:Artifacts.t Memo.t
   -> t
 
 val external_env : t -> Env.t Memo.t

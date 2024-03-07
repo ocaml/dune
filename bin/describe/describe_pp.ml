@@ -105,7 +105,7 @@ let term =
       let+ ocaml = Context.ocaml (Super_context.context super_context) in
       ocaml.ocamlc
     in
-    let env = Super_context.context_env super_context in
+    let* env = Super_context.context_env super_context in
     let dialects = Dune_project.dialects project in
     pp_with_ocamlc env ~ocamlc dialects file |> Memo.of_non_reproducible_fiber
 ;;

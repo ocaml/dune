@@ -208,7 +208,7 @@ end = struct
             in
             Memo.return (select_deps_files @ ctypes_files)
           | Melange_stanzas.Emit.T { libraries; _ } ->
-            Memo.return @@ select_deps_files libraries
+            Memo.return @@ select_deps_files (snd libraries)
           | _ -> Memo.return [])
         >>| List.concat
         >>| Filename.Set.of_list

@@ -9,7 +9,7 @@ module Emit = struct
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; emit_stdlib : bool
-    ; libraries : Lib_dep.t list
+    ; libraries : Loc.t * Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Loc.t * Dep_conf.t list
@@ -100,7 +100,7 @@ module Emit = struct
        and+ module_systems =
          field "module_systems" module_systems ~default:[ Melange.Module_system.default ]
        and+ libraries =
-         field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[]
+         located (field "libraries" (Lib_dep.L.decode ~allow_re_export:false) ~default:[])
        and+ package = field_o "package" Stanza_common.Pkg.decode
        and+ runtime_deps =
          field

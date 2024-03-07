@@ -91,8 +91,8 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     match mel.emit_stdlib with
     | true ->
       let builtin_melange_dep = Lib_dep.Direct (mel.loc, Lib_name.of_string "melange") in
-      builtin_melange_dep :: mel.libraries
-    | false -> mel.libraries
+      builtin_melange_dep :: snd mel.libraries
+    | false -> snd mel.libraries
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
@@ -431,6 +431,20 @@ let setup_js_rules_libraries
     let loc = Lib_info.loc info in
     let build_js =
       let obj_dir = Lib_info.obj_dir info in
+      let () =
+        let modes = Lib_info.modes info in
+        match modes.melange with
+        | false ->
+          User_error.raise
+            ~loc:(fst mel.libraries)
+            [ Pp.textf
+                "The library %S was added as a dependency of a melange.emit stanza, but \
+                 this library is not compatible with melange. To fix this, add (modes \
+                 melange) to the library stanza."
+                (Lib_name.to_string (Lib_info.name info))
+            ]
+        | true -> ()
+      in
       let pkg_name = Lib_info.package info in
       build_js ~loc ~pkg_name ~obj_dir
     in

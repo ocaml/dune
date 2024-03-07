@@ -77,7 +77,10 @@ module Lib = struct
       | Local _ -> assert false
       | External paths ->
         let lib_dir = Obj_dir.dir obj_dir in
-        List.map paths ~f:(fun p -> Path.append_local lib_dir (Path.local_part p))
+        List.map paths ~f:(fun p ->
+          if Path.is_in_build_dir p
+          then p
+          else Path.append_local lib_dir (Path.local_part p))
     in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
@@ -494,7 +497,20 @@ let prepend_version ~dune_version sexps =
   @ sexps
 ;;
 
-let encode ~dune_version { entries; name; version; dir; sections; sites; files } =
+type replace_info = { stublibs_original : Path.t option }
+
+type encoding =
+  | Absolute of replace_info
+  | Relative
+
+let encode_dir ~encoding ~dir path =
+  match encoding with
+  | Absolute _ -> Dune_lang.Encoder.string (Path.to_absolute_filename path)
+  | Relative -> Dune_lang.Path.Local.encode ~dir path
+;;
+
+let encode ~encoding ~dune_version { entries; name; version; dir; sections; sites; files }
+  =
   let open Dune_lang.Encoder in
   let sites = Site.Map.to_list sites in
   let sexp =
@@ -503,7 +519,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
       ; field_o "version" Package_version.encode version
       ; field_l
           "sections"
-          (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
+          (pair Section.encode (encode_dir ~encoding ~dir))
           (Section.Map.to_list sections)
       ; field_l "sites" (pair Site.encode Section.encode) sites
       ; field_l "files" (pair Section.encode (list encode_path)) files
@@ -511,7 +527,11 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   in
   let list s = Dune_lang.List s in
   let entries =
-    let stublibs = Section.Map.find sections Stublibs in
+    let stublibs =
+      match encoding with
+      | Absolute { stublibs_original } -> stublibs_original
+      | Relative -> Section.Map.find sections Stublibs
+    in
     Lib_name.Map.to_list_map entries ~f:(fun _name e ->
       match e with
       | Entry.Library lib ->
@@ -524,6 +544,14 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
           [ "lib", Lib.to_dyn lib ])
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
+;;
+
+let replace_site_sections t ~get_location =
+  let stublibs_original = Section.Map.find t.sections Stublibs in
+  let sections =
+    Section.Map.mapi t.sections ~f:(fun section _ -> get_location section t.name)
+  in
+  { t with sections }, { stublibs_original }
 ;;
 
 let to_dyn { entries; name; version; dir; sections; sites; files } =
@@ -544,9 +572,13 @@ module Or_meta = struct
     | Use_meta
     | Dune_package of t
 
-  let encode ~dune_version = function
-    | Use_meta -> prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
-    | Dune_package p -> encode ~dune_version p
+  let encode_use_meta ~dune_version =
+    prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
+  ;;
+
+  let encode ~encoding ~dune_version = function
+    | Use_meta -> encode_use_meta ~dune_version
+    | Dune_package p -> encode ~encoding ~dune_version p
   ;;
 
   let decode ~lang ~dir =
@@ -560,34 +592,34 @@ module Or_meta = struct
          Dune_package package)
   ;;
 
-  let load file =
+  let parse file lexbuf =
     let dir = Path.parent_exn file in
-    Fs.with_lexbuf_from_file file ~f:(fun lexbuf ->
-      match
-        Vfile.parse_contents lexbuf ~f:(fun lang ->
-          String_with_vars.set_decoding_env
-            (Pform.Env.initial lang.version)
-            (decode ~lang ~dir))
-      with
-      | contents -> Ok contents
-      | exception User_error.E message -> Error message
-      | exception Sys_error msg ->
-        Error
-          (User_message.make
-             [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
-             ; Pp.text msg
-             ])
-      | exception End_of_file ->
-        Error
-          (User_message.make
-             [ Pp.textf
-                 "Unexpected end of file when reading %s."
-                 (Path.to_string_maybe_quoted file)
-             ]))
+    match
+      Vfile.parse_contents lexbuf ~f:(fun lang ->
+        String_with_vars.set_decoding_env
+          (Pform.Env.initial lang.version)
+          (decode ~lang ~dir))
+    with
+    | contents -> Ok contents
+    | exception User_error.E message -> Error message
+    | exception Sys_error msg ->
+      Error
+        (User_message.make
+           [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
+           ; Pp.text msg
+           ])
+    | exception End_of_file ->
+      Error
+        (User_message.make
+           [ Pp.textf
+               "Unexpected end of file when reading %s."
+               (Path.to_string_maybe_quoted file)
+           ])
   ;;
 
-  let pp ~dune_version ppf t =
-    let t = encode ~dune_version t in
+  let load file = Fs.with_lexbuf_from_file file ~f:(parse file)
+
+  let pp_encoded ppf t =
     Format.fprintf
       ppf
       "%a@."
@@ -595,6 +627,12 @@ module Or_meta = struct
          Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
   ;;
+
+  let pp ~encoding ~dune_version ppf t =
+    t |> encode ~encoding ~dune_version |> pp_encoded ppf
+  ;;
+
+  let pp_use_meta ~dune_version ppf = encode_use_meta ~dune_version |> pp_encoded ppf
 
   let to_dyn x =
     let open Dyn in

@@ -40,7 +40,7 @@ let make_js_name ~js_ext ~output m =
     Path.Build.relative dst_dir basename
 ;;
 
-let impl_only_modules_defined_in_this_lib sctx lib =
+let impl_only_modules_defined_in_this_lib ~(mel : Melange_stanzas.Emit.t) sctx lib =
   let+ modules = Dir_contents.modules_of_lib sctx lib in
   match modules with
   | None ->
@@ -52,6 +52,21 @@ let impl_only_modules_defined_in_this_lib sctx lib =
           (Lib.name lib |> Lib_name.to_string)
       ]
   | Some modules ->
+    let () =
+      let info = Lib.info lib in
+      let modes = Lib_info.modes info in
+      match modes.melange with
+      | false ->
+        User_error.raise
+          ~loc:(fst mel.libraries)
+          [ Pp.textf
+              "The library %S was added as a dependency of a melange.emit stanza, but \
+               this library is not compatible with melange. To fix this, add (modes \
+               melange) to the library stanza."
+              (Lib_name.to_string (Lib_info.name info))
+          ]
+      | true -> ()
+    in
     (* for a virtual library,this will return all modules *)
     (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl)
 ;;
@@ -116,11 +131,11 @@ let js_targets_of_modules modules ~module_systems ~output =
   |> Path.Set.union_all
 ;;
 
-let js_targets_of_libs sctx libs ~module_systems ~target_dir =
+let js_targets_of_libs sctx libs ~module_systems ~mel ~target_dir =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
     let open Memo.O in
     let of_lib lib =
-      let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
+      let+ modules = impl_only_modules_defined_in_this_lib ~mel sctx lib in
       let output = output_of_lib ~target_dir lib in
       List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
     in
@@ -260,7 +275,7 @@ let setup_emit_cmj_rules
             @@
             let open Resolve.Memo.O in
             Compilation_context.requires_link cctx
-            >>= js_targets_of_libs sctx ~module_systems ~target_dir
+            >>= js_targets_of_libs sctx ~module_systems ~mel ~target_dir
           in
           Action_builder.paths deps
         in
@@ -431,20 +446,6 @@ let setup_js_rules_libraries
     let loc = Lib_info.loc info in
     let build_js =
       let obj_dir = Lib_info.obj_dir info in
-      let () =
-        let modes = Lib_info.modes info in
-        match modes.melange with
-        | false ->
-          User_error.raise
-            ~loc:(fst mel.libraries)
-            [ Pp.textf
-                "The library %S was added as a dependency of a melange.emit stanza, but \
-                 this library is not compatible with melange. To fix this, add (modes \
-                 melange) to the library stanza."
-                (Lib_name.to_string (Lib_info.name info))
-            ]
-        | true -> ()
-      in
       let pkg_name = Lib_info.package info in
       build_js ~loc ~pkg_name ~obj_dir
     in
@@ -494,10 +495,10 @@ let setup_js_rules_libraries
           in
           cmj_includes ~requires_link ~scope
         in
-        impl_only_modules_defined_in_this_lib sctx vlib
+        impl_only_modules_defined_in_this_lib ~mel sctx vlib
         >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
     in
-    let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
+    let* source_modules = impl_only_modules_defined_in_this_lib ~mel sctx lib in
     Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 ;;
 

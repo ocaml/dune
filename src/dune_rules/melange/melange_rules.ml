@@ -643,10 +643,20 @@ let setup_emit_js_rules sctx ~dir =
   under_melange_emit_target ~dir
   >>= function
   | Some melange ->
-    gen_emit_rules sctx ~dir melange
-    >>| (function
-     | None -> Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-     | Some melange -> Gen_rules.make melange)
+    let* enabled =
+      let* expander =
+        let* sctx = sctx in
+        Super_context.expander sctx ~dir
+      in
+      Expander.eval_blang expander melange.stanza.enabled_if
+    in
+    (match enabled with
+     | true ->
+       gen_emit_rules sctx ~dir melange
+       >>| (function
+        | None -> Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+        | Some melange -> Gen_rules.make melange)
+     | false -> Memo.return (Gen_rules.redirect_to_parent Gen_rules.Rules.empty))
   | None ->
     (* this should probably be handled by [Dir_status] *)
     Dune_load.stanzas_in_dir dir

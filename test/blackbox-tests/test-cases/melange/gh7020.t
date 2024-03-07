@@ -53,4 +53,10 @@ Reproduce github #7020
   with Dune but published with a META template. Such libraries are not
   compatible with melange support
   -> required by alias mel
+  File "dune", line 4, characters 1-21:
+  4 |  (libraries dummyfoo)
+       ^^^^^^^^^^^^^^^^^^^^
+  Error: The library "dummyfoo" was added as a dependency of a melange.emit
+  stanza, but this library is not compatible with melange. To fix this, add
+  (modes melange) to the library stanza.
   [1]

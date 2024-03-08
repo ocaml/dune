@@ -52,7 +52,7 @@ type t =
   ; local_env : string Action_builder.t Env.Var.Map.t
   ; public_libs : Lib.DB.t
   ; public_libs_host : Lib.DB.t
-  ; artifacts_host : Artifacts.t
+  ; artifacts_host : Artifacts.t Memo.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
   ; scope_host : Scope.t
@@ -617,9 +617,11 @@ let expand_pform_macro
         With
           (let* prog =
              Action_builder.of_memo
-               (Artifacts.binary
+               (let open Memo.O in
+                let* artifacts_host = t.artifacts_host in
+                Artifacts.binary
                   ~loc:(Some (Dune_lang.Template.Pform.loc source))
-                  t.artifacts_host
+                  artifacts_host
                   s)
            in
            dep (Action.Prog.ok_exn prog)))
@@ -645,7 +647,8 @@ let expand_pform_macro
       (fun t ->
         Without
           (let open Memo.O in
-           let+ b = Artifacts.binary_available t.artifacts_host s in
+           let* artifacts_host = t.artifacts_host in
+           let+ b = Artifacts.binary_available artifacts_host s in
            b |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:string
   | Read_lines ->
@@ -665,7 +668,11 @@ let expand_pform_macro
       |> strings)
   | Coq_config ->
     Need_full_expander
-      (fun t -> Without (Coq_config.expand source macro_invocation t.artifacts_host))
+      (fun t ->
+        Without
+          (let open Memo.O in
+           let* artifacts_host = t.artifacts_host in
+           Coq_config.expand source macro_invocation artifacts_host))
 ;;
 
 let expand_pform_gen ~(context : Context.t) ~bindings ~dir ~source (pform : Pform.t)

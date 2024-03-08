@@ -1,7 +1,7 @@
 accept_alternative_dune_file_name
 ---------------------------------
 
-.. dune:stanza:: accept_alternative_dune_file_name
+.. describe:: (accept_alternative_dune_file_name ...)
 
    .. versionadded:: 3.0
 

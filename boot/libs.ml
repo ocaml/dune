@@ -1,5 +1,3 @@
-let executables = [ "main" ]
-
 let external_libraries = [ "unix"; "threads" ]
 
 let local_libraries =

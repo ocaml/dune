@@ -24,7 +24,7 @@ val to_dyn : t -> Dyn.t
 val context : t -> Context.t
 
 (** Context env with additional variables computed from packages *)
-val context_env : t -> Env.t
+val context_env : t -> Env.t Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 

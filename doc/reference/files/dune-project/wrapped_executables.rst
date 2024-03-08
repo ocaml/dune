@@ -1,8 +1,7 @@
 wrapped_executables
 -------------------
 
-.. dune:stanza:: wrapped_executables
-   :param: <bool>
+.. describe:: (wrapped_executables <bool>)
 
    .. versionadded:: 1.11
 

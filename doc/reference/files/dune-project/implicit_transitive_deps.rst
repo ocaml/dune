@@ -1,7 +1,7 @@
 implicit_transitive_deps
 ------------------------
 
-.. dune:stanza:: implicit_transitive_deps
+.. describe:: (implicit_transitive_deps ...)
 
    Control whether transitive dependencies are made implicitly visible.
 

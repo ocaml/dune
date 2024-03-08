@@ -3,8 +3,7 @@ cat
 
 .. highlight:: dune
 
-.. dune:action:: cat
-   :param: <file> ...
+.. describe:: (cat <file> ...)
 
    Sequentially print the contents of files to stdout.
 

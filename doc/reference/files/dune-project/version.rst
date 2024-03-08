@@ -1,8 +1,7 @@
 version
 -------
 
-.. dune:stanza:: version
-   :param: <version>
+.. describe:: (version <version>)
 
    Set the version of the project.
 

@@ -3,8 +3,7 @@ setenv
 
 .. highlight:: dune
 
-.. dune:action:: setenv
-   :param: <var> <value> <DSL>
+.. describe:: (setenv <var> <value> <DSL>)
 
    Run an action with an environment variable set.
 

@@ -1,195 +1,146 @@
 open Import
+open Memo.O
 
-module Env_tree : sig
-  type t
+type t =
+  { context : Context.t
+  ; context_env : Env.t Memo.t (** context env with additional variables *)
+  ; default_env : Env_node.t Memo.Lazy.t
+  ; host : t option
+  ; root_expander : Expander.t
+  ; artifacts : Artifacts.t
+  ; get_node : Path.Build.t -> Env_node.t Memo.t
+  }
 
-  val force_artifacts : t -> unit Memo.t
-  val context : t -> Context.t
-  val get_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
-  val get_context_env : t -> Env.t
+let hash t = Context.hash t.context
+let equal : t -> t -> bool = phys_equal
+let to_dyn_concise t = Context.to_dyn_concise t.context
+let to_dyn t = Context.to_dyn t.context
 
-  val create
-    :  context:Context.t
-    -> host_env_tree:t option
-    -> default_env:Env_node.t Memo.Lazy.t
-    -> root_expander:Expander.t
-    -> artifacts:Artifacts.t
-    -> context_env:Env.t
-    -> t
+let set_context context path =
+  let path = Path.Build.drop_build_context_exn path in
+  Path.Build.append_source (Context.build_dir context) path
+;;
 
-  val artifacts_host : t -> dir:Path.Build.t -> Artifacts.t Memo.t
-  val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
-end = struct
-  open Memo.O
-
-  type t =
-    { context : Context.t
-    ; context_env : Env.t (** context env with additional variables *)
-    ; default_env : Env_node.t Memo.Lazy.t
-    ; host : t option
-    ; root_expander : Expander.t
-    ; artifacts : Artifacts.t
-    ; get_node : Path.Build.t -> Env_node.t Memo.t
-    }
-
-  let force_artifacts { artifacts; _ } = Artifacts.force artifacts
-  let context t = t.context
-  let get_node t ~dir = t.get_node dir
-  let get_context_env t = t.context_env
-
-  let artifacts_host t ~dir =
-    let artifacts t ~dir = get_node t ~dir >>= Env_node.artifacts in
+let artifacts_host t ~dir =
+  let t, dir =
     match t.host with
-    | None -> artifacts t ~dir
-    | Some host ->
-      let dir =
-        Path.Build.drop_build_context_exn dir
-        |> Path.Build.append_source (Context.build_dir host.context)
-      in
-      artifacts host ~dir
-  ;;
+    | None -> t, dir
+    | Some host -> host, set_context host.context dir
+  in
+  t.get_node dir >>= Env_node.artifacts
+;;
 
-  let external_env t ~dir = get_node t ~dir >>= Env_node.external_env
-
-  let scope_host ~scope (context : Context.t) =
-    match Context.for_host context with
-    | None -> Memo.return scope
-    | Some host ->
-      let* dir =
-        let root = Scope.root scope in
-        let src = Path.Build.drop_build_context_exn root in
-        let+ host = host in
-        Path.Build.append_source (Context.build_dir host) src
-      in
-      Scope.DB.find_by_dir dir
-  ;;
-
-  let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
-    let+ scope_host = scope_host ~scope (Expander.context root_expander) in
-    Expander.extend_env root_expander ~env:external_env
-    |> Expander.set_scope ~scope ~scope_host
-    |> Expander.set_dir ~dir
-  ;;
-
-  let extend_expander t ~dir ~expander_for_artifacts =
-    let+ artifacts_host = artifacts_host t ~dir
-    and+ bindings =
-      let+ inline_tests = Env_stanza_db.inline_tests ~dir in
-      let str = Dune_env.Inline_tests.to_string inline_tests in
-      Pform.Map.singleton (Var Inline_tests) [ Value.String str ]
+let scope_host ~scope (context : Context.t) =
+  match Context.for_host context with
+  | None -> Memo.return scope
+  | Some host ->
+    let* dir =
+      let+ host = host in
+      set_context host (Scope.root scope)
     in
-    Expander.add_bindings ~bindings expander_for_artifacts
-    |> Expander.set_artifacts ~artifacts_host
-  ;;
+    Scope.DB.find_by_dir dir
+;;
 
-  let expander t ~dir =
-    let* node = get_node t ~dir
-    and+ external_env = external_env t ~dir in
-    let* expander_for_artifacts =
-      let scope = Env_node.scope node in
-      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander ~dir
-    in
-    extend_expander t ~dir ~expander_for_artifacts
-  ;;
+let expander_for_artifacts t ~dir =
+  let external_env = t.get_node dir >>= Env_node.external_env in
+  let* scope = Scope.DB.find_by_dir dir in
+  let+ scope_host = scope_host ~scope t.context in
+  Expander.extend_env t.root_expander ~env:external_env
+  |> Expander.set_scope ~scope ~scope_host
+  |> Expander.set_dir ~dir
+;;
 
-  let get_env_stanza ~dir =
-    let open Memo.O in
-    Dune_load.stanzas_in_dir dir
-    >>= (function
-           | None -> Memo.return None
-           | Some dune_file ->
-             Dune_file.find_stanzas dune_file Dune_env.key
-             >>| (function
-              | [] -> None
-              | [ x ] -> Some x
-              | _ :: _ -> assert false))
-    >>| Option.value ~default:Dune_env.empty
-  ;;
+let expander t ~dir =
+  let* expander_for_artifacts = expander_for_artifacts t ~dir in
+  let+ artifacts_host = artifacts_host t ~dir in
+  Expander.set_artifacts expander_for_artifacts ~artifacts_host
+;;
 
-  let get_impl t dir =
-    let* scope = Scope.DB.find_by_dir dir in
-    let inherit_from =
-      if Path.Build.equal dir (Scope.root scope)
-      then Memo.lazy_ (fun () -> Memo.Lazy.force t.default_env)
+let get_env_stanza ~dir =
+  let open Memo.O in
+  Dune_load.stanzas_in_dir dir
+  >>= (function
+         | None -> Memo.return None
+         | Some dune_file ->
+           Dune_file.find_stanzas dune_file Dune_env.key
+           >>| (function
+            | [] -> None
+            | [ x ] -> Some x
+            | _ :: _ -> assert false))
+  >>| Option.value ~default:Dune_env.empty
+;;
+
+let get_impl t dir =
+  let inherit_from =
+    Memo.lazy_ (fun () ->
+      let* scope_root = Dune_load.find_project ~dir >>| Dune_project.root in
+      if Path.Source.equal (Path.Build.drop_build_context_exn dir) scope_root
+      then Memo.Lazy.force t.default_env
       else (
         match Path.Build.parent dir with
+        | Some parent -> t.get_node parent
         | None ->
           Code_error.raise
             "Super_context.Env.get called on invalid directory"
-            [ "dir", Path.Build.to_dyn dir ]
-        | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent))
-    in
-    let+ config_stanza = get_env_stanza ~dir in
-    let expander_for_artifacts =
-      Memo.lazy_ (fun () ->
-        let* external_env = external_env t ~dir in
-        expander_for_artifacts ~scope ~root_expander:t.root_expander ~external_env ~dir)
-    in
-    let profile = Context.profile t.context in
-    Env_node.make
-      ~dir
-      ~scope
-      ~config_stanza
-      ~inherit_from:(Some inherit_from)
-      ~profile
-      ~expander_for_artifacts
-      ~default_env:t.context_env
-      ~default_artifacts:t.artifacts
-  ;;
+            [ "dir", Path.Build.to_dyn dir ]))
+  in
+  let+ config_stanza = get_env_stanza ~dir in
+  let expander =
+    Memo.lazy_ (fun () -> expander_for_artifacts t ~dir) |> Memo.Lazy.force
+  in
+  let profile = Context.profile t.context in
+  Env_node.make
+    ~dir
+    ~config_stanza
+    ~inherit_from:(Some inherit_from)
+    ~profile
+    ~expander
+    ~default_env:t.context_env
+    ~default_artifacts:(Memo.return t.artifacts)
+;;
 
-  (* Here we jump through some hoops to construct [t] as well as create a
-     memoization table that has access to [t] and is used in [t.get_node].
+(* Here we jump through some hoops to construct [t] as well as create a
+   memoization table that has access to [t] and is used in [t.get_node].
 
-     Morally, the code below is just:
+   Morally, the code below is just:
 
-     let rec env_tree = ... and memo = ... in env_tree
+   let rec env_tree = ... and memo = ... in env_tree
 
-     However, the right-hand side of [memo] is not allowed in a recursive let
-     binding. To work around this limitation, we place the functions into a
-     recursive module [Rec]. Since recursive let-modules are not allowed either,
-     we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
-  let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~context_env =
-    let module Non_rec = struct
-      module rec Rec : sig
-        val env_tree : unit -> t
-        val memo : Path.Build.t -> Env_node.t Memo.t
-      end = struct
-        let env_tree =
-          { context
-          ; context_env
-          ; default_env
-          ; host = host_env_tree
-          ; root_expander
-          ; artifacts
-          ; get_node = Rec.memo
-          }
-        ;;
+   However, the right-hand side of [memo] is not allowed in a recursive let
+   binding. To work around this limitation, we place the functions into a
+   recursive module [Rec]. Since recursive let-modules are not allowed either,
+   we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
+let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~context_env =
+  let module Non_rec = struct
+    module rec Rec : sig
+      val env_tree : unit -> t
+      val memo : Path.Build.t -> Env_node.t Memo.t
+    end = struct
+      let env_tree =
+        { context
+        ; context_env
+        ; default_env
+        ; host = host_env_tree
+        ; root_expander
+        ; artifacts
+        ; get_node = Rec.memo
+        }
+      ;;
 
-        let memo =
-          Memo.exec
-            (Memo.create
-               "env-nodes-memo"
-               ~input:(module Path.Build)
-               (fun path -> get_impl env_tree path))
-        ;;
+      let memo =
+        Memo.exec
+          (Memo.create
+             "env-nodes-memo"
+             ~input:(module Path.Build)
+             (fun path -> get_impl env_tree path))
+      ;;
 
-        let env_tree () = env_tree
-      end
+      let env_tree () = env_tree
     end
-    in
-    Non_rec.Rec.env_tree ()
-  ;;
-end
-
-type t = Env_tree.t
-
-let context t = Env_tree.context t
-let context_env t = Env_tree.get_context_env t
-let equal : t -> t -> bool = phys_equal
-let hash t = Context.hash (Env_tree.context t)
-let to_dyn_concise t = Context.to_dyn_concise (Env_tree.context t)
-let to_dyn t = Context.to_dyn (Env_tree.context t)
-let expander t ~dir = Env_tree.expander t ~dir
+  end
+  in
+  Non_rec.Rec.env_tree ()
+;;
 
 open Memo.O
 
@@ -199,12 +150,12 @@ let extend_action t ~dir action =
   and+ env =
     Action_builder.of_memo
       (let open Memo.O in
-       Env_tree.get_node t ~dir >>= Env_node.external_env)
+       t.get_node dir >>= Env_node.external_env)
   in
   Action.Full.add_env env action
   |> Action.Full.map ~f:(function
     | Chdir _ as a -> a
-    | a -> Chdir (Path.build (Context.build_dir (Env_tree.context t)), a))
+    | a -> Chdir (Path.build (Context.build_dir t.context), a))
 ;;
 
 let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
@@ -230,10 +181,8 @@ let add_alias_action t alias ~dir ~loc action =
   Rules.Produce.Alias.add_action alias ~loc build
 ;;
 
-let env_node = Env_tree.get_node
-
 let resolve_program_memo t ~dir ?where ?hint ~loc bin =
-  let* artifacts = Env_tree.artifacts_host t ~dir in
+  let* artifacts = artifacts_host t ~dir in
   Artifacts.binary ?hint ?where ~loc artifacts bin
 ;;
 
@@ -251,28 +200,26 @@ let make_default_env_node
   let make ~inherit_from ~config_stanza =
     let config_stanza = Option.value config_stanza ~default:Dune_env.empty in
     let dir = context.build_dir in
-    let+ scope = Scope.DB.find_by_dir dir in
-    let expander_for_artifacts =
-      Memo.lazy_ (fun () ->
-        Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" [])
+    let expander =
+      let* () = Memo.return () in
+      Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
     in
     Dune_env.fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
-      ~scope
       ~inherit_from
       ~config_stanza
       ~profile
-      ~expander_for_artifacts
+      ~expander
       ~default_env:root_env
-      ~default_artifacts:artifacts
+      ~default_artifacts:(Memo.return artifacts)
   in
   make
     ~config_stanza:env_nodes.context
     ~inherit_from:
       (Some
          (Memo.lazy_ (fun () ->
-            make ~inherit_from:None ~config_stanza:env_nodes.workspace)))
+            make ~inherit_from:None ~config_stanza:env_nodes.workspace |> Memo.return)))
 ;;
 
 let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
@@ -289,7 +236,7 @@ let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
     match host with
     | None -> Memo.return (context, _PATH)
     | Some host ->
-      let context = Env_tree.context host in
+      let context = host.context in
       let+ _PATH =
         let+ env = Context.installed_env context in
         Env.get env Env_path.var
@@ -307,13 +254,13 @@ let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
-  let* env =
+  let env =
     let* base = make_root_env context ~host in
     Site_env.add_packages_env context_name ~base stanzas packages
   in
-  let public_libs = Scope.DB.public_libs context_name in
   let artifacts = Artifacts_db.get context in
   let+ root_expander =
+    let public_libs = Scope.DB.public_libs context_name in
     let artifacts_host, public_libs_host, context_host =
       match Context.for_host context with
       | None -> artifacts, public_libs, Memo.return context
@@ -332,23 +279,23 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~scope_host
       ~context
       ~env
-      ~lib_artifacts:public_libs
+      ~public_libs
       ~artifacts_host
-      ~lib_artifacts_host:public_libs_host
+      ~public_libs_host
   and+ artifacts = artifacts in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
-    let profile = Context.profile context in
     Memo.lazy_ ~name:"default_env" (fun () ->
       make_default_env_node
         (Context.build_context context)
-        profile
+        (Context.profile context)
         (Context.env_nodes context)
         ~root_env:env
-        ~artifacts)
+        ~artifacts
+      |> Memo.return)
   in
-  Env_tree.create
+  create
     ~context
     ~default_env
     ~host_env_tree:host
@@ -372,9 +319,10 @@ let all =
         | None -> Memo.return None
         | Some h ->
           let+ sctx =
-            let* h = h in
-            Memo.Lazy.force
-              (Context_name.Map.find_exn (Lazy.force sctxs) (Context.name h))
+            h
+            >>| Context.name
+            >>| Context_name.Map.find_exn (Lazy.force sctxs)
+            >>= Memo.Lazy.force
           in
           Some sctx
       in
@@ -404,8 +352,9 @@ let find_exn name =
 ;;
 
 let all_init_deferred () =
-  let* all = Memo.Lazy.force all in
-  Context_name.Map.values all |> Memo.parallel_iter ~f:Env_tree.force_artifacts
+  Memo.Lazy.force all
+  >>| Context_name.Map.values
+  >>= Memo.parallel_iter ~f:(fun t -> Artifacts.force t.artifacts)
 ;;
 
 module As_memo_key = struct
@@ -423,3 +372,19 @@ module As_memo_key = struct
     let to_dyn (s, p) = Dyn.Tuple [ to_dyn s; Package.Name.to_dyn p ]
   end
 end
+
+let () =
+  Fdecl.set Artifacts_db.expander (fun ~dir ->
+    let* ctx = Context.DB.by_dir dir in
+    let* t = find_exn (Context.name ctx) in
+    expander t ~dir);
+  Fdecl.set Artifacts.expand (fun ~dir sw ->
+    let* ctx = Context.DB.by_dir dir in
+    let* t = find_exn (Context.name ctx) in
+    let* expander = expander t ~dir in
+    Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst)
+;;
+
+let context t = t.context
+let env_node t ~dir = t.get_node dir
+let context_env t = t.context_env

@@ -264,7 +264,7 @@ module Exec_context = struct
       let context = Dune_rules.Super_context.context sctx in
       Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
     in
-    let env = Memo.map sctx ~f:Super_context.context_env in
+    let env = Memo.bind sctx ~f:Super_context.context_env in
     let get_path_and_build_if_necessary ~prog =
       let* sctx = sctx
       and+ dir = dir in

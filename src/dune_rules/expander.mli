@@ -11,7 +11,7 @@ val make_root
   :  scope:Scope.t
   -> scope_host:Scope.t
   -> context:Context.t
-  -> env:Env.t
+  -> env:Env.t Memo.t
   -> public_libs:Lib.DB.t
   -> public_libs_host:Lib.DB.t
   -> artifacts_host:Artifacts.t
@@ -56,7 +56,7 @@ end
 type value = Value.t list Deps.t
 
 val add_bindings_full : t -> bindings:value Pform.Map.t -> t
-val extend_env : t -> env:Env.t -> t
+val extend_env : t -> env:Env.t Memo.t -> t
 
 val expand
   :  t

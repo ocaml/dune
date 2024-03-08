@@ -3,7 +3,7 @@ open Memo.O
 
 type t =
   { context : Context.t
-  ; context_env : Env.t (** context env with additional variables *)
+  ; context_env : Env.t Memo.t (** context env with additional variables *)
   ; default_env : Env_node.t Memo.Lazy.t
   ; host : t option
   ; root_expander : Expander.t
@@ -42,7 +42,7 @@ let scope_host ~scope (context : Context.t) =
 ;;
 
 let expander_for_artifacts t ~dir =
-  let* external_env = t.get_node dir >>= Env_node.external_env in
+  let external_env = t.get_node dir >>= Env_node.external_env in
   let* scope = Scope.DB.find_by_dir dir in
   let+ scope_host = scope_host ~scope t.context in
   Expander.extend_env t.root_expander ~env:external_env
@@ -96,7 +96,7 @@ let get_impl t dir =
     ~profile
     ~expander
     ~default_env:t.context_env
-    ~default_artifacts:t.artifacts
+    ~default_artifacts:(Memo.return t.artifacts)
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as create a
@@ -212,7 +212,7 @@ let make_default_env_node
       ~profile
       ~expander
       ~default_env:root_env
-      ~default_artifacts:artifacts
+      ~default_artifacts:(Memo.return artifacts)
   in
   make
     ~config_stanza:env_nodes.context
@@ -254,7 +254,7 @@ let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
 
 let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
   let context_name = Context.name context in
-  let* env =
+  let env =
     let* base = make_root_env context ~host in
     Site_env.add_packages_env context_name ~base stanzas packages
   in

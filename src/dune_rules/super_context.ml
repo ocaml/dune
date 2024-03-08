@@ -32,9 +32,10 @@ let artifacts_host t ~dir =
 
 let scope_host ~scope (context : Context.t) =
   match Context.for_host context with
-  | None -> Memo.return scope
+  | None -> scope
   | Some host ->
     let* dir =
+      let* scope = scope in
       let+ host = host in
       set_context host (Scope.root scope)
     in
@@ -43,11 +44,11 @@ let scope_host ~scope (context : Context.t) =
 
 let expander_for_artifacts t ~dir =
   let external_env = t.get_node dir >>= Env_node.external_env in
-  let* scope = Scope.DB.find_by_dir dir in
-  let+ scope_host = scope_host ~scope t.context in
+  let scope = Scope.DB.find_by_dir dir in
+  let scope_host = scope_host ~scope t.context in
+  let+ project = Dune_load.find_project ~dir in
   Expander.extend_env t.root_expander ~env:external_env
-  |> Expander.set_scope ~scope ~scope_host
-  |> Expander.set_dir ~dir
+  |> Expander.set_scope ~dir ~project ~scope ~scope_host
 ;;
 
 let expander t ~dir =
@@ -269,9 +270,11 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         let public_libs = host >>| Context.name >>= Scope.DB.public_libs in
         artifacts, public_libs, host
     in
-    let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
-    and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
+    let scope = Scope.DB.find_by_dir (Context.build_dir context) in
+    let scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
+    let+ project = Dune_load.find_project ~dir:(Context.build_dir context) in
     Expander.make_root
+      ~project
       ~scope
       ~scope_host
       ~context

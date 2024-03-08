@@ -23,6 +23,7 @@ Without any consumers of the libraries
   Error: Library foo is defined twice:
   - a/dune:1
   - b/dune:1
+  -> required by alias default
   [1]
 
 With some consumer of the library

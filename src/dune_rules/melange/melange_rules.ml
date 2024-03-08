@@ -591,6 +591,9 @@ let rec under_melange_emit_target ~sctx ~dir =
      | Some stanzas ->
        Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
        >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
+         (* In the case where we have two melange.emit stanzas in the same folder,
+            with one enabled in the current context and one disabled, we want to
+            make sure that we pick the enabled one *)
          let+ enabled =
            let* expander =
              let* sctx = sctx in

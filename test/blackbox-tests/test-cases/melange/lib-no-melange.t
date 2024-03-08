@@ -45,8 +45,8 @@ But building melange does
   File "dune", line 4, characters 1-16:
   4 |  (libraries foo))
        ^^^^^^^^^^^^^^^
-  Error: The library "foo" was added as a dependency of a melange.emit stanza,
-  but this library is not compatible with melange. To fix this, add (modes
-  melange) to the library stanza.
+  Error: The library `foo` was added as a dependency of a `melange.emit`
+  stanza, but this library is not compatible with Melange. To fix this, add
+  `(modes melange)` to the library stanza.
   [1]
 

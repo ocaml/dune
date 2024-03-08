@@ -60,9 +60,9 @@ let impl_only_modules_defined_in_this_lib ~(mel : Melange_stanzas.Emit.t) sctx l
         User_error.raise
           ~loc:(fst mel.libraries)
           [ Pp.textf
-              "The library %S was added as a dependency of a melange.emit stanza, but \
-               this library is not compatible with melange. To fix this, add (modes \
-               melange) to the library stanza."
+              "The library `%s` was added as a dependency of a `melange.emit` stanza, but \
+               this library is not compatible with Melange. To fix this, add `(modes \
+               melange)` to the library stanza."
               (Lib_name.to_string (Lib_info.name info))
           ]
       | true -> ()

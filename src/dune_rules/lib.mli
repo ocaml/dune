@@ -102,6 +102,7 @@ module DB : sig
     val to_dyn : t Dyn.builder
     val redirect : db -> Loc.t * Lib_name.t -> t
     val redirect_in_the_same_db : (Loc.t * Lib_name.t) list -> t
+    val deprecated_library_name : Loc.t * Lib_name.t -> t
   end
 
   (** Create a new library database. [resolve] is used to resolve library names

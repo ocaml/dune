@@ -424,6 +424,7 @@ and resolve_result =
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
   | Redirect of db * (Loc.t * Lib_name.t)
+  | Deprecated_library_name of (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1167,6 +1168,7 @@ end = struct
     db.resolve name
     >>= function
     | Ignore -> Memo.return Status.Ignore
+    | Deprecated_library_name (_, name') -> find_internal db name'
     | Redirect_in_the_same_db redirects ->
       let result = List.map ~f:(fun (_, name') -> find_internal db name') redirects in
       let* statuses =
@@ -1847,11 +1849,13 @@ module DB = struct
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
       | Redirect of db * (Loc.t * Lib_name.t)
+      | Deprecated_library_name of (Loc.t * Lib_name.t)
 
     let found f = Found f
     let not_found = Not_found
     let redirect db lib = Redirect (db, lib)
     let redirect_in_the_same_db libs = Redirect_in_the_same_db libs
+    let deprecated_library_name lib = Deprecated_library_name lib
 
     let to_dyn x =
       let open Dyn in
@@ -1866,6 +1870,8 @@ module DB = struct
         variant
           "Redirect_in_the_same_db"
           [ (Dyn.list (fun (_, name) -> Lib_name.to_dyn name)) redirects ]
+      | Deprecated_library_name (_, name) ->
+        variant "Deprecated_library_name" [ Lib_name.to_dyn name ]
     ;;
   end
 
@@ -1898,7 +1904,7 @@ module DB = struct
           >>| function
           | Ok (Library pkg) -> Found [ Dune_package.Lib.info pkg ]
           | Ok (Deprecated_library_name d) ->
-            Redirect_in_the_same_db [ d.loc, d.new_public_name ]
+            Deprecated_library_name (d.loc, d.new_public_name)
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
           | Error e ->
             (match e with

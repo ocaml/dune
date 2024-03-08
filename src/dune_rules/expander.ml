@@ -349,72 +349,65 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
       in
       file_of_lib artifacts context ~loc ~lib ~file)
   in
-  let p =
-    let open Memo.O in
-    Resolve.Memo.peek p
-    >>| function
-    | Ok p ->
-      (match file with
-       | "" | "." ->
-         let lang_version = Dune_project.dune_version (Scope.project t.scope) in
-         if lang_version < (3, 0)
-         then Action_builder.return [ Value.Path p ]
-         else
-           User_error.raise
-             ~loc
-             [ Pp.textf
-                 "The form %%{%s:<libname>:%s} is no longer supported since version 3.0 \
-                  of the Dune language."
-                 (if lib_private then "lib-private" else "lib")
-                 file
-             ]
-             ~hints:
-               [ (match Lib_name.to_string lib with
-                  | "ctypes" ->
-                    Pp.text
-                      "Did you know that Dune 3.0 supports ctypes natively? See the \
-                       manual for more details."
-                  | _ ->
-                    Pp.textf
-                      "If you are trying to use this form to include a directory, you \
-                       should instead use (foreign_stubs (include_dirs (lib %s))). See \
-                       the manual for more details."
-                      (Lib_name.to_string lib))
-               ]
-       | _ ->
-         if (not lib_exec) || (not Sys.win32) || Filename.extension file = ".exe"
-         then dep p
-         else (
-           let p_exe = Path.extend_basename p ~suffix:".exe" in
-           Action_builder.if_file_exists p_exe ~then_:(dep p_exe) ~else_:(dep p)))
-    | Error () ->
-      let p =
-        if lib_private
-        then Resolve.Memo.map p ~f:(fun _ -> assert false)
+  (let open Memo.O in
+   Resolve.Memo.peek p
+   >>| function
+   | Ok p ->
+     (match file with
+      | "" | "." ->
+        if Dune_project.dune_version (Scope.project t.scope) < (3, 0)
+        then Action_builder.return [ Value.Path p ]
         else
-          let open Resolve.Memo.O in
-          let* available =
-            Resolve.Memo.lift_memo (Lib.DB.available (Scope.libs scope) lib)
-          in
-          match available with
-          | false ->
-            let+ _ = p in
-            assert false
-          | true ->
-            Resolve.Memo.fail
-              (User_error.make
-                 ~loc
-                 [ Pp.textf
-                     "The library %S is not public. The variable \"lib%s\" expands to \
-                      the file's installation path which is not defined for private \
-                      libraries."
-                     (Lib_name.to_string lib)
-                     (if lib_exec then "exec" else "")
-                 ])
-      in
-      Resolve.Memo.read p
-  in
-  Action_builder.of_memo_join p
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "The form %%{%s:<libname>:%s} is no longer supported since version 3.0 \
+                 of the Dune language."
+                (if lib_private then "lib-private" else "lib")
+                file
+            ]
+            ~hints:
+              [ (match Lib_name.to_string lib with
+                 | "ctypes" ->
+                   Pp.text
+                     "Did you know that Dune 3.0 supports ctypes natively? See the \
+                      manual for more details."
+                 | _ ->
+                   Pp.textf
+                     "If you are trying to use this form to include a directory, you \
+                      should instead use (foreign_stubs (include_dirs (lib %s))). See \
+                      the manual for more details."
+                     (Lib_name.to_string lib))
+              ]
+      | _ ->
+        if (not lib_exec) || (not Sys.win32) || Filename.extension file = ".exe"
+        then dep p
+        else (
+          let p_exe = Path.extend_basename p ~suffix:".exe" in
+          Action_builder.if_file_exists p_exe ~then_:(dep p_exe) ~else_:(dep p)))
+   | Error () ->
+     (if lib_private
+      then Resolve.Memo.map p ~f:(fun _ -> assert false)
+      else
+        let open Resolve.Memo.O in
+        Lib.DB.available (Scope.libs scope) lib
+        |> Resolve.Memo.lift_memo
+        >>= function
+        | false ->
+          let+ (_ : Path.t) = p in
+          assert false
+        | true ->
+          Resolve.Memo.fail
+            (User_error.make
+               ~loc
+               [ Pp.textf
+                   "The library %S is not public. The variable \"lib%s\" expands to the \
+                    file's installation path which is not defined for private libraries."
+                   (Lib_name.to_string lib)
+                   (if lib_exec then "exec" else "")
+               ]))
+     |> Resolve.Memo.read)
+  |> Action_builder.of_memo_join
 ;;
 
 let make loc context =

@@ -1,4 +1,4 @@
-enabled_if has a limitation: it attempts building even if enabled_if evaluates to false.
+enabled_if and build_if have similar behavior
 
   $ cat > dune-project << EOF
   > (lang dune 3.9)
@@ -39,7 +39,7 @@ We test the various combinations:
 
   $ test_all
   When building @all with ENABLED=unset:
-    build was done: YES
+    build was done: NO
     test did run:   NO
   When building @runtest with ENABLED=unset:
     build was done: NO

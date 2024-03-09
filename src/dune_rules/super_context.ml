@@ -270,8 +270,6 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
-    and+ public_libs = public_libs
-    and+ public_libs_host = public_libs_host
     and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
     Expander.make_root
       ~scope

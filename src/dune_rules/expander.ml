@@ -50,8 +50,8 @@ type t =
   { dir : Path.Build.t
   ; env : Env.t Memo.t
   ; local_env : string Action_builder.t Env.Var.Map.t
-  ; public_libs : Lib.DB.t
-  ; public_libs_host : Lib.DB.t
+  ; public_libs : Lib.DB.t Memo.t
+  ; public_libs_host : Lib.DB.t Memo.t
   ; artifacts_host : Artifacts.t Memo.t
   ; bindings : value Pform.Map.t
   ; scope : Scope.t
@@ -347,6 +347,7 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
         then t.public_libs_host, Context.host t.context
         else t.public_libs, Memo.return t.context
       in
+      let* artifacts = Resolve.Memo.lift_memo artifacts in
       file_of_lib artifacts context ~loc ~lib ~file)
   in
   (let open Memo.O in

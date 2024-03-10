@@ -39,7 +39,7 @@ We test the various combinations:
 
   $ test_all
   When building @all with ENABLED=unset:
-    build was done: NO
+    build was done: YES
     test did run:   NO
   When building @runtest with ENABLED=unset:
     build was done: NO

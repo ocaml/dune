@@ -400,6 +400,30 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
+  let make_executables ~dir ~enabled ~expander ~modules ~project exes =
+    let obj_dir = Executables.obj_dir ~dir exes in
+    let+ sources, modules =
+      let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
+        exes.buildable
+      in
+      Modules_field_evaluator.eval
+        ~expander
+        ~modules
+        ~stanza_loc
+        ~src_dir:dir
+        ~kind:Modules_field_evaluator.Exe_or_normal_lib
+        ~private_modules:Ordered_set_lang.Unexpanded.standard
+        ~version:exes.dune_version
+        modules_settings
+    in
+    let modules =
+      let obj_dir = Obj_dir.obj_dir obj_dir in
+      if Dune_project.wrapped_executables project
+      then Modules_group.make_wrapped ~obj_dir ~modules `Exe
+      else Modules_group.exe_unwrapped modules ~obj_dir
+    in
+    `Executables (exes, sources, modules, obj_dir, enabled)
+  in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
@@ -424,30 +448,11 @@ let modules_of_stanzas =
         in
         let obj_dir = Library.obj_dir lib ~dir in
         `Library (lib, sources, modules, obj_dir, enabled)
-      | Executables.T exes | Tests.T { exes; _ } ->
-        let obj_dir = Executables.obj_dir ~dir exes in
+      | Executables.T exes ->
         let* enabled = Expander.eval_blang expander exes.enabled_if >>| Toggle.of_bool in
-        let+ sources, modules =
-          let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
-            exes.buildable
-          in
-          Modules_field_evaluator.eval
-            ~expander
-            ~modules
-            ~stanza_loc
-            ~src_dir:dir
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.Unexpanded.standard
-            ~version:exes.dune_version
-            modules_settings
-        in
-        let modules =
-          let obj_dir = Obj_dir.obj_dir obj_dir in
-          if Dune_project.wrapped_executables project
-          then Modules_group.make_wrapped ~obj_dir ~modules `Exe
-          else Modules_group.exe_unwrapped modules ~obj_dir
-        in
-        `Executables (exes, sources, modules, obj_dir, enabled)
+        make_executables ~dir ~enabled ~expander ~modules ~project exes
+      | Tests.T { exes; _ } ->
+        make_executables ~dir ~enabled:`Enabled ~expander ~modules ~project exes
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
         let* enabled = Expander.eval_blang expander mel.enabled_if >>| Toggle.of_bool in

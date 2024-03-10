@@ -7,7 +7,7 @@ type t =
   ; default_env : Env_node.t Memo.Lazy.t
   ; host : t option
   ; root_expander : Expander.t
-  ; artifacts : Artifacts.t
+  ; artifacts : Artifacts.t Memo.t
   ; get_node : Path.Build.t -> Env_node.t Memo.t
   }
 
@@ -51,8 +51,8 @@ let expander_for_artifacts t ~dir =
 ;;
 
 let expander t ~dir =
-  let* expander_for_artifacts = expander_for_artifacts t ~dir in
-  let+ artifacts_host = artifacts_host t ~dir in
+  let+ expander_for_artifacts = expander_for_artifacts t ~dir in
+  let artifacts_host = artifacts_host t ~dir in
   Expander.set_artifacts expander_for_artifacts ~artifacts_host
 ;;
 
@@ -96,7 +96,7 @@ let get_impl t dir =
     ~profile
     ~expander
     ~default_env:t.context_env
-    ~default_artifacts:(Memo.return t.artifacts)
+    ~default_artifacts:t.artifacts
 ;;
 
 (* Here we jump through some hoops to construct [t] as well as create a
@@ -195,7 +195,7 @@ let make_default_env_node
   profile
   (env_nodes : Context.Env_nodes.t)
   ~root_env
-  ~(artifacts : Artifacts.t)
+  ~artifacts
   =
   let make ~inherit_from ~config_stanza =
     let config_stanza = Option.value config_stanza ~default:Dune_env.empty in
@@ -212,7 +212,7 @@ let make_default_env_node
       ~profile
       ~expander
       ~default_env:root_env
-      ~default_artifacts:(Memo.return artifacts)
+      ~default_artifacts:artifacts
   in
   make
     ~config_stanza:env_nodes.context
@@ -270,9 +270,6 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
         artifacts, public_libs, host
     in
     let+ scope = Scope.DB.find_by_dir (Context.build_dir context)
-    and+ public_libs = public_libs
-    and+ artifacts_host = artifacts_host
-    and+ public_libs_host = public_libs_host
     and+ scope_host = context_host >>| Context.build_dir >>= Scope.DB.find_by_dir in
     Expander.make_root
       ~scope
@@ -282,7 +279,7 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
       ~public_libs
       ~artifacts_host
       ~public_libs_host
-  and+ artifacts = artifacts in
+  in
   (* Env node that represents the environment configured for the workspace. It
      is used as default at the root of every project in the workspace. *)
   let default_env =
@@ -354,7 +351,7 @@ let find_exn name =
 let all_init_deferred () =
   Memo.Lazy.force all
   >>| Context_name.Map.values
-  >>= Memo.parallel_iter ~f:(fun t -> Artifacts.force t.artifacts)
+  >>= Memo.parallel_iter ~f:(fun t -> t.artifacts >>= Artifacts.force)
 ;;
 
 module As_memo_key = struct

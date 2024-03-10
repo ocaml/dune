@@ -53,108 +53,110 @@ module Modules = struct
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
-  let make = 
+  let make =
     let keep_enabled t =
       List.filter t ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
     in
     fun { libraries = libs; executables = exes; melange_emits = emits } ->
-
-    let libs = keep_enabled libs in
-    let exes = keep_enabled exes in
-    let emits = keep_enabled emits in
-    let libraries =
-      match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
-          Library.best_name lib, (m, obj_dir))
-      with
-      | Ok x -> x
-      | Error (name, _, (lib2, _, _, _, _)) ->
-        User_error.raise
-          ~loc:lib2.buildable.loc
-          [ Pp.textf
-              "Library %S appears for the second time in this directory"
-              (Lib_name.to_string name)
-          ]
-    in
-    let executables =
-      match
-        String.Map.of_list_map exes ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
-          snd (List.hd exes.names), (m, obj_dir))
-      with
-      | Ok x -> x
-      | Error (name, _, (exes2, _, _, _, _)) ->
-        User_error.raise
-          ~loc:exes2.buildable.loc
-          [ Pp.textf "Executable %S appears for the second time in this directory" name ]
-    in
-    let melange_emits =
-      match
-        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
-          mel.target, (m, obj_dir))
-      with
-      | Ok x -> x
-      | Error (name, _, (mel, _, _, _, _)) ->
-        User_error.raise
-          ~loc:mel.loc
-          [ Pp.textf "Target %S appears for the second time in this directory" name ]
-    in
-    let rev_map =
-      let modules =
-        let by_path (origin : Origin.t) trie =
-          Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
-            (Module.Source.path m, origin) :: acc)
-        in
-        List.concat
-          [ List.concat_map libs ~f:(fun (l, m, _, _, _) -> by_path (Library l) m)
-          ; List.concat_map exes ~f:(fun (e, m, _, _, _) -> by_path (Executables e) m)
-          ; List.concat_map emits ~f:(fun (l, m, _, _, _) -> by_path (Melange l) m)
-          ]
+      let libs = keep_enabled libs in
+      let exes = keep_enabled exes in
+      let emits = keep_enabled emits in
+      let libraries =
+        match
+          Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
+            Library.best_name lib, (m, obj_dir))
+        with
+        | Ok x -> x
+        | Error (name, _, (lib2, _, _, _, _)) ->
+          User_error.raise
+            ~loc:lib2.buildable.loc
+            [ Pp.textf
+                "Library %S appears for the second time in this directory"
+                (Lib_name.to_string name)
+            ]
       in
-      match Module_name.Path.Map.of_list modules with
-      | Ok x -> x
-      | Error (path, _, _) ->
-        let locs =
-          List.filter_map modules ~f:(fun (n, origin) ->
-            Option.some_if
-              (Ordering.is_eq (Module_name.Path.compare n path))
-              (Origin.loc origin))
-          |> List.sort ~compare:Loc.compare
-        in
-        let main_message =
-          Pp.textf
-            "Module %S is used in several stanzas:"
-            (Module_name.Path.to_string path)
-        in
-        let loc, related_locs =
-          match locs with
-          | [] ->
-            (* duplicates imply at least at one module with this location *)
-            assert false
-          | loc :: related_locs -> loc, related_locs
-        in
-        let annots =
-          let main = User_message.make ~loc [ main_message ] in
-          let related =
-            List.map related_locs ~f:(fun loc ->
-              User_message.make ~loc [ Pp.text "Used in this stanza" ])
+      let executables =
+        match
+          String.Map.of_list_map
+            exes
+            ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
+              snd (List.hd exes.names), (m, obj_dir))
+        with
+        | Ok x -> x
+        | Error (name, _, (exes2, _, _, _, _)) ->
+          User_error.raise
+            ~loc:exes2.buildable.loc
+            [ Pp.textf "Executable %S appears for the second time in this directory" name
+            ]
+      in
+      let melange_emits =
+        match
+          String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
+            mel.target, (m, obj_dir))
+        with
+        | Ok x -> x
+        | Error (name, _, (mel, _, _, _, _)) ->
+          User_error.raise
+            ~loc:mel.loc
+            [ Pp.textf "Target %S appears for the second time in this directory" name ]
+      in
+      let rev_map =
+        let modules =
+          let by_path (origin : Origin.t) trie =
+            Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
+              (Module.Source.path m, origin) :: acc)
           in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
+          List.concat
+            [ List.concat_map libs ~f:(fun (l, m, _, _, _) -> by_path (Library l) m)
+            ; List.concat_map exes ~f:(fun (e, m, _, _, _) -> by_path (Executables e) m)
+            ; List.concat_map emits ~f:(fun (l, m, _, _, _) -> by_path (Melange l) m)
+            ]
         in
-        User_error.raise
-          ~annots
-          ~loc:(Loc.drop_position loc)
-          [ main_message
-          ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
-          ; Pp.text
-              "To fix this error, you must specify an explicit \"modules\" field in \
-               every library, executable, and executables stanzas in this dune file. \
-               Note that each module cannot appear in more than one \"modules\" field - \
-               it must belong to a single library or executable."
-          ]
-    in
-    { libraries; executables; melange_emits; rev_map }
+        match Module_name.Path.Map.of_list modules with
+        | Ok x -> x
+        | Error (path, _, _) ->
+          let locs =
+            List.filter_map modules ~f:(fun (n, origin) ->
+              Option.some_if
+                (Ordering.is_eq (Module_name.Path.compare n path))
+                (Origin.loc origin))
+            |> List.sort ~compare:Loc.compare
+          in
+          let main_message =
+            Pp.textf
+              "Module %S is used in several stanzas:"
+              (Module_name.Path.to_string path)
+          in
+          let loc, related_locs =
+            match locs with
+            | [] ->
+              (* duplicates imply at least at one module with this location *)
+              assert false
+            | loc :: related_locs -> loc, related_locs
+          in
+          let annots =
+            let main = User_message.make ~loc [ main_message ] in
+            let related =
+              List.map related_locs ~f:(fun loc ->
+                User_message.make ~loc [ Pp.text "Used in this stanza" ])
+            in
+            User_message.Annots.singleton
+              Compound_user_error.annot
+              [ Compound_user_error.make ~main ~related ]
+          in
+          User_error.raise
+            ~annots
+            ~loc:(Loc.drop_position loc)
+            [ main_message
+            ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
+            ; Pp.text
+                "To fix this error, you must specify an explicit \"modules\" field in \
+                 every library, executable, and executables stanzas in this dune file. \
+                 Note that each module cannot appear in more than one \"modules\" field \
+                 - it must belong to a single library or executable."
+            ]
+      in
+      { libraries; executables; melange_emits; rev_map }
   ;;
 end
 

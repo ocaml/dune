@@ -53,10 +53,12 @@ module Modules = struct
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
-  let make { libraries = libs; executables = exes; melange_emits = emits } =
+  let make = 
     let keep_enabled t =
       List.filter t ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
     in
+    fun { libraries = libs; executables = exes; melange_emits = emits } ->
+
     let libs = keep_enabled libs in
     let exes = keep_enabled exes in
     let emits = keep_enabled emits in

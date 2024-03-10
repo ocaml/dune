@@ -400,8 +400,7 @@ let modules_of_stanzas =
     Memo.parallel_map stanzas ~f:(fun stanza ->
       match Stanza.repr stanza with
       | Library.T lib ->
-        let* enabled = Expander.eval_blang expander lib.enabled_if in
-        let enabled = Toggle.of_bool enabled in
+        let* enabled = Expander.eval_blang expander lib.enabled_if >>| Toggle.of_bool in
         (* jeremiedimino: this [Resolve.get] means that if the user writes an
            invalid [implements] field, we will get an error immediately even if
            the library is not built. We should change this to carry the
@@ -423,8 +422,7 @@ let modules_of_stanzas =
         `Library (lib, sources, modules, obj_dir, enabled)
       | Executables.T exes | Tests.T { exes; _ } ->
         let obj_dir = Executables.obj_dir ~dir exes in
-        let* enabled = Expander.eval_blang expander exes.enabled_if in
-        let enabled = Toggle.of_bool enabled in
+        let* enabled = Expander.eval_blang expander exes.enabled_if >>| Toggle.of_bool in
         let+ sources, modules =
           let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
             exes.buildable
@@ -448,8 +446,7 @@ let modules_of_stanzas =
         `Executables (exes, sources, modules, obj_dir, enabled)
       | Melange_stanzas.Emit.T mel ->
         let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-        let* enabled = Expander.eval_blang expander mel.enabled_if in
-        let enabled = Toggle.of_bool enabled in
+        let* enabled = Expander.eval_blang expander mel.enabled_if >>| Toggle.of_bool in
         let+ sources, modules =
           Modules_field_evaluator.eval
             ~expander

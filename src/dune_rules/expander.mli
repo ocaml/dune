@@ -8,8 +8,9 @@ val dir : t -> Path.Build.t
 val context : t -> Context_name.t
 
 val make_root
-  :  scope:Scope.t
-  -> scope_host:Scope.t
+  :  project:Dune_project.t
+  -> scope:Scope.t Memo.t
+  -> scope_host:Scope.t Memo.t
   -> context:Context.t
   -> env:Env.t Memo.t
   -> public_libs:Lib.DB.t Memo.t
@@ -18,8 +19,15 @@ val make_root
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
-val set_dir : t -> dir:Path.Build.t -> t
-val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
+
+val set_scope
+  :  t
+  -> dir:Path.Build.t
+  -> project:Dune_project.t
+  -> scope:Scope.t Memo.t
+  -> scope_host:Scope.t Memo.t
+  -> t
+
 val set_artifacts : t -> artifacts_host:Artifacts.t Memo.t -> t
 
 module Expanding_what : sig

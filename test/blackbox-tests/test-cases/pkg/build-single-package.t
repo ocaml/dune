@@ -23,9 +23,9 @@ These two packages are independent:
 We should only see the result of building "foo"
 
   $ build_pkg foo
-  building bar
   building foo
 
 We should only see the result of building "bar"
 
   $ build_pkg bar
+  building bar

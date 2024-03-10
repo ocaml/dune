@@ -60,7 +60,6 @@ to fix this currently.
   Error: Cannot have more than one boot theory in scope:
   - Coq at B/Coq/dune:2
   - Coq at Coq/dune:1
-  -> required by alias B/default
   Error: Multiple rules generated for
   _build/install/default/lib/coq/theories/Init/Prelude.vo:
   - Coq/dune:1

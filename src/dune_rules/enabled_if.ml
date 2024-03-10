@@ -40,10 +40,9 @@ let emit_warning allowed_vars is_error var =
     ~loc
     ~is_error
     [ Pp.textf
-        "Only %s variables are allowed in this 'enabled_if' field. If you think that %s \
-         should also be allowed, please file an issue about it."
+        "Only %s variables are allowed in this 'enabled_if' field. Please upgrade your \
+         dune language to at least 3.15."
         (String.enumerate_and var_names)
-        (Dune_lang.Template.Pform.name var)
     ]
 ;;
 

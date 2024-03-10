@@ -587,13 +587,19 @@ let library_rules
   let* () =
     Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
+  let* expander = Super_context.expander sctx ~dir in
   let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
-  and* expander = Super_context.expander sctx ~dir
   and* lib_info =
     let lib_config = ocaml.lib_config in
-    let info = Library.to_lib_info lib ~dir ~lib_config in
+    let info =
+      Library.to_lib_info
+        lib
+        ~expander:(Memo.return (Expander.to_expander0 expander))
+        ~dir
+        ~lib_config
+    in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info

@@ -63,6 +63,7 @@ type t =
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
+let project t = t.project
 let context t = Context.name t.context
 
 let set_local_env_var t ~var ~value =
@@ -908,3 +909,12 @@ let expand_locks t (locks : Locks.t) =
   Memo.List.map locks ~f:(fun (Lock x) -> No_deps.expand_path t x)
   |> Action_builder.of_memo
 ;;
+
+module M = struct
+  type nonrec t = t
+
+  let project = project
+  let eval_blang = eval_blang
+end
+
+let to_expander0 t = Expander0.create (Memo.return t) (module M)

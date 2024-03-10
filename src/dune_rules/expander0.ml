@@ -24,3 +24,26 @@ let as_in_build_dir ~what ~loc p =
           (Path.to_string_maybe_quoted p)
       ]
 ;;
+
+module type S = sig
+  type t
+
+  val project : t -> Dune_project.t
+  val eval_blang : t -> Blang.t -> bool Memo.t
+end
+
+open Memo.O
+
+type t = E : 'a Memo.t * (module S with type t = 'a) -> t
+
+let db = Fdecl.create Dyn.opaque
+let set_db = Fdecl.set db
+let create e m = E (e, m)
+let project (E (e, (module E))) = Memo.map e ~f:E.project
+
+let eval_blang (E (e, (module E))) blang =
+  let* e = e in
+  E.eval_blang e blang
+;;
+
+let get ~dir = (Fdecl.get db) ~dir

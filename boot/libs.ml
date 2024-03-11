@@ -97,6 +97,13 @@ let local_libraries =
   ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)
   ]
 
+let build_flags =
+  [ ("win32", [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
+  ; ("win64", [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
+  ; ("mingw", [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
+  ; ("mingw64", [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
+  ]
+
 let link_flags =
   [ ("macosx",
     [ "-cclib"

@@ -1067,6 +1067,7 @@ let build
   ~ocaml_config
   ~dependencies
   ~c_files
+  ~build_flags
   ~link_flags
   { target = name, main; external_libraries; _ }
   =
@@ -1114,7 +1115,7 @@ let build
         Process.run
           ~cwd:build_dir
           Config.compiler
-          (List.concat [ [ "-c"; "-g" ]; external_includes; [ file ] ])
+          (List.concat [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ] ])
         >>| fun () -> Filename.chop_extension file ^ ext_obj))
   >>= fun obj_files ->
   let compiled_ml_ext =
@@ -1151,6 +1152,12 @@ let rec rm_rf fn =
 
 and clear dir = List.iter (readdir dir) ~f:rm_rf
 
+let get_flags ocaml_system flags =
+  match List.assoc_opt ocaml_system flags with
+  | None -> []
+  | Some flags -> flags
+;;
+
 (** {2 Bootstrap process} *)
 let main () =
   (try clear build_dir with
@@ -1164,15 +1171,14 @@ let main () =
   let c_files = List.map ~f:(fun (_, _, c_files) -> c_files) libraries |> List.concat in
   get_dependencies libraries
   >>= fun dependencies ->
-  let link_flags =
+  let ocaml_system =
     match StringMap.find_opt "system" ocaml_config with
     | None -> assert false
-    | Some platform ->
-      (match List.assoc_opt platform Libs.link_flags with
-       | None -> []
-       | Some flags -> flags)
+    | Some s -> s
   in
-  build ~ocaml_config ~dependencies ~c_files ~link_flags task
+  let build_flags = get_flags ocaml_system Libs.build_flags in
+  let link_flags = get_flags ocaml_system Libs.link_flags in
+  build ~ocaml_config ~dependencies ~c_files ~build_flags ~link_flags task
 ;;
 
 let () = Fiber.run (main ())

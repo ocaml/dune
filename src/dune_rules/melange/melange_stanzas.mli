@@ -9,7 +9,7 @@ module Emit : sig
     ; module_systems : (Melange.Module_system.t * string) list
     ; modules : Stanza_common.Modules_settings.t
     ; emit_stdlib : bool
-    ; libraries : Loc.t * Lib_dep.t list
+    ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Loc.t * Dep_conf.t list

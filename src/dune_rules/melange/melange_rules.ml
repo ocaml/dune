@@ -40,7 +40,7 @@ let make_js_name ~js_ext ~output m =
     Path.Build.relative dst_dir basename
 ;;
 
-let impl_only_modules_defined_in_this_lib ~(mel : Melange_stanzas.Emit.t) sctx lib =
+let impl_only_modules_defined_in_this_lib sctx lib =
   let+ modules = Dir_contents.modules_of_lib sctx lib in
   match modules with
   | None ->
@@ -59,7 +59,7 @@ let impl_only_modules_defined_in_this_lib ~(mel : Melange_stanzas.Emit.t) sctx l
       | false ->
         let lib_name = Lib_name.to_string (Lib_info.name info) in
         User_error.raise
-          ~loc:(fst mel.libraries)
+          ~loc:(Lib_info.loc info)
           [ Pp.textf
               "The library `%s` was added as a dependency of a `melange.emit` stanza, \
                but this library is not compatible with Melange. To fix this, add \
@@ -108,8 +108,8 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     match mel.emit_stdlib with
     | true ->
       let builtin_melange_dep = Lib_dep.Direct (mel.loc, Lib_name.of_string "melange") in
-      builtin_melange_dep :: snd mel.libraries
-    | false -> snd mel.libraries
+      builtin_melange_dep :: mel.libraries
+    | false -> mel.libraries
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
@@ -133,11 +133,11 @@ let js_targets_of_modules modules ~module_systems ~output =
   |> Path.Set.union_all
 ;;
 
-let js_targets_of_libs sctx libs ~module_systems ~mel ~target_dir =
+let js_targets_of_libs sctx libs ~module_systems ~target_dir =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
     let open Memo.O in
     let of_lib lib =
-      let+ modules = impl_only_modules_defined_in_this_lib ~mel sctx lib in
+      let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
       let output = output_of_lib ~target_dir lib in
       List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
     in
@@ -277,7 +277,7 @@ let setup_emit_cmj_rules
             @@
             let open Resolve.Memo.O in
             Compilation_context.requires_link cctx
-            >>= js_targets_of_libs sctx ~module_systems ~mel ~target_dir
+            >>= js_targets_of_libs sctx ~module_systems ~target_dir
           in
           Action_builder.paths deps
         in
@@ -497,10 +497,10 @@ let setup_js_rules_libraries
           in
           cmj_includes ~requires_link ~scope
         in
-        impl_only_modules_defined_in_this_lib ~mel sctx vlib
+        impl_only_modules_defined_in_this_lib sctx vlib
         >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
     in
-    let* source_modules = impl_only_modules_defined_in_this_lib ~mel sctx lib in
+    let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
     Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
 ;;
 

@@ -42,9 +42,9 @@ Building the native executable does not fail
 But building melange does
 
   $ dune build @melange
-  File "dune", line 4, characters 1-16:
-  4 |  (libraries foo))
-       ^^^^^^^^^^^^^^^
+  File "lib/dune", line 1, characters 0-21:
+  1 | (library
+  2 |  (name foo))
   Error: The library `foo` was added as a dependency of a `melange.emit`
   stanza, but this library is not compatible with Melange. To fix this, add
   `melange` to the `modes` field of the library `foo`.
@@ -75,9 +75,9 @@ Check the transitive case
   > EOF
 
   $ dune build @melange
-  File "dune", line 4, characters 1-16:
-  4 |  (libraries foo))
-       ^^^^^^^^^^^^^^^
+  File "lib2/dune", line 1, characters 0-21:
+  1 | (library
+  2 |  (name bar))
   Error: The library `bar` was added as a dependency of a `melange.emit`
   stanza, but this library is not compatible with Melange. To fix this, add
   `melange` to the `modes` field of the library `bar`.

@@ -77,7 +77,6 @@ are only dependent on on certain systems.
 Build macos package on macos:
   $ dune clean
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=arm64 dune build _build/_private/default/.pkg/macos-only/target/
-  arm64-only
   macos-only
 
 Build macos package on macos:
@@ -88,14 +87,12 @@ Build macos package on macos:
 Build linux package on macos (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=macos DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/linux-only/target/
-  macos-only
   Error: Unknown package "linux-only"
   [1]
 
 Build macos package on linux (will fail):
   $ dune clean
   $ DUNE_CONFIG__OS=linux DUNE_CONFIG__ARCH=amd64 dune build _build/_private/default/.pkg/macos-only/target/
-  linux-only
   Error: Unknown package "macos-only"
   [1]
 

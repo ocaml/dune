@@ -50,3 +50,35 @@ But building melange does
   `melange` to the `modes` field of the library `foo`.
   [1]
 
+Check the transitive case
+
+  $ cat > lib/dune <<EOF
+  > (library
+  >  (name foo)
+  >  (modes :standard melange)
+  >  (libraries bar))
+  > EOF
+
+  $ cat > lib/Foo.ml <<EOF
+  > let t = Bar.t
+  > EOF
+
+  $ mkdir lib2
+
+  $ cat > lib2/dune <<EOF
+  > (library
+  >  (name bar))
+  > EOF
+
+  $ cat > lib/Bar.ml <<EOF
+  > let t = "Hello World"
+  > EOF
+
+  $ dune build @melange
+  File "dune", line 4, characters 1-16:
+  4 |  (libraries foo))
+       ^^^^^^^^^^^^^^^
+  Error: The library `bar` was added as a dependency of a `melange.emit`
+  stanza, but this library is not compatible with Melange. To fix this, add
+  `melange` to the `modes` field of the library `bar`.
+  [1]

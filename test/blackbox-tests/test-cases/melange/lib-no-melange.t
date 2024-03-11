@@ -47,6 +47,6 @@ But building melange does
        ^^^^^^^^^^^^^^^
   Error: The library `foo` was added as a dependency of a `melange.emit`
   stanza, but this library is not compatible with Melange. To fix this, add
-  `(modes melange)` to the library stanza.
+  `melange` to the `modes` field of the library `foo`.
   [1]
 

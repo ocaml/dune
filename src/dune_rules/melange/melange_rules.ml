@@ -57,13 +57,15 @@ let impl_only_modules_defined_in_this_lib ~(mel : Melange_stanzas.Emit.t) sctx l
       let modes = Lib_info.modes info in
       match modes.melange with
       | false ->
+        let lib_name = Lib_name.to_string (Lib_info.name info) in
         User_error.raise
           ~loc:(fst mel.libraries)
           [ Pp.textf
-              "The library `%s` was added as a dependency of a `melange.emit` stanza, but \
-               this library is not compatible with Melange. To fix this, add `(modes \
-               melange)` to the library stanza."
-              (Lib_name.to_string (Lib_info.name info))
+              "The library `%s` was added as a dependency of a `melange.emit` stanza, \
+               but this library is not compatible with Melange. To fix this, add \
+               `melange` to the `modes` field of the library `%s`."
+              lib_name
+              lib_name
           ]
       | true -> ()
     in

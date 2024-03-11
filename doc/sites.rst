@@ -34,7 +34,7 @@ site will be installed as a sub-directory.
 
 .. code:: dune
 
-   (lang dune 3.14)
+   (lang dune 3.15)
    (using dune_site 0.1)
    (name mygui)
 
@@ -235,7 +235,7 @@ Main Executable (C)
 
 .. code:: dune
 
-  (lang dune 3.14)
+  (lang dune 3.15)
   (using dune_site 0.1)
   (name app)
 
@@ -295,7 +295,7 @@ The Plugin "plugin1"
 
 .. code:: dune
 
-  (lang dune 3.14)
+  (lang dune 3.15)
   (using dune_site 0.1)
 
   (generate_opam_files true)

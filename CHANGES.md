@@ -1,3 +1,24 @@
+3.14.1 (2024-03-11)
+-------------------
+
+### Fixed
+
+- When a directory is changed to a file, correctly remove it in subsequent
+  `dune build` runs. (#9327, fix #6575, @emillon)
+
+- Fix a problem with the doc-new target where transitive dependencies were
+  missed during compile. This leads to missing expansions in the output docs.
+  (#9955, @jonludlam)
+
+- coq: fix performance regression in coqdep unescaping (#10115, fixes #10088,
+  @ejgallego, thanks to Dan Christensen for the report)
+
+- coq: memoize coqdep parsing, this will reduce build times for Coq users, in
+  particular for those with many .v files (#10116, @ejgallego, see also #10088)
+
+- on Windows, use an unicode-aware version of `CreateProcess` to avoid crashes
+  when paths contains non-ascii characters. (#10212, fixes #10180, @emillon)
+
 3.14.0 (2024-02-12)
 -------------------
 

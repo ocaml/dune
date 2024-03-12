@@ -5,6 +5,14 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.14.2 (2024-03-12)
+-------------------
+
+### Fixed
+
+- fix compilation on non-glibc systems due to `signal.h` not being pulled in
+  spawn stubs. (#10256, @emillon)
+
 3.14.1 (2024-03-11)
 -------------------
 

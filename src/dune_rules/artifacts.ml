@@ -36,8 +36,6 @@ let force { local_bins; _ } =
   ()
 ;;
 
-let expand = Fdecl.create Dyn.opaque
-
 let analyze_binary t name =
   match Filename.is_relative name with
   | false -> Memo.return (`Resolved (Path.of_filename_relative_to_initial_cwd name))
@@ -89,7 +87,11 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
        Memo.return @@ Ok (Path.build @@ Path.Build.append_local install_dir dst)
      | Original_path ->
        let+ expanded =
-         File_binding.Unexpanded.expand binding ~dir ~f:(Fdecl.get expand ~dir)
+         let* expander = Expander0.get ~dir in
+         File_binding.Unexpanded.expand
+           binding
+           ~dir
+           ~f:(Expander0.expand_str_and_build_deps expander)
        in
        let src = File_binding.Expanded.src expanded in
        Ok (Path.build src))

@@ -1,4 +1,7 @@
-enabled_if and build_if have similar behavior
+enabled_if and build_if have similar behavior on the test(s) stanza.
+build_if controls whether the tests builds, while enabled_if controls whether
+the test runs as part of @runtest
+
 
   $ cat > dune-project << EOF
   > (lang dune 3.9)

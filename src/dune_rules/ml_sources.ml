@@ -41,11 +41,11 @@ module Modules = struct
   ;;
 
   type 'stanza group_part =
-    'stanza
-    * (Loc.t * Module.Source.t) Module_trie.t
-    * Modules_group.t
-    * Path.Build.t Obj_dir.t
-    * Toggle.t
+    { stanza : 'stanza
+    ; sources : (Loc.t * Module.Source.t) Module_trie.t
+    ; modules : Modules_group.t
+    ; obj_dir : Path.Build.t Obj_dir.t
+    }
 
   type groups =
     { libraries : Library.t group_part list
@@ -53,110 +53,103 @@ module Modules = struct
     ; melange_emits : Melange_stanzas.Emit.t group_part list
     }
 
-  let make =
-    let keep_enabled t =
-      List.filter t ~f:(fun (_, _, _, _, enabled) -> Toggle.enabled enabled)
+  let make { libraries = libs; executables = exes; melange_emits = emits } =
+    let libraries =
+      match
+        Lib_name.Map.of_list_map libs ~f:(fun part ->
+          Library.best_name part.stanza, (part.modules, part.obj_dir))
+      with
+      | Ok x -> x
+      | Error (name, _, part) ->
+        User_error.raise
+          ~loc:part.stanza.buildable.loc
+          [ Pp.textf
+              "Library %S appears for the second time in this directory"
+              (Lib_name.to_string name)
+          ]
     in
-    fun { libraries = libs; executables = exes; melange_emits = emits } ->
-      let libs = keep_enabled libs in
-      let exes = keep_enabled exes in
-      let emits = keep_enabled emits in
-      let libraries =
-        match
-          Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir, _) ->
-            Library.best_name lib, (m, obj_dir))
-        with
-        | Ok x -> x
-        | Error (name, _, (lib2, _, _, _, _)) ->
-          User_error.raise
-            ~loc:lib2.buildable.loc
-            [ Pp.textf
-                "Library %S appears for the second time in this directory"
-                (Lib_name.to_string name)
-            ]
-      in
-      let executables =
-        match
-          String.Map.of_list_map
-            exes
-            ~f:(fun ((exes : Executables.t), _, m, obj_dir, _) ->
-              snd (List.hd exes.names), (m, obj_dir))
-        with
-        | Ok x -> x
-        | Error (name, _, (exes2, _, _, _, _)) ->
-          User_error.raise
-            ~loc:exes2.buildable.loc
-            [ Pp.textf "Executable %S appears for the second time in this directory" name
-            ]
-      in
-      let melange_emits =
-        match
-          String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir, _) ->
-            mel.target, (m, obj_dir))
-        with
-        | Ok x -> x
-        | Error (name, _, (mel, _, _, _, _)) ->
-          User_error.raise
-            ~loc:mel.loc
-            [ Pp.textf "Target %S appears for the second time in this directory" name ]
-      in
-      let rev_map =
-        let modules =
-          let by_path (origin : Origin.t) trie =
-            Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
-              (Module.Source.path m, origin) :: acc)
-          in
-          List.concat
-            [ List.concat_map libs ~f:(fun (l, m, _, _, _) -> by_path (Library l) m)
-            ; List.concat_map exes ~f:(fun (e, m, _, _, _) -> by_path (Executables e) m)
-            ; List.concat_map emits ~f:(fun (l, m, _, _, _) -> by_path (Melange l) m)
-            ]
+    let executables =
+      match
+        String.Map.of_list_map exes ~f:(fun (part : Executables.t group_part) ->
+          snd (List.hd part.stanza.names), (part.modules, part.obj_dir))
+      with
+      | Ok x -> x
+      | Error (name, _, part) ->
+        User_error.raise
+          ~loc:part.stanza.buildable.loc
+          [ Pp.textf "Executable %S appears for the second time in this directory" name ]
+    in
+    let melange_emits =
+      match
+        String.Map.of_list_map emits ~f:(fun part ->
+          part.stanza.target, (part.modules, part.obj_dir))
+      with
+      | Ok x -> x
+      | Error (name, _, part) ->
+        User_error.raise
+          ~loc:part.stanza.loc
+          [ Pp.textf "Target %S appears for the second time in this directory" name ]
+    in
+    let rev_map =
+      let modules =
+        let by_path (origin : Origin.t) trie =
+          Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
+            (Module.Source.path m, origin) :: acc)
         in
-        match Module_name.Path.Map.of_list modules with
-        | Ok x -> x
-        | Error (path, _, _) ->
-          let locs =
-            List.filter_map modules ~f:(fun (n, origin) ->
-              Option.some_if
-                (Ordering.is_eq (Module_name.Path.compare n path))
-                (Origin.loc origin))
-            |> List.sort ~compare:Loc.compare
-          in
-          let main_message =
-            Pp.textf
-              "Module %S is used in several stanzas:"
-              (Module_name.Path.to_string path)
-          in
-          let loc, related_locs =
-            match locs with
-            | [] ->
-              (* duplicates imply at least at one module with this location *)
-              assert false
-            | loc :: related_locs -> loc, related_locs
-          in
-          let annots =
-            let main = User_message.make ~loc [ main_message ] in
-            let related =
-              List.map related_locs ~f:(fun loc ->
-                User_message.make ~loc [ Pp.text "Used in this stanza" ])
-            in
-            User_message.Annots.singleton
-              Compound_user_error.annot
-              [ Compound_user_error.make ~main ~related ]
-          in
-          User_error.raise
-            ~annots
-            ~loc:(Loc.drop_position loc)
-            [ main_message
-            ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
-            ; Pp.text
-                "To fix this error, you must specify an explicit \"modules\" field in \
-                 every library, executable, and executables stanzas in this dune file. \
-                 Note that each module cannot appear in more than one \"modules\" field \
-                 - it must belong to a single library or executable."
-            ]
+        List.concat
+          [ List.concat_map libs ~f:(fun part ->
+              by_path (Library part.stanza) part.sources)
+          ; List.concat_map exes ~f:(fun part ->
+              by_path (Executables part.stanza) part.sources)
+          ; List.concat_map emits ~f:(fun part ->
+              by_path (Melange part.stanza) part.sources)
+          ]
       in
-      { libraries; executables; melange_emits; rev_map }
+      match Module_name.Path.Map.of_list modules with
+      | Ok x -> x
+      | Error (path, _, _) ->
+        let locs =
+          List.filter_map modules ~f:(fun (n, origin) ->
+            Option.some_if
+              (Ordering.is_eq (Module_name.Path.compare n path))
+              (Origin.loc origin))
+          |> List.sort ~compare:Loc.compare
+        in
+        let main_message =
+          Pp.textf
+            "Module %S is used in several stanzas:"
+            (Module_name.Path.to_string path)
+        in
+        let loc, related_locs =
+          match locs with
+          | [] ->
+            (* duplicates imply at least at one module with this location *)
+            assert false
+          | loc :: related_locs -> loc, related_locs
+        in
+        let annots =
+          let main = User_message.make ~loc [ main_message ] in
+          let related =
+            List.map related_locs ~f:(fun loc ->
+              User_message.make ~loc [ Pp.text "Used in this stanza" ])
+          in
+          User_message.Annots.singleton
+            Compound_user_error.annot
+            [ Compound_user_error.make ~main ~related ]
+        in
+        User_error.raise
+          ~annots
+          ~loc:(Loc.drop_position loc)
+          [ main_message
+          ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
+          ; Pp.text
+              "To fix this error, you must specify an explicit \"modules\" field in \
+               every library, executable, and executables stanzas in this dune file. \
+               Note that each module cannot appear in more than one \"modules\" field - \
+               it must belong to a single library or executable."
+          ]
+    in
+    { libraries; executables; melange_emits; rev_map }
   ;;
 end
 
@@ -400,7 +393,7 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
-  let make_executables ~dir ~enabled ~expander ~modules ~project exes =
+  let make_executables ~dir ~expander ~modules ~project exes =
     let obj_dir = Executables.obj_dir ~dir exes in
     let+ sources, modules =
       let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
@@ -422,56 +415,66 @@ let modules_of_stanzas =
       then Modules_group.make_wrapped ~obj_dir ~modules `Exe
       else Modules_group.exe_unwrapped modules ~obj_dir
     in
-    `Executables (exes, sources, modules, obj_dir, enabled)
+    `Executables { Modules.stanza = exes; sources; modules; obj_dir }
   in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
-      match Stanza.repr stanza with
-      | Library.T lib ->
-        let* enabled = Expander.eval_blang expander lib.enabled_if >>| Toggle.of_bool in
-        (* jeremiedimino: this [Resolve.get] means that if the user writes an
-           invalid [implements] field, we will get an error immediately even if
-           the library is not built. We should change this to carry the
-           [Or_exn.t] a bit longer. *)
-        let+ sources, modules =
-          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-          make_lib_modules
-            ~expander
-            ~dir
-            ~libs
-            ~lookup_vlib
-            ~modules
-            ~lib
-            ~include_subdirs
-            ~version:lib.dune_version
-          >>= Resolve.read_memo
-        in
-        let obj_dir = Library.obj_dir lib ~dir in
-        `Library (lib, sources, modules, obj_dir, enabled)
-      | Executables.T exes ->
-        let* enabled = Expander.eval_blang expander exes.enabled_if >>| Toggle.of_bool in
-        make_executables ~dir ~enabled ~expander ~modules ~project exes
-      | Tests.T { exes; _ } ->
-        make_executables ~dir ~enabled:`Enabled ~expander ~modules ~project exes
-      | Melange_stanzas.Emit.T mel ->
-        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-        let* enabled = Expander.eval_blang expander mel.enabled_if >>| Toggle.of_bool in
-        let+ sources, modules =
-          Modules_field_evaluator.eval
-            ~expander
-            ~modules
-            ~stanza_loc:mel.loc
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~version:mel.dune_version
-            ~private_modules:Ordered_set_lang.Unexpanded.standard
-            ~src_dir:dir
-            mel.modules
-        in
-        let modules =
-          Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
-        in
-        `Melange_emit (mel, sources, modules, obj_dir, enabled)
-      | _ -> Memo.return `Skip)
+      let enabled_if =
+        match Stanza.repr stanza with
+        | Library.T lib -> lib.enabled_if
+        | Tests.T exes -> exes.build_if
+        | Executables.T exes -> exes.enabled_if
+        | Melange_stanzas.Emit.T mel -> mel.enabled_if
+        | _ -> Blang.true_
+      in
+      Expander.eval_blang expander enabled_if
+      >>= function
+      | false -> Memo.return `Skip
+      | true ->
+        (match Stanza.repr stanza with
+         | Library.T lib ->
+           (* jeremiedimino: this [Resolve.get] means that if the user writes an
+              invalid [implements] field, we will get an error immediately even if
+              the library is not built. We should change this to carry the
+              [Or_exn.t] a bit longer. *)
+           let+ sources, modules =
+             let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+             make_lib_modules
+               ~expander
+               ~dir
+               ~libs
+               ~lookup_vlib
+               ~modules
+               ~lib
+               ~include_subdirs
+               ~version:lib.dune_version
+             >>= Resolve.read_memo
+           in
+           let obj_dir = Library.obj_dir lib ~dir in
+           `Library { Modules.stanza = lib; sources; modules; obj_dir }
+         | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
+         | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
+         | Melange_stanzas.Emit.T mel ->
+           let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+           let+ sources, modules =
+             Modules_field_evaluator.eval
+               ~expander
+               ~modules
+               ~stanza_loc:mel.loc
+               ~kind:Modules_field_evaluator.Exe_or_normal_lib
+               ~version:mel.dune_version
+               ~private_modules:Ordered_set_lang.Unexpanded.standard
+               ~src_dir:dir
+               mel.modules
+           in
+           let modules =
+             Modules_group.make_wrapped
+               ~obj_dir:(Obj_dir.obj_dir obj_dir)
+               ~modules
+               `Melange
+           in
+           `Melange_emit { Modules.stanza = mel; sources; modules; obj_dir }
+         | _ -> Memo.return `Skip))
     >>| filter_partition_map
 ;;
 
@@ -564,11 +567,15 @@ let make
   let modules = Modules.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
-      Artifacts_obj.make
-        ~dir
-        ~lib_config
-        ~libs:modules_of_stanzas.libraries
-        ~exes:modules_of_stanzas.executables)
+      let libs =
+        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Modules.group_part) ->
+          part.stanza, part.modules, part.obj_dir)
+      in
+      let exes =
+        List.map modules_of_stanzas.executables ~f:(fun (part : _ Modules.group_part) ->
+          part.modules, part.obj_dir)
+      in
+      Artifacts_obj.make ~dir ~lib_config ~libs ~exes)
   in
   { modules; artifacts; include_subdirs }
 ;;

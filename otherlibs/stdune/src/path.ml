@@ -31,6 +31,16 @@ let explode_path =
       | xs -> xs)
 ;;
 
+let append_with_slash x y =
+  let len_x = String.length x in
+  let len_y = String.length y in
+  let dst = Bytes.create (len_x + 1 + len_y) in
+  Bytes.blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
+  Bytes.set dst len_x '/';
+  Bytes.blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
+  Bytes.unsafe_to_string dst
+;;
+
 module Unspecified = Path_intf.Unspecified
 
 module Local_gen : sig
@@ -110,7 +120,8 @@ end = struct
           (match parent t with
            | None -> Result.Error `Outside_the_workspace
            | Some parent -> loop parent rest)
-        | fn :: rest -> if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
+        | fn :: rest ->
+          if is_root t then loop fn rest else loop (append_with_slash t fn) rest
       in
       loop t components
     ;;
@@ -201,7 +212,7 @@ end = struct
     match is_root a, is_root b with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> a ^ "/" ^ b
+    | _, _ -> append_with_slash a b
   ;;
 
   let descendant t ~of_ =

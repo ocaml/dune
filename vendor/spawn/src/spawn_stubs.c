@@ -15,16 +15,14 @@
 #endif
 #endif
 
-/* for [caml_convert_signal_number] */
-#include <caml/signals.h>
-
-#undef CAML_INTERNALS
-
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/alloc.h>
 #include <caml/unixsupport.h>
 #include <caml/fail.h>
+
+/* for [caml_convert_signal_number]; must come after public caml headers */
+#include <caml/signals.h>
 
 #include <errno.h>
 

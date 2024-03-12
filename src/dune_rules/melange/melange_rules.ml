@@ -591,18 +591,21 @@ let rec under_melange_emit_target ~sctx ~dir =
      | Some stanzas ->
        Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
        >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
-         (* In the case where we have two melange.emit stanzas in the same folder,
-            with one enabled in the current context and one disabled, we want to
-            make sure that we pick the enabled one *)
-         let+ enabled =
-           let* expander =
-             let* sctx = sctx in
-             Super_context.expander sctx ~dir
-           in
-           Expander.eval_blang expander mel.enabled_if
-         in
          let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
-         Option.some_if (enabled && Path.Build.equal target_dir dir) mel)
+         match Path.Build.equal target_dir dir with
+         | false -> Memo.return None
+         | true ->
+           (* In the case where we have two melange.emit stanzas in the same folder,
+              with one enabled in the current context and one disabled, we want to
+              make sure that we pick the enabled one *)
+           let+ enabled =
+             let* expander =
+               let* sctx = sctx in
+               Super_context.expander sctx ~dir
+             in
+             Expander.eval_blang expander mel.enabled_if
+           in
+           Option.some_if enabled mel)
        >>= (function
         | None -> under_melange_emit_target ~sctx ~dir:parent
         | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))

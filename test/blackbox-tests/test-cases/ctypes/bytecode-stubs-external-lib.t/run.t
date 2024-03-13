@@ -11,10 +11,7 @@ Explictly set {DYLD,LD}_LIBRARY_PATH at runtime for this testcase, otherwise
 dlopen cannot find libexample, after loading dllexamplelib_stub.so
 
   $  PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" DYLD_LIBRARY_PATH="$DYLD_LIBRARY_PATH:$LIBEX" LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$LIBEX" CAML_LD_LIBRARY_PATH="$CAML_LD_LIBRARY_PATH:$PWD/_build/default/stubgen" dune exec ./example.bc
-  Fatal error: cannot load shared library dllexamplelib_stubs
-  Reason: $TESTCASE_ROOT/_build/default/stubgen/dllexamplelib_stubs.so: undefined symbol: example_add2
-  Aborted
-  [134]
+  4
 
 Utop works with ctypes pkg-config external library.
 
@@ -23,7 +20,4 @@ Utop works with ctypes pkg-config external library.
     pkg-config stubgen/.pkg-config/libexample.libs
         ocamlc .utop/.utop.eobjs/byte/dune__exe__Utop.{cmi,cmo,cmt}
         ocamlc .utop/utop.bc
-  Fatal error: cannot load shared library dllexamplelib_stubs
-  Reason: $TESTCASE_ROOT/_build/default/stubgen/dllexamplelib_stubs.so: undefined symbol: example_add2
-  Aborted
-  [134]
+  4

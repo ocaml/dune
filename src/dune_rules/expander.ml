@@ -893,8 +893,7 @@ let expand_ordered_set_lang =
 
 let expand_and_eval_set t set ~standard =
   let+ standard =
-    (* This optimization builds [standard] if it's unused by the expander. *)
-    if Ordered_set_lang.Unexpanded.has_special_forms set
+    if Ordered_set_lang.Unexpanded.has_standard set
     then standard
     else Action_builder.return []
   and+ set = expand_ordered_set_lang t set in

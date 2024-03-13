@@ -29,13 +29,16 @@ in the same dune file
   > EOF
 
   $ dune build --display=short
-  Error: Multiple rules generated for _build/alt-context/foo.cmxs:
-  - dune:4
-  - dune:1
-  Error: Multiple rules generated for _build/default/foo.cmxs:
-  - dune:4
-  - dune:1
-  [1]
+        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt} [alt-context]
+        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
+      ocamlopt .foo.objs/native/foo.{cmx,o} [alt-context]
+        ocamlc foo.cma [alt-context]
+      ocamlopt .foo.objs/native/foo.{cmx,o}
+        ocamlc foo.cma
+      ocamlopt foo.{a,cmxa} [alt-context]
+      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.cmxs [alt-context]
+      ocamlopt foo.cmxs
 
 For public libraries
 

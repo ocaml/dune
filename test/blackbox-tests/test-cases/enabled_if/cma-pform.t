@@ -11,7 +11,7 @@ We try to build a disabled library using the %{cma:..} pfrom
   > EOF
 
   $ dune build %{cma:./foo}
-  Error: No rule found for foo.cma
-  -> required by %{cma:./foo} at command line:1
+  File "command line", line 1, characters 0-12:
+  Error: Library foo does not exist.
   [1]
   $ dune build --profile with-foo %{cma:./foo}

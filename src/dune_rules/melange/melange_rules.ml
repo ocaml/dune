@@ -52,6 +52,23 @@ let impl_only_modules_defined_in_this_lib sctx lib =
           (Lib.name lib |> Lib_name.to_string)
       ]
   | Some modules ->
+    let () =
+      let info = Lib.info lib in
+      let modes = Lib_info.modes info in
+      match modes.melange with
+      | false ->
+        let lib_name = Lib_name.to_string (Lib_info.name info) in
+        User_error.raise
+          ~loc:(Lib_info.loc info)
+          [ Pp.textf
+              "The library `%s` was added as a dependency of a `melange.emit` stanza, \
+               but this library is not compatible with Melange. To fix this, add \
+               `melange` to the `modes` field of the library `%s`."
+              lib_name
+              lib_name
+          ]
+      | true -> ()
+    in
     (* for a virtual library,this will return all modules *)
     (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl)
 ;;

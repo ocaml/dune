@@ -25,7 +25,7 @@ Allow directories to be installable
   Leaving directory 'a'
 
   $ cat a/_build/install/default/lib/foo/dune-package
-  (lang dune 3.14)
+  (lang dune 3.15)
   (name foo)
   (sections (lib .) (share ../../share/foo))
   (files (lib (META dune-package)) (share ((dir bar) x y)))

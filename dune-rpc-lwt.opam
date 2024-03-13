@@ -11,7 +11,6 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "3.12"}
   "dune-rpc" {= version}
-  "result" {>= "1.5"}
   "csexp" {>= "1.5.0"}
   "lwt" {>= "5.3.0"}
   "base-unix"

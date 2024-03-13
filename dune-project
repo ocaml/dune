@@ -153,7 +153,6 @@ understood by dune language."))
  (synopsis "Communicate with dune using rpc and Lwt")
  (depends
   (dune-rpc (= :version))
-  (result (>= 1.5))
   (csexp (>= 1.5.0))
   (lwt (>= 5.3.0))
   base-unix)

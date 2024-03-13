@@ -41,10 +41,11 @@ module Modules = struct
   ;;
 
   type 'stanza group_part =
-    'stanza
-    * (Loc.t * Module.Source.t) Module_trie.t
-    * Modules_group.t
-    * Path.Build.t Obj_dir.t
+    { stanza : 'stanza
+    ; sources : (Loc.t * Module.Source.t) Module_trie.t
+    ; modules : Modules_group.t
+    ; obj_dir : Path.Build.t Obj_dir.t
+    }
 
   type groups =
     { libraries : Library.t group_part list
@@ -55,13 +56,13 @@ module Modules = struct
   let make { libraries = libs; executables = exes; melange_emits = emits } =
     let libraries =
       match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, _, m, obj_dir) ->
-          Library.best_name lib, (m, obj_dir))
+        Lib_name.Map.of_list_map libs ~f:(fun part ->
+          Library.best_name part.stanza, (part.modules, part.obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (lib2, _, _, _)) ->
+      | Error (name, _, part) ->
         User_error.raise
-          ~loc:lib2.buildable.loc
+          ~loc:part.stanza.buildable.loc
           [ Pp.textf
               "Library %S appears for the second time in this directory"
               (Lib_name.to_string name)
@@ -69,24 +70,24 @@ module Modules = struct
     in
     let executables =
       match
-        String.Map.of_list_map exes ~f:(fun ((exes : Executables.t), _, m, obj_dir) ->
-          snd (List.hd exes.names), (m, obj_dir))
+        String.Map.of_list_map exes ~f:(fun (part : Executables.t group_part) ->
+          snd (List.hd part.stanza.names), (part.modules, part.obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (exes2, _, _, _)) ->
+      | Error (name, _, part) ->
         User_error.raise
-          ~loc:exes2.buildable.loc
+          ~loc:part.stanza.buildable.loc
           [ Pp.textf "Executable %S appears for the second time in this directory" name ]
     in
     let melange_emits =
       match
-        String.Map.of_list_map emits ~f:(fun (mel, _, m, obj_dir) ->
-          mel.target, (m, obj_dir))
+        String.Map.of_list_map emits ~f:(fun part ->
+          part.stanza.target, (part.modules, part.obj_dir))
       with
       | Ok x -> x
-      | Error (name, _, (mel, _, _, _)) ->
+      | Error (name, _, part) ->
         User_error.raise
-          ~loc:mel.loc
+          ~loc:part.stanza.loc
           [ Pp.textf "Target %S appears for the second time in this directory" name ]
     in
     let rev_map =
@@ -96,9 +97,12 @@ module Modules = struct
             (Module.Source.path m, origin) :: acc)
         in
         List.concat
-          [ List.concat_map libs ~f:(fun (l, m, _, _) -> by_path (Library l) m)
-          ; List.concat_map exes ~f:(fun (e, m, _, _) -> by_path (Executables e) m)
-          ; List.concat_map emits ~f:(fun (l, m, _, _) -> by_path (Melange l) m)
+          [ List.concat_map libs ~f:(fun part ->
+              by_path (Library part.stanza) part.sources)
+          ; List.concat_map exes ~f:(fun part ->
+              by_path (Executables part.stanza) part.sources)
+          ; List.concat_map emits ~f:(fun part ->
+              by_path (Melange part.stanza) part.sources)
           ]
       in
       match Module_name.Path.Map.of_list modules with
@@ -389,70 +393,88 @@ let modules_of_stanzas =
       ; melange_emits = List.rev melange_emits
       }
   in
+  let make_executables ~dir ~expander ~modules ~project exes =
+    let obj_dir = Executables.obj_dir ~dir exes in
+    let+ sources, modules =
+      let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
+        exes.buildable
+      in
+      Modules_field_evaluator.eval
+        ~expander
+        ~modules
+        ~stanza_loc
+        ~src_dir:dir
+        ~kind:Modules_field_evaluator.Exe_or_normal_lib
+        ~private_modules:Ordered_set_lang.Unexpanded.standard
+        ~version:exes.dune_version
+        modules_settings
+    in
+    let modules =
+      let obj_dir = Obj_dir.obj_dir obj_dir in
+      if Dune_project.wrapped_executables project
+      then Modules_group.make_wrapped ~obj_dir ~modules `Exe
+      else Modules_group.exe_unwrapped modules ~obj_dir
+    in
+    `Executables { Modules.stanza = exes; sources; modules; obj_dir }
+  in
   fun stanzas ~expander ~project ~dir ~libs ~lookup_vlib ~modules ~include_subdirs ->
     Memo.parallel_map stanzas ~f:(fun stanza ->
-      match Stanza.repr stanza with
-      | Library.T lib ->
-        (* jeremiedimino: this [Resolve.get] means that if the user writes an
-           invalid [implements] field, we will get an error immediately even if
-           the library is not built. We should change this to carry the
-           [Or_exn.t] a bit longer. *)
-        let+ sources, modules =
-          let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
-          make_lib_modules
-            ~expander
-            ~dir
-            ~libs
-            ~lookup_vlib
-            ~modules
-            ~lib
-            ~include_subdirs
-            ~version:lib.dune_version
-          >>= Resolve.read_memo
-        in
-        let obj_dir = Library.obj_dir lib ~dir in
-        `Library (lib, sources, modules, obj_dir)
-      | Executables.T exes | Tests.T { exes; _ } ->
-        let obj_dir = Executables.obj_dir ~dir exes in
-        let+ sources, modules =
-          let { Buildable.loc = stanza_loc; modules = modules_settings; _ } =
-            exes.buildable
-          in
-          Modules_field_evaluator.eval
-            ~expander
-            ~modules
-            ~stanza_loc
-            ~src_dir:dir
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~private_modules:Ordered_set_lang.Unexpanded.standard
-            ~version:exes.dune_version
-            modules_settings
-        in
-        let modules =
-          let obj_dir = Obj_dir.obj_dir obj_dir in
-          if Dune_project.wrapped_executables project
-          then Modules_group.make_wrapped ~obj_dir ~modules `Exe
-          else Modules_group.exe_unwrapped modules ~obj_dir
-        in
-        `Executables (exes, sources, modules, obj_dir)
-      | Melange_stanzas.Emit.T mel ->
-        let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
-        let+ sources, modules =
-          Modules_field_evaluator.eval
-            ~expander
-            ~modules
-            ~stanza_loc:mel.loc
-            ~kind:Modules_field_evaluator.Exe_or_normal_lib
-            ~version:mel.dune_version
-            ~private_modules:Ordered_set_lang.Unexpanded.standard
-            ~src_dir:dir
-            mel.modules
-        in
-        let modules =
-          Modules_group.make_wrapped ~obj_dir:(Obj_dir.obj_dir obj_dir) ~modules `Melange
-        in
-        `Melange_emit (mel, sources, modules, obj_dir)
-      | _ -> Memo.return `Skip)
+      let enabled_if =
+        match Stanza.repr stanza with
+        | Library.T lib -> lib.enabled_if
+        | Tests.T exes -> exes.build_if
+        | Executables.T exes -> exes.enabled_if
+        | Melange_stanzas.Emit.T mel -> mel.enabled_if
+        | _ -> Blang.true_
+      in
+      Expander.eval_blang expander enabled_if
+      >>= function
+      | false -> Memo.return `Skip
+      | true ->
+        (match Stanza.repr stanza with
+         | Library.T lib ->
+           (* jeremiedimino: this [Resolve.get] means that if the user writes an
+              invalid [implements] field, we will get an error immediately even if
+              the library is not built. We should change this to carry the
+              [Or_exn.t] a bit longer. *)
+           let+ sources, modules =
+             let lookup_vlib = lookup_vlib ~loc:lib.buildable.loc in
+             make_lib_modules
+               ~expander
+               ~dir
+               ~libs
+               ~lookup_vlib
+               ~modules
+               ~lib
+               ~include_subdirs
+               ~version:lib.dune_version
+             >>= Resolve.read_memo
+           in
+           let obj_dir = Library.obj_dir lib ~dir in
+           `Library { Modules.stanza = lib; sources; modules; obj_dir }
+         | Executables.T exes -> make_executables ~dir ~expander ~modules ~project exes
+         | Tests.T { exes; _ } -> make_executables ~dir ~expander ~modules ~project exes
+         | Melange_stanzas.Emit.T mel ->
+           let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
+           let+ sources, modules =
+             Modules_field_evaluator.eval
+               ~expander
+               ~modules
+               ~stanza_loc:mel.loc
+               ~kind:Modules_field_evaluator.Exe_or_normal_lib
+               ~version:mel.dune_version
+               ~private_modules:Ordered_set_lang.Unexpanded.standard
+               ~src_dir:dir
+               mel.modules
+           in
+           let modules =
+             Modules_group.make_wrapped
+               ~obj_dir:(Obj_dir.obj_dir obj_dir)
+               ~modules
+               `Melange
+           in
+           `Melange_emit { Modules.stanza = mel; sources; modules; obj_dir }
+         | _ -> Memo.return `Skip))
     >>| filter_partition_map
 ;;
 
@@ -545,11 +567,15 @@ let make
   let modules = Modules.make modules_of_stanzas in
   let artifacts =
     Memo.lazy_ (fun () ->
-      Artifacts_obj.make
-        ~dir
-        ~lib_config
-        ~libs:modules_of_stanzas.libraries
-        ~exes:modules_of_stanzas.executables)
+      let libs =
+        List.map modules_of_stanzas.libraries ~f:(fun (part : _ Modules.group_part) ->
+          part.stanza, part.modules, part.obj_dir)
+      in
+      let exes =
+        List.map modules_of_stanzas.executables ~f:(fun (part : _ Modules.group_part) ->
+          part.modules, part.obj_dir)
+      in
+      Artifacts_obj.make ~dir ~lib_config ~libs ~exes)
   in
   { modules; artifacts; include_subdirs }
 ;;

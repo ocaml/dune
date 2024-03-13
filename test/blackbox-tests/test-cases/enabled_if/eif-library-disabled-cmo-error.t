@@ -15,7 +15,7 @@ Test behavior when targeting artifacts of a disabled library
   > EOF
 
   $ dune build %{cmo:foo}
-  Error: No rule found for .foo.objs/byte/foo.cmo
-  -> required by %{cmo:foo} at command line:1
+  File "command line", line 1, characters 0-10:
+  Error: Module Foo does not exist.
   [1]
 

@@ -31,5 +31,5 @@ We are unable to pin projects that the version of dune doesn't understand.
   Supported versions of this extension in version 100.1 of the dune language:
   - 1.0 to 1.12
   - 2.0 to 2.9
-  - 3.0 to 3.14
+  - 3.0 to 3.15
   [1]

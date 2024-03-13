@@ -432,22 +432,23 @@ However, deleting [another-dir] isn't handled correctly.
   $ test "rm another-dir/file-7; sleep 0.001; rmdir another-dir"
   ------------------------------------------
   Success, waiting for filesystem changes...
+  Executing rule...
   Success, waiting for filesystem changes...
   ------------------------------------------
-  result = '357' -> '357' -> '357'
+  result = '357' -> '357' -> '35'
   ------------------------------------------
   Updating dir_contents cache for ".": Updated { changed = true }
   Updating dir_contents cache for "another-dir": Updated { changed = true }
-  Updating dir_contents cache for "another-dir": Updated { changed = true }
-  Updating dir_contents cache for "another-dir/file-7": Skipped
+  Updating dir_contents cache for "dir": Updated { changed = true }
+  Updating dir_contents cache for "dir/file-7": Skipped
   Updating file_digest cache for ".": Skipped
   Updating file_digest cache for "another-dir": Skipped
-  Updating file_digest cache for "another-dir": Skipped
-  Updating file_digest cache for "another-dir/file-7": Updated { changed = true }
+  Updating file_digest cache for "dir": Skipped
+  Updating file_digest cache for "dir/file-7": Updated { changed = true }
   Updating path_stat cache for ".": Updated { changed = false }
-  Updating path_stat cache for "another-dir": Updated { changed = false }
   Updating path_stat cache for "another-dir": Updated { changed = true }
-  Updating path_stat cache for "another-dir/file-7": Skipped
+  Updating path_stat cache for "dir": Updated { changed = false }
+  Updating path_stat cache for "dir/file-7": Skipped
 
 If we force a rebuild, Dune belatedly notices that [another-dir/file-7] is now
 unreachable but doesn't complain about the symlink [dir] now being broken. We
@@ -455,12 +456,11 @@ should fix this too.
 
   $ test "echo force > dep"
   ------------------------------------------
-  Executing rule...
   Success, waiting for filesystem changes...
   Executing rule...
   Success, waiting for filesystem changes...
   ------------------------------------------
-  result = '357' -> '35' -> '35'
+  result = '35' -> '35' -> '35'
   ------------------------------------------
   Updating dir_contents cache for "dep": Skipped
   Updating file_digest cache for "dep": Updated { changed = true }

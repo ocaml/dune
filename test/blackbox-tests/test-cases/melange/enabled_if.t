@@ -34,7 +34,13 @@
   > EOF
 
   $ dune build @melange --display short
+  Error: Alias "melange" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
+  [1]
 
 No rules attached to the alias
 
   $ dune rules @melange
+  Error: Alias "melange" specified on the command line is empty.
+  It is not defined in . or any of its descendants.
+  [1]

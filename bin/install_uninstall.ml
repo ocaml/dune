@@ -606,8 +606,7 @@ let run
       let entries_per_package =
         List.map install_files ~f:(fun (package, install_file) ->
           let entries =
-            Install.Entry.load_install_file install_file (fun local ->
-              Path.append_local (Path.source Path.Source.root) local)
+            Install.Entry.load_install_file install_file Path.of_local
             |> List.filter ~f:(fun (entry : Path.t Install.Entry.t) ->
               Sections.should_install sections entry.section)
           in

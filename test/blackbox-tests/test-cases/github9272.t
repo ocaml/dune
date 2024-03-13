@@ -39,4 +39,4 @@ can be enabled for all systems.
   > EOF
 
   $ ocaml -I +unix unix.cma exec.ml
-  WSIGNALED -7
+  WEXITED 0

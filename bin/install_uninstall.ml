@@ -342,7 +342,7 @@ module File_ops_real (W : sig
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     match (special_file : Special_file.t option) with
-    | None -> Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
+    | None -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Some sf ->
       (* CR-rgrinberg: slow copying *)
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in

@@ -10,7 +10,7 @@ In normal (non-watching) mode, pwd is the folder from which dune is launched
   $ rm -rf $OUTPUT
   $ cd ..
 
-While in watch mode, pwd is always the root project folder
+In watch mode, pwd is also the folder from which dune is launched.
   $ cd bin
   $ dune exec --root .. -w -- pwd > $OUTPUT &
   Entering directory '..'
@@ -20,6 +20,6 @@ While in watch mode, pwd is always the root project folder
   $ until test -s $OUTPUT; do sleep 0.1; done;
   $ kill $PID
   $ cat $OUTPUT
-  $TESTCASE_ROOT
+  $TESTCASE_ROOT/bin
   $ rm -rf $OUTPUT
   $ cd ..

@@ -138,11 +138,3 @@
  (enabled_if
   (not %{arch_sixtyfour}))
  (deps %{bin:ocaml}))
-
-(cram
- (applies_to github9272)
- (enabled_if
-  (and
-   (= %{system} macosx)
-   (= %{architecture} arm64)))
- (deps %{bin:ocaml}))

@@ -66,6 +66,7 @@ module Comparable = Comparable
 module Comparable_intf = Comparable_intf
 module Staged = Staged
 module String = String
+module String_builder = String_builder
 module Bool = Bool
 module Sexp = Sexp
 module Path = Path

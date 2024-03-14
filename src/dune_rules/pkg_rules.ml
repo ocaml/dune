@@ -456,6 +456,7 @@ module Run_with_path = struct
     type ('path, 'target) t =
       { prog : Action.Prog.t
       ; args : 'path arg Array.Immutable.t
+      ; ocamlfind_destdir : 'path
       }
 
     let name = "run-with-path"
@@ -467,10 +468,16 @@ module Run_with_path = struct
         | Path p -> Path (f p))
     ;;
 
-    let bimap t f _g = { t with args = Array.Immutable.map t.args ~f:(map_arg ~f) }
+    let bimap t f _g =
+      { t with
+        args = Array.Immutable.map t.args ~f:(map_arg ~f)
+      ; ocamlfind_destdir = f t.ocamlfind_destdir
+      }
+    ;;
+
     let is_useful_to ~memoize:_ = true
 
-    let encode { prog; args } path _ : Dune_lang.t =
+    let encode { prog; args; ocamlfind_destdir } path _ : Dune_lang.t =
       let prog =
         Dune_lang.atom_or_quoted_string
         @@
@@ -485,10 +492,17 @@ module Run_with_path = struct
               | String s -> Dune_lang.atom_or_quoted_string s
               | Path p -> path p)))
       in
-      List ([ Dune_lang.atom_or_quoted_string name; prog ] @ args)
+      List
+        [ List ([ Dune_lang.atom_or_quoted_string name; prog ] @ args)
+        ; path ocamlfind_destdir
+        ]
     ;;
 
-    let action { prog; args } ~(ectx : Action.Ext.context) ~(eenv : Action.Ext.env) =
+    let action
+      { prog; args; ocamlfind_destdir }
+      ~(ectx : Action.Ext.context)
+      ~(eenv : Action.Ext.env)
+      =
       let open Fiber.O in
       match prog with
       | Error e -> Action.Prog.Not_found.raise e
@@ -501,6 +515,12 @@ module Run_with_path = struct
             |> String.concat ~sep:"")
         in
         let metadata = Process.create_metadata ~purpose:ectx.purpose () in
+        let env =
+          Env.add
+            eenv.env
+            ~var:"OCAMLFIND_DESTDIR"
+            ~value:(Path.to_absolute_filename ocamlfind_destdir)
+        in
         Process.run
           (Accept eenv.exit_codes)
           prog
@@ -511,21 +531,21 @@ module Run_with_path = struct
           ~stderr_to:eenv.stderr_to
           ~stdin_from:eenv.stdin_from
           ~dir:eenv.working_dir
-          ~env:eenv.env
+          ~env
         >>= (function
          | Error _ -> Fiber.return ()
          | Ok () -> Fiber.return ())
     ;;
   end
 
-  let action prog args =
+  let action prog args ~ocamlfind_destdir =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = { Spec.prog; args }
+      let v = { Spec.prog; args; ocamlfind_destdir }
     end
     in
     Action.Extension (module M)
@@ -786,7 +806,10 @@ module Action_expander = struct
                | String s -> Run_with_path.Spec.String s
                | Path p | Dir p -> Path p))
          in
-         Run_with_path.action exe args)
+         let ocamlfind_destdir =
+           (Lazy.force expander.paths.install_roots).lib_root |> Path.build
+         in
+         Run_with_path.action exe args ~ocamlfind_destdir)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
@@ -958,7 +981,7 @@ module Action_expander = struct
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    Option.map pkg.install_command ~f:(expand context pkg)
+    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =

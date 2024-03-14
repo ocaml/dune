@@ -225,15 +225,13 @@ end = struct
         !count)
     ;;
 
-    (* generate a sequence of ".." separated by "/" [times] in [buf] starting at [i] *)
-    let gen_blit_go_up buf i times =
+    (* generate a sequence of ".." separated by "/" [times] in [buf] *)
+    let gen_blit_go_up buf ~times =
       if times > 0
       then (
-        Bytes.blit_string ~src:".." ~src_pos:0 ~dst:buf ~dst_pos:!i ~len:2;
-        i := !i + 2;
+        String_builder.add_string buf "..";
         for _ = 1 to times - 1 do
-          Bytes.blit_string ~src:"/.." ~src_pos:0 ~dst:buf ~dst_pos:!i ~len:3;
-          i := !i + 3
+          String_builder.add_string buf "/.."
         done)
     ;;
 
@@ -243,99 +241,89 @@ end = struct
         List.init (i + 1) ~f:(fun _ -> "..") |> String.concat ~sep:"/")
     ;;
 
-    let blit_go_up buf i times =
+    let blit_go_up buf ~times =
       if times > 0
       then
         if times > Array.length blit_go_up_table
         then (* doing the work in a single blit is fastest *)
-          gen_blit_go_up buf i times
+          gen_blit_go_up buf ~times
         else (
           let src = blit_go_up_table.(times - 1) in
-          let len = String.length src in
-          Bytes.blit_string ~src ~src_pos:0 ~dst:buf ~dst_pos:!i ~len;
-          i := !i + len)
+          String_builder.add_string buf src)
     ;;
 
     (* the size of the "../.." string we need to generate *)
     let go_up_components_buffer_size times = (times * 2) + max 0 (times - 1)
 
-    let reach_root ~from i =
-      let go_up_this_many_times = parent_remaining_components i from in
+    let reach_root ~from pos =
+      let go_up_this_many_times = parent_remaining_components pos from in
       if go_up_this_many_times = 0
       then "."
       else if go_up_this_many_times <= Array.length blit_go_up_table
       then blit_go_up_table.(go_up_this_many_times - 1)
       else (
         let size = go_up_components_buffer_size go_up_this_many_times in
-        let buf = Bytes.create size in
-        let i = ref 0 in
-        blit_go_up buf i go_up_this_many_times;
-        assert (Int.equal !i size);
-        Bytes.unsafe_to_string buf)
+        let buf = String_builder.create size in
+        blit_go_up buf ~times:go_up_this_many_times;
+        String_builder.build_exact_exn buf [@nontail])
     ;;
 
     (* if we have "a/b" and "a", we need to skip over the "a", even if the last
        component position is [0] *)
-    let extend_to_comp smaller bigger pos comp =
+    let extend_to_comp ~smaller ~bigger ~pos ~comp =
       if pos = String.length smaller && bigger.[pos] = '/' then pos else comp
     ;;
 
-    let make_from_common_prefix t from i =
-      let t_len = String.length t in
-      let i = if i < t_len && t.[i] = '/' then i + 1 else i in
-      let t_len = t_len - i in
-      let go_up_this_many_times = parent_remaining_components i from in
-      if t_len = 0
-      then reach_root ~from i
+    let make_from_common_prefix ~to_ ~from to_pos =
+      let to_len = String.length to_ in
+      let to_pos = if to_pos < to_len && to_.[to_pos] = '/' then to_pos + 1 else to_pos in
+      let to_len = to_len - to_pos in
+      let go_up_this_many_times = parent_remaining_components to_pos from in
+      if to_len = 0
+      then reach_root ~from to_pos
       else (
         let size = go_up_components_buffer_size go_up_this_many_times in
-        let add_extra_slash = size > 0 && t_len > 0 in
+        let add_extra_slash = size > 0 && to_len > 0 in
         (* the final length of the buffer we need to compute *)
-        let size = t_len + if add_extra_slash then size + 1 else size in
+        let size = to_len + size + if add_extra_slash then 1 else 0 in
         (* our position inside the buffer *)
-        let j = ref 0 in
-        let buf = Bytes.create size in
-        blit_go_up buf j go_up_this_many_times;
-        if add_extra_slash
-        then (
-          Bytes.set buf !j '/';
-          incr j);
-        Bytes.blit_string ~src:t ~src_pos:i ~dst:buf ~dst_pos:!j ~len:t_len;
-        j := !j + t_len;
-        assert (Int.equal !j size);
-        Bytes.unsafe_to_string buf)
+        let buf = String_builder.create size in
+        blit_go_up buf ~times:go_up_this_many_times;
+        if add_extra_slash then String_builder.add_char buf '/';
+        String_builder.add_substring buf to_ ~pos:to_pos ~len:to_len;
+        String_builder.build_exact_exn buf [@nontail])
     ;;
 
-    let rec common_prefix t from i comp =
-      if Int.equal i (String.length t)
+    let rec common_prefix ~to_ ~from ~pos ~comp =
+      if Int.equal pos (String.length to_)
       then (
-        (* the case where we exhausted [t] first. *)
-        let i = extend_to_comp t from i comp in
-        make_from_common_prefix t from i)
-      else if Int.equal i (String.length from)
+        (* the case where we exhausted [to_] first. *)
+        let pos = extend_to_comp ~smaller:to_ ~bigger:from ~pos ~comp in
+        make_from_common_prefix ~to_ ~from pos)
+      else if Int.equal pos (String.length from)
       then (
         (* we exhausted [from] first *)
-        let i = extend_to_comp from t i comp in
-        make_from_common_prefix t from i)
-      else if Char.equal t.[i] from.[i]
+        let pos = extend_to_comp ~smaller:from ~bigger:to_ ~pos ~comp in
+        make_from_common_prefix ~to_ ~from pos)
+      else if Char.equal to_.[pos] from.[pos]
       then (
         (* eat another common character. *)
         let comp =
           (* if we find '/', then we advance the last common component position *)
-          if t.[i] = '/' then i else comp
+          if to_.[pos] = '/' then pos else comp
         in
-        common_prefix t from (i + 1) comp)
-      else make_from_common_prefix t from comp
+        common_prefix ~to_ ~from ~pos:(pos + 1) ~comp)
+      else make_from_common_prefix ~to_ ~from comp
     ;;
 
-    let reach t ~from =
+    let reach to_ ~from =
       if is_root from
-      then t
-      else if is_root t
+      then to_
+      else if is_root to_
       then reach_root ~from 0
-      else if equal t from
+      else if equal to_ from
       then "."
-      else common_prefix t from 0 0
+      else common_prefix ~to_ ~from ~pos:0 ~comp:0
     ;;
   end
 

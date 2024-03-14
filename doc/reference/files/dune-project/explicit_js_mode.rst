@@ -1,7 +1,7 @@
 explicit_js_mode
 ----------------
 
-.. dune:stanza:: explicit_js_mode
+.. describe:: (explicit_js_mode ...)
 
    Do not implicitly add ``js`` to the ``(modes ...)`` field of executables.
 

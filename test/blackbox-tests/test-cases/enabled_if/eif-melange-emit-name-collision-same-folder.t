@@ -28,9 +28,3 @@ in the same dune file
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 0-76:
-  4 | (melange.emit
-  5 |  (target foo)
-  6 |  (enabled_if (= %{context_name} "alt-context")))
-  Error: Target "foo" appears for the second time in this directory
-  [1]

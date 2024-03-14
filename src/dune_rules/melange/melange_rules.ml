@@ -52,6 +52,23 @@ let impl_only_modules_defined_in_this_lib sctx lib =
           (Lib.name lib |> Lib_name.to_string)
       ]
   | Some modules ->
+    let () =
+      let info = Lib.info lib in
+      let modes = Lib_info.modes info in
+      match modes.melange with
+      | false ->
+        let lib_name = Lib_name.to_string (Lib_info.name info) in
+        User_error.raise
+          ~loc:(Lib_info.loc info)
+          [ Pp.textf
+              "The library `%s` was added as a dependency of a `melange.emit` stanza, \
+               but this library is not compatible with Melange. To fix this, add \
+               `melange` to the `modes` field of the library `%s`."
+              lib_name
+              lib_name
+          ]
+      | true -> ()
+    in
     (* for a virtual library,this will return all modules *)
     (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl)
 ;;
@@ -581,20 +598,33 @@ let emit_rules sctx { stanza_dir; stanza } =
 ;;
 
 (* Detect if [dir] is under the target directory of a melange.emit stanza. *)
-let rec under_melange_emit_target ~dir =
+let rec under_melange_emit_target ~sctx ~dir =
   match Path.Build.parent dir with
   | None -> Memo.return None
   | Some parent ->
     Dune_load.stanzas_in_dir parent
     >>= (function
-     | None -> under_melange_emit_target ~dir:parent
+     | None -> under_melange_emit_target ~sctx ~dir:parent
      | Some stanzas ->
        Dune_file.find_stanzas stanzas Melange_stanzas.Emit.key
-       >>| List.find_map ~f:(fun mel ->
+       >>= Memo.List.find_map ~f:(fun (mel : Melange_stanzas.Emit.t) ->
          let target_dir = Melange_stanzas.Emit.target_dir ~dir:parent mel in
-         Option.some_if (Path.Build.equal target_dir dir) mel)
+         match Path.Build.equal target_dir dir with
+         | false -> Memo.return None
+         | true ->
+           (* In the case where we have two melange.emit stanzas in the same folder,
+              with one enabled in the current context and one disabled, we want to
+              make sure that we pick the enabled one *)
+           let+ enabled =
+             let* expander =
+               let* sctx = sctx in
+               Super_context.expander sctx ~dir
+             in
+             Expander.eval_blang expander mel.enabled_if
+           in
+           Option.some_if enabled mel)
        >>= (function
-        | None -> under_melange_emit_target ~dir:parent
+        | None -> under_melange_emit_target ~sctx ~dir:parent
         | Some stanza -> Memo.return @@ Some { stanza_dir = parent; stanza }))
 ;;
 
@@ -602,7 +632,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
   match Path.Build.equal dir (Melange_stanzas.Emit.target_dir ~dir:stanza_dir stanza) with
   | false -> Memo.return None
   | true ->
-    under_melange_emit_target ~dir:stanza_dir
+    under_melange_emit_target ~sctx ~dir:stanza_dir
     >>| (function
      | None -> Some (emit_rules sctx for_melange)
      | Some { stanza_dir = parent_melange_emit_dir; stanza = parent_stanza } ->
@@ -640,7 +670,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
 module Gen_rules = Import.Build_config.Gen_rules
 
 let setup_emit_js_rules sctx ~dir =
-  under_melange_emit_target ~dir
+  under_melange_emit_target ~sctx ~dir
   >>= function
   | Some melange ->
     gen_emit_rules sctx ~dir melange

@@ -15,6 +15,9 @@ let rule sctx ~requires_link =
       | Some x -> Left x
       | None -> Right lib)
   in
+  let windows_system_values = [ "win32"; "win64"; "mingw"; "mingw64" ] in
+  let win_build_flags = [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ] in
+  let build_flags = List.map windows_system_values ~f:(fun f -> f, win_build_flags) in
   let link_flags =
     let win_link_flags =
       [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ]
@@ -22,12 +25,9 @@ let rule sctx ~requires_link =
     (* additional link flags keyed by the platform *)
     [ ( "macosx"
       , [ "-cclib"; "-framework CoreFoundation"; "-cclib"; "-framework CoreServices" ] )
-    ; "win32", win_link_flags
-    ; "win64", win_link_flags
-    ; "mingw", win_link_flags
-    ; "mingw64", win_link_flags
-    ; "beos", [ "-cclib"; "-lbsd" ] (* flags for Haiku *)
     ]
+    @ List.map windows_system_values ~f:(fun w -> w, win_link_flags)
+    @ [ "beos", [ "-cclib"; "-lbsd" ] (* flags for Haiku *) ]
   in
   let+ locals =
     Memo.parallel_map locals ~f:(fun x ->
@@ -75,6 +75,11 @@ let rule sctx ~requires_link =
                     else Some (Lib_name.to_dyn name))))
           ; Pp.nop
           ; def "local_libraries" (List locals)
+          ; Pp.nop
+          ; def
+              "build_flags"
+              (let open Dyn in
+               list (pair string (list string)) build_flags)
           ; Pp.nop
           ; def
               "link_flags"

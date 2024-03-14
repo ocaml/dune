@@ -1,8 +1,7 @@
 name
 ----
 
-.. dune:stanza:: name
-   :param: <string>
+.. describe:: (name <string>)
 
    Set the name of the project.
 

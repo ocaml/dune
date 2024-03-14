@@ -53,7 +53,7 @@ let term =
        | Some dir -> dir)
       |> Path.Build.append_local (Context.build_dir context)
     in
-    let* coqtop, args =
+    let* coqtop, args, env =
       Build_system.run_exn
       @@ fun () ->
       let open Memo.O in
@@ -138,14 +138,14 @@ let term =
       in
       let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None coqtop in
       let prog = Action.Prog.ok_exn prog in
-      let+ () = Build_system.build_file prog in
-      Path.to_string prog, args
+      let* () = Build_system.build_file prog in
+      let+ env = Super_context.context_env sctx in
+      Path.to_string prog, args, env
     in
     let argv =
       let topfile = Path.to_absolute_filename (Path.build coq_file_build) in
       (coqtop :: "-topfile" :: topfile :: args) @ extra_args
     in
-    let env = Super_context.context_env sctx in
     Fiber.return (coqtop, argv, env)
   in
   restore_cwd_and_execve common coqtop argv env

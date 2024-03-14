@@ -33,7 +33,7 @@ let make
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
       (match inherit_from with
-       | None -> Memo.return root
+       | None -> root
        | Some t -> Memo.Lazy.force t >>= field)
       >>= extend)
   in
@@ -58,8 +58,7 @@ let make
   in
   let artifacts =
     inherited ~field:artifacts ~root:default_artifacts (fun binaries ->
-      let+ local_binaries = Memo.Lazy.force local_binaries in
-      Artifacts.add_binaries binaries ~dir local_binaries)
+      Memo.Lazy.force local_binaries >>| Artifacts.add_binaries binaries ~dir)
   in
   { external_env; artifacts; local_binaries }
 ;;

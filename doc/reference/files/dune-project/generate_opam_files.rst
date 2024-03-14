@@ -1,7 +1,7 @@
 generate_opam_files
 -------------------
 
-.. dune:stanza:: generate_opam_files
+.. describe:: (generate_opam_files ...)
 
    Use metadata specified in the ``dune-project`` file to generate ``.opam``
    files.
@@ -18,8 +18,7 @@ generate_opam_files
 Dune uses the following global fields to set the metadata for all packages
 defined in the project:
 
-.. dune:stanza:: license
-   :param: <strings>
+.. describe:: (license <strings>)
 
    Specify the license of the project, ideally as an identifier from the `SPDX
    License List <https://spdx.org/licenses/>`__.
@@ -32,8 +31,7 @@ defined in the project:
 
    Multiple licenses may be specified.
 
-.. dune:stanza:: authors
-   :param: <strings>
+.. describe:: (authors <strings>)
 
    Specify authors.
 
@@ -45,8 +43,7 @@ defined in the project:
        "Jane Doe <jane.doe@example.com>"
        "John Doe <john.doe@example.com>")
 
-.. dune:stanza:: maintainers
-   :param: <strings>
+.. describe:: (maintainers <strings>)
 
    Specify maintainers.
 
@@ -58,7 +55,7 @@ defined in the project:
        "Jane Doe <jane.doe@example.com>"
        "John Doe <john.doe@example.com>")
 
-.. dune:stanza:: source
+.. describe:: (source ...)
 
    Specify where the source for the package can be found.
 
@@ -90,8 +87,7 @@ defined in the project:
       (source
        (uri https://dev.example.com/project.git))
 
-.. dune:stanza:: bug_reports
-   :param: <url>
+.. describe:: (bug_reports <url>)
 
    Where bugs should be reported.
 
@@ -103,8 +99,7 @@ defined in the project:
 
       (bug_reports https://dev.example.com/project/issues)
 
-.. dune:stanza:: homepage
-   :param: <url>
+.. describe:: (homepage <url>)
 
    The homepage of the project.
 
@@ -116,8 +111,7 @@ defined in the project:
 
       (bug_reports https://example.com/)
 
-.. dune:stanza:: documentation
-   :param: <url>
+.. describe:: (documentation <url>)
 
    Where the documentation is hosted.
 

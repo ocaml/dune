@@ -82,7 +82,8 @@ module Command_to_exec = struct
       let path = Path.to_string path in
       let env = Env.to_unix env |> Spawn.Env.of_list in
       let argv = path :: args in
-      Spawn.spawn ~prog:path ~env ~argv ()
+      let cwd = Spawn.Working_dir.Path Fpath.initial_cwd in
+      Spawn.spawn ~prog:path ~env ~cwd ~argv ()
     in
     Pid.of_int pid
   ;;
@@ -264,7 +265,7 @@ module Exec_context = struct
       let context = Dune_rules.Super_context.context sctx in
       Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
     in
-    let env = Memo.map sctx ~f:Super_context.context_env in
+    let env = Memo.bind sctx ~f:Super_context.context_env in
     let get_path_and_build_if_necessary ~prog =
       let* sctx = sctx
       and+ dir = dir in

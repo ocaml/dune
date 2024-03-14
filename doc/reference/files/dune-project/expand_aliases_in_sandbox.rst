@@ -1,7 +1,7 @@
 expand_aliases_in_sandbox
 -------------------------
 
-.. dune:stanza:: expand_aliases_in_sandbox
+.. describe:: (expand_aliases_in_sandbox ...)
 
    When a sandboxed action depends on an alias, copy the expansion of the alias
    inside the sandbox. For instance, in the following example:

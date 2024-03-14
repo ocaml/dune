@@ -404,8 +404,8 @@ end = struct
                  if Dune_project.dune_version project >= (3, 14)
                  then Artifacts.Original_path
                  else Install_dir
-               in
-               Artifacts.binary ~loc:(Some loc) ~where (Expander.artifacts env.expander) s)
+               and* artifacts = Expander.artifacts env.expander in
+               Artifacts.binary ~loc:(Some loc) ~where artifacts s)
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in

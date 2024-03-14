@@ -342,7 +342,7 @@ module File_ops_real (W : sig
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
     match (special_file : Special_file.t option) with
-    | None -> Artifact_substitution.copy_file ~conf ~executable ~src ~dst ~chmod ()
+    | None -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Some sf ->
       (* CR-rgrinberg: slow copying *)
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
@@ -606,8 +606,7 @@ let run
       let entries_per_package =
         List.map install_files ~f:(fun (package, install_file) ->
           let entries =
-            Install.Entry.load_install_file install_file (fun local ->
-              Path.append_local (Path.source Path.Source.root) local)
+            Install.Entry.load_install_file install_file Path.of_local
             |> List.filter ~f:(fun (entry : Path.t Install.Entry.t) ->
               Sections.should_install sections entry.section)
           in

@@ -1,8 +1,7 @@
 opam_file_location
 ------------------
 
-.. dune:stanza:: opam_file_location
-   :param: <location>
+.. describe:: (opam_file_location <location>)
 
    .. versionadded:: 3.8
 

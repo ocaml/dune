@@ -175,10 +175,18 @@ module Conf = struct
     match has_subst with
     | No_substitution -> Fiber.return ()
     | Some_substitution ->
-      Memo.run t.sign_hook
-      |> Fiber.bind ~f:(function
-        | Some hook -> hook file
-        | None -> Fiber.return ())
+      let executable =
+        match Path.Untracked.stat file with
+        | Error _ -> false
+        | Ok { st_perm; _ } -> Path.Permissions.test Path.Permissions.execute st_perm
+      in
+      if executable
+      then
+        Memo.run t.sign_hook
+        |> Fiber.bind ~f:(function
+          | Some hook -> hook file
+          | None -> Fiber.return ())
+      else Fiber.return ()
   ;;
 end
 
@@ -675,15 +683,7 @@ let replace_if_different ~delete_dst_if_it_is_a_directory ~src ~dst =
   if not up_to_date then Path.rename src dst
 ;;
 
-let copy_file
-  ~conf
-  ?(executable = false)
-  ?chmod
-  ?(delete_dst_if_it_is_a_directory = false)
-  ~src
-  ~dst
-  ()
-  =
+let copy_file ~conf ?chmod ?(delete_dst_if_it_is_a_directory = false) ~src ~dst () =
   (* We create a temporary file in the same directory to ensure it's on the same
      partition as [dst] (otherwise, [Path.rename temp_file dst] won't work). The
      prefix ".#" is used because Dune ignores such files and so creating this
@@ -698,11 +698,7 @@ let copy_file
       let open Fiber.O in
       Path.parent dst |> Option.iter ~f:Path.mkdir_p;
       let* has_subst = copy_file_non_atomic ~conf ?chmod ~src ~dst:temp_file () in
-      let+ () =
-        if executable
-        then Conf.run_sign_hook conf ~has_subst temp_file
-        else Fiber.return ()
-      in
+      let+ () = Conf.run_sign_hook conf ~has_subst temp_file in
       replace_if_different ~delete_dst_if_it_is_a_directory ~src:temp_file ~dst)
     ~finally:(fun () ->
       Path.unlink_no_err temp_file;

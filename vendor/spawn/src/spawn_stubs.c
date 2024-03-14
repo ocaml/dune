@@ -1,15 +1,30 @@
 #define _GNU_SOURCE
 
+/* Must come before any other caml/ headers are included */
+#define CAML_INTERNALS
+
+#ifdef _WIN32
+/* for [caml_win32_multi_byte_to_wide_char] */
+#include <caml/osdeps.h>
+
+/* Prior to OCaml 5.0, the function was called win_multi_byte_to_wide_char */
+#include <caml/version.h>
+#if OCAML_VERSION_MAJOR < 5
+#define caml_win32_multi_byte_to_wide_char win_multi_byte_to_wide_char
+#define caml_win32_maperr win32_maperr
+#endif
+#endif
+
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
 #include <caml/alloc.h>
 #include <caml/unixsupport.h>
 #include <caml/fail.h>
 
-#include <errno.h>
-
+/* for [caml_convert_signal_number]; must come after public caml headers */
 #include <caml/signals.h>
-CAMLextern int caml_convert_signal_number(int);
+
+#include <errno.h>
 
 #if defined(__APPLE__)
 
@@ -846,31 +861,51 @@ CAMLprim value spawn_windows(value v_env,
 {
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
+  WCHAR *prog;
+  WCHAR *cmdline;
+  WCHAR *env = NULL;
+  WCHAR *cwd = NULL;
+  BOOL result;
 
   ZeroMemory(&si, sizeof(si));
   ZeroMemory(&pi, sizeof(pi));
-  si.cb = sizeof(si);
-  si.dwFlags    = STARTF_USESTDHANDLES;
 
   if (!dup2_and_clear_close_on_exec(v_stdin , &si.hStdInput ) ||
       !dup2_and_clear_close_on_exec(v_stdout, &si.hStdOutput) ||
       !dup2_and_clear_close_on_exec(v_stderr, &si.hStdError )) {
-    win32_maperr(GetLastError());
+    caml_win32_maperr(GetLastError());
     close_std_handles(&si);
     uerror("DuplicateHandle", Nothing);
   }
 
-  if (!CreateProcess(String_val(v_prog),
-                     Bytes_val(v_cmdline),
-                     NULL,
-                     NULL,
-                     TRUE,
-                     0,
-                     Is_block(v_env) ? Bytes_val(Field(v_env, 0)) : NULL,
-                     Is_block(v_cwd) ? String_val(Field(v_cwd, 0)) : NULL,
-                     &si,
-                     &pi)) {
-    win32_maperr(GetLastError());
+  prog = caml_stat_strdup_to_utf16(String_val(v_prog));
+  cmdline = caml_stat_strdup_to_utf16(String_val(v_cmdline));
+
+  if (Is_block(v_env)) {
+    v_env = Field(v_env, 0);
+    mlsize_t len = caml_string_length(v_env);
+    int size = caml_win32_multi_byte_to_wide_char(String_val(v_env), len, NULL, 0);
+    env = caml_stat_alloc(size * sizeof(WCHAR));
+    caml_win32_multi_byte_to_wide_char(String_val(v_env), len, env, size);
+  }
+
+  if (Is_block(v_cwd))
+    cwd = caml_stat_strdup_to_utf16(String_val(Field(v_cwd, 0)));
+
+  si.cb = sizeof(si);
+  si.dwFlags = STARTF_USESTDHANDLES;
+
+  result =
+    CreateProcess(prog, cmdline, NULL, NULL, TRUE, CREATE_UNICODE_ENVIRONMENT,
+                  env, cwd, &si, &pi);
+
+  caml_stat_free(prog);
+  caml_stat_free(cmdline);
+  caml_stat_free(env);
+  caml_stat_free(cwd);
+
+  if (!result) {
+    caml_win32_maperr(GetLastError());
     close_std_handles(&si);
     uerror("CreateProcess", Nothing);
   }

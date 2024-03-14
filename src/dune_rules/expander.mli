@@ -8,19 +8,27 @@ val dir : t -> Path.Build.t
 val context : t -> Context_name.t
 
 val make_root
-  :  scope:Scope.t
-  -> scope_host:Scope.t
+  :  project:Dune_project.t
+  -> scope:Scope.t Memo.t
+  -> scope_host:Scope.t Memo.t
   -> context:Context.t
-  -> env:Env.t
-  -> public_libs:Lib.DB.t
-  -> public_libs_host:Lib.DB.t
-  -> artifacts_host:Artifacts.t
+  -> env:Env.t Memo.t
+  -> public_libs:Lib.DB.t Memo.t
+  -> public_libs_host:Lib.DB.t Memo.t
+  -> artifacts_host:Artifacts.t Memo.t
   -> t
 
 val set_local_env_var : t -> var:string -> value:string Action_builder.t -> t
-val set_dir : t -> dir:Path.Build.t -> t
-val set_scope : t -> scope:Scope.t -> scope_host:Scope.t -> t
-val set_artifacts : t -> artifacts_host:Artifacts.t -> t
+
+val set_scope
+  :  t
+  -> dir:Path.Build.t
+  -> project:Dune_project.t
+  -> scope:Scope.t Memo.t
+  -> scope_host:Scope.t Memo.t
+  -> t
+
+val set_artifacts : t -> artifacts_host:Artifacts.t Memo.t -> t
 
 module Expanding_what : sig
   type t =
@@ -56,7 +64,7 @@ end
 type value = Value.t list Deps.t
 
 val add_bindings_full : t -> bindings:value Pform.Map.t -> t
-val extend_env : t -> env:Env.t -> t
+val extend_env : t -> env:Env.t Memo.t -> t
 
 val expand
   :  t
@@ -107,7 +115,7 @@ val expand_and_eval_set
 
 val eval_blang : t -> Blang.t -> bool Memo.t
 val map_exe : t -> Path.t -> Path.t
-val artifacts : t -> Artifacts.t
+val artifacts : t -> Artifacts.t Memo.t
 val expand_locks : t -> Locks.t -> Path.t list Action_builder.t
 
 val foreign_flags

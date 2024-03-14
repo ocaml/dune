@@ -25,23 +25,7 @@ let%expect_test "Module.Kind encoding round trip" =
   test (Alias []);
   [%expect {| { ast = "alias"; decoded = Ok Alias [] } |}];
   test (Alias [ module_name "A" ]);
-  [%expect
-    {|
-    { ast = "(alias (A))"
-    ; decoded =
-        Error
-          "File \"<none>\", line 1, characters 0-0:\n\
-           Error: Atom or quoted string expected\n\
-           "
-    } |}];
+  [%expect {| { ast = "(alias (A))"; decoded = Ok Alias [ "A" ] } |}];
   test (Alias [ module_name "A"; module_name "B" ]);
-  [%expect
-    {|
-    { ast = "(alias (A B))"
-    ; decoded =
-        Error
-          "File \"<none>\", line 1, characters 0-0:\n\
-           Error: Atom or quoted string expected\n\
-           "
-    } |}]
+  [%expect {| { ast = "(alias (A B))"; decoded = Ok Alias [ "A"; "B" ] } |}]
 ;;

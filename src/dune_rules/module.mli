@@ -21,6 +21,8 @@ module Kind : sig
     | Root
 
   include Dune_lang.Conv.S with type t := t
+
+  val to_dyn : t -> Dyn.t
 end
 
 module Source : sig

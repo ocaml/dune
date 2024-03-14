@@ -82,7 +82,8 @@ module Command_to_exec = struct
       let path = Path.to_string path in
       let env = Env.to_unix env |> Spawn.Env.of_list in
       let argv = path :: args in
-      Spawn.spawn ~prog:path ~env ~argv ()
+      let cwd = Spawn.Working_dir.Path Fpath.initial_cwd in
+      Spawn.spawn ~prog:path ~env ~cwd ~argv ()
     in
     Pid.of_int pid
   ;;

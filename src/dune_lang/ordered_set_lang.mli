@@ -66,7 +66,6 @@ module Unexpanded : sig
     -> string
     -> t option Decoder.fields_parser
 
-  val has_special_forms : t -> bool
   val has_standard : t -> bool
 
   type position =

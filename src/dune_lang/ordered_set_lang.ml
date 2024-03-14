@@ -340,18 +340,6 @@ module Unexpanded = struct
       (Option.forall ~f:is_expanded)
   ;;
 
-  let has_special_forms t =
-    let rec loop (t : ast) =
-      let open Ast in
-      match t with
-      | Standard | Include _ -> true
-      | Element _ -> false
-      | Union l -> List.exists l ~f:loop
-      | Diff (l, r) -> loop l || loop r
-    in
-    loop t.ast
-  ;;
-
   let has_standard t =
     let rec loop ast =
       match ast with

@@ -19,9 +19,12 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  Error: Multiple rules generated for _build/default/foo.cmxs:
-  - dune:4
-  - dune:1
+  Error:
+  File "dune", line 1, characters 0-44:
+  Error: A library with name "foo" is defined in two folders: _build/default
+  and _build/default. Either change one of the names, or enable them
+  conditionally using the 'enabled_if' field.
+  
   [1]
 
 With some consumer
@@ -43,6 +46,12 @@ With some consumer
   > EOF
 
   $ dune build
+  Error:
+  File "dune", line 1, characters 0-44:
+  Error: A library with name "foo" is defined in two folders: _build/default
+  and _build/default. Either change one of the names, or enable them
+  conditionally using the 'enabled_if' field.
+  
   File "dune", line 1, characters 0-0:
   Error: Module "Main" is used in several stanzas:
   - dune:1

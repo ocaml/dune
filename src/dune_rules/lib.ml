@@ -1941,6 +1941,14 @@ module DB = struct
     | Ignore | Not_found | Invalid _ | Hidden _ -> None
   ;;
 
+  let find_invalid t name =
+    let open Memo.O in
+    Resolve_names.find_internal t name
+    >>| function
+    | Invalid err -> Some err
+    | Found _ | Ignore | Not_found | Hidden _ -> None
+  ;;
+
   let find_even_when_hidden t name =
     let open Memo.O in
     Resolve_names.find_internal t name

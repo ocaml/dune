@@ -92,7 +92,7 @@ module Kind = struct
           match next with
           | None -> return (Alias [])
           | Some _ ->
-            let+ path = Module_name.Path.decode in
+            let+ path = enter Module_name.Path.decode in
             Alias path )
       ]
   ;;

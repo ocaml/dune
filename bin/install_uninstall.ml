@@ -141,6 +141,11 @@ module Special_file = struct
   ;;
 end
 
+type copy_kind =
+  | Plain (** Just copy the file. Can use fast paths through [Io.copy_file] *)
+  | Substitute (** Use [Artifact_substitution.copy_file]. Will scan all bytes. *)
+  | Special of Special_file.t (** Hooks to add version numbers, replace sections, etc *)
+
 type rmdir_mode =
   | Fail
   | Warn
@@ -151,7 +156,7 @@ module type File_operations = sig
     :  src:Path.t
     -> dst:Path.t
     -> executable:bool
-    -> special_file:Special_file.t option
+    -> kind:copy_kind
     -> package:Package.Name.t
     -> conf:Artifact_substitution.Conf.t
     -> unit Fiber.t
@@ -168,7 +173,7 @@ module File_ops_dry_run (Verbosity : sig
 
   let print_line fmt = print_line ~verbosity fmt
 
-  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
+  let copy_file ~src ~dst ~executable ~kind:_ ~package:_ ~conf:_ =
     print_line
       "Copying %s to %s (executable: %b)"
       (Path.to_string_maybe_quoted src)
@@ -336,15 +341,17 @@ module File_ops_real (W : sig
     ~src
     ~dst
     ~executable
-    ~special_file
+    ~kind
     ~package
     ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    match (special_file : Special_file.t option) with
-    | None -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
-    | Some sf ->
-      (* CR-rgrinberg: slow copying *)
+    match kind with
+    | Plain ->
+      Io.copy_file ~chmod ~src ~dst ();
+      Fiber.return ()
+    | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
+    | Special sf ->
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
       Fiber.finalize
         ~finally:(fun () ->
@@ -500,7 +507,12 @@ let install_entry
         (Path.to_string_maybe_quoted dst);
       Ops.mkdir_p dir;
       let executable = Section.should_set_executable_bit entry.section in
-      Ops.copy_file ~src:entry.src ~dst ~executable ~special_file ~package ~conf
+      let kind =
+        match special_file with
+        | Some special -> Special special
+        | None -> if executable then Substitute else Plain
+      in
+      Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf
     in
     Install.Entry.set_src entry dst
 ;;

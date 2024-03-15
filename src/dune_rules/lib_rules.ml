@@ -328,7 +328,14 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       | _ -> Action_builder.return []
     in
     let c_library_flags =
-      Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+      let open Action_builder.O in
+      let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+      and+ ctypes_lib =
+        (* CR rgrinberg: Should we add these flags to :standard? to make
+           it possible for users to remove these *)
+        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
+      in
+      c_lib @ ctypes_lib
     in
     let lib_o_files_for_all_modes = Mode.Map.Multi.for_all_modes o_files in
     let for_all_modes = List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes in

@@ -1,0 +1,4 @@
+(executable
+ (name example)
+ (modes byte)
+ (libraries examplelib))

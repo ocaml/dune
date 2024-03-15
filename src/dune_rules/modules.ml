@@ -398,7 +398,8 @@ module Group = struct
     Module_name.Map.to_list_map modules ~f:(fun _ t ->
       Dune_lang.List
         (match t with
-         | Group g -> Dune_lang.atom "group" :: encode ~src_dir g
+         | Group g ->
+           Dune_lang.atom "group" :: Module_name.encode g.name :: encode ~src_dir g
          | Module m -> Dune_lang.atom "module" :: Module.encode ~src_dir m))
   ;;
 

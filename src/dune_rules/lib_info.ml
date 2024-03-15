@@ -659,3 +659,21 @@ let for_dune_package
          (let dir = Obj_dir.dir obj_dir in
           fun p -> if Path.is_managed p then Path.relative dir (Path.basename p) else p)
 ;;
+
+let equal
+  (type a)
+  (t : a t)
+  { loc; name; kind; src_dir; orig_src_dir; obj_dir; path_kind; _ }
+  =
+  let path_equal : a -> a -> bool =
+    match (path_kind : a path) with
+    | Local -> Path.Build.equal
+    | External -> Path.equal
+  in
+  Loc.equal t.loc loc
+  && Lib_name.equal t.name name
+  && Lib_kind.equal t.kind kind
+  && path_equal src_dir t.src_dir
+  && Option.equal path_equal orig_src_dir t.orig_src_dir
+  && Obj_dir.equal obj_dir t.obj_dir
+;;

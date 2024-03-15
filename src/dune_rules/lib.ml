@@ -1098,7 +1098,10 @@ end = struct
   module Input = struct
     type t = Lib_name.t * Path.t Lib_info.t * string option
 
-    let equal (x, _, _) (y, _, _) = Lib_name.equal x y
+    let equal (lib_name, info, _) (lib_name', info', _) =
+      Lib_name.equal lib_name lib_name' && Lib_info.equal info info'
+    ;;
+
     let hash (x, _, _) = Lib_name.hash x
     let to_dyn = Dyn.opaque
   end
@@ -1192,16 +1195,18 @@ end = struct
             This allows to provide better errors later on,
             e.g. `Library "foo" in _build/default is hidden (unsatisfied 'enabled_if') *)
          Memo.return status
-       | _ :: _ :: _ as statuses ->
+       | _ :: _ :: _ ->
          Memo.return
-           (List.fold_left statuses ~init:Status.Not_found ~f:(fun acc status ->
+           (List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
               match acc, status with
               | Status.Found a, Status.Found b ->
-                let a = info a in
-                let b = info b in
+                let a = info a
+                and b = info b in
                 let loc = Lib_info.loc b in
-                let dir_a = Lib_info.src_dir a in
-                let dir_b = Lib_info.src_dir b in
+                let dir_a = Lib_info.best_src_dir a in
+                let dir_b = Lib_info.best_src_dir b in
+                (* print_endline ("a " ^ Dyn.to_string (Lib_info.to_dyn Path.to_dyn a));
+                   print_endline ("b " ^ Dyn.to_string (Lib_info.to_dyn Path.to_dyn b)); *)
                 Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b)
               | Invalid _, _ -> acc
               | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)

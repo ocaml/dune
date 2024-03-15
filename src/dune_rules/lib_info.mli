@@ -229,3 +229,4 @@ val create
 
 val package : _ t -> Package.Name.t option
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
+val equal : 'a t -> 'a t -> bool

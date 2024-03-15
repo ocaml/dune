@@ -9,7 +9,7 @@ Utf8 characters are handled for now, this is also related to the issue #9728
   > (run foo %{bin:é})
   > EOF
   File "", line 1, characters 15-16:
-  Error: The character é is not allowed inside %{...} forms
+  Error: The character '\195' is not allowed inside %{...} forms
   [1]
 
   $ dune format-dune-file <<EOF

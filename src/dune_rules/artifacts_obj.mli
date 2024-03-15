@@ -6,6 +6,7 @@ val empty : t
 
 val make
   :  dir:Path.Build.t
+  -> expander:Expander0.t
   -> lib_config:Lib_config.t Memo.t
   -> libs:(Library.t * Modules.t * Path.Build.t Obj_dir.t) list
   -> exes:(Modules.t * Path.Build.t Obj_dir.t) list

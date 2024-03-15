@@ -10,12 +10,14 @@ let empty = { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
 let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
 let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
 
-let make ~dir ~lib_config ~libs ~exes =
+let make ~dir ~expander ~lib_config ~libs ~exes =
   let+ libraries =
     Memo.List.map libs ~f:(fun ((lib : Library.t), _, _) ->
       let+ lib_config = lib_config in
       let name = Lib_name.of_local lib.name in
-      let info = Library.to_lib_info lib ~dir ~lib_config in
+      let info =
+        Library.to_lib_info lib ~expander:(Memo.return expander) ~dir ~lib_config
+      in
       name, info)
     >>| Lib_name.Map.of_list_exn
   in

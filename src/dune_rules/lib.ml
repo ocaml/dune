@@ -1211,7 +1211,10 @@ end = struct
          in
          to_status ~db ~name filtered_libs)
     | Invalid e -> Memo.return (Status.Invalid e)
-    | Not_found -> find_in_parent ~db ~name
+    | Not_found ->
+      (match db.parent with
+       | None -> Memo.return Status.Not_found
+       | Some db -> find_internal db name)
     | Hidden { lib = info; reason = hidden; path = _ } ->
       (match db.parent with
        | None -> Memo.return Status.Not_found

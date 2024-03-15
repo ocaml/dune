@@ -212,25 +212,22 @@ module File_ops_real (W : sig
     ; callback : ?version:string -> Format.formatter -> unit
     }
 
+  type copy_special_file_status =
+    | Done
+    | Use_plain_copy
+
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let open Fiber.O in
-    let plain_copy () =
-      (* CR-rgrinberg: we have fast paths for copying that we aren't making use
-         of here *)
-      seek_in ic 0;
-      Io.copy_channels ic oc;
-      Fiber.return ()
-    in
     match f ic with
-    | None -> plain_copy ()
+    | None -> Fiber.return Use_plain_copy
     (* XXX should we really be catching everything here? *)
     | exception _ ->
       User_warning.emit
         ~loc:(Loc.in_file src)
         [ Pp.text "Failed to parse file, not adding version and locations information." ];
-      plain_copy ()
+      Fiber.return Use_plain_copy
     | Some { need_version; callback } ->
-      let* version =
+      let+ version =
         if need_version
         then
           let* packages =
@@ -246,7 +243,7 @@ module File_ops_real (W : sig
       let ppf = Format.formatter_of_out_channel oc in
       callback ppf ?version;
       Format.pp_print_flush ppf ();
-      Fiber.return ()
+      Done
   ;;
 
   let process_meta ic =
@@ -346,26 +343,34 @@ module File_ops_real (W : sig
     ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    match kind with
-    | Plain ->
+    let plain_copy () =
       Io.copy_file ~chmod ~src ~dst ();
       Fiber.return ()
+    in
+    match kind with
+    | Plain -> plain_copy ()
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Special sf ->
+      let open Fiber.O in
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-      Fiber.finalize
-        ~finally:(fun () ->
-          Io.close_both (ic, oc);
-          Fiber.return ())
-        (fun () ->
-          let f =
-            match sf with
-            | META -> process_meta
-            | Dune_package ->
-              process_dune_package
-                ~get_location:(Artifact_substitution.Conf.get_location conf)
-          in
-          copy_special_file ~src ~package ~ic ~oc ~f)
+      let* status =
+        Fiber.finalize
+          ~finally:(fun () ->
+            Io.close_both (ic, oc);
+            Fiber.return ())
+          (fun () ->
+            let f =
+              match sf with
+              | META -> process_meta
+              | Dune_package ->
+                process_dune_package
+                  ~get_location:(Artifact_substitution.Conf.get_location conf)
+            in
+            copy_special_file ~src ~package ~ic ~oc ~f)
+      in
+      (match status with
+       | Done -> Fiber.return ()
+       | Use_plain_copy -> plain_copy ())
   ;;
 
   let remove_file_if_exists dst =

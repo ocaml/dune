@@ -418,11 +418,12 @@ type db =
 
 and resolve_result =
   | Not_found
-  | Found of Lib_info.external_ list
+  | Found of Lib_info.external_
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of User_message.t
   | Ignore
-  | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
+  | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
+  | Multiple_results of resolve_result list
   | Redirect of db * (Loc.t * Lib_name.t)
   | Deprecated_library_name of (Loc.t * Lib_name.t)
 
@@ -1143,73 +1144,70 @@ end = struct
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
-  let find_in_parent ~db ~name =
-    let open Memo.O in
-    let+ res =
-      match db.parent with
-      | None -> Memo.return Status.Not_found
-      | Some db -> find_internal db name
-    in
-    res
-  ;;
-
-  let to_status ~db ~name = function
-    | [] -> find_in_parent ~db ~name
-    | info :: [] -> instantiate db name info ~hidden:None
-    | a :: b :: _ ->
-      let loc = Lib_info.loc b in
-      let dir_a = Lib_info.src_dir a in
-      let dir_b = Lib_info.src_dir b in
-      Memo.return (Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b))
-  ;;
-
   let resolve_name db name =
     let open Memo.O in
     db.resolve name
     >>= function
     | Ignore -> Memo.return Status.Ignore
     | Deprecated_library_name (_, name') -> find_internal db name'
-    | Redirect_in_the_same_db redirects ->
-      let result = List.map ~f:(fun (_, name') -> find_internal db name') redirects in
-      let* statuses =
-        Memo.List.map result ~f:(fun redirect ->
-          let* r = redirect in
-          Memo.return r)
-      in
-      Memo.return
-        (List.fold_left statuses ~init:Status.Not_found ~f:(fun acc status ->
-           match acc, status with
-           | Status.Found a, Status.Found b ->
-             let a = info a in
-             let b = info b in
-             let loc = Lib_info.loc b in
-             let dir_a = Lib_info.src_dir a in
-             let dir_b = Lib_info.src_dir b in
-             Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b)
-           | Invalid _, _ -> acc
-           | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
-           | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib
-           | (Hidden _ | Ignore | Not_found), (Hidden _ | Ignore | Not_found | Invalid _)
-             -> acc))
+    | Redirect_in_the_same_db (_, name') -> find_internal db name'
     | Redirect (db', (_, name')) -> find_internal db' name'
-    | Found libs ->
+    | Found info -> instantiate db name info ~hidden:None
+    | Multiple_results libs ->
+      let* libs =
+        Memo.List.filter_map
+          ~f:(function
+            | Ignore -> Memo.return (Some Status.Ignore)
+            | Deprecated_library_name (_, name') ->
+              find_internal db name' >>| fun f -> Some f
+            | Redirect_in_the_same_db (_, name') ->
+              find_internal db name' >>| fun f -> Some f
+            | Redirect (db', (_, name')) -> find_internal db' name' >>| fun f -> Some f
+            | Found info ->
+              let* enabled = Lib_info.enabled info in
+              (match enabled with
+               | Disabled_because_of_enabled_if -> Memo.return None
+               | Normal | Optional ->
+                 instantiate db name info ~hidden:None >>| fun f -> Some f)
+            | Multiple_results _libs ->
+              (* There can't be nested Multiple_results *) assert false
+            | Invalid e -> Memo.return (Some (Status.Invalid e))
+            | Not_found ->
+              (match db.parent with
+               | None -> Memo.return (Some Status.Not_found)
+               | Some db -> find_internal db name >>| fun f -> Some f)
+            | Hidden { lib = info; reason = hidden; path = _ } ->
+              (match db.parent with
+               | None -> Memo.return Status.Not_found
+               | Some db -> find_internal db name)
+              >>= (function
+               | Status.Found _ as x -> Memo.return (Some x)
+               | _ -> instantiate db name info ~hidden:(Some hidden) >>| fun f -> Some f))
+          libs
+      in
       (match libs with
-       | [] | _ :: [] ->
+       | [] -> assert false
+       | [ status ] ->
          (* In case we have 0 or 1 results found, convert to [Status.t] directly.
             This allows to provide better errors later on,
             e.g. `Library "foo" in _build/default is hidden (unsatisfied 'enabled_if') *)
-         to_status ~db ~name libs
-       | _ :: _ :: _ ->
-         (* If there are multiple results found, we optimistically pre-filter to
-            remove those that are disabled *)
-         let* filtered_libs =
-           Memo.List.filter libs ~f:(fun lib ->
-             let+ enabled = Lib_info.enabled lib in
-             match enabled with
-             | Disabled_because_of_enabled_if -> false
-             | Normal | Optional -> true)
-         in
-         to_status ~db ~name filtered_libs)
+         Memo.return status
+       | _ :: _ :: _ as statuses ->
+         Memo.return
+           (List.fold_left statuses ~init:Status.Not_found ~f:(fun acc status ->
+              match acc, status with
+              | Status.Found a, Status.Found b ->
+                let a = info a in
+                let b = info b in
+                let loc = Lib_info.loc b in
+                let dir_a = Lib_info.src_dir a in
+                let dir_b = Lib_info.src_dir b in
+                Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b)
+              | Invalid _, _ -> acc
+              | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
+              | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib
+              | ( (Hidden _ | Ignore | Not_found)
+                , (Hidden _ | Ignore | Not_found | Invalid _) ) -> acc)))
     | Invalid e -> Memo.return (Status.Invalid e)
     | Not_found ->
       (match db.parent with
@@ -1844,35 +1842,28 @@ end
 
 module DB = struct
   module Resolve_result = struct
-    type t = resolve_result =
-      | Not_found
-      | Found of Lib_info.external_ list
-      | Hidden of Lib_info.external_ Hidden.t
-      | Invalid of User_message.t
-      | Ignore
-      | Redirect_in_the_same_db of (Loc.t * Lib_name.t) list
-      | Redirect of db * (Loc.t * Lib_name.t)
-      | Deprecated_library_name of (Loc.t * Lib_name.t)
+    type t = resolve_result
 
     let found f = Found f
     let not_found = Not_found
     let redirect db lib = Redirect (db, lib)
-    let redirect_in_the_same_db libs = Redirect_in_the_same_db libs
+    let redirect_in_the_same_db lib = Redirect_in_the_same_db lib
+    let multiple_results libs = Multiple_results libs
     let deprecated_library_name lib = Deprecated_library_name lib
 
-    let to_dyn x =
+    let rec to_dyn x =
       let open Dyn in
       match x with
       | Not_found -> variant "Not_found" []
       | Invalid e -> variant "Invalid" [ Dyn.string (User_message.to_string e) ]
-      | Found libs -> variant "Found" [ (Dyn.list (Lib_info.to_dyn Path.to_dyn)) libs ]
+      | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
       | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
-      | Redirect_in_the_same_db redirects ->
-        variant
-          "Redirect_in_the_same_db"
-          [ (Dyn.list (fun (_, name) -> Lib_name.to_dyn name)) redirects ]
+      | Redirect_in_the_same_db (_, name) ->
+        variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
+      | Multiple_results redirects ->
+        variant "Multiple_results" [ (Dyn.list to_dyn) redirects ]
       | Deprecated_library_name (_, name) ->
         variant "Deprecated_library_name" [ Lib_name.to_dyn name ]
     ;;
@@ -1905,7 +1896,7 @@ module DB = struct
           let open Memo.O in
           Findlib.find findlib name
           >>| function
-          | Ok (Library pkg) -> Found [ Dune_package.Lib.info pkg ]
+          | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
           | Ok (Deprecated_library_name d) ->
             Deprecated_library_name (d.loc, d.new_public_name)
           | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)

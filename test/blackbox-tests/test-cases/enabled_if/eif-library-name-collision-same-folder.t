@@ -54,3 +54,17 @@ For public libraries
   > EOF
 
   $ dune build
+
+Mixing public and private libraries
+
+  $ cat > dune << EOF
+  > (library
+  >  (name foo)
+  >  (enabled_if (= %{context_name} "default")))
+  > (library
+  >  (name foo)
+  >  (public_name baz.foo)
+  >  (enabled_if (= %{context_name} "alt-context")))
+  > EOF
+
+  $ dune build

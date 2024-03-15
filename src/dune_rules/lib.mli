@@ -98,10 +98,11 @@ module DB : sig
     type t
 
     val not_found : t
-    val found : Lib_info.external_ list -> t
+    val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
     val redirect : db -> Loc.t * Lib_name.t -> t
-    val redirect_in_the_same_db : (Loc.t * Lib_name.t) list -> t
+    val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
+    val multiple_results : t list -> t
     val deprecated_library_name : Loc.t * Lib_name.t -> t
   end
 

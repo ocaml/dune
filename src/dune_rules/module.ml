@@ -357,55 +357,6 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     ]
 ;;
 
-let decode_old ~src_dir =
-  let open Dune_lang.Decoder in
-  fields
-    (let+ obj_name = field "obj_name" Module_name.Unique.decode
-     and+ path = field_o "path" Module_name.Path.decode
-     and+ name = field_o "name" Module_name.decode
-     and+ visibility = field "visibility" Visibility.decode
-     and+ kind = field_o "kind" Kind.decode
-     and+ impl = field_b "impl"
-     and+ intf = field_b "intf" in
-     let path, name =
-       match path, name with
-       | None, None -> Code_error.raise "both name and path cannot be absent" []
-       | Some p, None -> p, List.last p |> Option.value_exn
-       | None, Some n -> [ n ], n
-       | Some path, Some name ->
-         (* XXX temp hacks until the old format is dropped *)
-         if Module_name.Path.equal path [ name ]
-         then path, name
-         else
-           Code_error.raise
-             "both name and path cannot be present"
-             [ "name", Module_name.to_dyn name; "path", Module_name.Path.to_dyn path ]
-     in
-     let file exists ml_kind =
-       let open Option.O in
-       if exists
-       then (
-         let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
-           let n = Module_name.to_string n in
-           let+ ext = Dialect.extension dialect ml_kind in
-           String.lowercase n ^ ext
-         in
-         let+ basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
-         File.make Dialect.ocaml (Path.relative src_dir basename))
-       else None
-     in
-     let kind =
-       match kind with
-       | Some k -> k
-       | None when impl -> Impl
-       | None -> Intf_only
-     in
-     let intf = file intf Intf in
-     let impl = file impl Impl in
-     let source = Source.make ?impl ?intf path in
-     of_source ~obj_name:(Some obj_name) ~visibility ~kind source)
-;;
-
 let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields
@@ -420,7 +371,6 @@ let decode ~src_dir =
        | None -> Intf_only
      in
      { install_as = None; source; obj_name; pp = None; kind; visibility })
-  <|> decode_old ~src_dir
 ;;
 
 let pped =

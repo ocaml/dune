@@ -112,8 +112,9 @@ end = struct
       empty_none
     | Library.T lib ->
       let db = Scope.libs scope in
-      (* This check reveals conflicts between the private names of public libraries,
-         otherwise the user will see duplicated rules for their cmxs *)
+      (* This check surfaces conflicts between private names of public libraries,
+         without it the user might get duplicated rules errors for cmxs
+         when the libraries are defined in the same folder and have the same private name *)
       let* res = Lib.DB.find_invalid db (Library.private_name lib) in
       (match res with
        | Some err -> User_error.raise [ User_message.pp err ]

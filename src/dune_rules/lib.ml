@@ -1190,11 +1190,7 @@ end = struct
       in
       (match libs with
        | [] -> assert false
-       | [ status ] ->
-         (* In case we have 0 or 1 results found, convert to [Status.t] directly.
-            This allows to provide better errors later on,
-            e.g. `Library "foo" in _build/default is hidden (unsatisfied 'enabled_if') *)
-         Memo.return status
+       | [ status ] -> Memo.return status
        | _ :: _ :: _ ->
          Memo.return
            (List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->

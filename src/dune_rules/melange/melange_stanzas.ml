@@ -33,7 +33,7 @@ module Emit = struct
     let extension_field = extension in
     let module_systems =
       let module_system =
-        enum [ "es6", Melange.Module_system.Es6; "commonjs", CommonJs ]
+        enum [ "esm", Melange.Module_system.ESM; "es6", ESM; "commonjs", CommonJS ]
       in
       let+ module_systems =
         repeat

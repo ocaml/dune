@@ -59,6 +59,22 @@ Parses the simplified form and defaults extension to `.js`
   main.js
   main.mjs
 
+Accepts `"esm"` too for ESM modules
+
+  $ dune clean
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (alias mel)
+  >  (target output)
+  >  (emit_stdlib false)
+  >  (module_systems commonjs (esm mjs)))
+  > EOF
+
+  $ dune build @mel
+  $ ls _build/default/output
+  main.js
+  main.mjs
+
 Defaults to commonjs / `.js` if no config present at all
 
   $ dune clean

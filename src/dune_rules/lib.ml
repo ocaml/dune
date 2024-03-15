@@ -1205,8 +1205,6 @@ end = struct
                 let loc = Lib_info.loc b in
                 let dir_a = Lib_info.best_src_dir a in
                 let dir_b = Lib_info.best_src_dir b in
-                (* print_endline ("a " ^ Dyn.to_string (Lib_info.to_dyn Path.to_dyn a));
-                   print_endline ("b " ^ Dyn.to_string (Lib_info.to_dyn Path.to_dyn b)); *)
                 Status.Invalid (Error.duplicated ~loc ~name ~dir_a ~dir_b)
               | Invalid _, _ -> acc
               | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)

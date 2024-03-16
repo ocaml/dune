@@ -35,28 +35,28 @@ let available_exes ~dir (exes : Executables.t) =
   Resolve.is_ok available
 ;;
 
-let expander = Fdecl.create Dyn.opaque
-
 let get_installed_binaries ~(context : Context.t) stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
   let open Memo.O in
   Memo.List.map stanzas ~f:(fun d ->
     let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
-    let* expander = (Fdecl.get expander) ~dir in
+    let* expander = Expander0.get ~dir in
     let expand_value sw =
-      Expander.expand expander ~mode:Single sw
+      Expander0.expand expander ~mode:Single sw
       |> Action_builder.evaluate_and_collect_facts
       >>| fst
     in
     let expand_str sw =
-      Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst
-    in
-    let expand_str_partial sw =
-      Expander.expand_str_partial expander sw
+      Expander0.expand_str expander sw
       |> Action_builder.evaluate_and_collect_facts
       >>| fst
     in
-    let eval_blang = Expander.eval_blang expander in
+    let expand_str_partial sw =
+      Expander0.expand_str_partial expander sw
+      |> Action_builder.evaluate_and_collect_facts
+      >>| fst
+    in
+    let eval_blang = Expander0.eval_blang expander in
     let binaries_from_install ~enabled_if files =
       let* unexpanded_file_bindings =
         Install_entry.File.to_file_bindings_unexpanded files ~expand:expand_value ~dir

@@ -913,8 +913,11 @@ let expand_locks t (locks : Locks.t) =
 module M = struct
   type nonrec t = t
 
+  let expand = expand
   let project = project
   let eval_blang = eval_blang
+  let expand_str = expand_str
+  let expand_str_partial = expand_str_partial
 end
 
 let to_expander0 t = Expander0.create (Memo.return t) (module M)

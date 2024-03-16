@@ -6,6 +6,7 @@ type t
 
 val dir : t -> Path.Build.t
 val context : t -> Context_name.t
+val project : t -> Dune_project.t
 
 val make_root
   :  project:Dune_project.t
@@ -123,3 +124,4 @@ val foreign_flags
       Fdecl.t
 
 val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
+val to_expander0 : t -> Expander0.t

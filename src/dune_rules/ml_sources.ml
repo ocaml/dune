@@ -575,7 +575,12 @@ let make
         List.map modules_of_stanzas.executables ~f:(fun (part : _ Modules.group_part) ->
           part.modules, part.obj_dir)
       in
-      Artifacts_obj.make ~dir ~lib_config ~libs ~exes)
+      Artifacts_obj.make
+        ~dir
+        ~expander:(Expander.to_expander0 expander)
+        ~lib_config
+        ~libs
+        ~exes)
   in
   { modules; artifacts; include_subdirs }
 ;;

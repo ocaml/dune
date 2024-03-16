@@ -9,8 +9,7 @@ The next ones use forbidden variables For dune 2.3 -> 2.5 it is a warning
                        ^^^^^^^^^^^^^^^
   Warning: Only architecture, system, model, os_type, ccomp_type, profile,
   ocaml_version, context_name and arch_sixtyfour variables are allowed in this
-  'enabled_if' field. If you think that project_root should also be allowed,
-  please file an issue about it.
+  'enabled_if' field. Please upgrade your dune language to at least 3.15.
   bar
 
 For dune >= 2.6 it is an error
@@ -23,6 +22,5 @@ For dune >= 2.6 it is an error
                        ^^^^^^^^^^^^^^^
   Error: Only architecture, system, model, os_type, ccomp_type, profile,
   ocaml_version, context_name and arch_sixtyfour variables are allowed in this
-  'enabled_if' field. If you think that project_root should also be allowed,
-  please file an issue about it.
+  'enabled_if' field. Please upgrade your dune language to at least 3.15.
   [1]

@@ -374,15 +374,12 @@ module As_memo_key = struct
 end
 
 let () =
-  Fdecl.set Artifacts_db.expander (fun ~dir ->
-    let* ctx = Context.DB.by_dir dir in
-    let* t = find_exn (Context.name ctx) in
-    expander t ~dir);
-  Fdecl.set Artifacts.expand (fun ~dir sw ->
-    let* ctx = Context.DB.by_dir dir in
-    let* t = find_exn (Context.name ctx) in
-    let* expander = expander t ~dir in
-    Expander.expand_str expander sw |> Action_builder.evaluate_and_collect_facts >>| fst)
+  Expander0.set_db (fun ~dir ->
+    Context.DB.by_dir dir
+    >>| Context.name
+    >>= find_exn
+    >>= expander ~dir
+    >>| Expander.to_expander0)
 ;;
 
 let context t = t.context

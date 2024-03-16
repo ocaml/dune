@@ -41,5 +41,3 @@ val create
   :  Context.t
   -> local_bins:origin Appendable_list.t Filename.Map.t Memo.Lazy.t
   -> t
-
-val expand : (dir:Path.Build.t -> String_with_vars.t -> string Memo.t) Fdecl.t

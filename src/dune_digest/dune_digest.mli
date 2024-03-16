@@ -30,14 +30,11 @@ module Stats_for_digest : sig
   val of_unix_stats : Unix.stats -> t
 end
 
-module Path_digest_result : sig
+module Path_digest_error : sig
   type nonrec t =
-    | Ok of t
     | Unexpected_kind
     | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
     (** A Unix error, e.g., [(ENOENT, _, _)] if the path doesn't exist. *)
-
-  val equal : t -> t -> bool
 end
 
 (** Digest a path taking into account its [Stats_for_digest].
@@ -58,7 +55,7 @@ val path_with_stats
   :  allow_dirs:bool
   -> Path.t
   -> Stats_for_digest.t
-  -> Path_digest_result.t
+  -> (t, Path_digest_error.t) result
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

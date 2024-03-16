@@ -8,7 +8,7 @@ let command cmd args =
     | Error () -> assert false
   in
   match Unix.close_process_in p with
-  | WEXITED n when n = 0 -> Ok output
+  | WEXITED 0 -> Ok output
   | WEXITED n -> Error n
   | WSIGNALED _ | WSTOPPED _ -> assert false
 ;;

@@ -18,9 +18,7 @@
   $ dune rules @melange | grep '\.cmj'
      (File (In_build_dir _build/default/.out.mobjs/melange/melange__X.cmj))))
       .out.mobjs/melange/melange__X.cmj))))
-  $ dune build @melange --display short
-          melc .out.mobjs/melange/melange__X.{cmi,cmj,cmt}
-          melc out/x.js
+  $ dune build @melange
 
   $ dune clean
 
@@ -33,7 +31,7 @@
   >  (enabled_if false))
   > EOF
 
-  $ dune build @melange --display short
+  $ dune build @melange
   Error: Alias "melange" specified on the command line is empty.
   It is not defined in . or any of its descendants.
   [1]

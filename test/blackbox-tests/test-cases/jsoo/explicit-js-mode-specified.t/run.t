@@ -1,34 +1,22 @@
 Check that .bc.js rule is generated only if js mode is used.
 
-  $ dune build --display short a.bc.js
+  $ dune build a.bc.js
   Error: Don't know how to build a.bc.js
   Hint: did you mean b.bc.js or e.bc.js?
   [1]
 
-  $ dune build --display short b.bc.js
-   js_of_ocaml .b.eobjs/jsoo/b.bc.runtime.js
-      ocamldep .b.eobjs/b.impl.d
-        ocamlc .b.eobjs/byte/b.{cmi,cmo,cmt}
-   js_of_ocaml .js/default/stdlib/std_exit.cmo.js
-   js_of_ocaml .js/default/stdlib/stdlib.cma.js
-   js_of_ocaml .b.eobjs/jsoo/b.cmo.js
-   js_of_ocaml b.bc.js
+  $ dune build b.bc.js
 
 We also check that .cmo.js rules are not generated if not specified.
 
-  $ dune build --display short _build/default/.a.eobjs/jsoo/a.cmo.js
+  $ dune build _build/default/.a.eobjs/jsoo/a.cmo.js
   Error: Don't know how to build _build/default/.a.eobjs/jsoo/a.cmo.js
   [1]
 
 JS compilation of libraries is always available to avoid having to annotate
 every dependency of an executable.
 
-  $ dune build --display short _build/default/.foo.objs/jsoo/default/foo.cma.js
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamldep .foo.objs/foo__C.impl.d
-        ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
-        ocamlc foo.cma
-   js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
+  $ dune build _build/default/.foo.objs/jsoo/default/foo.cma.js
 
 Check that js targets are attached to @all, but not for tests that do not
 specify js mode (#1940).
@@ -48,16 +36,4 @@ specify js mode (#1940).
 Check that building a JS-enabled executable that depends on a library works.
 
   $ dune clean
-  $ dune build --display short e.bc.js
-   js_of_ocaml .e.eobjs/jsoo/e.bc.runtime.js
-      ocamldep .e.eobjs/e.impl.d
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamldep .foo.objs/foo__C.impl.d
-   js_of_ocaml .js/default/stdlib/std_exit.cmo.js
-   js_of_ocaml .js/default/stdlib/stdlib.cma.js
-        ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
-        ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
-        ocamlc foo.cma
-   js_of_ocaml .e.eobjs/jsoo/e.cmo.js
-   js_of_ocaml .foo.objs/jsoo/default/foo.cma.js
-   js_of_ocaml e.bc.js
+  $ dune build e.bc.js

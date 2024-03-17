@@ -105,11 +105,7 @@ Let's do some examples using libraries:
   >  (modules (:include gen/lst)))
   > EOF
 
-  $ dune build --display short
-        ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
-      ocamldep .lib.objs/lib__Mod.impl.d
-        ocamlc .lib.objs/byte/lib__Mod.{cmi,cmo,cmt}
-        ocamlc lib.cma
+  $ dune build lib.cma
 
 We can also use special forms such as `%{read-lines:}`:
 
@@ -126,12 +122,7 @@ We can also use special forms such as `%{read-lines:}`:
 
   $ touch mod2.ml
 
-  $ dune build --display short
-        ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
-      ocamldep .lib.objs/lib__Mod2.impl.d
-        ocamlc .lib.objs/byte/lib__Mod.{cmi,cmo,cmt}
-        ocamlc .lib.objs/byte/lib__Mod2.{cmi,cmo,cmt}
-        ocamlc lib.cma
+  $ dune build lib.cma
 
 Interaction with `(include_subdirs)` when the dependencies are in the subtree:
 
@@ -143,7 +134,7 @@ Interaction with `(include_subdirs)` when the dependencies are in the subtree:
   >  (modules %{read-lines:gen/lst}))
   > EOF
 
-  $ dune build --display short
+  $ dune build lib.cma
   Error: Dependency cycle between:
      (modules) field at dune:2
   -> %{read-lines:gen/lst} at dune:5
@@ -165,13 +156,7 @@ Let's move the gen subdirectory out of the hierarchy:
   $ cp mod.ml lib
   $ cp mod2.ml lib/sub
 
-  $ dune build @lib/all --display short
-        ocamlc lib/.lib2.objs/byte/lib2.{cmi,cmo,cmt}
-      ocamldep lib/.lib2.objs/lib2__Mod.impl.d
-      ocamldep lib/.lib2.objs/lib2__Mod2.impl.d
-        ocamlc lib/.lib2.objs/byte/lib2__Mod.{cmi,cmo,cmt}
-        ocamlc lib/.lib2.objs/byte/lib2__Mod2.{cmi,cmo,cmt}
-        ocamlc lib/lib2.cma
+  $ dune build lib/lib2.cma
 
   $ rm -rf lib
 
@@ -204,10 +189,4 @@ Let's do one example with a generated source file:
 
   $ echo mod4 >gen/lst && rm -f gen/dune mod.ml mod2.ml
 
-  $ dune build --display short
-        ocamlc .lib.objs/byte/lib.{cmi,cmo,cmt}
-      ocamldep .lib.objs/lib__Mod3.impl.d
-      ocamldep .lib.objs/lib__Mod4.impl.d
-        ocamlc .lib.objs/byte/lib__Mod3.{cmi,cmo,cmt}
-        ocamlc .lib.objs/byte/lib__Mod4.{cmi,cmo,cmt}
-        ocamlc lib.cma
+  $ dune build lib.cma

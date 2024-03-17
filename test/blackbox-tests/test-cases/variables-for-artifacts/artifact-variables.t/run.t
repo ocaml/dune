@@ -13,15 +13,7 @@ directory.
 prefixed and unprefixed modules are built.
 
   $ dune clean
-  $ dune build --display short @t1
-      ocamldep .a1.objs/a1__A.impl.d
-        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
-        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
-      ocamldep .c2.objs/c2__D.impl.d
-        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-        ocamlc .c2.objs/byte/c2.{cmi,cmo,cmt}
-        ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
-        ocamlc .c2.objs/byte/c2__D.{cmi,cmo,cmt}
+  $ dune build @t1
 
 Command line version.
 
@@ -34,10 +26,7 @@ Command line version.
 The next test tries to build a .cmi file (of a module in a wrapped library).
 
   $ dune clean
-  $ dune build --display short @t2
-      ocamldep .a1.objs/a1__A.impl.d
-        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-        ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
+  $ dune build @t2
 
 Command line version.
 
@@ -55,13 +44,7 @@ Command line version; note that the error message is slightly different.
 The next test builds a native .cmxa.
 
   $ dune clean
-  $ dune build --display short @t4
-        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-      ocamldep .a1.objs/a1__A.impl.d
-      ocamlopt .a1.objs/native/a1.{cmx,o}
-        ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
-      ocamlopt .a1.objs/native/a1__A.{cmx,o}
-      ocamlopt a1.{a,cmxa}
+  $ dune build @t4
 
 Command line version.
 
@@ -80,11 +63,7 @@ This test tries to build a .cma in a subdirectory, where a different project is
 defined. The library is public in this case, but we use the local name.
 
   $ dune clean
-  $ dune build --display short @t6
-        ocamlc sub2/.bar2.objs/byte/bar2.{cmi,cmo,cmt}
-      ocamldep sub2/.bar2.objs/bar2__Y2.impl.d
-        ocamlc sub2/.bar2.objs/byte/bar2__Y2.{cmi,cmo,cmt}
-        ocamlc sub2/bar2.cma
+  $ dune build @t6
 
 Command line version.
 
@@ -95,10 +74,7 @@ Command line version.
 This test builds a .cmo in a subdirectory (same project).
 
   $ dune clean
-  $ dune build --display short @t7
-      ocamldep sub/.bar.objs/bar__X.impl.d
-        ocamlc sub/.bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc sub/.bar.objs/byte/bar__X.{cmi,cmo,cmt}
+  $ dune build @t7
 
 Command line version.
 
@@ -110,10 +86,7 @@ This test builds a module in a subdirectory (different project) belonging to a
 private library.
 
   $ dune clean
-  $ dune build --display short @t8
-      ocamldep sub3/.c1.objs/c1__X.impl.d
-        ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
-        ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
+  $ dune build @t8
 
 COmmand line version.
 
@@ -125,11 +98,7 @@ This test builds a private library in a subdirectory belonging to a different
 project.
 
   $ dune clean
-  $ dune build --display short @t9
-        ocamlc sub3/.c1.objs/byte/c1.{cmi,cmo,cmt}
-      ocamldep sub3/.c1.objs/c1__X.impl.d
-        ocamlc sub3/.c1.objs/byte/c1__X.{cmi,cmo,cmt}
-        ocamlc sub3/c1.cma
+  $ dune build @t9
 
 Command line version.
 
@@ -141,9 +110,7 @@ This test builds a library in the current directory that has the same name as a
 public library defined in a subdirectory.
 
   $ dune clean
-  $ dune build --display short @t10
-        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
-        ocamlc c1.cma
+  $ dune build @t10
 
 Command line version.
 
@@ -165,27 +132,9 @@ This test checks error handling.
 This test checks that everything still works if we invoke dune from a
 subdirectory.
 
-  $ (cd sub && dune build --display short %{cmx:x})
-      ocamldep .bar.objs/bar__X.impl.d
-        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc .bar.objs/byte/bar__X.{cmi,cmo,cmt}
-      ocamlopt .bar.objs/native/bar__X.{cmx,o}
+  $ (cd sub && dune build %{cmx:x})
 
 The following test checks that the variables can be used in the (action) field
 of a (rule).
 
-  $ dune build --display short _build/default/my.cmxs
-        ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
-      ocamldep .plugin.objs/plugin__X1.impl.d
-      ocamldep .plugin.objs/plugin__X2.impl.d
-      ocamldep .dummy.objs/dummy__X3.impl.d
-      ocamlopt .plugin.objs/native/plugin.{cmx,o}
-        ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
-        ocamlc .plugin.objs/byte/plugin__X2.{cmi,cmo,cmt}
-        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
-      ocamlopt .plugin.objs/native/plugin__X1.{cmx,o}
-      ocamlopt .plugin.objs/native/plugin__X2.{cmx,o}
-        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
-      ocamlopt plugin.{a,cmxa}
-      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
-      ocamlopt my.cmxs
+  $ dune build _build/default/my.cmxs

@@ -66,7 +66,7 @@ module DB = struct
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let (map : Found_or_redirect.t Lib_name.Map.t) =
+    let map =
       List.map stanzas ~f:(fun stanza ->
         match (stanza : Library_related_stanza.t) with
         | Library_redirect s ->
@@ -76,7 +76,10 @@ module DB = struct
           let old_public_name = Deprecated_library_name.old_public_name s in
           Found_or_redirect.deprecated_library_name old_public_name s.new_public_name
         | Library (dir, (conf : Library.t)) ->
-          let info = Library.to_lib_info conf ~dir ~lib_config |> Lib_info.of_local in
+          let info =
+            let expander = Expander0.get ~dir in
+            Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
+          in
           Library.best_name conf, Found_or_redirect.found info)
       |> Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
         let res =
@@ -121,26 +124,27 @@ module DB = struct
       ~parent:(Some parent)
       ~resolve:(fun name ->
         Memo.return
-          (match Lib_name.Map.find map name with
-           | None -> Lib.DB.Resolve_result.not_found
-           | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
-           | Some (Many libs) ->
-             let results =
-               List.map
-                 ~f:(function
-                   | Found_or_redirect.Redirect lib ->
-                     Lib.DB.Resolve_result.redirect_in_the_same_db lib
-                   | Found lib -> Lib.DB.Resolve_result.found lib
-                   | Deprecated_library_name lib ->
-                     Lib.DB.Resolve_result.deprecated_library_name lib
-                   | Many _ -> assert false)
-                 libs
-             in
-             Lib.DB.Resolve_result.multiple_results results
-           | Some (Deprecated_library_name lib) ->
-             Lib.DB.Resolve_result.deprecated_library_name lib
-           | Some (Found lib) -> Lib.DB.Resolve_result.found lib))
-      ~all:(fun () -> Lib_name.Map.keys map |> Memo.return)
+        @@
+        match Lib_name.Map.find map name with
+        | None -> Lib.DB.Resolve_result.not_found
+        | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
+        | Some (Found lib) -> Lib.DB.Resolve_result.found lib
+        | Some (Many libs) ->
+          let results =
+            List.map
+              ~f:(function
+                | Found_or_redirect.Redirect lib ->
+                  Lib.DB.Resolve_result.redirect_in_the_same_db lib
+                | Found lib -> Lib.DB.Resolve_result.found lib
+                | Deprecated_library_name lib ->
+                  Lib.DB.Resolve_result.deprecated_library_name lib
+                | Many _ -> assert false)
+              libs
+          in
+          Lib.DB.Resolve_result.multiple_results results
+        | Some (Deprecated_library_name lib) ->
+          Lib.DB.Resolve_result.deprecated_library_name lib)
+      ~all:(fun () -> Memo.return @@ Lib_name.Map.keys map)
       ~lib_config
       ~instrument_with
   ;;

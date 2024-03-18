@@ -141,6 +141,11 @@ module Special_file = struct
   ;;
 end
 
+type copy_kind =
+  | Plain (** Just copy the file. Can use fast paths through [Io.copy_file] *)
+  | Substitute (** Use [Artifact_substitution.copy_file]. Will scan all bytes. *)
+  | Special of Special_file.t (** Hooks to add version numbers, replace sections, etc *)
+
 type rmdir_mode =
   | Fail
   | Warn
@@ -151,7 +156,7 @@ module type File_operations = sig
     :  src:Path.t
     -> dst:Path.t
     -> executable:bool
-    -> special_file:Special_file.t option
+    -> kind:copy_kind
     -> package:Package.Name.t
     -> conf:Artifact_substitution.Conf.t
     -> unit Fiber.t
@@ -168,7 +173,7 @@ module File_ops_dry_run (Verbosity : sig
 
   let print_line fmt = print_line ~verbosity fmt
 
-  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~conf:_ =
+  let copy_file ~src ~dst ~executable ~kind:_ ~package:_ ~conf:_ =
     print_line
       "Copying %s to %s (executable: %b)"
       (Path.to_string_maybe_quoted src)
@@ -207,25 +212,22 @@ module File_ops_real (W : sig
     ; callback : ?version:string -> Format.formatter -> unit
     }
 
+  type copy_special_file_status =
+    | Done
+    | Use_plain_copy
+
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let open Fiber.O in
-    let plain_copy () =
-      (* CR-rgrinberg: we have fast paths for copying that we aren't making use
-         of here *)
-      seek_in ic 0;
-      Io.copy_channels ic oc;
-      Fiber.return ()
-    in
     match f ic with
-    | None -> plain_copy ()
+    | None -> Fiber.return Use_plain_copy
     (* XXX should we really be catching everything here? *)
     | exception _ ->
       User_warning.emit
         ~loc:(Loc.in_file src)
         [ Pp.text "Failed to parse file, not adding version and locations information." ];
-      plain_copy ()
+      Fiber.return Use_plain_copy
     | Some { need_version; callback } ->
-      let* version =
+      let+ version =
         if need_version
         then
           let* packages =
@@ -241,7 +243,7 @@ module File_ops_real (W : sig
       let ppf = Format.formatter_of_out_channel oc in
       callback ppf ?version;
       Format.pp_print_flush ppf ();
-      Fiber.return ()
+      Done
   ;;
 
   let process_meta ic =
@@ -336,29 +338,39 @@ module File_ops_real (W : sig
     ~src
     ~dst
     ~executable
-    ~special_file
+    ~kind
     ~package
     ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    match (special_file : Special_file.t option) with
-    | None -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
-    | Some sf ->
-      (* CR-rgrinberg: slow copying *)
+    let plain_copy () =
+      Io.copy_file ~chmod ~src ~dst ();
+      Fiber.return ()
+    in
+    match kind with
+    | Plain -> plain_copy ()
+    | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
+    | Special sf ->
+      let open Fiber.O in
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-      Fiber.finalize
-        ~finally:(fun () ->
-          Io.close_both (ic, oc);
-          Fiber.return ())
-        (fun () ->
-          let f =
-            match sf with
-            | META -> process_meta
-            | Dune_package ->
-              process_dune_package
-                ~get_location:(Artifact_substitution.Conf.get_location conf)
-          in
-          copy_special_file ~src ~package ~ic ~oc ~f)
+      let* status =
+        Fiber.finalize
+          ~finally:(fun () ->
+            Io.close_both (ic, oc);
+            Fiber.return ())
+          (fun () ->
+            let f =
+              match sf with
+              | META -> process_meta
+              | Dune_package ->
+                process_dune_package
+                  ~get_location:(Artifact_substitution.Conf.get_location conf)
+            in
+            copy_special_file ~src ~package ~ic ~oc ~f)
+      in
+      (match status with
+       | Done -> Fiber.return ()
+       | Use_plain_copy -> plain_copy ())
   ;;
 
   let remove_file_if_exists dst =
@@ -500,7 +512,12 @@ let install_entry
         (Path.to_string_maybe_quoted dst);
       Ops.mkdir_p dir;
       let executable = Section.should_set_executable_bit entry.section in
-      Ops.copy_file ~src:entry.src ~dst ~executable ~special_file ~package ~conf
+      let kind =
+        match special_file with
+        | Some special -> Special special
+        | None -> if executable then Substitute else Plain
+      in
+      Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf
     in
     Install.Entry.set_src entry dst
 ;;

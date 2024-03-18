@@ -516,12 +516,8 @@ And the opam file will be generated as expected
 
 And we we can run the tests:
 
-  $ dune runtest --root new_lib_proj --display short
+  $ dune runtest --root new_lib_proj
   Entering directory 'new_lib_proj'
-        ocamlc test/.test_new_lib_proj.eobjs/byte/dune__exe__Test_new_lib_proj.{cmi,cmti}
-      ocamlopt test/.test_new_lib_proj.eobjs/native/dune__exe__Test_new_lib_proj.{cmx,o}
-      ocamlopt test/test_new_lib_proj.exe
-  test_new_lib_proj alias test/runtest
   Leaving directory 'new_lib_proj'
 
 

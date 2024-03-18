@@ -761,7 +761,7 @@ let%expect_test "dynamic cycles with non-uniform cutoff structure" =
     printf "Started evaluating %s\n" which;
     let* base = Memo.exec base () in
     match base with
-    | input when input = 2 ->
+    | 2 as input ->
       let summit = Fdecl.get summit_fdecl in
       printf "Cycling to summit from %s...\n" which;
       let+ result = Memo.exec summit input in

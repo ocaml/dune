@@ -128,7 +128,10 @@ end = struct
            Memo.return (Library.to_lib_info lib ~dir ~lib_config)
          in
          let* enabled_in_context =
-           let* enabled = Lib_info.enabled lib_info in
+           let* enabled =
+             Lib_info.enabled
+               (lib_info ~expander:(Memo.return (Expander.to_expander0 expander)))
+           in
            match enabled with
            | Disabled_because_of_enabled_if -> Memo.return false
            | Normal | Optional -> Memo.return true

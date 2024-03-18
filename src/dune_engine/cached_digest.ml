@@ -235,9 +235,9 @@ let digest_path_with_stats ~allow_dirs path stats =
     Digest.path_with_stats ~allow_dirs path (Digest.Stats_for_digest.of_unix_stats stats)
   with
   | Ok digest -> Ok digest
-  | Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
-  | Unix_error (ENOENT, _, _) -> Error No_such_file
-  | Unix_error other_error -> Error (Unix_error other_error)
+  | Error Unexpected_kind -> Error (Digest_result.Error.Unexpected_kind stats.st_kind)
+  | Error (Unix_error (ENOENT, _, _)) -> Error No_such_file
+  | Error (Unix_error other_error) -> Error (Unix_error other_error)
 ;;
 
 let refresh ~allow_dirs stats path =

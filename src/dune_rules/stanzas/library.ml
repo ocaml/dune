@@ -166,10 +166,13 @@ let decode =
      and+ enabled_if =
        let open Enabled_if in
        let allowed_vars =
-         Only
-           (("context_name", (2, 8))
-            :: ("profile", (2, 5))
-            :: Lib_config.allowed_in_enabled_if)
+         if Dune_project.dune_version project >= (3, 15)
+         then Any
+         else
+           Only
+             (("context_name", (2, 8))
+              :: ("profile", (2, 5))
+              :: Lib_config.allowed_in_enabled_if)
        in
        decode ~allowed_vars ~since:(Some (1, 10)) ()
      and+ instrumentation_backend =
@@ -403,6 +406,7 @@ let main_module_name t : Lib_info.Main_module_name.t =
 
 let to_lib_info
   conf
+  ~expander
   ~dir
   ~lib_config:
     ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as lib_config)
@@ -475,19 +479,24 @@ let to_lib_info
   let name = best_name conf in
   let enabled =
     let+ enabled_if_result =
-      Blang_expand.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun ~source:_ pform ->
-        let+ value =
-          match pform with
-          | Var Context_name ->
-            let context, _ = Path.Build.extract_build_context_exn dir in
-            Memo.return context
-          | Var Profile ->
-            let context, _ = Path.Build.extract_build_context_exn dir in
-            let+ profile = Per_context.profile (Context_name.of_string context) in
-            Profile.to_string profile
-          | _ -> Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
-        in
-        [ Value.String value ])
+      let* expander = expander in
+      let* project = Expander0.project expander in
+      if Dune_project.dune_version project >= (3, 15)
+      then Expander0.eval_blang expander conf.enabled_if
+      else
+        Blang_expand.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun ~source:_ pform ->
+          let+ value =
+            match pform with
+            | Var Context_name ->
+              let context, _ = Path.Build.extract_build_context_exn dir in
+              Memo.return context
+            | Var Profile ->
+              let context, _ = Path.Build.extract_build_context_exn dir in
+              let+ profile = Per_context.profile (Context_name.of_string context) in
+              Profile.to_string profile
+            | _ -> Memo.return @@ Lib_config.get_for_enabled_if lib_config pform
+          in
+          [ Value.String value ])
     in
     if not enabled_if_result
     then Lib_info.Enabled_status.Disabled_because_of_enabled_if

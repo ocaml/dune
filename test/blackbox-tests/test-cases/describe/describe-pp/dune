@@ -1,0 +1,3 @@
+(cram
+ (applies_to describe-pp)
+ (deps %{bin:refmt}))

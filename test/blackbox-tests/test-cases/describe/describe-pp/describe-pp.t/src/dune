@@ -1,3 +1,3 @@
-(executable
- (name main)
+(executables
+ (names main main_re)
  (preprocess (action (run pp/pp.exe %{input-file}))))

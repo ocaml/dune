@@ -12,3 +12,8 @@ We also make sure that the dump file is not present
 
   $ dune_cmd exists profile.dump
   true
+
+This also works for reason code
+
+  $ dune describe pp src/main_re.re
+  ;;Util.log "Hello, world!"

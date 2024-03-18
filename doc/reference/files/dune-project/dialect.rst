@@ -65,3 +65,17 @@ dialect
       This field supports the same sub-fields as ``implementation``.
 
       .. versionchanged:: 3.9 This field is made optional.
+
+
+Default dialects
+----------------
+
+Dune ships with two dialects pre-configured and enabled:
+
+* ``ocaml`` for the default OCaml syntax which consumes `.ml` and `.mli` files
+  and uses ``ocamlformat`` for formatting.
+* ``reason`` for the Reason syntax and enabled in `.re`/`.rei` files. ``refmt``
+  is used for formatting.
+
+A third dialect, ``rescript``, is added when Melange support (see :doc:`/melange`)
+is enabled in the project.

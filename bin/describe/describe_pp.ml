@@ -1,17 +1,7 @@
 open Import
 
-let pp_with_ocamlc env ~ocamlc dialects pp_file =
+let pp_with_ocamlc env ~ocamlc pp_file dump_file =
   let open Dune_engine in
-  let dump_file =
-    Path.map_extension pp_file ~f:(fun ext ->
-      let dialect = Dune_rules.Dialect.DB.find_by_extension dialects ext in
-      match dialect with
-      | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-      | Some (_, (kind : Ocaml.Ml_kind.t)) ->
-        (match kind with
-         | Intf -> ".cmi.dump"
-         | Impl -> ".cmo.dump"))
-  in
   let open Fiber.O in
   let+ () =
     Process.run
@@ -29,6 +19,30 @@ let pp_with_ocamlc env ~ocamlc dialects pp_file =
     User_error.raise [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
 ;;
 
+let files_for_source file dialects =
+  let base, ext = Path.split_extension file in
+  let dialect, kind =
+    match Dune_rules.Dialect.DB.find_by_extension dialects ext with
+    | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+    | Some x -> x
+  in
+  let pp_file_base = Path.extend_basename base ~suffix:ext in
+  let pp_file =
+    match Dune_rules.Dialect.ml_suffix dialect kind with
+    | None -> pp_file_base
+    | Some suffix -> Path.extend_basename pp_file_base ~suffix
+  in
+  let dump_file =
+    Path.set_extension
+      pp_file
+      ~ext:
+        (match kind with
+         | Intf -> ".cmi.dump"
+         | Impl -> ".cmo.dump")
+  in
+  pp_file, dump_file
+;;
+
 let get_pped_file super_context file =
   let open Memo.O in
   let context = Super_context.context super_context in
@@ -44,9 +58,11 @@ let get_pped_file super_context file =
   Build_system.file_exists pp_file
   >>= function
   | true ->
-    let* () = Build_system.build_file pp_file in
-    let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-    Ok (project, pp_file)
+    let* project = Source_tree.root () >>| Source_tree.Dir.project in
+    let dialects = Dune_project.dialects project in
+    let pp_file, dump_file = files_for_source pp_file dialects in
+    let+ () = Build_system.build_file pp_file in
+    Ok (pp_file, dump_file)
   | false ->
     Build_system.file_exists file_in_build_dir
     >>= (function
@@ -100,14 +116,13 @@ let term =
   let* result = get_pped_file super_context file in
   match result with
   | Error file -> Io.cat file |> Memo.return
-  | Ok (project, file) ->
+  | Ok (pp_file, dump_file) ->
     let* ocamlc =
       let+ ocaml = Context.ocaml (Super_context.context super_context) in
       ocaml.ocamlc
     in
     let* env = Super_context.context_env super_context in
-    let dialects = Dune_project.dialects project in
-    pp_with_ocamlc env ~ocamlc dialects file |> Memo.of_non_reproducible_fiber
+    pp_with_ocamlc env ~ocamlc pp_file dump_file |> Memo.of_non_reproducible_fiber
 ;;
 
 let command =

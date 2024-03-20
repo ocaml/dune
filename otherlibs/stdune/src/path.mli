@@ -413,7 +413,13 @@ val rename : t -> t -> unit
     you need to modify existing permissions in a non-trivial way. *)
 val chmod : t -> mode:int -> unit
 
-(** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
+(** Attempts to resolve a symlink. Returns:
+
+    - [Ok path] with the resolved destination
+    - [Error Not_a_symlink] if the path isn't a symlink
+    - [Error Max_depth_exceeded] if the function reached the maximum symbolic
+      link depth
+    - [Error (Unix_error _)] with the underlying syscall error. *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any

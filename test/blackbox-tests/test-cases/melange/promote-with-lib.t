@@ -21,6 +21,7 @@ Test melange.emit promotion
   >  (alias dist)
   >  (modules hello)
   >  (promote (until-clean))
+  >  (emit_stdlib false)
   >  (target dist)
   >  (libraries mylib))
   > EOF
@@ -43,7 +44,6 @@ Targets are promoted to the source tree
   $ ls ./dist
   hello.js
   lib
-  node_modules
   $ ls ./dist/lib
   mylib.js
 
@@ -55,5 +55,4 @@ Targets are promoted to the source tree
   $ dune clean
   $ ls ./dist
   lib
-  node_modules
   $ ls ./dist/lib

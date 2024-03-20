@@ -10,6 +10,7 @@ Test (preprocess) field on melange.emit stanza
   >  (target output)
   >  (modules main)
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (preprocess
   >   (action
   >    (run cat %{input-file}))))

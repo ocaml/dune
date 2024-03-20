@@ -152,37 +152,62 @@ let js_targets_of_libs sctx libs ~module_systems ~target_dir =
         List.rev_append for_vlib base))
 ;;
 
-let build_js ~loc ~dir ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx ~includes m =
+let build_js
+  ~loc
+  ~dir
+  ~pkg_name
+  ~mode
+  ~module_systems
+  ~output
+  ~obj_dir
+  ~sctx
+  ~includes
+  ~local_modules
+  m
+  =
   let open Memo.O in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
-    let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
-    let output = make_js_name ~output ~js_ext m in
-    let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
-    let melange_package_args =
-      let pkg_name_args =
-        match pkg_name with
-        | None -> []
-        | Some pkg_name -> [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+    let build =
+      let command =
+        let src = Obj_dir.Module.cm_file_exn obj_dir m ~kind:(Melange Cmj) in
+        let output = make_js_name ~output ~js_ext m in
+        let obj_dir = [ Command.Args.A "-I"; Path (Obj_dir.melange_dir obj_dir) ] in
+        let melange_package_args =
+          let pkg_name_args =
+            match pkg_name with
+            | None -> []
+            | Some pkg_name -> [ "--bs-package-name"; Package.Name.to_string pkg_name ]
+          in
+          let js_modules_str = Melange.Module_system.to_string module_system in
+          "--bs-module-type" :: js_modules_str :: pkg_name_args
+        in
+        Command.run
+          ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
+          compiler
+          [ Command.Args.S obj_dir
+          ; Command.Args.as_any includes
+          ; As melange_package_args
+          ; A "-o"
+          ; Target output
+          ; Dep src
+          ]
       in
-      let js_modules_str = Melange.Module_system.to_string module_system in
-      "--bs-module-type" :: js_modules_str :: pkg_name_args
+      With_targets.map_build command ~f:(fun command ->
+        let open Action_builder.O in
+        let local_library_paths =
+          match local_modules with
+          | Some (modules, obj_dir) ->
+            let+ module_deps =
+              Dep_rules.immediate_deps_of m modules ~obj_dir ~ml_kind:Impl
+            in
+            List.map module_deps ~f:(fun dep_m ->
+              Obj_dir.Module.cm_file_exn obj_dir dep_m ~kind:(Melange Cmj) |> Path.build)
+          | None -> Action_builder.return []
+        in
+        Action_builder.dyn_paths_unit local_library_paths >>> command)
     in
-    Super_context.add_rule
-      sctx
-      ~dir
-      ~loc
-      ~mode
-      (Command.run
-         ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
-         compiler
-         [ Command.Args.S obj_dir
-         ; Command.Args.as_any includes
-         ; As melange_package_args
-         ; A "-o"
-         ; Target output
-         ; Dep src
-         ]))
+    Super_context.add_rule sctx ~dir ~loc ~mode build)
 ;;
 
 (* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
@@ -423,7 +448,18 @@ let setup_entries_js
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
-    build_js ~dir ~loc ~pkg_name ~mode ~module_systems ~output ~obj_dir ~sctx ~includes m)
+    build_js
+      ~dir
+      ~loc
+      ~pkg_name
+      ~mode
+      ~module_systems
+      ~output
+      ~obj_dir
+      ~sctx
+      ~includes
+      ~local_modules:None
+      m)
 ;;
 
 let setup_js_rules_libraries
@@ -451,12 +487,18 @@ let setup_js_rules_libraries
       let pkg_name = Lib_info.package info in
       build_js ~loc ~pkg_name ~obj_dir
     in
+    let output = output_of_lib ~target_dir lib in
     let* includes =
       let+ requires_link = Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info) in
       cmj_includes ~requires_link ~scope
-    in
-    let output = output_of_lib ~target_dir lib in
-    let* () =
+    and* local_modules =
+      match Lib.Local.of_lib lib with
+      | Some lib ->
+        let+ modules = Dir_contents.modules_of_local_lib sctx lib in
+        let obj_dir = Lib.Local.obj_dir lib in
+        Some (modules, obj_dir)
+      | None -> Memo.return None
+    and* () =
       setup_runtime_assets_rules
         sctx
         ~dir
@@ -498,10 +540,10 @@ let setup_js_rules_libraries
           cmj_includes ~requires_link ~scope
         in
         impl_only_modules_defined_in_this_lib sctx vlib
-        >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes)
+        >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes ~local_modules)
     in
     let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
-    Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~includes))
+    Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~local_modules ~includes))
 ;;
 
 let setup_js_rules_libraries_and_entries

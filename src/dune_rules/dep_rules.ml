@@ -129,7 +129,7 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
 (** Tests whether a set of modules is a singleton *)
 let has_single_file modules = Option.is_some @@ Modules.as_singleton modules
 
-let immediate_deps_of unit modules obj_dir ml_kind =
+let immediate_deps_of unit modules ~obj_dir ~ml_kind =
   match Module.kind unit with
   | Alias _ -> Action_builder.return []
   | Wrapped_compat ->

@@ -87,7 +87,7 @@ Melange shows the proper path to `bar.js`
 The import in `foo.js` has been updated to the new bar.js target
 
   $ cat _build/default/output/foo.js | grep bar.js
-  let Melange__Bar = require("./init/bar.js");
+  let Melange__Bar = require("./end/bar.js");
 
 The initial file is not there anymore
 

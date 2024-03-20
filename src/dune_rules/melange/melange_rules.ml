@@ -419,7 +419,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
-  modules_for_js, obj_dir
+  modules, modules_for_js, obj_dir
 ;;
 
 let setup_entries_js
@@ -433,7 +433,7 @@ let setup_entries_js
   (mel : Melange_stanzas.Emit.t)
   =
   let open Memo.O in
-  let* modules_for_js, obj_dir =
+  let* local_modules, modules_for_js, local_obj_dir =
     modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
   in
   let requires_link = Lib.Compile.requires_link compile_info in
@@ -443,11 +443,12 @@ let setup_entries_js
   let* requires_link = Memo.Lazy.force requires_link in
   let includes = cmj_includes ~requires_link ~scope in
   let output = `Private_library_or_emit target_dir in
-  let obj_dir = Obj_dir.of_local obj_dir in
+  let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
   in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
+    let local_modules = Some (local_modules, local_obj_dir) in
     build_js
       ~dir
       ~loc
@@ -458,7 +459,7 @@ let setup_entries_js
       ~obj_dir
       ~sctx
       ~includes
-      ~local_modules:None
+      ~local_modules
       m)
 ;;
 
@@ -599,7 +600,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
        package). When resolution fails, we replace the JS entries with the
        resolution error inside [Action_builder.fail] to give Dune a chance to
        fail if any of the targets end up attached to a package installation. *)
-    let* modules_for_js, _obj_dir =
+    let* _local_modules, modules_for_js, _obj_dir =
       modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
     in
     let module_systems = mel.module_systems in

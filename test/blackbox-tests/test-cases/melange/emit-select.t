@@ -24,6 +24,7 @@ using `(select ...)` in melange.emit
   > (melange.emit
   >  (target output)
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (libraries
   >   (select bar.ml from
   >    (melange -> bar.melange.ml)

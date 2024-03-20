@@ -8,6 +8,7 @@ Entry points should not allow mli only modules as entry points.
   $ cat >dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules_without_implementation foo)
   >  (alias mel))
   > EOF

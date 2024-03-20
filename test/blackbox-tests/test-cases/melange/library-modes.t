@@ -53,6 +53,7 @@ Now let's make the library compatible with melange
   > (melange.emit
   >  (alias dist)
   >  (modules main_melange)
+  >  (emit_stdlib false)
   >  (target dist)
   >  (libraries mylib))
   > EOF

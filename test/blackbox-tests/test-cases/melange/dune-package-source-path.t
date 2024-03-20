@@ -47,6 +47,7 @@ form `foo.bar.baz`
   > (melange.emit
   >  (target dist)
   >  (alias dist)
+  >  (emit_stdlib false)
   >  (libraries a.sub))
   > EOF
 

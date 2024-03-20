@@ -11,6 +11,7 @@ into the melange.emit target folder
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (alias mel))
   > EOF
 
@@ -25,6 +26,7 @@ Now try copying a file
   $ cat > src/dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (alias mel))
   > 
   > (subdir

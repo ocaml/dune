@@ -8,6 +8,7 @@ Test what happens when melange.emit stanza depends on non-Melange libraries
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main_melange)
   >  (libraries foo))
   > (executable

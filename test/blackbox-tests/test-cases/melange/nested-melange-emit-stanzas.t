@@ -9,21 +9,24 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   > (melange.emit
   >  (target output)
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (module_systems commonjs))
   > EOF
   $ cat > a/output/b/dune <<EOF
   > (melange.emit
   >  (target output)
   >  (alias mel)
+  >  (emit_stdlib false)
   >  (module_systems commonjs))
   > EOF
 
   $ dune build @mel
-  File "a/output/b/dune", line 1, characters 0-71:
+  File "a/output/b/dune", line 1, characters 0-92:
   1 | (melange.emit
   2 |  (target output)
   3 |  (alias mel)
-  4 |  (module_systems commonjs))
+  4 |  (emit_stdlib false)
+  5 |  (module_systems commonjs))
   Error: melange.emit stanzas cannot be nested
   - a/dune:1
   - a/output/b/dune:1

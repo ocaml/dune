@@ -46,6 +46,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   > (melange.emit
   >  (target "$target")
   >  (compile_flags :standard -mel-g )
+  >  (emit_stdlib false)
   >  (modules main))
   > EOF
 

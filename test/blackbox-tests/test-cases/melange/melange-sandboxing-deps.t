@@ -30,7 +30,4 @@ Show missing dependency in Melange when sandboxing is enabled
   > EOF
 
   $ dune build @mel
-  File "_none_", line 1:
-  Error: Foo__Bar not found, it means either the module does not exist or it is a namespace
-  [1]
 

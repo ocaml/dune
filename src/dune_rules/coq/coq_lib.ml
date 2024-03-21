@@ -334,7 +334,7 @@ module DB = struct
 
   type t =
     { parent : t option
-    ; resolve : Coq_lib_name.t -> t Resolve_result.t
+    ; resolve : Coq_lib_name.t -> t Resolve_result.t Memo.t
     ; boot_id : Id.t option
     }
 
@@ -546,14 +546,17 @@ module DB = struct
         | Not_found
     end
 
-    let rec find coq_db name : Resolve_result_no_redirect.t =
-      match coq_db.resolve name with
-      | Theory (db, dir, stanza) -> Theory (db, dir, stanza)
-      | Legacy_theory cp -> Legacy_theory cp
+    let rec find coq_db name : Resolve_result_no_redirect.t Memo.t =
+      let open Memo.O in
+      let* resolved = coq_db.resolve name in
+      match resolved with
+      | Theory (db, dir, stanza) ->
+        Memo.return (Resolve_result_no_redirect.Theory (db, dir, stanza))
+      | Legacy_theory cp -> Memo.return (Resolve_result_no_redirect.Legacy_theory cp)
       | Redirect coq_db -> find coq_db name
       | Not_found ->
         (match coq_db.parent with
-         | None -> Not_found
+         | None -> Memo.return Resolve_result_no_redirect.Not_found
          | Some parent -> find parent name)
     ;;
 
@@ -566,28 +569,36 @@ module DB = struct
         | Not_found
     end
 
-    let find coq_db ~coq_lang_version name : Resolve_final_result.t =
-      match find coq_db name with
-      | Not_found -> Not_found
+    let find coq_db ~coq_lang_version name : Resolve_final_result.t Memo.t =
+      let open Memo.O in
+      let* found = find coq_db name in
+      match found with
+      | Not_found -> Memo.return Resolve_final_result.Not_found
       | Theory (mldb, dir, stanza) when coq_lang_version >= (0, 4) ->
-        Found_stanza (mldb, dir, stanza)
-      | Legacy_theory cp when coq_lang_version >= (0, 8) -> Found_path cp
-      | Legacy_theory cp when Coq_path.stdlib cp -> Found_path cp
-      | Legacy_theory _ -> Hidden LackOfInstalledComposition
+        Memo.return (Resolve_final_result.Found_stanza (mldb, dir, stanza))
+      | Legacy_theory cp when coq_lang_version >= (0, 8) ->
+        Memo.return (Resolve_final_result.Found_path cp)
+      | Legacy_theory cp when Coq_path.stdlib cp ->
+        Memo.return (Resolve_final_result.Found_path cp)
+      | Legacy_theory _ ->
+        Memo.return (Resolve_final_result.Hidden LackOfInstalledComposition)
       | Theory (mldb, dir, stanza) ->
-        (match coq_db.resolve name with
-         | Not_found -> Hidden LackOfTheoryComposition
-         | Theory _ | Redirect _ | Legacy_theory _ -> Found_stanza (mldb, dir, stanza))
+        let+ resolved = coq_db.resolve name in
+        (match resolved with
+         | Not_found -> Resolve_final_result.Hidden LackOfTheoryComposition
+         | Theory _ | Redirect _ | Legacy_theory _ ->
+           Resolve_final_result.Found_stanza (mldb, dir, stanza))
     ;;
 
     (** Our final final resolve is used externally, and should return the
         library data found from the previous iterations. *)
     let resolve coq_db ~coq_lang_version (loc, name) =
-      match find coq_db ~coq_lang_version name with
+      let open Memo.O in
+      let* found = find coq_db ~coq_lang_version name in
+      match found with
       | Not_found -> Error.theory_not_found ~loc name
       | Hidden reason -> Error.hidden_without_composition ~loc ~reason name
       | Found_stanza (db, dir, stanza) ->
-        let open Memo.O in
         let+ theory = create_from_stanza coq_db db dir stanza in
         let open Resolve.O in
         let* (_ : (Loc.t * Lib.t) list) = theory.libraries in
@@ -628,6 +639,7 @@ module DB = struct
     ~find_db
     (entries : (Coq_stanza.Theory.t * Entry.t) list)
     =
+    let open Memo.O in
     let boot_id = select_boot_id entries in
     let map =
       match
@@ -648,13 +660,15 @@ module DB = struct
         let id2 = Id.create ~path:(path entry2) ~name:theory2.name in
         Error.duplicate_theory_name id1 id2
     in
-    let resolve name : t Resolve_result.t =
+    let resolve name : t Resolve_result.t Memo.t =
       match Coq_lib_name.Map.find map name with
-      | None -> Not_found
+      | None -> Memo.return Resolve_result.Not_found
       | Some (theory, entry) ->
         (match entry with
-         | Theory dir -> Theory (find_db dir, dir, theory)
-         | Redirect db -> Redirect db)
+         | Theory dir ->
+           let+ db = find_db dir in
+           Resolve_result.Theory (db, dir, theory)
+         | Redirect db -> Memo.return (Resolve_result.Redirect db))
     in
     { boot_id; resolve; parent }
   ;;
@@ -683,10 +697,10 @@ module DB = struct
          precedence. This is in line with Coq semantics. *)
       |> Coq_lib_name.Map.of_list_reducei ~f:(fun _name _cp1 cp2 -> cp2)
     in
-    let resolve name : t Resolve_result.t =
+    let resolve name : t Resolve_result.t Memo.t =
       match Coq_lib_name.Map.find map name with
-      | None -> Not_found
-      | Some cp -> Legacy_theory cp
+      | None -> Memo.return Resolve_result.Not_found
+      | Some cp -> Memo.return (Resolve_result.Legacy_theory cp)
     in
     { parent; resolve; boot_id }
   ;;

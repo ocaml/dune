@@ -407,9 +407,9 @@ module Valid = struct
             let* vendored = Source_tree.is_vendored (Dune_project.root proj) in
             if vendored
             then Memo.return (libs_acc, pkg_acc)
-            else (
-              let lib_db =
-                let scope = find proj in
+            else
+              let* lib_db =
+                let+ scope = find proj in
                 Scope.libs scope
               in
               let+ libs_acc =
@@ -436,7 +436,7 @@ module Valid = struct
                 in
                 pkgs @ pkg_acc
               in
-              libs_acc, pkg_acc)))
+              libs_acc, pkg_acc))
       in
       let* libs, packages = libs_and_pkgs in
       let+ libs_list =

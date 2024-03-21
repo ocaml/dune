@@ -20,7 +20,7 @@ type 'old_name t =
   }
 
 module Local : sig
-  type nonrec t = (Loc.t * Lib_name.Local.t) t
+  type nonrec t = Library.t t
 
   include Stanza.S with type t := t
 

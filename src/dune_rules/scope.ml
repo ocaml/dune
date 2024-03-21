@@ -15,7 +15,7 @@ let coq_libs t = Memo.Lazy.force t.coq_db
 
 module DB = struct
   type scope = t
-  type t = { by_dir : scope Path.Source.Map.t }
+  type t = { by_dir : scope Memo.t Path.Source.Map.t }
 
   let find_by_dir t dir = Find_closest_source_dir.find_by_dir t.by_dir ~dir
 
@@ -25,78 +25,110 @@ module DB = struct
 
   module Found_or_redirect : sig
     type t = private
-      | Found of Lib_info.external_
-      | Redirect of (Loc.t * Lib_name.t)
+      | Found of (Toggle.t * Lib_info.external_)
+      | Redirect of (Toggle.t * (Loc.t * Lib_name.t))
 
-    val redirect : Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
-    val found : Lib_info.external_ -> t
+    val redirect : enabled:Toggle.t -> Lib_name.t -> Loc.t * Lib_name.t -> Lib_name.t * t
+    val found : enabled:Toggle.t -> Lib_info.external_ -> t
   end = struct
     type t =
-      | Found of Lib_info.external_
-      | Redirect of (Loc.t * Lib_name.t)
+      | Found of (Toggle.t * Lib_info.external_)
+      | Redirect of (Toggle.t * (Loc.t * Lib_name.t))
 
-    let redirect from (loc, to_) =
+    let redirect ~enabled from (loc, to_) =
       if Lib_name.equal from to_
       then Code_error.raise ~loc "Invalid redirect" [ "to_", Lib_name.to_dyn to_ ]
-      else from, Redirect (loc, to_)
+      else from, Redirect (enabled, (loc, to_))
     ;;
 
-    let found x = Found x
+    let found ~enabled x = Found (enabled, x)
   end
 
   module Library_related_stanza = struct
     type t =
       | Library of Path.Build.t * Library.t
-      | Library_redirect of Library_redirect.Local.t
+      | Library_redirect of Path.Build.t * Library_redirect.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let map =
+    let+ map =
       List.map stanzas ~f:(fun stanza ->
         match (stanza : Library_related_stanza.t) with
-        | Library_redirect s ->
-          let old_public_name = Lib_name.of_local s.old_name in
-          Found_or_redirect.redirect old_public_name s.new_public_name
+        | Library_redirect (dir, s) ->
+          let old_public_name = Lib_name.of_local s.old_name.name in
+          let info =
+            let expander = Expander0.get ~dir in
+            Library.to_lib_info s.old_name ~expander ~dir ~lib_config |> Lib_info.of_local
+          in
+          let* enabled =
+            let+ enabled = Lib_info.enabled info in
+            match enabled with
+            | Disabled_because_of_enabled_if -> `Disabled
+            | Normal | Optional -> `Enabled
+          in
+          Memo.return
+            (Found_or_redirect.redirect ~enabled old_public_name s.new_public_name)
         | Deprecated_library_name s ->
           let old_public_name = Deprecated_library_name.old_public_name s in
-          Found_or_redirect.redirect old_public_name s.new_public_name
+          Memo.return
+            (Found_or_redirect.redirect
+               ~enabled:`Enabled
+               old_public_name
+               s.new_public_name)
         | Library (dir, (conf : Library.t)) ->
           let info =
             let expander = Expander0.get ~dir in
             Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
           in
-          Library.best_name conf, Found_or_redirect.found info)
-      |> Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
-        let res =
-          match v1, v2 with
-          | Found info1, Found info2 -> Error (Lib_info.loc info1, Lib_info.loc info2)
-          | Found info, Redirect (loc, _) | Redirect (loc, _), Found info ->
-            Error (loc, Lib_info.loc info)
-          | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
-            if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
-        in
-        match res with
-        | Ok x -> x
-        | Error (loc1, loc2) ->
-          let main_message =
-            Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+          let* enabled =
+            let+ enabled = Lib_info.enabled info in
+            match enabled with
+            | Disabled_because_of_enabled_if -> `Disabled
+            | Normal | Optional -> `Enabled
           in
-          let annots =
-            let main = User_message.make ~loc:loc2 [ main_message ] in
-            let related =
-              [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
-            in
-            User_message.Annots.singleton
-              Compound_user_error.annot
-              [ Compound_user_error.make ~main ~related ]
-          in
-          User_error.raise
-            ~annots
-            [ main_message
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-            ])
+          Memo.return (Library.best_name conf, Found_or_redirect.found ~enabled info))
+      |> Memo.List.map ~f:Fun.id
+      |> Memo.map
+           ~f:
+             (Lib_name.Map.of_list_reducei ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
+                let res =
+                  match v1, v2 with
+                  | ( (Redirect (`Enabled, _) | Found (`Enabled, _))
+                    , (Redirect (`Disabled, _) | Found (`Disabled, _)) ) -> Ok v1
+                  | ( (Redirect (`Disabled, _) | Found (`Disabled, _))
+                    , (Redirect (`Enabled, _) | Found (`Enabled, _)) ) -> Ok v2
+                  | Found (_, info1), Found (_, info2) ->
+                    Error (Lib_info.loc info1, Lib_info.loc info2)
+                  | Found (_, info), Redirect (_, (loc, _))
+                  | Redirect (_, (loc, _)), Found (_, info) ->
+                    Error (loc, Lib_info.loc info)
+                  | Redirect (`Enabled, (loc1, lib1)), Redirect (`Enabled, (loc2, lib2))
+                    -> if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
+                  | Redirect (`Disabled, (loc1, lib1)), Redirect (`Disabled, (loc2, lib2))
+                    -> if Lib_name.equal lib1 lib2 then Ok v1 else Error (loc1, loc2)
+                in
+                match res with
+                | Ok x -> x
+                | Error (loc1, loc2) ->
+                  let main_message =
+                    Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+                  in
+                  let annots =
+                    let main = User_message.make ~loc:loc2 [ main_message ] in
+                    let related =
+                      [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+                    in
+                    User_message.Annots.singleton
+                      Compound_user_error.annot
+                      [ Compound_user_error.make ~main ~related ]
+                  in
+                  User_error.raise
+                    ~annots
+                    [ main_message
+                    ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                    ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                    ]))
     in
     Lib.DB.create
       ()
@@ -106,8 +138,8 @@ module DB = struct
         @@
         match Lib_name.Map.find map name with
         | None -> Lib.DB.Resolve_result.not_found
-        | Some (Redirect lib) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
-        | Some (Found lib) -> Lib.DB.Resolve_result.found lib)
+        | Some (Redirect (_, lib)) -> Lib.DB.Resolve_result.redirect_in_the_same_db lib
+        | Some (Found (_, lib)) -> Lib.DB.Resolve_result.found lib)
       ~all:(fun () -> Memo.return @@ Lib_name.Map.keys map)
       ~lib_config
       ~instrument_with
@@ -117,13 +149,13 @@ module DB = struct
     | Project of Dune_project.t
     | Name of (Loc.t * Lib_name.t)
 
-  let resolve t public_libs name : Lib.DB.Resolve_result.t =
+  let resolve t public_libs name : Lib.DB.Resolve_result.t Memo.t =
     match Lib_name.Map.find public_libs name with
-    | None -> Lib.DB.Resolve_result.not_found
+    | None -> Memo.return Lib.DB.Resolve_result.not_found
     | Some (Project project) ->
-      let scope = find_by_project (Fdecl.get t) project in
+      let+ scope = find_by_project (Fdecl.get t) project in
       Lib.DB.Resolve_result.redirect scope.db (Loc.none, name)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
+    | Some (Name name) -> Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db name)
   ;;
 
   let public_theories ~find_db ~installed_theories coq_stanzas =
@@ -181,7 +213,7 @@ module DB = struct
              ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
              ])
     in
-    let resolve lib = Memo.return (resolve t public_libs lib) in
+    let resolve lib = resolve t public_libs lib in
     Lib.DB.create
       ~parent:(Some installed_libs)
       ~resolve
@@ -200,7 +232,10 @@ module DB = struct
       |> Path.Source.Map.of_list_multi
     in
     let parent = Some public_theories in
-    let find_db dir = snd (Find_closest_source_dir.find_by_dir db_by_project_dir ~dir) in
+    let find_db dir =
+      let+ db = Find_closest_source_dir.find_by_dir db_by_project_dir ~dir in
+      snd db
+    in
     Path.Source.Map.merge
       projects_by_dir
       coq_stanzas_by_project_dir
@@ -233,7 +268,7 @@ module DB = struct
         let project =
           match stanza with
           | Library (_, lib) -> lib.project
-          | Library_redirect x -> x.project
+          | Library_redirect (_, x) -> x.project
           | Deprecated_library_name x -> x.project
         in
         Dune_project.root project, stanza)
@@ -248,7 +283,8 @@ module DB = struct
           let stanzas = Option.value stanzas ~default:[] in
           Some (project, stanzas))
       |> Path.Source.Map.map ~f:(fun (project, stanzas) ->
-        let db =
+        let* public_libs = public_libs in
+        let+ db =
           create_db_from_stanzas stanzas ~instrument_with ~parent:public_libs ~lib_config
         in
         project, db)
@@ -260,7 +296,8 @@ module DB = struct
     let coq_db_find dir =
       Memo.Lazy.map coq_scopes_by_dir ~f:(fun x -> Path.Source.Map.find_exn x dir)
     in
-    Path.Source.Map.mapi db_by_project_dir ~f:(fun dir (project, db) ->
+    Path.Source.Map.mapi db_by_project_dir ~f:(fun dir project_db ->
+      let+ project, db = project_db in
       let root = Path.Build.append_source build_dir (Dune_project.root project) in
       let coq_db = coq_db_find dir in
       { project; db; coq_db; root })
@@ -276,7 +313,7 @@ module DB = struct
       ocaml.lib_config
     in
     let instrument_with = Context.instrument_with context in
-    let+ public_libs =
+    let public_libs =
       let+ installed_libs = Lib.DB.installed context in
       public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
     in
@@ -304,7 +341,7 @@ module DB = struct
     in
     let value = { by_dir } in
     Fdecl.set t value;
-    value, public_libs
+    Memo.return (value, public_libs)
   ;;
 
   let create_from_stanzas ~projects_by_root ~(context : Context_name.t) stanzas =
@@ -319,7 +356,9 @@ module DB = struct
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
           | Deprecated_library_name.T d -> Deprecated_library_name d :: acc, coq_acc
-          | Library_redirect.Local.T d -> Library_redirect d :: acc, coq_acc
+          | Library_redirect.Local.T d ->
+            let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
+            Library_redirect (ctx_dir, d) :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             acc, (ctx_dir, coq_lib) :: coq_acc
@@ -347,18 +386,18 @@ module DB = struct
   ;;
 
   let public_libs context =
-    let+ _, public_libs = create_from_stanzas context in
+    let* _, public_libs = create_from_stanzas context in
     public_libs
   ;;
 
   let find_by_dir dir =
     let* context = Context.DB.by_dir dir in
-    let+ scopes, _ = create_from_stanzas (Context.name context) in
+    let* scopes, _ = create_from_stanzas (Context.name context) in
     find_by_dir scopes dir
   ;;
 
   let find_by_project context project =
-    let+ scopes, _ = create_from_stanzas context in
+    let* scopes, _ = create_from_stanzas context in
     find_by_project scopes project
   ;;
 

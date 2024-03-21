@@ -8,7 +8,7 @@ type 'old_name t =
   }
 
 module Local = struct
-  type nonrec t = (Loc.t * Lib_name.Local.t) t
+  type nonrec t = Library.t t
 
   include Stanza.Make (struct
       type nonrec t = t
@@ -17,7 +17,7 @@ module Local = struct
     end)
 
   let for_lib (lib : Library.t) ~new_public_name ~loc : t =
-    { loc; new_public_name; old_name = lib.name; project = lib.project }
+    { loc; new_public_name; old_name = lib; project = lib.project }
   ;;
 
   let of_private_lib (lib : Library.t) : t option =

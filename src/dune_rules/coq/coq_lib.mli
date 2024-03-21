@@ -68,7 +68,7 @@ module DB : sig
       in [resolve_*] below and properly memoized. *)
   val create_from_coqlib_stanzas
     :  parent:t option
-    -> find_db:(Path.Build.t -> Lib.DB.t)
+    -> find_db:(Path.Build.t -> Lib.DB.t Memo.t)
     -> (Coq_stanza.Theory.t * Entry.t) list
     -> t
 

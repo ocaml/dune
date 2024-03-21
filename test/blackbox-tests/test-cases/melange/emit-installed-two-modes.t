@@ -47,6 +47,7 @@ Test dependency on installed package
   > (melange.emit
   >  (target dist)
   >  (alias dist)
+  >  (emit_stdlib false)
   >  (libraries a))
   > EOF
 
@@ -73,6 +74,7 @@ Test dependency on installed package
   > (melange.emit
   >  (target dist)
   >  (alias dist)
+  >  (emit_stdlib false)
   >  (libraries a))
   > EOF
 

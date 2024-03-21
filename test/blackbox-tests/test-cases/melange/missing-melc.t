@@ -22,13 +22,12 @@ For melange.emit stanzas, an error is shown
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main_melange)
   >  (alias mel))
   > EOF
 
   $ (unset INSIDE_DUNE; PATH=_path dune build --always-show-command-line --root . @mel 2>&1 | grep Program)
-  Error: Program melc not found in the tree or in PATH
-  Error: Program melc not found in the tree or in PATH
   Error: Program melc not found in the tree or in PATH
 
 For libraries, if no melange.emit stanza is found, build does not fail
@@ -72,6 +71,7 @@ If melange.emit stanza is found, but no rules are executed, build does not fail
   >  (libraries lib1))
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main_melange)
   >  (libraries lib1))
   > EOF

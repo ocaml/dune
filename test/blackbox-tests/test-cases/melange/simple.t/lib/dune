@@ -7,4 +7,5 @@
  (target simple)
  (alias mel)
  (modules x)
+ (emit_stdlib false)
  (libraries lib))

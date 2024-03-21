@@ -111,11 +111,28 @@ end = struct
       let+ () = Toplevel.Stanza.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
+      let* lib_info =
+        let* ocaml =
+          let ctx = Super_context.context sctx in
+          Context.ocaml ctx
+        in
+        let lib_config = ocaml.lib_config in
+        Memo.return (Library.to_lib_info lib ~dir ~lib_config)
+      in
+      let* enabled_in_context =
+        let* enabled =
+          Lib_info.enabled
+            (lib_info ~expander:(Memo.return (Expander.to_expander0 expander)))
+        in
+        match enabled with
+        | Disabled_because_of_enabled_if -> Memo.return false
+        | Normal | Optional -> Memo.return true
+      in
+      let* available = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
       if_available_buildable
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
-        enabled_if
+        (enabled_in_context && available)
     | Foreign.Library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->

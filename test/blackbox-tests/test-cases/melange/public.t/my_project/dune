@@ -2,4 +2,5 @@
  (target output)
  (modules c)
  (alias mel)
+ (emit_stdlib false)
  (libraries app))

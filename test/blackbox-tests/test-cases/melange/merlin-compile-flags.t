@@ -25,6 +25,7 @@ Show that the merlin config knows about melange.compile_flags
   $ cat >dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (compile_flags :standard -w +42 ))
   > EOF
 

@@ -38,24 +38,62 @@ Melange shows the proper path to `bar.js`
   let Foo__Bar = require("./init/bar.js");
 
   $ mv lib/init lib/end
-
   $ dune build @mel
 
-The import in `foo.js` still shows the initial path to `bar.js`, but the file is not there anymore
+The import in `foo.js` has been updated to the new bar.js target
 
   $ cat _build/default/output/lib/foo.js | grep bar.js
-  let Foo__Bar = require("./init/bar.js");
+  let Foo__Bar = require("./end/bar.js");
+
+The initial file is not there anymore
 
   $ test -f _build/default/output/lib/init/bar.js
   [1]
 
+But the new one is
+
   $ test -f _build/default/output/lib/end/bar.js
 
-After removal of the js artifact, the path in `bar.js` import is correct
+Now try the same thing with `melange.emit`
 
-  $ rm _build/default/output/lib/foo.js
+  $ rm -rf lib
+  $ cat > dune <<EOF
+  > (include_subdirs unqualified)
+  > (melange.emit
+  >  (target output)
+  >  (alias mel)
+  >  (emit_stdlib false)
+  >  (preprocess (pps melange.ppx)))
+  > EOF
+
+  $ mkdir init
+  $ cat > init/bar.ml <<EOF
+  > let name = "Zoe"
+  > EOF
+  $ cat > foo.ml <<EOF
+  > let name = Bar.name
+  > EOF
 
   $ dune build @mel
 
-  $ cat _build/default/output/lib/foo.js | grep bar.js
-  let Foo__Bar = require("./end/bar.js");
+Melange shows the proper path to `bar.js`
+
+  $ cat _build/default/output/foo.js | grep bar.js
+  let Melange__Bar = require("./init/bar.js");
+
+  $ mv init end
+  $ dune build @mel
+
+The import in `foo.js` has been updated to the new bar.js target
+
+  $ cat _build/default/output/foo.js | grep bar.js
+  let Melange__Bar = require("./end/bar.js");
+
+The initial file is not there anymore
+
+  $ test -f _build/default/output/init/bar.js
+  [1]
+
+But the new one is
+
+  $ test -f _build/default/output/end/bar.js

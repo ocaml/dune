@@ -206,6 +206,7 @@ module File_ops_real (W : sig
   let print_line = print_line ~verbosity
   let get_vcs p = Dune_rules.Vcs_db.nearest_vcs p
 
+  (* CR-emillon rework this API or at least remove the optional argument *)
   type load_special_file_result =
     { need_version : bool
     ; callback : ?version:string -> Format.formatter -> unit

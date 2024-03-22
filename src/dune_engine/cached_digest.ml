@@ -1,5 +1,15 @@
 open Import
 
+let round f =
+    if false then
+  let scale = 0.02 in
+  let r = Stdlib.Float.round (f /. scale) *. scale in
+  (*printfn "%.2f -> %.2f" f r;*)
+  r
+    else
+        f
+;;
+
 module Reduced_stats = struct
   type t =
     { mtime : float
@@ -12,7 +22,7 @@ module Reduced_stats = struct
   ;;
 
   let of_unix_stats (stats : Unix.stats) =
-    { mtime = stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
+    { mtime = round stats.st_mtime; size = stats.st_size; perm = stats.st_perm }
   ;;
 
   let compare { mtime; size; perm } t =
@@ -90,9 +100,12 @@ let cache =
 ;;
 
 let get_current_filesystem_time () =
-  let special_path = Path.relative Path.build_dir ".filesystem-clock" in
-  Io.write_file special_path "<dummy>";
-  (Path.Untracked.stat_exn special_path).st_mtime
+  match Sys.getenv_opt "DUNE_FS_CLOCK" with
+  | Some s -> Float.of_string s |> Option.value_exn
+  | None ->
+    let special_path = Path.relative Path.build_dir ".filesystem-clock" in
+    Io.write_file special_path "<dummy>";
+    (Path.Untracked.stat_exn special_path).st_mtime |> round
 ;;
 
 let wait_for_fs_clock_to_advance () =

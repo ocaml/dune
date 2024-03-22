@@ -30,11 +30,6 @@ file after any dialects have run
   > let name = "Zoe"
   > EOF
   $ dune build @mel
-  Error: ocamldep returned unexpected output for _build/default/lib/foo.myd:
-  > lib/foo.myd.ml: Bar
-  -> required by _build/default/output/lib/foo.js
-  -> required by alias mel
-  [1]
 
 Now try preprocessing too
 
@@ -46,12 +41,3 @@ Now try preprocessing too
   >  (modes melange))
   > EOF
   $ dune build @mel
-  Error: ocamldep returned unexpected output for _build/default/lib/bar.ml:
-  > lib/bar.pp.ml:
-  -> required by _build/default/output/lib/bar.js
-  -> required by alias mel
-  Error: ocamldep returned unexpected output for _build/default/lib/foo.myd.ml:
-  > lib/foo.pp.myd.ml: Bar
-  -> required by _build/default/output/lib/foo.js
-  -> required by alias mel
-  [1]

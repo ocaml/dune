@@ -40,8 +40,21 @@ let make_js_name ~js_ext ~output m =
     Path.Build.relative dst_dir basename
 ;;
 
-let impl_only_modules_defined_in_this_lib sctx lib =
-  let+ modules = Dir_contents.modules_of_lib sctx lib in
+let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
+  let* ocaml = Context.ocaml (Super_context.context sctx) in
+  let version = ocaml.version in
+  let* preprocess =
+    Resolve.Memo.read_memo
+      (Preprocess.Per_module.with_instrumentation
+         preprocess
+         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let pped_map = Staged.unstage (Preprocessing.pped_modules_map preprocess version) in
+  Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
+;;
+
+let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
+  let* modules = Dir_contents.modules_of_lib sctx lib in
   match modules with
   | None ->
     User_error.raise
@@ -52,8 +65,12 @@ let impl_only_modules_defined_in_this_lib sctx lib =
           (Lib.name lib |> Lib_name.to_string)
       ]
   | Some modules ->
+    let info = Lib.info lib in
+    let+ modules =
+      let preprocess = Lib_info.preprocess info in
+      modules_in_obj_dir ~sctx ~scope ~preprocess modules
+    in
     let () =
-      let info = Lib.info lib in
       let modes = Lib_info.modes info in
       match modes.melange with
       | false ->
@@ -69,8 +86,9 @@ let impl_only_modules_defined_in_this_lib sctx lib =
           ]
       | true -> ()
     in
-    (* for a virtual library,this will return all modules *)
-    (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl)
+    ( modules
+    , (* for a virtual library, this will return all modules *)
+      (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl) )
 ;;
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
@@ -133,11 +151,11 @@ let js_targets_of_modules modules ~module_systems ~output =
   |> Path.Set.union_all
 ;;
 
-let js_targets_of_libs sctx libs ~module_systems ~target_dir =
+let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
     let open Memo.O in
     let of_lib lib =
-      let+ modules = impl_only_modules_defined_in_this_lib sctx lib in
+      let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
       let output = output_of_lib ~target_dir lib in
       List.rev_map modules ~f:(fun m -> Path.build @@ make_js_name ~output ~js_ext m)
     in
@@ -302,7 +320,7 @@ let setup_emit_cmj_rules
             @@
             let open Resolve.Memo.O in
             Compilation_context.requires_link cctx
-            >>= js_targets_of_libs sctx ~module_systems ~target_dir
+            >>= js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir
           in
           Action_builder.paths deps
         in
@@ -403,18 +421,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
   in
-  let+ modules =
-    let* ocaml = Context.ocaml (Super_context.context sctx) in
-    let version = ocaml.version in
-    let* preprocess =
-      Resolve.Memo.read_memo
-        (Preprocess.Per_module.with_instrumentation
-           mel.preprocess
-           ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
-    in
-    let pped_map = Staged.unstage (Preprocessing.pped_modules_map preprocess version) in
-    Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
-  in
+  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
   let modules_for_js =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)
@@ -463,88 +470,96 @@ let setup_entries_js
       m)
 ;;
 
-let setup_js_rules_libraries
-  ~dir
-  ~scope
-  ~target_dir
-  ~sctx
-  ~requires_link
-  ~mode
-  (mel : Melange_stanzas.Emit.t)
-  =
-  let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
-  Memo.parallel_iter requires_link ~f:(fun lib ->
-    let open Memo.O in
-    let lib_compile_info =
-      Lib.Compile.for_lib
-        ~allow_overlaps:mel.allow_overlapping_dependencies
-        (Scope.libs scope)
-        lib
-    in
-    let info = Lib.info lib in
-    let loc = Lib_info.loc info in
-    let build_js =
-      let obj_dir = Lib_info.obj_dir info in
-      let pkg_name = Lib_info.package info in
-      build_js ~loc ~pkg_name ~obj_dir
-    in
-    let output = output_of_lib ~target_dir lib in
-    let* includes =
-      let+ requires_link = Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info) in
-      cmj_includes ~requires_link ~scope
-    and* local_modules =
-      match Lib.Local.of_lib lib with
-      | Some lib ->
-        let+ modules = Dir_contents.modules_of_local_lib sctx lib in
-        let obj_dir = Lib.Local.obj_dir lib in
-        Some (modules, obj_dir)
-      | None -> Memo.return None
-    and* () =
-      setup_runtime_assets_rules
-        sctx
-        ~dir
-        ~target_dir
-        ~mode
-        ~output
-        ~for_:(`Library info)
-        mel
-    in
-    let* () =
-      match Lib.implements lib with
-      | None -> Memo.return ()
-      | Some vlib ->
-        let* vlib = Resolve.Memo.read_memo vlib in
-        let* includes =
-          let+ requires_link =
-            let+ requires_link =
-              Lib.Compile.for_lib
-                ~allow_overlaps:mel.allow_overlapping_dependencies
-                (Scope.libs scope)
-                vlib
-              |> Lib.Compile.requires_link
-              |> Memo.Lazy.force
-            in
-            let open Resolve.O in
-            let+ requires_link = requires_link in
-            (* Whenever a `concrete_lib` implementation contains a field
-               `(implements virt_lib)`, we also set up the JS targets for the
-               modules defined in `virt_lib`.
-
-               In the cases where `virt_lib` (concrete) modules depend on any
-               virtual modules (i.e. programming against the interface), we
-               need to make sure that the JS rules that dune emits for
-               `virt_lib` depend on `concrete_lib`, such that Melange can find
-               the correct `.cmj` file, which is needed to emit the correct
-               path in `import` / `require`. *)
-            lib :: requires_link
-          in
-          cmj_includes ~requires_link ~scope
+let setup_js_rules_libraries =
+  let local_modules ~lib modules =
+    Lib.Local.of_lib lib
+    |> Option.map ~f:(fun lib ->
+      let obj_dir = Lib.Local.obj_dir lib in
+      modules, obj_dir)
+  in
+  fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
+    let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
+    Memo.parallel_iter requires_link ~f:(fun lib ->
+      let open Memo.O in
+      let lib_compile_info =
+        Lib.Compile.for_lib
+          ~allow_overlaps:mel.allow_overlapping_dependencies
+          (Scope.libs scope)
+          lib
+      in
+      let info = Lib.info lib in
+      let loc = Lib_info.loc info in
+      let build_js =
+        let obj_dir = Lib_info.obj_dir info in
+        let pkg_name = Lib_info.package info in
+        build_js ~loc ~pkg_name ~obj_dir
+      in
+      let output = output_of_lib ~target_dir lib in
+      let* includes =
+        let+ requires_link =
+          Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
         in
-        impl_only_modules_defined_in_this_lib sctx vlib
-        >>= Memo.parallel_iter ~f:(build_js ~dir ~output ~includes ~local_modules)
-    in
-    let* source_modules = impl_only_modules_defined_in_this_lib sctx lib in
-    Memo.parallel_iter source_modules ~f:(build_js ~dir ~output ~local_modules ~includes))
+        cmj_includes ~requires_link ~scope
+      and* () =
+        setup_runtime_assets_rules
+          sctx
+          ~dir
+          ~target_dir
+          ~mode
+          ~output
+          ~for_:(`Library info)
+          mel
+      in
+      let* () =
+        match Lib.implements lib with
+        | None -> Memo.return ()
+        | Some vlib ->
+          let* vlib = Resolve.Memo.read_memo vlib in
+          let* includes =
+            let+ requires_link =
+              let+ requires_link =
+                Lib.Compile.for_lib
+                  ~allow_overlaps:mel.allow_overlapping_dependencies
+                  (Scope.libs scope)
+                  vlib
+                |> Lib.Compile.requires_link
+                |> Memo.Lazy.force
+              in
+              let open Resolve.O in
+              let+ requires_link = requires_link in
+              (* Whenever a `concrete_lib` implementation contains a field
+                 `(implements virt_lib)`, we also set up the JS targets for the
+                 modules defined in `virt_lib`.
+
+                 In the cases where `virt_lib` (concrete) modules depend on any
+                 virtual modules (i.e. programming against the interface), we
+                 need to make sure that the JS rules that dune emits for
+                 `virt_lib` depend on `concrete_lib`, such that Melange can find
+                 the correct `.cmj` file, which is needed to emit the correct
+                 path in `import` / `require`. *)
+              lib :: requires_link
+            in
+            cmj_includes ~requires_link ~scope
+          in
+          let* local_modules, source_modules =
+            let+ lib_modules, source_modules =
+              impl_only_modules_defined_in_this_lib ~sctx ~scope vlib
+            in
+            local_modules ~lib:vlib lib_modules, source_modules
+          in
+          Memo.parallel_iter
+            source_modules
+            ~f:(build_js ~dir ~output ~includes ~local_modules)
+      in
+      let* local_modules, source_modules =
+        let+ lib_modules, source_modules =
+          impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+        in
+        local_modules ~lib lib_modules, source_modules
+      in
+      Memo.parallel_iter
+        source_modules
+        ~f:(build_js ~dir ~output ~local_modules ~includes))
 ;;
 
 let setup_js_rules_libraries_and_entries

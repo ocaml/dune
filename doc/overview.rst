@@ -8,7 +8,6 @@ Overview
 
    - info on the index page
    - :doc:`glossary`
-   - :doc:`reference/files`
    - a history page that could also explain the various actors
 
 Introduction
@@ -101,7 +100,7 @@ Terminology
 
    build context
      A specific configuration written in a
-     :doc:`/reference/files/dune-workspace/index` file, which has a
+     :doc:`/reference/dune-workspace/index` file, which has a
      corresponding subdirectory in the ``<root>/_build`` directory. It contains
      all the workspace's build artifacts. Without this specific configuration
      from the user, there is always a ``default`` build context that
@@ -126,7 +125,7 @@ Terminology
      it. Inside a scope, each directory inherits the environment from its
      parent. At the root of every scope, a default environment is used. At any
      point, the environment can be altered using an
-     :doc:`/reference/files/dune/env` stanza.
+     :doc:`/reference/dune/env` stanza.
 
    build profile
      A global setting that influences various defaults. It can be set from the

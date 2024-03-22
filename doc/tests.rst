@@ -636,7 +636,7 @@ access their contents in the test script ``run.t``:
      $ wc -l $(ls bar) | awk '{ print $1 }'
      1231
 
-.. seealso:: :doc:`(cram) stanza reference </reference/files/dune/cram>`
+.. seealso:: :doc:`(cram) stanza reference </reference/dune/cram>`
 
 Testing an OCaml Program
 ------------------------

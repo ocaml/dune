@@ -92,7 +92,7 @@ val visibility : t -> Visibility.t
 val encode : t -> src_dir:Path.t -> Dune_lang.t list
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t
 
-(** [pped m] return [m] but with the preprocessed source paths paths *)
+(** [pped m] return [m] but with the preprocessed source paths *)
 val pped : t -> t
 
 (** [ml_source m] returns [m] but with the OCaml syntax source paths *)

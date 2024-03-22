@@ -24,43 +24,53 @@ source code.
 
 The following constructions are available:
 
-.. toctree::
-   :caption: Running commands
+.. grid:: 1 1 2 2
 
-   run
-   system
-   bash
-   dynamic-run
-   chdir
-   setenv
-   with-accepted-exit-codes
+  .. grid-item::
+  
+    .. toctree::
+       :caption: Running commands
+    
+       run
+       system
+       bash
+       dynamic-run
+       chdir
+       setenv
+       with-accepted-exit-codes
 
-.. toctree::
-   :caption: Input and output
+  .. grid-item::
 
-   echo
-   with-outputs-to
-   with-stdin-from
-   ignore-outputs
-   cat
-   copy
-   copy#
-   write-file
-   pipe-outputs
+    .. toctree::
+       :caption: Input and output
+    
+       echo
+       with-outputs-to
+       with-stdin-from
+       ignore-outputs
+       cat
+       copy
+       copy#
+       write-file
+       pipe-outputs
 
-.. toctree::
-   :caption: Comparing files
+  .. grid-item::
 
-   diff
-   diffq
-   cmp
+    .. toctree::
+       :caption: Comparing files
+    
+       diff
+       diffq
+       cmp
 
-.. toctree::
-   :caption: Control structures
+  .. grid-item::
 
-   progn
-   concurrent
-   no-infer
+    .. toctree::
+       :caption: Control structures
+    
+       progn
+       concurrent
+       no-infer
 
 Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the DSL being executed. So for instance, if you

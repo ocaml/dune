@@ -44,8 +44,8 @@ let parse_compilation_units ~modules =
     |> Option.map ~f:Modules.Sourced_module.to_module)
 ;;
 
-let parse_deps_exn ~file lines =
-  let invalid () =
+let parse_deps_exn =
+  let invalid file lines =
     User_error.raise
       [ Pp.textf
           "ocamldep returned unexpected output for %s:"
@@ -55,15 +55,16 @@ let parse_deps_exn ~file lines =
              Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
       ]
   in
-  match lines with
-  | [] | _ :: _ :: _ -> invalid ()
-  | [ line ] ->
-    (match String.lsplit2 line ~on:':' with
-     | None -> invalid ()
-     | Some (basename, deps) ->
-       let basename = Filename.basename basename in
-       if basename <> Path.basename file then invalid ();
-       String.extract_blank_separated_words deps)
+  fun ~file lines ->
+    match lines with
+    | [] | _ :: _ :: _ -> invalid file lines
+    | [ line ] ->
+      (match String.lsplit2 line ~on:':' with
+       | None -> invalid file lines
+       | Some (basename, deps) ->
+         let basename = Filename.basename basename in
+         if basename <> Path.basename file then invalid file lines;
+         String.extract_blank_separated_words deps)
 ;;
 
 let transitive_deps =

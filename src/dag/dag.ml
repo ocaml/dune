@@ -1,5 +1,18 @@
 open! Stdune
+
 include Dag_intf
+
+module Node = struct
+  type t =
+    { id : Id.t
+    ; mutable mark : int
+    ; mutable level : int
+    ; mutable deps : t list
+    ; mutable rev_deps : t list
+    ; mutable parent : t Option.Unboxed.t
+    ; value : Value.t
+    }
+end
 
 module Make (Value : Value) () : S with type value := Value.t = struct
   (* Raw_graph here should have the same complexity than the assumed interface
@@ -8,23 +21,11 @@ module Make (Value : Value) () : S with type value := Value.t = struct
   module Raw_graph = struct
     type mark = int
     type graph = unit
-
     module Id = Id.Make ()
-
-    type node =
-      { id : Id.t
-      ; mutable mark : mark
-      ; mutable level : int
-      ; mutable deps : node list
-      ; mutable rev_deps : node list
-      ; mutable parent : node Option.Unboxed.t
-      ; value : Value.t
-      }
-
+    type node = Node.t
     type vertex = node
 
     let node_id { id; _ } = id
-
     let new_mark =
       let fresh_mark = ref 0 in
       fun () ->
@@ -45,17 +46,18 @@ module Make (Value : Value) () : S with type value := Value.t = struct
     let get_parent _ v = Option.Unboxed.value_exn v.parent
     let set_parent _ v p = v.parent <- Option.Unboxed.some p
     let raw_add_edge _ v w = v.deps <- w :: v.deps
-    let raw_add_vertex _ _ = ()
+    let raw_add_vertex _ () = ()
   end
 
   include Raw_graph
+
   module IC = Incremental_cycles.Make (Raw_graph)
 
   exception Cycle of node list
 
   let create_node value =
     let id = Id.gen () in
-    { id
+    { Node.id
     ; mark = -1
     ; level = 1
     ; deps = []
@@ -94,7 +96,7 @@ module Make (Value : Value) () : S with type value := Value.t = struct
         pp_value
         n.value
         (pp_depth (depth + 1) pp_value
-         |> Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@, "))
+        |> Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ";@, "))
         n.deps
   ;;
 

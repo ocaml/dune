@@ -26,7 +26,7 @@ the description of an opam switch, as follows:
 
 - ``(env <env>)`` sets the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
-  field has the same options as the :doc:`/reference/files/dune/env` stanza.
+  field has the same options as the :doc:`/reference/dune/env` stanza.
 
 - ``(toolchain <findlib_toolchain>)`` sets a ``findlib`` toolchain for the
   context.

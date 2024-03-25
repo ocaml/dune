@@ -145,7 +145,7 @@ looking for the root; however, if a `dune-project` file is found both parent
 
 A ``dune-workspace`` file is also a configuration file. Dune will read it
 unless the ``--workspace`` command line option is used. See
-:doc:`/reference/files/dune-workspace/index` for the syntax of this file. The
+:doc:`/reference/dune-workspace/index` for the syntax of this file. The
 scope of ``dune-project`` files is wider than the scope ``dune-workspace``
 files. For instance, a ``dune-project`` file may specify the name of the
 project which is a universal property of the project, while a
@@ -437,7 +437,7 @@ command:
 This command takes a list of package names to install.  If no packages
 are specified, Dune will install all available packages in the
 workspace.  When several build contexts are specified via a
-:doc:`/reference/files/dune-workspace/index` file, Dune performs the
+:doc:`/reference/dune-workspace/index` file, Dune performs the
 installation in all the build contexts.
 
 Destination Directory

@@ -65,6 +65,6 @@ For instance:
 This states that this library explicitly re-exports the interface of
 ``foo``. Concretely, when something depends on ``bar``, it will also
 be able to see ``foo`` independently of whether :doc:`implicit
-transitive dependencies<files/dune-project/implicit_transitive_deps>` are
+transitive dependencies<dune-project/implicit_transitive_deps>` are
 allowed or not. When they are allowed, which is the default, all transitive
 dependencies are visible, whether they are marked as re-exported or not.

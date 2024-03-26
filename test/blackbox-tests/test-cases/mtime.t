@@ -18,5 +18,5 @@ x2
   >   dune clean
   >   printf old-value > x
   >   dune build --auto-promote >/dev/null 2>&1
-  >   dune build --wait-for-fs-clock-to-advance
+  >   dune build --wait-for-filesystem-clock
   > done) 2>&1 |grep -c Error

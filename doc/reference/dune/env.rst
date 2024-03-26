@@ -71,7 +71,7 @@ Fields supported in ``<settings>`` are:
 
 - ``(formatting <settings>)`` allows the user to set auto-formatting in the
   current directory subtree (see
-  :doc:`/reference/files/dune-project/formatting`).
+  :doc:`/reference/dune-project/formatting`).
 
 - ``(bin_annot <bool>)`` allows the user to specify whether to generate `*.cmt`
   and `*.cmti` in the current directory subtree.

@@ -14,7 +14,7 @@ First, let's open the ``dune-project`` file. Make sure that the version
 specified in ``(lang dune X.Y)`` is at least ``2.0``. Most formatting
 configuration happens in that file. If you want to format OCaml sources and
 ``dune`` files, you don't have anything to add. Otherwise, refer to the
-:doc:`/reference/files/dune-project/formatting` stanza.
+:doc:`/reference/dune-project/formatting` stanza.
 
 Next we need to install some code formatting tools. For OCaml code, this means
 installing OCamlFormat_ with ``opam install ocamlformat``. Formatting ``dune``

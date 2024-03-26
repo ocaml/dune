@@ -55,4 +55,4 @@ you can use the following stanza:
 
 Starting from Dune 2.9, it's possible to automatically generate empty interface
 files for test executables. See
-:doc:`/reference/files/dune-project/executables_implicit_empty_intf`.
+:doc:`/reference/dune-project/executables_implicit_empty_intf`.

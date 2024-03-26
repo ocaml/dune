@@ -97,51 +97,35 @@ module DB = struct
           ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
           ~f:(fun (libname_map, id_map, library_id_map) (dir, stanza) ->
             let name, library_id, r2 =
+              let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
               match (stanza : Library_related_stanza.t) with
               | Library_redirect s ->
-                let old_public_name = Lib_name.of_local s.old_name.lib_name in
-                let enabled =
-                  Memo.lazy_ (fun () ->
-                    let open Memo.O in
-                    let* expander = Expander0.get ~dir in
-                    let+ enabled = Expander0.eval_blang expander s.old_name.enabled in
-                    Toggle.of_bool enabled)
-                in
                 let lib_name, redirect =
-                  Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
-                in
-                let library_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
+                  let old_public_name = Lib_name.of_local s.old_name.lib_name in
+                  let enabled =
+                    Memo.lazy_ (fun () ->
+                      let+ enabled =
+                        let* expander = Expander0.get ~dir in
+                        Expander0.eval_blang expander s.old_name.enabled
+                      in
+                      Toggle.of_bool enabled)
                   in
-                  Library_redirect.Local.to_library_id ~src_dir s
-                in
+                  Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
+                and library_id = Library_redirect.Local.to_library_id ~src_dir s in
                 lib_name, library_id, redirect
               | Deprecated_library_name s ->
-                let old_public_name = Deprecated_library_name.old_public_name s in
                 let lib_name, deprecated_lib =
+                  let old_public_name = Deprecated_library_name.old_public_name s in
                   Found_or_redirect.deprecated_library_name
                     old_public_name
                     s.new_public_name
-                in
-                let library_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
-                  in
-                  Deprecated_library_name.to_library_id ~src_dir s
-                in
+                and library_id = Deprecated_library_name.to_library_id ~src_dir s in
                 lib_name, library_id, deprecated_lib
               | Library (conf : Library.t) ->
                 let info =
                   let expander = Expander0.get ~dir in
                   Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
-                in
-                let library_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
-                  in
-                  Library.to_library_id ~src_dir conf
-                in
+                and library_id = Library.to_library_id ~src_dir conf in
                 Library.best_name conf, library_id, Found_or_redirect.found info
             in
             let libname_map' =
@@ -190,15 +174,13 @@ module DB = struct
             and id_map' =
               let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
               Lib_name.Map.update id_map name ~f:(fun library_ids ->
-                let library_ids =
-                  match
-                    Option.map library_ids ~f:(fun library_ids ->
-                      Lib_info.Library_id.Set.add library_ids library_id)
-                  with
-                  | None -> Lib_info.Library_id.Set.singleton library_id
-                  | Some s -> s
-                in
-                Some library_ids)
+                Some
+                  (match
+                     Option.map library_ids ~f:(fun library_ids ->
+                       Lib_info.Library_id.Set.add library_ids library_id)
+                   with
+                   | None -> Lib_info.Library_id.Set.singleton library_id
+                   | Some s -> s))
             and library_id_map' =
               Lib_info.Library_id.Map.add_exn library_id_map library_id r2
             in
@@ -272,16 +254,11 @@ module DB = struct
                 Some (Public_lib.name p, Project { project; library_id }, library_id)
               | Library _ | Library_redirect _ -> None
               | Deprecated_library_name s ->
-                let library_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
-                  in
-                  Deprecated_library_name.to_library_id ~src_dir s
-                in
+                let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
                 Some
                   ( Deprecated_library_name.old_public_name s
                   , Name s.new_public_name
-                  , library_id )
+                  , Deprecated_library_name.to_library_id ~src_dir s )
             in
             match candidate with
             | None -> libname_map, id_map, library_id_map
@@ -322,12 +299,13 @@ module DB = struct
               and id_map' =
                 let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
                 Lib_name.Map.update id_map public_name ~f:(fun library_ids ->
-                  match
-                    Option.map library_ids ~f:(fun library_ids ->
-                      Lib_info.Library_id.Set.add library_ids library_id)
-                  with
-                  | None -> Some (Lib_info.Library_id.Set.singleton library_id)
-                  | Some s -> Some s)
+                  Some
+                    (match
+                       Option.map library_ids ~f:(fun library_ids ->
+                         Lib_info.Library_id.Set.add library_ids library_id)
+                     with
+                     | None -> Lib_info.Library_id.Set.singleton library_id
+                     | Some s -> s))
               and library_id_map' =
                 Lib_info.Library_id.Map.add_exn library_id_map library_id r2
               in

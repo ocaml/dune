@@ -456,8 +456,7 @@ let modules_of_local_lib sctx lib =
     let dir = Lib_info.src_dir info in
     get sctx ~dir
   in
-  let library_id = Lib_info.library_id info in
-  ocaml t >>| Ml_sources.modules ~for_:(Library library_id)
+  ocaml t >>| Ml_sources.modules ~for_:(Library (Lib_info.library_id info))
 ;;
 
 let modules_of_lib sctx lib =

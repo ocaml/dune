@@ -332,11 +332,8 @@ let make_lib_modules
       let open Memo.O in
       let* resolved =
         let* libs = libs in
-        let library_id =
-          let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-          Library.to_library_id ~src_dir lib
-        in
-        Lib.DB.find_library_id_even_when_hidden libs library_id
+        let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+        Lib.DB.find_library_id_even_when_hidden libs (Library.to_library_id ~src_dir lib)
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn

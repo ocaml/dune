@@ -340,15 +340,14 @@ end = struct
         then
           if lib.optional
           then (
-            let library_id =
-              let src_dir =
-                Expander.dir expander
-                |> Path.build
-                |> Path.drop_optional_build_context_src_exn
-              in
-              Library.to_library_id ~src_dir lib
+            let src_dir =
+              Expander.dir expander
+              |> Path.build
+              |> Path.drop_optional_build_context_src_exn
             in
-            Lib.DB.available_by_library_id (Scope.libs scope) library_id)
+            Lib.DB.available_by_library_id
+              (Scope.libs scope)
+              (Library.to_library_id ~src_dir lib))
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true

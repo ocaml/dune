@@ -645,13 +645,10 @@ let library_rules
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in
   let* local_lib, compile_info =
-    let library_id =
-      let src_dir = Path.Build.drop_build_context_exn dir in
-      Library.to_library_id ~src_dir lib
-    in
+    let src_dir = Path.Build.drop_build_context_exn dir in
     Lib.DB.get_compile_info
       (Scope.libs scope)
-      library_id
+      (Library.to_library_id ~src_dir lib)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
   let local_lib = Lib.Local.of_lib_exn local_lib in

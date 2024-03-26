@@ -53,4 +53,11 @@ module Local = struct
       let loc = fst public_name in
       Some (for_lib lib ~loc ~new_public_name:public_name))
   ;;
+
+  let to_library_id ~src_dir t =
+    let lib_name = Lib_name.of_local t.old_name.lib_name
+    and loc = t.loc
+    and enabled_if = t.old_name.enabled in
+    Lib_info.Library_id.make ~loc ~src_dir ~enabled_if lib_name
+  ;;
 end

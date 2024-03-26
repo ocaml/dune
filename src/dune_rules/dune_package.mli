@@ -42,7 +42,7 @@ end
 module Entry : sig
   type t =
     | Library of Lib.t
-    | Deprecated_library_name of Path.t * Deprecated_library_name.t
+    | Deprecated_library_name of Deprecated_library_name.t
     | Hidden_library of Lib.t
     (** Only for external libraries that:
 

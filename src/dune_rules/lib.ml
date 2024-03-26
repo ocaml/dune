@@ -1978,7 +1978,7 @@ module DB = struct
         Findlib.find findlib name
         >>| function
         | Ok (Library pkg) -> Resolve_result (Found (Dune_package.Lib.info pkg))
-        | Ok (Deprecated_library_name (_, d)) ->
+        | Ok (Deprecated_library_name d) ->
           Resolve_result (Redirect_in_the_same_db (d.loc, d.new_public_name))
         | Ok (Hidden_library pkg) ->
           Resolve_result (Hidden (Hidden.unsatisfied_exist_if pkg))

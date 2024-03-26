@@ -628,7 +628,7 @@ end = struct
             (Some
                ( old_public_name
                , Dune_package.Entry.Deprecated_library_name
-                   (Path.build pkg_root, { loc; old_public_name; new_public_name }) ))
+                   { loc; old_public_name; new_public_name } ))
         | Library (sentinel, lib) ->
           let info = Lib.Local.info lib in
           let dir = Lib_info.src_dir info in
@@ -766,7 +766,7 @@ end = struct
                     acc
                     old_public_name
                     (Dune_package.Entry.Deprecated_library_name
-                       (dir, { loc; old_public_name; new_public_name })))
+                       { loc; old_public_name; new_public_name }))
           in
           let sections = sections ctx.name [] pkg in
           { Dune_package.version = Package.version pkg

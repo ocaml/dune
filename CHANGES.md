@@ -1,10 +1,3 @@
-Unreleased
-----------
-
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.  
-
 3.15.0~alpha1 (2024-03-26)
 --------------------------
 

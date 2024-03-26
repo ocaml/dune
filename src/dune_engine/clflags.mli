@@ -11,18 +11,11 @@ val capture_outputs : bool ref
 (** Always print backtraces, to help debugging dune itself *)
 val debug_backtraces : bool -> unit
 
-(** Print debug info for cached digests *)
-val debug_digests : bool ref
-
 (** Print debug info for cached file-system operations *)
 val debug_fs_cache : bool ref
 
 (** Print debug info when loading rules in directories *)
 val debug_load_dir : bool ref
-
-(** Wait for the filesystem clock to advance rather than dropping cached digest
-    entries *)
-val wait_for_filesystem_clock : bool ref
 
 (** Command to use to diff things *)
 val diff_command : string option ref

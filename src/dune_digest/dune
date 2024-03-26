@@ -1,6 +1,6 @@
 (library
  (name dune_digest)
- (libraries dune_metrics stdune unix)
+ (libraries dune_metrics dune_stats dune_console dune_util stdune unix)
  (foreign_stubs
   (names dune_digest_stubs)
   (language c))

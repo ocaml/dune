@@ -92,7 +92,7 @@ let cache =
 let get_current_filesystem_time () =
   let special_path = Path.relative Path.build_dir ".filesystem-clock" in
   Io.write_file special_path "<dummy>";
-  (Path.Untracked.stat_exn special_path).st_mtime
+  (Path.stat_exn special_path).st_mtime
 ;;
 
 let wait_for_fs_clock_to_advance () =
@@ -176,7 +176,7 @@ let set_with_stat path digest stat =
 let set path digest =
   (* the caller of [set] ensures that the files exist *)
   let path = Path.build path in
-  let stat = Path.Untracked.stat_exn path in
+  let stat = Path.stat_exn path in
   set_with_stat path digest stat
 ;;
 
@@ -260,12 +260,12 @@ let catch_fs_errors f =
 (* Here we make only one [stat] call on the happy path. *)
 let refresh_without_removing_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.Untracked.stat_exn path with
+    match Path.stat_exn path with
     | stats -> refresh stats ~allow_dirs path
     | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
     | exception Unix.Unix_error (ENOENT, _, _) ->
       (* Test if this is a broken symlink for better error messages. *)
-      (match Path.Untracked.lstat_exn path with
+      (match Path.lstat_exn path with
        | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
        | _stats_so_must_be_a_symlink -> Error Broken_symlink))
 ;;
@@ -277,12 +277,12 @@ let refresh_without_removing_write_permissions ~allow_dirs path =
    here, e.g., by telling the subsequent [chmod] to not follow symlinks. *)
 let refresh_and_remove_write_permissions ~allow_dirs path =
   catch_fs_errors (fun () ->
-    match Path.Untracked.lstat_exn path with
+    match Path.lstat_exn path with
     | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
     | stats ->
       (match stats.st_kind with
        | S_LNK ->
-         (match Path.Untracked.stat_exn path with
+         (match Path.stat_exn path with
           | stats -> refresh stats ~allow_dirs:false path
           | exception Unix.Unix_error (ELOOP, _, _) -> Error Cyclic_symlink
           | exception Unix.Unix_error (ENOENT, _, _) -> Error Broken_symlink)
@@ -314,7 +314,7 @@ let peek_file ~allow_dirs path =
        then Ok x.digest
        else (
          (* The [stat_exn] below follows symlinks. *)
-         match Path.Untracked.stat_exn path with
+         match Path.stat_exn path with
          | exception Unix.Unix_error (ELOOP, _, _) ->
            Error Digest_result.Error.Cyclic_symlink
          | exception Unix.Unix_error (ENOENT, _, _) -> Error No_such_file
@@ -374,9 +374,12 @@ let remove path =
 ;;
 
 module Untracked = struct
-  let source_or_external_file = peek_or_refresh_file ~allow_dirs:false
+  let source_or_external_file path =
+    peek_or_refresh_file ~allow_dirs:false (Path.outside_build_dir path)
+  ;;
 
   let invalidate_cached_timestamp path =
+    let path = Path.outside_build_dir path in
     let cache = Lazy.force cache in
     match Path.Table.find cache.table path with
     | None -> ()

@@ -16,11 +16,11 @@ include struct
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion
-  module Cached_digest = Cached_digest
   module Targets = Targets
   module Context_name = Context_name
 end
 
+module Cached_digest = Dune_digest.Cached_digest
 module Execution_env = Dune_util.Execution_env
 
 include struct

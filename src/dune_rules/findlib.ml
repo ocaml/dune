@@ -207,10 +207,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     in
     let modules = Lib_info.Source.External None in
     let name = t.name in
-    let sentinel =
-      let enabled_if = Blang.true_ in
-      Lib_info.Sentinel.external_ ~loc ~src_dir ~enabled_if name
-    in
+    let sentinel = Lib_info.Sentinel.external_ ~loc ~src_dir name in
     Lib_info.create
       ~loc
       ~path_kind:External

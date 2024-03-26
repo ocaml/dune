@@ -231,9 +231,7 @@ module Lib = struct
        let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
-         let sentinel =
-           Lib_info.Sentinel.external_ ~loc ~src_dir ~enabled_if:Blang.true_ name
-         in
+         let sentinel = Lib_info.Sentinel.external_ ~loc ~src_dir name in
          let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with

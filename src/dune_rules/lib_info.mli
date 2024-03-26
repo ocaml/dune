@@ -95,7 +95,7 @@ module Sentinel : sig
 
   val equal : t -> t -> bool
   val make : loc:Loc.t -> src_dir:Path.Source.t -> enabled_if:Blang.t -> Lib_name.t -> t
-  val external_ : loc:Loc.t -> src_dir:Path.t -> enabled_if:Blang.t -> Lib_name.t -> t
+  val external_ : loc:Loc.t -> src_dir:Path.t -> Lib_name.t -> t
   val name : t -> Lib_name.t
   val loc : t -> Loc.t
   val to_dyn : t -> Dyn.t

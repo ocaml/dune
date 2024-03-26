@@ -324,7 +324,7 @@ module Sentinel = struct
   include T
   include Comparable.Make (T)
 
-  let external_ ~loc ~src_dir ~enabled_if name = { name; loc; enabled_if; src_dir }
+  let external_ ~loc ~src_dir name = { name; loc; enabled_if = Blang.true_; src_dir }
 
   let make ~loc ~src_dir ~enabled_if name =
     let src_dir = Path.source src_dir in

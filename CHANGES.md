@@ -5,6 +5,69 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.15.0~alpha1 (2024-03-26)
+--------------------------
+
+### Added
+
+- Add link flags to to `ocamlmklib` for ctypes stubs (#8784, @frejsoya)
+
+- Remove some unnecessary limitations in the expansions of percent forms in
+  install stanza. For example, the `%{env:..}` form can be used to select files
+  to be installed. (#10160, @rgrinberg)
+
+- Allow artifact expansion percent forms (`%{cma:..}`, `%{cmo:..}`, etc.) in
+  more contexts. Previously, they would be randomly forbidden in some fields.
+  (#10169, @rgrinberg)
+
+- Allow `%{inline_tests}` in more contexts (#10191, @rgrinberg)
+
+- Remove limitations on percent forms in the `(enabled_if ..)` field of
+  libraries (#10250, @rgrinberg)
+
+- Support dialects in `dune describe pp` (#10283, @emillon)
+
+- Allow defining executables or melange emit stanzas with the same name in the
+  same folder under different contexts. (#10220, @rgrinberg, @jchavarri)
+
+### Fixed
+
+- coq: Delay Coq rule setup checks so OCaml-only packages can build in hybrid
+  Coq/OCaml projects when `coqc` is not present. Thanks to @vzaliva for the
+  test case and report (#9845, fixes #9818, @rgrinberg, @ejgallego)
+
+- Fix conditional source selection with `select` on `bigarray` in OCaml 5
+  (#10011, @moyodiallo)
+
+- melange: fix inconsistency in virtual library implementation. Concrete
+  modules within a virtual library can now refer to its virtual modules too
+  (#10051, fixes #7104, @anmonteiro)
+
+- melange: fix a bug that would cause stale `import` paths to be emitted when
+  moving source files within `(include_subdirs ..)` (#10286, fixes #9190,
+  @anmonteiro)
+
+- Dune file formatting: output utf8 if input is correctly encoded (#10113,
+  fixes #9728, @moyodiallo)
+
+- Fix expanding dependencies and locks specified in the cram stanza.
+  Previously, they would be installed in the context of the cram test, rather
+  than the cram stanza itself (#10165, @rgrinberg)
+
+- Fix bug with `dune exec --watch` where the working directory would always be
+  set to the project root rather than the directory where the command was run
+  (#10262, @gridbugs)
+
+- Regression fix: sign executables that are promoted into the source tree
+  (#10263, fixes #9272, @emillon)
+
+- Fix crash when decoding dune-package for libraries with `(include_subdirs
+  qualified)` (#10269, fixes #10264, @emillon)
+
+### Changed
+
+- Remove the `--react-to-insignificant-changes` option. (#10083, @rgrinberg)
+
 3.14.2 (2024-03-12)
 -------------------
 

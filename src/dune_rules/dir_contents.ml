@@ -459,11 +459,11 @@ let modules_of_local_lib sctx lib =
     in
     ocaml t
   in
-  let sentinel =
+  let library_id =
     let lib = Lib.Local.to_lib lib in
-    Lib.sentinel lib
+    Lib.library_id lib
   in
-  Ml_sources.modules sources ~for_:(Library sentinel)
+  Ml_sources.modules sources ~for_:(Library library_id)
 ;;
 
 let modules_of_lib sctx lib =

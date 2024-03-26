@@ -76,7 +76,7 @@ val is_virtual : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 val main_module_name : t -> Lib_info.Main_module_name.t
-val to_sentinel : src_dir:Path.Source.t -> t -> Lib_info.Sentinel.t
+val to_library_id : src_dir:Path.Source.t -> t -> Lib_info.Library_id.t
 
 val to_lib_info
   :  t

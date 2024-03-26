@@ -22,7 +22,7 @@ module DB : sig
 
   module Lib_entry : sig
     type t =
-      | Library of Lib_info.Sentinel.t * Lib.Local.t
+      | Library of Lib_info.Library_id.t * Lib.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
   end
 

@@ -265,8 +265,8 @@ let libs_maps_def =
          | Some location ->
            let info = Dune_package.Lib.info l in
            let name = Lib_info.name info in
-           let sentinel = Lib_info.sentinel info in
-           Lib.DB.find_sentinel db sentinel
+           let library_id = Lib_info.library_id info in
+           Lib.DB.find_library_id db library_id
            >>| (function
             | None -> maps
             | Some lib ->

@@ -112,8 +112,8 @@ end = struct
       empty_none
     | Library.T lib ->
       let* enabled_if =
-        let sentinel = Library.to_sentinel ~src_dir lib in
-        Lib.DB.available_by_sentinel (Scope.libs scope) sentinel
+        let library_id = Library.to_library_id ~src_dir lib in
+        Lib.DB.available_by_library_id (Scope.libs scope) library_id
       in
       if_available_buildable
         ~loc:lib.buildable.loc

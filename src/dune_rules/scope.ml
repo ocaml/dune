@@ -69,17 +69,17 @@ module DB = struct
   let resolve_name =
     let module Resolve_result = Lib.DB.Resolve_result in
     let module With_multiple_results = Resolve_result.With_multiple_results in
-    fun ~resolve_sentinel id_map name ->
+    fun ~resolve_library_id id_map name ->
       match
-        Lib_name.Map.find id_map name |> Option.map ~f:Lib_info.Sentinel.Set.to_list
+        Lib_name.Map.find id_map name |> Option.map ~f:Lib_info.Library_id.Set.to_list
       with
       | None ->
         Memo.return (With_multiple_results.resolve_result Resolve_result.not_found)
       | Some [] -> assert false
-      | Some [ sentinel ] ->
-        resolve_sentinel sentinel >>| With_multiple_results.resolve_result
+      | Some [ library_id ] ->
+        resolve_library_id library_id >>| With_multiple_results.resolve_result
       | Some xs ->
-        Memo.List.map ~f:resolve_sentinel xs >>| With_multiple_results.multiple_results
+        Memo.List.map ~f:resolve_library_id xs >>| With_multiple_results.multiple_results
   ;;
 
   module Library_related_stanza = struct
@@ -90,7 +90,7 @@ module DB = struct
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let sentinel_map, id_map =
+    let library_id_map, id_map =
       let libs =
         List.map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
@@ -106,25 +106,25 @@ module DB = struct
             let lib_name, redirect =
               Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
             in
-            let sentinel =
+            let library_id =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-              Lib_info.Sentinel.make
+              Lib_info.Library_id.make
                 ~loc:s.loc
                 ~src_dir
                 ~enabled_if:s.old_name.enabled
                 lib_name
             in
-            lib_name, (sentinel, redirect)
+            lib_name, (library_id, redirect)
           | Deprecated_library_name (dir, s) ->
             let old_public_name = Deprecated_library_name.old_public_name s in
             let lib_name, deprecated_lib =
               Found_or_redirect.deprecated_library_name old_public_name s.new_public_name
             in
-            let sentinel =
+            let library_id =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-              Deprecated_library_name.to_sentinel ~src_dir s
+              Deprecated_library_name.to_library_id ~src_dir s
             in
-            lib_name, (sentinel, deprecated_lib)
+            lib_name, (library_id, deprecated_lib)
           | Library (dir, (conf : Library.t)) ->
             let info =
               let expander = Expander0.get ~dir in
@@ -132,18 +132,18 @@ module DB = struct
             in
             let stanza_id =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-              Library.to_sentinel ~src_dir conf
+              Library.to_library_id ~src_dir conf
             in
             Library.best_name conf, (stanza_id, Found_or_redirect.found info))
       in
-      let _, id_map, sentinel_map =
+      let _, id_map, library_id_map =
         List.fold_left
           libs
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Sentinel.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
           ~f:
             (fun
-              (libname_map, id_map, sentinel_map)
-              (name, ((sentinel, r2) : Lib_info.Sentinel.t * Found_or_redirect.t))
+              (libname_map, id_map, library_id_map)
+              (name, ((library_id, r2) : Lib_info.Library_id.t * Found_or_redirect.t))
             ->
             let libname_map' =
               Lib_name.Map.update libname_map name ~f:(function
@@ -190,22 +190,24 @@ module DB = struct
                        ]))
             in
             let id_map' =
-              let id_map : Lib_info.Sentinel.Set.t Lib_name.Map.t = id_map in
-              Lib_name.Map.update id_map name ~f:(fun sentinels ->
+              let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
+              Lib_name.Map.update id_map name ~f:(fun library_ids ->
                 match
-                  Option.map sentinels ~f:(fun sentinels ->
-                    Lib_info.Sentinel.Set.add sentinels sentinel)
+                  Option.map library_ids ~f:(fun library_ids ->
+                    Lib_info.Library_id.Set.add library_ids library_id)
                 with
-                | None -> Some (Lib_info.Sentinel.Set.singleton sentinel)
+                | None -> Some (Lib_info.Library_id.Set.singleton library_id)
                 | Some s -> Some s)
             in
-            let sentinel_map' = Lib_info.Sentinel.Map.add_exn sentinel_map sentinel r2 in
-            libname_map', id_map', sentinel_map')
+            let library_id_map' =
+              Lib_info.Library_id.Map.add_exn library_id_map library_id r2
+            in
+            libname_map', id_map', library_id_map')
       in
-      sentinel_map, id_map
+      library_id_map, id_map
     in
-    let resolve_sentinel library_id =
-      match Lib_info.Sentinel.Map.find sentinel_map library_id with
+    let resolve_library_id library_id =
+      match Lib_info.Library_id.Map.find library_id_map library_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
       | Some (Redirect { loc; to_; enabled; _ }) ->
         let+ enabled =
@@ -219,13 +221,13 @@ module DB = struct
       | Some (Deprecated_library_name lib) ->
         Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
     in
-    let resolve_name = resolve_name ~resolve_sentinel id_map in
+    let resolve_name = resolve_name ~resolve_library_id id_map in
     Lib.DB.create
       ()
       ~parent:(Some parent)
       ~resolve_name
-      ~resolve_sentinel
-      ~all:(fun () -> Lib_info.Sentinel.Map.keys sentinel_map |> Memo.return)
+      ~resolve_library_id
+      ~all:(fun () -> Lib_info.Library_id.Map.keys library_id_map |> Memo.return)
       ~lib_config
       ~instrument_with
   ;;
@@ -233,16 +235,16 @@ module DB = struct
   type redirect_to =
     | Project of
         { project : Dune_project.t
-        ; sentinel : Lib_info.Sentinel.t
+        ; library_id : Lib_info.Library_id.t
         }
     | Name of (Loc.t * Lib_name.t)
 
-  let resolve t public_libs sentinel : Lib.DB.Resolve_result.t =
-    match Lib_info.Sentinel.Map.find public_libs sentinel with
+  let resolve t public_libs library_id : Lib.DB.Resolve_result.t =
+    match Lib_info.Library_id.Map.find public_libs library_id with
     | None -> Lib.DB.Resolve_result.not_found
-    | Some (Project { project; sentinel }) ->
+    | Some (Project { project; library_id }) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db sentinel
+      Lib.DB.Resolve_result.redirect scope.db library_id
     | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
@@ -252,45 +254,45 @@ module DB = struct
       let _, public_ids, public_libs =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Sentinel.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
           ~f:
             (fun
-              (libname_map, id_map, sentinel_map) (stanza : Library_related_stanza.t) ->
+              (libname_map, id_map, library_id_map) (stanza : Library_related_stanza.t) ->
             let candidate =
               match stanza with
               | Library (dir, ({ project; visibility = Public p; _ } as conf)) ->
-                let sentinel =
+                let library_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
                   in
-                  Library.to_sentinel ~src_dir conf
+                  Library.to_library_id ~src_dir conf
                 in
-                Some (Public_lib.name p, Project { project; sentinel }, sentinel)
+                Some (Public_lib.name p, Project { project; library_id }, library_id)
               | Library _ | Library_redirect _ -> None
               | Deprecated_library_name (dir, s) ->
-                let sentinel =
+                let library_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
                   in
-                  Deprecated_library_name.to_sentinel ~src_dir s
+                  Deprecated_library_name.to_library_id ~src_dir s
                 in
                 Some
                   ( Deprecated_library_name.old_public_name s
                   , Name s.new_public_name
-                  , sentinel )
+                  , library_id )
             in
             match candidate with
-            | None -> libname_map, id_map, sentinel_map
-            | Some (public_name, r2, sentinel) ->
+            | None -> libname_map, id_map, library_id_map
+            | Some (public_name, r2, library_id) ->
               let libname_map' =
                 Lib_name.Map.update libname_map public_name ~f:(function
-                  | None -> Some (sentinel, r2)
+                  | None -> Some (library_id, r2)
                   | Some (sent1, _r1) ->
-                    (match (Lib_info.Sentinel.equal sent1) sentinel with
-                     | false -> Some (sentinel, r2)
+                    (match (Lib_info.Library_id.equal sent1) library_id with
+                     | false -> Some (library_id, r2)
                      | true ->
-                       let loc1 = Lib_info.Sentinel.loc sent1
-                       and loc2 = Lib_info.Sentinel.loc sentinel in
+                       let loc1 = Lib_info.Library_id.loc sent1
+                       and loc2 = Lib_info.Library_id.loc library_id in
                        let main_message =
                          Pp.textf
                            "Public library %s is defined twice:"
@@ -317,29 +319,29 @@ module DB = struct
                          ]))
               in
               let id_map' =
-                let id_map : Lib_info.Sentinel.Set.t Lib_name.Map.t = id_map in
-                Lib_name.Map.update id_map public_name ~f:(fun sentinels ->
+                let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
+                Lib_name.Map.update id_map public_name ~f:(fun library_ids ->
                   match
-                    Option.map sentinels ~f:(fun sentinels ->
-                      Lib_info.Sentinel.Set.add sentinels sentinel)
+                    Option.map library_ids ~f:(fun library_ids ->
+                      Lib_info.Library_id.Set.add library_ids library_id)
                   with
-                  | None -> Some (Lib_info.Sentinel.Set.singleton sentinel)
+                  | None -> Some (Lib_info.Library_id.Set.singleton library_id)
                   | Some s -> Some s)
               in
-              let sentinel_map' =
-                Lib_info.Sentinel.Map.add_exn sentinel_map sentinel r2
+              let library_id_map' =
+                Lib_info.Library_id.Map.add_exn library_id_map library_id r2
               in
-              libname_map', id_map', sentinel_map')
+              libname_map', id_map', library_id_map')
       in
       public_libs, public_ids
     in
-    let resolve_sentinel sentinel = Memo.return (resolve t public_libs sentinel) in
-    let resolve_name = resolve_name ~resolve_sentinel public_ids in
+    let resolve_library_id library_id = Memo.return (resolve t public_libs library_id) in
+    let resolve_name = resolve_name ~resolve_library_id public_ids in
     Lib.DB.create
       ~parent:(Some installed_libs)
       ~resolve_name
-      ~resolve_sentinel
-      ~all:(fun () -> Lib_info.Sentinel.Map.keys public_libs |> Memo.return)
+      ~resolve_library_id
+      ~all:(fun () -> Lib_info.Library_id.Map.keys public_libs |> Memo.return)
       ~lib_config
       ()
   ;;
@@ -481,7 +483,7 @@ module DB = struct
 
   module Lib_entry = struct
     type t =
-      | Library of Lib_info.Sentinel.t * Lib.Local.t
+      | Library of Lib_info.Library_id.t * Lib.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
 
     let name = function
@@ -498,16 +500,16 @@ module DB = struct
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let src_dir = Dune_file.dir d in
-            let sentinel = Library.to_sentinel ~src_dir lib in
+            let library_id = Library.to_library_id ~src_dir lib in
             let+ lib =
               let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
-              Lib.DB.find_sentinel (libs scope) sentinel
+              Lib.DB.find_library_id (libs scope) library_id
             in
             (match lib with
              | None -> acc
              | Some lib ->
                let name = Package.name pkg in
-               (name, Lib_entry.Library (sentinel, Lib.Local.of_lib_exn lib)) :: acc)
+               (name, Lib_entry.Library (library_id, Lib.Local.of_lib_exn lib)) :: acc)
           | Library.T { visibility = Public pub; _ } ->
             let+ lib = Lib.DB.find public_libs (Public_lib.name pub) in
             (match lib with
@@ -516,8 +518,8 @@ module DB = struct
                let package = Public_lib.package pub in
                let name = Package.name package in
                let local_lib = Lib.Local.of_lib_exn lib in
-               let sentinel = Lib.sentinel lib in
-               (name, Lib_entry.Library (sentinel, local_lib)) :: acc)
+               let library_id = Lib.library_id lib in
+               (name, Lib_entry.Library (library_id, local_lib)) :: acc)
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

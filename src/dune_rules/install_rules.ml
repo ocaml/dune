@@ -85,10 +85,10 @@ end = struct
       >>| List.singleton
   ;;
 
-  let lib_files ~dir_contents ~dir ~lib_config ~sentinel lib =
+  let lib_files ~dir_contents ~dir ~lib_config ~library_id lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some (Ml_sources.modules ml_sources ~for_:(Library sentinel))
+      Some (Ml_sources.modules ml_sources ~for_:(Library library_id))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -179,13 +179,13 @@ end = struct
         ~lib_config
     in
     let lib_name = Library.best_name lib in
-    let sentinel =
+    let library_id =
       let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-      Library.to_sentinel ~src_dir lib
+      Library.to_library_id ~src_dir lib
     in
     let* installable_modules =
       let+ modules =
-        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library sentinel)
+        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library library_id)
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -309,7 +309,7 @@ end = struct
           if Module.kind m = Virtual then [] else common m |> set_dir m)
       in
       modules_vlib @ modules_impl
-    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config ~sentinel info
+    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config ~library_id info
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
@@ -343,11 +343,11 @@ end = struct
         then
           if lib.optional
           then (
-            let sentinel =
+            let library_id =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-              Library.to_sentinel ~src_dir lib
+              Library.to_library_id ~src_dir lib
             in
-            Lib.DB.available_by_sentinel (Scope.libs scope) sentinel)
+            Lib.DB.available_by_library_id (Scope.libs scope) library_id)
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -629,7 +629,7 @@ end = struct
                ( old_public_name
                , Dune_package.Entry.Deprecated_library_name
                    { loc; old_public_name; new_public_name } ))
-        | Library (sentinel, lib) ->
+        | Library (library_id, lib) ->
           let info = Lib.Local.info lib in
           let dir = Lib_info.src_dir info in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -662,7 +662,7 @@ end = struct
             |> List.map ~f:Path.build
           and* modules =
             Dir_contents.ocaml dir_contents
-            >>| Ml_sources.modules ~for_:(Library sentinel)
+            >>| Ml_sources.modules ~for_:(Library library_id)
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =

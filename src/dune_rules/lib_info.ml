@@ -290,7 +290,7 @@ module File_deps = struct
   ;;
 end
 
-module Sentinel = struct
+module Library_id = struct
   module T = struct
     type t =
       { name : Lib_name.t
@@ -345,7 +345,7 @@ end
 type 'path t =
   { loc : Loc.t
   ; name : Lib_name.t
-  ; sentinel : Sentinel.t
+  ; library_id : Library_id.t
   ; kind : Lib_kind.t
   ; status : Status.t
   ; src_dir : 'path
@@ -384,7 +384,7 @@ type 'path t =
   }
 
 let name t = t.name
-let sentinel t = t.sentinel
+let library_id t = t.library_id
 let version t = t.version
 let dune_version t = t.dune_version
 let loc t = t.loc
@@ -438,7 +438,7 @@ let create
   ~loc
   ~path_kind
   ~name
-  ~sentinel
+  ~library_id
   ~kind
   ~status
   ~src_dir
@@ -476,7 +476,7 @@ let create
   =
   { loc
   ; name
-  ; sentinel
+  ; library_id
   ; kind
   ; status
   ; src_dir
@@ -569,7 +569,7 @@ let to_dyn
   { loc
   ; path_kind = _
   ; name
-  ; sentinel
+  ; library_id
   ; kind
   ; status
   ; src_dir
@@ -611,7 +611,7 @@ let to_dyn
   record
     [ "loc", Loc.to_dyn_hum loc
     ; "name", Lib_name.to_dyn name
-    ; "sentinel", Sentinel.to_dyn sentinel
+    ; "library_id", Library_id.to_dyn library_id
     ; "kind", Lib_kind.to_dyn kind
     ; "status", Status.to_dyn status
     ; "src_dir", path src_dir

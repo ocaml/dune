@@ -53,7 +53,7 @@ module Entry : sig
         Dune itself never produces hidden libraries. *)
 
   val name : t -> Lib_name.t
-  val sentinel : t -> Lib_info.Sentinel.t
+  val library_id : t -> Lib_info.Library_id.t
   val version : t -> Package_version.t option
   val loc : t -> Loc.t
   val to_dyn : t Dyn.builder

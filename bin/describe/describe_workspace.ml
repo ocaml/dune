@@ -449,10 +449,10 @@ module Crawl = struct
         | true ->
           (* XXX why do we have a second object directory? *)
           let* modules_, obj_dir_ =
-            let sentinel = Lib.sentinel lib in
+            let library_id = Lib.library_id lib in
             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
             >>= Dir_contents.ocaml
-            >>| Ml_sources.modules_and_obj_dir ~for_:(Library sentinel)
+            >>| Ml_sources.modules_and_obj_dir ~for_:(Library library_id)
           in
           let* pp_map =
             let+ version =

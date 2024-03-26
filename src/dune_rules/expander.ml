@@ -402,7 +402,7 @@ let expand_lib_variable t source ~lib ~file ~lib_exec ~lib_private =
       then Resolve.Memo.map p ~f:(fun _ -> assert false)
       else
         let open Resolve.Memo.O in
-        Lib.DB.available_by_name (Scope.libs scope) lib
+        Lib.DB.available (Scope.libs scope) lib
         |> Resolve.Memo.lift_memo
         >>= function
         | false ->
@@ -653,7 +653,7 @@ let expand_pform_macro
           (let lib = Lib_name.parse_string_exn (Dune_lang.Template.Pform.loc source, s) in
            let open Memo.O in
            let* scope = t.scope in
-           let+ available = Lib.DB.available_by_name (Scope.libs scope) lib in
+           let+ available = Lib.DB.available (Scope.libs scope) lib in
            available |> string_of_bool |> string))
   | Bin_available ->
     Need_full_expander

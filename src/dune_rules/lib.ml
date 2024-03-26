@@ -859,8 +859,8 @@ module rec Resolve_names : sig
     -> lib Resolve.t option Memo.t
 
   val resolve_sentinel : db -> Lib_info.Sentinel.t -> Status.t Memo.t
-  val available_internal : db -> Lib_info.Sentinel.t -> bool Memo.t
-  val available_by_name_internal : db -> Lib_name.t -> bool Memo.t
+  val available_internal : db -> Lib_name.t -> bool Memo.t
+  val available_by_sentinel_internal : db -> Lib_info.Sentinel.t -> bool Memo.t
 
   val resolve_simple_deps
     :  db
@@ -1271,7 +1271,7 @@ end = struct
     db.resolve_sentinel sentinel >>= handle_resolve_result ~super db
   ;;
 
-  let available_by_name_internal db (name : Lib_name.t) =
+  let available_internal db (name : Lib_name.t) =
     let open Memo.O in
     find_internal db name
     >>| function
@@ -1279,7 +1279,7 @@ end = struct
     | Not_found | Invalid _ | Hidden _ -> false
   ;;
 
-  let available_internal db (sentinel : Lib_info.Sentinel.t) =
+  let available_by_sentinel_internal db (sentinel : Lib_info.Sentinel.t) =
     let open Memo.O in
     resolve_sentinel db sentinel
     >>| function
@@ -1406,7 +1406,7 @@ end = struct
       let+ select =
         Memo.List.find_map choices ~f:(fun { required; forbidden; file } ->
           Lib_name.Set.to_list forbidden
-          |> Memo.List.exists ~f:(available_by_name_internal db)
+          |> Memo.List.exists ~f:(available_internal db)
           >>= function
           | true -> Memo.return None
           | false ->
@@ -2075,8 +2075,11 @@ module DB = struct
     | Some k -> Memo.return k
   ;;
 
-  let available_by_name t name = Resolve_names.available_by_name_internal t name
-  let available t sentinel = Resolve_names.available_internal t sentinel
+  let available t name = Resolve_names.available_internal t name
+
+  let available_by_sentinel t sentinel =
+    Resolve_names.available_by_sentinel_internal t sentinel
+  ;;
 
   let get_compile_info t ~allow_overlaps sentinel =
     let open Memo.O in

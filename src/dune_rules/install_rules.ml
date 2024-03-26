@@ -347,7 +347,7 @@ end = struct
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
               Library.to_sentinel ~src_dir lib
             in
-            Lib.DB.available (Scope.libs scope) sentinel)
+            Lib.DB.available_by_sentinel (Scope.libs scope) sentinel)
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true

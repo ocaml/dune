@@ -138,8 +138,8 @@ module DB : sig
   val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.t
   val find_sentinel : t -> Lib_info.Sentinel.t -> lib option Memo.t
   val find_sentinel_even_when_hidden : t -> Lib_info.Sentinel.t -> lib option Memo.t
-  val available : t -> Lib_info.Sentinel.t -> bool Memo.t
-  val available_by_name : t -> Lib_name.t -> bool Memo.t
+  val available : t -> Lib_name.t -> bool Memo.t
+  val available_by_sentinel : t -> Lib_info.Sentinel.t -> bool Memo.t
 
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)

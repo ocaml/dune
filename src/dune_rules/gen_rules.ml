@@ -113,7 +113,7 @@ end = struct
     | Library.T lib ->
       let* enabled_if =
         let sentinel = Library.to_sentinel ~src_dir lib in
-        Lib.DB.available (Scope.libs scope) sentinel
+        Lib.DB.available_by_sentinel (Scope.libs scope) sentinel
       in
       if_available_buildable
         ~loc:lib.buildable.loc

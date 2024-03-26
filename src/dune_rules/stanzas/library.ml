@@ -369,6 +369,7 @@ let best_name t =
   | Public p -> snd p.name
 ;;
 
+let private_name t = Lib_name.of_local t.name
 let is_virtual t = Option.is_some t.virtual_modules
 let is_impl t = Option.is_some t.implements
 

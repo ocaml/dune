@@ -67,7 +67,10 @@ module Modules = struct
           libs
           ~init:(Lib_name.Set.empty, Lib_info.Library_id.Map.empty)
           ~f:(fun (lib_set, acc) part ->
-            let name = Library.best_name part.stanza in
+            (* we need to check for private name to avoid "multiple rules" errors,
+               because even for public libraries, the artifacts folder still uses
+               the private name *)
+            let name = Library.private_name part.stanza in
             match Lib_name.Set.mem lib_set name with
             | true ->
               User_error.raise

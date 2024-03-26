@@ -19,9 +19,11 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  Error: Multiple rules generated for _build/default/foo.cmxs:
-  - dune:4
-  - dune:1
+  File "dune", line 4, characters 0-44:
+  4 | (library
+  5 |  (name foo)
+  6 |  (public_name baz.foo))
+  Error: Library "foo" appears for the second time in this directory
   [1]
 
 With some consumer
@@ -43,13 +45,9 @@ With some consumer
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 0-0:
-  Error: Module "Main" is used in several stanzas:
-  - dune:1
-  - dune:4
-  - dune:7
-  To fix this error, you must specify an explicit "modules" field in every
-  library, executable, and executables stanzas in this dune file. Note that
-  each module cannot appear in more than one "modules" field - it must belong
-  to a single library or executable.
+  File "dune", line 4, characters 0-44:
+  4 | (library
+  5 |  (name foo)
+  6 |  (public_name baz.foo))
+  Error: Library "foo" appears for the second time in this directory
   [1]

@@ -88,8 +88,7 @@ end = struct
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      let library_id = Lib_info.library_id lib in
-      Some (Ml_sources.modules ml_sources ~for_:(Library library_id))
+      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.library_id lib)))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -182,8 +181,8 @@ end = struct
     let lib_name = Library.best_name lib in
     let* installable_modules =
       let+ modules =
-        let library_id = Lib_info.library_id info in
-        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library library_id)
+        Dir_contents.ocaml dir_contents
+        >>| Ml_sources.modules ~for_:(Library (Lib_info.library_id info))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -332,7 +331,7 @@ end = struct
       ]
   ;;
 
-  let keep_if ~expander ~scope ~dir stanza =
+  let keep_if expander ~scope stanza =
     let+ keep =
       match Stanza.repr stanza with
       | Library.T lib ->
@@ -342,7 +341,11 @@ end = struct
           if lib.optional
           then (
             let library_id =
-              let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+              let src_dir =
+                Expander.dir expander
+                |> Path.build
+                |> Path.drop_optional_build_context_src_exn
+              in
               Library.to_library_id ~src_dir lib
             in
             Lib.DB.available_by_library_id (Scope.libs scope) library_id)
@@ -454,7 +457,7 @@ end = struct
   ;;
 
   let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
-    (let+ stanza = keep_if ~expander ~scope ~dir stanza in
+    (let+ stanza = keep_if expander ~scope stanza in
      let open Option.O in
      let* stanza = stanza in
      let+ package = Stanzas.stanza_package stanza in
@@ -627,7 +630,7 @@ end = struct
                ( old_public_name
                , Dune_package.Entry.Deprecated_library_name
                    { loc; old_public_name; new_public_name } ))
-        | Library (library_id, lib) ->
+        | Library lib ->
           let info = Lib.Local.info lib in
           let dir = Lib_info.src_dir info in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -660,7 +663,7 @@ end = struct
             |> List.map ~f:Path.build
           and* modules =
             Dir_contents.ocaml dir_contents
-            >>| Ml_sources.modules ~for_:(Library library_id)
+            >>| Ml_sources.modules ~for_:(Library (Lib_info.library_id info))
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =
@@ -811,7 +814,7 @@ end = struct
           let* () = Action_builder.return () in
           match
             List.find_map entries ~f:(function
-              | Library (_, lib) ->
+              | Library lib ->
                 let info = Lib.Local.info lib in
                 Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
               | Deprecated_library_name _ -> None)

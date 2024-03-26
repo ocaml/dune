@@ -583,7 +583,7 @@ let libs_of_pkg ctx ~pkg =
   List.filter_map entries ~f:(fun (entry : Scope.DB.Lib_entry.t) ->
     match entry with
     | Deprecated_library_name _ -> None
-    | Library (_, lib) ->
+    | Library lib ->
       (match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
        | None -> Some lib
        | Some _ -> None))

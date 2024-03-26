@@ -483,11 +483,11 @@ module DB = struct
 
   module Lib_entry = struct
     type t =
-      | Library of Lib_info.Library_id.t * Lib.Local.t
+      | Library of Lib.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
 
     let name = function
-      | Library (_, lib) -> Lib.Local.to_lib lib |> Lib.name
+      | Library lib -> Lib.Local.to_lib lib |> Lib.name
       | Deprecated_library_name { old_name = old_public_name, _; _ } ->
         Public_lib.name old_public_name
     ;;
@@ -500,16 +500,15 @@ module DB = struct
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
             let src_dir = Dune_file.dir d in
-            let library_id = Library.to_library_id ~src_dir lib in
             let+ lib =
               let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
-              Lib.DB.find_library_id (libs scope) library_id
+              Lib.DB.find_library_id (libs scope) (Library.to_library_id ~src_dir lib)
             in
             (match lib with
              | None -> acc
              | Some lib ->
                let name = Package.name pkg in
-               (name, Lib_entry.Library (library_id, Lib.Local.of_lib_exn lib)) :: acc)
+               (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
           | Library.T { visibility = Public pub; _ } ->
             let+ lib = Lib.DB.find public_libs (Public_lib.name pub) in
             (match lib with
@@ -518,8 +517,7 @@ module DB = struct
                let package = Public_lib.package pub in
                let name = Package.name package in
                let local_lib = Lib.Local.of_lib_exn lib in
-               let library_id = Lib_info.library_id (Lib.info lib) in
-               (name, Lib_entry.Library (library_id, local_lib)) :: acc)
+               (name, Lib_entry.Library local_lib) :: acc)
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

@@ -163,7 +163,7 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
   let+ pkgs =
     Memo.parallel_map entries ~f:(fun (e : Scope.DB.Lib_entry.t) ->
       match e with
-      | Library (_, lib) ->
+      | Library lib ->
         let info = Lib.Local.info lib in
         let pub_name =
           let name = Lib_info.name info in

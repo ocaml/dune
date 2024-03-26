@@ -66,7 +66,7 @@ module DB = struct
     let found x = Found x
   end
 
-  let resolve_name =
+  let resolve =
     let module Resolve_result = Lib.DB.Resolve_result in
     let module With_multiple_results = Resolve_result.With_multiple_results in
     fun ~resolve_library_id id_map name ->
@@ -221,11 +221,11 @@ module DB = struct
       | Some (Deprecated_library_name lib) ->
         Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
     in
-    let resolve_name = resolve_name ~resolve_library_id id_map in
+    let resolve = resolve ~resolve_library_id id_map in
     Lib.DB.create
       ()
       ~parent:(Some parent)
-      ~resolve_name
+      ~resolve
       ~resolve_library_id
       ~all:(fun () -> Lib_info.Library_id.Map.keys library_id_map |> Memo.return)
       ~lib_config
@@ -239,7 +239,7 @@ module DB = struct
         }
     | Name of (Loc.t * Lib_name.t)
 
-  let resolve t public_libs library_id : Lib.DB.Resolve_result.t =
+  let resolve_library_id t public_libs library_id : Lib.DB.Resolve_result.t =
     match Lib_info.Library_id.Map.find public_libs library_id with
     | None -> Lib.DB.Resolve_result.not_found
     | Some (Project { project; library_id }) ->
@@ -337,11 +337,13 @@ module DB = struct
       in
       public_libs, public_ids
     in
-    let resolve_library_id library_id = Memo.return (resolve t public_libs library_id) in
-    let resolve_name = resolve_name ~resolve_library_id public_ids in
+    let resolve_library_id library_id =
+      Memo.return (resolve_library_id t public_libs library_id)
+    in
+    let resolve = resolve ~resolve_library_id public_ids in
     Lib.DB.create
       ~parent:(Some installed_libs)
-      ~resolve_name
+      ~resolve
       ~resolve_library_id
       ~all:(fun () -> Lib_info.Library_id.Map.keys public_libs |> Memo.return)
       ~lib_config
@@ -503,10 +505,11 @@ module DB = struct
         Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
           | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
-            let src_dir = Dune_file.dir d in
             let+ lib =
+              let src_dir = Dune_file.dir d in
               let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
-              Lib.DB.find_library_id (libs scope) (Library.to_library_id ~src_dir lib)
+              let db = libs scope in
+              Lib.DB.find_library_id db (Library.to_library_id ~src_dir lib)
             in
             (match lib with
              | None -> acc

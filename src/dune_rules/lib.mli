@@ -125,7 +125,7 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create
     :  parent:t option
-    -> resolve_name:(Lib_name.t -> Resolve_result.With_multiple_results.t Memo.t)
+    -> resolve:(Lib_name.t -> Resolve_result.With_multiple_results.t Memo.t)
     -> resolve_library_id:(Lib_info.Library_id.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_info.Library_id.t list Memo.t)
     -> lib_config:Lib_config.t

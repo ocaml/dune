@@ -431,7 +431,7 @@ end
 
 type db =
   { parent : db option
-  ; resolve_name : Lib_name.t -> resolve_result_with_multiple_results Memo.t
+  ; resolve : Lib_name.t -> resolve_result_with_multiple_results Memo.t
   ; resolve_library_id : Lib_info.Library_id.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
@@ -1250,7 +1250,7 @@ end = struct
   let find_internal db (name : Lib_name.t) =
     let open Memo.O in
     let super db = find_internal db name in
-    db.resolve_name name >>= handle_resolve_result_with_multiple_results ~super db
+    db.resolve name >>= handle_resolve_result_with_multiple_results ~super db
   ;;
 
   let resolve_dep db (loc, name) ~private_deps : t Resolve.t option Memo.t =
@@ -1956,19 +1956,11 @@ module DB = struct
 
   type t = db
 
-  let create
-    ~parent
-    ~resolve_name
-    ~resolve_library_id
-    ~all
-    ~lib_config
-    ~instrument_with
-    ()
-    =
+  let create ~parent ~resolve ~resolve_library_id ~all ~lib_config ~instrument_with () =
     let rec t =
       lazy
         { parent
-        ; resolve_name
+        ; resolve
         ; resolve_library_id
         ; all = Memo.lazy_ all
         ; lib_config
@@ -1982,7 +1974,7 @@ module DB = struct
   let create_from_findlib =
     let bigarray = Lib_name.of_string "bigarray" in
     fun findlib ~has_bigarray_library ~lib_config ->
-      let resolve_name name =
+      let resolve name =
         let open Memo.O in
         Findlib.find findlib name
         >>| function
@@ -2008,11 +2000,11 @@ module DB = struct
         ()
         ~parent:None
         ~lib_config
-        ~resolve_name
+        ~resolve
         ~resolve_library_id:(fun library_id ->
           let open Memo.O in
           let name = Lib_info.Library_id.name library_id in
-          resolve_name name
+          resolve name
           >>| function
           | Multiple_results _ -> assert false
           | Resolve_result r -> r)

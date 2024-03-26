@@ -275,8 +275,8 @@ let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 let find_origin (t : t) path = Module_name.Path.Map.find t.modules.rev_map path
 
 let virtual_modules ~lookup_vlib vlib =
+  let info = Lib.info vlib in
   let+ modules =
-    let info = Lib.info vlib in
     match Option.value_exn (Lib_info.virtual_ info) with
     | External modules -> Memo.return modules
     | Local ->

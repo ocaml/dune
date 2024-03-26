@@ -457,7 +457,7 @@ end = struct
   ;;
 
   let stanza_to_entries ~package_db ~sctx ~dir ~scope ~expander stanza =
-    (let+ stanza = keep_if expander ~scope stanza in
+    (let+ stanza = keep_if expander stanza ~scope in
      let open Option.O in
      let* stanza = stanza in
      let+ package = Stanzas.stanza_package stanza in
@@ -743,9 +743,6 @@ end = struct
         acc
         >>>
         let dune_pkg =
-          let dir =
-            Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
-          in
           let entries =
             match Package.Name.Map.find deprecated_dune_packages name with
             | None -> Lib_name.Map.empty
@@ -773,7 +770,7 @@ end = struct
           { Dune_package.version = Package.version pkg
           ; name
           ; entries
-          ; dir
+          ; dir = Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
           ; sections
           ; sites = Package.sites pkg
           ; files = []

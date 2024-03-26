@@ -510,6 +510,33 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
+(* Returns the set of depopts of a package which are part of the solution
+   represented by [version_by_package_name] *)
+let available_depopts solver_env version_by_package_name (opam_package : OpamFile.OPAM.t) =
+  let formula =
+    Resolve_opam_formula.apply_filter
+      (Solver_env.to_env solver_env)
+      ~with_test:false
+      opam_package.depopts
+  in
+  let atoms = OpamFormula.to_dnf formula |> List.concat in
+  List.filter_map atoms ~f:(fun (name, version_constraint) ->
+    let name = Package_name.of_opam_package_name name in
+    Package_name.Map.find version_by_package_name name
+    |> Option.bind ~f:(fun available_version ->
+      match version_constraint with
+      | None -> Some name
+      | Some version_constraint ->
+        let available_opam_version =
+          Package_version.to_opam_package_version available_version
+        in
+        if OpamFormula.check_version_formula
+             (OpamFormula.Atom version_constraint)
+             available_opam_version
+        then Some name
+        else None))
+;;
+
 let opam_package_to_lock_file_pkg
   solver_env
   stats_updater
@@ -573,14 +600,21 @@ let opam_package_to_lock_file_pkg
         version_by_package_name
         opam_file.depends
     with
-    | Ok dep_package_names ->
-      List.map dep_package_names ~f:(fun package_name -> Loc.none, package_name)
+    | Ok dep_package_names -> dep_package_names
     | Error (`Formula_could_not_be_satisfied hints) ->
       Code_error.raise
         "Dependencies of package can't be satisfied from packages in solution"
         [ "package", Dyn.string (OpamFile.OPAM.package opam_file |> OpamPackage.to_string)
         ; "hints", Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
         ]
+  in
+  let depopts =
+    available_depopts solver_env version_by_package_name opam_file
+    |> List.filter ~f:(fun package_name ->
+      not (List.mem depends package_name ~equal:Package_name.equal))
+  in
+  let depends =
+    depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
   in
   let build_env action =
     let env_update =

@@ -12,9 +12,11 @@
   >   (diff x x.gen)))
   > EOF
 
+x2
+
   $ (for i in $(seq 1 100); do
   >   dune clean
   >   printf old-value > x
   >   dune build --auto-promote >/dev/null 2>&1
-  >   dune build
+  >   dune build --wait-for-fs-clock-to-advance
   > done) 2>&1 |grep -c Error

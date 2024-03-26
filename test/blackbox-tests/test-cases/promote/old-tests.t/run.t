@@ -50,7 +50,7 @@ Otherwise this test fails on OSX
   [1]
   $ cat x
   toto
-  $ dune build @blah
+  $ dune build @blah --wait-for-fs-clock-to-advance
   $ cat x
   toto
 

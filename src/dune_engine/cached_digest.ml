@@ -2,7 +2,7 @@ open Import
 
 let round f =
     if false then
-  let scale = 0.02 in
+  let scale = 10. in
   let r = Stdlib.Float.round (f /. scale) *. scale in
   (*printfn "%.2f -> %.2f" f r;*)
   r

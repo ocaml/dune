@@ -84,17 +84,17 @@ module DB = struct
 
   module Library_related_stanza = struct
     type t =
-      | Library of Path.Build.t * Library.t
-      | Library_redirect of Path.Build.t * Library_redirect.Local.t
-      | Deprecated_library_name of Path.Build.t * Deprecated_library_name.t
+      | Library of Library.t
+      | Library_redirect of Library_redirect.Local.t
+      | Deprecated_library_name of Deprecated_library_name.t
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let library_id_map, id_map =
       let libs =
-        List.map stanzas ~f:(fun stanza ->
+        List.map stanzas ~f:(fun (dir, stanza) ->
           match (stanza : Library_related_stanza.t) with
-          | Library_redirect (dir, s) ->
+          | Library_redirect s ->
             let old_public_name = Lib_name.of_local s.old_name.lib_name in
             let enabled =
               Memo.lazy_ (fun () ->
@@ -115,7 +115,7 @@ module DB = struct
                 lib_name
             in
             lib_name, (library_id, redirect)
-          | Deprecated_library_name (dir, s) ->
+          | Deprecated_library_name s ->
             let old_public_name = Deprecated_library_name.old_public_name s in
             let lib_name, deprecated_lib =
               Found_or_redirect.deprecated_library_name old_public_name s.new_public_name
@@ -125,7 +125,7 @@ module DB = struct
               Deprecated_library_name.to_library_id ~src_dir s
             in
             lib_name, (library_id, deprecated_lib)
-          | Library (dir, (conf : Library.t)) ->
+          | Library (conf : Library.t) ->
             let info =
               let expander = Expander0.get ~dir in
               Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
@@ -257,10 +257,12 @@ module DB = struct
           ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
           ~f:
             (fun
-              (libname_map, id_map, library_id_map) (stanza : Library_related_stanza.t) ->
+              (libname_map, id_map, library_id_map)
+              ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
+            ->
             let candidate =
               match stanza with
-              | Library (dir, ({ project; visibility = Public p; _ } as conf)) ->
+              | Library ({ project; visibility = Public p; _ } as conf) ->
                 let library_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
@@ -269,7 +271,7 @@ module DB = struct
                 in
                 Some (Public_lib.name p, Project { project; library_id }, library_id)
               | Library _ | Library_redirect _ -> None
-              | Deprecated_library_name (dir, s) ->
+              | Deprecated_library_name s ->
                 let library_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
@@ -359,14 +361,16 @@ module DB = struct
     coq_stanzas
     =
     let stanzas_by_project_dir =
-      List.map stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
-        let project =
-          match stanza with
-          | Library (_, lib) -> lib.project
-          | Library_redirect (_, x) -> x.project
-          | Deprecated_library_name (_, x) -> x.project
-        in
-        Dune_project.root project, stanza)
+      List.map
+        stanzas
+        ~f:(fun ((dir, stanza) : Path.Build.t * Library_related_stanza.t) ->
+          let project =
+            match stanza with
+            | Library lib -> lib.project
+            | Library_redirect x -> x.project
+            | Deprecated_library_name x -> x.project
+          in
+          Dune_project.root project, (dir, stanza))
       |> Path.Source.Map.of_list_multi
     in
     let db_by_project_dir =
@@ -432,13 +436,13 @@ module DB = struct
           match Stanza.repr stanza with
           | Library.T lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            Library_related_stanza.Library (ctx_dir, lib) :: acc, coq_acc
+            (ctx_dir, Library_related_stanza.Library lib) :: acc, coq_acc
           | Deprecated_library_name.T d ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            Deprecated_library_name (ctx_dir, d) :: acc, coq_acc
+            (ctx_dir, Deprecated_library_name d) :: acc, coq_acc
           | Library_redirect.Local.T d ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
-            Library_redirect (ctx_dir, d) :: acc, coq_acc
+            (ctx_dir, Library_redirect d) :: acc, coq_acc
           | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir = Path.Build.append_source build_dir (Dune_file.dir dune_file) in
             acc, (ctx_dir, coq_lib) :: coq_acc

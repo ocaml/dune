@@ -69,17 +69,22 @@ module DB = struct
   let resolve =
     let module Resolve_result = Lib.DB.Resolve_result in
     let module With_multiple_results = Resolve_result.With_multiple_results in
+    let not_found = With_multiple_results.resolve_result Resolve_result.not_found in
     fun ~resolve_library_id id_map name ->
       match
-        Lib_name.Map.find id_map name |> Option.map ~f:Lib_info.Library_id.Set.to_list
+        Lib_name.Map.find id_map name
+        |> Option.bind ~f:(fun library_ids ->
+          Lib_info.Library_id.Set.to_list library_ids |> Nonempty_list.of_list)
       with
-      | None ->
-        Memo.return (With_multiple_results.resolve_result Resolve_result.not_found)
-      | Some [] -> assert false
+      | None -> Memo.return not_found
       | Some [ library_id ] ->
         resolve_library_id library_id >>| With_multiple_results.resolve_result
-      | Some xs ->
-        Memo.List.map ~f:resolve_library_id xs >>| With_multiple_results.multiple_results
+      | Some library_ids ->
+        Memo.List.map ~f:resolve_library_id (Nonempty_list.to_list library_ids)
+        >>| fun library_ids ->
+        Nonempty_list.of_list library_ids
+        |> Option.value_exn
+        |> With_multiple_results.multiple_results
   ;;
 
   module Library_related_stanza = struct
@@ -339,16 +344,14 @@ module DB = struct
     coq_stanzas
     =
     let stanzas_by_project_dir =
-      List.map
-        stanzas
-        ~f:(fun ((dir, stanza) : Path.Build.t * Library_related_stanza.t) ->
-          let project =
-            match stanza with
-            | Library lib -> lib.project
-            | Library_redirect x -> x.project
-            | Deprecated_library_name x -> x.project
-          in
-          Dune_project.root project, (dir, stanza))
+      List.map stanzas ~f:(fun (dir, stanza) ->
+        let project =
+          match (stanza : Library_related_stanza.t) with
+          | Library lib -> lib.project
+          | Library_redirect x -> x.project
+          | Deprecated_library_name x -> x.project
+        in
+        Dune_project.root project, (dir, stanza))
       |> Path.Source.Map.of_list_multi
     in
     let db_by_project_dir =

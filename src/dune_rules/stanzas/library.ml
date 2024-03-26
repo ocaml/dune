@@ -407,8 +407,7 @@ let to_library_id ~src_dir t =
   let loc, name =
     let ((loc, _) as name) = t.name in
     loc, Lib_name.of_local name
-  in
-  let enabled_if = t.enabled_if in
+  and enabled_if = t.enabled_if in
   Lib_info.Library_id.make ~loc ~src_dir ~enabled_if name
 ;;
 

@@ -108,11 +108,11 @@ module DB : sig
 
       type t = private
         | Resolve_result of resolve_result
-        | Multiple_results of resolve_result list
+        | Multiple_results of resolve_result Nonempty_list.t
 
       val to_dyn : t Dyn.builder
       val resolve_result : resolve_result -> t
-      val multiple_results : resolve_result list -> t
+      val multiple_results : resolve_result Nonempty_list.t -> t
     end
   end
 

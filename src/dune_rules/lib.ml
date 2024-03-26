@@ -451,7 +451,7 @@ and resolve_result =
 
 and resolve_result_with_multiple_results =
   | Resolve_result of resolve_result
-  | Multiple_results of resolve_result list
+  | Multiple_results of resolve_result Nonempty_list.t
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1198,7 +1198,7 @@ end = struct
     | Multiple_results candidates ->
       let open Memo.O in
       let+ libs =
-        Memo.List.filter_map candidates ~f:(function
+        Memo.List.filter_map (Nonempty_list.to_list candidates) ~f:(function
           | Ignore -> Memo.return (Some Status.Ignore)
           | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
           | Redirect (db', library_id') ->
@@ -1216,7 +1216,7 @@ end = struct
             resolve_hidden db ~info hidden >>| Option.some)
       in
       (match libs with
-       | [] -> assert false
+       | [] -> Status.Not_found
        | [ status ] -> status
        | _ :: _ :: _ ->
          List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
@@ -1927,20 +1927,10 @@ module DB = struct
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;
 
-    module With_multiple_results : sig
-      type resolve_result := t
-
+    module With_multiple_results = struct
       type t = resolve_result_with_multiple_results =
         | Resolve_result of resolve_result
-        | Multiple_results of resolve_result list
-
-      val to_dyn : t Dyn.builder
-      val resolve_result : resolve_result -> t
-      val multiple_results : resolve_result list -> t
-    end = struct
-      type t = resolve_result_with_multiple_results =
-        | Resolve_result of resolve_result
-        | Multiple_results of resolve_result list
+        | Multiple_results of resolve_result Nonempty_list.t
 
       let resolve_result r = Resolve_result r
       let multiple_results libs : t = Multiple_results libs
@@ -1949,7 +1939,8 @@ module DB = struct
         let open Dyn in
         match t with
         | Resolve_result r -> variant "Resolve_result" [ to_dyn r ]
-        | Multiple_results xs -> variant "Multiple_results" [ (Dyn.list to_dyn) xs ]
+        | Multiple_results xs ->
+          variant "Multiple_results" [ Dyn.list to_dyn (Nonempty_list.to_list xs) ]
       ;;
     end
   end

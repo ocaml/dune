@@ -55,9 +55,12 @@ module Local = struct
   ;;
 
   let to_library_id ~src_dir t =
-    let lib_name = Lib_name.of_local t.old_name.lib_name
-    and loc = t.loc
+    let loc = t.loc
     and enabled_if = t.old_name.enabled in
-    Lib_info.Library_id.make ~loc ~src_dir ~enabled_if lib_name
+    Lib_info.Library_id.make
+      ~loc
+      ~src_dir
+      ~enabled_if
+      (Lib_name.of_local t.old_name.lib_name)
   ;;
 end

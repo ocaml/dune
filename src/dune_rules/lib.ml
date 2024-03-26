@@ -352,7 +352,6 @@ module T = struct
     { info : Lib_info.external_
     ; name : Lib_name.t
     ; unique_id : Id.t
-    ; library_id : Lib_info.Library_id.t
     ; re_exports : t list Resolve.t
     ; (* [requires] is contains all required libraries, including the ones
          mentioned in [re_exports]. *)
@@ -456,7 +455,6 @@ and resolve_result_with_multiple_results =
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
-let library_id t = t.library_id
 let info t = t.info
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
@@ -1071,7 +1069,6 @@ end = struct
         let* package = Lib_info.package info in
         Package.Name.Map.find projects_by_package package
     in
-    let library_id = Lib_info.library_id info in
     let rec t =
       lazy
         (let open Resolve.O in
@@ -1081,7 +1078,6 @@ end = struct
          { info
          ; name
          ; unique_id
-         ; library_id
          ; requires
          ; ppx_runtime_deps
          ; pps
@@ -1226,7 +1222,9 @@ end = struct
          List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
            match acc, status with
            | Status.Found a, Status.Found b ->
-             (match Lib_info.Library_id.equal a.library_id b.library_id with
+             let library_id_a = Lib_info.library_id a.info
+             and library_id_b = Lib_info.library_id b.info in
+             (match Lib_info.Library_id.equal library_id_a library_id_b with
               | true -> acc
               | false ->
                 let a = info a

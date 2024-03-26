@@ -85,9 +85,10 @@ end = struct
       >>| List.singleton
   ;;
 
-  let lib_files ~dir_contents ~dir ~lib_config ~library_id lib =
+  let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
+      let library_id = Lib_info.library_id lib in
       Some (Ml_sources.modules ml_sources ~for_:(Library library_id))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
@@ -179,12 +180,9 @@ end = struct
         ~lib_config
     in
     let lib_name = Library.best_name lib in
-    let library_id =
-      let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-      Library.to_library_id ~src_dir lib
-    in
     let* installable_modules =
       let+ modules =
+        let library_id = Lib_info.library_id info in
         Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library library_id)
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
@@ -309,7 +307,7 @@ end = struct
           if Module.kind m = Virtual then [] else common m |> set_dir m)
       in
       modules_vlib @ modules_impl
-    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config ~library_id info
+    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info

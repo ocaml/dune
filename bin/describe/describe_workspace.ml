@@ -449,7 +449,7 @@ module Crawl = struct
         | true ->
           (* XXX why do we have a second object directory? *)
           let* modules_, obj_dir_ =
-            let library_id = Lib.library_id lib in
+            let library_id = Lib_info.library_id info in
             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
             >>= Dir_contents.ocaml
             >>| Ml_sources.modules_and_obj_dir ~for_:(Library library_id)

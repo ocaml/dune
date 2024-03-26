@@ -518,7 +518,7 @@ module DB = struct
                let package = Public_lib.package pub in
                let name = Package.name package in
                let local_lib = Lib.Local.of_lib_exn lib in
-               let library_id = Lib.library_id lib in
+               let library_id = Lib_info.library_id (Lib.info lib) in
                (name, Lib_entry.Library (library_id, local_lib)) :: acc)
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in

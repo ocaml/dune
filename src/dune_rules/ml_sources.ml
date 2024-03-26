@@ -275,14 +275,14 @@ let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
 let find_origin (t : t) path = Module_name.Path.Map.find t.modules.rev_map path
 
 let virtual_modules ~lookup_vlib vlib =
-  let info = Lib.info vlib in
   let+ modules =
+    let info = Lib.info vlib in
     match Option.value_exn (Lib_info.virtual_ info) with
     | External modules -> Memo.return modules
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let+ t = lookup_vlib ~dir:src_dir in
-      modules t ~for_:(Library (Lib.library_id vlib))
+      modules t ~for_:(Library (Lib_info.library_id info))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =

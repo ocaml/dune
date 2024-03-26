@@ -382,9 +382,7 @@ module Entry = struct
   ;;
 
   let library_id = function
-    | Library lib | Hidden_library lib ->
-      let info = Lib.info lib in
-      Lib_info.library_id info
+    | Library lib | Hidden_library lib -> Lib_info.library_id (Lib.info lib)
     | Deprecated_library_name _ -> assert false
   ;;
 

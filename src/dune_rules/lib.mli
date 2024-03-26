@@ -11,7 +11,6 @@ val to_dyn : t -> Dyn.t
     or the [name] if not. *)
 val name : t -> Lib_name.t
 
-val library_id : t -> Lib_info.Library_id.t
 val lib_config : t -> Lib_config.t
 val implements : t -> t Resolve.Memo.t option
 

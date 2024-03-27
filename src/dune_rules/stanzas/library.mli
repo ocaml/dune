@@ -72,7 +72,6 @@ val foreign_lib_files
 val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
 val best_name : t -> Lib_name.t
-val private_name : t -> Lib_name.t
 val is_virtual : t -> bool
 val is_impl : t -> bool
 val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t

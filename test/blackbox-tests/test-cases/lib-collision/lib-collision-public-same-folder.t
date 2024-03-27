@@ -23,7 +23,8 @@ Without any consumers of the libraries
   4 | (library
   5 |  (name foo)
   6 |  (public_name baz.foo))
-  Error: Library "foo" appears for the second time in this directory
+  Error: Library "baz.foo" has the same private name as another library in this
+  directory
   [1]
 
 With some consumer
@@ -49,5 +50,6 @@ With some consumer
   4 | (library
   5 |  (name foo)
   6 |  (public_name baz.foo))
-  Error: Library "foo" appears for the second time in this directory
+  Error: Library "baz.foo" has the same private name as another library in this
+  directory
   [1]

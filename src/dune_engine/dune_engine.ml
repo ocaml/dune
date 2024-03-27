@@ -27,7 +27,6 @@ module Action_to_sh = Action_to_sh
 module Scheduler = Scheduler
 module Hooks = Hooks
 module Diff_promotion = Diff_promotion
-module Cached_digest = Cached_digest
 module Fs_cache = Fs_cache
 module Fs_memo = Fs_memo
 module Execution_parameters = Execution_parameters

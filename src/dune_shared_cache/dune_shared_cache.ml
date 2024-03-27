@@ -1,13 +1,13 @@
 open Stdune
 open Dune_config
 module Digest = Dune_digest
+module Cached_digest = Dune_digest.Cached_digest
 module Console = Dune_console
 module Log = Dune_util.Log
 
 include struct
   open Dune_engine
   module Targets = Targets
-  module Cached_digest = Cached_digest
   module Execution_parameters = Execution_parameters
   module Result = Dune_engine.Rule_cache.Result
   module Action = Action

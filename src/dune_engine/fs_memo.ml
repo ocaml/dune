@@ -296,7 +296,7 @@ let dir_exists path =
 let file_digest ?(force_update = false) path =
   if force_update
   then (
-    Cached_digest.Untracked.invalidate_cached_timestamp (Path.outside_build_dir path);
+    Cached_digest.Untracked.invalidate_cached_timestamp path;
     Fs_cache.evict Fs_cache.Untracked.file_digest path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
   Fs_cache.read Fs_cache.Untracked.file_digest path

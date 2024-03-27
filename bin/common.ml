@@ -1258,9 +1258,9 @@ let init (builder : Builder.t) =
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
   Dune_engine.Clflags.debug_load_dir := c.builder.debug_load_dir;
-  Dune_engine.Clflags.debug_digests := c.builder.debug_digests;
   Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
-  Dune_engine.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
+  Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
+  Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
   Dune_engine.Clflags.diff_command := c.builder.diff_command;
   Dune_engine.Clflags.promote := c.builder.promote;

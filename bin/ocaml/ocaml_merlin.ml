@@ -28,6 +28,11 @@ end = struct
       | Halt
       | Unknown of string
       | GetContexts
+      | SetContext of string
+
+    type selected_ctxt =
+      | Standard
+      | Custom of Context_name.t
 
     let read_input in_channel =
       match Csexp.input_opt in_channel with
@@ -38,6 +43,7 @@ end = struct
          | Atom "Halt" -> Halt
          | List [ Atom "File"; Atom path ] -> File path
          | List [ Atom "GetContexts" ] -> GetContexts
+         | List [ Atom "SetContext"; Atom name ] -> SetContext name
          | sexp ->
            let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
            Unknown msg)
@@ -131,20 +137,24 @@ end = struct
       |> error
   ;;
 
-  let to_local file =
+  let to_local ~selected_context file =
     match to_local file with
     | Error s -> Fiber.return (Error s)
     | Ok file ->
-      let+ workspace = Memo.run (Workspace.workspace ()) in
       let module Context_name = Dune_engine.Context_name in
-      (match workspace.merlin_context with
-       | None -> Error "no merlin context configured"
-       | Some context ->
-         Ok (Path.Build.append_local (Context_name.build_dir context) file))
+      (match selected_context with
+       | Commands.Custom ctxt ->
+         Fiber.return (Ok (Path.Build.append_local (Context_name.build_dir ctxt) file))
+       | Standard ->
+         let+ workspace = Memo.run (Workspace.workspace ()) in
+         (match workspace.merlin_context with
+          | None -> Error "no merlin context configured"
+          | Some context ->
+            Ok (Path.Build.append_local (Context_name.build_dir context) file)))
   ;;
 
-  let print_merlin_conf file =
-    to_local file
+  let print_merlin_conf ~selected_context file =
+    to_local ~selected_context file
     >>| (function
            | Error s -> Merlin_conf.make_error s
            | Ok file -> load_merlin_file file)
@@ -152,14 +162,14 @@ end = struct
   ;;
 
   let dump s =
-    to_local s
+    to_local ~selected_context:Standard s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
   ;;
 
   let dump_dot_merlin s =
-    to_local s
+    to_local ~selected_context:Standard s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
@@ -168,11 +178,12 @@ end = struct
   ;;
 
   let start () =
+    let selected_context = ref Commands.Standard in
     let rec main () =
       match Commands.read_input stdin with
       | Halt -> Fiber.return ()
       | File path ->
-        let* () = print_merlin_conf path in
+        let* () = print_merlin_conf ~selected_context:!selected_context path in
         main ()
       | Unknown msg ->
         Merlin_conf.to_stdout (Merlin_conf.make_error msg);
@@ -187,6 +198,22 @@ end = struct
             (Context_name.Map.to_list setup.scontexts)
         in
         Merlin_conf.to_stdout Sexp.(List ctxts);
+        main ()
+      | SetContext name ->
+        let open Fiber.O in
+        let* setup = Import.Main.setup () in
+        let* setup = Memo.run setup in
+        let () =
+          let open Merlin_conf in
+          match Context_name.of_string_opt name with
+          | None -> to_stdout (make_error (Printf.sprintf "Invalid context name %S" name))
+          | Some ctxt_name ->
+            (match Context_name.Map.mem setup.scontexts ctxt_name with
+             | false ->
+               to_stdout
+                 (make_error (Printf.sprintf "Can't find context with name %S" name))
+             | true -> selected_context := Custom ctxt_name)
+        in
         main ()
     in
     main ()

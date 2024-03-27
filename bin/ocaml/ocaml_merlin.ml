@@ -27,6 +27,7 @@ end = struct
       | File of string
       | Halt
       | Unknown of string
+      | GetContexts
 
     let read_input in_channel =
       match Csexp.input_opt in_channel with
@@ -36,6 +37,7 @@ end = struct
         (match sexp with
          | Atom "Halt" -> Halt
          | List [ Atom "File"; Atom path ] -> File path
+         | List [ Atom "GetContexts" ] -> GetContexts
          | sexp ->
            let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
            Unknown msg)
@@ -174,6 +176,17 @@ end = struct
         main ()
       | Unknown msg ->
         Merlin_conf.to_stdout (Merlin_conf.make_error msg);
+        main ()
+      | GetContexts ->
+        let open Fiber.O in
+        let* setup = Import.Main.setup () in
+        let* setup = Memo.run setup in
+        let ctxts =
+          List.map
+            ~f:(fun (name, _) -> Sexp.Atom (Context_name.to_string name))
+            (Context_name.Map.to_list setup.scontexts)
+        in
+        Merlin_conf.to_stdout Sexp.(List ctxts);
         main ()
     in
     main ()

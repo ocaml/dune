@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
@@ -132,7 +132,7 @@ jobs:
     name: MSVC 4.14.0 / ${{ matrix.dkml_host_abi }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup DKML on a Windows host
         if: startsWith(matrix.dkml_host_abi, 'windows_')
@@ -157,7 +157,7 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v22
       - run: nix build
 
@@ -165,7 +165,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#fmt -c make fmt
 
@@ -178,7 +178,7 @@ jobs:
         ocaml-compiler:
           - 4.14.x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
         uses: ocaml/setup-ocaml@v2
         with:
@@ -208,7 +208,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#doc -c make doc
 
@@ -217,7 +217,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Use OCaml 4.14.x
         uses: ocaml/setup-ocaml@v2
         with:
@@ -239,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - uses: whoan/docker-build-with-cache-action@v6
         with:
           image_name: monorepobenchmark
@@ -265,5 +265,5 @@ jobs:
         uses: ocaml/setup-ocaml@v2
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: opam switch create . -y

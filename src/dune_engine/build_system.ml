@@ -849,17 +849,13 @@ end = struct
       (match Targets.Produced.find targets path with
        | Some digest -> digest, File_target
        | None ->
-         (* CR-soon amokhov: Here we expect [path] to be a directory target. It seems odd
-            to compute its digest here by calling to [Cached_digest.build_file]. Shouldn't
-            we do that in [execute_rule], like we do for file targets?
-
-            rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
-            (or should we) ever use [build_file] to build directories? Perhaps this could
-            be split in two memo tables, one for files and one for directories. *)
-         (match Cached_digest.build_file ~allow_dirs:true path with
-          | Ok digest -> digest, Dir_target { targets }
-          (* Must be a directory target *)
-          | Error _ ->
+         (match
+            Path.Local.Map.find
+              targets.dirs
+              (Path.Build.drop_build_context_exn path |> Path.Source.to_local)
+          with
+          | Some _ -> Targets.Produced.digest targets, Dir_target { targets }
+          | None ->
             (* CR-someday amokhov: The most important reason we end up here is
                [No_such_file]. I think some of the outcomes above are impossible
                but some others will benefit from a better error. To be refined. *)

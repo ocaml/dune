@@ -51,11 +51,7 @@ end
     may get stale, so [path_with_stats] may return [Unix_error (ENOENT, _, _)]
     even though you've just successfully run [Path.stat] on it. The call sites
     are expected to gracefully handle such races. *)
-val path_with_stats
-  :  allow_dirs:bool
-  -> Path.t
-  -> Stats_for_digest.t
-  -> (t, Path_digest_error.t) result
+val path_with_stats : Path.t -> Stats_for_digest.t -> (t, Path_digest_error.t) result
 
 (** Digest a file taking the [executable] bit into account. Should not be called
     on a directory. *)

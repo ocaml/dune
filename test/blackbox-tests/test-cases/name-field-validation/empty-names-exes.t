@@ -9,7 +9,7 @@ exes: empty list of names/public names
   File "dune", line 1, characters 13-20:
   1 | (executables (names))
                    ^^^^^^^
-  Error: Not enough arguments for names
+  Error: Not enough arguments for "names"
   [1]
   $ cat >dune <<EOF
   > (executables (public_names))
@@ -18,7 +18,7 @@ exes: empty list of names/public names
   File "dune", line 1, characters 13-27:
   1 | (executables (public_names))
                    ^^^^^^^^^^^^^^
-  Error: Not enough arguments for public_names
+  Error: Not enough arguments for "public_names"
   [1]
   $ cat >dune <<EOF
   > (tests (names))
@@ -27,5 +27,5 @@ exes: empty list of names/public names
   File "dune", line 1, characters 7-14:
   1 | (tests (names))
              ^^^^^^^
-  Error: Not enough arguments for names
+  Error: Not enough arguments for "names"
   [1]

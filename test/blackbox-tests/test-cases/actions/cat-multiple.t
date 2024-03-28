@@ -19,7 +19,7 @@ It is an error to pass an empty list:
   File "dune", line 8, characters 2-7:
   8 |   (cat)))
         ^^^^^
-  Error: Not enough arguments for cat
+  Error: Not enough arguments for "cat"
   [1]
 
 The cat action supports several files.

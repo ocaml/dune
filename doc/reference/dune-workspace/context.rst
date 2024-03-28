@@ -21,6 +21,9 @@ the description of an opam switch, as follows:
 
 - ``(merlin)`` instructs Dune to use this build context for Merlin.
 
+- ``(generate_merlin_rules)`` instructs Dune to generate Merlin rules for this
+  context, even if it is not the one selected for Merlin.
+
 - ``(profile <profile>)`` sets a different profile for a :term:`build context`. This has
   precedence over the command-line option ``--profile``.
 

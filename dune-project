@@ -131,6 +131,7 @@ execution of the action.
   (stdune (= :version))
   dyn
   ordering
+  (odoc (and (>= 2.3.0) :with-doc))
   (dune-private-libs (= :version)))
  (description "\
 dune-glob provides a parser and interpreter for globs as \

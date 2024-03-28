@@ -103,6 +103,37 @@ If Merlin field is present, this context is chosen
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
+
+If `generate_merlin_rules` field is present, rules are generated even if merlin
+is disabled in that context
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.9)
+  > (context (default))
+  > (context
+  >  (default
+  >   (name cross)
+  >   (generate_merlin_rules)))
+  > EOF
+
+  $ dune build
+
+  $ ls -a _build/cross/.merlin-conf
+  .
+  ..
+  lib-foo
+
+  $ ls -a _build/default/.merlin-conf
+  .
+  ..
+  lib-foo
+
+  $ dune ocaml merlin dump-config "$PWD"
+  Foo: _build/default/foo
+  ((STDLIB OPAM_PREFIX)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
    (FLG

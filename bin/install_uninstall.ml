@@ -207,46 +207,37 @@ module File_ops_real (W : sig
   let print_line = print_line ~verbosity
   let get_vcs p = Dune_rules.Vcs_db.nearest_vcs p
 
-  type load_special_file_result =
-    { need_version : bool
-    ; callback : ?version:string -> Format.formatter -> unit
-    }
-
   type copy_special_file_status =
     | Done
     | Use_plain_copy
 
+  let with_ppf oc ~f =
+    let ppf = Format.formatter_of_out_channel oc in
+    f ppf;
+    Format.pp_print_flush ppf ()
+  ;;
+
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let open Fiber.O in
-    match f ic with
-    | None -> Fiber.return Use_plain_copy
-    (* XXX should we really be catching everything here? *)
-    | exception _ ->
+    let get_version () =
+      let* packages =
+        match Package.Name.Map.find workspace.packages package with
+        | None -> Fiber.return None
+        | Some package -> Memo.run (get_vcs (Package.dir package))
+      in
+      match packages with
+      | None -> Fiber.return None
+      | Some vcs -> Memo.run (Vcs.describe vcs)
+    in
+    try f ~get_version ic ~src oc with
+    | _ (* XXX should we really be catching everything here? *) ->
       User_warning.emit
         ~loc:(Loc.in_file src)
         [ Pp.text "Failed to parse file, not adding version and locations information." ];
       Fiber.return Use_plain_copy
-    | Some { need_version; callback } ->
-      let+ version =
-        if need_version
-        then
-          let* packages =
-            match Package.Name.Map.find workspace.packages package with
-            | None -> Fiber.return None
-            | Some package -> Memo.run (get_vcs (Package.dir package))
-          in
-          match packages with
-          | None -> Fiber.return None
-          | Some vcs -> Memo.run (Vcs.describe vcs)
-        else Fiber.return None
-      in
-      let ppf = Format.formatter_of_out_channel oc in
-      callback ppf ?version;
-      Format.pp_print_flush ppf ();
-      Done
   ;;
 
-  let process_meta ic =
+  let process_meta ~get_version ic ~src:_ oc =
     let module Meta = Dune_findlib.Findlib.Meta in
     let lb = Lexing.from_channel ic in
     let meta : Meta.t = { name = None; entries = Meta.parse_entries lb } in
@@ -260,78 +251,46 @@ module File_ops_real (W : sig
       | Exit -> true
     in
     if not need_more_versions
-    then None
-    else (
-      let callback ?version ppf =
+    then Fiber.return Use_plain_copy
+    else
+      let open Fiber.O in
+      let+ version = get_version () in
+      with_ppf oc ~f:(fun ppf ->
         let meta = Meta.add_versions meta ~get_version:(fun _ -> version) in
-        Pp.to_fmt ppf (Meta.pp meta.entries)
-      in
-      Some { need_version = true; callback })
+        Pp.to_fmt ppf (Meta.pp meta.entries));
+      Done
   ;;
 
-  let replace_sites ~(get_location : Section.t -> Package.Name.t -> Stdune.Path.t) dp =
-    match
-      List.find_map dp ~f:(function
-        | Dune_lang.List [ Atom (A "name"); Atom (A name) ] -> Some name
-        | _ -> None)
-    with
-    | None -> dp
-    | Some name ->
-      List.map dp ~f:(function
-        | Dune_lang.List ((Atom (A "sections") as sexp_sections) :: sections) ->
-          let sections =
-            List.map sections ~f:(function
-              | Dune_lang.List [ (Atom (A section) as section_sexp); _ ] ->
-                let path =
-                  get_location
-                    (Option.value_exn (Section.of_string section))
-                    (Package.Name.of_string name)
-                in
-                let open Dune_lang.Encoder in
-                pair sexp string (section_sexp, Path.to_absolute_filename path)
-              | _ -> assert false)
-          in
-          Dune_lang.List (sexp_sections :: sections)
-        | x -> x)
-  ;;
-
-  let process_dune_package ~get_location ic =
+  let process_dune_package ~get_version ~get_location ic ~src oc =
     let lb = Lexing.from_channel ic in
-    let dp =
-      Dune_lang.Parser.parse ~mode:Many lb |> List.map ~f:Dune_lang.Ast.remove_locs
-    in
-    (* replace sites with external path in the file *)
-    let dp = replace_sites ~get_location dp in
-    (* replace version if needed in the file *)
-    let need_version =
-      not
-        (List.exists dp ~f:(function
-          | Dune_lang.List (Atom (A "version") :: _)
-          | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
-          | Dune_lang.List [ Atom (A "use_meta") ] -> true
-          | _ -> false))
-    in
-    let callback ?version ppf =
-      let dp =
-        match version with
-        | Some version ->
-          let version =
-            Dune_lang.List
-              [ Dune_lang.atom "version"; Dune_lang.atom_or_quoted_string version ]
-          in
-          (match dp with
-           | lang :: name :: rest -> lang :: name :: version :: rest
-           | [ lang ] -> [ lang; version ]
-           | [] -> [ version ])
-        | _ -> dp
+    let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
+    match Dune_package.Or_meta.parse src lb |> User_error.ok_exn with
+    | Use_meta ->
+      with_ppf oc ~f:(Dune_package.Or_meta.pp_use_meta ~dune_version);
+      Fiber.return Done
+    | Dune_package dp ->
+      let open Fiber.O in
+      (* replace sites with external path in the file *)
+      let dp, replace_info = Dune_package.replace_site_sections ~get_location dp in
+      (* replace version if needed in the file *)
+      let need_version = Option.is_none dp.version in
+      let+ dp =
+        if need_version
+        then
+          let+ version_opt = get_version () in
+          match version_opt with
+          | Some version -> { dp with version = Some (Package_version.of_string version) }
+          | None -> dp
+        else Fiber.return dp
       in
-      Format.pp_open_vbox ppf 0;
-      List.iter dp ~f:(fun x ->
-        Dune_lang.Deprecated.pp ppf x;
-        Format.pp_print_cut ppf ());
-      Format.pp_close_box ppf ()
-    in
-    Some { need_version; callback }
+      with_ppf oc ~f:(fun ppf ->
+        (* CR-emillon: we should write absolute paths only if necessary *)
+        Dune_package.Or_meta.pp
+          ~dune_version
+          ppf
+          (Dune_package dp)
+          ~encoding:(Absolute replace_info));
+      Done
   ;;
 
   let copy_file
@@ -343,17 +302,16 @@ module File_ops_real (W : sig
     ~(conf : Artifact_substitution.Conf.t)
     =
     let chmod = if executable then fun _ -> 0o755 else fun _ -> 0o644 in
-    let plain_copy () =
-      Io.copy_file ~chmod ~src ~dst ();
-      Fiber.return ()
-    in
+    let plain_copy () = Io.copy_file ~chmod ~src ~dst () in
     match kind with
-    | Plain -> plain_copy ()
+    | Plain ->
+      plain_copy ();
+      Fiber.return ()
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Special sf ->
       let open Fiber.O in
       let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
-      let* status =
+      let+ status =
         Fiber.finalize
           ~finally:(fun () ->
             Io.close_both (ic, oc);
@@ -369,7 +327,7 @@ module File_ops_real (W : sig
             copy_special_file ~src ~package ~ic ~oc ~f)
       in
       (match status with
-       | Done -> Fiber.return ()
+       | Done -> ()
        | Use_plain_copy -> plain_copy ())
   ;;
 

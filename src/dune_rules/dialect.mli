@@ -28,6 +28,7 @@ val decode : t Dune_lang.Decoder.t
 val extension : t -> Ml_kind.t -> string option
 val preprocess : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
 val format : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t * string list) option
+val dump_ast : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
 val ocaml : t
 val reason : t
 val rescript : t

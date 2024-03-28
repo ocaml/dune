@@ -45,7 +45,7 @@ let print_pped_file sctx file pp_file =
   Build_system.execute_action ~observing_facts { action; loc; dir; alias = None }
 ;;
 
-let files_for_source file dialects =
+let files_for_source file ~dialects =
   let base, ext = Path.split_extension file in
   let dialect, kind =
     match Dune_rules.Dialect.DB.find_by_extension dialects ext with
@@ -53,9 +53,27 @@ let files_for_source file dialects =
     | Some x -> x
   in
   let pp_file_base = Path.extend_basename base ~suffix:ext in
-  match Dune_rules.Dialect.ml_suffix dialect kind with
-  | None -> pp_file_base
-  | Some suffix -> Path.extend_basename pp_file_base ~suffix
+  let pp_files =
+    let pp_file_result_base =
+      Path.map_extension pp_file_base ~f:(fun ext -> ".pp" ^ ext)
+    in
+    match Dune_rules.Dialect.ml_suffix dialect kind with
+    | None ->
+      (* No `.ml` suffix for this dialect. this is already an `.ml` file.
+         The extension for the pped file is `.pp.ml` *)
+      [ pp_file_result_base ]
+    | Some suffix ->
+      (* If there's an `.ml` suffix for this dialect, append it to the source.
+         In this case, we need to try a few targets:
+
+         - For files preprocessed with ppx: `<original-file>.<original-ext>.pp.ml`.
+         - For files preprocessed with actions: `<original-file>.pp.<original-ext>.ml`.
+      *)
+      [ pp_file_base |> Path.extend_basename ~suffix:".pp" |> Path.extend_basename ~suffix
+      ; Path.extend_basename pp_file_result_base ~suffix
+      ]
+  in
+  pp_files
 ;;
 
 let get_pped_file super_context file =
@@ -69,16 +87,23 @@ let get_pped_file super_context file =
     then User_error.raise [ Pp.textf "No file given." ]
     else Path.of_string file |> in_build_dir |> Path.build
   in
-  let pp_file = file_in_build_dir |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
-  Build_system.file_exists pp_file
-  >>= function
-  | true ->
-    let* project = Source_tree.root () >>| Source_tree.Dir.project in
+  let* pp_files_to_check =
+    let+ project = Source_tree.root () >>| Source_tree.Dir.project in
     let dialects = Dune_project.dialects project in
-    let pp_file = files_for_source pp_file dialects in
+    files_for_source file_in_build_dir ~dialects
+  in
+  let* pp_file =
+    let+ candidates =
+      Memo.parallel_map pp_files_to_check ~f:(fun file ->
+        Build_system.file_exists file >>| fun exists -> Option.some_if exists file)
+    in
+    List.find_map candidates ~f:Fun.id
+  in
+  match pp_file with
+  | Some pp_file ->
     let+ () = Build_system.build_file pp_file in
     Ok pp_file
-  | false ->
+  | None ->
     Build_system.file_exists file_in_build_dir
     >>= (function
      | true ->

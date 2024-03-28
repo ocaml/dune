@@ -14,12 +14,12 @@ let print_pped_file sctx file pp_file =
       | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
       | Some x -> x
     in
-    match Dune_rules.Dialect.dump_ast dialect ml_kind with
-    | Some dump_ast -> dump_ast
+    match Dune_rules.Dialect.print_ast dialect ml_kind with
+    | Some print_ast -> print_ast
     | None ->
-      (* fallback to the OCaml dump_ast function, known to exist, if one
+      (* fall back to the OCaml print_ast function, known to exist, if one
          doesn't exist for this dialect. *)
-      Dune_rules.Dialect.dump_ast Dune_rules.Dialect.ocaml ml_kind |> Option.value_exn
+      Dune_rules.Dialect.print_ast Dune_rules.Dialect.ocaml ml_kind |> Option.value_exn
   in
   let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
   let* action, observing_facts =

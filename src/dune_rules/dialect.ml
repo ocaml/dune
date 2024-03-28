@@ -10,10 +10,10 @@ module File_kind = struct
     ; extension : string
     ; preprocess : (Loc.t * Action.t) option
     ; format : (Loc.t * Action.t * string list) option
-    ; dump_ast : (Loc.t * Action.t) option
+    ; print_ast : (Loc.t * Action.t) option
     }
 
-  let encode { kind; extension; preprocess; format; dump_ast } =
+  let encode { kind; extension; preprocess; format; print_ast } =
     let open Dune_lang.Encoder in
     let kind =
       string
@@ -29,18 +29,21 @@ module File_kind = struct
             [ field "extension" string extension
             ; field_o "preprocess" Action.encode (Option.map ~f:snd preprocess)
             ; field_o "format" Action.encode (Option.map ~f:(fun (_, x, _) -> x) format)
-            ; field_o "dump_ast" Action.encode (Option.map ~f:(fun (_, x) -> x) dump_ast)
+            ; field_o
+                "print_ast"
+                Action.encode
+                (Option.map ~f:(fun (_, x) -> x) print_ast)
             ])
   ;;
 
-  let to_dyn { kind; extension; preprocess; format; dump_ast } =
+  let to_dyn { kind; extension; preprocess; format; print_ast } =
     let open Dyn in
     record
       [ "kind", Ml_kind.to_dyn kind
       ; "extension", string extension
       ; "preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess
       ; "format", option (fun (_, x, y) -> pair Action.to_dyn (list string) (x, y)) format
-      ; "dump_ast", option (fun (_, x) -> Action.to_dyn x) dump_ast
+      ; "print_ast", option (fun (_, x) -> Action.to_dyn x) print_ast
       ]
   ;;
 end
@@ -81,14 +84,14 @@ let decode =
       field_o
         "format"
         (map ~f:(fun (loc, x) -> loc, x, []) (located Action.decode_dune_file))
-    and+ dump_ast = field_o "dump_ast" (located Action.decode_dune_file)
+    and+ print_ast = field_o "print_ast" (located Action.decode_dune_file)
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
     then (
       let what = "the possibility of defining extensions containing periods" in
       Syntax.Error.since loc Stanza.syntax ver ~what);
-    { File_kind.kind; extension; preprocess; format; dump_ast }
+    { File_kind.kind; extension; preprocess; format; print_ast }
   in
   fields
     (let+ name = field "name" string
@@ -134,10 +137,10 @@ let format { file_kinds; _ } ml_kind =
   x.format
 ;;
 
-let dump_ast { file_kinds; _ } ml_kind =
+let print_ast { file_kinds; _ } ml_kind =
   let open Option.O in
   let* x = Ml_kind.Dict.get file_kinds ml_kind in
-  x.dump_ast
+  x.print_ast
 ;;
 
 let ocaml =
@@ -155,7 +158,7 @@ let ocaml =
          ; S.make_pform Loc.none (Var Input_file)
          ])
   in
-  let dump_ast _kind =
+  let print_ast _kind =
     let module S = String_with_vars in
     Action.chdir
       (S.make_pform Loc.none (Var Workspace_root))
@@ -176,7 +179,7 @@ let ocaml =
           ( Loc.none
           , format kind
           , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
-    ; dump_ast = Some (Loc.none, dump_ast kind)
+    ; print_ast = Some (Loc.none, print_ast kind)
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".mli") in
@@ -198,7 +201,7 @@ let reason =
     let format =
       Action.run (S.make_text Loc.none "refmt") [ S.make_pform Loc.none (Var Input_file) ]
     in
-    let dump_ast =
+    let print_ast =
       let flag_of_kind = function
         | Ml_kind.Impl -> "-i=false"
         | Intf -> "-i=true"
@@ -217,7 +220,7 @@ let reason =
     ; extension
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Loc.none, format, [])
-    ; dump_ast = Some (Loc.none, dump_ast)
+    ; print_ast = Some (Loc.none, print_ast)
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".rei") in
@@ -246,7 +249,7 @@ let rescript =
     ; extension
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Loc.none, format, [])
-    ; dump_ast = None
+    ; print_ast = None
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".resi") in

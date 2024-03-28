@@ -41,36 +41,22 @@ Showcase behavior of the SetContext ocaml-merlin command
 
 Request config for file in alt context before calling SetContext
 
-  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file
+  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
   ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
 
 Request config for file in alt context after calling SetContext
 
-  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file
+  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
+   (1:B139:$TESTCASE_ROOT/_build/alt/.bar.objs/byte)
+
+Both together
+
+  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
   ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
+   (1:B139:$TESTCASE_ROOT/_build/alt/.bar.objs/byte)
 
-Request config for file in default context before and after calling SetContext
+Request config for default context before and after calling SetContext
 
-  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE1} $FILE1 ${#FILE1} $FILE1 | dune ocaml-merlin | dune format-dune-file
-  ((6:STDLIB34:/home/me/code/dune/_opam/lib/ocaml)
-   (17:EXCLUDE_QUERY_DIR)
+  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE1} $FILE1 ${#FILE1} $FILE1 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib1"
    (1:B143:$TESTCASE_ROOT/_build/default/.foo.objs/byte)
-   (1:S113:$TESTCASE_ROOT)
-   (3:FLG
-    (2:-w51:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-4016:-strict-sequence15:-strict-formats12:-short-paths10:-keep-locs2:-g)))
-  
   ((5:ERROR58:No config found for file foo.ml. Try calling 'dune build'.))
-
-Combine all
-
-  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)(4:File%d:%s)' ${#FILE1} $FILE1 ${#FILE1} $FILE1 ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file
-  ((6:STDLIB34:/home/me/code/dune/_opam/lib/ocaml)
-   (17:EXCLUDE_QUERY_DIR)
-   (1:B143:$TESTCASE_ROOT/_build/default/.foo.objs/byte)
-   (1:S113:$TESTCASE_ROOT)
-   (3:FLG
-    (2:-w51:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-4016:-strict-sequence15:-strict-formats12:-short-paths10:-keep-locs2:-g)))
-  
-  ((5:ERROR58:No config found for file foo.ml. Try calling 'dune build'.))
-  
-  ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))

@@ -179,7 +179,7 @@ module Make (VCS: VCS) = struct
       Done (match result with
           | Up_to_date _ when rm_list = [] -> Up_to_date None
           | Up_to_date _ | Result _ -> Result None
-          | Not_available _ as na -> na)
+          | (Not_available _ | Checksum_mismatch _) as error -> error)
 
   let get_remote_url = VCS.get_remote_url
 

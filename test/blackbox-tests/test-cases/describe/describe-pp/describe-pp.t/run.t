@@ -16,4 +16,6 @@ We also make sure that the dump file is not present
 This also works for reason code
 
   $ dune describe pp src/main_re.re
-  ;;Util.log "Hello, world!"
+  # 1 "_build/default/src/main_re.pp.re.ml"
+  # 1 "src/main_re.pp.re"
+  Util.log ("Hello, world!")

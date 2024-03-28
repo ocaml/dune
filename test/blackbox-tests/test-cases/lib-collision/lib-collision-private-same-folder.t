@@ -15,9 +15,10 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  Error: Library foo is defined twice:
-  - dune:3
-  - dune:1
+  File "dune", line 3, characters 0-21:
+  3 | (library
+  4 |  (name foo))
+  Error: Library "foo" appears for the second time in this directory
   [1]
 
 With some consumer of the library
@@ -37,7 +38,8 @@ With some consumer of the library
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - dune:3
-  - dune:1
+  File "dune", line 3, characters 0-21:
+  3 | (library
+  4 |  (name foo))
+  Error: Library "foo" appears for the second time in this directory
   [1]

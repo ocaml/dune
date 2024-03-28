@@ -228,6 +228,7 @@ module Lib = struct
        let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
+         let library_id = Lib_info.Library_id.external_ ~loc ~src_dir name in
          let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with
@@ -252,6 +253,7 @@ module Lib = struct
            ~path_kind:External
            ~loc
            ~name
+           ~library_id
            ~kind
            ~status
            ~src_dir
@@ -374,6 +376,11 @@ module Entry = struct
   let loc = function
     | Library lib | Hidden_library lib -> Lib_info.loc (Lib.info lib)
     | Deprecated_library_name d -> d.loc
+  ;;
+
+  let library_id = function
+    | Library lib | Hidden_library lib -> Lib_info.library_id (Lib.info lib)
+    | Deprecated_library_name _ -> assert false
   ;;
 
   let cstrs ~lang ~dir =

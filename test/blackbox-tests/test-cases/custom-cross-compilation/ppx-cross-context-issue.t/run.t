@@ -6,7 +6,8 @@
                         ^^^^^^
   Error: Library "fooppx" in _build/cross-environment/ppx is hidden
   (unsatisfied 'enabled_if').
-  -> required by _build/cross-environment/lib/lib.pp.ml
+  -> required by _build/cross-environment/lib/.merlin-conf/lib-foolib
+  -> required by _build/cross-environment/lib/foolib.a
   -> required by alias lib/all (context cross-environment)
   -> required by alias default (context cross-environment)
   [1]

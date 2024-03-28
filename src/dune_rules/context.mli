@@ -50,7 +50,6 @@ val default_ocamlpath : t -> Path.t list Memo.t
 val findlib_toolchain : t -> Context_name.t option
 val instrument_with : t -> Lib_name.t list
 val profile : t -> Profile.t
-val merlin : t -> bool
 val equal : t -> t -> bool
 val hash : t -> int
 val to_dyn : t -> Dyn.t

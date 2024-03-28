@@ -36,20 +36,16 @@ let gen_select_rules sctx ~dir compile_info =
           let* src_fn = Resolve.read src_fn in
           let src = Path.build (Path.Build.relative dir src_fn) in
           let+ () = Action_builder.path src in
-          let context = Super_context.context sctx in
-          Action.Full.make (Copy_line_directive.action context ~src ~dst))))
+          Action.Full.make (Copy_line_directive.action ~src ~dst))))
 ;;
 
-let with_lib_deps (t : Context.t) compile_info ~dir ~f =
+let with_lib_deps compile_info ~dir ~f =
   let prefix =
-    if Context.merlin t
-    then
-      Lib.Compile.merlin_ident compile_info
-      |> Merlin_ident.merlin_file_path dir
-      |> Path.build
-      |> Action_builder.path
-      |> Action_builder.goal
-    else Action_builder.return ()
+    Lib.Compile.merlin_ident compile_info
+    |> Merlin_ident.merlin_file_path dir
+    |> Path.build
+    |> Action_builder.path
+    |> Action_builder.goal
   in
   Rules.prefix_rules prefix ~f
 ;;

@@ -142,7 +142,6 @@ module Special_file = struct
 end
 
 type copy_kind =
-  | Plain (** Just copy the file. Can use fast paths through [Io.copy_file] *)
   | Substitute (** Use [Artifact_substitution.copy_file]. Will scan all bytes. *)
   | Special of Special_file.t (** Hooks to add version numbers, replace sections, etc *)
 
@@ -348,7 +347,6 @@ module File_ops_real (W : sig
       Fiber.return ()
     in
     match kind with
-    | Plain -> plain_copy ()
     | Substitute -> Artifact_substitution.copy_file ~conf ~src ~dst ~chmod ()
     | Special sf ->
       let open Fiber.O in
@@ -515,7 +513,12 @@ let install_entry
       let kind =
         match special_file with
         | Some special -> Special special
-        | None -> if executable then Substitute else Plain
+        | None ->
+          (* CR-emillon: for most cases we could use a fast copy here, but some
+             kinds of files do need artifact substitution(at least
+             executable files and artifacts built from generated sites
+             modules), but it's too late to know without reading the file. *)
+          Substitute
       in
       Ops.copy_file ~src:entry.src ~dst ~executable ~kind ~package ~conf
     in

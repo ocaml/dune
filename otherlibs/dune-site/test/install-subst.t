@@ -38,7 +38,3 @@ The generated module has placeholders.
 We expect no placeholders to be present after installation.
 
   $ find out -type f | sort | while read f ; do check_placeholder $f ; done
-  placeholder found in out/lib/a/S.ml
-  placeholder found in out/lib/a/a.a
-  placeholder found in out/lib/a/a.cma
-  placeholder found in out/lib/a/a__S.cmt

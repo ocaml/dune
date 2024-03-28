@@ -39,8 +39,12 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
     match prefix_from_command_line with
     | None -> Memo.run (Context.roots context)
     | Some prefix ->
+      let setup_roots =
+        Roots.map ~f:(Option.map ~f:Path.of_string) Dune_rules.Setup.roots
+      in
       Roots.opam_from_prefix prefix ~relative:Path.relative
       |> Roots.map ~f:(fun s -> Some s)
+      |> Roots.first_has_priority setup_roots
       |> Fiber.return
   in
   let roots = Roots.first_has_priority from_command_line roots in

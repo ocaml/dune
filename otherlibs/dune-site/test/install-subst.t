@@ -41,9 +41,9 @@ We expect no placeholders to be present after installation.
 
   $ find out -type f | sort | while read f ; do has_placeholder $f ; done
   out/lib/a/META                 has no placeholders
-  out/lib/a/S.ml                 has placeholders
-  out/lib/a/a.a                  has placeholders
-  out/lib/a/a.cma                has placeholders
+  out/lib/a/S.ml                 has no placeholders
+  out/lib/a/a.a                  has no placeholders
+  out/lib/a/a.cma                has no placeholders
   out/lib/a/a.cmi                has no placeholders
   out/lib/a/a.cmt                has no placeholders
   out/lib/a/a.cmx                has no placeholders
@@ -51,6 +51,6 @@ We expect no placeholders to be present after installation.
   out/lib/a/a.cmxs               has no placeholders
   out/lib/a/a.ml                 has no placeholders
   out/lib/a/a__S.cmi             has no placeholders
-  out/lib/a/a__S.cmt             has placeholders
+  out/lib/a/a__S.cmt             has no placeholders
   out/lib/a/a__S.cmx             has no placeholders
   out/lib/a/dune-package         has no placeholders

@@ -19,6 +19,15 @@ let pp_with_ocamlc env ~ocamlc pp_file dump_file =
     User_error.raise [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
 ;;
 
+let dump_file pp_file ~ml_kind =
+  Path.set_extension
+    pp_file
+    ~ext:
+      (match (ml_kind : Ocaml.Ml_kind.t) with
+       | Intf -> ".cmi.dump"
+       | Impl -> ".cmo.dump")
+;;
+
 let files_for_source file dialects =
   let base, ext = Path.split_extension file in
   let dialect, kind =
@@ -27,20 +36,27 @@ let files_for_source file dialects =
     | Some x -> x
   in
   let pp_file_base = Path.extend_basename base ~suffix:ext in
-  let pp_file =
+  let pp_files =
+    let pp_file_result_base =
+      Path.map_extension pp_file_base ~f:(fun ext -> ".pp" ^ ext)
+    in
     match Dune_rules.Dialect.ml_suffix dialect kind with
-    | None -> pp_file_base
-    | Some suffix -> Path.extend_basename pp_file_base ~suffix
+    | None ->
+      (* No `.ml` suffix for this dialect. this is already an `.ml` file.
+         The extension for the pped file is `.pp.ml` *)
+      [ pp_file_result_base ]
+    | Some suffix ->
+      (* If there's an `.ml` suffix for this dialect, append it to the source.
+         In this case, we need to try a few targets:
+
+         - For files preprocessed with ppx: `<original-file>.<original-ext>.pp.ml`.
+         - For files preprocessed with actions: `<original-file>.pp.<original-ext>.ml`.
+      *)
+      [ pp_file_base |> Path.extend_basename ~suffix:".pp" |> Path.extend_basename ~suffix
+      ; Path.extend_basename pp_file_result_base ~suffix
+      ]
   in
-  let dump_file =
-    Path.set_extension
-      pp_file
-      ~ext:
-        (match kind with
-         | Intf -> ".cmi.dump"
-         | Impl -> ".cmo.dump")
-  in
-  pp_file, dump_file
+  kind, pp_files
 ;;
 
 let get_pped_file super_context file =
@@ -54,16 +70,20 @@ let get_pped_file super_context file =
     then User_error.raise [ Pp.textf "No file given." ]
     else Path.of_string file |> in_build_dir |> Path.build
   in
-  let pp_file = file_in_build_dir |> Path.map_extension ~f:(fun ext -> ".pp" ^ ext) in
-  Build_system.file_exists pp_file
+  let* project = Source_tree.root () >>| Source_tree.Dir.project in
+  let dialects = Dune_project.dialects project in
+  let ml_kind, pp_files_to_check = files_for_source file_in_build_dir dialects in
+  Memo.all
+    (List.map
+       ~f:(fun file -> Build_system.file_exists file >>| fun exists -> file, exists)
+       pp_files_to_check)
+  >>| List.find ~f:snd
   >>= function
-  | true ->
-    let* project = Source_tree.root () >>| Source_tree.Dir.project in
-    let dialects = Dune_project.dialects project in
-    let pp_file, dump_file = files_for_source pp_file dialects in
+  | Some (pp_file, _) ->
     let+ () = Build_system.build_file pp_file in
+    let dump_file = dump_file pp_file ~ml_kind in
     Ok (pp_file, dump_file)
-  | false ->
+  | None ->
     Build_system.file_exists file_in_build_dir
     >>= (function
      | true ->

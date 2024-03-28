@@ -36,6 +36,17 @@ val build_exe
   -> link_time_code_gen:Link_time_code_gen_type.t Resolve.t
   -> unit Memo.t
 
+val build_cma_js
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> in_context:Js_of_ocaml.In_context.t
+  -> obj_dir:Path.Build.t Obj_dir.t
+  -> config:Config.t option
+  -> linkall:bool Action_builder.t
+  -> Cm_files.t
+  -> string
+  -> Action.Full.t Action_builder.With_targets.t
+
 val setup_separate_compilation_rules : Super_context.t -> string list -> unit Memo.t
 val runner : string
 val js_of_ocaml_runtest_alias : dir:Path.Build.t -> Alias.Name.t Memo.t

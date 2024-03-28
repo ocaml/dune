@@ -40,6 +40,11 @@ let top_sorted_cms t ~mode =
     Obj_dir.Module.L.cm_files t.obj_dir ~kind:(Ocaml kind) modules)
 ;;
 
+let top_sorted_modules t =
+  Action_builder.map t.top_sorted_modules ~f:(fun modules ->
+    filter_excluded_modules t modules)
+;;
+
 let top_sorted_objects_and_cms t ~mode =
   Action_builder.map t.top_sorted_modules ~f:(fun modules ->
     let modules = filter_excluded_modules t modules in

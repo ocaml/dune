@@ -310,15 +310,17 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
           let sctx = Compilation_context.super_context cctx in
           let dir = Compilation_context.dir cctx in
           let action_with_targets =
-            Jsoo_rules.build_cm
-              sctx
-              ~dir
-              ~in_context
-              ~src:(Path.build src)
-              ~obj_dir
-              ~config:None
+            List.map Jsoo_rules.Config.all ~f:(fun config ->
+              Jsoo_rules.build_cm
+                sctx
+                ~dir
+                ~in_context
+                ~src:(Path.build src)
+                ~obj_dir
+                ~config:(Some config))
           in
-          Super_context.add_rule sctx ~dir action_with_targets))
+          Memo.parallel_iter action_with_targets ~f:(fun rule ->
+            Super_context.add_rule sctx ~dir rule)))
   in
   Memo.when_ melange (fun () ->
     let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None in

@@ -33,7 +33,7 @@ module Config : sig
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
-  val to_flags : t -> string list
+  val to_flags : current:string list -> t -> string list
 end = struct
   type t =
     { js_string : bool option
@@ -106,12 +106,15 @@ end = struct
     loop default l
   ;;
 
-  let to_flags t =
-    List.concat_map (get t) ~f:(function
-      | "toplevel", true -> [ "--toplevel" ]
+  let to_flags ~current t =
+    current
+    :: List.map (get t) ~f:(function
+      | "toplevel", true ->
+        if List.mem current "--toplevel" ~equal:String.equal then [] else [ "--toplevel" ]
       | "toplevel", false -> []
       | name, true -> [ "--enable"; name ]
       | name, false -> [ "--disable"; name ])
+    |> List.concat
   ;;
 end
 
@@ -236,14 +239,17 @@ let js_of_ocaml_rule
        | Compile -> S []
        | Link -> A "link"
        | Build_runtime -> A "build-runtime")
-    ; Command.Args.dyn flags
     ; (match config with
-       | None -> S []
+       | None ->
+         Dyn
+           (Action_builder.map flags ~f:(fun flags ->
+              Command.Args.S (List.map flags ~f:(fun x -> Command.Args.A x))))
        | Some config ->
          Dyn
-           (Action_builder.map config ~f:(fun config ->
+           (Action_builder.map2 flags config ~f:(fun flags config ->
               Command.Args.S
-                (List.map (Config.to_flags config) ~f:(fun x -> Command.Args.A x)))))
+                (List.map (Config.to_flags ~current:flags config) ~f:(fun x ->
+                   Command.Args.A x)))))
     ; A "-o"
     ; Target target
     ; spec
@@ -352,12 +358,13 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
     let special_units =
       List.concat_map to_link ~f:(function
         | Lib_flags.Lib_and_module.Lib _lib -> []
-        | Module (obj_dir, m) -> [ in_obj_dir' ~obj_dir ~config:None [ mod_name m ] ])
+        | Module (obj_dir, m) ->
+          [ in_obj_dir' ~obj_dir ~config:(Some config) [ mod_name m ] ])
     in
     let all_libs = List.concat_map libs ~f:(jsoo_archives ctx config) in
     let all_other_modules =
       List.map cm ~f:(fun m ->
-        Path.build (in_obj_dir ~obj_dir ~config:None [ mod_name m ]))
+        Path.build (in_obj_dir ~obj_dir ~config:(Some config) [ mod_name m ]))
     in
     let std_exit =
       Path.build (in_build_dir ctx ~config [ "stdlib"; "std_exit" ^ Js_of_ocaml.Ext.cmo ])
@@ -396,6 +403,33 @@ let build_cm sctx ~dir ~in_context ~src ~obj_dir ~config =
     ~src
     ~target
     ~config:(Option.map config ~f:Action_builder.return)
+;;
+
+let build_cma_js sctx ~dir ~in_context ~obj_dir ~config ~linkall:_ cm_files name =
+  let target = in_obj_dir ~obj_dir ~config [ name ] in
+  let flags = in_context.Js_of_ocaml.In_context.flags in
+  let modules =
+    let open Action_builder.O in
+    let+ l = Cm_files.top_sorted_modules cm_files in
+    let l =
+      List.map l ~f:(fun m ->
+        in_obj_dir
+          ~obj_dir
+          ~config
+          [ Module_name.Unique.to_string (Module.obj_name m) ^ Js_of_ocaml.Ext.cmo ]
+        |> Path.build)
+    in
+    l
+  in
+  js_of_ocaml_rule
+    sctx
+    ~dir
+    ~sub_command:Link
+    ~config:(Option.map config ~f:Action_builder.return)
+    ~flags
+    ~spec:
+      (S [ A "-a"; Dyn (Action_builder.map modules ~f:(fun x -> Command.Args.Deps x)) ])
+    ~target
 ;;
 
 let setup_separate_compilation_rules sctx components =

@@ -19,6 +19,67 @@ let pp_with_ocamlc env ~ocamlc pp_file dump_file =
     User_error.raise [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
 ;;
 
+let pp_with_refmt =
+  let refmt sctx ~dir =
+    Super_context.resolve_program_memo
+      sctx
+      ~dir
+      ~loc:None
+      ~where:Original_path
+      ~hint:"opam install reason"
+      "refmt"
+  in
+  fun sctx ~ml_kind pp_file ->
+    let open Dune_engine in
+    let open Memo.O in
+    let+ () =
+      let* refmt =
+        let dir =
+          pp_file |> Path.as_in_build_dir_exn |> Path.Build.parent |> Option.value_exn
+        in
+        refmt sctx ~dir
+      and* env = Super_context.context_env sctx in
+      Process.run
+        ~display:!Clflags.display
+        ~env
+        Strict
+        (Action.Prog.ok_exn refmt)
+        ([ "--parse"; "binary"; Path.to_string pp_file ]
+         @
+         match ml_kind with
+         | Ocaml.Ml_kind.Impl -> []
+         | Intf -> [ "-i=true" ])
+      |> Memo.of_non_reproducible_fiber
+    in
+    ()
+;;
+
+let print_pped_file sctx file (pp_file, dump_file) =
+  let open Memo.O in
+  let* project = Source_tree.root () >>| Source_tree.Dir.project in
+  let dialects = Dune_project.dialects project in
+  let _base, ext =
+    let file = Path.of_string file in
+    Path.split_extension file
+  in
+  let dialect, ml_kind =
+    match Dune_rules.Dialect.DB.find_by_extension dialects ext with
+    | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+    | Some x -> x
+  in
+  match
+    Dune_rules.Dialect.name dialect = Dune_rules.Dialect.name Dune_rules.Dialect.reason
+  with
+  | true -> pp_with_refmt sctx ~ml_kind pp_file
+  | false ->
+    let* ocamlc =
+      let+ ocaml = Context.ocaml (Super_context.context sctx) in
+      ocaml.ocamlc
+    in
+    let* env = Super_context.context_env sctx in
+    pp_with_ocamlc env ~ocamlc pp_file dump_file |> Memo.of_non_reproducible_fiber
+;;
+
 let files_for_source file dialects =
   let base, ext = Path.split_extension file in
   let dialect, kind =
@@ -116,13 +177,7 @@ let term =
   let* result = get_pped_file super_context file in
   match result with
   | Error file -> Io.cat file |> Memo.return
-  | Ok (pp_file, dump_file) ->
-    let* ocamlc =
-      let+ ocaml = Context.ocaml (Super_context.context super_context) in
-      ocaml.ocamlc
-    in
-    let* env = Super_context.context_env super_context in
-    pp_with_ocamlc env ~ocamlc pp_file dump_file |> Memo.of_non_reproducible_fiber
+  | Ok (pp_file, dump_file) -> print_pped_file super_context file (pp_file, dump_file)
 ;;
 
 let command =

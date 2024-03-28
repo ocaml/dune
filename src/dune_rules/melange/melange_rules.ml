@@ -257,7 +257,6 @@ let setup_emit_cmj_rules
   =
   let open Memo.O in
   let* compile_info = compile_info ~scope mel in
-  let ctx = Super_context.context sctx in
   let f () =
     (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
        of the same name *)
@@ -265,7 +264,7 @@ let setup_emit_cmj_rules
       Dir_contents.ocaml dir_contents
       >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
     in
-    let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
+    let* () = Check_rules.add_obj_dir ~obj_dir Melange in
     let* modules, pp =
       Buildable_rules.modules_rules
         sctx
@@ -351,7 +350,7 @@ let setup_emit_cmj_rules
         ~modes:`Melange_emit )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
+  Buildable_rules.with_lib_deps compile_info ~dir ~f
 ;;
 
 module Runtime_deps = struct

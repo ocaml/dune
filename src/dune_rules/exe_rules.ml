@@ -129,7 +129,7 @@ let executables_rules
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
   in
-  let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
+  let* () = Check_rules.add_obj_dir ~obj_dir (Ocaml Byte) in
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
@@ -220,7 +220,7 @@ let executables_rules
     let* o_files =
       o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
     in
-    let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
+    let* () = Check_rules.add_files ~dir @@ Mode.Map.Multi.to_flat_list o_files in
     let buildable = exes.buildable in
     match buildable.ctypes with
     | None ->
@@ -257,7 +257,7 @@ let executables_rules
       link
   in
   let+ () =
-    Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)
+    Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check ~dir)
   in
   ( cctx
   , Merlin.make
@@ -315,5 +315,5 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
     let requires_link = Lib.Compile.requires_link compile_info in
     Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
   in
-  Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f
+  Buildable_rules.with_lib_deps compile_info ~dir ~f
 ;;

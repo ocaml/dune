@@ -257,7 +257,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir ~dir_conten
     in
     Mode.Map.Multi.for_all_modes o_files_by_mode
   in
-  let* () = Check_rules.add_files sctx ~dir o_files in
+  let* () = Check_rules.add_files ~dir o_files in
   let* standard =
     let+ project = Dune_load.find_project ~dir in
     match Dune_project.use_standard_c_and_cxx_flags project with
@@ -305,7 +305,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     Mode.Map.Multi.add_all tbl Mode.Select.All lib_foreign_o_files
   in
   let all_o_files = Mode.Map.Multi.to_flat_list o_files in
-  let* () = Check_rules.add_files sctx ~dir all_o_files in
+  let* () = Check_rules.add_files ~dir all_o_files in
   if List.for_all ~f:List.is_empty [ all_o_files; vlib_stubs_o_files ]
   then Memo.return ()
   else (
@@ -588,7 +588,7 @@ let library_rules
     Memo.Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir)
   in
   let* expander = Super_context.expander sctx ~dir in
-  let* () = Check_rules.add_cycle_check sctx ~dir top_sorted_modules in
+  let* () = Check_rules.add_cycle_check ~dir top_sorted_modules in
   let* () = gen_wrapped_compat_modules lib cctx
   and* () = Module_compilation.build_all cctx
   and* lib_info =
@@ -601,7 +601,7 @@ let library_rules
         ~lib_config
     in
     let mode = Lib_mode.Map.Set.for_merlin (Lib_info.modes info) in
-    let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
+    let+ () = Check_rules.add_obj_dir ~obj_dir mode in
     info
   in
   let+ () =
@@ -673,5 +673,5 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       ~ctx_dir:dir
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f
+  Buildable_rules.with_lib_deps compile_info ~dir ~f
 ;;

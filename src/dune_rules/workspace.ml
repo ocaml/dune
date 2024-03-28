@@ -266,6 +266,28 @@ module Context = struct
     ;;
   end
 
+  module Merlin = struct
+    type t =
+      | Selected
+      | Rules_only
+      | Nothing
+
+    let equal x y =
+      match x, y with
+      | Selected, Selected | Rules_only, Rules_only | Nothing, Nothing -> true
+      | Selected, (Rules_only | Nothing)
+      | (Rules_only | Nothing), Selected
+      | Rules_only, Nothing
+      | Nothing, Rules_only -> false
+    ;;
+
+    let to_dyn : t -> Dyn.t = function
+      | Selected -> String "selected"
+      | Rules_only -> String "rules_only"
+      | Nothing -> String "nothing"
+    ;;
+  end
+
   module Common = struct
     type t =
       { loc : Loc.t
@@ -279,7 +301,7 @@ module Context = struct
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
-      ; merlin : bool
+      ; merlin : Merlin.t
       }
 
     let to_dyn { name; targets; host_context; _ } =
@@ -318,7 +340,7 @@ module Context = struct
            dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
       && List.equal Lib_name.equal instrument_with t.instrument_with
-      && Bool.equal merlin t.merlin
+      && Merlin.equal merlin t.merlin
     ;;
 
     let fdo_suffix t =
@@ -384,7 +406,8 @@ module Context = struct
           "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc
-      and+ merlin = field_b "merlin" in
+      and+ merlin = field_b "merlin"
+      and+ generate_merlin_rules = field_b "generate_merlin_rules" in
       fun ~profile_default ~instrument_with_default ->
         let profile = Option.value profile ~default:profile_default in
         let instrument_with =
@@ -409,7 +432,13 @@ module Context = struct
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
-        ; merlin
+        ; merlin =
+            (match merlin with
+             | true -> Selected
+             | false ->
+               (match generate_merlin_rules with
+                | true -> Rules_only
+                | false -> Nothing))
         }
     ;;
   end
@@ -571,7 +600,7 @@ module Context = struct
           ; fdo_target_exe = None
           ; dynamically_linked_foreign_archives = true
           ; instrument_with = Option.value instrument_with ~default:[]
-          ; merlin = false
+          ; merlin = Nothing
           }
       }
   ;;
@@ -840,11 +869,11 @@ let step1 clflags =
                 !defined_names
                 (Context_name.Set.of_list (Context.all_names ctx));
            match Context.base ctx, acc with
-           | { merlin = true; _ }, Some _ ->
+           | { merlin = Selected; _ }, Some _ ->
              User_error.raise
                ~loc:(Context.loc ctx)
                [ Pp.text "you can only have one context for merlin" ]
-           | { merlin = true; _ }, None -> Some name
+           | { merlin = Selected; _ }, None -> Some name
            | _ -> acc)
        in
        let contexts =

@@ -207,7 +207,7 @@ struct
         Execution_parameters.should_remove_write_permissions_on_generated_files
           exec_params
       in
-      Cached_digest.refresh ~allow_dirs:true ~remove_write_permissions
+      Cached_digest.refresh ~remove_write_permissions
     in
     match
       Targets.Produced.map_with_errors

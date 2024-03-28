@@ -147,7 +147,7 @@ module Workspace_local = struct
     | Ok targets ->
       (match
          Targets.Produced.map_with_errors targets ~all_errors:false ~f:(fun target () ->
-           Cached_digest.build_file ~allow_dirs:true target)
+           Cached_digest.build_file target)
        with
        | Ok produced_targets -> Hit produced_targets
        | Error _ -> Miss Targets_missing)

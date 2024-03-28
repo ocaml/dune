@@ -105,56 +105,21 @@ module Path_digest_error = struct
     | Unix_error of Dune_filesystem_stubs.Unix_error.Detailed.t
 end
 
-exception E of Path_digest_error.t
-
-let directory_digest_version = 2
-
-let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
-  let rec loop path (stats : Stats_for_digest.t) =
-    match stats.st_kind with
-    | S_LNK ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
-        (fun path ->
-          let contents = Unix.readlink (Path.to_string path) in
-          path_with_executable_bit ~executable ~content_digest:contents)
-        path
-      |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
-    | S_REG ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
-      Dune_filesystem_stubs.Unix_error.Detailed.catch
-        (file_with_executable_bit ~executable)
-        path
-      |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
-    | S_DIR when allow_dirs ->
-      (* CR-someday amokhov: The current digesting scheme has collisions for files
-         and directories. It's unclear if this is actually a problem. If it turns
-         out to be a problem, we should include [st_kind] into both digests. *)
-      (match Path.readdir_unsorted path with
-       | Error e -> Error (Path_digest_error.Unix_error e)
-       | Ok listing ->
-         (match
-            List.rev_map listing ~f:(fun name ->
-              let path = Path.relative path name in
-              let stats =
-                match Path.lstat path with
-                | Error e -> raise_notrace (E (Unix_error e))
-                | Ok stat -> Stats_for_digest.of_unix_stats stat
-              in
-              let digest =
-                match loop path stats with
-                | Ok s -> s
-                | Error e -> raise_notrace (E e)
-              in
-              name, digest)
-            |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
-          with
-          | exception E e -> Error e
-          | contents -> Ok (generic (directory_digest_version, contents, stats.st_perm))))
-    | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
-  in
+let path_with_stats path (stats : Stats_for_digest.t) =
   match stats.st_kind with
-  | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
-  | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
-  | _ -> loop path stats
+  | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Path_digest_error.Unexpected_kind
+  | S_LNK ->
+    let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
+    Dune_filesystem_stubs.Unix_error.Detailed.catch
+      (fun path ->
+        let contents = Unix.readlink (Path.to_string path) in
+        path_with_executable_bit ~executable ~content_digest:contents)
+      path
+    |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
+  | S_REG ->
+    let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
+    Dune_filesystem_stubs.Unix_error.Detailed.catch
+      (file_with_executable_bit ~executable)
+      path
+    |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
 ;;

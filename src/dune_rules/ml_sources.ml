@@ -65,20 +65,24 @@ module Modules = struct
       let _, libraries =
         List.fold_left
           libs
-          ~init:(String.Set.empty, Lib_info.Library_id.Map.empty)
-          ~f:(fun (obj_dir_set, acc) part ->
-            (* need to check for obj_dir collisions to avoid "multiple rules" errors,
-               because even for public libraries, the artifacts folder still uses
-               the private library name *)
-            let name = Path.Build.to_string (Obj_dir.obj_dir part.obj_dir) in
-            match String.Set.mem obj_dir_set name with
+          ~init:(Lib_name.Set.empty, Lib_info.Library_id.Map.empty)
+          ~f:(fun (libname_set, acc) part ->
+            let stanza = part.stanza in
+            let name =
+              let src_dir =
+                Obj_dir.dir part.obj_dir
+                |> Path.build
+                |> Path.drop_optional_build_context_src_exn
+              in
+              Lib_info.Library_id.name (Library.to_library_id ~src_dir stanza)
+            in
+            match Lib_name.Set.mem libname_set name with
             | true ->
               User_error.raise
-                ~loc:part.stanza.Library.buildable.loc
+                ~loc:stanza.buildable.loc
                 [ Pp.textf
-                    "Library %S has the same private name as another library in this \
-                     directory"
-                    (Lib_name.to_string (Library.best_name part.stanza))
+                    "Library %S appears for the second time in this directory"
+                    (Lib_name.to_string name)
                 ]
             | false ->
               let acc =
@@ -90,7 +94,7 @@ module Modules = struct
                 in
                 Lib_info.Library_id.Map.add_exn acc library_id (part.modules, part.obj_dir)
               in
-              String.Set.add obj_dir_set name, acc)
+              Lib_name.Set.add libname_set name, acc)
       in
       libraries
     in

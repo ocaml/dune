@@ -18,8 +18,7 @@ Without any consumers of the libraries
   File "dune", line 3, characters 0-21:
   3 | (library
   4 |  (name foo))
-  Error: Library "foo" has the same private name as another library in this
-  directory
+  Error: Library "foo" appears for the second time in this directory
   [1]
 
 With some consumer of the library
@@ -42,6 +41,5 @@ With some consumer of the library
   File "dune", line 3, characters 0-21:
   3 | (library
   4 |  (name foo))
-  Error: Library "foo" has the same private name as another library in this
-  directory
+  Error: Library "foo" appears for the second time in this directory
   [1]

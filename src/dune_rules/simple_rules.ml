@@ -237,14 +237,13 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ~f:(fun basename ->
         let file_src = Path.relative src_in_build basename in
         let file_dst = Path.Build.relative dir basename in
-        let context = Super_context.context sctx in
         Super_context.add_rule
           sctx
           ~loc
           ~dir
           ~mode:def.mode
           ((if def.add_line_directive
-            then Copy_line_directive.builder context
+            then Copy_line_directive.builder
             else Action_builder.copy)
              ~src:file_src
              ~dst:file_dst))

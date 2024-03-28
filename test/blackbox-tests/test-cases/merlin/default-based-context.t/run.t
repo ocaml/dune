@@ -13,13 +13,19 @@ If Merlin field is absent, default context is chosen
 
   $ dune build
 
-  $ [ ! -d _build/cross/.merlin-conf ] && echo "No config in cross"
-  No config in cross
+The rules are generated for all contexts, regardless which one is chosen
+
+  $ ls -a _build/cross/.merlin-conf
+  .
+  ..
+  lib-foo
 
   $ ls -a _build/default/.merlin-conf
   .
   ..
   lib-foo
+
+But the default context is used by default
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo: _build/default/foo
@@ -56,8 +62,10 @@ If Merlin field is present, this context is chosen
   ..
   lib-foo
 
-  $ [ ! -d _build/default/.merlin-conf ] && echo "No config in default"
-  No config in default
+  $ ls -a _build/default/.merlin-conf
+  .
+  ..
+  lib-foo
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo: _build/cross/foo

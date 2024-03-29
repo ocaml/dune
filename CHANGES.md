@@ -1,5 +1,7 @@
-3.15.0~alpha2 (unreleased)
+3.15.0~alpha2 (2024-03-29)
 --------------------------
+
+### Fixed
 
 - Backport #10327: fix a regression in `dune install` not performing artifact
   substitution.

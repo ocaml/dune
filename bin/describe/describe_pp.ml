@@ -93,11 +93,10 @@ let get_pped_file super_context file =
     files_for_source file_in_build_dir ~dialects
   in
   let* pp_file =
-    let+ candidates =
-      Memo.parallel_map pp_files_to_check ~f:(fun file ->
-        Build_system.file_exists file >>| fun exists -> Option.some_if exists file)
-    in
-    List.find_map candidates ~f:Fun.id
+    Memo.parallel_map pp_files_to_check ~f:(fun file ->
+      let+ exists = Build_system.file_exists file in
+      Option.some_if exists file)
+    >>| List.find_map ~f:Fun.id
   in
   match pp_file with
   | Some pp_file ->
@@ -106,36 +105,33 @@ let get_pped_file super_context file =
   | None ->
     Build_system.file_exists file_in_build_dir
     >>= (function
+     | false ->
+       User_error.raise
+         [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ]
      | true ->
-       let* dir =
-         Source_tree.nearest_dir (Path.Source.of_string file)
-         >>| Source_tree.Dir.path
-         >>| Path.source
-       in
-       let* dune_file = Dune_rules.Dune_load.stanzas_in_dir (dir |> in_build_dir) in
-       let* staged_pps =
-         match dune_file with
-         | None -> Memo.return None
-         | Some dune_file ->
-           Dune_file.find_stanzas dune_file Dune_rules.Library.key
-           >>| List.fold_left ~init:None ~f:(fun acc (lib : Dune_rules.Library.t) ->
-             let preprocess =
-               Dune_rules.Preprocess.Per_module.(
-                 lib.buildable.preprocess |> single_preprocess)
-             in
-             match preprocess with
-             | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
-             | _ -> acc)
-       in
-       (match staged_pps with
+       Source_tree.nearest_dir (Path.Source.of_string file)
+       >>| Source_tree.Dir.path
+       >>| Path.source
+       >>| in_build_dir
+       >>= Dune_rules.Dune_load.stanzas_in_dir
+       >>= (function
+              | None -> Memo.return None
+              | Some dune_file ->
+                Dune_file.find_stanzas dune_file Dune_rules.Library.key
+                >>| List.fold_left ~init:None ~f:(fun acc (lib : Dune_rules.Library.t) ->
+                  let preprocess =
+                    Dune_rules.Preprocess.Per_module.(
+                      lib.buildable.preprocess |> single_preprocess)
+                  in
+                  match preprocess with
+                  | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
+                  | _ -> acc))
+       >>= (function
         | None ->
           let+ () = Build_system.build_file file_in_build_dir in
           Error file_in_build_dir
         | Some { loc; _ } ->
-          User_error.raise ~loc [ Pp.text "staged_pps are not supported." ])
-     | false ->
-       User_error.raise
-         [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ])
+          User_error.raise ~loc [ Pp.text "staged_pps are not supported." ]))
 ;;
 
 let term =

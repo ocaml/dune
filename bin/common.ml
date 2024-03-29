@@ -595,7 +595,6 @@ module Builder = struct
     ; require_dune_project_file : bool
     ; watch_exclusions : string list
     ; build_dir : string
-    ; store_digest_preimage : bool
     ; root : string option
     ; stats_trace_file : string option
     ; stats_trace_extended : bool
@@ -667,19 +666,6 @@ module Builder = struct
             [ "debug-digests" ]
             ~docs
             ~doc:"Explain why Dune decides to re-digest some files")
-    and+ store_digest_preimage =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "debug-store-digest-preimage" ]
-            ~docs
-            ~doc:
-              "Store digest preimage for all computed digests, so that it's possible to \
-               reverse them later, for debugging. The digests are stored in the shared \
-               cache (see --cache flag) as values, even if cache is otherwise disabled. \
-               This should be used only for debugging, since it's slow and it litters \
-               the shared cache.")
     and+ no_buffer =
       let doc =
         "Do not buffer the output of commands executed by dune. By default dune buffers \
@@ -1025,7 +1011,6 @@ module Builder = struct
     ; require_dune_project_file
     ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
-    ; store_digest_preimage
     ; root
     ; stats_trace_file
     ; stats_trace_extended
@@ -1182,7 +1167,6 @@ let build (builder : Builder.t) =
              action_runner))
     else `Forbid_builds
   in
-  if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then Dune_metrics.enable ();
   { builder; root; rpc; stats }
 ;;

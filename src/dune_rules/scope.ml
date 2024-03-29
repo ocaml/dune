@@ -214,7 +214,7 @@ module DB = struct
       ~parent:(Some parent)
       ~resolve
       ~resolve_library_id
-      ~all:(fun () -> Lib_info.Library_id.Map.keys library_id_map |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys id_map |> Memo.return)
       ~lib_config
       ~instrument_with
   ;;
@@ -326,7 +326,7 @@ module DB = struct
       ~parent:(Some installed_libs)
       ~resolve
       ~resolve_library_id
-      ~all:(fun () -> Lib_info.Library_id.Map.keys public_libs |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys public_ids |> Memo.return)
       ~lib_config
       ()
   ;;

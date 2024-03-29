@@ -127,7 +127,7 @@ module DB : sig
     :  parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.With_multiple_results.t Memo.t)
     -> resolve_library_id:(Lib_info.Library_id.t -> Resolve_result.t Memo.t)
-    -> all:(unit -> Lib_info.Library_id.t list Memo.t)
+    -> all:(unit -> Lib_name.t list Memo.t)
     -> lib_config:Lib_config.t
     -> instrument_with:Lib_name.t list
     -> unit

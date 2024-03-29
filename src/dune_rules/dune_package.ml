@@ -381,11 +381,6 @@ module Entry = struct
     | Deprecated_library_name d -> d.loc
   ;;
 
-  let library_id = function
-    | Library lib | Hidden_library lib -> Lib_info.library_id (Lib.info lib)
-    | Deprecated_library_name _ -> assert false
-  ;;
-
   let cstrs ~lang ~dir =
     let open Dune_lang.Decoder in
     [ ( "library"

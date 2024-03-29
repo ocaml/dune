@@ -412,7 +412,7 @@ type db =
   ; resolve_library_id : Lib_info.Library_id.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
-  ; all : Lib_info.Library_id.t list Memo.Lazy.t
+  ; all : Lib_name.t list Memo.Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
   }
@@ -1979,7 +1979,7 @@ module DB = struct
           | Resolve_result r -> r)
         ~all:(fun () ->
           let open Memo.O in
-          Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.library_id)
+          Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
   ;;
 
   let installed (context : Context.t) =
@@ -2153,7 +2153,7 @@ module DB = struct
     let open Memo.O in
     let* l =
       Memo.Lazy.force t.all
-      >>= Memo.parallel_map ~f:(find_library_id t)
+      >>= Memo.parallel_map ~f:(find t)
       >>| List.filter_opt
       >>| Set.of_list
     in

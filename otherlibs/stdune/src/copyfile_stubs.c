@@ -73,7 +73,7 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
   caml_failwith("copyfile: only on macos");
 }
 
-static int dune_sendfile(int in, int out, int length) {
+static int dune_sendfile(int in, int out, size_t length) {
   int ret;
   while (length > 0) {
     ret = sendfile(out, in, NULL, length);
@@ -90,7 +90,7 @@ CAMLprim value stdune_sendfile(value v_in, value v_out, value v_size) {
   caml_release_runtime_system();
   /* TODO Use copy_file_range once we have a good mechanism to test for its
    * existence */
-  int ret = dune_sendfile(FD_val(v_in), FD_val(v_out), Int_val(v_size));
+  int ret = dune_sendfile(FD_val(v_in), FD_val(v_out), Long_val(v_size));
   caml_acquire_runtime_system();
   if (ret < 0) {
     uerror("sendfile", Nothing);

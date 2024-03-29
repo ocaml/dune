@@ -1619,21 +1619,24 @@ let standard_index_contents b entry_modules =
   entry_modules
   |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
   |> List.iter ~f:(fun (lib, modules) ->
-    Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
-    Buffer.add_string
-      b
-      (match modules with
-       | [ x ] ->
-         sprintf
-           "The entry point of this library is the module:\n{!%s}.\n"
-           (Artifact.reference x)
-       | _ ->
-         sprintf
-           "This library exposes the following toplevel modules:\n{!modules:%s}\n"
-           (modules
-            |> List.map ~f:Artifact.name
-            |> List.sort ~compare:String.compare
-            |> String.concat ~sep:" ")))
+    match modules with
+    | [] -> () (* No library here! *)
+    | _ ->
+      Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
+      Buffer.add_string
+        b
+        (match modules with
+         | [ x ] ->
+           sprintf
+             "The entry point of this library is the module:\n{!%s}.\n"
+             (Artifact.reference x)
+         | _ ->
+           sprintf
+             "This library exposes the following toplevel modules:\n{!modules:%s}\n"
+             (modules
+              |> List.map ~f:Artifact.name
+              |> List.sort ~compare:String.compare
+              |> String.concat ~sep:" ")))
 ;;
 
 let fallback_index_contents b entry_modules artifacts =

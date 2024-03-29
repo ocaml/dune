@@ -47,7 +47,6 @@ With some consumer of the library
   File "b/dune", line 1, characters 0-21:
   1 | (library
   2 |  (name foo))
-  Error: Library with name "foo" is defined in two folders (_build/default/a
-  and _build/default/b). Either change one of the names, or enable them
-  conditionally using the 'enabled_if' field.
+  Error: Library with name "foo" is already defined in a/dune:1. Either change
+  one of the names, or enable them conditionally using the 'enabled_if' field.
   [1]

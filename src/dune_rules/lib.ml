@@ -132,38 +132,15 @@ module Error = struct
       ]
   ;;
 
-  let duplicated ~loc ~name_a ~name_b ~dir_a ~dir_b =
-    let different_folders, different_folders_text =
-      let different_folders = not (Path.equal dir_a dir_b) in
-      let different_folders_text =
-        if different_folders
-        then
-          Format.asprintf
-            " is defined in two folders (%s and %s)"
-            (Path.to_string_maybe_quoted dir_a)
-            (Path.to_string_maybe_quoted dir_b)
-        else ""
-      in
-      different_folders, different_folders_text
-    in
-    let different_name, different_name_text =
-      let different_name = not (Lib_name.equal name_a name_b) in
-      let different_name_text =
-        if different_name
-        then Format.asprintf " shares a name with library %S" (Lib_name.to_string name_a)
-        else ""
-      in
-      different_name, different_name_text
-    in
+  let duplicated ~loc_a ~loc_b ~name =
+    let open Pp.O in
     User_error.make
-      ~loc
-      [ Pp.textf
-          "Library with name %S%s%s%s. Either change one of the names, or enable them \
-           conditionally using the 'enabled_if' field."
-          (Lib_name.to_string name_b)
-          different_folders_text
-          (if different_folders && different_name then " and" else "")
-          different_name_text
+      ~loc:loc_b
+      [ Pp.textf "Library with name %S is already defined in " (Lib_name.to_string name)
+        ++ Loc.pp_file_colon_line loc_a
+        ++ Pp.text
+             ". Either change one of the names, or enable them conditionally using the \
+              'enabled_if' field."
       ]
   ;;
 
@@ -1227,19 +1204,20 @@ end = struct
              (match Lib_info.Library_id.equal library_id_a library_id_b with
               | true -> acc
               | false ->
-                let a = info a
-                and b = info b in
-                let loc = Lib_info.loc b
-                and dir_a = Lib_info.best_src_dir a
-                and dir_b = Lib_info.best_src_dir b
+                let best_name_a = a.name
+                and best_name_b = b.name
+                and info_a = info a
+                and info_b = info b in
+                let loc_a = Lib_info.loc info_a
+                and loc_b = Lib_info.loc info_b
                 and name_a =
-                  let library_id = Lib_info.library_id a in
-                  Lib_info.Library_id.name library_id
-                and name_b =
-                  let library_id = Lib_info.library_id b in
+                  let library_id = Lib_info.library_id info_a in
                   Lib_info.Library_id.name library_id
                 in
-                Status.Invalid (Error.duplicated ~loc ~name_a ~name_b ~dir_a ~dir_b))
+                let name =
+                  if Lib_name.equal best_name_a best_name_b then best_name_a else name_a
+                in
+                Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
            | Invalid _, _ -> acc
            | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
            | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib

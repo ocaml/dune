@@ -28,17 +28,7 @@ in the same dune file
   > let x = "foo"
   > EOF
 
-  $ dune build --display=short
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt} [alt-context]
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamlopt .foo.objs/native/foo.{cmx,o} [alt-context]
-        ocamlc foo.cma [alt-context]
-      ocamlopt .foo.objs/native/foo.{cmx,o}
-        ocamlc foo.cma
-      ocamlopt foo.{a,cmxa} [alt-context]
-      ocamlopt foo.{a,cmxa}
-      ocamlopt foo.cmxs [alt-context]
-      ocamlopt foo.cmxs
+  $ dune build
 
 For public libraries
 

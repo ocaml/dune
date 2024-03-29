@@ -41,7 +41,7 @@ With some consumer
   1 | (library
   2 |  (name foo)
   3 |  (public_name bar.foo))
-  Error: Library with name "foo" is defined in two folders (_build/default/b
-  and _build/default/a) and shares a name with library "bar". Either change one
-  of the names, or enable them conditionally using the 'enabled_if' field.
+  Error: Library with name "bar.foo" is already defined in b/dune:1. Either
+  change one of the names, or enable them conditionally using the 'enabled_if'
+  field.
   [1]

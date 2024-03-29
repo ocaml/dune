@@ -206,6 +206,7 @@ module File_ops_real (W : sig
   let print_line = print_line ~verbosity
   let get_vcs p = Dune_rules.Vcs_db.nearest_vcs p
 
+  (* CR-emillon rework this API or at least remove the optional argument *)
   type load_special_file_result =
     { need_version : bool
     ; callback : ?version:string -> Format.formatter -> unit
@@ -217,7 +218,7 @@ module File_ops_real (W : sig
 
   let copy_special_file ~src ~package ~ic ~oc ~f =
     let open Fiber.O in
-    match f ic with
+    match f ic ~src with
     | None -> Fiber.return Use_plain_copy
     (* XXX should we really be catching everything here? *)
     | exception _ ->
@@ -245,7 +246,7 @@ module File_ops_real (W : sig
       Done
   ;;
 
-  let process_meta ic =
+  let process_meta ic ~src:_ =
     let module Meta = Dune_findlib.Findlib.Meta in
     let lb = Lexing.from_channel ic in
     let meta : Meta.t = { name = None; entries = Meta.parse_entries lb } in
@@ -268,69 +269,32 @@ module File_ops_real (W : sig
       Some { need_version = true; callback })
   ;;
 
-  let replace_sites ~(get_location : Section.t -> Package.Name.t -> Stdune.Path.t) dp =
-    match
-      List.find_map dp ~f:(function
-        | Dune_lang.List [ Atom (A "name"); Atom (A name) ] -> Some name
-        | _ -> None)
-    with
-    | None -> dp
-    | Some name ->
-      List.map dp ~f:(function
-        | Dune_lang.List ((Atom (A "sections") as sexp_sections) :: sections) ->
-          let sections =
-            List.map sections ~f:(function
-              | Dune_lang.List [ (Atom (A section) as section_sexp); _ ] ->
-                let path =
-                  get_location
-                    (Option.value_exn (Section.of_string section))
-                    (Package.Name.of_string name)
-                in
-                let open Dune_lang.Encoder in
-                pair sexp string (section_sexp, Path.to_absolute_filename path)
-              | _ -> assert false)
-          in
-          Dune_lang.List (sexp_sections :: sections)
-        | x -> x)
-  ;;
-
-  let process_dune_package ~get_location ic =
+  let process_dune_package ~get_location ic ~src =
     let lb = Lexing.from_channel ic in
-    let dp =
-      Dune_lang.Parser.parse ~mode:Many lb |> List.map ~f:Dune_lang.Ast.remove_locs
-    in
-    (* replace sites with external path in the file *)
-    let dp = replace_sites ~get_location dp in
-    (* replace version if needed in the file *)
-    let need_version =
-      not
-        (List.exists dp ~f:(function
-          | Dune_lang.List (Atom (A "version") :: _)
-          | Dune_lang.List [ Atom (A "use_meta"); Atom (A "true") ]
-          | Dune_lang.List [ Atom (A "use_meta") ] -> true
-          | _ -> false))
-    in
-    let callback ?version ppf =
-      let dp =
-        match version with
-        | Some version ->
-          let version =
-            Dune_lang.List
-              [ Dune_lang.atom "version"; Dune_lang.atom_or_quoted_string version ]
-          in
-          (match dp with
-           | lang :: name :: rest -> lang :: name :: version :: rest
-           | [ lang ] -> [ lang; version ]
-           | [] -> [ version ])
-        | _ -> dp
+    let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
+    match Dune_package.Or_meta.parse src lb |> User_error.ok_exn with
+    | Use_meta ->
+      let callback ?version:_ ppf = Dune_package.Or_meta.pp_use_meta ~dune_version ppf in
+      Some { need_version = false; callback }
+    | Dune_package dp ->
+      (* replace sites with external path in the file *)
+      let dp, replace_info = Dune_package.replace_site_sections ~get_location dp in
+      (* replace version if needed in the file *)
+      let need_version = Option.is_none dp.version in
+      let callback ?version ppf =
+        let dp =
+          match version with
+          | Some version -> { dp with version = Some (Package_version.of_string version) }
+          | None -> dp
+        in
+        (* CR-emillon: we should write absolute paths only if necessary *)
+        Dune_package.Or_meta.pp
+          ~dune_version
+          ppf
+          (Dune_package dp)
+          ~encoding:(Absolute replace_info)
       in
-      Format.pp_open_vbox ppf 0;
-      List.iter dp ~f:(fun x ->
-        Dune_lang.Deprecated.pp ppf x;
-        Format.pp_print_cut ppf ());
-      Format.pp_close_box ppf ()
-    in
-    Some { need_version; callback }
+      Some { need_version; callback }
   ;;
 
   let copy_file

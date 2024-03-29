@@ -715,7 +715,10 @@ end = struct
                 ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
                 ~else_:(make_dune_package sctx lib_entries pkg)
          in
-         Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
+         Format.asprintf
+           "%a"
+           (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
+           pkg)
     in
     let* () =
       let deprecated_dune_packages =
@@ -768,7 +771,7 @@ end = struct
             (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
             (Format.asprintf
                "%a"
-               (Dune_package.Or_meta.pp ~dune_version)
+               (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
                (Dune_package dune_pkg))
         in
         Super_context.add_rule sctx ~dir:ctx.build_dir ~loc action_with_targets)

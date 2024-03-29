@@ -761,35 +761,6 @@ end = struct
       ]
   ;;
 
-  let validate_directory_targets ~dir ~real_directory_targets ~directory_targets =
-    if not
-         (Path.Build.Map.equal real_directory_targets directory_targets ~equal:(fun _ _ ->
-            (* The locations should match if the declaration knows which
-               rule will generate the directory, but it's not necessary
-               as the rule's actual location has higher priority. *)
-            true))
-    then (
-      let mismatched_directories =
-        let error message loc =
-          Dyn.record [ "message", Dyn.string message; "loc", Loc.to_dyn_hum loc ]
-        in
-        Path.Build.Map.merge
-          real_directory_targets
-          directory_targets
-          ~f:(fun _ generated declared ->
-            match generated, declared with
-            | None, None | Some _, Some _ -> None
-            | Some loc, None -> Some (error "not declared" loc)
-            | None, Some loc -> Some (error "not generated" loc))
-      in
-      Code_error.raise
-        "gen_rules returned a set of directory targets that doesn't match the set of \
-         directory targets from returned rules"
-        [ "dir", Path.Build.to_dyn dir
-        ; "mismatched_directories", Path.Build.Map.to_dyn Fun.id mismatched_directories
-        ])
-  ;;
-
   let load_build_directory_exn
     ({ Dir_triage.Build_directory.dir; context_name; context_type; sub_dir } as build_dir)
     =
@@ -847,10 +818,6 @@ end = struct
         descendants_to_keep build_dir build_dir_only_sub_dirs ~source_dirs rules_produced
       in
       let rules_here = compile_rules ~dir ~source_dirs rules in
-      validate_directory_targets
-        ~dir
-        ~real_directory_targets:(Rules.directory_targets rules_produced)
-        ~directory_targets;
       (let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
        remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
        remove_old_sub_dirs_in_anonymous_actions_dir

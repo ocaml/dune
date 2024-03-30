@@ -180,6 +180,7 @@ module DB = struct
               match lib_id with
               | None -> id_map, lib_id_map
               | Some lib_id ->
+                let lib_id = Lib_id.Local lib_id in
                 let id_map' =
                   Lib_name.Map.update id_map name ~f:(fun lib_ids ->
                     Some
@@ -225,7 +226,7 @@ module DB = struct
   type redirect_to =
     | Project of
         { project : Dune_project.t
-        ; lib_id : Lib_id.t
+        ; lib_id : Lib_id.Local.t
         }
     | Name of (Loc.t * Lib_name.t)
 
@@ -234,7 +235,7 @@ module DB = struct
     | None -> Lib.DB.Resolve_result.not_found
     | Some (Project { project; lib_id }) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db lib_id
+      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
@@ -272,11 +273,11 @@ module DB = struct
                 Lib_name.Map.update libname_map public_name ~f:(function
                   | None -> Some (lib_id2, r2)
                   | Some (lib_id1, _r1) ->
-                    (match (Lib_id.equal lib_id1) lib_id2 with
+                    (match (Lib_id.Local.equal lib_id1) lib_id2 with
                      | false -> Some (lib_id2, r2)
                      | true ->
-                       let loc1 = Lib_id.loc lib_id1
-                       and loc2 = Lib_id.loc lib_id2 in
+                       let loc1 = Lib_id.Local.loc lib_id1
+                       and loc2 = Lib_id.Local.loc lib_id2 in
                        let main_message =
                          Pp.textf
                            "Public library %s is defined twice:"
@@ -302,6 +303,7 @@ module DB = struct
                          ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                          ]))
               in
+              let lib_id2 = Lib_id.Local lib_id2 in
               let id_map' =
                 Lib_name.Map.update id_map public_name ~f:(fun lib_ids ->
                   Some
@@ -484,7 +486,7 @@ module DB = struct
               let src_dir = Dune_file.dir d in
               let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
               let db = libs scope in
-              Lib.DB.find_lib_id db (Library.to_lib_id ~src_dir lib)
+              Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
             in
             (match lib with
              | None -> acc

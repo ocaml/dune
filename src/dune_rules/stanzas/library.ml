@@ -406,7 +406,7 @@ let main_module_name t : Lib_info.Main_module_name.t =
 let to_lib_id ~src_dir t =
   let loc, _ = t.name
   and enabled_if = t.enabled_if in
-  Lib_id.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.name)
+  Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.name)
 ;;
 
 let to_lib_info
@@ -484,7 +484,7 @@ let to_lib_info
   let name = best_name conf in
   let lib_id =
     let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-    to_lib_id ~src_dir conf
+    Lib_id.Local (to_lib_id ~src_dir conf)
   in
   let enabled =
     let+ enabled_if_result =

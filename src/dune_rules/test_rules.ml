@@ -32,7 +32,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       |> List.sort_uniq ~compare:Poly.compare
   in
   let* () =
-    Memo.parallel_iter t.exes.names ~f:(fun (loc, s) ->
+    Memo.parallel_iter (Nonempty_list.to_list t.exes.names) ~f:(fun (loc, s) ->
       Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
         let ext =
           match runtest_mode with

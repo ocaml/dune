@@ -242,7 +242,12 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
   in
   (* TODO: Make this more type-safe by switching to non-empty lists. *)
   let executables =
-    String.Map.of_list_map_exn exes ~f:(fun (exes, m) -> snd (List.hd exes.names), m)
+    String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
+      let first_exe =
+        let ((_, first) :: _) = exes.names in
+        first
+      in
+      first_exe, m)
   in
   let libraries =
     match Lib_name.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m) with

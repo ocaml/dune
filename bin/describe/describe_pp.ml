@@ -45,6 +45,13 @@ let print_pped_file sctx file pp_file =
     in
     Action_builder.evaluate_and_collect_facts build
   in
+  let observing_facts =
+    (* We add `(universe)` to the dependencies of this action so that `dune
+       describe pp` always prints output *)
+    match Dep.Map.add observing_facts Dep.universe Dep.Fact.nothing with
+    | Ok x -> x
+    | Error _ -> observing_facts
+  in
   Build_system.execute_action ~observing_facts { action; loc; dir; alias = None }
 ;;
 

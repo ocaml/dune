@@ -1,19 +1,22 @@
 open Import
 
+let dialect_and_ml_kind file =
+  let open Memo.O in
+  let _base, ext =
+    let file = Path.of_string file in
+    Path.split_extension file
+  in
+  let+ project = Source_tree.root () >>| Source_tree.Dir.project in
+  let dialects = Dune_project.dialects project in
+  match Dune_rules.Dialect.DB.find_by_extension dialects ext with
+  | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+  | Some x -> x
+;;
+
 let print_pped_file sctx file pp_file =
   let open Memo.O in
   let* loc, action =
-    let+ dialect, ml_kind =
-      let _base, ext =
-        let file = Path.of_string file in
-        Path.split_extension file
-      in
-      let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-      let dialects = Dune_project.dialects project in
-      match Dune_rules.Dialect.DB.find_by_extension dialects ext with
-      | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-      | Some x -> x
-    in
+    let+ dialect, ml_kind = dialect_and_ml_kind file in
     match Dune_rules.Dialect.print_ast dialect ml_kind with
     | Some print_ast -> print_ast
     | None ->
@@ -146,12 +149,8 @@ let get_pped_file super_context file =
   let* pp_file =
     let* pp_file =
       let* ml_kind =
-        let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-        let dialects = Dune_project.dialects project in
-        let _base, ext = Path.split_extension file_in_build_dir in
-        match Dune_rules.Dialect.DB.find_by_extension dialects ext with
-        | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-        | Some (_, ml_kind) -> ml_kind
+        let+ _, ml_kind = dialect_and_ml_kind file in
+        ml_kind
       in
       let+ m = module_for_file ~sctx:super_context ~ml_kind file_in_build_dir in
       m

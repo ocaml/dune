@@ -545,6 +545,6 @@ let has_foreign t = Buildable.has_foreign t.buildable
 let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
 let obj_dir t ~dir =
-  let ((_, name) :: _) = t.names in
+  let name = snd (Nonempty_list.hd t.names) in
   Obj_dir.make_exe ~dir ~name
 ;;

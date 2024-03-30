@@ -384,10 +384,7 @@ module Crawl = struct
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
-    let first_exe =
-      let ((_, first) :: _) = exes.names in
-      first
-    in
+    let first_exe = snd (Nonempty_list.hd exes.names) in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir
       >>= Dir_contents.ocaml

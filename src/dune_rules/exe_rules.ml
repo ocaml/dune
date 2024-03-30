@@ -1,10 +1,7 @@
 open Import
 open Memo.O
 
-let first_exe (exes : Executables.t) =
-  let ((_, first) :: _) = exes.names in
-  first
-;;
+let first_exe (exes : Executables.t) = snd (Nonempty_list.hd exes.names)
 
 let linkages
   ~dynamically_linked_foreign_archives
@@ -243,10 +240,7 @@ let executables_rules
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
       let+ () =
-        let loc =
-          let ((loc, _) :: _) = exes.names in
-          loc
-        in
+        let loc = fst (Nonempty_list.hd exes.names) in
         Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
       and+ () = Module_compilation.build_all cctx
       and+ link =

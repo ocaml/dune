@@ -74,7 +74,7 @@ CAMLprim value stdune_copyfile(value v_from, value v_to) {
 }
 
 static int dune_sendfile(int in, int out, size_t length) {
-  int ret;
+  ssize_t ret;
   while (length > 0) {
     ret = sendfile(out, in, NULL, length);
     if (ret < 0) {

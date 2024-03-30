@@ -203,8 +203,8 @@ let reason =
     in
     let print_ast =
       let flag_of_kind = function
-        | Ml_kind.Impl -> "-i=false"
-        | Intf -> "-i=true"
+        | Ml_kind.Impl -> "false"
+        | Intf -> "true"
       in
       let module S = String_with_vars in
       Action.chdir
@@ -212,6 +212,7 @@ let reason =
         (Action.run
            (S.make_text Loc.none "refmt")
            [ S.make_text Loc.none "--parse=binary"
+           ; S.make_text Loc.none "-i"
            ; S.make_text Loc.none (flag_of_kind kind)
            ; S.make_pform Loc.none (Var Input_file)
            ])

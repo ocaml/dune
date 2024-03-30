@@ -13,46 +13,96 @@ let dialect_and_ml_kind file =
   | Some x -> x
 ;;
 
-let print_pped_file sctx file pp_file =
+let execute_pp_action ~sctx file pp_file dump_file =
   let open Memo.O in
-  let* loc, action =
-    let+ dialect, ml_kind = dialect_and_ml_kind file in
-    match Dune_rules.Dialect.print_ast dialect ml_kind with
-    | Some print_ast -> print_ast
-    | None ->
-      (* fall back to the OCaml print_ast function, known to exist, if one
-         doesn't exist for this dialect. *)
-      Dune_rules.Dialect.print_ast Dune_rules.Dialect.ocaml ml_kind |> Option.value_exn
-  in
-  let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
-  let* action, observing_facts =
-    let* build =
-      let+ expander =
-        let bindings =
-          Dune_lang.Pform.Map.singleton
-            (Var Input_file)
-            [ Dune_lang.Value.Path (Path.build (pp_file |> Path.as_in_build_dir_exn)) ]
-        in
-        Super_context.expander sctx ~dir >>| Dune_rules.Expander.add_bindings ~bindings
-      in
-      Dune_rules.For_tests.Action_unexpanded.expand_no_targets
-        action
-        ~chdir:(Dune_rules.Expander.context expander |> Context_name.build_dir)
-        ~loc
-        ~expander
-        ~deps:[]
-        ~what:"describe pp"
+  let* expander =
+    let bindings =
+      Dune_lang.Pform.Map.singleton
+        (Var Input_file)
+        [ Dune_lang.Value.Path (Path.build (pp_file |> Path.as_in_build_dir_exn)) ]
     in
-    Action_builder.evaluate_and_collect_facts build
+    let dir = pp_file |> Path.parent_exn |> Path.as_in_build_dir_exn in
+    Super_context.expander sctx ~dir >>| Dune_rules.Expander.add_bindings ~bindings
   in
-  let observing_facts =
-    (* We add `(universe)` to the dependencies of this action so that `dune
-       describe pp` always prints output *)
-    match Dep.Map.add observing_facts Dep.universe Dep.Fact.nothing with
-    | Ok x -> x
-    | Error _ -> observing_facts
+  let context = Dune_rules.Expander.context expander in
+  let build_dir = Context_name.build_dir context in
+  let* input =
+    let* action, _observing_facts =
+      let* loc, action =
+        let+ dialect, ml_kind = dialect_and_ml_kind file in
+        match Dune_rules.Dialect.print_ast dialect ml_kind with
+        | Some print_ast -> print_ast
+        | None ->
+          (* fall back to the OCaml print_ast function, known to exist, if one
+             doesn't exist for this dialect. *)
+          Dune_rules.Dialect.print_ast Dune_rules.Dialect.ocaml ml_kind
+          |> Option.value_exn
+      in
+      let build =
+        let open Action_builder.O in
+        let+ build =
+          Dune_rules.For_tests.Action_unexpanded.expand_no_targets
+            action
+            ~chdir:build_dir
+            ~loc
+            ~expander
+            ~deps:[]
+            ~what:"describe pp"
+        in
+        Action.with_outputs_to dump_file build.action
+      in
+      Action_builder.evaluate_and_collect_facts build
+    in
+    let+ env = Dune_rules.Super_context.context_env sctx
+    and+ execution_parameters = Dune_engine.Execution_parameters.default in
+    let targets =
+      let unvalidated = Targets.File.create dump_file in
+      match Targets.validate unvalidated with
+      | Valid targets -> targets
+      | No_targets
+      | Inconsistent_parent_dir
+      | File_and_directory_target_with_the_same_name _ -> assert false
+    in
+    { Dune_engine.Action_exec.targets = Some targets
+    ; root = Path.build build_dir
+    ; context = Some (Dune_engine.Build_context.create ~name:context)
+    ; env
+    ; rule_loc = Loc.none
+    ; execution_parameters
+    ; action
+    }
   in
-  Build_system.execute_action ~observing_facts { action; loc; dir; alias = None }
+  let ok =
+    let open Fiber.O in
+    let build_deps deps = Build_system.build_deps deps |> Memo.run in
+    let* result = Dune_engine.Action_exec.exec input ~build_deps in
+    Dune_engine.Action_exec.Exec_result.ok_exn result >>| ignore
+  in
+  Memo.of_non_reproducible_fiber ok
+;;
+
+let print_pped_file =
+  let dump_file pp_file ~ml_kind =
+    Path.set_extension
+      pp_file
+      ~ext:
+        (match (ml_kind : Ocaml.Ml_kind.t) with
+         | Intf -> ".cmi.dump"
+         | Impl -> ".cmo.dump")
+    |> Path.as_in_build_dir_exn
+  in
+  fun ~sctx file pp_file ~ml_kind ->
+    let open Memo.O in
+    let dump_file = dump_file pp_file ~ml_kind in
+    let+ () = execute_pp_action ~sctx file pp_file dump_file in
+    let dump_file = Path.build dump_file in
+    match Path.stat dump_file with
+    | Ok { st_kind = S_REG; _ } ->
+      Io.cat dump_file;
+      Path.unlink_no_err dump_file
+    | _ ->
+      User_error.raise
+        [ Pp.textf "cannot find a dump file: %s" (Path.to_string dump_file) ]
 ;;
 
 let find_module ~sctx file =
@@ -100,7 +150,7 @@ let get_pped_file super_context file =
      | None -> file_not_found ()
      | Some pp_file ->
        let+ () = Build_system.build_file pp_file in
-       Ok pp_file)
+       Ok (pp_file, ml_kind))
   | Some (`Staged_pps loc) ->
     User_error.raise ~loc [ Pp.text "staged_pps are not supported." ]
 ;;
@@ -116,14 +166,14 @@ let term =
   let open Fiber.O in
   let* setup = Import.Main.setup () in
   let* setup = Memo.run setup in
-  let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
+  let sctx = Import.Main.find_scontext_exn setup ~name:context_name in
   Build_system.run_exn
   @@ fun () ->
   let open Memo.O in
-  let* result = get_pped_file super_context file in
+  let* result = get_pped_file sctx file in
   match result with
   | Error file -> Io.cat file |> Memo.return
-  | Ok pp_file -> print_pped_file super_context file pp_file
+  | Ok (pp_file, ml_kind) -> print_pped_file ~sctx file pp_file ~ml_kind
 ;;
 
 let command =

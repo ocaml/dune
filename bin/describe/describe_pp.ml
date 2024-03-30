@@ -45,58 +45,124 @@ let print_pped_file sctx file pp_file =
   Build_system.execute_action ~observing_facts { action; loc; dir; alias = None }
 ;;
 
-let files_for_source file ~dialects =
-  let base, ext = Path.split_extension file in
-  let dialect, kind =
-    match Dune_rules.Dialect.DB.find_by_extension dialects ext with
-    | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
-    | Some x -> x
-  in
-  let pp_file_base = Path.extend_basename base ~suffix:ext in
-  let pp_files =
-    let pp_file_result_base =
-      Path.map_extension pp_file_base ~f:(fun ext -> ".pp" ^ ext)
-    in
-    match Dune_rules.Dialect.ml_suffix dialect kind with
-    | None ->
-      (* No `.ml` suffix for this dialect. this is already an `.ml` file.
-         The extension for the pped file is `.pp.ml` *)
-      [ pp_file_result_base ]
-    | Some suffix ->
-      (* If there's an `.ml` suffix for this dialect, append it to the source.
-         In this case, we need to try a few targets:
+let in_build_dir context file =
+  file |> Path.to_string |> Path.Build.relative (Context.build_dir context)
+;;
 
-         - For files preprocessed with ppx: `<original-file>.<original-ext>.pp.ml`.
-         - For files preprocessed with actions: `<original-file>.pp.<original-ext>.ml`.
-      *)
-      [ pp_file_base |> Path.extend_basename ~suffix:".pp" |> Path.extend_basename ~suffix
-      ; Path.extend_basename pp_file_result_base ~suffix
-      ]
+let module_for_file =
+  let rec closest_dune_file dir =
+    let open Memo.O in
+    let* dune_file = Dune_rules.Dune_load.stanzas_in_dir dir in
+    match dune_file with
+    | None ->
+      (match Path.Build.parent dir with
+       | None -> Memo.return None
+       | Some parent_dir -> closest_dune_file parent_dir)
+    | Some dune_file -> Memo.return (Some dune_file)
   in
-  pp_files
+  let module_for_src =
+    let exception Local of Dune_rules.Module.t in
+    fun modules ~ml_kind file ->
+      try
+        Dune_rules.Modules.fold_user_written modules ~init:() ~f:(fun m () ->
+          Dune_rules.Module.source m ~ml_kind
+          |> Option.iter ~f:(fun src ->
+            if Path.equal file (Dune_rules.Module.File.path src) then raise (Local m)));
+        None
+      with
+      | Local m -> Some m
+  in
+  fun ~sctx ~ml_kind file ->
+    let open Memo.O in
+    let* dir =
+      let+ dir =
+        Source_tree.nearest_dir (Path.drop_optional_build_context_src_exn file)
+        >>| Source_tree.Dir.path
+      in
+      in_build_dir (Super_context.context sctx) (Path.source dir)
+    in
+    let* dune_file =
+      (* This module could be inside an `include_subdirs` directory. *)
+      closest_dune_file dir
+    in
+    match dune_file with
+    | None -> Memo.return None
+    | Some dune_file ->
+      Dune_rules.Dune_file.stanzas dune_file
+      >>= Memo.List.find_map ~f:(fun stanza ->
+        let for_and_preprocess =
+          match Stanza.repr stanza with
+          | Library.T lib ->
+            Some
+              ( Dune_rules.Ml_sources.Library (Library.best_name lib)
+              , lib.buildable.preprocess )
+          | Executables.T exes ->
+            Some (Exe { first_exe = snd (List.hd exes.names) }, exes.buildable.preprocess)
+          | Melange_stanzas.Emit.T mel ->
+            Some (Melange { target = mel.target }, mel.preprocess)
+          | _ -> None
+        in
+        match for_and_preprocess with
+        | None -> Memo.return None
+        | Some (for_, preprocess) ->
+          let+ modules =
+            Dune_rules.Dir_contents.get sctx ~dir
+            >>= Dune_rules.Dir_contents.ocaml
+            >>| Dune_rules.Ml_sources.modules ~for_
+          in
+          module_for_src modules ~ml_kind file |> Option.map ~f:(fun m -> m, preprocess))
+      >>= (function
+       | None -> Memo.return None
+       | Some (m, preprocess) ->
+         let+ pped_map =
+           let+ version =
+             let+ ocaml = Context.ocaml (Super_context.context sctx) in
+             ocaml.version
+           and+ preprocess =
+             let* scope = Dune_rules.Scope.DB.find_by_dir dir in
+             Resolve.Memo.read_memo
+               (Dune_rules.Preprocess.Per_module.with_instrumentation
+                  preprocess
+                  ~instrumentation_backend:
+                    (Dune_rules.Lib.DB.instrumentation_backend
+                       (Dune_rules.Scope.libs scope)))
+           in
+           Staged.unstage (Dune_rules.Preprocessing.pped_modules_map preprocess version)
+         in
+         Some (pped_map m))
 ;;
 
 let get_pped_file super_context file =
   let open Memo.O in
-  let context = Super_context.context super_context in
-  let in_build_dir file =
-    file |> Path.to_string |> Path.Build.relative (Context.build_dir context)
+  let in_build_dir =
+    let context = Super_context.context super_context in
+    in_build_dir context
   in
   let file_in_build_dir =
     if String.is_empty file
     then User_error.raise [ Pp.textf "No file given." ]
     else Path.of_string file |> in_build_dir |> Path.build
   in
-  let* pp_files_to_check =
-    let+ project = Source_tree.root () >>| Source_tree.Dir.project in
-    let dialects = Dune_project.dialects project in
-    files_for_source file_in_build_dir ~dialects
-  in
   let* pp_file =
-    Memo.parallel_map pp_files_to_check ~f:(fun file ->
+    let* pp_file =
+      let* ml_kind =
+        let+ project = Source_tree.root () >>| Source_tree.Dir.project in
+        let dialects = Dune_project.dialects project in
+        let _base, ext = Path.split_extension file_in_build_dir in
+        match Dune_rules.Dialect.DB.find_by_extension dialects ext with
+        | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
+        | Some (_, ml_kind) -> ml_kind
+      in
+      let+ m = module_for_file ~sctx:super_context ~ml_kind file_in_build_dir in
+      m
+      |> Option.bind ~f:(Dune_rules.Module.source ~ml_kind)
+      |> Option.map ~f:Dune_rules.Module.File.path
+    in
+    match pp_file with
+    | None -> Memo.return None
+    | Some file ->
       let+ exists = Build_system.file_exists file in
-      Option.some_if exists file)
-    >>| List.find_map ~f:Fun.id
+      Option.some_if exists file
   in
   match pp_file with
   | Some pp_file ->

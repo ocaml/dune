@@ -1,3 +1,4 @@
+[@@@alert unstable "The API of this library is not stable and may change without notice."]
 [@@@alert "-unstable"]
 
 module Appendable_list = Appendable_list
@@ -23,39 +24,15 @@ module Option = Option
 module Or_exn = Or_exn
 module Ordering = Ordering
 
-module Pp = struct
-  include Pp
+module Pp : sig
+  include module type of struct
+    include Pp
+  end
 
   (** This version of [Pp.compare] uses [Ordering.t] rather than returning an [int]. *)
-  let compare ~compare x y =
-    Ordering.of_int (Pp.compare (fun a b -> Ordering.to_int (compare a b)) x y)
-  ;;
+  val compare : compare:('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 
-  let to_dyn tag_to_dyn t =
-    match Pp.to_ast t with
-    | Error _ -> Dyn.variant "Contains Format" [ Dyn.opaque "<error>" ]
-    | Ok t ->
-      let open Dyn in
-      let rec to_dyn t =
-        match (t : _ Pp.Ast.t) with
-        | Nop -> variant "Nop" []
-        | Seq (x, y) -> variant "Seq" [ to_dyn x; to_dyn y ]
-        | Concat (x, y) -> variant "Concat" [ to_dyn x; list to_dyn y ]
-        | Box (i, t) -> variant "Box" [ int i; to_dyn t ]
-        | Vbox (i, t) -> variant "Vbox" [ int i; to_dyn t ]
-        | Hbox t -> variant "Hbox" [ to_dyn t ]
-        | Hvbox (i, t) -> variant "Hvbox" [ int i; to_dyn t ]
-        | Hovbox (i, t) -> variant "Hovbox" [ int i; to_dyn t ]
-        | Verbatim s -> variant "Verbatim" [ string s ]
-        | Char c -> variant "Char" [ char c ]
-        | Break (x, y) ->
-          variant "Break" [ triple string int string x; triple string int string y ]
-        | Newline -> variant "Newline" []
-        | Text s -> variant "Text" [ string s ]
-        | Tag (s, t) -> variant "Tag" [ tag_to_dyn s; to_dyn t ]
-      in
-      to_dyn t
-  ;;
+  val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 end
 
 module Result = Result
@@ -113,28 +90,27 @@ module Bit_set = Bit_set
 
 module type Per_item = Per_item_intf.S
 
-module Unix_error = struct
-  include Dune_filesystem_stubs.Unix_error
+module Unix_error : sig
+  include module type of struct
+    include Dune_filesystem_stubs.Unix_error
+  end
 
-  module Detailed = struct
-    include Dune_filesystem_stubs.Unix_error.Detailed
+  module Detailed : sig
+    include module type of struct
+      include Dune_filesystem_stubs.Unix_error.Detailed
+    end
 
-    let to_dyn (error, syscall, arg) =
-      Dyn.Record
-        [ "error", String (Unix.error_message error)
-        ; "syscall", String syscall
-        ; "arg", String arg
-        ]
-    ;;
-
-    let pp ?(prefix = "") unix_error = Pp.verbatim (prefix ^ to_string_hum unix_error)
+    val to_dyn : Dune_filesystem_stubs.Unix_error.t * string * string -> Dyn.t
+    val pp : ?prefix:string -> t -> 'a Pp.t
   end
 end
 
-module File_kind = struct
-  include Dune_filesystem_stubs.File_kind
+module File_kind : sig
+  include module type of struct
+    include Dune_filesystem_stubs.File_kind
+  end
 
-  let to_dyn t = Dyn.String (to_string t)
+  val to_dyn : t -> Dyn.t
 end
 
 module type Applicative = Applicative_intf.S
@@ -142,8 +118,7 @@ module type Monad = Monad_intf.S
 module type Monoid = Monoid_intf.S
 
 external reraise : exn -> _ = "%reraise"
-
-let compare _ _ = `Use_Poly_compare
+val compare : 'a -> 'b -> [> `Use_Poly_compare ]
 
 (* The following types are re-exported here so that they are always available in
    scope *)
@@ -161,10 +136,10 @@ type ordering = Ordering.t =
   | Eq
   | Gt
 
-let sprintf = Printf.sprintf
-let ksprintf = Printf.ksprintf
-let printfn a = ksprintf print_endline a
+val sprintf : ('a, unit, string) format -> 'a
+val ksprintf : (string -> 'a) -> ('b, unit, string, 'a) format4 -> 'b
+val printfn : ('a, unit, string, unit) format4 -> 'a
 
-module For_tests = struct
+module For_tests : sig
   module Compact_position = Compact_position
 end

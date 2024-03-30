@@ -95,7 +95,6 @@ val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 module Make_parallel_map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
-[@@inline always]
 
 (** A table memoizing results of executing a function. *)
 module Table : sig

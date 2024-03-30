@@ -70,19 +70,18 @@ module DB = struct
     let module Resolve_result = Lib.DB.Resolve_result in
     let module With_multiple_results = Resolve_result.With_multiple_results in
     let not_found = With_multiple_results.resolve_result Resolve_result.not_found in
-    fun ~resolve_library_id id_map name ->
+    fun ~resolve_lib_id id_map name ->
       match
         Lib_name.Map.find id_map name
-        |> Option.bind ~f:(fun library_ids ->
-          Lib_info.Library_id.Set.to_list library_ids |> Nonempty_list.of_list)
+        |> Option.bind ~f:(fun lib_ids ->
+          Lib_id.Set.to_list lib_ids |> Nonempty_list.of_list)
       with
       | None -> Memo.return not_found
-      | Some [ library_id ] ->
-        resolve_library_id library_id >>| With_multiple_results.resolve_result
-      | Some library_ids ->
-        Memo.List.map ~f:resolve_library_id (Nonempty_list.to_list library_ids)
-        >>| fun library_ids ->
-        Nonempty_list.of_list library_ids
+      | Some [ lib_id ] -> resolve_lib_id lib_id >>| With_multiple_results.resolve_result
+      | Some lib_ids ->
+        Memo.List.map ~f:resolve_lib_id (Nonempty_list.to_list lib_ids)
+        >>| fun lib_ids ->
+        Nonempty_list.of_list lib_ids
         |> Option.value_exn
         |> With_multiple_results.multiple_results
   ;;
@@ -95,13 +94,13 @@ module DB = struct
   end
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let library_id_map, id_map =
-      let _, id_map, library_id_map =
+    let lib_id_map, id_map =
+      let _, id_map, lib_id_map =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
-          ~f:(fun (libname_map, id_map, library_id_map) (dir, stanza) ->
-            let name, library_id, r2 =
+          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_id.Map.empty)
+          ~f:(fun (libname_map, id_map, lib_id_map) (dir, stanza) ->
+            let name, lib_id, r2 =
               let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
               match (stanza : Library_related_stanza.t) with
               | Library_redirect s ->
@@ -116,22 +115,22 @@ module DB = struct
                       Toggle.of_bool enabled)
                   in
                   Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
-                and library_id = Library_redirect.Local.to_library_id ~src_dir s in
-                lib_name, library_id, redirect
+                and lib_id = Library_redirect.Local.to_lib_id ~src_dir s in
+                lib_name, Some lib_id, redirect
               | Deprecated_library_name s ->
                 let lib_name, deprecated_lib =
                   let old_public_name = Deprecated_library_name.old_public_name s in
                   Found_or_redirect.deprecated_library_name
                     old_public_name
                     s.new_public_name
-                and library_id = Deprecated_library_name.to_library_id ~src_dir s in
-                lib_name, library_id, deprecated_lib
+                in
+                lib_name, None, deprecated_lib
               | Library (conf : Library.t) ->
                 let info =
                   let expander = Expander0.get ~dir in
                   Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
-                and library_id = Library.to_library_id ~src_dir conf in
-                Library.best_name conf, library_id, Found_or_redirect.found info
+                and lib_id = Library.to_lib_id ~src_dir conf in
+                Library.best_name conf, Some lib_id, Found_or_redirect.found info
             in
             let libname_map' =
               Lib_name.Map.update libname_map name ~f:(function
@@ -176,25 +175,29 @@ module DB = struct
                        ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
                        ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                        ]))
-            and id_map' =
-              let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
-              Lib_name.Map.update id_map name ~f:(fun library_ids ->
-                Some
-                  (match
-                     Option.map library_ids ~f:(fun library_ids ->
-                       Lib_info.Library_id.Set.add library_ids library_id)
-                   with
-                   | None -> Lib_info.Library_id.Set.singleton library_id
-                   | Some s -> s))
-            and library_id_map' =
-              Lib_info.Library_id.Map.add_exn library_id_map library_id r2
             in
-            libname_map', id_map', library_id_map')
+            let id_map', lib_id_map' =
+              match lib_id with
+              | None -> id_map, lib_id_map
+              | Some lib_id ->
+                let id_map' =
+                  Lib_name.Map.update id_map name ~f:(fun lib_ids ->
+                    Some
+                      (match
+                         Option.map lib_ids ~f:(fun lib_ids ->
+                           Lib_id.Set.add lib_ids lib_id)
+                       with
+                       | None -> Lib_id.Set.singleton lib_id
+                       | Some s -> s))
+                and lib_id_map' = Lib_id.Map.add_exn lib_id_map lib_id r2 in
+                id_map', lib_id_map'
+            in
+            libname_map', id_map', lib_id_map')
       in
-      library_id_map, id_map
+      lib_id_map, id_map
     in
-    let resolve_library_id library_id =
-      match Lib_info.Library_id.Map.find library_id_map library_id with
+    let resolve_lib_id lib_id =
+      match Lib_id.Map.find lib_id_map lib_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
       | Some (Redirect { loc; to_; enabled; _ }) ->
         let+ enabled =
@@ -208,12 +211,12 @@ module DB = struct
       | Some (Deprecated_library_name lib) ->
         Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
     in
-    let resolve = resolve ~resolve_library_id id_map in
+    let resolve = resolve ~resolve_lib_id id_map in
     Lib.DB.create
       ()
       ~parent:(Some parent)
       ~resolve
-      ~resolve_library_id
+      ~resolve_lib_id
       ~all:(fun () -> Lib_name.Map.keys id_map |> Memo.return)
       ~lib_config
       ~instrument_with
@@ -222,16 +225,16 @@ module DB = struct
   type redirect_to =
     | Project of
         { project : Dune_project.t
-        ; library_id : Lib_info.Library_id.t
+        ; lib_id : Lib_id.t
         }
     | Name of (Loc.t * Lib_name.t)
 
-  let resolve_library_id t public_libs library_id : Lib.DB.Resolve_result.t =
-    match Lib_info.Library_id.Map.find public_libs library_id with
+  let resolve_lib_id t public_libs lib_id : Lib.DB.Resolve_result.t =
+    match Lib_id.Map.find public_libs lib_id with
     | None -> Lib.DB.Resolve_result.not_found
-    | Some (Project { project; library_id }) ->
+    | Some (Project { project; lib_id }) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db library_id
+      Lib.DB.Resolve_result.redirect scope.db lib_id
     | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
@@ -241,42 +244,39 @@ module DB = struct
       let _, public_ids, public_libs =
         List.fold_left
           stanzas
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_info.Library_id.Map.empty)
+          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_id.Map.empty)
           ~f:
             (fun
-              (libname_map, id_map, library_id_map)
+              (libname_map, id_map, lib_id_map)
               ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
             ->
             let candidate =
               match stanza with
               | Library ({ project; visibility = Public p; _ } as conf) ->
-                let library_id =
+                let lib_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build dir)
                   in
-                  Library.to_library_id ~src_dir conf
+                  Library.to_lib_id ~src_dir conf
                 in
-                Some (Public_lib.name p, Project { project; library_id }, library_id)
+                Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
               | Library _ | Library_redirect _ -> None
               | Deprecated_library_name s ->
-                let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
                 Some
-                  ( Deprecated_library_name.old_public_name s
-                  , Name s.new_public_name
-                  , Deprecated_library_name.to_library_id ~src_dir s )
+                  (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
             in
             match candidate with
-            | None -> libname_map, id_map, library_id_map
-            | Some (public_name, r2, library_id) ->
+            | None | Some (_, _, None) -> libname_map, id_map, lib_id_map
+            | Some (public_name, r2, Some lib_id2) ->
               let libname_map' =
                 Lib_name.Map.update libname_map public_name ~f:(function
-                  | None -> Some (library_id, r2)
-                  | Some (sent1, _r1) ->
-                    (match (Lib_info.Library_id.equal sent1) library_id with
-                     | false -> Some (library_id, r2)
+                  | None -> Some (lib_id2, r2)
+                  | Some (lib_id1, _r1) ->
+                    (match (Lib_id.equal lib_id1) lib_id2 with
+                     | false -> Some (lib_id2, r2)
                      | true ->
-                       let loc1 = Lib_info.Library_id.loc sent1
-                       and loc2 = Lib_info.Library_id.loc library_id in
+                       let loc1 = Lib_id.loc lib_id1
+                       and loc2 = Lib_id.loc lib_id2 in
                        let main_message =
                          Pp.textf
                            "Public library %s is defined twice:"
@@ -301,31 +301,27 @@ module DB = struct
                          ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
                          ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                          ]))
-              and id_map' =
-                let id_map : Lib_info.Library_id.Set.t Lib_name.Map.t = id_map in
-                Lib_name.Map.update id_map public_name ~f:(fun library_ids ->
+              in
+              let id_map' =
+                Lib_name.Map.update id_map public_name ~f:(fun lib_ids ->
                   Some
                     (match
-                       Option.map library_ids ~f:(fun library_ids ->
-                         Lib_info.Library_id.Set.add library_ids library_id)
+                       Option.map lib_ids ~f:(fun lib_ids ->
+                         Lib_id.Set.add lib_ids lib_id2)
                      with
-                     | None -> Lib_info.Library_id.Set.singleton library_id
+                     | None -> Lib_id.Set.singleton lib_id2
                      | Some s -> s))
-              and library_id_map' =
-                Lib_info.Library_id.Map.add_exn library_id_map library_id r2
-              in
-              libname_map', id_map', library_id_map')
+              and lib_id_map' = Lib_id.Map.add_exn lib_id_map lib_id2 r2 in
+              libname_map', id_map', lib_id_map')
       in
       public_libs, public_ids
     in
-    let resolve_library_id library_id =
-      Memo.return (resolve_library_id t public_libs library_id)
-    in
-    let resolve = resolve ~resolve_library_id public_ids in
+    let resolve_lib_id lib_id = Memo.return (resolve_lib_id t public_libs lib_id) in
+    let resolve = resolve ~resolve_lib_id public_ids in
     Lib.DB.create
       ~parent:(Some installed_libs)
       ~resolve
-      ~resolve_library_id
+      ~resolve_lib_id
       ~all:(fun () -> Lib_name.Map.keys public_ids |> Memo.return)
       ~lib_config
       ()
@@ -488,7 +484,7 @@ module DB = struct
               let src_dir = Dune_file.dir d in
               let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
               let db = libs scope in
-              Lib.DB.find_library_id db (Library.to_library_id ~src_dir lib)
+              Lib.DB.find_lib_id db (Library.to_lib_id ~src_dir lib)
             in
             (match lib with
              | None -> acc

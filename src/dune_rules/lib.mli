@@ -100,7 +100,7 @@ module DB : sig
     val not_found : t
     val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
-    val redirect : db -> Lib_info.Library_id.t -> t
+    val redirect : db -> Lib_id.t -> t
     val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
 
     module With_multiple_results : sig
@@ -126,7 +126,7 @@ module DB : sig
   val create
     :  parent:t option
     -> resolve:(Lib_name.t -> Resolve_result.With_multiple_results.t Memo.t)
-    -> resolve_library_id:(Lib_info.Library_id.t -> Resolve_result.t Memo.t)
+    -> resolve_lib_id:(Lib_id.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
     -> lib_config:Lib_config.t
     -> instrument_with:Lib_name.t list
@@ -135,18 +135,14 @@ module DB : sig
 
   val find : t -> Lib_name.t -> lib option Memo.t
   val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.t
-  val find_library_id : t -> Lib_info.Library_id.t -> lib option Memo.t
-  val find_library_id_even_when_hidden : t -> Lib_info.Library_id.t -> lib option Memo.t
+  val find_lib_id : t -> Lib_id.t -> lib option Memo.t
+  val find_lib_id_even_when_hidden : t -> Lib_id.t -> lib option Memo.t
   val available : t -> Lib_name.t -> bool Memo.t
-  val available_by_library_id : t -> Lib_info.Library_id.t -> bool Memo.t
+  val available_by_lib_id : t -> Lib_id.t -> bool Memo.t
 
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
-  val get_compile_info
-    :  t
-    -> allow_overlaps:bool
-    -> Lib_info.Library_id.t
-    -> (lib * Compile.t) Memo.t
+  val get_compile_info : t -> allow_overlaps:bool -> Lib_id.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 

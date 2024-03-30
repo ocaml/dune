@@ -409,7 +409,7 @@ end
 type db =
   { parent : db option
   ; resolve : Lib_name.t -> resolve_result_with_multiple_results Memo.t
-  ; resolve_library_id : Lib_info.Library_id.t -> resolve_result Memo.t
+  ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
@@ -424,7 +424,7 @@ and resolve_result =
   | Invalid of User_message.t
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-  | Redirect of db * Lib_info.Library_id.t
+  | Redirect of db * Lib_id.t
 
 and resolve_result_with_multiple_results =
   | Resolve_result of resolve_result
@@ -833,9 +833,9 @@ module rec Resolve_names : sig
     -> private_deps:private_deps
     -> lib Resolve.t option Memo.t
 
-  val resolve_library_id : db -> Lib_info.Library_id.t -> Status.t Memo.t
+  val resolve_lib_id : db -> Lib_id.t -> Status.t Memo.t
   val available_internal : db -> Lib_name.t -> bool Memo.t
-  val available_by_library_id_internal : db -> Lib_info.Library_id.t -> bool Memo.t
+  val available_by_lib_id_internal : db -> Lib_id.t -> bool Memo.t
 
   val resolve_simple_deps
     :  db
@@ -1103,10 +1103,9 @@ end = struct
     type t = Lib_name.t * Path.t Lib_info.t * string option
 
     let equal (lib_name, info, _) (lib_name', info', _) =
-      let library_id = Lib_info.library_id info
-      and library_id' = Lib_info.library_id info' in
-      Lib_name.equal lib_name lib_name'
-      && Lib_info.Library_id.equal library_id library_id'
+      let lib_id = Lib_info.lib_id info
+      and lib_id' = Lib_info.lib_id info' in
+      Lib_name.equal lib_name lib_name' && Lib_id.equal lib_id lib_id'
     ;;
 
     let hash (x, _, _) = Lib_name.hash x
@@ -1146,8 +1145,8 @@ end = struct
     (match db.parent with
      | None -> Memo.return Status.Not_found
      | Some db ->
-       let library_id = Lib_info.library_id info in
-       resolve_library_id db library_id)
+       let lib_id = Lib_info.lib_id info in
+       resolve_lib_id db lib_id)
     >>= function
     | Status.Found _ as x -> Memo.return x
     | _ ->
@@ -1158,7 +1157,7 @@ end = struct
   let handle_resolve_result db ~super = function
     | Ignore -> Memo.return Status.Ignore
     | Redirect_in_the_same_db (_, name') -> find_internal db name'
-    | Redirect (db', library_id') -> resolve_library_id db' library_id'
+    | Redirect (db', lib_id') -> resolve_lib_id db' lib_id'
     | Found info ->
       let name = Lib_info.name info in
       instantiate db name info ~hidden:None
@@ -1178,8 +1177,7 @@ end = struct
         Memo.List.filter_map (Nonempty_list.to_list candidates) ~f:(function
           | Ignore -> Memo.return (Some Status.Ignore)
           | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
-          | Redirect (db', library_id') ->
-            resolve_library_id db' library_id' >>| Option.some
+          | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
           | Found info ->
             Lib_info.enabled info
             >>= (function
@@ -1199,9 +1197,9 @@ end = struct
          List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
            match acc, status with
            | Status.Found a, Status.Found b ->
-             let library_id_a = Lib_info.library_id a.info
-             and library_id_b = Lib_info.library_id b.info in
-             (match Lib_info.Library_id.equal library_id_a library_id_b with
+             let lib_id_a = Lib_info.lib_id a.info
+             and lib_id_b = Lib_info.lib_id b.info in
+             (match Lib_id.equal lib_id_a lib_id_b with
               | true -> acc
               | false ->
                 let best_name_a = a.name
@@ -1211,8 +1209,8 @@ end = struct
                 let loc_a = Lib_info.loc info_a
                 and loc_b = Lib_info.loc info_b
                 and name_a =
-                  let library_id = Lib_info.library_id info_a in
-                  Lib_info.Library_id.name library_id
+                  let lib_id = Lib_info.lib_id info_a in
+                  Lib_id.name lib_id
                 in
                 let name =
                   if Lib_name.equal best_name_a best_name_b then best_name_a else name_a
@@ -1243,10 +1241,10 @@ end = struct
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
-  let resolve_library_id db library_id =
+  let resolve_lib_id db lib_id =
     let open Memo.O in
-    let super db = resolve_library_id db library_id in
-    db.resolve_library_id library_id >>= handle_resolve_result ~super db
+    let super db = resolve_lib_id db lib_id in
+    db.resolve_lib_id lib_id >>= handle_resolve_result ~super db
   ;;
 
   let available_internal db (name : Lib_name.t) =
@@ -1257,9 +1255,9 @@ end = struct
     | Not_found | Invalid _ | Hidden _ -> false
   ;;
 
-  let available_by_library_id_internal db (library_id : Lib_info.Library_id.t) =
+  let available_by_lib_id_internal db (lib_id : Lib_id.t) =
     let open Memo.O in
-    resolve_library_id db library_id
+    resolve_lib_id db lib_id
     >>| function
     | Ignore | Found _ -> true
     | Not_found | Invalid _ | Hidden _ -> false
@@ -1884,7 +1882,7 @@ module DB = struct
       | Invalid of User_message.t
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-      | Redirect of db * Lib_info.Library_id.t
+      | Redirect of db * Lib_id.t
 
     let found f = Found f
     let not_found = Not_found
@@ -1899,8 +1897,7 @@ module DB = struct
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
-      | Redirect (_, library_id) ->
-        variant "Redirect" [ Lib_info.Library_id.to_dyn library_id ]
+      | Redirect (_, lib_id) -> variant "Redirect" [ Lib_id.to_dyn lib_id ]
       | Redirect_in_the_same_db (_, name) ->
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;
@@ -1925,12 +1922,12 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~resolve_library_id ~all ~lib_config ~instrument_with () =
+  let create ~parent ~resolve ~resolve_lib_id ~all ~lib_config ~instrument_with () =
     let rec t =
       lazy
         { parent
         ; resolve
-        ; resolve_library_id
+        ; resolve_lib_id
         ; all = Memo.lazy_ all
         ; lib_config
         ; instrument_with
@@ -1970,9 +1967,9 @@ module DB = struct
         ~parent:None
         ~lib_config
         ~resolve
-        ~resolve_library_id:(fun library_id ->
+        ~resolve_lib_id:(fun lib_id ->
           let open Memo.O in
-          let name = Lib_info.Library_id.name library_id in
+          let name = Lib_id.name lib_id in
           resolve name
           >>| function
           | Multiple_results _ -> assert false
@@ -2001,9 +1998,9 @@ module DB = struct
     | Ignore | Not_found | Invalid _ | Hidden _ -> None
   ;;
 
-  let find_library_id t library_id =
+  let find_lib_id t lib_id =
     let open Memo.O in
-    Resolve_names.resolve_library_id t library_id
+    Resolve_names.resolve_lib_id t lib_id
     >>| function
     | Found t -> Some t
     | Ignore | Not_found | Invalid _ | Hidden _ -> None
@@ -2017,9 +2014,9 @@ module DB = struct
     | Ignore | Invalid _ | Not_found -> None
   ;;
 
-  let find_library_id_even_when_hidden t library_id =
+  let find_lib_id_even_when_hidden t lib_id =
     let open Memo.O in
-    Resolve_names.resolve_library_id t library_id
+    Resolve_names.resolve_lib_id t lib_id
     >>| function
     | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
     | Ignore | Invalid _ | Not_found -> None
@@ -2046,20 +2043,17 @@ module DB = struct
   ;;
 
   let available t name = Resolve_names.available_internal t name
+  let available_by_lib_id t lib_id = Resolve_names.available_by_lib_id_internal t lib_id
 
-  let available_by_library_id t library_id =
-    Resolve_names.available_by_library_id_internal t library_id
-  ;;
-
-  let get_compile_info t ~allow_overlaps library_id =
+  let get_compile_info t ~allow_overlaps lib_id =
     let open Memo.O in
-    find_library_id_even_when_hidden t library_id
+    find_lib_id_even_when_hidden t lib_id
     >>| function
     | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
     | None ->
       Code_error.raise
         "Lib.DB.get_compile_info got library that doesn't exist"
-        [ "library_id", Lib_info.Library_id.to_dyn library_id ]
+        [ "lib_id", Lib_id.to_dyn lib_id ]
   ;;
 
   let resolve_user_written_deps

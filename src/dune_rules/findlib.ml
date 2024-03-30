@@ -207,12 +207,12 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     in
     let modules = Lib_info.Source.External None in
     let name = t.name in
-    let library_id = Lib_info.Library_id.external_ ~loc ~src_dir name in
+    let lib_id = Lib_id.external_ ~loc ~src_dir name in
     Lib_info.create
       ~loc
       ~path_kind:External
       ~name
-      ~library_id
+      ~lib_id
       ~kind
       ~status
       ~src_dir

@@ -112,9 +112,7 @@ end = struct
       empty_none
     | Library.T lib ->
       let* enabled_if =
-        Lib.DB.available_by_library_id
-          (Scope.libs scope)
-          (Library.to_library_id ~src_dir lib)
+        Lib.DB.available_by_lib_id (Scope.libs scope) (Library.to_lib_id ~src_dir lib)
       in
       if_available_buildable
         ~loc:lib.buildable.loc

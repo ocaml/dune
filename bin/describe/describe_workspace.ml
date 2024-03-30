@@ -451,7 +451,7 @@ module Crawl = struct
           let* modules_, obj_dir_ =
             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
             >>= Dir_contents.ocaml
-            >>| Ml_sources.modules_and_obj_dir ~for_:(Library (Lib_info.library_id info))
+            >>| Ml_sources.modules_and_obj_dir ~for_:(Library (Lib_info.lib_id info))
           in
           let* pp_map =
             let+ version =

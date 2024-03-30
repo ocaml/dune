@@ -19,17 +19,7 @@ different folders.
 
 Without any consumers of the libraries (both are built in separate folders)
 
-  $ dune build --display short
-        ocamlc a/.foo.objs/byte/foo.{cmi,cmo,cmt}
-        ocamlc b/.foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamlopt a/.foo.objs/native/foo.{cmx,o}
-        ocamlc a/foo.cma
-      ocamlopt b/.foo.objs/native/foo.{cmx,o}
-        ocamlc b/foo.cma
-      ocamlopt a/foo.{a,cmxa}
-      ocamlopt b/foo.{a,cmxa}
-      ocamlopt a/foo.cmxs
-      ocamlopt b/foo.cmxs
+  $ dune build a/foo.cma b/foo.cma
 
 With some consumer of the library
 

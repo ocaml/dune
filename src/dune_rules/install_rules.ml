@@ -88,7 +88,7 @@ end = struct
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.library_id lib)))
+      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.lib_id lib)))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -182,7 +182,7 @@ end = struct
     let* installable_modules =
       let+ modules =
         Dir_contents.ocaml dir_contents
-        >>| Ml_sources.modules ~for_:(Library (Lib_info.library_id info))
+        >>| Ml_sources.modules ~for_:(Library (Lib_info.lib_id info))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -345,9 +345,7 @@ end = struct
               |> Path.build
               |> Path.drop_optional_build_context_src_exn
             in
-            Lib.DB.available_by_library_id
-              (Scope.libs scope)
-              (Library.to_library_id ~src_dir lib))
+            Lib.DB.available_by_lib_id (Scope.libs scope) (Library.to_lib_id ~src_dir lib))
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -662,7 +660,7 @@ end = struct
             |> List.map ~f:Path.build
           and* modules =
             Dir_contents.ocaml dir_contents
-            >>| Ml_sources.modules ~for_:(Library (Lib_info.library_id info))
+            >>| Ml_sources.modules ~for_:(Library (Lib_info.lib_id info))
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =

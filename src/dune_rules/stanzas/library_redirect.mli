@@ -31,5 +31,5 @@ module Local : sig
 
   val of_private_lib : Library.t -> t option
   val of_lib : Library.t -> t option
-  val to_library_id : src_dir:Path.Source.t -> t -> Lib_info.Library_id.t
+  val to_lib_id : src_dir:Path.Source.t -> t -> Lib_id.t
 end

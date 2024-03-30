@@ -648,15 +648,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     let src_dir = Path.Build.drop_build_context_exn dir in
     Lib.DB.get_compile_info
       (Scope.libs scope)
-      (Library.to_library_id ~src_dir lib)
+      (Library.to_lib_id ~src_dir lib)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
   let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =
       Dir_contents.ocaml dir_contents
-      >>| Ml_sources.modules
-            ~for_:(Library (Lib_info.library_id (Lib.Local.info local_lib)))
+      >>| Ml_sources.modules ~for_:(Library (Lib_info.lib_id (Lib.Local.info local_lib)))
     in
     let* cctx = cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info in
     let* () =

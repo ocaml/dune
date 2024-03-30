@@ -31,7 +31,7 @@ module Modules = struct
   type component = Modules.t * Path.Build.t Obj_dir.t
 
   type t =
-    { libraries : component Lib_info.Library_id.Map.t
+    { libraries : component Lib_id.Map.t
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
     ; (* Map from modules to the origin they are part of *)
@@ -39,7 +39,7 @@ module Modules = struct
     }
 
   let empty =
-    { libraries = Lib_info.Library_id.Map.empty
+    { libraries = Lib_id.Map.empty
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
     ; rev_map = Module_name.Path.Map.empty
@@ -65,7 +65,7 @@ module Modules = struct
       let _, libraries =
         List.fold_left
           libs
-          ~init:(Lib_name.Set.empty, Lib_info.Library_id.Map.empty)
+          ~init:(Lib_name.Set.empty, Lib_id.Map.empty)
           ~f:(fun (libname_set, acc) part ->
             let stanza = part.stanza in
             let name =
@@ -74,7 +74,7 @@ module Modules = struct
                 |> Path.build
                 |> Path.drop_optional_build_context_src_exn
               in
-              Lib_info.Library_id.name (Library.to_library_id ~src_dir stanza)
+              Lib_id.name (Library.to_lib_id ~src_dir stanza)
             in
             match Lib_name.Set.mem libname_set name with
             | true ->
@@ -86,13 +86,13 @@ module Modules = struct
                 ]
             | false ->
               let acc =
-                let library_id =
+                let lib_id =
                   let src_dir =
                     Path.drop_optional_build_context_src_exn (Path.build part.dir)
                   in
-                  Library.to_library_id ~src_dir part.stanza
+                  Library.to_lib_id ~src_dir part.stanza
                 in
-                Lib_info.Library_id.Map.add_exn acc library_id (part.modules, part.obj_dir)
+                Lib_id.Map.add_exn acc lib_id (part.modules, part.obj_dir)
               in
               Lib_name.Set.add libname_set name, acc)
       in
@@ -245,14 +245,14 @@ let modules_of_files ~path ~dialects ~dir ~files =
 ;;
 
 type for_ =
-  | Library of Lib_info.Library_id.t
+  | Library of Lib_id.t
   | Exe of { first_exe : string }
   | Melange of { target : string }
 
 let dyn_of_for_ =
   let open Dyn in
   function
-  | Library n -> variant "Library" [ Lib_info.Library_id.to_dyn n ]
+  | Library n -> variant "Library" [ Lib_id.to_dyn n ]
   | Exe { first_exe } -> variant "Exe" [ record [ "first_exe", string first_exe ] ]
   | Melange { target } -> variant "Melange" [ record [ "target", string target ] ]
 ;;
@@ -260,7 +260,7 @@ let dyn_of_for_ =
 let modules_and_obj_dir t ~for_ =
   match
     match for_ with
-    | Library library_id -> Lib_info.Library_id.Map.find t.modules.libraries library_id
+    | Library lib_id -> Lib_id.Map.find t.modules.libraries lib_id
     | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
     | Melange { target } -> String.Map.find t.modules.melange_emits target
   with
@@ -268,9 +268,7 @@ let modules_and_obj_dir t ~for_ =
   | None ->
     let map =
       match for_ with
-      | Library _ ->
-        Lib_info.Library_id.Map.keys t.modules.libraries
-        |> Dyn.list Lib_info.Library_id.to_dyn
+      | Library _ -> Lib_id.Map.keys t.modules.libraries |> Dyn.list Lib_id.to_dyn
       | Exe _ -> String.Map.keys t.modules.executables |> Dyn.(list string)
       | Melange _ -> String.Map.keys t.modules.melange_emits |> Dyn.(list string)
     in
@@ -290,7 +288,7 @@ let virtual_modules ~lookup_vlib vlib =
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let+ t = lookup_vlib ~dir:src_dir in
-      modules t ~for_:(Library (Lib_info.library_id info))
+      modules t ~for_:(Library (Lib_info.lib_id info))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =
@@ -341,7 +339,7 @@ let make_lib_modules
       let* resolved =
         let* libs = libs in
         let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-        Lib.DB.find_library_id_even_when_hidden libs (Library.to_library_id ~src_dir lib)
+        Lib.DB.find_lib_id_even_when_hidden libs (Library.to_lib_id ~src_dir lib)
         (* can't happen because this library is defined using the current
            stanza *)
         >>| Option.value_exn

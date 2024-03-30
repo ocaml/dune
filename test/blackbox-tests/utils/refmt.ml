@@ -21,7 +21,7 @@ let () =
   let args =
     [ "--print", Arg.String set_binary, ""
     ; "--parse", Arg.String set_binary, ""
-    ; "-i=false", Arg.Unit ignore, ""
+    ; "-i", Arg.Bool ignore, ""
     ]
   in
   let source = ref None in

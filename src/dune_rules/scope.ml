@@ -181,8 +181,7 @@ module DB = struct
           let by_name =
             Lib_name.Map.update by_name name ~f:(function
               | None -> Some [ r2 ]
-              | Some (r1 :: rest : Found_or_redirect.t Nonempty_list.t) ->
-                Some (r2 :: r1 :: rest))
+              | Some rest -> Some (r2 :: rest))
           and by_id =
             match lib_id with
             | None -> by_id
@@ -192,14 +191,11 @@ module DB = struct
     in
     let resolve name =
       match Lib_name.Map.find by_name name with
-      | None -> Memo.return not_found
+      | None | Some [] -> Memo.return not_found
       | Some [ fr ] ->
         resolve_found_or_redirect fr >>| With_multiple_results.resolve_result
       | Some frs ->
-        Nonempty_list.to_list frs
-        |> Memo.parallel_map ~f:resolve_found_or_redirect
-        >>| Nonempty_list.of_list
-        >>| Option.value_exn
+        Memo.parallel_map frs ~f:resolve_found_or_redirect
         >>| With_multiple_results.multiple_results
     and resolve_lib_id = resolve_lib_id by_id in
     Lib.DB.create

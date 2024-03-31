@@ -428,7 +428,7 @@ and resolve_result =
 
 and resolve_result_with_multiple_results =
   | Resolve_result of resolve_result
-  | Multiple_results of resolve_result Nonempty_list.t
+  | Multiple_results of resolve_result list
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1173,8 +1173,7 @@ end = struct
     | Resolve_result r -> handle_resolve_result ~super db r
     | Multiple_results candidates ->
       let open Memo.O in
-      Nonempty_list.to_list candidates
-      |> Memo.List.filter_map ~f:(function
+      Memo.List.filter_map candidates ~f:(function
         | Ignore -> Memo.return (Some Status.Ignore)
         | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
         | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
@@ -1892,7 +1891,7 @@ module DB = struct
     module With_multiple_results = struct
       type t = resolve_result_with_multiple_results =
         | Resolve_result of resolve_result
-        | Multiple_results of resolve_result Nonempty_list.t
+        | Multiple_results of resolve_result list
 
       let resolve_result r = Resolve_result r
       let multiple_results libs : t = Multiple_results libs
@@ -1901,8 +1900,7 @@ module DB = struct
         let open Dyn in
         match t with
         | Resolve_result r -> variant "Resolve_result" [ to_dyn r ]
-        | Multiple_results xs ->
-          variant "Multiple_results" [ Dyn.list to_dyn (Nonempty_list.to_list xs) ]
+        | Multiple_results xs -> variant "Multiple_results" [ Dyn.list to_dyn xs ]
       ;;
     end
   end

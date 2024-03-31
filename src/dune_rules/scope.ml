@@ -32,12 +32,12 @@ module DB = struct
       | Redirect of
           { loc : Loc.t
           ; to_ : Lib_name.t
-          ; enabled : Toggle.t Memo.Lazy.t
+          ; enabled : Toggle.t Memo.t
           }
       | Deprecated_library_name of (Loc.t * Lib_name.t)
 
     val redirect
-      :  enabled:Toggle.t Memo.Lazy.t
+      :  enabled:Toggle.t Memo.t
       -> Lib_name.t
       -> Loc.t * Lib_name.t
       -> Lib_name.t * t
@@ -50,7 +50,7 @@ module DB = struct
       | Redirect of
           { loc : Loc.t
           ; to_ : Lib_name.t
-          ; enabled : Toggle.t Memo.Lazy.t
+          ; enabled : Toggle.t Memo.t
           }
       | Deprecated_library_name of (Loc.t * Lib_name.t)
 
@@ -80,7 +80,7 @@ module DB = struct
     match (fr : Found_or_redirect.t) with
     | Redirect { loc; to_; enabled; _ } ->
       let+ enabled =
-        let+ toggle = Memo.Lazy.force enabled in
+        let+ toggle = enabled in
         Toggle.enabled toggle
       in
       if enabled
@@ -115,6 +115,7 @@ module DB = struct
                   Memo.lazy_ (fun () ->
                     let* expander = Expander0.get ~dir in
                     Expander0.eval_blang expander s.old_name.enabled >>| Toggle.of_bool)
+                  |> Memo.Lazy.force
                 in
                 Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
               and lib_id = Library_redirect.Local.to_lib_id ~src_dir s in

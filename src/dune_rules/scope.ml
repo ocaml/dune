@@ -199,15 +199,13 @@ module DB = struct
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
-    let public_libs_by_name, public_libs_by_id =
+    let by_name, by_id =
       List.fold_left
         stanzas
         ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
         ~f:
           (fun
-            (public_libs_by_name, public_libs_by_id)
-            ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
-          ->
+            (by_name, by_id) ((dir, stanza) : Path.Build.t * Library_related_stanza.t) ->
           let candidate =
             match stanza with
             | Library ({ project; visibility = Public p; _ } as conf) ->
@@ -222,10 +220,10 @@ module DB = struct
                 (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
           in
           match candidate with
-          | None -> public_libs_by_name, public_libs_by_id
+          | None -> by_name, by_id
           | Some (public_name, r2, lib_id2) ->
-            let public_libs_by_name' =
-              Lib_name.Map.update public_libs_by_name public_name ~f:(function
+            let by_name =
+              Lib_name.Map.update by_name public_name ~f:(function
                 | None -> Some r2
                 | Some r1 ->
                   let loc1 = loc_of_redirect_to r1
@@ -252,19 +250,17 @@ module DB = struct
                     ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                     ])
             in
-            let public_libs_by_id' =
+            let by_id =
               match lib_id2 with
-              | None -> public_libs_by_id
-              | Some lib_id2 ->
-                let lib_id2 = Lib_id.Local lib_id2 in
-                Lib_id.Map.add_exn public_libs_by_id lib_id2 r2
+              | None -> by_id
+              | Some lib_id2 -> Lib_id.Map.add_exn by_id (Local lib_id2) r2
             in
-            public_libs_by_name', public_libs_by_id')
+            by_name, by_id)
     in
-    let resolve_lib_id lib_id = Memo.return (resolve_lib_id t public_libs_by_id lib_id) in
+    let resolve_lib_id lib_id = Memo.return (resolve_lib_id t by_id lib_id) in
     let resolve name =
       Memo.return
-        (match Lib_name.Map.find public_libs_by_name name with
+        (match Lib_name.Map.find by_name name with
          | None -> not_found
          | Some rt -> resolve_redirect_to t rt |> With_multiple_results.resolve_result)
     in
@@ -272,7 +268,7 @@ module DB = struct
       ~parent:(Some installed_libs)
       ~resolve
       ~resolve_lib_id
-      ~all:(fun () -> Lib_name.Map.keys public_libs_by_name |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
       ~lib_config
       ()
   ;;

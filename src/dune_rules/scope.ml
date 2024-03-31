@@ -100,11 +100,11 @@ module DB = struct
   let not_found = With_multiple_results.resolve_result Resolve_result.not_found
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let lib_name_map, lib_id_map =
+    let by_name, by_id =
       List.fold_left
         stanzas
         ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
-        ~f:(fun (libname_map, lib_id_map) (dir, stanza) ->
+        ~f:(fun (by_name, by_id) (dir, stanza) ->
           let lib_id, name, r2 =
             let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
             match (stanza : Library_related_stanza.t) with
@@ -134,21 +134,20 @@ module DB = struct
               and lib_id = Library.to_lib_id ~src_dir conf in
               Some lib_id, Library.best_name conf, Found_or_redirect.found info
           in
-          let libname_map' =
-            Lib_name.Map.update libname_map name ~f:(function
+          let by_name =
+            Lib_name.Map.update by_name name ~f:(function
               | None -> Some [ r2 ]
               | Some (r1 :: rest : Found_or_redirect.t Nonempty_list.t) ->
                 Some (r2 :: r1 :: rest))
-          in
-          let lib_id_map' =
+          and by_id =
             match lib_id with
-            | None -> lib_id_map
-            | Some lib_id -> Lib_id.Map.add_exn lib_id_map (Local lib_id) r2
+            | None -> by_id
+            | Some lib_id -> Lib_id.Map.add_exn by_id (Local lib_id) r2
           in
-          libname_map', lib_id_map')
+          by_name, by_id)
     in
     let resolve name =
-      match Lib_name.Map.find lib_name_map name with
+      match Lib_name.Map.find by_name name with
       | None -> Memo.return not_found
       | Some [ fr ] ->
         resolve_found_or_redirect fr >>| With_multiple_results.resolve_result
@@ -158,13 +157,13 @@ module DB = struct
         >>| Nonempty_list.of_list
         >>| Option.value_exn
         >>| With_multiple_results.multiple_results
-    and resolve_lib_id = resolve_lib_id lib_id_map in
+    and resolve_lib_id = resolve_lib_id by_id in
     Lib.DB.create
       ()
       ~parent:(Some parent)
       ~resolve
       ~resolve_lib_id
-      ~all:(fun () -> Lib_name.Map.keys lib_name_map |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
       ~lib_config
       ~instrument_with
   ;;

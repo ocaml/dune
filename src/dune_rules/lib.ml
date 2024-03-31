@@ -1173,27 +1173,26 @@ end = struct
     | Resolve_result r -> handle_resolve_result ~super db r
     | Multiple_results candidates ->
       let open Memo.O in
-      let+ libs =
-        Memo.List.filter_map (Nonempty_list.to_list candidates) ~f:(function
-          | Ignore -> Memo.return (Some Status.Ignore)
-          | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
-          | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
-          | Found info ->
-            Lib_info.enabled info
-            >>= (function
-             | Disabled_because_of_enabled_if -> Memo.return None
-             | Normal | Optional ->
-               let name = Lib_info.name info in
-               instantiate db name info ~hidden:None >>| Option.some)
-          | Invalid e -> Memo.return (Some (Status.Invalid e))
-          | Not_found -> Memo.return None
-          | Hidden { lib = info; reason = hidden; path = _ } ->
-            resolve_hidden db ~info hidden >>| Option.some)
-      in
-      (match libs with
+      Nonempty_list.to_list candidates
+      |> Memo.List.filter_map ~f:(function
+        | Ignore -> Memo.return (Some Status.Ignore)
+        | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
+        | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
+        | Found info ->
+          Lib_info.enabled info
+          >>= (function
+           | Disabled_because_of_enabled_if -> Memo.return None
+           | Normal | Optional ->
+             let name = Lib_info.name info in
+             instantiate db name info ~hidden:None >>| Option.some)
+        | Invalid e -> Memo.return (Some (Status.Invalid e))
+        | Not_found -> Memo.return None
+        | Hidden { lib = info; reason = hidden; path = _ } ->
+          resolve_hidden db ~info hidden >>| Option.some)
+      >>| (function
        | [] -> Status.Not_found
        | [ status ] -> status
-       | _ :: _ :: _ ->
+       | libs ->
          List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
            match acc, status with
            | Status.Found a, Status.Found b ->

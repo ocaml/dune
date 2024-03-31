@@ -1196,23 +1196,16 @@ end = struct
          List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
            match acc, status with
            | Status.Found a, Status.Found b ->
-             let lib_id_a = Lib_info.lib_id a.info
-             and lib_id_b = Lib_info.lib_id b.info in
-             (match Lib_id.equal lib_id_a lib_id_b with
+             let a_id = Lib_info.lib_id a.info in
+             let b_id = Lib_info.lib_id b.info in
+             (match Lib_id.equal a_id b_id with
               | true -> acc
               | false ->
-                let info_a = info a in
                 let name =
-                  if Lib_name.equal a.name b.name
-                  then a.name
-                  else (
-                    let lib_id = Lib_info.lib_id info_a in
-                    Lib_id.name lib_id)
-                in
-                Status.Invalid
-                  (let loc_a = Lib_info.loc info_a
-                   and loc_b = Lib_info.loc (info b) in
-                   Error.duplicated ~loc_a ~loc_b ~name))
+                  if Lib_name.equal a.name b.name then a.name else Lib_id.name a_id
+                and loc_a = Lib_info.loc a.info
+                and loc_b = Lib_info.loc b.info in
+                Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
            | Invalid _, _ -> acc
            | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
            | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib

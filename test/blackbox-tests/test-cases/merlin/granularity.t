@@ -1,3 +1,6 @@
+  $ ocamlc_where="$(ocamlc -where)"
+  $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+
 # A utility to query merlin configuration for a file:
   $ cat >merlin_conf.sh <<EOF
   > #!/bin/sh
@@ -103,7 +106,7 @@ locate to work correctly.
 
 Is it expected that the suffix for implementation and interface is the same ?
   $ ./merlin_conf.sh pped.ml | tee pped.out
-  ((?:STDLIB?:/Users/ulysse/.opam/5.1.0+trunk/lib/ocaml
+  ((?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -118,7 +121,7 @@ Is it expected that the suffix for implementation and interface is the same ?
 
 As expected, the reader is not communicated for the standard mli
   $ ./merlin_conf.sh mel.mli | tee mel.out
-  ((?:STDLIB?:/Users/ulysse/.opam/5.1.0+trunk/lib/ocaml
+  ((?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -140,11 +143,14 @@ The reader is set for the mlx file
 ## Unconventionnal file names:
 
 Users might have preprocessing steps that start with a non-conventionnal
-filename like `mymodule.cppo.ml`. Dune makes the assumption that the module name
-is always the first segment of a filename delimited by dots.
+filename like `mymodule.cppo.ml`. 
+
+While Dune first tries to match by the exact filename requested, if nothing is
+found, then it'll make a guess that the file was preprocessed into a file with
+.ml extension:
 
   $ ./merlin_conf.sh cppomod.cppo.ml | tee cppomod.out
-  ((?:STDLIB?:/Users/ulysse/.opam/5.1.0+trunk/lib/ocaml
+  ((?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -158,11 +164,15 @@ Note that this means unreleated files might be given the same configuration:
 
   $ ./merlin_conf.sh cppomod.tralala.ml | diff cppomod.out -
 
-TODO: this heuristic might not be needed, we could match the filename directly
-
 And with unconventionnal extension: 
 (note that without appropriate suffix configuration Merlin will never jump to
 such files) 
 We could expect dune to get the wrongext module configuration
   $ ./merlin_conf.sh wrongext.cppo.cml | tee wrongext.out
-  ((?:ERROR?:No config found for file wrongext.cppo.cml. Try calling `dune build`.))
+  ((?:STDLIB?:/OCAMLC_WHERE
+  (?:EXCLUDE_QUERY_DIR
+  (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
+  (?:S?:$TESTCASE_ROOT
+  (?:FLG(?:-open?:Dune__exe)
+  (?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:SUFFIX?:.mlx .mlx))

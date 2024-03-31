@@ -158,11 +158,11 @@ module DB = struct
       | Some [ fr ] ->
         resolve_found_or_redirect fr >>| With_multiple_results.resolve_result
       | Some frs ->
-        Memo.List.map ~f:resolve_found_or_redirect (Nonempty_list.to_list frs)
-        >>| fun results ->
-        Nonempty_list.of_list results
-        |> Option.value_exn
-        |> With_multiple_results.multiple_results
+        Nonempty_list.to_list frs
+        |> Memo.parallel_map ~f:resolve_found_or_redirect
+        >>| Nonempty_list.of_list
+        >>| Option.value_exn
+        >>| With_multiple_results.multiple_results
     and resolve_lib_id = resolve_lib_id lib_id_map in
     Lib.DB.create
       ()

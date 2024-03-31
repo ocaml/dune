@@ -7,7 +7,7 @@ We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.
 
   $ dune ocaml merlin dump-config $PWD
-  Bar: _build/default/bar
+  Bar: _build/default/bar.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -22,7 +22,7 @@ should appear only once since only Foo is using it.
      -short-paths
      -keep-locs
      -g)))
-  Foo: _build/default/foo
+  Foo: _build/default/foo.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

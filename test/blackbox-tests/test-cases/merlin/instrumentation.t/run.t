@@ -8,7 +8,7 @@ up a project with instrumentation and testing checking the merlin config.
 
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
-  Bar: _build/default/lib/bar
+  Bar: _build/default/lib/bar.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -22,7 +22,7 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
-  File: _build/default/lib/subdir/file
+  File: _build/default/lib/subdir/file.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -37,7 +37,7 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-open Bar))
    (FLG (-w -40 -g)))
-  Foo: _build/default/lib/foo
+  Foo: _build/default/lib/foo.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -51,7 +51,7 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-w -40 -g)))
-  Privmod: _build/default/lib/privmod
+  Privmod: _build/default/lib/privmod.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

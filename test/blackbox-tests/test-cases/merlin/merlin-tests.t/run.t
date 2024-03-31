@@ -13,7 +13,7 @@ We're going create a fake findlib library for use:
 CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml merlin dump-config $PWD/exe
-  X: _build/default/exe/x
+  X: _build/default/exe/x.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -35,7 +35,7 @@ CRAM sanitization
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
-  Bar: _build/default/lib/bar
+  Bar: _build/default/lib/bar.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -51,7 +51,7 @@ CRAM sanitization
      --cookie
      'library-name="bar"'"))
    (FLG (-w -40 -g)))
-  File: _build/default/lib/subdir/file
+  File: _build/default/lib/subdir/file.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -68,7 +68,7 @@ CRAM sanitization
      --cookie
      'library-name="bar"'"))
    (FLG (-w -40 -g)))
-  Foo: _build/default/lib/foo
+  Foo: _build/default/lib/foo.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -88,7 +88,7 @@ CRAM sanitization
      --cookie
      'library-name="foo"'"))
    (FLG (-w -40 -g)))
-  Privmod: _build/default/lib/privmod
+  Privmod: _build/default/lib/privmod.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -117,7 +117,7 @@ Make sure pp flag is correct and variables are expanded
 
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
   $ dune ocaml merlin dump-config $PWD/pp-with-expand
-  Foobar: _build/default/pp-with-expand/foobar
+  Foobar: _build/default/pp-with-expand/foobar.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -133,7 +133,7 @@ Make sure pp flag is correct and variables are expanded
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml merlin dump-config $PWD/exes
-  X: _build/default/exes/x
+  X: _build/default/exes/x.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -148,7 +148,7 @@ Check hash of executables names if more than one
      -short-paths
      -keep-locs
      -g)))
-  Y: _build/default/exes/y
+  Y: _build/default/exes/y.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

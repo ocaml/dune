@@ -25,10 +25,10 @@
   $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
-  Foo: _build/default/foo
+  Foo: _build/default/foo.ml
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
-  Foo__: _build/default/foo__
+  Foo__: _build/default/foo__.ml-gen
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
@@ -102,7 +102,7 @@ Check for flag directives ordering when another preprocessor is defined
 User ppx flags should appear in merlin config
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
-  Bar: _build/default/bar
+  Bar: _build/default/bar.ml
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -124,7 +124,7 @@ User ppx flags should appear in merlin config
      -short-paths
      -keep-locs
      -g)))
-  Foo: _build/default/foo
+  Foo: _build/default/foo.ml-gen
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
@@ -145,7 +145,7 @@ User ppx flags should appear in merlin config
      -short-paths
      -keep-locs
      -g)))
-  Fooppx: _build/default/fooppx
+  Fooppx: _build/default/fooppx.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

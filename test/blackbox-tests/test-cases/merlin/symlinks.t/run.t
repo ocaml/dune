@@ -17,12 +17,12 @@ Absolute path with resolved symlinks will match with Dune's root path:
   $ dune ocaml merlin \
   > dump-config "$(pwd | sed 's/linkroot/realroot/')/realsrc" \
   > --root="." | head -n 1
-  Foo: _build/default/realsrc/foo
+  Foo: _build/default/realsrc/foo.ml
 
 
 Dune ocaml-merlin also accepts paths relative to the current directory
   $ dune ocaml merlin dump-config "realsrc" --root="." | head -n 1
-  Foo: _build/default/realsrc/foo
+  Foo: _build/default/realsrc/foo.ml
 
   $ cd realsrc
 
@@ -30,5 +30,5 @@ Dune ocaml-merlin also accepts paths relative to the current directory
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
   $ dune ocaml merlin dump-config "." --root=".." | head -n 2
-  Foo: _build/default/realsrc/foo
+  Foo: _build/default/realsrc/foo.ml
   ((STDLIB /OCAMLC_WHERE)

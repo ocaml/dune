@@ -117,22 +117,29 @@ let module_for_file =
       >>= (function
        | None -> Memo.return None
        | Some (m, preprocess) ->
-         let+ pped_map =
-           let+ version =
-             let+ ocaml = Context.ocaml (Super_context.context sctx) in
-             ocaml.version
-           and+ preprocess =
-             let* scope = Dune_rules.Scope.DB.find_by_dir dir in
-             Resolve.Memo.read_memo
-               (Dune_rules.Preprocess.Per_module.with_instrumentation
-                  preprocess
-                  ~instrumentation_backend:
-                    (Dune_rules.Lib.DB.instrumentation_backend
-                       (Dune_rules.Scope.libs scope)))
-           in
-           Staged.unstage (Dune_rules.Preprocessing.pped_modules_map preprocess version)
-         in
-         Some (pped_map m))
+         (match
+            Dune_rules.Preprocess.Per_module.find (Dune_rules.Module.name m) preprocess
+          with
+          | Dune_rules.Preprocess.Pps { staged = true; loc; _ } ->
+            Memo.return (Some (`Staged_pps loc))
+          | _ ->
+            let+ pped_map =
+              let+ version =
+                let+ ocaml = Context.ocaml (Super_context.context sctx) in
+                ocaml.version
+              and+ preprocess =
+                let* scope = Dune_rules.Scope.DB.find_by_dir dir in
+                Resolve.Memo.read_memo
+                  (Dune_rules.Preprocess.Per_module.with_instrumentation
+                     preprocess
+                     ~instrumentation_backend:
+                       (Dune_rules.Lib.DB.instrumentation_backend
+                          (Dune_rules.Scope.libs scope)))
+              in
+              Staged.unstage
+                (Dune_rules.Preprocessing.pped_modules_map preprocess version)
+            in
+            Some (`Module (pped_map m))))
 ;;
 
 let get_pped_file super_context file =
@@ -146,57 +153,35 @@ let get_pped_file super_context file =
     then User_error.raise [ Pp.textf "No file given." ]
     else Path.of_string file |> in_build_dir |> Path.build
   in
-  let* pp_file =
-    let* pp_file =
-      let* ml_kind =
-        let+ _, ml_kind = dialect_and_ml_kind file in
-        ml_kind
-      in
-      let+ m = module_for_file ~sctx:super_context ~ml_kind file_in_build_dir in
-      m
-      |> Option.bind ~f:(Dune_rules.Module.source ~ml_kind)
-      |> Option.map ~f:Dune_rules.Module.File.path
-    in
-    match pp_file with
-    | None -> Memo.return None
-    | Some file ->
-      let+ exists = Build_system.file_exists file in
-      Option.some_if exists file
+  let* ml_kind =
+    let+ _, ml_kind = dialect_and_ml_kind file in
+    ml_kind
   in
-  match pp_file with
-  | Some pp_file ->
-    let+ () = Build_system.build_file pp_file in
-    Ok pp_file
-  | None ->
-    Build_system.file_exists file_in_build_dir
-    >>= (function
-     | false ->
-       User_error.raise
-         [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ]
-     | true ->
-       Source_tree.nearest_dir (Path.Source.of_string file)
-       >>| Source_tree.Dir.path
-       >>| Path.source
-       >>| in_build_dir
-       >>= Dune_rules.Dune_load.stanzas_in_dir
-       >>= (function
-              | None -> Memo.return None
-              | Some dune_file ->
-                Dune_file.find_stanzas dune_file Dune_rules.Library.key
-                >>| List.fold_left ~init:None ~f:(fun acc (lib : Dune_rules.Library.t) ->
-                  let preprocess =
-                    Dune_rules.Preprocess.Per_module.(
-                      lib.buildable.preprocess |> single_preprocess)
-                  in
-                  match preprocess with
-                  | Dune_rules.Preprocess.Pps ({ staged = true; _ } as pps) -> Some pps
-                  | _ -> acc))
-       >>= (function
-        | None ->
-          let+ () = Build_system.build_file file_in_build_dir in
-          Error file_in_build_dir
-        | Some { loc; _ } ->
-          User_error.raise ~loc [ Pp.text "staged_pps are not supported." ]))
+  let* module_for_file = module_for_file ~sctx:super_context ~ml_kind file_in_build_dir in
+  let build_fallback =
+    Memo.lazy_ (fun () ->
+      Build_system.file_exists file_in_build_dir
+      >>= function
+      | false ->
+        User_error.raise
+          [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ]
+      | true ->
+        let+ () = Build_system.build_file file_in_build_dir in
+        Error file_in_build_dir)
+  in
+  match module_for_file with
+  | Some (`Module m) ->
+    let pp_file =
+      m |> Dune_rules.Module.source ~ml_kind |> Option.map ~f:Dune_rules.Module.File.path
+    in
+    (match pp_file with
+     | None -> Memo.Lazy.force build_fallback
+     | Some pp_file ->
+       let+ () = Build_system.build_file pp_file in
+       Ok pp_file)
+  | Some (`Staged_pps loc) ->
+    User_error.raise ~loc [ Pp.text "staged_pps are not supported." ]
+  | None -> Memo.Lazy.force build_fallback
 ;;
 
 let term =

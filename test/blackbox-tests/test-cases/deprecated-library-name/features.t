@@ -247,6 +247,10 @@ We check that there is an error when there is an actual ambiguity:
   > EOF
 
   $ (cd d && dune build --root . @all)
+  Error: Library top2 is defined twice:
+  - dune:5
+  - dune:13
+  [1]
 
 Another case of ambiguity:
 

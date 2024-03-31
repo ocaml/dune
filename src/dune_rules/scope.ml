@@ -100,11 +100,11 @@ module DB = struct
   let not_found = With_multiple_results.resolve_result Resolve_result.not_found
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let by_name, by_id =
+    let by_name, by_id, _ =
       List.fold_left
         stanzas
-        ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
-        ~f:(fun (by_name, by_id) (dir, stanza) ->
+        ~init:(Lib_name.Map.empty, Lib_id.Map.empty, Lib_name.Map.empty)
+        ~f:(fun (by_name, by_id, libname_conflict_map) (dir, stanza) ->
           let lib_id, name, r2 =
             let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
             match (stanza : Library_related_stanza.t) with
@@ -135,6 +135,49 @@ module DB = struct
               and lib_id = Library.to_lib_id ~src_dir conf in
               Some lib_id, Library.best_name conf, Found_or_redirect.found info
           in
+          let libname_conflict_map =
+            Lib_name.Map.update libname_conflict_map name ~f:(function
+              | None -> Some r2
+              | Some (r1 : Found_or_redirect.t) ->
+                let res =
+                  match r1, r2 with
+                  | Found _, Found _
+                  | Found _, Redirect _
+                  | Redirect _, Found _
+                  | Redirect _, Redirect _ -> Ok r1
+                  | Found info, Deprecated_library_name (loc, _)
+                  | Deprecated_library_name (loc, _), Found info ->
+                    Error (loc, Lib_info.loc info)
+                  | ( Deprecated_library_name (loc2, lib2)
+                    , Redirect { loc = loc1; to_ = lib1; _ } )
+                  | ( Redirect { loc = loc1; to_ = lib1; _ }
+                    , Deprecated_library_name (loc2, lib2) )
+                  | ( Deprecated_library_name (loc1, lib1)
+                    , Deprecated_library_name (loc2, lib2) ) ->
+                    if Lib_name.equal lib1 lib2 then Ok r1 else Error (loc1, loc2)
+                in
+                (match res with
+                 | Ok x -> Some x
+                 | Error (loc1, loc2) ->
+                   let main_message =
+                     Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
+                   in
+                   let annots =
+                     let main = User_message.make ~loc:loc2 [ main_message ] in
+                     let related =
+                       [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+                     in
+                     User_message.Annots.singleton
+                       Compound_user_error.annot
+                       [ Compound_user_error.make ~main ~related ]
+                   in
+                   User_error.raise
+                     ~annots
+                     [ main_message
+                     ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                     ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                     ]))
+          in
           let by_name =
             Lib_name.Map.update by_name name ~f:(function
               | None -> Some [ r2 ]
@@ -145,7 +188,7 @@ module DB = struct
             | None -> by_id
             | Some lib_id -> Lib_id.Map.add_exn by_id (Local lib_id) r2
           in
-          by_name, by_id)
+          by_name, by_id, libname_conflict_map)
     in
     let resolve name =
       match Lib_name.Map.find by_name name with

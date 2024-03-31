@@ -105,8 +105,8 @@ let rec nfork x l f =
   match l with
   | [] -> f x
   | y :: l ->
-    (* Manuall inline [fork] manually because the compiler is unfortunately not
-       getting rid of the closures. *)
+    (* Manually inline [fork] because the compiler is unfortunately
+       not getting rid of the closures. *)
     (match apply f x with
      | End_of_fiber () -> nfork y l f
      | eff -> Fork (eff, fun () -> nfork y l f))
@@ -359,16 +359,23 @@ let parallel_iter_set
   parallel_iter_seq (S.to_seq set) ~f
 ;;
 
-module Make_map_traversals (Map : Map.S) = struct
-  let parallel_iter t ~f = parallel_iter_seq (Map.to_seq t) ~f:(fun (k, v) -> f k v)
+module Make_parallel_map (S : sig
+    type 'a t
+    type key
 
+    val empty : _ t
+    val is_empty : _ t -> bool
+    val to_list : 'a t -> (key * 'a) list
+    val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
+  end) =
+struct
   let parallel_map t ~f =
-    if Map.is_empty t
-    then return Map.empty
+    if S.is_empty t
+    then return S.empty
     else
-      let+ a = parallel_array_of_list_map (Map.to_list t) ~f:(fun (k, v) -> f k v) in
+      let+ a = parallel_array_of_list_map (S.to_list t) ~f:(fun (k, v) -> f k v) in
       let pos = ref 0 in
-      Map.mapi t ~f:(fun _ _ ->
+      S.mapi t ~f:(fun _ _ ->
         let i = !pos in
         pos := i + 1;
         a.(i))
@@ -384,8 +391,9 @@ let rec repeat_while : 'a. f:('a -> 'a option t) -> init:'a -> unit t =
   | Some init -> repeat_while ~f ~init
 ;;
 
+module Exns = Monoid.Appendable_list (Exn_with_backtrace)
+
 let collect_errors f =
-  let module Exns = Monoid.Appendable_list (Exn_with_backtrace) in
   let+ res =
     map_reduce_errors
       (module Exns)

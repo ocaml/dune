@@ -317,20 +317,26 @@ let add_opam_file_rule sctx ~project ~pkg =
 let add_opam_file_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
-    Package_map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
-      add_opam_file_rule sctx ~project ~pkg))
+    Memo.parallel_iter_seq
+      (Dune_lang.Package_name.Map.to_seq packages)
+      ~f:(fun (_name, (pkg : Package.t)) -> add_opam_file_rule sctx ~project ~pkg))
 ;;
 
 let add_rules sctx project =
   Memo.when_ (Dune_project.generate_opam_files project) (fun () ->
     let packages = Dune_project.packages project in
-    Package_map_traversals.parallel_iter packages ~f:(fun _name (pkg : Package.t) ->
-      let* () =
-        add_alias_rule (Context.build_context (Super_context.context sctx)) ~project ~pkg
-      in
-      match Dune_project.opam_file_location project with
-      | `Inside_opam_directory -> Memo.return ()
-      | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))
+    Memo.parallel_iter_seq
+      (Dune_lang.Package_name.Map.to_seq packages)
+      ~f:(fun (_name, (pkg : Package.t)) ->
+        let* () =
+          add_alias_rule
+            (Context.build_context (Super_context.context sctx))
+            ~project
+            ~pkg
+        in
+        match Dune_project.opam_file_location project with
+        | `Inside_opam_directory -> Memo.return ()
+        | `Relative_to_project -> add_opam_file_rule sctx ~project ~pkg))
 ;;
 
 module Gen_rules = Build_config.Gen_rules

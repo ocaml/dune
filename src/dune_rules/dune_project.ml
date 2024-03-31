@@ -589,7 +589,7 @@ let encode : t -> Dune_lang.t list =
     ]
 ;;
 
-module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
+module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map)
 
 let forbid_opam_files_relative_to_project opam_file_location packages =
   match opam_file_location with

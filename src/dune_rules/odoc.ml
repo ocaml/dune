@@ -939,7 +939,8 @@ let setup_package_odoc_rules sctx ~pkg =
 
 let gen_project_rules sctx project =
   Dune_project.packages project
-  |> Package_map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  |> Dune_lang.Package_name.Map.to_seq
+  |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     (* setup @doc to build the correct html for the package *)
     setup_package_aliases sctx pkg)
 ;;

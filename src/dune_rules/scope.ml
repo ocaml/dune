@@ -14,6 +14,9 @@ let libs t = t.db
 let coq_libs t = t.coq_db
 
 module DB = struct
+  module Resolve_result = Lib.DB.Resolve_result
+  module With_multiple_results = Resolve_result.With_multiple_results
+
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }
 
@@ -66,26 +69,6 @@ module DB = struct
     let found x = Found x
   end
 
-  let resolve =
-    let module Resolve_result = Lib.DB.Resolve_result in
-    let module With_multiple_results = Resolve_result.With_multiple_results in
-    let not_found = With_multiple_results.resolve_result Resolve_result.not_found in
-    fun ~resolve_lib_id id_map name ->
-      match
-        Lib_name.Map.find id_map name
-        |> Option.bind ~f:(fun lib_ids ->
-          Lib_id.Set.to_list lib_ids |> Nonempty_list.of_list)
-      with
-      | None -> Memo.return not_found
-      | Some [ lib_id ] -> resolve_lib_id lib_id >>| With_multiple_results.resolve_result
-      | Some lib_ids ->
-        Memo.List.map ~f:resolve_lib_id (Nonempty_list.to_list lib_ids)
-        >>| fun lib_ids ->
-        Nonempty_list.of_list lib_ids
-        |> Option.value_exn
-        |> With_multiple_results.multiple_results
-  ;;
-
   module Library_related_stanza = struct
     type t =
       | Library of Library.t
@@ -93,132 +76,100 @@ module DB = struct
       | Deprecated_library_name of Deprecated_library_name.t
   end
 
-  let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
-    let lib_id_map, id_map =
-      let _, id_map, lib_id_map =
-        List.fold_left
-          stanzas
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_id.Map.empty)
-          ~f:(fun (libname_map, id_map, lib_id_map) (dir, stanza) ->
-            let name, lib_id, r2 =
-              let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-              match (stanza : Library_related_stanza.t) with
-              | Library_redirect s ->
-                let lib_name, redirect =
-                  let old_public_name = Lib_name.of_local s.old_name.lib_name in
-                  let enabled =
-                    Memo.lazy_ (fun () ->
-                      let+ enabled =
-                        let* expander = Expander0.get ~dir in
-                        Expander0.eval_blang expander s.old_name.enabled
-                      in
-                      Toggle.of_bool enabled)
-                  in
-                  Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
-                and lib_id = Library_redirect.Local.to_lib_id ~src_dir s in
-                lib_name, Some lib_id, redirect
-              | Deprecated_library_name s ->
-                let lib_name, deprecated_lib =
-                  let old_public_name = Deprecated_library_name.old_public_name s in
-                  Found_or_redirect.deprecated_library_name
-                    old_public_name
-                    s.new_public_name
-                in
-                lib_name, None, deprecated_lib
-              | Library (conf : Library.t) ->
-                let info =
-                  let expander = Expander0.get ~dir in
-                  Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
-                and lib_id = Library.to_lib_id ~src_dir conf in
-                Library.best_name conf, Some lib_id, Found_or_redirect.found info
-            in
-            let libname_map' =
-              Lib_name.Map.update libname_map name ~f:(function
-                | None -> Some r2
-                | Some (r1 : Found_or_redirect.t) ->
-                  let res =
-                    match r1, r2 with
-                    | Found _, Found _
-                    | Found _, Redirect _
-                    | Redirect _, Found _
-                    | Redirect _, Redirect _ -> Ok r1
-                    | Found info, Deprecated_library_name (loc, _)
-                    | Deprecated_library_name (loc, _), Found info ->
-                      Error (loc, Lib_info.loc info)
-                    | ( Deprecated_library_name (loc2, lib2)
-                      , Redirect { loc = loc1; to_ = lib1; _ } )
-                    | ( Redirect { loc = loc1; to_ = lib1; _ }
-                      , Deprecated_library_name (loc2, lib2) )
-                    | ( Deprecated_library_name (loc1, lib1)
-                      , Deprecated_library_name (loc2, lib2) ) ->
-                      if Lib_name.equal lib1 lib2 then Ok r1 else Error (loc1, loc2)
-                  in
-                  (match res with
-                   | Ok x -> Some x
-                   | Error (loc1, loc2) ->
-                     let main_message =
-                       Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
-                     in
-                     let annots =
-                       let main = User_message.make ~loc:loc2 [ main_message ] in
-                       let related =
-                         [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ]
-                         ]
-                       in
-                       User_message.Annots.singleton
-                         Compound_user_error.annot
-                         [ Compound_user_error.make ~main ~related ]
-                     in
-                     User_error.raise
-                       ~annots
-                       [ main_message
-                       ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                       ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                       ]))
-            in
-            let id_map', lib_id_map' =
-              match lib_id with
-              | None -> id_map, lib_id_map
-              | Some lib_id ->
-                let lib_id = Lib_id.Local lib_id in
-                let id_map' =
-                  Lib_name.Map.update id_map name ~f:(fun lib_ids ->
-                    Some
-                      (match
-                         Option.map lib_ids ~f:(fun lib_ids ->
-                           Lib_id.Set.add lib_ids lib_id)
-                       with
-                       | None -> Lib_id.Set.singleton lib_id
-                       | Some s -> s))
-                and lib_id_map' = Lib_id.Map.add_exn lib_id_map lib_id r2 in
-                id_map', lib_id_map'
-            in
-            libname_map', id_map', lib_id_map')
+  let resolve_found_or_redirect fr =
+    match (fr : Found_or_redirect.t) with
+    | Redirect { loc; to_; enabled; _ } ->
+      let+ enabled =
+        let+ toggle = Memo.Lazy.force enabled in
+        Toggle.enabled toggle
       in
-      lib_id_map, id_map
+      if enabled
+      then Resolve_result.redirect_in_the_same_db (loc, to_)
+      else Resolve_result.not_found
+    | Found lib -> Memo.return (Resolve_result.found lib)
+    | Deprecated_library_name lib ->
+      Memo.return (Resolve_result.redirect_in_the_same_db lib)
+  ;;
+
+  let resolve_lib_id lib_id_map lib_id =
+    match Lib_id.Map.find lib_id_map lib_id with
+    | None -> Memo.return Resolve_result.not_found
+    | Some found_or_redirect -> resolve_found_or_redirect found_or_redirect
+  ;;
+
+  let not_found = With_multiple_results.resolve_result Resolve_result.not_found
+
+  let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
+    let lib_name_map, lib_id_map =
+      List.fold_left
+        stanzas
+        ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
+        ~f:(fun (libname_map, lib_id_map) (dir, stanza) ->
+          let lib_id, name, r2 =
+            let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+            match (stanza : Library_related_stanza.t) with
+            | Library_redirect s ->
+              let lib_name, redirect =
+                let old_public_name = Lib_name.of_local s.old_name.lib_name in
+                let enabled =
+                  Memo.lazy_ (fun () ->
+                    let+ enabled =
+                      let* expander = Expander0.get ~dir in
+                      Expander0.eval_blang expander s.old_name.enabled
+                    in
+                    Toggle.of_bool enabled)
+                in
+                Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
+              and lib_id = Library_redirect.Local.to_lib_id ~src_dir s in
+              Some lib_id, lib_name, redirect
+            | Deprecated_library_name s ->
+              let lib_name, deprecated_lib =
+                let old_public_name = Deprecated_library_name.old_public_name s in
+                Found_or_redirect.deprecated_library_name
+                  old_public_name
+                  s.new_public_name
+              in
+              None, lib_name, deprecated_lib
+            | Library (conf : Library.t) ->
+              let info =
+                let expander = Expander0.get ~dir in
+                Library.to_lib_info conf ~expander ~dir ~lib_config |> Lib_info.of_local
+              and lib_id = Library.to_lib_id ~src_dir conf in
+              Some lib_id, Library.best_name conf, Found_or_redirect.found info
+          in
+          let libname_map' =
+            Lib_name.Map.update libname_map name ~f:(function
+              | None -> Some [ r2 ]
+              | Some (r1 :: rest : Found_or_redirect.t Nonempty_list.t) ->
+                Some (r2 :: r1 :: rest))
+          in
+          let lib_id_map' =
+            match lib_id with
+            | None -> lib_id_map
+            | Some lib_id ->
+              let lib_id = Lib_id.Local lib_id in
+              Lib_id.Map.add_exn lib_id_map lib_id r2
+          in
+          libname_map', lib_id_map')
     in
-    let resolve_lib_id lib_id =
-      match Lib_id.Map.find lib_id_map lib_id with
-      | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some (Redirect { loc; to_; enabled; _ }) ->
-        let+ enabled =
-          let+ toggle = Memo.Lazy.force enabled in
-          Toggle.enabled toggle
-        in
-        if enabled
-        then Lib.DB.Resolve_result.redirect_in_the_same_db (loc, to_)
-        else Lib.DB.Resolve_result.not_found
-      | Some (Found lib) -> Memo.return (Lib.DB.Resolve_result.found lib)
-      | Some (Deprecated_library_name lib) ->
-        Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
-    in
-    let resolve = resolve ~resolve_lib_id id_map in
+    let resolve name =
+      match Lib_name.Map.find lib_name_map name with
+      | None -> Memo.return not_found
+      | Some [ fr ] ->
+        resolve_found_or_redirect fr >>| With_multiple_results.resolve_result
+      | Some frs ->
+        Memo.List.map ~f:resolve_found_or_redirect (Nonempty_list.to_list frs)
+        >>| fun results ->
+        Nonempty_list.of_list results
+        |> Option.value_exn
+        |> With_multiple_results.multiple_results
+    and resolve_lib_id = resolve_lib_id lib_id_map in
     Lib.DB.create
       ()
       ~parent:(Some parent)
       ~resolve
       ~resolve_lib_id
-      ~all:(fun () -> Lib_name.Map.keys id_map |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys lib_name_map |> Memo.return)
       ~lib_config
       ~instrument_with
   ;;
@@ -230,101 +181,104 @@ module DB = struct
         }
     | Name of (Loc.t * Lib_name.t)
 
-  let resolve_lib_id t public_libs lib_id : Lib.DB.Resolve_result.t =
+  let loc_of_redirect_to = function
+    | Project { lib_id; _ } -> Lib_id.Local.loc lib_id
+    | Name (loc, _) -> loc
+  ;;
+
+  let resolve_redirect_to t rt =
+    match rt with
+    | Project { project; lib_id } ->
+      let scope = find_by_project (Fdecl.get t) project in
+      Resolve_result.redirect scope.db (Local lib_id)
+    | Name name -> Resolve_result.redirect_in_the_same_db name
+  ;;
+
+  let resolve_lib_id t public_libs lib_id : Resolve_result.t =
     match Lib_id.Map.find public_libs lib_id with
-    | None -> Lib.DB.Resolve_result.not_found
+    | None -> Resolve_result.not_found
     | Some (Project { project; lib_id }) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
+      Resolve_result.redirect scope.db (Local lib_id)
+    | Some (Name name) -> Resolve_result.redirect_in_the_same_db name
   ;;
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs t ~installed_libs ~lib_config stanzas =
-    let public_libs, public_ids =
-      let _, public_ids, public_libs =
-        List.fold_left
-          stanzas
-          ~init:(Lib_name.Map.empty, Lib_name.Map.empty, Lib_id.Map.empty)
-          ~f:
-            (fun
-              (libname_map, id_map, lib_id_map)
-              ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
-            ->
-            let candidate =
-              match stanza with
-              | Library ({ project; visibility = Public p; _ } as conf) ->
-                let lib_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build dir)
-                  in
-                  Library.to_lib_id ~src_dir conf
-                in
-                Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
-              | Library _ | Library_redirect _ -> None
-              | Deprecated_library_name s ->
-                Some
-                  (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
-            in
-            match candidate with
-            | None | Some (_, _, None) -> libname_map, id_map, lib_id_map
-            | Some (public_name, r2, Some lib_id2) ->
-              let libname_map' =
-                Lib_name.Map.update libname_map public_name ~f:(function
-                  | None -> Some (lib_id2, r2)
-                  | Some (lib_id1, _r1) ->
-                    (match (Lib_id.Local.equal lib_id1) lib_id2 with
-                     | false -> Some (lib_id2, r2)
-                     | true ->
-                       let loc1 = Lib_id.Local.loc lib_id1
-                       and loc2 = Lib_id.Local.loc lib_id2 in
-                       let main_message =
-                         Pp.textf
-                           "Public library %s is defined twice:"
-                           (Lib_name.to_string public_name)
-                       in
-                       let annots =
-                         let main = User_message.make ~loc:loc2 [ main_message ] in
-                         let related =
-                           [ User_message.make
-                               ~loc:loc1
-                               [ Pp.text "Already defined here" ]
-                           ]
-                         in
-                         User_message.Annots.singleton
-                           Compound_user_error.annot
-                           [ Compound_user_error.make ~main ~related ]
-                       in
-                       User_error.raise
-                         ~annots
-                         ~loc:loc2
-                         [ main_message
-                         ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                         ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                         ]))
+    let public_libs_by_name, public_libs_by_id =
+      List.fold_left
+        stanzas
+        ~init:(Lib_name.Map.empty, Lib_id.Map.empty)
+        ~f:
+          (fun
+            (public_libs_by_name, public_libs_by_id)
+            ((dir, stanza) : Path.Build.t * Library_related_stanza.t)
+          ->
+          let candidate =
+            match stanza with
+            | Library ({ project; visibility = Public p; _ } as conf) ->
+              let lib_id =
+                let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+                Library.to_lib_id ~src_dir conf
               in
-              let lib_id2 = Lib_id.Local lib_id2 in
-              let id_map' =
-                Lib_name.Map.update id_map public_name ~f:(fun lib_ids ->
-                  Some
-                    (match
-                       Option.map lib_ids ~f:(fun lib_ids ->
-                         Lib_id.Set.add lib_ids lib_id2)
-                     with
-                     | None -> Lib_id.Set.singleton lib_id2
-                     | Some s -> s))
-              and lib_id_map' = Lib_id.Map.add_exn lib_id_map lib_id2 r2 in
-              libname_map', id_map', lib_id_map')
-      in
-      public_libs, public_ids
+              Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
+            | Library _ | Library_redirect _ -> None
+            | Deprecated_library_name s ->
+              Some
+                (Deprecated_library_name.old_public_name s, Name s.new_public_name, None)
+          in
+          match candidate with
+          | None -> public_libs_by_name, public_libs_by_id
+          | Some (public_name, r2, lib_id2) ->
+            let public_libs_by_name' =
+              Lib_name.Map.update public_libs_by_name public_name ~f:(function
+                | None -> Some r2
+                | Some r1 ->
+                  let loc1 = loc_of_redirect_to r1
+                  and loc2 = loc_of_redirect_to r2 in
+                  let main_message =
+                    Pp.textf
+                      "Public library %s is defined twice:"
+                      (Lib_name.to_string public_name)
+                  in
+                  let annots =
+                    let main = User_message.make ~loc:loc2 [ main_message ] in
+                    let related =
+                      [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+                    in
+                    User_message.Annots.singleton
+                      Compound_user_error.annot
+                      [ Compound_user_error.make ~main ~related ]
+                  in
+                  User_error.raise
+                    ~annots
+                    ~loc:loc2
+                    [ main_message
+                    ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                    ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                    ])
+            in
+            let public_libs_by_id' =
+              match lib_id2 with
+              | None -> public_libs_by_id
+              | Some lib_id2 ->
+                let lib_id2 = Lib_id.Local lib_id2 in
+                Lib_id.Map.add_exn public_libs_by_id lib_id2 r2
+            in
+            public_libs_by_name', public_libs_by_id')
     in
-    let resolve_lib_id lib_id = Memo.return (resolve_lib_id t public_libs lib_id) in
-    let resolve = resolve ~resolve_lib_id public_ids in
+    let resolve_lib_id lib_id = Memo.return (resolve_lib_id t public_libs_by_id lib_id) in
+    let resolve name =
+      Memo.return
+        (match Lib_name.Map.find public_libs_by_name name with
+         | None -> not_found
+         | Some rt -> resolve_redirect_to t rt |> With_multiple_results.resolve_result)
+    in
     Lib.DB.create
       ~parent:(Some installed_libs)
       ~resolve
       ~resolve_lib_id
-      ~all:(fun () -> Lib_name.Map.keys public_ids |> Memo.return)
+      ~all:(fun () -> Lib_name.Map.keys public_libs_by_name |> Memo.return)
       ~lib_config
       ()
   ;;

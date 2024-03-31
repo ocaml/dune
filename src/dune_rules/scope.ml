@@ -113,11 +113,8 @@ module DB = struct
                 let old_public_name = Lib_name.of_local s.old_name.lib_name in
                 let enabled =
                   Memo.lazy_ (fun () ->
-                    let+ enabled =
-                      let* expander = Expander0.get ~dir in
-                      Expander0.eval_blang expander s.old_name.enabled
-                    in
-                    Toggle.of_bool enabled)
+                    let* expander = Expander0.get ~dir in
+                    Expander0.eval_blang expander s.old_name.enabled >>| Toggle.of_bool)
                 in
                 Found_or_redirect.redirect ~enabled old_public_name s.new_public_name
               and lib_id = Library_redirect.Local.to_lib_id ~src_dir s in
@@ -146,9 +143,7 @@ module DB = struct
           let lib_id_map' =
             match lib_id with
             | None -> lib_id_map
-            | Some lib_id ->
-              let lib_id = Lib_id.Local lib_id in
-              Lib_id.Map.add_exn lib_id_map lib_id r2
+            | Some lib_id -> Lib_id.Map.add_exn lib_id_map (Local lib_id) r2
           in
           libname_map', lib_id_map')
     in

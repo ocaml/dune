@@ -1206,11 +1206,8 @@ end = struct
                 and loc_a = Lib_info.loc a.info
                 and loc_b = Lib_info.loc b.info in
                 Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
-           | Invalid _, _ -> acc
-           | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
-           | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib
-           | (Hidden _ | Ignore | Not_found), (Hidden _ | Ignore | Not_found | Invalid _)
-             -> acc))
+           | (Found _ as lib), _ | _, (Found _ as lib) -> lib
+           | _, _ -> acc))
   ;;
 
   let find_internal db (name : Lib_name.t) =

@@ -11,9 +11,10 @@ module File_kind = struct
     ; preprocess : (Loc.t * Action.t) option
     ; format : (Loc.t * Action.t * string list) option
     ; print_ast : (Loc.t * Action.t) option
+    ; merlin_reader : (Loc.t * string list) option
     }
 
-  let encode { kind; extension; preprocess; format; print_ast } =
+  let encode { kind; extension; preprocess; format; print_ast; merlin_reader } =
     let open Dune_lang.Encoder in
     let kind =
       string
@@ -33,10 +34,11 @@ module File_kind = struct
                 "print_ast"
                 Action.encode
                 (Option.map ~f:(fun (_, x) -> x) print_ast)
+            ; field_o "merlin_reader" (list string) (Option.map ~f:snd merlin_reader)
             ])
   ;;
 
-  let to_dyn { kind; extension; preprocess; format; print_ast } =
+  let to_dyn { kind; extension; preprocess; format; print_ast; merlin_reader } =
     let open Dyn in
     record
       [ "kind", Ml_kind.to_dyn kind
@@ -44,6 +46,7 @@ module File_kind = struct
       ; "preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess
       ; "format", option (fun (_, x, y) -> pair Action.to_dyn (list string) (x, y)) format
       ; "print_ast", option (fun (_, x) -> Action.to_dyn x) print_ast
+      ; "merlin_reader", option (fun (_, x) -> list string x) merlin_reader
       ]
   ;;
 end
@@ -85,13 +88,17 @@ let decode =
         "format"
         (map ~f:(fun (loc, x) -> loc, x, []) (located Action.decode_dune_file))
     and+ print_ast = field_o "print_ast" (located Action.decode_dune_file)
+    and+ merlin_reader =
+      field_o
+        "merlin_reader"
+        (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> located (repeat1 string))
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
     then (
       let what = "the possibility of defining extensions containing periods" in
       Syntax.Error.since loc Stanza.syntax ver ~what);
-    { File_kind.kind; extension; preprocess; format; print_ast }
+    { File_kind.kind; extension; preprocess; format; print_ast; merlin_reader }
   in
   fields
     (let+ name = field "name" string
@@ -143,6 +150,13 @@ let print_ast { file_kinds; _ } ml_kind =
   x.print_ast
 ;;
 
+let merlin_reader { file_kinds; _ } ml_kind =
+  let open Option.O in
+  let* x = Ml_kind.Dict.get file_kinds ml_kind in
+  let+ _, merlin_reader = x.merlin_reader in
+  merlin_reader
+;;
+
 let ocaml =
   let format kind =
     let flag_of_kind = function
@@ -180,6 +194,7 @@ let ocaml =
           , format kind
           , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
     ; print_ast = Some (Loc.none, print_ast kind)
+    ; merlin_reader = None
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".mli") in
@@ -222,6 +237,7 @@ let reason =
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Loc.none, format, [])
     ; print_ast = Some (Loc.none, print_ast)
+    ; merlin_reader = None
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".rei") in
@@ -251,6 +267,7 @@ let rescript =
     ; preprocess = Some (Loc.none, preprocess)
     ; format = Some (Loc.none, format, [])
     ; print_ast = None
+    ; merlin_reader = None
     }
   in
   let intf = Some (file_kind Ml_kind.Intf ".resi") in
@@ -271,7 +288,12 @@ module DB = struct
   type t =
     { by_name : dialect String.Map.t
     ; by_extension : dialect Filename.Extension.Map.t
-    ; mutable extensions_for_merlin : string option Ml_kind.Dict.t list option
+    ; for_merlin : for_merlin Lazy.t
+    }
+
+  and for_merlin =
+    { extensions : string option Ml_kind.Dict.t list
+    ; readers : string list String.Map.t
     }
 
   let fold { by_name; _ } = String.Map.fold by_name
@@ -279,35 +301,47 @@ module DB = struct
   let empty =
     { by_name = String.Map.empty
     ; by_extension = Filename.Extension.Map.empty
-    ; extensions_for_merlin = None
+    ; for_merlin = lazy { extensions = []; readers = String.Map.empty }
     }
   ;;
 
-  let set_extensions_for_merlin t =
-    let v =
-      fold t ~init:[] ~f:(fun d s ->
-        let impl = extension d Ml_kind.Impl in
-        let intf = extension d Ml_kind.Intf in
-        if (* Only include dialects with no preprocessing and skip default file
-              extensions *)
-           preprocess d Ml_kind.Impl <> None
-           || preprocess d Ml_kind.Intf <> None
-           || (impl = extension ocaml Ml_kind.Impl && intf = extension ocaml Ml_kind.Intf)
-        then s
-        else { Ml_kind.Dict.impl; intf } :: s)
-      |> List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare))
+  let compute_for_merlin by_name =
+    let extensions, readers =
+      String.Map.fold
+        by_name
+        ~init:([], String.Map.empty)
+        ~f:(fun d (extensions, readers) ->
+          let handle_ml_kind kind readers =
+            let ext = extension d kind in
+            if ext = extension ocaml kind
+            then (* this is standard dialect, exclude *) None, readers
+            else (
+              let reader = merlin_reader d kind in
+              match ext, reader with
+              | Some ext, Some reader -> Some ext, String.Map.add_exn readers ext reader
+              | _ ->
+                if preprocess d kind <> None
+                then (* we have preprocessor defined *) None, readers
+                else ext, readers)
+          in
+          let impl, readers = handle_ml_kind Ml_kind.Impl readers in
+          let intf, readers = handle_ml_kind Ml_kind.Intf readers in
+          let extensions =
+            match impl, intf with
+            | None, None -> extensions
+            | _ -> { Ml_kind.Dict.impl; intf } :: extensions
+          in
+          extensions, readers)
     in
-    t.extensions_for_merlin <- Some v;
-    v
+    let extensions =
+      List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
+    in
+    { extensions; readers }
   ;;
 
-  let extensions_for_merlin t =
-    match t.extensions_for_merlin with
-    | Some s -> s
-    | None -> set_extensions_for_merlin t
-  ;;
+  let for_merlin t = Lazy.force t.for_merlin
 
-  let add { by_name; by_extension; extensions_for_merlin = _ } ~loc dialect =
+  let add { by_name; by_extension; for_merlin = _ } ~loc dialect =
     let by_name =
       match String.Map.add by_name dialect.name dialect with
       | Ok by_name -> by_name
@@ -331,7 +365,7 @@ module DB = struct
     let by_extension =
       add_ext (add_ext by_extension dialect.file_kinds.intf) dialect.file_kinds.impl
     in
-    { by_name; by_extension; extensions_for_merlin = None }
+    { by_name; by_extension; for_merlin = lazy (compute_for_merlin by_name) }
   ;;
 
   let of_list dialects = List.fold_left ~f:(add ~loc:Loc.none) ~init:empty dialects

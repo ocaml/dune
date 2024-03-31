@@ -384,7 +384,7 @@ module Crawl = struct
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
-    let first_exe = snd (List.hd exes.names) in
+    let first_exe = snd (Nonempty_list.hd exes.names) in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir
       >>= Dir_contents.ocaml
@@ -424,7 +424,7 @@ module Crawl = struct
     | Ok libs ->
       let include_dirs = Obj_dir.all_cmis obj_dir in
       let exe_descr =
-        { Descr.Exe.names = List.map ~f:snd exes.names
+        { Descr.Exe.names = List.map ~f:snd (Nonempty_list.to_list exes.names)
         ; requires = List.map ~f:uid_of_library libs
         ; modules = modules_
         ; include_dirs

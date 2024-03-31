@@ -71,7 +71,8 @@ module Modules = struct
     let executables =
       match
         String.Map.of_list_map exes ~f:(fun (part : Executables.t group_part) ->
-          snd (List.hd part.stanza.names), (part.modules, part.obj_dir))
+          let first_exe = snd (Nonempty_list.hd part.stanza.names) in
+          first_exe, (part.modules, part.obj_dir))
       with
       | Ok x -> x
       | Error (name, _, part) ->

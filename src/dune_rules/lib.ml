@@ -1201,20 +1201,18 @@ end = struct
              (match Lib_id.equal lib_id_a lib_id_b with
               | true -> acc
               | false ->
-                let best_name_a = a.name
-                and best_name_b = b.name
-                and info_a = info a
-                and info_b = info b in
-                let loc_a = Lib_info.loc info_a
-                and loc_b = Lib_info.loc info_b
-                and name_a =
-                  let lib_id = Lib_info.lib_id info_a in
-                  Lib_id.name lib_id
-                in
+                let info_a = info a in
                 let name =
-                  if Lib_name.equal best_name_a best_name_b then best_name_a else name_a
+                  if Lib_name.equal a.name b.name
+                  then a.name
+                  else (
+                    let lib_id = Lib_info.lib_id info_a in
+                    Lib_id.name lib_id)
                 in
-                Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
+                Status.Invalid
+                  (let loc_a = Lib_info.loc info_a
+                   and loc_b = Lib_info.loc (info b) in
+                   Error.duplicated ~loc_a ~loc_b ~name))
            | Invalid _, _ -> acc
            | (Found _ as lib), (Hidden _ | Ignore | Not_found | Invalid _)
            | (Hidden _ | Ignore | Not_found), (Found _ as lib) -> lib

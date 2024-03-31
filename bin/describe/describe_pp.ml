@@ -100,7 +100,9 @@ let module_for_file =
               ( Dune_rules.Ml_sources.Library (Library.best_name lib)
               , lib.buildable.preprocess )
           | Executables.T exes ->
-            Some (Exe { first_exe = snd (List.hd exes.names) }, exes.buildable.preprocess)
+            Some
+              ( Exe { first_exe = snd (Nonempty_list.hd exes.names) }
+              , exes.buildable.preprocess )
           | Melange_stanzas.Emit.T mel ->
             Some (Melange { target = mel.target }, mel.preprocess)
           | _ -> None
@@ -158,16 +160,9 @@ let get_pped_file super_context file =
     ml_kind
   in
   let* module_for_file = module_for_file ~sctx:super_context ~ml_kind file_in_build_dir in
-  let build_fallback =
-    Memo.lazy_ (fun () ->
-      Build_system.file_exists file_in_build_dir
-      >>= function
-      | false ->
-        User_error.raise
-          [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ]
-      | true ->
-        let+ () = Build_system.build_file file_in_build_dir in
-        Error file_in_build_dir)
+  let file_not_found () =
+    User_error.raise
+      [ Pp.textf "%s does not exist" (Path.to_string_maybe_quoted file_in_build_dir) ]
   in
   match module_for_file with
   | Some (`Module m) ->
@@ -175,13 +170,13 @@ let get_pped_file super_context file =
       m |> Dune_rules.Module.source ~ml_kind |> Option.map ~f:Dune_rules.Module.File.path
     in
     (match pp_file with
-     | None -> Memo.Lazy.force build_fallback
+     | None -> file_not_found ()
      | Some pp_file ->
        let+ () = Build_system.build_file pp_file in
        Ok pp_file)
   | Some (`Staged_pps loc) ->
     User_error.raise ~loc [ Pp.text "staged_pps are not supported." ]
-  | None -> Memo.Lazy.force build_fallback
+  | None -> file_not_found ()
 ;;
 
 let term =

@@ -24,7 +24,7 @@ module Set = struct
 end
 
 module Map = String.Map
-module Map_traversals = Memo.Make_map_traversals (Map)
+module Parallel_map = Memo.Make_parallel_map (Map)
 module Infix = Comparator.Operators (String)
 
 let of_local_lib_name (loc, s) = parse_string_exn (loc, Lib_name.Local.to_string s)
@@ -110,7 +110,7 @@ module Unique = struct
 
   module Map = Map
   module Set = Set
-  module Map_traversals = Map_traversals
+  module Parallel_map = Parallel_map
 end
 
 module Path = struct

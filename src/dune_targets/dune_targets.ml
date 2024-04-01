@@ -360,8 +360,8 @@ module Produced = struct
         f (Path.Local.relative dir filename) payload))
   ;;
 
-  module Path_traversal = Fiber.Make_map_traversals (Path.Local.Map)
-  module Filename_traversal = Fiber.Make_map_traversals (String.Map)
+  module Path_traversal = Fiber.Make_parallel_map (Path.Local.Map)
+  module Filename_traversal = Fiber.Make_parallel_map (String.Map)
 
   let parallel_map { root; files; dirs } ~f =
     let open Fiber.O in

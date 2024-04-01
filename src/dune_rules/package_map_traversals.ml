@@ -1,1 +1,1 @@
-include Memo.Make_map_traversals (Package.Name.Map)
+include Memo.Make_parallel_map (Package.Name.Map)

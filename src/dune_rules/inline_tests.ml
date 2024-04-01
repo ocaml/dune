@@ -308,9 +308,8 @@ include Sub_system.Register_end_point (struct
         List.concat l
       in
       let source_files = List.concat_map source_modules ~f:Module.sources in
-      Memo.parallel_iter_set
-        (module Mode_conf.Set)
-        info.modes
+      Memo.parallel_iter_seq
+        (Mode_conf.Set.to_seq info.modes)
         ~f:(fun (mode : Mode_conf.t) ->
           let partition_file =
             Path.Build.relative inline_test_dir ("partitions-" ^ Mode_conf.to_string mode)

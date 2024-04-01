@@ -90,15 +90,9 @@ val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
+val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
-val parallel_iter_set
-  :  (module Set.S with type elt = 'a and type t = 's)
-  -> 's
-  -> f:('a -> unit t)
-  -> unit t
-
-module Make_map_traversals (Map : Map.S) : sig
-  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
+module Make_parallel_map (Map : Map.S) : sig
   val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
 end
 [@@inline always]

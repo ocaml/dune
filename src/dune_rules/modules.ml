@@ -73,7 +73,7 @@ module Stdlib = struct
 
   let traverse t ~f =
     let open Memo.O in
-    let+ modules = Module_name.Map_traversals.parallel_map t.modules ~f:(fun _ -> f) in
+    let+ modules = Module_name.Parallel_map.parallel_map t.modules ~f:(fun _ -> f) in
     { t with modules }
   ;;
 
@@ -429,7 +429,7 @@ module Group = struct
 
     and parallel_map_modules modules ~f =
       let open Memo.O in
-      Module_name.Map_traversals.parallel_map modules ~f:(fun _ n ->
+      Module_name.Parallel_map.parallel_map modules ~f:(fun _ n ->
         match n with
         | Module m ->
           let+ m = f m in

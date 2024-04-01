@@ -182,7 +182,7 @@ module DB = struct
       ()
   ;;
 
-  module Path_source_map_traversals = Memo.Make_map_traversals (Path.Source.Map)
+  module Path_source_map_traversals = Memo.Make_parallel_map (Path.Source.Map)
 
   let scopes_by_dir
     ~build_dir

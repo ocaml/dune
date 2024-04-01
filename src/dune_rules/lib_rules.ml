@@ -127,7 +127,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
        | Simple _ -> assert false
        | Yes_with_transition r -> r)
   in
-  Module_name.Map_traversals.parallel_iter wrapped_compat ~f:(fun name m ->
+  Memo.parallel_iter_seq (Module_name.Map.to_seq wrapped_compat) ~f:(fun (name, m) ->
     let main_module_name =
       match Library.main_module_name lib with
       | This (Some mmn) -> Module_name.to_string mmn

@@ -111,7 +111,11 @@ end = struct
       let+ () = Toplevel.Stanza.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
+      let* enabled_if =
+        Lib.DB.available_by_lib_id
+          (Scope.libs scope)
+          (Local (Library.to_lib_id ~src_dir lib))
+      in
       if_available_buildable
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)

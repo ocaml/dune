@@ -36,6 +36,49 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    Describe the workspace.
 
+   .. describe:: dune describe aliases
+
+      Print aliases in a given directory. Works similarly to ls.
+
+   .. describe:: dune describe env
+
+      Print the environment of a directory.
+
+   .. describe:: dune describe external-lib-deps
+
+      Print out the external libraries needed to build the project. It's an
+      approximated set of libraries.
+
+   .. describe:: dune describe installed-libraries
+
+      Print out the libraries installed on the system.
+
+   .. describe:: dune describe opam-files
+
+      Print information about the opam files that have been discovered.
+
+   .. describe:: dune describe package-entries
+
+      prints information about the entries per package.
+
+   .. describe:: dune describe pp
+
+      Build a given file and print the preprocessed output.
+
+   .. describe:: dune describe rules
+
+      Dump rules.
+
+   .. describe:: dune describe targets
+
+      Print targets in a given directory. Works similarly to ls.
+
+   .. describe:: dune describe workspace
+
+      Print a description of the workspace's structure. If some directories
+      are provided, then only those directories of the workspace are
+      considered.
+
 .. describe:: dune diagnostics
 
    Fetch and return errors from the current build.

@@ -37,10 +37,6 @@ For private libraries
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:1
-  - b/dune:1
-  [1]
 
 For public libraries
 
@@ -59,7 +55,20 @@ For public libraries
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:3
-  - b/dune:3
-  [1]
+
+Mixing public and private libraries
+
+  $ cat > a/dune << EOF
+  > (library
+  >  (name foo)
+  >  (enabled_if (= %{context_name} "default")))
+  > EOF
+
+  $ cat > b/dune << EOF
+  > (library
+  >  (name foo)
+  >  (public_name baz.foo)
+  >  (enabled_if (= %{context_name} "alt-context")))
+  > EOF
+
+  $ dune build

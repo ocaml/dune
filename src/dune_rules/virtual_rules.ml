@@ -115,7 +115,8 @@ let impl sctx ~(lib : Library.t) ~scope =
                Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
              in
              Dir_contents.ocaml dir_contents
-             >>| Ml_sources.modules ~for_:(Library name)
+             >>| Ml_sources.modules
+                   ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
              >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
            in
            let+ foreign_objects =

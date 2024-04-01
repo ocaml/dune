@@ -41,4 +41,3 @@ module Action_runner = Action_runner
 module Action_exec = Action_exec
 module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache
-module Shared_cache_intf = Shared_cache_intf

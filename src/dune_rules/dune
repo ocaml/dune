@@ -33,7 +33,6 @@
   dune_vcs
   dune_config
   dune_config_file
-  dune_shared_cache
   dune_findlib
   dune_patch
   scheme

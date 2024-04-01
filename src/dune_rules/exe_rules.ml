@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let first_exe (exes : Executables.t) = snd (List.hd exes.names)
+let first_exe (exes : Executables.t) = snd (Nonempty_list.hd exes.names)
 
 let linkages
   ~dynamically_linked_foreign_archives
@@ -43,7 +43,7 @@ let linkages
 ;;
 
 let programs ~modules ~(exes : Executables.t) =
-  List.map exes.names ~f:(fun (loc, name) ->
+  List.map (Nonempty_list.to_list exes.names) ~f:(fun (loc, name) ->
     let mod_name = Module_name.of_string_allow_invalid (loc, name) in
     match Modules.find modules mod_name with
     | Some m ->
@@ -145,7 +145,7 @@ let executables_rules
   let* modules, pp =
     Buildable_rules.modules_rules
       sctx
-      (Executables (exes.buildable, exes.names))
+      (Executables (exes.buildable, Nonempty_list.to_list exes.names))
       expander
       ~dir
       scope
@@ -240,7 +240,7 @@ let executables_rules
          that to the [Exe.link_many] call here as well as the Ctypes_rules. This
          dance is done to avoid triggering duplicate rule exceptions. *)
       let+ () =
-        let loc = fst (List.hd exes.names) in
+        let loc = fst (Nonempty_list.hd exes.names) in
         Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
       and+ () = Module_compilation.build_all cctx
       and+ link =
@@ -285,10 +285,11 @@ let compile_info ~scope (exes : Executables.t) =
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names) in
+  let names = Nonempty_list.to_list exes.names in
+  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
-    (`Exe exes.names)
+    (`Exe names)
     exes.buildable.libraries
     ~pps
     ~dune_version

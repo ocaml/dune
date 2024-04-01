@@ -4,7 +4,7 @@ open Dune_lang.Decoder
 module Names : sig
   type t
 
-  val names : t -> (Loc.t * string) list
+  val names : t -> (Loc.t * string) Nonempty_list.t
   val package : t -> Package.t option
   val has_public_name : t -> bool
 
@@ -26,7 +26,7 @@ end = struct
     }
 
   type t =
-    { names : (Loc.t * string) list
+    { names : (Loc.t * string) Nonempty_list.t
     ; public : public option
     ; dune_syntax : Syntax.Version.t
     }
@@ -89,60 +89,63 @@ end = struct
     and+ project = Dune_project.get_exn () in
     let names, public_names = names in
     let names =
-      let open Dune_lang.Syntax.Version.Infix in
-      if dune_syntax >= check_valid_name_version
-      then
-        Option.iter
-          names
-          ~f:
-            (List.iter ~f:(fun name ->
-               ignore (Module_name.parse_string_exn name : Module_name.t)));
-      match names, public_names with
-      | Some names, _ -> names
-      | None, Some public_names ->
-        if dune_syntax >= allow_omit_names_version
-        then (
-          let check_names = dune_syntax >= check_valid_name_version in
-          List.map public_names ~f:(fun (loc, p) ->
-            match p, check_names with
-            | None, _ ->
-              User_error.raise ~loc [ Pp.text "This executable must have a name field" ]
-            | Some s, false -> loc, s
-            | Some s, true ->
-              (match Module_name.of_string_user_error (loc, s) with
-               | Ok _ -> loc, s
-               | Error user_message ->
-                 User_error.raise
-                   ~loc
-                   [ Pp.textf "Invalid module name."
-                   ; Pp.text
-                       "Public executable names don't have this restriction. You can \
-                        either change this public name to be a valid module name or add \
-                        a \"name\" field with a valid module name."
-                   ]
-                   ~hints:(Module_name.valid_format_doc :: user_message.hints))))
-        else
-          User_error.raise
-            ~loc
-            [ Pp.textf
-                "%s field may not be omitted before dune version %s"
-                (pluralize ~multi "name")
-                (Dune_lang.Syntax.Version.to_string allow_omit_names_version)
-            ]
-      | None, None ->
-        if dune_syntax >= allow_omit_names_version
+      let names =
+        let open Dune_lang.Syntax.Version.Infix in
+        if dune_syntax >= check_valid_name_version
         then
-          User_error.raise
-            ~loc
-            [ Pp.textf
-                "either the %s or the %s field must be present"
-                (pluralize ~multi "name")
-                (pluralize ~multi "public_name")
-            ]
-        else
-          User_error.raise
-            ~loc
-            [ Pp.textf "field %s is missing" (pluralize ~multi "name") ]
+          Option.iter
+            names
+            ~f:
+              (List.iter ~f:(fun name ->
+                 ignore (Module_name.parse_string_exn name : Module_name.t)));
+        match names, public_names with
+        | Some names, _ -> names
+        | None, Some public_names ->
+          if dune_syntax >= allow_omit_names_version
+          then (
+            let check_names = dune_syntax >= check_valid_name_version in
+            List.map public_names ~f:(fun (loc, p) ->
+              match p, check_names with
+              | None, _ ->
+                User_error.raise ~loc [ Pp.text "This executable must have a name field" ]
+              | Some s, false -> loc, s
+              | Some s, true ->
+                (match Module_name.of_string_user_error (loc, s) with
+                 | Ok _ -> loc, s
+                 | Error user_message ->
+                   User_error.raise
+                     ~loc
+                     [ Pp.textf "Invalid module name."
+                     ; Pp.text
+                         "Public executable names don't have this restriction. You can \
+                          either change this public name to be a valid module name or \
+                          add a \"name\" field with a valid module name."
+                     ]
+                     ~hints:(Module_name.valid_format_doc :: user_message.hints))))
+          else
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "%s field may not be omitted before dune version %s"
+                  (pluralize ~multi "name")
+                  (Dune_lang.Syntax.Version.to_string allow_omit_names_version)
+              ]
+        | None, None ->
+          if dune_syntax >= allow_omit_names_version
+          then
+            User_error.raise
+              ~loc
+              [ Pp.textf
+                  "either the %s or the %s field must be present"
+                  (pluralize ~multi "name")
+                  (pluralize ~multi "public_name")
+              ]
+          else
+            User_error.raise
+              ~loc
+              [ Pp.textf "field %s is missing" (pluralize ~multi "name") ]
+      in
+      Nonempty_list.of_list names |> Option.value_exn
     in
     let public =
       match package, public_names with
@@ -171,14 +174,17 @@ end = struct
   let install_conf t ~ext ~enabled_if ~dir =
     Option.map t.public ~f:(fun { package; public_names } ->
       let files =
-        List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
-          Option.map pub ~f:(fun pub ->
-            Install_entry.File.of_file_binding
-              (File_binding.Unexpanded.make
-                 ~src:(locn, name ^ ext)
-                 ~dst:(locp, pub)
-                 ~dune_syntax:t.dune_syntax
-                 ~dir:(Some dir))))
+        List.map2
+          (Nonempty_list.to_list t.names)
+          public_names
+          ~f:(fun (locn, name) (locp, pub) ->
+            Option.map pub ~f:(fun pub ->
+              Install_entry.File.of_file_binding
+                (File_binding.Unexpanded.make
+                   ~src:(locn, name ^ ext)
+                   ~dst:(locp, pub)
+                   ~dune_syntax:t.dune_syntax
+                   ~dir:(Some dir))))
         |> List.filter_opt
       in
       let loc =
@@ -378,7 +384,7 @@ module Link_mode = struct
 end
 
 type t =
-  { names : (Loc.t * string) list
+  { names : (Loc.t * string) Nonempty_list.t
   ; link_flags : Link_flags.Spec.t
   ; link_deps : Dep_conf.t list
   ; modes : Loc.t Link_mode.Map.t
@@ -537,4 +543,8 @@ let single, multi =
 
 let has_foreign t = Buildable.has_foreign t.buildable
 let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
-let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
+
+let obj_dir t ~dir =
+  let name = snd (Nonempty_list.hd t.names) in
+  Obj_dir.make_exe ~dir ~name
+;;

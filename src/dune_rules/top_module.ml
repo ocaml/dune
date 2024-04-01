@@ -32,27 +32,29 @@ let find_module sctx src =
   | Some module_name ->
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
     let* ocaml = Dir_contents.ocaml dir_contents in
-    let stanza =
-      match Ml_sources.find_origin ocaml [ module_name ] with
-      | Some (Executables exes) -> Some (`Executables exes)
-      | Some (Library lib) -> Some (`Library lib)
-      | None | Some (Melange _) -> None
-    in
-    (match stanza with
+    (match Ml_sources.find_origin ocaml [ module_name ] with
      | None -> Memo.return None
-     | Some stanza ->
-       let* scope = Scope.DB.find_by_dir dir in
-       let* expander = Super_context.expander sctx ~dir in
+     | Some origin ->
+       let* scope = Scope.DB.find_by_dir dir
+       and* expander = Super_context.expander sctx ~dir in
        let+ cctx, merlin =
          drop_rules
          @@ fun () ->
-         match stanza with
-         | `Executables exes ->
+         match origin with
+         | Executables exes ->
            Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
-         | `Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
+         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
+         | Melange mel ->
+           Melange_rules.setup_emit_cmj_rules
+             ~sctx
+             ~dir_contents
+             ~dir
+             ~expander
+             ~scope
+             mel
        in
-       let modules = Compilation_context.modules cctx in
        let module_ =
+         let modules = Compilation_context.modules cctx in
          match Modules.find modules module_name with
          | Some m -> m
          | None ->
@@ -62,7 +64,7 @@ let find_module sctx src =
                  (Path.Build.to_string_maybe_quoted src)
              ]
        in
-       Some (module_, cctx, merlin))
+       Some (module_, cctx, merlin, origin))
 ;;
 
 let module_deps cctx module_ =
@@ -80,7 +82,7 @@ let gen_rules sctx ~dir:rules_dir ~comps =
   let* mod_ = find_module sctx src in
   match mod_ with
   | None -> Memo.return ()
-  | Some (module_, cctx, _merlin) ->
+  | Some (module_, cctx, _merlin, _) ->
     let module_ = Module.set_source module_ Intf None in
     let* () =
       let* module_deps = module_deps cctx module_ in

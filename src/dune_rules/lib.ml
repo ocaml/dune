@@ -1185,7 +1185,7 @@ end = struct
         | Not_found -> handle_resolve_result ~super db Not_found >>| Option.some
         | Hidden { lib = info; reason = hidden; path = _ } ->
           resolve_hidden db ~info hidden >>| Option.some)
-      >>| List.filter_map ~f:Fun.id
+      >>| List.filter_opt
       >>| (function
        | [] -> Status.Not_found
        | [ status ] -> status

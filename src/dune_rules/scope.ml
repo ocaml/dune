@@ -14,9 +14,6 @@ let libs t = t.db
 let coq_libs t = t.coq_db
 
 module DB = struct
-  module Resolve_result = Lib.DB.Resolve_result
-  module With_multiple_results = Resolve_result.With_multiple_results
-
   type scope = t
   type t = { by_dir : scope Path.Source.Map.t }
 
@@ -84,20 +81,20 @@ module DB = struct
         Toggle.enabled toggle
       in
       if enabled
-      then Resolve_result.redirect_in_the_same_db (loc, to_)
-      else Resolve_result.not_found
-    | Found lib -> Memo.return (Resolve_result.found lib)
+      then Lib.DB.Resolve_result.redirect_in_the_same_db (loc, to_)
+      else Lib.DB.Resolve_result.not_found
+    | Found lib -> Memo.return (Lib.DB.Resolve_result.found lib)
     | Deprecated_library_name lib ->
-      Memo.return (Resolve_result.redirect_in_the_same_db lib)
+      Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
   ;;
 
   let resolve_lib_id lib_id_map lib_id =
     match Lib_id.Map.find lib_id_map lib_id with
-    | None -> Memo.return Resolve_result.not_found
+    | None -> Memo.return Lib.DB.Resolve_result.not_found
     | Some found_or_redirect -> resolve_found_or_redirect found_or_redirect
   ;;
 
-  let not_found = With_multiple_results.resolve_result Resolve_result.not_found
+  let not_found = [ Lib.DB.Resolve_result.not_found ]
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let by_name, by_id, _ =
@@ -192,11 +189,8 @@ module DB = struct
     let resolve name =
       match Lib_name.Map.find by_name name with
       | None | Some [] -> Memo.return not_found
-      | Some [ fr ] ->
-        resolve_found_or_redirect fr >>| With_multiple_results.resolve_result
-      | Some frs ->
-        Memo.parallel_map frs ~f:resolve_found_or_redirect
-        >>| With_multiple_results.multiple_results
+      | Some [ fr ] -> resolve_found_or_redirect fr >>| List.singleton
+      | Some frs -> Memo.parallel_map frs ~f:resolve_found_or_redirect
     and resolve_lib_id = resolve_lib_id by_id in
     Lib.DB.create
       ()
@@ -224,17 +218,17 @@ module DB = struct
     match rt with
     | Project { project; lib_id } ->
       let scope = find_by_project (Fdecl.get t) project in
-      Resolve_result.redirect scope.db (Local lib_id)
-    | Name name -> Resolve_result.redirect_in_the_same_db name
+      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
+    | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
-  let resolve_lib_id t public_libs lib_id : Resolve_result.t =
+  let resolve_lib_id t public_libs lib_id : Lib.DB.Resolve_result.t =
     match Lib_id.Map.find public_libs lib_id with
-    | None -> Resolve_result.not_found
+    | None -> Lib.DB.Resolve_result.not_found
     | Some (Project { project; lib_id }) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Resolve_result.redirect scope.db (Local lib_id)
-    | Some (Name name) -> Resolve_result.redirect_in_the_same_db name
+      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
+    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
   (* Create a database from the public libraries defined in the stanzas *)
@@ -302,7 +296,7 @@ module DB = struct
       Memo.return
         (match Lib_name.Map.find by_name name with
          | None -> not_found
-         | Some rt -> resolve_redirect_to t rt |> With_multiple_results.resolve_result)
+         | Some rt -> [ resolve_redirect_to t rt ])
     in
     Lib.DB.create
       ~parent:(Some installed_libs)

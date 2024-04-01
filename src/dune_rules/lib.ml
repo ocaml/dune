@@ -408,7 +408,7 @@ end
 
 type db =
   { parent : db option
-  ; resolve : Lib_name.t -> resolve_result_with_multiple_results Memo.t
+  ; resolve : Lib_name.t -> resolve_result list Memo.t
   ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
@@ -425,10 +425,6 @@ and resolve_result =
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
   | Redirect of db * Lib_id.t
-
-and resolve_result_with_multiple_results =
-  | Resolve_result of resolve_result
-  | Multiple_results of resolve_result list
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1170,8 +1166,8 @@ end = struct
   ;;
 
   let handle_resolve_result_with_multiple_results db ~super = function
-    | Resolve_result r -> handle_resolve_result ~super db r
-    | Multiple_results candidates ->
+    | [ r ] -> handle_resolve_result ~super db r
+    | candidates ->
       let open Memo.O in
       Memo.List.filter_map candidates ~f:(function
         | Ignore -> Memo.return (Some Status.Ignore)
@@ -1887,22 +1883,6 @@ module DB = struct
       | Redirect_in_the_same_db (_, name) ->
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;
-
-    module With_multiple_results = struct
-      type t = resolve_result_with_multiple_results =
-        | Resolve_result of resolve_result
-        | Multiple_results of resolve_result list
-
-      let resolve_result r = Resolve_result r
-      let multiple_results libs : t = Multiple_results libs
-
-      let to_dyn t =
-        let open Dyn in
-        match t with
-        | Resolve_result r -> variant "Resolve_result" [ to_dyn r ]
-        | Multiple_results xs -> variant "Multiple_results" [ Dyn.list to_dyn xs ]
-      ;;
-    end
   end
 
   type t = db
@@ -1929,14 +1909,12 @@ module DB = struct
         let open Memo.O in
         Findlib.find findlib name
         >>| function
-        | Ok (Library pkg) -> Resolve_result (Found (Dune_package.Lib.info pkg))
+        | Ok (Library pkg) -> [ Found (Dune_package.Lib.info pkg) ]
         | Ok (Deprecated_library_name d) ->
-          Resolve_result (Redirect_in_the_same_db (d.loc, d.new_public_name))
-        | Ok (Hidden_library pkg) ->
-          Resolve_result (Hidden (Hidden.unsatisfied_exist_if pkg))
+          [ Redirect_in_the_same_db (d.loc, d.new_public_name) ]
+        | Ok (Hidden_library pkg) -> [ Hidden (Hidden.unsatisfied_exist_if pkg) ]
         | Error e ->
-          Resolve_result
-            (match e with
+          [ (match e with
              | Invalid_dune_package why -> Invalid why
              | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
                ->
@@ -1946,6 +1924,7 @@ module DB = struct
                   but the stdlib isn't first class. *)
                Ignore
              | Not_found -> Not_found)
+          ]
       in
       create
         ()
@@ -1954,11 +1933,7 @@ module DB = struct
         ~resolve
         ~resolve_lib_id:(fun lib_id ->
           let open Memo.O in
-          let name = Lib_id.name lib_id in
-          resolve name
-          >>| function
-          | Multiple_results _ -> assert false
-          | Resolve_result r -> r)
+          resolve (Lib_id.name lib_id) >>| List.hd)
         ~all:(fun () ->
           let open Memo.O in
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)

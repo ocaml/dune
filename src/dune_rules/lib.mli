@@ -102,18 +102,6 @@ module DB : sig
     val to_dyn : t Dyn.builder
     val redirect : db -> Lib_id.t -> t
     val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
-
-    module With_multiple_results : sig
-      type resolve_result := t
-
-      type t = private
-        | Resolve_result of resolve_result
-        | Multiple_results of resolve_result list
-
-      val to_dyn : t Dyn.builder
-      val resolve_result : resolve_result -> t
-      val multiple_results : resolve_result list -> t
-    end
   end
 
   (** Create a new library database. [resolve] is used to resolve library names
@@ -125,7 +113,7 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create
     :  parent:t option
-    -> resolve:(Lib_name.t -> Resolve_result.With_multiple_results.t Memo.t)
+    -> resolve:(Lib_name.t -> Resolve_result.t list Memo.t)
     -> resolve_lib_id:(Lib_id.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
     -> lib_config:Lib_config.t

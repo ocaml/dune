@@ -5,6 +5,8 @@
   csexp
   dune_digest
   dune_cache_storage
+  dune_util
+  dune_console
   dune_targets
   fiber
   stdune

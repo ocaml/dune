@@ -15,7 +15,6 @@
 (* In case we do run into the problem of corrupted cache: we could actually
    store the mtime in the metadata and complain if it's not what we expected. *)
 
-open Stdune
 open Import
 
 module Store_artifacts_result : sig

@@ -1,7 +1,6 @@
-open Stdune
+open Import
 open Dune_cache_storage.Layout
 open Fiber.O
-open Import
 
 module Store_artifacts_result = struct
   type t =

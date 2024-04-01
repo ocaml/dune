@@ -105,7 +105,7 @@ module Aliases_cmd = struct
   let term = ls_term fetch_results
 
   let command =
-    let doc = "Print aliases in a given directory. Works similalry to ls." in
+    let doc = "Print aliases in a given directory. Works similarly to ls." in
     Cmd.v (Cmd.info "aliases" ~doc ~envs:Common.envs) term
   ;;
 end
@@ -134,7 +134,7 @@ module Targets_cmd = struct
   let term = ls_term fetch_results
 
   let command =
-    let doc = "Print targets in a given directory. Works similalry to ls." in
+    let doc = "Print targets in a given directory. Works similarly to ls." in
     Cmd.v (Cmd.info "targets" ~doc ~envs:Common.envs) term
   ;;
 end

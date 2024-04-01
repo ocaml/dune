@@ -622,9 +622,12 @@ end = struct
                   ~can_go_in_shared_cache
                   ~loc
                   ~rule_digest
-                  ~execution_parameters
+                  ~should_remove_write_permissions_on_generated_files:
+                    (Execution_parameters
+                     .should_remove_write_permissions_on_generated_files
+                       execution_parameters)
                   ~produced_targets:exec_result.produced_targets
-                  ~action:action.action
+                  ~action:(fun () -> Action.for_shell action.action |> Action_to_sh.pp)
               in
               let dynamic_deps_stages =
                 List.map

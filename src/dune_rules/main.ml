@@ -70,7 +70,7 @@ let init
       ()
   in
   let module Shared_cache =
-    Dune_shared_cache.Make (struct
+    Dune_cache.Shared.Make (struct
       let debug_shared_cache = cache_debug_flags.shared_cache
       let config = cache_config
       let upload ~rule_digest:_ = Fiber.return ()

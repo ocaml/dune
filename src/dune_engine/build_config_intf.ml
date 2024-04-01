@@ -136,7 +136,7 @@ module type Build_config = sig
     -> implicit_default_alias:(Path.Build.t -> unit Action_builder.t option Memo.t)
     -> execution_parameters:(dir:Path.Build.t -> Execution_parameters.t Memo.t)
     -> source_tree:(module Source_tree)
-    -> shared_cache:(module Shared_cache_intf.S)
+    -> shared_cache:(module Dune_cache.Shared.S)
     -> write_error_summary:(Build_system_error.Set.t -> unit Fiber.t)
     -> unit
 
@@ -158,7 +158,7 @@ module type Build_config = sig
     ; source_tree : (module Source_tree)
     ; action_runner : Action_exec.input -> Action_runner.t option
     ; action_runners : unit -> Action_runner.t list
-    ; shared_cache : (module Shared_cache_intf.S)
+    ; shared_cache : (module Dune_cache.Shared.S)
     ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
     }
 

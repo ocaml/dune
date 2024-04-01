@@ -300,6 +300,7 @@ end
 type 'path t =
   { loc : Loc.t
   ; name : Lib_name.t
+  ; lib_id : Lib_id.t
   ; kind : Lib_kind.t
   ; status : Status.t
   ; src_dir : 'path
@@ -338,6 +339,7 @@ type 'path t =
   }
 
 let name t = t.name
+let lib_id t = t.lib_id
 let version t = t.version
 let dune_version t = t.dune_version
 let loc t = t.loc
@@ -391,6 +393,7 @@ let create
   ~loc
   ~path_kind
   ~name
+  ~lib_id
   ~kind
   ~status
   ~src_dir
@@ -428,6 +431,7 @@ let create
   =
   { loc
   ; name
+  ; lib_id
   ; kind
   ; status
   ; src_dir
@@ -520,6 +524,7 @@ let to_dyn
   { loc
   ; path_kind = _
   ; name
+  ; lib_id
   ; kind
   ; status
   ; src_dir
@@ -561,6 +566,7 @@ let to_dyn
   record
     [ "loc", Loc.to_dyn_hum loc
     ; "name", Lib_name.to_dyn name
+    ; "lib_id", Lib_id.to_dyn lib_id
     ; "kind", Lib_kind.to_dyn kind
     ; "status", Status.to_dyn status
     ; "src_dir", path src_dir

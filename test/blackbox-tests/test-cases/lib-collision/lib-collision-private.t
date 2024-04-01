@@ -17,14 +17,9 @@ different folders.
   >  (name foo))
   > EOF
 
-Without any consumers of the libraries
+Without any consumers of the libraries (both are built in separate folders)
 
-  $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:1
-  - b/dune:1
-  -> required by alias default
-  [1]
+  $ dune build a/foo.cma b/foo.cma
 
 With some consumer of the library
 
@@ -39,7 +34,9 @@ With some consumer of the library
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:1
-  - b/dune:1
+  File "a/dune", line 1, characters 0-21:
+  1 | (library
+  2 |  (name foo))
+  Error: Library with name "foo" is already defined in b/dune:1. Either change
+  one of the names, or enable them conditionally using the 'enabled_if' field.
   [1]

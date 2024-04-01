@@ -88,7 +88,10 @@ end = struct
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
+      Some
+        (Ml_sources.modules
+           ml_sources
+           ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn)))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -181,7 +184,9 @@ end = struct
     let lib_name = Library.best_name lib in
     let* installable_modules =
       let+ modules =
-        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library lib_name)
+        Dir_contents.ocaml dir_contents
+        >>| Ml_sources.modules
+              ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -338,7 +343,15 @@ end = struct
         if enabled_if
         then
           if lib.optional
-          then Lib.DB.available (Scope.libs scope) (Library.best_name lib)
+          then (
+            let src_dir =
+              Expander.dir expander
+              |> Path.build
+              |> Path.drop_optional_build_context_src_exn
+            in
+            Lib.DB.available_by_lib_id
+              (Scope.libs scope)
+              (Local (Library.to_lib_id ~src_dir lib)))
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -652,7 +665,9 @@ end = struct
             |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
-            Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)
+            Dir_contents.ocaml dir_contents
+            >>| Ml_sources.modules
+                  ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =

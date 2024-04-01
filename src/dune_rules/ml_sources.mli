@@ -21,7 +21,7 @@ type t
 val artifacts : t -> Artifacts_obj.t Memo.t
 
 type for_ =
-  | Library of Lib_name.t (** Library name *)
+  | Library of Lib_id.Local.t
   | Exe of
       { first_exe : string (** Name of first executable appearing in executables stanza *)
       }

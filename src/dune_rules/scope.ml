@@ -94,8 +94,6 @@ module DB = struct
     | Some found_or_redirect -> resolve_found_or_redirect found_or_redirect
   ;;
 
-  let not_found = [ Lib.DB.Resolve_result.not_found ]
-
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
     let by_name, by_id, _ =
       List.fold_left
@@ -188,7 +186,7 @@ module DB = struct
     in
     let resolve name =
       match Lib_name.Map.find by_name name with
-      | None | Some [] -> Memo.return not_found
+      | None | Some [] -> Memo.return []
       | Some [ fr ] -> resolve_found_or_redirect fr >>| List.singleton
       | Some frs -> Memo.parallel_map frs ~f:resolve_found_or_redirect
     and resolve_lib_id = resolve_lib_id by_id in
@@ -295,7 +293,7 @@ module DB = struct
     let resolve name =
       Memo.return
         (match Lib_name.Map.find by_name name with
-         | None -> not_found
+         | None -> []
          | Some rt -> [ resolve_redirect_to t rt ])
     in
     Lib.DB.create

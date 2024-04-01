@@ -1166,10 +1166,11 @@ end = struct
   ;;
 
   let handle_resolve_result_with_multiple_results db ~super = function
+    | [] -> handle_resolve_result ~super db Not_found
     | [ r ] -> handle_resolve_result ~super db r
     | candidates ->
       let open Memo.O in
-      Memo.List.filter_map candidates ~f:(function
+      Memo.parallel_map candidates ~f:(function
         | Ignore -> Memo.return (Some Status.Ignore)
         | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
         | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
@@ -1181,9 +1182,10 @@ end = struct
              let name = Lib_info.name info in
              instantiate db name info ~hidden:None >>| Option.some)
         | Invalid e -> Memo.return (Some (Status.Invalid e))
-        | Not_found -> Memo.return None
+        | Not_found -> handle_resolve_result ~super db Not_found >>| Option.some
         | Hidden { lib = info; reason = hidden; path = _ } ->
           resolve_hidden db ~info hidden >>| Option.some)
+      >>| List.filter_map ~f:Fun.id
       >>| (function
        | [] -> Status.Not_found
        | [ status ] -> status

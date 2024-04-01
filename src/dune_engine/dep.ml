@@ -63,7 +63,7 @@ include T
 module Map = struct
   module M = Map.Make (T)
   include M
-  include Memo.Make_map_traversals (M)
+  include Memo.Make_parallel_map (M)
 
   let has_universe t = mem t Universe
 end

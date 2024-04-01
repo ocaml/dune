@@ -1127,7 +1127,7 @@ end = struct
             Dune_util.Report_error.report e;
             Fiber.return ()))
     in
-    match Fiber.run fiber ~iter:(fun () -> iter t) with
+    match Fiber.run fiber ~iter:(fun () -> iter t |> Nonempty_list.to_list) with
     | Ok res ->
       assert (Event.Queue.pending_jobs t.events = 0);
       assert (Event.Queue.pending_worker_tasks t.events = 0);

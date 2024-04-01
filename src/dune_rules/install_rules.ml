@@ -850,7 +850,8 @@ end = struct
     in
     let deprecated_packages = Package.Name.Map.of_list_multi deprecated_packages in
     Package.deprecated_package_names pkg
-    |> Package_map_traversals.parallel_iter ~f:(fun name loc ->
+    |> Dune_lang.Package_name.Map.to_seq
+    |> Memo.parallel_iter_seq ~f:(fun (name, loc) ->
       let meta = Package_paths.deprecated_meta_file ctx pkg name in
       Super_context.add_rule
         sctx
@@ -874,7 +875,8 @@ end = struct
 
   let meta_and_dune_package_rules sctx project =
     Dune_project.packages project
-    |> Package_map_traversals.parallel_iter ~f:(fun _name (pkg : Package.t) ->
+    |> Dune_lang.Package_name.Map.to_seq
+    |> Memo.parallel_iter_seq ~f:(fun (_name, (pkg : Package.t)) ->
       gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
   ;;
 end
@@ -1343,7 +1345,8 @@ let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
   Dune_project.packages project
-  |> Package_map_traversals.parallel_iter ~f:(fun _name package ->
+  |> Dune_lang.Package_name.Map.to_seq
+  |> Memo.parallel_iter_seq ~f:(fun (_name, package) ->
     let* () = gen_package_install_file_rules sctx package in
     gen_install_alias sctx package)
 ;;

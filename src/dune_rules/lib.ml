@@ -424,7 +424,7 @@ and resolve_result =
   | Invalid of User_message.t
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-  | Redirect of db * Lib_id.t
+  | Redirect of db * (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1153,7 +1153,7 @@ end = struct
   let handle_resolve_result db ~super = function
     | Ignore -> Memo.return Status.Ignore
     | Redirect_in_the_same_db (_, name') -> find_internal db name'
-    | Redirect (db', lib_id') -> resolve_lib_id db' lib_id'
+    | Redirect (db', (_, name')) -> find_internal db' name'
     | Found info ->
       let name = Lib_info.name info in
       instantiate db name info ~hidden:None
@@ -1173,7 +1173,7 @@ end = struct
       Memo.parallel_map candidates ~f:(function
         | Ignore -> Memo.return (Some Status.Ignore)
         | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
-        | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
+        | Redirect (db', (_, name')) -> find_internal db' name' >>| Option.some
         | Found info ->
           Lib_info.enabled info
           >>= (function
@@ -1866,7 +1866,7 @@ module DB = struct
       | Invalid of User_message.t
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-      | Redirect of db * Lib_id.t
+      | Redirect of db * (Loc.t * Lib_name.t)
 
     let found f = Found f
     let not_found = Not_found
@@ -1881,7 +1881,7 @@ module DB = struct
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
-      | Redirect (_, lib_id) -> variant "Redirect" [ Lib_id.to_dyn lib_id ]
+      | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
       | Redirect_in_the_same_db (_, name) ->
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;

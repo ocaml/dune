@@ -100,7 +100,7 @@ module DB : sig
     val not_found : t
     val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
-    val redirect : db -> Lib_id.t -> t
+    val redirect : db -> Loc.t * Lib_name.t -> t
     val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
   end
 

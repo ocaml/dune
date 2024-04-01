@@ -73,7 +73,7 @@ module DB = struct
       | Deprecated_library_name of Deprecated_library_name.t
   end
 
-  let resolve_found_or_redirect fr =
+  let resolve_found_or_redirect ~parent fr =
     match (fr : Found_or_redirect.t) with
     | Redirect { loc; to_; enabled; _ } ->
       let+ enabled =
@@ -85,13 +85,13 @@ module DB = struct
       else Lib.DB.Resolve_result.not_found
     | Found lib -> Memo.return (Lib.DB.Resolve_result.found lib)
     | Deprecated_library_name lib ->
-      Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db lib)
+      Memo.return (Lib.DB.Resolve_result.redirect parent lib)
   ;;
 
-  let resolve_lib_id lib_id_map lib_id =
+  let resolve_lib_id ~parent lib_id_map lib_id =
     match Lib_id.Map.find lib_id_map lib_id with
     | None -> Memo.return Lib.DB.Resolve_result.not_found
-    | Some found_or_redirect -> resolve_found_or_redirect found_or_redirect
+    | Some found_or_redirect -> resolve_found_or_redirect ~parent found_or_redirect
   ;;
 
   let create_db_from_stanzas ~instrument_with ~parent ~lib_config stanzas =
@@ -187,9 +187,9 @@ module DB = struct
     let resolve name =
       match Lib_name.Map.find by_name name with
       | None | Some [] -> Memo.return []
-      | Some [ fr ] -> resolve_found_or_redirect fr >>| List.singleton
-      | Some frs -> Memo.parallel_map frs ~f:resolve_found_or_redirect
-    and resolve_lib_id = resolve_lib_id by_id in
+      | Some [ fr ] -> resolve_found_or_redirect ~parent fr >>| List.singleton
+      | Some frs -> Memo.parallel_map frs ~f:(resolve_found_or_redirect ~parent)
+    and resolve_lib_id = resolve_lib_id ~parent by_id in
     Lib.DB.create
       ()
       ~parent:(Some parent)
@@ -203,30 +203,26 @@ module DB = struct
   type redirect_to =
     | Project of
         { project : Dune_project.t
-        ; lib_id : Lib_id.Local.t
+        ; name : Loc.t * Lib_name.t
         }
     | Name of (Loc.t * Lib_name.t)
 
   let loc_of_redirect_to = function
-    | Project { lib_id; _ } -> Lib_id.Local.loc lib_id
-    | Name (loc, _) -> loc
+    | Project { name = loc, _; _ } | Name (loc, _) -> loc
   ;;
 
   let resolve_redirect_to t rt =
     match rt with
-    | Project { project; lib_id } ->
+    | Project { project; name } ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
+      Lib.DB.Resolve_result.redirect scope.db name
     | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
   let resolve_lib_id t public_libs lib_id : Lib.DB.Resolve_result.t =
     match Lib_id.Map.find public_libs lib_id with
     | None -> Lib.DB.Resolve_result.not_found
-    | Some (Project { project; lib_id }) ->
-      let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db (Local lib_id)
-    | Some (Name name) -> Lib.DB.Resolve_result.redirect_in_the_same_db name
+    | Some rt -> resolve_redirect_to t rt
   ;;
 
   (* Create a database from the public libraries defined in the stanzas *)
@@ -245,7 +241,9 @@ module DB = struct
                 let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
                 Library.to_lib_id ~src_dir conf
               in
-              Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
+              let name = Public_lib.name p in
+              let loc = Public_lib.loc p in
+              Some (name, Project { project; name = loc, name }, Some lib_id)
             | Library _ | Library_redirect _ -> None
             | Deprecated_library_name s ->
               Some

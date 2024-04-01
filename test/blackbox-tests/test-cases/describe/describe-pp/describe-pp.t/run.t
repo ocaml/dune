@@ -11,9 +11,11 @@ We can also show the original source if it is not preprocessed
 We also make sure that the dump file is not present
 
   $ dune_cmd exists profile.dump
-  true
+  false
 
 This also works for reason code
 
   $ dune describe pp src/main_re.re
-  ;;Util.log "Hello, world!"
+  # 1 "src/main_re.pp.re.ml"
+  # 1 "src/main_re.pp.re"
+  Util.log ("Hello, world!")

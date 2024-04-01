@@ -21,7 +21,11 @@ module Paths = struct
     Path.Build.relative dir ("." ^ name ^ ".eobjs")
   ;;
 
-  let melange_object_directory ~dir name = Path.Build.relative dir ("." ^ name ^ ".mobjs")
+  let melange_object_directory ~dir name =
+    (* Use "mobjs" rather than "objs" to avoid a potential conflict with a
+       library / executable of the same name *)
+    Path.Build.relative dir ("." ^ name ^ ".mobjs")
+  ;;
 end
 
 module External = struct

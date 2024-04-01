@@ -365,13 +365,12 @@ end = struct
                  |> Resolve.Memo.read_memo
                  >>| Preprocess.Per_module.pps
                in
-               let merlin_ident =
-                 Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-               in
+               let names = Nonempty_list.to_list exes.names in
+               let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
-                 (`Exe exes.names)
+                 (`Exe names)
                  exes.buildable.libraries
                  ~pps
                  ~dune_version
@@ -715,7 +714,10 @@ end = struct
                 ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
                 ~else_:(make_dune_package sctx lib_entries pkg)
          in
-         Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
+         Format.asprintf
+           "%a"
+           (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
+           pkg)
     in
     let* () =
       let deprecated_dune_packages =
@@ -768,7 +770,7 @@ end = struct
             (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
             (Format.asprintf
                "%a"
-               (Dune_package.Or_meta.pp ~dune_version)
+               (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
                (Dune_package dune_pkg))
         in
         Super_context.add_rule sctx ~dir:ctx.build_dir ~loc action_with_targets)

@@ -37,6 +37,9 @@ include struct
   module Source_tree = Source_tree
   module Dune_file = Dune_file
   module Library = Library
+  module Melange = Melange
+  module Melange_stanzas = Melange_stanzas
+  module Executables = Executables
 end
 
 include struct

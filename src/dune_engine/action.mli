@@ -1,8 +1,8 @@
 (** Actions as defined an executed by the build system.
 
-    These executions correpsond to primitives that the build system knows how to
+    These executions correspond to primitives that the build system knows how to
     execute. These usually, but not necessarily correspond to actions written by
-    the user in [Action_dune_lang.t] *)
+    the user in [Dune_lang.Action.t] *)
 
 open! Import
 open Dune_util.Action

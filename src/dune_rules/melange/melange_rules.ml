@@ -259,8 +259,6 @@ let setup_emit_cmj_rules
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
   let f () =
-    (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
-       of the same name *)
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents
       >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
@@ -423,8 +421,6 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let open Memo.O in
-  (* Use "mobjs" rather than "objs" to avoid a potential conflict with a library
-     of the same name *)
   let* modules, obj_dir =
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })

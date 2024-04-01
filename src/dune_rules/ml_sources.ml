@@ -14,6 +14,12 @@ module Origin = struct
     | Melange mel -> mel.loc
   ;;
 
+  let preprocess = function
+    | Library l -> l.buildable.preprocess
+    | Executables e -> e.buildable.preprocess
+    | Melange mel -> mel.preprocess
+  ;;
+
   let to_dyn = function
     | Library _ -> Dyn.variant "Library" [ Dyn.Opaque ]
     | Executables _ -> Dyn.variant "Executables" [ Dyn.Opaque ]

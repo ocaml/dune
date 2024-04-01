@@ -11,6 +11,7 @@ module Origin : sig
     | Executables of Executables.t
     | Melange of Melange_stanzas.Emit.t
 
+  val preprocess : t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
   val loc : t -> Loc.t
   val to_dyn : t -> Dyn.t
 end

@@ -70,14 +70,36 @@ type t =
   ; files : (Section.t * path list) list
   }
 
+type replace_info
+
+(** Replace sections by the external paths for sites to refer to them.
+    It saves some information that needs to be passed to [Or_meta.pp] using
+    [~encoding:Absolute info]. *)
+val replace_site_sections
+  :  t
+  -> get_location:(Section.t -> Package.Name.t -> Path.t)
+  -> t * replace_info
+
 val to_dyn : t Dyn.builder
+
+type encoding =
+  | Absolute of replace_info
+  | Relative
 
 module Or_meta : sig
   type nonrec t =
     | Use_meta
     | Dune_package of t
 
-  val pp : dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
+  val pp
+    :  encoding:encoding
+    -> dune_version:Dune_lang.Syntax.Version.t
+    -> Format.formatter
+    -> t
+    -> unit
+
+  val pp_use_meta : dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> unit
+  val parse : Path.t -> Lexbuf.t -> (t, User_message.t) result
   val load : Path.t -> (t, User_message.t) result Memo.t
   val to_dyn : t Dyn.builder
 end

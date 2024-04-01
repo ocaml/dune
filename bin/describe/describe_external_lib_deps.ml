@@ -154,7 +154,7 @@ let libs db (context : Context.t) =
           dir
           exes.buildable.libraries
           exes.buildable.preprocess
-          (List.map exes.names ~f:snd)
+          (List.map (Nonempty_list.to_list exes.names) ~f:snd)
           exes.package
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
@@ -177,7 +177,7 @@ let libs db (context : Context.t) =
           dir
           tests.exes.buildable.libraries
           tests.exes.buildable.preprocess
-          (List.map tests.exes.names ~f:snd)
+          (List.map (Nonempty_list.to_list tests.exes.names) ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
           (exes_extensions ocaml.lib_config tests.exes.modes)

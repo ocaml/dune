@@ -42,10 +42,10 @@ Showcase behavior of the SetContext ocaml-merlin command
 If `generate_merlin_rules` is not used, we can't query anything in alt context
 because by default Merlin rules are only created for the default context
 
-  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
+  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | grep -i "$lib2"
   ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
 
-  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
+  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | grep -i "$lib2"
   ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
 
 Let's use `generate_merlin_rules` to test these commands
@@ -65,22 +65,22 @@ Let's use `generate_merlin_rules` to test these commands
 
 Request config for file in alt context before calling SetContext
 
-  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
-  ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
+  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
+  No config found for file bar.ml. Try calling 'dune build'.))
 
 Request config for file in alt context after calling SetContext
 
-  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
-   (1:B139:$TESTCASE_ROOT/_build/alt/.bar.objs/byte)
+  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
+  $TESTCASE_ROOT/_build/alt/.bar.objs/byte)
 
 Both together
 
-  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
-  ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
-   (1:B139:$TESTCASE_ROOT/_build/alt/.bar.objs/byte)
+  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
+  No config found for file bar.ml. Try calling 'dune build'.))
+  $TESTCASE_ROOT/_build/alt/.bar.objs/byte)
 
 Request config for default context before and after calling SetContext
 
-  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE1} $FILE1 ${#FILE1} $FILE1 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib1"
-   (1:B143:$TESTCASE_ROOT/_build/default/.foo.objs/byte)
-  ((5:ERROR58:No config found for file foo.ml. Try calling 'dune build'.))
+  $ printf '(4:File%d:%s)(10:SetContext3:alt)(4:File%d:%s)' ${#FILE1} $FILE1 ${#FILE1} $FILE1 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib1" | sed 's/^[^:]*:[^:]*://'
+  $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+  No config found for file foo.ml. Try calling 'dune build'.))

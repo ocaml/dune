@@ -132,6 +132,10 @@
  (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
 
 (cram
+ (applies_to corrupt-persistent)
+ (deps %{bin:truncate}))
+
+(cram
  (applies_to github8041)
  (enabled_if
   (= %{system} linux))

@@ -132,6 +132,18 @@ module Error = struct
       ]
   ;;
 
+  let duplicated ~loc_a ~loc_b ~name =
+    let open Pp.O in
+    User_error.make
+      ~loc:loc_b
+      [ Pp.textf "Library with name %S is already defined in " (Lib_name.to_string name)
+        ++ Loc.pp_file_colon_line loc_a
+        ++ Pp.text
+             ". Either change one of the names, or enable them conditionally using the \
+              'enabled_if' field."
+      ]
+  ;;
+
   (* diml: it is not very clear what a "default implementation cycle" is *)
   let default_implementation_cycle cycle =
     make
@@ -396,7 +408,8 @@ end
 
 type db =
   { parent : db option
-  ; resolve : Lib_name.t -> resolve_result Memo.t
+  ; resolve : Lib_name.t -> resolve_result list Memo.t
+  ; resolve_lib_id : Lib_id.t -> resolve_result Memo.t
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
@@ -411,7 +424,7 @@ and resolve_result =
   | Invalid of User_message.t
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-  | Redirect of db * (Loc.t * Lib_name.t)
+  | Redirect of db * Lib_id.t
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -547,7 +560,7 @@ module Sub_system = struct
     (* TODO this should continue using [Resolve]. Not doing so
        will prevent generating the [dune-package] rule if the sub system is
        missing *)
-    let module M = Memo.Make_map_traversals (Sub_system_name.Map) in
+    let module M = Memo.Make_parallel_map (Sub_system_name.Map) in
     fun lib ->
       M.parallel_map lib.sub_systems ~f:(fun _name inst ->
         let* (Sub_system0.Instance.T ((module M), t)) = Memo.Lazy.force inst in
@@ -816,8 +829,9 @@ module rec Resolve_names : sig
     -> private_deps:private_deps
     -> lib Resolve.t option Memo.t
 
-  val resolve_name : db -> Lib_name.t -> Status.t Memo.t
+  val resolve_lib_id : db -> Lib_id.t -> Status.t Memo.t
   val available_internal : db -> Lib_name.t -> bool Memo.t
+  val available_by_lib_id_internal : db -> Lib_id.t -> bool Memo.t
 
   val resolve_simple_deps
     :  db
@@ -1084,7 +1098,12 @@ end = struct
   module Input = struct
     type t = Lib_name.t * Path.t Lib_info.t * string option
 
-    let equal (x, _, _) (y, _, _) = Lib_name.equal x y
+    let equal (lib_name, info, _) (lib_name', info', _) =
+      let lib_id = Lib_info.lib_id info
+      and lib_id' = Lib_info.lib_id info' in
+      Lib_name.equal lib_name lib_name' && Lib_id.equal lib_id lib_id'
+    ;;
+
     let hash (x, _, _) = Lib_name.hash x
     let to_dyn = Dyn.opaque
   end
@@ -1116,7 +1135,83 @@ end = struct
   ;;
 
   let instantiate db name info ~hidden = (Lazy.force db.instantiate) name info ~hidden
-  let find_internal db (name : Lib_name.t) = resolve_name db name
+
+  let resolve_hidden db ~info hidden =
+    let open Memo.O in
+    (match db.parent with
+     | None -> Memo.return Status.Not_found
+     | Some db ->
+       let lib_id = Lib_info.lib_id info in
+       resolve_lib_id db lib_id)
+    >>= function
+    | Status.Found _ as x -> Memo.return x
+    | _ ->
+      let name = Lib_info.name info in
+      instantiate db name info ~hidden:(Some hidden)
+  ;;
+
+  let handle_resolve_result db ~super = function
+    | Ignore -> Memo.return Status.Ignore
+    | Redirect_in_the_same_db (_, name') -> find_internal db name'
+    | Redirect (db', lib_id') -> resolve_lib_id db' lib_id'
+    | Found info ->
+      let name = Lib_info.name info in
+      instantiate db name info ~hidden:None
+    | Invalid e -> Memo.return (Status.Invalid e)
+    | Not_found ->
+      (match db.parent with
+       | None -> Memo.return Status.Not_found
+       | Some db -> super db)
+    | Hidden { lib = info; reason = hidden; path = _ } -> resolve_hidden db ~info hidden
+  ;;
+
+  let handle_resolve_result_with_multiple_results db ~super = function
+    | [] -> handle_resolve_result ~super db Not_found
+    | [ r ] -> handle_resolve_result ~super db r
+    | candidates ->
+      let open Memo.O in
+      Memo.parallel_map candidates ~f:(function
+        | Ignore -> Memo.return (Some Status.Ignore)
+        | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
+        | Redirect (db', lib_id') -> resolve_lib_id db' lib_id' >>| Option.some
+        | Found info ->
+          Lib_info.enabled info
+          >>= (function
+           | Disabled_because_of_enabled_if -> Memo.return None
+           | Normal | Optional ->
+             let name = Lib_info.name info in
+             instantiate db name info ~hidden:None >>| Option.some)
+        | Invalid e -> Memo.return (Some (Status.Invalid e))
+        | Not_found -> handle_resolve_result ~super db Not_found >>| Option.some
+        | Hidden { lib = info; reason = hidden; path = _ } ->
+          resolve_hidden db ~info hidden >>| Option.some)
+      >>| List.filter_opt
+      >>| (function
+       | [] -> Status.Not_found
+       | [ status ] -> status
+       | libs ->
+         List.fold_left libs ~init:Status.Not_found ~f:(fun acc status ->
+           match acc, status with
+           | Status.Found a, Status.Found b ->
+             let a_id = Lib_info.lib_id a.info in
+             let b_id = Lib_info.lib_id b.info in
+             (match Lib_id.equal a_id b_id with
+              | true -> acc
+              | false ->
+                let name =
+                  if Lib_name.equal a.name b.name then a.name else Lib_id.name a_id
+                and loc_a = Lib_info.loc a.info
+                and loc_b = Lib_info.loc b.info in
+                Status.Invalid (Error.duplicated ~loc_a ~loc_b ~name))
+           | (Found _ as lib), _ | _, (Found _ as lib) -> lib
+           | _, _ -> acc))
+  ;;
+
+  let find_internal db (name : Lib_name.t) =
+    let open Memo.O in
+    let super db = find_internal db name in
+    db.resolve name >>= handle_resolve_result_with_multiple_results ~super db
+  ;;
 
   let resolve_dep db (loc, name) ~private_deps : t Resolve.t option Memo.t =
     let open Memo.O in
@@ -1130,31 +1225,23 @@ end = struct
     | Hidden h -> Hidden.error h ~loc ~name >>| Option.some
   ;;
 
-  let resolve_name db name =
+  let resolve_lib_id db lib_id =
     let open Memo.O in
-    db.resolve name
-    >>= function
-    | Ignore -> Memo.return Status.Ignore
-    | Redirect_in_the_same_db (_, name') -> find_internal db name'
-    | Redirect (db', (_, name')) -> find_internal db' name'
-    | Found info -> instantiate db name info ~hidden:None
-    | Invalid e -> Memo.return (Status.Invalid e)
-    | Not_found ->
-      (match db.parent with
-       | None -> Memo.return Status.Not_found
-       | Some db -> find_internal db name)
-    | Hidden { lib = info; reason = hidden; path = _ } ->
-      (match db.parent with
-       | None -> Memo.return Status.Not_found
-       | Some db -> find_internal db name)
-      >>= (function
-       | Status.Found _ as x -> Memo.return x
-       | _ -> instantiate db name info ~hidden:(Some hidden))
+    let super db = resolve_lib_id db lib_id in
+    db.resolve_lib_id lib_id >>= handle_resolve_result ~super db
   ;;
 
   let available_internal db (name : Lib_name.t) =
     let open Memo.O in
     find_internal db name
+    >>| function
+    | Ignore | Found _ -> true
+    | Not_found | Invalid _ | Hidden _ -> false
+  ;;
+
+  let available_by_lib_id_internal db (lib_id : Lib_id.t) =
+    let open Memo.O in
+    resolve_lib_id db lib_id
     >>| function
     | Ignore | Found _ -> true
     | Not_found | Invalid _ | Hidden _ -> false
@@ -1779,7 +1866,7 @@ module DB = struct
       | Invalid of User_message.t
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-      | Redirect of db * (Loc.t * Lib_name.t)
+      | Redirect of db * Lib_id.t
 
     let found f = Found f
     let not_found = Not_found
@@ -1794,7 +1881,7 @@ module DB = struct
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
-      | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
+      | Redirect (_, lib_id) -> variant "Redirect" [ Lib_id.to_dyn lib_id ]
       | Redirect_in_the_same_db (_, name) ->
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;
@@ -1802,11 +1889,12 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~all ~lib_config ~instrument_with () =
+  let create ~parent ~resolve ~resolve_lib_id ~all ~lib_config ~instrument_with () =
     let rec t =
       lazy
         { parent
         ; resolve
+        ; resolve_lib_id
         ; all = Memo.lazy_ all
         ; lib_config
         ; instrument_with
@@ -1819,20 +1907,16 @@ module DB = struct
   let create_from_findlib =
     let bigarray = Lib_name.of_string "bigarray" in
     fun findlib ~has_bigarray_library ~lib_config ->
-      create
-        ()
-        ~parent:None
-        ~lib_config
-        ~resolve:(fun name ->
-          let open Memo.O in
-          Findlib.find findlib name
-          >>| function
-          | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
-          | Ok (Deprecated_library_name d) ->
-            Redirect_in_the_same_db (d.loc, d.new_public_name)
-          | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
-          | Error e ->
-            (match e with
+      let resolve name =
+        let open Memo.O in
+        Findlib.find findlib name
+        >>| function
+        | Ok (Library pkg) -> [ Found (Dune_package.Lib.info pkg) ]
+        | Ok (Deprecated_library_name d) ->
+          [ Redirect_in_the_same_db (d.loc, d.new_public_name) ]
+        | Ok (Hidden_library pkg) -> [ Hidden (Hidden.unsatisfied_exist_if pkg) ]
+        | Error e ->
+          [ (match e with
              | Invalid_dune_package why -> Invalid why
              | Not_found when (not has_bigarray_library) && Lib_name.equal name bigarray
                ->
@@ -1841,7 +1925,17 @@ module DB = struct
                   correct thing to do would be to redirect it to the stdlib,
                   but the stdlib isn't first class. *)
                Ignore
-             | Not_found -> Not_found))
+             | Not_found -> Not_found)
+          ]
+      in
+      create
+        ()
+        ~parent:None
+        ~lib_config
+        ~resolve
+        ~resolve_lib_id:(fun lib_id ->
+          let open Memo.O in
+          resolve (Lib_id.name lib_id) >>| List.hd)
         ~all:(fun () ->
           let open Memo.O in
           Findlib.all_packages findlib >>| List.map ~f:Dune_package.Entry.name)
@@ -1866,9 +1960,25 @@ module DB = struct
     | Ignore | Not_found | Invalid _ | Hidden _ -> None
   ;;
 
+  let find_lib_id t lib_id =
+    let open Memo.O in
+    Resolve_names.resolve_lib_id t lib_id
+    >>| function
+    | Found t -> Some t
+    | Ignore | Not_found | Invalid _ | Hidden _ -> None
+  ;;
+
   let find_even_when_hidden t name =
     let open Memo.O in
     Resolve_names.find_internal t name
+    >>| function
+    | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
+    | Ignore | Invalid _ | Not_found -> None
+  ;;
+
+  let find_lib_id_even_when_hidden t lib_id =
+    let open Memo.O in
+    Resolve_names.resolve_lib_id t lib_id
     >>| function
     | Found t | Hidden { lib = t; reason = _; path = _ } -> Some t
     | Ignore | Invalid _ | Not_found -> None
@@ -1895,16 +2005,17 @@ module DB = struct
   ;;
 
   let available t name = Resolve_names.available_internal t name
+  let available_by_lib_id t lib_id = Resolve_names.available_by_lib_id_internal t lib_id
 
-  let get_compile_info t ~allow_overlaps name =
+  let get_compile_info t ~allow_overlaps lib_id =
     let open Memo.O in
-    find_even_when_hidden t name
+    find_lib_id_even_when_hidden t lib_id
     >>| function
     | Some lib -> lib, Compile.for_lib ~allow_overlaps t lib
     | None ->
       Code_error.raise
         "Lib.DB.get_compile_info got library that doesn't exist"
-        [ "name", Lib_name.to_dyn name ]
+        [ "lib_id", Lib_id.to_dyn lib_id ]
   ;;
 
   let resolve_user_written_deps

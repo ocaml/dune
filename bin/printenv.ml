@@ -117,7 +117,7 @@ let term =
 ;;
 
 let command =
-  let doc = "Print the environment of a directory" in
+  let doc = "Print the environment of a directory." in
   let man =
     [ `S "DESCRIPTION"
     ; `P {|$(b,dune show env DIR) prints the environment of a directory|}

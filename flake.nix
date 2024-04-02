@@ -89,7 +89,7 @@
             , duneFromScope ? false
             }:
             let
-              slimPkgs =
+              pkgs' =
                 if duneFromScope then
                   pkgs.extend
                     (self: super: {
@@ -99,8 +99,14 @@
                     })
                 else pkgs;
 
-              inherit (slimPkgs) writeScriptBin stdenv lib;
+              inherit (pkgs') writeScriptBin stdenv lib;
 
+              docInputs = with pkgs'.python3.pkgs; [
+                sphinx-autobuild
+                sphinx_rtd_theme
+                sphinx-copybutton
+                sphinx-design
+              ];
               duneScript =
                 writeScriptBin "dune" ''
                   #!${stdenv.shell}
@@ -108,14 +114,16 @@
                 '';
             in
 
-            slimPkgs.mkShell {
+            pkgs'.mkShell {
               shellHook = ''
                 export DUNE_SOURCE_ROOT=$PWD
               '';
               inherit meta;
-              nativeBuildInputs = testNativeBuildInputs ++ [ duneScript ];
-              inputsFrom = [ slimPkgs.ocamlPackages.dune_3 ];
-              buildInputs = testBuildInputs ++ (with slimPkgs.ocamlPackages; [
+              nativeBuildInputs = testNativeBuildInputs
+                ++ docInputs
+                ++ [ duneScript ];
+              inputsFrom = [ pkgs'.ocamlPackages.dune_3 ];
+              buildInputs = testBuildInputs ++ (with pkgs'.ocamlPackages; [
                 merlin
                 ppx_expect
                 ctypes

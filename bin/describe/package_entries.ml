@@ -20,7 +20,7 @@ let term =
 ;;
 
 let command =
-  let doc = "prints information about the entries per package" in
+  let doc = "prints information about the entries per package." in
   let info = Cmd.info ~doc "package-entries" in
   Cmd.v info term
 ;;

@@ -231,9 +231,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
-    Memo.parallel_iter_set
-      (module Filename.Set)
-      (Filename_set.filenames files)
+    Memo.parallel_iter_seq
+      (Filename.Set.to_seq (Filename_set.filenames files))
       ~f:(fun basename ->
         let file_src = Path.relative src_in_build basename in
         let file_dst = Path.Build.relative dir basename in

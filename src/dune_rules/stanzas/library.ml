@@ -403,6 +403,12 @@ let main_module_name t : Lib_info.Main_module_name.t =
     This (Some (Module_name.of_local_lib_name t.name))
 ;;
 
+let to_lib_id ~src_dir t =
+  let loc, _ = t.name
+  and enabled_if = t.enabled_if in
+  Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.name)
+;;
+
 let to_lib_info
   conf
   ~expander
@@ -476,6 +482,10 @@ let to_lib_info
   in
   let main_module_name = main_module_name conf in
   let name = best_name conf in
+  let lib_id =
+    let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+    Lib_id.Local (to_lib_id ~src_dir conf)
+  in
   let enabled =
     let+ enabled_if_result =
       let* expander = expander in
@@ -537,6 +547,7 @@ let to_lib_info
     ~loc
     ~path_kind:Local
     ~name
+    ~lib_id
     ~kind
     ~status
     ~src_dir

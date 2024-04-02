@@ -28,11 +28,7 @@ in the same dune file
   > let x = "foo"
   > EOF
 
-  $ dune build --display=short
-  Error: Library foo is defined twice:
-  - dune:4
-  - dune:1
-  [1]
+  $ dune build
 
 For public libraries
 
@@ -48,7 +44,17 @@ For public libraries
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - dune:7
-  - dune:3
-  [1]
+
+Mixing public and private libraries
+
+  $ cat > dune << EOF
+  > (library
+  >  (name foo)
+  >  (enabled_if (= %{context_name} "default")))
+  > (library
+  >  (name foo)
+  >  (public_name baz.foo)
+  >  (enabled_if (= %{context_name} "alt-context")))
+  > EOF
+
+  $ dune build

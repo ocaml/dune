@@ -24,10 +24,6 @@ different folders.
 Without any consumers of the libraries
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:3
-  - b/dune:3
-  [1]
 
 With some consumer
 
@@ -42,7 +38,10 @@ With some consumer
   > EOF
 
   $ dune build
-  Error: Library foo is defined twice:
-  - a/dune:3
-  - b/dune:3
+  File "a/dune", line 1, characters 0-44:
+  1 | (library
+  2 |  (name foo)
+  3 |  (public_name bar.foo))
+  Error: Library with name "foo" is already defined in b/dune:1. Either change
+  one of the names, or enable them conditionally using the 'enabled_if' field.
   [1]

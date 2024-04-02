@@ -2,14 +2,6 @@
 
 open Import
 
-(** A type isomorphic to [Result], but without the negative connotations
-    associated with the word "error". *)
-module Result : sig
-  type ('hit, 'miss) t =
-    | Hit of 'hit
-    | Miss of 'miss
-end
-
 (** The workspace-local cache consists of two components:
 
     - Build artifacts currently available in the build directory.
@@ -41,4 +33,4 @@ end
 (** The shared cache is a separate directory that contains historical build
     artifacts produced in different workspaces. To restore results from the
     shared cache, Dune copes or hardlinks them into the build directory. *)
-module Shared : Shared_cache_intf.S
+module Shared : Dune_cache.Shared.S

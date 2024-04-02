@@ -266,7 +266,7 @@ let libs_maps_def =
            let info = Dune_package.Lib.info l in
            let name = Lib_info.name info in
            let pkg = Lib_info.package info in
-           Lib.DB.find db name
+           Lib.DB.find_lib_id db (Lib_info.lib_id info)
            >>| (function
             | None -> maps
             | Some lib ->
@@ -1619,21 +1619,24 @@ let standard_index_contents b entry_modules =
   entry_modules
   |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
   |> List.iter ~f:(fun (lib, modules) ->
-    Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
-    Buffer.add_string
-      b
-      (match modules with
-       | [ x ] ->
-         sprintf
-           "The entry point of this library is the module:\n{!%s}.\n"
-           (Artifact.reference x)
-       | _ ->
-         sprintf
-           "This library exposes the following toplevel modules:\n{!modules:%s}\n"
-           (modules
-            |> List.map ~f:Artifact.name
-            |> List.sort ~compare:String.compare
-            |> String.concat ~sep:" ")))
+    match modules with
+    | [] -> () (* No library here! *)
+    | _ ->
+      Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
+      Buffer.add_string
+        b
+        (match modules with
+         | [ x ] ->
+           sprintf
+             "The entry point of this library is the module:\n{!%s}.\n"
+             (Artifact.reference x)
+         | _ ->
+           sprintf
+             "This library exposes the following toplevel modules:\n{!modules:%s}\n"
+             (modules
+              |> List.map ~f:Artifact.name
+              |> List.sort ~compare:String.compare
+              |> String.concat ~sep:" ")))
 ;;
 
 let fallback_index_contents b entry_modules artifacts =
@@ -1979,7 +1982,8 @@ let setup_all_html_rules sctx ~all =
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
   Dune_project.packages project
-  |> Package_map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  |> Dune_lang.Package_name.Map.to_seq
+  |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

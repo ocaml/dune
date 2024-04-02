@@ -88,7 +88,10 @@ end = struct
   let lib_files ~dir_contents ~dir ~lib_config lib =
     let+ modules =
       let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some (Ml_sources.modules ml_sources ~for_:(Library (Lib_info.name lib)))
+      Some
+        (Ml_sources.modules
+           ml_sources
+           ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn)))
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -181,7 +184,9 @@ end = struct
     let lib_name = Library.best_name lib in
     let* installable_modules =
       let+ modules =
-        Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library lib_name)
+        Dir_contents.ocaml dir_contents
+        >>| Ml_sources.modules
+              ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
     in
@@ -338,7 +343,15 @@ end = struct
         if enabled_if
         then
           if lib.optional
-          then Lib.DB.available (Scope.libs scope) (Library.best_name lib)
+          then (
+            let src_dir =
+              Expander.dir expander
+              |> Path.build
+              |> Path.drop_optional_build_context_src_exn
+            in
+            Lib.DB.available_by_lib_id
+              (Scope.libs scope)
+              (Local (Library.to_lib_id ~src_dir lib)))
           else Memo.return true
         else Memo.return false
       | Documentation.T _ -> Memo.return true
@@ -365,13 +378,12 @@ end = struct
                  |> Resolve.Memo.read_memo
                  >>| Preprocess.Per_module.pps
                in
-               let merlin_ident =
-                 Merlin_ident.for_exes ~names:(List.map ~f:snd exes.names)
-               in
+               let names = Nonempty_list.to_list exes.names in
+               let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
-                 (`Exe exes.names)
+                 (`Exe names)
                  exes.buildable.libraries
                  ~pps
                  ~dune_version
@@ -653,7 +665,9 @@ end = struct
             |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
-            Dir_contents.ocaml dir_contents >>| Ml_sources.modules ~for_:(Library name)
+            Dir_contents.ocaml dir_contents
+            >>| Ml_sources.modules
+                  ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =
@@ -851,7 +865,8 @@ end = struct
     in
     let deprecated_packages = Package.Name.Map.of_list_multi deprecated_packages in
     Package.deprecated_package_names pkg
-    |> Package_map_traversals.parallel_iter ~f:(fun name loc ->
+    |> Dune_lang.Package_name.Map.to_seq
+    |> Memo.parallel_iter_seq ~f:(fun (name, loc) ->
       let meta = Package_paths.deprecated_meta_file ctx pkg name in
       Super_context.add_rule
         sctx
@@ -875,7 +890,8 @@ end = struct
 
   let meta_and_dune_package_rules sctx project =
     Dune_project.packages project
-    |> Package_map_traversals.parallel_iter ~f:(fun _name (pkg : Package.t) ->
+    |> Dune_lang.Package_name.Map.to_seq
+    |> Memo.parallel_iter_seq ~f:(fun (_name, (pkg : Package.t)) ->
       gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
   ;;
 end
@@ -1344,7 +1360,8 @@ let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries
 let gen_project_rules sctx project =
   let* () = meta_and_dune_package_rules sctx project in
   Dune_project.packages project
-  |> Package_map_traversals.parallel_iter ~f:(fun _name package ->
+  |> Dune_lang.Package_name.Map.to_seq
+  |> Memo.parallel_iter_seq ~f:(fun (_name, package) ->
     let* () = gen_package_install_file_rules sctx package in
     gen_install_alias sctx package)
 ;;

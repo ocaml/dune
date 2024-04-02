@@ -89,6 +89,7 @@ end
 type 'path t
 
 val name : _ t -> Lib_name.t
+val lib_id : _ t -> Lib_id.t
 val loc : _ t -> Loc.t
 
 (** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
@@ -191,6 +192,7 @@ val create
   :  loc:Loc.t
   -> path_kind:'a path
   -> name:Lib_name.t
+  -> lib_id:Lib_id.t
   -> kind:Lib_kind.t
   -> status:Status.t
   -> src_dir:'a

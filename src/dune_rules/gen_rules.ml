@@ -111,7 +111,11 @@ end = struct
       let+ () = Toplevel.Stanza.setup ~sctx ~dir ~toplevel in
       empty_none
     | Library.T lib ->
-      let* enabled_if = Lib.DB.available (Scope.libs scope) (Library.best_name lib) in
+      let* enabled_if =
+        Lib.DB.available_by_lib_id
+          (Scope.libs scope)
+          (Local (Library.to_lib_id ~src_dir lib))
+      in
       if_available_buildable
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
@@ -132,7 +136,7 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.map exes.names ~f:(fun (_, exe) ->
+              (List.map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
                  Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe)))
         })
     | Alias_conf.T alias ->

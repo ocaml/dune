@@ -104,7 +104,9 @@ module Module = struct
     let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in
     match top_module_info with
     | None -> User_error.raise [ Pp.text "no module found" ]
-    | Some (module_, cctx, merlin) ->
+    | Some (_, _, _, Melange _) ->
+      User_error.raise [ Pp.text "Modules belonging to `melange.emit' are not supported" ]
+    | Some (module_, cctx, merlin, _) ->
       let module Compilation_context = Dune_rules.Compilation_context in
       let module Obj_dir = Dune_rules.Obj_dir in
       let module Top_module = Dune_rules.Top_module in

@@ -8,7 +8,12 @@ type 'old_name t =
   }
 
 module Local = struct
-  type nonrec t = (Loc.t * Lib_name.Local.t) t
+  type info =
+    { lib_name : Loc.t * Lib_name.Local.t
+    ; enabled : Blang.t
+    }
+
+  type nonrec t = info t
 
   include Stanza.Make (struct
       type nonrec t = t
@@ -17,7 +22,12 @@ module Local = struct
     end)
 
   let for_lib (lib : Library.t) ~new_public_name ~loc : t =
-    { loc; new_public_name; old_name = lib.name; project = lib.project }
+    let old_name =
+      let lib_name = lib.name
+      and enabled = lib.enabled_if in
+      { lib_name; enabled }
+    in
+    { loc; new_public_name; old_name; project = lib.project }
   ;;
 
   let of_private_lib (lib : Library.t) : t option =
@@ -42,5 +52,11 @@ module Local = struct
     else (
       let loc = fst public_name in
       Some (for_lib lib ~loc ~new_public_name:public_name))
+  ;;
+
+  let to_lib_id ~src_dir t =
+    let loc = t.loc
+    and enabled_if = t.old_name.enabled in
+    Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.old_name.lib_name)
   ;;
 end

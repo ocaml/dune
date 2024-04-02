@@ -25,8 +25,8 @@ module type S = sig
     :  can_go_in_shared_cache:bool
     -> loc:Loc.t
     -> rule_digest:Digest.t
-    -> execution_parameters:Execution_parameters.t
-    -> action:Action.t
+    -> should_remove_write_permissions_on_generated_files:bool
+    -> action:(unit -> User_message.Style.t Pp.t)
     -> produced_targets:unit Targets.Produced.t
     -> Digest.t Targets.Produced.t Fiber.t
 end

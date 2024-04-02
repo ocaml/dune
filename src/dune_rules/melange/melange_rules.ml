@@ -270,6 +270,7 @@ let setup_emit_cmj_rules
   (mel : Melange_stanzas.Emit.t)
   =
   let* compile_info = compile_info ~scope mel in
+  let ctx = Super_context.context sctx in
   let f () =
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents
@@ -277,7 +278,7 @@ let setup_emit_cmj_rules
             ~libs:(Scope.libs scope)
             ~for_:(Melange { target = mel.target })
     in
-    let* () = Check_rules.add_obj_dir ~obj_dir Melange in
+    let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
     let* modules, pp =
       let+ modules, pp =
         Buildable_rules.modules_rules
@@ -367,7 +368,7 @@ let setup_emit_cmj_rules
         ~modes:`Melange_emit )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps compile_info ~dir ~f
+  Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
 ;;
 
 module Runtime_deps = struct

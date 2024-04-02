@@ -67,6 +67,7 @@ end
 
 type builder =
   { profile : Profile.t
+  ; merlin : bool
   ; instrument_with : Lib_name.t list
   ; fdo_target_exe : Path.t option
   ; dynamically_linked_foreign_archives : bool
@@ -95,6 +96,7 @@ module Builder = struct
 
   let empty =
     { profile = Profile.Dev
+    ; merlin = false
     ; instrument_with = []
     ; fdo_target_exe = None
     ; dynamically_linked_foreign_archives = false
@@ -140,7 +142,7 @@ module Builder = struct
     ; fdo_target_exe
     ; dynamically_linked_foreign_archives
     ; instrument_with
-    ; merlin = _
+    ; merlin
     }
     =
     let env =
@@ -148,7 +150,8 @@ module Builder = struct
       extend_paths ~env paths
     in
     { t with
-      profile
+      merlin
+    ; profile
     ; dynamically_linked_foreign_archives
     ; instrument_with
     ; fdo_target_exe
@@ -179,6 +182,7 @@ let dynamically_linked_foreign_archives t =
 
 let fdo_target_exe t = t.builder.fdo_target_exe
 let instrument_with t = t.builder.instrument_with
+let merlin t = t.builder.merlin
 let profile t = t.builder.profile
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
@@ -203,6 +207,7 @@ let to_dyn t : Dyn.t =
     [ "name", Context_name.to_dyn t.builder.name
     ; "kind", Kind.to_dyn t.kind
     ; "profile", Profile.to_dyn t.builder.profile
+    ; "merlin", Bool t.builder.merlin
     ; "fdo_target_exe", option path t.builder.fdo_target_exe
     ; "build_dir", Path.Build.to_dyn t.build_dir
     ; "instrument_with", (list Lib_name.to_dyn) t.builder.instrument_with
@@ -517,7 +522,11 @@ module Group = struct
     in
     let targets =
       let builder =
-        { builder with implicit = false; for_host = Some (name, Memo.Lazy.force native) }
+        { builder with
+          implicit = false
+        ; merlin = false
+        ; for_host = Some (name, Memo.Lazy.force native)
+        }
       in
       List.filter_map targets ~f:(function
         | Native -> None
@@ -599,7 +608,10 @@ module Group = struct
         in
         match context with
         | Opam opam -> Builder.set_workspace_base builder opam.base
-        | Default default -> Builder.set_workspace_base builder default.base
+        | Default default ->
+          let builder = Builder.set_workspace_base builder default.base in
+          let merlin = workspace.merlin_context = Some (Workspace.Context.name context) in
+          { builder with merlin }
       in
       match context with
       | Opam { base; switch } ->

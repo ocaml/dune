@@ -507,9 +507,13 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     and+ y = E.target y in
     O.Symlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
-    let+ x = E.dep x
-    and+ y = E.target y in
-    Copy_line_directive.action ~src:x ~dst:y
+    A.with_expander (fun expander ->
+      Expander.context expander
+      |> Context.DB.get
+      |> Memo.map ~f:(fun context ->
+        let+ x = E.dep x
+        and+ y = E.target y in
+        Copy_line_directive.action context ~src:x ~dst:y))
   | System x ->
     let+ x = E.string x in
     O.System x

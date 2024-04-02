@@ -627,7 +627,9 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
 ;;
 
 let add_rules sctx ~dir ~more_src_dirs ~expander merlin =
-  dot_merlin sctx ~more_src_dirs ~expander ~dir merlin
+  Memo.when_
+    (Context.merlin (Super_context.context sctx))
+    (fun () -> dot_merlin sctx ~more_src_dirs ~expander ~dir merlin)
 ;;
 
 let more_src_dirs dir_contents ~source_dirs =

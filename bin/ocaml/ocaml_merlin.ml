@@ -31,7 +31,7 @@ end = struct
       | SetContext of string
 
     type selected_ctxt =
-      | Standard
+      | Default
       | Custom of Context_name.t
 
     let read_input in_channel =
@@ -145,7 +145,7 @@ end = struct
       (match selected_context with
        | Commands.Custom ctxt ->
          Fiber.return (Ok (Path.Build.append_local (Context_name.build_dir ctxt) file))
-       | Standard ->
+       | Default ->
          let+ workspace = Memo.run (Workspace.workspace ()) in
          (match workspace.merlin_context with
           | None -> Error "no merlin context configured"
@@ -162,14 +162,14 @@ end = struct
   ;;
 
   let dump s =
-    to_local ~selected_context:Standard s
+    to_local ~selected_context:Default s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
   ;;
 
   let dump_dot_merlin s =
-    to_local ~selected_context:Standard s
+    to_local ~selected_context:Default s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
@@ -178,7 +178,7 @@ end = struct
   ;;
 
   let start () =
-    let selected_context = ref Commands.Standard in
+    let selected_context = ref Commands.Default in
     let rec main () =
       match Commands.read_input stdin with
       | Halt -> Fiber.return ()

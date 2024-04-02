@@ -10,11 +10,10 @@
 
 Delete last 10 chars of the .db file to corrupt it
 
-  $ truncate --size=-10 _build/.db
+  $ truncate -s -10 _build/.db
 
 Dune log the corrupted file and recover
 
   $ dune build a
   $ grep "truncated object" _build/log
   # Failed to load corrupted file _build/.db: input_value: truncated object
-

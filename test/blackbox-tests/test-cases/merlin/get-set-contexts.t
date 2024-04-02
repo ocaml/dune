@@ -39,6 +39,30 @@ Showcase behavior of the SetContext ocaml-merlin command
   $ FILE1=$PWD/$lib1.ml
   $ FILE2=$PWD/$lib2.ml
 
+If `generate_merlin_rules` is not used, we can't query anything in alt context
+because by default Merlin rules are only created for the default context
+
+  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
+  ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
+
+  $ printf '(10:SetContext3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"
+  ((5:ERROR58:No config found for file bar.ml. Try calling 'dune build'.))
+
+Let's use `generate_merlin_rules` to test these commands
+
+  $ cat > dune-workspace << EOF
+  > (lang dune 3.14)
+  > 
+  > (context default)
+  > 
+  > (context
+  >  (default
+  >   (name alt)
+  >   (generate_merlin_rules)))
+  > EOF
+
+  $ dune build
+
 Request config for file in alt context before calling SetContext
 
   $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin | dune format-dune-file | grep -i "$lib2"

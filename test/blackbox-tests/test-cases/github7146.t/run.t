@@ -27,7 +27,7 @@ The error should point to our dune file
   File "problem/dune", line 1, characters 0-234:
 
 We make sure the error contains a message from the linker:
-  $ grep -q "ld: \(library not found for -lnative\|cannot find -lnative\)" stderr
+  $ grep -q "ld: \(library not found for -lnative\|cannot find -lnative\|library 'native' not found\)" stderr
 
 The workaround is to use a rule to capture the path to the working directory
 into a file, and then read the file inside the (c_library_flags ...) field:

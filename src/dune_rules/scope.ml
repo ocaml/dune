@@ -203,19 +203,20 @@ module DB = struct
   type redirect_to =
     | Project of
         { project : Dune_project.t
-        ; name : Loc.t * Lib_name.t
+        ; lib_id : Lib_id.Local.t
         }
     | Name of (Loc.t * Lib_name.t)
 
   let loc_of_redirect_to = function
-    | Project { name = loc, _; _ } | Name (loc, _) -> loc
+    | Project { lib_id; _ } -> Lib_id.Local.loc lib_id
+    | Name (loc, _) -> loc
   ;;
 
   let resolve_redirect_to t rt =
     match rt with
-    | Project { project; name } ->
+    | Project { project; lib_id } ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect scope.db name
+      Lib.DB.Resolve_result.redirect_to_lib_id scope.db (Local lib_id)
     | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 
@@ -241,9 +242,7 @@ module DB = struct
                 let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
                 Library.to_lib_id ~src_dir conf
               in
-              let name = Public_lib.name p in
-              let loc = Public_lib.loc p in
-              Some (name, Project { project; name = loc, name }, Some lib_id)
+              Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
             | Library _ | Library_redirect _ -> None
             | Deprecated_library_name s ->
               Some

@@ -22,6 +22,7 @@ type 'old_name t =
 module Local : sig
   type info =
     { lib_name : Loc.t * Lib_name.Local.t
+    ; visibility : Lib_id.visibility
     ; enabled : Blang.t
     }
 

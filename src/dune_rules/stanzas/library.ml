@@ -51,7 +51,7 @@ module Modes = struct
   ;;
 end
 
-type visibility =
+type visibility = Lib_id.visibility =
   | Public of Public_lib.t
   | Private of Package.t option
 
@@ -405,8 +405,9 @@ let main_module_name t : Lib_info.Main_module_name.t =
 
 let to_lib_id ~src_dir t =
   let loc, _ = t.name
-  and enabled_if = t.enabled_if in
-  Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.name)
+  and enabled_if = t.enabled_if
+  and visibility = t.visibility in
+  Lib_id.Local.make ~loc ~src_dir ~enabled_if ~visibility (Lib_name.of_local t.name)
 ;;
 
 let to_lib_info

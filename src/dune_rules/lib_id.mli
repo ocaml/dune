@@ -1,5 +1,9 @@
 open Import
 
+type visibility =
+  | Public of Public_lib.t
+  | Private of Package.t option
+
 module Local : sig
   type t
 
@@ -7,7 +11,16 @@ module Local : sig
   module Set : Set.S with type elt = t
 
   val equal : t -> t -> bool
-  val make : loc:Loc.t -> src_dir:Path.Source.t -> enabled_if:Blang.t -> Lib_name.t -> t
+
+  val make
+    :  loc:Loc.t
+    -> src_dir:Path.Source.t
+    -> enabled_if:Blang.t
+    -> visibility:visibility
+    -> Lib_name.t
+    -> t
+
+  val best_name : t -> Lib_name.t
   val loc : t -> Loc.t
   val to_dyn : t -> Dyn.t
 end

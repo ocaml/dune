@@ -1,9 +1,14 @@
 open Import
 
+type visibility =
+  | Public of Public_lib.t
+  | Private of Package.t option
+
 module Local = struct
   module T = struct
     type t =
       { name : Lib_name.t
+      ; visibility : visibility
       ; loc : Loc.t
       ; src_dir : Path.Source.t
       ; enabled_if : Blang.t
@@ -18,7 +23,7 @@ module Local = struct
       | x -> x
     ;;
 
-    let to_dyn { name; loc; enabled_if; src_dir } =
+    let to_dyn { name; loc; enabled_if; src_dir; _ } =
       let open Dyn in
       record
         [ "name", Lib_name.to_dyn name
@@ -34,8 +39,21 @@ module Local = struct
   include T
   include Comparable.Make (T)
 
-  let make ~loc ~src_dir ~enabled_if name = { name; loc; enabled_if; src_dir }
-  let loc t = t.loc
+  let make ~loc ~src_dir ~enabled_if ~visibility name =
+    { name; loc; enabled_if; src_dir; visibility }
+  ;;
+
+  let loc t =
+    match t.visibility with
+    | Private _ -> t.loc
+    | Public p -> fst p.name
+  ;;
+
+  let best_name t =
+    match t.visibility with
+    | Private _ -> t.name
+    | Public p -> snd p.name
+  ;;
 end
 
 module T = struct

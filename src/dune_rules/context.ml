@@ -153,7 +153,7 @@ module Builder = struct
       merlin =
         (match merlin with
          | Selected -> true
-         | Rules_only | Nothing -> false)
+         | Rules_only | Not_selected -> false)
     ; profile
     ; dynamically_linked_foreign_archives
     ; instrument_with
@@ -618,7 +618,7 @@ module Group = struct
             ||
             match default.base.merlin with
             | Rules_only -> true
-            | Nothing | Selected -> false
+            | Not_selected | Selected -> false
           in
           { builder with merlin }
       in

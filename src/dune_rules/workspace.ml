@@ -270,21 +270,21 @@ module Context = struct
     type t =
       | Selected
       | Rules_only
-      | Nothing
+      | Not_selected
 
     let equal x y =
       match x, y with
-      | Selected, Selected | Rules_only, Rules_only | Nothing, Nothing -> true
-      | Selected, (Rules_only | Nothing)
-      | (Rules_only | Nothing), Selected
-      | Rules_only, Nothing
-      | Nothing, Rules_only -> false
+      | Selected, Selected | Rules_only, Rules_only | Not_selected, Not_selected -> true
+      | Selected, (Rules_only | Not_selected)
+      | (Rules_only | Not_selected), Selected
+      | Rules_only, Not_selected
+      | Not_selected, Rules_only -> false
     ;;
 
     let to_dyn : t -> Dyn.t = function
       | Selected -> String "selected"
       | Rules_only -> String "rules_only"
-      | Nothing -> String "nothing"
+      | Not_selected -> String "not_selected"
     ;;
   end
 
@@ -438,7 +438,7 @@ module Context = struct
              | false ->
                (match generate_merlin_rules with
                 | true -> Rules_only
-                | false -> Nothing))
+                | false -> Not_selected))
         }
     ;;
   end
@@ -600,7 +600,7 @@ module Context = struct
           ; fdo_target_exe = None
           ; dynamically_linked_foreign_archives = true
           ; instrument_with = Option.value instrument_with ~default:[]
-          ; merlin = Nothing
+          ; merlin = Not_selected
           }
       }
   ;;

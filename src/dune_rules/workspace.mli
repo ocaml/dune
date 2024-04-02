@@ -42,7 +42,7 @@ module Context : sig
     type t =
       | Selected
       | Rules_only
-      | Nothing
+      | Not_selected
 
     val equal : t -> t -> bool
     val to_dyn : t -> Dyn.t

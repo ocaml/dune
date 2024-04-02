@@ -40,7 +40,7 @@ expanded when creating the sandbox:
   $ echo '(lang dune 2.8)' > dune-project
   $ dune clean
   $ dune build @b --sandbox copy 2>&1 | grep -v 'cd _build/.sandbox'
-  File "dune", line 4, characters 0-86:
+  File "dune", lines 4-7, characters 0-86:
   4 | (rule
   5 |  (alias b)
   6 |  (deps (alias a))

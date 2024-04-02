@@ -88,7 +88,7 @@ subdir stanzas can also appear in included files
   >   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
   > EOF
   $ dune build --root . subdir/hello.txt
-  File "dune.inc", line 1, characters 0-90:
+  File "dune.inc", lines 1-3, characters 0-90:
   1 | (subdir subdir
   2 |  (rule
   3 |   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))

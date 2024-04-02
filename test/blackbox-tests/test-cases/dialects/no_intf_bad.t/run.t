@@ -1,7 +1,7 @@
 Test the (dialect ...) stanza inside the `dune-project` file.
 
   $ dune exec ./main.exe
-  File "dune-project", line 3, characters 0-92:
+  File "dune-project", lines 3-7, characters 0-92:
   3 | (dialect
   4 |  (name mlfi)
   5 |  (implementation
@@ -13,7 +13,7 @@ Test the (dialect ...) stanza inside the `dune-project` file.
   [1]
 
   $ dune build @fmt
-  File "dune-project", line 3, characters 0-92:
+  File "dune-project", lines 3-7, characters 0-92:
   3 | (dialect
   4 |  (name mlfi)
   5 |  (implementation

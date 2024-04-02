@@ -15,7 +15,7 @@ should work if wrapped in (no-infer ...) but not otherwise.
   > EOF
 
   $ dune build --root .
-  File "dune", line 1, characters 0-90:
+  File "dune", lines 1-6, characters 0-90:
   1 | (rule
   2 |  (targets target)
   3 |  (action

@@ -104,7 +104,7 @@ Build linux package on linux:
 Try setting the os to one which doesn't have a corresponding lockdir:
   $ dune clean
   $ DUNE_CONFIG__OS=windows dune build _build/_private/default/.pkg/linux-only/target/
-  File "dune-workspace", line 28, characters 3-162:
+  File "dune-workspace", lines 28-30, characters 3-162:
   28 |    ((and (= %{architecture} arm64) (= %{system} macosx)) dune.macos.arm64.lock)
   29 |    ((= %{system} macosx) dune.macos.lock)
   30 |    ((= %{system} linux) dune.linux.lock)))))

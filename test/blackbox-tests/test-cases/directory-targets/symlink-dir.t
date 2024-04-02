@@ -22,7 +22,7 @@ See #9873.
   > EOF
 
   $ dune build d
-  File "dune", line 1, characters 0-154:
+  File "dune", lines 1-10, characters 0-154:
    1 | (rule
    2 |  (target (dir d))
    3 |  (action

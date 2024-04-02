@@ -37,12 +37,12 @@ Build a library which depends on foreign object files.
   > EOF
 
   $ dune build
-  File "lib/dune", line 1, characters 0-47:
+  File "lib/dune", lines 1-3, characters 0-47:
   1 | (library
   2 |  (name calc)
   3 |  (extra_objects add mul))
   Error: No rule found for lib/add.o
-  File "lib/dune", line 1, characters 0-47:
+  File "lib/dune", lines 1-3, characters 0-47:
   1 | (library
   2 |  (name calc)
   3 |  (extra_objects add mul))

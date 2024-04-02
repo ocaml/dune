@@ -46,7 +46,7 @@ Some stanzas aren't allowed to be generated:
   > (executable
   >  (public_name foo))
   > EOF
-  File "_build/default/a/dune.inc", line 1, characters 0-31:
+  File "_build/default/a/dune.inc", lines 1-2, characters 0-31:
   1 | (executable
   2 |  (public_name foo))
   Error: This stanza cannot be generated dynamically
@@ -69,7 +69,7 @@ Some stanzas aren't allowed to be generated:
   >  (old_public_name foo)
   >  (new_public_name y))
   > EOF
-  File "_build/default/a/dune.inc", line 1, characters 0-69:
+  File "_build/default/a/dune.inc", lines 1-3, characters 0-69:
   1 | (deprecated_library_name
   2 |  (old_public_name foo)
   3 |  (new_public_name y))

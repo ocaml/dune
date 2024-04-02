@@ -119,7 +119,7 @@ Interaction with explicit sandboxing
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 0-119:
+  File "dune", lines 1-5, characters 0-119:
   1 | (rule
   2 |  (mode patch-back-source-tree)
   3 |  (deps (sandbox none))

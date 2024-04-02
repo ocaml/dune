@@ -21,7 +21,7 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   > EOF
 
   $ dune build @mel
-  File "a/output/b/dune", line 1, characters 0-92:
+  File "a/output/b/dune", lines 1-5, characters 0-92:
   1 | (melange.emit
   2 |  (target output)
   3 |  (alias mel)

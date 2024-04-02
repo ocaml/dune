@@ -15,7 +15,7 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  File "dune", line 3, characters 0-21:
+  File "dune", lines 3-4, characters 0-21:
   3 | (library
   4 |  (name foo))
   Error: Library "foo" appears for the second time in this directory
@@ -38,7 +38,7 @@ With some consumer of the library
   > EOF
 
   $ dune build
-  File "dune", line 3, characters 0-21:
+  File "dune", lines 3-4, characters 0-21:
   3 | (library
   4 |  (name foo))
   Error: Library "foo" appears for the second time in this directory

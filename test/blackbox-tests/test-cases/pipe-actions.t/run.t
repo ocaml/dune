@@ -16,7 +16,7 @@ The new pipe actions are only available since dune 2.7:
   > EOF
 
   $ dune build @pipe
-  File "dune", line 4, characters 2-84:
+  File "dune", lines 4-8, characters 2-84:
   4 |   (pipe-outputs
   5 |    (echo "a\nb\nc")
   6 |    (run tr a x)

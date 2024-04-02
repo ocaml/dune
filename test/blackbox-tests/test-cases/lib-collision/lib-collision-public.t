@@ -38,7 +38,7 @@ With some consumer
   > EOF
 
   $ dune build
-  File "a/dune", line 1, characters 0-44:
+  File "a/dune", lines 1-3, characters 0-44:
   1 | (library
   2 |  (name foo)
   3 |  (public_name bar.foo))

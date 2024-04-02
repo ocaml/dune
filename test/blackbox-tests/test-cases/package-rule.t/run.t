@@ -1,7 +1,7 @@
 When --only-packages is passed, it runs, as long as the version is new enough
 
   $ dune build --only-packages a @runtest
-  File "dune", line 10, characters 0-61:
+  File "dune", lines 10-12, characters 0-61:
   10 | (rule
   11 |   (package a)
   12 |   (action (copy test_temp.ml test_b.ml)))

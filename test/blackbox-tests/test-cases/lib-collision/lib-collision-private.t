@@ -34,7 +34,7 @@ With some consumer of the library
   > EOF
 
   $ dune build
-  File "a/dune", line 1, characters 0-21:
+  File "a/dune", lines 1-2, characters 0-21:
   1 | (library
   2 |  (name foo))
   Error: Library with name "foo" is already defined in b/dune:1. Either change

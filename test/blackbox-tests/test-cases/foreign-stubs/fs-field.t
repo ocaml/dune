@@ -117,7 +117,7 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune build 2>&1 | dune_cmd sanitize
-  File "dune", line 1, characters 0-87:
+  File "dune", lines 1-4, characters 0-87:
   1 | (library
   2 |  (name foo)
   3 |  (foreign_stubs (language c) (names foo))
@@ -451,7 +451,7 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ ./sdune clean
   $ ./sdune exec ./main.bc
-  File "dune", line 1, characters 0-80:
+  File "dune", lines 1-5, characters 0-80:
   1 | (executable
   2 |  (modes byte)
   3 |  (name main)
@@ -524,7 +524,7 @@ setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
 
   $ ./sdune clean
   $ ./sdune build @install
-  File "dune", line 1, characters 0-100:
+  File "dune", lines 1-5, characters 0-100:
   1 | (library
   2 |  (public_name foo.clock)
   3 |  (name clock)

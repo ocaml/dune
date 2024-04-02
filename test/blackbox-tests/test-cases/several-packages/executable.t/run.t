@@ -4,7 +4,7 @@ displayed. This can happen for:
 - (executable)
 
   $ dune build
-  File "dune", line 1, characters 0-41:
+  File "dune", lines 1-2, characters 0-41:
   1 | (executable
   2 |  (public_name an_executable))
   Error: I can't determine automatically which package this stanza is for.

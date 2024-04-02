@@ -17,6 +17,6 @@ We create a large file and check that it is copied completely.
   4294967299
 
   $ dune_cmd stat size _build/default/file.dat
-  3
+  4294967299
 
 (3 indicates that the file size is taken modulo 2**32)

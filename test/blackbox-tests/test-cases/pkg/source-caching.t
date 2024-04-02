@@ -8,7 +8,7 @@ This test demonstratest that fetching package sources should be cached
   $ sources="sources/"
   $ mkdir $sources; touch $sources/dummy
   $ tar -czf $tarball $sources
-  $ checksum=$(md5sum $tarball | awk '{ print $1 }')
+  $ checksum=$(./md5sum.sh $tarball)
   $ webserver_oneshot --content-file $tarball --port-file port.txt &
   $ until test -f port.txt ; do sleep 0.1; done
   $ port=$(cat port.txt)

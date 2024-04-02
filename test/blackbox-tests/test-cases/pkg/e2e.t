@@ -46,7 +46,7 @@ Make a package for the library:
   > url {
   >  src: "http://0.0.0.0:$PORT"
   >  checksum: [
-  >   "md5=$(md5sum foo.tar.gz | cut -f1 -d' ')"
+  >   "md5=$(./md5sum.sh foo.tar.gz)"
   >  ]
   > }
   > EOF

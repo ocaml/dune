@@ -37,8 +37,8 @@
  (applies_to compute-checksums-when-missing e2e source-caching tarball))
 
 (cram
- (deps %{bin:md5sum})
- (applies_to source-caching))
+ (deps ./md5sum.sh)
+ (applies_to source-caching e2e))
 
 (cram
  (deps %{bin:tar})

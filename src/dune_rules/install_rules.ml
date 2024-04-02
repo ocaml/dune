@@ -87,13 +87,14 @@ end = struct
       >>| List.singleton
   ;;
 
-  let lib_files ~dir_contents ~dir ~lib_config lib =
+  let lib_files ~scope ~dir_contents ~dir ~lib_config lib =
     let+ modules =
-      let+ ml_sources = Dir_contents.ocaml dir_contents in
-      Some
-        (Ml_sources.modules
-           ml_sources
-           ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn)))
+      let* ml_sources = Dir_contents.ocaml dir_contents in
+      Ml_sources.modules
+        ml_sources
+        ~libs:(Scope.libs scope)
+        ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn))
+      >>| Option.some
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
       | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
@@ -187,7 +188,8 @@ end = struct
     let* installable_modules =
       let+ modules =
         Dir_contents.ocaml dir_contents
-        >>| Ml_sources.modules
+        >>= Ml_sources.modules
+              ~libs:(Scope.libs scope)
               ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
       Vimpl.impl_modules impl modules |> Modules.split_by_lib
@@ -312,7 +314,7 @@ end = struct
           if Module.kind m = Virtual then [] else common m |> set_dir m)
       in
       modules_vlib @ modules_impl
-    and+ lib_files = lib_files ~dir ~dir_contents ~lib_config info
+    and+ lib_files = lib_files ~scope ~dir ~dir_contents ~lib_config info
     and+ execs = lib_ppxs ctx ~scope ~lib
     and+ dll_files =
       dll_files ~modes:ocaml ~dynlink:lib.dynlink ~ctx info
@@ -667,8 +669,10 @@ end = struct
             |> Foreign.Sources.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
+            let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
             Dir_contents.ocaml dir_contents
-            >>| Ml_sources.modules
+            >>= Ml_sources.modules
+                  ~libs
                   ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in

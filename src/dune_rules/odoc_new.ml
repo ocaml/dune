@@ -1211,8 +1211,8 @@ let lib_artifacts ctx all index lib modules =
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
-  let entry_modules = Modules.entry_modules modules in
-  Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+  let entry_modules = Modules.With_vlib.entry_modules modules in
+  Modules.With_vlib.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
     let visible =
       let visible =
         List.mem entry_modules m ~equal:(fun m1 m2 ->

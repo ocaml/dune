@@ -14,7 +14,7 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
    generation *)
 
 let opens modules m =
-  Command.Args.As (Modules.local_open modules m |> Ocaml_flags.open_flags)
+  Command.Args.As (Modules.With_vlib.local_open modules m |> Ocaml_flags.open_flags)
 ;;
 
 let other_cm_files ~opaque ~cm_kind ~obj_dir =
@@ -421,7 +421,7 @@ module Alias_module = struct
     let aliases =
       Modules.Group.for_alias group
       |> List.map ~f:(fun (local_name, m) ->
-        let canonical_path = Modules.canonical_path modules group m in
+        let canonical_path = Modules.With_vlib.canonical_path modules group m in
         let obj_name = Module.obj_name m in
         { canonical_path; local_name; obj_name })
     in
@@ -499,7 +499,7 @@ let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.parallel_iter
-    (Modules.fold_no_vlib_with_aliases
+    (Modules.With_vlib.fold_no_vlib_with_aliases
        modules
        ~init:[]
        ~normal:(fun x acc -> `Normal x :: acc)
@@ -515,7 +515,7 @@ let build_all cctx =
            build_module cctx m
          | _ ->
            let cctx =
-             if Modules.is_stdlib_alias modules m
+             if Modules.With_vlib.is_stdlib_alias modules m
              then
                (* XXX it would probably be simpler if the flags were just for this
                   module in the definition of the stanza *)

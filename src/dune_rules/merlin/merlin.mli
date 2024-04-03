@@ -47,7 +47,7 @@ val make
   -> preprocess:Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
   -> libname:Lib_name.Local.t option
   -> source_dirs:Path.Source.Set.t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> dialects:Dialect.DB.t
   -> ident:Merlin_ident.t

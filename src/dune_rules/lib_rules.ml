@@ -120,10 +120,10 @@ let build_lib
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
-  let wrapped_compat = Modules.wrapped_compat modules in
+  let wrapped_compat = Modules.With_vlib.wrapped_compat modules in
   let transition_message =
     lazy
-      (match Modules.wrapped modules with
+      (match Modules.With_vlib.wrapped modules with
        | Simple _ -> assert false
        | Yes_with_transition r -> r)
   in
@@ -439,7 +439,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ocaml.lib_config in
   let open Memo.O in
   let* () =
-    Modules.exit_module modules
+    Modules.With_vlib.exit_module modules
     |> Memo.Option.iter ~f:(fun m ->
       (* These files needs to be alongside stdlib.cma as the compiler
          implicitly adds this module. *)
@@ -581,7 +581,7 @@ let library_rules
   let ocaml = Compilation_context.ocaml cctx in
   let stdlib_dir = ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
-    let impl_only = Modules.impl_only modules in
+    let impl_only = Modules.With_vlib.impl_only modules in
     Dep_graph.top_closed_implementations
       (Compilation_context.dep_graphs cctx).impl
       impl_only

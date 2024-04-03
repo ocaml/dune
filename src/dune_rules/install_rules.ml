@@ -94,6 +94,7 @@ end = struct
         ml_sources
         ~libs:(Scope.libs scope)
         ~for_:(Library (Lib_info.lib_id lib |> Lib_id.to_local_exn))
+      >>| Modules.With_vlib.modules
       >>| Option.some
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
@@ -192,7 +193,7 @@ end = struct
               ~libs:(Scope.libs scope)
               ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
       and+ impl = Virtual_rules.impl sctx ~lib ~scope in
-      Vimpl.impl_modules impl modules |> Modules.split_by_lib
+      Vimpl.impl_modules impl modules |> Modules.With_vlib.split_by_lib
     in
     let lib_src_dir = Lib_info.src_dir info in
     let sources =
@@ -674,6 +675,7 @@ end = struct
             >>= Ml_sources.modules
                   ~libs
                   ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+            >>| Modules.With_vlib.modules
           and* melange_runtime_deps = file_deps (Lib_info.melange_runtime_deps info)
           and* public_headers = file_deps (Lib_info.public_headers info) in
           let+ dune_lib =

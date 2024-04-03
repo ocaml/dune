@@ -32,6 +32,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -51,6 +57,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -70,6 +82,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
@@ -89,6 +107,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG (-open Foo__Groupintf__ -open Foo))
    (FLG
     (-w
@@ -109,6 +133,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG (-open Foo__Groupintf__ -open Foo))
    (FLG
     (-w
@@ -129,6 +159,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG (-open Foo))
    (FLG
     (-w
@@ -149,6 +185,12 @@
     $TESTCASE_ROOT/groupintf)
    (S
     $TESTCASE_ROOT/utils)
+   (S
+    $TESTCASE_ROOT/_build/default)
+   (S
+    $TESTCASE_ROOT/_build/default/groupintf)
+   (S
+    $TESTCASE_ROOT/_build/default/utils)
    (FLG (-open Foo__Utils -open Foo))
    (FLG
     (-w

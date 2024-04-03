@@ -28,6 +28,8 @@ CRAM sanitization
     $TESTCASE_ROOT/exe)
    (S
     $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/_build/default/exe)
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))
@@ -44,6 +46,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib)
    (S
     $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
+   (S
+    $TESTCASE_ROOT/_build/default/lib/subdir)
    (FLG
     (-ppx
      "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
@@ -60,6 +66,10 @@ CRAM sanitization
     $TESTCASE_ROOT/lib)
    (S
     $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
+   (S
+    $TESTCASE_ROOT/_build/default/lib/subdir)
    (FLG (-open Bar))
    (FLG
     (-ppx
@@ -81,6 +91,8 @@ CRAM sanitization
     $TESTCASE_ROOT/lib)
    (S
     $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
    (FLG
     (-ppx
      "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
@@ -101,6 +113,8 @@ CRAM sanitization
     $TESTCASE_ROOT/lib)
    (S
     $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
    (FLG (-open Foo))
    (FLG
     (-ppx
@@ -124,6 +138,8 @@ Make sure pp flag is correct and variables are expanded
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
    (S
     $TESTCASE_ROOT/pp-with-expand)
+   (S
+    $TESTCASE_ROOT/_build/default/pp-with-expand)
    (FLG
     (-pp
      "$TESTCASE_ROOT/_build/default/pp/pp.exe
@@ -140,6 +156,8 @@ Check hash of executables names if more than one
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
    (S
     $TESTCASE_ROOT/exes)
+   (S
+    $TESTCASE_ROOT/_build/default/exes)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
@@ -155,6 +173,8 @@ Check hash of executables names if more than one
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
    (S
     $TESTCASE_ROOT/exes)
+   (S
+    $TESTCASE_ROOT/_build/default/exes)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40

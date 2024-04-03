@@ -10,6 +10,8 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG (-w -40 -g)))
 
   $ rm -f .merlin
@@ -22,6 +24,8 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG (-w -40 -g)))
 
   $ echo toto > .merlin
@@ -34,4 +38,6 @@
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG (-w -40 -g)))

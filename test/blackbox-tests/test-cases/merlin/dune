@@ -7,5 +7,9 @@
  (deps %{bin:ocamlfind}))
 
 (cram
+ (applies_to merlin-locate)
+ (deps %{bin:ocamlmerlin}))
+
+(cram
  (applies_to github4125)
  (deps %{bin:opam}))

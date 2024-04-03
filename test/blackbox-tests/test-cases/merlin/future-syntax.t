@@ -24,4 +24,6 @@
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG (-w -40 -g)))

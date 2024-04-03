@@ -21,6 +21,10 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
+   (S
+    $TESTCASE_ROOT/_build/default/lib/subdir)
    (FLG (-w -40 -g)))
   File: _build/default/lib/subdir/file
   ((STDLIB /OCAMLC_WHERE)
@@ -35,6 +39,10 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
+   (S
+    $TESTCASE_ROOT/_build/default/lib/subdir)
    (FLG (-open Bar))
    (FLG (-w -40 -g)))
   Foo: _build/default/lib/foo
@@ -50,6 +58,8 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
    (FLG (-w -40 -g)))
   Privmod: _build/default/lib/privmod
   ((STDLIB /OCAMLC_WHERE)
@@ -64,5 +74,7 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (S
+    $TESTCASE_ROOT/_build/default/lib)
    (FLG (-open Foo))
    (FLG (-w -40 -g)))

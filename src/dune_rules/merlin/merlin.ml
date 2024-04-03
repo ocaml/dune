@@ -504,6 +504,21 @@ module Unprocessed = struct
     ~expander
     =
     let open Action_builder.O in
+    let per_module_config =
+      (* And copy for each module the resulting pp flags *)
+      Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
+        Module.sources m
+        |> Path.Build.Set.of_list_map ~f:(fun src ->
+          Path.as_in_build_dir_exn src |> remove_extension)
+        |> Path.Build.Set.fold ~init ~f:(fun src acc ->
+          let config =
+            { Processed.module_ = Module.set_pp m None
+            ; opens = Modules.local_open modules m
+            }
+          in
+          (src, config) :: acc))
+      |> Path.Build.Map.of_list_exn
+    in
     let+ config =
       let* stdlib_dir =
         Action_builder.of_memo
@@ -561,23 +576,23 @@ module Unprocessed = struct
       let src_dirs =
         Path.Set.union src_dirs (Path.Set.of_list_map ~f:Path.source more_src_dirs)
       in
+      let src_dirs =
+        let module_source_dirs =
+          Path.Build.Map.fold
+            ~init:[]
+            ~f:(fun ({ module_; _ } : Processed.module_config) acc ->
+              let paths : Path.Build.t list =
+                List.filter_map ~f:Path.as_in_build_dir (Module.sources module_)
+                |> List.filter_map ~f:Path.Build.parent
+              in
+              paths :: acc)
+            per_module_config
+          |> List.flatten
+        in
+        Path.Set.union src_dirs (Path.Set.of_list_map ~f:Path.build module_source_dirs)
+      in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
     and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
-    let per_module_config =
-      (* And copy for each module the resulting pp flags *)
-      Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
-        Module.sources m
-        |> Path.Build.Set.of_list_map ~f:(fun src ->
-          Path.as_in_build_dir_exn src |> remove_extension)
-        |> Path.Build.Set.fold ~init ~f:(fun src acc ->
-          let config =
-            { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.local_open modules m
-            }
-          in
-          (src, config) :: acc))
-      |> Path.Build.Map.of_list_exn
-    in
     { Processed.pp_config; config; per_module_config }
   ;;
 end

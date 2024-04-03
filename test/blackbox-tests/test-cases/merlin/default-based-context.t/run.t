@@ -29,6 +29,8 @@ If Merlin field is absent, default context is chosen
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40
@@ -67,6 +69,8 @@ If Merlin field is present, this context is chosen
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/cross)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40

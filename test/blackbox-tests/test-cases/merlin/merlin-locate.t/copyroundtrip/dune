@@ -1,0 +1,9 @@
+(rule
+ (targets copy_of_a.ml)
+ (action
+  (copy# a.ml %{targets})))
+
+(library
+ (name copyroundtrip)
+ (wrapped false)
+ (modules copy_of_a b))

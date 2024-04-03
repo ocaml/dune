@@ -35,6 +35,8 @@ library also has more than one src dir.
     $TESTCASE_ROOT/lib1/sub)
    (S
     $TESTCASE_ROOT/lib2)
+   (S
+    $TESTCASE_ROOT/_build/default/lib2)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62-40

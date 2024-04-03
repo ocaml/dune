@@ -1147,8 +1147,8 @@ let rec map_user_written t ~f =
       let+ group = Group.Memo_traversals.parallel_map group ~f in
       Wrapped { w with group }
     | Impl t ->
-      let+ modules = map_user_written t.vlib ~f in
-      Impl { t with vlib = modules }
+      let+ modules = map_user_written t.impl ~f in
+      Impl { t with impl = modules }
   in
   with_obj_map modules
 ;;

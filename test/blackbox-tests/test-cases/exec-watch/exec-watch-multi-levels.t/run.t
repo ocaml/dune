@@ -18,7 +18,7 @@ It's broken when invoked in a child folder
   Entering directory '..'
   Error: posix_spawn(): No such file or directory
   Leaving directory '..'
-  $ sleep 0.5;
+  $ sleep 1;
 
 But it works fine without watch mode
   $ cd bin && dune exec --root .. ./bin/main.exe

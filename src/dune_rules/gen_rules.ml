@@ -518,7 +518,12 @@ let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
       in
       let+ rules =
         let+ make_rules =
-          let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
+          let+ directory_targets =
+            Dir_status.directory_targets
+              dir_status
+              ~dir
+              ~expander:(sctx >>= Super_context.expander ~dir >>| Expander.to_expander0)
+          in
           let allowed_subdirs =
             let automatic = Automatic_subdir.subdirs components in
             let toplevel =

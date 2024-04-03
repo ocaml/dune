@@ -85,7 +85,7 @@ module DB = struct
       else Lib.DB.Resolve_result.not_found
     | Found lib -> Memo.return (Lib.DB.Resolve_result.found lib)
     | Deprecated_library_name lib ->
-      Memo.return (Lib.DB.Resolve_result.redirect parent lib)
+      Memo.return (Lib.DB.Resolve_result.redirect_by_name parent lib)
   ;;
 
   let resolve_lib_id ~parent lib_id_map lib_id =
@@ -216,7 +216,7 @@ module DB = struct
     match rt with
     | Project { project; lib_id } ->
       let scope = find_by_project (Fdecl.get t) project in
-      Lib.DB.Resolve_result.redirect_to_lib_id scope.db (Local lib_id)
+      Lib.DB.Resolve_result.redirect_by_id scope.db (Local lib_id)
     | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
   ;;
 

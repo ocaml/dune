@@ -424,8 +424,8 @@ and resolve_result =
   | Invalid of User_message.t
   | Ignore
   | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-  | Redirect of db * (Loc.t * Lib_name.t)
-  | Redirect_to_lib_id of db * Lib_id.t
+  | Redirect_by_name of db * (Loc.t * Lib_name.t)
+  | Redirect_by_id of db * Lib_id.t
 
 let lib_config (t : lib) = t.lib_config
 let name t = t.name
@@ -1154,8 +1154,8 @@ end = struct
   let handle_resolve_result db ~super = function
     | Ignore -> Memo.return Status.Ignore
     | Redirect_in_the_same_db (_, name') -> find_internal db name'
-    | Redirect (db', (_, name')) -> find_internal db' name'
-    | Redirect_to_lib_id (db', lib_id) -> resolve_lib_id db' lib_id
+    | Redirect_by_name (db', (_, name')) -> find_internal db' name'
+    | Redirect_by_id (db', lib_id) -> resolve_lib_id db' lib_id
     | Found info ->
       let name = Lib_info.name info in
       instantiate db name info ~hidden:None
@@ -1175,8 +1175,8 @@ end = struct
       Memo.parallel_map candidates ~f:(function
         | Ignore -> Memo.return (Some Status.Ignore)
         | Redirect_in_the_same_db (_, name') -> find_internal db name' >>| Option.some
-        | Redirect (db', (_, name')) -> find_internal db' name' >>| Option.some
-        | Redirect_to_lib_id (db', lib_id) -> resolve_lib_id db' lib_id >>| Option.some
+        | Redirect_by_name (db', (_, name')) -> find_internal db' name' >>| Option.some
+        | Redirect_by_id (db', lib_id) -> resolve_lib_id db' lib_id >>| Option.some
         | Found info ->
           Lib_info.enabled info
           >>= (function
@@ -1869,13 +1869,13 @@ module DB = struct
       | Invalid of User_message.t
       | Ignore
       | Redirect_in_the_same_db of (Loc.t * Lib_name.t)
-      | Redirect of db * (Loc.t * Lib_name.t)
-      | Redirect_to_lib_id of db * Lib_id.t
+      | Redirect_by_name of db * (Loc.t * Lib_name.t)
+      | Redirect_by_id of db * Lib_id.t
 
     let found f = Found f
     let not_found = Not_found
-    let redirect db lib = Redirect (db, lib)
-    let redirect_to_lib_id db lib_id = Redirect_to_lib_id (db, lib_id)
+    let redirect_by_name db lib = Redirect_by_name (db, lib)
+    let redirect_by_id db lib_id = Redirect_by_id (db, lib_id)
     let redirect_in_the_same_db lib = Redirect_in_the_same_db lib
 
     let to_dyn x =
@@ -1886,9 +1886,9 @@ module DB = struct
       | Found lib -> variant "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden h -> variant "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Ignore -> variant "Ignore" []
-      | Redirect (_, (_, name)) -> variant "Redirect" [ Lib_name.to_dyn name ]
-      | Redirect_to_lib_id (_, lib_id) ->
-        variant "Redirect_to_lib_id" [ Lib_id.to_dyn lib_id ]
+      | Redirect_by_name (_, (_, name)) ->
+        variant "Redirect_by_name" [ Lib_name.to_dyn name ]
+      | Redirect_by_id (_, lib_id) -> variant "Redirect_by_id" [ Lib_id.to_dyn lib_id ]
       | Redirect_in_the_same_db (_, name) ->
         variant "Redirect_in_the_same_db" [ Lib_name.to_dyn name ]
     ;;

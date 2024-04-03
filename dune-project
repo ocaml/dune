@@ -154,11 +154,9 @@ understood by dune language."))
  (depends
   (dune-rpc (= :version))
   (csexp (>= 1.5.0))
-  (lwt (>= 5.3.0))
+  (lwt (>= 5.6.0))
   base-unix)
- (description "Specialization of dune-rpc to Lwt")
- (conflicts
-   (result (< 1.5))))
+ (description "Specialization of dune-rpc to Lwt"))
 
 (package
  (name dyn)

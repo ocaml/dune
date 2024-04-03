@@ -40,6 +40,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   S /MELC_STDLIB
   S /MELC_STDLIB
   S $TESTCASE_ROOT
+  S $TESTCASE_ROOT/_build/default
 
   $ target=output
   $ cat >dune <<EOF
@@ -66,6 +67,7 @@ Dump-dot-merlin includes the melange flags
   S /MELC_STDLIB
   S /MELC_STDLIB
   S $TESTCASE_ROOT
+  S $TESTCASE_ROOT/_build/default
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -mel-g
   
 Check for flag directives ordering when another preprocessor is defined
@@ -109,6 +111,8 @@ User ppx flags should appear in merlin config
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG (-open Foo))
    (FLG
     (-ppx
@@ -131,6 +135,8 @@ User ppx flags should appear in merlin config
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG
     (-ppx
      "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
@@ -152,6 +158,8 @@ User ppx flags should appear in merlin config
     $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)
    (S
     $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/_build/default)
    (FLG
     (-w
      @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40

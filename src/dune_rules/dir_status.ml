@@ -85,36 +85,32 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
     ]
 ;;
 
-let extract_directory_targets ~dir ~expander stanzas =
+let extract_directory_targets ~dir stanzas =
   Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
     match Stanza.repr stanza with
-    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; enabled_if; _ }
-      ->
-      let+ available = Expander.eval_blang expander enabled_if in
-      if not available
-      then acc
-      else
-        List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-          let loc = String_with_vars.loc target in
-          match (kind : Targets_spec.Kind.t) with
-          | File -> acc
-          | Directory ->
-            (match String_with_vars.text_only target with
-             | None ->
-               User_error.raise
-                 ~loc
-                 [ Pp.text "Variables are not allowed in directory targets." ]
-             | Some target ->
-               let dir_target = Path.Build.relative ~error_loc:loc dir target in
-               if Path.Build.is_descendant dir_target ~of_:dir
-               then
-                 (* We ignore duplicates here as duplicates are detected and
-                    reported by [Load_rules]. *)
-                 Path.Build.Map.set acc dir_target rule_loc
-               else
-                 (* This will be checked when we interpret the stanza
-                    completely, so just ignore this rule for now. *)
-                 acc))
+    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
+      List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
+        let loc = String_with_vars.loc target in
+        match (kind : Targets_spec.Kind.t) with
+        | File -> acc
+        | Directory ->
+          (match String_with_vars.text_only target with
+           | None ->
+             User_error.raise
+               ~loc
+               [ Pp.text "Variables are not allowed in directory targets." ]
+           | Some target ->
+             let dir_target = Path.Build.relative ~error_loc:loc dir target in
+             if Path.Build.is_descendant dir_target ~of_:dir
+             then
+               (* We ignore duplicates here as duplicates are detected and
+                  reported by [Load_rules]. *)
+               Path.Build.Map.set acc dir_target rule_loc
+             else
+               (* This will be checked when we interpret the stanza
+                  completely, so just ignore this rule for now. *)
+               acc))
+      |> Memo.return
     | Coq_stanza.Theory.T m ->
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)
@@ -261,15 +257,15 @@ end = struct
   ;;
 end
 
-let directory_targets t ~dir ~expander =
+let directory_targets t ~dir =
   match t with
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) ->
-    Dune_file.stanzas dune_file >>= extract_directory_targets ~dir ~expander
+    Dune_file.stanzas dune_file >>= extract_directory_targets ~dir
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
-      extract_directory_targets ~dir ~expander stanzas >>| Path.Build.Map.superpose acc
+      extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
     in
     let* init =
       let* stanzas = Dune_file.stanzas dune_file in

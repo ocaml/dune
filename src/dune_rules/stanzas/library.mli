@@ -1,6 +1,6 @@
 open Import
 
-type visibility = Lib_id.visibility =
+type visibility =
   | Public of Public_lib.t
   | Private of Package.t option
 

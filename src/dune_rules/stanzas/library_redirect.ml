@@ -10,7 +10,6 @@ type 'old_name t =
 module Local = struct
   type info =
     { lib_name : Loc.t * Lib_name.Local.t
-    ; visibility : Lib_id.visibility
     ; enabled : Blang.t
     }
 
@@ -25,9 +24,8 @@ module Local = struct
   let for_lib (lib : Library.t) ~new_public_name ~loc : t =
     let old_name =
       let lib_name = lib.name
-      and enabled = lib.enabled_if
-      and visibility = lib.visibility in
-      { lib_name; enabled; visibility }
+      and enabled = lib.enabled_if in
+      { lib_name; enabled }
     in
     { loc; new_public_name; old_name; project = lib.project }
   ;;
@@ -58,13 +56,7 @@ module Local = struct
 
   let to_lib_id ~src_dir t =
     let loc = t.loc
-    and enabled_if = t.old_name.enabled
-    and visibility = t.old_name.visibility in
-    Lib_id.Local.make
-      ~loc
-      ~src_dir
-      ~enabled_if
-      ~visibility
-      (Lib_name.of_local t.old_name.lib_name)
+    and enabled_if = t.old_name.enabled in
+    Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.old_name.lib_name)
   ;;
 end

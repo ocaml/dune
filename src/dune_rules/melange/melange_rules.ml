@@ -50,7 +50,7 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
          preprocess
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let pped_map = Staged.unstage (Preprocessing.pped_modules_map preprocess version) in
+  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
 

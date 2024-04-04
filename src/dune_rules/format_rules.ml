@@ -107,7 +107,7 @@ let gen_rules_output
      in
      let open Action_builder.With_targets.O in
      Action_builder.with_no_targets extra_deps
-     >>> Preprocessing.action_for_pp_with_target
+     >>> Pp_spec_rules.action_for_pp_with_target
            ~sandbox:Sandbox_config.default
            ~loc
            ~expander

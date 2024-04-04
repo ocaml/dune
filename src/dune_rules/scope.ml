@@ -76,7 +76,7 @@ module DB = struct
   let create_db_from_stanzas =
     (* Here, [parent] is always the public_libs DB. Check the call to
        [create_db_from_stanzas] below. *)
-    let resolve_found_or_redirect ~parent fr =
+    let resolve_found_or_redirect ~public_libs fr =
       match (fr : Found_or_redirect.t) with
       | Redirect { loc; to_; enabled; _ } ->
         let+ enabled =
@@ -88,14 +88,14 @@ module DB = struct
         else Lib.DB.Resolve_result.not_found
       | Found lib -> Memo.return (Lib.DB.Resolve_result.found lib)
       | Deprecated_library_name lib ->
-        Memo.return (Lib.DB.Resolve_result.redirect_by_name parent lib)
+        Memo.return (Lib.DB.Resolve_result.redirect_by_name public_libs lib)
     in
-    let resolve_lib_id ~parent lib_id_map lib_id =
+    let resolve_lib_id ~public_libs lib_id_map lib_id =
       match Lib_id.Map.find lib_id_map lib_id with
       | None -> Memo.return Lib.DB.Resolve_result.not_found
-      | Some found_or_redirect -> resolve_found_or_redirect ~parent found_or_redirect
+      | Some found_or_redirect -> resolve_found_or_redirect ~public_libs found_or_redirect
     in
-    fun ~instrument_with ~parent ~lib_config stanzas ->
+    fun ~instrument_with ~public_libs ~lib_config stanzas ->
       let by_name, by_id, _ =
         List.fold_left
           stanzas
@@ -189,12 +189,12 @@ module DB = struct
       let resolve name =
         match Lib_name.Map.find by_name name with
         | None | Some [] -> Memo.return []
-        | Some [ fr ] -> resolve_found_or_redirect ~parent fr >>| List.singleton
-        | Some frs -> Memo.parallel_map frs ~f:(resolve_found_or_redirect ~parent)
-      and resolve_lib_id = resolve_lib_id ~parent by_id in
+        | Some [ fr ] -> resolve_found_or_redirect ~public_libs fr >>| List.singleton
+        | Some frs -> Memo.parallel_map frs ~f:(resolve_found_or_redirect ~public_libs)
+      and resolve_lib_id = resolve_lib_id ~public_libs by_id in
       Lib.DB.create
         ()
-        ~parent:(Some parent)
+        ~parent:(Some public_libs)
         ~resolve
         ~resolve_lib_id
         ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
@@ -340,7 +340,7 @@ module DB = struct
           Some (project, stanzas))
       |> Path.Source.Map.map ~f:(fun (project, stanzas) ->
         let db =
-          create_db_from_stanzas stanzas ~instrument_with ~parent:public_libs ~lib_config
+          create_db_from_stanzas stanzas ~instrument_with ~public_libs ~lib_config
         in
         project, db)
     in

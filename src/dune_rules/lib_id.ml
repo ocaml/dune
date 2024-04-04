@@ -6,7 +6,6 @@ module Local = struct
       { name : Lib_name.t
       ; loc : Loc.t
       ; src_dir : Path.Source.t
-      ; enabled_if : Blang.t
       }
 
     let compare a b =
@@ -18,13 +17,12 @@ module Local = struct
       | x -> x
     ;;
 
-    let to_dyn { name; loc; enabled_if; src_dir; _ } =
+    let to_dyn { name; loc; src_dir; _ } =
       let open Dyn in
       record
         [ "name", Lib_name.to_dyn name
         ; "loc", Loc.to_dyn_hum loc
         ; "src_dir", Path.Source.to_dyn src_dir
-        ; "enabled_if", Blang.to_dyn enabled_if
         ]
     ;;
 
@@ -34,7 +32,7 @@ module Local = struct
   include T
   include Comparable.Make (T)
 
-  let make ~loc ~src_dir ~enabled_if name = { name; loc; enabled_if; src_dir }
+  let make ~loc ~src_dir name = { name; loc; src_dir }
   let loc t = t.loc
 end
 

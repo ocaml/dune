@@ -404,9 +404,8 @@ let main_module_name t : Lib_info.Main_module_name.t =
 ;;
 
 let to_lib_id ~src_dir t =
-  let loc, _ = t.name
-  and enabled_if = t.enabled_if in
-  Lib_id.Local.make ~loc ~src_dir ~enabled_if (Lib_name.of_local t.name)
+  let loc, _ = t.name in
+  Lib_id.Local.make ~loc ~src_dir (Lib_name.of_local t.name)
 ;;
 
 let to_lib_info

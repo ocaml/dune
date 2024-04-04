@@ -19,7 +19,7 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  File "dune", line 4, characters 0-44:
+  File "dune", lines 4-6, characters 0-44:
   4 | (library
   5 |  (name foo)
   6 |  (public_name baz.foo))
@@ -45,7 +45,7 @@ With some consumer
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 0-44:
+  File "dune", lines 4-6, characters 0-44:
   4 | (library
   5 |  (name foo)
   6 |  (public_name baz.foo))

@@ -19,7 +19,7 @@ directories that are a target of a rule.
   > EOF
 
   $ dune build ./bar
-  File "dune", line 1, characters 0-77:
+  File "dune", lines 1-4, characters 0-77:
   1 | (rule
   2 |  (deps foo)
   3 |  (target bar)

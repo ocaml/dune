@@ -66,7 +66,7 @@ Now we make sure that failed rules re-run when the location changes:
   > EOF
 
   $ dune build @foo
-  File "dune", line 1, characters 0-61:
+  File "dune", lines 1-3, characters 0-61:
   1 | (rule
   2 |  (alias foo)
   3 |  (action (system "echo failing; exit 1")))
@@ -78,7 +78,7 @@ Now we make sure that failed rules re-run when the location changes:
 This should re-run the action
 
   $ dune build @foo
-  File "dune", line 2, characters 0-61:
+  File "dune", lines 2-4, characters 0-61:
   2 | (rule
   3 |  (alias foo)
   4 |  (action (system "echo failing; exit 1")))

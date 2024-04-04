@@ -60,7 +60,7 @@ Test the argument syntax
   --impl
   test_ppx_args.ml
   --as-ppx
-  File "dune", line 100, characters 2-136:
+  File "dune", lines 100-101, characters 2-136:
   100 |   (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
   101 |    -foo bar %{env:ENGLAND=undefined})))
   Error: Rule failed to generate the following targets:

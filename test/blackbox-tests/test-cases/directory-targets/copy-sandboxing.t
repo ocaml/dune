@@ -108,7 +108,7 @@ Now we demonstrate that symlinks aren't supported:
   test
 
   $ runtest "mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar"
-  File "sub/dune", line 1, characters 0-151:
+  File "sub/dune", lines 1-3, characters 0-151:
   1 | (rule
   2 |  (target (dir targetdir))
   3 |  (action (system "mkdir targetdir && cd targetdir && mkdir bar && touch bar/somefileinbar && ln -s bar symlinktobar")))
@@ -119,7 +119,7 @@ Now we demonstrate that symlinks aren't supported:
 Now we try a broken symlink:
 
   $ runtest "ln -s foo bar"
-  File "sub/dune", line 1, characters 0-102:
+  File "sub/dune", lines 1-3, characters 0-102:
   1 | (rule
   2 |  (target (dir targetdir))
   3 |  (action (system "mkdir targetdir && cd targetdir && ln -s foo bar")))

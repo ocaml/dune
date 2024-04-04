@@ -12,7 +12,7 @@ Test that includes vlib and implementations all in the same folder.
   >  (virtual_modules empty))
   > EOF
   $ dune build
-  File "dune", line 1, characters 0-45:
+  File "dune", lines 1-3, characters 0-45:
   1 | (library
   2 |  (name impl_one)
   3 |  (implements vlib))

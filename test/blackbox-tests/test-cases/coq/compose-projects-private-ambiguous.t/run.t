@@ -29,7 +29,7 @@ which complains.
   File "./C/c.v", line 2, characters 0-24:
   Error: Cannot find a physical path bound to logical path a with prefix A.
   
-  File "C/A_vendored/dune", line 1, characters 0-36:
+  File "C/A_vendored/dune", lines 1-3, characters 0-36:
   1 | (coq.theory
   2 |  (name A)
   3 |  (theories C))
@@ -53,7 +53,7 @@ which complains.
   3.8 and will be removed in an upcoming Dune version.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang_lt_08 disabled))
-  File "C/A_vendored/dune", line 1, characters 0-36:
+  File "C/A_vendored/dune", lines 1-3, characters 0-36:
   1 | (coq.theory
   2 |  (name A)
   3 |  (theories C))

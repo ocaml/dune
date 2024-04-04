@@ -31,7 +31,7 @@ Fails with an informative error message if we parsed OSL for modes
 in a version of dune lang that does not support them
 
   $ dune build hello.exe
-  File "lib/dune", line 1, characters 0-51:
+  File "lib/dune", lines 1-3, characters 0-51:
   1 | (library
   2 |  (modes :standard \ native)
   3 |  (name mylib))

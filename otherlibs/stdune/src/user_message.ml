@@ -215,15 +215,15 @@ let pp { loc; paragraphs; hints; annots = _ } =
       let stop = Loc0.stop loc in
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
+      let lnum =
+        if start.pos_lnum = stop.pos_lnum
+        then Printf.sprintf "line %d" start.pos_lnum
+        else Printf.sprintf "lines %d-%d" start.pos_lnum stop.pos_lnum
+      in
       Pp.box
         (Pp.tag
            Style.Loc
-           (Pp.textf
-              "File %S, line %d, characters %d-%d:"
-              start.pos_fname
-              start.pos_lnum
-              start_c
-              stop_c))
+           (Pp.textf "File %S, %s, characters %d-%d:" start.pos_fname lnum start_c stop_c))
       :: paragraphs
   in
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))

@@ -77,7 +77,7 @@ not allowed
   > EOF
 
   $ dune build @a
-  File "dune", line 1, characters 0-60:
+  File "dune", lines 1-4, characters 0-60:
   1 | (rule
   2 |  (alias a)
   3 |  (aliases b)
@@ -94,7 +94,7 @@ Even if the aliases list is empty
   > EOF
 
   $ dune build @a
-  File "dune", line 1, characters 0-58:
+  File "dune", lines 1-4, characters 0-58:
   1 | (rule
   2 |  (alias a)
   3 |  (aliases)

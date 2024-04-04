@@ -68,7 +68,7 @@ Test depending on non-existing paths
   > EOF
 
   $ dune build @non-existing-mel
-  File "another/dune", line 1, characters 0-177:
+  File "another/dune", lines 1-7, characters 0-177:
   1 | (melange.emit
   2 |  (alias non-existing-mel)
   3 |  (target another-output)

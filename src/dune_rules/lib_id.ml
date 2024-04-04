@@ -18,7 +18,7 @@ module Local = struct
       | x -> x
     ;;
 
-    let to_dyn { name; loc; enabled_if; src_dir } =
+    let to_dyn { name; loc; enabled_if; src_dir; _ } =
       let open Dyn in
       record
         [ "name", Lib_name.to_dyn name

@@ -44,7 +44,7 @@
   This is not possible.
   -------------------------
   impl: false. modules_without_implementation: false. virtual_modules: false. private_modules: true
-  File "dune", line 1, characters 0-42:
+  File "dune", lines 1-3, characters 0-42:
   1 | (library
   2 |  (name foo)
   3 |  (private_modules m))
@@ -94,7 +94,7 @@
   impl: false. modules_without_implementation: false. virtual_modules: true. private_modules: false
   -------------------------
   impl: false. modules_without_implementation: false. virtual_modules: false. private_modules: false
-  File "dune", line 1, characters 0-21:
+  File "dune", lines 1-2, characters 0-21:
   1 | (library
   2 |  (name foo))
   Error: Some modules don't have an implementation.

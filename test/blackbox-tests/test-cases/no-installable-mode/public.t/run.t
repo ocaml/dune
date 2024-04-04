@@ -2,7 +2,7 @@ When a public executable is built in shared_object mode, a specific error
 message is displayed:
 
   $ dune build --display=short
-  File "dune", line 1, characters 0-70:
+  File "dune", lines 1-4, characters 0-70:
   1 | (executable
   2 |  (name mylib)
   3 |  (public_name mylib)

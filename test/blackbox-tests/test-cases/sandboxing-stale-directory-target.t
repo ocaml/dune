@@ -12,7 +12,7 @@ A faulty test escapes the sandbox by creating its target outside the sandbox
   > EOF
 
   $ dune build foo/ --sandbox=copy 2>&1 | sed -E 's/characters [0-9]+-[0-9]+/characters <REDACTED>/'
-  File "dune", line 1, characters <REDACTED>:
+  File "dune", lines 1-3, characters <REDACTED>:
   1 | (rule
   2 |  (target (dir foo))
   3 |  (action (system "mkdir $TESTCASE_ROOT/_build/default/foo && mkdir foo")))

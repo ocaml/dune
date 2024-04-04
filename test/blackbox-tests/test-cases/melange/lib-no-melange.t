@@ -43,7 +43,7 @@ Building the native executable does not fail
 But building melange does
 
   $ dune build @melange
-  File "lib/dune", line 1, characters 0-21:
+  File "lib/dune", lines 1-2, characters 0-21:
   1 | (library
   2 |  (name foo))
   Error: The library `foo` was added as a dependency of a `melange.emit`
@@ -76,7 +76,7 @@ Check the transitive case
   > EOF
 
   $ dune build @melange
-  File "lib2/dune", line 1, characters 0-21:
+  File "lib2/dune", lines 1-2, characters 0-21:
   1 | (library
   2 |  (name bar))
   Error: The library `bar` was added as a dependency of a `melange.emit`

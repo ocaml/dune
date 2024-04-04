@@ -41,7 +41,7 @@ This test is currently broken due to the workspace resolution being faulty #5899
   is assumed but the project might break when dune is upgraded. Please create a
   dune-project file.
   Hint: generate the project file with: $ dune init project <name>
-  File "dune", line 1, characters 0-24:
+  File "dune", lines 1-2, characters 0-24:
   1 | (coq.theory
   2 |  (name foo))
   Error: 'coq.theory' is available only when coq is enabled in the dune-project

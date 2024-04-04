@@ -5,7 +5,7 @@ directory targets. Notice how the tex one fails before html one.
   3.8 and will be removed in an upcoming Dune version.
   Hint: To disable this warning, add the following to your dune-project file:
   (warnings (deprecated_coq_lang_lt_08 disabled))
-  File "dune", line 9, characters 0-116:
+  File "dune", lines 9-15, characters 0-116:
    9 | (rule
   10 |  (targets
   11 |   (dir base.tex))

@@ -27,7 +27,7 @@ impossible.
   $ touch x
 
   $ build
-  File "dune", line 1, characters 0-122:
+  File "dune", lines 1-7, characters 0-122:
   1 | (rule
   2 |  (action
   3 |   (progn

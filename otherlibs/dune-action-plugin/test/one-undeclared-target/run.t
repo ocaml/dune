@@ -12,7 +12,7 @@
   $ cp ./bin/foo.exe ./
 
   $ dune runtest
-  File "dune", line 1, characters 0-57:
+  File "dune", lines 1-3, characters 0-57:
   1 | (rule
   2 |  (alias runtest)
   3 |  (action (dynamic-run ./foo.exe)))

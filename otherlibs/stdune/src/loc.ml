@@ -120,14 +120,19 @@ let pp loc =
   let stop = stop loc in
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
+  let lnum =
+    if start.pos_lnum = stop.pos_lnum
+    then Printf.sprintf "line %d" start.pos_lnum
+    else Printf.sprintf "lines %d-%d" start.pos_lnum stop.pos_lnum
+  in
   let open Pp.O in
   Pp.tag
     Loc
     (Pp.verbatim
        (Printf.sprintf
-          "File \"%s\", line %d, characters %d-%d:"
+          "File \"%s\", %s, characters %d-%d:"
           start.pos_fname
-          start.pos_lnum
+          lnum
           start_c
           stop_c))
   ++ Pp.newline

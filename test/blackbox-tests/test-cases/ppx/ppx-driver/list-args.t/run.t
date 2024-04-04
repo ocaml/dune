@@ -23,7 +23,7 @@ Test the argument syntax with list expansion allowed (dune > 3.2)
   --impl
   test_ppx_args.ml
   --as-ppx
-  File "dune", line 23, characters 3-161:
+  File "dune", lines 23-24, characters 3-161:
   23 |    (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
   24 |     -foo bar %{env:ENGLAND=undefined} %{read-lines:ppx-args})))
   Error: Rule failed to generate the following targets:

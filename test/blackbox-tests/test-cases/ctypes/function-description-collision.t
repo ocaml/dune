@@ -38,7 +38,7 @@ crash.
   > EOF
 
   $ dune build
-  File "dune", line 12, characters 2-56:
+  File "dune", lines 12-14, characters 2-56:
   12 |   (function_description
   13 |    (functor F)
   14 |    (instance FI))

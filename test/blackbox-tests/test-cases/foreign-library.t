@@ -16,7 +16,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 1, characters 0-44:
+  File "lib/dune", lines 1-3, characters 0-44:
   1 | (foreign_library
   2 |  (language c)
   3 |  (names add))
@@ -31,7 +31,7 @@ Testsuite for the (foreign_library ...) stanza.
   $ echo "(lang dune 2.0)" > dune-project
 
   $ dune build
-  File "lib/dune", line 1, characters 0-44:
+  File "lib/dune", lines 1-3, characters 0-44:
   1 | (foreign_library
   2 |  (language c)
   3 |  (names add))
@@ -413,7 +413,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 0-105:
+  File "dune", lines 1-6, characters 0-105:
   1 | (executable
   2 |  (name main)
   3 |  (modes exe byte)
@@ -944,7 +944,7 @@ Testsuite for the (foreign_library ...) stanza.
   Leaving directory 'enabled_if'
   $ ENABLE=0 dune build --root enabled_if
   Entering directory 'enabled_if'
-  File "dune", line 6, characters 0-45:
+  File "dune", lines 6-8, characters 0-45:
   6 | (library
   7 |  (name lib)
   8 |  (foreign_archives lib))

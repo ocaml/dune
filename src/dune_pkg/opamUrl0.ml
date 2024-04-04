@@ -44,7 +44,7 @@ let local_or_git_only url loc =
 
 include Comparable.Make (T)
 
-let remote t rev_store = Rev_store.remote rev_store ~url:(OpamUrl.base_url t)
+let remote t ~loc rev_store = Rev_store.remote rev_store ~url:(loc, OpamUrl.base_url t)
 
 type resolve =
   | Resolved of Rev_store.Object.resolved
@@ -61,9 +61,9 @@ let not_found t =
        ])
 ;;
 
-let resolve t rev_store =
+let resolve t ~loc rev_store =
   let open Fiber.O in
-  let remote = remote t rev_store in
+  let remote = remote t ~loc rev_store in
   match
     match rev t with
     | None -> `Default_branch
@@ -91,8 +91,8 @@ let resolve t rev_store =
      | Some o -> Ok (Resolved o))
 ;;
 
-let fetch_revision t resolve rev_store =
-  let remote = remote t rev_store in
+let fetch_revision t ~loc resolve rev_store =
+  let remote = remote t ~loc rev_store in
   let open Fiber.O in
   match resolve with
   | Resolved o -> Rev_store.fetch_resolved rev_store remote o >>| Result.ok

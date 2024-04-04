@@ -149,6 +149,32 @@ let git_code_error ~dir ~args ~exit_code ~output =
     ]
 ;;
 
+module Git_error = struct
+  type t =
+    { dir : Path.t
+    ; args : string list
+    ; exit_code : int
+    ; output : string list
+    }
+
+  let raise_code_error { dir; args; exit_code; output } =
+    let git = Lazy.force Vcs.git in
+    Code_error.raise
+      "git returned non-zero exit code"
+      [ "exit code", Dyn.int exit_code
+      ; "dir", Path.to_dyn dir
+      ; "git", Path.to_dyn git
+      ; "args", Dyn.list Dyn.string args
+      ; "output", Dyn.list Dyn.string output
+      ]
+  ;;
+
+  let result_get_or_code_error = function
+    | Ok x -> x
+    | Error t -> raise_code_error t
+  ;;
+end
+
 let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
   let stderr_to = make_stderr () in
@@ -157,12 +183,13 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
     Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
   in
   if allow_codes exit_code
-  then exit_code
-  else git_code_error ~dir ~args ~exit_code ~output:[]
+  then Ok exit_code
+  else Error { Git_error.dir; args; exit_code; output = [] }
 ;;
 
 let run t ~display args =
-  run_with_exit_code t ~allow_codes:(Int.equal 0) ~display args >>| ignore
+  run_with_exit_code t ~allow_codes:(Int.equal 0) ~display args
+  >>| Result.map ~f:(ignore : int -> unit)
 ;;
 
 let run_capture_lines { dir; _ } ~display args =
@@ -170,7 +197,7 @@ let run_capture_lines { dir; _ } ~display args =
   let+ output, exit_code =
     Process.run_capture_lines ~dir ~display ~env failure_mode git args
   in
-  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
+  if exit_code = 0 then Ok output else Error { Git_error.dir; args; exit_code; output }
 ;;
 
 let run_capture_zero_separated_lines { dir; _ } args =
@@ -178,7 +205,7 @@ let run_capture_zero_separated_lines { dir; _ } args =
   let+ output, exit_code =
     Process.run_capture_zero_separated ~dir ~display:Quiet ~env failure_mode git args
   in
-  if exit_code = 0 then output else git_code_error ~dir ~args ~exit_code ~output
+  if exit_code = 0 then Ok output else Error { Git_error.dir; args; exit_code; output }
 ;;
 
 let cat_file { dir; _ } command =
@@ -297,7 +324,11 @@ let load_or_create ~dir =
     with_flock lock ~f:(fun () ->
       match Fpath.mkdir_p (Path.to_string dir) with
       | Already_exists -> Fiber.return ()
-      | Created -> run t ~display:Quiet [ "init"; "--bare" ]
+      | Created ->
+        run t ~display:Quiet [ "init"; "--bare" ]
+        >>| (function
+         | Ok () -> ()
+         | Error git_error -> Git_error.raise_code_error git_error)
       | exception Unix.Unix_error (e, x, y) ->
         User_error.raise
           [ Pp.textf "%s isn't a directory" (Path.to_string_maybe_quoted dir)
@@ -457,10 +488,11 @@ let fetch_allow_failure repo ~url obj =
         ~display:!Dune_engine.Clflags.display
         [ "fetch"; "--no-write-fetch-head"; url; Object.to_string obj ]
       >>| (function
-       | 128 -> `Not_found
-       | 0 ->
+       | Ok 128 -> `Not_found
+       | Ok 0 ->
          Table.set repo.present_objects obj ();
          `Fetched
+       | Error git_error -> Git_error.raise_code_error git_error
        | _ -> assert false))
 ;;
 
@@ -521,6 +553,7 @@ module At_rev = struct
     let config repo (Object.Sha1 rev) path : t Fiber.t =
       [ "config"; "--list"; "--blob"; sprintf "%s:%s" rev (Path.Local.to_string path) ]
       |> run_capture_lines repo ~display:Quiet
+      >>| Git_error.result_get_or_code_error
       >>| List.fold_left ~init:KV.Map.empty ~f:(fun acc line ->
         match parse line with
         | None ->
@@ -577,6 +610,7 @@ module At_rev = struct
 
   let files_and_submodules repo (Object.Sha1 rev) =
     run_capture_zero_separated_lines repo [ "ls-tree"; "-z"; "--long"; "-r"; rev ]
+    >>| Git_error.result_get_or_code_error
     >>| List.fold_left
           ~init:(File.Set.empty, Commit.Set.empty)
           ~f:(fun (files, commits) line ->
@@ -724,12 +758,31 @@ let remote =
                ]
            ])
   in
-  fun t ~url ->
+  fun t ~url:(url_loc, url) ->
     let f url =
       let command = [ "ls-remote"; url ] in
       let refs =
         Fiber_lazy.create (fun () ->
-          let+ hits = run_capture_lines t ~display:!Dune_engine.Clflags.display command in
+          let+ hits =
+            run_capture_lines t ~display:!Dune_engine.Clflags.display command
+            >>| function
+            | Ok lines -> lines
+            | Error git_error ->
+              (match git_error.exit_code with
+               | 128 ->
+                 User_error.raise
+                   ~loc:url_loc
+                   ~hints:
+                     [ Pp.textf
+                         "Check that this Git URL in the project configuration is \
+                          correct: %S"
+                         url
+                     ]
+                   [ Pp.text "Failed to run external command:"
+                   ; User_message.command (sprintf "git ls-remote %S" url)
+                   ]
+               | _ -> Git_error.raise_code_error git_error)
+          in
           let default_branch, branches_and_tags =
             List.fold_left
               hits

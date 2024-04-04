@@ -46,7 +46,7 @@ module Remote : sig
   val default_branch : t -> Object.resolved option Fiber.t
 end
 
-val remote : t -> url:string -> Remote.t
+val remote : t -> url:Loc.t * string -> Remote.t
 val resolve_revision : t -> Remote.t -> revision:string -> Object.resolved option Fiber.t
 val content_of_files : t -> File.t list -> string list Fiber.t
 val load_or_create : dir:Path.t -> t Fiber.t

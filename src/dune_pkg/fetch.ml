@@ -276,11 +276,11 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
     Error (Checksum_mismatch (Checksum.of_opam_hash expected))
 ;;
 
-let fetch_git rev_store ~target (url : OpamUrl.t) =
-  OpamUrl.resolve url rev_store
+let fetch_git rev_store ~target ~url:(url_loc, url) =
+  OpamUrl.resolve url ~loc:url_loc rev_store
   >>= (function
          | Error _ as e -> Fiber.return e
-         | Ok r -> OpamUrl.fetch_revision url r rev_store)
+         | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->
@@ -288,7 +288,7 @@ let fetch_git rev_store ~target (url : OpamUrl.t) =
     Ok res
 ;;
 
-let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
+let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
@@ -315,7 +315,7 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       match url.backend with
       | `git ->
         let* rev_store = Rev_store.get in
-        fetch_git rev_store ~target url
+        fetch_git rev_store ~target ~url:(url_loc, url)
       | `http -> fetch_curl ~unpack ~checksum ~target url
       | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;

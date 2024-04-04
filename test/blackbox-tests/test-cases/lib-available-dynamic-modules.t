@@ -5,39 +5,37 @@ generates them dynamically in the same directory
   > (lang dune 3.13)
   > EOF
 
-  $ cat > dune << EOF
-  > (rule
-  >  (with-stdout-to foo (echo "m_%{lib-available:bar}")))
-  > (library
-  >  (name foo)
-  >  (modules %{read:foo}))
-  > EOF
-
-  $ cat > foo.ml << EOF
-  > let x = "hello"
-  > EOF
-
-  $ dune build
-  Error: Dependency cycle between:
-     (modules) field at dune:3
-  -> %{read:foo} at dune:5
-  -> (modules) field at dune:3
-  [1]
-
-Rule in another dir
-
   $ mkdir gen
   $ cat > gen/dune << EOF
+  > (executable
+  >  (name gen)
+  >  (libraries y))
   > (rule
-  >  (with-stdout-to foo (echo "m_%{lib-available:bar}")))
+  >  (with-stdout-to dyn_modules (run ./gen.exe)))
   > EOF
-  $ touch m_false.ml
-
+  $ cat > gen/gen.ml <<EOF
+  > let () =
+  >   Format.eprintf "generating. %s from 'y'" Y.x;
+  >   Format.printf "foo"
+  > EOF
+  $ touch foo.ml
   $ cat > dune << EOF
   > (library
-  >  (name foo)
-  >  (modules %{read:gen/foo}))
+  >  (name x)
+  >  (modules %{read:gen/dyn_modules}))
+  > (library
+  >  (name y)
+  >  (modules y))
   > EOF
-  $ dune build
-
-
+  $ cat > y.ml <<EOF
+  > let x = "hello"
+  > EOF
+  $ dune build ./gen/dyn_modules
+  Error: Dependency cycle between:
+     _build/default/gen/dyn_modules
+  -> %{read:gen/dyn_modules} at dune:3
+  -> (modules) field at dune:1
+  -> _build/default/gen/.merlin-conf/exe-gen
+  -> _build/default/gen/gen.exe
+  -> _build/default/gen/dyn_modules
+  [1]

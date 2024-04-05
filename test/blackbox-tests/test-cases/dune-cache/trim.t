@@ -141,17 +141,15 @@ sizes might vary on different platforms
 The cache deletes oldest files first.
 
   $ reset
-  $ dune build target_a target_b
-
-The [rm] commands below update the [ctime] of the corresponding cache entries.
-By deleting [target_b] first, we make its [ctime] older. The trimmer deletes
-older entries first, which is why [target_b] is trimmed while [target_a] is not.
-We know that [target_b] was trimmed, because it had to be rebuilt as indicated
-by the existence of [beacon_b].
-
-  $ rm -f _build/default/beacon_b _build/default/target_b
+  $ dune build target_b
   $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm -f _build/default/beacon_a _build/default/target_a
+  $ dune build target_a
+
+The trimmer deletes older entries first, which is why [target_b] is trimmed
+while [target_a] is not. We know that [target_b] was trimmed, because it had to
+be rebuilt as indicated by the existence of [beacon_b].
+
+  $ rm -f _build/default/{target_a,target_b,beacon_a,beacon_b}
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
   $ dune build target_a target_b

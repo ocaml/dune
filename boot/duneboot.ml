@@ -1152,10 +1152,9 @@ let rec rm_rf fn =
 
 and clear dir = List.iter (readdir dir) ~f:rm_rf
 
-let get_flags ocaml_system flags =
-  match List.assoc_opt ocaml_system flags with
-  | None -> []
-  | Some flags -> flags
+let rec get_flags system = function
+  | (set, f) :: r -> if List.mem system ~set then f else get_flags system r
+  | [] -> []
 ;;
 
 (** {2 Bootstrap process} *)

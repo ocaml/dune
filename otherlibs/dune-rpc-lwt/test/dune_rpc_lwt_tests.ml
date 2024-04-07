@@ -6,8 +6,6 @@ open Lwt.Syntax
 open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
-external realpath : string -> string = "dune_realpath"
-
 let _XDG_STATE_HOME = "XDG_STATE_HOME"
 let xdg_state_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune"
 let () = Unix.putenv _XDG_STATE_HOME (Stdune.Path.to_absolute_filename xdg_state_dir)
@@ -34,7 +32,7 @@ let connect ~root_dir =
         (* this hackery is needed because the temp dir we wrote the socket to is
            symlinked on a mac *)
         let addr =
-          match realpath addr with
+          match Unix.realpath addr with
           | s -> s
           | exception Unix.Unix_error _ -> addr
         in

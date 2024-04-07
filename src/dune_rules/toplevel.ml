@@ -78,7 +78,7 @@ let pp_flags t =
   | Pps { loc; pps; flags; staged = _ } ->
     let+ exe, flags =
       let ctx = Compilation_context.context t.cctx in
-      Preprocessing.get_ppx_driver
+      Ppx_driver.get_ppx_driver
         ctx
         ~loc
         ~expander:t.expander
@@ -188,7 +188,7 @@ module Stanza = struct
     in
     let* preprocessing =
       let preprocess = Module_name.Per_item.for_all toplevel.pps in
-      Preprocessing.make
+      Pp_spec_rules.make
         sctx
         ~dir
         ~expander

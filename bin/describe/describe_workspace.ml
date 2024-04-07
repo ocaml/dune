@@ -396,7 +396,7 @@ module Crawl = struct
         ocaml.version
       in
       Staged.unstage
-      @@ Preprocessing.pped_modules_map
+      @@ Pp_spec.pped_modules_map
            (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
            version
     in
@@ -460,7 +460,7 @@ module Crawl = struct
               ocaml.version
             in
             Staged.unstage
-            @@ Preprocessing.pped_modules_map
+            @@ Pp_spec.pped_modules_map
                  (Preprocess.Per_module.without_instrumentation
                     (Lib_info.preprocess info))
                  version

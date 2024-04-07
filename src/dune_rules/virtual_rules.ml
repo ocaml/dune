@@ -112,7 +112,7 @@ let impl sctx ~(lib : Library.t) ~scope =
                       (Lib.DB.instrumentation_backend (Scope.libs scope)))
              in
              let pp_spec =
-               Staged.unstage (Preprocessing.pped_modules_map preprocess ocaml.version)
+               Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
              in
              Dir_contents.ocaml dir_contents
              >>| Ml_sources.modules

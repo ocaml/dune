@@ -85,23 +85,20 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
     ]
 ;;
 
-let extract_directory_targets ~dir ~expander stanzas =
+let extract_directory_targets ~dir stanzas =
   Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
     match Stanza.repr stanza with
     | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; enabled_if; _ }
       ->
-      let+ available =
-        match enabled_if with
-        | Blang.Const const -> Memo.return const
-        | _ ->
-          (* Only evaluate the expander if the enabled_if field is
-             non-trivial to avoid memo cycles. If the enabled_if field is
-             absent from the "rule" stanza then its value will be [Const
-             true]. *)
-          let* expander = expander in
-          Expander0.eval_blang expander enabled_if
-      in
-      (match available with
+      (match enabled_if with
+       | Blang.Const const -> Memo.return const
+       | _ ->
+         (* Only evaluate the expander if the enabled_if field is
+            non-trivial to avoid memo cycles. If the enabled_if field is absent
+            from the "rule" stanza then its value will be [Const true]. *)
+         let* expander = Expander0.get ~dir in
+         Expander0.eval_blang expander enabled_if)
+      >>| (function
        | false -> acc
        | true ->
          List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
@@ -271,15 +268,15 @@ end = struct
   ;;
 end
 
-let directory_targets t ~dir ~expander =
+let directory_targets t ~dir =
   match t with
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) ->
-    Dune_file.stanzas dune_file >>= extract_directory_targets ~dir ~expander
+    Dune_file.stanzas dune_file >>= extract_directory_targets ~dir
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
-      extract_directory_targets ~dir ~expander stanzas >>| Path.Build.Map.superpose acc
+      extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
     in
     let* init =
       let* stanzas = Dune_file.stanzas dune_file in

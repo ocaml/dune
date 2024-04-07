@@ -88,29 +88,40 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
 let extract_directory_targets ~dir stanzas =
   Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
     match Stanza.repr stanza with
-    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
-      List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-        let loc = String_with_vars.loc target in
-        match (kind : Targets_spec.Kind.t) with
-        | File -> acc
-        | Directory ->
-          (match String_with_vars.text_only target with
-           | None ->
-             User_error.raise
-               ~loc
-               [ Pp.text "Variables are not allowed in directory targets." ]
-           | Some target ->
-             let dir_target = Path.Build.relative ~error_loc:loc dir target in
-             if Path.Build.is_descendant dir_target ~of_:dir
-             then
-               (* We ignore duplicates here as duplicates are detected and
-                  reported by [Load_rules]. *)
-               Path.Build.Map.set acc dir_target rule_loc
-             else
-               (* This will be checked when we interpret the stanza
-                  completely, so just ignore this rule for now. *)
-               acc))
-      |> Memo.return
+    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; enabled_if; _ }
+      ->
+      (match enabled_if with
+       | Blang.Const const -> Memo.return const
+       | _ ->
+         (* Only evaluate the expander if the enabled_if field is
+            non-trivial to avoid memo cycles. If the enabled_if field is absent
+            from the "rule" stanza then its value will be [Const true]. *)
+         let* expander = Expander0.get ~dir in
+         Expander0.eval_blang expander enabled_if)
+      >>| (function
+       | false -> acc
+       | true ->
+         List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
+           let loc = String_with_vars.loc target in
+           match (kind : Targets_spec.Kind.t) with
+           | File -> acc
+           | Directory ->
+             (match String_with_vars.text_only target with
+              | None ->
+                User_error.raise
+                  ~loc
+                  [ Pp.text "Variables are not allowed in directory targets." ]
+              | Some target ->
+                let dir_target = Path.Build.relative ~error_loc:loc dir target in
+                if Path.Build.is_descendant dir_target ~of_:dir
+                then
+                  (* We ignore duplicates here as duplicates are detected and
+                     reported by [Load_rules]. *)
+                  Path.Build.Map.set acc dir_target rule_loc
+                else
+                  (* This will be checked when we interpret the stanza
+                     completely, so just ignore this rule for now. *)
+                  acc)))
     | Coq_stanza.Theory.T m ->
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)

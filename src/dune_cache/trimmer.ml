@@ -104,7 +104,10 @@ let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
   let files =
     List.sort
-      ~compare:(fun (_, _, ctime1) (_, _, ctime2) -> Float.compare ctime1 ctime2)
+      ~compare:(fun (p1, _, ctime1) (p2, _, ctime2) ->
+        let ord = Float.compare ctime1 ctime2 in
+        Printf.printf "%s ctime %f %s %s ctime %f\n" (Path.to_string p1) ctime1 (Ordering.to_string ord) (Path.to_string p2) ctime2;
+        ord)
       (List.filter_map files ~f:(fun path ->
          match Path.stat path with
          | Ok stats ->
@@ -113,6 +116,7 @@ let trim ~goal =
            else None
          | Error _ -> None))
   in
+  List.iter ~f:(fun (p, s, c) -> Printf.printf "Qualifiying file: %s size: %d ctime: %f\n" (Path.to_string p) s c) files;
   let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
     if trimmed_so_far.trimmed_bytes >= goal
     then trimmed_so_far

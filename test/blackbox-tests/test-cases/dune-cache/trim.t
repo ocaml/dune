@@ -149,7 +149,9 @@ The trimmer deletes older entries first, which is why [target_b] is trimmed
 while [target_a] is not. We know that [target_b] was trimmed, because it had to
 be rebuilt as indicated by the existence of [beacon_b].
 
-  $ rm -f _build/default/{target_a,target_b,beacon_a,beacon_b}
+  $ ls _build/default
+  $ rm -f _build/default/target_a _build/default/target_b _build/default/beacon_a _build/default/beacon_b
+  $ ls _build/default
   $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \;
   $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done
   $ dune cache trim --trimmed-size 1B

@@ -182,14 +182,15 @@ end = struct
       | None -> Default
       | Some ctx_name ->
         (match Context_name.of_string_opt ctx_name with
-         | None -> failwith (Printf.sprintf "Invalid context name %S" ctx_name)
+         | None -> User_error.raise [ Pp.textf "Invalid context name %S" ctx_name ]
          | Some ctx_name ->
            (match Context_name.Map.mem setup.scontexts ctx_name with
             | false ->
-              failwith
-                (Printf.sprintf
-                   "Can't find context with name %S"
-                   (Context_name.to_string ctx_name))
+              User_error.raise
+                [ Pp.textf
+                    "Can't find context with name %S"
+                    (Context_name.to_string ctx_name)
+                ]
             | true -> Custom ctx_name))
     in
     let rec main () =

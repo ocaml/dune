@@ -65,7 +65,7 @@ Request config for file in alt context without using --context
 
 Request config for file in alt context using --context
 
-  $ printf '(3:alt)(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin --context alt | dune format-dune-file | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
+  $ printf '(4:File%d:%s)' ${#FILE2} $FILE2 | dune ocaml-merlin --context alt | dune format-dune-file | grep -i "$lib2" | sed 's/^[^:]*:[^:]*://'
   $TESTCASE_ROOT/_build/alt/.bar.objs/byte)
 
 Request config for default context without using --context

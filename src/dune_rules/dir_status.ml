@@ -86,10 +86,9 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
 ;;
 
 let extract_directory_targets ~dir stanzas =
-  Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
+  Memo.parallel_map stanzas ~f:(fun stanza ->
     match Stanza.repr stanza with
-    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; enabled_if; _ }
-      ->
+    | Rule_conf.T { targets = Static { targets; _ }; loc = rule_loc; enabled_if; _ } ->
       (match enabled_if with
        | Blang.Const const -> Memo.return const
        | _ ->
@@ -99,13 +98,13 @@ let extract_directory_targets ~dir stanzas =
          let* expander = Expander0.get ~dir in
          Expander0.eval_blang expander enabled_if)
       >>| (function
-       | false -> acc
+       | false -> Path.Build.Map.empty
        | true ->
-         List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-           let loc = String_with_vars.loc target in
+         List.fold_left targets ~init:Path.Build.Map.empty ~f:(fun acc (target, kind) ->
            match (kind : Targets_spec.Kind.t) with
            | File -> acc
            | Directory ->
+             let loc = String_with_vars.loc target in
              (match String_with_vars.text_only target with
               | None ->
                 User_error.raise
@@ -126,15 +125,15 @@ let extract_directory_targets ~dir stanzas =
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)
       Coq_doc.coqdoc_directory_targets ~dir m
-      >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-        User_error.raise
-          ~loc:loc1
-          [ Pp.textf
-              "The following both define the same directory target: %s"
-              (Path.Build.to_string path)
-          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-          ])
-    | _ -> Memo.return acc)
+    | _ -> Memo.return Path.Build.Map.empty)
+  >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
+    User_error.raise
+      ~loc:loc1
+      [ Pp.textf
+          "The following both define the same directory target: %s"
+          (Path.Build.to_string path)
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ])
 ;;
 
 module rec DB : sig

@@ -1,7 +1,12 @@
 Duplicate directory targets
 
   $ dune build
-  Error: Multiple rules generated for _build/default/foo:
-  - dune:5
+  File "dune", line 1, characters 0-53:
+  1 | (rule
+  2 |  (targets (dir foo))
+  3 |  (action (run mkdir foo)))
+  Error: The following both define the same directory target:
+  _build/default/foo
   - dune:1
+  - dune:5
   [1]

@@ -102,6 +102,7 @@ let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
      starting from the one that was least recently created or used. *)
 let trim ~goal =
   let files = files_in_cache_for_all_supported_versions () |> List.map ~f:fst in
+  List.iter ~f:(fun p -> Printf.printf "%s in cache\n" (Path.to_string p)) files;
   let files =
     List.sort
       ~compare:(fun (p1, _, ctime1) (p2, _, ctime2) ->
@@ -111,6 +112,7 @@ let trim ~goal =
       (List.filter_map files ~f:(fun path ->
          match Path.stat path with
          | Ok stats ->
+           Printf.printf "%s nlink count: %d\n" (Path.to_string path) (stats.Unix.st_nlink);
            if file_exists_and_is_unused ~stats
            then Some (path, stats.st_size, stats.st_ctime)
            else None

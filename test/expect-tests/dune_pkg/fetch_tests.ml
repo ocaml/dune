@@ -44,7 +44,7 @@ let serve_once ~filename =
 let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack ~checksum ~target url in
+  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -209,7 +209,7 @@ let%expect_test "downloading, tarball with no checksum match" =
 
 let download_git rev_store url ~target =
   let open Fiber.O in
-  Fetch.fetch_git rev_store ~target url
+  Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
   >>| function
   | Error _ ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -232,4 +232,33 @@ let%expect_test "downloading via git" =
     let+ () = download_git rev_store url ~target in
     print_endline (Io.read_file entry));
   [%expect {| just some content |}]
+;;
+
+let%expect_test "attempting to download an invalid git url" =
+  let source = subdir "source" in
+  let url = OpamUrl.parse "git+file://foo/bar" in
+  let rev_store_dir = subdir "rev-store-dir" in
+  let target = subdir "target" in
+  let entry = Path.relative target "e" in
+  run (fun () ->
+    let open Fiber.O in
+    let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
+    let* (_commit : string) = Rev_store_tests.create_repo_at source in
+    let+ () = download_git rev_store url ~target in
+    print_endline (Io.read_file entry));
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  fatal: '/bar' does not appear to be a git repository
+  fatal: Could not read from remote repository.
+
+  Please make sure you have the correct access rights
+  and the repository exists.
+  Error: Failed to run external command:
+  'git ls-remote "file://foo/bar"'
+  Hint: Check that this Git URL in the project configuration is correct:
+  "file://foo/bar" |}]
 ;;

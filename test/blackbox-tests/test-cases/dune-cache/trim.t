@@ -150,10 +150,12 @@ while [target_a] is not. We know that [target_b] was trimmed, because it had to
 be rebuilt as indicated by the existence of [beacon_b].
 
   $ rm -f _build/default/{target_a,target_b,beacon_a,beacon_b}
-  $ find "$PWD/.xdg-cache/dune/db/"
+  $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \;
+  $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done
   $ dune cache trim --trimmed-size 1B
   Freed 79B (2 files removed)
-  $ find "$PWD/.xdg-cache/dune/db/"
+  $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \;
+  $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done
   $ dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2

@@ -8,10 +8,11 @@ module Curl = struct
        | Some p -> p
        | None ->
          User_error.raise
-           [ Pp.concat
-               ~sep:Pp.space
-               [ User_message.command "curl"; Pp.text "not available in PATH" ]
-             |> Pp.hovbox
+           ~hints:[ Pp.text "Install curl with your system package manager." ]
+           [ Pp.text
+               "The program \"curl\" does not appear to be installed. Dune uses curl to \
+                download packages. Dune requires that the \"curl\" executable be located \
+                in one of the directories listed in the PATH variable."
            ])
   ;;
 

@@ -7,9 +7,13 @@ module Server : sig
   (** Once started the server will wait for commands on stdin, read the
       requested merlin dot file and return its content on stdout. The server
       will halt when receiving EOF of a bad csexp. *)
-  val start : unit -> unit Fiber.t
+  val start : ctx_name:string option -> unit -> unit Fiber.t
 end = struct
   open Fiber.O
+
+  type selected_ctxt =
+    | Default
+    | Custom of Context_name.t
 
   module Merlin_conf = struct
     type t = Sexp.t
@@ -27,12 +31,6 @@ end = struct
       | File of string
       | Halt
       | Unknown of string
-      | GetContexts
-      | SetContext of string
-
-    type selected_ctxt =
-      | Default
-      | Custom of Context_name.t
 
     let read_input in_channel =
       match Csexp.input_opt in_channel with
@@ -42,8 +40,6 @@ end = struct
         (match sexp with
          | Atom "Halt" -> Halt
          | List [ Atom "File"; Atom path ] -> File path
-         | List [ Atom "GetContexts" ] -> GetContexts
-         | List [ Atom "SetContext"; Atom name ] -> SetContext name
          | sexp ->
            let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
            Unknown msg)
@@ -143,7 +139,7 @@ end = struct
     | Ok file ->
       let module Context_name = Dune_engine.Context_name in
       (match selected_context with
-       | Commands.Custom ctxt ->
+       | Custom ctxt ->
          Fiber.return (Ok (Path.Build.append_local (Context_name.build_dir ctxt) file))
        | Default ->
          let+ workspace = Memo.run (Workspace.workspace ()) in
@@ -177,43 +173,33 @@ end = struct
       Merlin.Processed.print_generic_dot_merlin files
   ;;
 
-  let start () =
-    let selected_context = ref Commands.Default in
+  let start ~ctx_name () =
+    let open Fiber.O in
+    let* setup = Import.Main.setup () in
+    let* setup = Memo.run setup in
+    let selected_context =
+      match ctx_name with
+      | None -> Default
+      | Some ctx_name ->
+        (match Context_name.of_string_opt ctx_name with
+         | None -> failwith (Printf.sprintf "Invalid context name %S" ctx_name)
+         | Some ctx_name ->
+           (match Context_name.Map.mem setup.scontexts ctx_name with
+            | false ->
+              failwith
+                (Printf.sprintf
+                   "Can't find context with name %S"
+                   (Context_name.to_string ctx_name))
+            | true -> Custom ctx_name))
+    in
     let rec main () =
       match Commands.read_input stdin with
       | Halt -> Fiber.return ()
       | File path ->
-        let* () = print_merlin_conf ~selected_context:!selected_context path in
+        let* () = print_merlin_conf ~selected_context path in
         main ()
       | Unknown msg ->
         Merlin_conf.to_stdout (Merlin_conf.make_error msg);
-        main ()
-      | GetContexts ->
-        let open Fiber.O in
-        let* setup = Import.Main.setup () in
-        let* setup = Memo.run setup in
-        let ctxts =
-          List.map
-            ~f:(fun (name, _) -> Sexp.Atom (Context_name.to_string name))
-            (Context_name.Map.to_list setup.scontexts)
-        in
-        Merlin_conf.to_stdout Sexp.(List ctxts);
-        main ()
-      | SetContext name ->
-        let open Fiber.O in
-        let* setup = Import.Main.setup () in
-        let* setup = Memo.run setup in
-        let () =
-          let open Merlin_conf in
-          match Context_name.of_string_opt name with
-          | None -> to_stdout (make_error (Printf.sprintf "Invalid context name %S" name))
-          | Some ctxt_name ->
-            (match Context_name.Map.mem setup.scontexts ctxt_name with
-             | false ->
-               to_stdout
-                 (make_error (Printf.sprintf "Can't find context with name %S" name))
-             | true -> selected_context := Custom ctxt_name)
-        in
         main ()
     in
     main ()
@@ -262,7 +248,16 @@ let man =
 let start_session_info name = Cmd.info name ~doc ~man
 
 let start_session_term =
-  let+ builder = Common.Builder.term in
+  let+ builder = Common.Builder.term
+  and+ ctx_name =
+    Arg.(
+      value
+      & opt (some string) None
+      & info
+          [ "context" ]
+          ~docv:"CONTEXT"
+          ~doc:"The Dune context in which the command will return information for")
+  in
   let common, config =
     let builder =
       let builder = Common.Builder.forbid_builds builder in
@@ -270,7 +265,7 @@ let start_session_term =
     in
     Common.init builder
   in
-  Scheduler.go ~common ~config Server.start
+  Scheduler.go ~common ~config (Server.start ~ctx_name)
 ;;
 
 let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term

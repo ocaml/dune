@@ -39,12 +39,8 @@ let get_dirs context ~prefix_from_command_line ~from_command_line =
     match prefix_from_command_line with
     | None -> Memo.run (Context.roots context)
     | Some prefix ->
-      let setup_roots =
-        Roots.map ~f:(Option.map ~f:Path.of_string) Dune_rules.Setup.roots
-      in
       Roots.opam_from_prefix prefix ~relative:Path.relative
       |> Roots.map ~f:(fun s -> Some s)
-      |> Roots.first_has_priority setup_roots
       |> Fiber.return
   in
   let roots = Roots.first_has_priority from_command_line roots in
@@ -720,14 +716,6 @@ let run
 let make ~what =
   let doc = Format.asprintf "%a packages defined in the workspace." pp_what what in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
-  let absolute_path =
-    Arg.conv'
-      ( (fun path ->
-          if Filename.is_relative path
-          then Error "the path must be absolute to avoid ambiguity"
-          else Ok path)
-      , Arg.conv_printer Arg.string )
-  in
   let term =
     let+ builder = Common.Builder.term
     and+ prefix_from_command_line =
@@ -753,7 +741,7 @@ let make ~what =
     and+ libdir_from_command_line =
       Arg.(
         value
-        & opt (some absolute_path) None
+        & opt (some string) None
         & info
             [ "libdir" ]
             ~docv:"PATH"
@@ -766,44 +754,45 @@ let make ~what =
         "Manually override the directory to install man pages. Only absolute path \
          accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "mandir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
     and+ docdir_from_command_line =
       let doc =
-        "Manually override the directory to install documentation files. Only absolute \
-         path accepted."
+        "Manually override the directory to install documentation files. If there is \
+         $(b,--destdir), it is relative path otherwise only absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "docdir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "docdir" ] ~docv:"PATH" ~doc)
     and+ etcdir_from_command_line =
       let doc =
-        "Manually override the directory to install configuration files. Only absolute \
-         path accepted."
+        "Manually override the directory to install configuration files. If there is \
+         $(b,--destdir), it is relative path otherwise only absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "etcdir" ] ~docv:"PATH" ~doc)
     and+ bindir_from_command_line =
       let doc =
-        "Manually override the directory to install public binaries. Only absolute path \
-         accepted."
+        "Manually override the directory to install public binaries. If there is \
+         $(b,--destdir), it is relative path otherwise only absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "bindir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "bindir" ] ~docv:"PATH" ~doc)
     and+ sbindir_from_command_line =
       let doc =
-        "Manually override the directory to install files from sbin section. Only \
-         absolute path accepted."
+        "Manually override the directory to install files from sbin section. If there is \
+         $(b,--destdir), it is relative path otherwise only absolute path accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "sbindir" ] ~docv:"PATH" ~doc)
     and+ datadir_from_command_line =
       let doc =
-        "Manually override the directory to install files from share section. Only \
-         absolute path accepted."
+        "Manually override the directory to install files from share section. If there \
+         is is $(b,--destdir), it is relative path otherwise only absolute path \
+         accepted."
       in
-      Arg.(value & opt (some absolute_path) None & info [ "datadir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "datadir" ] ~docv:"PATH" ~doc)
     and+ libexecdir_from_command_line =
       let doc =
-        "Manually override the directory to install executable library files. Only \
-         absolute path accepted."
+        "Manually override the directory to install executable library files. If there \
+         is is $(b,--destdir), it is relative path otherwise only absolute path \
+         accepted."
       in
-      Arg.(
-        value & opt (some absolute_path) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
+      Arg.(value & opt (some string) None & info [ "libexecdir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value
@@ -841,19 +830,59 @@ let make ~what =
               "Select context to install from. By default, install files from all \
                defined contexts.")
     and+ sections = Sections.term in
+    let must_be_relative_when_destdir ~command ~path =
+      if not (Filename.is_relative path)
+      then
+        User_error.raise
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Option"
+              ; User_message.command @@ "--" ^ command
+              ; Pp.text "must to be relative because the destination"
+              ; User_message.command "--destdir"
+              ; Pp.text "is known"
+              ]
+            |> Pp.hovbox
+          ]
+    in
+    let must_be_absolute ~command ~path =
+      if Filename.is_relative path
+      then
+        User_error.raise
+          [ Pp.concat
+              ~sep:Pp.space
+              [ Pp.text "Option"
+              ; User_message.command @@ "--" ^ command
+              ; Pp.text "the path must be absolute to avoid ambiguity or add"
+              ; User_message.command "--destdir"
+              ]
+            |> Pp.hovbox
+          ]
+    in
+    let command_prefixed prefix destdir command path =
+      if Option.is_none destdir
+      then Option.iter path ~f:(fun path -> must_be_absolute ~command ~path)
+      else Option.iter path ~f:(fun path -> must_be_relative_when_destdir ~command ~path);
+      let prefixed ~path = function
+        | None -> path
+        | Some prefix -> Filename.concat prefix path
+      in
+      Option.map path ~f:(fun path -> prefixed ~path prefix)
+    in
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
     let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
+      let command_prefixed = command_prefixed prefix_from_command_line destdir in
       let from_command_line =
-        { Install.Roots.lib_root = libdir_from_command_line
-        ; etc_root = etcdir_from_command_line
-        ; doc_root = docdir_from_command_line
-        ; man = mandir_from_command_line
-        ; bin = bindir_from_command_line
-        ; sbin = sbindir_from_command_line
-        ; libexec_root = libexecdir_from_command_line
-        ; share_root = datadir_from_command_line
+        { Install.Roots.lib_root = command_prefixed "libdir" libdir_from_command_line
+        ; etc_root = command_prefixed "etcdir" etcdir_from_command_line
+        ; doc_root = command_prefixed "docdir" docdir_from_command_line
+        ; man = command_prefixed "mandir" mandir_from_command_line
+        ; bin = command_prefixed "bindir" bindir_from_command_line
+        ; sbin = command_prefixed "sbindir" sbindir_from_command_line
+        ; libexec_root = command_prefixed "libexecdir" libexecdir_from_command_line
+        ; share_root = command_prefixed "datadir" datadir_from_command_line
         }
         |> Install.Roots.map ~f:(Option.map ~f:Path.of_string)
         |> Install.Roots.complete

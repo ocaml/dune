@@ -150,7 +150,14 @@ while [target_a] is not. We know that [target_b] was trimmed, because it had to
 be rebuilt as indicated by the existence of [beacon_b].
 
   $ ls -l _build/default --time=ctime --time-style=+%N
-  $ rm -f _build/default/target_a _build/default/target_b _build/default/beacon_a _build/default/beacon_b
+  $ rm -f _build/default/target_a
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/target_b
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/beacon_a
+  $ dune_cmd wait-for-fs-clock-to-advance
+  $ rm -f _build/default/beacon_b
+  $ dune_cmd wait-for-fs-clock-to-advance
   $ ls _build/default
   $ find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i -l --time=ctime --time-style=+%N {} \;
   $ for inum in $(find "$PWD/.xdg-cache/dune/db/files/v4" -type f -exec ls -i {} \; | awk '{print $1}'); do echo "Inode $inum"; find . -inum $inum; done

@@ -167,6 +167,7 @@ include Sub_system.Register_end_point (struct
           ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
           ~flags
           ~js_of_ocaml:(Some js_of_ocaml)
+          ~melange_package_name:None
           ~package
       in
       let linkages =

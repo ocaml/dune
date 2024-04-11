@@ -192,6 +192,7 @@ let setup sctx ~dir =
       ~requires_compile:requires
       ~flags
       ~js_of_ocaml:None
+      ~melange_package_name:None
       ~package:None
       ~preprocessing
   in

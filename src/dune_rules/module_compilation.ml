@@ -55,7 +55,7 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
       let package_output =
         Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
       in
-      match Compilation_context.public_lib_name cctx with
+      match Compilation_context.melange_package_name cctx with
       | None -> [], package_output
       | Some lib_name ->
         let dir =

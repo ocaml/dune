@@ -80,7 +80,7 @@ end = struct
     | Normal | Ppx_deriver _ -> Memo.return []
     | Ppx_rewriter _ ->
       Library.best_name lib
-      |> Preprocessing.ppx_exe ctx ~scope
+      |> Ppx_driver.ppx_exe ctx ~scope
       |> Resolve.Memo.read_memo
       >>| List.singleton
   ;;

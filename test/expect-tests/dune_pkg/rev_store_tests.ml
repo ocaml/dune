@@ -55,12 +55,12 @@ let%expect_test "adding remotes" =
     let remote_path = Path.relative cwd "git-remote" in
     let* _head = create_repo_at remote_path in
     let opam_url = remote_path |> Path.to_string |> OpamUrl.parse in
-    Dune_pkg.OpamUrl.resolve opam_url rev_store
+    Dune_pkg.OpamUrl.resolve opam_url ~loc:Loc.none rev_store
     >>= function
     | Error _ -> Fiber.return @@ print_endline "Unable to find revision"
     | Ok r ->
       print_endline "Successfully found remote";
-      Dune_pkg.OpamUrl.fetch_revision opam_url r rev_store
+      Dune_pkg.OpamUrl.fetch_revision opam_url ~loc:Loc.none r rev_store
       >>| (function
        | Error _ -> print_endline "Unable to fetch revision"
        | Ok _ -> print_endline "successfully fetched revision"));

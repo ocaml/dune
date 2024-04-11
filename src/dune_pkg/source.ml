@@ -47,10 +47,10 @@ let to_dyn = function
 
 let fetch_and_hash_archive_cached =
   let cache = Single_run_file_cache.create () in
-  fun url ->
+  fun (url_loc, url) ->
     let open Fiber.O in
     Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
-      Fetch.fetch ~unpack:false ~checksum:None ~target url)
+      Fetch.fetch ~unpack:false ~checksum:None ~target ~url:(url_loc, url))
     >>| function
     | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
     | Error (Checksum_mismatch _) ->
@@ -94,7 +94,7 @@ let compute_missing_checksum_of_fetch
                (OpamUrl.to_string url)
            ; Pp.text "Dune will compute its own checksum for this source archive."
            ]);
-    fetch_and_hash_archive_cached url
+    fetch_and_hash_archive_cached (url_loc, url)
     >>| Option.map ~f:(fun checksum ->
       { url = url_loc, url; checksum = Some (Loc.none, checksum) })
     >>| Option.value ~default:fetch

@@ -157,7 +157,7 @@ let setup sctx ~dir =
   in
   let* preprocessing =
     let preprocess = Module_name.Per_item.for_all pps in
-    Preprocessing.make
+    Pp_spec_rules.make
       sctx
       ~dir
       ~expander

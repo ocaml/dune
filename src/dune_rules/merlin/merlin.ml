@@ -458,7 +458,7 @@ module Unprocessed = struct
         let* scope =
           Expander.dir expander |> Scope.DB.find_by_dir |> Action_builder.of_memo
         in
-        Preprocessing.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
+        Ppx_driver.get_ppx_driver ctx ~loc ~expander ~lib_name ~flags ~scope pps
       in
       let args = encode_command ~bin:(Path.build exe) ~args:("--as-ppx" :: flags) in
       Some { Processed.flag = Processed.Pp_kind.Ppx; args }

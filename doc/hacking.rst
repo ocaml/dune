@@ -637,7 +637,7 @@ Good:
 - When ignoring the value of a let binding ``let _ = ...``,  we add type
   annotations to the ignored value ``let (_ : t) = ...``. We do this convention
   because:
-  
+
  * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
    return ``Fiber.t`` are always free of side effects so we need to bind on the
    result to force the side effect.
@@ -687,7 +687,7 @@ to keep the code consistent.
 
 - Introduce bindings that will allow opportunities for record or label punning.
 
-- Do not write inverted if-else expressions. 
+- Do not write inverted if-else expressions.
 
 Bad:
 
@@ -767,7 +767,7 @@ Build-Time Benchmarks
 
 We benchmark the build time of Dune in every PR. The times can be found here:
 
-https://autumn.ocamllabs.io/ocaml/dune?worker=autumn&image=bench.Dockerfile
+https://bench.ci.dev/ocaml/dune?worker=autumn&image=bench.Dockerfile
 
 
 Melange Bench
@@ -780,46 +780,12 @@ https://ocaml.github.io/dune/dev/bench/
 Monorepo Benchmark
 ------------------
 
-The file bench/monorepo/bench.Dockerfile sets up a Docker container for
-benchmarking Dune building a large monorepo constructed with
-`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
-constructed according to the files in
-https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
-Build the Docker image from the root directory of this repo.
+We benchmark the performance of Dune in building a large monorepo in every
+PR. The benchmark results can be found here:
 
-E.g., run:
+https://bench.ci.dev/ocaml/dune/branch/main?worker=fermat&image=bench%2Fmonorepo%2Fbench.Dockerfile
 
-.. code:: console
-
-   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
-
-The monorepo benchmark Docker image requires ``duniverse`` directory to be mounted
-as a volume. Generate this directory with a script from the
-`ocaml-monorepo-benchmark <https://github.com/ocaml-dune/ocaml-monorepo-benchmark>`_
-repository:
-
-.. code:: console
-
-   $ git clone https://github.com/ocaml-dune/ocaml-monorepo-benchmark.git
-   $ cd ocaml-monorepo-benchmark
-   $ ./generate-duniverse.sh /tmp
-
-This will create a directory ``/tmp/duniverse``. Then to run the benchmark, run
-the Docker image in a container mounting ``/tmp/duniverse`` as a volume at
-``/home/opam/bench-dir/current-bench-data/duniverse`` (that specific path is a
-requirement of `current-bench <https://github.com/ocurrent/current-bench>`_).
-From within the container the benchmarks can be started by running `make bench`.
-Do all this in a single command with:
-
-.. code:: console
-
-   $ docker run -it --volume=/tmp/duniverse:/home/opam/bench-dir/current-bench-data/duniverse dune-monorepo-benchmark bash --login -c 'make bench'
-
-The benchmark will print out a JSON string in the format accepted by
-`current-bench <https://github.com/ocurrent/current-bench>`_.
-
-Read more at
-https://github.com/ocaml/dune/blob/main/bench/monorepo/README.md.
+You can find more information about these benchmarks `here <./dev/monorepo-bench.md>`_.
 
 Formatting
 ==========

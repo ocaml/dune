@@ -8,10 +8,11 @@ module Curl = struct
        | Some p -> p
        | None ->
          User_error.raise
-           [ Pp.concat
-               ~sep:Pp.space
-               [ User_message.command "curl"; Pp.text "not available in PATH" ]
-             |> Pp.hovbox
+           ~hints:[ Pp.text "Install curl with your system package manager." ]
+           [ Pp.text
+               "The program \"curl\" does not appear to be installed. Dune uses curl to \
+                download packages. Dune requires that the \"curl\" executable be located \
+                in one of the directories listed in the PATH variable."
            ])
   ;;
 
@@ -276,11 +277,11 @@ let fetch_others ~unpack ~checksum ~target (url : OpamUrl.t) =
     Error (Checksum_mismatch (Checksum.of_opam_hash expected))
 ;;
 
-let fetch_git rev_store ~target (url : OpamUrl.t) =
-  OpamUrl.resolve url rev_store
+let fetch_git rev_store ~target ~url:(url_loc, url) =
+  OpamUrl.resolve url ~loc:url_loc rev_store
   >>= (function
          | Error _ as e -> Fiber.return e
-         | Ok r -> OpamUrl.fetch_revision url r rev_store)
+         | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->
@@ -288,7 +289,7 @@ let fetch_git rev_store ~target (url : OpamUrl.t) =
     Ok res
 ;;
 
-let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
+let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
   let event =
     Dune_stats.(
       start (global ()) (fun () ->
@@ -315,7 +316,7 @@ let fetch ~unpack ~checksum ~target (url : OpamUrl.t) =
       match url.backend with
       | `git ->
         let* rev_store = Rev_store.get in
-        fetch_git rev_store ~target url
+        fetch_git rev_store ~target ~url:(url_loc, url)
       | `http -> fetch_curl ~unpack ~checksum ~target url
       | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;

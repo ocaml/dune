@@ -43,7 +43,7 @@ let resolve_url =
     let open Fiber.O in
     let* rev_store = Rev_store.get in
     let+ git_object =
-      OpamUrl.resolve url rev_store
+      OpamUrl.resolve url ~loc:Loc.none rev_store
       >>| function
       | Ok (Resolved r) -> (r :> Rev_store.Object.t)
       | Ok (Unresolved r) -> r
@@ -107,7 +107,7 @@ module Spec = struct
           | `Directory -> true)
        ~checksum
        ~target:(Path.build target)
-       url)
+       ~url:(loc_url, url))
     >>= function
     | Ok () -> Fiber.return ()
     | Error (Checksum_mismatch actual_checksum) ->

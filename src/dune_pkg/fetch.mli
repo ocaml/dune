@@ -16,11 +16,11 @@ val fetch
   :  unpack:bool
   -> checksum:Checksum.t option
   -> target:Path.t
-  -> OpamUrl.t
+  -> url:Loc.t * OpamUrl.t
   -> (unit, failure) result Fiber.t
 
 val fetch_git
   :  Rev_store.t
   -> target:Path.t
-  -> OpamUrl.t
+  -> url:Loc.t * OpamUrl.t
   -> (unit, failure) result Fiber.t

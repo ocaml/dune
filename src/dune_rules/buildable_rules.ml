@@ -89,7 +89,7 @@ let modules_rules
       Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps preprocess ~instrumentation_backend)
     in
-    Preprocessing.make
+    Pp_spec_rules.make
       sctx
       ~dir
       ~scope

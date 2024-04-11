@@ -3,7 +3,7 @@ subst
 
 .. describe:: (subst <bool>)
 
-   .. versionadded: 3.0
+   .. versionadded:: 3.0
 
    Control whether :ref:`dune-subst` is enabled for this project.
 

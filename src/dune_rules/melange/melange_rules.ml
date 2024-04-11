@@ -50,7 +50,7 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
          preprocess
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
-  let pped_map = Staged.unstage (Preprocessing.pped_modules_map preprocess version) in
+  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
   Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
 ;;
 
@@ -113,7 +113,6 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
-  let open Memo.O in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     Resolve.Memo.read_memo
@@ -154,7 +153,6 @@ let js_targets_of_modules modules ~module_systems ~output =
 
 let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
   Resolve.Memo.List.concat_map module_systems ~f:(fun (_, js_ext) ->
-    let open Memo.O in
     let of_lib lib =
       let+ _, modules = impl_only_modules_defined_in_this_lib ~sctx ~scope lib in
       let output = output_of_lib ~target_dir lib in
@@ -184,7 +182,6 @@ let build_js
   ~local_modules_and_obj_dir
   m
   =
-  let open Memo.O in
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
     let build =
@@ -255,7 +252,6 @@ let setup_emit_cmj_rules
   ~dir_contents
   (mel : Melange_stanzas.Emit.t)
   =
-  let open Memo.O in
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
   let f () =
@@ -354,7 +350,6 @@ let setup_emit_cmj_rules
 
 module Runtime_deps = struct
   let targets sctx ~dir ~output ~for_ (mel : Melange_stanzas.Emit.t) =
-    let open Memo.O in
     let raise_external_dep_error src =
       let lib_info =
         match for_ with
@@ -405,7 +400,6 @@ module Runtime_deps = struct
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
-  let open Memo.O in
   let* copy, non_copy = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
   let deps =
     Action_builder.paths
@@ -420,7 +414,6 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
 ;;
 
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
-  let open Memo.O in
   let* modules, obj_dir =
     Dir_contents.ocaml dir_contents
     >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
@@ -443,7 +436,6 @@ let setup_entries_js
   ~mode
   (mel : Melange_stanzas.Emit.t)
   =
-  let open Memo.O in
   let* local_modules, modules_for_js, local_obj_dir =
     modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
   in
@@ -492,8 +484,23 @@ let setup_js_rules_libraries =
   in
   fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
     let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
+    let with_vlib_implementations =
+      let vlib_implementations =
+        (* vlib_name => concrete_impl *)
+        List.fold_left requires_link ~init:Lib_name.Map.empty ~f:(fun acc dep ->
+          match Lib_info.implements (Lib.info dep) with
+          | None -> acc
+          | Some (_, vlib_name) -> Lib_name.Map.add_exn acc vlib_name dep)
+      in
+      fun lib deps ->
+        (* Depend on the concrete implementations of virtual libraries so
+           that Melange can find their `.cmj` files. *)
+        List.fold_left deps ~init:deps ~f:(fun acc dep ->
+          match Lib_name.Map.find vlib_implementations (Lib.name dep) with
+          | None -> acc
+          | Some sub -> if Lib.equal sub lib then acc else sub :: acc)
+    in
     Memo.parallel_iter requires_link ~f:(fun lib ->
-      let open Memo.O in
       let lib_compile_info =
         Lib.Compile.for_lib
           ~allow_overlaps:mel.allow_overlapping_dependencies
@@ -511,6 +518,7 @@ let setup_js_rules_libraries =
       let* includes =
         let+ requires_link =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+          |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
         in
         cmj_includes ~requires_link ~scope
       in
@@ -580,7 +588,6 @@ let setup_js_rules_libraries_and_entries
   ~target_dir
   mel
   =
-  let open Memo.O in
   let+ () =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
   and+ () =
@@ -590,7 +597,6 @@ let setup_js_rules_libraries_and_entries
 ;;
 
 let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
-  let open Memo.O in
   let target_dir =
     Melange_stanzas.Emit.target_dir ~dir:(Dir_contents.dir dir_contents) mel
   in

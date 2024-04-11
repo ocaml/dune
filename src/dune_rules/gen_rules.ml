@@ -610,7 +610,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | _ -> Subdir_set.empty)
       (fun () ->
         let* sctx = sctx in
-        Preprocessing.gen_rules sctx rest)
+        Pp_spec_rules.gen_rules sctx rest)
   | [ ".dune" ] ->
     has_rules
       ~dir

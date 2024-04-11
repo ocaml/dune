@@ -139,7 +139,7 @@ let gen_rules sctx t ~dir ~scope =
          [ A "-staged"; Target cinaps_ml; Deps (List.map cinapsed_files ~f:Path.build) ])
   and* expander = Super_context.expander sctx ~dir in
   let* preprocess =
-    Preprocessing.make
+    Pp_spec_rules.make
       sctx
       ~dir
       ~expander

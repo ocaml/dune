@@ -496,6 +496,22 @@ let setup_js_rules_libraries =
   in
   fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
     let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
+    let with_vlib_implementations =
+      let vlib_implementations =
+        (* vlib_name => concrete_impl *)
+        List.fold_left requires_link ~init:Lib_name.Map.empty ~f:(fun acc dep ->
+          match Lib_info.implements (Lib.info dep) with
+          | None -> acc
+          | Some (_, vlib_name) -> Lib_name.Map.add_exn acc vlib_name dep)
+      in
+      fun lib deps ->
+        (* Depend on the concrete implementations of virtual libraries so
+           that Melange can find their `.cmj` files. *)
+        List.fold_left deps ~init:deps ~f:(fun acc dep ->
+          match Lib_name.Map.find vlib_implementations (Lib.name dep) with
+          | None -> acc
+          | Some sub -> if Lib.equal sub lib then acc else sub :: acc)
+    in
     Memo.parallel_iter requires_link ~f:(fun lib ->
       let open Memo.O in
       let lib_compile_info =
@@ -515,6 +531,7 @@ let setup_js_rules_libraries =
       let* includes =
         let+ requires_link =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
+          |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
         in
         cmj_includes ~requires_link ~scope
       in

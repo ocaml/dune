@@ -11,7 +11,7 @@ module Server : sig
 end = struct
   open Fiber.O
 
-  type selected_ctxt =
+  type selected_context =
     | Default
     | Custom of Context_name.t
 

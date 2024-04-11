@@ -17,7 +17,7 @@ let term =
 ;;
 
 let command =
-  let doc = "prints information about the available Dune contexts." in
+  let doc = "lists the available build contexts." in
   let info = Cmd.info ~doc "contexts" in
   Cmd.v info term
 ;;

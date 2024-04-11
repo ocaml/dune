@@ -173,9 +173,10 @@ type t =
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; context : string option
   }
 
-let compare { loc; paragraphs; hints; annots } t =
+let compare { loc; paragraphs; hints; annots; context = _ } t =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
   let= () = List.compare paragraphs t.paragraphs ~compare:Poly.compare in
@@ -185,17 +186,17 @@ let compare { loc; paragraphs; hints; annots } t =
 
 let equal a b = Ordering.is_eq (compare a b)
 
-let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) paragraphs =
+let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) ?context paragraphs =
   let paragraphs =
     match prefix, paragraphs with
     | None, l -> l
     | Some p, [] -> [ p ]
     | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
-  { loc; hints; paragraphs; annots }
+  { loc; hints; paragraphs; annots; context }
 ;;
 
-let pp { loc; paragraphs; hints; annots = _ } =
+let pp { loc; paragraphs; hints; annots = _; context } =
   let open Pp.O in
   let paragraphs =
     match hints with
@@ -225,6 +226,12 @@ let pp { loc; paragraphs; hints; annots = _ } =
            Style.Loc
            (Pp.textf "File %S, %s, characters %d-%d:" start.pos_fname lnum start_c stop_c))
       :: paragraphs
+  in
+  let paragraphs =
+    match context with
+    | None -> paragraphs
+    | Some context ->
+      Pp.box (Pp.tag Style.Loc (Pp.textf "Context: %s" context)) :: paragraphs
   in
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))
 ;;

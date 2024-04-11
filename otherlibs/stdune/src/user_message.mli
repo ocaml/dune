@@ -66,6 +66,7 @@ type t =
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; context : string option
   }
 
 val compare : t -> t -> Ordering.t
@@ -90,6 +91,7 @@ val make
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t
+  -> ?context:string
   -> Style.t Pp.t list
   -> t
 

@@ -488,6 +488,7 @@ module Handle_exit_status : sig
     -> output:string
     -> command_line:User_message.Style.t Pp.t
     -> dir:Path.t option
+    -> context:string option
     -> 'a
 
   val non_verbose
@@ -500,6 +501,7 @@ module Handle_exit_status : sig
     -> dir:Path.t option
     -> has_unexpected_stdout:bool
     -> has_unexpected_stderr:bool
+    -> context:string option
     -> 'a
 end = struct
   open Exit_status
@@ -550,14 +552,14 @@ end = struct
     loc, annots
   ;;
 
-  let fail ~loc ~annots paragraphs =
+  let fail ~loc ~annots ~context paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
-    raise (User_error.E (User_message.make ?loc ~annots paragraphs))
+    raise (User_error.E (User_message.make ?loc ~annots ?context paragraphs))
   ;;
 
-  let verbose t ~id ~metadata ~output ~command_line ~dir =
+  let verbose t ~id ~metadata ~output ~command_line ~dir ~context =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -583,6 +585,7 @@ end = struct
       fail
         ~loc
         ~annots
+        ~context
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space
           ++ pp_id id
@@ -603,6 +606,7 @@ end = struct
     ~dir
     ~has_unexpected_stdout
     ~has_unexpected_stderr
+    ~context
     =
     let output = parse_output output in
     let show_command =
@@ -658,7 +662,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~loc ~annots paragraphs
+      fail ~loc ~annots ~context paragraphs
   ;;
 end
 
@@ -986,6 +990,15 @@ let run_internal
       | None -> dir
       | Some p -> if Path.is_root p then None else Some p
     in
+    let context =
+      let build_context =
+        match dir with
+        | None -> None
+        | Some path -> Build_context.of_build_path (Path.as_in_build_dir_exn path)
+      in
+      Option.map build_context ~f:(fun build_context ->
+        Context_name.to_string build_context.name)
+    in
     let id = Running_jobs.Id.gen () in
     let prog_str = Path.reach_for_running ?from:dir prog in
     let command_line =
@@ -1000,6 +1013,7 @@ let run_internal
         in
         Console.print_user_message
           (User_message.make
+             ?context
              [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
                ++ pp_id id
                ++ Pp.verbatim ": "
@@ -1070,6 +1084,7 @@ let run_internal
             ~dir
             ~command_line:fancy_command_line
             ~output
+            ~context
         | _ ->
           Handle_exit_status.non_verbose
             result.exit_status
@@ -1081,6 +1096,7 @@ let run_internal
             ~verbosity:display
             ~has_unexpected_stdout:result.stdout.unexpected_output
             ~has_unexpected_stderr:result.stderr.unexpected_output
+            ~context
       in
       Result.close result;
       res, times)

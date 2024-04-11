@@ -31,6 +31,7 @@
   > EOF
 
   $ dune build
+  Context: melange
   File "foo.ml", line 1, characters 8-18:
   1 | let t = Str.regexp
               ^^^^^^^^^^

@@ -78,6 +78,7 @@ end = struct
           ; paragraphs = message.paragraphs
           ; hints = message.hints
           ; annots
+          ; context = None
           }
       | Code err -> Code err
       | Sys err -> Sys err

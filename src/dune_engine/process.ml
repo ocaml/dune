@@ -994,7 +994,10 @@ let run_internal
       let build_context =
         match dir with
         | None -> None
-        | Some path -> Build_context.of_build_path (Path.as_in_build_dir_exn path)
+        | Some path ->
+          (match Path.as_in_build_dir path with
+           | None -> None
+           | Some path -> Build_context.of_build_path path)
       in
       Option.map build_context ~f:(fun build_context ->
         Context_name.to_string build_context.name)

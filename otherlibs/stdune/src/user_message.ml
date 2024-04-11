@@ -229,7 +229,7 @@ let pp { loc; paragraphs; hints; annots = _; context } =
   in
   let paragraphs =
     match context with
-    | None -> paragraphs
+    | None | Some "default" -> paragraphs
     | Some context ->
       Pp.box (Pp.tag Style.Loc (Pp.textf "Context: %s" context)) :: paragraphs
   in

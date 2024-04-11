@@ -361,7 +361,7 @@ In particular, the `dune-project` file has the expected content:
    (tags
     (topics "to describe" your project)))
   
-  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
 We can build the project:
 
@@ -471,7 +471,7 @@ In particular, the `dune-project` file has the expected content:
    (tags
     (topics "to describe" your project)))
   
-  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
 We can build and install the project:
 

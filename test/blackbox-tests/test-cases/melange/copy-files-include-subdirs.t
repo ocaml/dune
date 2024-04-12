@@ -19,7 +19,7 @@ Example using melange.emit, copy_files and include_subdirs
   >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (alias mel))
-  >
+  > 
   > (subdir
   >  app
   >  (copy_files
@@ -43,7 +43,7 @@ Example using melange.emit, copy_files and include_subdirs
   $ dune build $asset
   $ node $src
   hello from file
-
+  
 Works with `(include_subdirs unqualified)` too
 
   $ echo "(include_subdirs unqualified)" >> src/dune
@@ -52,4 +52,4 @@ Works with `(include_subdirs unqualified)` too
   $ dune build $asset
   $ node $src
   hello from file
-
+  

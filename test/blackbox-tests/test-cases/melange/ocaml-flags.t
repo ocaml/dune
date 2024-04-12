@@ -29,6 +29,25 @@ Building does not fail, warnings are silenced
   $ node _build/default/output/main.js
   hello
 
+Update dune file to use flags
+
+  $ cat > dune <<EOF
+  > (melange.emit
+  >  (target output)
+  >  (emit_stdlib false)
+  >  (modules main)
+  >  (flags -w -14-26))
+  > EOF
+
+Building should fail as `flags` are not supported in melange emit stanzas
+
+  $ dune build output/main.js
+  File "dune", line 5, characters 2-7:
+  5 |  (flags -w -14-26))
+        ^^^^^
+  Error: Unknown field flags
+  [1]
+
 Update dune file to use ocamlc_flags
 
   $ cat > dune <<EOF

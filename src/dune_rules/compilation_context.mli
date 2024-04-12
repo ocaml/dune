@@ -32,7 +32,7 @@ val create
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Js_of_ocaml.In_context.t option
   -> package:Package.t option
-  -> ?public_lib_name:Lib_name.t
+  -> melange_package_name:Lib_name.t option
   -> ?vimpl:Vimpl.t
   -> ?modes:Mode_conf.Set.Details.t Lib_mode.Map.t
   -> ?bin_annot:bool
@@ -65,7 +65,7 @@ val sandbox : t -> Sandbox_config.t
 val set_sandbox : t -> Sandbox_config.t -> t
 val package : t -> Package.t option
 val vimpl : t -> Vimpl.t option
-val public_lib_name : t -> Lib_name.t option
+val melange_package_name : t -> Lib_name.t option
 val modes : t -> Lib_mode.Map.Set.t
 val for_wrapped_compat : t -> t
 val for_root_module : t -> Module.t -> t

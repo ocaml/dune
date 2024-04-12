@@ -83,7 +83,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
-  ; public_lib_name : Lib_name.t option
+  ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
@@ -108,7 +108,7 @@ let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
 let set_sandbox t sandbox = { t with sandbox }
 let package t = t.package
-let public_lib_name t = t.public_lib_name
+let melange_package_name t = t.melange_package_name
 let vimpl t = t.vimpl
 let modes t = t.modes
 let bin_annot t = t.bin_annot
@@ -130,7 +130,7 @@ let create
   ?stdlib
   ~js_of_ocaml
   ~package
-  ?public_lib_name
+  ~melange_package_name
   ?vimpl
   ?modes
   ?bin_annot
@@ -197,7 +197,7 @@ let create
   ; sandbox
   ; package
   ; vimpl
-  ; public_lib_name
+  ; melange_package_name
   ; modes
   ; bin_annot
   ; ocamldep_modules_data

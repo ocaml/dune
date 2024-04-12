@@ -183,6 +183,7 @@ let gen_rules sctx t ~dir ~scope =
       ~requires_link
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])
       ~js_of_ocaml:None
+      ~melange_package_name:None
       ~package:None
   in
   let* (_ : Exe.dep_graphs) =

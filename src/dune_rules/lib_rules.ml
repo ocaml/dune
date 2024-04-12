@@ -528,14 +528,16 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
   in
   let package = Library.package lib in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml in
-  (* XXX(anmonteiro): `public_lib_name` is used to derive Melange's
+  (* XXX(anmonteiro): `melange_package_name` is used to derive Melange's
      `--bs-package-name` argument. We only use the library name for public
-     libraries because we need melange to preserve relative paths for private
-     libs (i.e. not pass the `--bs-package-name` arg). *)
-  let public_lib_name =
+     libraries / private libraries with `(package ..)` because we need Melange
+     to preserve relative paths for private libs (i.e. not pass the
+     `--bs-package-name` arg). *)
+  let melange_package_name =
     match lib.visibility with
     | Public p -> Some (Public_lib.name p)
-    | Private _ -> None
+    | Private (Some pkg) -> Some (Lib_name.mangled (Package.name pkg) (snd lib.name))
+    | Private None -> None
   in
   Compilation_context.create
     ()
@@ -552,7 +554,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ?stdlib:lib.stdlib
     ~package
     ?vimpl
-    ?public_lib_name
+    ~melange_package_name
     ~modes
 ;;
 

@@ -30,5 +30,5 @@ Make sure an error is returned if trying to nest `melange.emit` stanzas
   Error: melange.emit stanzas cannot be nested
   - a/dune:1
   - a/output/b/dune:1
-  Hint: Move the melange.emit stanza from a/output/b to at least the level of a
+  Hint: Move both `melange.emit' stanzas to the same level.
   [1]

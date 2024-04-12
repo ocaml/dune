@@ -70,7 +70,10 @@ end = struct
         let annots =
           match with_directory with
           | Some annot ->
-            User_message.Annots.set annots Process.with_directory_annot annot
+            User_message.Annots.set
+              annots
+              Dune_util.Report_error.with_directory_annot
+              annot
           | None -> annots
         in
         User
@@ -108,7 +111,7 @@ end = struct
         in
         let diff_promotion = User_message.Annots.find annots Diff_promotion.Annot.annot in
         let with_directory =
-          User_message.Annots.find annots Process.with_directory_annot
+          User_message.Annots.find annots Dune_util.Report_error.with_directory_annot
         in
         User_with_annots
           { message

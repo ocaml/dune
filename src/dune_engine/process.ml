@@ -6,10 +6,6 @@ module Timestamp = Event.Timestamp
 module Action_output_on_success = Execution_parameters.Action_output_on_success
 module Action_output_limit = Execution_parameters.Action_output_limit
 
-let with_directory_annot =
-  User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
-;;
-
 let limit_output = Dune_output_truncation.limit_output ~message:"TRUNCATED BY DUNE"
 
 module Failure_mode = struct
@@ -488,7 +484,6 @@ module Handle_exit_status : sig
     -> output:string
     -> command_line:User_message.Style.t Pp.t
     -> dir:Path.t option
-    -> context:string option
     -> 'a
 
   val non_verbose
@@ -501,7 +496,6 @@ module Handle_exit_status : sig
     -> dir:Path.t option
     -> has_unexpected_stdout:bool
     -> has_unexpected_stderr:bool
-    -> context:string option
     -> 'a
 end = struct
   open Exit_status
@@ -534,7 +528,9 @@ end = struct
   let get_loc_and_annots ~dir ~metadata ~output =
     let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
-    let annots = User_message.Annots.set annots with_directory_annot dir in
+    let annots =
+      User_message.Annots.set annots Dune_util.Report_error.with_directory_annot dir
+    in
     let annots =
       match output with
       | No_output -> annots
@@ -552,14 +548,14 @@ end = struct
     loc, annots
   ;;
 
-  let fail ~loc ~annots ~context paragraphs =
+  let fail ~loc ~annots paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
-    raise (User_error.E (User_message.make ?loc ~annots ?context paragraphs))
+    raise (User_error.E (User_message.make ?loc ~annots paragraphs))
   ;;
 
-  let verbose t ~id ~metadata ~output ~command_line ~dir ~context =
+  let verbose t ~id ~metadata ~output ~command_line ~dir =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -585,7 +581,6 @@ end = struct
       fail
         ~loc
         ~annots
-        ~context
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space
           ++ pp_id id
@@ -606,7 +601,6 @@ end = struct
     ~dir
     ~has_unexpected_stdout
     ~has_unexpected_stderr
-    ~context
     =
     let output = parse_output output in
     let show_command =
@@ -662,7 +656,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~loc ~annots ~context paragraphs
+      fail ~loc ~annots paragraphs
   ;;
 end
 
@@ -990,18 +984,6 @@ let run_internal
       | None -> dir
       | Some p -> if Path.is_root p then None else Some p
     in
-    let context =
-      let build_context =
-        match dir with
-        | None -> None
-        | Some path ->
-          (match Path.as_in_build_dir path with
-           | None -> None
-           | Some path -> Build_context.of_build_path path)
-      in
-      Option.map build_context ~f:(fun build_context ->
-        Context_name.to_string build_context.name)
-    in
     let id = Running_jobs.Id.gen () in
     let prog_str = Path.reach_for_running ?from:dir prog in
     let command_line =
@@ -1016,7 +998,6 @@ let run_internal
         in
         Console.print_user_message
           (User_message.make
-             ?context
              [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
                ++ pp_id id
                ++ Pp.verbatim ": "
@@ -1087,7 +1068,6 @@ let run_internal
             ~dir
             ~command_line:fancy_command_line
             ~output
-            ~context
         | _ ->
           Handle_exit_status.non_verbose
             result.exit_status
@@ -1099,7 +1079,6 @@ let run_internal
             ~verbosity:display
             ~has_unexpected_stdout:result.stdout.unexpected_output
             ~has_unexpected_stderr:result.stderr.unexpected_output
-            ~context
       in
       Result.close result;
       res, times)

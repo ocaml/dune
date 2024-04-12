@@ -14,6 +14,10 @@ type error =
   ; needs_stack_trace : bool
   }
 
+let with_directory_annot =
+  User_message.Annots.Key.create ~name:"with-directory" Path.to_dyn
+;;
+
 let code_error ~loc ~dyn_without_loc =
   let open Pp.O in
   { responsible = Developer
@@ -63,6 +67,15 @@ let get_error_from_exn = function
   | User_error.E msg ->
     let has_embedded_location = User_message.has_embedded_location msg in
     let needs_stack_trace = User_message.needs_stack_trace msg in
+    let dir = User_message.Annots.find msg.annots with_directory_annot in
+    let msg =
+      match dir with
+      | None -> msg
+      | Some path ->
+        (match Path.extract_build_context path with
+         | None -> msg
+         | Some (ctxt, _) -> { msg with context = Some ctxt })
+    in
     { responsible = User; msg; has_embedded_location; needs_stack_trace }
   | Code_error.E e ->
     code_error ~loc:e.loc ~dyn_without_loc:(Code_error.to_dyn_without_loc e)

@@ -24,3 +24,5 @@ val print_memo_stacks : bool ref
 
 (** Format a list of Memo stack frames into a user-friendly presentation *)
 val format_memo_stack : 'a Pp.t list -> 'a Pp.t option
+
+val with_directory_annot : Path.t User_message.Annots.Key.t

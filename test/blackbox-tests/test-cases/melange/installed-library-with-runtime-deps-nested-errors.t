@@ -29,7 +29,6 @@ Test errors when public library runtime dependencies escape the dune file dir
                              ^^^^^^^^^^^^^^^^
   Error: Public library `foo' depends on assets outside its source tree. This
   is not allowed.
-  Hint: Move the dependency to a descendant of the folder where the library is
-  defined
+  Hint: Move the offending dependency somewhere inside `packages/foo/src'.
   Leaving directory 'lib'
   [1]

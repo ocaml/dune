@@ -116,7 +116,9 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
   let+ requires_link = requires_link in
   let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
   Command.Args.S
-    [ Lib_flags.L.include_flags ~project requires_link Melange; Hidden_deps deps ]
+    [ Lib_flags.L.melange_emission_include_flags ~project requires_link
+    ; Hidden_deps deps
+    ]
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =

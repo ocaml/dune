@@ -238,6 +238,7 @@ module Stanza = struct
         ~requires_link
         ~flags
         ~js_of_ocaml:None
+        ~melange_package_name:None
         ~package:None
         ~preprocessing
     in

@@ -1,17 +1,24 @@
 open Import
 open Memo.O
 
-let output_of_lib ~target_dir lib =
-  let info = Lib.info lib in
-  match Lib_info.status info with
-  | Private _ -> `Private_library_or_emit target_dir
-  | Installed | Installed_private | Public _ ->
-    let lib_name = Lib_info.name info in
-    let src_dir = Lib_info.src_dir info in
+let output_of_lib =
+  let public_lib ~info ~target_dir lib_name =
     `Public_library
-      ( src_dir
+      ( Lib_info.src_dir info
       , Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
       )
+  in
+  fun ~target_dir lib ->
+    let info = Lib.info lib in
+    match Lib_info.status info with
+    | Private (_, None) -> `Private_library_or_emit target_dir
+    | Private (_, Some pkg) ->
+      public_lib
+        ~info
+        ~target_dir
+        (Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn (Lib.name lib)))
+    | Installed | Installed_private | Public _ ->
+      public_lib ~info ~target_dir (Lib_info.name info)
 ;;
 
 let lib_output_path ~output_dir ~lib_dir src =
@@ -300,6 +307,7 @@ let setup_emit_cmj_rules
         ~preprocessing:pp
         ~js_of_ocaml:None
         ~opaque:Inherit_from_settings
+        ~melange_package_name:None
         ~package:mel.package
         ~modes:
           { ocaml = { byte = None; native = None }; melange = Some (Requested mel.loc) }

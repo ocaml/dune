@@ -257,16 +257,12 @@ module Processed = struct
            (* Fallback to handle preprocessed files (where the preprocessor has
               the file extensison changed).
 
-              We choose to fallback by a lookup with file_without_ext.ml e.g.
-              stripping all possible file extensions prefixes.
+              We choose to fallback by a lookup by filename without extension.
 
               This is too rough but, really, preprocessors should emit copy
               line directives instead and then Dune should have the database
               similar to Copy_line_directive to handle this. *)
-           let file_without_ext = remove_extension file in
-           Path.Build.Map.find
-             per_file_config
-             (Path.Build.set_extension file_without_ext ~ext:".ml"))
+           Path.Build.Map.find per_file_config (remove_extension file))
     in
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
     to_sexp ~opens ~pp ~reader config
@@ -603,8 +599,11 @@ module Unprocessed = struct
             ; reader = String.Map.find readers (Path.Build.extension src)
             }
           in
-          (src, config) :: acc))
-      |> Path.Build.Map.of_list_exn
+          (* we add the config with and without the extension, the latter is
+             needed for a fallback in get *)
+          let src_without_extension = remove_extension src in
+          (src, config) :: (src_without_extension, config) :: acc))
+      |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in
     { Processed.pp_config; config; per_file_config }
   ;;

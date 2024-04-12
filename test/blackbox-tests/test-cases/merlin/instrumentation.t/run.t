@@ -8,6 +8,20 @@ up a project with instrumentation and testing checking the merlin config.
 
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
+  Bar: _build/default/lib/bar
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (B
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S
+    $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/ppx)
+   (FLG (-w -40 -g)))
   Bar: _build/default/lib/bar.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -21,6 +35,21 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (FLG (-w -40 -g)))
+  File: _build/default/lib/subdir/file
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (B
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S
+    $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/ppx)
+   (FLG (-open Bar))
    (FLG (-w -40 -g)))
   File: _build/default/lib/subdir/file.ml
   ((STDLIB /OCAMLC_WHERE)
@@ -37,6 +66,20 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/ppx)
    (FLG (-open Bar))
    (FLG (-w -40 -g)))
+  Foo: _build/default/lib/foo
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (B
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S
+    $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/ppx)
+   (FLG (-w -40 -g)))
   Foo: _build/default/lib/foo.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -50,6 +93,21 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
+   (FLG (-w -40 -g)))
+  Privmod: _build/default/lib/privmod
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (B
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/byte)
+   (S
+    $TESTCASE_ROOT/lib)
+   (S
+    $TESTCASE_ROOT/lib/subdir)
+   (S
+    $TESTCASE_ROOT/ppx)
+   (FLG (-open Foo))
    (FLG (-w -40 -g)))
   Privmod: _build/default/lib/privmod.ml
   ((STDLIB /OCAMLC_WHERE)

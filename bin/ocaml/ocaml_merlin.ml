@@ -175,23 +175,13 @@ end = struct
 
   let start ~ctx_name () =
     let open Fiber.O in
-    let* setup = Import.Main.setup () in
-    let* setup = Memo.run setup in
     let selected_context =
       match ctx_name with
       | None -> Default
       | Some ctx_name ->
         (match Context_name.of_string_opt ctx_name with
          | None -> User_error.raise [ Pp.textf "Invalid context name %S" ctx_name ]
-         | Some ctx_name ->
-           (match Context_name.Map.mem setup.scontexts ctx_name with
-            | false ->
-              User_error.raise
-                [ Pp.textf
-                    "Can't find context with name %S"
-                    (Context_name.to_string ctx_name)
-                ]
-            | true -> Custom ctx_name))
+         | Some ctx_name -> Custom ctx_name)
     in
     let rec main () =
       match Commands.read_input stdin with

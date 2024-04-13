@@ -44,7 +44,7 @@ Example using melange.emit, copy_files and include_subdirs
   $ node $src
   hello from file
   
-Now add include_subdirs unqualified to show issue
+Works with `(include_subdirs unqualified)` too
 
   $ echo "(include_subdirs unqualified)" >> src/dune
 

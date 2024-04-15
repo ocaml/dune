@@ -31,12 +31,13 @@ let find_module sctx src =
   | None -> Memo.return None
   | Some module_name ->
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
-    let* ocaml = Dir_contents.ocaml dir_contents in
-    (match Ml_sources.find_origin ocaml [ module_name ] with
+    let* ocaml = Dir_contents.ocaml dir_contents
+    and* scope = Scope.DB.find_by_dir dir in
+    Ml_sources.find_origin ocaml ~libs:(Scope.libs scope) [ module_name ]
+    >>= (function
      | None -> Memo.return None
      | Some origin ->
-       let* scope = Scope.DB.find_by_dir dir
-       and* expander = Super_context.expander sctx ~dir in
+       let* expander = Super_context.expander sctx ~dir in
        let+ cctx, merlin =
          drop_rules
          @@ fun () ->

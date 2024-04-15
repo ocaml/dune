@@ -1,5 +1,6 @@
 Private libraries using the same library name, in the same context, defined in
-the same folder.
+the same folder. One of them is unavailable because it's `(optional)` and a
+dependency is missing.
 
   $ cat > dune-project << EOF
   > (lang dune 3.13)
@@ -8,30 +9,30 @@ the same folder.
   $ cat > dune << EOF
   > (library
   >  (name foo)
-  >  (modules))
+  >  (libraries xxx)
+  >  (optional))
   > (library
-  >  (name foo)
-  >  (modules))
+  >  (name foo))
+  > EOF
+  $ cat > foo.ml << EOF
+  > let x = "hello"
   > EOF
 
 Without any consumers of the libraries
 
   $ dune build
-  File "dune", line 5, characters 7-10:
-  5 |  (name foo)
-             ^^^
-  Error: Library "foo" appears for the second time in this directory
-  [1]
 
 With some consumer of the library
 
   $ cat > dune << EOF
   > (library
   >  (name foo)
-  >  (modules))
+  >  (modules foo)
+  >  (libraries xxx)
+  >  (optional))
   > (library
-  >  (name foo)
-  >  (modules))
+  >  (modules foo)
+  >  (name foo))
   > (executable
   >  (name main)
   >  (modules main)
@@ -39,12 +40,7 @@ With some consumer of the library
   > EOF
 
   $ cat > main.ml <<EOF
-  > let () = Foo.x
+  > let () = print_endline Foo.x
   > EOF
 
   $ dune build
-  File "dune", line 5, characters 7-10:
-  5 |  (name foo)
-             ^^^
-  Error: Library "foo" appears for the second time in this directory
-  [1]

@@ -103,19 +103,20 @@ let impl sctx ~(lib : Library.t) ~scope =
            in
            let* ocaml = Context.ocaml (Super_context.context sctx) in
            let* modules =
+             let db = Scope.libs scope in
              let* preprocess =
                (* TODO wrong, this should be delayed *)
                Resolve.Memo.read_memo
                  (Preprocess.Per_module.with_instrumentation
                     lib.buildable.preprocess
-                    ~instrumentation_backend:
-                      (Lib.DB.instrumentation_backend (Scope.libs scope)))
+                    ~instrumentation_backend:(Lib.DB.instrumentation_backend db))
              in
              let pp_spec =
                Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
              in
              Dir_contents.ocaml dir_contents
-             >>| Ml_sources.modules
+             >>= Ml_sources.modules
+                   ~libs:db
                    ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
              >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
            in

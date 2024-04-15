@@ -28,14 +28,15 @@ module Origin = struct
 end
 
 module Modules = struct
-  type component = Modules.t * Path.Build.t Obj_dir.t
+  type component = Origin.t * Modules.t * Path.Build.t Obj_dir.t
 
   type t =
     { libraries : component Lib_id.Local.Map.t
     ; executables : component String.Map.t
     ; melange_emits : component String.Map.t
     ; (* Map from modules to the origin they are part of *)
-      rev_map : Origin.t Module_name.Path.Map.t
+      rev_map : (Origin.t * Path.Build.t) list Module_name.Path.Map.t
+    ; libraries_by_obj_dir : Lib_id.Local.t list Path.Build.Map.t
     }
 
   let empty =
@@ -43,6 +44,7 @@ module Modules = struct
     ; executables = String.Map.empty
     ; melange_emits = String.Map.empty
     ; rev_map = Module_name.Path.Map.empty
+    ; libraries_by_obj_dir = Path.Build.Map.empty
     }
   ;;
 
@@ -61,48 +63,33 @@ module Modules = struct
     }
 
   let make { libraries = libs; executables = exes; melange_emits = emits } =
-    let libraries =
-      let _, libraries =
-        List.fold_left
-          libs
-          ~init:(Lib_name.Set.empty, Lib_id.Local.Map.empty)
-          ~f:(fun (libname_set, acc) part ->
-            let stanza = part.stanza in
-            let name =
-              let src_dir =
-                Obj_dir.dir part.obj_dir
-                |> Path.build
-                |> Path.drop_optional_build_context_src_exn
-              in
-              Lib_id.name (Local (Library.to_lib_id ~src_dir stanza))
+    let libraries, libraries_by_obj_dir =
+      List.fold_left
+        libs
+        ~init:(Lib_id.Local.Map.empty, Path.Build.Map.empty)
+        ~f:(fun (by_id, by_obj_dir) part ->
+          let origin : Origin.t = Library part.stanza in
+          let lib_id =
+            let src_dir =
+              Path.drop_optional_build_context_src_exn (Path.build part.dir)
             in
-            match Lib_name.Set.mem libname_set name with
-            | true ->
-              User_error.raise
-                ~loc:stanza.buildable.loc
-                [ Pp.textf
-                    "Library %S appears for the second time in this directory"
-                    (Lib_name.to_string name)
-                ]
-            | false ->
-              let acc =
-                let lib_id =
-                  let src_dir =
-                    Path.drop_optional_build_context_src_exn (Path.build part.dir)
-                  in
-                  Library.to_lib_id ~src_dir part.stanza
-                in
-                Lib_id.Local.Map.add_exn acc lib_id (part.modules, part.obj_dir)
-              in
-              Lib_name.Set.add libname_set name, acc)
-      in
-      libraries
+            Library.to_lib_id ~src_dir part.stanza
+          in
+          let by_id =
+            Lib_id.Local.Map.add_exn by_id lib_id (origin, part.modules, part.obj_dir)
+          and by_obj_dir =
+            Path.Build.Map.update by_obj_dir (Obj_dir.obj_dir part.obj_dir) ~f:(function
+              | None -> Some [ lib_id ]
+              | Some lib_ids -> Some (lib_id :: lib_ids))
+          in
+          by_id, by_obj_dir)
     in
     let executables =
       match
         String.Map.of_list_map exes ~f:(fun (part : Executables.t group_part) ->
           let first_exe = snd (Nonempty_list.hd part.stanza.names) in
-          first_exe, (part.modules, part.obj_dir))
+          let origin : Origin.t = Executables part.stanza in
+          first_exe, (origin, part.modules, part.obj_dir))
       with
       | Ok x -> x
       | Error (name, _, part) ->
@@ -113,7 +100,8 @@ module Modules = struct
     let melange_emits =
       match
         String.Map.of_list_map emits ~f:(fun part ->
-          part.stanza.target, (part.modules, part.obj_dir))
+          let origin : Origin.t = Melange part.stanza in
+          part.stanza.target, (origin, part.modules, part.obj_dir))
       with
       | Ok x -> x
       | Error (name, _, part) ->
@@ -123,64 +111,28 @@ module Modules = struct
     in
     let rev_map =
       let modules =
-        let by_path (origin : Origin.t) trie =
+        let by_path (origin : Origin.t * Path.Build.t) trie =
           Module_trie.fold trie ~init:[] ~f:(fun (_loc, m) acc ->
             (Module.Source.path m, origin) :: acc)
         in
         List.concat
           [ List.concat_map libs ~f:(fun part ->
-              by_path (Library part.stanza) part.sources)
+              by_path (Library part.stanza, part.dir) part.sources)
           ; List.concat_map exes ~f:(fun part ->
-              by_path (Executables part.stanza) part.sources)
+              by_path (Executables part.stanza, part.dir) part.sources)
           ; List.concat_map emits ~f:(fun part ->
-              by_path (Melange part.stanza) part.sources)
+              by_path (Melange part.stanza, part.dir) part.sources)
           ]
       in
-      match Module_name.Path.Map.of_list modules with
-      | Ok x -> x
-      | Error (path, _, _) ->
-        let locs =
-          List.filter_map modules ~f:(fun (n, origin) ->
-            Option.some_if
-              (Ordering.is_eq (Module_name.Path.compare n path))
-              (Origin.loc origin))
-          |> List.sort ~compare:Loc.compare
-        in
-        let main_message =
-          Pp.textf
-            "Module %S is used in several stanzas:"
-            (Module_name.Path.to_string path)
-        in
-        let loc, related_locs =
-          match locs with
-          | [] ->
-            (* duplicates imply at least at one module with this location *)
-            assert false
-          | loc :: related_locs -> loc, related_locs
-        in
-        let annots =
-          let main = User_message.make ~loc [ main_message ] in
-          let related =
-            List.map related_locs ~f:(fun loc ->
-              User_message.make ~loc [ Pp.text "Used in this stanza" ])
-          in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main ~related ]
-        in
-        User_error.raise
-          ~annots
-          ~loc:(Loc.drop_position loc)
-          [ main_message
-          ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
-          ; Pp.text
-              "To fix this error, you must specify an explicit \"modules\" field in \
-               every library, executable, and executables stanzas in this dune file. \
-               Note that each module cannot appear in more than one \"modules\" field - \
-               it must belong to a single library or executable."
-          ]
+      List.fold_left
+        modules
+        ~init:Module_name.Path.Map.empty
+        ~f:(fun module_name_map (module_name, origin) ->
+          Module_name.Path.Map.update module_name_map module_name ~f:(function
+            | None -> Some [ origin ]
+            | Some origins -> Some (origin :: origins)))
     in
-    { libraries; executables; melange_emits; rev_map }
+    { libraries; executables; melange_emits; rev_map; libraries_by_obj_dir }
   ;;
 end
 
@@ -257,14 +209,107 @@ let dyn_of_for_ =
   | Melange { target } -> variant "Melange" [ record [ "target", string target ] ]
 ;;
 
-let modules_and_obj_dir t ~for_ =
+let raise_module_conflict_error ~module_path origins =
+  let locs = List.map origins ~f:Origin.loc |> List.sort ~compare:Loc.compare in
+  let main_message =
+    Pp.textf
+      "Module %S is used in several stanzas:"
+      (Module_name.Path.to_string module_path)
+  in
+  let loc, related_locs =
+    match locs with
+    | [] ->
+      (* duplicates imply at least at one module with this location *)
+      assert false
+    | loc :: related_locs -> loc, related_locs
+  in
+  let annots =
+    let main = User_message.make ~loc [ main_message ] in
+    let related =
+      List.map related_locs ~f:(fun loc ->
+        User_message.make ~loc [ Pp.text "Used in this stanza" ])
+    in
+    User_message.Annots.singleton
+      Compound_user_error.annot
+      [ Compound_user_error.make ~main ~related ]
+  in
+  User_error.raise
+    ~annots
+    ~loc:(Loc.drop_position loc)
+    [ main_message
+    ; Pp.enumerate locs ~f:(fun loc -> Pp.verbatim (Loc.to_file_colon_line loc))
+    ; Pp.text
+        "To fix this error, you must specify an explicit \"modules\" field in every \
+         library, executable, and executables stanzas in this dune file. Note that each \
+         module cannot appear in more than one \"modules\" field - it must belong to a \
+         single library or executable."
+    ]
+;;
+
+let find_origin (t : t) ~libs path =
+  match Module_name.Path.Map.find t.modules.rev_map path with
+  | None | Some [] -> Memo.return None
+  | Some [ (origin, _) ] -> Memo.return (Some origin)
+  | Some origins ->
+    let* origins =
+      Memo.List.filter_map origins ~f:(fun (origin, dir) ->
+        match origin with
+        | Executables _ | Melange _ -> Memo.return (Some origin)
+        | Library lib ->
+          let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
+          Lib.DB.available_by_lib_id libs (Local (Library.to_lib_id ~src_dir lib))
+          >>| (function
+           | false -> None
+           | true -> Some origin))
+    in
+    (match origins with
+     | [] -> Memo.return None
+     | [ origin ] -> Memo.return (Some origin)
+     | origins -> raise_module_conflict_error origins ~module_path:path)
+;;
+
+let modules_and_obj_dir t ~libs ~for_ =
   match
     match for_ with
     | Library lib_id -> Lib_id.Local.Map.find t.modules.libraries lib_id
     | Exe { first_exe } -> String.Map.find t.modules.executables first_exe
     | Melange { target } -> String.Map.find t.modules.melange_emits target
   with
-  | Some s -> s
+  | Some (Library _, modules, obj_dir) ->
+    let* () =
+      Modules_group.fold_user_written modules ~init:[] ~f:(fun m acc ->
+        Module.path m :: acc)
+      |> Memo.List.iter ~f:(fun module_path ->
+        let+ (_origin : Origin.t option) = find_origin t ~libs module_path in
+        ())
+    in
+    (match
+       Path.Build.Map.find_exn t.modules.libraries_by_obj_dir (Obj_dir.obj_dir obj_dir)
+     with
+     | [] | [ _ ] -> Memo.return (modules, obj_dir)
+     | lib_ids ->
+       let+ lib_ids =
+         Memo.List.filter lib_ids ~f:(fun lib_id ->
+           Lib.DB.available_by_lib_id libs (Local lib_id))
+       in
+       (match lib_ids with
+        | [] | [ _ ] -> modules, obj_dir
+        | lib_ids ->
+          let lib_id =
+            let lib_ids =
+              List.sort lib_ids ~compare:(fun a b ->
+                Loc.compare (Lib_id.Local.loc a) (Lib_id.Local.loc b))
+            in
+            (* Get the 2nd loc *)
+            lib_ids |> List.tl |> List.hd
+          in
+          User_error.raise
+            ~loc:(Lib_id.Local.loc lib_id)
+            [ Pp.textf
+                "Library %S appears for the second time in this directory"
+                (Lib_name.to_string (Lib_id.Local.name lib_id))
+            ]))
+  | Some (_, modules, obj_dir) -> Memo.return (modules, obj_dir)
   | None ->
     let map =
       match for_ with
@@ -278,18 +323,17 @@ let modules_and_obj_dir t ~for_ =
       [ "keys", map; "for_", dyn_of_for_ for_ ]
 ;;
 
-let modules t ~for_ = modules_and_obj_dir t ~for_ |> fst
-let find_origin (t : t) path = Module_name.Path.Map.find t.modules.rev_map path
+let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 
-let virtual_modules ~lookup_vlib vlib =
+let virtual_modules ~lookup_vlib ~libs vlib =
   let info = Lib.info vlib in
   let+ modules =
     match Option.value_exn (Lib_info.virtual_ info) with
     | External modules -> Memo.return modules
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      let+ t = lookup_vlib ~dir:src_dir in
-      modules t ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+      let* t = lookup_vlib ~dir:src_dir in
+      modules t ~libs ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
   let allow_new_public_modules =
@@ -337,8 +381,8 @@ let make_lib_modules
     | Some _ ->
       assert (Option.is_none lib.virtual_modules);
       let open Memo.O in
+      let* libs = libs in
       let* resolved =
-        let* libs = libs in
         let src_dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
         Lib.DB.find_lib_id_even_when_hidden libs (Local (Library.to_lib_id ~src_dir lib))
         (* can't happen because this library is defined using the current
@@ -352,7 +396,7 @@ let make_lib_modules
       let* main_module_name = Lib.main_module_name resolved in
       let+ impl =
         let* vlib = Lib.implements resolved |> Option.value_exn in
-        virtual_modules ~lookup_vlib vlib |> Resolve.Memo.lift_memo
+        virtual_modules ~lookup_vlib ~libs vlib |> Resolve.Memo.lift_memo
       in
       let kind : Modules_field_evaluator.kind = Implementation impl in
       kind, main_module_name, wrapped

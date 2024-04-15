@@ -266,7 +266,9 @@ let setup_emit_cmj_rules
   let f () =
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents
-      >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
+      >>= Ml_sources.modules_and_obj_dir
+            ~libs:(Scope.libs scope)
+            ~for_:(Melange { target = mel.target })
     in
     let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
     let* modules, pp =
@@ -426,7 +428,9 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
 let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
   let* modules, obj_dir =
     Dir_contents.ocaml dir_contents
-    >>| Ml_sources.modules_and_obj_dir ~for_:(Melange { target = mel.target })
+    >>= Ml_sources.modules_and_obj_dir
+          ~libs:(Scope.libs scope)
+          ~for_:(Melange { target = mel.target })
   in
   let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
   let modules_for_js =

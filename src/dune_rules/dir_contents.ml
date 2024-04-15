@@ -452,12 +452,13 @@ include Load
 
 let modules_of_local_lib sctx lib =
   let info = Lib.Local.info lib in
-  let* t =
-    let dir = Lib_info.src_dir info in
-    get sctx ~dir
-  in
+  let dir = Lib_info.src_dir info in
+  let* t = get sctx ~dir
+  and* libs = Scope.DB.find_by_dir dir >>| Scope.libs in
   ocaml t
-  >>| Ml_sources.modules ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+  >>= Ml_sources.modules
+        ~libs
+        ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
 ;;
 
 let modules_of_lib sctx lib =

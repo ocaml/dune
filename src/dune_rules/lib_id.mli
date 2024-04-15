@@ -8,6 +8,7 @@ module Local : sig
 
   val equal : t -> t -> bool
   val make : loc:Loc.t -> src_dir:Path.Source.t -> Lib_name.t -> t
+  val name : t -> Lib_name.t
   val loc : t -> Loc.t
   val to_dyn : t -> Dyn.t
 end

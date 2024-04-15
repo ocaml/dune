@@ -657,7 +657,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let f () =
     let* source_modules =
       Dir_contents.ocaml dir_contents
-      >>| Ml_sources.modules
+      >>= Ml_sources.modules
+            ~libs:(Scope.libs scope)
             ~for_:
               (Library (Lib_info.lib_id (Lib.Local.info local_lib) |> Lib_id.to_local_exn))
     in

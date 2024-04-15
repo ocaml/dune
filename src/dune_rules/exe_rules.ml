@@ -173,6 +173,7 @@ let executables_rules
       ~preprocessing:pp
       ~js_of_ocaml
       ~opaque:Inherit_from_settings
+      ~melange_package_name:None
       ~package:exes.package
   in
   let lib_config = ocaml.lib_config in

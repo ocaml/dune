@@ -25,6 +25,7 @@ module L : sig
   val to_iflags : Path.Set.t -> _ Command.Args.t
   val include_paths : ?project:Dune_project.t -> t -> Lib_mode.t -> Path.Set.t
   val include_flags : ?project:Dune_project.t -> t -> Lib_mode.t -> _ Command.Args.t
+  val melange_emission_include_flags : ?project:Dune_project.t -> t -> _ Command.Args.t
   val c_include_flags : t -> Super_context.t -> _ Command.Args.t
   val toplevel_ld_paths : t -> Path.Set.t
   val toplevel_include_paths : t -> Path.Set.t

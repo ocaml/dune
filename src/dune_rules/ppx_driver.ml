@@ -327,6 +327,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~requires_link
       ~opaque
       ~js_of_ocaml:None
+      ~melange_package_name:None
       ~package:None
       ~bin_annot:false
       ()

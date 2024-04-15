@@ -98,18 +98,30 @@ module L = struct
     | lib :: _ -> Path.Set.remove dirs (Lib.lib_config lib).stdlib_dir
   ;;
 
+  type mode =
+    { lib_mode : Lib_mode.t
+    ; melange_emit : bool
+    }
+
   let include_paths =
     let add_public_dir ~visible_cmi obj_dir acc mode =
       match visible_cmi with
       | false -> acc
       | true ->
-        let public_cmi_dir =
-          (match mode with
-           | `Byte -> Obj_dir.public_cmi_ocaml_dir
-           | `Melange -> Obj_dir.public_cmi_melange_dir)
-            obj_dir
+        let public_cmi_dirs =
+          List.map
+            ~f:(fun f -> f obj_dir)
+            (match mode with
+             | { lib_mode = Ocaml _; _ } -> [ Obj_dir.public_cmi_ocaml_dir ]
+             | { lib_mode = Melange; melange_emit = false } ->
+               [ Obj_dir.public_cmi_melange_dir ]
+             | { lib_mode = Melange; melange_emit = true } ->
+               (* Add the dir where `.cmj` files exist, even for installed
+                  private libraries. Melange needs to query `.cmj` files for
+                  `import` information *)
+               [ Obj_dir.melange_dir; Obj_dir.public_cmi_melange_dir ])
         in
-        Path.Set.add acc public_cmi_dir
+        List.fold_left public_cmi_dirs ~init:acc ~f:Path.Set.add
     in
     fun ?project ts mode ->
       let visible_cmi =
@@ -130,11 +142,11 @@ module L = struct
         List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir (Lib.info t) in
           let visible_cmi = visible_cmi t in
-          match mode with
-          | Lib_mode.Melange -> add_public_dir ~visible_cmi obj_dir acc `Melange
-          | Ocaml mode ->
-            let acc = add_public_dir ~visible_cmi obj_dir acc `Byte in
-            (match mode with
+          match mode.lib_mode with
+          | Melange -> add_public_dir ~visible_cmi obj_dir acc mode
+          | Ocaml ocaml_mode ->
+            let acc = add_public_dir ~visible_cmi obj_dir acc mode in
+            (match ocaml_mode with
              | Byte -> acc
              | Native ->
                let native_dir = Obj_dir.native_dir obj_dir in
@@ -143,7 +155,17 @@ module L = struct
       remove_stdlib dirs ts
   ;;
 
-  let include_flags ?project ts mode = to_iflags (include_paths ?project ts mode)
+  let include_flags ?project ts mode =
+    to_iflags (include_paths ?project ts { lib_mode = mode; melange_emit = false })
+  ;;
+
+  let melange_emission_include_flags ?project ts =
+    to_iflags (include_paths ?project ts { lib_mode = Melange; melange_emit = true })
+  ;;
+
+  let include_paths ?project ts mode =
+    include_paths ?project ts { lib_mode = mode; melange_emit = false }
+  ;;
 
   let c_include_paths ts =
     let dirs =

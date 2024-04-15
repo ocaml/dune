@@ -60,16 +60,9 @@ Melange (installed) library depends on private library
   > let () = Js.log Foo.x
   > EOF
 
-An issue similar to #7104 still present because the `.cmj` is not visible.
+Build the app that depends on `foo`, which in turn depends on a private lib
 
-  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @melange --root app --display=short
+  $ OCAMLPATH=$PWD/prefix/lib/:$OCAMLPATH dune build @melange --root app
   Entering directory 'app'
-          melc output/node_modules/foo.__private__.priv/priv.js
-          melc .output.mobjs/melange/melange__Entry.{cmi,cmj,cmt}
-          melc output/entry.js
-          melc output/node_modules/foo/foo.js (exit 2)
-  File "_none_", line 1:
-  Error: Priv not found, it means either the module does not exist or it is a namespace
   Leaving directory 'app'
-  [1]
 

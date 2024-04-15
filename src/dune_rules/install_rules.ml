@@ -64,8 +64,10 @@ let check_runtime_deps_relative_path local_path ~loc ~lib_info =
       ]
       ~hints:
         [ Pp.textf
-            "Move the dependency to a descendant of the folder where the library is \
-             defined"
+            "Move the offending dependency somewhere inside `%s'."
+            (Path.build lib_src_dir
+             |> Path.drop_optional_build_context_src_exn
+             |> Path.Source.to_string)
         ]
   | Some _ -> ()
 ;;

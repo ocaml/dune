@@ -720,7 +720,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
     under_melange_emit_target ~sctx ~dir:stanza_dir
     >>| (function
      | None -> Some (emit_rules sctx for_melange)
-     | Some { stanza_dir = parent_melange_emit_dir; stanza = parent_stanza } ->
+     | Some { stanza_dir = _; stanza = parent_stanza } ->
        let main_message = Pp.text "melange.emit stanzas cannot be nested" in
        let annots =
          let main = User_message.make ~loc:stanza.loc [ main_message ] in
@@ -740,16 +740,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
          [ main_message
          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ parent_stanza.loc; stanza.loc ]
          ]
-         ~hints:
-           (let emit_dir = Path.Build.drop_build_context_exn stanza_dir in
-            let parent_melange_emit_dir =
-              Path.Build.drop_build_context_exn parent_melange_emit_dir
-            in
-            [ Pp.textf
-                "Move the melange.emit stanza from %s to at least the level of %s"
-                (Path.Source.to_string emit_dir)
-                (Path.Source.to_string parent_melange_emit_dir)
-            ]))
+         ~hints:[ Pp.text "Move both `melange.emit' stanzas to the same level." ])
 ;;
 
 module Gen_rules = Import.Build_config.Gen_rules

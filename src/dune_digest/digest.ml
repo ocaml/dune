@@ -153,8 +153,5 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
           | contents -> Ok (generic (directory_digest_version, contents, stats.st_perm))))
     | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
   in
-  match stats.st_kind with
-  | S_DIR when not allow_dirs -> Error Path_digest_error.Unexpected_kind
-  | S_BLK | S_CHR | S_LNK | S_FIFO | S_SOCK -> Error Unexpected_kind
-  | _ -> loop path stats
+  loop path stats
 ;;

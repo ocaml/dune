@@ -8,7 +8,7 @@ module Config = struct
     { concurrency : int
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
-    ; signal_watcher : [ `Yes | `No ]
+    ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
 end
@@ -70,7 +70,7 @@ let blocked_signals : Signal.t list =
 ;;
 
 module Thread : sig
-  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
+  val spawn : (unit -> unit) -> unit
   val delay : float -> unit
   val wait_signal : int list -> int
 end = struct
@@ -82,34 +82,30 @@ end = struct
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
   ;;
 
-  let create ~signal_watcher =
+  let create =
     if Sys.win32
     then Thread.create
     else
       (* On unix, we make sure to block signals globally before starting a
          thread so that only the signal watcher thread can receive signals. *)
       fun f x ->
-      let () =
-        match signal_watcher with
-        | `Yes -> Lazy.force block_signals
-        | `No -> ()
-      in
+      Lazy.force block_signals;
       Thread.create f x
   ;;
 
-  let spawn ~signal_watcher f =
+  let spawn f =
     let f () =
       try f () with
       | exn ->
         let exn = Exn_with_backtrace.capture exn in
         Dune_util.Report_error.report exn
     in
-    let (_ : Thread.t) = create ~signal_watcher f () in
+    let (_ : Thread.t) = create f () in
     ()
   ;;
 end
 
-let spawn_thread f = Thread.spawn ~signal_watcher:`Yes f
+let spawn_thread f = Thread.spawn f
 
 (** The event queue *)
 module Event : sig
@@ -483,7 +479,7 @@ module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   type t
 
-  val init : signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> t
+  val init : Event.Queue.t -> t
 
   (** Register a new running job. *)
   val register_job : t -> job -> unit
@@ -618,7 +614,7 @@ end = struct
     done
   ;;
 
-  let init ~signal_watcher events =
+  let init events =
     let t =
       { mutex = Mutex.create ()
       ; something_is_running = Condition.create ()
@@ -627,13 +623,13 @@ end = struct
       ; running_count = 0
       }
     in
-    Thread.spawn ~signal_watcher (fun () -> run t);
+    Thread.spawn (fun () -> run t);
     t
   ;;
 end
 
 module Signal_watcher : sig
-  val init : Event.Queue.t -> unit
+  val init : print_ctrl_c_warning:bool -> Event.Queue.t -> unit
 end = struct
   let signos = List.map interrupt_signals ~f:Signal.to_int
 
@@ -663,7 +659,7 @@ end = struct
     else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
   ;;
 
-  let run q =
+  let run ~print_ctrl_c_warning q =
     let last_exit_signals = Queue.create () in
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
@@ -681,13 +677,13 @@ end = struct
           ignore (Queue.pop_exn last_exit_signals : float)
         done;
         let n = Queue.length last_exit_signals in
-        if n = 2 then prerr_endline warning;
+        if n = 2 && print_ctrl_c_warning then prerr_endline warning;
         if n = 3 then sys_exit 1
       | _ -> (* we only blocked the signals above *) assert false
     done
   ;;
 
-  let init q = Thread.spawn ~signal_watcher:`Yes (fun () -> run q)
+  let init ~print_ctrl_c_warning q = Thread.spawn (fun () -> run ~print_ctrl_c_warning q)
 end
 
 type status =
@@ -734,7 +730,7 @@ end
 module Alarm_clock : sig
   type t
 
-  val create : signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> frequency:float -> t
+  val create : Event.Queue.t -> frequency:float -> t
 
   type alarm
 
@@ -795,9 +791,9 @@ end = struct
     Mutex.unlock t.mutex
   ;;
 
-  let create ~signal_watcher events ~frequency =
+  let create events ~frequency =
     let t = { events; active = true; alarms = []; frequency; mutex = Mutex.create () } in
-    Thread.spawn ~signal_watcher (polling_loop t);
+    Thread.spawn (polling_loop t);
     t
   ;;
 
@@ -955,41 +951,32 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 ;;
 
-let prepare (config : Config.t) ~(handler : Handler.t) =
-  let events = Event.Queue.create config.stats in
-  (* We return the scheduler in chunks to resolve the dependency cycle
-     (scheduler wants to know the file_watcher, file_watcher wants to send
-     events to scheduler) *)
-  let signal_watcher = config.signal_watcher in
-  ( events
-  , fun ~file_watcher ->
-      (* The signal watcher must be initialized first so that signals are
-         blocked in all threads. *)
-      (match signal_watcher with
-       | `Yes -> Signal_watcher.init events
-       | `No -> ());
-      let cancel = Fiber.Cancel.create () in
-      let process_watcher = Process_watcher.init ~signal_watcher events in
-      { status =
-          (* Slightly weird initialization happening here: for polling mode we
-             initialize in "Building" state, immediately switch to Standing_by
-             and then back to "Building". It would make more sense to start in
-             "Stand_by" from the start. We can't "just" switch the initial value
-             here because then the non-polling mode would run in "Standing_by"
-             mode, which is even weirder. *)
-          ref (Building cancel)
-      ; job_throttle = Fiber.Throttle.create config.concurrency
-      ; process_watcher
-      ; events
-      ; config
-      ; handler
-      ; file_watcher
-      ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
-      ; wait_for_build_input_change = ref None
-      ; alarm_clock = lazy (Alarm_clock.create ~signal_watcher events ~frequency:0.1)
-      ; cancel
-      ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
-      } )
+let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
+  (* The signal watcher must be initialized first so that signals are
+     blocked in all threads. *)
+  Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events;
+  let cancel = Fiber.Cancel.create () in
+  let process_watcher = Process_watcher.init events in
+  { status =
+      (* Slightly weird initialization happening here: for polling mode we
+         initialize in "Building" state, immediately switch to Standing_by
+         and then back to "Building". It would make more sense to start in
+         "Stand_by" from the start. We can't "just" switch the initial value
+         here because then the non-polling mode would run in "Standing_by"
+         mode, which is even weirder. *)
+      ref (Building cancel)
+  ; job_throttle = Fiber.Throttle.create config.concurrency
+  ; process_watcher
+  ; events
+  ; config
+  ; handler
+  ; file_watcher
+  ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+  ; wait_for_build_input_change = ref None
+  ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
+  ; cancel
+  ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
+  }
 ;;
 
 module Run_once : sig
@@ -1318,13 +1305,13 @@ module Run = struct
   ;;
 
   let go
-    config
+    (config : Config.t)
     ?timeout
     ?(file_watcher = No_watcher)
     ~(on_event : Config.t -> Handler.Event.t -> unit)
     run
     =
-    let events, prepare = prepare config ~handler:on_event in
+    let events = Event_queue.create config.stats in
     let file_watcher =
       match file_watcher with
       | No_watcher -> None
@@ -1332,14 +1319,14 @@ module Run = struct
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
-               { spawn_thread = Thread.spawn ~signal_watcher:config.signal_watcher
+               { spawn_thread = Thread.spawn
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }
              ~watch_exclusions:config.watch_exclusions
              ())
     in
-    let t = prepare ~file_watcher in
+    let t = prepare config ~handler:on_event ~events ~file_watcher in
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
     Memo.reset initial_invalidation;
     let result =

@@ -523,8 +523,8 @@ static void init_spawn_info(struct spawn_info *info,
         caml_failwith("Unknown sigprocmask action");
     }
 
-    for (value v_signals_list = Field(v_sigprocmask, 1);
-         v_signals_list != Val_emptylist;
+    value v_signals_list = Field(v_sigprocmask, 1);
+    for (; v_signals_list != Val_emptylist;
          v_signals_list = Field(v_signals_list, 1)) {
       int signal = caml_convert_signal_number(Long_val(Field(v_signals_list, 0)));
       switch (sigprocmask_command) {

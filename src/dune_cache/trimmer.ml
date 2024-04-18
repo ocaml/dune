@@ -108,9 +108,14 @@ let trim ~goal =
       (List.filter_map files ~f:(fun path ->
          match Path.stat path with
          | Ok stats ->
-           if file_exists_and_is_unused ~stats
-           then Some (path, stats.st_size, stats.st_ctime)
-           else None
+           (match file_exists_and_is_unused ~stats with
+            | true ->
+              let ctime =
+                Creation_time.stat (Path.to_string path)
+                |> Option.value ~default:stats.st_ctime
+              in
+              Some (path, stats.st_size, ctime)
+            | false -> None)
          | Error _ -> None))
   in
   let delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =

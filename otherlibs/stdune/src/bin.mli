@@ -5,8 +5,13 @@
 val path_sep : char
 
 (** Parse a [PATH] like variable *)
+val parse : ?sep:char -> string -> string list
+
+(** Parse a [PATH] like variable expecting each element to be a path *)
 val parse_path : ?sep:char -> string -> Path.t list
 
+(** Return a delimited string encoding of a list of strings, such as
+    is used by the [PATH] variable *)
 val encode_strings : string list -> string
 
 (** Add an entry to the contents of a [PATH] variable. *)

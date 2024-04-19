@@ -31,8 +31,8 @@ type t =
 
 let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
 let hash { vars; unix = _ } = Poly.hash vars
-let make vars = { vars; unix = None }
-let empty = make Map.empty
+let of_map vars = { vars; unix = None }
+let empty = of_map Map.empty
 let vars t = Var.Set.of_keys t.vars
 let get t k = Map.find t.vars k
 
@@ -62,12 +62,12 @@ let of_unix arr =
     | x :: _ -> x)
 ;;
 
-let initial = make (of_unix (Unix.environment ()))
-let of_unix u = make (of_unix u)
-let add t ~var ~value = make (Map.set t.vars var value)
+let initial = of_map (of_unix (Unix.environment ()))
+let of_unix u = of_map (of_unix u)
+let add t ~var ~value = of_map (Map.set t.vars var value)
 let mem t ~var = Map.mem t.vars var
-let remove t ~var = make (Map.remove t.vars var)
-let extend t ~vars = if Map.is_empty vars then t else make (Map.superpose vars t.vars)
+let remove t ~var = of_map (Map.remove t.vars var)
+let extend t ~vars = if Map.is_empty vars then t else of_map (Map.superpose vars t.vars)
 let extend_env x y = if Map.is_empty x.vars then y else extend x ~vars:y.vars
 
 let to_dyn t =
@@ -80,13 +80,13 @@ let diff x y =
     match vy with
     | Some _ -> None
     | None -> vx)
-  |> make
+  |> of_map
 ;;
 
-let update t ~var ~f = make (Map.update t.vars var ~f)
+let update t ~var ~f = of_map (Map.update t.vars var ~f)
 
 let of_string_map m =
-  make (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.set acc k v) m)
+  of_map (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.set acc k v) m)
 ;;
 
 let iter t = Map.iteri t.vars

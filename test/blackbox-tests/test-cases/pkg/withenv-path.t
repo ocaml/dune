@@ -39,7 +39,7 @@ Attempting to add a path to PATH replaces the entire PATH:
   > EOF
   $ dune clean
   $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | sed -e "s#$DUNE_PATH#DUNE_PATH#"
-  PATH=/tmp/bin
+  PATH=/tmp/bin:DUNE_PATH:/bin
 
 Try adding multiple paths to PATH:
   $ cat >dune.lock/test.pkg <<'EOF'
@@ -53,4 +53,4 @@ Try adding multiple paths to PATH:
   > EOF
   $ dune clean
   $ PATH=$DUNE_PATH:/bin build_pkg test 2>&1 | sed -e "s#$DUNE_PATH#DUNE_PATH#"
-  PATH=/bar/bin:/foo/bin:/tmp/bin
+  PATH=/bar/bin:/foo/bin:/tmp/bin:DUNE_PATH:/bin

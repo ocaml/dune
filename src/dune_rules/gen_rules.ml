@@ -211,9 +211,9 @@ let define_all_alias ~dir ~project ~js_targets =
 
 let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
-  let* stanzas = Dune_file.stanzas dune_file in
+  let* stanzas = Dune_file.stanzas dune_file
+  and* scope = Scope.DB.find_by_dir ctx_dir in
   let* { For_stanza.merlin = merlins; cctx = cctxs; js = js_targets; source_dirs } =
-    let* scope = Scope.DB.find_by_dir ctx_dir in
     For_stanza.of_stanzas
       stanzas
       ~cctxs
@@ -240,26 +240,27 @@ let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_di
          | false -> Memo.return ()
          | true ->
            let* ml_sources = Dir_contents.ocaml dir_contents in
-           (match
-              let base_path =
-                match Ml_sources.include_subdirs ml_sources with
-                | Include Unqualified | No -> []
-                | Include Qualified ->
-                  Path.Local.descendant
-                    (Path.Build.local ctx_dir)
-                    ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
-                  |> Option.value_exn
-                  |> Path.Local.explode
-                  |> List.map ~f:Module_name.of_string
-              in
-              Menhir_rules.module_names m
-              |> List.find_map ~f:(fun name ->
-                let open Option.O in
-                let path = base_path @ [ name ] in
-                let* origin = Ml_sources.find_origin ml_sources path in
-                List.find_map cctxs ~f:(fun (loc, cctx) ->
-                  Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
-            with
+           let base_path =
+             match Ml_sources.include_subdirs ml_sources with
+             | Include Unqualified | No -> []
+             | Include Qualified ->
+               Path.Local.descendant
+                 (Path.Build.local ctx_dir)
+                 ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
+               |> Option.value_exn
+               |> Path.Local.explode
+               |> List.map ~f:Module_name.of_string
+           in
+           Menhir_rules.module_names m
+           |> Memo.List.find_map ~f:(fun name ->
+             let path = base_path @ [ name ] in
+             Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path
+             >>| function
+             | None -> None
+             | Some origin ->
+               List.find_map cctxs ~f:(fun (loc, cctx) ->
+                 Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
+           >>= (function
             | Some cctx -> Menhir_rules.gen_rules cctx m ~dir:ctx_dir
             | None ->
               (* This happens often when passing a [-p ...] option that hides a

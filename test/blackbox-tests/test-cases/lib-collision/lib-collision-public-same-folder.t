@@ -19,10 +19,9 @@ the same folder.
 Without any consumers of the libraries
 
   $ dune build
-  File "dune", lines 4-6, characters 0-44:
-  4 | (library
+  File "dune", line 5, characters 7-10:
   5 |  (name foo)
-  6 |  (public_name baz.foo))
+             ^^^
   Error: Library "foo" appears for the second time in this directory
   [1]
 
@@ -31,12 +30,15 @@ With some consumer
   $ cat > dune << EOF
   > (library
   >  (name foo)
+  >  (modules)
   >  (public_name bar.foo))
   > (library
   >  (name foo)
+  >  (modules)
   >  (public_name baz.foo))
   > (executable
   >  (name main)
+  >  (modules main)
   >  (libraries foo))
   > EOF
 
@@ -45,9 +47,8 @@ With some consumer
   > EOF
 
   $ dune build
-  File "dune", lines 4-6, characters 0-44:
-  4 | (library
-  5 |  (name foo)
-  6 |  (public_name baz.foo))
+  File "dune", line 6, characters 7-10:
+  6 |  (name foo)
+             ^^^
   Error: Library "foo" appears for the second time in this directory
   [1]

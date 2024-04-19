@@ -33,6 +33,7 @@ module Local = struct
   include Comparable.Make (T)
 
   let make ~loc ~src_dir name = { name; loc; src_dir }
+  let name t = t.name
   let loc t = t.loc
 end
 
@@ -69,11 +70,9 @@ let to_local_exn = function
 ;;
 
 let name = function
-  | Local { name; _ } -> name
-  | External (_, name) -> name
+  | Local { name; _ } | External (_, name) -> name
 ;;
 
 let loc = function
-  | Local { loc; _ } -> loc
-  | External (loc, _) -> loc
+  | Local { loc; _ } | External (loc, _) -> loc
 ;;

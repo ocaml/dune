@@ -27,13 +27,17 @@ type for_ =
       }
   | Melange of { target : string }
 
-val modules_and_obj_dir : t -> for_:for_ -> Modules.t * Path.Build.t Obj_dir.t
+val modules_and_obj_dir
+  :  t
+  -> libs:Lib.DB.t
+  -> for_:for_
+  -> (Modules.t * Path.Build.t Obj_dir.t) Memo.t
 
 (** Modules attached to a library, executable, or melange.emit stanza.*)
-val modules : t -> for_:for_ -> Modules.t
+val modules : t -> libs:Lib.DB.t -> for_:for_ -> Modules.t Memo.t
 
 (** Find out the origin of the stanza for a given module *)
-val find_origin : t -> Module_name.Path.t -> Origin.t option
+val find_origin : t -> libs:Lib.DB.t -> Module_name.Path.t -> Origin.t option Memo.t
 
 val empty : t
 

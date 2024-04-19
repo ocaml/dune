@@ -385,10 +385,15 @@ module Crawl = struct
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
     let first_exe = snd (Nonempty_list.hd exes.names) in
+    let* scope =
+      Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
+    in
     let* modules_, obj_dir =
       Dir_contents.get sctx ~dir
       >>= Dir_contents.ocaml
-      >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
+      >>= Ml_sources.modules_and_obj_dir
+            ~libs:(Scope.libs scope)
+            ~for_:(Exe { first_exe })
     in
     let* pp_map =
       let+ version =
@@ -405,9 +410,6 @@ module Crawl = struct
       immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
     in
     let obj_dir = Obj_dir.of_local obj_dir in
-    let* scope =
-      Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
-    in
     let* modules_ = modules ~obj_dir ~deps_of modules_ in
     let+ requires =
       let* compile_info = Exe_rules.compile_info ~scope exes in
@@ -449,9 +451,13 @@ module Crawl = struct
         | true ->
           (* XXX why do we have a second object directory? *)
           let* modules_, obj_dir_ =
+            let* libs =
+              Scope.DB.find_by_dir (Path.as_in_build_dir_exn src_dir) >>| Scope.libs
+            in
             Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
             >>= Dir_contents.ocaml
-            >>| Ml_sources.modules_and_obj_dir
+            >>= Ml_sources.modules_and_obj_dir
+                  ~libs
                   ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
           in
           let* pp_map =

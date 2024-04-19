@@ -127,7 +127,7 @@ let executables_rules
   let* modules, obj_dir =
     let first_exe = first_exe exes in
     Dir_contents.ocaml dir_contents
-    >>| Ml_sources.modules_and_obj_dir ~for_:(Exe { first_exe })
+    >>= Ml_sources.modules_and_obj_dir ~libs:(Scope.libs scope) ~for_:(Exe { first_exe })
   in
   let* () = Check_rules.add_obj_dir sctx ~obj_dir (Ocaml Byte) in
   let ctx = Super_context.context sctx in

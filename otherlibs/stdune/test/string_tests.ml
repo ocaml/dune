@@ -6,6 +6,7 @@ let () = init ()
 let take s n = String.take s n |> string |> print_dyn
 let drop s n = String.drop s n |> string |> print_dyn
 let split_n s n = String.split_n s n |> pair string string |> print_dyn
+let split s ~on = String.split s ~on |> list string |> print_dyn
 
 let%expect_test _ =
   take "foobar" 3;
@@ -145,4 +146,44 @@ let%expect_test _ =
   [%expect {|
 None
 |}]
+;;
+
+let%expect_test _ =
+  split "a" ~on:':';
+  [%expect {| [ "a" ] |}]
+;;
+
+let%expect_test _ =
+  split "" ~on:':';
+  [%expect {| [ "" ] |}]
+;;
+
+let%expect_test _ =
+  split "a:" ~on:':';
+  [%expect {| [ "a"; "" ] |}]
+;;
+
+let%expect_test _ =
+  split ":a" ~on:':';
+  [%expect {| [ ""; "a" ] |}]
+;;
+
+let%expect_test _ =
+  split "a:b" ~on:':';
+  [%expect {| [ "a"; "b" ] |}]
+;;
+
+let%expect_test _ =
+  split ":" ~on:':';
+  [%expect {| [ ""; "" ] |}]
+;;
+
+let%expect_test _ =
+  split "::" ~on:':';
+  [%expect {| [ ""; ""; "" ] |}]
+;;
+
+let%expect_test _ =
+  split ":::" ~on:':';
+  [%expect {| [ ""; ""; ""; "" ] |}]
 ;;

@@ -11,8 +11,7 @@
 This test makes sure that a full rebuild is not triggered when the output of
 coqdep is changed.
 
-Currently this is the case and a bug:
+This is as expected:
   $ dune build --display=short
         coqdep .bug.theory.d
-          coqc root.{glob,vo}
           coqc leaf.{glob,vo}

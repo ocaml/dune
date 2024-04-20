@@ -37,12 +37,7 @@ let paths ps = deps (Dep.Set.of_files ps)
 let path_set ps = deps (Dep.Set.of_files_set ps)
 let dyn_paths paths = dyn_deps (paths >>| fun (x, paths) -> x, Dep.Set.of_files paths)
 let dyn_paths_unit paths = dyn_deps (paths >>| fun paths -> (), Dep.Set.of_files paths)
-
-let contents p =
-  let* () = Dep.file p |> Dep.Set.singleton |> Build_system.record_deps in
-  of_memo (Build_system.read_file p)
-;;
-
+let contents p = of_memo (Build_system.read_file p)
 let lines_of p = contents p >>| String.split_lines
 
 let read_sexp p =

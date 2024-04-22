@@ -12,3 +12,4 @@ the rest of the OCaml ecosystem.
    opam-integration
    bootstrap
    mental-model
+   tour/index

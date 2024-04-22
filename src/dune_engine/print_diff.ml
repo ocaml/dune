@@ -205,12 +205,35 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                      normal_diff ()))
 ;;
 
+let print_aux ~skip_trailing_cr annot path1 path2 =
+  match (Path.Untracked.exists path1, Path.Untracked.exists path2) with
+  | true, true -> prepare ~skip_trailing_cr annot path1 path2
+  | false, false ->
+    let loc = Loc.in_file path1 in
+    User_error.raise ~loc
+      [ Pp.textf "Files %s and %s doesn't exists."
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
+      ]
+  | e1, _ ->
+    Printf.printf "%s--- %s\n+++ %s\n%s"
+      Ansi_color.Style.(escape_sequence [ `Bg_green ])
+      (Path.to_string path1) (Path.to_string path2)
+      Ansi_color.Style.(escape_sequence [ `Bg_blue ]);
+    let print_prefix pre path =
+      List.iter ~f:(Printf.printf "%s%s" pre) (Io.lines_of_file path)
+    in
+    if e1 then print_prefix "-" path1 else print_prefix "+" path2;
+    Printf.printf "%s" (Ansi_color.Style.escape_sequence []);
+    let loc = Loc.in_file path1 in
+    User_error.raise ~loc []
+
 let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
-  let p = prepare ~skip_trailing_cr annots path1 path2 in
+  let p = print_aux ~skip_trailing_cr annots path1 path2 in
   With_fallback.exec p
 ;;
 
 let get ?(skip_trailing_cr = Sys.win32) annots path1 path2 =
-  let p = prepare ~skip_trailing_cr annots path1 path2 in
+  let p = print_aux ~skip_trailing_cr annots path1 path2 in
   With_fallback.capture p
 ;;

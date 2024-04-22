@@ -68,6 +68,7 @@ module File = struct
 
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
+    Path.mkdir_p (Path.source (Path.Source.parent_exn dst));
     let chmod = Path.Permissions.add Path.Permissions.write in
     Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) ()
   ;;

@@ -85,11 +85,38 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
     ]
 ;;
 
-let extract_directory_targets ~dir stanzas =
-  Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
-    match Stanza.repr stanza with
-    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; enabled_if; _ }
-      ->
+let directory_targets_of_rule ~dir { Rule_conf.targets; loc = rule_loc; enabled_if; _ } =
+  match targets with
+  | Infer ->
+    (* we don't infer directory targets *)
+    Memo.return Path.Build.Map.empty
+  | Static { targets; _ } ->
+    let directory_targets =
+      List.fold_left targets ~init:Path.Build.Map.empty ~f:(fun acc (target, kind) ->
+        match (kind : Targets_spec.Kind.t) with
+        | File -> acc
+        | Directory ->
+          let loc = String_with_vars.loc target in
+          (match String_with_vars.text_only target with
+           | None ->
+             User_error.raise
+               ~loc
+               [ Pp.text "Variables are not allowed in directory targets." ]
+           | Some target ->
+             let dir_target = Path.Build.relative ~error_loc:loc dir target in
+             if Path.Build.is_descendant dir_target ~of_:dir
+             then
+               (* We ignore duplicates here as duplicates are detected and
+                  reported by [Load_rules]. *)
+               Path.Build.Map.set acc dir_target rule_loc
+             else
+               (* This will be checked when we interpret the stanza
+                  completely, so just ignore this rule for now. *)
+               acc))
+    in
+    if Path.Build.Map.is_empty directory_targets
+    then Memo.return directory_targets
+    else
       (match enabled_if with
        | Blang.Const const -> Memo.return const
        | _ ->
@@ -99,42 +126,27 @@ let extract_directory_targets ~dir stanzas =
          let* expander = Expander0.get ~dir in
          Expander0.eval_blang expander enabled_if)
       >>| (function
-       | false -> acc
-       | true ->
-         List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-           let loc = String_with_vars.loc target in
-           match (kind : Targets_spec.Kind.t) with
-           | File -> acc
-           | Directory ->
-             (match String_with_vars.text_only target with
-              | None ->
-                User_error.raise
-                  ~loc
-                  [ Pp.text "Variables are not allowed in directory targets." ]
-              | Some target ->
-                let dir_target = Path.Build.relative ~error_loc:loc dir target in
-                if Path.Build.is_descendant dir_target ~of_:dir
-                then
-                  (* We ignore duplicates here as duplicates are detected and
-                     reported by [Load_rules]. *)
-                  Path.Build.Map.set acc dir_target rule_loc
-                else
-                  (* This will be checked when we interpret the stanza
-                     completely, so just ignore this rule for now. *)
-                  acc)))
+       | false -> Path.Build.Map.empty
+       | true -> directory_targets)
+;;
+
+let extract_directory_targets ~dir stanzas =
+  Memo.parallel_map stanzas ~f:(fun stanza ->
+    match Stanza.repr stanza with
+    | Rule_conf.T rule -> directory_targets_of_rule ~dir rule
     | Coq_stanza.Theory.T m ->
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)
       Coq_doc.coqdoc_directory_targets ~dir m
-      >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-        User_error.raise
-          ~loc:loc1
-          [ Pp.textf
-              "The following both define the same directory target: %s"
-              (Path.Build.to_string path)
-          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-          ])
-    | _ -> Memo.return acc)
+    | _ -> Memo.return Path.Build.Map.empty)
+  >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
+    User_error.raise
+      ~loc:loc1
+      [ Pp.textf
+          "The following both define the same directory target: %s"
+          (Path.Build.to_string path)
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ])
 ;;
 
 module rec DB : sig

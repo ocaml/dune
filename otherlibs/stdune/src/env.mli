@@ -45,4 +45,5 @@ val update : t -> var:Var.t -> f:(string option -> string option) -> t
 val to_dyn : t -> Dyn.t
 val of_string_map : string String.Map.t -> t
 val to_map : t -> string Map.t
+val of_map : string Map.t -> t
 val iter : t -> f:(string -> string -> unit) -> unit

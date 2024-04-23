@@ -1,7 +1,8 @@
 let path_sep = if Sys.win32 then ';' else ':'
+let parse ?(sep = path_sep) s = String.split s ~on:sep
 
 let parse_path ?(sep = path_sep) s =
-  String.split s ~on:sep
+  parse ~sep s
   |> List.filter_map ~f:(function
     | "" -> None
     | p -> Some (Path.of_filename_relative_to_initial_cwd p))

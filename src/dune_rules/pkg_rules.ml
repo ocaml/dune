@@ -144,6 +144,47 @@ module Install_cookie = struct
   ;;
 end
 
+module Value_list_env = struct
+  (* A representation of an environment where each variable can hold a
+     list of [Value.t]. Each variable will be encoded into a delimited
+     string (in the style of the PATH variable). *)
+  type t = Value.t list Env.Map.t
+
+  let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
+  let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
+
+  let string_of_env_values values =
+    List.map values ~f:(function
+      | Value.String s -> s
+      | Dir s | Path s -> Path.to_absolute_filename s)
+    |> Bin.encode_strings
+  ;;
+
+  let to_env (t : t) = Env.Map.map t ~f:string_of_env_values |> Env.of_map
+  let get_path t = Env.Map.find t Env_path.var
+
+  (* [extend_concat_path a b] adds all variables from [b] to [a]
+     overwriting any existing values of those variables in [a] except for PATH
+     which is set to the concatenation of the PATH variables from [a] and [b]
+     with the PATH entries from [b] preceding the PATH entries from
+     [a]. If only one of the arguments contains a PATH variable then
+     its value will be the value of PATH in the result, however if
+     neither argument contains a PATH variable then PATH will be unset
+     in the result. *)
+  let extend_concat_path a b =
+    let extended = Env.Map.superpose b a in
+    let concated_path =
+      match get_path a, get_path b with
+      | None, None -> None
+      | Some x, None | None, Some x -> Some x
+      | Some a, Some b -> Some (b @ a)
+    in
+    match concated_path with
+    | None -> extended
+    | Some concated_path -> Env.Map.set extended Env_path.var concated_path
+  ;;
+end
+
 module Env_update = struct
   include Dune_lang.Action.Env_update
 
@@ -180,13 +221,6 @@ module Env_update = struct
       | EqPlusEq ->
         (* TODO nobody uses this AFAIK *)
         assert false)
-  ;;
-
-  let string_of_env_values values =
-    List.map values ~f:(function
-      | Value.String s -> s
-      | Dir s | Path s -> Path.to_absolute_filename s)
-    |> Bin.encode_strings
   ;;
 end
 
@@ -289,25 +323,21 @@ module Pkg = struct
 
   let build_env t = build_env_of_deps @@ deps_closure t
 
-  let exported_env t =
-    let base =
-      Env.Map.of_list_exn
-        [ Opam_switch.opam_switch_prefix_var_name, Path.Build.to_string t.paths.target_dir
-        ; "CDPATH", ""
-        ; "MAKELEVEL", ""
-        ; "OPAM_PACKAGE_NAME", Package.Name.to_string t.info.name
-        ; "OPAM_PACKAGE_VERSION", Package_version.to_string t.info.version
-        ; "OPAMCLI", "2.0"
-        ]
-    in
-    let package_env =
-      let vars =
-        build_env t
-        |> Env.Map.map ~f:Env_update.string_of_env_values
-        |> Env.Map.superpose base
-      in
-      Env.extend Env.empty ~vars
-    in
+  let base_env t =
+    Env.Map.of_list_exn
+      [ ( Opam_switch.opam_switch_prefix_var_name
+        , [ Value.Path (Path.build t.paths.target_dir) ] )
+      ; "CDPATH", [ Value.String "" ]
+      ; "MAKELEVEL", [ Value.String "" ]
+      ; "OPAM_PACKAGE_NAME", [ Value.String (Package.Name.to_string t.info.name) ]
+      ; ( "OPAM_PACKAGE_VERSION"
+        , [ Value.String (Package_version.to_string t.info.version) ] )
+      ; "OPAMCLI", [ Value.String "2.0" ]
+      ]
+  ;;
+
+  let exported_typed_env t =
+    let package_env = build_env t |> Env.Map.superpose (base_env t) in
     (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
        variables may affect builds in unintended ways and make builds less
@@ -315,8 +345,10 @@ module Pkg = struct
        for build actions to run successfully, such as $PATH on systems where the
        shell's default $PATH variable doesn't include the location of standard
        programs or build tools (e.g. NixOS). *)
-    Env_path.extend_env_concat_path (Global.env ()) package_env
+    Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
+
+  let exported_env t = Value_list_env.to_env @@ exported_typed_env t
 end
 
 module Pkg_installed = struct
@@ -873,7 +905,7 @@ module Action_expander = struct
           let update =
             let value =
               match Env.Map.find env var with
-              | Some v -> Env_update.string_of_env_values v
+              | Some v -> Value_list_env.string_of_env_values v
               | None ->
                 (* TODO *)
                 ""
@@ -931,7 +963,7 @@ module Action_expander = struct
     let+ { Artifacts_and_deps.binaries; dep_info } =
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
-    let env = Pkg.build_env pkg in
+    let env = Pkg.exported_typed_env pkg in
     let depends =
       Package.Name.Map.add_exn
         dep_info
@@ -1661,7 +1693,7 @@ let lock_dir_path = Lock_dir.get_path
 let exported_env context =
   let+ all_packages = all_packages context in
   let env = Pkg.build_env_of_deps all_packages in
-  let vars = Env.Map.map env ~f:Env_update.string_of_env_values in
+  let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
 ;;
 

@@ -52,7 +52,21 @@ val extract_blank_separated_words : t -> t list
 val lsplit2 : t -> on:char -> (t * t) option
 val lsplit2_exn : t -> on:char -> t * t
 val rsplit2 : t -> on:char -> (t * t) option
+
+(** [split t ~on] returns the list of non-overlapping substrings of
+    [t] between each occurence of [on]. If [t] begins or ends with [on]
+    then an empty string will be present on the "far" side of [on] in the
+    output. If [on] does not appear in [t] then the result is a list
+    containing [t] (even if [t] is the empty string).
+
+    Note that [split "" ~on] returns [[""]] (ie. a list containing a single
+    empty string).
+
+    This function is roughly the inverse of [concat].
+    Ie. [concat ~sep:(String.make 1 c) (split ~on:c s)] will return
+    the original string [s]. *)
 val split : t -> on:char -> t list
+
 val split_lines : t -> t list
 
 (** Escape ONLY one character. {!escape} also escapes '\n',... and transforms

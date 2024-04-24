@@ -143,12 +143,16 @@ The cache deletes oldest files first.
   $ reset
   $ dune build target_a target_b
 
-The [rm] commands below update the [ctime] of the corresponding cache entries.
-By deleting [target_b] first, we make its [ctime] older. The trimmer deletes
-older entries first, which is why [target_b] is trimmed while [target_a] is not.
-We know that [target_b] was trimmed, because it had to be rebuilt as indicated
-by the existence of [beacon_b].
+To do so, we determine the creation time of the beacons and check which one is
+older and which one is newer.
 
+  $ BEACON_A_CTIME=$(dune_cmd stat creation _build/default/beacon_a)
+  $ BEACON_B_TIME=$(dune_cmd stat creation _build/default/beacon_b)
+  $ echo "$BEACON_A _build/default/beacon_a" > ages
+  $ echo "$BEACON_B _build/default/beacon_b" >> ages
+  $ sort -n ages > beacons-by-age
+  $ OLDER=$(head -n1 beacons-by-age | awk '{print $2}')
+  $ NEWER=$(tail -n1 beacons-by-age | awk '{print $2}')
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a
@@ -159,9 +163,9 @@ by the existence of [beacon_b].
   2
   $ dune_cmd stat hardlinks _build/default/target_b
   2
-  $ dune_cmd exists _build/default/beacon_a
+  $ dune_cmd exists $NEWER
   false
-  $ dune_cmd exists _build/default/beacon_b
+  $ dune_cmd exists $OLDER
   true
 
 Now let's redo the same test but delete the two targets in the opposite order,

@@ -16,6 +16,7 @@ module Stat = struct
     | Permissions
     | Size
     | Kind
+    | Creation
 
   type t =
     { file : Path.t
@@ -27,18 +28,29 @@ module Stat = struct
     | "hardlinks" -> Hardlinks
     | "permissions" -> Permissions
     | "kind" -> Kind
+    | "creation" -> Creation
     | s ->
       raise
         (Arg.Bad
-           (sprintf "%s is invalid. hardlinks, permissions are only valid options" s))
+           (sprintf
+              "%s is invalid. size, hardlinks, permissions, kind, creation are the only \
+               valid options"
+              s))
   ;;
 
-  let pp_stats data (stats : Unix.stats) =
+  let pp_stats data ((stats : Unix.stats), ctime) =
     match data with
     | Size -> Int.to_string stats.st_size
     | Hardlinks -> Int.to_string stats.st_nlink
     | Permissions -> sprintf "%o" stats.st_perm
     | Kind -> sprintf "%s" (File_kind.to_string_hum stats.st_kind)
+    | Creation ->
+      let ctime =
+        match ctime with
+        | None -> stats.st_ctime
+        | Some ctime -> ctime
+      in
+      sprintf "%f" ctime
   ;;
 
   let name = "stat"
@@ -52,7 +64,7 @@ module Stat = struct
   ;;
 
   let run { file; data } =
-    let stats = Path.lstat_exn file in
+    let stats = Path.lstat_exn file, Creation_time.lstat (Path.to_string file) in
     print_endline (pp_stats data stats)
   ;;
 

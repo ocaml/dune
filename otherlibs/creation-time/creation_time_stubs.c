@@ -62,14 +62,15 @@ static int dune_creation_time__statx(bool follow, const char* pathname, double* 
 
 CAMLprim value dune_creation_time__generic(bool follow, value path) {
     CAMLparam1(path);
-    CAMLlocal1(caml_ts);
+    CAMLlocal2(caml_ts, some);
 
     double ts;
     const char* pathname = String_val(path);
 
     if (dune_creation_time__statx(follow, pathname, &ts) == 0) {
 	caml_ts = caml_copy_double(ts);
-	CAMLreturn (caml_alloc_some(caml_ts));
+	some = caml_alloc_some(caml_ts);
+	CAMLreturn (some);
     } else {
 	CAMLreturn (Val_none);
     }

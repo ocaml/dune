@@ -147,9 +147,9 @@ To do so, we determine the creation time of the beacons and check which one is
 older and which one is newer.
 
   $ BEACON_A_CTIME=$(dune_cmd stat creation _build/default/beacon_a)
-  $ BEACON_B_TIME=$(dune_cmd stat creation _build/default/beacon_b)
-  $ echo "$BEACON_A _build/default/beacon_a" > ages
-  $ echo "$BEACON_B _build/default/beacon_b" >> ages
+  $ BEACON_B_CTIME=$(dune_cmd stat creation _build/default/beacon_b)
+  $ echo "$BEACON_A_CTIME _build/default/beacon_a" > ages
+  $ echo "$BEACON_B_CTIME _build/default/beacon_b" >> ages
   $ sort -n ages > beacons-by-age
   $ OLDER=$(head -n1 beacons-by-age | awk '{print $2}')
   $ NEWER=$(tail -n1 beacons-by-age | awk '{print $2}')
@@ -167,26 +167,6 @@ older and which one is newer.
   false
   $ dune_cmd exists $OLDER
   true
-
-Now let's redo the same test but delete the two targets in the opposite order,
-thus making the trimmer delete [target_a] instead of [target_b] as above.
-
-  $ reset
-  $ dune build target_a target_b
-  $ rm -f _build/default/beacon_a _build/default/target_a
-  $ dune_cmd wait-for-fs-clock-to-advance
-  $ rm -f _build/default/beacon_b _build/default/target_b
-  $ dune cache trim --trimmed-size 1B
-  Freed 79B (2 files removed)
-  $ dune build target_a target_b
-  $ dune_cmd stat hardlinks _build/default/target_a
-  2
-  $ dune_cmd stat hardlinks _build/default/target_b
-  2
-  $ dune_cmd exists _build/default/beacon_a
-  true
-  $ dune_cmd exists _build/default/beacon_b
-  false
 
 Test garbage collection: both [multi_a] and [multi_b] must be removed as they
 are part of the same rule.

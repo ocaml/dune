@@ -209,7 +209,28 @@ let gen_rules_for_source_file ~pp_ctx ~ml_kind path =
     let* pp_action = gen_pp_action ~pp_ctx ~ml_kind ~target:raw_pp_target ~input:path in
     let+ format_action =
       match gen_format_action ~pp_ctx ~output:target ~ext ~input:raw_pp_target with
-      | Some format -> format.build
+      | Some format ->
+        (* XXX this needs to to be a no-op in case the pp_action didn't produce
+           anything. 
+
+           One way to do it is to create a custom action:
+
+             {[
+               module Spec = struct
+                 type ('path, 'target) t = 'path * Action.t
+                 ...
+               end
+
+               val run_if_exists : Path.t -> Action.t -> Action.t
+             ]}
+
+          See [Copy_line_directive] for how to create a custom action. You will
+          need to call out to [Action_exec] to execute the underlying action.
+
+          The simpler way to do it just to hardcode the action directly into
+          [dune_engine/action.ml].
+         *)
+        format.build
       | None -> (* XXX is this right? *) assert false
     in
     Action.Full.combine

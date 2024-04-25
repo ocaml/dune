@@ -92,6 +92,5 @@ issue by recreating this empty directory.
   $ mkdir -p _install/lib/app/plugins/plugin1
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/app
-  Fatal error: exception The plugin "plugin1" can't be found in the search paths "$TESTCASE_ROOT/_install/lib/app/plugins".
-  [2]
+  Main app starts...
 

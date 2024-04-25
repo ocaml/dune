@@ -109,8 +109,7 @@ let libs_or_exes_to_pp_in_source_tree ~sctx ~scope ~expander ~dirs_to_exclude =
     | Some v -> Appendable_list.cons v acc
   in
   let db = Scope.libs scope in
-  Source_tree.root ()
-  >>= fun dir ->
+  let* dir = Source_tree.root () in
   let+ srcs_to_pp =
     Source_tree_map_reduce.map_reduce
       dir

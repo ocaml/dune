@@ -5,6 +5,33 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.15.2 (2024-04-23)
+-------------------
+
+### Fixed
+
+- If no directory targets are defined, then do not evaluate `enabled_if`
+  (#10442, @rgrinberg)
+
+- Fix a bug where Coq projects were being rebuilt from scratch each time the
+  dependency graph changed. (#10446, fixes #10149, @alizter)
+
+3.15.1 (2024-04-17)
+-------------------
+
+### Fixed
+
+- Fix overflow in sendfile stubs (copy of large files could fail or end with
+  truncated files) (#10333, @tonyfettes)
+
+- Fix crash when a rule with a directory target is disabled with `enabled_if`
+  (#10382, fixes #10310, @gridbugs)
+
+- melange: remove all restrictions around virtual libraries in Melange. They
+  may be used as otherwise in libraries and executables. (#10412, @anmonteiro)
+
+- spawn: fix compatibility with RHEL7 (#10428, @emillon)
+
 3.15.0 (2024-04-03)
 -------------------
 

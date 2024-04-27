@@ -1,0 +1,12 @@
+(coq.theory
+ (name basic)
+ (package base)
+ (modules :standard)
+ (flags :standard)
+ (modules_flags
+  (bar (:standard -w -local-declaration)))
+ (synopsis "Test Coq library"))
+
+(rule
+ (alias default)
+ (action (echo "%{read:base.install}")))

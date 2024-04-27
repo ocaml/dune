@@ -5,13 +5,19 @@
 open Import
 
 module Name = struct
-  type t = string
+  module Self = struct
+    type t = string
 
-  let make x = x
-  let compare = String.compare
-  let equal = String.equal
-  let to_dyn s = Dyn.String s
-  let to_string s = s
+    let make x = x
+    let compare = String.compare
+    let equal = String.equal
+    let to_dyn s = Dyn.String s
+    let to_string s = s
+    let decode = Dune_lang.Decoder.string
+  end
+
+  include Self
+  module Map = Map.Make (Self)
 end
 
 module Module = struct

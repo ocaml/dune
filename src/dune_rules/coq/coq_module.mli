@@ -12,6 +12,9 @@ module Name : sig
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
   val to_string : t -> string
+  val decode : t Dune_lang.Decoder.t
+
+  module Map : Map.S with type key = t
 end
 
 type t

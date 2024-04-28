@@ -1158,11 +1158,12 @@ module With_vlib = struct
     exists ~f:has
   ;;
 
-  let fold_no_vlib t ~init ~f =
-    match t with
-    | Modules t -> fold t ~init ~f
-    | Impl { vlib = _; impl; _ } -> fold impl ~f ~init
+  let drop_vlib = function
+    | Modules t -> t
+    | Impl { vlib = _; impl; _ } -> impl
   ;;
+
+  let fold_no_vlib t ~init ~f = fold (drop_vlib t) ~init ~f
 
   let fold_no_vlib_with_aliases =
     let group_of_alias t m =

@@ -1163,8 +1163,6 @@ module With_vlib = struct
     | Impl { vlib = _; impl; _ } -> impl
   ;;
 
-  let fold_no_vlib t ~init ~f = fold (drop_vlib t) ~init ~f
-
   let fold_no_vlib_with_aliases =
     let group_of_alias t m =
       match t.modules with
@@ -1200,7 +1198,9 @@ module With_vlib = struct
            Some { impl with Group.modules })
     in
     fun t ~init ~normal ~alias ->
-      fold_no_vlib t ~init ~f:(fun m acc ->
+      t
+      |> drop_vlib
+      |> fold ~init ~f:(fun m acc ->
         match Module.kind m with
         | Alias _ ->
           (match group_of_alias t m with

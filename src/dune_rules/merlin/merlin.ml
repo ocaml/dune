@@ -564,7 +564,9 @@ module Unprocessed = struct
     and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
     let per_module_config =
       (* And copy for each module the resulting pp flags *)
-      Modules.With_vlib.fold_no_vlib modules ~init:[] ~f:(fun m init ->
+      modules
+      |> Modules.With_vlib.drop_vlib
+      |> Modules.fold ~init:[] ~f:(fun m init ->
         Module.sources m
         |> Path.Build.Set.of_list_map ~f:(fun src ->
           Path.as_in_build_dir_exn src |> remove_extension)

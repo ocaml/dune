@@ -371,7 +371,9 @@ module Crawl = struct
 
   (* Builds the list of modules *)
   let modules ~obj_dir ~deps_of modules_ : Descr.Mod.t list Memo.t =
-    Modules.With_vlib.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
+    modules_
+    |> Modules.With_vlib.drop_vlib
+    |> Modules.fold ~init:(Memo.return []) ~f:(fun m macc ->
       let* acc = macc in
       let deps = deps_of m in
       let+ { Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =

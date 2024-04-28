@@ -60,6 +60,7 @@ module With_vlib : sig
   type modules := t
   type t
 
+  val drop_vlib : t -> modules
   val to_dyn : t -> Dyn.t
   val encode : t -> src_dir:Path.t -> Dune_lang.t
   val impl : modules -> vlib:modules -> t
@@ -79,7 +80,6 @@ module With_vlib : sig
       executables. *)
   val singleton : Module.t -> t
 
-  val fold_no_vlib : t -> init:'acc -> f:(Module.t -> 'acc -> 'acc) -> 'acc
   val canonical_path : t -> Group.t -> Module.t -> Module_name.Path.t
 
   val fold_no_vlib_with_aliases

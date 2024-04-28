@@ -157,7 +157,9 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
 
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
-    Modules.With_vlib.fold_no_vlib modules ~init:Path.Set.empty ~f:(fun m acc ->
+    modules
+    |> Modules.With_vlib.drop_vlib
+    |> Modules.fold ~init:Path.Set.empty ~f:(fun m acc ->
       if Module.has m ~ml_kind:Impl
       then (
         let target = Path.build @@ make_js_name ~js_ext ~output m in

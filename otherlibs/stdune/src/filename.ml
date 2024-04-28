@@ -4,6 +4,9 @@ type t = string
 
 module Extension = struct
   type nonrec t = t
+
+  module Set = String.Set
+  module Map = String.Map
 end
 
 let split_extension fn =

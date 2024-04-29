@@ -505,7 +505,7 @@ end = struct
     if prefix = path
     then Some Local.root
     else (
-      let prefix = prefix ^ "/" in
+      let prefix = if String.is_suffix ~suffix:"/" prefix then prefix else prefix ^ "/" in
       let open Option.O in
       let+ suffix = String.drop_prefix path ~prefix in
       Local.of_string suffix)

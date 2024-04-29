@@ -609,3 +609,12 @@ let%expect_test "drop entire external path" =
   Path.External.drop_prefix ~prefix:path path |> Dyn.option Path.Local.to_dyn |> print_dyn;
   [%expect {| Some "." |}]
 ;;
+
+let%expect_test "drop external prefix with a trailing /" =
+  Path.External.drop_prefix
+    ~prefix:(Path.External.of_string "/a/b/c/")
+    (Path.External.of_string "/a/b/c/d/e")
+  |> Dyn.option Path.Local.to_dyn
+  |> print_dyn;
+  [%expect {| Some "d/e" |}]
+;;

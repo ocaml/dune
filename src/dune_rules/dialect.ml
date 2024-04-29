@@ -7,7 +7,7 @@ module Mode = Ocaml.Mode
 module File_kind = struct
   type t =
     { kind : Ml_kind.t
-    ; extension : string
+    ; extension : Filename.Extension.t
     ; preprocess : (Loc.t * Action.t) option
     ; format : (Loc.t * Action.t * string list) option
     ; print_ast : (Loc.t * Action.t) option
@@ -270,7 +270,7 @@ module DB = struct
 
   type t =
     { by_name : dialect String.Map.t
-    ; by_extension : dialect String.Map.t
+    ; by_extension : dialect Filename.Extension.Map.t
     ; mutable extensions_for_merlin : string option Ml_kind.Dict.t list option
     }
 
@@ -278,7 +278,7 @@ module DB = struct
 
   let empty =
     { by_name = String.Map.empty
-    ; by_extension = String.Map.empty
+    ; by_extension = Filename.Extension.Map.empty
     ; extensions_for_merlin = None
     }
   ;;
@@ -316,7 +316,7 @@ module DB = struct
     in
     let add_ext map = function
       | Some { File_kind.extension = ext; _ } ->
-        (match String.Map.add map ext dialect with
+        (match Filename.Extension.Map.add map ext dialect with
          | Ok map -> map
          | Error dialect ->
            User_error.raise
@@ -346,7 +346,7 @@ module DB = struct
           | _ -> Ml_kind.Impl
         in
         dialect, kind)
-      (String.Map.find by_extension extension)
+      (Filename.Extension.Map.find by_extension extension)
   ;;
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name

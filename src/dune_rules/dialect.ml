@@ -305,38 +305,40 @@ module DB = struct
     }
   ;;
 
-  let compute_for_merlin by_name =
-    let extensions, readers =
-      String.Map.fold
-        by_name
-        ~init:([], String.Map.empty)
-        ~f:(fun d (extensions, readers) ->
-          let handle_ml_kind kind readers =
-            let ext = extension d kind in
-            if ext = extension ocaml kind
-            then (* this is standard dialect, exclude *) None, readers
-            else (
-              let reader = merlin_reader d kind in
-              match ext, reader with
-              | Some ext, Some reader -> Some ext, String.Map.add_exn readers ext reader
-              | _ ->
-                if preprocess d kind <> None
-                then (* we have preprocessor defined *) None, readers
-                else ext, readers)
-          in
-          let impl, readers = handle_ml_kind Ml_kind.Impl readers in
-          let intf, readers = handle_ml_kind Ml_kind.Intf readers in
-          let extensions =
-            match impl, intf with
-            | None, None -> extensions
-            | _ -> { Ml_kind.Dict.impl; intf } :: extensions
-          in
-          extensions, readers)
+  let compute_for_merlin =
+    let handle_ml_kind ~dialect kind readers =
+      let ext = extension dialect kind in
+      if ext = extension ocaml kind
+      then (* this is standard dialect, exclude *) None, readers
+      else (
+        match ext, merlin_reader dialect kind with
+        | Some ext, Some reader -> Some ext, String.Map.add_exn readers ext reader
+        | _ ->
+          if preprocess dialect kind <> None
+          then (* we have preprocessor defined *) None, readers
+          else ext, readers)
     in
-    let extensions =
-      List.sort ~compare:(Ml_kind.Dict.compare (Option.compare String.compare)) extensions
-    in
-    { extensions; readers }
+    fun by_name ->
+      let extensions, readers =
+        String.Map.fold
+          by_name
+          ~init:([], String.Map.empty)
+          ~f:(fun dialect (extensions, readers) ->
+            let impl, readers = handle_ml_kind ~dialect Ml_kind.Impl readers in
+            let intf, readers = handle_ml_kind ~dialect Ml_kind.Intf readers in
+            let extensions =
+              match impl, intf with
+              | None, None -> extensions
+              | _ -> { Ml_kind.Dict.impl; intf } :: extensions
+            in
+            extensions, readers)
+      in
+      let extensions =
+        List.sort
+          ~compare:(Ml_kind.Dict.compare (Option.compare String.compare))
+          extensions
+      in
+      { extensions; readers }
   ;;
 
   let for_merlin t = Lazy.force t.for_merlin

@@ -206,19 +206,18 @@ module DB = struct
     | Project of
         { project : Dune_project.t
         ; lib_id : Lib_id.Local.t
+        ; loc : Loc.t
         }
     | Name of (Loc.t * Lib_name.t)
 
-  let loc_of_redirect_to = function
-    | Project { lib_id; _ } -> Lib_id.Local.loc lib_id
-    | Name (loc, _) -> loc
-  ;;
-
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs =
+    let public_loc_of_redirect_to = function
+      | Project { loc; _ } | Name (loc, _) -> loc
+    in
     let resolve_redirect_to t rt =
       match rt with
-      | Project { project; lib_id } ->
+      | Project { project; lib_id; _ } ->
         let scope = find_by_project (Fdecl.get t) project in
         Lib.DB.Resolve_result.redirect_by_id scope.db (Local lib_id)
       | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
@@ -247,7 +246,10 @@ module DB = struct
                   in
                   Library.to_lib_id ~src_dir conf
                 in
-                Some (Public_lib.name p, Project { project; lib_id }, Some lib_id)
+                Some
+                  ( Public_lib.name p
+                  , Project { project; lib_id; loc = Public_lib.loc p }
+                  , Some lib_id )
               | Library _ | Library_redirect _ -> None
               | Deprecated_library_name s ->
                 Some
@@ -260,8 +262,8 @@ module DB = struct
                 Lib_name.Map.update by_name public_name ~f:(function
                   | None -> Some r2
                   | Some r1 ->
-                    let loc1 = loc_of_redirect_to r1
-                    and loc2 = loc_of_redirect_to r2 in
+                    let loc1 = public_loc_of_redirect_to r1
+                    and loc2 = public_loc_of_redirect_to r2 in
                     let main_message =
                       Pp.textf
                         "Public library %s is defined twice:"

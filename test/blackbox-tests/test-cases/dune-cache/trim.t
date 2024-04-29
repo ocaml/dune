@@ -151,8 +151,10 @@ older and which one is newer.
   $ echo "$BEACON_A_CTIME _build/default/beacon_a" > ages
   $ echo "$BEACON_B_CTIME _build/default/beacon_b" >> ages
   $ sort -n ages > beacons-by-age
+  $ cat beacons-by-age
   $ OLDER=$(head -n1 beacons-by-age | awk '{print $2}')
   $ NEWER=$(tail -n1 beacons-by-age | awk '{print $2}')
+  $ echo older $OLDER newer $NEWER
   $ rm -f _build/default/beacon_b _build/default/target_b
   $ dune_cmd wait-for-fs-clock-to-advance
   $ rm -f _build/default/beacon_a _build/default/target_a

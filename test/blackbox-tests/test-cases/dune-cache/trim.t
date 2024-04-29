@@ -11,7 +11,7 @@
   >   (action (bash "touch beacon_a; echo target_a > target_a")))
   > (rule
   >   (targets target_b)
-  >   (action (bash "touch beacon_b; echo target_b > target_b")))
+  >   (action (bash "sleep 0.1; touch beacon_b; echo target_b > target_b")))
   > (rule
   >   (targets non-exe)
   >   (action (bash "echo content > non-exe")))

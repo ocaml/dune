@@ -49,7 +49,7 @@ module DB : sig
 
   type for_merlin =
     { extensions : string option Ml_kind.Dict.t list
-    ; readers : string list String.Map.t
+    ; readers : Filename.Extension.t list String.Map.t
     }
 
   val for_merlin : t -> for_merlin

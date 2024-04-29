@@ -292,8 +292,8 @@ module DB = struct
     }
 
   and for_merlin =
-    { extensions : string option Ml_kind.Dict.t list
-    ; readers : string list String.Map.t
+    { extensions : Filename.Extension.t option Ml_kind.Dict.t list
+    ; readers : Filename.Extension.t list String.Map.t
     }
 
   let fold { by_name; _ } = String.Map.fold by_name

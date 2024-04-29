@@ -16,7 +16,7 @@ CRAM sanitization
    (S
     $TESTCASE_ROOT/exe)
    (FLG (-w -40 -g))
-   (SUFFIX ".mlx .mli"))
+   (SUFFIX ".mlx .mlx"))
   X: _build/default/exe/x.mlx
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
@@ -48,7 +48,7 @@ CRAM sanitization
    (S
     $TESTCASE_ROOT/lib)
    (FLG (-w -40 -g))
-   (SUFFIX ".mlx .mli")
+   (SUFFIX ".mlx .mlx")
    (READER (mlx)))
   X: _build/default/lib/x.mlx
   ((STDLIB /OCAMLC_WHERE)
@@ -76,7 +76,7 @@ CRAM sanitization
    (S
     $TESTCASE_ROOT/melange)
    (FLG (-w -40 -g))
-   (SUFFIX ".mlx .mli")
+   (SUFFIX ".mlx .mlx")
    (READER (mlx)))
   X_mel: _build/default/melange/x_mel.mlx
   ((STDLIB lib/melange/melange)

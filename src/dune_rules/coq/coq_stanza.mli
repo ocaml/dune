@@ -31,6 +31,7 @@ module Theory : sig
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
+    ; modules_flags : (Coq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t

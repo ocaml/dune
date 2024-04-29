@@ -153,6 +153,8 @@ module Value_list_env = struct
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
 
+  (* Concatenate a list of values in the style of lists found in
+     environment variables, such as PATH *)
   let string_of_env_values values =
     List.map values ~f:(function
       | Value.String s -> s
@@ -183,11 +185,32 @@ module Value_list_env = struct
     | None -> extended
     | Some concated_path -> Env.Map.set extended Env_path.var concated_path
   ;;
+
+  (* Adds a path to an env where variables are associated with lists
+     of paths. The path is prepended to the list associated with the
+     given variable and a new binding is added to the env if the
+     variable is not yet part of the env. *)
+  let add_path (t : t) var path : t =
+    Env.Map.update t var ~f:(fun paths ->
+      let paths = Option.value paths ~default:[] in
+      Some (Value.Dir (Path.build path) :: paths))
+  ;;
 end
 
 module Env_update = struct
   include Dune_lang.Action.Env_update
 
+  (* Handle the :=, +=, =:, and =+ opam environment update operators.
+
+     The operators with colon character update a variable, adding a
+     leading/trailing separator (e.g. the ':' chars in PATH on unix)
+     if the variable was initially unset or empty, while the operators
+     with a plus character add no leading/trailing separator in such a
+     case.
+
+     Updates where the newly added value is the empty string are
+     ignored since opam refuses to add empty strings to list
+     variables.*)
   let update kind ~new_v ~old_v ~f =
     if new_v = ""
     then old_v
@@ -304,23 +327,30 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
-  let build_env_of_deps =
-    let add_to_path env var what =
-      Env.Map.update env var ~f:(fun paths ->
-        let paths = Option.value paths ~default:[] in
-        Some (Value.Dir (Path.build what) :: paths))
-    in
-    fun xs ->
-      List.fold_left xs ~init:Env.Map.empty ~f:(fun env t ->
-        let env =
-          let roots = Paths.install_roots t.paths in
-          let init = add_to_path env Env_path.var roots.bin in
-          let vars = Install.Roots.to_env_without_path roots in
-          List.fold_left vars ~init ~f:(fun acc (var, path) -> add_to_path acc var path)
-        in
-        List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+  (* Given a list of packages, construct an env containing variables
+     set by each package. Variables containing delimited lists of
+     paths (e.g. PATH) which appear in multiple package's envs are
+     concatenated in the order of their associated packages in the
+     input list. Environment updates via the `exported_env` field
+     (equivalent to opam's `setenv` field) are applied for each
+     package in reverse order to the argument list so that packages
+     appearing earlier can overwrite the values of variables set by
+     packages appearing later. *)
+  let build_env_of_deps ts =
+    List.fold_left (List.rev ts) ~init:Env.Map.empty ~f:(fun env t ->
+      let env =
+        let roots = Paths.install_roots t.paths in
+        let init = Value_list_env.add_path env Env_path.var roots.bin in
+        let vars = Install.Roots.to_env_without_path roots in
+        List.fold_left vars ~init ~f:(fun acc (var, path) ->
+          Value_list_env.add_path acc var path)
+      in
+      List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
+  (* [build_env t] returns an env containing paths containing all the
+     tools and libraries required to build the package [t] inside the
+     faux opam directory contained in the _build dir. *)
   let build_env t = build_env_of_deps @@ deps_closure t
 
   let base_env t =
@@ -336,7 +366,9 @@ module Pkg = struct
       ]
   ;;
 
-  let exported_typed_env t =
+  (* [exported_value_env t] returns the complete env that will be used
+     to build the package [t] *)
+  let exported_value_env t =
     let package_env = build_env t |> Env.Map.superpose (base_env t) in
     (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
@@ -348,7 +380,7 @@ module Pkg = struct
     Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
 
-  let exported_env t = Value_list_env.to_env @@ exported_typed_env t
+  let exported_env t = Value_list_env.to_env @@ exported_value_env t
 end
 
 module Pkg_installed = struct
@@ -963,7 +995,7 @@ module Action_expander = struct
     let+ { Artifacts_and_deps.binaries; dep_info } =
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
-    let env = Pkg.exported_typed_env pkg in
+    let env = Pkg.exported_value_env pkg in
     let depends =
       Package.Name.Map.add_exn
         dep_info

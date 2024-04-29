@@ -600,7 +600,7 @@ module Unprocessed = struct
             }
           in
           (* we add the config with and without the extension, the latter is
-             needed for a fallback in get *)
+             needed for a fallback in this file's [get] function. *)
           let src_without_extension = remove_extension src in
           (src, config) :: (src_without_extension, config) :: acc))
       |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)

@@ -1,7 +1,7 @@
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
 
-# A utility to query merlin configuration for a file:
+A utility to query merlin configuration for a file:
   $ cat >merlin_conf.sh <<EOF
   > #!/bin/sh
   > FILE=\$1
@@ -11,10 +11,10 @@
 
   $ chmod a+x merlin_conf.sh
 
-# Project sources
+Project sources
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.16)
   > (using melange 0.1)
   > 
   > (dialect
@@ -89,7 +89,7 @@ A pped file with unconventionnal filename
   44
   45
 
-# We now query Merlin configuration for the various source files:
+We now query Merlin configuration for the various source files:
 
 Some configuration fields are common to all the modules of a same stanza. This
 is the case for the stdlib, build and sources directories, flags and suffixes.
@@ -99,10 +99,9 @@ Some configuration can be specific to a module like preprocessing.
 Dialects are specified by extensions so are specific to a file. This means a
 different reader might be used for the signature and the implementation.
 
-Note that suffixes provided by dialect should always be told to Merlin for
-locate to work correctly. 
+Note that Merlin should always be told about dialect-provided suffixes, to make `MerlinLocate` work correctly.
 
-## Preprocessing:
+Preprocessing:
 
 Is it expected that the suffix for implementation and interface is the same ?
   $ ./merlin_conf.sh pped.ml | tee pped.out
@@ -117,7 +116,7 @@ Is it expected that the suffix for implementation and interface is the same ?
 
   $ ./merlin_conf.sh pped.mli | diff pped.out -
 
-## Melange:
+Melange:
 
 As expected, the reader is not communicated for the standard mli
   $ ./merlin_conf.sh mel.mli | tee mel.out
@@ -140,9 +139,9 @@ The reader is set for the mlx file
   \ No newline at end of file
   [1]
 
-## Unconventionnal file names:
+Unconventional file names:
 
-Users might have preprocessing steps that start with a non-conventionnal
+Users might have preprocessing steps that start with a non-conventional
 filename like `mymodule.cppo.ml`. 
 
 While Dune first tries to match by the exact filename requested, if nothing is
@@ -160,11 +159,11 @@ found, then it'll make a guess that the file was preprocessed into a file with
 
   $ ./merlin_conf.sh cppomod.ml | diff cppomod.out -
 
-Note that this means unreleated files might be given the same configuration:
+Note that this means unrelated files might be given the same configuration:
 
   $ ./merlin_conf.sh cppomod.tralala.ml | diff cppomod.out -
 
-And with unconventionnal extension: 
+And with unconventional extension: 
 (note that without appropriate suffix configuration Merlin will never jump to
 such files) 
 We could expect dune to get the wrongext module configuration

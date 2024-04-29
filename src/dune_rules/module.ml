@@ -5,7 +5,7 @@ module File = struct
     { path : Path.t
     ; orig_path : Path.t
         (* while path can be changed for a module (when it is being pp'ed), the
-           orig_path stays the same and point to an original source file *)
+           orig_path stays the same and points to an original source file *)
     ; dialect : Dialect.t
     }
 

@@ -91,7 +91,7 @@ let decode =
     and+ merlin_reader =
       field_o
         "merlin_reader"
-        (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> located (repeat1 string))
+        (Dune_lang.Syntax.since Stanza.syntax (3, 16) >>> located (repeat1 string))
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
@@ -152,8 +152,8 @@ let print_ast { file_kinds; _ } ml_kind =
 
 let merlin_reader { file_kinds; _ } ml_kind =
   let open Option.O in
-  let* x = Ml_kind.Dict.get file_kinds ml_kind in
-  let+ _, merlin_reader = x.merlin_reader in
+  let* dialect = Ml_kind.Dict.get file_kinds ml_kind in
+  let+ _, merlin_reader = dialect.merlin_reader in
   merlin_reader
 ;;
 

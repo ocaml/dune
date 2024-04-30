@@ -94,7 +94,7 @@ include Sub_system.Register_end_point (struct
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
       let open Memo.O in
-      let modules = Modules.singleton_exe main_module in
+      let modules = Modules.With_vlib.singleton_exe main_module in
       let runner_libs =
         let open Resolve.Memo.O in
         let* libs =

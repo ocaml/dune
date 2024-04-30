@@ -56,8 +56,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
         copy_to_obj_dir ~src:(object_file vlib_obj_dir) ~dst:(object_file impl_obj_dir)))
   in
   let vlib_modules = Vimpl.vlib_modules vimpl in
-  Modules.fold_no_vlib vlib_modules ~init:(Memo.return ()) ~f:(fun m acc ->
-    acc >>> copy_objs m)
+  Modules.fold vlib_modules ~init:(Memo.return ()) ~f:(fun m acc -> acc >>> copy_objs m)
 ;;
 
 let impl sctx ~(lib : Library.t) ~scope =

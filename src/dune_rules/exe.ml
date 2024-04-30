@@ -278,13 +278,13 @@ let link_many
     Memo.parallel_map programs ~f:(fun { Program.name; main_module_name; loc } ->
       let top_sorted_modules =
         let main =
-          match Modules.find modules main_module_name with
+          match Modules.With_vlib.find modules main_module_name with
           | Some m -> m
           | None ->
             Code_error.raise
               "link_many: unable to find module"
               [ "main_module_name", Module_name.to_dyn main_module_name
-              ; "modules", Modules.to_dyn modules
+              ; "modules", Modules.With_vlib.to_dyn modules
               ]
         in
         Dep_graph.top_closed_implementations

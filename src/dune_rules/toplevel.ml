@@ -25,7 +25,7 @@ module Source = struct
 
   let modules t pp =
     let open Memo.O in
-    main_module t |> Pp_spec.pp_module pp >>| Modules.singleton_exe
+    main_module t |> Pp_spec.pp_module pp >>| Modules.With_vlib.singleton_exe
   ;;
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }

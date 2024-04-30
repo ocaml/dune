@@ -7,7 +7,7 @@ module File : sig
 
   val dialect : t -> Dialect.t
   val path : t -> Path.t
-  val orig_path : t -> Path.t
+  val original_path : t -> Path.t
   val make : Dialect.t -> Path.t -> t
 end
 
@@ -88,7 +88,7 @@ module Obj_map : sig
 end
 
 val sources : t -> Path.t list
-val orig_sources : t -> Path.t list
+val sources_without_pp : t -> Path.t list
 val visibility : t -> Visibility.t
 val encode : t -> src_dir:Path.t -> Dune_lang.t list
 val decode : src_dir:Path.t -> t Dune_lang.Decoder.t

@@ -589,13 +589,13 @@ module Unprocessed = struct
       (* And copy for each module the resulting pp flags *)
       modules
       |> Modules.With_vlib.drop_vlib
-      |> Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
-        Module.orig_sources m
+      |> Modules.fold ~init:[] ~f:(fun m init ->
+        Module.sources_without_pp m
         |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
         |> Path.Build.Set.fold ~init ~f:(fun src acc ->
           let config =
             { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.local_open modules m
+            ; opens = Modules.With_vlib.local_open modules m
             ; reader = String.Map.find readers (Path.Build.extension src)
             }
           in

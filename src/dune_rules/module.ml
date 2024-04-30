@@ -3,9 +3,9 @@ open Import
 module File = struct
   type t =
     { path : Path.t
-    ; orig_path : Path.t
+    ; original_path : Path.t
         (* while path can be changed for a module (when it is being pp'ed), the
-           orig_path stays the same and points to an original source file *)
+           original_path stays the same and points to an original source file *)
     ; dialect : Dialect.t
     }
 
@@ -14,17 +14,17 @@ module File = struct
     fields
     @@ let+ path = field "path" (Dune_lang.Path.Local.decode ~dir) in
        (* TODO do not just assume the dialect is OCaml *)
-       { path; orig_path = path; dialect = Dialect.ocaml }
+       { path; original_path = path; dialect = Dialect.ocaml }
   ;;
 
-  let encode { path; orig_path = _; dialect = _ } ~dir =
+  let encode { path; original_path = _; dialect = _ } ~dir =
     let open Dune_lang.Encoder in
     record_fields [ field "path" (Dune_lang.Path.Local.encode ~dir) path ]
   ;;
 
   let dialect t = t.dialect
   let path t = t.path
-  let orig_path t = t.orig_path
+  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -36,13 +36,13 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path; orig_path = path }
+  let make dialect path = { dialect; path; original_path = path }
 
-  let to_dyn { path; orig_path; dialect } =
+  let to_dyn { path; original_path; dialect } =
     let open Dyn in
     record
       [ "path", Path.to_dyn path
-      ; "orig_path", Path.to_dyn orig_path
+      ; "original_path", Path.to_dyn original_path
       ; "dialect", Dyn.string @@ Dialect.name dialect
       ]
   ;;
@@ -323,7 +323,7 @@ let wrapped_compat t =
           (src_dir t)
           [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
       in
-      Some { File.dialect = Dialect.ocaml; path; orig_path = path }
+      Some { File.dialect = Dialect.ocaml; path; original_path = path }
     in
     { t.source with files = { intf = None; impl } }
   in
@@ -338,10 +338,10 @@ let sources t =
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
 ;;
 
-let orig_sources t =
+let sources_without_pp t =
   List.filter_map
     [ t.source.files.intf; t.source.files.impl ]
-    ~f:(Option.map ~f:(fun (x : File.t) -> x.orig_path))
+    ~f:(Option.map ~f:(fun (x : File.t) -> x.original_path))
 ;;
 
 module Obj_map = struct

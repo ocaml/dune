@@ -111,7 +111,7 @@ Is it expected that the suffix for implementation and interface is the same ?
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-pp?:$TESTCASE_ROOT/_build/default/pp.sh)
-  (?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
   (?:SUFFIX?:.mlx .mlx))
 
   $ ./merlin_conf.sh pped.mli | diff pped.out -
@@ -125,7 +125,7 @@ As expected, the reader is not communicated for the standard mli
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
-  (?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
   (?:SUFFIX?:.mlx .mlx))
 
 The reader is set for the mlx file
@@ -154,7 +154,7 @@ found, then it'll make a guess that the file was preprocessed into a file with
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
-  (?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
   (?:SUFFIX?:.mlx .mlx))
 
   $ ./merlin_conf.sh cppomod.ml | diff cppomod.out -
@@ -173,5 +173,5 @@ We could expect dune to get the wrongext module configuration
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
-  (?:FLG(?:-w?:@1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
   (?:SUFFIX?:.mlx .mlx))

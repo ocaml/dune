@@ -5,7 +5,7 @@ module Source : sig
 
   val make : dir:Path.Build.t -> loc:Loc.t -> main:string -> name:string -> t
   val loc : t -> Loc.t
-  val modules : t -> Pp_spec.t -> Modules.t Memo.t
+  val modules : t -> Pp_spec.t -> Modules.With_vlib.t Memo.t
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end
 

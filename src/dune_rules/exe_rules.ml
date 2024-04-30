@@ -45,7 +45,7 @@ let linkages
 let programs ~modules ~(exes : Executables.t) =
   List.map (Nonempty_list.to_list exes.names) ~f:(fun (loc, name) ->
     let mod_name = Module_name.of_string_allow_invalid (loc, name) in
-    match Modules.find modules mod_name with
+    match Modules.With_vlib.find modules mod_name with
     | Some m ->
       if Module.has m ~ml_kind:Impl
       then { Exe.Program.name; main_module_name = mod_name; loc }
@@ -133,7 +133,6 @@ let executables_rules
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
-  let programs = programs ~modules ~exes in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let* linkages =
     let+ dynamically_linked_foreign_archives =
@@ -143,14 +142,18 @@ let executables_rules
   in
   let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
-    Buildable_rules.modules_rules
-      sctx
-      (Executables (exes.buildable, Nonempty_list.to_list exes.names))
-      expander
-      ~dir
-      scope
-      modules
+    let+ modules, pp =
+      Buildable_rules.modules_rules
+        sctx
+        (Executables (exes.buildable, Nonempty_list.to_list exes.names))
+        expander
+        ~dir
+        scope
+        modules
+    in
+    Modules.With_vlib.modules modules, pp
   in
+  let programs = programs ~modules ~exes in
   let* cctx =
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

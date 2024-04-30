@@ -25,7 +25,7 @@ val name : t -> string
 val to_dyn : t -> Dyn.t
 val encode : t Dune_lang.Encoder.t
 val decode : t Dune_lang.Decoder.t
-val extension : t -> Ml_kind.t -> string option
+val extension : t -> Ml_kind.t -> Filename.Extension.t option
 val preprocess : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
 val format : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t * string list) option
 val print_ast : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
@@ -41,9 +41,9 @@ module DB : sig
   val empty : t
   val add : t -> loc:Loc.t -> dialect -> t
   val find_by_name : t -> string -> dialect option
-  val find_by_extension : t -> string -> (dialect * Ml_kind.t) option
+  val find_by_extension : t -> Filename.Extension.t -> (dialect * Ml_kind.t) option
   val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
-  val extensions_for_merlin : t -> string option Ml_kind.Dict.t list
+  val extensions_for_merlin : t -> Filename.Extension.t option Ml_kind.Dict.t list
   val to_dyn : t -> Dyn.t
   val builtin : t
   val is_default : t -> bool

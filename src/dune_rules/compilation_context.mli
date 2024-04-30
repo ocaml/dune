@@ -23,7 +23,7 @@ val create
   :  super_context:Super_context.t
   -> scope:Scope.t
   -> obj_dir:Path.Build.t Obj_dir.t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> flags:Ocaml_flags.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
@@ -52,7 +52,7 @@ val scope : t -> Scope.t
 val dir : t -> Path.Build.t
 
 val obj_dir : t -> Path.Build.t Obj_dir.t
-val modules : t -> Modules.t
+val modules : t -> Modules.With_vlib.t
 val flags : t -> Ocaml_flags.t
 val requires_link : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t

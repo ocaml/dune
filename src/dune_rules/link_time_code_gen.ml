@@ -16,7 +16,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code
       | Some _ -> obj_name
       | None ->
         Option.map modules ~f:(fun modules ->
-          Modules.find modules name |> Option.value_exn |> Module.obj_name)
+          Modules.With_vlib.find modules name |> Option.value_exn |> Module.obj_name)
     in
     let src_dir =
       let obj_dir = Compilation_context.obj_dir cctx in

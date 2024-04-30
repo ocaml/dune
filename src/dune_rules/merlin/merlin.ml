@@ -341,7 +341,7 @@ module Unprocessed = struct
   type t =
     { ident : Merlin_ident.t
     ; config : config
-    ; modules : Modules.t
+    ; modules : Modules.With_vlib.t
     }
 
   let make
@@ -465,11 +465,10 @@ module Unprocessed = struct
   ;;
 
   let src_dirs sctx lib =
-    match Lib.is_local lib with
-    | false -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
-    | true ->
-      Dir_contents.modules_of_lib sctx lib
-      >>| Option.value_exn
+    match Lib.Local.of_lib lib with
+    | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
+    | Some lib ->
+      Dir_contents.modules_of_local_lib sctx lib
       >>| Modules.source_dirs
       >>| Path.Set.map ~f:Path.drop_optional_build_context
   ;;
@@ -565,14 +564,16 @@ module Unprocessed = struct
     and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
     let per_module_config =
       (* And copy for each module the resulting pp flags *)
-      Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
+      modules
+      |> Modules.With_vlib.drop_vlib
+      |> Modules.fold ~init:[] ~f:(fun m init ->
         Module.sources m
         |> Path.Build.Set.of_list_map ~f:(fun src ->
           Path.as_in_build_dir_exn src |> remove_extension)
         |> Path.Build.Set.fold ~init ~f:(fun src acc ->
           let config =
             { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.local_open modules m
+            ; opens = Modules.With_vlib.local_open modules m
             }
           in
           (src, config) :: acc))

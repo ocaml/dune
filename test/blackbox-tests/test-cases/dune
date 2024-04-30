@@ -129,7 +129,7 @@
 
 (cram
  (applies_to version-corruption)
- (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
+ (deps %{bin:git} %{bin:chmod}))
 
 (cram
  (applies_to corrupt-persistent)

@@ -45,6 +45,16 @@ Project sources
   > 
   > (rule
   >  (action  (copy wrongext.cppo.cml wrongext.ml)))
+  > 
+  > (rule
+  >  (target generatedx.mlx)
+  >  (mode promote)
+  >  (action  (with-stdout-to %{target} (echo "let x = \"Generatedx!\""))))
+  > 
+  > (rule
+  >  (target generated.ml)
+  >  (mode promote)
+  >  (action  (with-stdout-to %{target} (echo "let x = \"Generated!\""))))
   > EOF
 
   $ cat >test.ml <<EOF
@@ -52,6 +62,7 @@ Project sources
   > print_endline Mel.x;;
   > print_endline Cppomod.x;;
   > print_endline Wrongext.x;;
+  > print_endline Generated.x;;
   > EOF
 
 Both Pped's ml and mli files will be preprocessed
@@ -88,6 +99,7 @@ A pped file with unconventionnal filename
   43
   44
   45
+  Generated!
 
 We now query Merlin configuration for the various source files:
 
@@ -175,3 +187,27 @@ We could expect dune to get the wrongext module configuration
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
   (?:SUFFIX?:.mlx .mlx))
+
+We also have generated.ml and generatedx.mlx promoted:
+  $ ls -1 . | grep generated
+  generated.ml
+  generatedx.mlx
+
+It should be possible to get its merlin configuration as well:
+  $ ./merlin_conf.sh generated.ml
+  ((?:STDLIB?:/OCAMLC_WHERE
+  (?:EXCLUDE_QUERY_DIR
+  (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
+  (?:S?:$TESTCASE_ROOT
+  (?:FLG(?:-open?:Dune__exe)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:SUFFIX?:.mlx .mlx))
+  $ ./merlin_conf.sh generatedx.mlx
+  ((?:STDLIB?:/OCAMLC_WHERE
+  (?:EXCLUDE_QUERY_DIR
+  (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
+  (?:S?:$TESTCASE_ROOT
+  (?:FLG(?:-open?:Dune__exe)
+  (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:SUFFIX?:.mlx .mlx
+  (?:READER(?:mlx)))

@@ -330,14 +330,12 @@ module Pkg = struct
   (* Given a list of packages, construct an env containing variables
      set by each package. Variables containing delimited lists of
      paths (e.g. PATH) which appear in multiple package's envs are
-     concatenated in the order of their associated packages in the
-     input list. Environment updates via the `exported_env` field
+     concatenated in the reverse order of their associated packages in
+     the input list. Environment updates via the `exported_env` field
      (equivalent to opam's `setenv` field) are applied for each
-     package in reverse order to the argument list so that packages
-     appearing earlier can overwrite the values of variables set by
-     packages appearing later. *)
+     package in the same order as the argument list. *)
   let build_env_of_deps ts =
-    List.fold_left (List.rev ts) ~init:Env.Map.empty ~f:(fun env t ->
+    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
         let roots = Paths.install_roots t.paths in
         let init = Value_list_env.add_path env Env_path.var roots.bin in

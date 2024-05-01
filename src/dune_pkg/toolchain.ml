@@ -19,6 +19,7 @@ end
 
 module Dir = struct
   let make_and_check_dir path =
+    let path = Path.outside_build_dir path in
     if not (Path.exists path) then Path.mkdir_p path;
     if not (Path.is_directory path)
     then
@@ -28,9 +29,15 @@ module Dir = struct
 
   let toolchain_base_dir () =
     let cache_dir =
-      Xdg.create ~env:Sys.getenv_opt () |> Xdg.cache_dir |> Path.of_string
+      Xdg.create ~env:Sys.getenv_opt ()
+      |> Xdg.cache_dir
+      |> Path.Outside_build_dir.of_string
     in
-    let d = Path.relative (Path.relative cache_dir "dune") "toolchains" in
+    let d =
+      Path.Outside_build_dir.relative
+        (Path.Outside_build_dir.relative cache_dir "dune")
+        "toolchains"
+    in
     make_and_check_dir d;
     d
   ;;
@@ -42,21 +49,23 @@ module Version = struct
   let all = [ "4.14.2"; "5.1.1" ]
   let all_by_string = List.map all ~f:(fun t -> t, t)
   let to_string t = t
+  let of_string s = if List.exists all ~f:(String.equal s) then Some s else None
+  let of_package_version v = of_string (Package_version.to_string v)
 
   let toolchain_dir t =
-    let d = Path.relative (Dir.toolchain_base_dir ()) (to_string t) in
+    let d = Path.Outside_build_dir.relative (Dir.toolchain_base_dir ()) (to_string t) in
     Dir.make_and_check_dir d;
     d
   ;;
 
-  let source_dir t = Path.relative (toolchain_dir t) "source"
-  let target_dir t = Path.relative (toolchain_dir t) "target"
+  let source_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "source"
+  let target_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "target"
 
   (* A temporary directory where files will be installed before moving
      them into the target directory. This two stage installation means
      that we can guarantee that if the target directory exists then it
      contains the complete installation of the toolchain. *)
-  let tmp_install_dir t = Path.relative (toolchain_dir t) "_install"
+  let tmp_install_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "_install"
 
   (* When installing with the DESTDIR the full path from the root
      directory to the target directory is instantiated inside the
@@ -72,21 +81,22 @@ module Version = struct
          install dir. *)
       match
         String.drop_prefix
-          (Path.to_string target_dir)
+          (Path.Outside_build_dir.to_string target_dir)
           ~prefix:(Path.External.to_string Path.External.root)
       with
       | Some x -> x
       | None ->
         Code_error.raise
           "Expected target dir to start with root"
-          [ "target_dir", Path.to_dyn target_dir
+          [ "target_dir", Path.Outside_build_dir.to_dyn target_dir
           ; "root", Path.External.to_dyn Path.External.root
           ]
     in
-    Path.relative (tmp_install_dir t) target_dir_without_root_prefix
+    Path.Outside_build_dir.relative (tmp_install_dir t) target_dir_without_root_prefix
   ;;
 
-  let is_installed t = Path.exists (target_dir t)
+  let bin_dir t = Path.Outside_build_dir.relative (target_dir t) "bin"
+  let is_installed t = Path.exists (Path.outside_build_dir (target_dir t))
 end
 
 module Compiler_package = struct
@@ -151,7 +161,7 @@ let handle_unavailable { Compiler_package.version; url; _ } ~msg_opt =
 
 let fetch ({ Compiler_package.version; url; checksum } as t) =
   let open Fiber.O in
-  let source_dir = Version.source_dir version in
+  let source_dir = Path.outside_build_dir (Version.source_dir version) in
   Fpath.rm_rf (Path.to_string source_dir);
   Path.mkdir_p source_dir;
   let+ result =
@@ -179,15 +189,18 @@ let run_command ~dir prog args =
 ;;
 
 let configure version =
-  let source_dir = Version.source_dir version in
+  let source_dir = Path.outside_build_dir (Version.source_dir version) in
   let configure_script = Path.relative source_dir "configure" in
   let prefix = Version.target_dir version in
-  run_command ~dir:source_dir configure_script [ "--prefix"; Path.to_string prefix ]
+  run_command
+    ~dir:source_dir
+    configure_script
+    [ "--prefix"; Path.Outside_build_dir.to_string prefix ]
 ;;
 
 let make version args =
   let make = Lazy.force Make.path in
-  let source_dir = Version.source_dir version in
+  let source_dir = Path.outside_build_dir (Version.source_dir version) in
   run_command ~dir:source_dir make args
 ;;
 
@@ -204,14 +217,14 @@ let build version =
    installed. *)
 let install version =
   let open Fiber.O in
-  let dest_dir = Version.tmp_install_dir version in
-  let target_dir = Version.target_dir version in
+  let dest_dir = Path.outside_build_dir (Version.tmp_install_dir version) in
+  let target_dir = Path.outside_build_dir (Version.target_dir version) in
   Fpath.rm_rf (Path.to_string target_dir);
   Fpath.rm_rf (Path.to_string dest_dir);
   let+ () = make version [ "install"; sprintf "DESTDIR=%s" (Path.to_string dest_dir) ] in
   Path.rename
-    (Version.target_dir_within_tmp_install_dir version)
-    (Version.target_dir version);
+    (Path.outside_build_dir (Version.target_dir_within_tmp_install_dir version))
+    (Path.outside_build_dir (Version.target_dir version));
   Fpath.rm_rf (Path.to_string dest_dir)
 ;;
 
@@ -230,7 +243,7 @@ let get ~log version =
        @@ Pp.textf
             "Version %s of the compiler toolchain is already installed in %s"
             (Version.to_string version)
-            (Version.target_dir version |> Path.to_string)
+            (Version.target_dir version |> Path.Outside_build_dir.to_string)
      | _ -> ());
     Fiber.return ())
   else (
@@ -239,7 +252,7 @@ let get ~log version =
     @@ Pp.textf
          "Will install version %s of the compiler toolchain to %s"
          (Version.to_string version)
-         (Version.target_dir version |> Path.to_string);
+         (Version.target_dir version |> Path.Outside_build_dir.to_string);
     log_print Details @@ Pp.text "Downloading...";
     let* () = fetch compiler_package in
     log_print Details @@ Pp.text "Configuring...";
@@ -252,5 +265,5 @@ let get ~log version =
     @@ Pp.textf
          "Success! Compiler toolchain version %s installed to %s."
          (Version.to_string version)
-         (Version.target_dir version |> Path.to_string))
+         (Version.target_dir version |> Path.Outside_build_dir.to_string))
 ;;

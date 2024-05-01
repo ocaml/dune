@@ -26,6 +26,12 @@ val of_env_with_findlib
 
 val of_binaries : path:Path.t list -> Context_name.t -> Env.t -> Path.Set.t -> t Memo.t
 
+val of_toolchain_version
+  :  Dune_pkg.Toolchain.Version.t
+  -> Context_name.t
+  -> Env.t
+  -> t Memo.t
+
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Ocaml.Mode.t -> Action.Prog.t
 

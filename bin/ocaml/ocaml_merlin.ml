@@ -2,7 +2,7 @@ open Import
 
 module Server : sig
   val dump : string -> unit Fiber.t
-  val dump_dot_merlin : string -> unit Fiber.t
+  val dump_dot_merlin : ctx_name:string option -> string -> unit Fiber.t
 
   (** Once started the server will wait for commands on stdin, read the
       requested merlin dot file and return its content on stdout. The server
@@ -78,6 +78,14 @@ end = struct
   ;;
 
   module Merlin = Dune_rules.Merlin
+
+  let arg_to_ctx = function
+    | None -> Default
+    | Some ctx_name ->
+      (match Context_name.of_string_opt ctx_name with
+       | None -> User_error.raise [ Pp.textf "Invalid context name %S" ctx_name ]
+       | Some ctx_name -> Custom ctx_name)
+  ;;
 
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
@@ -164,8 +172,8 @@ end = struct
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
   ;;
 
-  let dump_dot_merlin s =
-    to_local ~selected_context:Default s
+  let dump_dot_merlin ~ctx_name s =
+    to_local ~selected_context:(arg_to_ctx ctx_name) s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
@@ -175,14 +183,7 @@ end = struct
 
   let start ~ctx_name () =
     let open Fiber.O in
-    let selected_context =
-      match ctx_name with
-      | None -> Default
-      | Some ctx_name ->
-        (match Context_name.of_string_opt ctx_name with
-         | None -> User_error.raise [ Pp.textf "Invalid context name %S" ctx_name ]
-         | Some ctx_name -> Custom ctx_name)
-    in
+    let selected_context = arg_to_ctx ctx_name in
     let rec main () =
       match Commands.read_input stdin with
       | Halt -> Fiber.return ()
@@ -290,6 +291,14 @@ module Dump_dot_merlin = struct
             ~doc:
               "The path to the folder of which the configuration should be printed. \
                Defaults to the current directory.")
+    and+ ctx_name =
+      Arg.(
+        value
+        & opt (some string) None
+        & info
+            [ "context" ]
+            ~docv:"CONTEXT"
+            ~doc:"The Dune context in which the command will return information for")
     in
     let common, config =
       let builder =
@@ -300,8 +309,8 @@ module Dump_dot_merlin = struct
     in
     Scheduler.go ~common ~config (fun () ->
       match path with
-      | Some s -> Server.dump_dot_merlin s
-      | None -> Server.dump_dot_merlin ".")
+      | Some s -> Server.dump_dot_merlin ~ctx_name s
+      | None -> Server.dump_dot_merlin ~ctx_name ".")
   ;;
 
   let command = Cmd.v info term

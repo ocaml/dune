@@ -18,21 +18,17 @@ module Make = struct
 end
 
 module Dir = struct
-  let make_and_check_dir path =
-    if not (Path.exists path) then Path.mkdir_p path;
-    if not (Path.is_directory path)
-    then
-      User_error.raise
-        [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ]
-  ;;
-
   let toolchain_base_dir () =
     let cache_dir =
       Xdg.create ~env:Sys.getenv_opt () |> Xdg.cache_dir |> Path.of_string
     in
-    let d = Path.relative (Path.relative cache_dir "dune") "toolchains" in
-    make_and_check_dir d;
-    d
+    let path = Path.relative (Path.relative cache_dir "dune") "toolchains" in
+    if not (Path.exists path) then Path.mkdir_p path;
+    if not (Path.is_directory path)
+    then
+      User_error.raise
+        [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path) ];
+    path
   ;;
 end
 
@@ -43,19 +39,19 @@ module Version = struct
   let all_by_string = List.map all ~f:(fun t -> t, t)
   let to_string t = t
 
-  let toolchain_dir t =
-    let d = Path.relative (Dir.toolchain_base_dir ()) (to_string t) in
-    Dir.make_and_check_dir d;
-    d
-  ;;
-
+  (* The path to a directory named after this version inside the
+     toolchains directory. This directory will contain the source code
+     and binary artifacts associated with a particular version of the
+     compiler toolchain. *)
+  let toolchain_dir t = Path.relative (Dir.toolchain_base_dir ()) (to_string t)
   let source_dir t = Path.relative (toolchain_dir t) "source"
   let target_dir t = Path.relative (toolchain_dir t) "target"
 
-  (* A temporary directory where files will be installed before moving
-     them into the target directory. This two stage installation means
-     that we can guarantee that if the target directory exists then it
-     contains the complete installation of the toolchain. *)
+  (* A temporary directory within this version's toolchain directory
+     where files will be installed before moving them into the target
+     directory. This two stage installation means that we can
+     guarantee that if the target directory exists then it contains
+     the complete installation of the toolchain. *)
   let tmp_install_dir t = Path.relative (toolchain_dir t) "_install"
 
   (* When installing with the DESTDIR the full path from the root

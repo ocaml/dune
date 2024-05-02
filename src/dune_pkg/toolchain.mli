@@ -1,6 +1,19 @@
 open! Import
 open! Stdune
 
+module Compiler_package : sig
+  (** Names of packages that dune considers to be compiler
+      packages. These packages should not be downloaded or built when
+      using dune toolchains as the compiler from the toolchain should be
+      used instead. *)
+  val package_names : Package_name.t list
+
+  (** Constraint to apply to the dependency solver to guarantee a
+      solution that's includes a version of a compiler package that's
+      supported by dune toolchains. *)
+  val constraint_ : Package_dependency.t
+end
+
 module Version : sig
   type t
 

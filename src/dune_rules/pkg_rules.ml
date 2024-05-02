@@ -348,19 +348,10 @@ module Pkg = struct
       List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
-  let name_is_compiler =
-    let module Package_name = Dune_pkg.Package_name in
-    let compiler_package_names =
-      (* TODO: use package metadata to determine whether a package
-         contains the compiler *)
-      lazy
-        (Package_name.Set.of_list
-           [ Package_name.of_string "ocaml-base-compiler"
-           ; Package_name.of_string "ocaml-system"
-           ; Package_name.of_string "ocaml-variants"
-           ])
-    in
-    fun name -> Package_name.Set.mem (Lazy.force compiler_package_names) name
+  let name_is_compiler name =
+    List.exists
+      ~f:(Dune_pkg.Package_name.equal name)
+      Dune_pkg.Toolchain.Compiler_package.package_names
   ;;
 
   let is_compiler t = name_is_compiler t.info.name

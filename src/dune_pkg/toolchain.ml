@@ -39,13 +39,93 @@ module Dir = struct
   ;;
 end
 
-module Version = struct
-  type t = string
+module Compiler_package = struct
+  type t =
+    { version : Package_version.t
+    ; url : OpamUrl0.t
+    ; checksum : Checksum.t
+    }
 
-  let all = [ "4.14.2"; "5.1.1" ]
-  let all_by_string = List.map all ~f:(fun t -> t, t)
-  let to_string t = t
-  let of_string s = if List.exists all ~f:(String.equal s) then Some s else None
+  let supported =
+    let entry version_string url_string checksum_string =
+      { version = Package_version.of_string version_string
+      ; url = OpamUrl0.of_string url_string
+      ; checksum = Checksum.of_string checksum_string
+      }
+    in
+    [ entry
+        "4.14.2"
+        "https://github.com/ocaml/ocaml/archive/4.14.2.tar.gz"
+        "sha256=c2d706432f93ba85bd3383fa451d74543c32a4e84a1afaf3e8ace18f7f097b43"
+    ; entry
+        "5.1.1"
+        "https://github.com/ocaml/ocaml/archive/5.1.1.tar.gz"
+        "sha256=57f7b382b3d71198413ede405d95ef3506f1cdc480cda1dca1e26b37cb090e17"
+    ]
+  ;;
+
+  let of_version version =
+    match List.find supported ~f:(fun t -> Package_version.equal t.version version) with
+    | Some t -> t
+    | None ->
+      (* This is a code error as the [Version.t] type doesn't allow
+         the construction of versions that don't appear in the
+         supported list. *)
+      Code_error.raise
+        "Invalid compiler toolchain version"
+        [ "version", Package_version.to_dyn version ]
+  ;;
+
+  (* Dune will require that this compiler package be chosen in
+     solutions, with a version that's supported by dune toolchains.
+
+     TODO: This will not work with packages that explicitly specify an
+     alternative compiler. The ideal behaviour would be for dune to
+     constrain whatever compiler package a package already depends on
+     to the versions supported by dune toolchains. *)
+  let preferred_compiler_package_name = Package_name.of_string "ocaml-base-compiler"
+
+  (* The names of packages which dune will treat as compiler packages
+     for the purposes of using dune toolchains instead.
+
+     TODO: use package metadata to determine whether a package
+     contains the compiler *)
+  let package_names =
+    preferred_compiler_package_name
+    :: ([ "ocaml-system"; "ocaml-variants" ] |> List.map ~f:Package_name.of_string)
+  ;;
+
+  let constraint_ =
+    let open Dune_lang in
+    let constraint_ =
+      Package_constraint.Or
+        (List.map supported ~f:(fun { version; _ } ->
+           let version_value =
+             Package_constraint.Value.String_literal (Package_version.to_string version)
+           in
+           Package_constraint.Uop (Relop.Eq, version_value)))
+    in
+    { Package_dependency.name = preferred_compiler_package_name
+    ; constraint_ = Some constraint_
+    }
+  ;;
+end
+
+module Version = struct
+  type t = Package_version.t
+
+  let to_string = Package_version.to_string
+
+  let all_by_string =
+    List.map Compiler_package.supported ~f:(fun { Compiler_package.version; _ } ->
+      to_string version, version)
+  ;;
+
+  let of_string s =
+    List.find_map all_by_string ~f:(fun (s', t) ->
+      if String.equal s s' then Some t else None)
+  ;;
+
   let of_package_version v = of_string (Package_version.to_string v)
 
   (* The path to a directory named after this version inside the
@@ -96,40 +176,6 @@ module Version = struct
 
   let bin_dir t = Path.Outside_build_dir.relative (target_dir t) "bin"
   let is_installed t = Path.exists (Path.outside_build_dir (target_dir t))
-end
-
-module Compiler_package = struct
-  type t =
-    { version : Version.t
-    ; url : OpamUrl0.t
-    ; checksum : Checksum.t
-    }
-
-  let of_version version =
-    (* TODO: read this information from the opam repo rather than
-       hardcoding here *)
-    match version with
-    | "4.14.2" ->
-      { version
-      ; url = OpamUrl0.of_string "https://github.com/ocaml/ocaml/archive/4.14.2.tar.gz"
-      ; checksum =
-          Checksum.of_string
-            "sha256=c2d706432f93ba85bd3383fa451d74543c32a4e84a1afaf3e8ace18f7f097b43"
-      }
-    | "5.1.1" ->
-      { version
-      ; url = OpamUrl0.of_string "https://github.com/ocaml/ocaml/archive/5.1.1.tar.gz"
-      ; checksum =
-          Checksum.of_string
-            "sha256=57f7b382b3d71198413ede405d95ef3506f1cdc480cda1dca1e26b37cb090e17"
-      }
-    | other ->
-      (* This is a code error as the [Version.t] type doesn't allow
-         non-existant versions to be constructed. *)
-      Code_error.raise
-        "Invalid compiler toolchain version"
-        [ "version", Dyn.string other ]
-  ;;
 end
 
 let handle_checksum_mismatch { Compiler_package.version; url; checksum } ~got_checksum =

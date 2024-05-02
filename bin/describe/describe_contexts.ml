@@ -17,7 +17,7 @@ let term =
 ;;
 
 let command =
-  let doc = "lists the available build contexts." in
+  let doc = "List the build contexts available in the workspace." in
   let info = Cmd.info ~doc "contexts" in
   Cmd.v info term
 ;;

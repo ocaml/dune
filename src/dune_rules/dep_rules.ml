@@ -57,14 +57,14 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
     let interface_module =
-      match Modules.lib_interface modules with
+      match Modules.With_vlib.lib_interface modules with
       | Some m -> m
-      | None -> Modules.compat_for_exn modules m
+      | None -> Modules.With_vlib.compat_for_exn modules m
     in
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ ->
     let+ deps = Ocamldep.deps_of md ~ml_kind m in
-    (match Modules.alias_for modules m with
+    (match Modules.With_vlib.alias_for modules m with
      | [] -> deps
      | aliases ->
        let open Action_builder.O in
@@ -87,7 +87,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind source
     let+ deps = ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind sourced_module in
     Action_builder.map deps ~f:(List.map ~f:Modules.Sourced_module.to_module)
   | Some lib ->
-    let modules = Vimpl.vlib_modules vimpl in
+    let modules = Vimpl.vlib_modules vimpl |> Modules.With_vlib.modules in
     let info = Lib.Local.info lib in
     let vlib_obj_dir = Lib_info.obj_dir info in
     let src = Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build in
@@ -127,16 +127,16 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
 ;;
 
 (** Tests whether a set of modules is a singleton *)
-let has_single_file modules = Option.is_some @@ Modules.as_singleton modules
+let has_single_file modules = Option.is_some @@ Modules.With_vlib.as_singleton modules
 
 let immediate_deps_of unit modules ~obj_dir ~ml_kind =
   match Module.kind unit with
   | Alias _ -> Action_builder.return []
   | Wrapped_compat ->
     let interface_module =
-      match Modules.lib_interface modules with
+      match Modules.With_vlib.lib_interface modules with
       | Some m -> m
-      | None -> Modules.compat_for_exn modules unit
+      | None -> Modules.With_vlib.compat_for_exn modules unit
     in
     List.singleton interface_module |> Action_builder.return
   | _ ->
@@ -155,12 +155,12 @@ let for_module md module_ = dict_of_func_concurrently (deps_of md (Normal module
 
 let rules md =
   let modules = md.modules in
-  match Modules.as_singleton modules with
+  match Modules.With_vlib.as_singleton modules with
   | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
   | None ->
     dict_of_func_concurrently (fun ~ml_kind ->
       let+ per_module =
-        Modules.obj_map modules
+        Modules.With_vlib.obj_map modules
         |> Module_name.Unique.Parallel_map.parallel_map ~f:(fun _obj_name m ->
           deps_of md ~ml_kind m)
       in

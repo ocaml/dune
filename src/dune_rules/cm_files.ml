@@ -15,7 +15,7 @@ let filter_excluded_modules t modules =
 ;;
 
 let make ?(excluded_modules = []) ~obj_dir ~modules ~top_sorted_modules ~ext_obj () =
-  let modules = Modules.impl_only modules in
+  let modules = Modules.With_vlib.impl_only modules in
   let excluded_modules = Module_name.Set.of_list excluded_modules in
   { obj_dir; modules; top_sorted_modules; ext_obj; excluded_modules }
 ;;

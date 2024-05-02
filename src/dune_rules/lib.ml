@@ -2156,7 +2156,10 @@ let to_dune_lib
   in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
-    Modules.version_installed modules ~src_root:(Lib_info.src_dir lib.info) ~install_dir
+    Modules.With_vlib.version_installed
+      modules
+      ~src_root:(Lib_info.src_dir lib.info)
+      ~install_dir
   in
   let use_public_name ~lib_field ~info_field =
     match info_field, lib_field with

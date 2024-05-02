@@ -195,9 +195,19 @@ let unpack ~target ~archive =
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
-let with_download url checksum ~f =
+let with_download url checksum ~target ~f =
   let url = OpamUrl.to_string url in
-  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:(Filename.basename url) in
+  let temp_dir =
+    let prefix = "dune" in
+    let suffix = Filename.basename url in
+    match (target : Path.t) with
+    | In_build_dir _ ->
+      Temp.temp_in_dir Dir ~dir:(Lazy.force Temp_dir.in_build) ~prefix ~suffix
+    | _ ->
+      let parent = Path.parent_exn target in
+      Path.mkdir_p parent;
+      Temp.temp_in_dir Dir ~dir:parent ~prefix ~suffix
+  in
   let output = Path.relative temp_dir "download" in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir temp_dir;
@@ -222,10 +232,9 @@ let with_download url checksum ~f =
 ;;
 
 let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
-  with_download url checksum ~f:(fun output ->
+  with_download url checksum ~target ~f:(fun output ->
     match unpack_flag with
     | false ->
-      Path.mkdir_p (Path.parent_exn target);
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->

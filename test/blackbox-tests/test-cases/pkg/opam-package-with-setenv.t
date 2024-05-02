@@ -109,10 +109,10 @@ We currently have the following issues:
   > append_without_leading_sep="foo:bar" \
   > append_with_leading_sep="foo:bar" \
   > build_pkg deps-on-with-setenv-2
-  Hello from the other package!
-  Prepended without trailing sep:Prepended 2nd time without trailing sep
-  Prepended with trailing sep:Prepended 2nd time with sep
-  Appended 2nd time without leading sep:Appended without leading sep
-  Appended 2nd time with leading sep:Appended with leading sep
+  Hello from the second package!
+  Prepended 2nd time without trailing sep:Prepended without trailing sep
+  Prepended 2nd time with sep:Prepended with trailing sep
+  Appended without leading sep:Appended 2nd time without leading sep
+  Appended with leading sep:Appended 2nd time with leading sep
 
 

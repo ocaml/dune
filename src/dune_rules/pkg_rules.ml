@@ -337,7 +337,7 @@ module Pkg = struct
      appearing earlier can overwrite the values of variables set by
      packages appearing later. *)
   let build_env_of_deps ts =
-    List.fold_left (List.rev ts) ~init:Env.Map.empty ~f:(fun env t ->
+    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
         let roots = Paths.install_roots t.paths in
         let init = Value_list_env.add_path env Env_path.var roots.bin in

@@ -348,22 +348,45 @@ module Pkg = struct
       List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
+  let name_is_compiler =
+    let module Package_name = Dune_pkg.Package_name in
+    let compiler_package_names =
+      (* TODO: use package metadata to determine whether a package
+         contains the compiler *)
+      lazy
+        (Package_name.Set.of_list
+           [ Package_name.of_string "ocaml-base-compiler"
+           ; Package_name.of_string "ocaml-system"
+           ; Package_name.of_string "ocaml-variants"
+           ])
+    in
+    fun name -> Package_name.Set.mem (Lazy.force compiler_package_names) name
+  ;;
+
+  let is_compiler t = name_is_compiler t.info.name
+
+  (* If this package is a compiler whose version is supported by dune
+     toolchains then returns the toolchain version, otherwise returns
+     None. *)
+  let as_compiler_with_version_in_toolchain_dir t =
+    if is_compiler t
+    then Dune_pkg.Toolchain.Version.of_package_version t.info.version
+    else None
+  ;;
+
+  let is_compiler_with_version_in_toolchain_dir t =
+    Option.is_some (as_compiler_with_version_in_toolchain_dir t)
+  ;;
+
   (* Returns the version of the compiler toolchain dependen on by this
      package if any. *)
   let compiler_toolchain_version t =
-    let module Package_name = Dune_pkg.Package_name in
     let module Toolchain = Dune_pkg.Toolchain in
-    let compiler_packages =
-      Package_name.Set.of_list
-        [ Package_name.of_string "ocaml-base-compiler"
-        ; Package_name.of_string "ocaml-system"
-        ]
-    in
-    if Package_name.Set.mem compiler_packages t.info.name
+    if is_compiler t
     then Toolchain.Version.of_package_version t.info.version
     else
       List.find_map (deps_closure t) ~f:(fun pkg ->
-        if Package_name.Set.mem compiler_packages pkg.info.name
+        if is_compiler pkg
         then Toolchain.Version.of_package_version pkg.info.version
         else None)
   ;;
@@ -1077,19 +1100,30 @@ module Action_expander = struct
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(function
-      | Action action -> expand context pkg action
-      | Dune ->
-        (* CR-rgrinberg: respect [dune subst] settings. *)
-        Command.run_dyn_prog
-          (Action_builder.of_memo (dune_exe context))
-          ~dir:(Path.build pkg.paths.source_dir)
-          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
-        |> Memo.return)
+    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
+    then
+      (* Ignore the build command of compiler packages supported by
+         dune toolchains. *)
+      None
+    else
+      Option.map pkg.build_command ~f:(function
+        | Action action -> expand context pkg action
+        | Dune ->
+          (* CR-rgrinberg: respect [dune subst] settings. *)
+          Command.run_dyn_prog
+            (Action_builder.of_memo (dune_exe context))
+            ~dir:(Path.build pkg.paths.source_dir)
+            [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+          |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
+    then
+      (* Ignore the install command of compiler packages supported by
+         dune toolchains. *)
+      None
+    else Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
@@ -1527,13 +1561,52 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+(* Action which creates a fake package source in place of a compiler
+   package for use when a compiler from the toolchains directory will be
+   used instead of taking the compiler from a regular opam package. *)
+let make_dummy_compiler_package_source (pkg : Pkg.t) version target =
+  Action.progn
+    [ Action.mkdir target
+    ; Action.with_stdout_to
+        (Path.Build.relative target "debug_hint.txt")
+        (Action.echo
+           [ sprintf
+               "This file was created as a hint to people debugging issues with dune \
+                package management.\n\
+                This project attempted to download and build the compiler package: %s.%s\n\
+                Instead of using the complier package, dune is using the compiler \
+                toolchain installed at: %s"
+               (Dune_pkg.Package_name.to_string pkg.info.name)
+               (Dune_pkg.Package_version.to_string pkg.info.version)
+               (Dune_pkg.Toolchain.Version.toolchain_dir version
+                |> Path.Outside_build_dir.to_string)
+           ])
+    ; (* TODO: it doesn't seem like it should be necessary to generate
+         this file but without it dune complains *)
+      Action.with_stdout_to
+        (Path.Build.relative target "config.cache")
+        (Action.echo
+           [ "Dummy file created to placate dune's package installation rules. See the \
+              debug_hint.txt file for more information."
+           ])
+    ]
+  |> Action.Full.make
+  |> Action_builder.With_targets.return
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+;;
+
 let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
     | Some (Fetch { url = (loc, _) as url; checksum }) ->
       let fetch =
-        Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
+        match Pkg.as_compiler_with_version_in_toolchain_dir pkg with
+        | Some version ->
+          (* Don't download the source of compiler packages supported
+             by dune toolchains. *)
+          make_dummy_compiler_package_source pkg version pkg.paths.source_dir
+        | None -> Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
       in
       Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
     | Some (External_copy (loc, source_root)) ->

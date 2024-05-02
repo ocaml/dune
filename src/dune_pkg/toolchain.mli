@@ -7,6 +7,10 @@ module Version : sig
   val all_by_string : (string * t) list
   val of_package_version : Package_version.t -> t option
 
+  (** The path to the directory containing both the source and binary
+      artifacts of this compiler version. *)
+  val toolchain_dir : t -> Path.Outside_build_dir.t
+
   (** The path to the directory containing the binaries contained in
       the compiler toolchain of a given version. Does not guarantee that
       the specified toolchain is installed. *)

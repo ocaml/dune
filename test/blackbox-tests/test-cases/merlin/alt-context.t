@@ -46,7 +46,7 @@ because by default Merlin rules are only created for the default context
 Let's use `generate_merlin_rules` to test these commands
 
   $ cat > dune-workspace << EOF
-  > (lang dune 3.14)
+  > (lang dune 3.16)
   > 
   > (context default)
   > 

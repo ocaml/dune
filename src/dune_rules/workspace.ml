@@ -407,7 +407,11 @@ module Context = struct
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc
       and+ merlin = field_b "merlin"
-      and+ generate_merlin_rules = field_b "generate_merlin_rules" in
+      and+ generate_merlin_rules =
+        field_b
+          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 16))
+          "generate_merlin_rules"
+      in
       fun ~profile_default ~instrument_with_default ->
         let profile = Option.value profile ~default:profile_default in
         let instrument_with =

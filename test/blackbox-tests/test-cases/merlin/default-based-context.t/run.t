@@ -100,7 +100,7 @@ If `generate_merlin_rules` field is present, rules are generated even if merlin
 is disabled in that context
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 2.9)
+  > (lang dune 3.16)
   > (context (default))
   > (context
   >  (default

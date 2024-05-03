@@ -298,7 +298,7 @@ module Dump_dot_merlin = struct
         & info
             [ "context" ]
             ~docv:"CONTEXT"
-            ~doc:"The Dune context in which the command will return information for")
+            ~doc:"Dune will return information for this build context")
     in
     let common, config =
       let builder =

@@ -34,7 +34,7 @@ jobs:
           - 4.14.x
         include:
           # OCaml trunk:
-          - ocaml-compiler: ocaml-variants.5.2.0+trunk
+          - ocaml-compiler: ocaml-variants.5.3.0+trunk
             os: ubuntu-latest
             skip_test: true
           # OCaml 5:

@@ -13,6 +13,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
+    nix-ci-build = {
+      url = "github:nix-ocaml/nix-ci-build";
+      # TODO can't follow
+      #inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
   outputs =
     { self
@@ -20,6 +26,7 @@
     , nixpkgs
     , ocamllsp
     , melange
+    , nix-ci-build
     }:
     flake-utils.lib.eachDefaultSystem (system:
     let
@@ -79,6 +86,35 @@
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
         dune = default;
+
+        buildNixpkgs =
+          let
+            overlay = (self: super: {
+              ocaml-ng =
+                super.ocaml-ng // {
+                  ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (pself: psuper: {
+                    dune_3 = packages.default;
+                  });
+                };
+              });
+            nixpkgs-sources =
+              builtins.fetchTarball
+              # XXX change url
+              {url = https://github.com/nix-ocaml/nix-overlays/archive/809dfb173fca728e2834f284208e03b3d53c2581.tar.gz;
+              sha256= "sha256:1s5pxcwmsfhrr3fsh8n9nf8ahbcs25zi48hw6a0fhh4fyb6l8ggr";}
+              ;
+            pkgs' =
+              (import nixpkgs-sources {
+                inherit system;
+                config.allowUnfree = true;
+              }).extend overlay;
+            nix-ci-build-pkg = nix-ci-build.outputs.packages."${system}".default;
+            hydra = (import "${nixpkgs-sources}/ci/hydra.nix") {inherit system; pkgs = pkgs';};
+           in
+           {
+             ncb = nix-ci-build-pkg;
+             pkgs = hydra;
+           };
       };
 
       devShells =

@@ -5,11 +5,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1705309234,
-        "narHash": "sha256-uNRRNRKmJyCRC/8y1RqBkqWBLM034y4qN7EprSdmgyA=",
+        "lastModified": 1710146030,
+        "narHash": "sha256-SZ5L6eA7HJ/nmkzGG7/ISclqe6oZdOZTNoesiInkXPQ=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "1ef2e671c3b0c19053962c07dbda38332dcebf26",
+        "rev": "b1d9ab70662946ef0850d488da1c9019f3a9752a",
         "type": "github"
       },
       "original": {
@@ -70,6 +70,28 @@
         "type": "github"
       }
     },
+    "nix-ci-build": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nix-filter": "nix-filter_2",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1714349772,
+        "narHash": "sha256-KvHAAPtw1ulnA7I3gTho6Z3tXtMdO36ylW9Ny7Xuno4=",
+        "owner": "nix-ocaml",
+        "repo": "nix-ci-build",
+        "rev": "37ea78475014d0cd07623659d294b765acb5a12a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-ocaml",
+        "repo": "nix-ci-build",
+        "type": "github"
+      }
+    },
     "nix-filter": {
       "locked": {
         "lastModified": 1705332318,
@@ -85,13 +107,66 @@
         "type": "github"
       }
     },
-    "nixpkgs": {
+    "nix-filter_2": {
       "locked": {
-        "lastModified": 1708532945,
-        "narHash": "sha256-0KucnySzsz5Zgonjjm8cQMql+HGHa/OhB0fnKmGeD+0=",
+        "lastModified": 1710156097,
+        "narHash": "sha256-1Wvk8UP7PXdf8bCCaEoMnOT1qe5/Duqgj+rL8sRQsSM=",
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "rev": "3342559a24e85fc164b295c3444e8a139924675b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "nix-filter",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "inputs": {
+        "flake-utils": [
+          "nix-ci-build",
+          "flake-utils"
+        ],
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1714600174,
+        "narHash": "sha256-3JLRGZHG8sqi0vG9m0WUHYE+nIppDifmrUaWGpTt/2Y=",
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
+        "rev": "6426c4ebbd3dc76bb8719c0865de16d2b6523add",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1714556388,
+        "narHash": "sha256-Mxp8hX2gH30HoIQ+INvWY5P0sKBli8BmiGzZcKVD6co=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c10b1bb002e7414ecf7c9d9e5f7ebaeaeae32c92",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c10b1bb002e7414ecf7c9d9e5f7ebaeaeae32c92",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1714562304,
+        "narHash": "sha256-Mr3U37Rh6tH0FbaDFu0aZDwk9mPAe7ASaqDOGgLqqLU=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "ac4c5a60bebfb783f1106d126b9f39cc8e809e0e",
+        "rev": "bcd44e224fd68ce7d269b4f44d24c2220fd821e7",
         "type": "github"
       },
       "original": {
@@ -111,11 +186,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1708563706,
-        "narHash": "sha256-9Mt5hD3W0hDyIcPos9anTFRW7RHjEg3+2inj6jOY2S4=",
+        "lastModified": 1713734511,
+        "narHash": "sha256-WytVDQJz0i3arHUDVSj+b/9/IQq/z9wBrkSeQDIZAgU=",
         "ref": "refs/heads/master",
-        "rev": "922a726d2dcd816263c34df7d8d0f44fd4700be2",
-        "revCount": 2062,
+        "rev": "e485128b11892dc1e6a17f28b687368f2ac0db32",
+        "revCount": 2067,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/ocaml/ocaml-lsp"
@@ -130,7 +205,8 @@
       "inputs": {
         "flake-utils": "flake-utils",
         "melange": "melange",
-        "nixpkgs": "nixpkgs",
+        "nix-ci-build": "nix-ci-build",
+        "nixpkgs": "nixpkgs_3",
         "ocamllsp": "ocamllsp"
       }
     },

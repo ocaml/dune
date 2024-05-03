@@ -1,0 +1,20 @@
+name: nixpkgs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  merge_group:
+
+jobs:
+  nixpkgs:
+    name: Nixpkgs
+      # TODO: if: contains(github.event.pull_request.labels.*.name, 'test_nixpkgs')
+
+     steps:
+       - uses: actions/checkout@v4
+       - uses: cachix/install-nix-action@v22
+       - run: nix build .#buildNixpkgs.ncb
+       - run: ./result/bin/nix-ci-build --flake .#packages.x86_64-linux.buildNixpkgs.pkgs.build_4_14

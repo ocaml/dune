@@ -1,19 +1,37 @@
 open Import
 
+module Selected_context = struct
+  type t =
+    | Default
+    | Custom of Context_name.t
+
+  let conv =
+    let parse ctx_name =
+      match Context_name.of_string_opt ctx_name with
+      | None -> Error (`Msg (Printf.sprintf "Invalid context name %S" ctx_name))
+      | Some ctx_name -> Ok (Custom ctx_name)
+    in
+    let printer ppf t =
+      let print = function
+        | Default -> "default"
+        | Custom ctx -> Context_name.to_string ctx
+      in
+      Stdlib.Format.fprintf ppf "%s" (print t)
+    in
+    Arg.conv ~docv:"context" (parse, printer)
+  ;;
+end
+
 module Server : sig
   val dump : string -> unit Fiber.t
-  val dump_dot_merlin : ctx_name:string option -> string -> unit Fiber.t
+  val dump_dot_merlin : selected_context:Selected_context.t -> string -> unit Fiber.t
 
   (** Once started the server will wait for commands on stdin, read the
       requested merlin dot file and return its content on stdout. The server
       will halt when receiving EOF of a bad csexp. *)
-  val start : ctx_name:string option -> unit -> unit Fiber.t
+  val start : selected_context:Selected_context.t -> unit -> unit Fiber.t
 end = struct
   open Fiber.O
-
-  type selected_context =
-    | Default
-    | Custom of Context_name.t
 
   module Merlin_conf = struct
     type t = Sexp.t
@@ -79,14 +97,6 @@ end = struct
 
   module Merlin = Dune_rules.Merlin
 
-  let arg_to_ctx = function
-    | None -> Default
-    | Some ctx_name ->
-      (match Context_name.of_string_opt ctx_name with
-       | None -> User_error.raise [ Pp.textf "Invalid context name %S" ctx_name ]
-       | Some ctx_name -> Custom ctx_name)
-  ;;
-
   let load_merlin_file file =
     (* We search for an appropriate merlin configuration in the current
        directory and its parents *)
@@ -147,7 +157,7 @@ end = struct
     | Ok file ->
       let module Context_name = Dune_engine.Context_name in
       (match selected_context with
-       | Custom ctxt ->
+       | Selected_context.Custom ctxt ->
          Fiber.return (Ok (Path.Build.append_local (Context_name.build_dir ctxt) file))
        | Default ->
          let+ workspace = Memo.run (Workspace.workspace ()) in
@@ -172,8 +182,8 @@ end = struct
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
   ;;
 
-  let dump_dot_merlin ~ctx_name s =
-    to_local ~selected_context:(arg_to_ctx ctx_name) s
+  let dump_dot_merlin ~selected_context s =
+    to_local ~selected_context s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path ->
@@ -181,9 +191,8 @@ end = struct
       Merlin.Processed.print_generic_dot_merlin files
   ;;
 
-  let start ~ctx_name () =
+  let start ~selected_context () =
     let open Fiber.O in
-    let selected_context = arg_to_ctx ctx_name in
     let rec main () =
       match Commands.read_input stdin with
       | Halt -> Fiber.return ()
@@ -241,10 +250,10 @@ let start_session_info name = Cmd.info name ~doc ~man
 
 let start_session_term =
   let+ builder = Common.Builder.term
-  and+ ctx_name =
+  and+ selected_context =
     Arg.(
       value
-      & opt (some string) None
+      & opt Selected_context.conv Selected_context.Default
       & info
           [ "context" ]
           ~docv:"CONTEXT"
@@ -257,7 +266,7 @@ let start_session_term =
     in
     Common.init builder
   in
-  Scheduler.go ~common ~config (Server.start ~ctx_name)
+  Scheduler.go ~common ~config (Server.start ~selected_context)
 ;;
 
 let command = Cmd.v (start_session_info "ocaml-merlin") start_session_term
@@ -291,10 +300,10 @@ module Dump_dot_merlin = struct
             ~doc:
               "The path to the folder of which the configuration should be printed. \
                Defaults to the current directory.")
-    and+ ctx_name =
+    and+ selected_context =
       Arg.(
         value
-        & opt (some string) None
+        & opt Selected_context.conv Selected_context.Default
         & info
             [ "context" ]
             ~docv:"CONTEXT"
@@ -309,8 +318,8 @@ module Dump_dot_merlin = struct
     in
     Scheduler.go ~common ~config (fun () ->
       match path with
-      | Some s -> Server.dump_dot_merlin ~ctx_name s
-      | None -> Server.dump_dot_merlin ~ctx_name ".")
+      | Some s -> Server.dump_dot_merlin ~selected_context s
+      | None -> Server.dump_dot_merlin ~selected_context ".")
   ;;
 
   let command = Cmd.v info term

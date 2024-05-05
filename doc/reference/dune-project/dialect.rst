@@ -66,6 +66,14 @@ dialect
 
       .. versionchanged:: 3.9 This field is made optional.
 
+   .. describe:: (merlin_reader <action>)
+
+      Run `<action>` to feed the dialect's AST to Merlin.
+
+      This field is optional.
+
+      .. versionadded:: 3.16
+
 
 Default dialects
 ----------------

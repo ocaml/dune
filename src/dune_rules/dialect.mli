@@ -43,8 +43,14 @@ module DB : sig
   val find_by_name : t -> string -> dialect option
   val find_by_extension : t -> Filename.Extension.t -> (dialect * Ml_kind.t) option
   val fold : t -> init:'a -> f:(dialect -> 'a -> 'a) -> 'a
-  val extensions_for_merlin : t -> Filename.Extension.t option Ml_kind.Dict.t list
   val to_dyn : t -> Dyn.t
   val builtin : t
   val is_default : t -> bool
+
+  type for_merlin =
+    { extensions : string option Ml_kind.Dict.t list
+    ; readers : Filename.Extension.t list String.Map.t
+    }
+
+  val for_merlin : t -> for_merlin
 end

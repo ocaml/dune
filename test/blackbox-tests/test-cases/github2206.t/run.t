@@ -5,3 +5,7 @@ copy_files would break the generation of the preprocessing flags
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp.exe))
+  --
+   (FLG
+    (-pp
+     $TESTCASE_ROOT/_build/default/pp.exe))

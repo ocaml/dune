@@ -26,7 +26,43 @@ Verify that merlin configuration was generated...
      -short-paths
      -keep-locs
      -g)))
+  Test: _build/default/test.ml
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (B
+    $TESTCASE_ROOT/_build/default/.test.eobjs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/411)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
   Foo: _build/default/foo
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (S
+    $TESTCASE_ROOT/411)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
+  Foo: _build/default/foo.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

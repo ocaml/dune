@@ -212,7 +212,7 @@ end
 
 val to_dune_lib
   :  t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> foreign_objects:Path.t list
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list

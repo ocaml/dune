@@ -144,7 +144,7 @@ module Lib = struct
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-       ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
+       ; field_o "modules" (Modules.With_vlib.encode ~src_dir:package_root) modules
        ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o
            "special_builtin_support"
@@ -228,7 +228,6 @@ module Lib = struct
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
        let modes = Lib_mode.Map.Set.of_list modes in
-       let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
          let lib_id = Lib_id.External (loc, name) in
@@ -248,7 +247,13 @@ module Lib = struct
          let virtual_ =
            if virtual_ then Some (Lib_info.Source.External modules) else None
          in
-         let wrapped = Some (Lib_info.Inherited.This (Modules.wrapped modules)) in
+         let modules = Modules.With_vlib.modules modules in
+         let entry_modules =
+           Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name
+         in
+         let wrapped =
+           Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
+         in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modules = Lib_info.Source.External (Some modules) in
          let melange_runtime_deps = Lib_info.File_deps.External melange_runtime_deps in
@@ -309,7 +314,7 @@ module Lib = struct
 
   let wrapped t =
     match Lib_info.modules t.info with
-    | External modules -> Option.map modules ~f:Modules.wrapped
+    | External modules -> Option.map modules ~f:Modules.With_vlib.wrapped
     | Local -> None
   ;;
 

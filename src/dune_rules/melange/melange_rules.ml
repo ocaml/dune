@@ -62,9 +62,8 @@ let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
 ;;
 
 let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
-  let* modules = Dir_contents.modules_of_lib sctx lib in
-  match modules with
-  | None ->
+  match Lib_info.modules (Lib.info lib) with
+  | External None ->
     User_error.raise
       [ Pp.textf
           "The library %s was not compiled with Dune or it was compiled with Dune but \
@@ -72,11 +71,18 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
            melange support"
           (Lib.name lib |> Lib_name.to_string)
       ]
-  | Some modules ->
-    let info = Lib.info lib in
+  | External (Some modules) ->
+    Memo.return
+      ( modules
+      , (Modules.With_vlib.split_by_lib modules).impl
+        |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+  | Local ->
+    let lib = Lib.Local.of_lib_exn lib in
+    let info = Lib.Local.info lib in
     let+ modules =
+      let* modules = Dir_contents.modules_of_local_lib sctx lib in
       let preprocess = Lib_info.preprocess info in
-      modules_in_obj_dir ~sctx ~scope ~preprocess modules
+      modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
     in
     let () =
       let modes = Lib_info.modes info in
@@ -95,8 +101,8 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
       | true -> ()
     in
     ( modules
-    , (* for a virtual library, this will return all modules *)
-      (Modules.split_by_lib modules).impl |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+    , (Modules.With_vlib.split_by_lib modules).impl
+      |> List.filter ~f:(Module.has ~ml_kind:Impl) )
 ;;
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
@@ -151,7 +157,9 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
 
 let js_targets_of_modules modules ~module_systems ~output =
   List.map module_systems ~f:(fun (_, js_ext) ->
-    Modules.fold_no_vlib modules ~init:Path.Set.empty ~f:(fun m acc ->
+    modules
+    |> Modules.With_vlib.drop_vlib
+    |> Modules.fold ~init:Path.Set.empty ~f:(fun m acc ->
       if Module.has m ~ml_kind:Impl
       then (
         let target = Path.build @@ make_js_name ~js_ext ~output m in
@@ -272,20 +280,23 @@ let setup_emit_cmj_rules
     in
     let* () = Check_rules.add_obj_dir sctx ~obj_dir Melange in
     let* modules, pp =
-      Buildable_rules.modules_rules
-        sctx
-        (Melange
-           { preprocess = mel.preprocess
-           ; preprocessor_deps = mel.preprocessor_deps
-           ; (* TODO still needed *)
-             lint = Preprocess.Per_module.default ()
-           ; (* why is this always false? *)
-             empty_module_interface_if_absent = false
-           })
-        expander
-        ~dir
-        scope
-        modules
+      let+ modules, pp =
+        Buildable_rules.modules_rules
+          sctx
+          (Melange
+             { preprocess = mel.preprocess
+             ; preprocessor_deps = mel.preprocessor_deps
+             ; (* TODO still needed *)
+               lint = Preprocess.Per_module.default ()
+             ; (* why is this always false? *)
+               empty_module_interface_if_absent = false
+             })
+          expander
+          ~dir
+          scope
+          modules
+      in
+      Modules.With_vlib.modules modules, pp
     in
     let requires_link = Lib.Compile.requires_link compile_info in
     let* flags =
@@ -434,7 +445,7 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
   in
   let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
   let modules_for_js =
-    Modules.fold_no_vlib modules ~init:[] ~f:(fun x acc ->
+    Modules.fold modules ~init:[] ~f:(fun x acc ->
       if Module.has x ~ml_kind:Impl then x :: acc else acc)
   in
   modules, modules_for_js, obj_dir
@@ -464,8 +475,10 @@ let setup_entries_js
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
   in
+  let local_modules_and_obj_dir =
+    Some (Modules.With_vlib.modules local_modules, local_obj_dir)
+  in
   Memo.parallel_iter modules_for_js ~f:(fun m ->
-    let local_modules_and_obj_dir = Some (local_modules, local_obj_dir) in
     build_js
       ~dir
       ~loc
@@ -487,14 +500,14 @@ let setup_js_rules_libraries =
       let obj_dir = Lib.Local.obj_dir lib in
       modules, obj_dir)
   in
-  let parallel_build_source_modules ~sctx ~scope ~f lib =
+  let parallel_build_source_modules ~sctx ~scope ~f:build_js lib =
     let* local_modules_and_obj_dir, source_modules =
       let+ lib_modules, source_modules =
         impl_only_modules_defined_in_this_lib ~sctx ~scope lib
       in
       local_modules_and_obj_dir ~lib lib_modules, source_modules
     in
-    Memo.parallel_iter source_modules ~f:(f ~local_modules_and_obj_dir)
+    Memo.parallel_iter source_modules ~f:(build_js ~local_modules_and_obj_dir)
   in
   fun ~dir ~scope ~target_dir ~sctx ~requires_link ~mode (mel : Melange_stanzas.Emit.t) ->
     let build_js = build_js ~sctx ~mode ~module_systems:mel.module_systems in
@@ -642,7 +655,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
        package). When resolution fails, we replace the JS entries with the
        resolution error inside [Action_builder.fail] to give Dune a chance to
        fail if any of the targets end up attached to a package installation. *)
-    let* _local_modules, modules_for_js, _obj_dir =
+    let* _, modules_for_js, _obj_dir =
       modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
     in
     let module_systems = mel.module_systems in

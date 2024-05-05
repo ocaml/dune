@@ -129,7 +129,12 @@
 
 (cram
  (applies_to version-corruption)
- (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
+ (deps %{bin:git} %{bin:chmod})
+ (enabled_if
+  ; code signing moves placeholders in the binary
+  (or
+   (<> %{system} macosx)
+   (<> %{architecture} arm64))))
 
 (cram
  (applies_to corrupt-persistent)

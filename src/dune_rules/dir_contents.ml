@@ -469,7 +469,7 @@ let modules_of_lib sctx lib =
   | External modules -> Memo.return modules
   | Local ->
     let+ modules = modules_of_local_lib sctx (Lib.Local.of_lib_exn lib) in
-    Some modules
+    Some (Modules.With_vlib.modules modules)
 ;;
 
 let () =

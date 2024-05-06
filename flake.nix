@@ -43,17 +43,26 @@
         melange.overlays.default
         ocamllsp.overlays.default
       ];
-      use-this-dune = self: super: {
+      use-this-dune-static = self: super: {
         ocaml-ng =
           super.ocaml-ng // {
             ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (pself: psuper: {
-              dune_3 = psuper.dune_3.overrideAttrs (a: { src = ./.; });
+              dune_3 = psuper.dune_3.overrideAttrs (a: {
+                src = ./.;
+                postPatch = ''
+                  substituteInPlace \
+                    boot/duneboot.ml \
+                    --replace-fail \
+                    '; link_flags' \
+                    '; link_flags; ["-ccopt"; "-static"]'
+                '';
+              });
             });
           };
       };
       pkgs-overlay = nixpkgs.legacyPackages.${system}.appendOverlays [
         ocaml-overlays.overlays.default
-        use-this-dune
+        use-this-dune-static
       ];
 
       ocamlformat =

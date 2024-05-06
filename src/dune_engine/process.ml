@@ -525,7 +525,7 @@ end = struct
       Has_output { with_color; without_color; has_embedded_location }
   ;;
 
-  let get_loc_and_annots ~dir ~metadata ~output =
+  let get_loc_annots_and_dir ~dir ~metadata ~output =
     let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots =
@@ -542,14 +542,15 @@ end = struct
           | errors -> User_message.Annots.set annots Compound_user_error.annot errors)
         else annots
     in
-    loc, annots
+    loc, annots, dir
   ;;
 
-  let fail ~loc ~annots paragraphs =
+  let fail ?dir ~loc ~annots paragraphs =
     (* We don't use [User_error.make] as it would add the "Error: " prefix. We
        don't need this prefix as it is already included in the output of the
        command. *)
-    raise (User_error.E (User_message.make ?loc ~annots paragraphs))
+    let dir = Option.map ~f:Path.to_string dir in
+    raise (User_error.E (User_message.make ?dir ?loc ~annots paragraphs))
   ;;
 
   let verbose t ~id ~metadata ~output ~command_line ~dir =
@@ -574,8 +575,9 @@ end = struct
         | Failed n -> sprintf "exited with code %d" n
         | Signaled signame -> sprintf "got signal %s" (Signal.name signame)
       in
-      let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
+      let loc, annots, dir = get_loc_annots_and_dir ~dir ~metadata ~output in
       fail
+        ~dir
         ~loc
         ~annots
         ((Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
@@ -630,7 +632,7 @@ end = struct
       then Console.print_user_message (User_message.make paragraphs);
       n
     | Error error ->
-      let loc, annots = get_loc_and_annots ~dir ~metadata ~output in
+      let loc, annots, dir = get_loc_annots_and_dir ~dir ~metadata ~output in
       let paragraphs =
         match verbosity with
         | Short ->
@@ -653,7 +655,7 @@ end = struct
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in
-      fail ~loc ~annots paragraphs
+      fail ~dir ~loc ~annots paragraphs
   ;;
 end
 

@@ -1457,7 +1457,10 @@ let drop_prefix path ~prefix =
   if prefix = path
   then Some Local.root
   else (
-    let prefix = to_string prefix ^ "/" in
+    let prefix_s = to_string prefix in
+    let prefix =
+      if String.is_suffix ~suffix:"/" prefix_s then prefix_s else prefix_s ^ "/"
+    in
     let open Option.O in
     let+ suffix = String.drop_prefix (to_string path) ~prefix in
     Local.of_string suffix)

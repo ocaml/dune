@@ -618,3 +618,10 @@ let%expect_test "drop external prefix with a trailing /" =
   |> print_dyn;
   [%expect {| Some "d/e" |}]
 ;;
+
+let%expect_test "drop prefix with a trailing /" =
+  Path.drop_prefix ~prefix:(Path.of_string "/a/b/c/") (Path.of_string "/a/b/c/d/e")
+  |> Dyn.option Path.Local.to_dyn
+  |> print_dyn;
+  [%expect {| None |}]
+;;

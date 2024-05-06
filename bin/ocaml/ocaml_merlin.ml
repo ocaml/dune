@@ -1,35 +1,34 @@
 open Import
 
 module Selected_context = struct
-  type t =
-    | Default
-    | Custom of Context_name.t
-
-  let conv =
-    let parse ctx_name =
-      match Context_name.of_string_opt ctx_name with
-      | None -> Error (`Msg (Printf.sprintf "Invalid context name %S" ctx_name))
-      | Some ctx_name -> Ok (Custom ctx_name)
-    in
-    let printer ppf t =
-      let print = function
-        | Default -> "default"
-        | Custom ctx -> Context_name.to_string ctx
+  let arg =
+    let ctx_name_conv =
+      let parse ctx_name =
+        match Context_name.of_string_opt ctx_name with
+        | None -> Error (`Msg (Printf.sprintf "Invalid context name %S" ctx_name))
+        | Some ctx_name -> Ok ctx_name
       in
-      Stdlib.Format.fprintf ppf "%s" (print t)
+      let print ppf t = Stdlib.Format.fprintf ppf "%s" (Context_name.to_string t) in
+      Arg.conv ~docv:"context" (parse, print)
     in
-    Arg.conv ~docv:"context" (parse, printer)
+    Arg.(
+      value
+      & opt ctx_name_conv Context_name.default
+      & info
+          [ "context" ]
+          ~docv:"CONTEXT"
+          ~doc:"Select the Dune build context that will be used to return information")
   ;;
 end
 
 module Server : sig
-  val dump : string -> unit Fiber.t
-  val dump_dot_merlin : selected_context:Selected_context.t -> string -> unit Fiber.t
+  val dump : selected_context:Context_name.t -> string -> unit Fiber.t
+  val dump_dot_merlin : selected_context:Context_name.t -> string -> unit Fiber.t
 
   (** Once started the server will wait for commands on stdin, read the
       requested merlin dot file and return its content on stdout. The server
       will halt when receiving EOF of a bad csexp. *)
-  val start : selected_context:Selected_context.t -> unit -> unit Fiber.t
+  val start : selected_context:Context_name.t -> unit -> unit Fiber.t
 end = struct
   open Fiber.O
 
@@ -155,11 +154,11 @@ end = struct
     match to_local file with
     | Error s -> Fiber.return (Error s)
     | Ok file ->
-      let module Context_name = Dune_engine.Context_name in
-      (match selected_context with
-       | Selected_context.Custom ctxt ->
-         Fiber.return (Ok (Path.Build.append_local (Context_name.build_dir ctxt) file))
-       | Default ->
+      (match Dune_engine.Context_name.is_default selected_context with
+       | false ->
+         Fiber.return
+           (Ok (Path.Build.append_local (Context_name.build_dir selected_context) file))
+       | true ->
          let+ workspace = Memo.run (Workspace.workspace ()) in
          (match workspace.merlin_context with
           | None -> Error "no merlin context configured"
@@ -175,8 +174,8 @@ end = struct
     >>| Merlin_conf.to_stdout
   ;;
 
-  let dump s =
-    to_local ~selected_context:Default s
+  let dump ~selected_context s =
+    to_local ~selected_context s
     >>| function
     | Error mess -> Printf.eprintf "%s\n%!" mess
     | Ok path -> get_merlin_files_paths path |> List.iter ~f:Merlin.Processed.print_file
@@ -219,7 +218,8 @@ module Dump_config = struct
 
   let term =
     let+ builder = Common.Builder.term
-    and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH") in
+    and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
+    and+ selected_context = Selected_context.arg in
     let common, config =
       let builder =
         let builder = Common.Builder.forbid_builds builder in
@@ -227,7 +227,7 @@ module Dump_config = struct
       in
       Common.init builder
     in
-    Scheduler.go ~common ~config (fun () -> Server.dump dir)
+    Scheduler.go ~common ~config (fun () -> Server.dump ~selected_context dir)
   ;;
 
   let command = Cmd.v info term
@@ -250,15 +250,7 @@ let start_session_info name = Cmd.info name ~doc ~man
 
 let start_session_term =
   let+ builder = Common.Builder.term
-  and+ selected_context =
-    Arg.(
-      value
-      & opt Selected_context.conv Selected_context.Default
-      & info
-          [ "context" ]
-          ~docv:"CONTEXT"
-          ~doc:"The Dune context in which the command will return information for")
-  in
+  and+ selected_context = Selected_context.arg in
   let common, config =
     let builder =
       let builder = Common.Builder.forbid_builds builder in
@@ -300,15 +292,7 @@ module Dump_dot_merlin = struct
             ~doc:
               "The path to the folder of which the configuration should be printed. \
                Defaults to the current directory.")
-    and+ selected_context =
-      Arg.(
-        value
-        & opt Selected_context.conv Selected_context.Default
-        & info
-            [ "context" ]
-            ~docv:"CONTEXT"
-            ~doc:"Dune will return information for this build context")
-    in
+    and+ selected_context = Selected_context.arg in
     let common, config =
       let builder =
         let builder = Common.Builder.forbid_builds builder in

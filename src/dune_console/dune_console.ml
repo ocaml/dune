@@ -31,6 +31,7 @@ let blank_line_msg =
   ; annots = User_message.Annots.empty
   ; loc = None
   ; context = None
+  ; dir = None
   }
 ;;
 

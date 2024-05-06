@@ -529,9 +529,6 @@ end = struct
     let { loc; annots; _ } = metadata in
     let dir = Option.value dir ~default:Path.root in
     let annots =
-      User_message.Annots.set annots Dune_util.Report_error.with_directory_annot dir
-    in
-    let annots =
       match output with
       | No_output -> annots
       | Has_output output ->

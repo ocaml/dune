@@ -174,9 +174,10 @@ type t =
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
   ; context : string option
+  ; dir : string option
   }
 
-let compare { loc; paragraphs; hints; annots; context = _ } t =
+let compare { loc; paragraphs; hints; annots; context = _; dir = _ } t =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
   let= () = List.compare paragraphs t.paragraphs ~compare:Poly.compare in
@@ -186,17 +187,17 @@ let compare { loc; paragraphs; hints; annots; context = _ } t =
 
 let equal a b = Ordering.is_eq (compare a b)
 
-let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) ?context paragraphs =
+let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) ?context ?dir paragraphs =
   let paragraphs =
     match prefix, paragraphs with
     | None, l -> l
     | Some p, [] -> [ p ]
     | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
-  { loc; hints; paragraphs; annots; context }
+  { loc; hints; paragraphs; annots; context; dir }
 ;;
 
-let pp { loc; paragraphs; hints; annots = _; context } =
+let pp { loc; paragraphs; hints; annots = _; context; dir = _ } =
   let open Pp.O in
   let paragraphs =
     match hints with

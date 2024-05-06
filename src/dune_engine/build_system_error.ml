@@ -27,9 +27,7 @@ let of_exn (exn : Exn_with_backtrace.t) =
   in
   match exn.exn with
   | User_error.E main ->
-    let dir =
-      User_message.Annots.find main.annots Dune_util.Report_error.with_directory_annot
-    in
+    let dir = Option.map ~f:Path.of_string main.dir in
     let promotion = User_message.Annots.find main.annots Diff_promotion.Annot.annot in
     (match User_message.Annots.find main.annots Compound_user_error.annot with
      | None ->

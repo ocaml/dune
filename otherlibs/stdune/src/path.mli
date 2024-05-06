@@ -77,7 +77,6 @@ module External : sig
   val mkdir_p : ?perms:int -> t -> unit
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
-  val drop_prefix : t -> prefix:t -> Local.t option
 
   module Table : Hashtbl.S with type key = t
 end

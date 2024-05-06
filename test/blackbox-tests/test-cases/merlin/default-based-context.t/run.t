@@ -95,6 +95,16 @@ If Merlin field is present, this context is chosen
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
 
 If `generate_merlin_rules` field is present, rules are generated even if merlin
 is disabled in that context
@@ -122,6 +132,21 @@ is disabled in that context
 
   $ dune ocaml merlin dump-config "$PWD"
   Foo: _build/default/foo
+  ((STDLIB OPAM_PREFIX)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
+  Foo: _build/default/foo.ml
   ((STDLIB OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B

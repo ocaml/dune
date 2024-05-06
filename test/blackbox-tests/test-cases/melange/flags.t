@@ -43,7 +43,7 @@ Trying to build triggers both warnings
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
-  Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^
@@ -62,6 +62,10 @@ Let's ignore them using compile_flags
   > EOF
 
   $ dune build @mel
+  File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
   $ node _build/default/output/main.js
   hello
 
@@ -79,7 +83,7 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   File "main.ml", line 1, characters 9-11:
   1 | let t = "\e\n" in
                ^^
-  Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^
@@ -100,6 +104,10 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   > EOF
 
   $ dune build @mel
+  File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
   $ node _build/default/output/main.js
   hello
 

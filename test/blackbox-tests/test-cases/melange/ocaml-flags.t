@@ -26,6 +26,10 @@ The code in main contains unused var (warning 26) and illegal backlash (warning 
 Building does not fail, warnings are silenced
 
   $ dune build @mel
+  File "main.ml", line 1, characters 9-11:
+  1 | let t = "\e\n" in
+               ^^
+  Warning 14 [illegal-backslash]: illegal backslash escape in string.
   $ node _build/default/output/main.js
   hello
 

@@ -47,7 +47,21 @@ let run_build_system ~common ~request =
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let request =
-        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup -> request setup)
+        let open Action_builder.O in
+        let autolock =
+          Memo.of_thunk (fun () ->
+            let lock_dir_path = Dune_pkg.Lock_dir.default_path in
+            (* not using [Fs_memo.dir_exists] to not create a dependency *)
+            match Path.exists (Path.source lock_dir_path) with
+            | false ->
+              let lock_dirs_arg = Pkg_common.Lock_dirs_arg.of_path lock_dir_path in
+              let fib = Lock.lock ~version_preference:None ~lock_dirs_arg in
+              Memo.of_non_reproducible_fiber fib
+            | true -> Memo.return ())
+        in
+        let setup = Memo.both setup autolock |> Memo.map ~f:fst in
+        let* setup = Action_builder.of_memo setup in
+        request setup
       in
       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)

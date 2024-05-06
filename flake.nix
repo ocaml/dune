@@ -13,6 +13,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
+    ocaml-overlays = {
+      url = "github:nix-ocaml/nix-overlays";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
   outputs =
     { self
@@ -20,6 +25,7 @@
     , nixpkgs
     , ocamllsp
     , melange
+    , ocaml-overlays
     }:
     flake-utils.lib.eachDefaultSystem (system:
     let
@@ -36,6 +42,18 @@
         })
         melange.overlays.default
         ocamllsp.overlays.default
+      ];
+      use-this-dune = self: super: {
+        ocaml-ng =
+          super.ocaml-ng // {
+            ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (pself: psuper: {
+              dune_3 = psuper.dune_3.overrideAttrs (a: { src = ./.; });
+            });
+          };
+      };
+      pkgs-overlay = nixpkgs.legacyPackages.${system}.appendOverlays [
+        ocaml-overlays.overlays.default
+        use-this-dune
       ];
 
       ocamlformat =
@@ -79,6 +97,7 @@
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
         dune = default;
+        dune-static = pkgs-overlay.pkgsCross.musl64.ocaml-ng.ocamlPackages_4_14.dune;
       };
 
       devShells =

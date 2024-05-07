@@ -274,12 +274,13 @@ module Sanitize_for_tests = struct
     let fake_workspace = lazy (Path.External.of_string "/WORKSPACE_ROOT")
 
     let sanitize_with_findlib ~findlib_paths path =
+      let path = Path.external_ path in
       List.find_map findlib_paths ~f:(fun candidate ->
         let open Option.O in
         let* candidate = Path.as_external candidate in
         (* if the path to rename is an external path, try to find the
            OCaml root inside, and replace it with a fixed string *)
-        let+ without_prefix = Path.External.drop_prefix ~prefix:candidate path in
+        let+ without_prefix = Path.drop_prefix ~prefix:(Path.external_ candidate) path in
         (* we have found the OCaml root path: let's replace it with a
            constant string *)
         Path.External.append_local (Lazy.force fake_findlib) without_prefix)

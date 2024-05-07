@@ -574,9 +574,9 @@ let%expect_test "drop prefix" =
 ;;
 
 let%expect_test "drop external prefix" =
-  Path.External.drop_prefix
-    ~prefix:(Path.External.of_filename_relative_to_initial_cwd "foo/bar")
-    (Path.External.of_filename_relative_to_initial_cwd "foo/bar/baz")
+  Path.drop_prefix
+    ~prefix:(Path.of_filename_relative_to_initial_cwd "foo/bar")
+    (Path.of_filename_relative_to_initial_cwd "foo/bar/baz")
   |> Dyn.option Path.Local.to_dyn
   |> print_dyn;
   [%expect {| Some "baz" |}]
@@ -590,9 +590,9 @@ let%expect_test "drop prefix as substring" =
 ;;
 
 let%expect_test "drop external prefix as substring" =
-  Path.External.drop_prefix
-    ~prefix:(Path.External.of_filename_relative_to_initial_cwd "foo/bar")
-    (Path.External.of_filename_relative_to_initial_cwd "foo/barbaz")
+  Path.drop_prefix
+    ~prefix:(Path.of_filename_relative_to_initial_cwd "foo/bar")
+    (Path.of_filename_relative_to_initial_cwd "foo/barbaz")
   |> Dyn.option Path.Local.to_dyn
   |> print_dyn;
   [%expect {| None |}]
@@ -605,7 +605,14 @@ let%expect_test "drop entire path" =
 ;;
 
 let%expect_test "drop entire external path" =
-  let path = Path.External.of_filename_relative_to_initial_cwd "foo/bar" in
-  Path.External.drop_prefix ~prefix:path path |> Dyn.option Path.Local.to_dyn |> print_dyn;
+  let path = Path.of_filename_relative_to_initial_cwd "foo/bar" in
+  Path.drop_prefix ~prefix:path path |> Dyn.option Path.Local.to_dyn |> print_dyn;
   [%expect {| Some "." |}]
+;;
+
+let%expect_test "drop prefix with a trailing /" =
+  Path.drop_prefix ~prefix:(Path.of_string "/a/b/c/") (Path.of_string "/a/b/c/d/e")
+  |> Dyn.option Path.Local.to_dyn
+  |> print_dyn;
+  [%expect {| Some "d/e" |}]
 ;;

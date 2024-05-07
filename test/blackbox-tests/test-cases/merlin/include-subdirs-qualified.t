@@ -22,7 +22,9 @@
   $ dune build .merlin-conf/lib-foo
   $ dune ocaml merlin dump-config .
   Foo: _build/default/foo
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -39,9 +41,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))
   Foo: _build/default/foo.ml-gen
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -58,9 +63,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))
   Foo__Groupintf__: _build/default/foo__Groupintf__
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -77,9 +85,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf__))
   Foo__Groupintf__: _build/default/foo__Groupintf__.ml-gen
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -96,9 +107,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf__))
   Utils: _build/default/foo__Utils
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -115,9 +129,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Utils))
   Utils: _build/default/foo__Utils.ml-gen
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -134,9 +151,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Utils))
   Calc: _build/default/groupintf/calc
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -154,9 +174,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf__Calc))
   Calc: _build/default/groupintf/calc.ml
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -174,9 +197,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf__Calc))
   Groupintf: _build/default/groupintf/groupintf
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -194,9 +220,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf))
   Groupintf: _build/default/groupintf/groupintf.ml
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -214,9 +243,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Groupintf))
   Main: _build/default/main
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -234,9 +266,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Main))
   Main: _build/default/main.ml
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -254,9 +289,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Main))
   Calc: _build/default/utils/calc
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -274,9 +312,12 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Utils__Calc))
   Calc: _build/default/utils/calc.ml
-  ((STDLIB /OPAM_PREFIX)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OPAM_PREFIX)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -294,5 +335,6 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Utils__Calc))
   $ dune ocaml merlin dump-config utils

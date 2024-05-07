@@ -14,7 +14,21 @@ CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml merlin dump-config $PWD/exe
   X: _build/default/exe/x
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -31,9 +45,24 @@ CRAM sanitization
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME x))
   X: _build/default/exe/x.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -50,12 +79,27 @@ CRAM sanitization
    (FLG
     (-pp
      $TESTCASE_ROOT/_build/default/pp/pp.exe))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME x))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar: _build/default/lib/bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -69,9 +113,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar))
   Bar: _build/default/lib/bar.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -85,9 +144,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar))
   File: _build/default/lib/subdir/file
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -102,9 +176,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar__File))
   File: _build/default/lib/subdir/file.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -119,9 +208,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="bar"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar__File))
   Foo: _build/default/lib/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -139,9 +243,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo))
   Foo: _build/default/lib/foo.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -159,9 +278,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo))
   Privmod: _build/default/lib/privmod
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -180,9 +314,24 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo__Privmod))
   Privmod: _build/default/lib/privmod.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -201,7 +350,8 @@ CRAM sanitization
      --as-ppx
      --cookie
      'library-name="foo"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo__Privmod))
 
 Make sure a ppx directive is generated (if not, the [grep ppx] step fails)
   $ dune ocaml merlin dump-config $PWD/lib | grep ppx > /dev/null
@@ -211,7 +361,21 @@ Make sure pp flag is correct and variables are expanded
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
   $ dune ocaml merlin dump-config $PWD/pp-with-expand
   Foobar: _build/default/pp-with-expand/foobar
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -221,9 +385,24 @@ Make sure pp flag is correct and variables are expanded
     (-pp
      "$TESTCASE_ROOT/_build/default/pp/pp.exe
      -nothing"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foobar))
   Foobar: _build/default/pp-with-expand/foobar.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -233,13 +412,28 @@ Make sure pp flag is correct and variables are expanded
     (-pp
      "$TESTCASE_ROOT/_build/default/pp/pp.exe
      -nothing"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foobar))
 
 Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml merlin dump-config $PWD/exes
   X: _build/default/exes/x
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -252,9 +446,24 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME x))
   X: _build/default/exes/x.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -267,9 +476,24 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME x))
   Y: _build/default/exes/y
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -282,9 +506,24 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME y))
   Y: _build/default/exes/y.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -297,4 +536,5 @@ Check hash of executables names if more than one
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME y))

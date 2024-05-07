@@ -7,7 +7,15 @@ in the same dune file, but require different ppx specifications
   $ dune build @all --profile release
   $ dune ocaml merlin dump-config $PWD
   Usesppx1: _build/default/usesppx1
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx1/.ppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -19,9 +27,18 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx1"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME usesppx1))
   Usesppx1: _build/default/usesppx1.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx1/.ppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -33,9 +50,18 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx1"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME usesppx1))
   Usesppx2: _build/default/usesppx2
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx1/.ppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
@@ -47,9 +73,18 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx2"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME usesppx2))
   Usesppx2: _build/default/usesppx2.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx2.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/.usesppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx1/.ppx1.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
@@ -61,4 +96,5 @@ in the same dune file, but require different ppx specifications
      --as-ppx
      --cookie
      'library-name="usesppx2"'"))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME usesppx2))

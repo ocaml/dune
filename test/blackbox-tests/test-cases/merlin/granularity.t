@@ -117,13 +117,15 @@ Preprocessing:
 
 Is it expected that the suffix for implementation and interface is the same ?
   $ ./merlin_conf.sh pped.ml | tee pped.out
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-pp?:$TESTCASE_ROOT/_build/default/pp.sh)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Pped
   (?:SUFFIX?:.mlx .mlx))
 
   $ ./merlin_conf.sh pped.mli | diff pped.out -
@@ -132,17 +134,19 @@ Melange:
 
 As expected, the reader is not communicated for the standard mli
   $ ./merlin_conf.sh mel.mli | tee mel.out
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Mel
   (?:SUFFIX?:.mlx .mlx))
 
 The reader is set for the mlx file
   $ ./merlin_conf.sh mel.mlx | diff mel.out -
-  7c7,8
+  9c9,10
   < (?:SUFFIX?:.mlx .mlx))
   \ No newline at end of file
   ---
@@ -161,12 +165,14 @@ found, then it'll make a guess that the file was preprocessed into a file with
 .ml extension:
 
   $ ./merlin_conf.sh cppomod.cppo.ml | tee cppomod.out
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Cppomod
   (?:SUFFIX?:.mlx .mlx))
 
   $ ./merlin_conf.sh cppomod.ml | diff cppomod.out -
@@ -180,12 +186,14 @@ And with unconventional extension:
 such files) 
 We could expect dune to get the wrongext module configuration
   $ ./merlin_conf.sh wrongext.cppo.cml | tee wrongext.out
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Wrongext
   (?:SUFFIX?:.mlx .mlx))
 
 We also have generated.ml and generatedx.mlx promoted:
@@ -195,19 +203,23 @@ We also have generated.ml and generatedx.mlx promoted:
 
 It should be possible to get its merlin configuration as well:
   $ ./merlin_conf.sh generated.ml
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Generated
   (?:SUFFIX?:.mlx .mlx))
   $ ./merlin_conf.sh generatedx.mlx
-  ((?:STDLIB?:/OCAMLC_WHERE
+  ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
+  (?:STDLIB?:/OCAMLC_WHERE
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
   (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:UNIT_NAME?:dune__exe__Generatedx
   (?:SUFFIX?:.mlx .mlx
   (?:READER(?:mlx)))

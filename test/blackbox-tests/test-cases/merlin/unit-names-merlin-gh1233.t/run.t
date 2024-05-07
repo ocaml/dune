@@ -6,7 +6,11 @@
 
   $ dune ocaml merlin dump-config $PWD
   Foo: _build/default/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
@@ -23,9 +27,14 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME dune__exe__Foo))
   Foo: _build/default/foo.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.eobjs/byte)
@@ -42,11 +51,16 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME dune__exe__Foo))
 
   $ dune ocaml merlin dump-config $PWD/foo
   Bar: _build/default/foo/bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
@@ -60,9 +74,14 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Bar))
   Bar: _build/default/foo/bar.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
@@ -76,9 +95,14 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo__Bar))
   Foo: _build/default/foo/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
@@ -91,9 +115,14 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))
   Foo: _build/default/foo/foo.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/foo/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/foo/.foo.objs/byte)
@@ -106,7 +135,8 @@
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))
 
 FIXME : module Foo is not unbound
 This test is disabled because it depends on root detection and is not reproducible.

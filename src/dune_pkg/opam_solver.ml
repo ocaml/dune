@@ -733,6 +733,9 @@ let solve_lock_dir
   ~pins:pinned_packages
   ~constraints
   =
+  (* Make sure that the solution contains a version of the compiler
+     that's compatible with dune toolchains. *)
+  let constraints = Toolchain.Compiler_package.constraint_ :: constraints in
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =

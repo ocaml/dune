@@ -193,7 +193,7 @@ module Value_list_env = struct
   let add_path (t : t) var path : t =
     Env.Map.update t var ~f:(fun paths ->
       let paths = Option.value paths ~default:[] in
-      Some (Value.Dir (Path.build path) :: paths))
+      Some (Value.Dir path :: paths))
   ;;
 end
 
@@ -340,18 +340,76 @@ module Pkg = struct
     List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
         let roots = Paths.install_roots t.paths in
-        let init = Value_list_env.add_path env Env_path.var roots.bin in
+        let init = Value_list_env.add_path env Env_path.var (Path.build roots.bin) in
         let vars = Install.Roots.to_env_without_path roots in
         List.fold_left vars ~init ~f:(fun acc (var, path) ->
-          Value_list_env.add_path acc var path)
+          Value_list_env.add_path acc var (Path.build path))
       in
       List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
+  let name_is_compiler name =
+    List.exists
+      ~f:(Dune_pkg.Package_name.equal name)
+      Dune_pkg.Toolchain.Compiler_package.package_names
+  ;;
+
+  let is_compiler t = name_is_compiler t.info.name
+
+  (* If this package is a compiler whose version is supported by dune
+     toolchains then returns the toolchain version, otherwise returns
+     None. *)
+  let as_compiler_with_version_in_toolchain_dir t =
+    if is_compiler t
+    then Dune_pkg.Toolchain.Version.of_package_version t.info.version
+    else None
+  ;;
+
+  let is_compiler_with_version_in_toolchain_dir t =
+    Option.is_some (as_compiler_with_version_in_toolchain_dir t)
+  ;;
+
+  (* Returns the version of the compiler toolchain dependen on by this
+     package if any. *)
+  let compiler_toolchain_version t =
+    let module Toolchain = Dune_pkg.Toolchain in
+    if is_compiler t
+    then Toolchain.Version.of_package_version t.info.version
+    else
+      List.find_map (deps_closure t) ~f:(fun pkg ->
+        if is_compiler pkg
+        then Toolchain.Version.of_package_version pkg.info.version
+        else None)
+  ;;
+
+  (* Download, builds, and installs the compiler toolchain necessary
+     to compile this package, unless it is already installed. *)
+  let ensure_compiler_toolchain t =
+    match compiler_toolchain_version t with
+    | None -> Memo.return ()
+    | Some toolchain_version ->
+      Memo.of_reproducible_fiber
+      @@ Dune_pkg.Toolchain.get ~log:`Install_only toolchain_version
+  ;;
+
   (* [build_env t] returns an env containing paths containing all the
      tools and libraries required to build the package [t] inside the
-     faux opam directory contained in the _build dir. *)
-  let build_env t = build_env_of_deps @@ deps_closure t
+     faux opam directory contained in the _build dir. If there is a
+     version of the ocaml compiler among the package's dependencies ad
+     that version of the ocaml compiler is supported by the compiler
+     toolchains feature then that toolchain's bin directory will be
+     included in the PATH variable of the returned environment. *)
+  let build_env t =
+    let env = build_env_of_deps @@ deps_closure t in
+    match compiler_toolchain_version t with
+    | Some toolchain_version
+      when Dune_pkg.Toolchain.Version.is_installed toolchain_version ->
+      let toolchain_bin_dir =
+        Dune_pkg.Toolchain.Version.bin_dir toolchain_version |> Path.outside_build_dir
+      in
+      Value_list_env.add_path env Env_path.var toolchain_bin_dir
+    | _ -> env
+  ;;
 
   let base_env t =
     Env.Map.of_list_exn
@@ -797,7 +855,7 @@ module Action_expander = struct
              (match Filename.Map.find t.artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
-                (let path = Global.env () |> Env_path.path in
+                (let path = Value_list_env.to_env t.env |> Env_path.path in
                  Which.which ~path program)
                 >>| (function
                  | Some p -> Ok p
@@ -1033,19 +1091,30 @@ module Action_expander = struct
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(function
-      | Action action -> expand context pkg action
-      | Dune ->
-        (* CR-rgrinberg: respect [dune subst] settings. *)
-        Command.run_dyn_prog
-          (Action_builder.of_memo (dune_exe context))
-          ~dir:(Path.build pkg.paths.source_dir)
-          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
-        |> Memo.return)
+    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
+    then
+      (* Ignore the build command of compiler packages supported by
+         dune toolchains. *)
+      None
+    else
+      Option.map pkg.build_command ~f:(function
+        | Action action -> expand context pkg action
+        | Dune ->
+          (* CR-rgrinberg: respect [dune subst] settings. *)
+          Command.run_dyn_prog
+            (Action_builder.of_memo (dune_exe context))
+            ~dir:(Path.build pkg.paths.source_dir)
+            [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+          |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
+    then
+      (* Ignore the install command of compiler packages supported by
+         dune toolchains. *)
+      None
+    else Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
@@ -1483,13 +1552,52 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+(* Action which creates a fake package source in place of a compiler
+   package for use when a compiler from the toolchains directory will be
+   used instead of taking the compiler from a regular opam package. *)
+let make_dummy_compiler_package_source (pkg : Pkg.t) version target =
+  Action.progn
+    [ Action.mkdir target
+    ; Action.with_stdout_to
+        (Path.Build.relative target "debug_hint.txt")
+        (Action.echo
+           [ sprintf
+               "This file was created as a hint to people debugging issues with dune \
+                package management.\n\
+                This project attempted to download and build the compiler package: %s.%s\n\
+                Instead of using the complier package, dune is using the compiler \
+                toolchain installed at: %s"
+               (Dune_pkg.Package_name.to_string pkg.info.name)
+               (Dune_pkg.Package_version.to_string pkg.info.version)
+               (Dune_pkg.Toolchain.Version.toolchain_dir version
+                |> Path.Outside_build_dir.to_string)
+           ])
+    ; (* TODO: it doesn't seem like it should be necessary to generate
+         this file but without it dune complains *)
+      Action.with_stdout_to
+        (Path.Build.relative target "config.cache")
+        (Action.echo
+           [ "Dummy file created to placate dune's package installation rules. See the \
+              debug_hint.txt file for more information."
+           ])
+    ]
+  |> Action.Full.make
+  |> Action_builder.With_targets.return
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+;;
+
 let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
     | Some (Fetch { url = (loc, _) as url; checksum }) ->
       let fetch =
-        Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
+        match Pkg.as_compiler_with_version_in_toolchain_dir pkg with
+        | Some version ->
+          (* Don't download the source of compiler packages supported
+             by dune toolchains. *)
+          make_dummy_compiler_package_source pkg version pkg.paths.source_dir
+        | None -> Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
       in
       Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
     | Some (External_copy (loc, source_root)) ->
@@ -1524,6 +1632,7 @@ let source_rules (pkg : Pkg.t) =
 ;;
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
+  let* () = Pkg.ensure_compiler_toolchain pkg in
   let+ build_action =
     let+ build_and_install =
       let+ copy_action =
@@ -1660,6 +1769,7 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
+  let module Toolchain = Dune_pkg.Toolchain in
   (let* lock_dir = Lock_dir.get context in
    let* db = DB.get context in
    match lock_dir.ocaml with
@@ -1668,17 +1778,26 @@ let ocaml_toolchain context =
   >>| function
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
+    let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
     let toolchain =
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-      let open Action_builder.O in
-      let* cookie = cookie in
-      (* TODO we should use the closure of [pkg] *)
-      let binaries =
-        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
-      in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
-      let path = Env_path.path (Global.env ()) in
-      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
+      match Toolchain.Version.of_package_version pkg.info.version with
+      | Some toolchain_version when Toolchain.Version.is_installed toolchain_version ->
+        (* Use the ocaml compiler from the toolchain directory if
+           available. *)
+        Action_builder.of_memo
+        @@ Ocaml_toolchain.of_toolchain_version toolchain_version context env
+      | _ ->
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        let open Action_builder.O in
+        let* cookie = cookie in
+        (* TODO we should use the closure of [pkg] *)
+        let binaries =
+          Section.Map.find cookie.files Bin
+          |> Option.value ~default:[]
+          |> Path.Set.of_list
+        in
+        let path = Env_path.path (Global.env ()) in
+        Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;

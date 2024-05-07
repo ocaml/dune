@@ -1,4 +1,5 @@
-Public libraries using the same `public_name`, in different contexts
+Show that public library names can't be defined twice, even in different
+contexts
 
   $ mkdir -p a b
 

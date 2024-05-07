@@ -606,7 +606,8 @@ let library_rules
     let+ () = Check_rules.add_obj_dir sctx ~obj_dir mode in
     info
   in
-  let+ () =
+  let+ () = Memo.when_ (Compilation_context.bin_annot cctx) (Ocaml_index.cctx_rules cctx)
+  and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)

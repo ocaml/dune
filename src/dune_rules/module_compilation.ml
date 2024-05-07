@@ -191,7 +191,7 @@ let build_cm
          let fn =
            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind)
          in
-         fn :: other_targets, A "-bin-annot")
+         fn :: other_targets, As [ "-bin-annot"; "-bin-annot-occurrences" ])
        else other_targets, Command.Args.empty
    in
    let opaque_arg : _ Command.Args.t =

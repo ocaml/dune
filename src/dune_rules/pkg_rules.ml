@@ -1773,11 +1773,22 @@ let ocaml_toolchain context =
   (let* lock_dir = Lock_dir.get context in
    let* db = DB.get context in
    match lock_dir.ocaml with
-   | None -> Memo.return `System_provided
-   | Some ocaml -> Resolve.resolve db context ocaml)
+   | None -> Memo.return `Latest_toolchain
+   | Some ocaml ->
+     let+ toolchain_pkg = Resolve.resolve db context ocaml in
+     `Toolchain_pkg toolchain_pkg)
   >>| function
-  | `System_provided -> None
-  | `Inside_lock_dir pkg ->
+  | `Toolchain_pkg `System_provided -> None
+  | `Latest_toolchain ->
+    print_endline "XXXXXXX no compiler in lockdir, using latest version";
+    let env = Global.env () in
+    let toolchain =
+      Action_builder.of_memo
+      @@ Ocaml_toolchain.of_toolchain_version Toolchain.Version.latest context env
+    in
+    (* TODO remove some duplication here *)
+    Some (Action_builder.memoize "ocaml_toolchain" toolchain)
+  | `Toolchain_pkg (`Inside_lock_dir pkg) ->
     let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
     let toolchain =
       match Toolchain.Version.of_package_version pkg.info.version with

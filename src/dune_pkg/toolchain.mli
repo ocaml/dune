@@ -17,6 +17,7 @@ end
 module Version : sig
   type t
 
+  val latest : t
   val all_by_string : (string * t) list
   val of_package_version : Package_version.t -> t option
 

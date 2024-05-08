@@ -7,7 +7,7 @@ module Config : sig
     { concurrency : int
     ; stats : Dune_stats.t option
     ; insignificant_changes : [ `Ignore | `React ]
-    ; signal_watcher : [ `Yes | `No ]
+    ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
 end

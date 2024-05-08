@@ -200,13 +200,7 @@ let with_download url checksum ~target ~f =
   let temp_dir =
     let prefix = "dune" in
     let suffix = Filename.basename url in
-    match (target : Path.t) with
-    | In_build_dir _ ->
-      Temp.temp_in_dir Dir ~dir:(Lazy.force Temp_dir.in_build) ~prefix ~suffix
-    | _ ->
-      let parent = Path.parent_exn target in
-      Path.mkdir_p parent;
-      Temp.temp_in_dir Dir ~dir:parent ~prefix ~suffix
+    Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   let output = Path.relative temp_dir "download" in
   Fiber.finalize ~finally:(fun () ->

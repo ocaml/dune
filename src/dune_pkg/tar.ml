@@ -17,12 +17,7 @@ let extract ~archive ~target =
   let target_in_temp =
     let prefix = Path.basename target in
     let suffix = Path.basename archive in
-    match target with
-    | In_build_dir _ ->
-      Temp.temp_in_dir Dir ~dir:(Lazy.force Temp_dir.in_build) ~prefix ~suffix
-    | _ ->
-      let parent = Path.parent_exn target in
-      Temp.temp_in_dir Dir ~dir:parent ~prefix ~suffix
+    Temp_dir.dir_for_target ~target ~prefix ~suffix
   in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;

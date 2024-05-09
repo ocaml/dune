@@ -134,8 +134,12 @@ let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 
-(* to avoid Git translating its CLI *)
-let env = Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+let env =
+  (* to avoid Git translating its CLI *)
+  Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+  (* to avoid prmompting for passwords *)
+  |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
+;;
 
 let git_code_error ~dir ~args ~exit_code ~output =
   let git = Lazy.force Vcs.git in

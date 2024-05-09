@@ -27,8 +27,8 @@ changes its end to cover:
   >  (modules registration))
   > 
   > (generate_sites_module
-  > (module sites)
-  > (plugins (app plugins)))
+  >  (module sites)
+  >  (plugins (app plugins)))
   > EOF
 
   $ cat > registration.ml <<EOF

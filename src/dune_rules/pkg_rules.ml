@@ -1099,10 +1099,7 @@ end = struct
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
           (Context_name.build_dir ctx)
-          (Path.Source.relative
-             lock_dir
-             (* TODO this should come from [Dune_pkg] *)
-             (sprintf "%s.files" (Package.Name.to_string info.name)))
+          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in

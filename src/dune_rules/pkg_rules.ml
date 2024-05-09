@@ -1309,9 +1309,12 @@ module Install_action = struct
       | false -> []
       | true ->
         let config =
-          let config_file_str = Path.to_string config_file in
-          let file = OpamFilename.of_string config_file_str |> OpamFile.make in
-          match OpamFile.Dot_config.read file with
+          let filename = Path.to_string config_file in
+          match
+            Io.read_file config_file
+            |> OpamFile.Dot_config.read_from_string
+                 ~filename:(OpamFile.make (OpamFilename.of_string filename))
+          with
           | s -> s
           | exception OpamPp.Bad_format (pos, message) ->
             let loc =
@@ -1325,7 +1328,7 @@ module Install_action = struct
                   let bols = Array.of_list (List.rev !bols) in
                   let make_pos (line, column) =
                     let pos_bol = bols.(line - 1) in
-                    { Lexing.pos_fname = config_file_str
+                    { Lexing.pos_fname = filename
                     ; pos_lnum = line
                     ; pos_bol
                     ; pos_cnum = pos_bol + column

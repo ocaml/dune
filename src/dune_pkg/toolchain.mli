@@ -18,7 +18,8 @@ module Version : sig
   type t
 
   val latest : t
-  val all_by_string : (string * t) list
+  val to_string : t -> string
+  val all : t list
   val of_package_version : Package_version.t -> t option
 
   (** The path to the directory containing both the source and binary

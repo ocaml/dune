@@ -119,10 +119,12 @@ module Version = struct
   let latest = Compiler_package.latest.version
   let to_string = Package_version.to_string
 
-  let all_by_string =
+  let all =
     List.map Compiler_package.supported ~f:(fun { Compiler_package.version; _ } ->
-      to_string version, version)
+      version)
   ;;
+
+  let all_by_string = List.map all ~f:(fun version -> to_string version, version)
 
   let of_string s =
     List.find_map all_by_string ~f:(fun (s', t) ->

@@ -486,7 +486,12 @@ module Dune_config = struct
          loop commands))
   ;;
 
-  let for_scheduler (t : t) ~watch_exclusions stats ~insignificant_changes ~signal_watcher
+  let for_scheduler
+    (t : t)
+    ~watch_exclusions
+    stats
+    ~insignificant_changes
+    ~print_ctrl_c_warning
     =
     let concurrency =
       match t.concurrency with
@@ -503,7 +508,7 @@ module Dune_config = struct
     { Scheduler.Config.concurrency
     ; stats
     ; insignificant_changes
-    ; signal_watcher
+    ; print_ctrl_c_warning
     ; watch_exclusions
     }
   ;;

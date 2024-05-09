@@ -19,6 +19,7 @@ let subcommands =
   ; Aliases_targets.Aliases_cmd.command
   ; Package_entries.command
   ; Describe_pkg.command
+  ; Describe_contexts.command
   ]
 ;;
 

@@ -34,7 +34,7 @@ jobs:
           - 4.14.x
         include:
           # OCaml trunk:
-          - ocaml-compiler: ocaml-variants.5.2.0+trunk
+          - ocaml-compiler: ocaml-variants.5.3.0+trunk
             os: ubuntu-latest
             skip_test: true
           # OCaml 5:
@@ -43,6 +43,10 @@ jobs:
             skip_test: true
           - ocaml-compiler: 5.1.x
             os: macos-latest
+            skip_test: true
+          # macOS x86_64 (Intel)
+          - ocaml-compiler: 4.14.x
+            os: macos-13
             skip_test: true
           # OCaml 4:
           - ocaml-compiler: 4.13.x

@@ -1047,14 +1047,6 @@ let rpc t =
   | `Allow rpc -> `Allow (Lazy.force rpc)
 ;;
 
-let signal_watcher t =
-  match t.rpc with
-  | `Allow _ -> `Yes
-  | `Forbid_builds ->
-    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
-    `No
-;;
-
 let watch_exclusions t = t.builder.watch_exclusions
 let stats t = t.stats
 

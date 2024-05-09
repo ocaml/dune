@@ -330,7 +330,7 @@ type 'path t =
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
   ; modes : Lib_mode.Map.Set.t
-  ; modules : Modules.t option Source.t
+  ; modules : Modules.With_vlib.t option Source.t
   ; special_builtin_support : (Loc.t * Special_builtin_support.t) option
   ; exit_module : Module_name.t option
   ; instrumentation_backend : (Loc.t * Lib_name.t) option
@@ -381,7 +381,8 @@ let eval_native_archives_exn (type path) (t : path t) ~modules =
   match t.native_archives, modules with
   | Files f, _ -> f
   | Needs_module_info _, None -> Code_error.raise "missing module information" []
-  | Needs_module_info f, Some modules -> if Modules.has_impl modules then [ f ] else []
+  | Needs_module_info f, Some modules ->
+    if Modules.With_vlib.has_impl modules then [ f ] else []
 ;;
 
 let user_written_deps t =
@@ -597,7 +598,7 @@ let to_dyn
     ; "wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped
     ; "main_module_name", Main_module_name.to_dyn main_module_name
     ; "modes", Lib_mode.Map.Set.to_dyn modes
-    ; "modules", Source.to_dyn (Dyn.option Modules.to_dyn) modules
+    ; "modules", Source.to_dyn (Dyn.option Modules.With_vlib.to_dyn) modules
     ; ( "special_builtin_support"
       , option (snd Special_builtin_support.to_dyn) special_builtin_support )
     ; "exit_module", option Module_name.to_dyn exit_module

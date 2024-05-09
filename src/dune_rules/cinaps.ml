@@ -151,8 +151,7 @@ let gen_rules sctx t ~dir ~scope =
       ~scope
   in
   let* modules =
-    Modules.singleton_exe module_
-    |> Modules.map_user_written ~f:(Pp_spec.pp_module preprocess)
+    Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let names = [ t.loc, name ] in

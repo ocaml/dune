@@ -3,6 +3,9 @@ open Import
 module File = struct
   type t =
     { path : Path.t
+    ; original_path : Path.t
+        (* while path can be changed for a module (when it is being pp'ed), the
+           original_path stays the same and points to an original source file *)
     ; dialect : Dialect.t
     }
 
@@ -11,16 +14,17 @@ module File = struct
     fields
     @@ let+ path = field "path" (Dune_lang.Path.Local.decode ~dir) in
        (* TODO do not just assume the dialect is OCaml *)
-       { path; dialect = Dialect.ocaml }
+       { path; original_path = path; dialect = Dialect.ocaml }
   ;;
 
-  let encode { path; dialect = _ } ~dir =
+  let encode { path; original_path = _; dialect = _ } ~dir =
     let open Dune_lang.Encoder in
     record_fields [ field "path" (Dune_lang.Path.Local.encode ~dir) path ]
   ;;
 
   let dialect t = t.dialect
   let path t = t.path
+  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -32,11 +36,15 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path }
+  let make dialect path = { dialect; path; original_path = path }
 
-  let to_dyn { path; dialect } =
+  let to_dyn { path; original_path; dialect } =
     let open Dyn in
-    record [ "path", Path.to_dyn path; "dialect", Dyn.string @@ Dialect.name dialect ]
+    record
+      [ "path", Path.to_dyn path
+      ; "original_path", Path.to_dyn original_path
+      ; "dialect", Dyn.string @@ Dialect.name dialect
+      ]
   ;;
 end
 
@@ -305,17 +313,17 @@ let wrapped_compat t =
   assert (t.visibility = Public);
   let source =
     let impl =
-      Some
-        { File.dialect = Dialect.ocaml
-        ; path =
-            (* Option.value_exn cannot fail because we disallow wrapped
-               compatibility mode for virtual libraries. That means none of the
-               modules are implementing a virtual module, and therefore all have
-               a source dir *)
-            Path.L.relative
-              (src_dir t)
-              [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
-        }
+      let path =
+        (* TODO(andreypopp): is this comment still relevant? *)
+        (* Option.value_exn cannot fail because we disallow wrapped
+           compatibility mode for virtual libraries. That means none of the
+           modules are implementing a virtual module, and therefore all have
+           a source dir *)
+        Path.L.relative
+          (src_dir t)
+          [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
+      in
+      Some { File.dialect = Dialect.ocaml; path; original_path = path }
     in
     { t.source with files = { intf = None; impl } }
   in
@@ -328,6 +336,12 @@ let sources t =
   List.filter_map
     [ t.source.files.intf; t.source.files.impl ]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
+;;
+
+let sources_without_pp t =
+  List.filter_map
+    [ t.source.files.intf; t.source.files.impl ]
+    ~f:(Option.map ~f:(fun (x : File.t) -> x.original_path))
 ;;
 
 module Obj_map = struct
@@ -387,7 +401,7 @@ let ml_source =
     | None -> f
     | Some suffix ->
       let path = Path.extend_basename f.path ~suffix in
-      File.make Dialect.ocaml path)
+      { f with dialect = Dialect.ocaml; path })
 ;;
 
 let version_installed t ~src_root ~install_dir =

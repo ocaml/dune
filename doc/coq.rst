@@ -69,6 +69,7 @@ The Coq theory stanza is very similar in form to the OCaml
      (modules <ordered_set_lang>)
      (plugins <ocaml_plugins>)
      (flags <coq_flags>)
+     (modules_flags <flags_map>)
      (coqdoc_flags <coqdoc_flags>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
@@ -116,6 +117,25 @@ The semantics of the fields are:
 - ``<coq_flags>`` are passed to ``coqc`` as command-line options. ``:standard``
   is taken from the value set in the ``(coq (flags <flags>))`` field in ``env``
   profile. See :doc:`/reference/dune/env` for more information.
+
+- ``<flags_map>`` is a list of pairs of valid Coq module names and a
+  list of ``<coq_flags>``. Note that if a module is present here, the
+  ``:standard`` variable will be bound to the value of ``<coq_flags>``
+  effective for the theory. This way it is possible to override the
+  default flags for particular files of the theory, for example:
+
+  .. code:: dune
+
+    (coq.theory
+      (name Foo)
+      (modules_flags
+        (bar (:standard \ -quiet))))
+
+
+  It is more common to just use this field to *add* some particular
+  flags, but that should be done using ``(:standard <flag1> <flag2>
+  ...)`` as to propagate the default flags. (Appeared in :ref:`Coq
+  lang 0.9<coq-lang>`)
 
 - ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
   default value for ``:standard`` is ``--toc``. The ``--html`` or ``--latex``
@@ -329,6 +349,7 @@ The Coq lang can be modified by adding the following to a
 
 The supported Coq language versions (not the version of Coq) are:
 
+- ``0.9``: Support for per-module flags with the ``(module_flags ...)``` field.
 - ``0.8``: Support for composition with installed Coq theories;
   support for ``vos`` builds.
 
@@ -429,7 +450,7 @@ lang<coq-lang>` stanza present:
 
 .. code:: dune
 
-  (lang dune 3.15)
+  (lang dune 3.16)
   (using coq 0.8)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`coq-theory`
@@ -660,7 +681,7 @@ the plugin to sit in, otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.15)
+  (lang dune 3.16)
   (using coq 0.8)
 
   (package

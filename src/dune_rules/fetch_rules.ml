@@ -41,8 +41,8 @@ let resolve_url =
     Memo.of_reproducible_fiber
     @@
     let open Fiber.O in
-    let* rev_store = Rev_store.get in
     let+ git_object =
+      let* rev_store = Rev_store.get in
       OpamUrl.resolve url ~loc:Loc.none rev_store
       >>| function
       | Ok (Resolved r) -> (r :> Rev_store.Object.t)
@@ -146,8 +146,8 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
     lockdir.packages
     ~init:(Checksum.Map.empty, Dune_digest.Map.empty)
     ~f:(fun package acc ->
-      let sources = package.info.extra_sources |> List.rev_map ~f:snd in
       let sources =
+        let sources = package.info.extra_sources |> List.rev_map ~f:snd in
         match package.info.source with
         | None -> sources
         | Some source -> source :: sources

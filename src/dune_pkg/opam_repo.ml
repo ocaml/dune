@@ -100,9 +100,7 @@ let of_git_repo loc url =
     >>= (function
            | Error _ as e -> Fiber.return e
            | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
-    >>| function
-    | Ok s -> s
-    | Error e -> raise (User_error.E e)
+    >>| User_error.ok_exn
   in
   let serializable =
     Some

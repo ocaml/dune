@@ -1,6 +1,6 @@
-This demonstrates an issue when pinning a non-opam package. After attempting to
-build the package, changes to the package are only picked up by dune after
-running `dune clean`, even if building the package failed.
+This demonstrates pinning a non-opam package and then modifying its sources.
+Whenever the sources are modified, dune should rebuild the package in the
+workspace where it's locked.
 
   $ . ../helpers.sh
 
@@ -35,7 +35,7 @@ Make a package "foo" whose build will fail after printing a message:
   Solution for dune.lock:
   - foo.dev
 
-Attempt to build the packgage the first time:
+Attempt to build the package the first time:
 (the error from make is grep'd out because it is not consistant across different systems)
   $ dune build 2>&1 | grep -v make
   echo aaa
@@ -50,16 +50,7 @@ Update the message that gets printed while building foo:
   > 	false
   > EOF
 
-The change to the package is ignored:
-  $ dune build 2>&1 | grep -v make
-  echo aaa
-  aaa
-  false
-  -> required by _build/_private/default/.pkg/foo/target/cookie
-
-  $ dune clean
-
-The change to the package is picked up now that we've run `dune clean`:
+The change to the package is picked up:
   $ dune build 2>&1 | grep -v make
   echo bbb
   bbb

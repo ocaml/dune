@@ -118,7 +118,6 @@ module Event : sig
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
-    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Queue : sig
@@ -154,7 +153,6 @@ module Event : sig
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
     val send_shutdown : t -> Shutdown.Reason.t -> unit
-    val send_stop_on_first_error : t -> unit
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
@@ -169,7 +167,6 @@ end = struct
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
-    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
@@ -186,7 +183,6 @@ end = struct
       ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
       ; mutable shutdown_reasons : Shutdown.Reason.Set.t
-      ; mutable got_stop_on_first_error : bool
       ; mutex : Mutex.t
       ; cond : Condition.t
       ; mutable pending_jobs : int
@@ -214,7 +210,6 @@ end = struct
       ; invalidation_events
       ; timers
       ; shutdown_reasons
-      ; got_stop_on_first_error = false
       ; mutex
       ; cond
       ; pending_jobs
@@ -261,7 +256,6 @@ end = struct
       type t
 
       val shutdown : t
-      val stop_on_first_error : t
       val file_watcher_task : t
       val invalidation : t
       val jobs_completed : t
@@ -281,15 +275,6 @@ end = struct
         Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons) ~f:(fun reason ->
           q.shutdown_reasons <- Shutdown.Reason.Set.remove q.shutdown_reasons reason;
           Shutdown reason)
-      ;;
-
-      let stop_on_first_error : t =
-        fun q ->
-        match q.got_stop_on_first_error with
-        | true ->
-          q.got_stop_on_first_error <- false;
-          Some Stop_on_first_error
-        | false -> None
       ;;
 
       let file_watcher_task q =
@@ -381,7 +366,6 @@ end = struct
                  ; jobs_completed
                  ; yield
                  ; timers
-                 ; stop_on_first_error
                  ]))
             q
         with
@@ -426,10 +410,6 @@ end = struct
     let send_shutdown q signal =
       add_event q (fun q ->
         q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
-    ;;
-
-    let send_stop_on_first_error q =
-      add_event q (fun q -> q.got_stop_on_first_error <- true)
     ;;
 
     let send_file_watcher_task q job =
@@ -997,19 +977,6 @@ end = struct
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
-    | Stop_on_first_error ->
-      let fills =
-        match t.status with
-        | Restarting_build _ -> []
-        | Standing_by _ -> []
-        | Building cancellation ->
-          t.handler t.config Build_interrupted;
-          t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
-          Fiber.Cancel.fire' cancellation
-      in
-      (match Nonempty_list.of_list fills with
-       | None -> iter t
-       | Some fills -> fills)
 
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
@@ -1322,9 +1289,14 @@ let shutdown () =
   Event.Queue.send_shutdown t.events Requested
 ;;
 
-let stop_on_first_error () =
-  let+ t = t () in
-  Event.Queue.send_stop_on_first_error t.events
+let cancel_current_build () =
+  let* t = t () in
+  match t.status with
+  | Restarting_build _ | Standing_by _ -> Fiber.return ()
+  | Building cancellation ->
+    t.handler t.config Build_interrupted;
+    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
+    Fiber.Cancel.fire cancellation
 ;;
 
 let inject_memo_invalidation invalidation =

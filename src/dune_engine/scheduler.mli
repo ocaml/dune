@@ -139,7 +139,7 @@ val shutdown : unit -> unit Fiber.t
     in that it stops the build early, but it is different because the [Run.go]
     call is allowed to complete its fiber. In this respect, the behavior is
     similar to what happens on file system events in polling mode. *)
-val stop_on_first_error : unit -> unit Fiber.t
+val cancel_current_build : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
 

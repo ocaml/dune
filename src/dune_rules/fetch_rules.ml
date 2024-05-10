@@ -316,20 +316,21 @@ module Copy = struct
   ;;
 end
 
-let deps kind url_or_checksum =
-  let src = make_target ~kind url_or_checksum in
-  Path.build src |> Dep.file |> Action_builder.dep |> Action_builder.with_no_targets
-;;
-
 let fetch ~target kind url checksum =
-  let url_or_checksum =
-    match checksum with
-    | Some (_, checksum) -> `Checksum checksum
-    | None -> `Url (snd url)
+  let src =
+    let url_or_checksum =
+      match checksum with
+      | Some (_, checksum) -> `Checksum checksum
+      | None -> `Url (snd url)
+    in
+    Path.build (make_target ~kind url_or_checksum)
   in
-  let src = Path.build (make_target ~kind url_or_checksum) in
   let open Action_builder.With_targets.O in
-  deps kind url_or_checksum
+  (* [Action_builder.copy] already adds this dependency for us,
+     so this is only useful for the [`Directory] clause *)
+  Dep.file src
+  |> Action_builder.dep
+  |> Action_builder.with_no_targets
   >>>
   match kind with
   | `File -> Action_builder.copy ~src ~dst:target

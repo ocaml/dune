@@ -50,12 +50,10 @@ let fetch_and_hash_archive_cached =
   fun (url_loc, url) ->
     let open Fiber.O in
     Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
-      Fetch.fetch ~unpack:false ~checksum:None ~target ~url:(url_loc, url))
+      Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url))
     >>| function
     | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
-    | Error (Checksum_mismatch _) ->
-      Code_error.raise "Checksum mismatch when no checksum was provided" []
-    | Error (Unavailable message_opt) ->
+    | Error message_opt ->
       let message =
         match message_opt with
         | Some message -> message

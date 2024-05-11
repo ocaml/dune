@@ -71,10 +71,7 @@ let%expect_test "cancelling a build: effect on other fibers" =
           Scheduler.inject_memo_invalidation (Memo.Cell.invalidate cell ~reason:Unknown)
         in
         let* () = Scheduler.wait_for_build_input_change () in
-        let* res =
-          Fiber.collect_errors (fun () ->
-            Scheduler.with_job_slot (fun _ _ -> Fiber.return ()))
-        in
+        let* res = Fiber.collect_errors (fun () -> Fiber.return ()) in
         print_endline
           (match res with
            | Ok () -> "PASS: we can still run things outside the build"

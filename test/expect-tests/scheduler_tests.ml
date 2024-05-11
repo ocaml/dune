@@ -9,7 +9,6 @@ let default =
   Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
   ; stats = None
-  ; insignificant_changes = `React
   ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
@@ -78,33 +77,6 @@ let%expect_test "cancelling a build: effect on other fibers" =
            | Error _ -> "FAIL: other fiber got cancelled");
         Scheduler.shutdown ()));
   [%expect {| PASS: we can still run things outside the build |}]
-;;
-
-let%expect_test "empty invalidation wakes up waiter" =
-  let test insignificant_changes =
-    go ~timeout:0.1 ~config:{ default with insignificant_changes }
-    @@ fun () ->
-    let await_invalidation () =
-      print_endline "awaiting invalidation";
-      let+ () = Scheduler.wait_for_build_input_change () in
-      print_endline "awaited invalidation"
-    in
-    Fiber.fork_and_join_unit
-      (fun () -> Scheduler.inject_memo_invalidation Memo.Invalidation.empty)
-      await_invalidation
-  in
-  test `React;
-  [%expect {|
-    awaiting invalidation
-    awaited invalidation |}];
-  test `Ignore;
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  ("shutdown: timeout")
-  Trailing output
-  ---------------
-  awaiting invalidation |}]
 ;;
 
 let%expect_test "raise inside Scheduler.Run.go" =

@@ -87,7 +87,6 @@ let test files (patch, patch_contents) =
   let config =
     { Scheduler.Config.concurrency = 1
     ; stats = None
-    ; insignificant_changes = `Ignore
     ; print_ctrl_c_warning = false
     ; watch_exclusions = []
     }

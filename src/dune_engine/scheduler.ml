@@ -7,7 +7,6 @@ module Config = struct
   type t =
     { concurrency : int
     ; stats : Dune_stats.t option
-    ; insignificant_changes : [ `Ignore | `React ]
     ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
@@ -689,20 +688,7 @@ end
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
        build starts. *)
-    Standing_by of
-      { invalidation : Memo.Invalidation.t
-      ; saw_insignificant_changes : bool
-      (* When [insignificant_changes = `Ignore], this field is always
-         false.
-
-         When [insignificant_changes = `React], we do the following:
-
-         Whether we saw build input changes that are insignificant for
-         the build. We need to track this because we still want to start
-         a new build in this case, even if we know it's going to be a
-         no-op. We do that so that RPC clients can observe that Dune
-         reacted to the change. *)
-      }
+    Standing_by of { invalidation : Memo.Invalidation.t }
   | (* Running a build *)
     Building of Fiber.Cancel.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
@@ -1018,11 +1004,7 @@ end = struct
         | Standing_by _ -> []
         | Building cancellation ->
           t.handler t.config Build_interrupted;
-          t.status
-          <- Standing_by
-               { invalidation = Memo.Invalidation.empty
-               ; saw_insignificant_changes = false
-               };
+          t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
           Fiber.Cancel.fire' cancellation
       in
       (match Nonempty_list.of_list fills with
@@ -1032,11 +1014,6 @@ end = struct
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
     let significant_changes = not (Memo.Invalidation.is_empty invalidation) in
-    let insignificant_changes =
-      match t.config.insignificant_changes with
-      | `Ignore -> false
-      | `React -> not significant_changes
-    in
     let fills =
       match t.status with
       | Restarting_build prev_invalidation ->
@@ -1046,10 +1023,7 @@ end = struct
       | Standing_by prev ->
         t.status
         <- Standing_by
-             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation
-             ; saw_insignificant_changes =
-                 prev.saw_insignificant_changes || insignificant_changes
-             };
+             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation };
         []
       | Building cancellation ->
         (match significant_changes with
@@ -1063,7 +1037,7 @@ end = struct
       Nonempty_list.of_list
       @@
       match t.wait_for_build_input_change with
-      | Some ivar when significant_changes || insignificant_changes ->
+      | Some ivar when significant_changes ->
         t.wait_for_build_input_change <- None;
         Fiber.Fill (ivar, ()) :: fills
       | _ -> fills
@@ -1144,9 +1118,8 @@ let wait_for_build_input_change t =
   | Some ivar -> Fiber.Ivar.read ivar
   | None ->
     (match t.status with
-     | Standing_by { invalidation; saw_insignificant_changes }
-       when (not (Memo.Invalidation.is_empty invalidation)) || saw_insignificant_changes
-       -> Fiber.return ()
+     | Standing_by { invalidation } when not (Memo.Invalidation.is_empty invalidation) ->
+       Fiber.return ()
      | Restarting_build _ -> Fiber.return ()
      | Standing_by _ | Building _ ->
        let ivar = Fiber.Ivar.create () in
@@ -1194,9 +1167,7 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.status
-      <- Standing_by
-           { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+      t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
       t.handler t.config (Build_finish res);
       Fiber.return res
   ;;
@@ -1215,9 +1186,7 @@ module Run = struct
       match t.status with
       | Building _ -> true
       | _ -> false);
-    t.status
-    <- Standing_by
-         { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
     t
   ;;
 

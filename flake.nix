@@ -43,26 +43,23 @@
         melange.overlays.default
         ocamllsp.overlays.default
       ];
-      use-this-dune-static = self: super: {
-        ocaml-ng =
-          super.ocaml-ng // {
-            ocamlPackages_4_14 = super.ocaml-ng.ocamlPackages_4_14.overrideScope (pself: psuper: {
-              dune_3 = psuper.dune_3.overrideAttrs (a: {
-                src = ./.;
-                postPatch = ''
-                  substituteInPlace \
-                    boot/duneboot.ml \
-                    --replace-fail \
-                    '; link_flags' \
-                    '; link_flags; ["-ccopt"; "-static"]'
-                '';
-              });
-            });
-          };
+      dune-static-overlay = self: super: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+          dune_3 = osuper.dune_3.overrideAttrs (a: {
+            src = ./.;
+            postPatch = ''
+              substituteInPlace \
+                boot/duneboot.ml \
+                --replace-fail \
+                '; link_flags' \
+                '; link_flags; ["-ccopt"; "-static"]'
+            '';
+          });
+        });
       };
-      pkgs-overlay = nixpkgs.legacyPackages.${system}.appendOverlays [
+      pkgs-static = nixpkgs.legacyPackages.${system}.appendOverlays [
         ocaml-overlays.overlays.default
-        use-this-dune-static
+        dune-static-overlay
       ];
 
       ocamlformat =
@@ -106,7 +103,7 @@
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
         dune = default;
-        dune-static = pkgs-overlay.pkgsCross.musl64.ocaml-ng.ocamlPackages_4_14.dune;
+        dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
       };
 
       devShells =

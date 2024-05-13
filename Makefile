@@ -74,10 +74,10 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-# v4-414-dev
+# branch v4-414-for-dune
 .PHONY: melange
 melange:
-	opam pin add -n melange.dev https://github.com/melange-re/melange.git#24e21cc42
+	opam pin add -n melange.dev https://github.com/melange-re/melange.git#ab48cfcfe5f2c0ca4a4a4fcafceb73b95c2acb1d
 
 .PHONY: dev-deps
 dev-deps: melange

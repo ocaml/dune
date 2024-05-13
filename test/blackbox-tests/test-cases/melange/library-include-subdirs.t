@@ -35,7 +35,7 @@ Test moving modules in a library with `(include_subdirs unqualified)`
 Melange shows the proper path to `bar.js`
 
   $ cat _build/default/output/lib/foo.js | grep bar.js
-  let Foo__Bar = require("./init/bar.js");
+  const Foo__Bar = require("./init/bar.js");
 
   $ mv lib/init lib/end
   $ dune build @mel
@@ -43,7 +43,7 @@ Melange shows the proper path to `bar.js`
 The import in `foo.js` has been updated to the new bar.js target
 
   $ cat _build/default/output/lib/foo.js | grep bar.js
-  let Foo__Bar = require("./end/bar.js");
+  const Foo__Bar = require("./end/bar.js");
 
 The initial file is not there anymore
 
@@ -79,7 +79,7 @@ Now try the same thing with `melange.emit`
 Melange shows the proper path to `bar.js`
 
   $ cat _build/default/output/foo.js | grep bar.js
-  let Melange__Bar = require("./init/bar.js");
+  const Melange__Bar = require("./init/bar.js");
 
   $ mv init end
   $ dune build @mel
@@ -87,7 +87,7 @@ Melange shows the proper path to `bar.js`
 The import in `foo.js` has been updated to the new bar.js target
 
   $ cat _build/default/output/foo.js | grep bar.js
-  let Melange__Bar = require("./end/bar.js");
+  const Melange__Bar = require("./end/bar.js");
 
 The initial file is not there anymore
 

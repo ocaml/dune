@@ -141,18 +141,6 @@ let env =
   |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
 ;;
 
-let git_code_error ~dir ~args ~exit_code ~output =
-  let git = Lazy.force Vcs.git in
-  Code_error.raise
-    "git returned non-zero exit code"
-    [ "exit code", Dyn.int exit_code
-    ; "dir", Path.to_dyn dir
-    ; "git", Path.to_dyn git
-    ; "args", Dyn.list Dyn.string args
-    ; "output", Dyn.list Dyn.string output
-    ]
-;;
-
 module Git_error = struct
   type t =
     { dir : Path.t
@@ -727,7 +715,8 @@ module At_rev = struct
       let+ (), exit_code =
         Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
       in
-      if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
+      if exit_code <> 0
+      then Git_error.raise_code_error { dir; args; exit_code; output = [] }
     in
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)

@@ -1,3 +1,3 @@
 open Stdune
 
-val in_build : Path.t Lazy.t
+val dir_for_target : target:Path.t -> prefix:string -> suffix:string -> Path.t

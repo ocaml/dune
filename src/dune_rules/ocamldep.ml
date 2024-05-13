@@ -6,7 +6,7 @@ module Modules_data = struct
     ; obj_dir : Path.Build.t Obj_dir.t
     ; sctx : Super_context.t
     ; vimpl : Vimpl.t option
-    ; modules : Modules.t
+    ; modules : Modules.With_vlib.t
     ; stdlib : Ocaml_stdlib.t option
     ; sandbox : Sandbox_config.t
     }
@@ -17,7 +17,7 @@ open Modules_data
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
   List.concat_map words ~f:(fun m ->
     let m = Module_name.of_string m in
-    match Modules.find_dep modules ~of_:unit m with
+    match Modules.With_vlib.find_dep modules ~of_:unit m with
     | Ok s -> s
     | Error `Parent_cycle ->
       User_error.raise
@@ -37,7 +37,7 @@ let parse_module_names ~dir ~(unit : Module.t) ~modules words =
 ;;
 
 let parse_compilation_units ~modules =
-  let obj_map = Modules.obj_map modules in
+  let obj_map = Modules.With_vlib.obj_map modules in
   List.filter_map ~f:(fun m ->
     let obj_name = Module_name.Unique.of_string m in
     Module_name.Unique.Map.find obj_map obj_name

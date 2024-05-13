@@ -486,8 +486,7 @@ module Dune_config = struct
          loop commands))
   ;;
 
-  let for_scheduler (t : t) ~watch_exclusions stats ~insignificant_changes ~signal_watcher
-    =
+  let for_scheduler (t : t) ~watch_exclusions stats ~print_ctrl_c_warning =
     let concurrency =
       match t.concurrency with
       | Fixed i -> i
@@ -500,11 +499,6 @@ module Dune_config = struct
      := match t.display with
         | Tui -> Dune_engine.Display.Quiet
         | Simple { verbosity; _ } -> verbosity);
-    { Scheduler.Config.concurrency
-    ; stats
-    ; insignificant_changes
-    ; signal_watcher
-    ; watch_exclusions
-    }
+    { Scheduler.Config.concurrency; stats; print_ctrl_c_warning; watch_exclusions }
   ;;
 end

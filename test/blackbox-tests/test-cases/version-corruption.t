@@ -1,18 +1,25 @@
-Define a helper ./dump.sh unction with offsets removed, and one byte per line in
-hex (so that the output is compiler version / alignment independent).
+Define a helper program that counts how many bytes differ between two files.
 
-  $ cat >./dump.sh <<'EOF'
-  > set -eu
-  > od -v -A n -t x1 $1 | tr ' ' '\n' | sed '/^$/d'
+  $ cat > compare.ml << EOF
+  > let count_different_bytes s1 s2 =
+  >   if String.length s1 <> String.length s2 then
+  >     failwith "This test is only meaningful for files with the same length";
+  >   let c = ref 0 in
+  >   String.iteri (fun i c1 ->
+  >     let c2 = String.unsafe_get s2 i in
+  >     if not (Char.equal c1 c2) then
+  >       incr c;
+  >   ) s1;
+  >   !c 
+  > 
+  > let read_all path = In_channel.with_open_bin path In_channel.input_all
+  > 
+  > let () =
+  >   let s1 = read_all Sys.argv.(1) in
+  >   let s2 = read_all Sys.argv.(2) in
+  >   let n = count_different_bytes s1 s2 in
+  >   Printf.printf "%d\n" n
   > EOF
-  $ chmod +x ./dump.sh
-  $ cat >./compare.sh <<'EOF'
-  > set -eu
-  > ./dump.sh $1 >$1.dump
-  > ./dump.sh $2 >$2.dump
-  > cmp -l $1.dump $2.dump | wc -l | sed -e 's/^ *//'
-  > EOF
-  $ chmod +x compare.sh
 
 A repro that builds and installs multiple binaries, and promotes a bytecode and
 native executable in same rule (this is very likely to detect corruption with
@@ -97,12 +104,15 @@ shared buffer):
   $ rm -f gen_lifecycle.bc gen_lifecycle.exe && dune clean && dune build && ./gen_lifecycle.exe >/dev/null
   $ cp _build/default/gen_lifecycle.exe gen_lifecycle.old
 
-  $ dune install -j16 --prefix=./_install
-  $ ./compare.sh _build/default/gen1.exe _install/bin/gen1
-  100
+We compare the substituted version with the original. The expected value is 64,
+which corresponds to `~min_len` in Link_time_code_gen.
 
-  $ ./compare.sh _build/default/gen2.bc _install/bin/gen2
-  100
+  $ dune install -j16 --prefix=./_install
+  $ ocaml ./compare.ml _build/default/gen1.exe _install/bin/gen1
+  64
+
+  $ ocaml compare.ml _build/default/gen2.bc _install/bin/gen2
+  64
 
   $ dune build --debug-artifact-substitution
   Found placeholder in _build/default/gen_lifecycle.exe:
@@ -112,8 +122,8 @@ shared buffer):
   - placeholder: Vcs_describe In_source_tree "."
   - evaluates to: "v0.0.1"
 
-  $ ./compare.sh gen_lifecycle.old ./gen_lifecycle.exe
-  100
+  $ ocaml compare.ml gen_lifecycle.old ./gen_lifecycle.exe
+  64
 
   $ ./gen_lifecycle.exe
   0.0.1

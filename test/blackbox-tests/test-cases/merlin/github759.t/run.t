@@ -11,6 +11,14 @@
    (S
     $TESTCASE_ROOT)
    (FLG (-w -40 -g)))
+  Foo: _build/default/foo.ml-gen
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG (-w -40 -g)))
 
   $ rm -f .merlin
   $ dune build foo.cma --profile release
@@ -23,11 +31,27 @@
    (S
     $TESTCASE_ROOT)
    (FLG (-w -40 -g)))
+  Foo: _build/default/foo.ml-gen
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG (-w -40 -g)))
 
   $ echo toto > .merlin
   $ dune build foo.cma --profile release
   $ dune ocaml merlin dump-config $PWD
   Foo: _build/default/foo
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG (-w -40 -g)))
+  Foo: _build/default/foo.ml-gen
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

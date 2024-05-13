@@ -496,21 +496,10 @@ module External : sig
   val as_local : t -> string
   val append_local : t -> Local.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
-  val drop_prefix : t -> prefix:t -> Local.t option
 end = struct
   module Table = String.Table
 
   type t = string
-
-  let drop_prefix path ~prefix =
-    if prefix = path
-    then Some Local.root
-    else (
-      let prefix = prefix ^ "/" in
-      let open Option.O in
-      let+ suffix = String.drop_prefix path ~prefix in
-      Local.of_string suffix)
-  ;;
 
   let to_string t = t
   let equal = String.equal
@@ -1458,7 +1447,10 @@ let drop_prefix path ~prefix =
   if prefix = path
   then Some Local.root
   else (
-    let prefix = to_string prefix ^ "/" in
+    let prefix_s = to_string prefix in
+    let prefix =
+      if String.is_suffix ~suffix:"/" prefix_s then prefix_s else prefix_s ^ "/"
+    in
     let open Option.O in
     let+ suffix = String.drop_prefix (to_string path) ~prefix in
     Local.of_string suffix)

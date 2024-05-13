@@ -5,11 +5,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1705309234,
-        "narHash": "sha256-uNRRNRKmJyCRC/8y1RqBkqWBLM034y4qN7EprSdmgyA=",
+        "lastModified": 1710146030,
+        "narHash": "sha256-SZ5L6eA7HJ/nmkzGG7/ISclqe6oZdOZTNoesiInkXPQ=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "1ef2e671c3b0c19053962c07dbda38332dcebf26",
+        "rev": "b1d9ab70662946ef0850d488da1c9019f3a9752a",
         "type": "github"
       },
       "original": {
@@ -39,8 +39,8 @@
       },
       "original": {
         "owner": "melange-re",
-        "ref": "v4-414-dev",
         "repo": "melange",
+        "rev": "24e21cc4284ffb18b3a856c1d730f06f34d32737",
         "type": "github"
       }
     },
@@ -87,17 +87,40 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1708532945,
-        "narHash": "sha256-0KucnySzsz5Zgonjjm8cQMql+HGHa/OhB0fnKmGeD+0=",
+        "lastModified": 1715037484,
+        "narHash": "sha256-OUt8xQFmBU96Hmm4T9tOWTu4oCswCzoVl+pxSq/kiFc=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "ac4c5a60bebfb783f1106d126b9f39cc8e809e0e",
+        "rev": "ad7efee13e0d216bf29992311536fce1d3eefbef",
         "type": "github"
       },
       "original": {
         "owner": "nixos",
         "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "ocaml-overlays": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1714974335,
+        "narHash": "sha256-03SXvaoRxfMUCL6Qt0kN1rEk1GceGEE9qTNP+EbGl+8=",
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
+        "rev": "c7910ddfcd56cf67558dc24f3df99fb2a84317ce",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-ocaml",
+        "repo": "nix-overlays",
         "type": "github"
       }
     },
@@ -111,11 +134,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1708563706,
-        "narHash": "sha256-9Mt5hD3W0hDyIcPos9anTFRW7RHjEg3+2inj6jOY2S4=",
+        "lastModified": 1713734511,
+        "narHash": "sha256-WytVDQJz0i3arHUDVSj+b/9/IQq/z9wBrkSeQDIZAgU=",
         "ref": "refs/heads/master",
-        "rev": "922a726d2dcd816263c34df7d8d0f44fd4700be2",
-        "revCount": 2062,
+        "rev": "e485128b11892dc1e6a17f28b687368f2ac0db32",
+        "revCount": 2067,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/ocaml/ocaml-lsp"
@@ -131,6 +154,7 @@
         "flake-utils": "flake-utils",
         "melange": "melange",
         "nixpkgs": "nixpkgs",
+        "ocaml-overlays": "ocaml-overlays",
         "ocamllsp": "ocamllsp"
       }
     },

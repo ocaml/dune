@@ -339,14 +339,12 @@ module Pkg = struct
   (* Given a list of packages, construct an env containing variables
      set by each package. Variables containing delimited lists of
      paths (e.g. PATH) which appear in multiple package's envs are
-     concatenated in the order of their associated packages in the
-     input list. Environment updates via the `exported_env` field
+     concatenated in the reverse order of their associated packages in
+     the input list. Environment updates via the `exported_env` field
      (equivalent to opam's `setenv` field) are applied for each
-     package in reverse order to the argument list so that packages
-     appearing earlier can overwrite the values of variables set by
-     packages appearing later. *)
+     package in the same order as the argument list. *)
   let build_env_of_deps ts =
-    List.fold_left (List.rev ts) ~init:Env.Map.empty ~f:(fun env t ->
+    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
       let env =
         let roots = Paths.install_roots t.paths in
         let init = Value_list_env.add_path env Env_path.var (Path.build roots.bin) in
@@ -1180,10 +1178,7 @@ end = struct
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
           (Context_name.build_dir ctx)
-          (Path.Source.relative
-             lock_dir
-             (* TODO this should come from [Dune_pkg] *)
-             (sprintf "%s.files" (Package.Name.to_string info.name)))
+          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in

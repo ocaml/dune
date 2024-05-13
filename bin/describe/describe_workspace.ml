@@ -274,12 +274,13 @@ module Sanitize_for_tests = struct
     let fake_workspace = lazy (Path.External.of_string "/WORKSPACE_ROOT")
 
     let sanitize_with_findlib ~findlib_paths path =
+      let path = Path.external_ path in
       List.find_map findlib_paths ~f:(fun candidate ->
         let open Option.O in
         let* candidate = Path.as_external candidate in
         (* if the path to rename is an external path, try to find the
            OCaml root inside, and replace it with a fixed string *)
-        let+ without_prefix = Path.External.drop_prefix ~prefix:candidate path in
+        let+ without_prefix = Path.drop_prefix ~prefix:(Path.external_ candidate) path in
         (* we have found the OCaml root path: let's replace it with a
            constant string *)
         Path.External.append_local (Lazy.force fake_findlib) without_prefix)
@@ -371,7 +372,9 @@ module Crawl = struct
 
   (* Builds the list of modules *)
   let modules ~obj_dir ~deps_of modules_ : Descr.Mod.t list Memo.t =
-    Modules.fold_no_vlib ~init:(Memo.return []) modules_ ~f:(fun m macc ->
+    modules_
+    |> Modules.With_vlib.drop_vlib
+    |> Modules.fold ~init:(Memo.return []) ~f:(fun m macc ->
       let* acc = macc in
       let deps = deps_of m in
       let+ { Ocaml.Ml_kind.Dict.intf = deps_for_intf; impl = deps_for_impl }, _ =
@@ -389,11 +392,14 @@ module Crawl = struct
       Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
     in
     let* modules_, obj_dir =
-      Dir_contents.get sctx ~dir
-      >>= Dir_contents.ocaml
-      >>= Ml_sources.modules_and_obj_dir
-            ~libs:(Scope.libs scope)
-            ~for_:(Exe { first_exe })
+      let+ modules_, obj_dir =
+        Dir_contents.get sctx ~dir
+        >>= Dir_contents.ocaml
+        >>= Ml_sources.modules_and_obj_dir
+              ~libs:(Scope.libs scope)
+              ~for_:(Exe { first_exe })
+      in
+      Modules.With_vlib.modules modules_, obj_dir
     in
     let* pp_map =
       let+ version =
@@ -454,11 +460,14 @@ module Crawl = struct
             let* libs =
               Scope.DB.find_by_dir (Path.as_in_build_dir_exn src_dir) >>| Scope.libs
             in
-            Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
-            >>= Dir_contents.ocaml
-            >>= Ml_sources.modules_and_obj_dir
-                  ~libs
-                  ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+            let+ modules_, obj_dir_ =
+              Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
+              >>= Dir_contents.ocaml
+              >>= Ml_sources.modules_and_obj_dir
+                    ~libs
+                    ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
+            in
+            Modules.With_vlib.modules modules_, obj_dir_
           in
           let* pp_map =
             let+ version =

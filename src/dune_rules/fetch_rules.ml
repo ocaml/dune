@@ -41,8 +41,8 @@ let resolve_url =
     Memo.of_reproducible_fiber
     @@
     let open Fiber.O in
-    let* rev_store = Rev_store.get in
     let+ git_object =
+      let* rev_store = Rev_store.get in
       OpamUrl.resolve url ~loc:Loc.none rev_store
       >>| function
       | Ok (Resolved r) -> (r :> Rev_store.Object.t)
@@ -146,8 +146,8 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
     lockdir.packages
     ~init:(Checksum.Map.empty, Dune_digest.Map.empty)
     ~f:(fun package acc ->
-      let sources = package.info.extra_sources |> List.rev_map ~f:snd in
       let sources =
+        let sources = package.info.extra_sources |> List.rev_map ~f:snd in
         match package.info.source with
         | None -> sources
         | Some source -> source :: sources
@@ -316,20 +316,21 @@ module Copy = struct
   ;;
 end
 
-let deps kind url_or_checksum =
-  let src = make_target ~kind url_or_checksum in
-  Path.build src |> Dep.file |> Action_builder.dep |> Action_builder.with_no_targets
-;;
-
 let fetch ~target kind url checksum =
-  let url_or_checksum =
-    match checksum with
-    | Some (_, checksum) -> `Checksum checksum
-    | None -> `Url (snd url)
+  let src =
+    let url_or_checksum =
+      match checksum with
+      | Some (_, checksum) -> `Checksum checksum
+      | None -> `Url (snd url)
+    in
+    Path.build (make_target ~kind url_or_checksum)
   in
-  let src = Path.build (make_target ~kind url_or_checksum) in
   let open Action_builder.With_targets.O in
-  deps kind url_or_checksum
+  (* [Action_builder.copy] already adds this dependency for us,
+     so this is only useful for the [`Directory] clause *)
+  Dep.file src
+  |> Action_builder.dep
+  |> Action_builder.with_no_targets
   >>>
   match kind with
   | `File -> Action_builder.copy ~src ~dst:target

@@ -150,7 +150,10 @@ module Builder = struct
       extend_paths ~env paths
     in
     { t with
-      merlin
+      merlin =
+        (match merlin with
+         | Selected -> true
+         | Rules_only | Not_selected -> false)
     ; profile
     ; dynamically_linked_foreign_archives
     ; instrument_with
@@ -608,7 +611,13 @@ module Group = struct
         | Opam opam -> Builder.set_workspace_base builder opam.base
         | Default default ->
           let builder = Builder.set_workspace_base builder default.base in
-          let merlin = workspace.merlin_context = Some (Workspace.Context.name context) in
+          let merlin =
+            workspace.merlin_context = Some (Workspace.Context.name context)
+            ||
+            match default.base.merlin with
+            | Rules_only -> true
+            | Not_selected | Selected -> false
+          in
           { builder with merlin }
       in
       match context with

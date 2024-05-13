@@ -59,12 +59,12 @@ let eval_opaque (ocaml : Ocaml_toolchain.t) profile = function
 ;;
 
 type modules =
-  { modules : Modules.t
+  { modules : Modules.With_vlib.t
   ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let singleton_modules m =
-  { modules = Modules.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
+  { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
 type t =
@@ -212,7 +212,7 @@ let alias_and_root_module_flags =
 ;;
 
 let for_alias_module t alias_module =
-  let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
+  let keep_flags = Modules.With_vlib.is_stdlib_alias (modules t) alias_module in
   let flags =
     if keep_flags
     then (* in the case of stdlib, these flags can be written by the user *)
@@ -232,7 +232,7 @@ let for_alias_module t alias_module =
     else Sandbox_config.no_special_requirements
   in
   let (modules, includes) : modules * Includes.t =
-    match Modules.is_stdlib_alias t.modules.modules alias_module with
+    match Modules.With_vlib.is_stdlib_alias t.modules.modules alias_module with
     | false -> singleton_modules alias_module, Includes.empty
     | true ->
       (* The stdlib alias module is different from the alias modules usually
@@ -302,7 +302,7 @@ let entry_module_names sctx t =
     let open Memo.O in
     let+ modules = Dir_contents.modules_of_lib sctx t in
     let modules = Option.value_exn modules in
-    Resolve.return (Modules.entry_modules modules |> List.map ~f:Module.name)
+    Resolve.return (Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name)
 ;;
 
 let root_module_entries t =

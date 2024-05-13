@@ -68,25 +68,30 @@ module Processed = struct
   type module_config =
     { opens : Module_name.t list
     ; module_ : Module.t
+    ; reader : string list option
     }
 
-  let dyn_of_module_config { opens; module_ } =
+  let dyn_of_module_config { opens; module_; reader } =
     let open Dyn in
-    record [ "opens", list Module_name.to_dyn opens; "module_", Module.to_dyn module_ ]
+    record
+      [ "opens", list Module_name.to_dyn opens
+      ; "module_", Module.to_dyn module_
+      ; "reader", option (list string) reader
+      ]
   ;;
 
   (* ...but modules can have different preprocessing specifications*)
   type t =
     { config : config
-    ; per_module_config : module_config Path.Build.Map.t
+    ; per_file_config : module_config Path.Build.Map.t
     ; pp_config : pp_flag option Module_name.Per_item.t
     }
 
-  let to_dyn { config; per_module_config; pp_config } =
+  let to_dyn { config; per_file_config; pp_config } =
     let open Dyn in
     record
       [ "config", dyn_of_config config
-      ; "per_module_config", Path.Build.Map.to_dyn dyn_of_module_config per_module_config
+      ; "per_file_config", Path.Build.Map.to_dyn dyn_of_module_config per_file_config
       ; "pp_config", Module_name.Per_item.to_dyn (option dyn_of_pp_flag) pp_config
       ]
   ;;
@@ -106,7 +111,7 @@ module Processed = struct
           ; flags = [ "-x" ]
           ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
           }
-      ; per_module_config = Path.Build.Map.empty
+      ; per_file_config = Path.Build.Map.empty
       ; pp_config =
           (match
              Module_name.Per_item.of_mapping
@@ -144,7 +149,7 @@ module Processed = struct
     | None, None -> None
   ;;
 
-  let to_sexp ~opens ~pp { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
+  let to_sexp ~opens ~pp ~reader { stdlib_dir; obj_dirs; src_dirs; flags; extensions } =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
       make_directive tag (Sexp.Atom (serialize_path path))
@@ -185,8 +190,16 @@ module Processed = struct
         let+ impl, intf = get_ext x in
         make_directive "SUFFIX" (Sexp.Atom (Printf.sprintf "%s %s" impl intf)))
     in
+    let reader =
+      match reader with
+      | Some reader ->
+        [ make_directive "READER" (Sexp.List (List.map ~f:(fun r -> Sexp.Atom r) reader))
+        ]
+      | None -> []
+    in
     Sexp.List
-      (List.concat [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ])
+      (List.concat
+         [ stdlib_dir; exclude_query_dir; obj_dirs; src_dirs; flags; suffixes; reader ])
   ;;
 
   let quote_for_dot_merlin s =
@@ -231,39 +244,46 @@ module Processed = struct
     Buffer.contents b
   ;;
 
-  let get { per_module_config; pp_config; config } ~file =
-    (* We only match the first part of the filename : foo.ml -> foo foo.cppo.ml
-       -> foo *)
+  let get { per_file_config; pp_config; config } ~file =
     let open Option.O in
-    let+ { module_; opens } =
-      let find file =
-        let file_without_ext = remove_extension file in
-        Path.Build.Map.find per_module_config file_without_ext
-      in
+    let+ { module_; opens; reader } =
+      let find file = Path.Build.Map.find per_file_config file in
       match find file with
       | Some _ as s -> s
-      | None -> Copy_line_directive.DB.follow_while file ~f:find
+      | None ->
+        (match Copy_line_directive.DB.follow_while file ~f:find with
+         | Some _ as s -> s
+         | None ->
+           (* Fallback to handle preprocessed files (where the preprocessor has
+              the file extensison changed).
+
+              We choose to fallback by a lookup by filename without extension.
+
+              This is too rough but, really, preprocessors should emit copy
+              line directives instead and then Dune should have the database
+              similar to Copy_line_directive to handle this. *)
+           Path.Build.Map.find per_file_config (remove_extension file))
     in
     let pp = Module_name.Per_item.get pp_config (Module.name module_) in
-    to_sexp ~opens ~pp config
+    to_sexp ~opens ~pp ~reader config
   ;;
 
   let print_file path =
     match load_file path with
     | Error msg -> Printf.eprintf "%s\n" msg
-    | Ok { per_module_config; pp_config; config } ->
-      let pp_one (source, { module_; opens }) =
+    | Ok { per_file_config; pp_config; config } ->
+      let pp_one (source, { module_; opens; reader }) =
         let open Pp.O in
         let name = Module.name module_ in
         let pp = Module_name.Per_item.get pp_config name in
-        let sexp = to_sexp ~opens ~pp config in
+        let sexp = to_sexp ~reader ~opens ~pp config in
         Pp.hvbox
           (Pp.textf "%s: %s" (Module_name.to_string name) (Path.Build.to_string source))
         ++ Pp.newline
         ++ Pp.vbox (Sexp.pp sexp)
       in
       let pp =
-        Path.Build.Map.to_list per_module_config
+        Path.Build.Map.to_list per_file_config
         |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
         |> Pp.vbox
       in
@@ -288,7 +308,7 @@ module Processed = struct
           ~f:
             (fun
               (acc_pp, acc_obj, acc_src, acc_flags, acc_ext)
-              { per_module_config = _
+              { per_file_config = _
               ; pp_config
               ; config = { stdlib_dir = _; obj_dirs; src_dirs; flags; extensions }
               }
@@ -335,13 +355,14 @@ module Unprocessed = struct
     ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
+    ; readers : string list String.Map.t
     ; mode : Lib_mode.t
     }
 
   type t =
     { ident : Merlin_ident.t
     ; config : config
-    ; modules : Modules.t
+    ; modules : Modules.With_vlib.t
     }
 
   let make
@@ -373,7 +394,7 @@ module Unprocessed = struct
       Path.Set.singleton @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
     let flags = Ocaml_flags.get flags mode in
-    let extensions = Dialect.DB.extensions_for_merlin dialects in
+    let { Dialect.DB.extensions; readers } = Dialect.DB.for_merlin dialects in
     let config =
       { stdlib_dir
       ; mode
@@ -384,6 +405,7 @@ module Unprocessed = struct
       ; source_dirs
       ; objs_dirs
       ; extensions
+      ; readers
       }
     in
     { ident; config; modules }
@@ -465,11 +487,10 @@ module Unprocessed = struct
   ;;
 
   let src_dirs sctx lib =
-    match Lib.is_local lib with
-    | false -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
-    | true ->
-      Dir_contents.modules_of_lib sctx lib
-      >>| Option.value_exn
+    match Lib.Local.of_lib lib with
+    | None -> Lib.info lib |> Lib_info.src_dir |> Path.Set.singleton |> Memo.return
+    | Some lib ->
+      Dir_contents.modules_of_local_lib sctx lib
       >>| Modules.source_dirs
       >>| Path.Set.map ~f:Path.drop_optional_build_context
   ;;
@@ -489,6 +510,7 @@ module Unprocessed = struct
      ; config =
          { stdlib_dir
          ; extensions
+         ; readers
          ; flags
          ; objs_dirs
          ; source_dirs
@@ -563,22 +585,27 @@ module Unprocessed = struct
       in
       { Processed.stdlib_dir; src_dirs; obj_dirs; flags; extensions }
     and+ pp_config = pp_config t (Super_context.context sctx) ~expander in
-    let per_module_config =
+    let per_file_config =
       (* And copy for each module the resulting pp flags *)
-      Modules.fold_no_vlib modules ~init:[] ~f:(fun m init ->
-        Module.sources m
-        |> Path.Build.Set.of_list_map ~f:(fun src ->
-          Path.as_in_build_dir_exn src |> remove_extension)
+      modules
+      |> Modules.With_vlib.drop_vlib
+      |> Modules.fold ~init:[] ~f:(fun m init ->
+        Module.sources_without_pp m
+        |> Path.Build.Set.of_list_map ~f:(fun src -> Path.as_in_build_dir_exn src)
         |> Path.Build.Set.fold ~init ~f:(fun src acc ->
           let config =
             { Processed.module_ = Module.set_pp m None
-            ; opens = Modules.local_open modules m
+            ; opens = Modules.With_vlib.local_open modules m
+            ; reader = String.Map.find readers (Path.Build.extension src)
             }
           in
-          (src, config) :: acc))
-      |> Path.Build.Map.of_list_exn
+          (* we add the config with and without the extension, the latter is
+             needed for a fallback in this file's [get] function. *)
+          let src_without_extension = remove_extension src in
+          (src, config) :: (src_without_extension, config) :: acc))
+      |> Path.Build.Map.of_list_reduce ~f:(fun existing _ -> existing)
     in
-    { Processed.pp_config; config; per_module_config }
+    { Processed.pp_config; config; per_file_config }
   ;;
 end
 

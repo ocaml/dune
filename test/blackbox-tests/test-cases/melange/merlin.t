@@ -25,10 +25,17 @@
   $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (FLG (-open Foo__))
   Foo: _build/default/foo
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
+  Foo: _build/default/foo.ml
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (FLG (-open Foo__))
   Foo__: _build/default/foo__
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  Foo__: _build/default/foo__.ml-gen
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
@@ -53,6 +60,7 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ touch main.ml
   $ dune build @check
   $ dune ocaml merlin dump-config $PWD | grep -i "$target"
+    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
     $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 Dump-dot-merlin includes the melange flags
@@ -124,6 +132,28 @@ User ppx flags should appear in merlin config
      -short-paths
      -keep-locs
      -g)))
+  Bar: _build/default/bar.ml
+  ((STDLIB /MELC_STDLIB/melange)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    $TESTCASE_ROOT)
+   (FLG (-open Foo))
+   (FLG
+    (-ppx
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="foo"'"))
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
   Foo: _build/default/foo
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
@@ -145,7 +175,43 @@ User ppx flags should appear in merlin config
      -short-paths
      -keep-locs
      -g)))
+  Foo: _build/default/foo.ml-gen
+  ((STDLIB /MELC_STDLIB/melange)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-ppx
+     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
+     --as-ppx
+     --cookie
+     'library-name="foo"'"))
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
   Fooppx: _build/default/fooppx
+  ((STDLIB /OCAMLC_WHERE)
+   (EXCLUDE_QUERY_DIR)
+   (B
+    $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)
+   (S
+    $TESTCASE_ROOT)
+   (FLG
+    (-w
+     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
+     -strict-sequence
+     -strict-formats
+     -short-paths
+     -keep-locs
+     -g)))
+  Fooppx: _build/default/fooppx.ml
   ((STDLIB /OCAMLC_WHERE)
    (EXCLUDE_QUERY_DIR)
    (B

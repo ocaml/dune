@@ -56,7 +56,7 @@ let find_module sctx src =
        in
        let module_ =
          let modules = Compilation_context.modules cctx in
-         match Modules.find modules module_name with
+         match Modules.With_vlib.find modules module_name with
          | Some m -> m
          | None ->
            User_error.raise

@@ -483,8 +483,7 @@ let term =
        config
        ~watch_exclusions:[]
        None
-       ~insignificant_changes:`React
-       ~signal_watcher:`No)
+       ~print_ctrl_c_warning:false)
     subst
 ;;
 

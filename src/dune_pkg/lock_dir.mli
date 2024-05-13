@@ -31,6 +31,7 @@ module Pkg : sig
 
   val equal : t -> t -> bool
   val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
+  val files_dir : Package_name.t -> lock_dir:Path.Source.t -> Path.Source.t
 end
 
 module Repositories : sig

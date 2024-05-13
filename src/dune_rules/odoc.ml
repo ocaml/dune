@@ -413,7 +413,9 @@ let setup_library_odoc_rules cctx (local_lib : Lib.Local.t) =
     in
     Dep.deps ctx package requires, odoc_include_flags
   in
-  Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+  modules
+  |> Modules.With_vlib.drop_vlib
+  |> Modules.fold ~init:[] ~f:(fun m acc ->
     let compiled =
       let modes = Lib_info.modes info in
       let mode = Lib_mode.Map.Set.for_merlin modes in
@@ -590,7 +592,9 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib
+  >>| Modules.With_vlib.modules
+  >>| Modules.With_vlib.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =

@@ -670,7 +670,7 @@ type status =
        build starts. *)
     Standing_by
   | (* Running a build *)
-    Building of Fiber.Cancel.t
+    Building
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
     Restarting_build
@@ -934,7 +934,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
          "Stand_by" from the start. We can't "just" switch the initial value
          here because then the non-polling mode would run in "Standing_by"
          mode, which is even weirder. *)
-      Building cancel
+      Building
   ; invalidation = Memo.Invalidation.empty
   ; job_throttle = Fiber.Throttle.create config.concurrency
   ; process_watcher
@@ -1015,10 +1015,10 @@ end = struct
       let fills =
         match t.status with
         | Restarting_build | Standing_by -> []
-        | Building cancellation ->
+        | Building ->
           t.handler t.config Build_interrupted;
           t.status <- Restarting_build;
-          Fiber.Cancel.fire' cancellation
+          Fiber.Cancel.fire' t.cancel
       in
       let fills = Trigger.trigger t.build_inputs_changed @ fills in
       match Nonempty_list.of_list fills with
@@ -1116,7 +1116,7 @@ module Run = struct
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
     let cancel = Fiber.Cancel.create () in
-    t.status <- Building cancel;
+    t.status <- Building;
     t.cancel <- cancel;
     let* res = step in
     match t.status with
@@ -1129,7 +1129,7 @@ module Run = struct
       t.handler t.config (Build_finish res);
       Fiber.return res
     | Restarting_build -> poll_iter t step
-    | Building _ ->
+    | Building ->
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
@@ -1142,7 +1142,7 @@ module Run = struct
 
   let poll_iter t step =
     match t.status with
-    | Building _ | Restarting_build -> assert false
+    | Building | Restarting_build -> assert false
     | Standing_by -> poll_iter t step
   ;;
 
@@ -1152,7 +1152,7 @@ module Run = struct
     let+ t = t () in
     assert (
       match t.status with
-      | Building _ -> true
+      | Building -> true
       | _ -> false);
     t.status <- Standing_by;
     t
@@ -1294,10 +1294,10 @@ let cancel_current_build () =
   let* t = t () in
   match t.status with
   | Restarting_build | Standing_by -> Fiber.return ()
-  | Building cancellation ->
+  | Building ->
     t.handler t.config Build_interrupted;
     t.status <- Standing_by;
-    Fiber.Cancel.fire cancellation
+    Fiber.Cancel.fire t.cancel
 ;;
 
 let inject_memo_invalidation invalidation =

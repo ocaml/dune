@@ -4,7 +4,7 @@ module Toolchain = Dune_pkg.Toolchain
 module Version = struct
   include Toolchain.Version
 
-  let conv = Arg.enum all_by_string
+  let conv = Arg.enum (List.map all ~f:(fun version -> to_string version, version))
 end
 
 module Get = struct

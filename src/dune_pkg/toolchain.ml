@@ -54,15 +54,17 @@ module Compiler_package = struct
       }
     in
     [ entry
-        "4.14.2"
-        "https://github.com/ocaml/ocaml/archive/4.14.2.tar.gz"
-        "sha256=c2d706432f93ba85bd3383fa451d74543c32a4e84a1afaf3e8ace18f7f097b43"
-    ; entry
         "5.1.1"
         "https://github.com/ocaml/ocaml/archive/5.1.1.tar.gz"
         "sha256=57f7b382b3d71198413ede405d95ef3506f1cdc480cda1dca1e26b37cb090e17"
+    ; entry
+        "4.14.2"
+        "https://github.com/ocaml/ocaml/archive/4.14.2.tar.gz"
+        "sha256=c2d706432f93ba85bd3383fa451d74543c32a4e84a1afaf3e8ace18f7f097b43"
     ]
   ;;
+
+  let latest = List.hd supported
 
   let of_version version =
     match List.find supported ~f:(fun t -> Package_version.equal t.version version) with
@@ -114,12 +116,15 @@ end
 module Version = struct
   type t = Package_version.t
 
+  let latest = Compiler_package.latest.version
   let to_string = Package_version.to_string
 
-  let all_by_string =
+  let all =
     List.map Compiler_package.supported ~f:(fun { Compiler_package.version; _ } ->
-      to_string version, version)
+      version)
   ;;
+
+  let all_by_string = List.map all ~f:(fun version -> to_string version, version)
 
   let of_string s =
     List.find_map all_by_string ~f:(fun (s', t) ->

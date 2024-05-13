@@ -451,9 +451,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           Pkg_rules.ocaml_toolchain builder.name
           >>= (function
            | None -> toolchain `Lock
-           | Some toolchain ->
-             let+ toolchain, _ = Action_builder.evaluate_and_collect_facts toolchain in
-             toolchain, `Default)
+           | Some toolchain -> Memo.return (toolchain, `Default))
       in
       Ocaml_toolchain.register_response_file_support ocaml;
       if Option.is_some builder.fdo_target_exe

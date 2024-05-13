@@ -354,7 +354,7 @@ module Worker = struct
       Action_exec.exec ~build_deps action
   ;;
 
-  let cancel_build = Scheduler.stop_on_first_error
+  let cancel_build = Scheduler.cancel_current_build
 
   let start ~name ~where =
     let* connection = Client.Connection.connect_exn where in

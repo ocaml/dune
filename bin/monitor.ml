@@ -282,8 +282,7 @@ let command =
       Dune_config.for_scheduler
         config
         stats
-        ~insignificant_changes:`Ignore
-        ~signal_watcher:`Yes
+        ~print_ctrl_c_warning:true
         ~watch_exclusions:[]
     in
     Scheduler.Run.go

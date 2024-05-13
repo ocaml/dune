@@ -12,15 +12,21 @@ jobs:
         include:
           - os: macos-13
             name: mac-intel
+            installable: .#
           - os: macos-14
             name: mac-arm
+            installable: .#
           - os: ubuntu-22.04
             name: linux-intel
+            installable: .#
+          - os: ubuntu-22.04
+            name: linux-intel-static
+            installable: .#dune-static
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v22
-      - run: nix build
+      - run: nix build ${{ installable }}
       - uses: actions/upload-artifact@v4
         with:
           path: result/bin/dune

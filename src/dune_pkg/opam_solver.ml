@@ -569,7 +569,7 @@ let opam_package_to_lock_file_pkg
           (* opam discards the later checksums, so we only take the first one *)
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
-        Source.Fetch { Source.url; checksum } ))
+        { Source.url; checksum } ))
   in
   let info =
     let url = OpamFile.OPAM.url opam_file in
@@ -581,7 +581,7 @@ let opam_package_to_lock_file_pkg
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in
         let url = Loc.none, OpamFile.URL.url url in
-        Source.Fetch { url; checksum })
+        { Source.url; checksum })
     in
     let dev =
       Package_name.Set.mem pinned_package_names name

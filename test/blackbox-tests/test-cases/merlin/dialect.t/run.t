@@ -67,11 +67,15 @@ CRAM sanitization
   X_mel: _build/default/melange/x_mel
   ((STDLIB lib/melange/melange)
    (EXCLUDE_QUERY_DIR)
+   (B
+    lib/melange/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
    (B lib/melange/js/melange)
    (B lib/melange/melange)
    (B
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/melange)
    (S lib/melange)
+   (S
+    lib/melange/__private__/melange_mini_stdlib)
    (S lib/melange/js)
    (S
     $TESTCASE_ROOT/melange)
@@ -81,11 +85,15 @@ CRAM sanitization
   X_mel: _build/default/melange/x_mel.mlx
   ((STDLIB lib/melange/melange)
    (EXCLUDE_QUERY_DIR)
+   (B
+    lib/melange/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
    (B lib/melange/js/melange)
    (B lib/melange/melange)
    (B
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/melange)
    (S lib/melange)
+   (S
+    lib/melange/__private__/melange_mini_stdlib)
    (S lib/melange/js)
    (S
     $TESTCASE_ROOT/melange)

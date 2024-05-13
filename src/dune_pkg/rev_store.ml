@@ -134,19 +134,11 @@ let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit
 let make_stderr () = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit
 
-(* to avoid Git translating its CLI *)
-let env = Env.add Env.initial ~var:"LC_ALL" ~value:"C"
-
-let git_code_error ~dir ~args ~exit_code ~output =
-  let git = Lazy.force Vcs.git in
-  Code_error.raise
-    "git returned non-zero exit code"
-    [ "exit code", Dyn.int exit_code
-    ; "dir", Path.to_dyn dir
-    ; "git", Path.to_dyn git
-    ; "args", Dyn.list Dyn.string args
-    ; "output", Dyn.list Dyn.string output
-    ]
+let env =
+  (* to avoid Git translating its CLI *)
+  Env.add Env.initial ~var:"LC_ALL" ~value:"C"
+  (* to avoid prmompting for passwords *)
+  |> Env.add ~var:"GIT_TERMINAL_PROMPT" ~value:"0"
 ;;
 
 module Git_error = struct
@@ -723,7 +715,8 @@ module At_rev = struct
       let+ (), exit_code =
         Process.run ~dir ~display:Quiet ~stdout_to ~stderr_to ~env failure_mode git args
       in
-      if exit_code <> 0 then git_code_error ~dir ~args ~exit_code ~output:[]
+      if exit_code <> 0
+      then Git_error.raise_code_error { dir; args; exit_code; output = [] }
     in
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)

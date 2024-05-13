@@ -8,6 +8,7 @@ include struct
   module Rev_store = Rev_store
   module Pkg = Lock_dir.Pkg
   module OpamUrl = OpamUrl
+  module Source = Source
 end
 
 let context_name = Context_name.of_string "_fetch"
@@ -152,16 +153,15 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
         | None -> sources
         | Some source -> source :: sources
       in
-      List.fold_left
-        sources
-        ~init:acc
-        ~f:(fun (checksums, urls) (source : Dune_pkg.Source.t) ->
-          match source with
-          | Fetch { url; checksum = Some ((_, checksum) as checksum_with_loc) } ->
-            Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
-          | Fetch { url; checksum = None } ->
-            checksums, Digest.Map.set urls (digest_of_url (snd url)) url
-          | _ -> checksums, urls))
+      List.fold_left sources ~init:acc ~f:(fun (checksums, urls) (source : Source.t) ->
+        match Source.kind source with
+        | `Directory_or_archive _ -> checksums, urls
+        | `Fetch ->
+          let url = source.url in
+          (match source.checksum with
+           | Some ((_, checksum) as checksum_with_loc) ->
+             Checksum.Map.set checksums checksum (url, checksum_with_loc), urls
+           | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
 ;;
 
 let find_checksum, find_url =
@@ -316,14 +316,18 @@ module Copy = struct
   ;;
 end
 
-let fetch ~target kind url checksum =
+let fetch ~target kind (source : Source.t) =
+  let source_kind = Source.kind source in
   let src =
-    let url_or_checksum =
-      match checksum with
-      | Some (_, checksum) -> `Checksum checksum
-      | None -> `Url (snd url)
-    in
-    Path.build (make_target ~kind url_or_checksum)
+    match source_kind with
+    | `Directory_or_archive p -> Path.external_ p
+    | `Fetch ->
+      let url_or_checksum =
+        match source.checksum with
+        | Some (_, checksum) -> `Checksum checksum
+        | None -> `Url (snd source.url)
+      in
+      Path.build (make_target ~kind url_or_checksum)
   in
   let open Action_builder.With_targets.O in
   (* [Action_builder.copy] already adds this dependency for us,
@@ -335,8 +339,15 @@ let fetch ~target kind url checksum =
   match kind with
   | `File -> Action_builder.copy ~src ~dst:target
   | `Directory ->
-    Copy.action ~src_dir:src ~dst_dir:target
-    |> Action.Full.make
+    let action =
+      match source_kind with
+      | `Fetch -> Copy.action ~src_dir:src ~dst_dir:target
+      | `Directory_or_archive _ ->
+        (* For local sources, we don't need an intermediate step copying to the
+           .fetch context. This would just add pointless additional overhead. *)
+        action ~url:source.url ~checksum:source.checksum ~target ~kind
+    in
+    Action.Full.make action
     |> Action_builder.With_targets.return
     |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;

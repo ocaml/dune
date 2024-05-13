@@ -314,10 +314,16 @@ module Pkg = struct
         in
         Path.Local.Set.union_all (acc :: dirs)
     in
-    match t.info.source with
+    (match t.info.source with
+     | None -> Memo.return None
+     | Some source ->
+       Lock_dir.source_kind source
+       >>| (function
+        | `Local (`File, _) | `Fetch -> None
+        | `Local (`Directory, root) -> Some root))
+    >>= function
     | None -> Memo.return Path.Local.Set.empty
-    | Some (External_copy (_, root)) -> loop root Path.Local.Set.empty Path.Local.root
-    | Some (Fetch _) -> assert false
+    | Some root -> loop root Path.Local.Set.empty Path.Local.root
   ;;
 
   let dep t = Dep.file (Path.build t.paths.target_dir)
@@ -1482,32 +1488,37 @@ let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
-    | Some (Fetch { url = (loc, _) as url; checksum }) ->
-      let fetch =
-        Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
-      in
-      Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
-    | Some (External_copy (loc, source_root)) ->
-      let+ source_files, rules =
-        let source_root = Path.external_ source_root in
-        Pkg.source_files pkg ~loc
-        >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
-          let src = Path.append_local source_root file in
-          let dst = Path.Build.append_local pkg.paths.source_dir file in
-          let copy = loc, Action_builder.copy ~src ~dst in
-          Path.build dst :: source_files, copy :: rules)
-      in
-      Dep.Set.of_files source_files, rules
+    | Some source ->
+      let loc = fst source.url in
+      Lock_dir.source_kind source
+      >>= (function
+       | `Local (`File, _) | `Fetch ->
+         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
+       | `Local (`Directory, source_root) ->
+         let+ source_files, rules =
+           let source_root = Path.external_ source_root in
+           Pkg.source_files pkg ~loc
+           >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
+             let src = Path.append_local source_root file in
+             let dst = Path.Build.append_local pkg.paths.source_dir file in
+             let copy = loc, Action_builder.copy ~src ~dst in
+             Path.build dst :: source_files, copy :: rules)
+         in
+         Dep.Set.of_files source_files, rules)
   in
   let extra_source_deps, extra_copy_rules =
-    List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
+    List.map pkg.info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
       let extra_source = Paths.extra_source pkg.paths local in
       let rule =
-        match (fetch : Source.t) with
-        | External_copy (loc, src) ->
+        let loc = fst fetch.url in
+        (* We assume that [fetch] is always a file. Would be good
+           to give a decent error message if it's not *)
+        match Source.kind fetch with
+        | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
-        | Fetch { url = (loc, _) as url; checksum } ->
-          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File url checksum in
+        | `Fetch ->
+          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File fetch in
           loc, rule
       in
       Path.build extra_source, rule)
@@ -1608,8 +1619,8 @@ module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* db = DB.get context in
-  let+ pkg =
+  let* pkg =
+    let* db = DB.get context in
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
@@ -1622,12 +1633,19 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
         ]
   in
   let paths = Paths.make name context in
-  let directory_targets =
-    let target_dir = paths.target_dir in
-    let map = Path.Build.Map.singleton target_dir Loc.none in
+  let+ directory_targets =
+    let map =
+      let target_dir = paths.target_dir in
+      Path.Build.Map.singleton target_dir Loc.none
+    in
     match pkg.info.source with
-    | Some (Fetch f) -> Path.Build.Map.add_exn map paths.source_dir (fst f.url)
-    | _ -> map
+    | None -> Memo.return map
+    | Some source ->
+      Lock_dir.source_kind source
+      >>| (function
+       | `Local (`Directory, _) -> map
+       | `Local (`File, _) | `Fetch ->
+         Path.Build.Map.add_exn map paths.source_dir (fst source.url))
   in
   let build_dir_only_sub_dirs =
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty

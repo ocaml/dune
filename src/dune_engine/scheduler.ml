@@ -665,16 +665,6 @@ end = struct
   let init ~print_ctrl_c_warning q = Thread.spawn (fun () -> run ~print_ctrl_c_warning q)
 end
 
-type status =
-  | (* We are not doing a build. Just accumulating invalidations until the next
-       build starts. *)
-    Standing_by
-  | (* Running a build *)
-    Building
-  | (* Cancellation requested. Build jobs are immediately rejected in this
-       state *)
-    Restarting_build
-
 module Build_outcome = struct
   type t =
     | Success
@@ -811,7 +801,6 @@ end
 type t =
   { config : Config.t
   ; alarm_clock : Alarm_clock.t Lazy.t
-  ; mutable status : status
   ; mutable invalidation : Memo.Invalidation.t
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
@@ -927,15 +916,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events;
   let cancel = Fiber.Cancel.create () in
   let process_watcher = Process_watcher.init events in
-  { status =
-      (* Slightly weird initialization happening here: for polling mode we
-         initialize in "Building" state, immediately switch to Standing_by
-         and then back to "Building". It would make more sense to start in
-         "Stand_by" from the start. We can't "just" switch the initial value
-         here because then the non-polling mode would run in "Standing_by"
-         mode, which is even weirder. *)
-      Building
-  ; invalidation = Memo.Invalidation.empty
+  { invalidation = Memo.Invalidation.empty
   ; job_throttle = Fiber.Throttle.create config.concurrency
   ; process_watcher
   ; events
@@ -1013,12 +994,11 @@ end = struct
     else (
       t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
       let fills =
-        match t.status with
-        | Restarting_build | Standing_by -> []
-        | Building ->
+        if Fiber.Cancel.fired t.cancel
+        then []
+        else (
           t.handler t.config Build_interrupted;
-          t.status <- Restarting_build;
-          Fiber.Cancel.fire' t.cancel
+          Fiber.Cancel.fire' t.cancel)
       in
       let fills = Trigger.trigger t.build_inputs_changed @ fills in
       match Nonempty_list.of_list fills with
@@ -1115,48 +1095,21 @@ module Run = struct
       Memo.reset t.invalidation;
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
-    let cancel = Fiber.Cancel.create () in
-    t.status <- Building;
-    t.cancel <- cancel;
+    t.cancel <- Fiber.Cancel.create ();
     let* res = step in
-    match t.status with
-    | Standing_by ->
+    if Memo.Invalidation.is_empty t.invalidation
+    then (
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
       t.handler t.config (Build_finish res);
-      Fiber.return res
-    | Restarting_build -> poll_iter t step
-    | Building ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      t.status <- Standing_by;
-      t.handler t.config (Build_finish res);
-      Fiber.return res
-  ;;
-
-  let poll_iter t step =
-    match t.status with
-    | Building | Restarting_build -> assert false
-    | Standing_by -> poll_iter t step
+      Fiber.return res)
+    else poll_iter t step
   ;;
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
-
-  let poll_init () =
-    let+ t = t () in
-    assert (
-      match t.status with
-      | Building -> true
-      | _ -> false);
-    t.status <- Standing_by;
-    t
-  ;;
 
   (* Work we're allowed to do between successive polling iterations. this work
      should be fast and never fail (within reason) *)
@@ -1179,7 +1132,7 @@ module Run = struct
   ;;
 
   let poll step =
-    let* t = poll_init () in
+    let* t = t () in
     let rec loop () =
       let* _res = poll_iter t step in
       run_when_idle t.config.stats;
@@ -1190,7 +1143,7 @@ module Run = struct
   ;;
 
   let poll_passive ~get_build_request =
-    let* t = poll_init () in
+    let* t = t () in
     let rec loop () =
       let* step, response_ivar = get_build_request in
       (* Flush before to make the build reproducible. The passive watch mode is
@@ -1292,12 +1245,11 @@ let shutdown () =
 
 let cancel_current_build () =
   let* t = t () in
-  match t.status with
-  | Restarting_build | Standing_by -> Fiber.return ()
-  | Building ->
+  if Fiber.Cancel.fired t.cancel
+  then Fiber.return ()
+  else (
     t.handler t.config Build_interrupted;
-    t.status <- Standing_by;
-    Fiber.Cancel.fire t.cancel
+    Fiber.Cancel.fire t.cancel)
 ;;
 
 let inject_memo_invalidation invalidation =

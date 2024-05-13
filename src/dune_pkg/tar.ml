@@ -11,6 +11,13 @@ let bin =
 
 let output_limit = 1_000_000
 
+let temp_dir_in_build =
+  lazy
+    (let dir = Path.relative (Path.build Path.Build.root) ".temp" in
+     Path.mkdir_p dir;
+     dir)
+;;
+
 let extract ~archive ~target =
   let* () = Fiber.return () in
   let tar = Lazy.force bin in
@@ -19,10 +26,8 @@ let extract ~archive ~target =
     let suffix = Path.basename archive in
     match target with
     | In_build_dir _ ->
-      Temp.temp_in_dir Dir ~dir:(Lazy.force Temp_dir.in_build) ~prefix ~suffix
-    | _ ->
-      let parent = Path.parent_exn target in
-      Temp.temp_in_dir Dir ~dir:parent ~prefix ~suffix
+      Temp.temp_in_dir Dir ~dir:(Lazy.force temp_dir_in_build) ~prefix ~suffix
+    | _ -> Temp.create Dir ~prefix ~suffix
   in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;

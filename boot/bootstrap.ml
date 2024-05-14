@@ -17,6 +17,7 @@ let keep_generated_files =
     ; ( "--force-byte-compilation"
       , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; "--static", Arg.Unit ignore, " Build a static binary"
     ]
     anon
     "Usage: ocaml bootstrap.ml <options>\nOptions are:";

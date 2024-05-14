@@ -19,3 +19,7 @@ module Sys_vars : sig
 
   val poll : t
 end
+
+val source_kind
+  :  Dune_pkg.Source.t
+  -> [ `Local of [ `Directory | `File ] * Path.External.t | `Fetch ] Memo.t

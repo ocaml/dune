@@ -1,6 +1,4 @@
 open Import
-module CC = Compilation_context
-module SC = Super_context
 
 let ocaml_index sctx ~dir =
   Super_context.resolve_program ~loc:None ~dir sctx "ocaml-index"
@@ -19,15 +17,15 @@ let cctx_rules cctx =
      full shape reduction to compute the actual definition of all the elements in
      the typedtree. This step is therefore dependent on all the cmts of those
      definitions are used by all the cmts of modules in this cctx. *)
-  let dir = CC.dir cctx in
+  let dir = Compilation_context.dir cctx in
   let modules =
     (* We only index occurrences in user-written modules *)
-    CC.modules cctx
+    Compilation_context.modules cctx
     |> Modules.With_vlib.drop_vlib
     |> Modules.fold_user_written ~init:[] ~f:(fun x acc -> x :: acc)
   in
-  let sctx = CC.super_context cctx in
-  let obj_dir = CC.obj_dir cctx in
+  let sctx = Compilation_context.super_context cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
   let cm_kind = Lib_mode.Cm_kind.(Ocaml Cmi) in
   let modules_with_cmts =
     List.filter_map
@@ -44,7 +42,10 @@ let cctx_rules cctx =
       modules
   in
   let context_dir =
-    CC.context cctx |> Context.name |> Context_name.build_dir |> Path.build
+    Compilation_context.context cctx
+    |> Context.name
+    |> Context_name.build_dir
+    |> Path.build
   in
   let* additional_libs =
     (* The indexer relies on the load_path of cmt files. When
@@ -55,8 +56,8 @@ let cctx_rules cctx =
        (requires_link \ req_compile)
     *)
     let open Resolve.Memo.O in
-    let* req_link = CC.requires_link cctx in
-    let+ req_compile = CC.requires_compile cctx in
+    let* req_link = Compilation_context.requires_link cctx in
+    let+ req_compile = Compilation_context.requires_compile cctx in
     let non_compile_libs =
       List.filter req_link ~f:(fun l -> not (List.exists req_compile ~f:(Lib.equal l)))
     in
@@ -80,7 +81,7 @@ let cctx_rules cctx =
       ; includes
       ]
   in
-  SC.add_rule sctx ~dir aggregate
+  Super_context.add_rule sctx ~dir aggregate
 ;;
 
 let context_indexes sctx =

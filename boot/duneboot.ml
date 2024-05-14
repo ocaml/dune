@@ -1,10 +1,9 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_compilation =
+let concurrency, verbose, debug, secondary, force_byte_compilation =
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
-  let keep_generated_files = ref false in
   let prog = Filename.basename Sys.argv.(0) in
   let debug = ref false in
   let secondary = ref false in
@@ -12,7 +11,7 @@ let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_co
   Arg.parse
     [ "-j", Int (fun n -> concurrency := Some n), "JOBS Concurrency"
     ; "--verbose", Set verbose, " Set the display mode"
-    ; "--keep-generated-files", Set keep_generated_files, " Keep generated files"
+    ; "--keep-generated-files", Unit ignore, " Keep generated files"
     ; "--debug", Set debug, " Enable various debugging options"
     ; "--secondary", Set secondary, " Use the secondary compiler installation"
     ; ( "--force-byte-compilation"
@@ -21,12 +20,7 @@ let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_co
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
-  ( !concurrency
-  , !verbose
-  , !keep_generated_files
-  , !debug
-  , !secondary
-  , !force_byte_compilation )
+  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation
 ;;
 
 (** {2 General configuration} *)

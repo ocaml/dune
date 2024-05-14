@@ -149,3 +149,32 @@ let lock_dir_active ctx =
     | None -> Memo.return false
     | Some path -> Fs_memo.dir_exists (In_source_dir path)
 ;;
+
+let source_kind (source : Dune_pkg.Source.t) =
+  let loc, url = source.url in
+  if OpamUrl.is_local url && url.backend = `rsync
+  then (
+    let path = Path.External.of_string url.path in
+    Fs_memo.path_kind (External path)
+    >>| function
+    | Error (ENOENT, _, _) ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "%s does not exist" (Path.External.to_string_maybe_quoted path) ]
+    | Error exn ->
+      User_error.raise
+        ~loc
+        [ Pp.textf "unable to read %s" (Path.External.to_string_maybe_quoted path)
+        ; Unix_error.Detailed.pp exn
+        ]
+    | Ok S_REG -> `Local (`File, path)
+    | Ok S_DIR -> `Local (`Directory, path)
+    | Ok _kind ->
+      User_error.raise
+        ~loc
+        [ Pp.textf
+            "path %s is not a directory or a file"
+            (Path.External.to_string_maybe_quoted path)
+        ])
+  else Memo.return `Fetch
+;;

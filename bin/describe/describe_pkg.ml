@@ -145,21 +145,21 @@ module List_locked_dependencies = struct
       Pp.concat
         ~sep:Pp.cut
         (List.map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
-           match Package_universe.create local_packages lock_dir with
-           | Error e -> raise (User_error.E e)
-           | Ok package_universe ->
-             Pp.vbox
-               (Pp.concat
-                  ~sep:Pp.cut
-                  [ Pp.hbox
-                      (Pp.textf
-                         "Dependencies of local packages locked in %s"
-                         (Path.Source.to_string_maybe_quoted lock_dir_path))
-                  ; Pp.enumerate
-                      (Package_name.Map.keys local_packages)
-                      ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
-                    |> Pp.box
-                  ])))
+           let package_universe =
+             Package_universe.create local_packages lock_dir |> User_error.ok_exn
+           in
+           Pp.vbox
+             (Pp.concat
+                ~sep:Pp.cut
+                [ Pp.hbox
+                    (Pp.textf
+                       "Dependencies of local packages locked in %s"
+                       (Path.Source.to_string_maybe_quoted lock_dir_path))
+                ; Pp.enumerate
+                    (Package_name.Map.keys local_packages)
+                    ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
+                  |> Pp.box
+                ])))
       |> Pp.vbox
     in
     Console.print [ pp ]

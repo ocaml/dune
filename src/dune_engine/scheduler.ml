@@ -7,8 +7,7 @@ module Config = struct
   type t =
     { concurrency : int
     ; stats : Dune_stats.t option
-    ; insignificant_changes : [ `Ignore | `React ]
-    ; signal_watcher : [ `Yes | `No ]
+    ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
 end
@@ -70,7 +69,7 @@ let blocked_signals : Signal.t list =
 ;;
 
 module Thread : sig
-  val spawn : signal_watcher:[ `Yes | `No ] -> (unit -> unit) -> unit
+  val spawn : (unit -> unit) -> unit
   val delay : float -> unit
   val wait_signal : int list -> int
 end = struct
@@ -82,34 +81,30 @@ end = struct
        ignore (Unix.sigprocmask SIG_BLOCK signos : int list))
   ;;
 
-  let create ~signal_watcher =
+  let create =
     if Sys.win32
     then Thread.create
     else
       (* On unix, we make sure to block signals globally before starting a
          thread so that only the signal watcher thread can receive signals. *)
       fun f x ->
-      let () =
-        match signal_watcher with
-        | `Yes -> Lazy.force block_signals
-        | `No -> ()
-      in
+      Lazy.force block_signals;
       Thread.create f x
   ;;
 
-  let spawn ~signal_watcher f =
+  let spawn f =
     let f () =
       try f () with
       | exn ->
         let exn = Exn_with_backtrace.capture exn in
         Dune_util.Report_error.report exn
     in
-    let (_ : Thread.t) = create ~signal_watcher f () in
+    let (_ : Thread.t) = create f () in
     ()
   ;;
 end
 
-let spawn_thread f = Thread.spawn ~signal_watcher:`Yes f
+let spawn_thread f = Thread.spawn f
 
 (** The event queue *)
 module Event : sig
@@ -123,7 +118,6 @@ module Event : sig
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
-    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Queue : sig
@@ -159,7 +153,6 @@ module Event : sig
     val send_invalidation_event : t -> Memo.Invalidation.t -> unit
     val send_job_completed : t -> job -> Proc.Process_info.t -> unit
     val send_shutdown : t -> Shutdown.Reason.t -> unit
-    val send_stop_on_first_error : t -> unit
     val send_timers_completed : t -> Fiber.fill Nonempty_list.t -> unit
     val yield_if_there_are_pending_events : t -> unit Fiber.t
   end
@@ -174,7 +167,6 @@ end = struct
     | File_system_sync of Dune_file_watcher.Sync_id.t
     | File_system_watcher_terminated
     | Shutdown of Shutdown.Reason.t
-    | Stop_on_first_error
     | Fiber_fill_ivar of Fiber.fill
 
   module Invalidation_event = struct
@@ -191,7 +183,6 @@ end = struct
       ; file_watcher_tasks : (unit -> Dune_file_watcher.Event.t list) Queue.t
       ; mutable invalidation_events : Invalidation_event.t list
       ; mutable shutdown_reasons : Shutdown.Reason.Set.t
-      ; mutable got_stop_on_first_error : bool
       ; mutex : Mutex.t
       ; cond : Condition.t
       ; mutable pending_jobs : int
@@ -219,7 +210,6 @@ end = struct
       ; invalidation_events
       ; timers
       ; shutdown_reasons
-      ; got_stop_on_first_error = false
       ; mutex
       ; cond
       ; pending_jobs
@@ -266,7 +256,6 @@ end = struct
       type t
 
       val shutdown : t
-      val stop_on_first_error : t
       val file_watcher_task : t
       val invalidation : t
       val jobs_completed : t
@@ -286,15 +275,6 @@ end = struct
         Option.map (Shutdown.Reason.Set.choose q.shutdown_reasons) ~f:(fun reason ->
           q.shutdown_reasons <- Shutdown.Reason.Set.remove q.shutdown_reasons reason;
           Shutdown reason)
-      ;;
-
-      let stop_on_first_error : t =
-        fun q ->
-        match q.got_stop_on_first_error with
-        | true ->
-          q.got_stop_on_first_error <- false;
-          Some Stop_on_first_error
-        | false -> None
       ;;
 
       let file_watcher_task q =
@@ -386,7 +366,6 @@ end = struct
                  ; jobs_completed
                  ; yield
                  ; timers
-                 ; stop_on_first_error
                  ]))
             q
         with
@@ -431,10 +410,6 @@ end = struct
     let send_shutdown q signal =
       add_event q (fun q ->
         q.shutdown_reasons <- Shutdown.Reason.Set.add q.shutdown_reasons signal)
-    ;;
-
-    let send_stop_on_first_error q =
-      add_event q (fun q -> q.got_stop_on_first_error <- true)
     ;;
 
     let send_file_watcher_task q job =
@@ -483,7 +458,7 @@ module Process_watcher : sig
   (** Initialize the process watcher thread. *)
   type t
 
-  val init : signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> t
+  val init : Event.Queue.t -> t
 
   (** Register a new running job. *)
   val register_job : t -> job -> unit
@@ -618,7 +593,7 @@ end = struct
     done
   ;;
 
-  let init ~signal_watcher events =
+  let init events =
     let t =
       { mutex = Mutex.create ()
       ; something_is_running = Condition.create ()
@@ -627,13 +602,13 @@ end = struct
       ; running_count = 0
       }
     in
-    Thread.spawn ~signal_watcher (fun () -> run t);
+    Thread.spawn (fun () -> run t);
     t
   ;;
 end
 
 module Signal_watcher : sig
-  val init : Event.Queue.t -> unit
+  val init : print_ctrl_c_warning:bool -> Event.Queue.t -> unit
 end = struct
   let signos = List.map interrupt_signals ~f:Signal.to_int
 
@@ -663,7 +638,7 @@ end = struct
     else Staged.stage (fun () -> Thread.wait_signal signos |> Signal.of_int)
   ;;
 
-  let run q =
+  let run ~print_ctrl_c_warning q =
     let last_exit_signals = Queue.create () in
     let wait_signal = Staged.unstage (signal_waiter ()) in
     while true do
@@ -681,32 +656,19 @@ end = struct
           ignore (Queue.pop_exn last_exit_signals : float)
         done;
         let n = Queue.length last_exit_signals in
-        if n = 2 then prerr_endline warning;
+        if n = 2 && print_ctrl_c_warning then prerr_endline warning;
         if n = 3 then sys_exit 1
       | _ -> (* we only blocked the signals above *) assert false
     done
   ;;
 
-  let init q = Thread.spawn ~signal_watcher:`Yes (fun () -> run q)
+  let init ~print_ctrl_c_warning q = Thread.spawn (fun () -> run ~print_ctrl_c_warning q)
 end
 
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
        build starts. *)
-    Standing_by of
-      { invalidation : Memo.Invalidation.t
-      ; saw_insignificant_changes : bool
-      (* When [insignificant_changes = `Ignore], this field is always
-         false.
-
-         When [insignificant_changes = `React], we do the following:
-
-         Whether we saw build input changes that are insignificant for
-         the build. We need to track this because we still want to start
-         a new build in this case, even if we know it's going to be a
-         no-op. We do that so that RPC clients can observe that Dune
-         reacted to the change. *)
-      }
+    Standing_by of { invalidation : Memo.Invalidation.t }
   | (* Running a build *)
     Building of Fiber.Cancel.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
@@ -734,7 +696,7 @@ end
 module Alarm_clock : sig
   type t
 
-  val create : signal_watcher:[ `Yes | `No ] -> Event.Queue.t -> frequency:float -> t
+  val create : Event.Queue.t -> frequency:float -> t
 
   type alarm
 
@@ -795,9 +757,9 @@ end = struct
     Mutex.unlock t.mutex
   ;;
 
-  let create ~signal_watcher events ~frequency =
+  let create events ~frequency =
     let t = { events; active = true; alarms = []; frequency; mutex = Mutex.create () } in
-    Thread.spawn ~signal_watcher (polling_loop t);
+    Thread.spawn (polling_loop t);
     t
   ;;
 
@@ -820,41 +782,18 @@ end = struct
   ;;
 end
 
-(** All fields of [t] must be immutable. This is because we re-create [t] every
-    time we start a new build to locally set the [cancel] field. However, all
-    instances of [t] must share all other fields, in particular the references
-    such as [status].
-
-    Another option would be to split [t] in two records such as:
-
-    {[
-      type shared = { blah : blah }
-
-      type t =
-        { shared : shared
-        ; cancel : Fiber.Cancel.t
-        }
-    ]}
-
-    However, this style is more heavy. What is more, it means that every access
-    to shared fields of [t] is now slower.
-
-    With the current approach setting the cancellation is slower as it requires
-    copying almost all fields of [t]. However this happens only once per build
-    and a build is a much heavier operation than copying this record, so it's
-    fine. *)
 type t =
   { config : Config.t
   ; alarm_clock : Alarm_clock.t Lazy.t
-  ; status : status ref
+  ; mutable status : status
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
-  ; wait_for_build_input_change : unit Fiber.Ivar.t option ref
-  ; cancel : Fiber.Cancel.t
+  ; mutable wait_for_build_input_change : unit Fiber.Ivar.t option
+  ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t
   }
 
@@ -955,41 +894,32 @@ let kill_and_wait_for_all_processes t =
   !saw_signal
 ;;
 
-let prepare (config : Config.t) ~(handler : Handler.t) =
-  let events = Event.Queue.create config.stats in
-  (* We return the scheduler in chunks to resolve the dependency cycle
-     (scheduler wants to know the file_watcher, file_watcher wants to send
-     events to scheduler) *)
-  let signal_watcher = config.signal_watcher in
-  ( events
-  , fun ~file_watcher ->
-      (* The signal watcher must be initialized first so that signals are
-         blocked in all threads. *)
-      (match signal_watcher with
-       | `Yes -> Signal_watcher.init events
-       | `No -> ());
-      let cancel = Fiber.Cancel.create () in
-      let process_watcher = Process_watcher.init ~signal_watcher events in
-      { status =
-          (* Slightly weird initialization happening here: for polling mode we
-             initialize in "Building" state, immediately switch to Standing_by
-             and then back to "Building". It would make more sense to start in
-             "Stand_by" from the start. We can't "just" switch the initial value
-             here because then the non-polling mode would run in "Standing_by"
-             mode, which is even weirder. *)
-          ref (Building cancel)
-      ; job_throttle = Fiber.Throttle.create config.concurrency
-      ; process_watcher
-      ; events
-      ; config
-      ; handler
-      ; file_watcher
-      ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
-      ; wait_for_build_input_change = ref None
-      ; alarm_clock = lazy (Alarm_clock.create ~signal_watcher events ~frequency:0.1)
-      ; cancel
-      ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
-      } )
+let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
+  (* The signal watcher must be initialized first so that signals are
+     blocked in all threads. *)
+  Signal_watcher.init ~print_ctrl_c_warning:config.print_ctrl_c_warning events;
+  let cancel = Fiber.Cancel.create () in
+  let process_watcher = Process_watcher.init events in
+  { status =
+      (* Slightly weird initialization happening here: for polling mode we
+         initialize in "Building" state, immediately switch to Standing_by
+         and then back to "Building". It would make more sense to start in
+         "Stand_by" from the start. We can't "just" switch the initial value
+         here because then the non-polling mode would run in "Standing_by"
+         mode, which is even weirder. *)
+      Building cancel
+  ; job_throttle = Fiber.Throttle.create config.concurrency
+  ; process_watcher
+  ; events
+  ; config
+  ; handler
+  ; file_watcher
+  ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
+  ; wait_for_build_input_change = None
+  ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
+  ; cancel
+  ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
+  }
 ;;
 
 module Run_once : sig
@@ -1047,60 +977,35 @@ end = struct
     | Shutdown reason ->
       got_shutdown reason;
       raise @@ Abort (Shutdown_requested reason)
-    | Stop_on_first_error ->
-      let fills =
-        match !(t.status) with
-        | Restarting_build _ -> []
-        | Standing_by _ -> []
-        | Building cancellation ->
-          t.handler t.config Build_interrupted;
-          t.status
-          := Standing_by
-               { invalidation = Memo.Invalidation.empty
-               ; saw_insignificant_changes = false
-               };
-          Fiber.Cancel.fire' cancellation
-      in
-      (match Nonempty_list.of_list fills with
-       | None -> iter t
-       | Some fills -> fills)
 
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
     let significant_changes = not (Memo.Invalidation.is_empty invalidation) in
-    let insignificant_changes =
-      match t.config.insignificant_changes with
-      | `Ignore -> false
-      | `React -> not significant_changes
-    in
     let fills =
-      match !(t.status) with
+      match t.status with
       | Restarting_build prev_invalidation ->
         t.status
-        := Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
+        <- Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
         []
       | Standing_by prev ->
         t.status
-        := Standing_by
-             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation
-             ; saw_insignificant_changes =
-                 prev.saw_insignificant_changes || insignificant_changes
-             };
+        <- Standing_by
+             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation };
         []
       | Building cancellation ->
         (match significant_changes with
          | false -> []
          | true ->
            t.handler t.config Build_interrupted;
-           t.status := Restarting_build invalidation;
+           t.status <- Restarting_build invalidation;
            Fiber.Cancel.fire' cancellation)
     in
     match
       Nonempty_list.of_list
       @@
-      match !(t.wait_for_build_input_change) with
-      | Some ivar when significant_changes || insignificant_changes ->
-        t.wait_for_build_input_change := None;
+      match t.wait_for_build_input_change with
+      | Some ivar when significant_changes ->
+        t.wait_for_build_input_change <- None;
         Fiber.Fill (ivar, ()) :: fills
       | _ -> fills
     with
@@ -1176,17 +1081,16 @@ let flush_file_watcher t =
 ;;
 
 let wait_for_build_input_change t =
-  match !(t.wait_for_build_input_change) with
+  match t.wait_for_build_input_change with
   | Some ivar -> Fiber.Ivar.read ivar
   | None ->
-    (match !(t.status) with
-     | Standing_by { invalidation; saw_insignificant_changes }
-       when (not (Memo.Invalidation.is_empty invalidation)) || saw_insignificant_changes
-       -> Fiber.return ()
+    (match t.status with
+     | Standing_by { invalidation } when not (Memo.Invalidation.is_empty invalidation) ->
+       Fiber.return ()
      | Restarting_build _ -> Fiber.return ()
      | Standing_by _ | Building _ ->
        let ivar = Fiber.Ivar.create () in
-       t.wait_for_build_input_change := Some ivar;
+       t.wait_for_build_input_change <- Some ivar;
        Fiber.Ivar.read ivar)
 ;;
 
@@ -1204,16 +1108,17 @@ module Run = struct
   module Event = Handler.Event
 
   let rec poll_iter t step ~invalidation =
-    let cancel = Fiber.Cancel.create () in
-    t.status := Building cancel;
     if Memo.Invalidation.is_empty invalidation
     then Memo.Metrics.reset ()
     else (
       let details_hum = Memo.Invalidation.details_hum invalidation in
       t.handler t.config (Source_files_changed { details_hum });
       Memo.reset invalidation);
-    let* res = set { t with cancel } (fun () -> step) in
-    match !(t.status) with
+    let cancel = Fiber.Cancel.create () in
+    t.status <- Building cancel;
+    t.cancel <- cancel;
+    let* res = step in
+    match t.status with
     | Standing_by _ ->
       let res : Build_outcome.t =
         match res with
@@ -1229,15 +1134,13 @@ module Run = struct
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.status
-      := Standing_by
-           { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+      t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
       t.handler t.config (Build_finish res);
       Fiber.return res
   ;;
 
   let poll_iter t step =
-    match !(t.status) with
+    match t.status with
     | Building _ | Restarting_build _ -> assert false
     | Standing_by { invalidation; _ } -> poll_iter t step ~invalidation
   ;;
@@ -1247,12 +1150,10 @@ module Run = struct
   let poll_init () =
     let+ t = t () in
     assert (
-      match !(t.status) with
+      match t.status with
       | Building _ -> true
       | _ -> false);
-    t.status
-    := Standing_by
-         { invalidation = Memo.Invalidation.empty; saw_insignificant_changes = false };
+    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
     t
   ;;
 
@@ -1318,13 +1219,13 @@ module Run = struct
   ;;
 
   let go
-    config
+    (config : Config.t)
     ?timeout
     ?(file_watcher = No_watcher)
     ~(on_event : Config.t -> Handler.Event.t -> unit)
     run
     =
-    let events, prepare = prepare config ~handler:on_event in
+    let events = Event_queue.create config.stats in
     let file_watcher =
       match file_watcher with
       | No_watcher -> None
@@ -1332,14 +1233,14 @@ module Run = struct
         Some
           (Dune_file_watcher.create_default
              ~scheduler:
-               { spawn_thread = Thread.spawn ~signal_watcher:config.signal_watcher
+               { spawn_thread = Thread.spawn
                ; thread_safe_send_emit_events_job =
                    (fun job -> Event_queue.send_file_watcher_task events job)
                }
              ~watch_exclusions:config.watch_exclusions
              ())
     in
-    let t = prepare ~file_watcher in
+    let t = prepare config ~handler:on_event ~events ~file_watcher in
     let initial_invalidation = Fs_memo.init ~dune_file_watcher:file_watcher in
     Memo.reset initial_invalidation;
     let result =
@@ -1388,9 +1289,14 @@ let shutdown () =
   Event.Queue.send_shutdown t.events Requested
 ;;
 
-let stop_on_first_error () =
-  let+ t = t () in
-  Event.Queue.send_stop_on_first_error t.events
+let cancel_current_build () =
+  let* t = t () in
+  match t.status with
+  | Restarting_build _ | Standing_by _ -> Fiber.return ()
+  | Building cancellation ->
+    t.handler t.config Build_interrupted;
+    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
+    Fiber.Cancel.fire cancellation
 ;;
 
 let inject_memo_invalidation invalidation =

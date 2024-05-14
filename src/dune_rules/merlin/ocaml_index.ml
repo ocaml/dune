@@ -21,9 +21,10 @@ let cctx_rules cctx () =
      definitions are used by all the cmts of modules in this cctx. *)
   let dir = CC.dir cctx in
   let modules =
+    (* We only index occurrences in user-written modules *)
     CC.modules cctx
     |> Modules.With_vlib.drop_vlib
-    |> Modules.fold ~init:[] ~f:(fun x acc -> x :: acc)
+    |> Modules.fold_user_written ~init:[] ~f:(fun x acc -> x :: acc)
   in
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in

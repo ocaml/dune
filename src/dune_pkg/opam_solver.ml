@@ -537,6 +537,17 @@ let available_depopts solver_env version_by_package_name (opam_package : OpamFil
         else None))
 ;;
 
+(* Heuristic to determine whether a package is an ocaml compiler *)
+let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
+  (* Identify compiler packages by using the fact that all compiler
+     Packages declare conflicts with other compiler packages. note
+     that relying on the "compiler" flag to identify compiler packages
+     will not work, as compiler options packages (such as
+     ocaml-option-flambda) also have this flag. *)
+  let ocaml_core_compiler = OpamPackage.Name.of_string "ocaml-core-compiler" in
+  List.mem opam_package.conflict_class ocaml_core_compiler ~equal:OpamPackage.Name.equal
+;;
+
 let opam_package_to_lock_file_pkg
   solver_env
   stats_updater
@@ -569,7 +580,7 @@ let opam_package_to_lock_file_pkg
           (* opam discards the later checksums, so we only take the first one *)
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
-        Source.Fetch { Source.url; checksum } ))
+        { Source.url; checksum } ))
   in
   let info =
     let url = OpamFile.OPAM.url opam_file in
@@ -581,7 +592,7 @@ let opam_package_to_lock_file_pkg
           |> Option.map ~f:(fun hash -> Loc.none, Checksum.of_opam_hash hash)
         in
         let url = Loc.none, OpamFile.URL.url url in
-        Source.Fetch { url; checksum })
+        { Source.url; checksum })
     in
     let dev =
       Package_name.Set.mem pinned_package_names name
@@ -676,11 +687,7 @@ let opam_package_to_lock_file_pkg
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
-  let kind =
-    if List.mem (OpamFile.OPAM.flags opam_file) ~equal:Poly.equal Pkgflag_Compiler
-    then `Compiler
-    else `Non_compiler
-  in
+  let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
   kind, { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env }
 ;;
 

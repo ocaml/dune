@@ -189,13 +189,11 @@ module Scheduler = struct
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
-      let signal_watcher = Common.signal_watcher common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes:`Ignore
-        ~signal_watcher
+        ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
     let f =
@@ -218,13 +216,11 @@ module Scheduler = struct
     in
     let stats = Common.stats common in
     let config =
-      let signal_watcher = Common.signal_watcher common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes:`Ignore
-        ~signal_watcher
+        ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
     let file_watcher = Common.file_watcher common in

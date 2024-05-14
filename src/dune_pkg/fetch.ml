@@ -195,9 +195,13 @@ let unpack ~target ~archive =
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
-let with_download url checksum ~f =
+let with_download url checksum ~target ~f =
   let url = OpamUrl.to_string url in
-  let temp_dir = Temp.create Dir ~prefix:"dune" ~suffix:(Filename.basename url) in
+  let temp_dir =
+    let prefix = "dune" in
+    let suffix = Filename.basename url in
+    Temp_dir.dir_for_target ~target ~prefix ~suffix
+  in
   let output = Path.relative temp_dir "download" in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir temp_dir;
@@ -222,10 +226,9 @@ let with_download url checksum ~f =
 ;;
 
 let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
-  with_download url checksum ~f:(fun output ->
+  with_download url checksum ~target ~f:(fun output ->
     match unpack_flag with
     | false ->
-      Path.mkdir_p (Path.parent_exn target);
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->
@@ -319,4 +322,12 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
         fetch_git rev_store ~target ~url:(url_loc, url)
       | `http -> fetch_curl ~unpack ~checksum ~target url
       | _ -> fetch_others ~unpack ~checksum ~target url)
+;;
+
+let fetch_without_checksum ~unpack ~target ~url =
+  fetch ~unpack ~checksum:None ~url ~target
+  >>| function
+  | Ok () -> Ok ()
+  | Error (Checksum_mismatch _) -> assert false
+  | Error (Unavailable message) -> Error message
 ;;

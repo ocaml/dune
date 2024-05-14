@@ -41,10 +41,12 @@
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
   $ dune ocaml dump-dot-merlin $PWD | grep -e "^B " -e "^S "
+  B /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
   B $TESTCASE_ROOT/_build/default/.foo.objs/melange
   S /MELC_STDLIB
+  S /MELC_STDLIB/__private__/melange_mini_stdlib
   S /MELC_STDLIB
   S $TESTCASE_ROOT
 
@@ -68,10 +70,12 @@ Dump-dot-merlin includes the melange flags
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
   STDLIB /MELC_STDLIB/melange
+  B /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
   B $TESTCASE_ROOT/_build/default/.output.mobjs/melange
   S /MELC_STDLIB
+  S /MELC_STDLIB/__private__/melange_mini_stdlib
   S /MELC_STDLIB
   S $TESTCASE_ROOT
   # FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -mel-g
@@ -114,7 +118,11 @@ User ppx flags should appear in merlin config
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
+    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
+   (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    /MELC_STDLIB/__private__/melange_mini_stdlib)
    (S
     $TESTCASE_ROOT)
    (FLG (-open Foo))
@@ -136,7 +144,11 @@ User ppx flags should appear in merlin config
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
+    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
+   (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    /MELC_STDLIB/__private__/melange_mini_stdlib)
    (S
     $TESTCASE_ROOT)
    (FLG (-open Foo))
@@ -158,7 +170,11 @@ User ppx flags should appear in merlin config
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
+    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
+   (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    /MELC_STDLIB/__private__/melange_mini_stdlib)
    (S
     $TESTCASE_ROOT)
    (FLG
@@ -179,7 +195,11 @@ User ppx flags should appear in merlin config
   ((STDLIB /MELC_STDLIB/melange)
    (EXCLUDE_QUERY_DIR)
    (B
+    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
+   (B
     $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (S
+    /MELC_STDLIB/__private__/melange_mini_stdlib)
    (S
     $TESTCASE_ROOT)
    (FLG

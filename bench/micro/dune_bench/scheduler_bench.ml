@@ -8,8 +8,7 @@ let config =
   Dune_engine.Clflags.display := Short;
   { Scheduler.Config.concurrency = 1
   ; stats = None
-  ; insignificant_changes = `React
-  ; signal_watcher = `No
+  ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
 ;;

@@ -205,15 +205,6 @@ let create local_packages lock_dir =
   t
 ;;
 
-let concrete_dependencies_of_local_package_with_test t local_package_name =
-  match concrete_dependencies_of_local_package_with_test t local_package_name with
-  | Ok x -> x
-  | Error e ->
-    Code_error.raise
-      "Invalid package universe which should have already been validated"
-      [ "error", Dyn.string (User_message.to_string e) ]
-;;
-
 let concrete_dependencies_of_local_package_without_test t local_package_name =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   Local_package.(for_solver local_package |> For_solver.opam_filtered_dependency_formula)
@@ -303,7 +294,14 @@ let check_contains_package t package_name =
 
 let all_dependencies t package ~traverse =
   check_contains_package t package;
-  let immediate_deps = concrete_dependencies_of_local_package_with_test t package in
+  let immediate_deps =
+    match concrete_dependencies_of_local_package_with_test t package with
+    | Ok x -> x
+    | Error e ->
+      Code_error.raise
+        "Invalid package universe which should have already been validated"
+        [ "error", Dyn.string (User_message.to_string e) ]
+  in
   match traverse with
   | `Immediate -> immediate_deps
   | `Transitive ->

@@ -18,8 +18,3 @@ dune-build-info.
   > EOF
 
   $ dune build ./foo.exe
-  Warning: Unable to read directory bar. Ignoring.
-  Remove this message by ignoring by adding:
-  (dirs \ bar)
-  to the dune file: dune
-  Reason: opendir(bar): No such file or directory

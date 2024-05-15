@@ -1,6 +1,6 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, debug, secondary, force_byte_compilation =
+let concurrency, verbose, debug, secondary, force_byte_compilation, static =
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
@@ -8,6 +8,7 @@ let concurrency, verbose, debug, secondary, force_byte_compilation =
   let debug = ref false in
   let secondary = ref false in
   let force_byte_compilation = ref false in
+  let static = ref false in
   Arg.parse
     [ "-j", Int (fun n -> concurrency := Some n), "JOBS Concurrency"
     ; "--verbose", Set verbose, " Set the display mode"
@@ -17,10 +18,11 @@ let concurrency, verbose, debug, secondary, force_byte_compilation =
     ; ( "--force-byte-compilation"
       , Set force_byte_compilation
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; "--static", Set static, " Build a static binary"
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
-  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation
+  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static
 ;;
 
 (** {2 General configuration} *)
@@ -1123,6 +1125,7 @@ let build
       | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
       | _ -> None)
   in
+  let static_flags = if static then [ "-ccopt"; "-static" ] else [] in
   write_args "compiled_ml_files" compiled_ml_files;
   Process.run
     ~cwd:build_dir
@@ -1132,6 +1135,7 @@ let build
        ; obj_files
        ; [ "-args"; "compiled_ml_files" ]
        ; link_flags
+       ; static_flags
        ; allow_unstable_sources
        ])
 ;;

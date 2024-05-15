@@ -47,13 +47,7 @@
         ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
           dune_3 = osuper.dune_3.overrideAttrs (a: {
             src = ./.;
-            postPatch = ''
-              substituteInPlace \
-                boot/duneboot.ml \
-                --replace-fail \
-                '; link_flags' \
-                '; link_flags; ["-ccopt"; "-static"]'
-            '';
+            preBuild = "ocaml boot/bootstrap.ml --static";
           });
         });
       };

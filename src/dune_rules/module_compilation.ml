@@ -192,9 +192,11 @@ let build_cm
            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind)
          in
          let annots =
+           [ "-bin-annot" ]
+           @
            if Version.supports_bin_annot_occurrences ocaml.version
-           then [ "-bin-annot"; "-bin-annot-occurrences" ]
-           else [ "-bin-annot" ]
+           then [ "-bin-annot-occurrences" ]
+           else []
          in
          fn :: other_targets, As annots)
        else other_targets, Command.Args.empty

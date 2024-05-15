@@ -19,30 +19,23 @@ let cctx_rules cctx =
      definitions are used by all the cmts of modules in this cctx. *)
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  let aggregate =
+  let* aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
     let fn = index_path_in_obj_dir obj_dir in
-    let includes =
-      Command.Args.Dyn
-        (Action_builder.of_memo
-         @@
-         let+ additional_libs =
-           let open Resolve.Memo.O in
-           let+ non_compile_libs =
-             (* The indexer relies on the load_path of cmt files. When
-                [implicit_transitive_deps] is set to [false] some necessary paths will
-                be missing.These are passed to the indexer with the `-I` flag.
+    let+ additional_libs =
+      let open Resolve.Memo.O in
+      let+ non_compile_libs =
+        (* The indexer relies on the load_path of cmt files. When
+           [implicit_transitive_deps] is set to [false] some necessary paths will
+           be missing.These are passed to the indexer with the `-I` flag.
 
-                The implicit transitive libs correspond to the set:
-                (requires_link \ req_compile) *)
-             let* req_link = Compilation_context.requires_link cctx in
-             let+ req_compile = Compilation_context.requires_compile cctx in
-             List.filter req_link ~f:(fun l ->
-               not (List.exists req_compile ~f:(Lib.equal l)))
-           in
-           Lib_flags.L.include_flags non_compile_libs (Lib_mode.Ocaml Byte)
-         in
-         Resolve.peek additional_libs |> Result.value ~default:Command.Args.empty)
+           The implicit transitive libs correspond to the set:
+           (requires_link \ req_compile) *)
+        let* req_link = Compilation_context.requires_link cctx in
+        let+ req_compile = Compilation_context.requires_compile cctx in
+        List.filter req_link ~f:(fun l -> not (List.exists req_compile ~f:(Lib.equal l)))
+      in
+      Lib_flags.L.include_flags non_compile_libs (Lib_mode.Ocaml Byte)
     in
     let context_dir =
       Compilation_context.context cctx
@@ -80,7 +73,7 @@ let cctx_rules cctx =
       ; Target fn
       ; Deps modules_with_cmts
       ; Deps modules_with_cmtis
-      ; includes
+      ; Dyn (Resolve.read additional_libs)
       ]
   in
   Super_context.add_rule sctx ~dir aggregate

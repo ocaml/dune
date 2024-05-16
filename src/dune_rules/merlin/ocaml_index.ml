@@ -12,17 +12,16 @@ let index_path_in_obj_dir obj_dir =
 let project_index ~build_dir = Path.Build.relative build_dir "project.ocaml-index"
 
 let cctx_rules cctx =
-  let open Memo.O in
   (* Indexing is performed by the external binary [ocaml-index] which performs
      full shape reduction to compute the actual definition of all the elements in
      the typedtree. This step is therefore dependent on all the cmts of those
      definitions are used by all the cmts of modules in this cctx. *)
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  let* aggregate =
+  let aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
     let fn = index_path_in_obj_dir obj_dir in
-    let+ additional_libs =
+    let additional_libs =
       let open Resolve.Memo.O in
       let+ non_compile_libs =
         (* The indexer relies on the load_path of cmt files. When
@@ -73,7 +72,7 @@ let cctx_rules cctx =
       ; Target fn
       ; Deps modules_with_cmts
       ; Deps modules_with_cmtis
-      ; Dyn (Resolve.read additional_libs)
+      ; Dyn (Resolve.Memo.read additional_libs)
       ]
   in
   Super_context.add_rule sctx ~dir aggregate

@@ -42,23 +42,19 @@ let cctx_rules cctx =
       |> Context_name.build_dir
       |> Path.build
     in
-    let modules_with_cmts, modules_with_cmtis =
+    let modules_deps =
       let cm_kind = Lib_mode.Cm_kind.(Ocaml Cmi) in
-      let modules =
-        (* We only index occurrences in user-written modules *)
-        Compilation_context.modules cctx
-        |> Modules.With_vlib.drop_vlib
-        |> Modules.fold_user_written ~init:[] ~f:List.cons
-      in
-      let add what list =
-        match what with
-        | None -> list
-        | Some p -> Path.build p :: list
-      in
-      List.fold_left modules ~init:([], []) ~f:(fun (cmts, cmtis) module_ ->
-        let cmt = Obj_dir.Module.cmt_file obj_dir ~ml_kind:Intf ~cm_kind module_ in
-        let cmti = Obj_dir.Module.cmt_file obj_dir ~ml_kind:Impl ~cm_kind module_ in
-        add cmt cmts, add cmti cmtis)
+      (* We only index occurrences in user-written modules *)
+      Compilation_context.modules cctx
+      |> Modules.With_vlib.drop_vlib
+      |> Modules.fold_user_written ~init:[] ~f:(fun module_ acc ->
+        let cmts =
+          [ Intf; Impl ]
+          |> List.filter_map ~f:(fun ml_kind ->
+            Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_
+            |> Option.map ~f:Path.build)
+        in
+        List.rev_append cmts acc)
     in
     Command.run_dyn_prog
       ~dir:context_dir
@@ -68,8 +64,7 @@ let cctx_rules cctx =
       ; A Path.(Source.root |> source |> to_absolute_filename)
       ; A "-o"
       ; Target fn
-      ; Deps modules_with_cmts
-      ; Deps modules_with_cmtis
+      ; Deps modules_deps
       ; Dyn (Resolve.Memo.read additional_libs)
       ]
   in

@@ -50,17 +50,15 @@ let cctx_rules cctx =
         |> Modules.With_vlib.drop_vlib
         |> Modules.fold_user_written ~init:[] ~f:List.cons
       in
-      let modules_with_cmtis =
-        List.filter_map modules ~f:(fun module_ ->
-          Obj_dir.Module.cmt_file obj_dir ~ml_kind:Intf ~cm_kind module_
-          |> Option.map ~f:(fun cmti -> Path.build cmti))
+      let add what list =
+        match what with
+        | None -> list
+        | Some p -> Path.build p :: list
       in
-      let modules_with_cmts =
-        List.filter_map modules ~f:(fun module_ ->
-          Obj_dir.Module.cmt_file obj_dir ~ml_kind:Impl ~cm_kind module_
-          |> Option.map ~f:(fun cmt -> Path.build cmt))
-      in
-      modules_with_cmts, modules_with_cmtis
+      List.fold_left modules ~init:([], []) ~f:(fun (cmts, cmtis) module_ ->
+        let cmt = Obj_dir.Module.cmt_file obj_dir ~ml_kind:Intf ~cm_kind module_ in
+        let cmti = Obj_dir.Module.cmt_file obj_dir ~ml_kind:Impl ~cm_kind module_ in
+        add cmt cmts, add cmti cmtis)
     in
     Command.run_dyn_prog
       ~dir:context_dir

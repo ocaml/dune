@@ -17,9 +17,7 @@ constraints.
   - a.0.0.1
   - foo.0.0.1
 
-Note that this is currently incorrect as the package "a" is duplicated
-in the "depends" field.
   $ cat dune.lock/foo.pkg
   (version 0.0.1)
   
-  (depends a a)
+  (depends a)

@@ -1,5 +1,13 @@
 open Import
 
+(** ad-hoc feature flag that automatically re-creates lock files if the
+    contents of the dependency list in the dune-project goes out of date
+
+    Supposed to be enabled in the developer preview and disabled in the
+    release, if you find yourself enabling this on release remove the
+    check altogether *)
+let use_autorelock = true
+
 let with_metrics ~common f =
   let start_time = Unix.gettimeofday () in
   Fiber.finalize f ~finally:(fun () ->
@@ -47,7 +55,48 @@ let run_build_system ~common ~request =
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let request =
-        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup -> request setup)
+        let open Action_builder.O in
+        let autorelock =
+          match use_autorelock with
+          | false -> Memo.return ()
+          | true ->
+            Memo.of_thunk (fun () ->
+              let open Memo.O in
+              let lock_dir_path = Dune_pkg.Lock_dir.default_path in
+              let lock_dirs = Pkg_common.Lock_dirs_arg.of_path lock_dir_path in
+              let* per_contexts =
+                Workspace.workspace ()
+                >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
+              in
+              let lock_dirs =
+                List.filter_map per_contexts ~f:(fun lock_dir_path ->
+                  match Path.exists (Path.source lock_dir_path) with
+                  | true -> Some (lock_dir_path, Dune_pkg.Lock_dir.read_disk lock_dir_path)
+                  | false -> None)
+              in
+              match lock_dirs with
+              | [] -> Memo.return ()
+              | lock_dirs ->
+                let* local_packages = Pkg_common.find_local_packages in
+                let locks =
+                  List.map lock_dirs ~f:(fun (lock_dir_path, lock_dir) ->
+                    match
+                      Dune_pkg.Package_universe.up_to_date local_packages lock_dir
+                    with
+                    | `Valid -> Memo.return ()
+                    | `Invalid _ ->
+                      let lock_dirs_arg =
+                        Pkg_common.Lock_dirs_arg.of_path lock_dir_path
+                      in
+                      Lock.lock ~version_preference:None ~lock_dirs_arg
+                      |> Memo.of_non_reproducible_fiber)
+                in
+                let+ (_ : unit list) = Memo.all_concurrently locks in
+                ())
+        in
+        let setup = Memo.both setup autorelock |> Memo.map ~f:fst in
+        let* setup = Action_builder.of_memo setup in
+        request setup
       in
       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)

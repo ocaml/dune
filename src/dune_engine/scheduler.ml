@@ -1124,25 +1124,16 @@ module Run = struct
     t.status <- Building cancel;
     t.cancel <- cancel;
     let* res = step in
-    match t.status with
-    | Standing_by ->
+    if Memo.Invalidation.is_empty t.invalidation
+    then (
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
       t.handler t.config (Build_finish res);
-      Fiber.return res
-    | Restarting_build -> poll_iter t step
-    | Building _ ->
-      let res : Build_outcome.t =
-        match res with
-        | Error `Already_reported -> Failure
-        | Ok () -> Success
-      in
-      t.status <- Standing_by;
-      t.handler t.config (Build_finish res);
-      Fiber.return res
+      Fiber.return res)
+    else poll_iter t step
   ;;
 
   let poll_iter t step =

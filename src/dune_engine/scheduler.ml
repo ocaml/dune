@@ -1015,9 +1015,11 @@ end = struct
         match t.status with
         | Not_building -> []
         | Building cancellation ->
-          t.handler t.config Build_interrupted;
-          t.status <- Not_building;
-          Fiber.Cancel.fire' cancellation
+          if Fiber.Cancel.fired cancellation
+          then []
+          else (
+            t.handler t.config Build_interrupted;
+            Fiber.Cancel.fire' cancellation)
       in
       let fills = Trigger.trigger t.build_inputs_changed @ fills in
       match Nonempty_list.of_list fills with
@@ -1118,6 +1120,7 @@ module Run = struct
     t.status <- Building cancel;
     t.cancel <- cancel;
     let* res = step in
+    t.status <- Not_building;
     if Memo.Invalidation.is_empty t.invalidation
     then (
       let res : Build_outcome.t =
@@ -1285,9 +1288,11 @@ let cancel_current_build () =
   match t.status with
   | Not_building -> Fiber.return ()
   | Building cancellation ->
-    t.handler t.config Build_interrupted;
-    t.status <- Not_building;
-    Fiber.Cancel.fire cancellation
+    if Fiber.Cancel.fired cancellation
+    then Fiber.return ()
+    else (
+      t.handler t.config Build_interrupted;
+      Fiber.Cancel.fire cancellation)
 ;;
 
 let inject_memo_invalidation invalidation =

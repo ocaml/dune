@@ -666,14 +666,8 @@ end = struct
 end
 
 type status =
-  | (* We are not doing a build. Just accumulating invalidations until the next
-       build starts. *)
-    Standing_by
-  | (* Running a build *)
-    Building of Fiber.Cancel.t
-  | (* Cancellation requested. Build jobs are immediately rejected in this
-       state *)
-    Restarting_build
+  | Not_building
+  | Building of Fiber.Cancel.t
 
 module Build_outcome = struct
   type t =
@@ -1019,10 +1013,10 @@ end = struct
       t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
       let fills =
         match t.status with
-        | Restarting_build | Standing_by -> []
+        | Not_building -> []
         | Building cancellation ->
           t.handler t.config Build_interrupted;
-          t.status <- Restarting_build;
+          t.status <- Not_building;
           Fiber.Cancel.fire' cancellation
       in
       let fills = Trigger.trigger t.build_inputs_changed @ fills in
@@ -1138,8 +1132,8 @@ module Run = struct
 
   let poll_iter t step =
     match t.status with
-    | Building _ | Restarting_build -> assert false
-    | Standing_by -> poll_iter t step
+    | Building _ -> assert false
+    | Not_building -> poll_iter t step
   ;;
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
@@ -1150,7 +1144,7 @@ module Run = struct
       match t.status with
       | Building _ -> true
       | _ -> false);
-    t.status <- Standing_by;
+    t.status <- Not_building;
     t
   ;;
 
@@ -1289,10 +1283,10 @@ let shutdown () =
 let cancel_current_build () =
   let* t = t () in
   match t.status with
-  | Restarting_build | Standing_by -> Fiber.return ()
+  | Not_building -> Fiber.return ()
   | Building cancellation ->
     t.handler t.config Build_interrupted;
-    t.status <- Standing_by;
+    t.status <- Not_building;
     Fiber.Cancel.fire cancellation
 ;;
 

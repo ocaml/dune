@@ -819,7 +819,6 @@ type t =
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
   ; mutable build_inputs_changed : Trigger.t
-  ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t
   }
 
@@ -838,14 +837,14 @@ let running_jobs_count t = Event.Queue.pending_jobs t.events
 exception Build_cancelled
 
 let cancelled () = raise (Memo.Non_reproducible Build_cancelled)
-let check_cancelled t = if Fiber.Cancel.fired t.cancel then cancelled ()
+let check_cancelled cancel = if Fiber.Cancel.fired cancel then cancelled ()
 
 let check_point =
   t_opt ()
   >>= function
   | None -> Fiber.return ()
   | Some t ->
-    (* CR-someday amokhov: we used to call [check_cancelled t] here but that led
+    (* CR-someday amokhov: we used to call [check_cancelled] here but that led
        to a significant performance regression. Raising [Build_cancelled] saves
        some unnecessary recomputation but also destroys early cutoffs. We should
        change Memo to store previous successes to make such early cancellations
@@ -857,9 +856,13 @@ let () = Memo.check_point := check_point
 
 let with_job_slot f =
   let* t = t () in
-  Fiber.Throttle.run t.job_throttle ~f:(fun () ->
-    check_cancelled t;
-    f t.cancel t.config)
+  match t.status with
+  | Not_building ->
+    Code_error.raise "Cannot schedule build job unless there is a build running." []
+  | Building cancel ->
+    Fiber.Throttle.run t.job_throttle ~f:(fun () ->
+      check_cancelled cancel;
+      f cancel t.config)
 ;;
 
 let wait_for_process t pid =
@@ -875,18 +878,22 @@ type termination_reason =
 (* We use this version privately in this module whenever we can pass the
    scheduler explicitly *)
 let wait_for_build_process t pid =
-  let+ res, outcome =
-    Fiber.Cancel.with_handler
-      t.cancel
-      ~on_cancel:(fun () ->
-        Process_watcher.killall t.process_watcher Sys.sigkill;
-        Fiber.return ())
-      (fun () -> wait_for_process t pid)
-  in
-  ( res
-  , match outcome with
-    | Cancelled () -> Cancel
-    | Not_cancelled -> Normal )
+  match t.status with
+  | Not_building ->
+    Code_error.raise "Cannot wait for build process when there is no build running." []
+  | Building cancel ->
+    let+ res, outcome =
+      Fiber.Cancel.with_handler
+        cancel
+        ~on_cancel:(fun () ->
+          Process_watcher.killall t.process_watcher Sys.sigkill;
+          Fiber.return ())
+        (fun () -> wait_for_process t pid)
+    in
+    ( res
+    , (match outcome with
+       | Cancelled () -> Cancel
+       | Not_cancelled -> Normal) )
 ;;
 
 let got_shutdown reason =
@@ -944,7 +951,6 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
   ; build_inputs_changed = Trigger.create ()
   ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
-  ; cancel
   ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
   }
 ;;
@@ -1116,9 +1122,7 @@ module Run = struct
       Memo.reset t.invalidation;
       t.invalidation <- Memo.Invalidation.empty;
       t.build_inputs_changed <- Trigger.create ());
-    let cancel = Fiber.Cancel.create () in
-    t.status <- Building cancel;
-    t.cancel <- cancel;
+    t.status <- Building (Fiber.Cancel.create ());
     let* res = step in
     t.status <- Not_building;
     if Memo.Invalidation.is_empty t.invalidation

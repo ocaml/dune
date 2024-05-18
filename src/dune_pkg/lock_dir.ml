@@ -217,6 +217,10 @@ module Pkg = struct
       ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]
   ;;
+
+  let files_dir package_name ~lock_dir =
+    Path.Source.relative lock_dir (Package_name.to_string package_name ^ ".files")
+  ;;
 end
 
 module Repositories = struct
@@ -521,8 +525,8 @@ module Write_disk = struct
 
   type t = unit -> unit
 
-  let prepare ~lock_dir_path ~files lock_dir =
-    let lock_dir_path = Path.source lock_dir_path in
+  let prepare ~lock_dir_path:lock_dir_path_src ~files lock_dir =
+    let lock_dir_path = Path.source lock_dir_path_src in
     let remove_dir_if_exists = safely_remove_lock_dir_if_exists_thunk lock_dir_path in
     fun () ->
       remove_dir_if_exists ();
@@ -535,11 +539,13 @@ module Write_disk = struct
           List.map contents ~f:(fun sexp ->
             Dune_sexp.Ast.add_loc ~loc:Loc.none sexp |> Dune_sexp.Cst.concrete)
         in
+        (* TODO the version should be chosen based on the version of the lock
+           directory we're outputting *)
         let pp = Dune_lang.Format.pp_top_sexps ~version:(3, 11) cst in
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
         Package_name.Map.iteri files ~f:(fun package_name files ->
           let files_dir =
-            Path.relative lock_dir_path (Package_name.to_string package_name ^ ".files")
+            Pkg.files_dir package_name ~lock_dir:lock_dir_path_src |> Path.source
           in
           Path.mkdir_p files_dir;
           List.iter files ~f:(fun { File_entry.original; local_file } ->

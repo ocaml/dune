@@ -206,25 +206,30 @@ module DB = struct
     | Project of
         { project : Dune_project.t
         ; lib_id : Lib_id.Local.t
+        ; enabled : Toggle.t Memo.t
         ; loc : Loc.t
         }
     | Name of (Loc.t * Lib_name.t)
 
   (* Create a database from the public libraries defined in the stanzas *)
   let public_libs =
-    let public_loc_of_redirect_to = function
-      | Project { loc; _ } | Name (loc, _) -> loc
-    in
     let resolve_redirect_to t rt =
       match rt with
-      | Project { project; lib_id; _ } ->
-        let scope = find_by_project (Fdecl.get t) project in
-        Lib.DB.Resolve_result.redirect_by_id scope.db (Local lib_id)
-      | Name name -> Lib.DB.Resolve_result.redirect_in_the_same_db name
+      | Project { project; lib_id; enabled; _ } ->
+        let+ enabled =
+          let+ toggle = enabled in
+          Toggle.enabled toggle
+        in
+        if enabled
+        then (
+          let scope = find_by_project (Fdecl.get t) project in
+          Lib.DB.Resolve_result.redirect_by_id scope.db (Local lib_id))
+        else Lib.DB.Resolve_result.not_found
+      | Name name -> Memo.return (Lib.DB.Resolve_result.redirect_in_the_same_db name)
     in
-    let resolve_lib_id t public_libs lib_id : Lib.DB.Resolve_result.t =
+    let resolve_lib_id t public_libs lib_id =
       match Lib_id.Map.find public_libs lib_id with
-      | None -> Lib.DB.Resolve_result.not_found
+      | None -> Memo.return Lib.DB.Resolve_result.not_found
       | Some rt -> resolve_redirect_to t rt
     in
     fun t ~installed_libs ~lib_config stanzas ->
@@ -246,9 +251,15 @@ module DB = struct
                   in
                   Library.to_lib_id ~src_dir conf
                 in
+                let enabled =
+                  Memo.lazy_ (fun () ->
+                    let* expander = Expander0.get ~dir in
+                    Expander0.eval_blang expander conf.enabled_if >>| Toggle.of_bool)
+                  |> Memo.Lazy.force
+                in
                 Some
                   ( Public_lib.name p
-                  , Project { project; lib_id; loc = Public_lib.loc p }
+                  , Project { project; lib_id; enabled; loc = Public_lib.loc p }
                   , Some lib_id )
               | Library _ | Library_redirect _ -> None
               | Deprecated_library_name s ->
@@ -260,31 +271,8 @@ module DB = struct
             | Some (public_name, r2, lib_id2) ->
               let by_name =
                 Lib_name.Map.update by_name public_name ~f:(function
-                  | None -> Some r2
-                  | Some r1 ->
-                    let loc1 = public_loc_of_redirect_to r1
-                    and loc2 = public_loc_of_redirect_to r2 in
-                    let main_message =
-                      Pp.textf
-                        "Public library %s is defined twice:"
-                        (Lib_name.to_string public_name)
-                    in
-                    let annots =
-                      let main = User_message.make ~loc:loc2 [ main_message ] in
-                      let related =
-                        [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
-                      in
-                      User_message.Annots.singleton
-                        Compound_user_error.annot
-                        [ Compound_user_error.make ~main ~related ]
-                    in
-                    User_error.raise
-                      ~annots
-                      ~loc:loc2
-                      [ main_message
-                      ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-                      ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-                      ])
+                  | None -> Some [ r2 ]
+                  | Some r1 -> Some (r2 :: r1))
               in
               let by_id =
                 match lib_id2 with
@@ -293,12 +281,11 @@ module DB = struct
               in
               by_name, by_id)
       in
-      let resolve_lib_id lib_id = Memo.return (resolve_lib_id t by_id lib_id) in
+      let resolve_lib_id lib_id = resolve_lib_id t by_id lib_id in
       let resolve name =
-        Memo.return
-          (match Lib_name.Map.find by_name name with
-           | None -> []
-           | Some rt -> [ resolve_redirect_to t rt ])
+        match Lib_name.Map.find by_name name with
+        | None -> Memo.return []
+        | Some rt -> Memo.List.map ~f:(resolve_redirect_to t) rt
       in
       Lib.DB.create
         ~parent:(Some installed_libs)
@@ -473,15 +460,22 @@ module DB = struct
              | Some lib ->
                let name = Package.name pkg in
                (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Library.T { visibility = Public pub; _ } ->
-            let+ lib = Lib.DB.find public_libs (Public_lib.name pub) in
+          | Library.T { visibility = Public pub; enabled_if; _ } ->
+            let* lib = Lib.DB.find public_libs (Public_lib.name pub) in
             (match lib with
-             | None -> acc
+             | None -> Memo.return acc
              | Some lib ->
-               let package = Public_lib.package pub in
-               let name = Package.name package in
-               let local_lib = Lib.Local.of_lib_exn lib in
-               (name, Lib_entry.Library local_lib) :: acc)
+               let+ enabled =
+                 let* expander = Expander0.get ~dir:build_dir in
+                 Expander0.eval_blang expander enabled_if
+               in
+               if not enabled
+               then acc
+               else (
+                 let package = Public_lib.package pub in
+                 let name = Package.name package in
+                 let local_lib = Lib.Local.of_lib_exn lib in
+                 (name, Lib_entry.Library local_lib) :: acc))
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

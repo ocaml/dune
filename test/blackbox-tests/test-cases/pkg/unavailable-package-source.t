@@ -16,9 +16,9 @@ Demonstrate what happens when we try to fetch from a source that doesn't exist:
 Local file system
   $ runtest "(copy \"$PWD/dummy\")" 2>&1 | sed "s#$(pwd)#PWD#" | sed '/ *^\^*$/d' | sed '\#^File "dune.lock/foo.pkg", line 2, characters#d'
   2 | (source (copy "PWD/dummy"))
-  Error: Unable to read
+  Error:
   PWD/dummy
-  opendir(PWD/dummy): No such file or directory
+  does not exist
 
 Git
   $ runtest "(fetch (url \"git+file://$PWD/dummy\"))" 2>&1 | sed "s#$(pwd)#PWD#"

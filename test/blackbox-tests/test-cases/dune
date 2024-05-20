@@ -123,7 +123,7 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to link-time-transitive-deps)
+ (applies_to link-time-transitive-deps dune-build-info-subdir)
  (deps
   (package dune-build-info)))
 

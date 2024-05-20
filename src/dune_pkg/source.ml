@@ -1,48 +1,34 @@
 open Import
 
-type fetch =
+type t =
   { url : Loc.t * OpamUrl.t
   ; checksum : (Loc.t * Checksum.t) option
   }
 
-type t =
-  | External_copy of Loc.t * Path.External.t
-  | Fetch of fetch
-
-let remove_locs = function
-  | External_copy (_loc, path) -> External_copy (Loc.none, path)
-  | Fetch { url = _loc, url; checksum } ->
-    Fetch
-      { url = Loc.none, url
-      ; checksum = Option.map checksum ~f:(fun (_loc, checksum) -> Loc.none, checksum)
-      }
+let remove_locs { url = _loc, url; checksum } =
+  { url = Loc.none, url
+  ; checksum = Option.map checksum ~f:(fun (_loc, checksum) -> Loc.none, checksum)
+  }
 ;;
 
-let equal a b =
-  match a, b with
-  | External_copy (loc, path), External_copy (other_loc, other_path) ->
-    Loc.equal loc other_loc && Path.External.equal path other_path
-  | ( Fetch { url = loc, url; checksum }
-    , Fetch { url = other_loc, other_url; checksum = other_checksum } ) ->
-    Loc.equal loc other_loc
-    && OpamUrl.equal url other_url
-    && Option.equal
-         (fun (loc, checksum) (other_loc, other_checksum) ->
-           Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
-         checksum
-         other_checksum
-  | _ -> false
+let equal
+  { url = loc, url; checksum }
+  { url = other_loc, other_url; checksum = other_checksum }
+  =
+  Loc.equal loc other_loc
+  && OpamUrl.equal url other_url
+  && Option.equal
+       (fun (loc, checksum) (other_loc, other_checksum) ->
+         Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
+       checksum
+       other_checksum
 ;;
 
-let to_dyn = function
-  | External_copy (_loc, path) ->
-    Dyn.variant "External_copy" [ Path.External.to_dyn path ]
-  | Fetch { url = _loc, url; checksum } ->
-    Dyn.variant
-      "Fetch"
-      [ Dyn.string (OpamUrl.to_string url)
-      ; Dyn.option (fun (_loc, checksum) -> Checksum.to_dyn checksum) checksum
-      ]
+let to_dyn { url = _loc, url; checksum } =
+  Dyn.record
+    [ "url", Dyn.string (OpamUrl.to_string url)
+    ; "checksum", Dyn.option (fun (_loc, checksum) -> Checksum.to_dyn checksum) checksum
+    ]
 ;;
 
 let fetch_and_hash_archive_cached =
@@ -68,7 +54,7 @@ let fetch_and_hash_archive_cached =
       None
 ;;
 
-let compute_missing_checksum_of_fetch
+let compute_missing_checksum
   ({ url = url_loc, url; checksum } as fetch)
   package_name
   ~pinned
@@ -98,15 +84,6 @@ let compute_missing_checksum_of_fetch
     >>| Option.value ~default:fetch
 ;;
 
-let compute_missing_checksum t package_name ~pinned =
-  let open Fiber.O in
-  match t with
-  | External_copy _ -> Fiber.return t
-  | Fetch fetch ->
-    let+ fetch = compute_missing_checksum_of_fetch fetch package_name ~pinned in
-    Fetch fetch
-;;
-
 module Fields = struct
   let copy = "copy"
   let fetch = "fetch"
@@ -128,20 +105,27 @@ let decode_fetch =
   { url = url_loc, url; checksum }
 ;;
 
+let external_copy (loc, path) =
+  let path = Path.External.to_string path in
+  let url : OpamUrl.t = { transport = "file"; path; hash = None; backend = `rsync } in
+  { url = loc, url; checksum = None }
+;;
+
 let decode =
   let open Decoder in
   sum
     [ ( Fields.copy
       , located string
         >>| fun (loc, source) path ->
-        External_copy
-          ( loc
-          , if Filename.is_relative source
-            then Path.External.relative path source
-            else Path.External.of_string source ) )
+        let path =
+          if Filename.is_relative source
+          then Path.External.relative path source
+          else Path.External.of_string source
+        in
+        external_copy (loc, path) )
     ; ( Fields.fetch
       , let+ fetch = fields decode_fetch in
-        fun _ -> Fetch fetch )
+        fun _ -> fetch )
     ]
 ;;
 
@@ -154,7 +138,12 @@ let encode_fetch_field { url = _loc, url; checksum } =
 
 let encode t =
   let open Encoder in
-  match t with
-  | External_copy (_loc, path) -> constr Fields.copy string (Path.External.to_string path)
-  | Fetch fetch -> named_record_fields Fields.fetch (encode_fetch_field fetch)
+  named_record_fields Fields.fetch (encode_fetch_field t)
+;;
+
+let kind t =
+  let _, url = t.url in
+  if OpamUrl0.is_local url && url.backend = `rsync
+  then `Directory_or_archive (Path.External.of_string url.path)
+  else `Fetch
 ;;

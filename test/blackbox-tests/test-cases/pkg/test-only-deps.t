@@ -90,8 +90,14 @@ is run with with-test=true so the dependency won't even be in the lockdir.
   - bar.0.0.1
   - c.0.0.1
   $ dune describe pkg list-locked-dependencies
-  Error: Unable to find dependencies of package "local_1" in lockdir when the
-  solver variable 'with_test' is set to 'false':
+  File "dune-project", lines 2-6, characters 0-71:
+  2 | (package
+  3 |  (name local_1)
+  4 |  (depends
+  5 |   (foo (= :with-test false))
+  6 |   bar))
+  The dependencies of local package "local_1" could not be satisfied from the
+  lockdir when the solver variable 'with_test' is set to 'false':
   Package "foo" is missing
   [1]
 Test that we can detect the case where a local package depends on some package
@@ -112,8 +118,14 @@ incompatible version of the dependency will be in the lockdir.
   - bar.0.0.1
   - c.0.0.1
   $ dune describe pkg list-locked-dependencies
-  Error: Unable to find dependencies of package "local_1" in lockdir when the
-  solver variable 'with_test' is set to 'false':
+  File "dune-project", lines 2-6, characters 0-90:
+  2 | (package
+  3 |  (name local_1)
+  4 |  (depends
+  5 |   (a (or (= 0.0.1) (and :with-test (= 0.0.2))))
+  6 |   bar))
+  The dependencies of local package "local_1" could not be satisfied from the
+  lockdir when the solver variable 'with_test' is set to 'false':
   Found version "0.0.2" of package "a" which doesn't satisfy the required
   version constraint "= 0.0.1"
   [1]

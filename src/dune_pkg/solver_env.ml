@@ -53,7 +53,6 @@ let with_defaults =
   [ ( Package_variable_name.opam_version
     , OpamVersion.to_string OpamVersion.current |> Variable_value.string )
   ; Package_variable_name.with_doc, Variable_value.false_
-  ; Package_variable_name.with_dev_setup, Variable_value.false_
   ]
   |> List.fold_left ~init:empty ~f:(fun acc (name, value) -> set acc name value)
 ;;

@@ -16,7 +16,6 @@ val extend : t -> t -> t
 
 (** A [t] with default values for some variables:
     - "with-doc" is set to "false"
-    - "with-dev-setup" is set to "false"
     - "opam-version" is set to the version of opam vendored in dune *)
 val with_defaults : t
 

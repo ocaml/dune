@@ -185,6 +185,10 @@ module Version = struct
 
   let bin_dir t = Path.Outside_build_dir.relative (target_dir t) "bin"
   let is_installed t = Path.exists (Path.outside_build_dir (target_dir t))
+
+  let flock_path t =
+    Path.Outside_build_dir.relative (toolchain_dir t) "lock" |> Path.outside_build_dir
+  ;;
 end
 
 let handle_checksum_mismatch { Compiler_package.version; url; checksum } ~got_checksum =
@@ -289,18 +293,17 @@ let get ~log version =
     | `Never -> ()
     | _ -> User_message.print (User_message.make [ Pp.tag style pp ])
   in
-  if Version.is_installed version
-  then (
-    (match log with
-     | `Always ->
-       log_print Success
-       @@ Pp.textf
-            "Version %s of the compiler toolchain is already installed in %s"
-            (Version.to_string version)
-            (Version.target_dir version |> Path.Outside_build_dir.to_string)
-     | _ -> ());
-    Fiber.return ())
-  else (
+  let print_already_installed_message () =
+    match log with
+    | `Always ->
+      log_print Success
+      @@ Pp.textf
+           "Version %s of the compiler toolchain is already installed in %s"
+           (Version.to_string version)
+           (Version.target_dir version |> Path.Outside_build_dir.to_string)
+    | _ -> ()
+  in
+  let download_build_install () =
     let compiler_package = Compiler_package.of_version version in
     log_print Details
     @@ Pp.textf
@@ -319,5 +322,40 @@ let get ~log version =
     @@ Pp.textf
          "Success! Compiler toolchain version %s installed to %s."
          (Version.to_string version)
-         (Version.target_dir version |> Path.Outside_build_dir.to_string))
+         (Version.target_dir version |> Path.Outside_build_dir.to_string)
+  in
+  if Version.is_installed version
+  then (
+    print_already_installed_message ();
+    Fiber.return ())
+  else
+    Flock.with_flock
+      (Version.flock_path version)
+      ~name_for_messages:(sprintf "toolchain version %s" (Version.to_string version))
+      ~timeout_s:infinity
+      ~f:(fun () ->
+        (* Note that we deliberately check if the toolchain is
+           installed before and after taking the flock.
+
+           The first check prevents us from trying to take the lock if
+           the toolchain is installed. To build any package dune first
+           checks if the necessary toolchain is installed, so to build
+           a project with many dependencies, dune will check if the
+           toolchain is installed many times. If this check required
+           first taking a lock, multiple concurrent dune instances
+           would sometimes contest the lock. This isn't too bad for
+           performance as the lock is only held briefly, but when dune
+           waits on a flock it prints a message, so freqeunt, brief
+           lock acquisitions can lead to a lot of noise in the
+           output.
+
+           The second check is to handle the case where the toolchain
+           was installed in between the first check, and the flock
+           being acquired.
+        *)
+        if Version.is_installed version
+        then (
+          print_already_installed_message ();
+          Fiber.return ())
+        else download_build_install ())
 ;;

@@ -14,6 +14,7 @@ module Emit = struct
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; runtime_deps : Loc.t * Dep_conf.t list
     ; preprocessor_deps : Dep_conf.t list
+    ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; promote : Rule.Promote.t option
     ; compile_flags : Ordered_set_lang.Unexpanded.t
     ; allow_overlapping_dependencies : bool
@@ -108,6 +109,7 @@ module Emit = struct
            (located (repeat Dep_conf.decode_no_files))
            ~default:(loc, [])
        and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
+       and+ lint = field "lint" Lint.decode ~default:Lint.default
        and+ promote = field_o "promote" Rule_mode_decoder.Promote.decode
        and+ instrumentation = Preprocess.Instrumentation.instrumentation
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
@@ -137,6 +139,7 @@ module Emit = struct
        ; preprocess
        ; runtime_deps
        ; preprocessor_deps
+       ; lint
        ; promote
        ; compile_flags
        ; allow_overlapping_dependencies

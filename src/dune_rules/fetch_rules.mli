@@ -8,8 +8,7 @@ val context : Build_context.t
 val fetch
   :  target:Path.Build.t
   -> [ `File | `Directory ]
-  -> Loc.t * OpamUrl.t
-  -> (Loc.t * Dune_pkg.Checksum.t) option
+  -> Dune_pkg.Source.t
   -> Action.Full.t With_targets.t
 
 val gen_rules

@@ -14,6 +14,8 @@ included.
   > EOF
   $ mkpkg doc <<EOF
   > EOF
+  $ mkpkg dev-setup <<EOF
+  > EOF
 
 Note that dune solves packages with with-doc and with-dev-setup always set to false, so
 documentation-only deps are omitted from the solution.

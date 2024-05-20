@@ -286,8 +286,7 @@ let setup_emit_cmj_rules
           (Melange
              { preprocess = mel.preprocess
              ; preprocessor_deps = mel.preprocessor_deps
-             ; (* TODO still needed *)
-               lint = Preprocess.Per_module.default ()
+             ; lint = mel.lint
              ; (* why is this always false? *)
                empty_module_interface_if_absent = false
              })

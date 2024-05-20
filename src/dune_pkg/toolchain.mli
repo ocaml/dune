@@ -8,6 +8,8 @@ module Compiler_package : sig
       used instead. *)
   val package_names : Package_name.t list
 
+  val is_compiler_package_by_name : Package_name.t -> bool
+
   (** Constraint to apply to the dependency solver to guarantee a
       solution that's includes a version of a compiler package that's
       supported by dune toolchains. *)

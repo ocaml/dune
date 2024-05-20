@@ -9,6 +9,7 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
+  module Toolchain = Dune_pkg.Toolchain
 end
 
 module Variable = struct
@@ -152,6 +153,7 @@ module Value_list_env = struct
 
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
+  let global () = of_env (Global.env ())
 
   (* Concatenate a list of values in the style of lists found in
      environment variables, such as PATH *)
@@ -200,7 +202,7 @@ module Value_list_env = struct
      variable in the environment. *)
   let add_toolchain_bin_dir_to_path t toolchain_version =
     let toolchain_bin_dir =
-      Dune_pkg.Toolchain.Version.bin_dir toolchain_version |> Path.outside_build_dir
+      Toolchain.Version.bin_dir toolchain_version |> Path.outside_build_dir
     in
     add_path t Env_path.var toolchain_bin_dir
   ;;
@@ -264,6 +266,7 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; direct_toolchain_dependency : Toolchain.Version.t option
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
@@ -361,38 +364,11 @@ module Pkg = struct
       List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
-  let name_is_compiler name =
-    List.exists
-      ~f:(Dune_pkg.Package_name.equal name)
-      Dune_pkg.Toolchain.Compiler_package.package_names
-  ;;
-
-  let is_compiler t = name_is_compiler t.info.name
-
-  (* If this package is a compiler whose version is supported by dune
-     toolchains then returns the toolchain version, otherwise returns
-     None. *)
-  let as_compiler_with_version_in_toolchain_dir t =
-    if is_compiler t
-    then Dune_pkg.Toolchain.Version.of_package_version t.info.version
-    else None
-  ;;
-
-  let is_compiler_with_version_in_toolchain_dir t =
-    Option.is_some (as_compiler_with_version_in_toolchain_dir t)
-  ;;
-
-  (* Returns the version of the compiler toolchain dependen on by this
+  (* Returns the version of the compiler toolchain depended on by this
      package if any. *)
   let compiler_toolchain_version t =
-    let module Toolchain = Dune_pkg.Toolchain in
-    if is_compiler t
-    then Toolchain.Version.of_package_version t.info.version
-    else
-      List.find_map (deps_closure t) ~f:(fun pkg ->
-        if is_compiler pkg
-        then Toolchain.Version.of_package_version pkg.info.version
-        else None)
+    List.find_map (deps_closure t) ~f:(fun { direct_toolchain_dependency; _ } ->
+      direct_toolchain_dependency)
   ;;
 
   (* If there is a compiler package in the dependency closure of this
@@ -402,8 +378,7 @@ module Pkg = struct
     match compiler_toolchain_version t with
     | Some toolchain_version ->
       let+ () =
-        Memo.of_reproducible_fiber
-        @@ Dune_pkg.Toolchain.get ~log:`Install_only toolchain_version
+        Memo.of_reproducible_fiber @@ Toolchain.get ~log:`Install_only toolchain_version
       in
       Value_list_env.add_toolchain_bin_dir_to_path env toolchain_version
     | _ -> Memo.return env
@@ -440,8 +415,6 @@ module Pkg = struct
        programs or build tools (e.g. NixOS). *)
     Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
-
-  let exported_env t = Value_list_env.to_env @@ exported_value_env t
 end
 
 module Pkg_installed = struct
@@ -1105,30 +1078,19 @@ module Action_expander = struct
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
-    then
-      (* Ignore the build command of compiler packages supported by
-         dune toolchains. *)
-      None
-    else
-      Option.map pkg.build_command ~f:(function
-        | Action action -> expand context pkg action
-        | Dune ->
-          (* CR-rgrinberg: respect [dune subst] settings. *)
-          Command.run_dyn_prog
-            (Action_builder.of_memo (dune_exe context))
-            ~dir:(Path.build pkg.paths.source_dir)
-            [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
-          |> Memo.return)
+    Option.map pkg.build_command ~f:(function
+      | Action action -> expand context pkg action
+      | Dune ->
+        (* CR-rgrinberg: respect [dune subst] settings. *)
+        Command.run_dyn_prog
+          (Action_builder.of_memo (dune_exe context))
+          ~dir:(Path.build pkg.paths.source_dir)
+          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+        |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    if Pkg.is_compiler_with_version_in_toolchain_dir pkg
-    then
-      (* Ignore the install command of compiler packages supported by
-         dune toolchains. *)
-      None
-    else Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
@@ -1164,7 +1126,11 @@ module rec Resolve : sig
     :  DB.t
     -> Context_name.t
     -> Loc.t * Package.Name.t
-    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
+    -> [ `Inside_lock_dir of Pkg.t
+       | `System_provided
+       | `Toolchain of Toolchain.Version.t
+       ]
+         Memo.t
 end = struct
   open Resolve
 
@@ -1173,38 +1139,62 @@ end = struct
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db ctx name
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
-      and+ files_dir =
-        let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
-        Path.Build.append_source
-          (Context_name.build_dir ctx)
-          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
+      let is_toolchain_package =
+        Toolchain.Compiler_package.is_compiler_package_by_name name
       in
-      let id = Pkg.Id.gen () in
-      let paths = Paths.make name ctx in
-      let t =
-        { Pkg.id
-        ; build_command
-        ; install_command
-        ; depends
-        ; paths
-        ; info
-        ; files_dir
-        ; exported_env = []
-        }
-      in
-      let+ exported_env =
-        let* expander = Action_expander.expander ctx t in
-        Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
-      in
-      t.exported_env <- exported_env;
-      Some t
+      (match Toolchain.Version.of_package_version info.version with
+       | Some package_version when is_toolchain_package ->
+         Memo.return (Some (`Toolchain package_version))
+       | _ ->
+         let* depends, direct_toolchain_dependencies =
+           Memo.parallel_map depends ~f:(fun name ->
+             resolve db ctx name
+             >>| function
+             | `Inside_lock_dir pkg -> List.Left pkg
+             | `Toolchain toolchain_version -> Right (toolchain_version, name)
+             | `System_provided -> Skip)
+           >>| List.filter_partition_map ~f:Fun.id
+         and+ files_dir =
+           let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+           Path.Build.append_source
+             (Context_name.build_dir ctx)
+             (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
+         in
+         let id = Pkg.Id.gen () in
+         let paths = Paths.make name ctx in
+         let direct_toolchain_dependency =
+           match direct_toolchain_dependencies with
+           | [] -> None
+           | [ (direct_toolchain_dependency, _name) ] -> Some direct_toolchain_dependency
+           | (_, (first_loc, _)) :: _ as many ->
+             User_error.raise
+               ~loc:first_loc
+               [ Pp.textf
+                   "Package %S depends on multiple compiler packages: %s"
+                   (Package.Name.to_string name)
+                   (List.map many ~f:(fun (_toolchain_version, (_loc, package_name)) ->
+                      Package.Name.to_string package_name)
+                    |> String.enumerate_and)
+               ]
+         in
+         let t =
+           { Pkg.id
+           ; build_command
+           ; install_command
+           ; depends
+           ; direct_toolchain_dependency
+           ; paths
+           ; info
+           ; files_dir
+           ; exported_env = []
+           }
+         in
+         let+ exported_env =
+           let* expander = Action_expander.expander ctx t in
+           Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
+         in
+         t.exported_env <- exported_env;
+         Some (`Inside_lock_dir t))
   ;;
 
   let resolve =
@@ -1230,7 +1220,7 @@ end = struct
       else
         Memo.exec memo (db, ctx, name)
         >>| function
-        | Some s -> `Inside_lock_dir s
+        | Some s -> s
         | None ->
           User_error.raise
             ~loc
@@ -1566,40 +1556,6 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
-(* Action which creates a fake package source in place of a compiler
-   package for use when a compiler from the toolchains directory will be
-   used instead of taking the compiler from a regular opam package. *)
-let make_dummy_compiler_package_source (pkg : Pkg.t) version target =
-  Action.progn
-    [ Action.mkdir target
-    ; Action.with_stdout_to
-        (Path.Build.relative target "debug_hint.txt")
-        (Action.echo
-           [ sprintf
-               "This file was created as a hint to people debugging issues with dune \
-                package management.\n\
-                This project attempted to download and build the compiler package: %s.%s\n\
-                Instead of using the complier package, dune is using the compiler \
-                toolchain installed at: %s"
-               (Dune_pkg.Package_name.to_string pkg.info.name)
-               (Dune_pkg.Package_version.to_string pkg.info.version)
-               (Dune_pkg.Toolchain.Version.toolchain_dir version
-                |> Path.Outside_build_dir.to_string)
-           ])
-    ; (* TODO: it doesn't seem like it should be necessary to generate
-         this file but without it dune complains *)
-      Action.with_stdout_to
-        (Path.Build.relative target "config.cache")
-        (Action.echo
-           [ "Dummy file created to placate dune's package installation rules. See the \
-              debug_hint.txt file for more information."
-           ])
-    ]
-  |> Action.Full.make
-  |> Action_builder.With_targets.return
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
-;;
-
 let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
@@ -1609,14 +1565,7 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch =
-           match Pkg.as_compiler_with_version_in_toolchain_dir pkg with
-           | Some version ->
-             (* Don't download the source of compiler packages supported
-                by dune toolchains. *)
-             make_dummy_compiler_package_source pkg version pkg.paths.source_dir
-           | None -> Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source
-         in
+         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
          Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
@@ -1654,8 +1603,9 @@ let source_rules (pkg : Pkg.t) =
 
 module Compiler_dependency = struct
   type t =
+    | Toolchain of Toolchain.Version.t
     (* The lockdir specifies a compiler dependency as a package. *)
-    | Pkg of Pkg.t
+    | Inside_lock_dir of Pkg.t
     (* The lockdir specifies that the system compiler toolchain will
        be used rather than one managed by dune. *)
     | System_provided
@@ -1674,35 +1624,33 @@ module Compiler_dependency = struct
     | Some ocaml ->
       let+ toolchain_pkg = Resolve.resolve db context ocaml in
       (match toolchain_pkg with
+       | `Toolchain toolchain_version -> Toolchain toolchain_version
        | `System_provided -> System_provided
-       | `Inside_lock_dir pkg -> Pkg pkg)
+       | `Inside_lock_dir pkg -> Inside_lock_dir pkg)
   ;;
 
   let toolchain_version = function
+    | Toolchain toolchain_version -> Some toolchain_version
+    | Inside_lock_dir pkg ->
+      User_warning.emit
+        ~hints:
+          [ Pp.textf
+              "Supported versions of the compiler toolchain are: %s"
+              (List.map Toolchain.Version.all ~f:Toolchain.Version.to_string
+               |> String.enumerate_and)
+          ]
+        [ Pp.textf
+            "Project depends on version %s of the compiler toolchain, which is not \
+             supported by dune. Dune will attempt to use a compiler toolchain from your \
+             PATH."
+            (Package_version.to_string pkg.info.version)
+        ];
+      None
     | System_provided ->
       (* In this case it's expected that the user have the compiler
          toolchain in their PATH already *)
       None
-    | No_compiler_dependency -> Some Dune_pkg.Toolchain.Version.latest
-    | Pkg pkg ->
-      let module Toolchain = Dune_pkg.Toolchain in
-      let toolchain_version_opt = Toolchain.Version.of_package_version pkg.info.version in
-      if Option.is_none toolchain_version_opt
-      then
-        User_warning.emit
-          ~hints:
-            [ Pp.textf
-                "Supported versions of the compiler toolchain are: %s"
-                (List.map Toolchain.Version.all ~f:Toolchain.Version.to_string
-                 |> String.enumerate_and)
-            ]
-          [ Pp.textf
-              "Project depends on version %s of the compiler toolchain, which is not \
-               supported by dune. Dune will attempt to use a compiler toolchain from \
-               your PATH."
-              (Package_version.to_string pkg.info.version)
-          ];
-      toolchain_version_opt
+    | No_compiler_dependency -> Some Toolchain.Version.latest
   ;;
 
   let toolchain_version_ensure_installed t =
@@ -1710,8 +1658,7 @@ module Compiler_dependency = struct
     | None -> Memo.return None
     | Some toolchain_version ->
       let+ () =
-        Memo.of_reproducible_fiber
-        @@ Dune_pkg.Toolchain.get ~log:`Install_only toolchain_version
+        Memo.of_reproducible_fiber @@ Toolchain.get ~log:`Install_only toolchain_version
       in
       Some toolchain_version
   ;;
@@ -1837,6 +1784,13 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
+    | `Toolchain _ ->
+      User_error.raise
+        (* TODO loc, toolchain info *)
+        [ Pp.textf
+            "There are no rules for %S because it's provided by the toolchain"
+            (Package.Name.to_string name)
+        ]
     | `System_provided ->
       User_error.raise
         (* TODO loc *)
@@ -1893,7 +1847,9 @@ let ocaml_toolchain context =
   | Some toolchain_version ->
     let env =
       match compiler_dependency with
-      | Pkg pkg -> Env.extend_env (Global.env ()) (Pkg.exported_env pkg)
+      | Toolchain toolchain_version ->
+        Value_list_env.(
+          add_toolchain_bin_dir_to_path (global ()) toolchain_version |> to_env)
       | _ -> Global.env ()
     in
     Ocaml_toolchain.of_toolchain_version toolchain_version context env >>| Option.some
@@ -1907,7 +1863,7 @@ let all_packages context =
     Resolve.resolve db context (Loc.none, package)
     >>| function
     | `Inside_lock_dir pkg -> Some pkg
-    | `System_provided -> None)
+    | `System_provided | `Toolchain _ -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
 ;;
@@ -1961,7 +1917,7 @@ let find_package ctx pkg =
     let* db = DB.get ctx in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
-           | `System_provided -> Action_builder.return ()
+           | `System_provided | `Toolchain _ -> Action_builder.return ()
            | `Inside_lock_dir pkg ->
              let open Action_builder.O in
              let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in

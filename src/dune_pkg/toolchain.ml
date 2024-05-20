@@ -97,6 +97,10 @@ module Compiler_package = struct
     :: ([ "ocaml-system"; "ocaml-variants" ] |> List.map ~f:Package_name.of_string)
   ;;
 
+  let is_compiler_package_by_name name =
+    List.exists ~f:(Package_name.equal name) package_names
+  ;;
+
   let constraint_ =
     let open Dune_lang in
     let constraint_ =

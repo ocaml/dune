@@ -1,0 +1,40 @@
+name: Binaries
+
+on:
+  workflow_dispatch:
+
+jobs:
+  binary:
+    name: Create
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            name: mac-intel
+            installable: .#
+          - os: macos-14
+            name: mac-arm
+            installable: .#
+          - os: ubuntu-22.04
+            name: linux-intel
+            installable: .#
+          - os: ubuntu-22.04
+            name: linux-intel-static
+            installable: .#dune-static
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v22
+      - run: nix build ${{ matrix.installable }}
+      - uses: actions/upload-artifact@v4
+        with:
+          path: result/bin/dune
+          name: dune-${{ matrix.name }}
+  combine:
+    runs-on: ubuntu-latest
+    needs: binary
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          separate-directories: true

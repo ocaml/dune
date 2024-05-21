@@ -6,8 +6,7 @@ module Config : sig
   type t =
     { concurrency : int
     ; stats : Dune_stats.t option
-    ; insignificant_changes : [ `Ignore | `React ]
-    ; signal_watcher : [ `Yes | `No ]
+    ; print_ctrl_c_warning : bool
     ; watch_exclusions : string list
     }
 end
@@ -140,7 +139,7 @@ val shutdown : unit -> unit Fiber.t
     in that it stops the build early, but it is different because the [Run.go]
     call is allowed to complete its fiber. In this respect, the behavior is
     similar to what happens on file system events in polling mode. *)
-val stop_on_first_error : unit -> unit Fiber.t
+val cancel_current_build : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
 

@@ -123,13 +123,18 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to link-time-transitive-deps)
+ (applies_to link-time-transitive-deps dune-build-info-subdir)
  (deps
   (package dune-build-info)))
 
 (cram
  (applies_to version-corruption)
- (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
+ (deps %{bin:git} %{bin:chmod})
+ (enabled_if
+  ; code signing moves placeholders in the binary
+  (or
+   (<> %{system} macosx)
+   (<> %{architecture} arm64))))
 
 (cram
  (applies_to corrupt-persistent)

@@ -153,6 +153,8 @@ module Value_list_env = struct
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
 
+  (* Concatenate a list of values in the style of lists found in
+     environment variables, such as PATH *)
   let string_of_env_values values =
     List.map values ~f:(function
       | Value.String s -> s
@@ -183,11 +185,32 @@ module Value_list_env = struct
     | None -> extended
     | Some concated_path -> Env.Map.set extended Env_path.var concated_path
   ;;
+
+  (* Adds a path to an env where variables are associated with lists
+     of paths. The path is prepended to the list associated with the
+     given variable and a new binding is added to the env if the
+     variable is not yet part of the env. *)
+  let add_path (t : t) var path : t =
+    Env.Map.update t var ~f:(fun paths ->
+      let paths = Option.value paths ~default:[] in
+      Some (Value.Dir (Path.build path) :: paths))
+  ;;
 end
 
 module Env_update = struct
   include Dune_lang.Action.Env_update
 
+  (* Handle the :=, +=, =:, and =+ opam environment update operators.
+
+     The operators with colon character update a variable, adding a
+     leading/trailing separator (e.g. the ':' chars in PATH on unix)
+     if the variable was initially unset or empty, while the operators
+     with a plus character add no leading/trailing separator in such a
+     case.
+
+     Updates where the newly added value is the empty string are
+     ignored since opam refuses to add empty strings to list
+     variables.*)
   let update kind ~new_v ~old_v ~f =
     if new_v = ""
     then old_v
@@ -291,10 +314,16 @@ module Pkg = struct
         in
         Path.Local.Set.union_all (acc :: dirs)
     in
-    match t.info.source with
+    (match t.info.source with
+     | None -> Memo.return None
+     | Some source ->
+       Lock_dir.source_kind source
+       >>| (function
+        | `Local (`File, _) | `Fetch -> None
+        | `Local (`Directory, root) -> Some root))
+    >>= function
     | None -> Memo.return Path.Local.Set.empty
-    | Some (External_copy (_, root)) -> loop root Path.Local.Set.empty Path.Local.root
-    | Some (Fetch _) -> assert false
+    | Some root -> loop root Path.Local.Set.empty Path.Local.root
   ;;
 
   let dep t = Dep.file (Path.build t.paths.target_dir)
@@ -304,23 +333,28 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
-  let build_env_of_deps =
-    let add_to_path env var what =
-      Env.Map.update env var ~f:(fun paths ->
-        let paths = Option.value paths ~default:[] in
-        Some (Value.Dir (Path.build what) :: paths))
-    in
-    fun xs ->
-      List.fold_left xs ~init:Env.Map.empty ~f:(fun env t ->
-        let env =
-          let roots = Paths.install_roots t.paths in
-          let init = add_to_path env Env_path.var roots.bin in
-          let vars = Install.Roots.to_env_without_path roots in
-          List.fold_left vars ~init ~f:(fun acc (var, path) -> add_to_path acc var path)
-        in
-        List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+  (* Given a list of packages, construct an env containing variables
+     set by each package. Variables containing delimited lists of
+     paths (e.g. PATH) which appear in multiple package's envs are
+     concatenated in the reverse order of their associated packages in
+     the input list. Environment updates via the `exported_env` field
+     (equivalent to opam's `setenv` field) are applied for each
+     package in the same order as the argument list. *)
+  let build_env_of_deps ts =
+    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
+      let env =
+        let roots = Paths.install_roots t.paths in
+        let init = Value_list_env.add_path env Env_path.var roots.bin in
+        let vars = Install.Roots.to_env_without_path roots in
+        List.fold_left vars ~init ~f:(fun acc (var, path) ->
+          Value_list_env.add_path acc var path)
+      in
+      List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
+  (* [build_env t] returns an env containing paths containing all the
+     tools and libraries required to build the package [t] inside the
+     faux opam directory contained in the _build dir. *)
   let build_env t = build_env_of_deps @@ deps_closure t
 
   let base_env t =
@@ -336,7 +370,9 @@ module Pkg = struct
       ]
   ;;
 
-  let exported_typed_env t =
+  (* [exported_value_env t] returns the complete env that will be used
+     to build the package [t] *)
+  let exported_value_env t =
     let package_env = build_env t |> Env.Map.superpose (base_env t) in
     (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
@@ -348,7 +384,7 @@ module Pkg = struct
     Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
 
-  let exported_env t = Value_list_env.to_env @@ exported_typed_env t
+  let exported_env t = Value_list_env.to_env @@ exported_value_env t
 end
 
 module Pkg_installed = struct
@@ -963,7 +999,7 @@ module Action_expander = struct
     let+ { Artifacts_and_deps.binaries; dep_info } =
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
-    let env = Pkg.exported_typed_env pkg in
+    let env = Pkg.exported_value_env pkg in
     let depends =
       Package.Name.Map.add_exn
         dep_info
@@ -1069,10 +1105,7 @@ end = struct
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
           (Context_name.build_dir ctx)
-          (Path.Source.relative
-             lock_dir
-             (* TODO this should come from [Dune_pkg] *)
-             (sprintf "%s.files" (Package.Name.to_string info.name)))
+          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
@@ -1282,9 +1315,12 @@ module Install_action = struct
       | false -> []
       | true ->
         let config =
-          let config_file_str = Path.to_string config_file in
-          let file = OpamFilename.of_string config_file_str |> OpamFile.make in
-          match OpamFile.Dot_config.read file with
+          let filename = Path.to_string config_file in
+          match
+            Io.read_file config_file
+            |> OpamFile.Dot_config.read_from_string
+                 ~filename:(OpamFile.make (OpamFilename.of_string filename))
+          with
           | s -> s
           | exception OpamPp.Bad_format (pos, message) ->
             let loc =
@@ -1298,7 +1334,7 @@ module Install_action = struct
                   let bols = Array.of_list (List.rev !bols) in
                   let make_pos (line, column) =
                     let pos_bol = bols.(line - 1) in
-                    { Lexing.pos_fname = config_file_str
+                    { Lexing.pos_fname = filename
                     ; pos_lnum = line
                     ; pos_bol
                     ; pos_cnum = pos_bol + column
@@ -1455,32 +1491,37 @@ let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
     | None -> Memo.return (Dep.Set.empty, [])
-    | Some (Fetch { url = (loc, _) as url; checksum }) ->
-      let fetch =
-        Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory url checksum
-      in
-      Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
-    | Some (External_copy (loc, source_root)) ->
-      let+ source_files, rules =
-        let source_root = Path.external_ source_root in
-        Pkg.source_files pkg ~loc
-        >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
-          let src = Path.append_local source_root file in
-          let dst = Path.Build.append_local pkg.paths.source_dir file in
-          let copy = loc, Action_builder.copy ~src ~dst in
-          Path.build dst :: source_files, copy :: rules)
-      in
-      Dep.Set.of_files source_files, rules
+    | Some source ->
+      let loc = fst source.url in
+      Lock_dir.source_kind source
+      >>= (function
+       | `Local (`File, _) | `Fetch ->
+         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
+       | `Local (`Directory, source_root) ->
+         let+ source_files, rules =
+           let source_root = Path.external_ source_root in
+           Pkg.source_files pkg ~loc
+           >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
+             let src = Path.append_local source_root file in
+             let dst = Path.Build.append_local pkg.paths.source_dir file in
+             let copy = loc, Action_builder.copy ~src ~dst in
+             Path.build dst :: source_files, copy :: rules)
+         in
+         Dep.Set.of_files source_files, rules)
   in
   let extra_source_deps, extra_copy_rules =
-    List.map pkg.info.extra_sources ~f:(fun (local, fetch) ->
+    List.map pkg.info.extra_sources ~f:(fun (local, (fetch : Source.t)) ->
       let extra_source = Paths.extra_source pkg.paths local in
       let rule =
-        match (fetch : Source.t) with
-        | External_copy (loc, src) ->
+        let loc = fst fetch.url in
+        (* We assume that [fetch] is always a file. Would be good
+           to give a decent error message if it's not *)
+        match Source.kind fetch with
+        | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
-        | Fetch { url = (loc, _) as url; checksum } ->
-          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File url checksum in
+        | `Fetch ->
+          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File fetch in
           loc, rule
       in
       Path.build extra_source, rule)
@@ -1581,8 +1622,8 @@ module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* db = DB.get context in
-  let+ pkg =
+  let* pkg =
+    let* db = DB.get context in
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
@@ -1595,12 +1636,19 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
         ]
   in
   let paths = Paths.make name context in
-  let directory_targets =
-    let target_dir = paths.target_dir in
-    let map = Path.Build.Map.singleton target_dir Loc.none in
+  let+ directory_targets =
+    let map =
+      let target_dir = paths.target_dir in
+      Path.Build.Map.singleton target_dir Loc.none
+    in
     match pkg.info.source with
-    | Some (Fetch f) -> Path.Build.Map.add_exn map paths.source_dir (fst f.url)
-    | _ -> map
+    | None -> Memo.return map
+    | Some source ->
+      Lock_dir.source_kind source
+      >>| (function
+       | `Local (`Directory, _) -> map
+       | `Local (`File, _) | `Fetch ->
+         Path.Build.Map.add_exn map paths.source_dir (fst source.url))
   in
   let build_dir_only_sub_dirs =
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty

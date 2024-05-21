@@ -47,32 +47,36 @@ let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
          ])
 ;;
 
-let concrete_dependencies_of_local_package_with_test t local_package_name =
+let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   Local_package.(for_solver local_package |> For_solver.opam_filtered_dependency_formula)
   |> Resolve_opam_formula.filtered_formula_to_package_names
-       ~with_test:true
+       ~with_test
        (Solver_env.to_env t.solver_env)
        t.version_by_package_name
   |> Result.map_error ~f:(function
     | `Formula_could_not_be_satisfied unsatisfied_formula_hints ->
     User_message.make
-      ~hints:lockdir_regenerate_hints
+      ?hints:(Option.some_if with_test lockdir_regenerate_hints)
       ~loc:local_package.loc
       (Pp.textf
-         "The dependencies of local package %S could not be satisfied from the lockdir:"
+         "The dependencies of local package %S could not be satisfied from the lockdir%s:"
          (Package_name.to_string local_package.name)
+         (if with_test
+          then ""
+          else " when the solver variable 'with_test' is set to 'false'")
        :: List.map
             unsatisfied_formula_hints
             ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp))
-  |> Result.map ~f:Package_name.Set.of_list
 ;;
 
 let all_non_local_dependencies_of_local_packages t =
   let open Result.O in
   let+ all_dependencies_of_local_packages =
     Package_name.Map.keys t.local_packages
-    |> Result.List.map ~f:(concrete_dependencies_of_local_package_with_test t)
+    |> Result.List.map ~f:(fun p ->
+      concrete_dependencies_of_local_package ~with_test:true t p
+      |> Result.map ~f:Package_name.Set.of_list)
     |> Result.map ~f:Package_name.Set.union_all
   in
   Package_name.Set.diff
@@ -205,40 +209,14 @@ let create local_packages lock_dir =
   t
 ;;
 
-let concrete_dependencies_of_local_package_with_test t local_package_name =
-  match concrete_dependencies_of_local_package_with_test t local_package_name with
-  | Ok x -> x
-  | Error e ->
-    Code_error.raise
-      "Invalid package universe which should have already been validated"
-      [ "error", Dyn.string (User_message.to_string e) ]
-;;
-
-let concrete_dependencies_of_local_package_without_test t local_package_name =
-  let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
-  Local_package.(for_solver local_package |> For_solver.opam_filtered_dependency_formula)
-  |> Resolve_opam_formula.filtered_formula_to_package_names
-       ~with_test:false
-       (Solver_env.to_env t.solver_env)
-       t.version_by_package_name
-  |> function
-  | Ok x -> x
-  | Error (`Formula_could_not_be_satisfied hints) ->
-    User_error.raise
-      (Pp.textf
-         "Unable to find dependencies of package %S in lockdir when the solver variable \
-          'with_test' is set to 'false':"
-         (Package_name.to_string local_package.name)
-       :: List.map hints ~f:Resolve_opam_formula.Unsatisfied_formula_hint.pp)
-;;
-
 let local_transitive_dependency_closure_without_test =
   let module Top_closure = Top_closure.Make (Package_name.Set) (Monad.Id) in
   fun t start ->
     match
       Top_closure.top_closure
         ~deps:(fun a ->
-          concrete_dependencies_of_local_package_without_test t a
+          concrete_dependencies_of_local_package t a ~with_test:false
+          |> User_error.ok_exn
           |> List.filter ~f:(Package_name.Map.mem t.local_packages))
         ~key:Fun.id
         start
@@ -260,7 +238,8 @@ let transitive_dependency_closure_without_test t start =
       |> Package_name.Set.to_list
       |> Package_name.Set.union_map ~f:(fun name ->
         let all_deps =
-          concrete_dependencies_of_local_package_without_test t name
+          concrete_dependencies_of_local_package t name ~with_test:false
+          |> User_error.ok_exn
           |> Package_name.Set.of_list
         in
         Package_name.Set.diff all_deps local_package_names)
@@ -303,7 +282,14 @@ let check_contains_package t package_name =
 
 let all_dependencies t package ~traverse =
   check_contains_package t package;
-  let immediate_deps = concrete_dependencies_of_local_package_with_test t package in
+  let immediate_deps =
+    match concrete_dependencies_of_local_package t package ~with_test:true with
+    | Ok x -> Package_name.Set.of_list x
+    | Error e ->
+      Code_error.raise
+        "Invalid package universe which should have already been validated"
+        [ "error", Dyn.string (User_message.to_string e) ]
+  in
   match traverse with
   | `Immediate -> immediate_deps
   | `Transitive ->
@@ -315,7 +301,8 @@ let non_test_dependencies t package ~traverse =
   check_contains_package t package;
   match traverse with
   | `Immediate ->
-    concrete_dependencies_of_local_package_without_test t package
+    concrete_dependencies_of_local_package t package ~with_test:false
+    |> User_error.ok_exn
     |> Package_name.Set.of_list
   | `Transitive ->
     let closure =

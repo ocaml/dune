@@ -79,6 +79,19 @@ end
 type unsatisfied_formula =
   [ `Formula_could_not_be_satisfied of Unsatisfied_formula_hint.t list ]
 
+let dedup_package_names package_names =
+  let ret_reversed, _ =
+    List.fold_left
+      package_names
+      ~init:([], Package_name.Set.empty)
+      ~f:(fun (ret_reversed, seen) x ->
+        if Package_name.Set.mem seen x
+        then ret_reversed, seen
+        else x :: ret_reversed, Package_name.Set.add seen x)
+  in
+  List.rev ret_reversed
+;;
+
 let formula_to_package_names version_by_package_name opam_formula =
   let check_conjunction conjunction =
     Result.List.map conjunction ~f:(fun (opam_package_name, version_constraint_opt) ->
@@ -129,9 +142,16 @@ let formula_to_package_names version_by_package_name opam_formula =
   match satisfied_or_error_hint_per_conjunction with
   | Error hints -> Error (`Formula_could_not_be_satisfied hints)
   | Ok satisfied_conjunction ->
-    Ok
-      (List.map satisfied_conjunction ~f:(fun (opam_package_name, _) ->
-         Package_name.of_opam_package_name opam_package_name))
+    let package_names_from_conjunctions =
+      List.map satisfied_conjunction ~f:(fun (opam_package_name, _) ->
+        Package_name.of_opam_package_name opam_package_name)
+    in
+    let package_names =
+      (* If a package name appeared in multiple conjunctions then it
+         will be duplicated in [package_names_from_conjunctions]. *)
+      dedup_package_names package_names_from_conjunctions
+    in
+    Ok package_names
 ;;
 
 let filtered_formula_to_package_names env ~with_test version_by_package_name formula =

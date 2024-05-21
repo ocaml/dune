@@ -163,7 +163,7 @@ let setup sctx ~dir =
       ~expander
       ~scope
       ~lib_name:None
-      ~lint:Buildable.Lint.no_lint
+      ~lint:Lint.no_lint
       ~preprocess
       ~preprocessor_deps:[]
       ~instrumentation_deps:[]

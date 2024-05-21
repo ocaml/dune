@@ -11,6 +11,9 @@ type t = string
 
 module Extension : sig
   type nonrec t = t
+
+  module Set = String.Set
+  module Map = String.Map
 end
 
 val split_extension : t -> string * Extension.t

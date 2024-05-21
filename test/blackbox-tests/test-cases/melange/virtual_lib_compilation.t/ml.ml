@@ -1,1 +1,1 @@
-let () = print_endline Vlib_impl.hello
+let () = print_endline Vlib.Vlib_impl.hello

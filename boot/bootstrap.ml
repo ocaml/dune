@@ -6,23 +6,22 @@ open Printf
 
 let min_supported_natively = 4, 08, 0
 
-let _verbose, keep_generated_files, _debug =
+let keep_generated_files =
   let anon s = raise (Arg.Bad (sprintf "don't know what to do with %s\n" s)) in
-  let verbose = ref false in
   let keep_generated_files = ref false in
-  let debug = ref false in
   Arg.parse
     [ "-j", Arg.Int ignore, "JOBS Concurrency"
-    ; "--verbose", Arg.Set verbose, " Set the display mode"
+    ; "--verbose", Arg.Unit ignore, " Set the display mode"
     ; "--keep-generated-files", Arg.Set keep_generated_files, " Keep generated files"
-    ; "--debug", Arg.Set debug, " Enable various debugging options"
+    ; "--debug", Arg.Unit ignore, " Enable various debugging options"
     ; ( "--force-byte-compilation"
       , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; "--static", Arg.Unit ignore, " Build a static binary"
     ]
     anon
     "Usage: ocaml bootstrap.ml <options>\nOptions are:";
-  !verbose, !keep_generated_files, !debug
+  !keep_generated_files
 ;;
 
 let modules = [ "boot/libs"; "boot/duneboot" ]

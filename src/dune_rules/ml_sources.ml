@@ -28,7 +28,7 @@ module Origin = struct
 end
 
 module Modules = struct
-  type component = Origin.t * Modules.t * Path.Build.t Obj_dir.t
+  type component = Origin.t * Modules_group.t * Path.Build.t Obj_dir.t
 
   type t =
     { libraries : component Lib_id.Local.Map.t

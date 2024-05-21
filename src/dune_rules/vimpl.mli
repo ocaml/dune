@@ -18,7 +18,7 @@ val impl : t -> Library.t
     setting up the copying rules *)
 val vlib_modules : t -> Modules.t
 
-val impl_modules : t option -> Modules.t -> Modules.t
+val impl_modules : t option -> Modules.t -> Modules.With_vlib.t
 val vlib : t -> Lib.t
 
 (** Return the combined list of .o files for stubs consisting of .o files from

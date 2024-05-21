@@ -66,6 +66,18 @@ dialect
 
       .. versionchanged:: 3.9 This field is made optional.
 
+   .. describe:: (merlin_reader <program> <args>...)
+
+      Configure Merlin to use `<program> <args>...` as READER. Merlin's READER
+      is a mechanism to extend Merlin to support OCaml dialects by providing
+      a program that transforms a dialect AST into an OCaml AST.
+
+      .. seealso:: `merlin/src/extend/extend_protocol.ml <https://github.com/ocaml/merlin/blob/4.14-502_preview2/src/extend/extend_protocol.ml>`_ for the protocol specification.
+
+      This field is optional.
+
+      .. versionadded:: 3.16
+
 
 Default dialects
 ----------------

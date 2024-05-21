@@ -1,14 +1,6 @@
 open Import
 open Dune_lang.Decoder
 
-module Lint = struct
-  type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-
-  let decode = Preprocess.Per_module.decode
-  let default = Preprocess.Per_module.default ()
-  let no_lint = default
-end
-
 type for_ =
   | Executable
   | Library of Wrapped.t option

@@ -100,7 +100,9 @@ The meaning of these :term:`aliases <alias>` is the following:
   the project. In turn, these depend on all the installable files (libraries and
   executables with a public name and files that are manually installed through
   ``(install)`` stanzas).
-- ``@runtest`` is the alias to which all tests are attached, including ``(test)`` stanzas. ``dune build @runtest`` is equivalent to ``dune runtest``.
+- :doc:`/reference/aliases/runtest` is the alias to which all tests are
+  attached, including ``(test)`` stanzas. ``dune build @runtest`` is equivalent
+  to ``dune runtest``.
 - :doc:`/reference/aliases/doc` executes ``odoc`` to create HTML docs under
   ``_build``.
 

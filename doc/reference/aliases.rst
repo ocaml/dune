@@ -59,7 +59,32 @@ Built-In Aliases
 
 Some aliases are defined and managed by Dune itself:
 
-.. toctree::
-   :glob:
+.. grid:: 1 3 2 3
 
-   aliases/*
+  .. grid-item::
+
+    .. toctree::
+       :caption: Builds
+
+       aliases/all
+       aliases/default
+       aliases/install
+
+  .. grid-item::
+
+    .. toctree::
+       :caption: Checks
+
+       aliases/check
+       aliases/runtest
+       aliases/fmt
+       aliases/lint
+
+  .. grid-item::
+
+    .. toctree::
+       :caption: Docs
+
+       aliases/doc
+       aliases/doc-private
+       aliases/doc-json

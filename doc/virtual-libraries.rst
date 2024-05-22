@@ -1,6 +1,6 @@
-****************************
-Virtual Libraries & Variants
-****************************
+*****************
+Virtual Libraries
+*****************
 
 .. TODO(diataxis) This is a guide, with reference info in it.
 
@@ -84,13 +84,6 @@ implementation for every virtual library that we've used:
      clock_unix ;; leaving this dependency will make dune loudly complain
      calendar))
 
-.. _dune-variants:
-
-Variants
-========
-
-Variants were an experimental feature that were removed in Dune 2.6.
-
 Default Implementation
 ======================
 
@@ -107,11 +100,6 @@ variant resolution if no suitable implementation has been found.
 The default implementation must live in the same package as the virtual
 library. In the example above, that would mean that the ``time-js`` and
 ``time`` libraries must be in the same package
-
-Before version 2.6, this feature was experimental and guarded under the
-``library_variants`` language. In 2.6, this feature was promoted to the stable
-Dune language, and all uses of ``(using library_variants)`` are forbidden since
-2.6.
 
 Limitations
 ===========

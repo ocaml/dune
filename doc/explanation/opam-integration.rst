@@ -96,10 +96,13 @@ This is expanded to just ``"lwt"`` in ``opam install pkg``, but to ``"lwt"
 
 The meaning of these :term:`aliases <alias>` is the following:
 
-- ``@install`` depends on all the ``*.install`` files in the project. In turn, these depend on all the installable files (libraries and executables with a public name and files that are manually installed through ``(install)`` stanzas).
+- :doc:`/reference/aliases/install` depends on all the ``*.install`` files in
+  the project. In turn, these depend on all the installable files (libraries and
+  executables with a public name and files that are manually installed through
+  ``(install)`` stanzas).
 - ``@runtest`` is the alias to which all tests are attached, including ``(test)`` stanzas. ``dune build @runtest`` is equivalent to ``dune runtest``.
 - :doc:`/reference/aliases/doc` executes ``odoc`` to create HTML docs under
-``_build``.
+  ``_build``.
 
 What Opam Expects From Dune
 ---------------------------

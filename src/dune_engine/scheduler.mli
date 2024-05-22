@@ -143,9 +143,9 @@ val cancel_current_build : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
 
-(** [sleep duration] wait for [duration] to elapse. Sleepers are checked for
-    wake up at a rate of once per 0.1 seconds. So [duration] should be at least
-    this long. *)
+(** [sleep duration] wait for [duration] seconds to elapse. Sleepers
+    are checked for wake up at a rate of once per 0.1 seconds. So
+    [duration] should be at least this long. *)
 val sleep : float -> unit Fiber.t
 
 val stats : unit -> Dune_stats.t option Fiber.t

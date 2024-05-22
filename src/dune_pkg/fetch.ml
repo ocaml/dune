@@ -195,6 +195,18 @@ let unpack_tarball ~target ~archive =
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
 
+let check_checksum checksum path =
+  let checksum_error =
+    match checksum with
+    | None -> None
+    | Some expected ->
+      OpamHash.mismatch (Path.to_string path) (Checksum.to_opam_hash expected)
+  in
+  match checksum_error with
+  | Some c -> Error (Checksum_mismatch (Checksum.of_opam_hash c))
+  | None -> Ok ()
+;;
+
 let with_download url checksum ~target ~f =
   let url = OpamUrl.to_string url in
   let temp_dir =
@@ -211,18 +223,9 @@ let with_download url checksum ~target ~f =
   >>= function
   | Error message -> Fiber.return @@ Error (Unavailable (Some message))
   | Ok () ->
-    let checksum =
-      let output = Path.to_string output in
-      match checksum with
-      | None -> `New (OpamHash.compute output)
-      | Some checksum ->
-        (match OpamHash.mismatch output (Checksum.to_opam_hash checksum) with
-         | None -> `Match
-         | Some s -> `Mismatch (Checksum.of_opam_hash s))
-    in
-    (match checksum with
-     | `Mismatch m -> Fiber.return @@ Error (Checksum_mismatch m)
-     | `New _ | `Match -> f output)
+    (match check_checksum checksum output with
+     | Ok () -> f output
+     | Error _ as e -> Fiber.return e)
 ;;
 
 let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
@@ -290,18 +293,6 @@ let fetch_git rev_store ~target ~url:(url_loc, url) =
   | Ok at_rev ->
     let+ res = Rev_store.At_rev.check_out at_rev ~target in
     Ok res
-;;
-
-let check_checksum checksum path =
-  let checksum_error =
-    match checksum with
-    | None -> None
-    | Some expected ->
-      OpamHash.mismatch (Path.to_string path) (Checksum.to_opam_hash expected)
-  in
-  match checksum_error with
-  | Some c -> Error (Checksum_mismatch (Checksum.of_opam_hash c))
-  | None -> Ok ()
 ;;
 
 let fetch_local ~checksum ~target (url, url_loc) =

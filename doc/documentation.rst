@@ -49,7 +49,8 @@ found in:
 
   $ open _build/default/_doc/_html/index.html
 
-Documentation for private libraries may also be built with:
+Documentation for private libraries may also be built with
+:doc:`/reference/aliases/doc-private`:
 
 .. code:: console
 

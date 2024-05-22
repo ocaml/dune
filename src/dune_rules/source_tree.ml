@@ -62,6 +62,23 @@ module Output = struct
 end
 
 module Dir0 = struct
+  module Vcs = struct
+    type nonrec t =
+      | This of Vcs.t
+      | Ancestor_vcs
+
+    let get_vcs ~default:vcs ~readdir ~path =
+      match
+        Filename.Set.union
+          (Readdir.files readdir)
+          (Filename.Set.of_list_map (Readdir.dirs readdir) ~f:fst)
+        |> Vcs.Kind.of_dir_contents
+      with
+      | None -> vcs
+      | Some kind -> This { Vcs.kind; root = Path.(append_source root) path }
+    ;;
+  end
+
   type t =
     { path : Path.Source.t
     ; status : Source_dir_status.t
@@ -69,6 +86,7 @@ module Dir0 = struct
     ; sub_dirs : sub_dir Filename.Map.t
     ; dune_file : Dune_file0.t option
     ; project : Dune_project.t
+    ; vcs : Vcs.t
     }
 
   and sub_dir =
@@ -77,7 +95,7 @@ module Dir0 = struct
     ; sub_dir_as_t : (Path.Source.t, t Output.t option) Memo.Cell.t
     }
 
-  let rec to_dyn { path; status; files; dune_file; sub_dirs; project = _ } =
+  let rec to_dyn { path; status; files; dune_file; sub_dirs; vcs = _; project = _ } =
     let open Dyn in
     Record
       [ "path", Path.Source.to_dyn path
@@ -204,6 +222,7 @@ end = struct
 
   let contents
     readdir
+    ~vcs
     ~path
     ~parent_dune_file
     ~dirs_visited
@@ -228,7 +247,8 @@ end = struct
         ~dune_file
         ~path
     in
-    { Dir0.project; status = dir_status; path; files; sub_dirs; dune_file }, dirs_visited
+    ( { Dir0.project; vcs; status = dir_status; path; files; sub_dirs; dune_file }
+    , dirs_visited )
   ;;
 
   let error_unable_to_load ~path unix_error =
@@ -262,13 +282,21 @@ end = struct
                    Package.Name.Map.empty)
         >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
       in
+      let vcs = Dir0.Vcs.get_vcs ~default:Dir0.Vcs.Ancestor_vcs ~readdir ~path in
       let* dirs_visited =
         Readdir.File.of_source_path (In_source_dir path)
         >>| function
         | Ok file -> Dirs_visited.singleton path file
         | Error unix_error -> error_unable_to_load ~path unix_error
       in
-      contents readdir ~path ~parent_dune_file:None ~dirs_visited ~project ~dir_status
+      contents
+        readdir
+        ~vcs
+        ~path
+        ~parent_dune_file:None
+        ~dirs_visited
+        ~project
+        ~dir_status
     in
     { Output.dir; visited }
   ;;
@@ -321,10 +349,12 @@ end = struct
                         ~vendored:(dir_status = Vendored))
              >>| Option.value ~default:parent_dir.project
          in
+         let vcs = Dir0.Vcs.get_vcs ~default:parent_dir.vcs ~readdir ~path in
          let+ dir, visited =
            let dirs_visited = Dirs_visited.Per_fn.find dirs_visited path in
            contents
              readdir
+             ~vcs
              ~path
              ~parent_dune_file:parent_dir.dune_file
              ~dirs_visited
@@ -462,4 +492,33 @@ let is_vendored dir =
   >>| function
   | None -> false
   | Some d -> Dir.status d = Vendored
+;;
+
+let ancestor_vcs =
+  Memo.lazy_ ~name:"ancestor_vcs" (fun () ->
+    if Execution_env.inside_dune
+    then Memo.return None
+    else (
+      let rec loop dir =
+        if Fpath.is_root dir
+        then None
+        else (
+          let dir = Filename.dirname dir in
+          match
+            Sys.readdir dir
+            |> Array.to_list
+            |> Filename.Set.of_list
+            |> Vcs.Kind.of_dir_contents
+          with
+          | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
+          | None -> loop dir)
+      in
+      Memo.return (loop (Path.to_absolute_filename Path.root))))
+;;
+
+let nearest_vcs dir =
+  let* dir = nearest_dir dir in
+  match dir.vcs with
+  | This vcs -> Memo.return (Some vcs)
+  | Ancestor_vcs -> Memo.Lazy.force ancestor_vcs
 ;;

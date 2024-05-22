@@ -1,11 +1,5 @@
 open Import
 
-module Lint : sig
-  type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
-
-  val no_lint : t
-end
-
 type for_ =
   | Executable
   | Library of Wrapped.t option

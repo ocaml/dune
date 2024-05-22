@@ -1111,7 +1111,7 @@ let report_early_exn exn =
           (Build_config.get ()).action_runners ()
           |> Fiber.parallel_iter ~f:Action_runner.cancel_build
         in
-        Scheduler.stop_on_first_error ()
+        Scheduler.cancel_current_build ()
       | false -> Fiber.return ()
     in
     (match !Clflags.report_errors_config with

@@ -97,12 +97,7 @@ let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
 let run thunk =
   let on_event _config _event = () in
   let config : Scheduler.Config.t =
-    { concurrency = 1
-    ; stats = None
-    ; insignificant_changes = `Ignore
-    ; print_ctrl_c_warning = false
-    ; watch_exclusions = []
-    }
+    { concurrency = 1; stats = None; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
   Scheduler.Run.go config ~on_event thunk
 ;;
@@ -213,7 +208,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     let pkg_a =
       let name = Package_name.of_string "a" in
       let extra_source : Source.t =
-        External_copy (Loc.none, Path.External.of_string "/tmp/a")
+        Source.external_copy (Loc.none, Path.External.of_string "/tmp/a")
       in
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
@@ -235,10 +230,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
             ; extra_sources =
                 [ Path.Local.of_string "one", extra_source
                 ; ( Path.Local.of_string "two"
-                  , Fetch
-                      { url = Loc.none, OpamUrl.of_string "file://randomurl"
-                      ; checksum = None
-                      } )
+                  , { url = Loc.none, OpamUrl.of_string "file://randomurl"
+                    ; checksum = None
+                    } )
                 ]
             }
         ; exported_env =
@@ -261,15 +255,14 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               dev = true
             ; source =
                 Some
-                  (Fetch
-                     { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
-                     ; checksum =
-                         Some
-                           ( Loc.none
-                           , Checksum.of_string
-                               "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
-                           )
-                     })
+                  { url = Loc.none, OpamUrl.of_string "https://github.com/foo/b"
+                  ; checksum =
+                      Some
+                        ( Loc.none
+                        , Checksum.of_string
+                            "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                        )
+                  }
             }
         } )
     in
@@ -284,10 +277,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               dev = false
             ; source =
                 Some
-                  (Fetch
-                     { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
-                     ; checksum = None
-                     })
+                  { url = Loc.none, OpamUrl.of_string "https://github.com/foo/c"
+                  ; checksum = None
+                  }
             }
         } )
     in
@@ -318,10 +310,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "a"
                   ; version = "0.1.0"
                   ; dev = false
-                  ; source = Some External_copy External "/tmp/a"
+                  ; source = Some { url = "file:///tmp/a"; checksum = None }
                   ; extra_sources =
-                      [ ("one", External_copy External "/tmp/a")
-                      ; ("two", Fetch "file://randomurl", None)
+                      [ ("one", { url = "file:///tmp/a"; checksum = None })
+                      ; ("two", { url = "file://randomurl"; checksum = None })
                       ]
                   }
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
@@ -336,10 +328,11 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   ; dev = true
                   ; source =
                       Some
-                        Fetch
-                          "https://github.com/foo/b",
-                          Some
-                            "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                        { url = "https://github.com/foo/b"
+                        ; checksum =
+                            Some
+                              "sha256=adfc38f14c0188a2ad80d61451d011d27ab8839b717492d7ad42f7cb911c54c3"
+                        }
                   ; extra_sources = []
                   }
               ; exported_env = []
@@ -355,7 +348,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "c"
                   ; version = "0.2"
                   ; dev = false
-                  ; source = Some Fetch "https://github.com/foo/c", None
+                  ; source =
+                      Some { url = "https://github.com/foo/c"; checksum = None }
                   ; extra_sources = []
                   }
               ; exported_env = []

@@ -193,7 +193,6 @@ module Scheduler = struct
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes:`Ignore
         ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
@@ -221,7 +220,6 @@ module Scheduler = struct
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes:`Ignore
         ~print_ctrl_c_warning:true
         ~watch_exclusions
     in

@@ -323,3 +323,11 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
       | `http -> fetch_curl ~unpack ~checksum ~target url
       | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;
+
+let fetch_without_checksum ~unpack ~target ~url =
+  fetch ~unpack ~checksum:None ~url ~target
+  >>| function
+  | Ok () -> Ok ()
+  | Error (Checksum_mismatch _) -> assert false
+  | Error (Unavailable message) -> Error message
+;;

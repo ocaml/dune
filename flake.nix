@@ -8,8 +8,13 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      # When moving the compiler tests to OCaml 5.1, change to v4-51-dev
-      url = "github:melange-re/melange?rev=24e21cc4284ffb18b3a856c1d730f06f34d32737";
+      # branch v4-414-for-dune
+      url = "github:melange-re/melange?rev=ab48cfcfe5f2c0ca4a4a4fcafceb73b95c2acb1d";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+    ocaml-overlays = {
+      url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -20,6 +25,7 @@
     , nixpkgs
     , ocamllsp
     , melange
+    , ocaml-overlays
     }:
     flake-utils.lib.eachDefaultSystem (system:
     let
@@ -36,6 +42,18 @@
         })
         melange.overlays.default
         ocamllsp.overlays.default
+      ];
+      dune-static-overlay = self: super: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+          dune_3 = osuper.dune_3.overrideAttrs (a: {
+            src = ./.;
+            preBuild = "ocaml boot/bootstrap.ml --static";
+          });
+        });
+      };
+      pkgs-static = nixpkgs.legacyPackages.${system}.appendOverlays [
+        ocaml-overlays.overlays.default
+        dune-static-overlay
       ];
 
       ocamlformat =
@@ -79,6 +97,7 @@
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
         dune = default;
+        dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
       };
 
       devShells =

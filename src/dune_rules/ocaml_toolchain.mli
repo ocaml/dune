@@ -26,8 +26,8 @@ val of_env_with_findlib
 
 val of_binaries : path:Path.t list -> Context_name.t -> Env.t -> Path.Set.t -> t Memo.t
 
-val of_toolchain_version
-  :  Dune_pkg.Toolchain.Version.t
+val of_toolchain_compiler
+  :  Dune_pkg.Toolchain.Compiler.t
   -> Context_name.t
   -> Env.t
   -> t Memo.t

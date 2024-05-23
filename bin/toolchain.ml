@@ -1,22 +1,40 @@
 open Import
 module Toolchain = Dune_pkg.Toolchain
 
-module Version = struct
-  include Toolchain.Version
-
-  let conv = Arg.enum (List.map all ~f:(fun version -> to_string version, version))
-end
-
 module Get = struct
-  let run version = Toolchain.get ~log:`Always version
+  let run package =
+    let open Fiber.O in
+    let* available_compiler_packages =
+      Toolchain.Available_compilers.load_upstream_opam_repo ()
+    in
+    let package_name =
+      Dune_pkg.Package_name.of_opam_package_name (OpamPackage.name package)
+    in
+    let package_version =
+      Dune_pkg.Package_version.of_opam_package_version (OpamPackage.version package)
+    in
+    match
+      Toolchain.Available_compilers.find_package
+        available_compiler_packages
+        package_name
+        package_version
+    with
+    | Some compiler_package -> Toolchain.Compiler.get ~log_when:`Always compiler_package
+    | None ->
+      User_error.raise
+        [ Pp.textf
+            "Unknown compiler package %s.%s"
+            (Package_name.to_string package_name)
+            (Package_version.to_string package_version)
+        ]
+  ;;
 
   let term =
     let+ builder = Common.Builder.term
-    and+ version =
-      Arg.(required & pos 0 (some Version.conv) None & info [] ~docv:"VERSION")
-    in
+    and+ package = Arg.(required & pos 0 (some string) None & info [] ~docv:"PACKAGE") in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () -> run version)
+    let package = OpamPackage.of_string package in
+    Scheduler.go ~common ~config (fun () -> run package)
   ;;
 
   let info = Cmd.info "get" ~doc:"Install a given toolchain version"

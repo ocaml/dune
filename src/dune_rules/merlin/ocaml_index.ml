@@ -60,8 +60,6 @@ let cctx_rules cctx =
       ~dir:context_dir
       (ocaml_index sctx ~dir)
       [ A "aggregate"
-      ; A "--root"
-      ; A Path.(Source.root |> source |> to_absolute_filename)
       ; A "-o"
       ; Target fn
       ; Deps modules_deps

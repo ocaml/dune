@@ -28,6 +28,8 @@ library also has more than one src dir.
    (INDEX
     $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)
@@ -54,6 +56,8 @@ library also has more than one src dir.
    (INDEX
     $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)

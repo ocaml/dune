@@ -21,6 +21,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/byte)
@@ -32,6 +34,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/byte)
@@ -43,6 +47,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.pp_future_syntax.eobjs/byte)

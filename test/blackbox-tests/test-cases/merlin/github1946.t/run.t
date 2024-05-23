@@ -16,6 +16,8 @@ in the same dune file, but require different ppx specifications
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -39,6 +41,8 @@ in the same dune file, but require different ppx specifications
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx1.objs/byte)
@@ -62,6 +66,8 @@ in the same dune file, but require different ppx specifications
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)
@@ -85,6 +91,8 @@ in the same dune file, but require different ppx specifications
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx2/.ppx2.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.usesppx2.objs/byte)

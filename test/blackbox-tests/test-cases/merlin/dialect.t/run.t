@@ -16,6 +16,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
@@ -32,6 +34,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
@@ -49,6 +53,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
@@ -69,6 +75,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.x.objs/byte)
@@ -86,6 +94,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.x.objs/byte)
@@ -107,6 +117,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB lib/melange/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     lib/melange/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
@@ -132,6 +144,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/melange/.x_mel.objs/cctx.ocaml-index)
    (STDLIB lib/melange/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     lib/melange/__private__/melange_mini_stdlib/melange/.public_cmi_melange)

@@ -5,6 +5,7 @@
   $ dune ocaml dump-dot-merlin src\ with\ spaces
   EXCLUDE_QUERY_DIR
   STDLIB /OCAMLC_WHERE
+  SOURCE_ROOT $TESTCASE_ROOT
   B $TESTCASE_ROOT/_build/default/src with spaces/.foo.eobjs/byte
   S $TESTCASE_ROOT/src with spaces
   INDEX $TESTCASE_ROOT/_build/default/p p/.pp.eobjs/cctx.ocaml-index
@@ -15,6 +16,7 @@
   $ dune ocaml dump-dot-merlin "p p"
   EXCLUDE_QUERY_DIR
   STDLIB /OCAMLC_WHERE
+  SOURCE_ROOT $TESTCASE_ROOT
   B $TESTCASE_ROOT/_build/default/p p/.pp.eobjs/byte
   S $TESTCASE_ROOT/p p
   INDEX $TESTCASE_ROOT/_build/default/p p/.pp.eobjs/cctx.ocaml-index

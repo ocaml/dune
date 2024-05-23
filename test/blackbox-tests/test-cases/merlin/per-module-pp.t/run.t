@@ -13,6 +13,8 @@ should appear only once since only Foo is using it.
    (INDEX
     $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -33,6 +35,8 @@ should appear only once since only Foo is using it.
    (INDEX
     $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -53,6 +57,8 @@ should appear only once since only Foo is using it.
    (INDEX
     $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -76,6 +82,8 @@ should appear only once since only Foo is using it.
    (INDEX
     $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

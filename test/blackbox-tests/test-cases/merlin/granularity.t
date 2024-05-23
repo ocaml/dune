@@ -119,6 +119,7 @@ Is it expected that the suffix for implementation and interface is the same ?
   $ ./merlin_conf.sh pped.ml | tee pped.out
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -136,6 +137,7 @@ As expected, the reader is not communicated for the standard mli
   $ ./merlin_conf.sh mel.mli | tee mel.out
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -146,7 +148,7 @@ As expected, the reader is not communicated for the standard mli
 
 The reader is set for the mlx file
   $ ./merlin_conf.sh mel.mlx | diff mel.out -
-  9c9,10
+  10c10,11
   < (?:SUFFIX?:.mlx .mlx))
   \ No newline at end of file
   ---
@@ -167,6 +169,7 @@ found, then it'll make a guess that the file was preprocessed into a file with
   $ ./merlin_conf.sh cppomod.cppo.ml | tee cppomod.out
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -188,6 +191,7 @@ We could expect dune to get the wrongext module configuration
   $ ./merlin_conf.sh wrongext.cppo.cml | tee wrongext.out
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -205,6 +209,7 @@ It should be possible to get its merlin configuration as well:
   $ ./merlin_conf.sh generated.ml
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
@@ -215,6 +220,7 @@ It should be possible to get its merlin configuration as well:
   $ ./merlin_conf.sh generatedx.mlx
   ((?:INDEX?:$TESTCASE_ROOT/_build/default/.test.eobjs/cctx.ocaml-index
   (?:STDLIB?:/OCAMLC_WHERE
+  (?:SOURCE_ROOT?:$TESTCASE_ROOT
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT

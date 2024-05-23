@@ -26,6 +26,8 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   ((INDEX
     $TESTCASE_ROOT/_build/cross/.foo.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
@@ -44,6 +46,8 @@ We call `$(opam switch show)` so that this test always uses an existing switch
   ((INDEX
     $TESTCASE_ROOT/_build/cross/.foo.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)

@@ -25,6 +25,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -47,6 +49,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -69,6 +73,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -91,6 +97,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -113,6 +121,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -135,6 +145,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -157,6 +169,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -180,6 +194,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -203,6 +219,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -226,6 +244,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -249,6 +269,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -272,6 +294,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -295,6 +319,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -318,6 +344,8 @@
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

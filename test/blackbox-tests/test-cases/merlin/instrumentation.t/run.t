@@ -20,6 +20,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -45,6 +47,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -70,6 +74,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -96,6 +102,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -122,6 +130,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -147,6 +157,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -172,6 +184,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -198,6 +212,8 @@ up a project with instrumentation and testing checking the merlin config.
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)

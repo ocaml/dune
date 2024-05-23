@@ -29,6 +29,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -63,6 +65,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -100,6 +104,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -131,6 +137,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -162,6 +170,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -194,6 +204,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -226,6 +238,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -261,6 +275,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -296,6 +312,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -332,6 +350,8 @@ CRAM sanitization
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_findlib/publicfoo)
@@ -376,6 +396,8 @@ Make sure pp flag is correct and variables are expanded
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -403,6 +425,8 @@ Make sure pp flag is correct and variables are expanded
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
@@ -434,6 +458,8 @@ Check hash of executables names if more than one
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -464,6 +490,8 @@ Check hash of executables names if more than one
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -494,6 +522,8 @@ Check hash of executables names if more than one
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
@@ -524,6 +554,8 @@ Check hash of executables names if more than one
    (INDEX
     $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)

@@ -26,6 +26,8 @@ If Merlin field is absent, default context is chosen
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -44,6 +46,8 @@ If Merlin field is absent, default context is chosen
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -85,6 +89,8 @@ If Merlin field is present, this context is chosen
   ((INDEX
     $TESTCASE_ROOT/_build/cross/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
@@ -103,6 +109,8 @@ If Merlin field is present, this context is chosen
   ((INDEX
     $TESTCASE_ROOT/_build/cross/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/cross/.foo.objs/byte)
@@ -147,6 +155,8 @@ is disabled in that context
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -165,6 +175,8 @@ is disabled in that context
   ((INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB OPAM_PREFIX)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)

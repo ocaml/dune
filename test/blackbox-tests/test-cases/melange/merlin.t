@@ -82,6 +82,7 @@ Dump-dot-merlin includes the melange flags
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
   STDLIB /MELC_STDLIB/melange
+  SOURCE_ROOT $TESTCASE_ROOT
   B /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
@@ -132,6 +133,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
@@ -163,6 +166,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
@@ -194,6 +199,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
@@ -224,6 +231,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
@@ -254,6 +263,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)
@@ -274,6 +285,8 @@ User ppx flags should appear in merlin config
    (INDEX
     $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)

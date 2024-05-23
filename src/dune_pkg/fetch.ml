@@ -296,6 +296,8 @@ let fetch_git rev_store ~target ~url:(url_loc, url) =
 ;;
 
 let fetch_local ~checksum ~target (url, url_loc) =
+  if not (OpamUrl.is_local url)
+  then Code_error.raise "fetch_local: url should be file://" [ "url", OpamUrl.to_dyn url ];
   let path =
     match OpamUrl.local_or_git_only url url_loc with
     | `Path p -> p
@@ -338,7 +340,11 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
         let* rev_store = Rev_store.get in
         fetch_git rev_store ~target ~url:(url_loc, url)
       | `http -> fetch_curl ~unpack ~checksum ~target url
-      | `rsync -> fetch_local ~checksum ~target (url, url_loc)
+      | `rsync ->
+        if not unpack
+        then
+          Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
+        fetch_local ~checksum ~target (url, url_loc)
       | _ -> fetch_others ~unpack ~checksum ~target url)
 ;;
 

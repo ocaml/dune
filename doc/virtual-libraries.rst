@@ -22,6 +22,13 @@ implementations. Executable using ``clock`` or libraries that use ``clock``
 would conditionally select one of the implementations, depending on the target
 platform.
 
+.. note::
+
+   This feature is sometimes informally called "variants". However, this term
+   refers to a related feature that has been removed in Dune 2.6 in favor of
+   default implementation, and the correct term for the mechanism as a whole is
+   "virtual libraries".
+
 Virtual Library
 ===============
 

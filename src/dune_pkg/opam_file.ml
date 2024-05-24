@@ -28,7 +28,7 @@ let read_from_string_exn ~contents path =
   try
     OpamFile.OPAM.read_from_string
       contents
-      ~filename:(Path.to_string path |> OpamFilename.raw |> OpamFile.make)
+      ~filename:(Path.to_absolute_filename path |> OpamFilename.raw |> OpamFile.make)
   with
   | OpamPp.Bad_version (_, message) ->
     User_error.raise

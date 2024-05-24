@@ -49,7 +49,7 @@ let cctx_rules cctx =
       |> Modules.With_vlib.drop_vlib
       |> Modules.fold_user_written ~init:[] ~f:(fun module_ acc ->
         let cmts =
-          [ Intf; Impl ]
+          [ Ml_kind.Intf; Impl ]
           |> List.filter_map ~f:(fun ml_kind ->
             Obj_dir.Module.cmt_file obj_dir ~ml_kind ~cm_kind module_
             |> Option.map ~f:Path.build)

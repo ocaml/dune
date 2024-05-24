@@ -85,20 +85,19 @@ let with_flock lock_path ~f =
       [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; Unix.O_CLOEXEC ]
       0o600
   in
-  let out = Unix.out_channel_of_descr fd in
   let flock = Flock.create fd in
   let max_retries = 49 in
   Fiber.finalize
     ~finally:(fun () ->
       let+ () = Fiber.return () in
-      close_out out)
+      Unix.close fd)
     (fun () ->
       attempt_to_lock flock Flock.Exclusive ~max_retries
       >>= function
       | Ok `Success ->
         Fiber.finalize
           (fun () ->
-            Printf.fprintf out "%d\n%!" (Unix.getpid ());
+            Dune_util.Global_lock.write_pid fd;
             f ())
           ~finally:(fun () ->
             let+ () = Fiber.return () in

@@ -77,10 +77,10 @@
         ++ lib.optionals stdenv.isLinux [ strace ];
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
     in
-    rec {
+    {
       formatter = pkgs.nixpkgs-fmt;
 
-      packages = rec {
+      packages = {
         default = with pkgs; stdenv.mkDerivation {
           pname = "dune";
           version = "n/a";
@@ -96,7 +96,7 @@
           configurePlatforms = [ ];
           installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
         };
-        dune = default;
+        dune = self.packages.${system}.default;
         dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
       };
 
@@ -111,9 +111,9 @@
               pkgs' =
                 if duneFromScope then
                   pkgs.extend
-                    (self: super: {
-                      ocamlPackages = super.ocamlPackages.overrideScope (oself: osuper: {
-                        dune_3 = packages.default;
+                    (pself: psuper: {
+                      ocamlPackages = psuper.ocamlPackages.overrideScope (oself: osuper: {
+                        dune_3 = self.packages.${system}.default;
                       });
                     })
                 else pkgs;

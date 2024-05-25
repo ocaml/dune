@@ -177,7 +177,7 @@ Interpretation of Targets
 
 This section describes how Dune interprets the targets provided on
 the command line. When no targets are specified, Dune builds the
-:ref:`default alias <default-alias>`.
+:doc:`default alias </reference/aliases/default>`.
 
 Resolution
 ----------

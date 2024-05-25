@@ -78,5 +78,4 @@ The following pages describe the available stanzas and their meanings.
       :caption: Deprecated
       :maxdepth: 1
     
-      external_variant
       jbuild_version

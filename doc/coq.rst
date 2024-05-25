@@ -198,9 +198,10 @@ a Coq theory may then be built by running ``dune build A.html`` or ``dune build
 A.tex``, respectively (if the :doc:`dune file </reference/dune/index>` for the
 theory is the current directory).
 
-There are also two aliases ``@doc`` and ``@doc-latex`` that will respectively
-build the HTML or LaTeX documentation when called. These will determine whether
-or not Dune passes a ``--html`` or ``--latex`` flag to ``coqdoc``.
+There are also two aliases :doc:`/reference/aliases/doc` and ``@doc-latex``
+that will respectively build the HTML or LaTeX documentation when called. These
+will determine whether or not Dune passes a ``--html`` or ``--latex`` flag to
+``coqdoc``.
 
 Further flags can also be configured using the ``(coqdoc_flags)`` field in the
 ``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
@@ -652,9 +653,9 @@ following files:
 
 We may also want to build the LaTeX documentation of the theory ``B``. For this
 we can call ``dune build B/B.tex/``. If we want to build all the HTML
-documentation targets, we can use the ``@doc`` alias as in ``dune build @doc``.
-If we want to build all the LaTeX documentation then we use the ``@doc-latex``
-alias instead.
+documentation targets, we can use the :doc:`/reference/aliases/doc` alias as in
+``dune build @doc``. If we want to build all the LaTeX documentation then we
+use the ``@doc-latex`` alias instead.
 
 .. _example plugin:
 

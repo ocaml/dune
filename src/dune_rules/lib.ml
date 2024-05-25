@@ -665,7 +665,10 @@ module Vlib : sig
       Additionally, if linking is [true], ensures that every virtual library as
       an implementation and re-arrange the list so that implementations replaces
       virtual libraries. *)
-  val associate : (t * Dep_stack.t) list -> linking:bool -> t list Resolve.Memo.t
+  val associate
+    :  (t * Dep_stack.t) list
+    -> [ `Compile | `Link | `Partial_link ]
+    -> t list Resolve.Memo.t
 
   module Unimplemented : sig
     (** set of unimplemented libraries*)
@@ -750,12 +753,12 @@ end = struct
 
     type t = lib Map.t
 
-    let make impls : t Resolve.Memo.t =
+    let make impls ~allow_partial : t Resolve.Memo.t =
       let rec loop acc = function
         | [] -> Resolve.Memo.return acc
-        | (vlib, Partial.No_impl stack) :: _ ->
+        | (vlib, Partial.No_impl stack) :: libs ->
           let rb = Dep_stack.to_required_by stack in
-          Error.no_implementation (vlib.info, rb)
+          if allow_partial then loop acc libs else Error.no_implementation (vlib.info, rb)
         | (vlib, Impl (impl, _stack)) :: libs -> loop (Map.set acc vlib impl) libs
       in
       loop Map.empty (Map.to_list impls)
@@ -793,12 +796,18 @@ end = struct
       List.rev res
   ;;
 
-  let associate closure ~linking =
+  let associate closure kind =
+    let linking, allow_partial =
+      match kind with
+      | `Compile -> false, true
+      | `Partial_link -> true, true
+      | `Link -> true, false
+    in
     let* impls = Table.Partial.make closure in
     let closure = List.map closure ~f:fst in
     if linking && not (Table.Partial.is_empty impls)
     then
-      let* impls = Table.make impls in
+      let* impls = Table.make impls ~allow_partial in
       second_step_closure closure impls
     else Resolve.Memo.return closure
   ;;
@@ -868,6 +877,8 @@ module rec Resolve_names : sig
     -> lib list
     -> forbidden_libraries:Loc.t Map.t
     -> lib list Resolve.Memo.t
+
+  val check_forbidden : lib list -> forbidden_libraries:Loc.t Map.t -> unit Resolve.Memo.t
 
   val make_instantiate
     :  db Lazy.t
@@ -954,7 +965,7 @@ end = struct
       | None -> Memo.return requires
       | Some vlib ->
         let open Resolve.Memo.O in
-        let* (_ : lib list) =
+        let* () =
           let* vlib = Memo.return vlib in
           let* requires_for_closure_check =
             Memo.return
@@ -962,8 +973,7 @@ end = struct
                let+ requires = requires in
                List.filter requires ~f:(fun lib -> not (equal lib vlib)))
           in
-          linking_closure_with_overlap_checks
-            None
+          check_forbidden
             requires_for_closure_check
             ~forbidden_libraries:(Map.singleton vlib Loc.none)
         in
@@ -1661,9 +1671,9 @@ end = struct
       include M
     end
 
-    let result computation ~linking =
+    let result computation kind =
       let* state, () = R.run computation R.empty_state in
-      Vlib.associate (List.rev state.result) ~linking
+      Vlib.associate (List.rev state.result) kind
     ;;
 
     let rec visit (t : t) ~stack (implements_via, lib) =
@@ -1727,7 +1737,7 @@ end = struct
 
   let compile_closure_with_overlap_checks db ts ~forbidden_libraries =
     let _closure, state = step1_closure db ts ~forbidden_libraries in
-    Closure.result state ~linking:false
+    Closure.result state `Compile
   ;;
 
   let linking_closure_with_overlap_checks db ts ~forbidden_libraries =
@@ -1753,7 +1763,13 @@ end = struct
       in
       state >>> impls_via_defaults ()
     in
-    Closure.result res ~linking:true
+    Closure.result res `Link
+  ;;
+
+  let check_forbidden ts ~forbidden_libraries =
+    let _closure, state = step1_closure None ts ~forbidden_libraries in
+    let+ (_ : lib list) = Closure.result state `Partial_link in
+    ()
   ;;
 end
 

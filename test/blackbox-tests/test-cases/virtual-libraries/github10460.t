@@ -52,12 +52,3 @@ Reproduces the issue reported in #10460
   > EOF
 
   $ dune build main.exe
-  Error: No implementation found for virtual library "vlib1" in
-  _build/default/vlib1.
-  -> required by library "lib" in _build/default/lib
-  -> required by library "impl2" in _build/default/impl2
-  -> required by executable main in dune:2
-  -> required by _build/default/.main.eobjs/byte/dune__exe__Main.cmi
-  -> required by _build/default/.main.eobjs/native/dune__exe__Main.cmx
-  -> required by _build/default/main.exe
-  [1]

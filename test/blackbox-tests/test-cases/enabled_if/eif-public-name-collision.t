@@ -5,7 +5,6 @@ contexts
 
   $ cat > dune-workspace << EOF
   > (lang dune 3.13)
-  > 
   > (context default)
   > (context
   >  (default
@@ -18,14 +17,17 @@ contexts
 
   $ cat > a/dune << EOF
   > (library
-  >  (name libname)
+  >  (name foo)
   >  (public_name foo.lib)
   >  (enabled_if (= %{context_name} "default")))
+  > EOF
+  $ cat > a/foo.ml << EOF
+  > let x = "hello"
   > EOF
 
   $ cat > b/dune << EOF
   > (library
-  >  (name libname)
+  >  (name foo)
   >  (public_name foo.lib)
   >  (enabled_if (= %{context_name} "melange")))
   > EOF
@@ -33,13 +35,6 @@ contexts
 Without any consumers of the libraries
 
   $ dune build
-  File "b/dune", line 3, characters 14-21:
-  3 |  (public_name foo.lib)
-                    ^^^^^^^
-  Error: Public library foo.lib is defined twice:
-  - a/dune:3
-  - b/dune:3
-  [1]
 
 With some consumer
 
@@ -51,15 +46,9 @@ With some consumer
   > EOF
 
   $ cat > main.ml <<EOF
-  > let () = Foo.x
+  > let () = print_endline Foo.x
   > EOF
 
-  $ dune build
-  File "b/dune", line 3, characters 14-21:
-  3 |  (public_name foo.lib)
-                    ^^^^^^^
-  Error: Public library foo.lib is defined twice:
-  - a/dune:3
-  - b/dune:3
-  [1]
+  $ dune exec ./main.exe
+  hello
 

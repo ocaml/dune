@@ -1,11 +1,22 @@
 open Dune_site.Private_
 module Data = Dune_site_plugins_data
 
-let readdir dirs =
-  List.concat
-    (List.map
-       (fun dir -> Array.to_list (Sys.readdir dir))
-       (List.filter Sys.file_exists dirs))
+let meta_fn = "META"
+
+let readdir =
+  let ( / ) = Filename.concat in
+  let readdir_noexn dir =
+    try Sys.readdir dir with
+    | Sys_error _ -> [||]
+  in
+  fun dirs ->
+    List.concat
+      (List.map
+         (fun dir ->
+           List.filter
+             (fun entry -> Sys.file_exists (dir / entry / meta_fn))
+             (Array.to_list (readdir_noexn dir)))
+         dirs)
 ;;
 
 let rec lookup dirs file =
@@ -207,8 +218,6 @@ let load file ~pkg =
   in
   { Meta_parser.name = Some pkg; entries }
 ;;
-
-let meta_fn = "META"
 
 let lookup_and_load_one_dir ~dir ~pkg =
   let meta_file = Filename.concat dir meta_fn in

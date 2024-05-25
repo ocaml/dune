@@ -137,9 +137,9 @@ that we register to the Dune engine using ``Super_context.add_rule`` has type
   the ``_build`` directory, while ``Memo`` is only concerned with what happens
   in memory.
 
-Finally, to register the correction, the technique is to attach
-the :doc:`/reference/actions/diff` action to the ``@runtest`` alias (a
-collection of rules) using this call:
+Finally, to register the correction, the technique is to attach the
+:doc:`/reference/actions/diff` action to the :doc:`/reference/aliases/runtest`
+alias (a collection of rules) using this call:
 
 .. code-block:: ocaml
   :linenos:

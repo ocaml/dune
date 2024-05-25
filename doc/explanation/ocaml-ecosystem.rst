@@ -72,8 +72,8 @@ Dune is designed to integrate with the tools mentioned above:
   not been produced by Dune.
 - It is able to generate opam files with filenames consistent with how opam
   looks for them. The generated files use build commands that make use of the
-  ``@install`` and ``@runtest`` :term:`aliases <alias>` so that the Dune
-  abstractions map to the opam ones.
+  :doc:`/reference/aliases/install` and ``@runtest`` :term:`aliases <alias>` so
+  that the Dune abstractions map to the opam ones.
 
 Dune is Opinionated
 -------------------

@@ -668,12 +668,12 @@ end
 type status =
   | (* We are not doing a build. Just accumulating invalidations until the next
        build starts. *)
-    Standing_by of { invalidation : Memo.Invalidation.t }
+    Standing_by
   | (* Running a build *)
     Building of Fiber.Cancel.t
   | (* Cancellation requested. Build jobs are immediately rejected in this
        state *)
-    Restarting_build of Memo.Invalidation.t
+    Restarting_build
 
 module Build_outcome = struct
   type t =
@@ -782,17 +782,49 @@ end = struct
   ;;
 end
 
+module Trigger : sig
+  (** Conceptually, a [unit Fiber.Ivar.t] that can be filled idempotently.
+      Ivars cannot, in general, have idempotent fill operations, since the second
+      fill might have different data in it than the first. Since this type only
+      contains unit data, we can be sure that every fill will be (). In fact, we
+      don't even both accepting data as the parameter of [trigger], since we
+      already know what it must be. *)
+  type t
+
+  val create : unit -> t
+  val trigger : t -> Fiber.fill list
+  val wait : t -> unit Fiber.t
+end = struct
+  type t =
+    { ivar : unit Fiber.Ivar.t
+    ; mutable filled : bool
+    }
+
+  let create () = { ivar = Fiber.Ivar.create (); filled = false }
+
+  let trigger t =
+    if t.filled
+    then []
+    else (
+      t.filled <- true;
+      [ Fiber.Fill (t.ivar, ()) ])
+  ;;
+
+  let wait t = Fiber.Ivar.read t.ivar
+end
+
 type t =
   { config : Config.t
   ; alarm_clock : Alarm_clock.t Lazy.t
   ; mutable status : status
+  ; mutable invalidation : Memo.Invalidation.t
   ; handler : Handler.t
   ; job_throttle : Fiber.Throttle.t
   ; events : Event.Queue.t
   ; process_watcher : Process_watcher.t
   ; file_watcher : Dune_file_watcher.t option
   ; fs_syncs : unit Fiber.Ivar.t Dune_file_watcher.Sync_id.Table.t
-  ; mutable wait_for_build_input_change : unit Fiber.Ivar.t option
+  ; mutable build_inputs_changed : Trigger.t
   ; mutable cancel : Fiber.Cancel.t
   ; thread_pool : Thread_pool.t
   }
@@ -908,6 +940,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
          here because then the non-polling mode would run in "Standing_by"
          mode, which is even weirder. *)
       Building cancel
+  ; invalidation = Memo.Invalidation.empty
   ; job_throttle = Fiber.Throttle.create config.concurrency
   ; process_watcher
   ; events
@@ -915,7 +948,7 @@ let prepare (config : Config.t) ~(handler : Handler.t) ~events ~file_watcher =
   ; handler
   ; file_watcher
   ; fs_syncs = Dune_file_watcher.Sync_id.Table.create 64
-  ; wait_for_build_input_change = None
+  ; build_inputs_changed = Trigger.create ()
   ; alarm_clock = lazy (Alarm_clock.create events ~frequency:0.1)
   ; cancel
   ; thread_pool = Thread_pool.create ~spawn_thread ~min_workers:4 ~max_workers:50
@@ -980,37 +1013,22 @@ end = struct
 
   and build_input_change (t : t) events =
     let invalidation = handle_invalidation_events events in
-    let significant_changes = not (Memo.Invalidation.is_empty invalidation) in
-    let fills =
-      match t.status with
-      | Restarting_build prev_invalidation ->
-        t.status
-        <- Restarting_build (Memo.Invalidation.combine prev_invalidation invalidation);
-        []
-      | Standing_by prev ->
-        t.status
-        <- Standing_by
-             { invalidation = Memo.Invalidation.combine prev.invalidation invalidation };
-        []
-      | Building cancellation ->
-        (match significant_changes with
-         | false -> []
-         | true ->
-           t.handler t.config Build_interrupted;
-           t.status <- Restarting_build invalidation;
-           Fiber.Cancel.fire' cancellation)
-    in
-    match
-      Nonempty_list.of_list
-      @@
-      match t.wait_for_build_input_change with
-      | Some ivar when significant_changes ->
-        t.wait_for_build_input_change <- None;
-        Fiber.Fill (ivar, ()) :: fills
-      | _ -> fills
-    with
-    | None -> iter t
-    | Some fills -> fills
+    if Memo.Invalidation.is_empty invalidation
+    then iter t
+    else (
+      t.invalidation <- Memo.Invalidation.combine t.invalidation invalidation;
+      let fills =
+        match t.status with
+        | Restarting_build | Standing_by -> []
+        | Building cancellation ->
+          t.handler t.config Build_interrupted;
+          t.status <- Restarting_build;
+          Fiber.Cancel.fire' cancellation
+      in
+      let fills = Trigger.trigger t.build_inputs_changed @ fills in
+      match Nonempty_list.of_list fills with
+      | None -> iter t
+      | Some fills -> fills)
   ;;
 
   let run t f : _ result =
@@ -1080,20 +1098,6 @@ let flush_file_watcher t =
     Fiber.Ivar.read ivar
 ;;
 
-let wait_for_build_input_change t =
-  match t.wait_for_build_input_change with
-  | Some ivar -> Fiber.Ivar.read ivar
-  | None ->
-    (match t.status with
-     | Standing_by { invalidation } when not (Memo.Invalidation.is_empty invalidation) ->
-       Fiber.return ()
-     | Restarting_build _ -> Fiber.return ()
-     | Standing_by _ | Building _ ->
-       let ivar = Fiber.Ivar.create () in
-       t.wait_for_build_input_change <- Some ivar;
-       Fiber.Ivar.read ivar)
-;;
-
 module Run = struct
   exception Build_cancelled = Build_cancelled
 
@@ -1107,19 +1111,21 @@ module Run = struct
   module Event_queue = Event.Queue
   module Event = Handler.Event
 
-  let rec poll_iter t step ~invalidation =
-    if Memo.Invalidation.is_empty invalidation
+  let rec poll_iter t step =
+    if Memo.Invalidation.is_empty t.invalidation
     then Memo.Metrics.reset ()
     else (
-      let details_hum = Memo.Invalidation.details_hum invalidation in
+      let details_hum = Memo.Invalidation.details_hum t.invalidation in
       t.handler t.config (Source_files_changed { details_hum });
-      Memo.reset invalidation);
+      Memo.reset t.invalidation;
+      t.invalidation <- Memo.Invalidation.empty;
+      t.build_inputs_changed <- Trigger.create ());
     let cancel = Fiber.Cancel.create () in
     t.status <- Building cancel;
     t.cancel <- cancel;
     let* res = step in
     match t.status with
-    | Standing_by _ ->
+    | Standing_by ->
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
@@ -1127,22 +1133,22 @@ module Run = struct
       in
       t.handler t.config (Build_finish res);
       Fiber.return res
-    | Restarting_build invalidation -> poll_iter t step ~invalidation
+    | Restarting_build -> poll_iter t step
     | Building _ ->
       let res : Build_outcome.t =
         match res with
         | Error `Already_reported -> Failure
         | Ok () -> Success
       in
-      t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
+      t.status <- Standing_by;
       t.handler t.config (Build_finish res);
       Fiber.return res
   ;;
 
   let poll_iter t step =
     match t.status with
-    | Building _ | Restarting_build _ -> assert false
-    | Standing_by { invalidation; _ } -> poll_iter t step ~invalidation
+    | Building _ | Restarting_build -> assert false
+    | Standing_by -> poll_iter t step
   ;;
 
   type step = (unit, [ `Already_reported ]) Result.t Fiber.t
@@ -1153,7 +1159,7 @@ module Run = struct
       match t.status with
       | Building _ -> true
       | _ -> false);
-    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
+    t.status <- Standing_by;
     t
   ;;
 
@@ -1182,7 +1188,7 @@ module Run = struct
     let rec loop () =
       let* _res = poll_iter t step in
       run_when_idle t.config.stats;
-      let* () = wait_for_build_input_change t in
+      let* () = Trigger.wait t.build_inputs_changed in
       loop ()
     in
     loop ()
@@ -1292,10 +1298,10 @@ let shutdown () =
 let cancel_current_build () =
   let* t = t () in
   match t.status with
-  | Restarting_build _ | Standing_by _ -> Fiber.return ()
+  | Restarting_build | Standing_by -> Fiber.return ()
   | Building cancellation ->
     t.handler t.config Build_interrupted;
-    t.status <- Standing_by { invalidation = Memo.Invalidation.empty };
+    t.status <- Standing_by;
     Fiber.Cancel.fire cancellation
 ;;
 
@@ -1356,5 +1362,5 @@ let sleep duration =
 
 let wait_for_build_input_change () =
   let* t = t () in
-  wait_for_build_input_change t
+  Trigger.wait t.build_inputs_changed
 ;;

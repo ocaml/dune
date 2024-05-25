@@ -56,7 +56,7 @@ let exists t ~is_builtin =
   let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
   match exists_if with
   | _ :: _ ->
-    Memo.List.for_all exists_if ~f:(fun fn -> Fs.file_exists (Path.relative t.dir fn))
+    Memo.List.exists exists_if ~f:(fun fn -> Fs.file_exists (Path.relative t.dir fn))
   | [] ->
     if not is_builtin
     then Memo.return true

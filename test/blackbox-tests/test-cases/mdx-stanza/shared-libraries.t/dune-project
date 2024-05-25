@@ -1,0 +1,5 @@
+(lang dune 3.15)
+
+(name dune_mdx_test)
+
+(using mdx 0.4)

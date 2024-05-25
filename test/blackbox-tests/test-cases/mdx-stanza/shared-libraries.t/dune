@@ -1,0 +1,16 @@
+(library
+ (name public_lib)
+ (foreign_archives test))
+
+(rule
+ (deps test.c)
+ (targets libtest.a dlltest.so)
+ (action
+  (progn
+   (run gcc -c -fPIC test.c -o test.o)
+   (run gcc test.o -shared -o dlltest.so)
+   (run ar rcs libtest.a test.o))))
+
+(mdx
+ (files :standard - *.mli)
+ (libraries public_lib))

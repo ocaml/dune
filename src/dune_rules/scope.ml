@@ -448,34 +448,35 @@ module DB = struct
       let+ libs =
         Dune_file.Memo_fold.fold_static_stanzas stanzas ~init:[] ~f:(fun d stanza acc ->
           match Stanza.repr stanza with
-          | Library.T ({ visibility = Private (Some pkg); _ } as lib) ->
-            let+ lib =
-              let src_dir = Dune_file.dir d in
-              let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
-              let db = libs scope in
-              Lib.DB.find_lib_id db (Local (Library.to_lib_id ~src_dir lib))
+          | Library.T ({ enabled_if; _ } as lib) ->
+            let* enabled =
+              let* expander = Expander0.get ~dir:build_dir in
+              Expander0.eval_blang expander enabled_if
             in
-            (match lib with
-             | None -> acc
-             | Some lib ->
-               let name = Package.name pkg in
-               (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
-          | Library.T { visibility = Public pub; enabled_if; _ } ->
-            let* lib = Lib.DB.find public_libs (Public_lib.name pub) in
-            (match lib with
-             | None -> Memo.return acc
-             | Some lib ->
-               let+ enabled =
-                 let* expander = Expander0.get ~dir:build_dir in
-                 Expander0.eval_blang expander enabled_if
-               in
-               if not enabled
-               then acc
-               else (
-                 let package = Public_lib.package pub in
-                 let name = Package.name package in
-                 let local_lib = Lib.Local.of_lib_exn lib in
-                 (name, Lib_entry.Library local_lib) :: acc))
+            if not enabled
+            then Memo.return acc
+            else (
+              match lib.visibility with
+              | Private None -> Memo.return acc
+              | Private (Some pkg) ->
+                let src_dir = Dune_file.dir d in
+                let* scope = find_by_dir (Path.Build.append_source build_dir src_dir) in
+                Lib.DB.find_lib_id (libs scope) (Local (Library.to_lib_id ~src_dir lib))
+                >>| (function
+                 | None -> acc
+                 | Some lib ->
+                   let name = Package.name pkg in
+                   (name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc)
+              | Public pub ->
+                let src_dir = Dune_file.dir d in
+                Lib.DB.find_lib_id public_libs (Local (Library.to_lib_id ~src_dir lib))
+                >>| (function
+                 | None -> acc
+                 | Some lib ->
+                   let package = Public_lib.package pub in
+                   let name = Package.name package in
+                   let local_lib = Lib.Local.of_lib_exn lib in
+                   (name, Lib_entry.Library local_lib) :: acc))
           | Deprecated_library_name.T ({ old_name = old_public_name, _; _ } as d) ->
             let package = Public_lib.package old_public_name in
             let name = Package.name package in

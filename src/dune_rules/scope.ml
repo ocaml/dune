@@ -441,6 +441,12 @@ module DB = struct
       | Deprecated_library_name { old_name = old_public_name, _; _ } ->
         Public_lib.name old_public_name
     ;;
+
+    let loc = function
+      | Library lib -> Lib.Local.to_lib lib |> Lib.info |> Lib_info.loc
+      | Deprecated_library_name { old_name = old_public_name, _; _ } ->
+        Public_lib.loc old_public_name
+    ;;
   end
 
   let lib_entries_of_package =
@@ -502,6 +508,39 @@ module DB = struct
     in
     fun (ctx : Context_name.t) pkg_name ->
       let+ map = per_context ctx in
-      Package.Name.Map.Multi.find map pkg_name
+      match Package.Name.Map.Multi.find map pkg_name with
+      | ([] | [ _ ]) as xs -> xs
+      | libs ->
+        let _by_name =
+          List.fold_left libs ~init:Lib_name.Map.empty ~f:(fun by_name entry2 ->
+            let public_name = Lib_entry.name entry2 in
+            Lib_name.Map.update by_name public_name ~f:(function
+              | None -> Some entry2
+              | Some entry1 ->
+                let loc1 = Lib_entry.loc entry1
+                and loc2 = Lib_entry.loc entry2 in
+                let main_message =
+                  Pp.textf
+                    "Public library %s is defined twice:"
+                    (Lib_name.to_string public_name)
+                in
+                let annots =
+                  let main = User_message.make ~loc:loc2 [ main_message ] in
+                  let related =
+                    [ User_message.make ~loc:loc1 [ Pp.text "Already defined here" ] ]
+                  in
+                  User_message.Annots.singleton
+                    Compound_user_error.annot
+                    [ Compound_user_error.make ~main ~related ]
+                in
+                User_error.raise
+                  ~annots
+                  ~loc:loc2
+                  [ main_message
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                  ]))
+        in
+        libs
   ;;
 end

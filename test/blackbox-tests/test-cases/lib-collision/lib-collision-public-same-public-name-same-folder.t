@@ -1,5 +1,5 @@
 Public libraries using the same library name, in the same context, defined in
-different folders.
+the same folder.
 
   $ mkdir -p a b
 
@@ -12,9 +12,6 @@ different folders.
   > (library
   >  (name foo)
   >  (public_name bar.foo))
-  > EOF
-
-  $ cat > b/dune << EOF
   > (library
   >  (name bar)
   >  (public_name bar.foo))
@@ -23,13 +20,13 @@ different folders.
 Without any consumers of the libraries
 
   $ dune build
-  File "b/dune", lines 1-3, characters 0-44:
+  File "a/dune", lines 1-3, characters 0-44:
   1 | (library
-  2 |  (name bar)
+  2 |  (name foo)
   3 |  (public_name bar.foo))
   Error: Public library bar.foo is defined twice:
+  - a/dune:4
   - a/dune:1
-  - b/dune:1
   [1]
 
 With some consumer
@@ -45,11 +42,12 @@ With some consumer
   > EOF
 
   $ dune build
-  File "b/dune", lines 1-3, characters 0-44:
+  File "a/dune", lines 1-3, characters 0-44:
   1 | (library
-  2 |  (name bar)
+  2 |  (name foo)
   3 |  (public_name bar.foo))
   Error: Public library bar.foo is defined twice:
+  - a/dune:4
   - a/dune:1
-  - b/dune:1
   [1]
+

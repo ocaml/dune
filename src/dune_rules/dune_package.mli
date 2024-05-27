@@ -48,7 +48,7 @@ module Entry : sig
 
         - are not built with dune
 
-        - have a [META] file with an unsatisfied [exist_if] field
+        - have a [META] file with an unsatisfied [exists_if] field
 
         Dune itself never produces hidden libraries. *)
 

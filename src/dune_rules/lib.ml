@@ -379,10 +379,10 @@ module Hidden = struct
     Error.hidden ~loc ~name ~dir:path ~reason
   ;;
 
-  let unsatisfied_exist_if pkg =
+  let unsatisfied_exists_if pkg =
     let info = Dune_package.Lib.info pkg in
     let path = Lib_info.src_dir info in
-    { lib = info; reason = "unsatisfied 'exist_if'"; path }
+    { lib = info; reason = "unsatisfied 'exists_if'"; path }
   ;;
 end
 
@@ -1937,7 +1937,7 @@ module DB = struct
         | Ok (Library pkg) -> [ Found (Dune_package.Lib.info pkg) ]
         | Ok (Deprecated_library_name d) ->
           [ Redirect_in_the_same_db (d.loc, d.new_public_name) ]
-        | Ok (Hidden_library pkg) -> [ Hidden (Hidden.unsatisfied_exist_if pkg) ]
+        | Ok (Hidden_library pkg) -> [ Hidden (Hidden.unsatisfied_exists_if pkg) ]
         | Error e ->
           [ (match e with
              | Invalid_dune_package why -> Invalid why

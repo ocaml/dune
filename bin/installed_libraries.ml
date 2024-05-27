@@ -35,7 +35,7 @@ let term =
              | Hidden_library lib ->
                Some
                  ( Dune_package.Lib.info lib |> Dune_rules.Lib_info.name
-                 , "unsatisfied 'exist_if'" )
+                 , "unsatisfied 'exists_if'" )
              | _ -> None)
          in
          let all =

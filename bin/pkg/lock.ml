@@ -96,14 +96,14 @@ let solve
   ~project_sources
   ~solver_env_from_current_system
   ~version_preference
-  ~lock_dirs_arg
+  ~lock_dirs
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
      lockdir would fail then no side effect takes place. *)
   (let+ errors, solutions =
-     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+     lock_dirs
      |> Fiber.parallel_map
           ~f:
             (solve_lock_dir
@@ -139,6 +139,23 @@ let project_sources =
     Pin_stanza.DB.combine_exn acc (Dune_project.sources project))
 ;;
 
+let solve_ocamlformat_dev_tool solve ~lock_dirs =
+  let ocamlformat = Dune_pkg.Dev_tool.OCamlformat.ocamlformat_dev_local in
+  let ocamlformat_pkg_name = Package_name.to_string ocamlformat.name in
+  let local_packages =
+    (* This is for solving purpose, the package is not local *)
+    Package_name.Map.add Package_name.Map.empty ocamlformat.name ocamlformat
+    |> Result.value ~default:Package_name.Map.empty
+  in
+  let lock_dirs =
+    List.map lock_dirs ~f:(fun path ->
+      Path.Source.append_local path (Path.Local.of_string Dune_pkg.Dev_tool.root_location)
+      |> fun path ->
+      Path.Source.append_local path (Path.Local.of_string ocamlformat_pkg_name))
+  in
+  solve ~local_packages ~lock_dirs
+;;
+
 let lock ~version_preference ~lock_dirs_arg =
   let open Fiber.O in
   let* solver_env_from_current_system =
@@ -154,13 +171,20 @@ let lock ~version_preference ~lock_dirs_arg =
     and+ project_sources = project_sources in
     workspace, local_packages, project_sources
   in
+  let lock_dirs =
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+  in
   solve
     workspace
     ~local_packages
     ~project_sources
     ~solver_env_from_current_system
     ~version_preference
-    ~lock_dirs_arg
+    ~lock_dirs
+  >>= fun () ->
+  solve_ocamlformat_dev_tool
+    (solve workspace ~project_sources ~solver_env_from_current_system ~version_preference)
+    ~lock_dirs
 ;;
 
 let term =

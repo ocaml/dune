@@ -36,6 +36,10 @@ module Pkg : sig
   val files_dir : Package_name.t -> lock_dir:Path.Source.t -> Path.Source.t
 end
 
+module Package_filename : sig
+  val of_package_name : Package_name.t -> string
+end
+
 module Repositories : sig
   type t
 end
@@ -73,6 +77,10 @@ val create_latest_version
   -> t
 
 val default_path : Path.Source.t
+
+(** Returns the path to the lockdir that will be used to lock the
+    given dev tool *)
+val dev_tool_lock_dir_path : Dev_tool.t -> Path.Source.t
 
 module Metadata : Dune_sexp.Versioned_file.S with type data := unit
 

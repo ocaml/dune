@@ -18,7 +18,7 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Disabled; "pkg_build_progress", `Disabled ]
+  [ "toolchains", `Disabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
 ;;
 
 let () =
@@ -86,6 +86,11 @@ let () =
     ; ( "--enable-pkg-build-progress"
       , Arg.Unit (toggle "pkg_build_progress")
       , " Enable the displaying of package build progress.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--enable-lock-dev-tool"
+      , Arg.Unit (toggle "lock_dev_tool")
+      , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
+         it, independently from the project depenedencies .\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
     ]
   in

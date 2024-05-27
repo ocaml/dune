@@ -58,6 +58,11 @@ module Alias = struct
 end
 
 module Ocamlformat = struct
+  let dev_tool_lock_dir_exists () =
+    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Ocamlformat in
+    Fs_memo.dir_exists (Path.source path |> Path.as_outside_build_dir_exn)
+  ;;
+
   (* Config files for ocamlformat. When these are changed, running
      `dune fmt` should cause ocamlformat to re-format the ocaml files
      in the project. *)
@@ -74,13 +79,34 @@ module Ocamlformat = struct
     | Intf -> "--intf"
   ;;
 
-  let action ~input kind =
+  let action_when_ocamlformat_is_locked ~input ~output kind =
+    let path = Path.build @@ Pkg_dev_tool.exe_path Ocamlformat in
+    let dir = Path.Build.parent_exn input in
+    let action =
+      (* An action which runs at on the file at [input] and stores the
+         resulting diff in the file at [output] *)
+      Action_builder.with_stdout_to
+        output
+        (let open Action_builder.O in
+         (* This ensures that at is installed as a dev tool before
+            running it. *)
+         let+ () = Action_builder.path path in
+         let args = [ flag_of_kind kind; Path.Build.basename input ] in
+         Action.chdir (Path.build dir) @@ Action.run (Ok path) args |> Action.Full.make)
+    in
+    let open Action_builder.With_targets.O in
+    (* Depend on [extra_deps] so if the ocamlformat config file
+       changes then ocamlformat will run again. *)
+    extra_deps dir >>> action
+  ;;
+
+  let action_when_ocamlformat_isn't_locked ~input kind =
     let module S = String_with_vars in
     let dir = Path.Build.parent_exn input in
     ( Dune_lang.Action.chdir
         (S.make_pform Loc.none (Var Workspace_root))
         (Dune_lang.Action.run
-           (S.make_text Loc.none "ocamlformat")
+           (S.make_text Loc.none (Pkg_dev_tool.exe_name Ocamlformat))
            [ S.make_text Loc.none (flag_of_kind kind)
            ; S.make_pform Loc.none (Var Input_file)
            ])
@@ -89,20 +115,28 @@ module Ocamlformat = struct
 end
 
 let format_action format ~input ~output ~expander kind =
-  let loc, (action, extra_deps) =
-    match (format : Dialect.Format.t) with
-    | Ocamlformat -> Loc.none, Ocamlformat.action ~input kind
-    | Action (loc, action) -> loc, (action, With_targets.return ())
-  in
-  let open Action_builder.With_targets.O in
-  extra_deps
-  >>> Pp_spec_rules.action_for_pp_with_target
-        ~sandbox:Sandbox_config.default
-        ~loc
-        ~expander
-        ~action
-        ~src:input
-        ~target:output
+  let open Memo.O in
+  let+ ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  match (format : Dialect.Format.t) with
+  | Ocamlformat when ocamlformat_is_locked ->
+    Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind
+  | _ ->
+    assert (not ocamlformat_is_locked);
+    let loc, (action, extra_deps) =
+      match format with
+      | Ocamlformat ->
+        Loc.none, Ocamlformat.action_when_ocamlformat_isn't_locked ~input kind
+      | Action (loc, action) -> loc, (action, With_targets.return ())
+    in
+    let open Action_builder.With_targets.O in
+    extra_deps
+    >>> Pp_spec_rules.action_for_pp_with_target
+          ~sandbox:Sandbox_config.default
+          ~loc
+          ~expander
+          ~action
+          ~src:input
+          ~target:output
 ;;
 
 let gen_rules_output
@@ -138,7 +172,7 @@ let gen_rules_output
           | Some _ -> None)
      in
      format_action format ~input ~output ~expander kind
-     |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
+     |> Memo.bind ~f:(Super_context.add_rule sctx ~mode:Standard ~loc ~dir)
      >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
     |> Memo.Option.iter ~f:Fun.id
   in

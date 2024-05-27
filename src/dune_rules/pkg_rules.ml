@@ -47,6 +47,44 @@ module Variable = struct
   ;;
 end
 
+module Package_universe = struct
+  (* A type of group of packages that are co-installed. Different
+     package universes are unaware of each other. For example the
+     dependencies of the project and the dependencies of one of the dev
+     tools don't need to be mutually co-installable as they are in
+     different universes. *)
+  type t =
+    | Project_dependencies of Context_name.t
+    | Dev_tool of Dune_pkg.Dev_tool.t
+
+  let equal a b =
+    match a, b with
+    | Project_dependencies a, Project_dependencies b -> Context_name.equal a b
+    | Dev_tool a, Dev_tool b -> Dune_pkg.Dev_tool.equal a b
+    | _ -> false
+  ;;
+
+  let context_name = function
+    | Project_dependencies context_name -> context_name
+    | Dev_tool _ ->
+      (* Dev tools can only be built in the default context. *)
+      Context_name.default
+  ;;
+
+  let lock_dir t =
+    match t with
+    | Project_dependencies ctx -> Lock_dir.get_exn ctx
+    | Dev_tool dev_tool -> Lock_dir.of_dev_tool dev_tool
+  ;;
+
+  let lock_dir_path t =
+    match t with
+    | Project_dependencies ctx -> Lock_dir.get_path ctx
+    | Dev_tool dev_tool ->
+      Memo.return (Some (Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool))
+  ;;
+end
+
 module Paths = struct
   (* The [paths] of a package are the information about the artifacts
      that we know {e without} executing any commands. *)
@@ -99,11 +137,19 @@ module Paths = struct
     Path.Build.append_local t.extra_sources extra_source
   ;;
 
-  let make name (ctx : Context_name.t) =
-    let build_dir =
-      Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
+  let make package_universe name =
+    let universe_root =
+      match (package_universe : Package_universe.t) with
+      | Dev_tool dev_tool -> Pkg_dev_tool.universe_install_path dev_tool
+      | Project_dependencies _ ->
+        let build_dir =
+          Path.Build.relative
+            Private_context.t.build_dir
+            (Context_name.to_string (Package_universe.context_name package_universe))
+        in
+        Path.Build.relative build_dir ".pkg"
     in
-    let root = Path.Build.L.relative build_dir [ ".pkg"; Package.Name.to_string name ] in
+    let root = Path.Build.relative universe_root (Package.Name.to_string name) in
     of_root name ~root
   ;;
 
@@ -1132,24 +1178,43 @@ module DB = struct
     && Package.Name.Set.equal t.system_provided system_provided
   ;;
 
-  let get =
+  let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    fun context ->
-      let+ all = Lock_dir.get_exn context in
-      { all = all.packages; system_provided = dune }
+    let+ all = Package_universe.lock_dir package_universe in
+    { all = all.packages; system_provided = dune }
   ;;
 end
 
 module rec Resolve : sig
   val resolve
     :  DB.t
-    -> Context_name.t
     -> Loc.t * Package.Name.t
+    -> Package_universe.t
     -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
 end = struct
   open Resolve
 
-  let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
+  module Input = struct
+    type t =
+      { db : DB.t
+      ; package : Package.Name.t
+      ; universe : Package_universe.t
+      }
+
+    let equal { db; package; universe } t =
+      DB.equal db t.db
+      && Package.Name.equal package t.package
+      && Package_universe.equal universe t.universe
+    ;;
+
+    let hash { db; package; universe } =
+      Poly.hash (Poly.hash db, Package.Name.hash package, Poly.hash universe)
+    ;;
+
+    let to_dyn = Dyn.opaque
+  end
+
+  let resolve_impl { Input.db; package = name; universe = package_universe } =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
     | Some
@@ -1158,19 +1223,21 @@ end = struct
       assert (Package.Name.equal name info.name);
       let* depends =
         Memo.parallel_map depends ~f:(fun name ->
-          resolve db ctx name
+          resolve db name package_universe
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+        let+ lock_dir =
+          Package_universe.lock_dir_path package_universe >>| Option.value_exn
+        in
         Path.Build.append_source
-          (Context_name.build_dir ctx)
+          (Context_name.build_dir (Package_universe.context_name package_universe))
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
-      let write_paths = Paths.make name ctx ~relative:Path.Build.relative in
+      let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -1217,7 +1284,9 @@ end = struct
         }
       in
       let+ exported_env =
-        let* expander = Action_expander.expander ctx t in
+        let* expander =
+          Action_expander.expander (Package_universe.context_name package_universe) t
+        in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in
       t.exported_env <- exported_env;
@@ -1225,27 +1294,19 @@ end = struct
   ;;
 
   let resolve =
-    let module Input = struct
-      type t = DB.t * Context_name.t * Package.Name.t
-
-      let equal = Tuple.T3.equal DB.equal Context_name.equal Package.Name.equal
-      let hash = Tuple.T3.hash Poly.hash Context_name.hash Package.Name.hash
-      let to_dyn = Dyn.opaque
-    end
-    in
     let memo =
       Memo.create
         "pkg-resolve"
         ~input:(module Input)
-        ~human_readable_description:(fun (_db, _ctx, pkg) ->
-          Pp.textf "- package %s" (Package.Name.to_string pkg))
+        ~human_readable_description:(fun t ->
+          Pp.textf "- package %s" (Package.Name.to_string t.package))
         resolve_impl
     in
-    fun (db : DB.t) ctx (loc, name) ->
+    fun (db : DB.t) (loc, name) package_universe ->
       if Package.Name.Set.mem db.system_provided name
       then Memo.return `System_provided
       else
-        Memo.exec memo (db, ctx, name)
+        Memo.exec memo { db; package = name; universe = package_universe }
         >>| function
         | Some s -> `Inside_lock_dir s
         | None ->
@@ -1816,11 +1877,11 @@ let gen_rules context_name (pkg : Pkg.t) =
 
 module Gen_rules = Build_config.Gen_rules
 
-let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
+let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
+  let* db = DB.get package_universe in
   let* pkg =
-    let* db = DB.get context in
-    Resolve.resolve db context (Loc.none, name)
+    Resolve.resolve db (Loc.none, name) package_universe
     >>| function
     | `Inside_lock_dir pkg -> pkg
     | `System_provided ->
@@ -1831,7 +1892,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
             (Package.Name.to_string name)
         ]
   in
-  let paths = Paths.make name context ~relative:Path.Build.relative in
+  let paths = Paths.make package_universe name ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -1849,34 +1910,63 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let build_dir_only_sub_dirs =
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
   in
-  let rules = Rules.collect_unit (fun () -> gen_rules context pkg) in
+  let context_name = Package_universe.context_name package_universe in
+  let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 
 let setup_rules ~components ~dir ctx =
-  match components with
-  | [ ".pkg" ] ->
+  (* Note that the path components in the following patterns must
+     correspond to the paths returned by [Paths.make]. The string
+     ".dev-tool" is hardcoded into several patterns, and must match
+     the value of [Pkg_dev_tool.install_path_base_dir_name]. *)
+  assert (String.equal Pkg_dev_tool.install_path_base_dir_name ".dev-tool");
+  match Context_name.is_default ctx, components with
+  | true, [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
+    setup_package_rules
+      ~package_universe:
+        (Dev_tool (Package.Name.of_string pkg_name |> Dune_pkg.Dev_tool.of_package_name))
+      ~dir
+      ~pkg_name:pkg_dep_name
+  | true, [ ".dev-tool" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~dir ~pkg_name
-  | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-  | [] ->
+  | _, [ ".pkg" ] ->
+    Gen_rules.make
+      ~build_dir_only_sub_dirs:
+        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
+      (Memo.return Rules.empty)
+    |> Memo.return
+  | _, [ ".pkg"; pkg_name ] ->
+    setup_package_rules ~package_universe:(Project_dependencies ctx) ~dir ~pkg_name
+  | _, ".pkg" :: _ :: _ ->
+    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | true, ".dev-tool" :: _ :: _ :: _ ->
+    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | is_default, [] ->
+    let sub_dirs = ".pkg" :: (if is_default then [ ".dev-tool" ] else []) in
     let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list [ ".pkg" ]
+      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list sub_dirs
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
   | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
 ;;
 
+let db_project context = DB.get (Project_dependencies context)
+
+let resolve_pkg_project context pkg =
+  let* db = db_project context in
+  Resolve.resolve db pkg (Project_dependencies context)
+;;
+
 let ocaml_toolchain context =
   (let* lock_dir = Lock_dir.get_exn context in
-   let* db = DB.get context in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided
-   | Some ocaml -> Resolve.resolve db context ocaml)
+   | Some ocaml -> resolve_pkg_project context ocaml)
   >>| function
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
@@ -1896,11 +1986,11 @@ let ocaml_toolchain context =
 ;;
 
 let all_packages context =
-  let* db = DB.get context in
+  let* db = db_project context in
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
-    Resolve.resolve db context (Loc.none, package)
+    resolve_pkg_project context (Loc.none, package)
     >>| function
     | `Inside_lock_dir pkg -> Some pkg
     | `System_provided -> None)
@@ -1946,8 +2036,7 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    let* db = DB.get ctx in
-    Resolve.resolve db ctx (Loc.none, pkg)
+    resolve_pkg_project ctx (Loc.none, pkg)
     >>| (function
            | `System_provided -> Action_builder.return ()
            | `Inside_lock_dir pkg ->

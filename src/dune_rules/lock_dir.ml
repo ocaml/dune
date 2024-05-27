@@ -145,6 +145,16 @@ let get ctx =
 
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
+let of_dev_tool dev_tool =
+  let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path dev_tool in
+  Fs_memo.dir_exists (In_source_dir path)
+  >>= function
+  | true -> Load.load_exn path
+  | false ->
+    User_error.raise
+      [ Pp.textf "%s does not exist" (Path.Source.to_string_maybe_quoted path) ]
+;;
+
 let lock_dir_active ctx =
   if !Clflags.ignore_lock_dir
   then Memo.return false

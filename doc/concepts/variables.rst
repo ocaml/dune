@@ -66,7 +66,7 @@ Dune supports the following variables:
   the same as ``ocaml-config:model``.
 - ``system`` is the name of the OS the build is targeting. This is the same as
   ``ocaml-config:system``.
-- ``ignoring_promoted_rule`` is ``true`` if
+- ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,

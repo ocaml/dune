@@ -23,58 +23,28 @@ library also has more than one src dir.
   $ dune build lib2/.merlin-conf/lib-lib2
   $ dune ocaml merlin dump-config $PWD/lib2
   Lib2: _build/default/lib2/lib2
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)
-   (B
-    $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib1)
-   (S
-    $TESTCASE_ROOT/lib1/sub)
-   (S
-    $TESTCASE_ROOT/lib2)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)
+   (B $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
+   (S $TESTCASE_ROOT/lib1)
+   (S $TESTCASE_ROOT/lib1/sub)
+   (S $TESTCASE_ROOT/lib2)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME lib2))
   Lib2: _build/default/lib2/lib2.ml-gen
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/cctx.ocaml-index)
    (STDLIB /OPAM_PREFIX)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)
-   (B
-    $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib1)
-   (S
-    $TESTCASE_ROOT/lib1/sub)
-   (S
-    $TESTCASE_ROOT/lib2)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/lib1/.lib1.objs/byte)
+   (B $TESTCASE_ROOT/_build/default/lib2/.lib2.objs/byte)
+   (S $TESTCASE_ROOT/lib1)
+   (S $TESTCASE_ROOT/lib1/sub)
+   (S $TESTCASE_ROOT/lib2)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME lib2))

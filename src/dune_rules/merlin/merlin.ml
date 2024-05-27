@@ -327,7 +327,7 @@ module Processed = struct
         |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
         |> Pp.vbox
       in
-      Format.printf "%a@." Pp.to_fmt pp
+      Format.printf "%a%a@." Format.pp_set_margin 1000 Pp.to_fmt pp
   ;;
 
   let print_generic_dot_merlin paths =

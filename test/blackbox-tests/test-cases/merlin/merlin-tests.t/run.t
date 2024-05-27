@@ -14,362 +14,194 @@ CRAM sanitization
   $ dune build ./exe/.merlin-conf/exe-x --profile release
   $ dune ocaml merlin dump-config $PWD/exe
   X: _build/default/exe/x
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/exe)
-   (S
-    $TESTCASE_ROOT/lib)
-   (FLG
-    (-pp
-     $TESTCASE_ROOT/_build/default/pp/pp.exe))
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/exe)
+   (S $TESTCASE_ROOT/lib)
+   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (FLG (-w -40 -g))
    (UNIT_NAME x))
   X: _build/default/exe/x.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/exe)
-   (S
-    $TESTCASE_ROOT/lib)
-   (FLG
-    (-pp
-     $TESTCASE_ROOT/_build/default/pp/pp.exe))
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/exe/.x.eobjs/byte)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/public_cmi)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/exe)
+   (S $TESTCASE_ROOT/lib)
+   (FLG (-pp $TESTCASE_ROOT/_build/default/pp/pp.exe))
    (FLG (-w -40 -g))
    (UNIT_NAME x))
 
   $ dune build ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar: _build/default/lib/bar
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
+   (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME bar))
   Bar: _build/default/lib/bar.ml-gen
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
+   (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME bar))
   File: _build/default/lib/subdir/file
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
+   (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
    (FLG (-open Bar))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME bar__File))
   File: _build/default/lib/subdir/file.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
+   (B $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
    (FLG (-open Bar))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="bar"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="bar"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME bar__File))
   Foo: _build/default/lib/foo
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME foo))
   Foo: _build/default/lib/foo.ml-gen
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME foo))
   Privmod: _build/default/lib/privmod
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
    (FLG (-open Foo))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME foo__Privmod))
   Privmod: _build/default/lib/privmod.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (B
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
-   (S
-    $TESTCASE_ROOT/_findlib/publicfoo)
-   (S
-    $TESTCASE_ROOT/lib)
-   (S
-    $TESTCASE_ROOT/lib/subdir)
+   (B $TESTCASE_ROOT/_findlib/publicfoo)
+   (B $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
+   (S $TESTCASE_ROOT/_findlib/publicfoo)
+   (S $TESTCASE_ROOT/lib)
+   (S $TESTCASE_ROOT/lib/subdir)
    (FLG (-open Foo))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
    (FLG (-w -40 -g))
    (UNIT_NAME foo__Privmod))
 
@@ -381,61 +213,35 @@ Make sure pp flag is correct and variables are expanded
   $ dune build ./pp-with-expand/.merlin-conf/exe-foobar --profile release
   $ dune ocaml merlin dump-config $PWD/pp-with-expand
   Foobar: _build/default/pp-with-expand/foobar
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/pp-with-expand)
-   (FLG
-    (-pp
-     "$TESTCASE_ROOT/_build/default/pp/pp.exe
-     -nothing"))
+   (B $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
+   (S $TESTCASE_ROOT/pp-with-expand)
+   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (FLG (-w -40 -g))
    (UNIT_NAME foobar))
   Foobar: _build/default/pp-with-expand/foobar.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/pp-with-expand)
-   (FLG
-    (-pp
-     "$TESTCASE_ROOT/_build/default/pp/pp.exe
-     -nothing"))
+   (B $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/byte)
+   (S $TESTCASE_ROOT/pp-with-expand)
+   (FLG (-pp "$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing"))
    (FLG (-w -40 -g))
    (UNIT_NAME foobar))
 
@@ -443,130 +249,62 @@ Check hash of executables names if more than one
   $ dune build ./exes/.merlin-conf/exe-x-6562915302827c6dce0630390bfa68b7
   $ dune ocaml merlin dump-config $PWD/exes
   X: _build/default/exes/x
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/exes)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S $TESTCASE_ROOT/exes)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME x))
   X: _build/default/exes/x.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/exes)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S $TESTCASE_ROOT/exes)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME x))
   Y: _build/default/exes/y
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/exes)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S $TESTCASE_ROOT/exes)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME y))
   Y: _build/default/exes/y.ml
-  ((INDEX
-    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
-   (INDEX
-    $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
+  ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/exes/.x.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/pp-with-expand/.foobar.eobjs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/ppx/.fooppx.objs/cctx.ocaml-index)
    (STDLIB /OCAMLC_WHERE)
-   (SOURCE_ROOT
-    $TESTCASE_ROOT)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
-   (S
-    $TESTCASE_ROOT/exes)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g))
+   (B $TESTCASE_ROOT/_build/default/exes/.x.eobjs/byte)
+   (S $TESTCASE_ROOT/exes)
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
    (UNIT_NAME y))

@@ -8,7 +8,13 @@ should appear only once since only Foo is using it.
 
   $ dune ocaml merlin dump-config $PWD
   Bar: _build/default/bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -21,9 +27,16 @@ should appear only once since only Foo is using it.
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME bar))
   Bar: _build/default/bar.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -36,9 +49,16 @@ should appear only once since only Foo is using it.
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME bar))
   Foo: _build/default/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -54,9 +74,16 @@ should appear only once since only Foo is using it.
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))
   Foo: _build/default/foo.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/pp/.pp.eobjs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/.foo.objs/byte)
@@ -72,4 +99,5 @@ should appear only once since only Foo is using it.
      -strict-formats
      -short-paths
      -keep-locs
-     -g)))
+     -g))
+   (UNIT_NAME foo))

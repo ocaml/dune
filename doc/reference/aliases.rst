@@ -76,6 +76,7 @@ Some aliases are defined and managed by Dune itself:
        :caption: Checks
 
        aliases/check
+       aliases/ocaml-index
        aliases/runtest
        aliases/fmt
        aliases/lint

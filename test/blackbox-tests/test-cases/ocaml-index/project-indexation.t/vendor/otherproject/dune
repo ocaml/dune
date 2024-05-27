@@ -1,0 +1,8 @@
+(library
+ (name vendored_lib)
+ (public_name vendored_lib)
+ (modules vendored_lib))
+
+(library
+ (name private_lib) ; This private lib is not built when vendored
+ (modules private_lib))

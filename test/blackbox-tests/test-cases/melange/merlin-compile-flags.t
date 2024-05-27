@@ -18,12 +18,12 @@ Show that the merlin config knows about melange.compile_flags
   $ dune build @check
 
   $ dune ocaml merlin dump-config "$PWD" | grep -i "+42"
-     +42)))
-     +42)))
-     +42)))
-     +42)))
-     +42)))
-     +42)))
+     +42))
+     +42))
+     +42))
+     +42))
+     +42))
+     +42))
 
   $ cat >dune <<EOF
   > (melange.emit
@@ -35,10 +35,10 @@ Show that the merlin config knows about melange.compile_flags
   $ dune build @check
 
   $ dune ocaml merlin dump-config "$PWD" | grep -i "+42"
-     +42)))
-     +42)))
-     +42)))
-     +42)))
-     +42)))
-     +42)))
+     +42))
+     +42))
+     +42))
+     +42))
+     +42))
+     +42))
 

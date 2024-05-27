@@ -9,7 +9,8 @@
    ../utils/melc_stdlib_prefix.exe
    ../utils/refmt.exe
    ../utils/webserver_oneshot.exe
-   ../utils/sherlodoc.exe)))
+   ../utils/sherlodoc.exe
+   ../utils/ocaml_index.exe)))
 
 (cram
  (applies_to pp-cwd)

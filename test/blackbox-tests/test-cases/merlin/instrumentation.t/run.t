@@ -9,7 +9,19 @@ up a project with instrumentation and testing checking the merlin config.
   $ dune build --instrument-with hello ./lib/.merlin-conf/lib-foo ./lib/.merlin-conf/lib-bar --profile release
   $ dune ocaml merlin dump-config $PWD/lib
   Bar: _build/default/lib/bar
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -21,9 +33,22 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar))
   Bar: _build/default/lib/bar.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -35,9 +60,22 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar))
   File: _build/default/lib/subdir/file
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -50,9 +88,22 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Bar))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar__File))
   File: _build/default/lib/subdir/file.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.bar.objs/byte)
@@ -65,9 +116,22 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Bar))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME bar__File))
   Foo: _build/default/lib/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -79,9 +143,22 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo))
   Foo: _build/default/lib/foo.ml-gen
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -93,9 +170,22 @@ up a project with instrumentation and testing checking the merlin config.
     $TESTCASE_ROOT/lib/subdir)
    (S
     $TESTCASE_ROOT/ppx)
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo))
   Privmod: _build/default/lib/privmod
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -108,9 +198,22 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Foo))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo__Privmod))
   Privmod: _build/default/lib/privmod.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX
+    $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.bar.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/lib/.foo.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello.objs/cctx.ocaml-index)
+   (INDEX
+    $TESTCASE_ROOT/_build/default/ppx/.hello_ppx.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT
+    $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
    (B
     $TESTCASE_ROOT/_build/default/lib/.foo.objs/byte)
@@ -123,4 +226,5 @@ up a project with instrumentation and testing checking the merlin config.
    (S
     $TESTCASE_ROOT/ppx)
    (FLG (-open Foo))
-   (FLG (-w -40 -g)))
+   (FLG (-w -40 -g))
+   (UNIT_NAME foo__Privmod))

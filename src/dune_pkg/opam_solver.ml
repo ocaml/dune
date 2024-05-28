@@ -65,6 +65,7 @@ module Context_for_dune = struct
          packages for which we've printed a warning. *)
       available_cache : (OpamPackage.t, bool) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; latest_released_base_compiler_version : Package_version.t option
     }
 
   let create
@@ -75,6 +76,7 @@ module Context_for_dune = struct
     ~version_preference
     ~stats_updater
     ~constraints
+    ~latest_released_base_compiler_version
     =
     let dune_version =
       let major, minor = Dune_lang.Stanza.latest_version in
@@ -106,6 +108,7 @@ module Context_for_dune = struct
     ; candidates_cache
     ; available_cache
     ; constraints
+    ; latest_released_base_compiler_version
     }
   ;;
 
@@ -195,19 +198,82 @@ module Context_for_dune = struct
     { available; resolved }
   ;;
 
+  (* Move all packages with the avoid-version flag beyond any package
+     without that flag, otherwise preserving the order. This is needed
+     so that development versions of packages (such as alpha releases
+     of the compiler) are not favoured over older, stable releases of
+     the package. This is a hack to work around the fact that
+     opam-0install-solver does not implement the avoid-versions
+     flag. *)
+  let move_avoid_versions_packages_to_end packages =
+    let avoid, don't_avoid =
+      List.partition packages ~f:(fun package ->
+        Resolved_package.opam_file package |> opam_file_is_avoid_version)
+    in
+    don't_avoid @ avoid
+  ;;
+
+  (* Move all packages with a version number greater than the latest
+     released version of ocaml-base-compiler to the end of the list,
+     otherwise preserving the order of the list. If the latest
+     released version of ocaml-base-compiler is not known, return the
+     list unchanged. *)
+  let move_packages_newer_than_latest_released_base_compiler_to_end t packages =
+    match t.latest_released_base_compiler_version with
+    | Some latest_released_base_compiler_version ->
+      let latest_released_base_compiler_version =
+        Package_version.to_opam_package_version latest_released_base_compiler_version
+      in
+      let earlier_or_equal, later =
+        List.partition packages ~f:(fun package ->
+          let package_version =
+            OpamFile.OPAM.version (Resolved_package.opam_file package)
+          in
+          match
+            opam_version_compare t package_version latest_released_base_compiler_version
+          with
+          | Lt -> false
+          | Eq | Gt -> true)
+      in
+      earlier_or_equal @ later
+    | None -> packages
+  ;;
+
   let repo_candidate t name =
     let+ resolved = Opam_repo.load_all_versions t.repos name in
     let available =
-      OpamPackage.Version.Map.values resolved
-      (* Note that although the packages are taken from a map,
-         explicitly sorting them is still necessary. This sort applies
-         the configured version preference and also allows the solver to
-         prefer versions without the avoid-version flag set. *)
-      |> List.sort ~compare:(fun p1 p2 ->
-        opam_version_compare
-          t
-          (Resolved_package.opam_file p1)
-          (Resolved_package.opam_file p2))
+      let packages_sorted_by_version =
+        OpamPackage.Version.Map.values resolved
+        (* This sort is not strictly necessary. The values returned from the map
+           are already sorted in ascending order. So it would be enough to just
+           reverse this list if we want the highest versions first. We leave the
+           sorting for clarity. *)
+        |> List.sort ~compare:(fun p1 p2 ->
+          opam_version_compare
+            t
+            (Resolved_package.opam_file p1)
+            (Resolved_package.opam_file p2))
+      in
+      (if Package_name.(equal (of_opam_package_name name) (of_string "ocaml"))
+       then
+         (* This is a hack to avoid versions of the the ocaml package
+            which are later than the latest release of
+            ocaml-base-compiler. It's common for the latest version of
+            the ocaml opam package to be greater than the latest
+            released ocaml-base-compiler, in which case the ocaml
+            package will depend development releases of the underlying
+            compiler, such as +trunk releases of
+            ocaml-variants. Development releases of packages are
+            marked with the avoid-version flag, but
+            opam-0install-solver does not implement this
+            flag. Consequently, without this hack most dependency
+            solutions found by dune will include development versions
+            of the compiler. *)
+         move_packages_newer_than_latest_released_base_compiler_to_end
+           t
+           packages_sorted_by_version
+       else packages_sorted_by_version)
+      |> move_avoid_versions_packages_to_end
       |> List.map ~f:(fun resolved_package ->
         let opam_file = Resolved_package.opam_file resolved_package in
         let opam_file_result = available_or_error t opam_file in
@@ -750,6 +816,23 @@ module Solver_result = struct
     }
 end
 
+(* Returns the latest version of the package named
+   "ocaml-base-compiler" which does not have the avoid-version flag
+   set. This will be used to allow the solver to prefer non-development
+   versions of compiler packages, working around the lack of support for
+   the avoid-version flag in opam-0install-solver. *)
+let latest_released_base_compiler_version repos =
+  let+ all_versions =
+    OpamPackage.Name.of_string "ocaml-base-compiler" |> Opam_repo.load_all_versions repos
+  in
+  OpamPackage.Version.Map.filter
+    (fun _ package ->
+      not (Resolved_package.opam_file package |> opam_file_is_avoid_version))
+    all_versions
+  |> OpamPackage.Version.Map.max_binding_opt
+  |> Option.map ~f:(fun (version, _) -> Package_version.of_opam_package_version version)
+;;
+
 let solve_lock_dir
   solver_env
   version_preference
@@ -760,6 +843,9 @@ let solve_lock_dir
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
+  let* latest_released_base_compiler_version =
+    latest_released_base_compiler_version repos
+  in
   let context =
     Context_for_dune.create
       ~pinned_packages
@@ -770,6 +856,7 @@ let solve_lock_dir
         (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
       ~stats_updater
       ~constraints
+      ~latest_released_base_compiler_version
   in
   let packages =
     Package_name.Map.to_list_map local_packages ~f:(fun name _ ->

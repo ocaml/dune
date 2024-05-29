@@ -41,7 +41,8 @@ module Repository = struct
   let upstream =
     { name = "upstream"
     ; source =
-        Loc.none, OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
+        ( Loc.none
+        , OpamUrl.of_string "git+https://github.com/moyodiallo/opam-repository.git" )
     }
   ;;
 

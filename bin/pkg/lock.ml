@@ -139,20 +139,14 @@ let project_sources =
     Pin_stanza.DB.combine_exn acc (Dune_project.sources project))
 ;;
 
-let solve_ocamlformat_dev_tool solve ~lock_dirs =
-  let ocamlformat = Dune_pkg.Dev_tool.OCamlformat.ocamlformat_dev_local in
-  let ocamlformat_pkg_name = Package_name.to_string ocamlformat.name in
+let solve_ocamlformat_dev_tool solve =
   let local_packages =
+    let ocamlformat = Dune_pkg.Dev_tool.Ocamlformat.ocamlformat_dev_local in
     (* This is for solving purpose, the package is not local *)
     Package_name.Map.add Package_name.Map.empty ocamlformat.name ocamlformat
     |> Result.value ~default:Package_name.Map.empty
   in
-  let lock_dirs =
-    List.map lock_dirs ~f:(fun path ->
-      Path.Source.append_local path (Path.Local.of_string Dune_pkg.Dev_tool.root_location)
-      |> fun path ->
-      Path.Source.append_local path (Path.Local.of_string ocamlformat_pkg_name))
-  in
+  let lock_dirs = [ Dune_pkg.Dev_tool.Ocamlformat.lock_dir ] in
   solve ~local_packages ~lock_dirs
 ;;
 
@@ -184,7 +178,6 @@ let lock ~version_preference ~lock_dirs_arg =
   >>= fun () ->
   solve_ocamlformat_dev_tool
     (solve workspace ~project_sources ~solver_env_from_current_system ~version_preference)
-    ~lock_dirs
 ;;
 
 let term =

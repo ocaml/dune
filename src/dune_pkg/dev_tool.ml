@@ -18,9 +18,9 @@ let to_local (t : t) : Local_package.t =
   }
 ;;
 
-let root_location = "_dev_tools"
+let lock_dir = Path.Source.relative (Path.Source.of_string "dune.lock") ".dev_tools.lock"
 
-module OCamlformat = struct
+module Ocamlformat = struct
   (* TODO: just to experiement the solving, it going to be remove *)
   let _ocamlformat_dependency =
     let open Dune_lang in
@@ -32,7 +32,7 @@ module OCamlformat = struct
   ;;
 
   let _ocamlformat_dev =
-    { name = Package_name.of_string "ocamlformat-dev"
+    { name = Package_name.of_string "ocamlformat_dev"
     ; dependencies = [ _ocamlformat_dependency ]
     }
   ;;
@@ -40,8 +40,11 @@ module OCamlformat = struct
   let ocamlformat_dev_local = to_local _ocamlformat_dev
 
   let from_ocamlformat_constraint ocamlformat_dependency =
-    { name = Package_name.of_string "ocamlformat-dev"
+    { name = Package_name.of_string "ocamlformat_dev"
     ; dependencies = [ ocamlformat_dependency ]
     }
   ;;
+
+  let pkg_name = Package_name.of_string "ocamlformat"
+  let lock_dir = Path.Source.relative lock_dir "ocamlformat_dev"
 end

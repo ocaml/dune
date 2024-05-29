@@ -140,6 +140,8 @@ let get (ctx : Context_name.t) : t Memo.t =
   lock_dir
 ;;
 
+let load_path = Load.load
+
 let lock_dir_active ctx =
   if !Clflags.ignore_lock_dir
   then Memo.return false

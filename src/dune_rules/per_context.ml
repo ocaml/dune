@@ -11,7 +11,8 @@ let all =
     List.concat_map workspace.contexts ~f:(fun (context : Workspace.Context.t) ->
       let native, targets =
         match context with
-        | Default default -> default.base.name, default.base.targets
+        | Default default ->
+          default.base.name, default.base.targets
         | Opam opam -> opam.base.name, opam.base.targets
       in
       let targets =

@@ -6,6 +6,7 @@ type t := Dune_pkg.Lock_dir.t
 val get : Context_name.t -> t Memo.t
 val lock_dir_active : Context_name.t -> bool Memo.t
 val get_path : Context_name.t -> Path.Source.t option Memo.t
+val load_path : Path.Source.t -> t Memo.t
 
 module Sys_vars : sig
   type t =

@@ -3,3 +3,12 @@
  (deps
   (package mdx))
  (alias all-mdx-tests))
+
+(cram
+ (applies_to shared-libraries)
+ (enabled_if
+  (= %{system} linux))
+ (deps
+  %{bin:gcc}
+  %{bin:ar}
+  (package mdx)))

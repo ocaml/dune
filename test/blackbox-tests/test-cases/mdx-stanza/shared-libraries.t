@@ -39,9 +39,3 @@ See #10582.
   > EOF
 
   $ dune runtest
-  File "dune", lines 14-15, characters 0-29:
-  14 | (mdx
-  15 |  (libraries public_lib))
-  Fatal error: cannot load shared library dlltest
-  Reason: dlltest.so: cannot open shared object file: No such file or directory
-  [1]

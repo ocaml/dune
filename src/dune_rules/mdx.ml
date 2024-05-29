@@ -411,25 +411,21 @@ let name = "mdx_gen"
 
 let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let loc = t.loc in
+  let open Memo.O in
+  let* ocaml_toolchain = Context.ocaml (Super_context.context sctx) in
   (* Libs from the libraries field should have their include directories sent to
      mdx *)
   let action =
     let open Resolve.Memo.O in
     let directory_args =
-      let* libs_to_include =
+      let+ libs_to_include =
         Resolve.Memo.List.filter_map t.libraries ~f:(function
           | Direct lib | Re_export lib ->
             let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
             Some lib
           | _ -> Resolve.Memo.return None)
       in
-      let+ mode =
-        let open Memo.O in
-        Super_context.context sctx
-        |> Context.ocaml
-        >>| Ocaml_toolchain.best_mode
-        |> Resolve.Memo.lift_memo
-      in
+      let mode = ocaml_toolchain |> Ocaml_toolchain.best_mode in
       let open Command.Args in
       S
         (Lib_flags.L.include_paths libs_to_include (Ocaml mode)
@@ -449,7 +445,6 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ; Lazy.force color_always
       ]
   in
-  let open Memo.O in
   let* () = Super_context.add_rule sctx ~loc ~dir action in
   (* We build the generated executable linking in the libs from the libraries
      field *)
@@ -492,15 +487,16 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~package:None
       ()
   in
+  let ext = ".bc.exe" in
   let+ (_ : Exe.dep_graphs) =
     Exe.build_and_link
       cctx
       ~program:{ name; main_module_name; loc }
       ~link_args:(Action_builder.return (Command.Args.A "-linkall"))
-      ~linkages:[ Exe.Linkage.byte ]
+      ~linkages:[ Exe.Linkage.custom_with_ext ~ext ocaml_toolchain.version ]
       ~promote:None
   in
-  Path.Build.relative dir (name ^ ".bc")
+  Path.Build.relative dir (name ^ ext)
 ;;
 
 (** Generates the rules for a given mdx stanza *)

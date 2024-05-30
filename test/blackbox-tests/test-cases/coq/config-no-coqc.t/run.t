@@ -51,6 +51,7 @@ We first test the package builds as normal, when both are in scope:
     "_build/install/default/lib/example-coq/opam"
   ]
   lib_root: [
+    "_build/install/default/lib/coq/user-contrib/Common/Foo.glob" {"coq/user-contrib/Common/Foo.glob"}
     "_build/install/default/lib/coq/user-contrib/Common/Foo.v" {"coq/user-contrib/Common/Foo.v"}
     "_build/install/default/lib/coq/user-contrib/Common/Foo.vo" {"coq/user-contrib/Common/Foo.vo"}
   ]
@@ -112,9 +113,8 @@ Coq package should fail:
 
   $ (unset INSIDE_DUNE; PATH=_path dune build -p example-coq)
   Couldn't find Coq standard library, and theory is not using (stdlib no)
-  -> required by _build/default/coq/extracted/CRelationClasses.ml
-  -> required by _build/default/coq/CRelationClasses.ml
-  -> required by _build/install/default/lib/example-coq/coq/CRelationClasses.ml
+  -> required by _build/default/coq/Common/Foo.glob
+  -> required by _build/install/default/lib/coq/user-contrib/Common/Foo.glob
   -> required by _build/default/example-coq.install
   -> required by alias install
   [1]

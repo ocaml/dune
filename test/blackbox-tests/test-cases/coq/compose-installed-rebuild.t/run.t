@@ -33,6 +33,7 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
 
@@ -62,6 +63,8 @@ Next we update B and install it again.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
@@ -101,10 +104,13 @@ Next we add a new file to B that should cause a call to coqdep, but no rebuild.
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_c.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_c.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/c.vo
 

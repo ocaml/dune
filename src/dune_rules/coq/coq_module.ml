@@ -76,6 +76,17 @@ let glob_file x ~obj_dir =
   Path.Build.relative vo_dir (x.name ^ ".glob")
 ;;
 
+(* As of today we do the same for build and install, it used not to be
+   the case *)
+let standard_obj_files ~(mode : Coq_mode.t) _obj_files_mode name =
+  let ext, glob =
+    match mode with
+    | VosOnly -> ".vos", []
+    | _ -> ".vo", [ name ^ ".glob" ]
+  in
+  [ name ^ ext ] @ glob
+;;
+
 (* XXX: Remove the install .coq-native hack once rules can output targets in
    multiple subdirs *)
 let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
@@ -92,13 +103,7 @@ let obj_files x ~wrapper_name ~mode ~obj_dir ~obj_files_mode =
         cmxs_obj
     | VoOnly | VosOnly | Legacy -> []
   in
-  let obj_files =
-    match obj_files_mode with
-    | Build when mode = VosOnly -> [ x.name ^ ".vos" ]
-    | Build -> [ x.name ^ ".vo"; x.name ^ ".glob" ]
-    | Install when mode = VosOnly -> [ x.name ^ ".vos" ]
-    | Install -> [ x.name ^ ".vo" ]
-  in
+  let obj_files = standard_obj_files ~mode obj_files_mode x.name in
   List.map obj_files ~f:(fun fname ->
     Path.Build.relative vo_dir fname, Filename.concat install_vo_dir fname)
   @ native_objs

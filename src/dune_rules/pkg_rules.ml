@@ -1124,17 +1124,20 @@ module DB = struct
       { all = all.packages; system_provided = dune; component = ".pkg" }
   ;;
 
-  let get_from_component component =
-    let+ packages =
-      match component with
-      | ".ocamlformat" ->
-        Dune_pkg.Dev_tool.Ocamlformat.lock_dir
-        |> Lock_dir.load_path
-        >>| fun lock -> lock.packages
-      | _ -> Memo.return @@ Dune_lang.Package_name.Map.empty
-    in
+  let ocamlformat =
+    Memo.lazy_ (fun () ->
+      let+ packages = Lock_dir.get_ocamlformat () >>| fun lock -> lock.packages in
+      let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
+      { all = packages; system_provided = dune; component = ".ocamlformat" })
+  ;;
+
+  let empty =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    { all = packages; system_provided = dune; component }
+    Memo.return
+      { all = Dune_lang.Package_name.Map.empty
+      ; system_provided = dune
+      ; component = ".pkg"
+      }
   ;;
 end
 
@@ -1796,8 +1799,13 @@ module Gen_rules = Build_config.Gen_rules
 
 let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* pkg =
-    let* db = DB.get context in
+  let* db =
+    match component with
+    | ".pkg" -> DB.get context
+    | ".ocamlformat" -> Memo.Lazy.force DB.ocamlformat
+    | _ -> DB.empty
+  in
+  let+ pkg =
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
@@ -1885,7 +1893,8 @@ let all_packages ?(component = ".pkg") context =
   let* db =
     match component with
     | ".pkg" -> DB.get context
-    | _ -> DB.get_from_component component
+    | ".ocamlformat" -> Memo.Lazy.force DB.ocamlformat
+    | _ -> DB.empty
   in
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->

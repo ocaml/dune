@@ -18,9 +18,6 @@ jobs:
             installable: .#
           - os: ubuntu-22.04
             name: linux-intel
-            installable: .#
-          - os: ubuntu-22.04
-            name: linux-intel-static
             installable: .#dune-static
     runs-on: ${{ matrix.os }}
     steps:

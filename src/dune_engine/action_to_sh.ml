@@ -90,6 +90,12 @@ let simplify act =
            (String.quote_for_shell target))
       :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
+    | Run_if_exists (file, t) ->
+      (* TODO *)
+      let exit_if_missing =
+        Sh (Printf.sprintf "test -e %s || exit 0" (String.quote_for_shell file))
+      in
+      loop t (exit_if_missing :: acc)
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =
     match List.rev (loop act []) with

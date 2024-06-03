@@ -182,6 +182,7 @@ let gen_pp_action ~pp_ctx ~ml_kind ~target ~input =
     [ As flags
     ; Command.Ml_kind.ppx_driver_flag ml_kind
     ; Dep input
+    ; A "-dune-optional-output"
     ; A "-o"
     ; Path (Path.build target)
     ]
@@ -211,27 +212,29 @@ let gen_rules_for_source_file ~pp_ctx ~ml_kind path =
       match gen_format_action ~pp_ctx ~output:target ~ext ~input:raw_pp_target with
       | Some format ->
         (* XXX this needs to to be a no-op in case the pp_action didn't produce
-           anything. 
+           anything.
 
            One way to do it is to create a custom action:
 
-             {[
-               module Spec = struct
-                 type ('path, 'target) t = 'path * Action.t
-                 ...
-               end
+           {[
+             module Spec = struct
+               type ('path, 'target) t = 'path * Action.t
+               ...
+             end
 
-               val run_if_exists : Path.t -> Action.t -> Action.t
-             ]}
+             val run_if_exists : Path.t -> Action.t -> Action.t
+           ]}
 
-          See [Copy_line_directive] for how to create a custom action. You will
-          need to call out to [Action_exec] to execute the underlying action.
+           See [Copy_line_directive] for how to create a custom action. You will
+           need to call out to [Action_exec] to execute the underlying action.
 
-          The simpler way to do it just to hardcode the action directly into
-          [dune_engine/action.ml].
-         *)
-        format.build
-      | None -> (* XXX is this right? *) assert false
+           The simpler way to do it just to hardcode the action directly into
+           [dune_engine/action.ml].
+        *)
+        Action_builder.map format.build ~f:(fun full_act ->
+          Action.Full.map full_act ~f:(fun action ->
+            Action.run_if_exists (Path.build raw_pp_target) action))
+      | None -> Action_builder.return Action.Full.empty
     in
     Action.Full.combine
       (Action.Full.combine pp_action format_action)

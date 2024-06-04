@@ -1148,12 +1148,14 @@ end = struct
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      (match
-         Toolchain.Available_compilers.find_package
-           db.available_compilers
-           info.name
-           info.version
-       with
+      let* compiler =
+        Memo.of_reproducible_fiber
+          (Toolchain.Available_compilers.find_package
+             db.available_compilers
+             info.name
+             info.version)
+      in
+      (match compiler with
        | Some compiler -> Memo.return (Some (`Toolchain compiler))
        | None ->
          let* depends, direct_toolchain_dependencies =

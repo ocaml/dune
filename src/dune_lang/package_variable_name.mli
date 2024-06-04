@@ -30,6 +30,10 @@ val version : t
 val post : t
 val build : t
 val dev : t
+val jobs : t
+val make : t
+val prefix : t
+val doc : t
 val one_of : t -> t list -> bool
 
 module Project : sig

@@ -14,5 +14,5 @@ module Available_compilers : sig
 
   val equal : t -> t -> bool
   val load_upstream_opam_repo : unit -> t Fiber.t
-  val find_package : t -> Package_name.t -> Package_version.t -> Compiler.t option
+  val find_package : t -> Package_name.t -> Package_version.t -> Compiler.t option Fiber.t
 end

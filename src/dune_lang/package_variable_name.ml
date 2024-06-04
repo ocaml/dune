@@ -50,6 +50,10 @@ let version = of_string "version"
 let name = of_string "name"
 let build = of_string "build"
 let post = of_string "post"
+let jobs = of_string "jobs"
+let make = of_string "make"
+let prefix = of_string "prefix"
+let doc = of_string "doc"
 let one_of t xs = List.mem xs ~equal t
 let dev = of_string "dev"
 

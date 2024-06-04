@@ -16,18 +16,48 @@ module Make = struct
   ;;
 end
 
-module Names = struct
-  let ocaml_base_compiler = Package_name.of_string "ocaml-base-compiler"
-end
-
 module Compiler = struct
   (* Value of the PATH variable *)
   let env_path = Env_path.path Env.initial
 
   module Name = struct
-    type t = { version : Package_version.t }
+    type t =
+      { name : Package_name.t
+      ; version : Package_version.t
+      ; deps : Package_name.t list
+      }
 
-    let version_string t = Package_version.to_string t.version
+    (* A string identifying the compiler for use in paths and
+       messages. In the case of ocaml-variants, the compiler that gets
+       installed will have different features enabled depending on which
+       packages the compiler depends on (the [deps] field of [t]). Thus it
+       must be possible to install multiple instances of the same version
+       of ocaml-variants at the same time, provided that they differ in
+       their dependencies. This means that the list of dependencies must be
+       present in the name of the directory where the compiler gets
+       installed.
+
+       An example identifier string for ocaml-variants with multiple
+       dependencies is:
+       ocaml-variants.5.2.0+options.with_deps.ocaml-option-flambda,ocaml-option-no-flat-float-array *)
+    let identifier_string t =
+      let deps_suffix =
+        match t.deps with
+        | [] -> ""
+        | _ ->
+          sprintf
+            ".with_deps.%s"
+            (String.concat
+               ~sep:","
+               (List.map t.deps ~f:Package_name.to_string
+                |> List.sort ~compare:String.compare))
+      in
+      sprintf
+        "%s.%s%s"
+        (Package_name.to_string t.name)
+        (Package_version.to_string t.version)
+        deps_suffix
+    ;;
 
     module Paths = struct
       (* The path to the directory that will contain all toolchain
@@ -60,7 +90,7 @@ module Compiler = struct
          and binary artifacts associated with a particular version of the
          compiler toolchain. *)
       let toolchain_dir t =
-        Path.Outside_build_dir.relative (toolchain_base_dir ()) (version_string t)
+        Path.Outside_build_dir.relative (toolchain_base_dir ()) (identifier_string t)
       ;;
 
       let source_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "source"
@@ -106,13 +136,15 @@ module Compiler = struct
       ;;
     end
 
+    let depends_on { deps; _ } dep = List.mem deps dep ~equal:Package_name.equal
+
     (* An opam filter environment for evaluating opam commands for
        building and installing packages. *)
-    let opam_env name =
+    let opam_env t =
       let open Fiber.O in
       let make = Make.path ~path:env_path in
       let sys_poll = Sys_poll.make ~path:env_path in
-      let prefix = Paths.target_dir name in
+      let prefix = Paths.target_dir t in
       let+ solver_env = Sys_poll.solver_env_from_current_system sys_poll in
       let solver_env =
         [ Package_variable_name.make, Path.to_string make
@@ -130,12 +162,17 @@ module Compiler = struct
       fun full_variable ->
         match OpamVariable.Full.scope full_variable with
         | Global -> global_env full_variable
-        | Self | Package _ ->
-          (* TODO: support package variables here so that commands that
-             depend on a certain package being installed can be
-             evaluated. This is how ocaml-variants chooses which
-             ./configure flags to pass. *)
-          None
+        | Self -> None
+        | Package package_name ->
+          let package_name = Package_name.of_opam_package_name package_name in
+          let variable =
+            Package_variable_name.of_opam (OpamVariable.Full.variable full_variable)
+          in
+          if Package_variable_name.equal variable Package_variable_name.installed
+          then (
+            let value = depends_on t package_name in
+            Some (B value))
+          else None
     ;;
   end
 
@@ -224,25 +261,27 @@ module Compiler = struct
       User_error.raise
         (Pp.textf
            "Toolchain compiler %s has no install commands."
-           (Name.version_string t.name)
+           (Name.identifier_string t.name)
          :: expectation_message)
     | [ (_, Some filter) ] ->
       User_error.raise
         (Pp.textf
            "Toolchain compiler %s has a filter on its install command:  %s"
-           (Name.version_string t.name)
+           (Name.identifier_string t.name)
            (OpamFilter.to_string filter)
          :: expectation_message)
     | [ (_, None) ] ->
       User_error.raise
-        (Pp.textf "Toolchain compiler %s is not of the form " (Name.version_string t.name)
+        (Pp.textf
+           "Toolchain compiler %s is not of the form "
+           (Name.identifier_string t.name)
          :: User_message.command "make install..."
          :: expectation_message)
     | _many ->
       User_error.raise
         (Pp.textf
            "Toolchain compiler %s has multiple install commands."
-           (Name.version_string t.name)
+           (Name.identifier_string t.name)
          :: expectation_message)
   ;;
 
@@ -284,10 +323,7 @@ module Compiler = struct
   ;;
 
   let bin_dir t = Path.Outside_build_dir.relative (Name.Paths.target_dir t.name) "bin"
-
-  let is_version_installed t =
-    Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
-  ;;
+  let is_installed t = Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
 
   (* The strongest checksum from the compiler's opam file. This will
      be used to validate the complier's source archive. Note that ideally
@@ -301,7 +337,7 @@ module Compiler = struct
       |> Checksum.choose_strongest)
   ;;
 
-  let of_resolved_package resolved_package =
+  let of_resolved_package resolved_package ~deps =
     let open Fiber.O in
     let package = Resolved_package.package resolved_package in
     let opam_file : OpamFile.OPAM.t = Resolved_package.opam_file resolved_package in
@@ -309,7 +345,10 @@ module Compiler = struct
     | Some opam_file_url ->
       let url = OpamFile.URL.url opam_file_url in
       let name =
-        { Name.version = Package_version.of_opam_package_version package.version }
+        { Name.name = Package_name.of_opam_package_name package.name
+        ; version = Package_version.of_opam_package_version package.version
+        ; deps
+        }
       in
       let+ opam_env = Name.opam_env name in
       Some { name; url; opam_file; opam_env }
@@ -327,9 +366,8 @@ module Compiler = struct
     in
     User_error.raise
       [ Pp.textf
-          "Checksum mismatch when downloading version %s of the compiler toolchain from \
-           %s."
-          (Name.version_string t.name)
+          "Checksum mismatch when downloading compiler toolchain %s from %s."
+          (Name.identifier_string t.name)
           (OpamUrl0.to_string t.url)
       ; Pp.textf "Expected checksum: %s" (Checksum.to_string checksum)
       ; Pp.textf "Got checksum: %s" (Checksum.to_string got_checksum)
@@ -339,8 +377,8 @@ module Compiler = struct
   let handle_unavailable t ~msg =
     let msg_context =
       Pp.textf
-        "Unable to download version %s of the compiler toolchain from %s."
-        (Name.version_string t.name)
+        "Unable to download compiler toolchain %s from %s."
+        (Name.identifier_string t.name)
         (OpamUrl0.to_string t.url)
     in
     let msg =
@@ -381,8 +419,8 @@ module Compiler = struct
     | `Always ->
       log_print ~log_when User_message.Style.Success
       @@ Pp.textf
-           "Version %s of the compiler toolchain is already installed in %s"
-           (Name.version_string t.name)
+           "Compiler toolchain %s is already installed in %s"
+           (Name.identifier_string t.name)
            (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string)
     | _ -> ()
   ;;
@@ -392,8 +430,8 @@ module Compiler = struct
     let detail_log_style = User_message.Style.Details in
     log_print ~log_when detail_log_style
     @@ Pp.textf
-         "Will install version %s of the compiler toolchain to %s"
-         (Name.version_string t.name)
+         "Will install compiler toolchain %s to %s"
+         (Name.identifier_string t.name)
          (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string);
     log_print ~log_when detail_log_style @@ Pp.text "Downloading...";
     let* () = fetch t in
@@ -403,21 +441,21 @@ module Compiler = struct
     let+ () = install t in
     log_print ~log_when User_message.Style.Success
     @@ Pp.textf
-         "Success! Compiler toolchain version %s installed to %s."
-         (Name.version_string t.name)
+         "Success! Compiler toolchain %s installed to %s."
+         (Name.identifier_string t.name)
          (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string)
   ;;
 
   let with_flock t ~f =
     Flock.with_flock
       (Name.Paths.flock t.name)
-      ~name_for_messages:(sprintf "toolchain version %s" (Name.version_string t.name))
+      ~name_for_messages:(sprintf "compiler toolchain %s" (Name.identifier_string t.name))
       ~timeout_s:infinity
       ~f
   ;;
 
   let get t ~log_when =
-    if is_version_installed t
+    if is_installed t
     then (
       print_already_installed_message t ~log_when;
       Fiber.return ())
@@ -442,52 +480,51 @@ module Compiler = struct
            was installed in between the first check, and the flock
            being acquired.
         *)
-        if is_version_installed t
+        if is_installed t
         then (
           print_already_installed_message t ~log_when;
           Fiber.return ())
         else download_build_install t ~log_when)
   ;;
-
-  (* TODO: Currently we still need to add a constraint on the
-     ocaml-base-compiler, as otherwise the solver tends to choose the
-     ocaml-variants compiler instead. This won't be an issue once
-     toolchains supports the ocaml-variants compiler at which point we
-     can remove this constraint. We sholud also work out if the solver
-     should be prefering ocaml-base-compiler over ocaml-variants. *)
-  let constraint_ =
-    { Package_dependency.name = Names.ocaml_base_compiler; constraint_ = None }
-  ;;
 end
 
 module Available_compilers = struct
-  type t = Resolved_package.t OpamPackage.Version.Map.t
+  type t = Opam_repo.t
 
-  let equal = OpamPackage.Version.Map.equal Resolved_package.equal
+  let equal = Opam_repo.equal
 
-  let upstream_opam_repo () =
+  let load_upstream_opam_repo () =
     let loc, opam_url = Workspace.Repository.(opam_url upstream) in
     Opam_repo.of_git_repo loc opam_url
   ;;
 
-  let load_upstream_opam_repo () =
-    let open Fiber.O in
-    let* repo = upstream_opam_repo () in
-    Opam_repo.load_all_versions
-      [ repo ]
-      (Package_name.to_opam_package_name Names.ocaml_base_compiler)
+  (* The names of packages that can be installed by the toolchains
+     mechanism. Note that for a package to be compatible with the
+     toolchains mechanism, it is necessary that the package can be
+     installed by running `make install` in its source directory after
+     running whatever build commands are specified in its opam
+     file. Additionally, the package's makefile must implement the
+     DESTDIR protocol. *)
+  let compiler_package_names =
+    List.map ~f:Package_name.of_string [ "ocaml-base-compiler"; "ocaml-variants" ]
   ;;
 
-  let find_package t package_name version =
-    if Package_name.equal package_name Names.ocaml_base_compiler
-    then (
+  let is_compiler_package_name = List.mem compiler_package_names ~equal:Package_name.equal
+
+  let find t package_name package_version ~deps =
+    if is_compiler_package_name package_name
+    then
+      let open Fiber.O in
+      let* resolved_packages_by_version =
+        Opam_repo.load_all_versions [ t ] (Package_name.to_opam_package_name package_name)
+      in
       match
         OpamPackage.Version.Map.find_opt
-          (Package_version.to_opam_package_version version)
-          t
+          (Package_version.to_opam_package_version package_version)
+          resolved_packages_by_version
       with
-      | Some resolved_package -> Compiler.of_resolved_package resolved_package
-      | None -> Fiber.return None)
+      | Some resolved_package -> Compiler.of_resolved_package resolved_package ~deps
+      | None -> Fiber.return None
     else Fiber.return None
   ;;
 end

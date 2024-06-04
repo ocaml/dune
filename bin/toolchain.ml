@@ -14,13 +14,14 @@ module Get = struct
       Dune_pkg.Package_version.of_opam_package_version (OpamPackage.version package)
     in
     let* compiler =
-      Toolchain.Available_compilers.find_package
+      Toolchain.Available_compilers.find
         available_compiler_packages
         package_name
         package_version
+        ~deps:[]
     in
     match compiler with
-    | Some compiler_package -> Toolchain.Compiler.get ~log_when:`Always compiler_package
+    | Some compiler -> Toolchain.Compiler.get ~log_when:`Always compiler
     | None ->
       User_error.raise
         [ Pp.textf

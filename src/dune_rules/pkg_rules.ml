@@ -1150,10 +1150,11 @@ end = struct
       assert (Package.Name.equal name info.name);
       let* compiler =
         Memo.of_reproducible_fiber
-          (Toolchain.Available_compilers.find_package
+          (Toolchain.Available_compilers.find
              db.available_compilers
              info.name
-             info.version)
+             info.version
+             ~deps:(List.map depends ~f:snd))
       in
       (match compiler with
        | Some compiler -> Memo.return (Some (`Toolchain compiler))

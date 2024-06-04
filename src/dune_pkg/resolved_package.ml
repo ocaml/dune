@@ -4,6 +4,15 @@ type extra_files =
   | Inside_files_dir of Path.t option
   | Git_files of Path.Local.t option * Rev_store.At_rev.t
 
+let extra_files_equal a b =
+  match a, b with
+  | Inside_files_dir a, Inside_files_dir b -> Option.equal Path.equal a b
+  | Git_files (a_path, a_at_rev), Git_files (b_path, b_at_rev) ->
+    Option.equal Path.Local.equal a_path b_path
+    && Rev_store.At_rev.equal a_at_rev b_at_rev
+  | _ -> false
+;;
+
 type nonrec t =
   { opam_file : OpamFile.OPAM.t
   ; package : OpamPackage.t
@@ -11,6 +20,14 @@ type nonrec t =
   ; loc : Loc.t
   ; dune_build : bool
   }
+
+let equal t { opam_file; package; extra_files; loc; dune_build } =
+  OpamFile.OPAM.equal t.opam_file opam_file
+  && OpamPackage.equal t.package package
+  && extra_files_equal t.extra_files extra_files
+  && Loc.equal t.loc loc
+  && Bool.equal t.dune_build dune_build
+;;
 
 let dune_build t = t.dune_build
 let loc t = t.loc

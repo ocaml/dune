@@ -555,10 +555,10 @@ let make vars =
            with ocaml{c,opt}_cflags and ocaml{c,opt}_cppflags. *)
         let get_flags var = args @ get_words vars var in
         ( prog
-        , get_flags "ocamlc_cflags"
-        , get_flags "ocamlc_cppflags"
-        , get_flags "ocamlopt_cflags"
-        , get_flags "ocamlopt_cppflags" )
+        , get_flags "native_cflags"
+        , get_flags "native_cppflags"
+        , get_flags "bytecode_cflags"
+        , get_flags "bytecode_cppflags" )
       | None ->
         bytecomp_c_compiler.prog, bytecomp_c_compiler.args, [], native_c_compiler.args, []
     in

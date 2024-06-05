@@ -306,8 +306,8 @@ let fill_in_fields_that_depends_on_ocamlc_config t =
   let get_flags var = get var |> String.trim |> Flags.extract_blank_separated_words in
   let c_compiler, c_libraries =
     match Ocaml_config.Vars.find t.ocamlc_config "c_compiler" with
-    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags", get_flags "native_c_libraries"
-    | None -> get "bytecomp_c_compiler", get_flags "bytecomp_c_libraries"
+    | Some c_comp -> c_comp ^ " " ^ get "native_cflags", get_flags "native_c_libraries"
+    | None -> get "bytecomp_c_compiler" ^ " " ^ get "bytecode_cflags", get_flags "bytecomp_c_libraries"
   in
   { t with
     ext_obj = get "ext_obj"

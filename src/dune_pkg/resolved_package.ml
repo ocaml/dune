@@ -98,7 +98,11 @@ let get_opam_package_files resolved_packages =
     Int.Map.partition_map indexed ~f:(fun (resolved_package : t) ->
       match resolved_package.extra_files with
       | Git_files (files_dir, rev) -> Right (files_dir, rev)
-      | Inside_files_dir dir -> Left dir)
+      | Inside_files_dir dir ->
+        (match dir with
+         | Some p -> Printf.printf "Inside_files_dir %s\n" (Path.to_string p)
+         | None -> Printf.printf "Inside_files_dir NONe");
+        Left dir)
   in
   let+ from_git =
     if Int.Map.is_empty from_git

@@ -1175,13 +1175,17 @@ end = struct
              | `System_provided -> Skip)
            >>| List.filter_partition_map ~f:Fun.id
          and+ files_dir =
-           let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+           let+ lock_dir =
+             if String.equal db.component ".ocamlformat"
+             then Memo.return Dune_pkg.Dev_tool.Ocamlformat.lock_dir
+             else Lock_dir.get_path ctx >>| Option.value_exn
+           in
            Path.Build.append_source
              (Context_name.build_dir ctx)
              (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
          in
          let id = Pkg.Id.gen () in
-         let paths = Paths.make name ctx in
+         let paths = Paths.make db.component name ctx in
          let direct_toolchain_dependency =
            match direct_toolchain_dependencies with
            | [] -> None
@@ -1805,7 +1809,7 @@ let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Mem
     | ".ocamlformat" -> Memo.Lazy.force DB.ocamlformat
     | _ -> DB.empty
   in
-  let+ pkg =
+  let* pkg =
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
@@ -1824,7 +1828,7 @@ let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Mem
             (Package.Name.to_string name)
         ]
   in
-  let paths = Paths.make name context in
+  let paths = Paths.make db.component name context in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -1864,6 +1868,8 @@ let setup_rules ~components ~dir ctx =
     |> Memo.return
   | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~component:".pkg" ~dir ~pkg_name
   | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | ".ocamlformat" :: _ :: _ ->
+    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | [] ->
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir
@@ -1915,10 +1921,17 @@ let which context =
       in
       binaries)
   in
-  let _ocamlformat_artifact_and_deps =
+  let ocamlformat_artifact_and_deps =
     Memo.lazy_ (fun () ->
       let+ { binaries; dep_info = _ } =
-        all_packages context ~component:".ocamlformat"
+        let* db = Memo.Lazy.force DB.ocamlformat in
+        let package =
+          Dune_lang.Package_name.of_string Dune_pkg.Dev_tool.Ocamlformat.pkg_name
+        in
+        Resolve.resolve db context (Loc.none, package)
+        >>| (function
+               | `Inside_lock_dir pkg -> [ pkg ]
+               | _ -> [])
         >>= Action_expander.Artifacts_and_deps.of_closure
       in
       binaries)
@@ -1928,8 +1941,10 @@ let which context =
     match Filename.Map.find artifacts program with
     | Some prog -> Memo.return @@ Some prog
     | None ->
-      let+ artifacts = Memo.Lazy.force _ocamlformat_artifact_and_deps in
-      Filename.Map.find artifacts program)
+      let+ ocamlformat_artifacts = Memo.Lazy.force ocamlformat_artifact_and_deps in
+      if String.equal Dune_pkg.Dev_tool.Ocamlformat.program program
+      then Filename.Map.find ocamlformat_artifacts program
+      else None)
 ;;
 
 let ocamlpath context =

@@ -42,7 +42,9 @@ module Repository = struct
     { name = "upstream"
     ; source =
         ( Loc.none
-        , OpamUrl.of_string "git+https://github.com/moyodiallo/opam-repository.git" )
+        , OpamUrl.of_string
+            "git+https://github.com/ocaml/opam-repository.git#5d4264ba7c374fec017fae14707f1809bea0669a"
+        )
     }
   ;;
 

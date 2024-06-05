@@ -2,18 +2,17 @@ open! Import
 open! Stdune
 
 module Make = struct
-  let path =
-    lazy
-      (* TODO: prefer gmake over make if it's available for compatibility with the BSDs *)
-      (match Bin.which ~path:(Env_path.path Env.initial) "make" with
-       | Some p -> p
-       | None ->
-         User_error.raise
-           ~hints:[ Pp.text "Install \"make\" with your system package manager." ]
-           [ Pp.text
-               "The program \"make\" does not appear to be installed. This program is \
-                needed to compile the ocaml toolchain."
-           ])
+  let path ~path =
+    (* TODO: prefer gmake over make if it's available for compatibility with the BSDs *)
+    match Bin.which ~path "make" with
+    | Some p -> p
+    | None ->
+      User_error.raise
+        ~hints:[ Pp.text "Install \"make\" with your system package manager." ]
+        [ Pp.text
+            "The program \"make\" does not appear to be installed. This program is \
+             needed to compile the ocaml toolchain."
+        ]
   ;;
 end
 
@@ -22,161 +21,304 @@ module Names = struct
 end
 
 module Compiler = struct
-  type t =
-    { version : Package_version.t
-    ; url : OpamUrl0.t
-    ; checksum : Checksum.t option
-    }
+  (* Value of the PATH variable *)
+  let env_path = Env_path.path Env.initial
 
-  let version_string t = Package_version.to_string t.version
+  module Name = struct
+    type t = { version : Package_version.t }
 
-  module Paths = struct
-    (* The path to the directory that will contain all toolchain
-       versions. Creates the directory if it doesn't already exist. *)
-    let toolchain_base_dir () =
-      let cache_dir =
-        Xdg.create ~env:Sys.getenv_opt ()
-        |> Xdg.cache_dir
-        |> Path.Outside_build_dir.of_string
+    let version_string t = Package_version.to_string t.version
+
+    module Paths = struct
+      (* The path to the directory that will contain all toolchain
+         versions. Creates the directory if it doesn't already exist. *)
+      let toolchain_base_dir () =
+        let cache_dir =
+          Xdg.create ~env:Sys.getenv_opt ()
+          |> Xdg.cache_dir
+          |> Path.Outside_build_dir.of_string
+        in
+        let path =
+          Path.Outside_build_dir.relative
+            (Path.Outside_build_dir.relative cache_dir "dune")
+            "toolchains"
+        in
+        (let path = Path.outside_build_dir path in
+         if not (Path.exists path) then Path.mkdir_p path;
+         if not (Path.is_directory path)
+         then
+           User_error.raise
+             [ Pp.textf
+                 "Expected %s to be a directory but it is not."
+                 (Path.to_string path)
+             ]);
+        path
+      ;;
+
+      (* The path to a directory named after the given version inside the
+         toolchains directory. This directory will contain the source code
+         and binary artifacts associated with a particular version of the
+         compiler toolchain. *)
+      let toolchain_dir t =
+        Path.Outside_build_dir.relative (toolchain_base_dir ()) (version_string t)
+      ;;
+
+      let source_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "source"
+      let target_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "target"
+
+      (* A temporary directory within the given version's toolchain
+         directory where files will be installed before moving them into
+         the target directory. This two stage installation means that we
+         can guarantee that if the target directory exists then it
+         contains the complete installation of the toolchain. *)
+      let tmp_install_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "_install"
+
+      (* When installing with the DESTDIR the full path from the root
+         directory to the target directory is instantiated inside the
+         directory passed as DESTDIR. This function returns the absolute
+         path to the copy of the target directory inside DESTDIR. This
+         assumes that the output of [tmp_install_dir_dir] will be passed as
+         DESTDIR when installing. *)
+      let target_dir_within_tmp_install_dir t =
+        let target_dir = target_dir t in
+        let target_without_root_prefix =
+          (* Remove the root directory prefix from the target directory so
+             it can be used to create a path relative to the temporary
+             install dir. *)
+          match
+            String.drop_prefix
+              (Path.Outside_build_dir.to_string target_dir)
+              ~prefix:(Path.External.to_string Path.External.root)
+          with
+          | Some x -> x
+          | None ->
+            Code_error.raise
+              "Expected target dir to start with root"
+              [ "target_dir", Path.Outside_build_dir.to_dyn target_dir
+              ; "root", Path.External.to_dyn Path.External.root
+              ]
+        in
+        Path.Outside_build_dir.relative (tmp_install_dir t) target_without_root_prefix
+      ;;
+
+      let flock t =
+        Path.Outside_build_dir.relative (toolchain_dir t) "lock" |> Path.outside_build_dir
+      ;;
+    end
+
+    (* An opam filter environment for evaluating opam commands for
+       building and installing packages. *)
+    let opam_env name =
+      let open Fiber.O in
+      let make = Make.path ~path:env_path in
+      let sys_poll = Sys_poll.make ~path:env_path in
+      let prefix = Paths.target_dir name in
+      let+ solver_env = Sys_poll.solver_env_from_current_system sys_poll in
+      let solver_env =
+        [ Package_variable_name.make, Path.to_string make
+        ; (* set jobs to "" so that `make -j%{jobs}%` evaluates to `make -j` *)
+          Package_variable_name.jobs, ""
+        ; Package_variable_name.prefix, Path.Outside_build_dir.to_string prefix
+        ; ( Package_variable_name.doc
+          , Path.Outside_build_dir.relative prefix "doc"
+            |> Path.Outside_build_dir.to_string )
+        ]
+        |> List.fold_left ~init:solver_env ~f:(fun acc (variable_name, string_value) ->
+          Solver_env.set acc variable_name (Variable_value.string string_value))
       in
-      let path =
-        Path.Outside_build_dir.relative
-          (Path.Outside_build_dir.relative cache_dir "dune")
-          "toolchains"
-      in
-      (let path = Path.outside_build_dir path in
-       if not (Path.exists path) then Path.mkdir_p path;
-       if not (Path.is_directory path)
-       then
-         User_error.raise
-           [ Pp.textf "Expected %s to be a directory but it is not." (Path.to_string path)
-           ]);
-      path
-    ;;
-
-    (* The path to a directory named after the given version inside the
-       toolchains directory. This directory will contain the source code
-       and binary artifacts associated with a particular version of the
-       compiler toolchain. *)
-    let toolchain_dir t =
-      Path.Outside_build_dir.relative (toolchain_base_dir ()) (version_string t)
-    ;;
-
-    let source_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "source"
-    let target_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "target"
-
-    (* A temporary directory within the given version's toolchain
-       directory where files will be installed before moving them into
-       the target directory. This two stage installation means that we
-       can guarantee that if the target directory exists then it
-       contains the complete installation of the toolchain. *)
-    let tmp_install_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "_install"
-
-    (* When installing with the DESTDIR the full path from the root
-       directory to the target directory is instantiated inside the
-       directory passed as DESTDIR. This function returns the absolute
-       path to the copy of the target directory inside DESTDIR. This
-       assumes that the output of [tmp_install_dir_dir] will be passed as
-       DESTDIR when installing. *)
-    let target_dir_within_tmp_install_dir t =
-      let target_dir = target_dir t in
-      let target_without_root_prefix =
-        (* Remove the root directory prefix from the target directory so
-           it can be used to create a path relative to the temporary
-           install dir. *)
-        match
-          String.drop_prefix
-            (Path.Outside_build_dir.to_string target_dir)
-            ~prefix:(Path.External.to_string Path.External.root)
-        with
-        | Some x -> x
-        | None ->
-          Code_error.raise
-            "Expected target dir to start with root"
-            [ "target_dir", Path.Outside_build_dir.to_dyn target_dir
-            ; "root", Path.External.to_dyn Path.External.root
-            ]
-      in
-      Path.Outside_build_dir.relative (tmp_install_dir t) target_without_root_prefix
-    ;;
-
-    let flock t =
-      Path.Outside_build_dir.relative (toolchain_dir t) "lock" |> Path.outside_build_dir
+      let global_env = Solver_env.to_env solver_env in
+      fun full_variable ->
+        match OpamVariable.Full.scope full_variable with
+        | Global -> global_env full_variable
+        | Self | Package _ ->
+          (* TODO: support package variables here so that commands that
+             depend on a certain package being installed can be
+             evaluated. This is how ocaml-variants chooses which
+             ./configure flags to pass. *)
+          None
     ;;
   end
 
   module Command = struct
-    let run ~dir prog args =
+    type t =
+      { prog : [ `Relative_to_cwd of string | `Absolute of Path.t ]
+      ; args : string list
+      }
+
+    let of_list ~path = function
+      | [] -> None
+      | prog :: args ->
+        let prog =
+          if Filename.is_implicit prog
+          then (
+            match Bin.which ~path prog with
+            | Some prog -> `Absolute prog
+            | None ->
+              User_error.raise
+                [ Pp.textf "The program %S does not appear to be installed." prog ])
+          else if Filename.is_relative prog
+          then `Relative_to_cwd prog
+          else `Absolute (Path.of_string prog)
+        in
+        Some { prog; args }
+    ;;
+
+    let list_of_opam_command_list env opam_commands =
+      OpamFilter.commands env opam_commands |> List.filter_map ~f:(of_list ~path:env_path)
+    ;;
+
+    let run ~dir { prog; args } =
       let output_on_success =
         Dune_engine.Execution_parameters.Action_output_on_success.Swallow
       in
       let output_limit = Dune_engine.Execution_parameters.Action_output_limit.default in
       let stdout_to = Process.Io.make_stdout ~output_on_success ~output_limit in
       let stderr_to = Process.Io.make_stderr ~output_on_success ~output_limit in
-      Process.run ~dir ~stdout_to ~stderr_to ~display:Quiet Strict prog args
-    ;;
-
-    let configure version =
-      let source_dir = Path.outside_build_dir (Paths.source_dir version) in
-      let configure_script = Path.relative source_dir "configure" in
-      let prefix = Paths.target_dir version in
-      run
-        ~dir:source_dir
-        configure_script
-        [ "--prefix"; Path.Outside_build_dir.to_string prefix ]
-    ;;
-
-    let make version args =
-      let make = Lazy.force Make.path in
-      let source_dir = Path.outside_build_dir (Paths.source_dir version) in
-      run ~dir:source_dir make args
-    ;;
-
-    let build version =
-      (* TODO: limit the amount of parallelism to a reasonable number of cores *)
-      make version [ "-j" ]
-    ;;
-
-    (* Installation happens in two steps. First, run `make install
-       DESTDIR=...` to install the toolchain into a temporary directory. Then
-       the target directory from the temporary directory is copied into the
-       final installation directory. This allows us to use the fact that the
-       final installation directory exists to check that the toolchain is
-       installed. *)
-    let install version =
-      let open Fiber.O in
-      let dest_dir = Path.outside_build_dir (Paths.tmp_install_dir version) in
-      let target_dir = Path.outside_build_dir (Paths.target_dir version) in
-      Fpath.rm_rf (Path.to_string target_dir);
-      Fpath.rm_rf (Path.to_string dest_dir);
-      let+ () =
-        make version [ "install"; sprintf "DESTDIR=%s" (Path.to_string dest_dir) ]
+      let prog =
+        match prog with
+        | `Relative_to_cwd relative_path -> Path.relative dir relative_path
+        | `Absolute path -> path
       in
-      Path.rename
-        (Path.outside_build_dir (Paths.target_dir_within_tmp_install_dir version))
-        (Path.outside_build_dir (Paths.target_dir version));
-      Fpath.rm_rf (Path.to_string dest_dir)
+      Process.run ~dir ~stdout_to ~stderr_to ~display:Quiet Strict prog args
     ;;
   end
 
-  let bin_dir t = Path.Outside_build_dir.relative (Paths.target_dir t) "bin"
-  let is_version_installed t = Path.exists (Path.outside_build_dir (Paths.target_dir t))
+  type t =
+    { name : Name.t
+    ; url : OpamUrl0.t
+    ; opam_file : OpamFile.OPAM.t
+    ; opam_env : OpamFilter.env
+    }
 
-  let of_version_and_resolved_package version resolved_package =
-    let opam_file : OpamFile.OPAM.t = Resolved_package.opam_file resolved_package in
-    Option.map opam_file.url ~f:(fun opam_file_url ->
-      let url = OpamFile.URL.url opam_file_url in
-      let checksum =
-        OpamFile.URL.checksum opam_file_url
-        |> List.hd_opt
-        |> Option.map ~f:Checksum.of_opam_hash
+  let build_commands t = Command.list_of_opam_command_list t.opam_env t.opam_file.build
+
+  (* Run the build commands for the compiler. The build commands are
+     taken from the compiler's opam file. *)
+  let build t =
+    let dir = Path.outside_build_dir (Name.Paths.source_dir t.name) in
+    Fiber.sequential_iter (build_commands t) ~f:(Command.run ~dir)
+  ;;
+
+  (* Append "DESTDIR=..." to the install commands from the package's
+     opam file so that when the install command is run it will install
+     the compiler into a temporary directory. This also validates that
+     the install command from the package's opam file begins with "make
+     install", as otherwise appending "DESTDIR=..." to its argument list
+     will have an unintentional effect. Raises user errors if the
+     install command doesn't look as expected. *)
+  let validate_and_add_destdir_to_install_commands t =
+    let expectation_message =
+      [ Pp.text "Expected a single unfiltered install command of the form "
+      ; User_message.command "make install ..."
+      ]
+    in
+    match t.opam_file.install with
+    | [ (((CIdent "make", None) :: (CString "install", None) :: _ as args), None) ] ->
+      let destdir_arg =
+        sprintf
+          "DESTDIR=%s"
+          (Name.Paths.tmp_install_dir t.name |> Path.Outside_build_dir.to_string)
       in
-      { version; url; checksum })
+      [ args @ [ CString destdir_arg, None ], None ]
+    | [] ->
+      User_error.raise
+        (Pp.textf
+           "Toolchain compiler %s has no install commands."
+           (Name.version_string t.name)
+         :: expectation_message)
+    | [ (_, Some filter) ] ->
+      User_error.raise
+        (Pp.textf
+           "Toolchain compiler %s has a filter on its install command:  %s"
+           (Name.version_string t.name)
+           (OpamFilter.to_string filter)
+         :: expectation_message)
+    | [ (_, None) ] ->
+      User_error.raise
+        (Pp.textf "Toolchain compiler %s is not of the form " (Name.version_string t.name)
+         :: User_message.command "make install..."
+         :: expectation_message)
+    | _many ->
+      User_error.raise
+        (Pp.textf
+           "Toolchain compiler %s has multiple install commands."
+           (Name.version_string t.name)
+         :: expectation_message)
+  ;;
+
+  (* The install commands from the package's opam file, modified to
+     install the package into a temporary directory. *)
+  let install_commands_with_destdir t =
+    Command.list_of_opam_command_list
+      t.opam_env
+      (validate_and_add_destdir_to_install_commands t)
+  ;;
+
+  (* Run the install commands from the opam file, modified to install
+     the package into a temporary directory. *)
+  let install_tmp t =
+    let dir = Path.outside_build_dir (Name.Paths.source_dir t.name) in
+    Fiber.sequential_iter (install_commands_with_destdir t) ~f:(Command.run ~dir)
+  ;;
+
+  (* Install the compiler in the appropriate toolchain directory.
+
+     Installation happens in two steps. First, run the package's
+     install command passing "compilerIR=..." to install the toolchain
+     into a temporary directory. Then the target directory from the
+     temporary directory is copied into the final installation
+     directory. This allows us to use the fact that the final
+     installation directory exists to check that the toolchain is
+     installed. *)
+  let install t =
+    let open Fiber.O in
+    let dest_dir = Path.outside_build_dir (Name.Paths.tmp_install_dir t.name) in
+    let target_dir = Path.outside_build_dir (Name.Paths.target_dir t.name) in
+    Fpath.rm_rf (Path.to_string target_dir);
+    Fpath.rm_rf (Path.to_string dest_dir);
+    let+ () = install_tmp t in
+    Path.rename
+      (Path.outside_build_dir (Name.Paths.target_dir_within_tmp_install_dir t.name))
+      (Path.outside_build_dir (Name.Paths.target_dir t.name));
+    Fpath.rm_rf (Path.to_string dest_dir)
+  ;;
+
+  let bin_dir t = Path.Outside_build_dir.relative (Name.Paths.target_dir t.name) "bin"
+
+  let is_version_installed t =
+    Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
+  ;;
+
+  (* The strongest checksum from the compiler's opam file. This will
+     be used to validate the complier's source archive. Note that ideally
+     we would validate the compiler source archive against all the
+     checksums from the compiler's opam file however [Fetch.fetch]
+     currently only accepts a single checksum for validation. *)
+  let strongest_checksum { opam_file; _ } =
+    Option.bind opam_file.url ~f:(fun opam_file_url ->
+      OpamFile.URL.checksum opam_file_url
+      |> List.map ~f:Checksum.of_opam_hash
+      |> Checksum.choose_strongest)
+  ;;
+
+  let of_resolved_package resolved_package =
+    let open Fiber.O in
+    let package = Resolved_package.package resolved_package in
+    let opam_file : OpamFile.OPAM.t = Resolved_package.opam_file resolved_package in
+    match opam_file.url with
+    | Some opam_file_url ->
+      let url = OpamFile.URL.url opam_file_url in
+      let name =
+        { Name.version = Package_version.of_opam_package_version package.version }
+      in
+      let+ opam_env = Name.opam_env name in
+      Some { name; url; opam_file; opam_env }
+    | None -> Fiber.return None
   ;;
 
   let handle_checksum_mismatch t ~got_checksum =
     let checksum =
-      match t.checksum with
+      match strongest_checksum t with
       | Some checksum -> checksum
       | None ->
         Code_error.raise
@@ -187,7 +329,7 @@ module Compiler = struct
       [ Pp.textf
           "Checksum mismatch when downloading version %s of the compiler toolchain from \
            %s."
-          (version_string t)
+          (Name.version_string t.name)
           (OpamUrl0.to_string t.url)
       ; Pp.textf "Expected checksum: %s" (Checksum.to_string checksum)
       ; Pp.textf "Got checksum: %s" (Checksum.to_string got_checksum)
@@ -198,7 +340,7 @@ module Compiler = struct
     let msg_context =
       Pp.textf
         "Unable to download version %s of the compiler toolchain from %s."
-        (version_string t)
+        (Name.version_string t.name)
         (OpamUrl0.to_string t.url)
     in
     let msg =
@@ -209,13 +351,17 @@ module Compiler = struct
     raise (User_error.E msg)
   ;;
 
-  let fetch ({ url; checksum; _ } as t) =
+  let fetch t =
     let open Fiber.O in
-    let source_dir = Path.outside_build_dir (Paths.source_dir t) in
+    let source_dir = Path.outside_build_dir (Name.Paths.source_dir t.name) in
     Fpath.rm_rf (Path.to_string source_dir);
     Path.mkdir_p source_dir;
     let+ result =
-      Fetch.fetch ~unpack:true ~checksum ~target:source_dir ~url:(Loc.none, url)
+      Fetch.fetch
+        ~unpack:true
+        ~checksum:(strongest_checksum t)
+        ~target:source_dir
+        ~url:(Loc.none, t.url)
     in
     match result with
     | Ok () -> ()
@@ -236,8 +382,8 @@ module Compiler = struct
       log_print ~log_when User_message.Style.Success
       @@ Pp.textf
            "Version %s of the compiler toolchain is already installed in %s"
-           (version_string t)
-           (Paths.target_dir t |> Path.Outside_build_dir.to_string)
+           (Name.version_string t.name)
+           (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string)
     | _ -> ()
   ;;
 
@@ -247,27 +393,25 @@ module Compiler = struct
     log_print ~log_when detail_log_style
     @@ Pp.textf
          "Will install version %s of the compiler toolchain to %s"
-         (version_string t)
-         (Paths.target_dir t |> Path.Outside_build_dir.to_string);
+         (Name.version_string t.name)
+         (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string);
     log_print ~log_when detail_log_style @@ Pp.text "Downloading...";
     let* () = fetch t in
-    log_print ~log_when detail_log_style @@ Pp.text "Configuring...";
-    let* () = Command.configure t in
     log_print ~log_when detail_log_style @@ Pp.text "Building...";
-    let* () = Command.build t in
+    let* () = build t in
     log_print ~log_when detail_log_style @@ Pp.text "Installing...";
-    let+ () = Command.install t in
+    let+ () = install t in
     log_print ~log_when User_message.Style.Success
     @@ Pp.textf
          "Success! Compiler toolchain version %s installed to %s."
-         (version_string t)
-         (Paths.target_dir t |> Path.Outside_build_dir.to_string)
+         (Name.version_string t.name)
+         (Name.Paths.target_dir t.name |> Path.Outside_build_dir.to_string)
   ;;
 
   let with_flock t ~f =
     Flock.with_flock
-      (Paths.flock t)
-      ~name_for_messages:(sprintf "toolchain version %s" (version_string t))
+      (Name.Paths.flock t.name)
+      ~name_for_messages:(sprintf "toolchain version %s" (Name.version_string t.name))
       ~timeout_s:infinity
       ~f
   ;;
@@ -336,9 +480,14 @@ module Available_compilers = struct
 
   let find_package t package_name version =
     if Package_name.equal package_name Names.ocaml_base_compiler
-    then
-      OpamPackage.Version.Map.find_opt (Package_version.to_opam_package_version version) t
-      |> Option.bind ~f:(Compiler.of_version_and_resolved_package version)
-    else None
+    then (
+      match
+        OpamPackage.Version.Map.find_opt
+          (Package_version.to_opam_package_version version)
+          t
+      with
+      | Some resolved_package -> Compiler.of_resolved_package resolved_package
+      | None -> Fiber.return None)
+    else Fiber.return None
   ;;
 end

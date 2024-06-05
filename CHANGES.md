@@ -1,9 +1,67 @@
-Unreleased
-----------
+3.16.0~alpha1 (2024-06-05)
+--------------------------
 
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.  
+### Added
+
+- allow libraries with the same `(name ..)` in projects as long as they don't
+  conflict during resolution (via `enabled_if`). (#10307, @anmonteiro,
+  @jchavarri)
+
+- `dune describe pp` now finds the exact module and the stanza it belongs to,
+  instead of guessing the name of the preprocessed file. (#10321, @anmonteiro)
+
+- Print the result of `dune describe pp` with the respective dialect printer.
+  (#10322, @anmonteiro)
+
+- Add new flag `--context` to `dune ocaml-merlin`, which allows to select a
+  Dune context when requesting Merlin config. Add `dune describe contexts`
+  subcommand. Introduce a field `generate_merlin_rules` for contexts declared
+  in the workspace, that allows to optionally produce Merlin rules for other
+  contexts besides the one selected for Merlin (#10324, @jchavarri)
+
+- melange: add include paths for private library `.cmj` files during JS
+  emission. (#10416, @anmonteiro)
+
+- `dune ocaml-merlin`: communicate additional directives `SOURCE_ROOT`,
+  `UNIT_NAME` (the actual name with wrapping) and `INDEX` with the paths to the
+  index(es). (#10422, @voodoos)
+
+- Add a new alias `@ocaml-index` that uses the `ocaml-index` binary to generate
+  indexes that can be read by tools such as Merlin to provide project-wide
+  references search. (#10422, @voodoos)
+
+- merlin: add optional `(merlin_reader CMD)` construct to `(dialect)` stanza to
+  configure a merlin reader (#8567, @andreypopp)
+
+### Changed
+
+- melange: treat private libraries with `(package ..)` as public libraries,
+  fixing an issue where `import` paths were wrongly emitted. (#10415,
+  @anmonteiro)
+
+- install `.glob` files for Coq theories too (#10602, @ejgallego)
+
+### Fixed
+
+- Don't try to document non-existent libraries in doc-new target (#10319, fixes
+  #10056, @jonludlam)
+
+- Make `dune-site`'s `load_all` function look for `META` files so that it
+  doesn't fail on empty directories in the plugin directory (#10458, fixes
+  #10457, @shym)
+
+- Fix incorrect warning for libraries defined inside non-existant directories
+  using `(subdir ..)` and used by executables using `dune-build-info` (#10525,
+  @rgrinberg)
+
+- Don't try to take build lock when running `coq top --no-build` (#10547, fixes
+  #7671, @lzy0505)
+
+- Make sure to truncate dune's lock file after locking and unlocking so that
+  users cannot observe incorrect pid's (#10575, @rgrinberg)
+
+- mdx: link mdx binary with `byte_complete`. This fixes `(libraries)` with
+  foreign archives on Linux. (#10586, fixes #10582, @anmonteiro)
 
 3.15.3 (2024-05-24)
 -------------------

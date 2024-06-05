@@ -16,6 +16,7 @@ let find_package ctx pkg =
     Pkg_rules.lock_dir_active ctx
     >>= (function
      | true ->
+       Console.printf "Find_package: %s" (Dune_lang.Package_name.to_string pkg);
        Pkg_rules.find_package ctx pkg
        >>| (function
         | None -> None

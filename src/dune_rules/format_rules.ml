@@ -175,14 +175,6 @@ let with_config ~dir f =
 
 let gen_rules sctx ~output_dir =
   let open Memo.O in
-  (* let* _db = *)
-  (*   Package_db.create (Context_name.of_string Dune_pkg.Dev_tool.Ocamlformat.context_name) *)
-  (* in *)
-  (* let* _ = *)
-  (*   Package_db.find_package *)
-  (*     _db *)
-  (*     (Dune_lang.Package_name.of_string Dune_pkg.Dev_tool.Ocamlformat.pkg_name) *)
-  (* in *)
   let dir = Path.Build.parent_exn output_dir in
   with_config ~dir (fun config ->
     let* expander = Super_context.expander sctx ~dir in

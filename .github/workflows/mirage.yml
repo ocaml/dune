@@ -21,6 +21,6 @@ jobs:
     - run: sed -i s/1.3/2.7/ dune-project
     - run: opam pin add -n dune.dev git+https://github.com/ocaml/dune#$GITHUB_SHA
     - run: sudo apt install libseccomp-dev
-    - run: opam install mirage opam-monorepo.0.3.6
+    - run: opam install mirage.4.4.2 opam-monorepo.0.3.6
     - run: cd mirage; opam exec -- mirage configure -f config.ml -t hvt
     - run: cd mirage; opam exec -- make depend lock pull build

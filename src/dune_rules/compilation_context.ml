@@ -144,14 +144,7 @@ let create
     then Memo.Lazy.force requires_link
     else requires_compile
   in
-  let sandbox =
-    (* With sandboxing, there are a few build errors in ocaml platform 1162238ae
-       like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1: Error: The
-       implementation ocaml_modules/ocamlgraph/src/pack.ml does not match the
-       interface
-       ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
-    Sandbox_config.no_sandboxing
-  in
+  let sandbox = Sandbox_config.no_special_requirements in
   let modes =
     let default =
       { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)
@@ -168,7 +161,7 @@ let create
   in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
-    ; sandbox = Sandbox_config.no_special_requirements
+    ; sandbox
     ; obj_dir
     ; sctx = super_context
     ; vimpl

@@ -31,4 +31,4 @@ Dune ocaml-merlin also accepts paths relative to the current directory
 
   $ dune ocaml merlin dump-config "." --root=".." | head -n 2
   Foo: _build/default/realsrc/foo
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX $TESTCASE_ROOT/realroot/_build/default/realsrc/.foo.eobjs/cctx.ocaml-index) (STDLIB /OCAMLC_WHERE) (SOURCE_ROOT $TESTCASE_ROOT/realroot) (EXCLUDE_QUERY_DIR) (B $TESTCASE_ROOT/realroot/_build/default/realsrc/.foo.eobjs/byte) (S $TESTCASE_ROOT/realroot/realsrc) (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g)) (UNIT_NAME dune__exe__Foo))

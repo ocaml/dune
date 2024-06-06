@@ -57,114 +57,35 @@ the command line. For example, if a Dune file contains the following, then
 Built-In Aliases
 ----------------
 
-Some aliases are defined and managed by Dune itself.
+Some aliases are defined and managed by Dune itself:
 
-@all
-^^^^
+.. grid:: 1 3 2 3
 
-This alias corresponds to every known file target in a directory.
+  .. grid-item::
 
-Since version 2.0 of the dune language, JS targets of executables are no longer
-included in the `all` alias by default. To get back the old behavior of
-including the JS targets in `all`, one can add the ``js`` target to the
-executable's ``modes`` field.
+    .. toctree::
+       :caption: Builds
 
-@check
-^^^^^^
+       aliases/all
+       aliases/default
+       aliases/install
 
-This alias corresponds to the set of targets necessary for development tools to
-work correctly. For example, it will build ``*.cmi``, ``*.cmt``, and ``*.cmti``
-files so that Merlin and ``ocaml-lsp-server`` can be used in the project.
-It is also useful in the development loop because it will catch compilation
-errors without executing expensive operations such as linking executables.
+  .. grid-item::
 
-.. _default-alias:
+    .. toctree::
+       :caption: Checks
 
-@default
-^^^^^^^^
+       aliases/check
+       aliases/ocaml-index
+       aliases/runtest
+       aliases/fmt
+       aliases/lint
 
-This alias corresponds to the default argument for ``dune build``: ``dune
-build`` is equivalent to ``dune build @@default``. Similarly, ``dune build
-dir`` is equivalent to ``dune build @@dir/default``.
+  .. grid-item::
 
-When a directory doesn't explicitly define what the ``default`` alias means via
-an :doc:`dune/alias` stanza, the following implicit definition is
-assumed:
+    .. toctree::
+       :caption: Docs
 
-.. code:: dune
-
-   (alias
-    (name default)
-    (deps (alias_rec all)))
-
-But if such a stanza is present in the ``dune`` file in a directory, it will be
-used instead. For example, if the following is present in ``tests/dune``,
-``dune build tests`` will run tests there:
-
-.. code:: dune
-
-   (alias
-    (name default)
-    (deps (alias_rec runtest)))
-
-@doc
-^^^^
-
-This alias builds documentation for public libraries as HTML pages.
-
-@doc-json
-^^^^^^^^^
-
-This alias builds documentation for public libraries as JSON files. These are
-produced by ``odoc``'s option ``--as-json`` and can be consumed by external
-tools.
-
-@doc-private
-^^^^^^^^^^^^
-
-This alias builds documentation for all libraries, both public & private.
-
-@fmt
-^^^^
-
-This alias is used by formatting rules: when it is built, code formatters will
-be executed (using :doc:`promotion <../concepts/promotion>`).
-
-``dune fmt`` is a shortcut for ``dune build @fmt --auto-promote``.
-
-It is possible to build on top of this convention. If some actions are manually
-attached to the ``fmt`` alias, they will be executed by ``dune fmt``.
-
-Example:
-
-.. code:: dune
-
-   (rule
-    (with-stdout-to
-     data.json.formatted
-     (run jq . %{dep:data.json})))
-
-   (rule
-    (alias fmt)
-    (action
-     (diff data.json data.json.formatted)))
-
-@install
-^^^^^^^^
-
-This alias depends on the ``*.install`` files used by the :doc:`opam
-integration <../explanation/opam-integration>`. In turn, these depend on
-installable files.
-
-@lint
-^^^^^
-
-This alias runs linting tools.
-
-@runtest
-^^^^^^^^
-
-Actions that run tests are attached to this alias. For example this convention
-is used by the ``(test)`` stanza.
-
-``dune runtest`` is a shortcut for ``dune build @runtest``.
+       aliases/doc
+       aliases/doc-private
+       aliases/doc-json

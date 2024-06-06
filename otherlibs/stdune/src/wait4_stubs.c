@@ -52,15 +52,16 @@ value dune_wait4(value v_pid, value flags) {
   CAMLparam2(v_pid, flags);
   CAMLlocal2(times, res);
 
-  int pid, status, cv_flags;
+  int status, cv_flags;
   struct timeval tp;
   cv_flags = caml_convert_flag_list(flags, wait_flag_table);
+  pid_t pid = Int_val(v_pid);
 
   struct rusage ru;
 
   caml_enter_blocking_section();
   // returns the pid of the terminated process, or -1 on error
-  pid = wait4(Int_val(v_pid), &status, cv_flags, &ru);
+  pid = wait4(pid, &status, cv_flags, &ru);
   gettimeofday(&tp, NULL);
   caml_leave_blocking_section();
   if (pid == -1)

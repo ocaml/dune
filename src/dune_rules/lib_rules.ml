@@ -579,6 +579,7 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let ocaml = Compilation_context.ocaml cctx in
+  let* requires_link = Compilation_context.requires_link cctx in
   let stdlib_dir = ocaml.lib_config.stdlib_dir in
   let top_sorted_modules =
     let impl_only = Modules.With_vlib.impl_only modules in
@@ -607,6 +608,9 @@ let library_rules
     info
   in
   let+ () =
+    Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->
+      Ocaml_index.cctx_rules cctx)
+  and+ () =
     Memo.when_
       (not (Library.is_virtual lib))
       (fun () -> setup_build_archives lib ~lib_info ~top_sorted_modules ~cctx ~expander)
@@ -631,7 +635,7 @@ let library_rules
   in
   ( cctx
   , Merlin.make
-      ~requires:requires_compile
+      ~requires:requires_link
       ~stdlib_dir
       ~flags
       ~modules

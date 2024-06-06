@@ -23,20 +23,32 @@
   $ touch bar.ml $lib.ml
   $ dune build @check
   $ dune ocaml merlin dump-config "$PWD" | grep -i "$lib"
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (UNIT_NAME foo__Bar))
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
+   (UNIT_NAME foo__Bar))
   Foo: _build/default/foo
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
+   (UNIT_NAME foo))
   Foo: _build/default/foo.ml
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
    (FLG (-open Foo__))
+   (UNIT_NAME foo))
   Foo__: _build/default/foo__
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (UNIT_NAME foo__))
   Foo__: _build/default/foo__.ml-gen
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (B $TESTCASE_ROOT/_build/default/.foo.objs/melange)
+   (UNIT_NAME foo__))
 
 Paths to Melange stdlib appear in B and S entries without melange.emit stanza
 
@@ -62,14 +74,15 @@ Paths to Melange stdlib appear in B and S entries without melange.emit stanza
   $ touch main.ml
   $ dune build @check
   $ dune ocaml merlin dump-config $PWD | grep -i "$target"
-    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
-    $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+   (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
+   (B $TESTCASE_ROOT/_build/default/.output.mobjs/melange)
 
 Dump-dot-merlin includes the melange flags
 
   $ dune ocaml dump-dot-merlin $PWD
   EXCLUDE_QUERY_DIR
   STDLIB /MELC_STDLIB/melange
+  SOURCE_ROOT $TESTCASE_ROOT
   B /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange
   B /MELC_STDLIB/melange
   B /MELC_STDLIB/melange
@@ -115,134 +128,56 @@ User ppx flags should appear in merlin config
 
   $ dune ocaml merlin dump-config $PWD | grep -v "(B "  | grep -v "(S "
   Bar: _build/default/bar
-  ((STDLIB /MELC_STDLIB/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
-   (B
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (S
-    /MELC_STDLIB/__private__/melange_mini_stdlib)
-   (S
-    $TESTCASE_ROOT)
    (FLG (-open Foo))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME foo__Bar))
   Bar: _build/default/bar.ml
-  ((STDLIB /MELC_STDLIB/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
-   (B
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (S
-    /MELC_STDLIB/__private__/melange_mini_stdlib)
-   (S
-    $TESTCASE_ROOT)
    (FLG (-open Foo))
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME foo__Bar))
   Foo: _build/default/foo
-  ((STDLIB /MELC_STDLIB/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
-   (B
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (S
-    /MELC_STDLIB/__private__/melange_mini_stdlib)
-   (S
-    $TESTCASE_ROOT)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME foo))
   Foo: _build/default/foo.ml-gen
-  ((STDLIB /MELC_STDLIB/melange)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /MELC_STDLIB/melange)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    /MELC_STDLIB/__private__/melange_mini_stdlib/melange/.public_cmi_melange)
-   (B
-    $TESTCASE_ROOT/_build/default/.foo.objs/melange)
-   (S
-    /MELC_STDLIB/__private__/melange_mini_stdlib)
-   (S
-    $TESTCASE_ROOT)
-   (FLG
-    (-ppx
-     "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe
-     --as-ppx
-     --cookie
-     'library-name="foo"'"))
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-ppx "$TESTCASE_ROOT/_build/default/.ppx/4128e43a9cfb141a37f547484cc9bf46/ppx.exe --as-ppx --cookie 'library-name="foo"'"))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME foo))
   Fooppx: _build/default/fooppx
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)
-   (S
-    $TESTCASE_ROOT)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME fooppx))
   Fooppx: _build/default/fooppx.ml
-  ((STDLIB /OCAMLC_WHERE)
+  ((INDEX $TESTCASE_ROOT/_build/default/.fooppx.objs/cctx.ocaml-index)
+   (INDEX $TESTCASE_ROOT/_build/default/.foo.objs/cctx.ocaml-index)
+   (STDLIB /OCAMLC_WHERE)
+   (SOURCE_ROOT $TESTCASE_ROOT)
    (EXCLUDE_QUERY_DIR)
-   (B
-    $TESTCASE_ROOT/_build/default/.fooppx.objs/byte)
-   (S
-    $TESTCASE_ROOT)
-   (FLG
-    (-w
-     @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40
-     -strict-sequence
-     -strict-formats
-     -short-paths
-     -keep-locs
-     -g)))
+   (FLG (-w @1..3@5..28@30..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g))
+   (UNIT_NAME fooppx))

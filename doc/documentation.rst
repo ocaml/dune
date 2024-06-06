@@ -35,8 +35,8 @@ Additional documentation pages may be attached to a package using the
 Building Documentation
 ======================
 
-To generate documentation using the ``@doc`` alias, all that's required to is
-to build this alias:
+To generate documentation using the :doc:`/reference/aliases/doc` alias, all
+that's required to is to build this alias:
 
 .. code:: console
 
@@ -49,7 +49,8 @@ found in:
 
   $ open _build/default/_doc/_html/index.html
 
-Documentation for private libraries may also be built with:
+Documentation for private libraries may also be built with
+:doc:`/reference/aliases/doc-private`:
 
 .. code:: console
 

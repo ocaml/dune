@@ -34,6 +34,7 @@ val jobs : t
 val make : t
 val prefix : t
 val doc : t
+val installed : t
 val one_of : t -> t list -> bool
 
 module Project : sig

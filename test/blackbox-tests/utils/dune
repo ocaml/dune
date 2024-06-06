@@ -33,3 +33,8 @@
  (name sherlodoc)
  (modules sherlodoc)
  (libraries stdune))
+
+(executable
+ (modules ocaml_index)
+ (name ocaml_index)
+ (libraries cmdliner))

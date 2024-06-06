@@ -5,6 +5,17 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.  
 
+3.15.3 (2024-05-24)
+-------------------
+
+### Fixed
+
+- Fix interpretation of `exists_if` predicate in `META` files of installed
+  libraries containing more than one element. (#10564, fixes #10563, @dbuenzli,
+  @nojb)
+
+- Fix TSAN warning in wait4 stubs (#10554, fixes #10553, @emillon)
+
 3.15.2 (2024-04-23)
 -------------------
 

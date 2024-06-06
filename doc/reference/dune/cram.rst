@@ -59,8 +59,9 @@ Cram
    .. describe:: (alias <name>)
 
       Alias that can be used to run the test. In addition to the user alias,
-      every test ``foo.t`` is attached to the ``@runtest`` alias and gets its
-      own ``@foo`` alias to make it convenient to run individually.
+      every test ``foo.t`` is attached to the :doc:`/reference/aliases/runtest`
+      alias and gets its own ``@foo`` alias to make it convenient to run
+      individually.
 
    .. describe:: (locks <lock-names>)
 

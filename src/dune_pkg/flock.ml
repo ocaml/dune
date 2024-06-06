@@ -77,20 +77,19 @@ let with_flock lock_path ~name_for_messages ~timeout_s ~f =
       [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; O_CLOEXEC ]
       0o600
   in
-  let out = Unix.out_channel_of_descr fd in
   let flock = Flock.create fd in
   let current_dune_pid = Unix.getpid () in
   Fiber.finalize
     ~finally:(fun () ->
       let+ () = Fiber.return () in
-      close_out out)
+      Unix.close fd)
     (fun () ->
       attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_s
       >>= function
       | Ok `Success ->
         Fiber.finalize
           (fun () ->
-            Printf.fprintf out "%d%!" current_dune_pid;
+            Dune_util.Global_lock.write_pid fd;
             f ())
           ~finally:(fun () ->
             let+ () = Fiber.return () in

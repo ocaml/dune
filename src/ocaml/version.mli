@@ -73,3 +73,6 @@ val has_sandboxed_otherlibs : t -> bool
 
 (** Whether the compiler distributes META files independently of ocamlfind *)
 val has_META_files : t -> bool
+
+(** Whether the compiler supports occurrences indexation *)
+val supports_bin_annot_occurrences : t -> bool

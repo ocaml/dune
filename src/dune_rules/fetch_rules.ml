@@ -164,8 +164,6 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
            | None -> checksums, Digest.Map.set urls (digest_of_url (snd url)) url)))
 ;;
 
-let ocamlformat = Memo.lazy_ (fun () -> Lock_dir.get_ocamlformat ())
-
 let find_checksum, find_url =
   let all =
     Memo.lazy_ (fun () ->
@@ -177,7 +175,7 @@ let find_checksum, find_url =
               let checksums', urls' = extract_checksums_and_urls lockdir in
               Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')
       >>= fun (checksums, urls) ->
-      Memo.Lazy.force ocamlformat
+      Lock_dir.get_ocamlformat
       >>| fun lockdir ->
       let checksums', urls' = extract_checksums_and_urls lockdir in
       Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')

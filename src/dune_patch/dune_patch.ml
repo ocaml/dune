@@ -113,7 +113,6 @@ module Spec = struct
   ;;
 
   let action patch ~ectx:_ ~(eenv : Action.Ext.env) =
-    Printf.printf "Working dir %s" (Path.to_string eenv.working_dir);
     exec !Dune_engine.Clflags.display ~patch ~dir:eenv.working_dir ~stderr:eenv.stderr_to
   ;;
 end

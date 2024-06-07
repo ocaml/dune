@@ -23,3 +23,4 @@ module Resolved_package = Resolved_package
 module Pin_stanza = Pin_stanza
 module Package_name = Package_name
 module Toolchain = Toolchain
+module Feature_flags = Feature_flags

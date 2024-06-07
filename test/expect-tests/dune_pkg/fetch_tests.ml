@@ -44,14 +44,19 @@ let serve_once ~filename =
 let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) in
+  let checksums =
+    match checksum with
+    | None -> None
+    | Some checksum -> Nonempty_list.of_list [ checksum ]
+  in
+  let* res = Fetch.fetch ~unpack ~checksums ~target ~url:(Loc.none, url) in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
     User_error.raise ~loc:Loc.none errs
   | Error (Unavailable (Some msg)) ->
     User_error.raise ~loc:Loc.none [ User_message.pp msg ]
-  | Error (Checksum_mismatch actual_checksum) ->
+  | Error (Checksum_mismatch { expected = _; got }) ->
     let expected_checksum = Option.value_exn checksum in
     User_error.raise
       ~loc:Loc.none
@@ -59,7 +64,7 @@ let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum ()
       ; Pp.verbatim @@ Checksum.to_string expected_checksum
       ; Pp.text "but got"
       ; (if reproducible
-         then Pp.verbatim @@ Checksum.to_string actual_checksum
+         then Pp.verbatim @@ Checksum.to_string got
          else Pp.text "<REDACTED>")
       ]
   | Ok () ->

@@ -100,27 +100,31 @@ module Spec = struct
   let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let* () = Fiber.return () in
-    (let checksum = Option.map checksum ~f:snd in
+    (let checksums =
+       match checksum with
+       | Some (_loc, checksum) -> Nonempty_list.of_list [ checksum ]
+       | None -> None
+     in
      Dune_pkg.Fetch.fetch
        ~unpack:
          (match kind with
           | `File -> false
           | `Directory -> true)
-       ~checksum
+       ~checksums
        ~target:(Path.build target)
        ~url:(loc_url, url))
     >>= function
     | Ok () -> Fiber.return ()
-    | Error (Checksum_mismatch actual_checksum) ->
+    | Error (Checksum_mismatch { expected = _; got }) ->
       (match checksum with
        | None ->
          User_error.raise
            ~loc:loc_url
-           [ Pp.text "No checksum provided. It should be:"; Checksum.pp actual_checksum ]
+           [ Pp.text "No checksum provided. It should be:"; Checksum.pp got ]
        | Some (loc, _) ->
          User_error.raise
            ~loc
-           [ Pp.text "Invalid checksum, got"; Dune_pkg.Checksum.pp actual_checksum ])
+           [ Pp.text "Invalid checksum, got"; Dune_pkg.Checksum.pp got ])
     | Error (Unavailable message) ->
       let loc = loc_url in
       (match message with

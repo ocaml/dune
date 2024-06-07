@@ -1,13 +1,5 @@
 open Import
 
-(** ad-hoc feature flag that automatically re-creates lock files if the
-    contents of the dependency list in the dune-project goes out of date
-
-    Supposed to be enabled in the developer preview and disabled in the
-    release, if you find yourself enabling this on release remove the
-    check altogether *)
-let use_autorelock = true
-
 let with_metrics ~common f =
   let start_time = Unix.gettimeofday () in
   Fiber.finalize f ~finally:(fun () ->
@@ -57,7 +49,7 @@ let run_build_system ~common ~request =
       let request =
         let open Action_builder.O in
         let autorelock =
-          match use_autorelock with
+          match Dune_pkg.Feature_flags.use_autorelock with
           | false -> Memo.return ()
           | true ->
             Memo.of_thunk (fun () ->

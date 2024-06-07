@@ -183,23 +183,20 @@ let build_cm
        (Action_builder.map module_deps ~f:(other_cm_files ~opaque ~cm_kind ~obj_dir))
    in
    let other_targets, cmt_args =
-     match cm_kind with
-     | Ocaml Cmx -> other_targets, Command.Args.empty
-     | Ocaml (Cmi | Cmo) | Melange (Cmi | Cmj) ->
-       if Compilation_context.bin_annot cctx
-       then (
-         let fn =
-           Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind)
-         in
-         let annots =
-           [ "-bin-annot" ]
-           @
-           if Version.supports_bin_annot_occurrences ocaml.version
-           then [ "-bin-annot-occurrences" ]
-           else []
-         in
-         fn :: other_targets, As annots)
-       else other_targets, Command.Args.empty
+     match Compilation_context.bin_annot cctx, cm_kind with
+     | false, _ | true, Ocaml Cmx -> other_targets, Command.Args.empty
+     | true, Ocaml (Cmi | Cmo) ->
+       let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind) in
+       let annots =
+         if Version.supports_bin_annot_occurrences ocaml.version
+         then [ "-bin-annot"; "-bin-annot-occurrences" ]
+         else [ "-bin-annot" ]
+       in
+       fn :: other_targets, As annots
+     | true, Melange (Cmi | Cmj) ->
+       let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind) in
+       let annots = [ "-bin-annot" ] in
+       fn :: other_targets, As annots
    in
    let opaque_arg : _ Command.Args.t =
      let intf_only = cm_kind = Ocaml Cmi && not (Module.has m ~ml_kind:Impl) in

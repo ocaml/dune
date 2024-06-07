@@ -21,7 +21,7 @@ let to_local (t : t) : Local_package.t =
 let lock_dir = Path.Source.relative (Path.Source.of_string "dune.lock") "dev_tools.lock"
 
 module Ocamlformat = struct
-  (* TODO: just to experiement the solving, it going to be remove *)
+  (* CR-moyodiallo: just to experiement the solving, hard-coded version is going to be removed *)
   let _ocamlformat_dependency =
     let open Dune_lang in
     let open Package_dependency in

@@ -4,9 +4,11 @@ let ocaml_index sctx ~dir =
   Super_context.resolve_program ~loc:None ~dir sctx "ocaml-index"
 ;;
 
+let index_file_name = "cctx.ocaml-index"
+
 let index_path_in_obj_dir obj_dir =
   let dir = Obj_dir.obj_dir obj_dir in
-  Path.Build.relative dir "cctx.ocaml-index"
+  Path.Build.relative dir index_file_name
 ;;
 
 let project_index ~build_dir = Path.Build.relative build_dir "project.ocaml-index"
@@ -18,10 +20,11 @@ let cctx_rules cctx =
      definitions are used by all the cmts of modules in this cctx. *)
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  let aggregate =
+  let open Memo.O in
+  let* aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
     let fn = index_path_in_obj_dir obj_dir in
-    let additional_libs =
+    let* additional_libs =
       let open Resolve.Memo.O in
       let+ non_compile_libs =
         (* The indexer relies on the load_path of cmt files. When
@@ -36,12 +39,27 @@ let cctx_rules cctx =
       in
       Lib_flags.L.include_flags non_compile_libs (Lib_mode.Ocaml Byte)
     in
+    (* Indexing depends (recursively) on [required_compile] libs:
+       - These libs's cmt files should be built before indexing starts
+       - If these libs are rebuilt a re-indexation is needed *)
+    let+ other_indexes_deps =
+      let open Resolve.Memo.O in
+      let+ requires_compile = Compilation_context.requires_compile cctx in
+      let deps =
+        List.filter_map requires_compile ~f:(fun l ->
+          match Lib.info l |> Lib_info.obj_dir |> Obj_dir.obj_dir with
+          | In_build_dir dir -> Some (Path.relative (Path.build dir) index_file_name)
+          | _ -> None)
+      in
+      Command.Args.Hidden_deps (Dep.Set.of_files deps)
+    in
     let context_dir =
       Compilation_context.context cctx
       |> Context.name
       |> Context_name.build_dir
       |> Path.build
     in
+    (* Indexation also depends on the current stanza's modules *)
     let modules_deps =
       let cm_kind = Lib_mode.Cm_kind.(Ocaml Cmi) in
       (* We only index occurrences in user-written modules *)
@@ -63,7 +81,8 @@ let cctx_rules cctx =
       ; A "-o"
       ; Target fn
       ; Deps modules_deps
-      ; Dyn (Resolve.Memo.read additional_libs)
+      ; Resolve.args additional_libs
+      ; Resolve.args other_indexes_deps
       ]
   in
   Super_context.add_rule sctx ~dir aggregate

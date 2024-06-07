@@ -4,7 +4,6 @@ module Process = Dune_engine.Process
 module Display = Dune_engine.Display
 module Scheduler = Dune_engine.Scheduler
 module Re = Dune_re
-module Flock = Dune_util.Flock
 open Fiber.O
 
 module Object = struct
@@ -62,72 +61,7 @@ let lock_path { dir; _ } =
   Path.relative parent "rev-store.lock"
 ;;
 
-let rec attempt_to_lock flock lock ~max_retries =
-  let sleep_duration = 0.1 in
-  match Flock.lock_non_block flock lock with
-  | Error e -> Fiber.return @@ Error e
-  | Ok `Success -> Fiber.return (Ok `Success)
-  | Ok `Failure ->
-    if max_retries > 0
-    then
-      let* () = Scheduler.sleep sleep_duration in
-      attempt_to_lock flock lock ~max_retries:(max_retries - 1)
-    else Fiber.return (Ok `Failure)
-;;
-
-let with_flock lock_path ~f =
-  let open Fiber.O in
-  let parent = Path.parent_exn lock_path in
-  Path.mkdir_p parent;
-  let fd =
-    Unix.openfile
-      (Path.to_string lock_path)
-      [ Unix.O_CREAT; O_WRONLY; O_SHARE_DELETE; Unix.O_CLOEXEC ]
-      0o600
-  in
-  let flock = Flock.create fd in
-  let max_retries = 49 in
-  Fiber.finalize
-    ~finally:(fun () ->
-      let+ () = Fiber.return () in
-      Unix.close fd)
-    (fun () ->
-      attempt_to_lock flock Flock.Exclusive ~max_retries
-      >>= function
-      | Ok `Success ->
-        Fiber.finalize
-          (fun () ->
-            Dune_util.Global_lock.write_pid fd;
-            f ())
-          ~finally:(fun () ->
-            let+ () = Fiber.return () in
-            Path.unlink_no_err lock_path;
-            match Flock.unlock flock with
-            | Ok () -> ()
-            | Error ue ->
-              Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
-              |> Unix_error.Detailed.raise)
-      | Ok `Failure ->
-        let pid = Io.read_file lock_path in
-        User_error.raise
-          ~hints:
-            [ Pp.textf
-                "Another dune instance (pid %s) has locked the revision store. If this \
-                 is happening in error, make sure to terminate that instance and re-run \
-                 the command."
-                pid
-            ]
-          [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
-          ]
-      | Error error ->
-        User_error.raise
-          [ Pp.textf
-              "Failed to get a lock for the revision store at %s: %s"
-              (Path.to_string_maybe_quoted lock_path)
-              (Unix.error_message error)
-          ])
-;;
-
+let with_flock = Flock.with_flock ~name_for_messages:"revision store" ~timeout_s:5.0
 let failure_mode = Process.Failure_mode.Return
 let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit

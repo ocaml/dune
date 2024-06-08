@@ -8,8 +8,7 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      # branch v4-414-for-dune
-      url = "github:melange-re/melange?rev=ab48cfcfe5f2c0ca4a4a4fcafceb73b95c2acb1d";
+      url = "github:melange-re/melange/refs/tags/4.0.0-414";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };

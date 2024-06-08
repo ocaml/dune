@@ -20,11 +20,10 @@ let cctx_rules cctx =
      definitions are used by all the cmts of modules in this cctx. *)
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
-  let open Memo.O in
-  let* aggregate =
+  let aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
     let fn = index_path_in_obj_dir obj_dir in
-    let* additional_libs =
+    let additional_libs =
       let open Resolve.Memo.O in
       let+ non_compile_libs =
         (* The indexer relies on the load_path of cmt files. When
@@ -42,7 +41,7 @@ let cctx_rules cctx =
     (* Indexing depends (recursively) on [required_compile] libs:
        - These libs's cmt files should be built before indexing starts
        - If these libs are rebuilt a re-indexation is needed *)
-    let+ other_indexes_deps =
+    let other_indexes_deps =
       let open Resolve.Memo.O in
       let+ requires_compile = Compilation_context.requires_compile cctx in
       let deps =
@@ -81,8 +80,8 @@ let cctx_rules cctx =
       ; A "-o"
       ; Target fn
       ; Deps modules_deps
-      ; Resolve.args additional_libs
-      ; Resolve.args other_indexes_deps
+      ; Dyn (Resolve.Memo.read additional_libs)
+      ; Dyn (Resolve.Memo.read other_indexes_deps)
       ]
   in
   Super_context.add_rule sctx ~dir aggregate

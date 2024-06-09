@@ -154,7 +154,7 @@ module Version = struct
          Return
          bin
          (* we pass -boot since this means it will work with just coq-core *)
-         [ "--print-version"; "-boot" ]
+         [ "--print-version"; "-boot"; "-noinit" ]
   ;;
 
   let version_memo = Memo.create "coq-and-ocaml-version" ~input:(module Path) impl_version

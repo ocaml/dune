@@ -117,11 +117,11 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
     then Memo.return Coq_mode.VoOnly
     else
       let* coqc = coqc ~sctx ~dir ~loc:buildable.loc in
-      let+ config = Coq_config.make ~coqc in
+      let+ config = Coq_config.Config.make ~coqc in
       (match config with
        | Error _ -> Coq_mode.VoOnly
        | Ok config ->
-         (match Coq_config.by_name config "coq_native_compiler_default" with
+         (match Coq_config.Config.by_name config "coq_native_compiler_default" with
           | Some (String "yes") | Some (String "ondemand") -> Coq_mode.Native
           | _ -> Coq_mode.VoOnly))
 ;;

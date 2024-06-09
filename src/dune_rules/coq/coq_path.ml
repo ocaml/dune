@@ -24,7 +24,7 @@ let cmxs_directories t = t.cmxs_directories
 let stdlib t = t.stdlib
 
 let config_path_exn coq_config key =
-  Coq_config.by_name coq_config key
+  Coq_config.Config.by_name coq_config key
   |> function
   | Some path ->
     path
@@ -47,7 +47,7 @@ let config_path_exn coq_config key =
 let config_path ~default coq_config key =
   Option.value
     ~default:(Coq_config.Value.path default)
-    (Coq_config.by_name coq_config key)
+    (Coq_config.Config.by_name coq_config key)
   |> function
   | Coq_config.Value.Path p -> p (* We have found a path for key *)
   | path ->
@@ -175,7 +175,7 @@ let scan_vo root_path =
 
 let of_coq_install coqc =
   let open Memo.O in
-  let* coq_config = Coq_config.make ~coqc:(Ok coqc) in
+  let* coq_config = Coq_config.Config.make ~coqc:(Ok coqc) in
   match coq_config with
   | Error msg ->
     User_warning.emit

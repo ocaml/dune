@@ -183,112 +183,107 @@ module Version = struct
     { version_num; version_string; ocaml_version_string }
   ;;
 
-  let by_name t name =
-    match t with
-    | Error msg -> User_error.raise Pp.[ textf "Could not parse coqc version: "; msg ]
-    | Ok { version_num; version_string; ocaml_version_string } ->
-      (match name with
-       | "version.major" -> Num.by_name version_num "major"
-       | "version.minor" -> Num.by_name version_num "minor"
-       | "version.revision" -> Num.by_name version_num "revision"
-       | "version.suffix" -> Num.by_name version_num "suffix"
-       | "version" -> Some (Value.string version_string)
-       | "ocaml-version" -> Some (Value.string ocaml_version_string)
-       | _ -> None)
+  let by_name { version_num; version_string; ocaml_version_string } name =
+    match name with
+    | "version.major" -> Num.by_name version_num "major"
+    | "version.minor" -> Num.by_name version_num "minor"
+    | "version.revision" -> Num.by_name version_num "revision"
+    | "version.suffix" -> Num.by_name version_num "suffix"
+    | "version" -> Some (Value.string version_string)
+    | "ocaml-version" -> Some (Value.string ocaml_version_string)
+    | _ -> None
   ;;
 end
 
-type t =
-  { version_info : (Version.t, User_message.Style.t Pp.t) Result.t
-  ; coqlib : Path.t
-  ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
-  ; coq_native_compiler_default : string option (* this is not available in Coq < 8.13 *)
-  }
+module Config = struct
+  type t =
+    { coqlib : Path.t
+    ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
+    ; coq_native_compiler_default :
+        string option (* this is not available in Coq < 8.13 *)
+    }
 
-let impl_config bin =
-  let* _ = Build_system.build_file bin in
-  Memo.of_reproducible_fiber
-  @@ Process.run_capture_lines
-       ~display:Quiet
-       ~stderr_to:
-         (Process.Io.make_stderr
-            ~output_on_success:Swallow
-            ~output_limit:Execution_parameters.Action_output_limit.default)
-       Return
-       bin
-       [ "--config" ]
-;;
+  let impl_config bin =
+    let* _ = Build_system.build_file bin in
+    Memo.of_reproducible_fiber
+    @@ Process.run_capture_lines
+         ~display:Quiet
+         ~stderr_to:
+           (Process.Io.make_stderr
+              ~output_on_success:Swallow
+              ~output_limit:Execution_parameters.Action_output_limit.default)
+         Return
+         bin
+         [ "--config" ]
+  ;;
 
-let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
+  let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
-let version ~coqc =
-  let open Memo.O in
-  let+ t = Version.make ~coqc in
-  let open Result.O in
-  let+ t = t in
-  t.version_string
-;;
+  let make ~(coqc : Action.Prog.t) =
+    let open Memo.O in
+    let+ config_output =
+      get_output_from_config_or_version ~coqc ~what:"--config" config_memo
+    in
+    let open Result.O in
+    let* config_output = config_output in
+    match Vars.of_lines config_output with
+    | Ok vars ->
+      let coqlib = Vars.get_path vars "COQLIB" in
+      (* this is not available in Coq < 8.14 *)
+      let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
+      (* this is not available in Coq < 8.13 *)
+      let coq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
+      Ok { coqlib; coqcorelib; coq_native_compiler_default }
+    | Error msg ->
+      User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
+  ;;
 
-let make ~(coqc : Action.Prog.t) =
-  let open Memo.O in
-  let+ config_output =
-    get_output_from_config_or_version ~coqc ~what:"--config" config_memo
-  and+ version_info = Version.make ~coqc in
-  let open Result.O in
-  let* config_output = config_output in
-  match Vars.of_lines config_output with
-  | Ok vars ->
-    let coqlib = Vars.get_path vars "COQLIB" in
-    (* this is not available in Coq < 8.14 *)
-    let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
-    (* this is not available in Coq < 8.13 *)
-    let coq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
-    Ok { version_info; coqlib; coqcorelib; coq_native_compiler_default }
-  | Error msg ->
-    User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
-;;
-
-let by_name { version_info; coqlib; coqcorelib; coq_native_compiler_default } name =
-  match name with
-  | "version.major"
-  | "version.minor"
-  | "version.revision"
-  | "version.suffix"
-  | "version"
-  | "ocaml-version" -> Version.by_name version_info name
-  | "coqlib" -> Some (Value.path coqlib)
-  | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
-  | "coq_native_compiler_default" ->
-    Option.map ~f:Value.string coq_native_compiler_default
-  | _ ->
-    Code_error.raise
-      "Unknown name was requested from coq_config"
-      [ "name", Dyn.string name ]
-;;
+  let by_name { coqlib; coqcorelib; coq_native_compiler_default } name =
+    match name with
+    | "coqlib" -> Some (Value.path coqlib)
+    | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
+    | "coq_native_compiler_default" ->
+      Option.map ~f:Value.string coq_native_compiler_default
+    | _ ->
+      Code_error.raise
+        "Unknown name was requested from coq_config"
+        [ "name", Dyn.string name ]
+  ;;
+end
 
 let expand source macro artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
   let open Memo.O in
   let* coqc = Artifacts.binary artifacts_host ~where:Original_path ~loc:None "coqc" in
-  let+ t = make ~coqc in
-  match t with
-  | Error msg ->
-    User_error.raise
-      ~loc:(Dune_lang.Template.Pform.loc source)
-      [ Pp.textf "Could not expand %%{coq:%s} as running coqc --config failed." s; msg ]
-      ~hints:
-        [ Pp.textf
-            "coqc --config requires the coq-stdlib package in order to function properly."
-        ]
-  | Ok t ->
-    (match by_name t s with
-     | None ->
-       User_error.raise
-         ~loc:(Dune_lang.Template.Pform.loc source)
-         [ Pp.textf "Unknown Coq configuration variable %S" s ]
-     | Some v ->
-       (match v with
-        | Int x -> [ Dune_lang.Value.String (string_of_int x) ]
-        | String x -> [ String x ]
-        | Path x -> Dune_lang.Value.L.paths [ x ]))
+  let expand m k s =
+    let+ t = m ~coqc in
+    match t with
+    | Error msg ->
+      User_error.raise
+        ~loc:(Dune_lang.Template.Pform.loc source)
+        [ Pp.textf "Could not expand %%{coq:%s} as running coqc failed." s; msg ]
+    | Ok t ->
+      (match k t s with
+       | None ->
+         User_error.raise
+           ~loc:(Dune_lang.Template.Pform.loc source)
+           [ Pp.textf "Unknown Coq configuration variable %S" s ]
+       | Some v ->
+         let open Value in
+         (match v with
+          | Int x -> [ Dune_lang.Value.String (string_of_int x) ]
+          | String x -> [ Dune_lang.Value.String x ]
+          | Path x -> Dune_lang.Value.L.paths [ x ]))
+  in
+  match s with
+  | "version.major"
+  | "version.minor"
+  | "version.revision"
+  | "version.suffix"
+  | "version"
+  | "ocaml-version" -> expand Version.make Version.by_name s
+  | "coqlib" | "coqcorelib" | "coq_native_compiler_default" ->
+    expand Config.make Config.by_name s
+  | _ ->
+    Code_error.raise "Unknown name was requested from coq_config" [ "name", Dyn.string s ]
 ;;

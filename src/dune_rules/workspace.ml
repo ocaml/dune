@@ -856,7 +856,11 @@ let step1 clflags =
        in
        let defined_names = ref Context_name.Set.empty in
        let env = Lazy.force env in
-       let repos = default_repositories @ List.map ~f:Lazy.force repos in
+       let repos =
+         if List.is_empty repos
+         then default_repositories
+         else List.map ~f:Lazy.force repos
+       in
        let merlin_context =
          List.fold_left contexts ~init:None ~f:(fun acc ctx ->
            let name = Context.name ctx in

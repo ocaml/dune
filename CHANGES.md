@@ -1,3 +1,11 @@
+3.16.0~alpha2 (2024-06-11)
+--------------------------
+
+### Fixed
+
+- Correctly declare dependencies of indexes so that they are rebuilt when
+  needed. (#10623, @voodoos)
+
 3.16.0~alpha1 (2024-06-05)
 --------------------------
 

@@ -63,6 +63,9 @@
 - mdx: link mdx binary with `byte_complete`. This fixes `(libraries)` with
   foreign archives on Linux. (#10586, fixes #10582, @anmonteiro)
 
+- virtual libraries: fix an issue where linking an executable involving several
+  virtual libries would cause an error. (#10581, fixes #10460, @rgrinberg)
+
 3.15.3 (2024-05-24)
 -------------------
 

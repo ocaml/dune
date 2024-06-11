@@ -8,7 +8,7 @@ let retry_loop once =
     match res with
     | Some result -> Fiber.return result
     | None ->
-      let* () = Scheduler.sleep 0.2 in
+      let* () = Scheduler.sleep ~seconds:0.2 in
       loop ()
   in
   loop ()

@@ -71,6 +71,7 @@ end
 module External : sig
   include Path_intf.S
 
+  val root : t
   val initial_cwd : t
   val cwd : unit -> t
   val relative : t -> string -> t

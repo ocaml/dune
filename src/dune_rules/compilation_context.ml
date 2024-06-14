@@ -192,7 +192,7 @@ let create
   ; obj_dir
   ; modules = { modules; dep_graphs }
   ; flags
-  ; requires_compile
+  ; requires_compile = requires
   ; requires_link
   ; includes = Includes.make ~project ~opaque ~requires ~direct
   ; preprocessing

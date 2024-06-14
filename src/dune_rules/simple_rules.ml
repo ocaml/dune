@@ -227,6 +227,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     in
     Build_system.eval_pred (File_selector.of_glob ~dir glob)
   in
+  if Filename_set.is_empty files
+  then User_error.raise ~loc [ Pp.textf "Cannot find any files to copy" ];
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)

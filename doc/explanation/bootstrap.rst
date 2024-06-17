@@ -22,9 +22,10 @@ Completing the Opam Installation
 ``_boot/dune.exe`` is the bootstrap Dune. Since it has been built from
 the Dune sources, it will act like Dune: it can read ``dune`` files, etc.
 
-This is actually the ``dune`` executable that will get installed. But Opam does
-not know about this: it expects a ``dune.install`` file that explains what
-files to install.
+This is actually the ``dune`` executable that will get installed. This is the
+same executable as the one obtained by running ``opam install dune``. At this
+stage of the process, Opam does not know about this: it expects a
+``dune.install`` file that explains what files to install.
 
 The next command run by the Opam instruction is the following:
 
@@ -32,17 +33,17 @@ The next command run by the Opam instruction is the following:
 
    $ ./_boot/dune.exe build dune.install --release --profile dune-bootstrap
 
-By using the ``dune-bootstrap`` :term:`build profile`, it not run a full build,
-but only copy ``_boot/dune.exe`` to its install location, and generate
-``dune.install``.
+By using the ``dune-bootstrap`` :term:`build profile`, it does not run a full
+build, but only copy ``_boot/dune.exe`` to its install location (as the `dune`
+binary), and generate ``dune.install``.
 
-``make dev``: Everything Else
------------------------------
+``make dev``: Everything Else for Local Development
+---------------------------------------------------
 
 The above describes how Dune itself is built through Opam, but that's not all
 there is it to it: the Dune repository contains other libraries that need to be
-built, the bootstrap Dune did not generate files useful for editor integration,
-and it can not do incremental builds.
+built. In fact, executing the ``boot/bootstrap.ml`` script did not generate
+files useful for editor integration.
 
 So the main ``Makefile`` has a ``make dev`` target that will run
 ``_boot/dune.exe build @install``: this will rebuild the project using Dune

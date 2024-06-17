@@ -13,5 +13,13 @@ Show that copy_files errors out if no files are found
   File "target/dune", line 2, characters 8-20:
   2 |  (files ../foo/*.txt))
               ^^^^^^^^^^^^
-  Error: Cannot find any files to copy
+  Error: Does not match any files
   [1]
+
+It doesn't error out in older dune lang versions
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.16)
+  > EOF
+
+  $ dune build

@@ -350,10 +350,6 @@ module T = struct
     Dyn.record
       [ "name", Lib_name.to_dyn t.name; "loc", Loc.to_dyn_hum (Lib_info.loc t.info) ]
   ;;
-
-  (* We can't write a structural equality because of all the lazy fields *)
-  let equal : t -> t -> bool = phys_equal
-  let hash = Poly.hash
 end
 
 include T
@@ -473,8 +469,11 @@ let wrapped t =
      | Some (This x) -> Some x)
 ;;
 
+(* We can't write a structural equality because of all the lazy fields *)
+let equal : t -> t -> bool = phys_equal
+let hash = Poly.hash
+
 include Comparable.Make (T)
-module Tbl = Hashtbl.Make (T)
 
 module L = struct
   let top_closure l ~key ~deps =

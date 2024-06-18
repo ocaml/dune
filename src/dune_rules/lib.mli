@@ -235,5 +235,3 @@ module Local : sig
 
   include Comparable_intf.S with type key := t
 end
-
-module Tbl : Hashtbl.S with type key := t

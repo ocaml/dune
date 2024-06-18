@@ -32,11 +32,9 @@ let cctx_rules cctx =
 
            The implicit transitive libs correspond to the set:
            (requires_link \ req_compile) *)
-        let* req_link = Compilation_context.requires_link cctx in
-        let+ req_compile = Compilation_context.requires_compile cctx in
-        List.filter req_link ~f:(fun l -> not (List.exists req_compile ~f:(Lib.equal l)))
+        Compilation_context.requires_hidden cctx
       in
-      Lib_flags.L.include_flags non_compile_libs (Lib_mode.Ocaml Byte)
+      Lib_flags.L.include_flags [] non_compile_libs (Lib_mode.Ocaml Byte)
     in
     (* Indexing depends (recursively) on [required_compile] libs:
        - These libs's cmt files should be built before indexing starts

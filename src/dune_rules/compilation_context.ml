@@ -3,38 +3,51 @@ open Import
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make ~project ~opaque ~requires ~direct : _ Lib_mode.Cm_kind.Map.t =
+  let make
+    ~project
+    ~opaque
+    ~direct_requires
+    ~(hidden_requires : Lib_flags.L.t Resolve.Memo.t)
+    : _ Lib_mode.Cm_kind.Map.t
+    =
     (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
-    let iflags libs mode direct = Lib_flags.L.include_flags ~project libs mode ~direct in
+    let iflags direct_libs hidden_libs mode =
+      Lib_flags.L.include_flags ~project direct_libs hidden_libs mode
+    in
     let make_includes_args ~mode groups =
       Command.Args.memo
         (Resolve.Memo.args
-           (let+ libs = requires
-            and+ direct = direct in
+           (let+ direct_libs = direct_requires
+            and+ hidden_libs = hidden_requires in
             Command.Args.S
-              [ iflags libs mode direct; Hidden_deps (Lib_file_deps.deps libs ~groups) ]))
+              [ iflags direct_libs hidden_libs mode
+              ; Hidden_deps
+                  (Lib_file_deps.deps (List.concat [ direct_libs; hidden_libs ]) ~groups)
+              ]))
     in
     let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
     let cmx_includes =
       Command.Args.memo
         (Resolve.Memo.args
-           (let+ libs = requires
-            and+ direct = direct in
+           (let+ direct_libs = direct_requires
+            and+ hidden_libs = hidden_requires in
             Command.Args.S
-              [ iflags libs (Ocaml Native) direct
+              [ iflags direct_libs hidden_libs (Ocaml Native)
               ; Hidden_deps
                   (if opaque
                    then
-                     List.map libs ~f:(fun lib ->
-                       ( lib
-                       , if Lib.is_local lib
-                         then [ Lib_file_deps.Group.Ocaml Cmi ]
-                         else [ Ocaml Cmi; Ocaml Cmx ] ))
+                     List.map
+                       (List.concat [ direct_libs; hidden_libs ])
+                       ~f:(fun lib ->
+                         ( lib
+                         , if Lib.is_local lib
+                           then [ Lib_file_deps.Group.Ocaml Cmi ]
+                           else [ Ocaml Cmi; Ocaml Cmx ] ))
                      |> Lib_file_deps.deps_with_exts
                    else
                      Lib_file_deps.deps
-                       libs
+                       (List.concat [ direct_libs; hidden_libs ])
                        ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
               ]))
     in
@@ -76,6 +89,7 @@ type t =
   ; modules : modules
   ; flags : Ocaml_flags.t
   ; requires_compile : Lib.t list Resolve.Memo.t
+  ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
@@ -101,6 +115,7 @@ let obj_dir t = t.obj_dir
 let modules t = t.modules.modules
 let flags t = t.flags
 let requires_compile t = t.requires_compile
+let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let includes t = t.includes
 let preprocessing t = t.preprocessing
@@ -144,20 +159,22 @@ let create
   let context = Super_context.context super_context in
   let sandbox = Sandbox_config.no_special_requirements in
   let* ocaml = Context.ocaml context in
-  let requires, direct =
+  let direct_requires, hidden_requires =
     if Dune_project.implicit_transitive_deps project
-    then Memo.Lazy.force requires_link, Resolve.Memo.return (fun _ -> true)
+    then Memo.Lazy.force requires_link, Resolve.Memo.return []
     else if Version.supports_hidden_includes ocaml.version
             && Dune_project.dune_version project >= (3, 17)
     then (
-      let direct =
+      let requires_hidden =
         let open Resolve.Memo.O in
-        let+ requires = requires_compile in
-        let requires = Lib.Tbl.of_list_exn (List.map ~f:(fun lib -> lib, ()) requires) in
-        Lib.Tbl.mem requires
+        let+ requires = requires_compile
+        and+ requires_link = Memo.Lazy.force requires_link in
+        let requires_table = Table.create (module Lib) 500 in
+        let () = List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires in
+        List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
-      Memo.Lazy.force requires_link, direct)
-    else requires_compile, Resolve.Memo.return (fun _ -> true)
+      requires_compile, requires_hidden)
+    else requires_compile, Resolve.Memo.return []
   in
   let modes =
     let default =
@@ -192,9 +209,10 @@ let create
   ; obj_dir
   ; modules = { modules; dep_graphs }
   ; flags
-  ; requires_compile = requires
+  ; requires_compile = direct_requires
+  ; requires_hidden = hidden_requires
   ; requires_link
-  ; includes = Includes.make ~project ~opaque ~requires ~direct
+  ; includes = Includes.make ~project ~opaque ~direct_requires ~hidden_requires
   ; preprocessing
   ; opaque
   ; stdlib
@@ -275,10 +293,15 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
        their implementation must also be compiled with -opaque *)
     Ocaml.Version.supports_opaque_for_mli cctx.ocaml.version
   in
-  let direct = Resolve.Memo.return (fun _ -> true) in
+  let direct_requires = requires in
+  let hidden_requires = Resolve.Memo.return [] in
   let modules = singleton_modules module_ in
   let includes =
-    Includes.make ~project:(Scope.project cctx.scope) ~opaque ~requires ~direct
+    Includes.make
+      ~project:(Scope.project cctx.scope)
+      ~opaque
+      ~direct_requires
+      ~hidden_requires
   in
   { cctx with
     opaque

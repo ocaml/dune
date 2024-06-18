@@ -92,17 +92,17 @@ module L = struct
        |> List.rev)
   ;;
 
-  let to_flags dirs =
+  let to_hflags dirs =
     Command.Args.S
-      (Path.Map.foldi dirs ~init:[] ~f:(fun dir direct acc ->
-         Command.Args.Path dir :: A (if direct then "-I" else "-H") :: acc)
+      (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
+         Command.Args.Path dir :: A "-H" :: acc)
        |> List.rev)
   ;;
 
-  let remove_stdlib dirs libs remove =
+  let remove_stdlib dirs libs =
     match libs with
     | [] -> dirs
-    | lib :: _ -> remove dirs (Lib.lib_config lib).stdlib_dir
+    | lib :: _ -> Path.Set.remove dirs (Lib.lib_config lib).stdlib_dir
   ;;
 
   type mode =
@@ -110,8 +110,8 @@ module L = struct
     ; melange_emit : bool
     }
 
-  let include_paths_gen ~init ~add ~remove =
-    let add_public_dir ~visible_cmi obj_dir acc mode add lib =
+  let include_paths =
+    let add_public_dir ~visible_cmi obj_dir acc mode =
       match visible_cmi with
       | false -> acc
       | true ->
@@ -128,7 +128,7 @@ module L = struct
                   `import` information *)
                [ Obj_dir.melange_dir; Obj_dir.public_cmi_melange_dir ])
         in
-        List.fold_left public_cmi_dirs ~init:acc ~f:(fun acc path -> add acc path lib)
+        List.fold_left public_cmi_dirs ~init:acc ~f:Path.Set.add
     in
     fun ?project ts mode ->
       let visible_cmi =
@@ -146,41 +146,32 @@ module L = struct
              | _ -> true)
       in
       let dirs =
-        List.fold_left ts ~init ~f:(fun acc t ->
+        List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir (Lib.info t) in
           let visible_cmi = visible_cmi t in
           match mode.lib_mode with
-          | Melange -> add_public_dir ~visible_cmi obj_dir acc mode add t
+          | Melange -> add_public_dir ~visible_cmi obj_dir acc mode
           | Ocaml ocaml_mode ->
-            let acc = add_public_dir ~visible_cmi obj_dir acc mode add t in
+            let acc = add_public_dir ~visible_cmi obj_dir acc mode in
             (match ocaml_mode with
              | Byte -> acc
              | Native ->
                let native_dir = Obj_dir.native_dir obj_dir in
-               add acc native_dir t))
+               Path.Set.add acc native_dir))
       in
-      remove_stdlib dirs ts remove
+      remove_stdlib dirs ts
   ;;
 
-  let include_flags ?project ?(direct = fun _ -> true) ts mode =
-    to_flags
-      (include_paths_gen
-         ?project
-         ts
-         { lib_mode = mode; melange_emit = false }
-         ~init:Path.Map.empty
-         ~add:(fun acc p l -> Path.Map.set acc p (direct l))
-         ~remove:Path.Map.remove)
-  ;;
-
-  let include_paths ?project ts mode =
-    include_paths_gen
-      ?project
-      ts
-      mode
-      ~init:Path.Set.empty
-      ~add:(fun acc p _ -> Path.Set.add acc p)
-      ~remove:Path.Set.remove
+  let include_flags ?project ts_direct ts_hidden mode =
+    let hidden_includes =
+      to_hflags
+        (include_paths ?project ts_hidden { lib_mode = mode; melange_emit = false })
+    in
+    let direct_includes =
+      to_iflags
+        (include_paths ?project ts_direct { lib_mode = mode; melange_emit = false })
+    in
+    Command.Args.S [ direct_includes; hidden_includes ]
   ;;
 
   let melange_emission_include_flags ?project ts =
@@ -197,7 +188,7 @@ module L = struct
         let src_dir = Lib_info.src_dir (Lib.info t) in
         Path.Set.add acc src_dir)
     in
-    remove_stdlib dirs ts Path.Set.remove
+    remove_stdlib dirs ts
   ;;
 
   let c_include_flags ts sctx =

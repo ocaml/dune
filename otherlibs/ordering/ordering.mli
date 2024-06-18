@@ -14,7 +14,6 @@ val to_string : t -> string
 val is_eq : t -> bool
 val min : ('a -> 'a -> t) -> 'a -> 'a -> 'a
 val max : ('a -> 'a -> t) -> 'a -> 'a -> 'a
-val opposite : t -> t
 
 (** [reverse cmp] takes a comparison function [cmp] and returns a new comparison
     function whose comparisons are the opposite of that of [cmp]. *)

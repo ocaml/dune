@@ -125,21 +125,20 @@ module Context_for_dune = struct
      without this flag so that the solver will prefer package versions
      without this flag. *)
   let opam_version_compare t a b =
-    let opam_package_version_compare a b =
-      OpamPackage.Version.compare a b |> Ordering.of_int
+    let opam_version_compare a b = OpamPackage.Version.compare a b |> Ordering.of_int in
+    let ordering a b =
+      opam_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
     in
-    match opam_file_is_avoid_version a, opam_file_is_avoid_version b with
-    | true, true | false, false ->
-      (* If both packages have the same setting of their avoid-version
-         flag then compare their versions. *)
-      let ordering =
-        opam_package_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
-      in
-      (match t.version_preference with
-       | Oldest -> ordering
-       | Newest -> Ordering.opposite ordering)
-    | false, true -> Lt
-    | true, false -> Gt
+    let version_compare a b =
+      match t.version_preference with
+      | Oldest -> ordering a b
+      | Newest -> ordering b a
+    in
+    Tuple.T2.compare
+      Bool.compare
+      version_compare
+      (opam_file_is_avoid_version a, a)
+      (opam_file_is_avoid_version b, b)
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =

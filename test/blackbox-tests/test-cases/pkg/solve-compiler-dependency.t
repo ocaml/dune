@@ -49,8 +49,9 @@ the same package.
   - ocaml-base-compiler.5.2.0
 
 Now release a new version of ocaml-variants and a new version of ocaml that
-uses it. The dependency specification for ocaml is based on how the package is
-organized in the wild.
+uses it. The dependency specification for the `ocaml` package is based on how
+the package is organized in the wild.
+
   $ mkpkg ocaml-variants $NEXT+trunk << EOF
   > flags: [avoid-version]
   > EOF
@@ -61,14 +62,27 @@ organized in the wild.
   > ]
   > EOF
 
-Here ocaml-variants is chosen despite its avoid-version flag. This is
-because dune does not respect the avoid-version flag when choosing
-which package to use to satisfy a disjunction (the disjunction in
-question is between ocaml-base-compiler and ocaml-variants, where
-ocaml-variants has the avoid-version flag set and ocaml-base-compiler
-does not).  This is a problem because the chosen compiler is not
-officially released and possibly unstable.
+Dune correctly picks the latest released version of `ocaml` that has a
+dependency that is not marked as `avoid-version`. Given that for satisfying
+`ocaml.5.3.0` the only option is `ocaml-variants.5.3.0+trunk` and that has
+`avoid-version` set it then drops down to `5.2.0` which has a package without
+`avoid-version`.
+
   $ solve ocaml
   Solution for dune.lock:
-  - ocaml.5.3.0
-  - ocaml-variants.5.3.0+trunk
+  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0
+
+However, removing that `avoid-version` constraint again should make Dune pick
+up `5.3.0`.
+
+It currently doesn't, because of a hack that special-cases
+`ocaml-base-compiler` which in the future should be removed and thus work in
+the way described above.
+
+  $ mkpkg ocaml-variants $NEXT+trunk << EOF
+  > EOF
+  $ solve ocaml
+  Solution for dune.lock:
+  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0

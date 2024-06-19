@@ -8,10 +8,16 @@ module Make = struct
     | Some p -> p
     | None ->
       User_error.raise
-        ~hints:[ Pp.text "Install \"make\" with your system package manager." ]
-        [ Pp.text
-            "The program \"make\" does not appear to be installed. This program is \
-             needed to compile the ocaml toolchain."
+        ~hints:
+          [ Pp.text "Install"
+          ; User_message.command "make"
+          ; Pp.text "with your system package manager."
+          ]
+        [ Pp.text "The program"
+        ; User_message.command "make"
+        ; Pp.text
+            "does not appear to be installed. This program is needed to compile the \
+             OCaml toolchain."
         ]
   ;;
 end

@@ -2,8 +2,20 @@ This test generates documentation using odoc for a library:
 
   $ dune build @doc-new
 
+We index the compiler directory (+ocaml), in which num is optionally present.
+To make the test not depend on whether it is installed, we filter the output.
+
+  $ scrub_num () {
+  >   grep -v \
+  >     -e arith_status.odocl \
+  >     -e big_int.odocl \
+  >     -e nat.odocl \
+  >     -e num.odocl \
+  >     -e ratio.odocl
+  > }
+
 This test if `.odocl` files are generated
-  $ find . -name '*.odocl' | sort -n
+  $ find . -name '*.odocl' | sort -n | scrub_num
   ./_build/default/_doc_new/index/local/bar/page-bar.odocl
   ./_build/default/_doc_new/index/local/foo/byte/page-byte.odocl
   ./_build/default/_doc_new/index/local/foo/page-foo.odocl
@@ -14,8 +26,6 @@ This test if `.odocl` files are generated
   ./_build/default/_doc_new/odoc/local/foo/byte/foo_byte.odocl
   ./_build/default/_doc_new/odoc/local/foo/foo.odocl
   ./_build/default/_doc_new/odoc/local/foo/foo2.odocl
-  ./_build/default/_doc_new/odoc/stdlib/arith_status.odocl
-  ./_build/default/_doc_new/odoc/stdlib/big_int.odocl
   ./_build/default/_doc_new/odoc/stdlib/bigarray.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalAtomic.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalFormat.odocl
@@ -24,10 +34,7 @@ This test if `.odocl` files are generated
   ./_build/default/_doc_new/odoc/stdlib/camlinternalMod.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalOO.odocl
   ./_build/default/_doc_new/odoc/stdlib/dynlink.odocl
-  ./_build/default/_doc_new/odoc/stdlib/nat.odocl
-  ./_build/default/_doc_new/odoc/stdlib/num.odocl
   ./_build/default/_doc_new/odoc/stdlib/profiling.odocl
-  ./_build/default/_doc_new/odoc/stdlib/ratio.odocl
   ./_build/default/_doc_new/odoc/stdlib/std_exit.odocl
   ./_build/default/_doc_new/odoc/stdlib/stdlib.odocl
   ./_build/default/_doc_new/odoc/stdlib/str.odocl
@@ -43,10 +50,8 @@ This test if the sherlodoc js files are generated
   ./_build/default/_doc_new/html/docs/odoc.support/odoc_search.js
   ./_build/default/_doc_new/html/docs/sherlodoc.js
 
-  $ cat ./_build/default/_doc_new/html/docs/db.js
+  $ cat ./_build/default/_doc_new/html/docs/db.js | scrub_num
   /* Sherlodoc DB for: */
-  /*   - ../../odoc/stdlib/arith_status.odocl */
-  /*   - ../../odoc/stdlib/big_int.odocl */
   /*   - ../../odoc/stdlib/bigarray.odocl */
   /*   - ../../odoc/stdlib/camlinternalAtomic.odocl */
   /*   - ../../odoc/stdlib/camlinternalFormat.odocl */
@@ -55,10 +60,7 @@ This test if the sherlodoc js files are generated
   /*   - ../../odoc/stdlib/camlinternalMod.odocl */
   /*   - ../../odoc/stdlib/camlinternalOO.odocl */
   /*   - ../../odoc/stdlib/dynlink.odocl */
-  /*   - ../../odoc/stdlib/nat.odocl */
-  /*   - ../../odoc/stdlib/num.odocl */
   /*   - ../../odoc/stdlib/profiling.odocl */
-  /*   - ../../odoc/stdlib/ratio.odocl */
   /*   - ../../odoc/stdlib/std_exit.odocl */
   /*   - ../../odoc/stdlib/stdlib.odocl */
   /*   - ../../odoc/stdlib/str.odocl */

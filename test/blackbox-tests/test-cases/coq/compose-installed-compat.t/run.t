@@ -57,7 +57,7 @@ Now we check the flags that were passed to coqdep and coqc:
   $ tail -4 A/_build/log | head -2 | ../scrub_coq_args.sh
   coqdep
   -boot
-  -R $TESTCASE_ROOT/lib/coq/theories Coq
+  -R coq/theories Coq
   -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
   -R . A -dyndep opt -vos a.v >
   _build/default/.A.theory.d
@@ -67,7 +67,7 @@ Now we check the flags that were passed to coqdep and coqc:
   -nI lib/coq-core/kernel
   -nI .
   -boot
-  -R $TESTCASE_ROOT/lib/coq/theories Coq
+  -R coq/theories Coq
   -Q $TESTCASE_ROOT/lib/coq/user-contrib/B B
   -R . A
   a.v

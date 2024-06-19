@@ -27,7 +27,7 @@ end = struct
               (* Compound user errors do not contain annotations, so it's fine to
                  marshal them as is. *)
           ; diff_promotion : Diff_promotion.Annot.t option
-          ; with_directory : Path.t option
+          ; with_directory : string option
           }
       | Code of Code_error.t
       | Sys of string
@@ -67,17 +67,13 @@ end = struct
           | Some annot -> User_message.Annots.set annots Diff_promotion.Annot.annot annot
           | None -> annots
         in
-        let annots =
-          match with_directory with
-          | Some annot ->
-            User_message.Annots.set annots Process.with_directory_annot annot
-          | None -> annots
-        in
         User
           { loc = message.loc
           ; paragraphs = message.paragraphs
           ; hints = message.hints
           ; annots
+          ; context = None
+          ; dir = with_directory
           }
       | Code err -> Code err
       | Sys err -> Sys err
@@ -106,9 +102,7 @@ end = struct
           User_message.Annots.find annots Compound_user_error.annot
         in
         let diff_promotion = User_message.Annots.find annots Diff_promotion.Annot.annot in
-        let with_directory =
-          User_message.Annots.find annots Process.with_directory_annot
-        in
+        let with_directory = message.dir in
         User_with_annots
           { message
           ; has_embedded_location

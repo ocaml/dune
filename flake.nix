@@ -41,6 +41,11 @@
         })
         melange.overlays.default
         ocamllsp.overlays.default
+        (self: super: {
+          coq_8_16_native = super.coq_8_16.overrideAttrs (a: {
+            configureFlags = [ "-native-compiler" "yes" ];
+          });
+        })
       ];
       dune-static-overlay = self: super: {
         ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
@@ -214,8 +219,8 @@
               nativeBuildInputs = testNativeBuildInputs;
               inputsFrom = [ pkgs.dune_3 ];
               buildInputs = with pkgs; [
-                coq_8_16
-                coq_8_16.ocamlPackages.findlib
+                coq_8_16_native
+                coq_8_16_native.ocamlPackages.findlib
               ];
               meta.description = ''
                 Provides a minimal shell environment built purely from nixpkgs

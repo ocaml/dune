@@ -98,15 +98,11 @@ jobs:
       # Ensure Dune can build itself
       - run: opam exec -- make bootstrap
 
-      - name: Install deps on Unix
+      - name: Install deps
         run: |
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
-        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
-
-      - name: Install deps on Win32
-        run: opam install ./dune-configurator.opam --deps-only --with-test
-        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+        if: ${{ matrix.skip_test == false }}
 
       - name: Run test suite on Unix
         run: opam exec -- make test

@@ -22,7 +22,7 @@ mkdir -p $PACKAGE
 SRC=$TMP/opam-0install-solver
 
 cp -v $SRC/LICENSE.md $PACKAGE/
-cp -v -R $SRC/lib $PACKAGE/
+cp -v -R $SRC/lib/{model,s,solver}.* $PACKAGE/
 
 git checkout $PACKAGE/lib/dune
 git add -A .

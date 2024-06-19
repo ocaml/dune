@@ -236,6 +236,8 @@ end
 
 module Compiler = struct
   type t =
+    (* The compiler chosen is in the lock dir but substituted for a shared
+       compiler in the toolchain directory *)
     | Toolchain of Toolchain.Compiler.t
     (* The lockdir specifies a compiler dependency as a package. *)
     | Inside_lock_dir of (Loc.t * Pkg_info.t)

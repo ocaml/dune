@@ -213,24 +213,18 @@ module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
     ; system_provided : Package.Name.Set.t
-    ; available_compilers : Toolchain.Available_compilers.t
     }
 
-  let equal t { all; system_provided; available_compilers } =
+  let equal t { all; system_provided } =
     Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
     && Package.Name.Set.equal t.system_provided system_provided
-    && Toolchain.Available_compilers.equal t.available_compilers available_compilers
   ;;
 
   let get =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
-      let+ all = Lock_dir.get context
-      and+ available_compilers =
-        Memo.of_reproducible_fiber
-        @@ Toolchain.Available_compilers.load_upstream_opam_repo ()
-      in
-      { all = all.packages; system_provided = dune; available_compilers }
+      let+ all = Lock_dir.get context in
+      { all = all.packages; system_provided = dune }
   ;;
 end
 
@@ -245,11 +239,14 @@ module Compiler = struct
        be used rather than one managed by dune. *)
     | System_provided
 
-  let find_and_install_toolchain_compiler available_compilers name version deps =
+  let find_and_install_toolchain_compiler name version deps =
     if Dune_pkg.Feature_flags.use_toolchains
     then
       Memo.of_reproducible_fiber
         (let open Fiber.O in
+         let* available_compilers =
+           Toolchain.Available_compilers.load_upstream_opam_repo ()
+         in
          let* toolchain_compiler =
            Toolchain.Available_compilers.find available_compilers name version ~deps
          in
@@ -289,7 +286,6 @@ module Compiler = struct
               ];
           let+ toolchain_compiler =
             find_and_install_toolchain_compiler
-              db.available_compilers
               info.name
               info.version
               (List.map depends ~f:snd)
@@ -1261,7 +1257,6 @@ end = struct
       assert (Package.Name.equal name info.name);
       let* compiler =
         Compiler.find_and_install_toolchain_compiler
-          db.available_compilers
           info.name
           info.version
           (List.map depends ~f:snd)

@@ -495,13 +495,19 @@ module Compiler = struct
 end
 
 module Available_compilers = struct
-  type t = Opam_repo.t
+  type t = Opam_repo.t option
 
-  let equal = Opam_repo.equal
+  let equal = Option.equal Opam_repo.equal
 
   let load_upstream_opam_repo () =
-    let loc, opam_url = Workspace.Repository.(opam_url upstream) in
-    Opam_repo.of_git_repo loc opam_url
+    let open Fiber.O in
+    match Feature_flags.use_toolchains with
+    | false -> Fiber.return None
+    | true ->
+      (* CR-later: load the compiler from all repos in the workspace *)
+      let loc, opam_url = Workspace.Repository.(opam_url upstream) in
+      let+ repo = Opam_repo.of_git_repo loc opam_url in
+      Some repo
   ;;
 
   (* The names of packages that can be installed by the toolchains
@@ -522,7 +528,12 @@ module Available_compilers = struct
     then
       let open Fiber.O in
       let* resolved_packages_by_version =
-        Opam_repo.load_all_versions [ t ] (Package_name.to_opam_package_name package_name)
+        match t with
+        | None -> Fiber.return OpamPackage.Version.Map.empty
+        | Some repo ->
+          Opam_repo.load_all_versions
+            [ repo ]
+            (Package_name.to_opam_package_name package_name)
       in
       match
         OpamPackage.Version.Map.find_opt

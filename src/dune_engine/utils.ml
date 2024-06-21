@@ -1,7 +1,7 @@
 open Import
 
 let system_shell_exn =
-  let cmd, arg, os = if Sys.win32 then "cmd", "/c", "on Windows" else "sh", "-c", "" in
+  let cmd, arg, os = if Sys.win32 then "cmd", "/c", " on Windows" else "sh", "-c", "" in
   let bin = lazy (Bin.which ~path:(Env_path.path Env.initial) cmd) in
   fun ~needed_to ->
     match Lazy.force bin with

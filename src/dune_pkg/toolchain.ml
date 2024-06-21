@@ -233,6 +233,10 @@ module Compiler = struct
     ; opam_env : OpamFilter.env
     }
 
+  (* represent a compiler that has not been loaded yet, used as phantom
+     type *)
+  type uninit = t
+
   let build_commands t = Command.list_of_opam_command_list t.opam_env t.opam_file.build
 
   (* Run the build commands for the compiler. The build commands are
@@ -464,9 +468,10 @@ module Compiler = struct
     if is_installed t
     then (
       print_already_installed_message t ~log_when;
-      Fiber.return ())
+      Fiber.return t)
     else
       with_flock t ~f:(fun () ->
+        let open Fiber.O in
         (* Note that we deliberately check if the toolchain is
            installed before and after taking the flock.
 
@@ -489,8 +494,10 @@ module Compiler = struct
         if is_installed t
         then (
           print_already_installed_message t ~log_when;
-          Fiber.return ())
-        else download_build_install t ~log_when)
+          Fiber.return t)
+        else
+          let+ () = download_build_install t ~log_when in
+          t)
   ;;
 end
 

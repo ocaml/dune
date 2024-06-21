@@ -3,13 +3,7 @@ open Import
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make
-    ~project
-    ~opaque
-    ~direct_requires
-    ~(hidden_requires : Lib_flags.L.t Resolve.Memo.t)
-    : _ Lib_mode.Cm_kind.Map.t
-    =
+  let make ~project ~opaque ~direct_requires ~hidden_requires : _ Lib_mode.Cm_kind.Map.t =
     (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =

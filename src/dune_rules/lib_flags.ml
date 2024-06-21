@@ -85,12 +85,15 @@ let link_deps sctx t mode =
 module L = struct
   type nonrec t = Lib.t list
 
-  let to_iflags ?(flag = "-I") dirs =
+  let to_flags flag dirs =
     Command.Args.S
       (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
          Command.Args.Path dir :: A flag :: acc)
        |> List.rev)
   ;;
+
+  let to_iflags dir = to_flags "-I" dir
+  let to_hflags dir = to_flags "-H" dir
 
   let remove_stdlib dirs libs =
     match libs with
@@ -159,7 +162,7 @@ module L = struct
     let include_paths ts =
       include_paths ?project ts { lib_mode = mode; melange_emit = false }
     in
-    let hidden_includes = to_iflags (include_paths ts_hidden) ~flag:"-H" in
+    let hidden_includes = to_hflags (include_paths ts_hidden) in
     let direct_includes = to_iflags (include_paths ts_direct) in
     Command.Args.S [ direct_includes; hidden_includes ]
   ;;

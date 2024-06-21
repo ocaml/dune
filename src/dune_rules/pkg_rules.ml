@@ -253,7 +253,9 @@ module Compiler = struct
          match toolchain_compiler with
          | None -> Fiber.return None
          | Some toolchain_compiler ->
-           let+ () = Toolchain.Compiler.get ~log_when:`Install_only toolchain_compiler in
+           let+ toolchain_compiler =
+             Toolchain.Compiler.get ~log_when:`Install_only toolchain_compiler
+           in
            Some toolchain_compiler)
     else Memo.return None
   ;;

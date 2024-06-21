@@ -8,15 +8,16 @@ open! Stdune
    if it is installed or downloaded and built.
 *)
 module Compiler : sig
+  type uninit
   type t
 
   val bin_dir : t -> Path.Outside_build_dir.t
-  val get : t -> log_when:[ `Always | `Never | `Install_only ] -> unit Fiber.t
+  val get : uninit -> log_when:[ `Always | `Never | `Install_only ] -> t Fiber.t
 end
 
 (* A module that locates a compiler that matches the requested compiler from
    the options available in an Opam repository.
- *)
+*)
 module Available_compilers : sig
   type t
 
@@ -28,5 +29,5 @@ module Available_compilers : sig
     -> Package_name.t
     -> Package_version.t
     -> deps:Package_name.t list
-    -> Compiler.t option Fiber.t
+    -> Compiler.uninit option Fiber.t
 end

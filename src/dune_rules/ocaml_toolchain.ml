@@ -146,9 +146,6 @@ let of_binaries ~path name env binaries =
 let of_toolchain_compiler compiler name env =
   let module Toolchain = Dune_pkg.Toolchain in
   let bin_dir = Toolchain.Compiler.bin_dir compiler in
-  let* () =
-    Memo.of_reproducible_fiber (Toolchain.Compiler.get ~log_when:`Install_only compiler)
-  in
   let which prog =
     let path = Path.Outside_build_dir.relative bin_dir prog in
     let+ exists = Fs_memo.file_exists path in

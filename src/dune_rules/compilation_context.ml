@@ -151,7 +151,6 @@ let create
   let open Memo.O in
   let project = Scope.project scope in
   let context = Super_context.context super_context in
-  let sandbox = Sandbox_config.no_special_requirements in
   let* ocaml = Context.ocaml context in
   let direct_requires, hidden_requires =
     if Dune_project.implicit_transitive_deps project
@@ -163,13 +162,14 @@ let create
         let open Resolve.Memo.O in
         let+ requires = requires_compile
         and+ requires_link = Memo.Lazy.force requires_link in
-        let requires_table = Table.create (module Lib) 500 in
+        let requires_table = Table.create (module Lib) 5 in
         let () = List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires in
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
       requires_compile, requires_hidden)
     else requires_compile, Resolve.Memo.return []
   in
+  let sandbox = Sandbox_config.no_special_requirements in
   let modes =
     let default =
       { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)

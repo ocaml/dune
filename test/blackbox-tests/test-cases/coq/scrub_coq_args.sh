@@ -17,7 +17,8 @@ sed 's/ -Q/\f-Q/g' | # new line for each -Q
 sed 's/ -w/\f-w/g' | # new line for each -w
 sed 's/ -boot/\f-boot/g' | # new line for each -boot
 sed 's/ -native-compiler /\f-native-compiler /g' | # new line for each -native-compiler
-sed 's/-R [^\s\f]*coq/-R coq/g' | # scrub -R with coq
+sed 's/-R [^[:space:]]*coq /-R coq /g' | # scrub -R with coq
+sed 's#-R [^[:space:]]*coq/theories #-R coq/theories #g' | # scrub -R with coq/theories
 sed 's/-I [-A-Za-z0-9\/_\.]*lib\//-I lib\//g' | # scrub -I with lib/
 sed 's/-nI [-A-Za-z0-9\/_\.]*lib\//-nI lib\//g' | # scrub -nI with lib/
 sed 's/\(-R [^\f]* [^\f]*\) \(.*\)/\1\f\2/g' | # new line after each -R

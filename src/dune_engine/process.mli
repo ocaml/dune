@@ -4,8 +4,6 @@ open Import
 module Action_output_on_success := Execution_parameters.Action_output_on_success
 module Action_output_limit := Execution_parameters.Action_output_limit
 
-val with_directory_annot : Path.t User_message.Annots.Key.t
-
 module Failure_mode : sig
   (** How to handle sub-process failures *)
   type ('a, 'b) t =

@@ -36,6 +36,13 @@ let opam_file_is_avoid_version (opam_file : OpamFile.OPAM.t) =
   List.mem opam_file.flags Pkgflag_AvoidVersion ~equal:Poly.equal
 ;;
 
+let opam_file_is_ocaml_package (opam_file : OpamFile.OPAM.t) =
+  Option.equal
+    OpamPackage.Name.equal
+    opam_file.name
+    (Some (OpamPackage.Name.of_string "ocaml"))
+;;
+
 module Context_for_dune = struct
   type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
@@ -65,6 +72,7 @@ module Context_for_dune = struct
          packages for which we've printed a warning. *)
       available_cache : (OpamPackage.t, bool) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; latest_released_base_compiler_version : OpamPackage.Version.t option
     }
 
   let create
@@ -75,6 +83,7 @@ module Context_for_dune = struct
     ~version_preference
     ~stats_updater
     ~constraints
+    ~latest_released_base_compiler_version
     =
     let dune_version =
       let major, minor = Dune_lang.Stanza.latest_version in
@@ -106,6 +115,7 @@ module Context_for_dune = struct
     ; candidates_cache
     ; available_cache
     ; constraints
+    ; latest_released_base_compiler_version
     }
   ;;
 
@@ -113,19 +123,112 @@ module Context_for_dune = struct
     | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
   ;;
 
+  let opam_version_compare a b = OpamPackage.Version.compare a b |> Ordering.of_int
+
+  (* Returns a bool which is true iff the following conditions are met:
+     - the version preference is [Newest]
+     - the given package is the ocaml compiler metapackage
+     - the version of the given package is later than the latest
+       version of the ocaml-base-compiler package lacking the
+       avoid-version flag *)
+  let opam_file_is_ocaml_newer_than_latest_base_compiler_if_prefer_newest
+    t
+    (opam_file : OpamFile.OPAM.t)
+    =
+    match t.version_preference with
+    | Oldest -> false
+    | Newest ->
+      (match opam_file_is_ocaml_package opam_file with
+       | false -> false
+       | true ->
+         (match t.latest_released_base_compiler_version with
+          | None -> false
+          | Some latest_released_base_compiler_version ->
+            (match
+               let package_version = OpamFile.OPAM.version opam_file in
+               opam_version_compare package_version latest_released_base_compiler_version
+             with
+             | Gt -> true
+             | Lt | Eq -> false)))
+  ;;
+
   (* Compare two packages where the "least" of the two packages is the
      one that the solver should prefer. It is only meaningful to call
-     this function with two different versions of the same
-     package. This is sensitive to the configured version
+     this function with two different versions of the same package, so
+     if the package names differ a Code_error will be raised.
+
+     The comparison is sensitive to the configured version
      preference. E.g. if the version preference is to prefer newer
      packages then packages versions that are numerically greater will
-     be treated as less than versions that are numerically lower. This
-     comparison also accounts for the avoid-version flag by treating
+     be treated as less than versions that are numerically lower.
+
+     The comparison accounts for the avoid-version flag by treating
      any version with this flag set as greater than any version
      without this flag so that the solver will prefer package versions
-     without this flag. *)
-  let opam_version_compare t a b =
-    let opam_version_compare a b = OpamPackage.Version.compare a b |> Ordering.of_int in
+     without this flag.
+
+     Note that the comparison does not fully implement the
+     avoid-version flag. Opam allows a package to depend on a
+     disjunction of potential dependencies, where the solver will
+     choose one dependency from the disjunction to satisfy
+     it. Currently in dune when satisfying a disjunction it's possible
+     that a package marked avoid-version will be chosen instead of an
+     alternative without that flag. Correcting this in general will
+     require modifying opam-0installl-solver.
+
+     The lack of general avoid-version supports leads to a problem
+     when solving the compiler packages, best illustrated by an
+     example. Most packages depend on a package named "ocaml" which is
+     really a metapackage depending on a disjunction of concrete
+     compiler implementations. Here's part of the disjunction in the
+     dependencies of "ocaml.5.3.0" as an example, at the time when
+     "ocaml.5.3.0" was the latest version of "ocaml" in the opam repo:
+
+     depends: [
+        ...
+        "ocaml-base-compiler" {= "5.3.0"} |
+        "ocaml-variants" {>= "5.3.0~" & < "5.3.1~"} |
+        ...
+      ]
+
+     Of the two potential dependencies shown, "ocaml-base-compiler" is
+     intended to be generally preferred, while "ocaml-variants" is
+     always marked as avoid-version. This example was taken when
+     "ocaml.5.3.0" was the current development version of the
+     compiler, and the only satisfying dependency was
+     "ocaml-variants.5.3.0+trunk". The package
+     "ocaml-base-compiler.5.3.0" did not exist, though there is a
+     convention to list it among the depencies of "ocaml" anyway.
+
+     When solving dependencies of "ocaml" (with no version number
+     specified), if the version preference is [Newest] then we would
+     like the solver to choose the latest version of
+     "ocaml-base-compiler" lacking avoid-version (remember, all
+     versions of "ocaml-variants" are avoid-version). In this example,
+     that would mean choosing a version of the "ocaml" metapackage
+     less than 5.3.0.
+
+     Fully respecting the avoid-version flag would solve this
+     problem but in the meantime, a workaround is implemented in the
+     version comparison function. We determine the latest version of
+     the package "ocaml-base-compiler", and avoid choosing versions of
+     the "ocaml" package with a later version. Technically the solver
+     is still free to choose a version of "ocaml-variants" to satisfy
+     the disjunction, though the solver appears to try to satisfy the
+     disjunction in the order packages appear in it, and
+     "ocaml-base-compiler" always appears before "ocaml-variants" in
+     the dependencies of "ocaml". *)
+  let opam_version_compare t (a : OpamFile.OPAM.t) (b : OpamFile.OPAM.t) =
+    if not (Option.equal OpamPackage.Name.equal a.name b.name)
+    then (
+      let opam_package_name_to_dyn opam_package_name =
+        OpamPackage.Name.to_string opam_package_name |> Dyn.string
+      in
+      Code_error.raise
+        "attempted to compare versions of packages with different names"
+        [ "package a", Dyn.option opam_package_name_to_dyn a.name
+        ; "package b", Dyn.option opam_package_name_to_dyn b.name
+        ]);
     let ordering a b =
       opam_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
     in
@@ -134,11 +237,17 @@ module Context_for_dune = struct
       | Oldest -> ordering a b
       | Newest -> ordering b a
     in
-    Tuple.T2.compare
+    let to_compare x =
+      ( opam_file_is_ocaml_newer_than_latest_base_compiler_if_prefer_newest t x
+      , opam_file_is_avoid_version x
+      , x )
+    in
+    Tuple.T3.compare
+      Bool.compare
       Bool.compare
       version_compare
-      (opam_file_is_avoid_version a, a)
-      (opam_file_is_avoid_version b, b)
+      (to_compare a)
+      (to_compare b)
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
@@ -750,6 +859,23 @@ module Solver_result = struct
     }
 end
 
+(* Returns the latest version of the package named
+   "ocaml-base-compiler" which does not have the avoid-version flag
+   set. This will be used to allow the solver to prefer non-development
+   versions of compiler packages, working around the lack of support for
+   the avoid-version flag in opam-0install-solver. *)
+let latest_released_base_compiler_version repos =
+  let+ all_versions =
+    OpamPackage.Name.of_string "ocaml-base-compiler" |> Opam_repo.load_all_versions repos
+  in
+  OpamPackage.Version.Map.filter
+    (fun _ package ->
+      not (Resolved_package.opam_file package |> opam_file_is_avoid_version))
+    all_versions
+  |> OpamPackage.Version.Map.max_binding_opt
+  |> Option.map ~f:fst
+;;
+
 let solve_lock_dir
   solver_env
   version_preference
@@ -759,6 +885,17 @@ let solve_lock_dir
   ~constraints
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
+  let* latest_released_base_compiler_version =
+    match (version_preference : Version_preference.t) with
+    | Oldest ->
+      (* As an optimization, don't bother looking up the latest
+         released compiler version if the version preference is
+         [Oldest]. The latest released compiler version is only used by
+         the solver to avoid depending on unstable compilers, but that is
+         only a possibility if the version preference is [Newest]. *)
+      Fiber.return None
+    | Newest -> latest_released_base_compiler_version repos
+  in
   let stats_updater = Solver_stats.Updater.init () in
   let context =
     Context_for_dune.create
@@ -770,6 +907,7 @@ let solve_lock_dir
         (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
       ~stats_updater
       ~constraints
+      ~latest_released_base_compiler_version
   in
   let packages =
     Package_name.Map.to_list_map local_packages ~f:(fun name _ ->

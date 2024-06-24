@@ -9,7 +9,7 @@ Write permissions on directory targets.
 
   $ cat >dune <<EOF
   > (rule
-  >  (action (system "mkdir -p foo/foo2 && touch foo/foo2/bar"))
+  >  (action (bash "mkdir -p foo/foo2 && touch foo/foo2/bar"))
   >  (targets (dir foo)))
   > EOF
 

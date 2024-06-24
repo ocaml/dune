@@ -24,17 +24,23 @@ let cctx_rules cctx =
     let obj_dir = Compilation_context.obj_dir cctx in
     let fn = index_path_in_obj_dir obj_dir in
     let additional_libs =
-      let open Resolve.Memo.O in
-      let+ non_compile_libs =
-        (* The indexer relies on the load_path of cmt files. When
-           [implicit_transitive_deps] is set to [false] some necessary paths will
-           be missing.These are passed to the indexer with the `-I` flag.
-
-           The implicit transitive libs correspond to the set:
-           (requires_link \ req_compile) *)
-        Compilation_context.requires_hidden cctx
-      in
-      Lib_flags.L.include_flags [] non_compile_libs (Lib_mode.Ocaml Byte)
+      let scope = Compilation_context.scope cctx in
+      let ocaml = Compilation_context.ocaml cctx in
+      if (not (Version.supports_hidden_includes ocaml.version))
+         || Dune_project.dune_version (Scope.project scope) < (3, 17)
+      then
+        let open Resolve.Memo.O in
+        let+ non_compile_libs =
+          (* This is only needed for the case where OCaml < 5.2 or the dune language version
+             < 3.17, since in the latter cases those additional libs will be already included in the compilation
+             with -H flag.*)
+          let* req_link = Compilation_context.requires_link cctx in
+          let+ req_compile = Compilation_context.requires_compile cctx in
+          List.filter req_link ~f:(fun l ->
+            not (List.exists req_compile ~f:(Lib.equal l)))
+        in
+        Lib_flags.L.include_flags non_compile_libs [] (Lib_mode.Ocaml Byte)
+      else Resolve.Memo.return Command.Args.empty
     in
     (* Indexing depends (recursively) on [required_compile] libs:
        - These libs's cmt files should be built before indexing starts

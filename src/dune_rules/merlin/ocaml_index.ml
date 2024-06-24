@@ -25,9 +25,7 @@ let cctx_rules cctx =
     let fn = index_path_in_obj_dir obj_dir in
     let additional_libs =
       let scope = Compilation_context.scope cctx in
-      let ocaml = Compilation_context.ocaml cctx in
-      if (not (Version.supports_hidden_includes ocaml.version))
-         || Dune_project.dune_version (Scope.project scope) < (3, 17)
+      if Dune_project.dune_version (Scope.project scope) < (3, 17)
       then
         let open Resolve.Memo.O in
         let+ non_compile_libs =

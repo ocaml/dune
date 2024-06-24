@@ -32,6 +32,10 @@ let add_self_to_filter_env package env variable =
     else env variable
 ;;
 
+let opam_file_is_avoid_version (opam_file : OpamFile.OPAM.t) =
+  List.mem opam_file.flags Pkgflag_AvoidVersion ~equal:Poly.equal
+;;
+
 module Context_for_dune = struct
   type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
@@ -109,18 +113,32 @@ module Context_for_dune = struct
     | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
   ;;
 
-  let opam_version_compare =
-    let opam_file_compare_by_version =
-      let opam_package_version_compare a b =
-        OpamPackage.Version.compare a b |> Ordering.of_int
-      in
-      fun a b ->
-        opam_package_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
+  (* Compare two packages where the "least" of the two packages is the
+     one that the solver should prefer. It is only meaningful to call
+     this function with two different versions of the same
+     package. This is sensitive to the configured version
+     preference. E.g. if the version preference is to prefer newer
+     packages then packages versions that are numerically greater will
+     be treated as less than versions that are numerically lower. This
+     comparison also accounts for the avoid-version flag by treating
+     any version with this flag set as greater than any version
+     without this flag so that the solver will prefer package versions
+     without this flag. *)
+  let opam_version_compare t a b =
+    let opam_version_compare a b = OpamPackage.Version.compare a b |> Ordering.of_int in
+    let ordering a b =
+      opam_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
     in
-    fun t ->
+    let version_compare a b =
       match t.version_preference with
-      | Oldest -> opam_file_compare_by_version
-      | Newest -> Ordering.reverse opam_file_compare_by_version
+      | Oldest -> ordering a b
+      | Newest -> ordering b a
+    in
+    Tuple.T2.compare
+      Bool.compare
+      version_compare
+      (opam_file_is_avoid_version a, a)
+      (opam_file_is_avoid_version b, b)
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
@@ -181,10 +199,10 @@ module Context_for_dune = struct
     let+ resolved = Opam_repo.load_all_versions t.repos name in
     let available =
       OpamPackage.Version.Map.values resolved
-      (* This sort is not strictly necessary. The values returned from the map
-         are already sorted in ascending order. So it would be enough to just
-         reverse this list if we want the highest versions first. We leave the
-         sorting for clarity. *)
+      (* Note that although the packages are taken from a map,
+         explicitly sorting them is still necessary. This sort applies
+         the configured version preference and also allows the solver to
+         prefer versions without the avoid-version flag set. *)
       |> List.sort ~compare:(fun p1 p2 ->
         opam_version_compare
           t

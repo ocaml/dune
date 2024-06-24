@@ -30,6 +30,8 @@ let blank_line_msg =
   ; hints = []
   ; annots = User_message.Annots.empty
   ; loc = None
+  ; context = None
+  ; dir = None
   }
 ;;
 

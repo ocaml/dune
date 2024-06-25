@@ -125,7 +125,7 @@ USER user
 WORKDIR $HOME
 
 # Download the monorepo benchmark and copy files into the benchmark project
-ENV MONOREPO_BENCHMARK_TAG=2024-02-01.0
+ENV MONOREPO_BENCHMARK_TAG=2024-06-25.0
 RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tags/$MONOREPO_BENCHMARK_TAG.tar.gz -O ocaml-monorepo-benchmark.tar.gz && \
   tar xf ocaml-monorepo-benchmark.tar.gz && \
   mv ocaml-monorepo-benchmark-$MONOREPO_BENCHMARK_TAG monorepo-benchmark

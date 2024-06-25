@@ -8,7 +8,7 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     melange = {
-      url = "github:melange-re/melange/refs/tags/4.0.0-414";
+      url = "github:melange-re/melange/refs/tags/4.0.0-51";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -30,7 +30,7 @@
     let
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
-          ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+          ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
             mdx = osuper.mdx.override {
               logs = oself.logs;
             };
@@ -48,7 +48,7 @@
         })
       ];
       dune-static-overlay = self: super: {
-        ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
           dune_3 = osuper.dune_3.overrideAttrs (a: {
             src = ./.;
             preBuild = "ocaml boot/bootstrap.ml --static";
@@ -218,7 +218,8 @@
           coq =
             pkgs.mkShell {
               nativeBuildInputs = testNativeBuildInputs;
-              inputsFrom = [ pkgs.dune_3 ];
+              # Coq requires OCaml 4.x
+              inputsFrom = [ pkgs.ocaml-ng.ocamlPackages_4_14.dune_3 ];
               buildInputs = with pkgs; [
                 coq_8_16_native
                 coq_8_16_native.ocamlPackages.findlib

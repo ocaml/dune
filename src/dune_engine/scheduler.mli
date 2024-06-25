@@ -67,7 +67,7 @@ module Run : sig
 
   val go
     :  Config.t
-    -> ?timeout:float
+    -> ?timeout_seconds:float
     -> ?file_watcher:file_watcher
     -> on_event:(Config.t -> Event.t -> unit)
     -> (unit -> 'a Fiber.t)
@@ -94,7 +94,7 @@ val with_job_slot : (Fiber.Cancel.t -> Config.t -> 'a Fiber.t) -> 'a Fiber.t
     true, kill the entire process group instead of just the process in case of
     timeout. *)
 val wait_for_process
-  :  ?timeout:float
+  :  ?timeout_seconds:float
   -> ?is_process_group_leader:bool
   -> Pid.t
   -> Proc.Process_info.t Fiber.t
@@ -104,7 +104,7 @@ type termination_reason =
   | Cancel
 
 val wait_for_build_process
-  :  ?timeout:float
+  :  ?timeout_seconds:float
   -> ?is_process_group_leader:bool
   -> Pid.t
   -> (Proc.Process_info.t * termination_reason) Fiber.t
@@ -143,10 +143,10 @@ val cancel_current_build : unit -> unit Fiber.t
 
 val inject_memo_invalidation : Memo.Invalidation.t -> unit Fiber.t
 
-(** [sleep duration] wait for [duration] to elapse. Sleepers are checked for
-    wake up at a rate of once per 0.1 seconds. So [duration] should be at least
-    this long. *)
-val sleep : float -> unit Fiber.t
+(** [sleep duration] wait for [duration] seconds to elapse. Sleepers
+    are checked for wake up at a rate of once per 0.1 seconds. So
+    [duration] should be at least this long. *)
+val sleep : seconds:float -> unit Fiber.t
 
 val stats : unit -> Dune_stats.t option Fiber.t
 

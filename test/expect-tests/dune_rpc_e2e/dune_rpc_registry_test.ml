@@ -6,7 +6,7 @@ module Scheduler = Dune_engine.Scheduler
 module Poll_active = Dune_rpc_impl.Poll_active
 open Dune_rpc_e2e
 
-let try_ ~times ~delay ~f =
+let try_ ~times ~delay_seconds ~f =
   let rec loop = function
     | 0 -> Fiber.return None
     | n ->
@@ -14,7 +14,7 @@ let try_ ~times ~delay ~f =
       (match res with
        | Some s -> Fiber.return (Some s)
        | None ->
-         let* () = Scheduler.sleep delay in
+         let* () = Scheduler.sleep ~seconds:delay_seconds in
          loop (n - 1))
   in
   loop times
@@ -42,7 +42,7 @@ let run =
       ~finally:(fun () -> Sys.chdir cwd)
       ~f:(fun () ->
         Sys.chdir (Path.to_string dir);
-        Scheduler.Run.go config run ~timeout:5.0 ~on_event:(fun _ _ -> ()))
+        Scheduler.Run.go config run ~timeout_seconds:5.0 ~on_event:(fun _ _ -> ()))
 ;;
 
 let%expect_test "turn on dune watch and wait until the connection is listed" =
@@ -65,7 +65,7 @@ let%expect_test "turn on dune watch and wait until the connection is listed" =
       in
       with_dune_watch ~env (fun pid ->
         let+ res =
-          try_ ~times:5 ~delay:0.2 ~f:(fun () ->
+          try_ ~times:5 ~delay_seconds:0.2 ~f:(fun () ->
             let+ refresh = Poll_active.poll poll in
             match refresh with
             | Error _ -> None

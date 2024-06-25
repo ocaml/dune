@@ -227,6 +227,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     in
     Build_system.eval_pred (File_selector.of_glob ~dir glob)
   in
+  if def.syntax_version >= (3, 17) && Filename_set.is_empty files
+  then User_error.raise ~loc [ Pp.textf "Does not match any files" ];
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)

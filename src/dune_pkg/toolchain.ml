@@ -198,7 +198,13 @@ module Compiler = struct
             | Some prog -> `Absolute prog
             | None ->
               User_error.raise
-                [ Pp.textf "The program %S does not appear to be installed." prog ])
+                [ Pp.concat
+                    ~sep:Pp.space
+                    [ Pp.text "The program"
+                    ; User_message.command prog
+                    ; Pp.text "does not appear to be installed."
+                    ]
+                ])
           else if Filename.is_relative prog
           then `Relative_to_cwd prog
           else `Absolute (Path.of_string prog)

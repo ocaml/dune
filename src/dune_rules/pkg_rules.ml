@@ -232,7 +232,7 @@ module Compiler = struct
   type t =
     (* The compiler chosen is in the lock dir but substituted for a shared
        compiler in the toolchain directory *)
-    | Toolchain of Toolchain.Compiler.t
+    | Toolchain of Toolchain.Compiler.installed
     (* The lockdir specifies a compiler dependency as a package. *)
     | Inside_lock_dir of (Loc.t * Pkg_info.t)
     (* The lockdir specifies that the system compiler toolchain will
@@ -254,7 +254,9 @@ module Compiler = struct
          | None -> Fiber.return None
          | Some toolchain_compiler ->
            let+ toolchain_compiler =
-             Toolchain.Compiler.get ~log_when:`Install_only toolchain_compiler
+             Toolchain.Compiler.ensure_installed
+               ~log_when:`Install_only
+               toolchain_compiler
            in
            Some toolchain_compiler)
     else Memo.return None
@@ -1246,7 +1248,7 @@ module rec Resolve : sig
     -> Loc.t * Package.Name.t
     -> [ `Inside_lock_dir of Pkg.t
        | `System_provided
-       | `Toolchain of Toolchain.Compiler.t
+       | `Toolchain of Toolchain.Compiler.installed
        ]
          Memo.t
 end = struct

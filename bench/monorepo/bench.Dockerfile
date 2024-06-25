@@ -134,7 +134,7 @@ RUN wget https://github.com/ocaml-dune/ocaml-monorepo-benchmark/archive/refs/tag
 RUN opam init --disable-sandboxing --auto-setup
 
 # make an opam switch for running benchmarks
-RUN opam switch create bench 4.14.2
+RUN opam update && opam switch create bench 4.14.2
 RUN opam install -y dune ocamlbuild
 
 # make an opam switch for preparing the files for the benchmark

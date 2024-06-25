@@ -32,7 +32,7 @@ DEV_DEPS := \
 "dkml-workflows>=1.2.0" \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.2
+TEST_OCAMLVERSION := 5.2.0
 
 -include Makefile.dev
 

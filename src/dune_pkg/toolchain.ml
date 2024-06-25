@@ -239,9 +239,8 @@ module Compiler = struct
     ; opam_env : OpamFilter.env
     }
 
-  (* represent a compiler that has not been loaded yet, used as phantom
-     type *)
-  type uninit = t
+  (* A witness that compiler has been installed *)
+  type installed = t
 
   let build_commands t = Command.list_of_opam_command_list t.opam_env t.opam_file.build
 
@@ -470,7 +469,7 @@ module Compiler = struct
       ~f
   ;;
 
-  let get t ~log_when =
+  let ensure_installed t ~log_when =
     if is_installed t
     then (
       print_already_installed_message t ~log_when;

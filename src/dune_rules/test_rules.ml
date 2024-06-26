@@ -70,19 +70,20 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           | `js -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir
           | `exe | `bc -> Memo.return Alias0.runtest
         in
+        let deps =
+          match custom_runner with
+          | Some _ ->
+            Bindings.Unnamed (Dep_conf.File (String_with_vars.make_text loc test_exe))
+            :: t.deps
+          | None -> t.deps
+        in
         let add_alias ~loc ~action ~locks =
           (* CR-rgrinberg: why are we going through the stanza api? *)
           let alias =
             { Alias_conf.name = runtest_alias
             ; locks
             ; package = t.package
-            ; deps =
-                (match custom_runner with
-                 | Some _ ->
-                   Bindings.Unnamed
-                     (Dep_conf.File (String_with_vars.make_text loc test_exe))
-                   :: t.deps
-                 | None -> t.deps)
+            ; deps
             ; action = Some (loc, action)
             ; enabled_if = t.enabled_if
             ; loc
@@ -95,7 +96,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
         | `Expect diff ->
           let rule =
             { Rule_conf.targets = Infer
-            ; deps = t.deps
+            ; deps
             ; action =
                 ( loc
                 , Action_unexpanded.Redirect_out (Stdout, diff.file2, Normal, run_action)

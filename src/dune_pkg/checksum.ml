@@ -36,5 +36,3 @@ include Comparable.Make (struct
     let compare x y = Ordering.of_int (OpamHash.compare x y)
     let to_dyn = to_dyn
   end)
-
-let choose_strongest ts = OpamHash.sort ts |> List.hd_opt

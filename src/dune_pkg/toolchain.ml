@@ -463,7 +463,7 @@ module Compiler = struct
     Flock.with_flock
       (Name.Paths.flock t.name)
       ~name_for_messages:(sprintf "compiler toolchain %s" (Name.identifier_string t.name))
-      ~timeout_s:infinity
+      ~timeout_seconds:infinity
       ~f
   ;;
 

@@ -61,7 +61,7 @@ let lock_path { dir; _ } =
   Path.relative parent "rev-store.lock"
 ;;
 
-let with_flock = Flock.with_flock ~name_for_messages:"revision store" ~timeout_s:5.0
+let with_flock = Flock.with_flock ~name_for_messages:"revision store" ~timeout_seconds:5.0
 let failure_mode = Process.Failure_mode.Return
 let output_limit = Sys.max_string_length
 let make_stdout () = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit

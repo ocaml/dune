@@ -1,11 +1,11 @@
 open! Stdune
 
-(** [with_flock path ~name_for_messages ~timeout_s ~f] ensures mutual
-    exclusion for the function [f] across multiple concurrent
+(** [with_flock path ~name_for_messages ~timeout_seconds ~f] ensures
+    mutual exclusion for the function [f] across multiple concurrent
     instances of dune, using the lock file at [path] to coordinate
     between different dune instances. If the lock is not acquired
-    after [timeout_s] seconds then a [User_error] is raised. Pass
-    [infinity] to keep trying to take the lock
+    after [timeout_seconds] seconds then a [User_error] is
+    raised. Pass [infinity] to keep trying to take the lock
     forever. [name_for_messages] is the name used to refer to this
     lock in error messages.
 
@@ -18,6 +18,6 @@ open! Stdune
 val with_flock
   :  Path.t
   -> name_for_messages:string
-  -> timeout_s:float
+  -> timeout_seconds:float
   -> f:(unit -> 'a Fiber.t)
   -> 'a Fiber.t

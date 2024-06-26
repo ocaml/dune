@@ -17,7 +17,7 @@ type failure =
     available at the location. *)
 val fetch
   :  unpack:bool
-  -> checksums:Checksum.t Nonempty_list.t option
+  -> checksums:Checksum.t list
   -> target:Path.t
   -> url:Loc.t * OpamUrl.t
   -> (unit, failure) result Fiber.t

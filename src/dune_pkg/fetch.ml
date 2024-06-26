@@ -134,11 +134,11 @@ let unpack_tarball ~target ~archive =
 
 let check_checksums checksums path =
   match checksums with
-  | None -> Ok ()
-  | Some checksums ->
+  | [] -> Ok ()
+  | checksums ->
     let output = Path.to_string path in
     checksums
-    |> Nonempty_list.fold_left
+    |> List.fold_left
          ~f:(fun verification expected ->
            match verification with
            | Error _ as e -> e
@@ -236,11 +236,10 @@ let fetch ~unpack ~checksums ~target ~url:(url_loc, url) =
              in
              Some
                (match checksums with
-                | None -> args
-                | Some checksums ->
+                | [] -> args
+                | checksums ->
                   let checksums =
                     checksums
-                    |> Nonempty_list.to_list
                     |> List.map ~f:(fun checksum -> `String (Checksum.to_string checksum))
                   in
                   ("checksums", `List checksums) :: args))
@@ -269,7 +268,7 @@ let fetch ~unpack ~checksums ~target ~url:(url_loc, url) =
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =
-  fetch ~unpack ~checksums:None ~url ~target
+  fetch ~unpack ~checksums:[] ~url ~target
   >>| function
   | Ok () -> Ok ()
   | Error (Checksum_mismatch _) -> assert false

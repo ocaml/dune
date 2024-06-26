@@ -102,8 +102,8 @@ module Spec = struct
     let* () = Fiber.return () in
     (let checksums =
        match checksum with
-       | Some (_loc, checksum) -> Nonempty_list.of_list [ checksum ]
-       | None -> None
+       | Some (_loc, checksum) -> [ checksum ]
+       | None -> []
      in
      Dune_pkg.Fetch.fetch
        ~unpack:

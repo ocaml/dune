@@ -46,8 +46,8 @@ let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum ()
   let url = url ~port ~filename in
   let checksums =
     match checksum with
-    | None -> None
-    | Some checksum -> Nonempty_list.of_list [ checksum ]
+    | None -> []
+    | Some checksum -> [ checksum ]
   in
   let* res = Fetch.fetch ~unpack ~checksums ~target ~url:(Loc.none, url) in
   match res with

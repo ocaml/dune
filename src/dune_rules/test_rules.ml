@@ -1,14 +1,14 @@
 open Import
 
 let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
-  let test_kind (loc, name) =
+  let test_kind (loc, name, ext) =
     let files = Dir_contents.text_files dir_contents in
     let expected_basename = name ^ ".expected" in
     if Filename.Set.mem files expected_basename
     then
       `Expect
         { Diff.file1 = String_with_vars.make_text loc expected_basename
-        ; file2 = String_with_vars.make_text loc (name ^ ".output")
+        ; file2 = String_with_vars.make_text loc (name ^ ext ^ ".output")
         ; optional = false
         ; mode = Text
         }
@@ -91,7 +91,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
         in
-        match test_kind (loc, s) with
+        match test_kind (loc, s, ext) with
         | `Regular -> add_alias ~loc ~action:run_action ~locks:[]
         | `Expect diff ->
           let rule =

@@ -338,16 +338,16 @@ module Compiler = struct
   let bin_dir t = Path.Outside_build_dir.relative (Name.Paths.target_dir t.name) "bin"
   let is_installed t = Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
 
-  (* The strongest checksum from the compiler's opam file. This will
+  (* The first checksum appearing in the compiler's opam file. This will
      be used to validate the complier's source archive. Note that ideally
      we would validate the compiler source archive against all the
      checksums from the compiler's opam file however [Fetch.fetch]
      currently only accepts a single checksum for validation. *)
-  let strongest_checksum { opam_file; _ } =
+  let first_checksum { opam_file; _ } =
     Option.bind opam_file.url ~f:(fun opam_file_url ->
       OpamFile.URL.checksum opam_file_url
-      |> List.map ~f:Checksum.of_opam_hash
-      |> Checksum.choose_strongest)
+      |> List.hd_opt
+      |> Option.map ~f:Checksum.of_opam_hash)
   ;;
 
   let of_resolved_package resolved_package ~deps =
@@ -370,7 +370,7 @@ module Compiler = struct
 
   let handle_checksum_mismatch t ~got_checksum =
     let checksum =
-      match strongest_checksum t with
+      match first_checksum t with
       | Some checksum -> checksum
       | None ->
         Code_error.raise
@@ -410,7 +410,7 @@ module Compiler = struct
     let+ result =
       Fetch.fetch
         ~unpack:true
-        ~checksum:(strongest_checksum t)
+        ~checksum:(first_checksum t)
         ~target:source_dir
         ~url:(Loc.none, t.url)
     in

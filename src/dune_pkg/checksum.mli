@@ -20,6 +20,3 @@ val pp : t -> 'a Pp.t
 val equal : t -> t -> bool
 
 module Map : Map.S with type key = t
-
-(** Returns the hash whose kind is the strongest (e.g. SHA512 is stronger than MD5) *)
-val choose_strongest : t list -> t option

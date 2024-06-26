@@ -70,9 +70,7 @@ module Compiler = struct
          versions. Creates the directory if it doesn't already exist. *)
       let toolchain_base_dir () =
         let cache_dir =
-          Xdg.create ~env:Sys.getenv_opt ()
-          |> Xdg.cache_dir
-          |> Path.Outside_build_dir.of_string
+          Lazy.force Dune_util.xdg |> Xdg.cache_dir |> Path.Outside_build_dir.of_string
         in
         let path =
           Path.Outside_build_dir.relative

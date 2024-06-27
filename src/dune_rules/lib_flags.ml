@@ -158,12 +158,12 @@ module L = struct
       remove_stdlib dirs ts
   ;;
 
-  let include_flags ?project ts_direct ts_hidden mode =
+  let include_flags ?project ~direct_libs ~hidden_libs mode =
     let include_paths ts =
       include_paths ?project ts { lib_mode = mode; melange_emit = false }
     in
-    let hidden_includes = to_hflags (include_paths ts_hidden) in
-    let direct_includes = to_iflags (include_paths ts_direct) in
+    let hidden_includes = to_hflags (include_paths hidden_libs) in
+    let direct_includes = to_iflags (include_paths direct_libs) in
     Command.Args.S [ direct_includes; hidden_includes ]
   ;;
 

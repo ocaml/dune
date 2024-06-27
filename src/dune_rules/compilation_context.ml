@@ -160,9 +160,7 @@ let create
         let+ requires_compile = requires_compile
         and+ requires_link = Memo.Lazy.force requires_link in
         let requires_table = Table.create (module Lib) 5 in
-        let () =
-          List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile
-        in
+        List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile;
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
       requires_compile, requires_hidden)

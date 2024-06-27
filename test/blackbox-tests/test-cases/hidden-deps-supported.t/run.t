@@ -12,7 +12,6 @@ implicit_transitive_deps is set to false.
   $ echo "$(getincludes I)"
   .foo.objs/byte.foo.objs/byte.foo.objs/native
 
-
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps false)
@@ -20,7 +19,6 @@ implicit_transitive_deps is set to false.
 
   $ echo "$(getincludes H)"
   .foo.objs/byte.foo.objs/byte.foo.objs/native
-
 
 
 Test transitive deps can not be directly accessed, both for compiler versions supporting -H or not:
@@ -41,5 +39,3 @@ ITD = false case, and thus no type abstraction happens when it is used.
   $ dune build --root=./tyxml
   Entering directory 'tyxml'
   Leaving directory 'tyxml'
-
-

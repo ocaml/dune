@@ -13,7 +13,6 @@ the new -H feature added.
   $ echo "$(getincludes I)"
   .foo.objs/byte.foo.objs/byte.foo.objs/native
 
-
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps false)
@@ -21,5 +20,3 @@ the new -H feature added.
 
   $ echo "$(getincludes I)"
   
-
-

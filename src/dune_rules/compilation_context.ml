@@ -38,7 +38,7 @@ module Includes = struct
                      |> Lib_file_deps.deps_with_exts
                    else
                      Lib_file_deps.deps
-                       (List.concat [ direct_libs; hidden_libs ])
+                     (direct_libs @ hidden_libs)
                        ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
               ]))
     in

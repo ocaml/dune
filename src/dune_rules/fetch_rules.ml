@@ -173,12 +173,7 @@ let find_checksum, find_url =
             ~init:(Checksum.Map.empty, Digest.Map.empty)
             ~f:(fun (checksums, urls) (lockdir : Dune_pkg.Lock_dir.t) ->
               let checksums', urls' = extract_checksums_and_urls lockdir in
-              Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')
-      >>= fun (checksums, urls) ->
-      Lock_dir.get_ocamlformat
-      >>| fun lockdir ->
-      let checksums', urls' = extract_checksums_and_urls lockdir in
-      Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')
+              Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'))
   in
   let find_url digest =
     let+ _, urls = Memo.Lazy.force all in

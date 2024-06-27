@@ -545,3 +545,18 @@ module Available_compilers = struct
     else Fiber.return None
   ;;
 end
+
+let find_and_install_toolchain_compiler name version deps =
+  let open Fiber.O in
+  let* available_compilers = Available_compilers.load_upstream_opam_repo () in
+  let* toolchain_compiler =
+    Available_compilers.find available_compilers name version ~deps
+  in
+  match toolchain_compiler with
+  | None -> Fiber.return None
+  | Some toolchain_compiler ->
+    let+ toolchain_compiler =
+      Compiler.ensure_installed ~log_when:`Install_only toolchain_compiler
+    in
+    Some toolchain_compiler
+;;

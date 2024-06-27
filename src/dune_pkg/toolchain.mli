@@ -43,3 +43,9 @@ module Available_compilers : sig
     -> deps:Package_name.t list
     -> Compiler.t option Fiber.t
 end
+
+val find_and_install_toolchain_compiler
+  :  Dune_lang.Package_name.t
+  -> Package_version.t
+  -> Dune_lang.Package_name.t list
+  -> Compiler.installed option Fiber.t

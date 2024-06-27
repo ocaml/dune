@@ -3,7 +3,7 @@ when implicit_transitive_deps is set to false, i.e. testing backward compatibili
 the new -H feature added.
 
   $ getincludes () {
-  >   dune build --verbose ./run.exe 2>&1 | grep run.ml | grep -E -o "\-$1\s(.foo)\S*"
+  >   dune build --verbose ./run.exe 2>&1 | grep run.ml | grep -Eo '\-[IH] [a-z/.]+' | sort
   > }
 
   $ cat >dune-project <<EOF
@@ -11,15 +11,26 @@ the new -H feature added.
   > (implicit_transitive_deps true)
   > EOF
 
-  $ getincludes I
+  $ getincludes
+  -I .bar.objs/byte
+  -I .bar.objs/byte
+  -I .bar.objs/native
   -I .foo.objs/byte
   -I .foo.objs/byte
   -I .foo.objs/native
+  -I .run.eobjs/byte
+  -I .run.eobjs/byte
+  -I .run.eobjs/native
 
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps false)
   > EOF
 
-  $ getincludes I
-  [1]
+  $ getincludes
+  -I .bar.objs/byte
+  -I .bar.objs/byte
+  -I .bar.objs/native
+  -I .run.eobjs/byte
+  -I .run.eobjs/byte
+  -I .run.eobjs/native

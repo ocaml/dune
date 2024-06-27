@@ -35,7 +35,10 @@ let cctx_rules cctx =
           List.filter req_link ~f:(fun l ->
             not (List.exists req_compile ~f:(Lib.equal l)))
         in
-        Lib_flags.L.include_flags ~direct_libs:non_compile_libs ~hidden_libs:[] (Lib_mode.Ocaml Byte)
+        Lib_flags.L.include_flags
+          ~direct_libs:non_compile_libs
+          ~hidden_libs:[]
+          (Lib_mode.Ocaml Byte)
       else Resolve.Memo.return Command.Args.empty
     in
     (* Indexing depends (recursively) on [required_compile] libs:

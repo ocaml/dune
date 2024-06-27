@@ -16,8 +16,7 @@ module Includes = struct
             and+ hidden_libs = hidden_requires in
             Command.Args.S
               [ iflags direct_libs hidden_libs mode
-              ; Hidden_deps
-                  (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
+              ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
               ]))
     in
     let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
@@ -31,13 +30,11 @@ module Includes = struct
               ; Hidden_deps
                   (if opaque
                    then
-                     List.map
-                       (direct_libs @ hidden_libs)
-                       ~f:(fun lib ->
-                         ( lib
-                         , if Lib.is_local lib
-                           then [ Lib_file_deps.Group.Ocaml Cmi ]
-                           else [ Ocaml Cmi; Ocaml Cmx ] ))
+                     List.map (direct_libs @ hidden_libs) ~f:(fun lib ->
+                       ( lib
+                       , if Lib.is_local lib
+                         then [ Lib_file_deps.Group.Ocaml Cmi ]
+                         else [ Ocaml Cmi; Ocaml Cmx ] ))
                      |> Lib_file_deps.deps_with_exts
                    else
                      Lib_file_deps.deps
@@ -163,7 +160,9 @@ let create
         let+ requires_compile = requires_compile
         and+ requires_link = Memo.Lazy.force requires_link in
         let requires_table = Table.create (module Lib) 5 in
-        let () = List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile in
+        let () =
+          List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile
+        in
         List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
       in
       requires_compile, requires_hidden)

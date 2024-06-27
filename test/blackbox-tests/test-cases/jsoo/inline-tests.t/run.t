@@ -17,3 +17,8 @@ Run inline tests using node js
   inline tests (JS)
   inline tests (Native)
   inline tests (Native)
+
+  $ dune build js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc --display short
+  Error: Don't know how to build
+  js/.inline_tests_js.inline-tests/inline_test_runner_inline_tests_js.bc
+  [1]

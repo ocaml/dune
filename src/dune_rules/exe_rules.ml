@@ -8,6 +8,7 @@ let linkages
   (ocaml : Ocaml_toolchain.t)
   ~(exes : Executables.t)
   ~explicit_js_mode
+  ~(jsoo_compilation_mode : Js_of_ocaml.Compilation_mode.t)
   =
   let module L = Executables.Link_mode in
   let l =
@@ -24,11 +25,19 @@ let linkages
     in
     let modes =
       if L.Map.mem exes.modes L.js
-      then Exe.Linkage.byte_for_jsoo :: modes
+      then (
+        match jsoo_compilation_mode with
+        | Whole_program -> Exe.Linkage.byte_for_jsoo :: modes
+        | Separate_compilation -> modes)
       else if explicit_js_mode
       then modes
       else if L.Map.mem exes.modes L.byte
-      then Exe.Linkage.js :: Exe.Linkage.byte_for_jsoo :: modes
+      then
+        Exe.Linkage.js
+        ::
+        (match jsoo_compilation_mode with
+         | Whole_program -> Exe.Linkage.byte_for_jsoo :: modes
+         | Separate_compilation -> modes)
       else modes
     in
     modes
@@ -135,10 +144,16 @@ let executables_rules
   let project = Scope.project scope in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let* linkages =
+    let* jsoo_compilation_mode = Jsoo_rules.js_of_ocaml_compilation_mode sctx ~dir in
     let+ dynamically_linked_foreign_archives =
       Context.dynamically_linked_foreign_archives ctx
     in
-    linkages ocaml ~dynamically_linked_foreign_archives ~exes ~explicit_js_mode
+    linkages
+      ocaml
+      ~dynamically_linked_foreign_archives
+      ~exes
+      ~explicit_js_mode
+      ~jsoo_compilation_mode
   in
   let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =

@@ -283,6 +283,21 @@ module Compiler = struct
     | Inside_lock_dir _ (* this is a true package, its environment has been added *)
     | System_provided (* the environment has been inherited *) -> env
   ;;
+
+  let ocaml_toolchain toolchain context =
+    let env =
+      add_path_to_env (Toolchain toolchain) ~env:(Value_list_env.global ())
+      |> Value_list_env.to_env
+    in
+    let bin_dir = Toolchain.Compiler.bin_dir toolchain in
+    let which prog =
+      let path = Path.Outside_build_dir.relative bin_dir prog in
+      let+ exists = Fs_memo.file_exists path in
+      if exists then Some (Path.outside_build_dir path) else None
+    in
+    let get_ocaml_tool ~dir:_ prog = which prog in
+    Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
+  ;;
 end
 
 module Env_update = struct
@@ -1847,6 +1862,11 @@ let ocaml_toolchain context =
    | Some ocaml -> Resolve.resolve db context ocaml)
   >>| function
   | `System_provided -> None
+  | `Toolchain toolchain ->
+    let toolchain =
+      Action_builder.of_memo @@ Compiler.ocaml_toolchain toolchain context
+    in
+    Some (memoize toolchain)
   | `Inside_lock_dir pkg ->
     let toolchain =
       let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
@@ -1859,16 +1879,6 @@ let ocaml_toolchain context =
       let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
-    in
-    Some (memoize toolchain)
-  | `Toolchain toolchain ->
-    let toolchain =
-      let env =
-        Compiler.add_path_to_env (Toolchain toolchain) ~env:(Value_list_env.global ())
-        |> Value_list_env.to_env
-      in
-      Action_builder.of_memo
-      @@ Ocaml_toolchain.of_toolchain_compiler toolchain context env
     in
     Some (memoize toolchain)
 ;;

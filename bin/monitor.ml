@@ -246,7 +246,7 @@ let monitor ~quit_on_disconnect () =
       Console.Status_line.set
         (Console.Status_line.Live
            (fun () -> Pp.verbatim ("Waiting for RPC server" ^ String.make (i mod 4) '.')));
-      let+ () = Scheduler.sleep 0.3 in
+      let+ () = Scheduler.sleep ~seconds:0.3 in
       Some (i + 1))
 ;;
 

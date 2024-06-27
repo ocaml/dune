@@ -70,7 +70,7 @@ let rec attempt_to_lock flock lock ~max_retries =
   | Ok `Failure ->
     if max_retries > 0
     then
-      let* () = Scheduler.sleep sleep_duration in
+      let* () = Scheduler.sleep ~seconds:sleep_duration in
       attempt_to_lock flock lock ~max_retries:(max_retries - 1)
     else Fiber.return (Ok `Failure)
 ;;

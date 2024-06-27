@@ -14,9 +14,14 @@ let default =
   }
 ;;
 
-let go ?(timeout = 0.3) ?(config = default) f =
+let go ?(timeout_seconds = 0.3) ?(config = default) f =
   try
-    Scheduler.Run.go ~timeout config ~file_watcher:No_watcher ~on_event:(fun _ _ -> ()) f
+    Scheduler.Run.go
+      ~timeout_seconds
+      config
+      ~file_watcher:No_watcher
+      ~on_event:(fun _ _ -> ())
+      f
   with
   | Scheduler.Run.Shutdown.E Requested -> ()
 ;;

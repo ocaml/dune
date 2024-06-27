@@ -164,3 +164,13 @@
 (cram
  (applies_to sandboxing-stale-directory-target)
  (deps %{bin:bash}))
+
+(cram
+ (applies_to hidden-deps-supported)
+ (enabled_if
+  (>= %{ocaml_version} 5.2.0)))
+
+(cram
+ (applies_to hidden-deps-unsupported)
+ (enabled_if
+  (< %{ocaml_version} 5.2.0)))

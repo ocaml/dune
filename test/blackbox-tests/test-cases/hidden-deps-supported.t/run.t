@@ -2,26 +2,31 @@ This test is guarded by ocaml version >= 5.2, so it should include foo with -H w
 implicit_transitive_deps is set to false.
 
   $ getincludes () {
-  > dune build --verbose ./run.exe 2>&1 | grep run.ml | grep -E -o "\-$1\s(.foo)\S*" | sed s/\-$1//g | tr -d '[:space:]'
+  >   dune build --verbose ./run.exe 2>&1 | grep run.ml | grep -E -o "\-$1\s(.foo)\S*"
   > }
 
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps true)
   > EOF
-  $ echo "$(getincludes I)"
-  .foo.objs/byte.foo.objs/byte.foo.objs/native
+
+  $ getincludes I
+  -I .foo.objs/byte
+  -I .foo.objs/byte
+  -I .foo.objs/native
 
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps false)
   > EOF
 
-  $ echo "$(getincludes H)"
-  .foo.objs/byte.foo.objs/byte.foo.objs/native
-
+  $ getincludes H
+  -H .foo.objs/byte
+  -H .foo.objs/byte
+  -H .foo.objs/native
 
 Test transitive deps can not be directly accessed, both for compiler versions supporting -H or not:
+
   $ cat >dune-project <<EOF
   > (lang dune 3.17)
   > (implicit_transitive_deps false)

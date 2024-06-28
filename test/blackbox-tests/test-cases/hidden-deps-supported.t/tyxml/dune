@@ -1,0 +1,4 @@
+(executable
+  (name run)
+  (libraries tyxml))
+  

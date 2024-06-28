@@ -40,29 +40,27 @@ module Version : sig
   val by_name : t -> string -> Value.t Option.t
 end
 
-module Config : sig
-  (** Data of a Coq configuration. *)
-  type t
+(** Data of a Coq configuration. *)
+type t
 
-  (** [make ~coqc] runs coqc --config and returns the configuration data. Exceptionally, one
-      of the following will happen:
+(** [make ~coqc] runs coqc --config and returns the configuration data. Exceptionally, one
+    of the following will happen:
 
-      - Return [Error message] if coqc --config exits with a non-zero code.
-      - Throw a user error if coqc --config is not parsable.
-      - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
-  val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
+    - Return [Error message] if coqc --config exits with a non-zero code.
+    - Throw a user error if coqc --config is not parsable.
+    - Throw an [Action.Prog.Not_found] exception if the coqc binary is not found. *)
+val make : coqc:Action.Prog.t -> (t, User_message.Style.t Pp.t) result Memo.t
 
-  (** [by_name t name] returns the value of the option [name] in the Coq
-      configuration [t]. If the value is not available then [None] is returned.
-      Throws a code error if an invalid [name] is requested.
+(** [by_name t name] returns the value of the option [name] in the Coq
+    configuration [t]. If the value is not available then [None] is returned.
+    Throws a code error if an invalid [name] is requested.
 
-      Currently supported names are:
+    Currently supported names are:
 
-      - coqlib
-      - coqcorelib
-      - coq_native_compiler_default *)
-  val by_name : t -> string -> Value.t Option.t
-end
+    - coqlib
+    - coqcorelib
+    - coq_native_compiler_default *)
+val by_name : t -> string -> Value.t Option.t
 
 val expand
   :  Dune_lang.Template.Pform.t

@@ -195,61 +195,58 @@ module Version = struct
   ;;
 end
 
-module Config = struct
-  type t =
-    { coqlib : Path.t
-    ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
-    ; coq_native_compiler_default :
-        string option (* this is not available in Coq < 8.13 *)
-    }
+type t =
+  { coqlib : Path.t
+  ; coqcorelib : Path.t option (* this is not available in Coq < 8.14 *)
+  ; coq_native_compiler_default : string option (* this is not available in Coq < 8.13 *)
+  }
 
-  let impl_config bin =
-    let* _ = Build_system.build_file bin in
-    Memo.of_reproducible_fiber
-    @@ Process.run_capture_lines
-         ~display:Quiet
-         ~stderr_to:
-           (Process.Io.make_stderr
-              ~output_on_success:Swallow
-              ~output_limit:Execution_parameters.Action_output_limit.default)
-         Return
-         bin
-         [ "--config" ]
-  ;;
+let impl_config bin =
+  let* _ = Build_system.build_file bin in
+  Memo.of_reproducible_fiber
+  @@ Process.run_capture_lines
+       ~display:Quiet
+       ~stderr_to:
+         (Process.Io.make_stderr
+            ~output_on_success:Swallow
+            ~output_limit:Execution_parameters.Action_output_limit.default)
+       Return
+       bin
+       [ "--config" ]
+;;
 
-  let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
+let config_memo = Memo.create "coq-config" ~input:(module Path) impl_config
 
-  let make ~(coqc : Action.Prog.t) =
-    let open Memo.O in
-    let+ config_output =
-      get_output_from_config_or_version ~coqc ~what:"--config" config_memo
-    in
-    let open Result.O in
-    let* config_output = config_output in
-    match Vars.of_lines config_output with
-    | Ok vars ->
-      let coqlib = Vars.get_path vars "COQLIB" in
-      (* this is not available in Coq < 8.14 *)
-      let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
-      (* this is not available in Coq < 8.13 *)
-      let coq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
-      Ok { coqlib; coqcorelib; coq_native_compiler_default }
-    | Error msg ->
-      User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
-  ;;
+let make ~(coqc : Action.Prog.t) =
+  let open Memo.O in
+  let+ config_output =
+    get_output_from_config_or_version ~coqc ~what:"--config" config_memo
+  in
+  let open Result.O in
+  let* config_output = config_output in
+  match Vars.of_lines config_output with
+  | Ok vars ->
+    let coqlib = Vars.get_path vars "COQLIB" in
+    (* this is not available in Coq < 8.14 *)
+    let coqcorelib = Vars.get_path_opt vars "COQCORELIB" in
+    (* this is not available in Coq < 8.13 *)
+    let coq_native_compiler_default = Vars.get_opt vars "COQ_NATIVE_COMPILER_DEFAULT" in
+    Ok { coqlib; coqcorelib; coq_native_compiler_default }
+  | Error msg ->
+    User_error.raise Pp.[ textf "Cannot parse output of coqc --config:"; msg ]
+;;
 
-  let by_name { coqlib; coqcorelib; coq_native_compiler_default } name =
-    match name with
-    | "coqlib" -> Some (Value.path coqlib)
-    | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
-    | "coq_native_compiler_default" ->
-      Option.map ~f:Value.string coq_native_compiler_default
-    | _ ->
-      Code_error.raise
-        "Unknown name was requested from coq_config"
-        [ "name", Dyn.string name ]
-  ;;
-end
+let by_name { coqlib; coqcorelib; coq_native_compiler_default } name =
+  match name with
+  | "coqlib" -> Some (Value.path coqlib)
+  | "coqcorelib" -> Option.map ~f:Value.path coqcorelib
+  | "coq_native_compiler_default" ->
+    Option.map ~f:Value.string coq_native_compiler_default
+  | _ ->
+    Code_error.raise
+      "Unknown name was requested from coq_config"
+      [ "name", Dyn.string name ]
+;;
 
 let expand source macro artifacts_host =
   let s = Pform.Macro_invocation.Args.whole macro in
@@ -282,8 +279,7 @@ let expand source macro artifacts_host =
   | "version.suffix"
   | "version"
   | "ocaml-version" -> expand Version.make Version.by_name s
-  | "coqlib" | "coqcorelib" | "coq_native_compiler_default" ->
-    expand Config.make Config.by_name s
+  | "coqlib" | "coqcorelib" | "coq_native_compiler_default" -> expand make by_name s
   | _ ->
     Code_error.raise "Unknown name was requested from coq_config" [ "name", Dyn.string s ]
 ;;

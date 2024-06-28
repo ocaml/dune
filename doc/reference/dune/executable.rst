@@ -14,12 +14,15 @@ executable stanzas is as follows:
 There can be additional modules in the current directory; you only need to
 specify the entry point. Given an ``executable`` stanza with ``(name <name>)``,
 Dune will know how to build ``<name>.exe``. If requested, it will also know how
-to build ``<name>.bc`` and ``<name>.bc.js`` (Dune 2.0 and up also need specific
-configuration (see the ``modes`` optional field below)).
+to build ``<name>.bc``, ``<name>.bc.js`` and ``<name>.bc.wasm.js`` (Dune 2.0
+and up also need specific configuration (see the ``modes`` optional field
+below)).
 
 ``<name>.exe`` is a native code executable, ``<name>.bc`` is a bytecode
-executable which requires ``ocamlrun`` to run, and ``<name>.bc.js`` is a
-JavaScript generated using ``js_of_ocaml``.
+executable which requires ``ocamlrun`` to run, ``<name>.bc.js`` is a
+JavaScript generated using ``js_of_ocaml``, and ``<name>.bc.wasm.js`` is a
+Wasm loader generated using ``wasm_of_ocaml`` (the Wasm modules are included in
+directory ``<name>.bc.wasm.assets``).
 
 Please note: in case native compilation is not available, ``<name>.exe`` will be
 a custom bytecode executable, in the sense of ``ocamlc -custom``. This means
@@ -215,7 +218,8 @@ The extensions for the various linking modes are chosen as follows:
 .. (byte shared_object)        .bc%{ext_dll}
 .. (native/best shared_object) %{ext_dll}
 .. c                           .bc.c
-.. js                          .bc.js
+.. js                          .bc.js (JavaScript)
+.. js                          .bc.wasm.js (Wasm)
 .. (best plugin)               %{ext_plugin}
 .. (byte plugin)               .cma
 .. (native plugin)             .cmxs
@@ -232,6 +236,10 @@ linking mode that's the same as ``byte_complete``, but it uses the extension
 ``.exe``. ``.bc`` files require additional files at runtime that aren't
 currently tracked by Dune, so they don't run ``.bc`` files during the build. Run
 the ``.bc.exe`` or ``.exe`` ones instead, as these are self-contained.
+
+When compiling to Wasm but not to JavaScript, a ``.bc.js`` file can
+also be produced for compatibility. It is just a copy of the
+``bc.wasm.js`` file.
 
 Lastly, note that ``.bc`` executables cannot contain C stubs. If your executable
 contains C stubs you may want to use ``(modes exe)``.
@@ -266,6 +274,10 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 - ``(sourcemap <config>)`` where ``<config>>`` is one of ``no``, ``file`` or ``inline``.
   This is only available inside ``executable`` stanzas.
+
+- ``(submodes <submodes>)`` controls whether to generate
+  JavaScript or Wasm code. Each submode is either ``js`` or ``wasm``.
+  The default is taken from the environment.
 
 ``<flags>`` is specified in the :doc:`/reference/ordered-set-language`.
 

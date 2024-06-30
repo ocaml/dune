@@ -5,6 +5,11 @@ open! Import
     solution for the local packages. *)
 type t
 
+val up_to_date
+  :  Local_package.t Package_name.Map.t
+  -> Lock_dir.t
+  -> [ `Valid | `Invalid of Local_package.Dependency_hash.t option ]
+
 val create
   :  Local_package.t Package_name.Map.t
   -> Lock_dir.t

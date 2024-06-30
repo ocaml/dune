@@ -43,6 +43,7 @@ let local_libraries =
   ; ("src/fiber_util", Some "Fiber_util", false, None)
   ; ("src/dune_cache_storage", Some "Dune_cache_storage", false, None)
   ; ("src/dune_targets", Some "Dune_targets", false, None)
+  ; ("otherlibs/creation-time", Some "Creation_time", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
   ; ("otherlibs/dune-action-plugin/src", Some "Dune_action_plugin", false,
     None)

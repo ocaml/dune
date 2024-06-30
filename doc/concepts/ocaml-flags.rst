@@ -20,3 +20,8 @@ follows:
 .. code:: dune
 
     (flags (:standard <my options>))
+
+For complete usage examples, see
+:ref:`Setting the OCaml Compilation Flags Globally`,
+:ref:`How to Make Warnings Non-Fatal` and
+:ref:`How to Turn Specific Errors into Warnings`.

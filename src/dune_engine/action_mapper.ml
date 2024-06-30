@@ -48,6 +48,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
         , List.map extras ~f:(f_string ~dir)
         , f_target ~dir target )
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
+    | Run_if_exists (file, t) -> Run_if_exists (f_path ~dir file, f t ~dir)
     | Extension ext -> Extension (f_ext ~dir ext)
   ;;
 

@@ -57,6 +57,8 @@ struct
   let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
     Diff { optional; file1; file2; mode }
   ;;
+
+  let run_if_exists path t = Run_if_exists (path, t)
 end
 
 module Prog = struct
@@ -191,6 +193,7 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | Run_if_exists (_, t)
   | With_accepted_exit_codes (_, t) -> f acc t
   | Progn l | Pipe (_, l) | Concurrent l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -240,6 +243,7 @@ let rec is_dynamic = function
   | Redirect_out (_, _, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
+  | Run_if_exists (_, t)
   | With_accepted_exit_codes (_, t) -> is_dynamic t
   | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
   | Run _
@@ -311,6 +315,7 @@ let is_useful_to memoize =
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true
+    | Run_if_exists (_, t) -> loop t
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in
   fun t ->

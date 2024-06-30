@@ -801,3 +801,27 @@ referenced commit has not changed.
 .. seealso::
    `GitHub - Ignore commits in the blame view
    <https://docs.github.com/en/repositories/working-with-files/using-files/viewing-a-file#ignore-commits-in-the-blame-view>`_
+
+Using ppx in dune
+=================
+
+We have a special mechanism to allow us to use ppx in dune's own code
+without depending on the ppx toolchain in opam.
+
+We include a preprocessed version of each `.ml` or `.mli` file in the
+`ppx/` folder at the root of the project. When bootstrapping, for each
+`<path>/x.ml` we check if `ppx/<path>/x.ml` exists and use it instead if
+it does.
+
+You need to run `make ppx` to update the ppx directory.
+
+When adding a ppx to a library or executable that was not using any before
+you will need to add the right directories in `ppx/` in order to get `make ppx`
+to work.
+
+E.g. when adding a ppx to `src/dune_async_io/dune` for the first time, you have
+to run `mkdir -p ppx/src/dune_async_io`.
+
+Note that this mechanism is reserved to files that are needed to bootstrap dune
+itself. Other parts of the repository like benchmarks or some tests already
+depend on ppx and don't need to have their preprocessed sources included.

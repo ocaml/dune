@@ -528,6 +528,10 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     in
     Done
   | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
+  | Run_if_exists (file, t) ->
+    if Path.Untracked.exists file
+    then exec t ~display ~ectx ~eenv
+    else Produce.return Done
   | Extension (module A) ->
     let+ () =
       Produce.of_fiber

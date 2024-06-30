@@ -53,6 +53,7 @@ module type Ast = sig
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
     | Pipe of Outputs.t * t list
+    | Run_if_exists of path * t
     | Extension of ext
 end
 
@@ -87,6 +88,7 @@ module type Helpers = sig
   val remove_tree : target -> t
   val mkdir : target -> t
   val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
+  val run_if_exists : path -> t -> t
 end
 
 module Ext = struct

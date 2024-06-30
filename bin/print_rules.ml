@@ -114,6 +114,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
       ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
+  | Run_if_exists (file, r) -> List [ atom "run-if-exists"; path file; encode r ]
   | Extension ext -> List [ atom "ext"; ext ]
 ;;
 

@@ -1,0 +1,2 @@
+(include_preprocessed_sources
+ (exclude_dirs ../bench ../otherlibs ../test ../vendor))

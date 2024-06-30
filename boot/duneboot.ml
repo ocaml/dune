@@ -28,6 +28,7 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static =
 (** {2 General configuration} *)
 
 let build_dir = "_boot"
+let preprocessed_dir = "ppx"
 
 type task =
   { target : string * string
@@ -873,7 +874,10 @@ module Library = struct
             copy "line" fn dst;
             Fiber.return [ mangled ]
           | Ml | Mli ->
-            copy "" fn dst ~header;
+            let preprocessed = preprocessed_dir ^/ fn in
+            if Sys.file_exists preprocessed
+            then copy "" preprocessed dst ~header
+            else copy "" fn dst ~header;
             Fiber.return [ mangled ]
           | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
           | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))

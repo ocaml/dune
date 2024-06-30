@@ -35,9 +35,6 @@ We also have a subfolder `foo`
 Making Dune build the executables should work without error messages:
 
   $ dune build %{bin:public}
-  Error: File unavailable:
-  $TESTCASE_ROOT/../install/default/bin/public
-  [1]
   $ ls _build/default/public.exe
   _build/default/public.exe
 

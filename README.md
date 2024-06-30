@@ -114,7 +114,7 @@ You can also build it manually with:
 
 ```console
 $ make release
-$ make install
+$ make install -e PREFIX=xxx
 ```
 
 If you do not have `make`, you can do the following:

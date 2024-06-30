@@ -134,7 +134,42 @@ simply copy `dune.exe` anywhere and it will just work. `dune` is fully
 relocatable and discovers its environment at runtime rather than hard-coding it
 at compilation time.
 
-# Support
+# Supported Platforms
+
+Dune has very few prerequisites and works on a wide range of platforms. It is sufficient
+just to have an OCaml compiler present.
+
+Dune aims to provide all features on all platforms. However, some platforms have not been
+tested as thoroughly as others. The following table shows the current state of support
+for various features on each platform.
+
+| Platform         | Support | Watch | TUI | Cache | Sandboxing |
+|------------------|---------|-------|-----|-------|------------|
+| Linux            | Full    | Yes   | Yes | Yes   | Yes        |
+| MacOS            | Full    | Yes   | Yes | Yes   | Yes        |
+| Windows (DKML)   | Full    | Yes   | No* | Yes   | Copy only  |
+| Windows (MinGW)  | Limited | Yes   | Yes | Yes   | Yes        |
+| Windows (Cygwin) | Limited | Yes   | Yes | Yes   | Yes        |
+| Linux (Android)  | Limited | Yes   | Yes | ?     | ?          |
+| FreeBSD          | Limited | Yes   | Yes | ?     | ?          |
+| NetBSD           | Limited | Yes   | Yes | ?     | ?          |
+| OpenBSD          | Limited | ?     | ?   | ?     | ?          |
+| Haiku            | Limited | Yes   | Yes | ?     | ?          |
+
+\* TUI is not supported on Windows but support is planned.
+
+## Watch Mode
+
+Watch mode will require `fsevents` which is available on most platforms. On FreeBSD it is
+packaged as `fsevents-mon`. It is not packaged on `NetBSD` but can easily be built from
+source.
+
+## TUI
+
+The Terminal User Interface (TUI) is a feature of Dune that allows you to interact with
+Dune in a more GUI-like fashion.
+
+# Community Support
 
 
 [![Issues][issues-badge]][issues]

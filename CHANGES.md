@@ -840,6 +840,11 @@ changelog properly.
 - Bump minimum version of the dune language for the melange syntax extension
   from 3.7 to 3.8 (#7665, @jchavarri)
 
+- Dune can now generate and find opam files inside the
+  `%{project_root}/opam` directory. To generate these files use the
+  `(opam_file_location inside_opam_directory)` setting in
+  `dune-project` (@rgrinberg, #7483, fixes #5571, fixes #6205)
+
 3.7.1 (2023-04-04)
 ------------------
 

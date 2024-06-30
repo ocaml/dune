@@ -19,7 +19,9 @@ stubs, dune should not crash. See #10675.
 
   $ touch startup.c main.ml
 
-  $ dune build 2>&1 | head -n 3
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Map.of_list_map_exn", { key = "main" })
+  $ dune build
+  File "dune", line 3, characters 7-11:
+  3 |  (name main))
+             ^^^^
+  Error: Executables with same name "main" use different foreign sources
+  [1]

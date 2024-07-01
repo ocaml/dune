@@ -11,16 +11,16 @@ jobs:
       matrix:
         include:
           - os: macos-13
-            name: mac-intel
+            name: x86_64-apple-darwin
             installable: .#
           - os: macos-14
-            name: mac-arm
+            name: aarch64-apple-darwin
             installable: .#
           - os: ubuntu-22.04
-            name: linux-intel
+            name: x86_64-unknown-linux-gnu
             installable: .#
           - os: ubuntu-22.04
-            name: linux-intel-static
+            name: x86_64-unknow-linux-musl
             installable: .#dune-static
     runs-on: ${{ matrix.os }}
     steps:

@@ -18,7 +18,7 @@ let to_local (t : t) : Local_package.t =
   }
 ;;
 
-let lock_dir = Path.Source.relative (Path.Source.of_string "dune.lock") "dev_tools.lock"
+let lock_dir = Path.Source.of_string "dev_tools.locks"
 
 module Ocamlformat = struct
   (* CR-moyodiallo: just to experiement the solving, hard-coded version is going to be removed *)

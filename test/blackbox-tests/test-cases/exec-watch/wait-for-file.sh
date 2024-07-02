@@ -4,9 +4,18 @@
 #
 
 set -u
+
 FILE=$1
-until test -e $FILE
-do
-    sleep 0.1
+MAX_WAIT=20 # Maximum number of attempts
+SLEEP_DURATION=0.1 # How long to sleep between attempts
+
+for i in $(seq 1 $MAX_WAIT); do
+    if test -e "$FILE"; then
+        rm "$FILE"
+        exit 0
+    fi
+    sleep $SLEEP_DURATION
 done
-rm $FILE
+
+echo "Timeout waiting for file $FILE"
+exit 1

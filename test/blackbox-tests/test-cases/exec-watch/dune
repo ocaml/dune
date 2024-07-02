@@ -9,7 +9,7 @@
   ;; unreliable to depend on in a test so these tests are disabled on macos.
   ;; (<> "macosx" %{ocaml-config:system})
   ;; disabled until it works in CI
-  false))
+  true))
 
 (cram
  (deps wait-for-file.sh))

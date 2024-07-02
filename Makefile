@@ -19,7 +19,7 @@ menhir \
 ocamlfind \
 ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
 "odoc>=2.4.0" \
-"ppx_expect>=v0.16.0" \
+"ppx_expect=v0.16.0" \
 ppx_inline_test \
 ppxlib \
 ctypes \
@@ -32,7 +32,7 @@ core_bench \
 "dkml-workflows>=1.2.0" \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.2
+TEST_OCAMLVERSION := 5.2.0
 
 -include Makefile.dev
 

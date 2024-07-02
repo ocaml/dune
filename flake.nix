@@ -222,6 +222,15 @@
                 that can build Dune and the Coq testsuite.
               '';
             };
+          microbench = makeDuneDevShell {
+            extraBuildInputs = with pkgs.ocamlPackages; [
+              core_bench
+            ];
+            meta.description = ''
+              Provides a minimal shell environment that can build the
+              microbenchmarks.
+            '';
+          };
 
           scope = makeDuneDevShell {
             duneFromScope = true;

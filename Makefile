@@ -11,7 +11,6 @@ BIN := ./_boot/dune.exe
 TEST_DEPS := \
 lwt \
 cinaps \
-core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
@@ -29,6 +28,7 @@ ctypes \
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
+core_bench \
 "dkml-workflows>=1.2.0" \
 patdiff
 

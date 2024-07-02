@@ -9,6 +9,7 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
+  module Display = Dune_engine.Display
 end
 
 module Variable = struct
@@ -405,7 +406,8 @@ module Expander0 = struct
   include Expander0
 
   type t =
-    { paths : Paths.t
+    { name : Dune_pkg.Package_name.t
+    ; paths : Paths.t
     ; artifacts : Path.t Filename.Map.t
     ; depends : (Variable.value Package_variable_name.Map.t * Paths.t) Package.Name.Map.t
     ; context : Context_name.t
@@ -514,6 +516,63 @@ module Substitute = struct
 end
 
 module Run_with_path = struct
+  module Output : sig
+    type error
+
+    val io : error -> Process.Io.output Process.Io.t
+
+    val with_error
+      :  accepted_exit_codes:int Predicate.t
+      -> pkg:Dune_pkg.Package_name.t * Loc.t
+      -> display:Display.t
+      -> (error -> 'a)
+      -> 'a
+
+    val prerr : rc:int -> error -> unit
+  end = struct
+    type error =
+      { pkg : Dune_pkg.Package_name.t * Loc.t
+      ; filename : Dpath.t
+      ; io : Process.Io.output Process.Io.t
+      ; accepted_exit_codes : int Predicate.t
+      ; display : Display.t
+      }
+
+    let io t = t.io
+
+    let with_error ~accepted_exit_codes ~pkg ~display f =
+      let filename = Temp.create File ~prefix:"dune-pkg" ~suffix:"stderr" in
+      let io = Process.Io.(file filename Out) in
+      let t = { filename; io; accepted_exit_codes; display; pkg } in
+      let result = f t in
+      Temp.destroy File filename;
+      result
+    ;;
+
+    let to_paragraphs t error =
+      let pp_pkg =
+        let pkg_name = Dune_pkg.Package_name.to_string (fst t.pkg) in
+        Pp.textf "Logs for package %s" pkg_name
+      in
+      let loc = snd t.pkg in
+      [ pp_pkg; Pp.verbatim error ], loc
+    ;;
+
+    let prerr ~rc error =
+      match Predicate.test error.accepted_exit_codes rc, error.display with
+      | false, _ ->
+        let paragraphs, loc = Stdune.Io.read_file error.filename |> to_paragraphs error in
+        User_warning.emit ~loc ~is_error:true paragraphs
+      | true, Display.Verbose ->
+        let content = Stdune.Io.read_file error.filename in
+        if not (String.is_empty content)
+        then (
+          let paragraphs, loc = to_paragraphs error content in
+          User_warning.emit ~loc paragraphs)
+      | true, _ -> ()
+    ;;
+  end
+
   module Spec = struct
     type 'path chunk =
       | String of string
@@ -525,6 +584,7 @@ module Run_with_path = struct
       { prog : Action.Prog.t
       ; args : 'path arg Array.Immutable.t
       ; ocamlfind_destdir : 'path
+      ; pkg : Dune_pkg.Package_name.t * Loc.t
       }
 
     let name = "run-with-path"
@@ -545,7 +605,7 @@ module Run_with_path = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { prog; args; ocamlfind_destdir } path _ : Dune_lang.t =
+    let encode { prog; args; ocamlfind_destdir; pkg = _ } path _ : Dune_lang.t =
       let prog =
         Dune_lang.atom_or_quoted_string
         @@
@@ -567,11 +627,12 @@ module Run_with_path = struct
     ;;
 
     let action
-      { prog; args; ocamlfind_destdir }
+      { prog; args; ocamlfind_destdir; pkg }
       ~(ectx : Action.Ext.context)
       ~(eenv : Action.Ext.env)
       =
       let open Fiber.O in
+      let display = !Clflags.display in
       match prog with
       | Error e -> Action.Prog.Not_found.raise e
       | Ok prog ->
@@ -589,31 +650,37 @@ module Run_with_path = struct
             ~var:"OCAMLFIND_DESTDIR"
             ~value:(Path.to_absolute_filename ocamlfind_destdir)
         in
-        Process.run
-          (Accept eenv.exit_codes)
-          prog
-          args
-          ~display:!Clflags.display
-          ~metadata
-          ~stdout_to:eenv.stdout_to
-          ~stderr_to:eenv.stderr_to
-          ~stdin_from:eenv.stdin_from
-          ~dir:eenv.working_dir
-          ~env
-        >>= (function
-         | Error _ -> Fiber.return ()
-         | Ok () -> Fiber.return ())
+        Output.with_error ~accepted_exit_codes:eenv.exit_codes ~pkg ~display (fun error ->
+          let stdout_to =
+            match !Clflags.debug_package_logs, display with
+            | true, _ | false, Display.Verbose -> eenv.stdout_to
+            | _ -> Process.Io.(null Out)
+          in
+          Process.run
+            Return
+            prog
+            args
+            ~display
+            ~metadata
+            ~stdout_to
+            ~stderr_to:(Output.io error)
+            ~stdin_from:eenv.stdin_from
+            ~dir:eenv.working_dir
+            ~env
+          >>= fun (_, rc) ->
+          Output.prerr ~rc error;
+          Fiber.return ())
     ;;
   end
 
-  let action prog args ~ocamlfind_destdir =
+  let action ~pkg prog args ~ocamlfind_destdir =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
 
       module Spec = Spec
 
-      let v = { Spec.prog; args; ocamlfind_destdir }
+      let v = { Spec.prog; args; ocamlfind_destdir; pkg }
     end
     in
     Action.Extension (module M)
@@ -742,7 +809,7 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { env = _; paths; artifacts = _; context; depends; version = _ }
+      { name = _; env = _; paths; artifacts = _; context; depends; version = _ }
       ~source
       (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
@@ -877,7 +944,7 @@ module Action_expander = struct
          let ocamlfind_destdir =
            (Lazy.force expander.paths.install_roots).lib_root |> Path.build
          in
-         Run_with_path.action exe args ~ocamlfind_destdir)
+         Run_with_path.action ~pkg:(expander.name, prog_loc) exe args ~ocamlfind_destdir)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
@@ -1007,6 +1074,7 @@ module Action_expander = struct
         (Pkg_info.variables pkg.info, pkg.paths)
     in
     { Expander.paths = pkg.paths
+    ; name = pkg.info.name
     ; artifacts = binaries
     ; context
     ; depends

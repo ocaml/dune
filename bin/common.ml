@@ -567,6 +567,7 @@ module Builder = struct
     ; debug_artifact_substitution : bool
     ; debug_load_dir : bool
     ; debug_digests : bool
+    ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
@@ -666,6 +667,16 @@ module Builder = struct
             [ "debug-digests" ]
             ~docs
             ~doc:"Explain why Dune decides to re-digest some files")
+    and+ debug_package_logs =
+      let doc = "Always print the standard logs when building packages" in
+      Arg.(
+        value
+        & flag
+        & info
+            [ "debug-package-logs" ]
+            ~docs
+            ~doc
+            ~env:(Cmd.Env.info ~doc "DUNE_DEBUG_PACKAGE_LOGS"))
     and+ no_buffer =
       let doc =
         "Do not buffer the output of commands executed by dune. By default dune buffers \
@@ -970,6 +981,7 @@ module Builder = struct
     ; debug_artifact_substitution
     ; debug_load_dir
     ; debug_digests
+    ; debug_package_logs
     ; wait_for_filesystem_clock
     ; only_packages
     ; capture_outputs = not no_buffer
@@ -1236,6 +1248,7 @@ let init (builder : Builder.t) =
   Dune_engine.Clflags.debug_load_dir := c.builder.debug_load_dir;
   Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
   Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
+  Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
   Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
   Dune_engine.Clflags.diff_command := c.builder.diff_command;

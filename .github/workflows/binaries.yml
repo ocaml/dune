@@ -20,7 +20,7 @@ jobs:
             name: x86_64-unknown-linux-gnu
             installable: .#
           - os: ubuntu-22.04
-            name: x86_64-unknow-linux-musl
+            name: x86_64-unknown-linux-musl
             installable: .#dune-static
     runs-on: ${{ matrix.os }}
     steps:

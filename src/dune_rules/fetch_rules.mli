@@ -6,7 +6,8 @@ open Import
 val context : Build_context.t
 
 val fetch
-  :  target:Path.Build.t
+  :  component:Private_context.Component.t
+  -> target:Path.Build.t
   -> [ `File | `Directory ]
   -> Dune_pkg.Source.t
   -> Action.Full.t With_targets.t

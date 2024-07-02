@@ -63,19 +63,7 @@ module Pkg_info = struct
 end
 
 module Rule_root = struct
-  type dev_tool = Ocamlformat
-
-  type t =
-    | Lock_dir
-    | Dev_tool of dev_tool
-
-  let to_string t =
-    match t with
-    | Lock_dir -> ".pkg"
-    | Dev_tool Ocamlformat -> ".ocamlformat"
-  ;;
-
-  let equal t1 t2 = t1 = t2
+  include Private_context.Component
 end
 
 module Paths = struct
@@ -283,6 +271,7 @@ module Pkg = struct
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
+    ; rule_root : Rule_root.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1151,6 +1140,7 @@ end = struct
         ; paths
         ; info
         ; files_dir
+        ; rule_root = db.component
         ; exported_env = []
         }
       in
@@ -1530,7 +1520,13 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         let fetch =
+           Fetch_rules.fetch
+             ~component:pkg.rule_root
+             ~target:pkg.paths.source_dir
+             `Directory
+             source
+         in
          Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
@@ -1555,7 +1551,13 @@ let source_rules (pkg : Pkg.t) =
         | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | `Fetch ->
-          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File fetch in
+          let rule =
+            Fetch_rules.fetch
+              ~component:pkg.rule_root
+              ~target:pkg.paths.source_dir
+              `File
+              fetch
+          in
           loc, rule
       in
       Path.build extra_source, rule)

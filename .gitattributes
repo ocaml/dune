@@ -8,3 +8,4 @@ dune              text eol=lf
 dune.inc          text eol=lf
 .gitignore        text eol=lf
 .gitattributes    text eol=lf
+.ocamlformat      text eol=lf

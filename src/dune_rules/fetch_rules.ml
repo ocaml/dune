@@ -15,7 +15,7 @@ let context_name = Context_name.of_string "_fetch"
 let context = Build_context.create ~name:context_name
 let digest_of_url url = OpamUrl.to_string url |> Digest.string
 
-let make_target ~kind url_or_checksum =
+let make_target ~component ~kind url_or_checksum =
   let basename =
     match kind with
     | `File -> "file"
@@ -26,7 +26,12 @@ let make_target ~kind url_or_checksum =
     | `Url url -> "url", digest_of_url url |> Digest.to_string
     | `Checksum checksum -> "checksum", Checksum.to_string checksum
   in
-  Path.Build.L.relative context.build_dir [ dir1; dir2; basename ]
+  if component = Private_context.Component.Lock_dir
+  then Path.Build.L.relative context.build_dir [ dir1; dir2; basename ]
+  else
+    Path.Build.L.relative
+      context.build_dir
+      [ Private_context.Component.to_string component; dir1; dir2; basename ]
 ;;
 
 type kind =
@@ -175,14 +180,29 @@ let find_checksum, find_url =
               let checksums', urls' = extract_checksums_and_urls lockdir in
               Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'))
   in
-  let find_url digest =
-    let+ _, urls = Memo.Lazy.force all in
+  let all_ocamlformat =
+    Memo.lazy_ (fun () ->
+      Lock_dir.get_ocamlformat
+      >>| fun lockdir ->
+      let checksums, urls = extract_checksums_and_urls lockdir in
+      checksums, urls)
+  in
+  let find_url component digest =
+    let+ _, urls =
+      match component with
+      | Private_context.Component.Lock_dir -> Memo.Lazy.force all
+      | Private_context.Component.Dev_tool Ocamlformat -> Memo.Lazy.force all_ocamlformat
+    in
     match Digest.Map.find urls digest with
     | Some x -> x
     | None -> User_error.raise [ Pp.textf "unknown digest %s" (Digest.to_string digest) ]
   in
-  let find_checksum checksum =
-    let+ checksums, _ = Memo.Lazy.force all in
+  let find_checksum component checksum =
+    let+ checksums, _ =
+      match component with
+      | Private_context.Component.Lock_dir -> Memo.Lazy.force all
+      | Private_context.Component.Dev_tool Ocamlformat -> Memo.Lazy.force all_ocamlformat
+    in
     match Checksum.Map.find checksums checksum with
     | Some x -> x
     | None ->
@@ -191,14 +211,14 @@ let find_checksum, find_url =
   find_checksum, find_url
 ;;
 
-let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
+let gen_rules_for_checksum_or_url ~component (loc_url, (url : OpamUrl.t)) checksum =
   let checksum_or_url =
     match checksum with
     | Some (_, checksum) -> `Checksum checksum
     | None -> `Url url
   in
   let directory_targets =
-    let target_dir = make_target ~kind:`Directory checksum_or_url in
+    let target_dir = make_target ~component ~kind:`Directory checksum_or_url in
     Path.Build.Map.singleton target_dir Loc.none
   in
   let rules =
@@ -213,7 +233,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
       fun { Action_builder.With_targets.build; targets } ->
         Rules.Produce.rule (Rule.make ~info ~targets build)
     in
-    let make_target = make_target checksum_or_url in
+    let make_target = make_target ~component checksum_or_url in
     let action ~target ~kind =
       action ~url:(loc_url, url) ~checksum ~target ~kind
       |> Action.Full.make
@@ -239,6 +259,8 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
 ;;
 
 let gen_rules ~dir ~components =
+  let ocamlforamt_component = Private_context.Component.Dev_tool Ocamlformat in
+  let lock_dir_component = Private_context.Component.Lock_dir in
   match components with
   | [] ->
     Memo.return Rules.empty
@@ -246,25 +268,39 @@ let gen_rules ~dir ~components =
          ~build_dir_only_sub_dirs:
            (Gen_rules.Build_only_sub_dirs.singleton
               ~dir
-              (Subdir_set.of_list [ "checksum"; "url" ]))
+              (Subdir_set.of_list [ "checksum"; "url"; ".ocamlformat" ]))
     |> Memo.return
-  | [ ("url" | "checksum") ] ->
+  | [ ("url" | "checksum" | ".ocamlformat") ] ->
     Memo.return Rules.empty
     |> Gen_rules.make
          ~build_dir_only_sub_dirs:
            (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
     |> Memo.return
+  | [ ".ocamlformat"; "checksum"; checksum ] ->
+    let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
+    let+ url, checksum = find_checksum ocamlforamt_component checksum in
+    gen_rules_for_checksum_or_url ~component:ocamlforamt_component url (Some checksum)
+  | [ ".ocamlformat"; "url"; digest ] ->
+    let+ url =
+      match Digest.from_hex digest with
+      | Some s -> find_url ocamlforamt_component s
+      | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]
+    in
+    gen_rules_for_checksum_or_url ~component:ocamlforamt_component url None
   | [ "checksum"; checksum ] ->
     let checksum = Dune_pkg.Checksum.parse_string_exn (Loc.none, checksum) in
-    let+ url, checksum = find_checksum checksum in
-    gen_rules_for_checksum_or_url url (Some checksum)
+    let+ url, checksum = find_checksum lock_dir_component checksum in
+    gen_rules_for_checksum_or_url
+      ~component:Private_context.Component.Lock_dir
+      url
+      (Some checksum)
   | [ "url"; digest ] ->
     let+ url =
       match Digest.from_hex digest with
-      | Some s -> find_url s
+      | Some s -> find_url lock_dir_component s
       | None -> User_error.raise [ Pp.textf "invalid digest %s" digest ]
     in
-    gen_rules_for_checksum_or_url url None
+    gen_rules_for_checksum_or_url ~component:lock_dir_component url None
   | _ -> Memo.return Gen_rules.no_rules
 ;;
 
@@ -316,7 +352,7 @@ module Copy = struct
   ;;
 end
 
-let fetch ~target kind (source : Source.t) =
+let fetch ~component ~target kind (source : Source.t) =
   let source_kind = Source.kind source in
   let src =
     match source_kind with
@@ -327,7 +363,7 @@ let fetch ~target kind (source : Source.t) =
         | Some (_, checksum) -> `Checksum checksum
         | None -> `Url (snd source.url)
       in
-      Path.build (make_target ~kind url_or_checksum)
+      Path.build (make_target ~component ~kind url_or_checksum)
   in
   let open Action_builder.With_targets.O in
   (* [Action_builder.copy] already adds this dependency for us,

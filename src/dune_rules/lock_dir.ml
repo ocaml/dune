@@ -140,6 +140,8 @@ let get (ctx : Context_name.t) : t Memo.t =
   lock_dir
 ;;
 
+let get_ocamlformat : t Memo.t = Load.load @@ Dev_tool.Ocamlformat.lock_dir
+
 let lock_dir_active ctx =
   if !Clflags.ignore_lock_dir
   then Memo.return false

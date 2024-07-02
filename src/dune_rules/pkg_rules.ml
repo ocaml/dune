@@ -9,7 +9,12 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
+  module Solver_env = Solver_env
+  module Local_package = Local_package
+  module Dev_tool = Dev_tool
 end
+
+module Package_name = Dune_lang.Package_name
 
 module Variable = struct
   type value = OpamVariable.variable_contents =
@@ -57,6 +62,10 @@ module Pkg_info = struct
   ;;
 end
 
+module Rule_root = struct
+  include Private_context.Component
+end
+
 module Paths = struct
   type t =
     { source_dir : Path.Build.t
@@ -86,11 +95,15 @@ module Paths = struct
 
   let extra_source t extra_source = Path.Build.append_local t.extra_sources extra_source
 
-  let make name (ctx : Context_name.t) =
+  let make component name (ctx : Context_name.t) =
     let build_dir =
       Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
     in
-    let root = Path.Build.L.relative build_dir [ ".pkg"; Package.Name.to_string name ] in
+    let root =
+      Path.Build.L.relative
+        build_dir
+        [ Rule_root.to_string component; Package.Name.to_string name ]
+    in
     of_root name ~root
   ;;
 
@@ -258,6 +271,7 @@ module Pkg = struct
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
+    ; rule_root : Rule_root.t
     ; mutable exported_env : string Env_update.t list
     }
 
@@ -1065,18 +1079,23 @@ module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
     ; system_provided : Package.Name.Set.t
+    ; component : Rule_root.t
     }
 
-  let equal t { all; system_provided } =
+  let equal t { all; system_provided; component } =
     Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
     && Package.Name.Set.equal t.system_provided system_provided
+    && Rule_root.equal t.component component
   ;;
 
-  let get =
+  let get context component =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    fun context ->
-      let+ all = Lock_dir.get context in
-      { all = all.packages; system_provided = dune }
+    let+ all =
+      match component with
+      | Rule_root.Lock_dir -> Lock_dir.get context
+      | Dev_tool Ocamlformat -> Lock_dir.get_ocamlformat
+    in
+    { all = all.packages; system_provided = dune; component }
   ;;
 end
 
@@ -1102,13 +1121,17 @@ end = struct
           | `System_provided -> None)
         >>| List.filter_opt
       and+ files_dir =
-        let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+        let+ lock_dir =
+          if Rule_root.equal db.component @@ Rule_root.Dev_tool Ocamlformat
+          then Memo.return Dune_pkg.Dev_tool.Ocamlformat.lock_dir
+          else Lock_dir.get_path ctx >>| Option.value_exn
+        in
         Path.Build.append_source
           (Context_name.build_dir ctx)
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
-      let paths = Paths.make name ctx in
+      let paths = Paths.make db.component name ctx in
       let t =
         { Pkg.id
         ; build_command
@@ -1117,6 +1140,7 @@ end = struct
         ; paths
         ; info
         ; files_dir
+        ; rule_root = db.component
         ; exported_env = []
         }
       in
@@ -1496,7 +1520,13 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         let fetch =
+           Fetch_rules.fetch
+             ~component:pkg.rule_root
+             ~target:pkg.paths.source_dir
+             `Directory
+             source
+         in
          Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
@@ -1521,7 +1551,13 @@ let source_rules (pkg : Pkg.t) =
         | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | `Fetch ->
-          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File fetch in
+          let rule =
+            Fetch_rules.fetch
+              ~component:pkg.rule_root
+              ~target:pkg.paths.source_dir
+              `File
+              fetch
+          in
           loc, rule
       in
       Path.build extra_source, rule)
@@ -1620,10 +1656,184 @@ let gen_rules context_name (pkg : Pkg.t) =
 
 module Gen_rules = Build_config.Gen_rules
 
-let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
+module Solver = struct
+  let repositories_of_workspace (workspace : Workspace.t) =
+    List.map workspace.repos ~f:(fun repo ->
+      Dune_pkg.Pkg_workspace.Repository.name repo, repo)
+    |> Dune_pkg.Pkg_workspace.Repository.Name.Map.of_list_exn
+  ;;
+
+  let get_repos repos ~repositories =
+    let module Repository = Dune_pkg.Pkg_workspace.Repository in
+    repositories
+    |> Fiber.parallel_map ~f:(fun (loc, name) ->
+      match Repository.Name.Map.find repos name with
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Repository '%s' is not a known repository"
+            @@ Repository.Name.to_string name
+          ]
+      | Some repo ->
+        let loc, opam_url = Repository.opam_url repo in
+        let module Opam_repo = Dune_pkg.Opam_repo in
+        (match Dune_pkg.OpamUrl.local_or_git_only opam_url loc with
+         | `Git -> Opam_repo.of_git_repo loc opam_url
+         | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
+  ;;
+
+  let repositories_of_lock_dir workspace ~lock_dir_path =
+    match Workspace.find_lock_dir workspace lock_dir_path with
+    | Some lock_dir -> lock_dir.repositories
+    | None ->
+      List.map Workspace.default_repositories ~f:(fun repo ->
+        let name = Dune_pkg.Pkg_workspace.Repository.name repo in
+        let loc = Loc.none in
+        loc, name)
+  ;;
+
+  let solver_env
+    ~solver_env_from_current_system
+    ~solver_env_from_context
+    ~unset_solver_vars_from_context
+    =
+    let solver_env =
+      [ solver_env_from_current_system; solver_env_from_context ]
+      |> List.filter_opt
+      |> List.fold_left ~init:Solver_env.with_defaults ~f:Solver_env.extend
+    in
+    match unset_solver_vars_from_context with
+    | None -> solver_env
+    | Some unset_solver_vars -> Solver_env.unset_multi solver_env unset_solver_vars
+  ;;
+
+  let solver_env_from_current_system =
+    let open Fiber.O in
+    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+    |> Dune_pkg.Sys_poll.solver_env_from_current_system
+    >>| Option.some
+  ;;
+
+  let repos workspace lock_dir_path =
+    repositories_of_workspace workspace
+    |> get_repos ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
+  ;;
+
+  module Version_preference = struct
+    include Dune_pkg.Version_preference
+
+    let choose ~from_arg ~from_context =
+      match from_arg, from_context with
+      | Some from_arg, _ -> from_arg
+      | None, Some from_context -> from_context
+      | None, None -> default
+    ;;
+  end
+
+  let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+    match Workspace.find_lock_dir workspace lock_dir_path with
+    | None -> []
+    | Some lock_dir -> lock_dir.constraints
+  ;;
+
+  let pp_packages packages =
+    Pp.enumerate
+      packages
+      ~f:
+        (fun
+          { Lock_dir.Pkg.info = { Dune_pkg.Lock_dir.Pkg_info.name; version; _ }; _ } ->
+        Pp.verbatim
+          (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
+  ;;
+
+  let solve_pkg ~(local_package : Local_package.t) ~lock_dir_path ~version_preference =
+    let open Fiber.O in
+    let* workspace = Memo.run @@ Workspace.workspace () in
+    let* solver_env_from_current_system = solver_env_from_current_system in
+    let* repos = repos workspace lock_dir_path in
+    let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
+    let solver_env =
+      solver_env
+        ~solver_env_from_context:
+          (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.solver_env))
+        ~solver_env_from_current_system
+        ~unset_solver_vars_from_context:
+          (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.unset_solver_vars))
+    in
+    let overlay =
+      Console.Status_line.add_overlay (Constant (Pp.text "Solving for Build Plan"))
+    in
+    let local_packages =
+      Package_name.Map.add Package_name.Map.empty local_package.name local_package
+      |> Result.value ~default:Package_name.Map.empty
+    in
+    Fiber.finalize
+      ~finally:(fun () ->
+        Console.Status_line.remove_overlay overlay;
+        Fiber.return ())
+      (fun () ->
+        Dune_pkg.Opam_solver.solve_lock_dir
+          solver_env
+          (Version_preference.choose
+             ~from_arg:version_preference
+             ~from_context:
+               (Option.bind lock_dir ~f:(fun lock_dir -> lock_dir.version_preference)))
+          repos
+          ~pins:Package_name.Map.empty
+          ~local_packages:
+            (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
+          ~constraints:(constraints_of_workspace workspace ~lock_dir_path))
+    >>= function
+    | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
+    | Ok { Dune_pkg.Opam_solver.Solver_result.lock_dir; files; pinned_packages } ->
+      let summary_message =
+        User_message.make
+          [ Pp.tag
+              User_message.Style.Success
+              (Pp.textf
+                 "Solution for %s:"
+                 (Path.Source.to_string_maybe_quoted lock_dir_path))
+          ; (match Package_name.Map.values lock_dir.packages with
+             | [] ->
+               Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
+             | packages -> pp_packages packages)
+          ]
+      in
+      let+ lock_dir =
+        Dune_pkg.Lock_dir.compute_missing_checksums ~pinned_packages lock_dir
+      in
+      Ok
+        ( Dune_pkg.Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir
+        , summary_message )
+  ;;
+
+  let solver_dev_tool_pkg
+    ~(local_package : Local_package.t)
+    ~lock_dir_path
+    ~version_preference
+    =
+    Memo.of_reproducible_fiber
+    @@
+    let open Fiber.O in
+    solve_pkg ~local_package ~lock_dir_path ~version_preference
+    >>| function
+    | Error (path, message) ->
+      User_error.raise
+        ([ Pp.text "Unable to solve dependencies for the following lock directory:" ]
+         @ [ Pp.textf "Lock directory %s:" (Path.Source.to_string_maybe_quoted path)
+           ; Pp.hovbox message
+           ])
+    | Ok (write_disk, summary_message) ->
+      Console.print_user_message summary_message;
+      (* All the file IO side effects happen here: *)
+      Dune_pkg.Lock_dir.Write_disk.commit write_disk
+  ;;
+end
+
+let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
+  let* db = DB.get context component in
   let* pkg =
-    let* db = DB.get context in
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
@@ -1635,7 +1845,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
             (Package.Name.to_string name)
         ]
   in
-  let paths = Paths.make name context in
+  let paths = Paths.make db.component name context in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -1658,18 +1868,30 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
 ;;
 
 let setup_rules ~components ~dir ctx =
+  let open Rule_root in
   match components with
+  | [ ".ocamlformat"; pkg_name ] ->
+    setup_package_rules ctx ~component:(Dev_tool Ocamlformat) ~dir ~pkg_name
+  | [ ".ocamlformat" ] ->
+    Gen_rules.make
+      ~build_dir_only_sub_dirs:
+        (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
+      (Memo.return Rules.empty)
+    |> Memo.return
   | [ ".pkg" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~dir ~pkg_name
+  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~component:Lock_dir ~dir ~pkg_name
   | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | ".ocamlformat" :: _ :: _ ->
+    Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | [] ->
     let build_dir_only_sub_dirs =
-      Gen_rules.Build_only_sub_dirs.singleton ~dir @@ Subdir_set.of_list [ ".pkg" ]
+      Gen_rules.Build_only_sub_dirs.singleton ~dir
+      @@ Subdir_set.of_list [ ".pkg"; ".ocamlformat" ]
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
   | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
@@ -1677,7 +1899,7 @@ let setup_rules ~components ~dir ctx =
 
 let ocaml_toolchain context =
   (let* lock_dir = Lock_dir.get context in
-   let* db = DB.get context in
+   let* db = DB.get context Rule_root.Lock_dir in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided
    | Some ocaml -> Resolve.resolve db context ocaml)
@@ -1699,8 +1921,8 @@ let ocaml_toolchain context =
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
-let all_packages context =
-  let* db = DB.get context in
+let all_packages component context =
+  let* db = DB.get context component in
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
@@ -1716,17 +1938,46 @@ let which context =
   let artifacts_and_deps =
     Memo.lazy_ (fun () ->
       let+ { binaries; dep_info = _ } =
-        all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+        all_packages Rule_root.Lock_dir context
+        >>= Action_expander.Artifacts_and_deps.of_closure
+      in
+      binaries)
+  in
+  let ocamlformat_artifact_and_deps =
+    Memo.lazy_ (fun () ->
+      let+ { binaries; dep_info = _ } =
+        let* db = DB.get context (Rule_root.Dev_tool Ocamlformat) in
+        let package =
+          Dune_lang.Package_name.of_string Dune_pkg.Dev_tool.Ocamlformat.pkg_name
+        in
+        Resolve.resolve db context (Loc.none, package)
+        >>| (function
+               | `Inside_lock_dir pkg -> [ pkg ]
+               | _ -> [])
+        >>= Action_expander.Artifacts_and_deps.of_closure
       in
       binaries)
   in
   Staged.stage (fun program ->
-    let+ artifacts = Memo.Lazy.force artifacts_and_deps in
-    Filename.Map.find artifacts program)
+    let* artifacts = Memo.Lazy.force artifacts_and_deps in
+    match Filename.Map.find artifacts program with
+    | Some prog -> Memo.return @@ Some prog
+    | None ->
+      if String.equal Dev_tool.Ocamlformat.program program
+      then
+        let* () =
+          Solver.solver_dev_tool_pkg
+            ~local_package:Dev_tool.Ocamlformat.ocamlformat_dev_local
+            ~lock_dir_path:Dev_tool.Ocamlformat.lock_dir
+            ~version_preference:None
+        in
+        let+ ocamlformat_artifacts = Memo.Lazy.force ocamlformat_artifact_and_deps in
+        Filename.Map.find ocamlformat_artifacts program
+      else Memo.return None)
 ;;
 
 let ocamlpath context =
-  let+ all_packages = all_packages context in
+  let+ all_packages = all_packages Rule_root.Lock_dir context in
   let env = Pkg.build_env_of_deps all_packages in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
@@ -1739,7 +1990,7 @@ let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
-  let+ all_packages = all_packages context in
+  let+ all_packages = all_packages Rule_root.Lock_dir context in
   let env = Pkg.build_env_of_deps all_packages in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
@@ -1750,7 +2001,7 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    let* db = DB.get ctx in
+    let* db = DB.get ctx @@ Rule_root.Lock_dir in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
            | `System_provided -> Action_builder.return ()

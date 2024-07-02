@@ -41,7 +41,7 @@ There should be some kind of error message if getting the revision store lock
 fails (simulated here with a failing flock(2) call):
 
   $ XDG_CACHE_HOME=$(pwd)/dune-workspace-cache strace -e inject=flock:error=EBADFD -o /dev/null dune pkg lock
-  Error: Failed to get a lock for the revision store at
+  Error: Failed to get a lock for the resource "revision store" with lock file
   $TESTCASE_ROOT/dune-workspace-cache/dune/rev-store.lock:
   File descriptor in bad state
   [1]

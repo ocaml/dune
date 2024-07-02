@@ -488,6 +488,7 @@ module External : sig
   include Path_intf.S
   module Table : Hashtbl.S with type key = t
 
+  val root : t
   val relative : t -> string -> t
   val mkdir_p : ?perms:int -> t -> unit
   val initial_cwd : t

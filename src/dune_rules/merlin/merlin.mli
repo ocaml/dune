@@ -41,7 +41,8 @@ module Processed : sig
 end
 
 val make
-  :  requires:Lib.t list Resolve.t
+  :  requires_compile:Lib.t list Resolve.t
+  -> requires_hidden:Lib.t list Resolve.t
   -> stdlib_dir:Path.t
   -> flags:Ocaml_flags.t
   -> preprocess:Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t

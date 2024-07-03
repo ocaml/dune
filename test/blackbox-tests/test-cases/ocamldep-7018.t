@@ -45,7 +45,8 @@ First we try to construct X.t directly
   2 | let () = Y.foo ()
                      ^^
   Error: This expression has type t but an expression was expected of type X.t
-         X.t is abstract because no corresponding cmi file was found in path.
+         Type X.t is abstract because no corresponding cmi file was found
+         in path.
   [1]
 
 Now we use a polymorphic type:

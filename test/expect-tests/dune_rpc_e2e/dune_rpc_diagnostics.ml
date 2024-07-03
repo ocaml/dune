@@ -158,8 +158,7 @@ let%expect_test "related error" =
       ]
     ; [ "message"
       ; [ "Verbatim"
-        ; "The implementation foo.ml\n\
-           does not match the interface .foo.objs/byte/foo.cmi: \n\
+        ; "The implementation foo.ml does not match the interface foo.ml: \n\
            Values do not match: val x : bool is not included in val x : int\n\
            The type bool is not compatible with the type int\n\
            "

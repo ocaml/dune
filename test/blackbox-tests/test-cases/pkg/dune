@@ -13,7 +13,7 @@
 
 (cram
  (deps %{bin:patch})
- (applies_to patch opam-package-with-patch))
+ (applies_to patch opam-package-with-patch extra-sources))
 
 (cram
  (deps %{bin:git})
@@ -39,12 +39,17 @@
 
 (cram
  (deps %{bin:webserver_oneshot})
- (applies_to compute-checksums-when-missing e2e source-caching tarball))
+ (applies_to
+  compute-checksums-when-missing
+  e2e
+  source-caching
+  tarball
+  extra-sources))
 
 (cram
  (deps %{bin:md5sum})
- (applies_to source-caching))
+ (applies_to source-caching extra-sources))
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball))
+ (applies_to source-caching tarball extra-sources))

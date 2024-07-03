@@ -2,6 +2,11 @@
  (alias pkg)
  (applies_to :whole_subtree))
 
+(env
+ (_
+  (env-vars
+   (DUNE_DEBUG_PACKAGE_LOGS 1))))
+
 (cram
  (deps helpers.sh)
  (applies_to :whole_subtree))

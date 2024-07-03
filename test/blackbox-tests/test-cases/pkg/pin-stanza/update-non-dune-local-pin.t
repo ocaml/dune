@@ -41,7 +41,10 @@ Attempt to build the package the first time:
   echo aaa
   aaa
   false
-  -> required by _build/_private/default/.pkg/foo/target/cookie
+  File "dune.lock/foo.pkg", line 4, characters 6-13:
+            ^^^^^^^
+  Error: Logs for package foo
+  
 
 Update the message that gets printed while building foo:
   $ cat >foo/Makefile <<EOF
@@ -55,4 +58,7 @@ The change to the package is picked up:
   echo bbb
   bbb
   false
-  -> required by _build/_private/default/.pkg/foo/target/cookie
+  File "dune.lock/foo.pkg", line 4, characters 6-13:
+            ^^^^^^^
+  Error: Logs for package foo
+  

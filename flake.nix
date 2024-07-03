@@ -30,7 +30,7 @@
     let
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
-          ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+          ocamlPackages = super.ocaml-ng.ocamlPackages_5_2.overrideScope (oself: osuper: {
             mdx = osuper.mdx.override {
               logs = oself.logs;
             };
@@ -43,7 +43,7 @@
         ocamllsp.overlays.default
       ];
       dune-static-overlay = self: super: {
-        ocamlPackages = super.ocaml-ng.ocamlPackages_4_14.overrideScope (oself: osuper: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_5_2.overrideScope (oself: osuper: {
           dune_3 = osuper.dune_3.overrideAttrs (a: {
             src = ./.;
             preBuild = "ocaml boot/bootstrap.ml --static";

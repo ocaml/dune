@@ -4,7 +4,9 @@ Run inline tests using node js
   > (lang dune 2.6)
   > EOF
 
-  $ dune runtest
+(With the dev profile on OCaml 5, a warning gets printed)
+
+  $ dune runtest 2>&1 | grep -v "Warning: your program contains effect handlers"
   inline tests (Byte)
   inline tests (Byte)
   inline tests (Native)

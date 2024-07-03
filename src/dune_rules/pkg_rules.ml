@@ -67,12 +67,12 @@ module Rule_root = struct
   type dev_tool = Ocamlformat
 
   type t =
-    | Lock_dir
+    | Project_deps
     | Dev_tool of dev_tool
 
   let to_string t =
     match t with
-    | Lock_dir -> ".pkg"
+    | Project_deps -> ".pkg"
     | Dev_tool Ocamlformat -> ".ocamlformat"
   ;;
 
@@ -1191,7 +1191,7 @@ module DB = struct
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     let+ all =
       match component with
-      | Rule_root.Lock_dir -> Lock_dir.get context
+      | Rule_root.Project_deps -> Lock_dir.get context
       | Dev_tool Ocamlformat -> Lock_dir.get_ocamlformat
     in
     { all = all.packages; system_provided = dune; component }
@@ -1864,6 +1864,7 @@ let gen_rules context_name (pkg : Pkg.t) =
 
 module Gen_rules = Build_config.Gen_rules
 
+(* CR-moyodiallo: The content of this module is duplicated from bin/pkg/lock.ml file *)
 module Solver = struct
   let repositories_of_workspace (workspace : Workspace.t) =
     List.map workspace.repos ~f:(fun repo ->
@@ -2092,7 +2093,7 @@ let setup_rules ~components ~dir ctx =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~component:Lock_dir ~dir ~pkg_name
+  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~component:Project_deps ~dir ~pkg_name
   | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | ".ocamlformat" :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
@@ -2107,7 +2108,7 @@ let setup_rules ~components ~dir ctx =
 
 let ocaml_toolchain context =
   (let* lock_dir = Lock_dir.get context in
-   let* db = DB.get context Rule_root.Lock_dir in
+   let* db = DB.get context Rule_root.Project_deps in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided
    | Some ocaml -> Resolve.resolve db context ocaml)
@@ -2146,7 +2147,7 @@ let which context =
   let artifacts_and_deps =
     Memo.lazy_ (fun () ->
       let+ { binaries; dep_info = _ } =
-        all_packages Rule_root.Lock_dir context
+        all_packages Rule_root.Project_deps context
         >>= Action_expander.Artifacts_and_deps.of_closure
       in
       binaries)
@@ -2154,7 +2155,7 @@ let which context =
   let ocamlformat_artifact_and_deps =
     Memo.lazy_ (fun () ->
       let* () =
-        if not (Stdune.Path.exists (Path.source Dev_tool.Ocamlformat.lock_dir))
+        if not (Path.Untracked.exists (Path.source Dev_tool.Ocamlformat.lock_dir))
         then
           Solver.solver_dev_tool_pkg
             ~local_package:Dev_tool.Ocamlformat.package_dev
@@ -2188,7 +2189,7 @@ let which context =
 ;;
 
 let ocamlpath context =
-  let+ all_packages = all_packages Rule_root.Lock_dir context in
+  let+ all_packages = all_packages Rule_root.Project_deps context in
   let env = Pkg.build_env_of_deps all_packages in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
@@ -2201,7 +2202,7 @@ let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
-  let+ all_packages = all_packages Rule_root.Lock_dir context in
+  let+ all_packages = all_packages Rule_root.Project_deps context in
   let env = Pkg.build_env_of_deps all_packages in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
@@ -2212,7 +2213,7 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    let* db = DB.get ctx @@ Rule_root.Lock_dir in
+    let* db = DB.get ctx @@ Rule_root.Project_deps in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
            | `System_provided -> Action_builder.return ()

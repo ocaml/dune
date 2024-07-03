@@ -6,8 +6,7 @@ type t =
   }
 
 let to_local (t : t) : Local_package.t =
-  let open Local_package in
-  { name = t.name
+  { Local_package.name = t.name
   ; version = None
   ; dependencies = t.dependencies
   ; conflicts = []
@@ -18,7 +17,7 @@ let to_local (t : t) : Local_package.t =
   }
 ;;
 
-let lock_dir = Path.Source.of_string "dev_tools.locks"
+let lock_dir = Path.Source.of_string "dev_tools"
 
 module Ocamlformat = struct
   (* CR-moyodiallo: just to experiement the solving, hard-coded version is going to be removed *)
@@ -40,5 +39,5 @@ module Ocamlformat = struct
   let package_dev = to_local _ocamlformat_dev
   let program = "ocamlformat"
   let pkg_name = "ocamlformat"
-  let lock_dir = Path.Source.relative lock_dir "ocamlformat_dev"
+  let lock_dir = Path.Source.relative lock_dir "ocamlformat.lock"
 end

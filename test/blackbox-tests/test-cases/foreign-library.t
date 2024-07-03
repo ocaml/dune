@@ -35,7 +35,7 @@ Testsuite for the (foreign_library ...) stanza.
   1 | (foreign_library
   2 |  (language c)
   3 |  (names add))
-  Error: field archive_name missing
+  Error: Field "archive_name" is missing
   [1]
 
 ----------------------------------------------------------------------------------

@@ -106,7 +106,11 @@ Format the foo.ml
   $ cat foo.ml
   formatted
 
-The second time, it is not supposed to solve again but at the moment is doing it.
+The second time, it is not supposed to solve again.
+  $ dune fmt
+
+When dev_tools.locks is removed, the solving is renewed
+  $ rm -r dev_tools.locks
   $ dune fmt
   Solution for dev_tools.locks/ocamlformat_dev:
   - ocamlformat.0.26.2

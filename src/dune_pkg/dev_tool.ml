@@ -37,14 +37,7 @@ module Ocamlformat = struct
     }
   ;;
 
-  let ocamlformat_dev_local = to_local _ocamlformat_dev
-
-  let from_ocamlformat_constraint ocamlformat_dependency =
-    { name = Package_name.of_string "ocamlformat_dev"
-    ; dependencies = [ ocamlformat_dependency ]
-    }
-  ;;
-
+  let package_dev = to_local _ocamlformat_dev
   let program = "ocamlformat"
   let pkg_name = "ocamlformat"
   let lock_dir = Path.Source.relative lock_dir "ocamlformat_dev"

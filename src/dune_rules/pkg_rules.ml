@@ -2153,6 +2153,15 @@ let which context =
   in
   let ocamlformat_artifact_and_deps =
     Memo.lazy_ (fun () ->
+      let* () =
+        if not (Stdune.Path.exists (Path.source Dev_tool.Ocamlformat.lock_dir))
+        then
+          Solver.solver_dev_tool_pkg
+            ~local_package:Dev_tool.Ocamlformat.package_dev
+            ~lock_dir_path:Dev_tool.Ocamlformat.lock_dir
+            ~version_preference:None
+        else Memo.return ()
+      in
       let+ { binaries; dep_info = _ } =
         let* db = DB.get context (Rule_root.Dev_tool Ocamlformat) in
         let package =
@@ -2173,12 +2182,6 @@ let which context =
     | None ->
       if String.equal Dev_tool.Ocamlformat.program program
       then
-        let* () =
-          Solver.solver_dev_tool_pkg
-            ~local_package:Dev_tool.Ocamlformat.ocamlformat_dev_local
-            ~lock_dir_path:Dev_tool.Ocamlformat.lock_dir
-            ~version_preference:None
-        in
         let+ ocamlformat_artifacts = Memo.Lazy.force ocamlformat_artifact_and_deps in
         Filename.Map.find ocamlformat_artifacts program
       else Memo.return None)

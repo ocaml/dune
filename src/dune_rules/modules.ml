@@ -660,26 +660,7 @@ module Wrapped = struct
       ]
   ;;
 
-  (* TODO remove this eventually *)
-  let old_decode ~src_dir =
-    let open Dune_lang.Decoder in
-    let open Common.Decode in
-    fields
-      (let+ main_module_name = main_module_name
-       and+ modules = modules ~src_dir ()
-       and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
-       and+ alias = field "alias_module" (Module.decode ~src_dir)
-       and+ wrapped = field "wrapped" Dune_lang.Wrapped.decode in
-       let group =
-         { Group.alias
-         ; name = main_module_name
-         ; modules = modules |> Module_name.Map.map ~f:(fun m -> Group.Module m)
-         }
-       in
-       { group; wrapped_compat; wrapped; toplevel_module = `Exported })
-  ;;
-
-  let new_decode ~src_dir =
+  let decode ~src_dir =
     let open Dune_lang.Decoder in
     let open Common.Decode in
     fields
@@ -687,11 +668,6 @@ module Wrapped = struct
        and+ wrapped_compat = modules ~name:"wrapped_compat" ~src_dir ()
        and+ wrapped = field "wrapped" Dune_lang.Wrapped.decode in
        { group; wrapped_compat; wrapped; toplevel_module = `Exported })
-  ;;
-
-  let decode ~src_dir =
-    let open Dune_lang.Decoder in
-    new_decode ~src_dir <|> old_decode ~src_dir
   ;;
 
   let map ({ group; wrapped_compat; toplevel_module = _; wrapped = _ } as t) ~f =

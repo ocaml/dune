@@ -18,9 +18,10 @@ jobs:
       with:
         ocaml-compiler: 4.14.x
         opam-depext: false
+    - run: opam repo set-url default git+https://github.com/ocaml/opam-repository#dc24cade5f037058a4d86fcdd008159923152db5
     - run: sed -i s/1.3/2.7/ dune-project
     - run: opam pin add -n dune.dev git+https://github.com/ocaml/dune#$GITHUB_SHA
     - run: sudo apt install libseccomp-dev
-    - run: opam install mirage opam-monorepo.0.3.6
+    - run: opam install mirage.4.4.2 opam-monorepo.0.3.6
     - run: cd mirage; opam exec -- mirage configure -f config.ml -t hvt
     - run: cd mirage; opam exec -- make depend lock pull build

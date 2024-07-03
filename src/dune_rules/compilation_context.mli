@@ -55,6 +55,7 @@ val obj_dir : t -> Path.Build.t Obj_dir.t
 val modules : t -> Modules.With_vlib.t
 val flags : t -> Ocaml_flags.t
 val requires_link : t -> Lib.t list Resolve.Memo.t
+val requires_hidden : t -> Lib.t list Resolve.Memo.t
 val requires_compile : t -> Lib.t list Resolve.Memo.t
 val includes : t -> Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 val preprocessing : t -> Pp_spec.t

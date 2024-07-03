@@ -70,10 +70,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          opam-depext: false
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t
@@ -99,15 +98,11 @@ jobs:
       # Ensure Dune can build itself
       - run: opam exec -- make bootstrap
 
-      - name: Install deps on Unix
+      - name: Install deps
         run: |
           opam install . --deps-only --with-test
           opam exec -- make dev-deps
-        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
-
-      - name: Install deps on Win32
-        run: opam install ./dune-configurator.opam --deps-only --with-test
-        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+        if: ${{ matrix.skip_test == false }}
 
       - name: Run test suite on Unix
         run: opam exec -- make test
@@ -184,7 +179,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-depext: false
@@ -223,7 +218,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Use OCaml 4.14.x
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4.14.x
           opam-pin: false
@@ -266,7 +261,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v2
+        uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
       - uses: actions/checkout@v4

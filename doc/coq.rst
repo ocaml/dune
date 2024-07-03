@@ -451,7 +451,7 @@ lang<coq-lang>` stanza present:
 
 .. code:: dune
 
-  (lang dune 3.16)
+  (lang dune 3.17)
   (using coq 0.8)
 
 Next we need a :doc:`/reference/dune/index` file with a :ref:`coq-theory`
@@ -682,7 +682,7 @@ the plugin to sit in, otherwise Coq will not be able to find it.
 
 .. code:: dune
 
-  (lang dune 3.16)
+  (lang dune 3.17)
   (using coq 0.8)
 
   (package

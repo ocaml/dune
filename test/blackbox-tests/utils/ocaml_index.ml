@@ -29,7 +29,7 @@ module Common = struct
 end
 
 module Aggregate = struct
-  let from_files _ _ output_file _ _ () = touch output_file
+  let from_files _ _ output_file _ _ _ () = touch output_file
 
   let root =
     let doc = "if provided all locations will be appended to that path" in
@@ -51,6 +51,11 @@ module Aggregate = struct
     Arg.(value & flag & info [ "store-shapes" ] ~doc)
   ;;
 
+  let no_cmt =
+    let doc = "" in
+    Arg.(value & flag & info [ "no-cmt-load-path" ] ~doc)
+  ;;
+
   let term =
     Term.(
       const from_files
@@ -58,6 +63,7 @@ module Aggregate = struct
       $ root
       $ Common.output_file
       $ build_path
+      $ no_cmt
       $ files
       $ Common.with_log)
   ;;

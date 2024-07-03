@@ -19,7 +19,7 @@ let%expect_test "create and wait for timer" =
       let now () = Unix.gettimeofday () in
       let start = now () in
       let duration = 0.2 in
-      let+ () = Scheduler.sleep duration in
+      let+ () = Scheduler.sleep ~seconds:duration in
       assert (now () -. start >= duration);
       print_endline "timer finished successfully");
   [%expect {| timer finished successfully |}]
@@ -32,7 +32,7 @@ let%expect_test "multiple timers" =
     (fun () ->
       [ 0.3; 0.2; 0.1 ]
       |> Fiber.parallel_iter ~f:(fun duration ->
-        let+ () = Scheduler.sleep duration in
+        let+ () = Scheduler.sleep ~seconds:duration in
         printfn "finished %0.2f" duration));
   [%expect {|
     finished 0.10
@@ -52,7 +52,7 @@ let%expect_test "run process with timeout" =
         in
         Spawn.spawn ~prog ~argv:[ prog; "100000" ] () |> Pid.of_int
       in
-      let+ _ = Scheduler.wait_for_process ~timeout:0.1 pid in
+      let+ _ = Scheduler.wait_for_process ~timeout_seconds:0.1 pid in
       print_endline "sleep timed out");
   [%expect {|
     sleep timed out |}]

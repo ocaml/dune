@@ -74,10 +74,6 @@ module B = struct
       (slog OpamUrl.to_string) remote_url;
     OpamProcess.Job.catch
       (fun e ->
-        match e with
-        | OpamDownload.Checksum_mismatch e -> 
-          Done (Checksum_mismatch e)
-        | _ ->
          OpamStd.Exn.fatal e;
          let s,l =
            let str = Printf.sprintf "%s (%s)" (OpamUrl.to_string remote_url) in

@@ -91,7 +91,11 @@ let test files (patch, patch_contents) =
     ; watch_exclusions = []
     }
   in
-  Scheduler.Run.go config ~timeout:5.0 ~file_watcher:No_watcher ~on_event:(fun _ _ -> ())
+  Scheduler.Run.go
+    config
+    ~timeout_seconds:5.0
+    ~file_watcher:No_watcher
+    ~on_event:(fun _ _ -> ())
   @@ fun () ->
   let open Fiber.O in
   let* () = Fiber.return @@ create_files ((patch, patch_contents) :: files) in

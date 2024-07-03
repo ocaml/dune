@@ -53,7 +53,7 @@ Testsuite for the (foreign_stubs ...) field.
   File "dune", line 3, characters 2-9:
   3 |  (c_names bar))
         ^^^^^^^
-  Error: Unknown field c_names
+  Error: Unknown field "c_names"
   [1]
 
 ----------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ Testsuite for the (foreign_stubs ...) field.
   File "dune", line 4, characters 2-26:
   4 |  (self_build_stubs_archive (baz)))
         ^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Unknown field self_build_stubs_archive
+  Error: Unknown field "self_build_stubs_archive"
   [1]
 
 ----------------------------------------------------------------------------------

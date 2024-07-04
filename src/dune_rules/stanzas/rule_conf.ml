@@ -102,7 +102,7 @@ let long_form =
   String_with_vars.add_user_vars_to_decoding_env
     (Bindings.var_names deps)
     (let+ loc = loc
-     and+ action = field "action" (located Dune_lang.Action.decode_dune_file)
+     and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
      and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
      and+ () =
@@ -152,6 +152,18 @@ let long_form =
                   patch-back-source-tree)."
              ];
          Standard, true
+     in
+     let action =
+       match action_o with
+       | Some action -> action
+       | None ->
+         let hints =
+           if List.is_non_empty aliases
+           then
+             [ Pp.text "You can use the (alias) stanza to add dependencies to an alias." ]
+           else []
+         in
+         field_missing ~hints loc "action"
      in
      { targets
      ; deps

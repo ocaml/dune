@@ -595,7 +595,6 @@ let opam_package_to_lock_file_pkg
         let checksum =
           match OpamFile.URL.checksum opam_url with
           | [] -> None
-          (* opam discards the later checksums, so we only take the first one *)
           | checksum :: _ -> Some (Loc.none, Checksum.of_opam_hash checksum)
         in
         { Source.url; checksum } ))

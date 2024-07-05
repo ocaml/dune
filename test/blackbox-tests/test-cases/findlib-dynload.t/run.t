@@ -1,4 +1,30 @@
+NB: warning 58 is caused by ocaml/ocamlfind#78.
+
   $ dune build
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Findlib, and its interface was not compiled with -opaque
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Findlib, and its interface was not compiled with -opaque
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Findlib, and its interface was not compiled with -opaque
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_dynload, and its interface was not compiled with -opaque
+  
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_package_base, and its interface was not compiled with -opaque
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Findlib, and its interface was not compiled with -opaque
+  
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_dynload, and its interface was not compiled with -opaque
+  
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_package_base, and its interface was not compiled with -opaque
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_dynload, and its interface was not compiled with -opaque
+  
+  File "_none_", line 1:
+  Warning 58 [no-cmx-file]: no cmx file was found in path for module Fl_package_base, and its interface was not compiled with -opaque
 
   $ dune exec mytool
   m: init
@@ -70,7 +96,6 @@
   Findlib.record_package Findlib.Record_core "findlib.internal";;
   Findlib.record_package Findlib.Record_core "mytool";;
   Findlib.record_package Findlib.Record_core "threads";;
-  Findlib.record_package Findlib.Record_core "threads.posix";;
   Findlib.record_package Findlib.Record_core "unix";;
   let preds =
     [ "mt"

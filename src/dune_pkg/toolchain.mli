@@ -47,5 +47,13 @@ end
 val find_and_install_toolchain_compiler
   :  Dune_lang.Package_name.t
   -> Package_version.t
-  -> Dune_lang.Package_name.t list
+  -> deps:Dune_lang.Package_name.t list
   -> Compiler.installed option Fiber.t
+
+val toolchain_base_dir : unit -> Path.Outside_build_dir.t
+
+val bin_dir
+  :  Dune_lang.Package_name.t
+  -> Package_version.t
+  -> deps:Dune_lang.Package_name.t list
+  -> Path.Outside_build_dir.t

@@ -99,6 +99,7 @@ module Compiler = struct
 
       let source_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "source"
       let target_dir t = Path.Outside_build_dir.relative (toolchain_dir t) "target"
+      let bin_dir t = Path.Outside_build_dir.relative (target_dir t) "bin"
 
       (* A temporary directory within the given version's toolchain
          directory where files will be installed before moving them into
@@ -335,7 +336,7 @@ module Compiler = struct
     Fpath.rm_rf (Path.to_string dest_dir)
   ;;
 
-  let bin_dir t = Path.Outside_build_dir.relative (Name.Paths.target_dir t.name) "bin"
+  let bin_dir t = Name.Paths.bin_dir t.name
   let is_installed t = Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
 
   (* The first checksum appearing in the compiler's opam file. This will
@@ -546,7 +547,7 @@ module Available_compilers = struct
   ;;
 end
 
-let find_and_install_toolchain_compiler name version deps =
+let find_and_install_toolchain_compiler name version ~deps =
   let open Fiber.O in
   let* available_compilers = Available_compilers.load_upstream_opam_repo () in
   let* toolchain_compiler =
@@ -559,4 +560,11 @@ let find_and_install_toolchain_compiler name version deps =
       Compiler.ensure_installed ~log_when:`Install_only toolchain_compiler
     in
     Some toolchain_compiler
+;;
+
+let toolchain_base_dir = Compiler.Name.Paths.toolchain_base_dir
+
+let bin_dir name version ~deps =
+  let name = { Compiler.Name.name; version; deps } in
+  Compiler.Name.Paths.bin_dir name
 ;;

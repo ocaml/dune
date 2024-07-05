@@ -152,9 +152,9 @@ module Value_list_env = struct
      string (in the style of the PATH variable). *)
   type t = Value.t list Env.Map.t
 
+  let empty = Env.Map.empty
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
-  let global () = of_env (Global.env ())
 
   (* Concatenate a list of values in the style of lists found in
      environment variables, such as PATH *)
@@ -197,106 +197,6 @@ module Value_list_env = struct
     Env.Map.update t var ~f:(fun paths ->
       let paths = Option.value paths ~default:[] in
       Some (Value.Dir path :: paths))
-  ;;
-end
-
-module DB = struct
-  type t =
-    { all : Lock_dir.Pkg.t Package.Name.Map.t
-    ; system_provided : Package.Name.Set.t
-    }
-
-  let equal t { all; system_provided } =
-    Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
-    && Package.Name.Set.equal t.system_provided system_provided
-  ;;
-
-  let get =
-    let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    fun context ->
-      let+ all = Lock_dir.get context in
-      { all = all.packages; system_provided = dune }
-  ;;
-end
-
-module Compiler = struct
-  type t =
-    (* The compiler chosen is in the lock dir but substituted for a shared
-       compiler in the toolchain directory *)
-    | Toolchain of Toolchain.Compiler.installed
-    (* The lockdir specifies a compiler dependency as a package. *)
-    | Inside_lock_dir of (Loc.t * Pkg_info.t)
-    (* The lockdir specifies that the system compiler toolchain will
-       be used rather than one managed by dune. *)
-    | System_provided
-
-  let find_and_install_toolchain_compiler name version deps =
-    if Dune_pkg.Feature_flags.use_toolchains
-    then
-      Memo.of_reproducible_fiber
-        (Toolchain.find_and_install_toolchain_compiler name version deps)
-    else Memo.return None
-  ;;
-
-  let of_context context =
-    let* lock_dir = Lock_dir.get context in
-    let* db = DB.get context in
-    match lock_dir.ocaml with
-    | None ->
-      (* The lockdir doesn't specify a compiler dependency. Assume
-         that the user is managing their own ocaml compiler if they need
-         it. *)
-      Memo.return System_provided
-    | Some (loc, ocaml) ->
-      if Package.Name.Set.mem db.system_provided ocaml
-      then Memo.return System_provided
-      else (
-        match Package.Name.Map.find db.all ocaml with
-        | None ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Unknown compiler package %S" (Package.Name.to_string ocaml) ]
-        | Some { depends; info; _ } ->
-          if not (Package.Name.equal ocaml info.name)
-          then
-            Code_error.raise
-              "lockfile info for compiler package has unexpected name"
-              [ "expected name", Package.Name.to_dyn ocaml
-              ; "actual name", Package.Name.to_dyn info.name
-              ];
-          let+ toolchain_compiler =
-            find_and_install_toolchain_compiler
-              info.name
-              info.version
-              (List.map depends ~f:snd)
-          in
-          (match toolchain_compiler with
-           | None -> Inside_lock_dir (loc, info)
-           | Some toolchain_compiler -> Toolchain toolchain_compiler))
-  ;;
-
-  let add_path_to_env t ~env =
-    match t with
-    | Toolchain toolchain ->
-      let bin = Toolchain.Compiler.bin_dir toolchain |> Path.outside_build_dir in
-      Value_list_env.add_path env Env_path.var bin
-    | Inside_lock_dir _ (* this is a true package, its environment has been added *)
-    | System_provided (* the environment has been inherited *) -> env
-  ;;
-
-  let ocaml_toolchain toolchain context =
-    let env =
-      add_path_to_env (Toolchain toolchain) ~env:(Value_list_env.global ())
-      |> Value_list_env.to_env
-    in
-    let bin_dir = Toolchain.Compiler.bin_dir toolchain in
-    let which prog =
-      let path = Path.Outside_build_dir.relative bin_dir prog in
-      let+ exists = Fs_memo.file_exists path in
-      if exists then Some (Path.outside_build_dir path) else None
-    in
-    let get_ocaml_tool ~dir:_ prog = which prog in
-    Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
   ;;
 end
 
@@ -455,10 +355,55 @@ module Pkg = struct
       List.fold_left t.exported_env ~init:env ~f:Env_update.set)
   ;;
 
+  let is_compiler =
+    let module Package_name = Dune_pkg.Package_name in
+    let compiler_package_names =
+      Package_name.Set.of_list (* TODO don't hardcode these names here *)
+        [ Package_name.of_string "ocaml-base-compiler"
+        ; Package_name.of_string "ocaml-system"
+        ; Package_name.of_string "ocaml-variants"
+        ]
+    in
+    fun t -> Package_name.Set.mem compiler_package_names t.info.name
+  ;;
+
+  let install_toolchain t =
+    Dune_pkg.Toolchain.find_and_install_toolchain_compiler
+      t.info.name
+      t.info.version
+      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
+  ;;
+
+  let install_toolchain_action t =
+    let memo =
+      let open Memo.O in
+      let+ maybe_installed = install_toolchain t |> Memo.of_reproducible_fiber in
+      match maybe_installed with
+      | Some _installed -> Action.Full.make (Action.Progn [])
+      | None ->
+        (* TODO handle case where toolchain was not found *)
+        failwith "error"
+    in
+    Action_builder.of_memo memo |> Action_builder.with_no_targets
+  ;;
+
+  let toolchain_bin_dir t =
+    Dune_pkg.Toolchain.bin_dir
+      t.info.name
+      t.info.version
+      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
+  ;;
+
   (* [build_env t] returns an env containing paths containing all the
      tools and libraries required to build the package [t] inside the
      faux opam directory contained in the _build dir. *)
-  let build_env t = build_env_of_deps @@ deps_closure t
+  let build_env t =
+    if is_compiler t
+    then (
+      let bin_dir = toolchain_bin_dir t |> Path.outside_build_dir in
+      Value_list_env.add_path Value_list_env.empty Env_path.var bin_dir)
+    else build_env_of_deps @@ deps_closure t
+  ;;
 
   let base_env t =
     Env.Map.of_list_exn
@@ -970,7 +915,7 @@ module Action_expander = struct
              (match Filename.Map.find t.artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
-                (let path = Value_list_env.to_env t.env |> Env_path.path in
+                (let path = Global.env () |> Env_path.path in
                  Which.which ~path program)
                 >>| (function
                  | Some p -> Ok p
@@ -1165,13 +1110,10 @@ module Action_expander = struct
   end
 
   let expander context (pkg : Pkg.t) =
-    let* { Artifacts_and_deps.binaries; dep_info } =
+    let+ { Artifacts_and_deps.binaries; dep_info } =
       Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
     in
-    let+ env =
-      Compiler.of_context context
-      >>| Compiler.add_path_to_env ~env:(Pkg.exported_value_env pkg)
-    in
+    let env = Pkg.exported_value_env pkg in
     let depends =
       Package.Name.Map.add_exn
         dep_info
@@ -1210,19 +1152,24 @@ module Action_expander = struct
   ;;
 
   let build_command context (pkg : Pkg.t) =
-    Option.map pkg.build_command ~f:(function
-      | Action action -> expand context pkg action
-      | Dune ->
-        (* CR-rgrinberg: respect [dune subst] settings. *)
-        Command.run_dyn_prog
-          (Action_builder.of_memo (dune_exe context))
-          ~dir:(Path.build pkg.paths.source_dir)
-          [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
-        |> Memo.return)
+    if Pkg.is_compiler pkg
+    then None
+    else
+      Option.map pkg.build_command ~f:(function
+        | Action action -> expand context pkg action
+        | Dune ->
+          (* CR-rgrinberg: respect [dune subst] settings. *)
+          Command.run_dyn_prog
+            (Action_builder.of_memo (dune_exe context))
+            ~dir:(Path.build pkg.paths.source_dir)
+            [ A "build"; A "-p"; A (Package.Name.to_string pkg.info.name) ]
+          |> Memo.return)
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    if Pkg.is_compiler pkg
+    then Some (Memo.return (Pkg.install_toolchain_action pkg))
+    else Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
@@ -1234,16 +1181,31 @@ module Action_expander = struct
   ;;
 end
 
+module DB = struct
+  type t =
+    { all : Lock_dir.Pkg.t Package.Name.Map.t
+    ; system_provided : Package.Name.Set.t
+    }
+
+  let equal t { all; system_provided } =
+    Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
+    && Package.Name.Set.equal t.system_provided system_provided
+  ;;
+
+  let get =
+    let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
+    fun context ->
+      let+ all = Lock_dir.get context in
+      { all = all.packages; system_provided = dune }
+  ;;
+end
+
 module rec Resolve : sig
   val resolve
     :  DB.t
     -> Context_name.t
     -> Loc.t * Package.Name.t
-    -> [ `Inside_lock_dir of Pkg.t
-       | `System_provided
-       | `Toolchain of Toolchain.Compiler.installed
-       ]
-         Memo.t
+    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
 end = struct
   open Resolve
 
@@ -1252,47 +1214,38 @@ end = struct
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* compiler =
-        Compiler.find_and_install_toolchain_compiler
-          info.name
-          info.version
-          (List.map depends ~f:snd)
+      let* depends =
+        Memo.parallel_map depends ~f:(fun name ->
+          resolve db ctx name
+          >>| function
+          | `Inside_lock_dir pkg -> Some pkg
+          | `System_provided -> None)
+        >>| List.filter_opt
+      and+ files_dir =
+        let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
+        Path.Build.append_source
+          (Context_name.build_dir ctx)
+          (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
-      (match compiler with
-       | Some toolchain -> Memo.return (Some (`Toolchain toolchain))
-       | None ->
-         let* depends =
-           Memo.parallel_map depends ~f:(fun name ->
-             resolve db ctx name
-             >>| function
-             | `Inside_lock_dir pkg -> Some pkg
-             | `Toolchain _ | `System_provided -> None)
-           >>| List.filter_opt
-         and+ files_dir =
-           let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
-           Path.Build.append_source
-             (Context_name.build_dir ctx)
-             (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
-         in
-         let id = Pkg.Id.gen () in
-         let paths = Paths.make name ctx in
-         let t =
-           { Pkg.id
-           ; build_command
-           ; install_command
-           ; depends
-           ; paths
-           ; info
-           ; files_dir
-           ; exported_env = []
-           }
-         in
-         let+ exported_env =
-           let* expander = Action_expander.expander ctx t in
-           Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
-         in
-         t.exported_env <- exported_env;
-         Some (`Inside_lock_dir t))
+      let id = Pkg.Id.gen () in
+      let paths = Paths.make name ctx in
+      let t =
+        { Pkg.id
+        ; build_command
+        ; install_command
+        ; depends
+        ; paths
+        ; info
+        ; files_dir
+        ; exported_env = []
+        }
+      in
+      let+ exported_env =
+        let* expander = Action_expander.expander ctx t in
+        Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
+      in
+      t.exported_env <- exported_env;
+      Some t
   ;;
 
   let resolve =
@@ -1318,7 +1271,7 @@ end = struct
       else
         Memo.exec memo (db, ctx, name)
         >>| function
-        | Some s -> s
+        | Some s -> `Inside_lock_dir s
         | None ->
           User_error.raise
             ~loc
@@ -1654,6 +1607,40 @@ let rule ?loc { Action_builder.With_targets.build; targets } =
   Rule.make ~info:(Rule.Info.of_loc_opt loc) ~targets build |> Rules.Produce.rule
 ;;
 
+(* Action which creates a fake package source in place of a compiler
+   package for use when a compiler from the toolchains directory will be
+   used instead of taking the compiler from a regular opam package. *)
+let make_dummy_compiler_package_source (pkg : Pkg.t) target =
+  Action.progn
+    [ Action.mkdir target
+    ; Action.with_stdout_to
+        (Path.Build.relative target "debug_hint.txt")
+        (Action.echo
+           [ sprintf
+               "This file was created as a hint to people debugging issues with dune \
+                package management.\n\
+                This project attempted to download and build the compiler package: %s.%s\n\
+                Instead of using the complier package, dune is using a compiler from the \
+                toolchains directory (%s)"
+               (Dune_pkg.Package_name.to_string pkg.info.name)
+               (Dune_pkg.Package_version.to_string pkg.info.version)
+               (Dune_pkg.Toolchain.toolchain_base_dir ()
+                |> Path.Outside_build_dir.to_string)
+           ])
+    ; (* TODO: it doesn't seem like it should be necessary to generate
+         this file but without it dune complains *)
+      Action.with_stdout_to
+        (Path.Build.relative target "config.cache")
+        (Action.echo
+           [ "Dummy file created to placate dune's package installation rules. See the \
+              debug_hint.txt file for more information."
+           ])
+    ]
+  |> Action.Full.make
+  |> Action_builder.With_targets.return
+  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+;;
+
 let source_rules (pkg : Pkg.t) =
   let+ source_deps, copy_rules =
     match pkg.info.source with
@@ -1663,7 +1650,11 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         let fetch =
+           if Pkg.is_compiler pkg
+           then make_dummy_compiler_package_source pkg pkg.paths.source_dir
+           else Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source
+         in
          Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
@@ -1700,7 +1691,6 @@ let source_rules (pkg : Pkg.t) =
 ;;
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
-  let* compiler = Compiler.of_context context_name in
   let+ build_action =
     let+ build_and_install =
       let+ copy_action =
@@ -1774,10 +1764,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
   Action_builder.deps deps
   |> Action_builder.with_no_targets
   (* TODO should we add env deps on these? *)
-  >>> add_env
-        (Compiler.add_path_to_env compiler ~env:(Pkg.exported_value_env pkg)
-         |> Value_list_env.to_env)
-        build_action
+  >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories
        ~directory_targets:[ pkg.paths.target_dir ]
 ;;
@@ -1798,13 +1785,6 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
     Resolve.resolve db context (Loc.none, name)
     >>| function
     | `Inside_lock_dir pkg -> pkg
-    | `Toolchain _ ->
-      User_error.raise
-        (* TODO loc, toolchain info *)
-        [ Pp.textf
-            "There are no rules for %S because it's provided by the toolchain"
-            (Package.Name.to_string name)
-        ]
     | `System_provided ->
       User_error.raise
         (* TODO loc *)
@@ -1854,7 +1834,6 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  let memoize = Action_builder.memoize "ocaml_toolchain" in
   (let* lock_dir = Lock_dir.get context in
    let* db = DB.get context in
    match lock_dir.ocaml with
@@ -1862,11 +1841,6 @@ let ocaml_toolchain context =
    | Some ocaml -> Resolve.resolve db context ocaml)
   >>| function
   | `System_provided -> None
-  | `Toolchain toolchain ->
-    let toolchain =
-      Action_builder.of_memo @@ Compiler.ocaml_toolchain toolchain context
-    in
-    Some (memoize toolchain)
   | `Inside_lock_dir pkg ->
     let toolchain =
       let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
@@ -1880,7 +1854,7 @@ let ocaml_toolchain context =
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
-    Some (memoize toolchain)
+    Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
 let all_packages context =
@@ -1891,7 +1865,7 @@ let all_packages context =
     Resolve.resolve db context (Loc.none, package)
     >>| function
     | `Inside_lock_dir pkg -> Some pkg
-    | `System_provided | `Toolchain _ -> None)
+    | `System_provided -> None)
   >>| List.filter_opt
   >>| Pkg.top_closure
 ;;
@@ -1910,11 +1884,8 @@ let which context =
 ;;
 
 let ocamlpath context =
-  let* all_packages = all_packages context in
-  let+ env =
-    Compiler.of_context context
-    >>| Compiler.add_path_to_env ~env:(Pkg.build_env_of_deps all_packages)
-  in
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
   |> List.map ~f:(function
@@ -1926,11 +1897,8 @@ let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
-  let* all_packages = all_packages context in
-  let+ env =
-    Compiler.of_context context
-    >>| Compiler.add_path_to_env ~env:(Pkg.build_env_of_deps all_packages)
-  in
+  let+ all_packages = all_packages context in
+  let env = Pkg.build_env_of_deps all_packages in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
 ;;
@@ -1943,7 +1911,7 @@ let find_package ctx pkg =
     let* db = DB.get ctx in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
-           | `System_provided | `Toolchain _ -> Action_builder.return ()
+           | `System_provided -> Action_builder.return ()
            | `Inside_lock_dir pkg ->
              let open Action_builder.O in
              let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in

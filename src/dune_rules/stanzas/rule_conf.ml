@@ -158,10 +158,10 @@ let long_form =
        | Some action -> action
        | None ->
          let hints =
-           if List.is_non_empty aliases
-           then
+           if List.is_empty aliases
+           then []
+           else
              [ Pp.text "You can use the (alias) stanza to add dependencies to an alias." ]
-           else []
          in
          field_missing ~hints loc "action"
      in

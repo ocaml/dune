@@ -298,6 +298,9 @@ val field_o_b
   -> string
   -> bool option fields_parser
 
+(* [field_missing] raises the error raised by [field]. *)
+val field_missing : ?hints:User_message.Style.t Pp.t list -> Loc.t -> string -> _
+
 (** [multi_field] is a field that can appear multiple times. *)
 val multi_field : string -> 'a t -> 'a list fields_parser
 

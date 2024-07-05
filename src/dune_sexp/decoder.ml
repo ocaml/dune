@@ -584,7 +584,8 @@ let map_validate t ~f ctx state1 =
     raise (User_error.E msg)
 ;;
 
-let field_missing loc name = User_error.raise ~loc [ Pp.textf "Field %S is missing" name ]
+let field_missing ?hints loc name =
+  User_error.raise ~loc ?hints [ Pp.textf "Field %S is missing" name ]
 [@@inline never] [@@specialise never] [@@local never]
 ;;
 

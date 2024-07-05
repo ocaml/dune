@@ -6,7 +6,6 @@ type t =
   ; package : Package.t option
   ; deps : Dep_conf.t Bindings.t
   ; enabled_if : Blang.t
-  ; build_if : Blang.t
   ; action : Dune_lang.Action.t option
   }
 

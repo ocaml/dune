@@ -190,6 +190,94 @@ jobs:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
 
+  wasm:
+    name: Wasm_of_ocaml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: latest
+
+      - name: Restore cached binaryen
+        id: cache-binaryen
+        uses: actions/cache/restore@v4
+        with:
+          path: binaryen
+          key: ${{ runner.os }}-binaryen-version_119
+
+      - name: Checkout binaryen
+        if: steps.cache-binaryen.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: WebAssembly/binaryen
+          path: binaryen
+          submodules: true
+          ref: version_119
+
+      - name: Install ninja
+        if: steps.cache-binaryen.outputs.cache-hit != 'true'
+        run: sudo apt-get install ninja-build
+
+      - name: Build binaryen
+        if: steps.cache-binaryen.outputs.cache-hit != 'true'
+        working-directory: ./binaryen
+        run: |
+          cmake -G Ninja .
+          ninja
+
+      - name: Cache binaryen
+        if: steps.cache-binaryen.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: binaryen
+          key: ${{ runner.os }}-binaryen-version_119
+
+      - name: Set binaryen's path
+        run: |
+          echo "$GITHUB_WORKSPACE/binaryen/bin" >> $GITHUB_PATH
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          path: dune
+
+      - name: Use OCaml 4.14.x
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 4.14.x
+          opam-pin: false
+          opam-depext: false
+          dune-cache: true
+
+      - name: Update dune
+        working-directory: ./dune
+        run: opam pin add -n dune . --with-version 3.17.0
+
+      - name: Checkout wasm_of_ocaml
+        uses: actions/checkout@v4
+        with:
+          repository: ocaml-wasm/wasm_of_ocaml
+          ref: target-dir
+          path: wasm_of_ocaml
+
+      - name: Install wasm_of_ocaml
+        working-directory: ./wasm_of_ocaml
+        run: |
+           opam pin add -n . --with-version `< VERSION`
+           opam install wasm_of_ocaml-compiler
+
+      - name: Set git user
+        run: |
+          git config --global user.name github-actions[bot]
+          git config --global user.email github-actions[bot]@users.noreply.github.com
+      - name: Run tests
+        working-directory: ./dune
+        run: opam exec -- make test-wasm
+        env:
+          # We disable the Dune cache when running the tests
+          DUNE_CACHE: disabled
+
   monorepo_benchmark_test:
     name: Build monorepo benchmark docker image
     runs-on: ubuntu-latest

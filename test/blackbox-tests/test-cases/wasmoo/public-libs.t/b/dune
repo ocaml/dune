@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (libraries a)
+ (modes js)
+ (js_of_ocaml (submodes wasm)))

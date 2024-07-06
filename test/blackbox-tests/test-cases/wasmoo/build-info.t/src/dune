@@ -1,0 +1,13 @@
+(executable
+ (name main)
+ (public_name main)
+ (modes js byte)
+ (js_of_ocaml (submodes wasm))
+ (modules main)
+ (package main)
+ (libraries dune-build-info))
+
+(install
+ (section bin)
+ (files main.bc.wasm.js)
+ (dirs main.bc.wasm.assets))

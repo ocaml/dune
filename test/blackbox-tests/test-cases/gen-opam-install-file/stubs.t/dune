@@ -1,11 +1,11 @@
 (library
  (name foo)
  (install_c_headers cfoo)
- (js_of_ocaml (javascript_files foo.js))
- (c_names c)
- (cxx_names cpp) 
+ (js_of_ocaml (javascript_files foo.js) (wasm_files foo.js foo.wat))
+ (foreign_stubs (language c) (names c))
+ (foreign_stubs (language cxx) (names cpp))
  (public_name foo))
 
-(alias
- (name default)
+(rule
+ (alias default)
  (action (echo "%{read:foo.install}")))

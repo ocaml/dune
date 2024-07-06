@@ -1,0 +1,7 @@
+(env
+  (_
+    (js_of_ocaml
+      (submodes wasm)
+      (flags (:standard --quiet))
+      (compilation_mode separate)
+)))

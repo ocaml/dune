@@ -1,0 +1,24 @@
+(executable
+  (name bin1)
+  (modules bin1)
+  (modes js)
+  (libraries library1)
+  (js_of_ocaml
+      (flags (:standard --enable use-js-string)))
+)
+
+(executable
+  (name bin2)
+  (modules bin2)
+  (modes js)
+  (libraries library1)
+  (js_of_ocaml
+      (flags (:standard --disable use-js-string)))
+)
+
+(executable
+  (name bin3)
+  (modules bin3)
+  (modes js)
+  (libraries library1)
+)

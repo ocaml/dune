@@ -63,22 +63,6 @@ module Pkg_info = struct
   ;;
 end
 
-module Rule_root = struct
-  type dev_tool = Ocamlformat
-
-  type t =
-    | Project_deps
-    | Dev_tool of dev_tool
-
-  let to_string t =
-    match t with
-    | Project_deps -> ".pkg"
-    | Dev_tool Ocamlformat -> ".ocamlformat"
-  ;;
-
-  let equal t1 t2 = t1 = t2
-end
-
 module Paths = struct
   (* The [paths] of a package are the information about the artifacts
      that we know {e without} executing any commands. *)
@@ -131,14 +115,12 @@ module Paths = struct
     Path.Build.append_local t.extra_sources extra_source
   ;;
 
-  let make component name (ctx : Context_name.t) =
+  let make components name (ctx : Context_name.t) =
     let build_dir =
       Path.Build.relative Private_context.t.build_dir (Context_name.to_string ctx)
     in
     let root =
-      Path.Build.L.relative
-        build_dir
-        [ Rule_root.to_string component; Package.Name.to_string name ]
+      Path.Build.L.relative build_dir @@ components @ [ Package.Name.to_string name ]
     in
     of_root name ~root
   ;;
@@ -1178,23 +1160,24 @@ module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
     ; system_provided : Package.Name.Set.t
-    ; component : Rule_root.t
+    ; components : string list
     }
 
-  let equal t { all; system_provided; component } =
+  let equal t { all; system_provided; components } =
     Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
     && Package.Name.Set.equal t.system_provided system_provided
-    && Rule_root.equal t.component component
+    && List.equal String.equal t.components components
   ;;
 
-  let get context component =
+  let get context components =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     let+ all =
-      match component with
-      | Rule_root.Project_deps -> Lock_dir.get context
-      | Dev_tool Ocamlformat -> Lock_dir.get_ocamlformat
+      match components with
+      | [ ".dev-tool"; pkg_name ] -> Lock_dir.of_dev_tool pkg_name
+      | [ ".pkg" ] -> Lock_dir.get context
+      | _ -> Lock_dir.get context
     in
-    { all = all.packages; system_provided = dune; component }
+    { all = all.packages; system_provided = dune; components }
   ;;
 end
 
@@ -1223,16 +1206,17 @@ end = struct
         >>| List.filter_opt
       and+ files_dir =
         let+ lock_dir =
-          if Rule_root.equal db.component @@ Rule_root.Dev_tool Ocamlformat
-          then Memo.return Dune_pkg.Dev_tool.Ocamlformat.lock_dir
-          else Lock_dir.get_path ctx >>| Option.value_exn
+          match db.components with
+          | [ ".dev-tool"; pkg_name ] -> Lock_dir.dev_tool_path pkg_name
+          | [ ".pkg" ] -> Lock_dir.get_path ctx >>| Option.value_exn
+          | _ -> Lock_dir.get_path ctx >>| Option.value_exn
         in
         Path.Build.append_source
           (Context_name.build_dir ctx)
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
-      let write_paths = Paths.make db.component name ctx ~relative:Path.Build.relative in
+      let write_paths = Paths.make db.components name ctx ~relative:Path.Build.relative in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -2039,9 +2023,9 @@ module Solver = struct
   ;;
 end
 
-let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Memo.t =
+let setup_package_rules context ~components ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
-  let* db = DB.get context component in
+  let* db = DB.get context components in
   let* pkg =
     Resolve.resolve db context (Loc.none, name)
     >>| function
@@ -2054,7 +2038,7 @@ let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Mem
             (Package.Name.to_string name)
         ]
   in
-  let paths = Paths.make db.component name context ~relative:Path.Build.relative in
+  let paths = Paths.make db.components name context ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in
@@ -2077,11 +2061,14 @@ let setup_package_rules context ~component ~dir ~pkg_name : Gen_rules.result Mem
 ;;
 
 let setup_rules ~components ~dir ctx =
-  let open Rule_root in
   match components with
-  | [ ".ocamlformat"; pkg_name ] ->
-    setup_package_rules ctx ~component:(Dev_tool Ocamlformat) ~dir ~pkg_name
-  | [ ".ocamlformat" ] ->
+  | [ ".dev-tool"; pkg_name; pkg_dep_name ] ->
+    setup_package_rules
+      ctx
+      ~components:[ ".dev-tool"; pkg_name ]
+      ~dir
+      ~pkg_name:pkg_dep_name
+  | [ ".dev-tool" ] ->
     Gen_rules.make
       ~build_dir_only_sub_dirs:
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
@@ -2093,22 +2080,24 @@ let setup_rules ~components ~dir ctx =
         (Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.all)
       (Memo.return Rules.empty)
     |> Memo.return
-  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~component:Project_deps ~dir ~pkg_name
+  | [ ".pkg"; pkg_name ] -> setup_package_rules ctx ~components:[ ".pkg" ] ~dir ~pkg_name
   | ".pkg" :: _ :: _ -> Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
-  | ".ocamlformat" :: _ :: _ ->
+  | ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | [] ->
     let build_dir_only_sub_dirs =
       Gen_rules.Build_only_sub_dirs.singleton ~dir
-      @@ Subdir_set.of_list [ ".pkg"; ".ocamlformat" ]
+      @@ Subdir_set.of_list [ ".pkg"; ".dev-tool" ]
     in
     Memo.return @@ Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
   | _ -> Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
 ;;
 
+let db_project context = DB.get context [ ".pkg" ]
+
 let ocaml_toolchain context =
   (let* lock_dir = Lock_dir.get context in
-   let* db = DB.get context Rule_root.Project_deps in
+   let* db = db_project context in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided
    | Some ocaml -> Resolve.resolve db context ocaml)
@@ -2130,8 +2119,8 @@ let ocaml_toolchain context =
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;
 
-let all_packages component context =
-  let* db = DB.get context component in
+let all_packages context =
+  let* db = db_project context in
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
@@ -2147,34 +2136,31 @@ let which context =
   let artifacts_and_deps =
     Memo.lazy_ (fun () ->
       let+ { binaries; dep_info = _ } =
-        all_packages Rule_root.Project_deps context
-        >>= Action_expander.Artifacts_and_deps.of_closure
+        all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
       in
       binaries)
   in
-  let ocamlformat_artifact_and_deps =
-    Memo.lazy_ (fun () ->
-      let* () =
-        if not (Path.Untracked.exists (Path.source Dev_tool.Ocamlformat.lock_dir))
-        then
-          Solver.solver_dev_tool_pkg
-            ~local_package:Dev_tool.Ocamlformat.package_dev
-            ~lock_dir_path:Dev_tool.Ocamlformat.lock_dir
-            ~version_preference:None
-        else Memo.return ()
-      in
-      let+ { binaries; dep_info = _ } =
-        let* db = DB.get context (Rule_root.Dev_tool Ocamlformat) in
-        let package =
-          Dune_lang.Package_name.of_string Dune_pkg.Dev_tool.Ocamlformat.pkg_name
-        in
-        Resolve.resolve db context (Loc.none, package)
-        >>| (function
-               | `Inside_lock_dir pkg -> [ pkg ]
-               | _ -> [])
-        >>= Action_expander.Artifacts_and_deps.of_closure
-      in
-      binaries)
+  let artifact_and_deps_of_dev_tool package =
+    let* () =
+      let* lock_dir = Lock_dir.dev_tool_path package in
+      if not (Path.Untracked.exists (Path.source lock_dir))
+      then
+        Solver.solver_dev_tool_pkg
+          ~local_package:Dev_tool.Ocamlformat.package_dev
+          ~lock_dir_path:lock_dir
+          ~version_preference:None
+      else Memo.return ()
+    in
+    let+ { binaries; dep_info = _ } =
+      let db_dev_tool context pkg_name = DB.get context [ ".dev-tool"; pkg_name ] in
+      let* db = db_dev_tool context package in
+      Resolve.resolve db context (Loc.none, Package.Name.of_string package)
+      >>| (function
+             | `Inside_lock_dir pkg -> [ pkg ]
+             | _ -> [])
+      >>= Action_expander.Artifacts_and_deps.of_closure
+    in
+    binaries
   in
   Staged.stage (fun program ->
     let* artifacts = Memo.Lazy.force artifacts_and_deps in
@@ -2183,13 +2169,15 @@ let which context =
     | None ->
       if String.equal Dev_tool.Ocamlformat.program program
       then
-        let+ ocamlformat_artifacts = Memo.Lazy.force ocamlformat_artifact_and_deps in
+        let+ ocamlformat_artifacts =
+          artifact_and_deps_of_dev_tool Dev_tool.Ocamlformat.pkg_name
+        in
         Filename.Map.find ocamlformat_artifacts program
       else Memo.return None)
 ;;
 
 let ocamlpath context =
-  let+ all_packages = all_packages Rule_root.Project_deps context in
+  let+ all_packages = all_packages context in
   let env = Pkg.build_env_of_deps all_packages in
   Env.Map.find env Dune_findlib.Config.ocamlpath_var
   |> Option.value ~default:[]
@@ -2202,7 +2190,7 @@ let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
-  let+ all_packages = all_packages Rule_root.Project_deps context in
+  let+ all_packages = all_packages context in
   let env = Pkg.build_env_of_deps all_packages in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in
   Env.extend Env.empty ~vars
@@ -2213,7 +2201,7 @@ let find_package ctx pkg =
   >>= function
   | false -> Memo.return None
   | true ->
-    let* db = DB.get ctx @@ Rule_root.Project_deps in
+    let* db = db_project ctx in
     Resolve.resolve db ctx (Loc.none, pkg)
     >>| (function
            | `System_provided -> Action_builder.return ()

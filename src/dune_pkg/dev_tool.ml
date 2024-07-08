@@ -17,8 +17,6 @@ let to_local (t : t) : Local_package.t =
   }
 ;;
 
-let lock_dir = Path.Source.of_string "dev_tools"
-
 module Ocamlformat = struct
   (* CR-moyodiallo: just to experiement the solving, hard-coded version is going to be removed *)
   let _ocamlformat_dependency =
@@ -39,5 +37,12 @@ module Ocamlformat = struct
   let package_dev = to_local _ocamlformat_dev
   let program = "ocamlformat"
   let pkg_name = "ocamlformat"
-  let lock_dir = Path.Source.relative lock_dir "ocamlformat.lock"
 end
+
+let pkg_tools = [ "ocamlformat" ]
+
+let pkg_of_binary program =
+  match program with
+  | "ocamlformat" -> Some "ocamlformat"
+  | _ -> None
+;;

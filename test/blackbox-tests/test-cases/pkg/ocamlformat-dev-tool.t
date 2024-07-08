@@ -72,7 +72,7 @@ Make a project that uses the fake ocamlformat:
   $ cat >dune-workspace <<EOF
   > (lang dune 3.13)
   > (lock_dir
-  >  (path "dev_tools/ocamlformat.lock")
+  >  (path "dev_tools.locks/ocamlformat")
   >  (repositories mock))
   > (lock_dir
   >  (repositories mock))
@@ -90,7 +90,7 @@ Lock the to trigger package management
 
 Format the foo.ml
   $ dune fmt
-  Solution for dev_tools/ocamlformat.lock:
+  Solution for dev_tools.locks/ocamlformat:
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -104,9 +104,9 @@ The second time, it is not supposed to solve again.
   $ dune fmt
 
 When dev_tools.locks is removed, the solving is renewed
-  $ rm -r dev_tools/ocamlformat.lock
+  $ rm -r dev_tools.locks/ocamlformat
   $ dune fmt
-  Solution for dev_tools/ocamlformat.lock:
+  Solution for dev_tools.locks/ocamlformat:
   - ocamlformat.0.26.2
 
 Format again, ocamlformat is a dependency with different version, to make sure it works

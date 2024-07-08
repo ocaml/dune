@@ -166,6 +166,7 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
 
 let find_checksum, find_url =
   let extend_db all lockdir lockdir_path =
+    let* lockdir_path = lockdir_path in
     Fs_memo.dir_exists (In_source_dir lockdir_path)
     >>= function
     | false -> Memo.return all
@@ -186,7 +187,9 @@ let find_checksum, find_url =
             ~f:(fun (checksums, urls) (lockdir : Dune_pkg.Lock_dir.t) ->
               let checksums', urls' = extract_checksums_and_urls lockdir in
               Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')
-      >>= fun all -> extend_db all Lock_dir.get_ocamlformat Dev_tool.Ocamlformat.lock_dir)
+      >>= fun all ->
+      Memo.List.fold_left Dev_tool.pkg_tools ~init:all ~f:(fun all pkg_name ->
+        extend_db all (Lock_dir.of_dev_tool pkg_name) (Lock_dir.dev_tool_path pkg_name)))
   in
   let find_url digest =
     let+ _, urls = Memo.Lazy.force all in

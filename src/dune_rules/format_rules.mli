@@ -8,7 +8,7 @@ open Import
 val gen_rules : Super_context.t -> output_dir:Path.Build.t -> unit Memo.t
 
 (** This must be called from the main directory, i.e. the ones containing the
-    source files and the the [formatted_dir_basename] sub-directory. *)
+    source files and the [formatted_dir_basename] sub-directory. *)
 val setup_alias : dir:Path.Build.t -> unit Memo.t
 
 val formatted_dir_basename : Filename.t

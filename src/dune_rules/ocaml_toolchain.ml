@@ -143,21 +143,6 @@ let of_binaries ~path name env binaries =
   make name ~env ~get_ocaml_tool ~which
 ;;
 
-let of_toolchain_compiler compiler name env =
-  let module Toolchain = Dune_pkg.Toolchain in
-  let bin_dir = Toolchain.Compiler.bin_dir compiler in
-  let* () =
-    Memo.of_reproducible_fiber (Toolchain.Compiler.get ~log_when:`Install_only compiler)
-  in
-  let which prog =
-    let path = Path.Outside_build_dir.relative bin_dir prog in
-    let+ exists = Fs_memo.file_exists path in
-    if exists then Some (Path.outside_build_dir path) else None
-  in
-  let get_ocaml_tool ~dir:_ prog = which prog in
-  make name ~which ~env ~get_ocaml_tool
-;;
-
 (* Seems wrong to support this at the level of the engine. This is easily
    implemented at the level of the rules and is noly needed for windows *)
 let register_response_file_support t =

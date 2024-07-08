@@ -170,19 +170,19 @@ include Sub_system.Register_end_point (struct
           ~melange_package_name:None
           ~package
       in
-      let linkages =
-        let modes =
-          if Mode_conf.Set.mem info.modes Javascript
-          then Mode_conf.Set.add info.modes Byte
-          else info.modes
-        in
+      let* linkages =
+        let+ jsoo_compilation_mode = Jsoo_rules.js_of_ocaml_compilation_mode sctx ~dir in
         let ocaml = Compilation_context.ocaml cctx in
-        List.concat_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+        List.concat_map (Mode_conf.Set.to_list info.modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
           | Native -> [ Exe.Linkage.native ]
           | Best -> [ Exe.Linkage.native_or_custom ocaml ]
           | Byte -> [ Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version ]
-          | Javascript -> [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ])
+          | Javascript ->
+            (match jsoo_compilation_mode with
+             | Js_of_ocaml.Compilation_mode.Whole_program ->
+               [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ]
+             | Separate_compilation -> [ Exe.Linkage.js ]))
       in
       let* (_ : Exe.dep_graphs) =
         let link_args =

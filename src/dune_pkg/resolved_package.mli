@@ -2,7 +2,6 @@ open Import
 
 type t
 
-val equal : t -> t -> bool
 val package : t -> OpamPackage.t
 val opam_file : t -> OpamFile.OPAM.t
 val loc : t -> Loc.t

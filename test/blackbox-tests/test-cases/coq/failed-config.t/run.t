@@ -101,25 +101,19 @@ Here we query the version of Coq. Due to the expansion of %{coq:_} macros we nee
   >   (echo %{coq:version})))
   > EOF
 
-Fails for now, but could be improved in the future.
+Succeeds after PR #10631
   $ FAIL_CONFIG=1 \
   > dune build @version
-  File "dune", line 4, characters 8-22:
-  4 |   (echo %{coq:version})))
-              ^^^^^^^^^^^^^^
-  Error: Could not expand %{coq:version} as running coqc --config failed.
-  $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
-  Hint: coqc --config requires the coq-stdlib package in order to function
-  properly.
-  [1]
+  8.16.1
 
 Should fail.
   $ FAIL_VERSION=1 \
   > dune build @version
-  Error: Could not parse coqc version: 
+  File "dune", line 4, characters 8-22:
+  4 |   (echo %{coq:version})))
+              ^^^^^^^^^^^^^^
+  Error: Could not expand %{coq:version} as running coqc failed.
   $TESTCASE_ROOT/bin/coqc --print-version failed with exit code 1.
-  -> required by %{coq:version} at dune:4
-  -> required by alias version in dune:1
   [1]
 
 Here we query the config. A failing --config will block this value from being realised
@@ -139,10 +133,8 @@ Should fail.
   File "dune", line 4, characters 8-21:
   4 |   (echo %{coq:coqlib})))
               ^^^^^^^^^^^^^
-  Error: Could not expand %{coq:coqlib} as running coqc --config failed.
+  Error: Could not expand %{coq:coqlib} as running coqc failed.
   $TESTCASE_ROOT/bin/coqc --config failed with exit code 1.
-  Hint: coqc --config requires the coq-stdlib package in order to function
-  properly.
   [1]
 
 Should succeed.

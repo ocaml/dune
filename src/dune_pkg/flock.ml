@@ -11,35 +11,28 @@ type t =
    lock" messages multiple times when multiple concurrent fibers try
    to take a lock at the same time. *)
 module Global_waiting_names = struct
-  let state = lazy (String.Table.create 1)
+  let state = String.Table.create 1
 
-  (* add a name to the set, returning [true] iff the name wasn't
+  (* Add a name to the set, returning [true] iff the name wasn't
      already in the set *)
-  let add name =
-    let state = Lazy.force state in
-    String.Table.add state name () |> Result.is_ok
-  ;;
-
-  let remove name =
-    let state = Lazy.force state in
-    String.Table.remove state name
-  ;;
+  let add name = String.Table.add state name () |> Result.is_ok
+  let remove name = String.Table.remove state name
 end
 
-let attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_s =
+let attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_seconds =
   let open Fiber.O in
   let current_dune_pid = Unix.getpid () in
-  let rec loop timeout_s =
+  let rec loop timeout_seconds =
     match Flock.lock_non_block flock Flock.Exclusive with
     | Error e -> Fiber.return @@ Error e
     | Ok `Success ->
       Global_waiting_names.remove name_for_messages;
       Fiber.return (Ok `Success)
-    | Ok `Failure -> handle_failure timeout_s
-  and handle_failure timeout_s =
+    | Ok `Failure -> handle_failure timeout_seconds
+  and handle_failure timeout_seconds =
     let locked_by_pid = int_of_string (Io.read_file lock_path) in
     let sleep_duration_s = 0.1 in
-    let remaining_duration_s = timeout_s -. sleep_duration_s in
+    let remaining_duration_s = timeout_seconds -. sleep_duration_s in
     if remaining_duration_s <= 0.0
     then Fiber.return (Ok `Timeout)
     else (
@@ -61,13 +54,13 @@ let attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_s =
                  locked_by_pid
                  name_for_messages
              ]);
-      let* () = Scheduler.sleep sleep_duration_s in
+      let* () = Scheduler.sleep ~seconds:sleep_duration_s in
       loop remaining_duration_s)
   in
-  loop timeout_s
+  loop timeout_seconds
 ;;
 
-let with_flock lock_path ~name_for_messages ~timeout_s ~f =
+let with_flock lock_path ~name_for_messages ~timeout_seconds ~f =
   let open Fiber.O in
   let parent = Path.parent_exn lock_path in
   Path.mkdir_p parent;
@@ -84,7 +77,7 @@ let with_flock lock_path ~name_for_messages ~timeout_s ~f =
       let+ () = Fiber.return () in
       Unix.close fd)
     (fun () ->
-      attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_s
+      attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_seconds
       >>= function
       | Ok `Success ->
         Fiber.finalize
@@ -108,8 +101,8 @@ let with_flock lock_path ~name_for_messages ~timeout_s ~f =
               Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
               |> Unix_error.Detailed.raise)
       | Ok `Timeout ->
-        let locked_by_pid = int_of_string (Io.read_file lock_path) in
-        if locked_by_pid == current_dune_pid
+        let locked_by_pid = Int.of_string_exn (Io.read_file lock_path) in
+        if Int.equal locked_by_pid current_dune_pid
         then
           Code_error.raise
             "timeout while waiting for flock, but flock was currently held by the \
@@ -133,7 +126,7 @@ let with_flock lock_path ~name_for_messages ~timeout_s ~f =
             [ Pp.textf
                 "Timed out after %.2f seconds while waiting for another instance of dune \
                  (pid %d) to release the lock on the resource %S."
-                timeout_s
+                timeout_seconds
                 locked_by_pid
                 name_for_messages
             ]

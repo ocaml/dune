@@ -296,12 +296,3 @@
  (package dune)
  (files   dune-utop.1))
 
-(rule
- (with-stdout-to dune-x-experimental-toolchain.1
-  (run dune x-experimental-toolchain --help=groff)))
-
-(install
- (section man)
- (package dune)
- (files   dune-x-experimental-toolchain.1))
-

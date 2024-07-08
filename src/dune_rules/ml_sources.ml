@@ -498,7 +498,7 @@ let modules_of_stanzas =
       let enabled_if =
         match Stanza.repr stanza with
         | Library.T lib -> lib.enabled_if
-        | Tests.T exes -> exes.build_if
+        | Tests.T tests -> tests.exes.enabled_if
         | Executables.T exes -> exes.enabled_if
         | Melange_stanzas.Emit.T mel -> mel.enabled_if
         | _ -> Blang.true_

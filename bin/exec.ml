@@ -115,7 +115,7 @@ module Watch = struct
        cause pid reuse *)
     Unix.kill pid_int signal;
     let do_wait () =
-      Scheduler.wait_for_process ~timeout:1. pid
+      Scheduler.wait_for_process ~timeout_seconds:1. pid
       |> Fiber.map ~f:(fun (_ : Proc.Process_info.t) -> ())
     in
     let on_error (e : Exn_with_backtrace.t) =

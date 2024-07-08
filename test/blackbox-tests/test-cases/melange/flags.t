@@ -19,7 +19,7 @@ Using flags field in melange.emit stanzas is not supported
   File "dune", line 5, characters 2-7:
   5 |  (flags -w -14-26))
         ^^^^^
-  Error: Unknown field flags
+  Error: Unknown field "flags"
   [1]
 
 Adds a module that contains unused var (warning 26) and illegal backlash (warning 14)

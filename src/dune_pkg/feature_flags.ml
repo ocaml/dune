@@ -1,3 +1,3 @@
 open! Import
 
-let use_toolchains = false
+let use_toolchains = true

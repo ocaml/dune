@@ -8,10 +8,16 @@ module Make = struct
     | Some p -> p
     | None ->
       User_error.raise
-        ~hints:[ Pp.text "Install \"make\" with your system package manager." ]
-        [ Pp.text
-            "The program \"make\" does not appear to be installed. This program is \
-             needed to compile the ocaml toolchain."
+        ~hints:
+          [ Pp.text "Install"
+          ; User_message.command "make"
+          ; Pp.text "with your system package manager."
+          ]
+        [ Pp.text "The program"
+        ; User_message.command "make"
+        ; Pp.text
+            "does not appear to be installed. This program is needed to compile the \
+             OCaml toolchain."
         ]
   ;;
 end
@@ -64,9 +70,7 @@ module Compiler = struct
          versions. Creates the directory if it doesn't already exist. *)
       let toolchain_base_dir () =
         let cache_dir =
-          Xdg.create ~env:Sys.getenv_opt ()
-          |> Xdg.cache_dir
-          |> Path.Outside_build_dir.of_string
+          Lazy.force Dune_util.xdg |> Xdg.cache_dir |> Path.Outside_build_dir.of_string
         in
         let path =
           Path.Outside_build_dir.relative
@@ -192,7 +196,13 @@ module Compiler = struct
             | Some prog -> `Absolute prog
             | None ->
               User_error.raise
-                [ Pp.textf "The program %S does not appear to be installed." prog ])
+                [ Pp.concat
+                    ~sep:Pp.space
+                    [ Pp.text "The program"
+                    ; User_message.command prog
+                    ; Pp.text "does not appear to be installed."
+                    ]
+                ])
           else if Filename.is_relative prog
           then `Relative_to_cwd prog
           else `Absolute (Path.of_string prog)
@@ -226,6 +236,9 @@ module Compiler = struct
     ; opam_file : OpamFile.OPAM.t
     ; opam_env : OpamFilter.env
     }
+
+  (* A witness that compiler has been installed *)
+  type installed = t
 
   let build_commands t = Command.list_of_opam_command_list t.opam_env t.opam_file.build
 
@@ -325,16 +338,16 @@ module Compiler = struct
   let bin_dir t = Path.Outside_build_dir.relative (Name.Paths.target_dir t.name) "bin"
   let is_installed t = Path.exists (Path.outside_build_dir (Name.Paths.target_dir t.name))
 
-  (* The strongest checksum from the compiler's opam file. This will
+  (* The first checksum appearing in the compiler's opam file. This will
      be used to validate the complier's source archive. Note that ideally
      we would validate the compiler source archive against all the
      checksums from the compiler's opam file however [Fetch.fetch]
      currently only accepts a single checksum for validation. *)
-  let strongest_checksum { opam_file; _ } =
+  let first_checksum { opam_file; _ } =
     Option.bind opam_file.url ~f:(fun opam_file_url ->
       OpamFile.URL.checksum opam_file_url
-      |> List.map ~f:Checksum.of_opam_hash
-      |> Checksum.choose_strongest)
+      |> List.hd_opt
+      |> Option.map ~f:Checksum.of_opam_hash)
   ;;
 
   let of_resolved_package resolved_package ~deps =
@@ -357,7 +370,7 @@ module Compiler = struct
 
   let handle_checksum_mismatch t ~got_checksum =
     let checksum =
-      match strongest_checksum t with
+      match first_checksum t with
       | Some checksum -> checksum
       | None ->
         Code_error.raise
@@ -397,7 +410,7 @@ module Compiler = struct
     let+ result =
       Fetch.fetch
         ~unpack:true
-        ~checksum:(strongest_checksum t)
+        ~checksum:(first_checksum t)
         ~target:source_dir
         ~url:(Loc.none, t.url)
     in
@@ -450,17 +463,18 @@ module Compiler = struct
     Flock.with_flock
       (Name.Paths.flock t.name)
       ~name_for_messages:(sprintf "compiler toolchain %s" (Name.identifier_string t.name))
-      ~timeout_s:infinity
+      ~timeout_seconds:infinity
       ~f
   ;;
 
-  let get t ~log_when =
+  let ensure_installed t ~log_when =
     if is_installed t
     then (
       print_already_installed_message t ~log_when;
-      Fiber.return ())
+      Fiber.return t)
     else
       with_flock t ~f:(fun () ->
+        let open Fiber.O in
         (* Note that we deliberately check if the toolchain is
            installed before and after taking the flock.
 
@@ -483,8 +497,10 @@ module Compiler = struct
         if is_installed t
         then (
           print_already_installed_message t ~log_when;
-          Fiber.return ())
-        else download_build_install t ~log_when)
+          Fiber.return t)
+        else
+          let+ () = download_build_install t ~log_when in
+          t)
   ;;
 end
 
@@ -494,6 +510,7 @@ module Available_compilers = struct
   let equal = Opam_repo.equal
 
   let load_upstream_opam_repo () =
+    (* CR-later: load the compiler from all repos in the workspace *)
     let loc, opam_url = Workspace.Repository.(opam_url upstream) in
     Opam_repo.of_git_repo loc opam_url
   ;;
@@ -528,3 +545,18 @@ module Available_compilers = struct
     else Fiber.return None
   ;;
 end
+
+let find_and_install_toolchain_compiler name version deps =
+  let open Fiber.O in
+  let* available_compilers = Available_compilers.load_upstream_opam_repo () in
+  let* toolchain_compiler =
+    Available_compilers.find available_compilers name version ~deps
+  in
+  match toolchain_compiler with
+  | None -> Fiber.return None
+  | Some toolchain_compiler ->
+    let+ toolchain_compiler =
+      Compiler.ensure_installed ~log_when:`Install_only toolchain_compiler
+    in
+    Some toolchain_compiler
+;;

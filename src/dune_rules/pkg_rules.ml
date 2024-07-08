@@ -9,8 +9,8 @@ include struct
   module Checksum = Checksum
   module Source = Source
   module Build_command = Lock_dir.Build_command
-  module Toolchain = Dune_pkg.Toolchain
   module Display = Dune_engine.Display
+  module Toolchain = Dune_pkg.Toolchain
 end
 
 module Variable = struct
@@ -198,64 +198,43 @@ module Value_list_env = struct
       let paths = Option.value paths ~default:[] in
       Some (Value.Dir path :: paths))
   ;;
-
-  (* Prepends the bin dir of a given toolchain compiler to the PATH
-     variable in the environment. *)
-  let add_toolchain_bin_dir_to_path t compiler =
-    let toolchain_bin_dir =
-      Toolchain.Compiler.bin_dir compiler |> Path.outside_build_dir
-    in
-    add_path t Env_path.var toolchain_bin_dir
-  ;;
 end
 
 module DB = struct
   type t =
     { all : Lock_dir.Pkg.t Package.Name.Map.t
     ; system_provided : Package.Name.Set.t
-    ; available_compilers : Toolchain.Available_compilers.t
     }
 
-  let equal t { all; system_provided; available_compilers } =
+  let equal t { all; system_provided } =
     Package.Name.Map.equal ~equal:Lock_dir.Pkg.equal t.all all
     && Package.Name.Set.equal t.system_provided system_provided
-    && Toolchain.Available_compilers.equal t.available_compilers available_compilers
   ;;
 
   let get =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
-      let+ all = Lock_dir.get context
-      and+ available_compilers =
-        Memo.of_reproducible_fiber
-        @@ Toolchain.Available_compilers.load_upstream_opam_repo ()
-      in
-      { all = all.packages; system_provided = dune; available_compilers }
+      let+ all = Lock_dir.get context in
+      { all = all.packages; system_provided = dune }
   ;;
 end
 
 module Compiler = struct
   type t =
-    | Toolchain of Toolchain.Compiler.t
+    (* The compiler chosen is in the lock dir but substituted for a shared
+       compiler in the toolchain directory *)
+    | Toolchain of Toolchain.Compiler.installed
     (* The lockdir specifies a compiler dependency as a package. *)
     | Inside_lock_dir of (Loc.t * Pkg_info.t)
     (* The lockdir specifies that the system compiler toolchain will
        be used rather than one managed by dune. *)
     | System_provided
 
-  let find_and_install_toolchain_compiler available_compilers name version deps =
+  let find_and_install_toolchain_compiler name version deps =
     if Dune_pkg.Feature_flags.use_toolchains
     then
       Memo.of_reproducible_fiber
-        (let open Fiber.O in
-         let* toolchain_compiler =
-           Toolchain.Available_compilers.find available_compilers name version ~deps
-         in
-         match toolchain_compiler with
-         | None -> Fiber.return None
-         | Some toolchain_compiler ->
-           let+ () = Toolchain.Compiler.get ~log_when:`Install_only toolchain_compiler in
-           Some toolchain_compiler)
+        (Toolchain.find_and_install_toolchain_compiler name version deps)
     else Memo.return None
   ;;
 
@@ -287,21 +266,37 @@ module Compiler = struct
               ];
           let+ toolchain_compiler =
             find_and_install_toolchain_compiler
-              db.available_compilers
               info.name
               info.version
               (List.map depends ~f:snd)
           in
           (match toolchain_compiler with
-           | Some toolchain_compiler -> Toolchain toolchain_compiler
-           | None -> Inside_lock_dir (loc, info)))
+           | None -> Inside_lock_dir (loc, info)
+           | Some toolchain_compiler -> Toolchain toolchain_compiler))
   ;;
 
   let add_path_to_env t ~env =
     match t with
-    | Inside_lock_dir _ | System_provided -> env
-    | Toolchain toolchain_compiler ->
-      Value_list_env.add_toolchain_bin_dir_to_path env toolchain_compiler
+    | Toolchain toolchain ->
+      let bin = Toolchain.Compiler.bin_dir toolchain |> Path.outside_build_dir in
+      Value_list_env.add_path env Env_path.var bin
+    | Inside_lock_dir _ (* this is a true package, its environment has been added *)
+    | System_provided (* the environment has been inherited *) -> env
+  ;;
+
+  let ocaml_toolchain toolchain context =
+    let env =
+      add_path_to_env (Toolchain toolchain) ~env:(Value_list_env.global ())
+      |> Value_list_env.to_env
+    in
+    let bin_dir = Toolchain.Compiler.bin_dir toolchain in
+    let which prog =
+      let path = Path.Outside_build_dir.relative bin_dir prog in
+      let+ exists = Fs_memo.file_exists path in
+      if exists then Some (Path.outside_build_dir path) else None
+    in
+    let get_ocaml_tool ~dir:_ prog = which prog in
+    Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
   ;;
 end
 
@@ -1246,7 +1241,7 @@ module rec Resolve : sig
     -> Loc.t * Package.Name.t
     -> [ `Inside_lock_dir of Pkg.t
        | `System_provided
-       | `Toolchain of Toolchain.Compiler.t
+       | `Toolchain of Toolchain.Compiler.installed
        ]
          Memo.t
 end = struct
@@ -1259,13 +1254,12 @@ end = struct
       assert (Package.Name.equal name info.name);
       let* compiler =
         Compiler.find_and_install_toolchain_compiler
-          db.available_compilers
           info.name
           info.version
           (List.map depends ~f:snd)
       in
       (match compiler with
-       | Some compiler -> Memo.return (Some (`Toolchain compiler))
+       | Some toolchain -> Memo.return (Some (`Toolchain toolchain))
        | None ->
          let* depends =
            Memo.parallel_map depends ~f:(fun name ->
@@ -1868,6 +1862,11 @@ let ocaml_toolchain context =
    | Some ocaml -> Resolve.resolve db context ocaml)
   >>| function
   | `System_provided -> None
+  | `Toolchain toolchain ->
+    let toolchain =
+      Action_builder.of_memo @@ Compiler.ocaml_toolchain toolchain context
+    in
+    Some (memoize toolchain)
   | `Inside_lock_dir pkg ->
     let toolchain =
       let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
@@ -1880,16 +1879,6 @@ let ocaml_toolchain context =
       let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
-    in
-    Some (memoize toolchain)
-  | `Toolchain toolchain_compiler ->
-    let toolchain =
-      let env =
-        Value_list_env.(
-          add_toolchain_bin_dir_to_path (global ()) toolchain_compiler |> to_env)
-      in
-      Action_builder.of_memo
-      @@ Ocaml_toolchain.of_toolchain_compiler toolchain_compiler context env
     in
     Some (memoize toolchain)
 ;;

@@ -21,7 +21,3 @@ open! Import
     manager, as compilers packages that would be installed by dune will
     not work correctly. *)
 val use_toolchains : bool
-
-(** Dune will automatically re-create lock files if the contents of
-    the dependency list in the dune-project goes out of date. *)
-val use_autorelock : bool

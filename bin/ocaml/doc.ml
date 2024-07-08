@@ -58,7 +58,11 @@ let term =
             "No browser could be found, you will have to open the documentation yourself."
         ]
   in
-  Build_cmd.run_build_command ~common ~config ~request
+  Build_cmd.run_build_command
+    ~pre_build:(fun () -> Fiber.return ())
+    ~common
+    ~config
+    ~request
 ;;
 
 let cmd = Cmd.v info term

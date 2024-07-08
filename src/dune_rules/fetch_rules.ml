@@ -166,7 +166,6 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
 
 let find_checksum, find_url =
   let extend_db all lockdir lockdir_path =
-    let* lockdir_path = lockdir_path in
     Fs_memo.dir_exists (In_source_dir lockdir_path)
     >>= function
     | false -> Memo.return all

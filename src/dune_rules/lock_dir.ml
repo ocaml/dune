@@ -140,13 +140,10 @@ let get (ctx : Context_name.t) : t Memo.t =
   lock_dir
 ;;
 
-let dev_tool_path pkg_name =
-  let dev_tool_locks = Path.Source.of_string "dev_tools.locks" in
-  Path.Source.relative dev_tool_locks pkg_name |> Memo.return
-;;
+let dev_tool_path pkg_name = Path.Source.relative dev_tools_path pkg_name
 
 let of_dev_tool pkg_name =
-  let* path = dev_tool_path pkg_name in
+  let path = dev_tool_path pkg_name in
   Fs_memo.dir_exists (In_source_dir path)
   >>= function
   | true -> Load.load path

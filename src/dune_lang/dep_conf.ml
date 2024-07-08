@@ -133,3 +133,11 @@ let encode = function
 ;;
 
 let to_dyn t = Dune_sexp.to_dyn (encode t)
+
+let is_fmt_alias = function
+  | Alias str_vars | Alias_rec str_vars ->
+    String_with_vars.text_only str_vars
+    |> Option.map ~f:(String.equal "fmt")
+    |> Option.value ~default:false
+  | _ -> false
+;;

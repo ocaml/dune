@@ -49,3 +49,4 @@ include Conv.S with type t := t
 
 val decode_no_files : t Decoder.t
 val to_dyn : t Dyn.builder
+val is_fmt_alias : t -> bool

@@ -143,7 +143,7 @@ end = struct
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
       empty_none
     | Tests.T tests ->
-      Expander.eval_blang expander tests.build_if
+      Expander.eval_blang expander tests.exes.enabled_if
       >>= if_available_buildable ~loc:tests.exes.buildable.loc (fun () ->
         Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents)
     | Copy_files.T { files = glob; _ } ->

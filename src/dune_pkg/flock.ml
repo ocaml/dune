@@ -61,7 +61,7 @@ let attempt_to_lock { flock; lock_path } ~name_for_messages ~timeout_s =
                  locked_by_pid
                  name_for_messages
              ]);
-      let* () = Scheduler.sleep sleep_duration_s in
+      let* () = Scheduler.sleep ~seconds:sleep_duration_s in
       loop remaining_duration_s)
   in
   loop timeout_s

@@ -23,4 +23,4 @@ This is visible when trying to build the `@all` alias. See #5950.
 
   $ cp data.txt t.expected
 
-  $ dune build t.output
+  $ dune build t.exe.output

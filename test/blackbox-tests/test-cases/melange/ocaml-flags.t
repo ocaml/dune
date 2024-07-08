@@ -45,7 +45,7 @@ Building should fail as `flags` are not supported in melange emit stanzas
   File "dune", line 5, characters 2-7:
   5 |  (flags -w -14-26))
         ^^^^^
-  Error: Unknown field flags
+  Error: Unknown field "flags"
   [1]
 
 Update dune file to use ocamlc_flags
@@ -64,7 +64,7 @@ Building should fail as ocamlc flags are not supported in melange emit stanzas
   File "dune", line 5, characters 2-14:
   5 |  (ocamlc_flags -w -14-26))
         ^^^^^^^^^^^^
-  Error: Unknown field ocamlc_flags
+  Error: Unknown field "ocamlc_flags"
   [1]
 
 Update dune file to use ocamlopt_flags
@@ -83,5 +83,5 @@ Building should fail as ocamlopt flags are not supported in melange emit stanzas
   File "dune", line 5, characters 2-16:
   5 |  (ocamlopt_flags -w -14-26))
         ^^^^^^^^^^^^^^
-  Error: Unknown field ocamlopt_flags
+  Error: Unknown field "ocamlopt_flags"
   [1]

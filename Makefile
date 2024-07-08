@@ -11,7 +11,6 @@ BIN := ./_boot/dune.exe
 TEST_DEPS := \
 lwt \
 cinaps \
-core_bench \
 "csexp>=1.3.0" \
 js_of_ocaml \
 js_of_ocaml-compiler \
@@ -25,14 +24,15 @@ ppx_inline_test \
 ppxlib \
 ctypes \
 "utop>=2.6.0" \
-"melange"
+"melange>=4.0.0-414"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
+core_bench \
 "dkml-workflows>=1.2.0" \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.1
+TEST_OCAMLVERSION := 4.14.2
 
 -include Makefile.dev
 
@@ -74,13 +74,8 @@ install-ocamlformat:
 dev-depext:
 	opam depext -y $(TEST_DEPS)
 
-# branch v4-414-for-dune
-.PHONY: melange
-melange:
-	opam pin add -n melange.dev https://github.com/melange-re/melange.git#ab48cfcfe5f2c0ca4a4a4fcafceb73b95c2acb1d
-
 .PHONY: dev-deps
-dev-deps: melange
+dev-deps:
 	opam install -y $(TEST_DEPS)
 
 .PHONY: coverage-deps

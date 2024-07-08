@@ -242,9 +242,18 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
   in
   (* TODO: Make this more type-safe by switching to non-empty lists. *)
   let executables =
-    String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
-      let first_exe = snd (Nonempty_list.hd exes.names) in
-      first_exe, m)
+    match
+      String.Map.of_list_map exes ~f:(fun (exes, m) ->
+        let first_exe = snd (Nonempty_list.hd exes.names) in
+        first_exe, m)
+    with
+    | Ok m -> m
+    | Error (exe_name, (exes1, _), _) ->
+      let loc = fst (Nonempty_list.hd exes1.names) in
+      User_error.raise
+        ~loc
+        [ Pp.textf "Executables with same name %S use different foreign sources" exe_name
+        ]
   in
   let libraries =
     match Lib_name.Map.of_list_map libs ~f:(fun (lib, m) -> Library.best_name lib, m) with

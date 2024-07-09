@@ -170,6 +170,7 @@
                   python310Packages.sphinx-copybutton
                   python310Packages.furo
                   python310Packages.sphinx-design
+                  python310Packages.myst-parser
                 ]
               );
               meta.description = ''

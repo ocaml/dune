@@ -1,0 +1,11 @@
+(library
+ (name calc)
+ (libraries cmdliner)
+ (foreign_stubs
+  (language c)
+  (names calc_stubs)))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))

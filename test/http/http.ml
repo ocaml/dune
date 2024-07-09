@@ -29,24 +29,61 @@ module Server = struct
     let descr, _sockaddr = Unix.accept ~cloexec:true t.sock in
     let out = Unix.out_channel_of_descr descr in
     f out;
+    Out_channel.flush out;
+    Unix.shutdown descr Unix.SHUTDOWN_SEND;
     close_out out
   ;;
 
   let stop t = Unix.close t.sock
 
-  let respond out ~status ~content =
-    let status =
+  let header status mime content_length =
+    let status_string =
       match status with
       | `Ok -> "200 Ok"
       | `Not_found -> "404 Not Found"
     in
-    let content_length = String.length content in
-    Printf.fprintf out "HTTP/1.1 %s\nContent-Length: %d\n\n" status content_length;
-    Out_channel.output_string out content
+    let mime_string =
+      match mime with
+      | `Text -> "text/plain"
+      | `Binary -> "application/octet-stream"
+    in
+    sprintf
+      "HTTP/1.1 %s\nContent-Type: %s\nContent-Length: %d\n\n"
+      status_string
+      mime_string
+      content_length
+  ;;
+
+  let respond_not_found out = Out_channel.output_string out (header `Not_found `Text 0)
+
+  (* Send a given number of bytes from a buffer to a file descriptor,
+     retrying the send until the requested number of bytes have been
+     sent. *)
+  let send_bytes fd buf num_bytes_to_send =
+    let total_bytes_sent = ref 0 in
+    while !total_bytes_sent < num_bytes_to_send do
+      let remaining_bytes_to_send = num_bytes_to_send - !total_bytes_sent in
+      let bytes_sent = Unix.send fd buf !total_bytes_sent remaining_bytes_to_send [] in
+      total_bytes_sent := !total_bytes_sent + bytes_sent
+    done
   ;;
 
   let respond_file out ~file =
-    let content = Io.String_path.read_file ~binary:true file in
-    respond out ~status:`Ok ~content
+    In_channel.with_open_bin file (fun in_channel ->
+      let length = In_channel.length in_channel |> Int64.to_int in
+      let out_fd = Unix.descr_of_out_channel out in
+      let header_bytes = Bytes.of_string (header `Ok `Binary length) in
+      send_bytes out_fd header_bytes (Bytes.length header_bytes);
+      let buf_size = 4096 in
+      let buf = Bytes.create buf_size in
+      let pos = ref 0 in
+      try
+        while true do
+          let bytes_read = In_channel.input in_channel buf !pos buf_size in
+          send_bytes out_fd buf bytes_read;
+          if Int.equal bytes_read 0 then raise End_of_file
+        done
+      with
+      | End_of_file -> ())
   ;;
 end

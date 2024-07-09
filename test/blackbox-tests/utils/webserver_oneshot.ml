@@ -52,7 +52,7 @@ let main content_files port_file ~simulate_not_found =
   List.iter content_files ~f:(fun content_file ->
     Http.Server.accept server ~f:(fun out_channel ->
       if simulate_not_found
-      then Http.Server.respond out_channel ~status:`Not_found ~content:""
+      then Http.Server.respond_not_found out_channel
       else Http.Server.respond_file out_channel ~file:content_file))
 ;;
 

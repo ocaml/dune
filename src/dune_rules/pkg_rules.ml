@@ -1589,7 +1589,7 @@ let source_rules (pkg : Pkg.t) =
         | `Directory_or_archive src ->
           loc, Action_builder.copy ~src:(Path.external_ src) ~dst:extra_source
         | `Fetch ->
-          let rule = Fetch_rules.fetch ~target:pkg.paths.source_dir `File fetch in
+          let rule = Fetch_rules.fetch ~target:extra_source `File fetch in
           loc, rule
       in
       Path.build extra_source, rule)

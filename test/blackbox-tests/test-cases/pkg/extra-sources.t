@@ -116,10 +116,12 @@ Running the binary should download the tarball & patch, build them and show the
 correct, patched, message:
 
   $ dune exec ./display.exe
-  Error: Multiple rules generated for
-  _build/_private/default/.pkg/needs-patch/source:
-  - dune.lock/needs-patch.pkg:14
-  - dune.lock/needs-patch.pkg:8
+  File "dune.lock/needs-patch.pkg", line 8, characters 7-29:
+  8 |   (url http://localhost:61144)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  Error: curl returned an invalid error code 56
+         
+         
   [1]
 
 Set up a new version of the package which has multiple `extra-sources`, the

@@ -165,11 +165,30 @@ Test with an opam like installation
 
   $ dune install -p a --create-install-files a --prefix "_destdir"
 
-  $ grep "_destdir" a/a.install -c
-  7
-
-  $ grep "_build" a/a.install -c
-  12
+  $ cat a/a.install
+  lib: [
+    "_destdir/_destdir/lib/a/META"
+    "_destdir/_destdir/lib/a/Sites.ml"
+    "_destdir/_destdir/lib/a/a.a"
+    "_destdir/_destdir/lib/a/a.cma"
+    "_build/install/default/lib/a/a.cmi"
+    "_build/install/default/lib/a/a.cmt"
+    "_build/install/default/lib/a/a.cmx"
+    "_build/install/default/lib/a/a.cmxa"
+    "_build/install/default/lib/a/a.ml"
+    "_build/install/default/lib/a/a__.cmi"
+    "_build/install/default/lib/a/a__.cmt"
+    "_build/install/default/lib/a/a__.cmx"
+    "_build/install/default/lib/a/a__.ml"
+    "_build/install/default/lib/a/a__Sites.cmi"
+    "_destdir/_destdir/lib/a/a__Sites.cmt"
+    "_build/install/default/lib/a/a__Sites.cmx"
+    "_destdir/_destdir/lib/a/dune-package"
+    "_build/install/default/lib/a/opam"
+  ]
+  libexec: [
+    "_destdir/_destdir/lib/a/a.cmxs"
+  ]
 
 Build everything
 ----------------

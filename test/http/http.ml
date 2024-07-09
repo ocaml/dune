@@ -76,14 +76,13 @@ module Server = struct
       send_bytes out_fd header_bytes (Bytes.length header_bytes);
       let buf_size = 4096 in
       let buf = Bytes.create buf_size in
-      let pos = ref 0 in
-      try
-        while true do
-          let bytes_read = In_channel.input in_channel buf !pos buf_size in
+      let rec write () =
+        match In_channel.input in_channel buf 0 buf_size with
+        | 0 -> ()
+        | bytes_read ->
           send_bytes out_fd buf bytes_read;
-          if Int.equal bytes_read 0 then raise End_of_file
-        done
-      with
-      | End_of_file -> ())
+          write ()
+      in
+      write ())
   ;;
 end

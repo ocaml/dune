@@ -34,6 +34,10 @@ module Pkg : sig
   val files_dir : Package_name.t -> lock_dir:Path.Source.t -> Path.Source.t
 end
 
+module Package_filename : sig
+  val of_package_name : Package_name.t -> string
+end
+
 module Repositories : sig
   type t
 end

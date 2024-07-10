@@ -153,6 +153,7 @@ module Value_list_env = struct
   type t = Value.t list Env.Map.t
 
   let empty = Env.Map.empty
+  let to_dyn = Env.Map.to_dyn (Dyn.list Value.to_dyn)
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
 
@@ -336,25 +337,6 @@ module Pkg = struct
     |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
-  (* Given a list of packages, construct an env containing variables
-     set by each package. Variables containing delimited lists of
-     paths (e.g. PATH) which appear in multiple package's envs are
-     concatenated in the reverse order of their associated packages in
-     the input list. Environment updates via the `exported_env` field
-     (equivalent to opam's `setenv` field) are applied for each
-     package in the same order as the argument list. *)
-  let build_env_of_deps ts =
-    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
-      let env =
-        let roots = Paths.install_roots t.paths in
-        let init = Value_list_env.add_path env Env_path.var (Path.build roots.bin) in
-        let vars = Install.Roots.to_env_without_path roots in
-        List.fold_left vars ~init ~f:(fun acc (var, path) ->
-          Value_list_env.add_path acc var (Path.build path))
-      in
-      List.fold_left t.exported_env ~init:env ~f:Env_update.set)
-  ;;
-
   let is_compiler =
     let module Package_name = Dune_pkg.Package_name in
     let compiler_package_names =
@@ -365,6 +347,52 @@ module Pkg = struct
         ]
     in
     fun t -> Package_name.Set.mem compiler_package_names t.info.name
+  ;;
+
+  let toolchain_bin_dir t =
+    Dune_pkg.Toolchain.bin_dir
+      t.info.name
+      t.info.version
+      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
+  ;;
+
+  let toolchain_env t =
+    let bin_dir = toolchain_bin_dir t |> Path.outside_build_dir in
+    Value_list_env.add_path Value_list_env.empty Env_path.var bin_dir
+  ;;
+
+  let toolchain_ocaml_toolchain t context =
+    let env = toolchain_env t |> Value_list_env.to_env in
+    let bin_dir = toolchain_bin_dir t in
+    let which prog =
+      let path = Path.Outside_build_dir.relative bin_dir prog in
+      let+ exists = Fs_memo.file_exists path in
+      if exists then Some (Path.outside_build_dir path) else None
+    in
+    let get_ocaml_tool ~dir:_ prog = which prog in
+    Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
+  ;;
+
+  (* Given a list of packages, construct an env containing variables
+     set by each package. Variables containing delimited lists of
+     paths (e.g. PATH) which appear in multiple package's envs are
+     concatenated in the reverse order of their associated packages in
+     the input list. Environment updates via the `exported_env` field
+     (equivalent to opam's `setenv` field) are applied for each
+     package in the same order as the argument list. *)
+  let build_env_of_deps ts =
+    List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
+      if is_compiler t
+      then toolchain_env t
+      else (
+        let env =
+          let roots = Paths.install_roots t.paths in
+          let init = Value_list_env.add_path env Env_path.var (Path.build roots.bin) in
+          let vars = Install.Roots.to_env_without_path roots in
+          List.fold_left vars ~init ~f:(fun acc (var, path) ->
+            Value_list_env.add_path acc var (Path.build path))
+        in
+        List.fold_left t.exported_env ~init:env ~f:Env_update.set))
   ;;
 
   let install_toolchain t =
@@ -387,23 +415,10 @@ module Pkg = struct
     Action_builder.of_memo memo |> Action_builder.with_no_targets
   ;;
 
-  let toolchain_bin_dir t =
-    Dune_pkg.Toolchain.bin_dir
-      t.info.name
-      t.info.version
-      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
-  ;;
-
   (* [build_env t] returns an env containing paths containing all the
      tools and libraries required to build the package [t] inside the
      faux opam directory contained in the _build dir. *)
-  let build_env t =
-    if is_compiler t
-    then (
-      let bin_dir = toolchain_bin_dir t |> Path.outside_build_dir in
-      Value_list_env.add_path Value_list_env.empty Env_path.var bin_dir)
-    else build_env_of_deps @@ deps_closure t
-  ;;
+  let build_env t = build_env_of_deps @@ deps_closure t
 
   let base_env t =
     Env.Map.of_list_exn
@@ -432,7 +447,10 @@ module Pkg = struct
     Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
 
-  let exported_env t = Value_list_env.to_env @@ exported_value_env t
+  let exported_env t =
+    let e = exported_value_env t in
+    Value_list_env.to_env e
+  ;;
 end
 
 module Pkg_installed = struct
@@ -915,7 +933,7 @@ module Action_expander = struct
              (match Filename.Map.find t.artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
-                (let path = Global.env () |> Env_path.path in
+                (let path = Value_list_env.to_env t.env |> Env_path.path in
                  Which.which ~path program)
                 >>| (function
                  | Some p -> Ok p
@@ -1843,16 +1861,21 @@ let ocaml_toolchain context =
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
     let toolchain =
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-      let open Action_builder.O in
-      let* cookie = cookie in
-      (* TODO we should use the closure of [pkg] *)
-      let binaries =
-        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
-      in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
-      let path = Env_path.path (Global.env ()) in
-      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
+      if Pkg.is_compiler pkg
+      then Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context
+      else (
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        let open Action_builder.O in
+        let* cookie = cookie in
+        (* TODO we should use the closure of [pkg] *)
+        let binaries =
+          Section.Map.find cookie.files Bin
+          |> Option.value ~default:[]
+          |> Path.Set.of_list
+        in
+        let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+        let path = Env_path.path (Global.env ()) in
+        Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries)
     in
     Some (Action_builder.memoize "ocaml_toolchain" toolchain)
 ;;

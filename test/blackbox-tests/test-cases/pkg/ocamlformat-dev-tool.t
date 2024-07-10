@@ -186,3 +186,114 @@ The ocamlformat specified in dune-project has been used.
   $ cat dev-tools.locks/ocamlformat/ocamlformat.pkg
   cat: dev-tools.locks/ocamlformat/ocamlformat.pkg: No such file or directory
   [1]
+
+
+Make a package with the the source coming from $PWD.
+  $ mkpkg ocamlformat 0.26.3 <<EOF
+  > build: [
+  >   [
+  >     "dune"
+  >     "build"
+  >     "-p"
+  >     name
+  >     "@install"
+  >   ]
+  > ]
+  > url {
+  >  src: "file://$PWD/ocamlformat.tar.gz"
+  >  checksum: [
+  >   "md5=$(md5sum ocamlformat.tar.gz | cut -f1 -d' ')"
+  >  ]
+  > }
+  > EOF
+
+No dependency on ocamlformat
+  $ cat > dune-project <<EOF
+  > (lang dune 3.13)
+  > (package
+  >  (name foo))
+  > EOF
+
+Re-lock the project
+  $ dune pkg lock
+  Solution for dune.lock:
+  (no dependencies to lock)
+
+A version that does not exists in the local opam-repo
+  $ cat > .ocamlformat <<EOF
+  > version = 0.26.9
+  > EOF
+
+
+The solving would fail because the version does not exist
+  $ dune fmt
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dev-tools.locks/ocamlformat:
+  Can't find all required versions.
+  Selected: ocamlformat_dev.dev
+  - ocamlformat -> (problem)
+      ocamlformat_dev dev requires = 0.26.9
+      Rejected candidates:
+        ocamlformat.0.26.3: Incompatible with restriction: = 0.26.9
+        ocamlformat.0.26.2: Incompatible with restriction: = 0.26.9
+  [1]
+
+Make a fake ocamlformat with a syntax error in ocamlformat.ml file:
+  $ mkdir ocamlformat
+  $ cd ocamlformat
+  $ cat > dune-project <<EOF
+  > (lang dune 3.13)
+  > (package (name ocamlformat))
+  > EOF
+
+  $ cat > ocamlformat.ml <<EOF
+  > let = print_endline "formatted"
+  > EOF
+
+  $ cat > dune <<EOF
+  > (executable
+  >  (public_name ocamlformat))
+  > EOF
+
+  $ cd ..
+  $ tar -czf ocamlformat.tar.gz ocamlformat
+  $ rm -rf ocamlformat
+
+Make a package with the the source coming from $PWD with new checksum.
+  $ mkpkg ocamlformat 0.26.3 <<EOF
+  > build: [
+  >   [
+  >     "dune"
+  >     "build"
+  >     "-p"
+  >     name
+  >     "@install"
+  >   ]
+  > ]
+  > url {
+  >  src: "file://$PWD/ocamlformat.tar.gz"
+  >  checksum: [
+  >   "md5=$(md5sum ocamlformat.tar.gz | cut -f1 -d' ')"
+  >  ]
+  > }
+  > EOF
+
+A version that exists for  now
+  $ cat > .ocamlformat <<EOF
+  > version = 0.26.3
+  > EOF
+It fails during the build of ocamlformat with syntax error
+  $ dune fmt
+  Solution for dev-tools.locks/ocamlformat:
+  - ocamlformat.0.26.3
+  File "dev-tools.locks/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:
+  4 |  (run dune build -p %{pkg-self:name} @install))
+            ^^^^
+  Error: Logs for package ocamlformat
+  (cd _build/default && /home/alpha/hack/moyodiallo/dune/_opam/bin/ocamlopt.opt -w -40 -g -I .ocamlformat.eobjs/byte -I .ocamlformat.eobjs/native -intf-suffix .ml -no-alias-deps -o .ocamlformat.eobjs/native/dune__exe__Ocamlformat.cmx -c -impl ocamlformat.ml)
+  File "ocamlformat.ml", line 1, characters 4-5:
+  1 | let = print_endline "formatted"
+          ^
+  Error: Syntax error
+  
+  [1]

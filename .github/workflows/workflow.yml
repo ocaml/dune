@@ -102,13 +102,9 @@ jobs:
           opam exec -- make dev-deps
         if: ${{ matrix.skip_test == false }}
 
-      - name: Run test suite on Unix
+      - name: Run test suite
         run: opam exec -- make test
-        if: ${{ matrix.os != 'windows-latest' && matrix.skip_test == false }}
-
-      - name: Run test suite on Win32
-        run: opam exec -- make test-windows
-        if: ${{ matrix.os == 'windows-latest' && matrix.skip_test == false }}
+        if: ${{ matrix.skip_test == false }}
 
       - name: Build configurator
         run: opam install ./dune-configurator.opam

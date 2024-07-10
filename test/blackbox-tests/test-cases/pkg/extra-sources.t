@@ -116,13 +116,7 @@ Running the binary should download the tarball & patch, build them and show the
 correct, patched, message:
 
   $ dune exec ./display.exe
-  File "dune.lock/needs-patch.pkg", line 8, characters 7-29:
-  8 |   (url http://localhost:61144)
-             ^^^^^^^^^^^^^^^^^^^^^^
-  Error: curl returned an invalid error code 56
-         
-         
-  [1]
+  Patch successfully applied
 
 Set up a new version of the package which has multiple `extra-sources`, the
 application order of them mattering:
@@ -162,8 +156,4 @@ Lock the project to use that new package
 Running the binary should work and output the double patched message:
 
   $ dune exec ./display.exe
-  Error: Multiple rules generated for
-  _build/_private/default/.pkg/needs-patch/source:
-  - dune.lock/needs-patch.pkg:16
-  - dune.lock/needs-patch.pkg:20
-  [1]
+  Patch successfully applied, multiple times

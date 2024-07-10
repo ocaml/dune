@@ -250,3 +250,23 @@ settings as dictated by the dune language version.
   > ;; formatting disabled by default
   > EOF
   $ (cd using-env && dune build @fmt)
+
+dune fmt automatically formats dune-project files.
+
+  $ mkdir dune-project-files
+  $ touch dune-project-files/.ocamlformat
+  $ cat > dune-project-files/dune-project << EOF
+  > (lang dune 3.16)
+  > (name
+  > format_project)
+  > EOF
+  $ (cd dune-project-files && dune fmt)
+  File "dune-project", line 1, characters 0-0:
+  Error: Files _build/default/dune-project and
+  _build/default/.formatted/dune-project differ.
+  Promoting _build/default/.formatted/dune-project to dune-project.
+  [1]
+  $ cat dune-project-files/dune-project
+  (lang dune 3.16)
+  
+  (name format_project)

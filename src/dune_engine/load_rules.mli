@@ -33,7 +33,7 @@ end
 (** Load the rules for this directory. *)
 val load_dir : dir:Path.t -> Loaded.t Memo.t
 
-(** Return the rule that has the given file has target, if any *)
+(** Return the rule that has the given file as target, if any *)
 val get_rule : Path.t -> Rule.t option Memo.t
 
 (** Return the definition of an alias. *)

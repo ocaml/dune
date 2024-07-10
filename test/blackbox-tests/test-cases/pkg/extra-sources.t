@@ -35,22 +35,23 @@ First we need a project that will have the patch applied:
   $ git init --quiet
   $ cat > dune-project <<EOF
   > (lang dune 3.15)
+  > (name needs-patch)
   > EOF
-  $ cat > needs_patch.opam <<EOF
+  $ cat > needs-patch.opam <<EOF
   > opam-version: "2.0"
   > EOF
   $ cat > dune <<EOF
-  > (library (public_name needs_patch))
+  > (library (public_name needs-patch) (name needs_patch))
   > EOF
   $ cat > needs_patch.ml <<EOF
   > let msg = "Needs to be patched"
   > EOF
-  $ git add -A
-  $ git commit -m "Initial" --quiet
   $ cd ..
   $ tar cf needs-patch.tar needs-patch
   $ SRC_MD5=$(md5sum needs-patch.tar | cut -f1 -d' ')
   $ cd needs-patch
+  $ git add -A
+  $ git commit -m "Initial" --quiet
   $ cat > needs_patch.ml <<EOF
   > let msg = "Patch successfully applied"
   > EOF
@@ -62,6 +63,7 @@ First we need a project that will have the patch applied:
   > EOF
   $ git diff > ../additional.patch
   $ cd ..
+  $ rm -rf needs-patch
   $ REQUIRED_PATCH_MD5=$(md5sum required.patch | cut -f1 -d' ')
   $ ADDITIONAL_PATCH_MD5=$(md5sum additional.patch | cut -f1 -d' ')
 
@@ -79,6 +81,7 @@ package.
 
   $ mkrepo
   $ mkpkg needs-patch 0.0.1 <<EOF
+  > build: ["dune" "build" "-p" name "-j" jobs]
   > patches: ["required.patch"]
   > url {
   >   src: "http://localhost:$SRC_PORT"
@@ -98,7 +101,7 @@ that is supposed to get patched.
   > (package (name my) (depends needs-patch))
   > EOF
   $ cat > dune <<EOF
-  > (executable (public_name display) (libraries needs_patch))
+  > (executable (public_name display) (libraries needs-patch))
   > EOF
   $ cat > display.ml <<EOF
   > let () = print_endline Needs_patch.msg
@@ -116,11 +119,7 @@ Running the binary should download the tarball & patch, build them and show the
 correct, patched, message:
 
   $ dune exec ./display.exe
-  Error: Multiple rules generated for
-  _build/_private/default/.pkg/needs-patch/source:
-  - dune.lock/needs-patch.pkg:14
-  - dune.lock/needs-patch.pkg:8
-  [1]
+  Patch successfully applied
 
 Set up a new version of the package which has multiple `extra-sources`, the
 application order of them mattering:
@@ -136,6 +135,7 @@ application order of them mattering:
   $ ADDITIONAL_PATCH_PORT=$(cat additional-patch-port.txt)
 
   $ mkpkg needs-patch 0.0.2 <<EOF
+  > build: ["dune" "build" "-p" name "-j" jobs]
   > patches: ["required.patch" "additional.patch"]
   > url {
   >   src: "http://localhost:$SRC_PORT"
@@ -160,8 +160,4 @@ Lock the project to use that new package
 Running the binary should work and output the double patched message:
 
   $ dune exec ./display.exe
-  Error: Multiple rules generated for
-  _build/_private/default/.pkg/needs-patch/source:
-  - dune.lock/needs-patch.pkg:16
-  - dune.lock/needs-patch.pkg:20
-  [1]
+  Patch successfully applied, multiple times

@@ -46,12 +46,12 @@ First we need a project that will have the patch applied:
   $ cat > needs_patch.ml <<EOF
   > let msg = "Needs to be patched"
   > EOF
-  $ git add -A
-  $ git commit -m "Initial" --quiet
   $ cd ..
   $ tar cf needs-patch.tar needs-patch
   $ SRC_MD5=$(md5sum needs-patch.tar | cut -f1 -d' ')
   $ cd needs-patch
+  $ git add -A
+  $ git commit -m "Initial" --quiet
   $ cat > needs_patch.ml <<EOF
   > let msg = "Patch successfully applied"
   > EOF

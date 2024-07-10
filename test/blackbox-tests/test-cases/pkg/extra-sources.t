@@ -55,17 +55,24 @@ First we need a project that will have the patch applied:
   > let msg = "Patch successfully applied"
   > EOF
   $ git diff > ../required.patch
+  $ git add needs_patch.ml
+  $ git commit -m "First patch" --quiet
+  $ cat > needs_patch.ml <<EOF
+  > let msg = "Patch successfully applied, multiple times"
+  > EOF
+  $ git diff > ../additional.patch
   $ cd ..
-  $ PATCH_MD5=$(md5sum required.patch | cut -f1 -d' ')
+  $ REQUIRED_PATCH_MD5=$(md5sum required.patch | cut -f1 -d' ')
+  $ ADDITIONAL_PATCH_MD5=$(md5sum additional.patch | cut -f1 -d' ')
 
 Then we start the oneshot server for both the source and the patch.
 
   $ webserver_oneshot --content-file needs-patch.tar --port-file tarball-port.txt &
   $ until test -f tarball-port.txt ; do sleep 0.1; done
   $ SRC_PORT=$(cat tarball-port.txt)
-  $ webserver_oneshot --content-file required.patch --port-file patch-port.txt &
-  $ until test -f patch-port.txt ; do sleep 0.1; done
-  $ PATCH_PORT=$(cat patch-port.txt)
+  $ webserver_oneshot --content-file required.patch --port-file required-patch-port.txt &
+  $ until test -f required-patch-port.txt ; do sleep 0.1; done
+  $ REQUIRED_PATCH_PORT=$(cat required-patch-port.txt)
 
 We now have the checksums as well as the port numbers, so we can define the
 package.
@@ -78,8 +85,8 @@ package.
   >   checksum: "md5=$SRC_MD5"
   > }
   > extra-source "required.patch" {
-  >   src: "http://localhost:$PATCH_PORT"
-  >   checksum: "md5=$PATCH_MD5"
+  >   src: "http://localhost:$REQUIRED_PATCH_PORT"
+  >   checksum: "md5=$REQUIRED_PATCH_MD5"
   > }
   > EOF
 
@@ -113,4 +120,48 @@ correct, patched, message:
   _build/_private/default/.pkg/needs-patch/source:
   - dune.lock/needs-patch.pkg:14
   - dune.lock/needs-patch.pkg:8
+  [1]
+
+Set up a new version of the package which has multiple `extra-sources`, the
+application order of them mattering:
+
+  $ webserver_oneshot --content-file needs-patch.tar --port-file tarball-port.txt &
+  $ until test -f tarball-port.txt ; do sleep 0.1; done
+  $ SRC_PORT=$(cat tarball-port.txt)
+  $ webserver_oneshot --content-file required.patch --port-file required-patch-port.txt &
+  $ until test -f required-patch-port.txt ; do sleep 0.1; done
+  $ REQUIRED_PATCH_PORT=$(cat required-patch-port.txt)
+  $ webserver_oneshot --content-file additional.patch --port-file additional-patch-port.txt &
+  $ until test -f additional-patch-port.txt ; do sleep 0.1; done
+  $ ADDITIONAL_PATCH_PORT=$(cat additional-patch-port.txt)
+
+  $ mkpkg needs-patch 0.0.2 <<EOF
+  > patches: ["required.patch" "additional.patch"]
+  > url {
+  >   src: "http://localhost:$SRC_PORT"
+  >   checksum: "md5=$SRC_MD5"
+  > }
+  > extra-source "required.patch" {
+  >   src: "http://localhost:$REQUIRED_PATCH_PORT"
+  >   checksum: "md5=$REQUIRED_PATCH_MD5"
+  > }
+  > extra-source "additional.patch" {
+  >   src: "http://localhost:$ADDITIONAL_PATCH_PORT"
+  >   checksum: "md5=$ADDITIONAL_PATCH_MD5"
+  > }
+  > EOF
+
+Lock the project to use that new package
+
+  $ dune pkg lock
+  Solution for dune.lock:
+  - needs-patch.0.0.2
+
+Running the binary should work and output the double patched message:
+
+  $ dune exec ./display.exe
+  Error: Multiple rules generated for
+  _build/_private/default/.pkg/needs-patch/source:
+  - dune.lock/needs-patch.pkg:16
+  - dune.lock/needs-patch.pkg:20
   [1]

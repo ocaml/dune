@@ -11,6 +11,12 @@ module Server : sig
   val stop : t -> unit
   val port : t -> int
   val start : t -> unit
-  val respond : session -> status:[ `Ok | `Not_found ] -> content:string -> unit
+
+  (** Respond with a 404 error *)
+  val respond_not_found : session -> unit
+
+  (** Send the content of the file at path [file]. Works for both text
+      and binary files. Raises an exception if the [file] doesn't
+      refer to a file. *)
   val respond_file : session -> file:string -> unit
 end

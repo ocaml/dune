@@ -153,7 +153,6 @@ module Value_list_env = struct
   type t = Value.t list Env.Map.t
 
   let empty = Env.Map.empty
-  let to_dyn = Env.Map.to_dyn (Dyn.list Value.to_dyn)
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
 
@@ -1921,9 +1920,7 @@ let ocaml_toolchain context =
   | `Inside_lock_dir pkg ->
     let toolchain =
       if Pkg.is_compiler pkg
-      then (
-        print_endline "aaa";
-        Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context)
+      then Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context
       else (
         let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
         let open Action_builder.O in
@@ -1964,8 +1961,6 @@ let which context =
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
-    String.Map.iteri artifacts ~f:(fun k v ->
-      print_endline (sprintf "ddd %s %s" k (Path.to_string v)));
     Filename.Map.find artifacts program)
 ;;
 

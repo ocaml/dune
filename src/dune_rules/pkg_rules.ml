@@ -257,7 +257,7 @@ module Pkg = struct
     { id : Id.t
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
-    ; depends_ : t list
+    ; depends : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
@@ -267,29 +267,11 @@ module Pkg = struct
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
-  let depends_non_system_provided t =
-    List.filter t.depends_ ~f:(fun t -> not t.system_provided)
-  ;;
-
-  let top_closure_ depends =
-    match
-      Top_closure.top_closure
-        depends
-        ~key:(fun t -> t.id)
-        ~deps:(fun t -> depends_non_system_provided t)
-    with
-    | Ok s -> s
-    | Error cycle ->
-      User_error.raise
-        [ Pp.text "the following packages form a cycle:"
-        ; Pp.chain cycle ~f:(fun pkg ->
-            Pp.verbatim (Package.Name.to_string pkg.info.name))
-        ]
-  ;;
+  let is_system_provided t = t.system_provided
 
   let top_closure depends =
     match
-      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends_)
+      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
     with
     | Ok s -> s
     | Error cycle ->
@@ -300,8 +282,7 @@ module Pkg = struct
         ]
   ;;
 
-  let deps_closure_ t = top_closure_ (depends_non_system_provided t)
-  let deps_closure t = top_closure t.depends_
+  let deps_closure t = top_closure t.depends
 
   let source_files t ~loc =
     let skip_dir = function
@@ -375,7 +356,7 @@ module Pkg = struct
     Dune_pkg.Toolchain.bin_dir
       t.info.name
       t.info.version
-      ~deps:(List.map (depends_non_system_provided t) ~f:(fun t -> t.info.name))
+      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
   ;;
 
   let toolchain_env t =
@@ -399,7 +380,7 @@ module Pkg = struct
     let bin_dir = toolchain_bin_dir t in
     Fs_memo.dir_contents bin_dir
     >>| function
-    | Error _ -> failwith "todo"
+    | Error _ -> { Install_cookie.files = Section.Map.empty; variables = [] }
     | Ok files ->
       let bin_paths =
         Fs_cache.Dir_contents.to_list files
@@ -444,7 +425,7 @@ module Pkg = struct
     Dune_pkg.Toolchain.find_and_install_toolchain_compiler
       t.info.name
       t.info.version
-      ~deps:(List.map (depends_non_system_provided t) ~f:(fun t -> t.info.name))
+      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
   ;;
 
   let install_toolchain_action t =
@@ -515,6 +496,12 @@ module Pkg_installed = struct
   ;;
 end
 
+module Override_pform = struct
+  type t = { prefix : Path.t option }
+
+  let empty = { prefix = None }
+end
+
 module Expander0 = struct
   include Expander0
 
@@ -532,6 +519,7 @@ module Expander0 = struct
     : (t
        -> source:Dune_sexp.Template.Pform.t
        -> Pform.t
+       -> override_pform:Override_pform.t
        -> (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t)
         Fdecl.t
     =
@@ -600,7 +588,11 @@ module Substitute = struct
          with
          | None -> Memo.return @@ Variable.S ""
          | Some pform ->
-           (Fdecl.get Expander.expand_pform_fdecl) expander ~source pform
+           (Fdecl.get Expander.expand_pform_fdecl)
+             expander
+             ~source
+             pform
+             ~override_pform:Override_pform.empty
            >>| (function
             | Error (`Undefined_pkg_var _) ->
               (* these are opam's semantics as far as I understand. *)
@@ -851,7 +843,11 @@ module Action_expander = struct
         [ Value.String "" ]
     ;;
 
-    let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
+    let expand_pkg
+      (paths : Paths.t)
+      (pform : Pform.Var.Pkg.t)
+      ~(override_pform : Override_pform.t)
+      =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
       | Os -> sys_poll_var (fun { os; _ } -> os)
@@ -861,7 +857,12 @@ module Action_expander = struct
       | Sys_ocaml_version ->
         sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
-      | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | Prefix ->
+        Memo.return
+          [ (match override_pform.prefix with
+             | None -> Value.Dir (Path.build paths.target_dir)
+             | Some prefix -> Value.Dir prefix)
+          ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String "1" ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
@@ -925,11 +926,12 @@ module Action_expander = struct
       { name = _; env = _; paths; artifacts = _; context; depends; version = _ }
       ~source
       (pform : Pform.t)
+      ~override_pform
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
-      | Var (Pkg var) -> expand_pkg paths var >>| Result.ok
+      | Var (Pkg var) -> expand_pkg paths var ~override_pform >>| Result.ok
       | Var Context_name ->
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
@@ -945,11 +947,11 @@ module Action_expander = struct
 
     let () = Fdecl.set expand_pform_fdecl expand_pform
 
-    let expand_pform_gen t =
+    let expand_pform_gen t ~override_pform =
       String_expander.Memo.expand
         ~dir:(Path.build t.paths.source_dir)
         ~f:(fun ~source pform ->
-          expand_pform t ~source pform
+          expand_pform t ~source pform ~override_pform
           >>| function
           | Ok x -> x
           | Error (`Undefined_pkg_var variable_name) ->
@@ -996,30 +998,33 @@ module Action_expander = struct
       Result.map prog ~f:(map_exe t)
     ;;
 
-    let slang_expander t sw =
-      String_expander.Memo.expand_result_deferred_concat sw ~mode:Many ~f:(expand_pform t)
+    let slang_expander t sw ~override_pform =
+      String_expander.Memo.expand_result_deferred_concat
+        sw
+        ~mode:Many
+        ~f:(expand_pform t ~override_pform)
     ;;
 
-    let eval_blang t blang =
+    let eval_blang t blang ~override_pform =
       Slang_expand.eval_blang
         blang
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(slang_expander t)
+        ~f:(slang_expander t ~override_pform)
     ;;
 
-    let eval_slangs_located t slangs =
+    let eval_slangs_located t slangs ~override_pform =
       Slang_expand.eval_multi_located
         slangs
         ~dir:(Path.build t.paths.source_dir)
-        ~f:(slang_expander t)
+        ~f:(slang_expander t ~override_pform)
     ;;
   end
 
-  let rec expand (action : Dune_lang.Action.t) ~(expander : Expander.t) =
+  let rec expand (action : Dune_lang.Action.t) ~(expander : Expander.t) ~override_pform =
     let dir = Path.build expander.paths.source_dir in
     match action with
     | Run args ->
-      Expander.eval_slangs_located expander args
+      Expander.eval_slangs_located expander ~override_pform args
       >>= (function
        | [] ->
          let loc =
@@ -1059,42 +1064,45 @@ module Action_expander = struct
          in
          Run_with_path.action ~pkg:(expander.name, prog_loc) exe args ~ocamlfind_destdir)
     | Progn t ->
-      let+ args = Memo.parallel_map t ~f:(expand ~expander) in
+      let+ args = Memo.parallel_map t ~f:(expand ~expander ~override_pform) in
       Action.Progn args
     | System arg ->
       let+ arg =
-        Expander.expand_pform_gen ~mode:Single expander arg >>| Value.to_string ~dir
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform arg
+        >>| Value.to_string ~dir
       in
       Action.System arg
     | Patch p ->
       let+ patch =
-        Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform p
+        >>| Value.to_path ~dir
       in
       Dune_patch.action ~patch
     | Substitute (src, dst) ->
       let+ src =
-        Expander.expand_pform_gen ~mode:Single expander src >>| Value.to_path ~dir
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform src
+        >>| Value.to_path ~dir
       and+ dst =
-        Expander.expand_pform_gen ~mode:Single expander dst
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform dst
         >>| Value.to_path ~dir
         >>| Expander0.as_in_build_dir ~what:"substitute" ~loc:(String_with_vars.loc dst)
       in
       Substitute.action expander ~src ~dst
-    | Withenv (updates, action) -> expand_withenv expander updates action
+    | Withenv (updates, action) -> expand_withenv expander updates action ~override_pform
     | When (condition, action) ->
-      Expander.eval_blang expander condition
+      Expander.eval_blang expander ~override_pform condition
       >>= (function
-       | true -> expand action ~expander
+       | true -> expand action ~expander ~override_pform
        | false -> Memo.return (Action.progn []))
     | Write_file (path_sw, perm, contents_sw) ->
       let+ path =
-        Expander.expand_pform_gen ~mode:Single expander path_sw
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform path_sw
         >>| Value.to_path ~dir
         >>| Expander0.as_in_build_dir
               ~what:"write-file"
               ~loc:(String_with_vars.loc path_sw)
       and+ contents =
-        Expander.expand_pform_gen ~mode:Single expander contents_sw
+        Expander.expand_pform_gen ~mode:Single expander ~override_pform contents_sw
         >>| Value.to_string ~dir
       in
       Action.Write_file (path, perm, contents)
@@ -1103,7 +1111,7 @@ module Action_expander = struct
         "Pkg_rules.action_expander.expand: unsupported action"
         [ "action", Dune_lang.Action.to_dyn action ]
 
-  and expand_withenv (expander : Expander.t) updates action =
+  and expand_withenv (expander : Expander.t) updates action ~override_pform =
     let* env, updates =
       let dir = Path.build expander.paths.source_dir in
       Memo.List.fold_left
@@ -1113,7 +1121,7 @@ module Action_expander = struct
           let+ value =
             let+ value =
               let expander = { expander with env } in
-              Expander.expand_pform_gen expander value ~mode:Single
+              Expander.expand_pform_gen expander ~override_pform value ~mode:Single
             in
             Value.to_string ~dir value
           in
@@ -1132,7 +1140,7 @@ module Action_expander = struct
     in
     let+ action =
       let expander = { expander with env } in
-      expand action ~expander
+      expand action ~expander ~override_pform
     in
     List.fold_left updates ~init:action ~f:(fun action (k, v) ->
       Action.Setenv (k, v, action))
@@ -1182,7 +1190,9 @@ module Action_expander = struct
 
   let expander context (pkg : Pkg.t) =
     let+ { Artifacts_and_deps.binaries; dep_info } =
-      Pkg.deps_closure_ pkg |> Artifacts_and_deps.of_closure
+      Pkg.deps_closure pkg
+      |> List.filter ~f:(Fun.negate Pkg.is_system_provided)
+      |> Artifacts_and_deps.of_closure
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
@@ -1202,11 +1212,13 @@ module Action_expander = struct
   ;;
 
   let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
+  let expand' = expand
 
-  let expand context (pkg : Pkg.t) action =
+  let expand context (pkg : Pkg.t) action ~override_pform =
     let+ action =
       let* expander = expander context pkg in
-      expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
+      expand action ~expander ~override_pform
+      >>| Action.chdir (Path.build pkg.paths.source_dir)
     in
     (* TODO copying is needed for build systems that aren't dune and those
        with an explicit install step *)
@@ -1224,10 +1236,24 @@ module Action_expander = struct
 
   let build_command context (pkg : Pkg.t) =
     if Pkg.is_compiler pkg
-    then None
+    then
+      Option.map pkg.build_command ~f:(function
+        | Dune -> failwith "xxx"
+        | Action action ->
+          let+ action_ =
+            let* expander = expander context pkg in
+            expand'
+              action
+              ~expander
+              ~override_pform:{ Override_pform.prefix = Some (Path.of_string "/tmp/x") }
+            >>| Action.chdir (Path.build pkg.paths.source_dir)
+          in
+          Action.Full.make ~sandbox:Sandbox_config.no_sandboxing action_
+          |> Action_builder.return
+          |> Action_builder.with_no_targets)
     else
       Option.map pkg.build_command ~f:(function
-        | Action action -> expand context pkg action
+        | Action action -> expand context pkg action ~override_pform:Override_pform.empty
         | Dune ->
           (* CR-rgrinberg: respect [dune subst] settings. *)
           Command.run_dyn_prog
@@ -1239,13 +1265,35 @@ module Action_expander = struct
 
   let install_command context (pkg : Pkg.t) =
     if Pkg.is_compiler pkg
-    then Some (Memo.return (Pkg.install_toolchain_action pkg))
-    else Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    then
+      Option.map pkg.build_command ~f:(function
+        | Dune -> failwith "xxx"
+        | Action action ->
+          let+ action_ =
+            let* expander = expander context pkg in
+            expand'
+              action
+              ~expander
+              ~override_pform:{ Override_pform.prefix = Some (Path.of_string "/tmp/x") }
+            >>| Action.chdir (Path.build pkg.paths.source_dir)
+          in
+          Action.Full.make ~sandbox:Sandbox_config.no_sandboxing action_
+          |> Action_builder.return
+          |> Action_builder.with_no_targets)
+    else
+      Option.map pkg.install_command ~f:(fun action ->
+        expand context pkg action ~override_pform:Override_pform.empty)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
     let+ value =
-      let+ value = Expander.expand_pform_gen expander env.value ~mode:Single in
+      let+ value =
+        Expander.expand_pform_gen
+          expander
+          env.value
+          ~mode:Single
+          ~override_pform:Override_pform.empty
+      in
       value |> Value.to_string ~dir:(Path.build expander.paths.source_dir)
     in
     { env with value }
@@ -1272,17 +1320,7 @@ module DB = struct
 end
 
 module rec Resolve : sig
-  val resolve_possibly_system_provided
-    :  DB.t
-    -> Context_name.t
-    -> Loc.t * Package.Name.t
-    -> Pkg.t Memo.t
-
-  val resolve
-    :  DB.t
-    -> Context_name.t
-    -> Loc.t * Package.Name.t
-    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
+  val resolve : DB.t -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
@@ -1291,8 +1329,7 @@ end = struct
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* depends =
-        Memo.parallel_map depends ~f:(resolve_possibly_system_provided db ctx)
+      let* depends = Memo.parallel_map depends ~f:(resolve db ctx)
       and+ files_dir =
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
@@ -1306,7 +1343,7 @@ end = struct
         { Pkg.id
         ; build_command
         ; install_command
-        ; depends_ = depends
+        ; depends
         ; paths
         ; info
         ; files_dir
@@ -1322,7 +1359,7 @@ end = struct
       Some t
   ;;
 
-  let resolve_possibly_system_provided =
+  let resolve =
     let module Input = struct
       type t = DB.t * Context_name.t * Package.Name.t
 
@@ -1347,11 +1384,6 @@ end = struct
         User_error.raise
           ~loc
           [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
-  ;;
-
-  let resolve db ctx pkg =
-    let+ (pkg : Pkg.t) = resolve_possibly_system_provided db ctx pkg in
-    if pkg.system_provided then `System_provided else `Inside_lock_dir pkg
   ;;
 end
 
@@ -1726,11 +1758,7 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch =
-           if Pkg.is_compiler pkg
-           then make_dummy_compiler_package_source pkg pkg.paths.source_dir
-           else Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source
-         in
+         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
          Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
@@ -1858,16 +1886,16 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
   let* pkg =
     let* db = DB.get context in
-    Resolve.resolve db context (Loc.none, name)
-    >>| function
-    | `Inside_lock_dir pkg -> pkg
-    | `System_provided ->
+    let+ pkg = Resolve.resolve db context (Loc.none, name) in
+    if pkg.system_provided
+    then
       User_error.raise
         (* TODO loc *)
         [ Pp.textf
             "There are no rules for %S because it's set as provided by the system"
             (Package.Name.to_string name)
-        ]
+        ];
+    pkg
   in
   let paths = Paths.make name context in
   let+ directory_targets =
@@ -1910,32 +1938,33 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  (let* lock_dir = Lock_dir.get context in
-   let* db = DB.get context in
-   match lock_dir.ocaml with
-   | None -> Memo.return `System_provided
-   | Some ocaml -> Resolve.resolve db context ocaml)
-  >>| function
-  | `System_provided -> None
-  | `Inside_lock_dir pkg ->
-    let toolchain =
-      if Pkg.is_compiler pkg
-      then Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context
-      else (
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        let open Action_builder.O in
-        let* cookie = cookie in
-        (* TODO we should use the closure of [pkg] *)
-        let binaries =
-          Section.Map.find cookie.files Bin
-          |> Option.value ~default:[]
-          |> Path.Set.of_list
-        in
-        let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
-        let path = Env_path.path (Global.env ()) in
-        Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries)
-    in
-    Some (Action_builder.memoize "ocaml_toolchain" toolchain)
+  let* lock_dir = Lock_dir.get context in
+  let* db = DB.get context in
+  match lock_dir.ocaml with
+  | None -> Memo.return None
+  | Some ocaml ->
+    let+ pkg = Resolve.resolve db context ocaml in
+    if pkg.system_provided
+    then None
+    else (
+      let toolchain =
+        if Pkg.is_compiler pkg
+        then Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context
+        else (
+          let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+          let open Action_builder.O in
+          let* cookie = cookie in
+          (* TODO we should use the closure of [pkg] *)
+          let binaries =
+            Section.Map.find cookie.files Bin
+            |> Option.value ~default:[]
+            |> Path.Set.of_list
+          in
+          let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+          let path = Env_path.path (Global.env ()) in
+          Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries)
+      in
+      Some (Action_builder.memoize "ocaml_toolchain" toolchain))
 ;;
 
 let all_packages context =
@@ -1943,12 +1972,9 @@ let all_packages context =
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
-    Resolve.resolve db context (Loc.none, package)
-    >>| function
-    | `Inside_lock_dir pkg -> Some pkg
-    | `System_provided -> None)
-  >>| List.filter_opt
-  >>| Pkg.top_closure_
+    Resolve.resolve db context (Loc.none, package))
+  >>| Pkg.top_closure
+  >>| List.filter ~f:(Fun.negate Pkg.is_system_provided)
 ;;
 
 let which context =
@@ -1990,12 +2016,12 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let* db = DB.get ctx in
-    Resolve.resolve db ctx (Loc.none, pkg)
-    >>| (function
-           | `System_provided -> Action_builder.return ()
-           | `Inside_lock_dir pkg ->
-             let open Action_builder.O in
-             let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             ())
-    >>| Option.some
+    let+ pkg = Resolve.resolve db ctx (Loc.none, pkg) in
+    Some
+      (if pkg.system_provided
+       then Action_builder.return ()
+       else
+         let open Action_builder.O in
+         let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+         ())
 ;;

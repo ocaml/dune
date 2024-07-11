@@ -233,15 +233,22 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
     ; action =
         ( loc
-        , Chdir
-            ( S.virt_pform __POS__ (Var Workspace_root)
-            , Dune_lang.Action.run
-                (S.virt_text __POS__ "ocamllex")
-                [ S.virt_text __POS__ "-q"
-                ; S.virt_text __POS__ "-o"
-                ; S.virt_pform __POS__ (Var Targets)
-                ; S.virt_pform __POS__ (Var Deps)
-                ] ) )
+        , Progn
+            [ Chdir
+                ( S.virt_pform __POS__ (Var Workspace_root)
+                , Progn
+                    [ Dune_lang.Action.run
+                        (S.virt_text __POS__ "sh")
+                        [ S.virt_text __POS__ "-c"; S.virt_text __POS__ "which ocamllex" ]
+                    ; Dune_lang.Action.run
+                        (S.virt_text __POS__ "ocamllex")
+                        [ S.virt_text __POS__ "-q"
+                        ; S.virt_text __POS__ "-o"
+                        ; S.virt_pform __POS__ (Var Targets)
+                        ; S.virt_pform __POS__ (Var Deps)
+                        ]
+                    ] )
+            ] )
     ; mode
     ; patch_back_source_tree = false
     ; locks = []

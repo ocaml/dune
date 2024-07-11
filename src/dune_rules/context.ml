@@ -190,7 +190,14 @@ let profile t = t.builder.profile
 let equal x y = Context_name.equal x.builder.name y.builder.name
 let hash t = Context_name.hash t.builder.name
 let build_context t = t.build_context
-let which t fname = t.which fname
+
+let which t fname =
+  let+ x = t.which fname in
+  print_endline
+    (sprintf "context which %s: %s" fname (Dyn.option Path.to_dyn x |> Dyn.to_string));
+  x
+;;
+
 let name t = t.builder.name
 let path t = t.builder.path
 let installed_env t = t.builder.env
@@ -414,6 +421,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     | Lock _ ->
       let which = Staged.unstage @@ Pkg_rules.which builder.name in
       fun prog ->
+        print_endline (sprintf "lock which %s" prog);
         which prog
         >>= (function
          | Some p -> Memo.return (Some p)
@@ -491,7 +499,11 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   { kind
   ; builder
   ; build_dir = Context_name.build_dir builder.name
-  ; ocaml = Memo.of_thunk (fun () -> Memo.Lazy.force ocaml_and_build_env_kind >>| fst)
+  ; ocaml =
+      Memo.of_thunk (fun () ->
+        let+ x = Memo.Lazy.force ocaml_and_build_env_kind >>| fst in
+        (*print_endline (sprintf "aaa %s" (Path.to_string x.bin_dir)); *)
+        x)
   ; findlib_paths =
       Memo.Lazy.create ~name:"findlib_paths" (fun () ->
         let+ ocamlpath = Memo.Lazy.force ocamlpath

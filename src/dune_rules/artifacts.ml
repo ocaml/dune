@@ -79,7 +79,13 @@ let binary t ?hint ?(where = Install_dir) ~loc name =
   | `None ->
     let context = Context.name t.context in
     Memo.return
-    @@ Error (Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
+    @@ Error
+         (Action.Prog.Not_found.create
+            ~program:name
+            ~hint:"xxxxxxxxxxxxx"
+            ~context
+            ~loc
+            ())
   | `Origin { dir; binding; dst; enabled_if = _ } ->
     (match where with
      | Install_dir ->

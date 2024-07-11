@@ -258,18 +258,26 @@ module Pkg = struct
     { id : Id.t
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
-    ; depends : t list
+    ; depends_ : t list
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
+    ; system_provided : bool
     ; mutable exported_env : string Env_update.t list
     }
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
 
-  let top_closure depends =
+  let depends_non_system_provided t =
+    List.filter t.depends_ ~f:(fun t -> not t.system_provided)
+  ;;
+
+  let top_closure_ depends =
     match
-      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+      Top_closure.top_closure
+        depends
+        ~key:(fun t -> t.id)
+        ~deps:(fun t -> depends_non_system_provided t)
     with
     | Ok s -> s
     | Error cycle ->
@@ -280,7 +288,21 @@ module Pkg = struct
         ]
   ;;
 
-  let deps_closure t = top_closure t.depends
+  let top_closure depends =
+    match
+      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends_)
+    with
+    | Ok s -> s
+    | Error cycle ->
+      User_error.raise
+        [ Pp.text "the following packages form a cycle:"
+        ; Pp.chain cycle ~f:(fun pkg ->
+            Pp.verbatim (Package.Name.to_string pkg.info.name))
+        ]
+  ;;
+
+  let deps_closure_ t = top_closure_ (depends_non_system_provided t)
+  let deps_closure t = top_closure t.depends_
 
   let source_files t ~loc =
     let skip_dir = function
@@ -334,7 +356,8 @@ module Pkg = struct
 
   let package_deps t =
     deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
+    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
+      if t.system_provided then acc else dep t |> Dep.Set.add acc)
   ;;
 
   let is_compiler =
@@ -353,7 +376,7 @@ module Pkg = struct
     Dune_pkg.Toolchain.bin_dir
       t.info.name
       t.info.version
-      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
+      ~deps:(List.map (depends_non_system_provided t) ~f:(fun t -> t.info.name))
   ;;
 
   let toolchain_env t =
@@ -371,6 +394,29 @@ module Pkg = struct
     in
     let get_ocaml_tool ~dir:_ prog = which prog in
     Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
+  ;;
+
+  let toolchain_install_cookie t =
+    let bin_dir = toolchain_bin_dir t in
+    Fs_memo.dir_contents bin_dir
+    >>| function
+    | Error _ -> failwith "todo"
+    | Ok files ->
+      let bin_paths =
+        Fs_cache.Dir_contents.to_list files
+        |> List.filter_map ~f:(fun (filename, kind) ->
+          match kind with
+          | Unix.S_REG | S_LNK ->
+            let path = Path.Outside_build_dir.relative bin_dir filename in
+            (try
+               Unix.access (Path.Outside_build_dir.to_string path) [ Unix.X_OK ];
+               Some (Path.outside_build_dir path)
+             with
+             | Unix.Unix_error _ -> None)
+          | _ -> None)
+      in
+      let files = Section.Map.singleton Section.Bin bin_paths in
+      { Install_cookie.files; variables = [] }
   ;;
 
   (* Given a list of packages, construct an env containing variables
@@ -399,7 +445,7 @@ module Pkg = struct
     Dune_pkg.Toolchain.find_and_install_toolchain_compiler
       t.info.name
       t.info.version
-      ~deps:(List.map t.depends ~f:(fun t -> t.info.name))
+      ~deps:(List.map (depends_non_system_provided t) ~f:(fun t -> t.info.name))
   ;;
 
   let install_toolchain_action t =
@@ -418,7 +464,10 @@ module Pkg = struct
   (* [build_env t] returns an env containing paths containing all the
      tools and libraries required to build the package [t] inside the
      faux opam directory contained in the _build dir. *)
-  let build_env t = build_env_of_deps @@ deps_closure t
+  let build_env t =
+    let deps_closure = deps_closure t in
+    build_env_of_deps deps_closure
+  ;;
 
   let base_env t =
     Env.Map.of_list_exn
@@ -1102,9 +1151,14 @@ module Action_expander = struct
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        Action_builder.evaluate_and_collect_facts cookie
-        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
+        if Pkg.is_compiler pkg
+        then
+          let+ install_cookie = Pkg.toolchain_install_cookie pkg in
+          pkg, install_cookie
+        else (
+          let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+          Action_builder.evaluate_and_collect_facts cookie
+          |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie)))
       |> Memo.map ~f:(fun cookies ->
         List.fold_left
           cookies
@@ -1129,7 +1183,7 @@ module Action_expander = struct
 
   let expander context (pkg : Pkg.t) =
     let+ { Artifacts_and_deps.binaries; dep_info } =
-      Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
+      Pkg.deps_closure_ pkg |> Artifacts_and_deps.of_closure
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
@@ -1219,6 +1273,12 @@ module DB = struct
 end
 
 module rec Resolve : sig
+  val resolve_possibly_system_provided
+    :  DB.t
+    -> Context_name.t
+    -> Loc.t * Package.Name.t
+    -> Pkg.t Memo.t
+
   val resolve
     :  DB.t
     -> Context_name.t
@@ -1233,12 +1293,7 @@ end = struct
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
       let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db ctx name
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
+        Memo.parallel_map depends ~f:(resolve_possibly_system_provided db ctx)
       and+ files_dir =
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
@@ -1247,14 +1302,16 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
+      let system_provided = Package.Name.Set.mem db.system_provided name in
       let t =
         { Pkg.id
         ; build_command
         ; install_command
-        ; depends
+        ; depends_ = depends
         ; paths
         ; info
         ; files_dir
+        ; system_provided
         ; exported_env = []
         }
       in
@@ -1266,7 +1323,7 @@ end = struct
       Some t
   ;;
 
-  let resolve =
+  let resolve_possibly_system_provided =
     let module Input = struct
       type t = DB.t * Context_name.t * Package.Name.t
 
@@ -1284,16 +1341,18 @@ end = struct
         resolve_impl
     in
     fun (db : DB.t) ctx (loc, name) ->
-      if Package.Name.Set.mem db.system_provided name
-      then Memo.return `System_provided
-      else
-        Memo.exec memo (db, ctx, name)
-        >>| function
-        | Some s -> `Inside_lock_dir s
-        | None ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
+      Memo.exec memo (db, ctx, name)
+      >>| function
+      | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
+  ;;
+
+  let resolve db ctx pkg =
+    let+ (pkg : Pkg.t) = resolve_possibly_system_provided db ctx pkg in
+    if pkg.system_provided then `System_provided else `Inside_lock_dir pkg
   ;;
 end
 
@@ -1862,7 +1921,9 @@ let ocaml_toolchain context =
   | `Inside_lock_dir pkg ->
     let toolchain =
       if Pkg.is_compiler pkg
-      then Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context
+      then (
+        print_endline "aaa";
+        Action_builder.of_memo @@ Pkg.toolchain_ocaml_toolchain pkg context)
       else (
         let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
         let open Action_builder.O in
@@ -1890,7 +1951,7 @@ let all_packages context =
     | `Inside_lock_dir pkg -> Some pkg
     | `System_provided -> None)
   >>| List.filter_opt
-  >>| Pkg.top_closure
+  >>| Pkg.top_closure_
 ;;
 
 let which context =
@@ -1903,6 +1964,8 @@ let which context =
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
+    String.Map.iteri artifacts ~f:(fun k v ->
+      print_endline (sprintf "ddd %s %s" k (Path.to_string v)));
     Filename.Map.find artifacts program)
 ;;
 

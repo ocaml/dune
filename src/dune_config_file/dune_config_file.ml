@@ -11,6 +11,7 @@ module Dune_config = struct
   module Log = Dune_util.Log
   module Config = Dune_config.Config
   module Execution_env = Dune_util.Execution_env
+  module Feature_flags = Feature_flags
 
   (* the configuration file use the same version numbers as dune-project files for
      simplicity *)
@@ -289,9 +290,14 @@ module Dune_config = struct
     ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = `Disabled
-    ; cache_reproducibility_check = Skip
-    ; cache_storage_mode = None
+    ; cache_enabled =
+        (if Feature_flags.cache_enabled_by_default then `Enabled else `Disabled)
+    ; cache_reproducibility_check =
+        (if Feature_flags.cache_enabled_by_default then Check else Skip)
+    ; cache_storage_mode =
+        (if Feature_flags.cache_enabled_by_default
+         then Some (Dune_cache_storage.Mode.default ())
+         else None)
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; experimental = []

@@ -1,13 +1,3 @@
-Foreign Sources, Archives, and Objects
-======================================
-
-Dune provides basic support for including foreign source files as well
-as archives of foreign object files into OCaml projects via the
-``foreign_stubs`` and ``foreign_archives`` fields. Individual object
-files can also be included via the ``extra_objects`` field.
-
-.. _foreign-stubs:
-
 Foreign Stubs
 -------------
 
@@ -38,7 +28,7 @@ Here is a complete list of supported subfields:
   Dune will scan all library directories to find all matching files and
   raise an error if multiple source files map to the same object name.
   If you need to have multiple object files with the same name, you can
-  package them into different :ref:`foreign-archives` via the
+  package them into different :doc:`foreign-archives` via the
   ``foreign_archives`` field. This field uses the :doc:`ordered-set-language`
   where the ``:standard`` value corresponds to the set of names of all source
   files whose extensions match the specified ``language``.
@@ -106,109 +96,3 @@ from which the stubs are built.
                         ; specific to native builds
 
 Note that, as of version ``0.1`` of this extension, this mechanism does not work for ``foreign_archives``.
-
-.. _foreign-archives:
-
-Foreign Archives
-----------------
-
-You can also specify archives of separately compiled foreign object files
-that need to be packaged with an OCaml library or linked into an OCaml
-executable. To do that, use the ``foreign_archives`` field of the
-corresponding ``library`` or ``executable`` stanza. For example:
-
-.. code:: dune
-
-    (library
-     (name lib)
-     (foreign_stubs (language c) (names src1 src2))
-     (foreign_stubs (language cxx) (names src3) (flags -O2))
-     (foreign_archives arch1 some/dir/arch2))
-
-Here, in addition to :ref:`foreign-stubs`, we also specify foreign archives
-``arch1`` and ``arch2``, where the latter is stored in a subdirectory
-``some/dir``.
-
-You can build a foreign archive manually, e.g., using a custom ``rule`` as
-described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
-``foreign_library`` stanza:
-
-.. code:: dune
-
-    (foreign_library
-     (archive_name arch1)
-     (language c)
-     (enabled_if true)
-     (names src4 src5)
-     (include_dir headers))
-
-This asks Dune to compile C source files ``src4`` and ``src5`` with
-headers tracked in the ``headers`` directory and put the resulting
-object files into an archive ``arch1``, whose full name is typically
-``libarch1.a`` for static linking and ``dllarch1.so`` for dynamic
-linking.
-
-The ``foreign_library`` stanza supports all :ref:`foreign-stubs` fields.
-The ``archive_name`` field specifies the archive's name. You can refer
-to the same archive name from multiple OCaml libraries and executables, so a
-foreign archive is a bit like a foreign library, hence the name of the stanza.
-The ``enabled_if`` field has the same meaning as in the :doc:`dune/library`
-stanza.
-
-Foreign archives are particularly useful when embedding a library written in
-a foreign language and/or built with another build system. See
-:ref:`foreign-sandboxing` for more details.
-
-
-.. _extra-objects:
-
-Extra Objects
--------------
-
-It's possible to specify native object files to be packaged with OCaml
-libraries or linked into OCaml executables. Do this by using the
-``extra_objects`` field of the ``library`` or ``executable`` stanzas.
-For example:
-
-.. code:: dune
-
-    (executable
-     (public_name main)
-     (extra_objects foo bar))
-
-    (rule
-     (targets foo.o bar.o)
-     (deps foo.c bar.c)
-     (action (run ocamlopt %{deps})))
-
-This example builds an executable which is linked against a pair of native
-object files, ``foo.o`` and ``bar.o``. The ``extra_objects`` field takes a
-list of object names, which correspond to the object file names with their path
-and extension omitted.
-
-In this example, the sources corresponding to the objects (``foo.c`` and
-``bar.c``)  are assumed to be present in the same directory as the OCaml source
-code, and a custom ``rule`` is used to compile the C source code into object
-files using ``ocamlopt``. This is not necessary; one can instead compile foreign
-object files manually and place them next to the OCaml source code.
-
-.. _flags-flow:
-
-Flags
------
-
-Depending on the :doc:`dune-project/use_standard_c_and_cxx_flags` option,
-the base `:standard` set of flags for C will contain only ``ocamlc_cflags`` or
-both ``ocamlc_cflags`` and ``ocamlc_cppflags``.
-
-There are multiple levels where one can declare custom flags (using the
-:doc:`ordered-set-language`), and each level inherits the flags of the previous
-one in its `:standard` set:
-
-- In the global ``env`` definition of a ``dune-workspace`` file
-- In the per-context `env` definitions in a `dune-workspace` file
-- In the env definition of a `dune` file
-- In a `foreign_` field of an executable or a library
-
-The ``%{cc}`` :doc:`variable <../concepts/variables>` will contain the flags
-from the first three levels only.

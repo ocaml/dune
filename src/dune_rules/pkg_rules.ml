@@ -497,9 +497,12 @@ module Pkg_installed = struct
 end
 
 module Override_pform = struct
-  type t = { prefix : Path.t option }
+  type t =
+    { prefix : Path.t option
+    ; doc : Path.t option
+    }
 
-  let empty = { prefix = None }
+  let empty = { prefix = None; doc = None }
 end
 
 module Expander0 = struct
@@ -817,6 +820,7 @@ module Action_expander = struct
     let section_dir_of_root
       (roots : _ Install.Roots.t)
       (section : Pform.Var.Pkg.Section.t)
+      ~(override_pform : Override_pform.t)
       =
       match section with
       | Lib -> roots.lib_root
@@ -825,10 +829,13 @@ module Action_expander = struct
       | Sbin -> roots.sbin
       | Share -> roots.share_root
       | Etc -> roots.etc_root
-      | Doc -> roots.doc_root
+      | Doc ->
+        (match override_pform.doc with
+         | Some doc -> doc
+         | None -> roots.doc_root)
       | Man -> roots.man
-      | Toplevel -> Path.Build.relative roots.lib_root "toplevel"
-      | Stublibs -> Path.Build.relative roots.lib_root "stublibs"
+      | Toplevel -> Path.relative roots.lib_root "toplevel"
+      | Stublibs -> Path.relative roots.lib_root "stublibs"
     ;;
 
     let sys_poll_var accessor =
@@ -870,9 +877,9 @@ module Action_expander = struct
         let group = Unix.getgid () |> Unix.getgrgid in
         Memo.return [ Value.String group.gr_name ]
       | Section_dir section ->
-        let roots = Paths.install_roots paths in
-        let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir (Path.build dir) ]
+        let roots = Paths.install_roots paths |> Install.Roots.map ~f:Path.build in
+        let dir = section_dir_of_root roots section ~override_pform in
+        Memo.return [ Value.Dir dir ]
     ;;
 
     let expand_pkg_macro ~loc (paths : Paths.t) deps macro_invocation =
@@ -1234,23 +1241,22 @@ module Action_expander = struct
     | None -> Error (Action.Prog.Not_found.create ~loc:None ~context ~program:"dune" ())
   ;;
 
+  let prefix = "/home/s/.cache/dune/toolchains/ocaml-base-compiler.5.2.0/target"
+
   let build_command context (pkg : Pkg.t) =
     if Pkg.is_compiler pkg
     then
       Option.map pkg.build_command ~f:(function
         | Dune -> failwith "xxx"
         | Action action ->
-          let+ action_ =
-            let* expander = expander context pkg in
-            expand'
-              action
-              ~expander
-              ~override_pform:{ Override_pform.prefix = Some (Path.of_string "/tmp/x") }
-            >>| Action.chdir (Path.build pkg.paths.source_dir)
-          in
-          Action.Full.make ~sandbox:Sandbox_config.no_sandboxing action_
-          |> Action_builder.return
-          |> Action_builder.with_no_targets)
+          expand
+            context
+            pkg
+            action
+            ~override_pform:
+              { Override_pform.prefix = Some (Path.of_string prefix)
+              ; doc = Some (Path.of_string (sprintf "%s/doc" prefix))
+              })
     else
       Option.map pkg.build_command ~f:(function
         | Action action -> expand context pkg action ~override_pform:Override_pform.empty
@@ -1266,20 +1272,41 @@ module Action_expander = struct
   let install_command context (pkg : Pkg.t) =
     if Pkg.is_compiler pkg
     then
-      Option.map pkg.build_command ~f:(function
-        | Dune -> failwith "xxx"
-        | Action action ->
-          let+ action_ =
-            let* expander = expander context pkg in
-            expand'
-              action
-              ~expander
-              ~override_pform:{ Override_pform.prefix = Some (Path.of_string "/tmp/x") }
-            >>| Action.chdir (Path.build pkg.paths.source_dir)
-          in
-          Action.Full.make ~sandbox:Sandbox_config.no_sandboxing action_
-          |> Action_builder.return
-          |> Action_builder.with_no_targets)
+      Option.map pkg.install_command ~f:(fun action ->
+        let action =
+          match action with
+          | Dune_lang.Action.Run [ Literal make; Literal install ] ->
+            (match
+               String_with_vars.pform_only make, String_with_vars.text_only install
+             with
+             | Some (Pform.Var Pform.Var.Make), Some "install" ->
+               Dune_lang.Action.Run
+                 [ Literal make; Literal install; Slang.text "DESTDIR=/tmp/y" ]
+             | _ -> action)
+          | _ -> action
+        in
+        let action =
+          Dune_lang.Action.Progn
+            [ action
+            ; Dune_lang.Action.Run
+                [ Slang.text "mkdir"; Slang.text "-p"; Slang.text prefix ]
+            ; Dune_lang.Action.Run
+                [ Slang.text "rm"; Slang.text "-rf"; Slang.text prefix ]
+            ; Dune_lang.Action.Run
+                [ Slang.text "mv"
+                ; Slang.text (sprintf "/tmp/y/%s" prefix)
+                ; Slang.text prefix
+                ]
+            ]
+        in
+        expand
+          context
+          pkg
+          action
+          ~override_pform:
+            { Override_pform.prefix = Some (Path.of_string prefix)
+            ; doc = Some (Path.of_string (sprintf "%s/doc" prefix))
+            })
     else
       Option.map pkg.install_command ~f:(fun action ->
         expand context pkg action ~override_pform:Override_pform.empty)

@@ -6,6 +6,8 @@ module Server = struct
     ; addr : Unix.sockaddr
     }
 
+  let auto_shutdown_seconds = 30.
+
   type session = out_channel
 
   let make addr =
@@ -26,12 +28,21 @@ module Server = struct
   ;;
 
   let accept t ~f =
-    let descr, _sockaddr = Unix.accept ~cloexec:true t.sock in
-    let out = Unix.out_channel_of_descr descr in
-    f out;
-    Out_channel.flush out;
-    Unix.shutdown descr Unix.SHUTDOWN_SEND;
-    close_out out
+    let read_fds, _write_fds, _excpt_fds =
+      Unix.select [ t.sock ] [] [] auto_shutdown_seconds
+    in
+    match read_fds with
+    | [] ->
+      Printf.eprintf
+        "Exiting automatically due to reaching %.0fs timeout without any connection\n"
+        auto_shutdown_seconds
+    | sock :: _always_empty ->
+      let descr, _sockaddr = Unix.accept ~cloexec:true sock in
+      let out = Unix.out_channel_of_descr descr in
+      f out;
+      Out_channel.flush out;
+      Unix.shutdown descr Unix.SHUTDOWN_SEND;
+      close_out out
   ;;
 
   let stop t = Unix.close t.sock

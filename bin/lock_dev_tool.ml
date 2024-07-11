@@ -1,29 +1,5 @@
 open Import
 
-type cmd = Fmt
-
-module Dev_tool = struct
-  type t = Ocamlformat
-
-  let cmd_dev_tool = function
-    | Fmt ->
-      let ocamlformat = "ocamlformat" in
-      let ocamlformat_config = Path.Source.of_string ".ocamlformat" |> Path.source in
-      (match Path.exists ocamlformat_config with
-       | false -> ocamlformat, None
-       | true ->
-         (try
-            ( ocamlformat
-            , Io.lines_of_file ocamlformat_config
-              |> List.find_map ~f:(fun line ->
-                match String.split_on_char ~sep:'=' line |> List.map ~f:String.trim with
-                | [ "version"; value ] -> Some value
-                | _ -> None) )
-          with
-          | _ -> ocamlformat, None))
-  ;;
-end
-
 let local_dev ~pkg_name ~version : Dune_pkg.Local_package.t =
   let dependency =
     let open Dune_lang in
@@ -82,14 +58,16 @@ let dev_tool_path pkg_name =
   Path.Source.relative Dune_pkg.Lock_dir.dev_tools_path pkg_name
 ;;
 
-let lock cmd =
-  match cmd with
+let lock : Dune_pkg.Dev_tool.cmd -> unit Fiber.t = function
   | Fmt ->
-    let pkg_name, version = Dev_tool.cmd_dev_tool Fmt in
+    let pkg_name, version = Dune_pkg.Dev_tool.pkg_of_cmd Fmt in
     let lock_dir = dev_tool_path pkg_name in
-    if (not (exists_path lock_dir))
-       && default_lock_dir_active ()
-       && not (exists_pkg_in_default_lock_dir pkg_name)
+    let is_dev_tool_active =
+      (not (exists_path lock_dir))
+      && default_lock_dir_active ()
+      && not (exists_pkg_in_default_lock_dir pkg_name)
+    in
+    if is_dev_tool_active
     then (
       let local_pkg = local_dev ~pkg_name ~version in
       let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in

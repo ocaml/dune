@@ -194,7 +194,7 @@ let build =
       match targets with
       | [] -> [ Common.Builder.default_target builder ], fun () -> Fiber.return ()
       | target :: _ when Dune_lang.Dep_conf.is_fmt_alias target ->
-        targets, fun () -> Lock_dev_tool.lock Lock_dev_tool.Fmt
+        targets, fun () -> Lock_dev_tool.lock Dune_pkg.Dev_tool.Fmt
       | _ :: _ -> targets, fun () -> Fiber.return ()
     in
     let common, config = Common.init builder in
@@ -234,7 +234,7 @@ let fmt =
     let builder =
       Common.Builder.set_promote builder (if no_promote then Never else Automatically)
     in
-    let pre_build () = Lock_dev_tool.lock Lock_dev_tool.Fmt in
+    let pre_build () = Lock_dev_tool.lock Dune_pkg.Dev_tool.Fmt in
     let common, config = Common.init builder in
     let request (setup : Import.Main.build_system) =
       let dir = Path.(relative root) (Common.prefix_target common ".") in

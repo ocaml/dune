@@ -172,8 +172,7 @@ let find_checksum, find_url =
     | true ->
       all
       |> fun (checksums, urls) ->
-      lockdir
-      >>| fun lockdir ->
+      let+ lockdir = lockdir in
       let checksums', urls' = extract_checksums_and_urls lockdir in
       Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'
   in

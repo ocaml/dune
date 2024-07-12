@@ -259,10 +259,13 @@ module Pkg = struct
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
+    ; system_provided : bool
     ; mutable exported_env : string Env_update.t list
     }
 
   module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
+
+  let is_system_provided t = t.system_provided
 
   let top_closure depends =
     match
@@ -331,7 +334,8 @@ module Pkg = struct
 
   let package_deps t =
     deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
+    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t ->
+      if t.system_provided then acc else dep t |> Dep.Set.add acc)
   ;;
 
   (* Given a list of packages, construct an env containing variables
@@ -1064,7 +1068,9 @@ module Action_expander = struct
 
   let expander context (pkg : Pkg.t) =
     let+ { Artifacts_and_deps.binaries; dep_info } =
-      Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
+      Pkg.deps_closure pkg
+      |> List.filter ~f:(Fun.negate Pkg.is_system_provided)
+      |> Artifacts_and_deps.of_closure
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
@@ -1149,11 +1155,7 @@ module DB = struct
 end
 
 module rec Resolve : sig
-  val resolve
-    :  DB.t
-    -> Context_name.t
-    -> Loc.t * Package.Name.t
-    -> [ `Inside_lock_dir of Pkg.t | `System_provided ] Memo.t
+  val resolve : DB.t -> Context_name.t -> Loc.t * Package.Name.t -> Pkg.t Memo.t
 end = struct
   open Resolve
 
@@ -1162,13 +1164,7 @@ end = struct
     | None -> Memo.return None
     | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
       assert (Package.Name.equal name info.name);
-      let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db ctx name
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
+      let* depends = Memo.parallel_map depends ~f:(resolve db ctx)
       and+ files_dir =
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
@@ -1177,6 +1173,7 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
+      let system_provided = Package.Name.Set.mem db.system_provided name in
       let t =
         { Pkg.id
         ; build_command
@@ -1185,6 +1182,7 @@ end = struct
         ; paths
         ; info
         ; files_dir
+        ; system_provided
         ; exported_env = []
         }
       in
@@ -1214,16 +1212,13 @@ end = struct
         resolve_impl
     in
     fun (db : DB.t) ctx (loc, name) ->
-      if Package.Name.Set.mem db.system_provided name
-      then Memo.return `System_provided
-      else
-        Memo.exec memo (db, ctx, name)
-        >>| function
-        | Some s -> `Inside_lock_dir s
-        | None ->
-          User_error.raise
-            ~loc
-            [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
+      Memo.exec memo (db, ctx, name)
+      >>| function
+      | Some s -> s
+      | None ->
+        User_error.raise
+          ~loc
+          [ Pp.textf "Unknown package %S" (Package.Name.to_string name) ]
   ;;
 end
 
@@ -1692,16 +1687,16 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
   let* pkg =
     let* db = DB.get context in
-    Resolve.resolve db context (Loc.none, name)
-    >>| function
-    | `Inside_lock_dir pkg -> pkg
-    | `System_provided ->
+    let+ pkg = Resolve.resolve db context (Loc.none, name) in
+    if pkg.system_provided
+    then
       User_error.raise
         (* TODO loc *)
         [ Pp.textf
             "There are no rules for %S because it's set as provided by the system"
             (Package.Name.to_string name)
-        ]
+        ];
+    pkg
   in
   let paths = Paths.make name context in
   let+ directory_targets =
@@ -1744,27 +1739,30 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  (let* lock_dir = Lock_dir.get context in
-   let* db = DB.get context in
-   match lock_dir.ocaml with
-   | None -> Memo.return `System_provided
-   | Some ocaml -> Resolve.resolve db context ocaml)
-  >>| function
-  | `System_provided -> None
-  | `Inside_lock_dir pkg ->
-    let toolchain =
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-      let open Action_builder.O in
-      let* cookie = cookie in
-      (* TODO we should use the closure of [pkg] *)
-      let binaries =
-        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
+  let* lock_dir = Lock_dir.get context in
+  let* db = DB.get context in
+  match lock_dir.ocaml with
+  | None -> Memo.return None
+  | Some ocaml ->
+    let+ pkg = Resolve.resolve db context ocaml in
+    if pkg.system_provided
+    then None
+    else (
+      let toolchain =
+        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+        let open Action_builder.O in
+        let* cookie = cookie in
+        (* TODO we should use the closure of [pkg] *)
+        let binaries =
+          Section.Map.find cookie.files Bin
+          |> Option.value ~default:[]
+          |> Path.Set.of_list
+        in
+        let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+        let path = Env_path.path (Global.env ()) in
+        Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
       in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
-      let path = Env_path.path (Global.env ()) in
-      Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
-    in
-    Some (Action_builder.memoize "ocaml_toolchain" toolchain)
+      Some (Action_builder.memoize "ocaml_toolchain" toolchain))
 ;;
 
 let all_packages context =
@@ -1772,12 +1770,9 @@ let all_packages context =
   Dune_lang.Package_name.Map.values db.all
   |> Memo.parallel_map ~f:(fun (package : Lock_dir.Pkg.t) ->
     let package = package.info.name in
-    Resolve.resolve db context (Loc.none, package)
-    >>| function
-    | `Inside_lock_dir pkg -> Some pkg
-    | `System_provided -> None)
-  >>| List.filter_opt
+    Resolve.resolve db context (Loc.none, package))
   >>| Pkg.top_closure
+  >>| List.filter ~f:(Fun.negate Pkg.is_system_provided)
 ;;
 
 let which context =
@@ -1819,12 +1814,12 @@ let find_package ctx pkg =
   | false -> Memo.return None
   | true ->
     let* db = DB.get ctx in
-    Resolve.resolve db ctx (Loc.none, pkg)
-    >>| (function
-           | `System_provided -> Action_builder.return ()
-           | `Inside_lock_dir pkg ->
-             let open Action_builder.O in
-             let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             ())
-    >>| Option.some
+    let+ pkg = Resolve.resolve db ctx (Loc.none, pkg) in
+    Some
+      (if pkg.system_provided
+       then Action_builder.return ()
+       else
+         let open Action_builder.O in
+         let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+         ())
 ;;

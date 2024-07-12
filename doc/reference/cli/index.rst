@@ -4,6 +4,27 @@ Command Line Interface
 This is a short overview of the commands available in Dune. Reference
 documentation for each command is available through ``dune COMMAND --help``.
 
+.. toctree::
+   :caption: Commands
+   :maxdepth: 1
+
+   runtest
+   utop
+   subst
+   init
+   install
+
+.. toctree::
+   :caption: Common Options
+   :maxdepth: 1
+
+   only-packages
+   watch
+   build-dir
+
+Other Commands
+--------------
+
 .. describe:: dune build
 
    Build the given targets, or the default ones.
@@ -99,30 +120,6 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    Additional Dune help.
 
-.. describe:: dune init
-
-   Command group for initializing Dune components.
-
-   .. describe:: dune init executable
-
-      Initialize a binary executable.
-
-   .. describe:: dune init library
-
-      Initialize an OCaml library.
-
-   .. describe:: dune init project
-
-      Initialize a whole OCaml project.
-
-   .. describe:: dune init test
-
-      Initialize a test harness.
-
-.. describe:: dune install
-
-   Install packages defined in workspace.
-
 .. describe:: dune installed-libraries
 
    Print out libraries installed on the system.
@@ -197,21 +194,9 @@ documentation for each command is available through ``dune COMMAND --help``.
 
    Dump rules.
 
-.. describe:: dune runtest
-
-   Run tests.
-
-.. describe:: dune test
-
-   A command alias for ``dune runtest``.
-
 .. describe:: dune shutdown
 
    Cancel and shutdown any builds in the current workspace.
-
-.. describe:: dune subst
-
-   Substitute watermarks in source files.
 
 .. describe:: dune top
 
@@ -225,7 +210,3 @@ documentation for each command is available through ``dune COMMAND --help``.
 .. describe:: dune upgrade
 
    Upgrade projects across major Dune versions.
-
-.. describe:: dune utop
-
-   Load library in UTop.

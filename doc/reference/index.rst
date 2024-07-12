@@ -65,7 +65,7 @@ These documents specify the various features and languages present in Dune.
        :maxdepth: 1
        :caption: Dune Components
 
-       cli
+       cli/index
        ../dune-libs
        ../caching
 

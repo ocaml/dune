@@ -1,55 +1,70 @@
+.. highlight:: dune
+
 alias
 -----
 
-The ``alias`` stanza adds dependencies to an alias or specifies an action to run
-to construct the alias.
+.. describe:: (alias ...)
 
-The syntax is as follows:
+   Add dependencies to an alias.
 
-.. code:: dune
+   Aliases do not need to be explicitly created, adding to a new name will
+   "create" an alias.
+   An alias with name ``x`` can be built by running ``dune build @x``.
+   See :doc:`/reference/aliases`.
 
-    (alias
-     (name    <alias-name>)
-     (deps    <deps-conf list>)
-     <optional-fields>)
+   The common use of the ``alias`` stanza is make an alias depend on other ones::
 
-``<name>`` is an alias name such as ``runtest``.
+       (alias
+        (name runtest)
+        (deps
+         (alias test-unit)
+         (alias test-integration)))
 
-.. _alias-fields:
+   .. warning::
 
-``<deps-conf list>`` specifies the dependencies of the alias. See
-:doc:`/concepts/dependency-spec` for more details.
+      In previous versions of the dune language, it was also possible to specify
+      an action to run to construct the alias. Please use a :doc:`rule` stanza
+      with the ``alias`` field instead.
 
-``<optional-fields>`` are:
+   This stanza supports the following fields:
 
-- ``<action>``, an action for constructing the alias. See
-  :doc:`/reference/actions/index` for more details. Note that this is removed
-  in Dune 2.0, so users must port their code to use the ``rule`` stanza with
-  the ``alias`` field instead.
+   .. describe:: (name <name>)
 
-- ``(package <name>)`` indicates that this alias stanza is part of package
-  ``<name>`` and should be filtered out if ``<name>`` is filtered out from the
-  command line, either with ``--only-packages <pkgs>`` or ``-p <pkgs>``.
+      An alias name.
 
-- ``(locks (<lock-names>))`` specifies that the action must be run while holding
-  the following locks. See :doc:`/concepts/locks` for more details.
+      Attaching dependencies to ``(name x)`` will ensure they are built by
+      ``dune build @x``.
 
-- ``(enabled_if <blang expression>)`` specifies the Boolean condition that must
-  be true for the tests to run. The condition is specified using the
-  :doc:`/reference/boolean-language`, and the field allows for
-  :doc:`/concepts/variables` to appear in the expressions.
+      This field is required.
 
-The typical use of the ``alias`` stanza is to define tests:
+   .. describe:: (deps <deps-conf list)
 
-.. code:: dune
+      Specifies the dependencies of the alias.
 
-    (rule
-     (alias   runtest)
-     (action (run %{exe:my-test-program.exe} blah)))
+      See :doc:`/concepts/dependency-spec` for more details.
 
-See the section about :ref:`running-tests` for details.
+      This field is required.
 
-Please note: if your project contains several packages, and you run the tests
-from the opam file using a ``build-test`` field, all your ``runtest`` alias
-stanzas should have a ``(package ...)`` field in order to partition the set of
-tests.
+   .. describe:: (enabled_if <blang expression>)
+
+      Specifies the Boolean condition that must be true for the tests to run.
+
+      The condition is specified using the :doc:`/reference/boolean-language`, and
+      the field allows for :doc:`/concepts/variables` to appear in the expressions.
+
+   .. describe:: (action <action>)
+
+      .. versionremoved :: 2.0 use :doc:`rule` with the ``alias`` field instead.
+
+      An :doc:`action </reference/actions/index>` for constructing the alias.
+
+   .. describe:: (package <name>)
+
+      Indicates that this alias stanza is part of package ``<name>`` and should be
+      filtered out if ``<name>`` is filtered out from the command line, either with
+      ``--only-packages <pkgs>`` or ``-p <pkgs>``.
+
+   .. describe:: (locks (<lock-names>))
+
+      Specifies that the action must be run while holding the following locks. See
+      :doc:`/concepts/locks` for more details.

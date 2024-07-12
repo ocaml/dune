@@ -74,3 +74,5 @@ val threaded_console_frames_per_second : [ `Default | `Custom of int ] t
     Note that environment variables take precedence over the values passed here
     for easy overriding. *)
 val init : (Loc.t * string) String.Map.t -> unit
+
+val party_mode : Toggle.t t

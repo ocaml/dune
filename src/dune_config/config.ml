@@ -162,3 +162,5 @@ let threaded_console_frames_per_second =
     ~default:`Default
     ~witness:(Type_eq.Id.create () (* XXX *))
 ;;
+
+let party_mode = make_toggle ~name:"party_mode" ~default:`Disabled

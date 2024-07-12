@@ -101,6 +101,7 @@ let exit_and_flush code =
 ;;
 
 let () =
+  Dune_config.set_configure_time_toggles ~names:Dune_rules.Setup.toggles;
   Dune_rules.Colors.setup_err_formatter_colors ();
   try
     match Cmd.eval_value cmd ~catch:false with

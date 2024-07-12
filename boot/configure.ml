@@ -29,6 +29,7 @@ let () =
   let libexecdir = ref None in
   let datadir = ref None in
   let cwd = lazy (Sys.getcwd ()) in
+  let toggles = ref [] in
   let dir_of_string s =
     if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
   in
@@ -41,6 +42,7 @@ let () =
     let dir = dir_of_string s in
     v := Some dir
   in
+  let set_toggles s = toggles := String.split_on_char ~sep:',' s in
   let args =
     [ ( "--libdir"
       , Arg.String set_libdir
@@ -70,6 +72,7 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
+    ; "--toggles", Arg.String set_toggles, "TODO"
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in
@@ -89,6 +92,7 @@ let () =
   pr "  ; bin = %s" (option string !bindir);
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
-  pr "  }";
+  pr "  }\n";
+  pr "let toggles = %s" (list string !toggles);
   close_out oc
 ;;

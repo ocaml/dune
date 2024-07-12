@@ -22,9 +22,18 @@ module Toggle : sig
   val to_dyn : t -> Dyn.t
 end
 
+val set_configure_time_toggles : names:string list -> unit
+
 (** [make ~name ~of_string ~default] registers a config value called [name],
     parsed using [of_string], defaulting to [default]. *)
-val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t
+val make
+  :  name:string
+  -> of_string:(string -> ('a, string) result)
+  -> default:'a
+  -> witness:'a Type_eq.Id.t
+  -> 'a t
+
+val make_toggle : name:string -> default:Toggle.t -> Toggle.t t
 
 (** [get t] return the value of the configuration for [t] *)
 val get : 'a t -> 'a

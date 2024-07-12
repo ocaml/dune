@@ -17,6 +17,13 @@ type t =
   ; lib_config : Lib_config.t
   }
 
+val make
+  :  Context_name.t
+  -> which:(string -> Path.t option Memo.t)
+  -> env:Env.t
+  -> get_ocaml_tool:(dir:Path.t -> string -> Path.t option Memo.t)
+  -> t Memo.t
+
 val of_env_with_findlib
   :  Context_name.t
   -> Env.t

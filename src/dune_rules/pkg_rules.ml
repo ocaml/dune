@@ -10,6 +10,7 @@ include struct
   module Source = Source
   module Build_command = Lock_dir.Build_command
   module Display = Dune_engine.Display
+  module Toolchain = Dune_pkg.Toolchain
 end
 
 module Variable = struct
@@ -151,6 +152,7 @@ module Value_list_env = struct
      string (in the style of the PATH variable). *)
   type t = Value.t list Env.Map.t
 
+  let empty = Env.Map.empty
   let parse_strings s = Bin.parse s |> List.map ~f:(fun s -> Value.String s)
   let of_env env : t = Env.to_map env |> Env.Map.map ~f:parse_strings
 
@@ -194,7 +196,7 @@ module Value_list_env = struct
   let add_path (t : t) var path : t =
     Env.Map.update t var ~f:(fun paths ->
       let paths = Option.value paths ~default:[] in
-      Some (Value.Dir (Path.build path) :: paths))
+      Some (Value.Dir path :: paths))
   ;;
 end
 
@@ -279,6 +281,243 @@ module Pkg = struct
 
   let is_system_provided t = t.system_provided
 
+  module Toolchain = struct
+    let is_compiler_and_toolchains_enabled =
+      if Dune_pkg.Feature_flags.use_toolchains
+      then
+        let module Package_name = Dune_pkg.Package_name in
+        let compiler_package_names =
+          Package_name.Set.of_list (* TODO don't hardcode these names here *)
+            [ Package_name.of_string "ocaml-base-compiler"
+            ; Package_name.of_string "ocaml-variants"
+            ]
+        in
+        fun t -> Package_name.Set.mem compiler_package_names t.info.name
+      else Fun.const false
+    ;;
+
+    (* A hash of the fields of a package that affect its installed artifacts *)
+    let pkg_hash t = Digest.generic (t.build_command, t.install_command, t.depends, t.info)
+
+    (* The name of this package's directory within the toolchains
+       directory. Includes a hash of some of the package's fields so that
+       if a user modifies a package's lockfile in one project, then the
+       modified package won't be used in other projects (unless the
+       corresponding lockfile in those projects is modified in the same
+       way). *)
+    let dir_name t =
+      sprintf
+        "%s.%s-%s"
+        (Package.Name.to_string t.info.name)
+        (Package_version.to_string t.info.version)
+        (Digest.to_string @@ pkg_hash t)
+    ;;
+
+    let pkg_dir t = Path.Outside_build_dir.relative (Toolchain.base_dir ()) (dir_name t)
+
+    (* Directory that will contain all the installed artifacts of the
+       package, suitable for passing as the --prefix argument to a
+       configure script. *)
+    let installation_prefix t = Path.Outside_build_dir.relative (pkg_dir t) "target"
+    let is_installed t = Fs_memo.dir_exists (installation_prefix t)
+    let bin_dir t = Path.Outside_build_dir.relative (installation_prefix t) "bin"
+
+    (* Action which creates a fake package source in place of a compiler
+       package for use when a compiler from the toolchains directory will be
+       used instead of taking the compiler from a regular opam package. *)
+    let dummy_fetch t target =
+      Action.progn
+        [ Action.mkdir target
+        ; Action.with_stdout_to
+            (Path.Build.relative target "debug_hint.txt")
+            (Action.echo
+               [ sprintf
+                   "This file was created as a hint to people debugging issues with dune \
+                    package management.\n\
+                    The current project attempted to download and install the package \
+                    %s.%s, however a matching package was found in the toolchains \
+                    directory %s, so the latter will be used instead."
+                   (Dune_pkg.Package_name.to_string t.info.name)
+                   (Dune_pkg.Package_version.to_string t.info.version)
+                   (installation_prefix t |> Path.Outside_build_dir.to_string)
+               ])
+        ; (* TODO: it doesn't seem like it should be necessary to generate
+             this file but without it dune complains *)
+          Action.with_stdout_to
+            (Path.Build.relative target "config.cache")
+            (Action.echo
+               [ "Dummy file created to placate dune's package installation rules. See \
+                  the debug_hint.txt file for more information."
+               ])
+        ]
+      |> Action.Full.make
+      |> Action_builder.With_targets.return
+      |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+    ;;
+
+    (* Fetches the source unless the toolchain package it refers to is
+       already installed, in which case it creates a dummy package
+       source. *)
+    let fetch_action t ~target ~source =
+      let+ installed = is_installed t in
+      if installed
+      then dummy_fetch t target
+      else Fetch_rules.fetch ~target `Directory source
+    ;;
+
+    (* Fields to override in the variable environment under which
+       commands are evaluated such that the package is installed to the
+       toolchains directory rather than inside the _build directory. *)
+    let override_pform t =
+      let prefix = Path.outside_build_dir @@ installation_prefix t in
+      { Override_pform.prefix = Some prefix
+      ; doc = Some (Path.relative prefix "doc")
+      ; jobs =
+          (if Dune_pkg.Feature_flags.toolchains_build_compiler_in_parallel
+           then (* build with more parallelism (i.e. `make -j`) *)
+             Some ""
+           else None)
+      }
+    ;;
+
+    let modify_build_action t action =
+      let+ installed = is_installed t in
+      if installed
+      then
+        (* Replace build command with no-op if the toolchain is already installed. *)
+        Dune_lang.Action.Progn []
+      else action
+    ;;
+
+    (* The path to the directory containing the artifacts within the
+       temporary install directory. When installing with the DESTDIR
+       variable, the absolute path to the final installation directory is
+       concatenated to the value of DESTDIR. *)
+    let installation_prefix_within_tmp_install_dir t tmp_install_dir =
+      let prefix = installation_prefix t in
+      let target_without_root_prefix =
+        (* Remove the root directory prefix from the target directory so
+           it can be used to create a path relative to the temporary
+           install dir. *)
+        match
+          String.drop_prefix
+            (Path.Outside_build_dir.to_string prefix)
+            ~prefix:(Path.External.to_string Path.External.root)
+        with
+        | Some x -> x
+        | None ->
+          Code_error.raise
+            "Expected prefix to start with root"
+            [ "prefix", Path.Outside_build_dir.to_dyn prefix
+            ; "root", Path.External.to_dyn Path.External.root
+            ]
+      in
+      Path.relative tmp_install_dir target_without_root_prefix
+    ;;
+
+    let modify_install_action t action =
+      let+ installed = is_installed t in
+      if installed
+      then
+        (* Replace install command with no-op if the toolchain is already installed. *)
+        Dune_lang.Action.Progn []
+      else (
+        match action with
+        | Dune_lang.Action.Run [ Literal make; Literal install ] ->
+          (match String_with_vars.pform_only make, String_with_vars.text_only install with
+           | Some (Pform.Var Pform.Var.Make), Some "install" ->
+             let tmp_install_dir =
+               Temp.create Dir ~prefix:"dune-toolchain-destdir" ~suffix:(dir_name t)
+             in
+             let action =
+               (* Set the DESTDIR variable so installed artifacts are not immediately
+                  placed in the final installation directory. *)
+               Dune_lang.Action.Run
+                 [ Literal make
+                 ; Literal install
+                 ; Slang.text (sprintf "DESTDIR=%s" (Path.to_string tmp_install_dir))
+                 ]
+             in
+             let prefix = Path.outside_build_dir @@ installation_prefix t in
+             (* Append some commands to the install command that copy
+                the artifacts to their final installation directory. *)
+             Dune_lang.Action.Progn
+               [ action
+               ; Dune_lang.Action.Run
+                   [ Slang.text "mkdir"
+                   ; Slang.text "-p"
+                   ; Slang.text @@ Path.to_string @@ Path.parent_exn prefix
+                   ]
+               ; Dune_lang.Action.Run
+                   [ Slang.text "mv"
+                   ; (* Prevents mv from replacing the destination if it
+                        already exists. This can happen if two dune
+                        instances race to install the toolchain. Note
+                        that -n is not posix but it is supported by gnu
+                        coreutils and by the default mv command on
+                        macos, but not openbsd. *)
+                     Slang.text "-n"
+                   ; Slang.text
+                       (Path.to_string
+                        @@ installation_prefix_within_tmp_install_dir t tmp_install_dir)
+                   ; Slang.text @@ Path.to_string @@ Path.parent_exn prefix
+                   ]
+               ]
+           | _ ->
+             (* The install command is something other than `make install`, so don't
+                attempt to modify. *)
+             action)
+        | _ ->
+          (* Not a "run" action, so don't attempt to modify. *)
+          action)
+    ;;
+
+    (* A [Value_list_env.t] where the PATH variable is set to the toolchain's bin dir. *)
+    let env t =
+      let bin_dir = bin_dir t |> Path.outside_build_dir in
+      Value_list_env.add_path Value_list_env.empty Env_path.var bin_dir
+    ;;
+
+    (* An [Ocaml_toolchain.t] based on the toolchain installation. *)
+    let ocaml_toolchain t context =
+      let env = env t |> Value_list_env.to_env in
+      let bin_dir = bin_dir t in
+      let which prog =
+        let path = Path.Outside_build_dir.relative bin_dir prog in
+        let+ exists = Fs_memo.file_exists path in
+        if exists then Some (Path.outside_build_dir path) else None
+      in
+      let get_ocaml_tool ~dir:_ prog = which prog in
+      Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
+    ;;
+
+    (* An [Install_cookie.t] with a [bin] section populated with all
+       the executable files from the bin directory of the toolchain
+       installation. *)
+    let install_cookie t =
+      let bin_dir = bin_dir t in
+      Fs_memo.dir_contents bin_dir
+      >>| function
+      | Error _ -> { Install_cookie.files = Section.Map.empty; variables = [] }
+      | Ok files ->
+        let bin_paths =
+          Fs_cache.Dir_contents.to_list files
+          |> List.filter_map ~f:(fun (filename, kind) ->
+            match kind with
+            | Unix.S_REG | S_LNK ->
+              let path = Path.Outside_build_dir.relative bin_dir filename in
+              (try
+                 Unix.access (Path.Outside_build_dir.to_string path) [ Unix.X_OK ];
+                 Some (Path.outside_build_dir path)
+               with
+               | Unix.Unix_error _ -> None)
+            | _ -> None)
+        in
+        let files = Section.Map.singleton Section.Bin bin_paths in
+        { Install_cookie.files; variables = [] }
+    ;;
+  end
+
   let top_closure depends =
     match
       Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
@@ -359,14 +598,17 @@ module Pkg = struct
      package in the same order as the argument list. *)
   let build_env_of_deps ts =
     List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
-      let env =
-        let roots = Paths.install_roots t.paths in
-        let init = Value_list_env.add_path env Env_path.var roots.bin in
-        let vars = Install.Roots.to_env_without_path roots in
-        List.fold_left vars ~init ~f:(fun acc (var, path) ->
-          Value_list_env.add_path acc var path)
-      in
-      List.fold_left t.exported_env ~init:env ~f:Env_update.set)
+      if Toolchain.is_compiler_and_toolchains_enabled t
+      then Toolchain.env t
+      else (
+        let env =
+          let roots = Paths.install_roots t.paths in
+          let init = Value_list_env.add_path env Env_path.var (Path.build roots.bin) in
+          let vars = Install.Roots.to_env_without_path roots in
+          List.fold_left vars ~init ~f:(fun acc (var, path) ->
+            Value_list_env.add_path acc var (Path.build path))
+        in
+        List.fold_left t.exported_env ~init:env ~f:Env_update.set))
   ;;
 
   (* [build_env t] returns an env containing paths containing all the
@@ -911,7 +1153,7 @@ module Action_expander = struct
              (match Filename.Map.find t.artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
-                (let path = Global.env () |> Env_path.path in
+                (let path = Value_list_env.to_env t.env |> Env_path.path in
                  Which.which ~path program)
                 >>| (function
                  | Some p -> Ok p
@@ -1080,9 +1322,14 @@ module Action_expander = struct
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        Action_builder.evaluate_and_collect_facts cookie
-        |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie))
+        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        then
+          let+ install_cookie = Pkg.Toolchain.install_cookie pkg in
+          pkg, install_cookie
+        else (
+          let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+          Action_builder.evaluate_and_collect_facts cookie
+          |> Memo.map ~f:(fun ((cookie : Install_cookie.t), _) -> pkg, cookie)))
       |> Memo.map ~f:(fun cookies ->
         List.fold_left
           cookies
@@ -1152,7 +1399,15 @@ module Action_expander = struct
 
   let build_command context (pkg : Pkg.t) =
     Option.map pkg.build_command ~f:(function
-      | Action action -> expand context pkg action
+      | Action action ->
+        let action_memo, override_pform =
+          if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+          then
+            Pkg.Toolchain.modify_build_action pkg action, Pkg.Toolchain.override_pform pkg
+          else Memo.return action, Override_pform.empty
+        in
+        let* action = action_memo in
+        expand context pkg action ~override_pform
       | Dune ->
         (* CR-rgrinberg: respect [dune subst] settings. *)
         Command.run_dyn_prog
@@ -1163,7 +1418,15 @@ module Action_expander = struct
   ;;
 
   let install_command context (pkg : Pkg.t) =
-    Option.map pkg.install_command ~f:(fun action -> expand context pkg action)
+    Option.map pkg.install_command ~f:(fun action ->
+      let action_memo, override_pform =
+        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        then
+          Pkg.Toolchain.modify_install_action pkg action, Pkg.Toolchain.override_pform pkg
+        else Memo.return action, Override_pform.empty
+      in
+      let* action = action_memo in
+      expand context pkg action ~override_pform)
   ;;
 
   let exported_env (expander : Expander.t) (env : _ Env_update.t) =
@@ -1601,8 +1864,13 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
-         Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
+         let+ fetch =
+           let target = pkg.paths.source_dir in
+           if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+           then Pkg.Toolchain.fetch_action pkg ~target ~source
+           else Memo.return @@ Fetch_rules.fetch ~target `Directory source
+         in
+         Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ]
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
            let source_root = Path.external_ source_root in
@@ -1791,18 +2059,21 @@ let ocaml_toolchain context =
     then None
     else (
       let toolchain =
-        let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-        let open Action_builder.O in
-        let* cookie = cookie in
-        (* TODO we should use the closure of [pkg] *)
-        let binaries =
-          Section.Map.find cookie.files Bin
-          |> Option.value ~default:[]
-          |> Path.Set.of_list
-        in
-        let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
-        let path = Env_path.path (Global.env ()) in
-        Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
+        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        then Action_builder.of_memo @@ Pkg.Toolchain.ocaml_toolchain pkg context
+        else (
+          let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+          let open Action_builder.O in
+          let* cookie = cookie in
+          (* TODO we should use the closure of [pkg] *)
+          let binaries =
+            Section.Map.find cookie.files Bin
+            |> Option.value ~default:[]
+            |> Path.Set.of_list
+          in
+          let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+          let path = Env_path.path (Global.env ()) in
+          Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries)
       in
       Some (Action_builder.memoize "ocaml_toolchain" toolchain))
 ;;

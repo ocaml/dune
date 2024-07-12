@@ -248,6 +248,18 @@ module Env_update = struct
   ;;
 end
 
+module Override_pform = struct
+  (* Allows various pform values to be overriden when expanding pforms
+     inside package commands. *)
+  type t =
+    { prefix : Path.t option
+    ; doc : Path.t option
+    ; jobs : string option
+    }
+
+  let empty = { prefix = None; doc = None; jobs = None }
+end
+
 module Pkg = struct
   module Id = Id.Make ()
 
@@ -417,6 +429,7 @@ module Expander0 = struct
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
+    ; override_pform : Override_pform.t
     }
 
   let expand_pform_fdecl
@@ -716,6 +729,7 @@ module Action_expander = struct
     let section_dir_of_root
       (roots : _ Install.Roots.t)
       (section : Pform.Var.Pkg.Section.t)
+      ~(override_pform : Override_pform.t)
       =
       match section with
       | Lib -> roots.lib_root
@@ -724,10 +738,13 @@ module Action_expander = struct
       | Sbin -> roots.sbin
       | Share -> roots.share_root
       | Etc -> roots.etc_root
-      | Doc -> roots.doc_root
+      | Doc ->
+        (match override_pform.doc with
+         | Some doc -> doc
+         | None -> roots.doc_root)
       | Man -> roots.man
-      | Toplevel -> Path.Build.relative roots.lib_root "toplevel"
-      | Stublibs -> Path.Build.relative roots.lib_root "stublibs"
+      | Toplevel -> Path.relative roots.lib_root "toplevel"
+      | Stublibs -> Path.relative roots.lib_root "stublibs"
     ;;
 
     let sys_poll_var accessor =
@@ -742,7 +759,11 @@ module Action_expander = struct
         [ Value.String "" ]
     ;;
 
-    let expand_pkg (paths : Paths.t) (pform : Pform.Var.Pkg.t) =
+    let expand_pkg
+      (paths : Paths.t)
+      (pform : Pform.Var.Pkg.t)
+      ~(override_pform : Override_pform.t)
+      =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
       | Os -> sys_poll_var (fun { os; _ } -> os)
@@ -752,17 +773,27 @@ module Action_expander = struct
       | Sys_ocaml_version ->
         sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
-      | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
+      | Prefix ->
+        Memo.return
+          [ (match override_pform.prefix with
+             | None -> Value.Dir (Path.build paths.target_dir)
+             | Some prefix -> Value.Dir prefix)
+          ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
+      | Jobs ->
+        Memo.return
+          [ (match override_pform.jobs with
+             | Some jobs -> Value.String jobs
+             | None -> Value.String (Int.to_string !Clflags.concurrency))
+          ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in
         Memo.return [ Value.String group.gr_name ]
       | Section_dir section ->
-        let roots = Paths.install_roots paths in
-        let dir = section_dir_of_root roots section in
-        Memo.return [ Value.Dir (Path.build dir) ]
+        let roots = Paths.install_roots paths |> Install.Roots.map ~f:Path.build in
+        let dir = section_dir_of_root roots section ~override_pform in
+        Memo.return [ Value.Dir dir ]
     ;;
 
     let expand_pkg_macro ~loc (paths : Paths.t) deps macro_invocation =
@@ -813,14 +844,22 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { name = _; env = _; paths; artifacts = _; context; depends; version = _ }
+      { name = _
+      ; env = _
+      ; paths
+      ; artifacts = _
+      ; context
+      ; depends
+      ; version = _
+      ; override_pform
+      }
       ~source
       (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
       match pform with
-      | Var (Pkg var) -> expand_pkg paths var >>| Result.ok
+      | Var (Pkg var) -> expand_pkg paths var ~override_pform >>| Result.ok
       | Var Context_name ->
         Memo.return (Ok [ Value.String (Context_name.to_string context) ])
       | Var Make ->
@@ -1066,7 +1105,7 @@ module Action_expander = struct
     ;;
   end
 
-  let expander context (pkg : Pkg.t) =
+  let expander context (pkg : Pkg.t) ~override_pform =
     let+ { Artifacts_and_deps.binaries; dep_info } =
       Pkg.deps_closure pkg
       |> List.filter ~f:(Fun.negate Pkg.is_system_provided)
@@ -1086,14 +1125,15 @@ module Action_expander = struct
     ; depends
     ; version = pkg.info.version
     ; env
+    ; override_pform
     }
   ;;
 
   let sandbox = Sandbox_mode.Set.singleton Sandbox_mode.copy
 
-  let expand context (pkg : Pkg.t) action =
+  let expand context (pkg : Pkg.t) action ~override_pform =
     let+ action =
-      let* expander = expander context pkg in
+      let* expander = expander context pkg ~override_pform in
       expand action ~expander >>| Action.chdir (Path.build pkg.paths.source_dir)
     in
     (* TODO copying is needed for build systems that aren't dune and those
@@ -1187,7 +1227,9 @@ end = struct
         }
       in
       let+ exported_env =
-        let* expander = Action_expander.expander ctx t in
+        let* expander =
+          Action_expander.expander ctx t ~override_pform:Override_pform.empty
+        in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in
       t.exported_env <- exported_env;

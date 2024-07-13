@@ -14,13 +14,19 @@ module Language = struct
     type t =
       | Dialect of string
       | Dune
+      | DuneProject
 
     let compare t1 t2 =
       match t1, t2 with
+      | Dialect s1, Dialect s2 -> String.compare s1 s2
+      | Dialect _, Dune -> Gt
+      | Dialect _, DuneProject -> Gt
       | Dune, Dune -> Eq
       | Dune, Dialect _ -> Lt
-      | Dialect _, Dune -> Gt
-      | Dialect s1, Dialect s2 -> String.compare s1 s2
+      | Dune, DuneProject -> Gt
+      | DuneProject, DuneProject -> Eq
+      | DuneProject, Dialect _ -> Lt
+      | DuneProject, Dune -> Lt
     ;;
 
     let to_dyn =
@@ -28,6 +34,7 @@ module Language = struct
       function
       | Dialect name -> variant "dialect" [ string name ]
       | Dune -> variant "dune" []
+      | DuneProject -> variant "dune-project" []
     ;;
   end
 
@@ -35,6 +42,7 @@ module Language = struct
   include T
 
   let of_string = function
+    | "dune-project" -> DuneProject
     | "dune" -> Dune
     | s -> Dialect s
   ;;
@@ -46,6 +54,7 @@ module Language = struct
     let open Encoder in
     function
     | Dune -> string "dune"
+    | DuneProject -> string "dune-project"
     | Dialect d -> string d
   ;;
 end
@@ -76,8 +85,7 @@ module Enabled_for = struct
     match list_opt, ext_version with
     | Some l, _ -> Only (Language.Set.of_list l)
     | None, (1, 0) -> Only Language.in_ext_1_0
-    | None, (1, 1) -> Only Language.in_ext_1_1
-    | None, (1, 2) -> All
+    | None, (1, 1) | None, (1, 2) -> Only Language.in_ext_1_1
     | None, _ ->
       Code_error.raise
         "This fmt version does not exist"
@@ -132,6 +140,16 @@ let dune2_dec =
 
 let enabled_for_all = { loc = Loc.none; enabled_for = Enabled_for.All }
 let disabled = { loc = Loc.none; enabled_for = Enabled_for.Only Language.Set.empty }
+
+let enabled_dune_2 =
+  { loc = Loc.none
+  ; enabled_for =
+      Enabled_for.Only
+        (Language.Set.of_list
+           [ Language.Dialect "ocaml"; Language.Dialect "reason"; Language.Dune ])
+  }
+;;
+
 let field ~since = field_o "formatting" (Syntax.since Stanza.syntax since >>> dune2_dec)
 
 let is_empty = function
@@ -166,12 +184,15 @@ let encode_opt t = to_explicit t |> Option.map ~f:(fun c -> encode_explicit c.en
 
 let of_config ~ext ~dune_lang ~version =
   let dune2 = version >= (2, 0) in
-  match ext, dune_lang, dune2 with
-  | None, None, true -> enabled_for_all
-  | None, None, false -> disabled
-  | Some x, None, false | None, Some x, true -> x
-  | _, Some _, false -> Code_error.raise "(formatting ...) stanza requires version 2.0" []
-  | Some ext, _, true ->
+  let dune3_17 = version >= (3, 17) in
+  match ext, dune_lang, dune2, dune3_17 with
+  | None, None, _, true -> enabled_for_all
+  | None, None, true, false -> enabled_dune_2
+  | None, None, false, _ -> disabled
+  | Some x, None, false, _ | None, Some x, true, _ -> x
+  | _, Some _, false, _ ->
+    Code_error.raise "(formatting ...) stanza requires version 2.0" []
+  | Some ext, _, true, _ ->
     let suggestion =
       match to_explicit ext with
       | Some { enabled_for; _ } ->

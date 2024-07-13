@@ -190,7 +190,8 @@ Sometimes, the suggestion is to just remove the configuration.
   5 | (using fmt 1.2)
       ^^^^^^^^^^^^^^^
   Error: Starting with (lang dune 2.0), formatting is enabled by default.
-  To port it to the new syntax, you can delete this part.
+  To port it to the new syntax, you can replace this part by:
+  (formatting (enabled_for dune ocaml reason))
   [1]
 
 Formatting can also be set in the (env ...) stanza
@@ -251,12 +252,12 @@ settings as dictated by the dune language version.
   > EOF
   $ (cd using-env && dune build @fmt)
 
-dune fmt automatically formats dune-project files.
+dune fmt automatically formats dune-project files starting from dune 3.17.
 
   $ mkdir dune-project-files
   $ touch dune-project-files/.ocamlformat
   $ cat > dune-project-files/dune-project << EOF
-  > (lang dune 3.16)
+  > (lang dune 3.17)
   > (name
   > format_project)
   > EOF
@@ -267,6 +268,6 @@ dune fmt automatically formats dune-project files.
   Promoting _build/default/.formatted/dune-project to dune-project.
   [1]
   $ cat dune-project-files/dune-project
-  (lang dune 3.16)
+  (lang dune 3.17)
   
   (name format_project)

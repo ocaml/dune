@@ -150,7 +150,7 @@ let gen_rules_output
           |> Memo.Option.iter
                ~f:(add_diff_rule ~sctx ~loc ~alias_formatted ~dir ~output_dir ~version)))
   and* () =
-    match Format_config.includes config Dune with
+    match Format_config.includes config DuneProject with
     | false -> Memo.return ()
     | true ->
       Dune_project.file project

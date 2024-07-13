@@ -8,6 +8,7 @@ module Language : sig
   type t =
     | Dialect of string
     | Dune
+    | DuneProject
 end
 
 type t

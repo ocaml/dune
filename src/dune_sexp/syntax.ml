@@ -95,7 +95,7 @@ end = struct
      we'd have the following map (in associative list syntax):
 
      {[
-       [ 1, [ 0, (1, 4); 1, (1, 6); 2, (2, 3) ]; 2, [ 0, (2, 3) ] ]
+       [ 1, [ 0, (1, 4); 1, (1, 6); 2, (2, 3) ]; 2, [ 0, (2, 4) ] ]
      ]} *)
   type t =
     { version_map : Version.t Int.Map.t Int.Map.t

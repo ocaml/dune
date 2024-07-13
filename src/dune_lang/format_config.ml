@@ -189,7 +189,9 @@ let of_config ~ext ~dune_lang ~version =
   | None, None, _, true -> enabled_for_all
   | None, None, true, false -> enabled_dune_2
   | None, None, false, _ -> disabled
-  | Some x, None, false, _ | None, Some x, true, _ -> x
+  | Some x, None, false, _ | None, Some x, true, true -> x
+  | None, Some x, true, false ->
+    if x.enabled_for == Enabled_for.All then enabled_dune_2 else x
   | _, Some _, false, _ ->
     Code_error.raise "(formatting ...) stanza requires version 2.0" []
   | Some ext, _, true, _ ->

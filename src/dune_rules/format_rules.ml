@@ -155,7 +155,8 @@ let gen_rules_output
     | true ->
       Dune_project.file project
       |> Memo.Option.iter ~f:(fun path ->
-        if String.equal "_build/default" (Path.Build.to_string dir)
+        let build_dir = Super_context.context sctx |> Context.build_dir in
+        if Path.Build.equal build_dir dir
         then add_diff_rule ~sctx ~loc ~alias_formatted ~dir ~output_dir ~version path
         else Memo.return ())
   in

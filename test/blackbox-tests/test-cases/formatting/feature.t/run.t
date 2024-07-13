@@ -271,3 +271,18 @@ dune fmt automatically formats dune-project files starting from dune 3.17.
   (lang dune 3.17)
   
   (name format_project)
+
+But does not format if formatting is disabled for dune-project files.
+
+  $ cat > dune-project-files/dune-project << EOF
+  > (lang dune 3.17)
+  > (name
+  > format_project)
+  > (formatting (enabled_for ocaml dune reason))
+  > EOF
+  $ (cd dune-project-files && dune fmt)
+  $ cat dune-project-files/dune-project
+  (lang dune 3.17)
+  (name
+  format_project)
+  (formatting (enabled_for ocaml dune reason))

@@ -62,18 +62,25 @@ end
 module Enabled_for = struct
   type t =
     | Only of Language.Set.t
+    | Dune_2_All
     | All
 
   let to_dyn =
     let open Dyn in
     function
     | Only l -> variant "only" [ Language.Set.to_dyn l ]
+    | Dune_2_All -> string "dune_2_all"
     | All -> string "all"
   ;;
 
   let includes t =
     match t with
     | Only l -> Language.Set.mem l
+    | Dune_2_All ->
+      fun l ->
+        (match l with
+         | Language.Dialect _ | Language.Dune -> true
+         | _ -> false)
     | All -> fun _ -> true
   ;;
 
@@ -140,20 +147,12 @@ let dune2_dec =
 
 let enabled_for_all = { loc = Loc.none; enabled_for = Enabled_for.All }
 let disabled = { loc = Loc.none; enabled_for = Enabled_for.Only Language.Set.empty }
-
-let enabled_dune_2 =
-  { loc = Loc.none
-  ; enabled_for =
-      Enabled_for.Only
-        (Language.Set.of_list
-           [ Language.Dialect "ocaml"; Language.Dialect "reason"; Language.Dune ])
-  }
-;;
-
+let enabled_dune_2 = { loc = Loc.none; enabled_for = Enabled_for.Dune_2_All }
 let field ~since = field_o "formatting" (Syntax.since Stanza.syntax since >>> dune2_dec)
 
 let is_empty = function
   | { enabled_for = Enabled_for.Only l; _ } -> Language.Set.is_empty l
+  | { enabled_for = Enabled_for.Dune_2_All; _ } -> false
   | { enabled_for = All; _ } -> false
 ;;
 
@@ -177,6 +176,7 @@ let encode_explicit conf =
 let to_explicit { loc; enabled_for } =
   match enabled_for with
   | Enabled_for.All -> None
+  | Enabled_for.Dune_2_All -> Some { loc; enabled_for = Language.in_ext_1_1 }
   | Only l -> Some { loc; enabled_for = l }
 ;;
 

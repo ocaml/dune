@@ -14,19 +14,19 @@ module Language = struct
     type t =
       | Dialect of string
       | Dune
-      | DuneProject
+      | Dune_project
 
     let compare t1 t2 =
       match t1, t2 with
       | Dialect s1, Dialect s2 -> String.compare s1 s2
       | Dialect _, Dune -> Gt
-      | Dialect _, DuneProject -> Gt
+      | Dialect _, Dune_project -> Gt
       | Dune, Dune -> Eq
       | Dune, Dialect _ -> Lt
-      | Dune, DuneProject -> Gt
-      | DuneProject, DuneProject -> Eq
-      | DuneProject, Dialect _ -> Lt
-      | DuneProject, Dune -> Lt
+      | Dune, Dune_project -> Gt
+      | Dune_project, Dune_project -> Eq
+      | Dune_project, Dialect _ -> Lt
+      | Dune_project, Dune -> Lt
     ;;
 
     let to_dyn =
@@ -34,7 +34,7 @@ module Language = struct
       function
       | Dialect name -> variant "dialect" [ string name ]
       | Dune -> variant "dune" []
-      | DuneProject -> variant "dune-project" []
+      | Dune_project -> variant "dune-project" []
     ;;
   end
 
@@ -42,7 +42,7 @@ module Language = struct
   include T
 
   let of_string = function
-    | "dune-project" -> DuneProject
+    | "dune-project" -> Dune_project
     | "dune" -> Dune
     | s -> Dialect s
   ;;
@@ -54,7 +54,7 @@ module Language = struct
     let open Encoder in
     function
     | Dune -> string "dune"
-    | DuneProject -> string "dune-project"
+    | Dune_project -> string "dune-project"
     | Dialect d -> string d
   ;;
 end

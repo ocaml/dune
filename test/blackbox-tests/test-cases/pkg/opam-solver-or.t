@@ -55,12 +55,11 @@ which is completely omitted from the solution).
   - b.0.0.2
 
 Update a2.0.0.2 marking it as avoid-version which should tell the
-solver to try to find a solution which doesn't include it (this
-functionality is not implemented yet).
-  $ mkpkg a2 0.0.2 <<EOF
-  > conflicts: [ "a1" ]
-  > flags: [avoid-version]
-  > EOF
+solver to try to find a solution which doesn't include it.
+
+For now, all avoid-version packages are excluded.
+
+$ mkpkg a2 0.0.2 <<EOF
 
   $ solve b
   Solution for dune.lock:

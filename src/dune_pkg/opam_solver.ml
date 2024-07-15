@@ -32,14 +32,48 @@ let add_self_to_filter_env package env variable =
     else env variable
 ;;
 
-let opam_file_is_avoid_version (opam_file : OpamFile.OPAM.t) =
-  List.mem opam_file.flags Pkgflag_AvoidVersion ~equal:Poly.equal
-;;
+module Priority = struct
+  (* A priority defines a package's position in the list of candidates
+     fed to the solver. Any change to package selection should be reflected in
+     this priority rather than implemented in an ad-hoc manner *)
+  type t =
+    { (* We don't really need this field, since we filter avoid-version
+         packages. If this changes, we still prefer packages
+         with [avoid-version: false] *)
+      avoid : bool
+    ; version : OpamPackage.Version.t
+    }
+
+  let compare_version =
+    let ord x y = OpamPackage.Version.compare x y |> Ordering.of_int in
+    fun (pref : Version_preference.t) x y ->
+      match pref with
+      | Oldest -> ord x y
+      | Newest -> ord y x
+  ;;
+
+  let compare pref t { avoid; version } =
+    Tuple.T2.compare
+      Bool.compare
+      (compare_version pref)
+      (t.avoid, t.version)
+      (avoid, version)
+  ;;
+
+  let make (package : OpamFile.OPAM.t) =
+    let avoid = List.mem package.flags Pkgflag_AvoidVersion ~equal:Poly.equal in
+    let version = OpamFile.OPAM.package package |> OpamPackage.version in
+    { version; avoid }
+  ;;
+end
 
 module Context_for_dune = struct
   type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
-  type rejection = Unavailable
+
+  type rejection =
+    | (* TODO proper error messages for packages skipped via avoid-version *)
+      Unavailable
 
   let local_package_default_version =
     Package_version.to_opam_package_version Lock_dir.Pkg_info.default_version
@@ -113,34 +147,6 @@ module Context_for_dune = struct
     | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
   ;;
 
-  (* Compare two packages where the "least" of the two packages is the
-     one that the solver should prefer. It is only meaningful to call
-     this function with two different versions of the same
-     package. This is sensitive to the configured version
-     preference. E.g. if the version preference is to prefer newer
-     packages then packages versions that are numerically greater will
-     be treated as less than versions that are numerically lower. This
-     comparison also accounts for the avoid-version flag by treating
-     any version with this flag set as greater than any version
-     without this flag so that the solver will prefer package versions
-     without this flag. *)
-  let opam_version_compare t a b =
-    let opam_version_compare a b = OpamPackage.Version.compare a b |> Ordering.of_int in
-    let ordering a b =
-      opam_version_compare (OpamFile.OPAM.version a) (OpamFile.OPAM.version b)
-    in
-    let version_compare a b =
-      match t.version_preference with
-      | Oldest -> ordering a b
-      | Newest -> ordering b a
-    in
-    Tuple.T2.compare
-      Bool.compare
-      version_compare
-      (opam_file_is_avoid_version a, a)
-      (opam_file_is_avoid_version b, b)
-  ;;
-
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
     try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter) with
     | Invalid_argument msg -> Error (`Not_a_bool msg)
@@ -189,6 +195,8 @@ module Context_for_dune = struct
   let pinned_candidate t resolved_package =
     let version = Resolved_package.package resolved_package |> OpamPackage.version in
     let available =
+      (* We don't respect avoid-version for pinned packages. This is
+         intentional. *)
       [ version, Resolved_package.opam_file resolved_package |> available_or_error t ]
     in
     let resolved = OpamPackage.Version.Map.singleton version resolved_package in
@@ -199,18 +207,18 @@ module Context_for_dune = struct
     let+ resolved = Opam_repo.load_all_versions t.repos name in
     let available =
       OpamPackage.Version.Map.values resolved
+      |> List.map ~f:(fun p -> p, Priority.make (Resolved_package.opam_file p))
       (* Note that although the packages are taken from a map,
          explicitly sorting them is still necessary. This sort applies
          the configured version preference and also allows the solver to
          prefer versions without the avoid-version flag set. *)
-      |> List.sort ~compare:(fun p1 p2 ->
-        opam_version_compare
-          t
-          (Resolved_package.opam_file p1)
-          (Resolved_package.opam_file p2))
-      |> List.map ~f:(fun resolved_package ->
+      |> List.sort ~compare:(fun (_, x) (_, y) ->
+        Priority.compare t.version_preference x y)
+      |> List.map ~f:(fun (resolved_package, (priority : Priority.t)) ->
         let opam_file = Resolved_package.opam_file resolved_package in
-        let opam_file_result = available_or_error t opam_file in
+        let opam_file_result =
+          if priority.avoid then Error Unavailable else available_or_error t opam_file
+        in
         OpamFile.OPAM.version opam_file, opam_file_result)
     in
     { available; resolved }

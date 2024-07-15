@@ -1,6 +1,5 @@
-Repro for https://github.com/ocaml/dune/issues/10592. Creates some packages
-that simulate some of the ocaml compiler packages and test solving a project
-that depends on "ocaml".
+Creates some packages that simulate some of the ocaml compiler
+packages and test solving a project that depends on "ocaml".
 
   $ . ./helpers.sh
   $ mkrepo
@@ -61,14 +60,13 @@ organized in the wild.
   > ]
   > EOF
 
-Here ocaml-variants is chosen despite its avoid-version flag. This is
-because dune does not respect the avoid-version flag when choosing
-which package to use to satisfy a disjunction (the disjunction in
-question is between ocaml-base-compiler and ocaml-variants, where
-ocaml-variants has the avoid-version flag set and ocaml-base-compiler
-does not).  This is a problem because the chosen compiler is not
-officially released and possibly unstable.
+Note that dune didn't change the solution to include the newest
+release of the "ocaml" package, as doing so would cause a dependency
+on an unstable version of the compiler. Dune assumes that any version
+of compiler packages with a higher version number than the latest
+version of ocaml-base-compiler without the avoid-version flag is
+unstable.
   $ solve ocaml
   Solution for dune.lock:
-  - ocaml.5.3.0
-  - ocaml-variants.5.3.0+trunk
+  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0

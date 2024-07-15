@@ -17,6 +17,10 @@ let out =
   | Some out -> out
 ;;
 
+let toggle_inits l =
+  sprintf "Dune_config.Config.set_configure_time_toggles ~names:%s" (list string l)
+;;
+
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
   let library_path = ref [] in
@@ -93,6 +97,6 @@ let () =
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }\n";
-  pr "let toggles = %s" (list string !toggles);
+  pr "let init () = %s" (toggle_inits !toggles);
   close_out oc
 ;;

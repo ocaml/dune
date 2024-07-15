@@ -114,11 +114,11 @@ files for executables. See
 
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.,
   C or C++ stubs, to be linked into the executable. See
-  :doc:`/reference/foreign` for more details.
+  :doc:`/reference/foreign-stubs` for more details.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be linked into the executable. See the section
-  :ref:`foreign-archives` for more details.
+  :doc:`/reference/foreign-archives` for more details.
 
 - ``(forbidden_libraries <libraries>)`` ensures that the given libraries are not
   linked in the resulting executable. If they end up being pulled in, either

@@ -22,3 +22,5 @@ use_standard_c_and_cxx_flags
    completed or overridden using the :doc:`/reference/ordered-set-language`.
 
    This is the default in the language version 3.0.
+
+   .. seealso:: :doc:`/reference/foreign-flags`

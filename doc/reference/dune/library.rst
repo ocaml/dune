@@ -126,7 +126,7 @@ order to declare a multi-directory library, you need to use the
    Specifies foreign source files, e.g., C or C++ stubs, to be compiled and
    packaged together with the library.
 
-   See the section :doc:`/reference/foreign` for more details.
+   See the section :doc:`/reference/foreign-stubs` for more details.
 
    This field replaces the now-deleted fields ``c_names``, ``c_flags``,
    ``cxx_names``, and ``cxx_flags``.
@@ -135,8 +135,8 @@ order to declare a multi-directory library, you need to use the
 
    Specifies archives of foreign object files to be packaged with the library.
 
-   See the section :ref:`foreign-archives` for more details. This field
-   replaces the now-deleted field ``self_build_stubs_archive``.
+   See the section :doc:`/reference/foreign-archives` for more details. This
+   field replaces the now-deleted field ``self_build_stubs_archive``.
 
 .. describe:: (install_c_headers (<names>))
 

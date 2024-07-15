@@ -31,7 +31,8 @@ Adding C/C++ Stubs to an OCaml Library
 ======================================
 
 To add C stubs to an OCaml library, simply list the C files without the ``.c``
-extension in the :ref:`foreign-stubs` field. For instance:
+extension in the :doc:`(foreign_stubs) </reference/foreign-stubs>` field. For
+instance:
 
 .. code:: dune
 
@@ -322,7 +323,8 @@ To do that, follow the following procedure:
     should appear, otherwise the dynamic linking of the C library will be
     attempted. However, this usually fails because the ``libfoo.so`` isn't available at
     the time of the execution.
-- *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
+- *Attach* the C archive files to an OCaml library via
+  :doc:`/reference/foreign-archives`.
 
 For instance, let's assume that you want to build a C library
 ``libfoo`` using ``libfoo``'s own build system and attach it to an

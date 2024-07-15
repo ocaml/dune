@@ -30,8 +30,8 @@ Dune supports the following variables:
   the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``cc`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that will be used to compile foreign code.
-   For more details about its content, please see :ref:`this section <flags-flow>`.
+   name followed by its flags) that will be used to compile foreign code. For
+   more details about its content, please see :doc:`/reference/foreign-flags`.
 -  ``cxx`` is the C++ compiler command line being used in the
    current build context.
 -  ``ocaml_bin`` is the path where ``ocamlc`` lives.

@@ -46,7 +46,18 @@ These documents specify the various features and languages present in Dune.
        ../concepts/promotion
        ../concepts/package-spec
        aliases
-       foreign
+
+  .. grid-item::
+
+    .. toctree::
+       :maxdepth: 1
+       :caption: Foreign Code
+
+       foreign-stubs
+       foreign-archives
+       extra-objects
+       foreign-flags
+         
 
   .. grid-item::
 

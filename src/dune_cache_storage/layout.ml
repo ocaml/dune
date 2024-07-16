@@ -81,8 +81,28 @@ let file_path = Versioned.file_path Version.File.current
 let value_storage_dir = Versioned.value_storage_dir Version.Value.current
 let value_path = Versioned.value_path Version.Value.current
 
+let is_default_root_dir () =
+  let root_dir_str = Path.to_string root_dir in
+  String.is_suffix root_dir_str ~suffix:"dune/db"
+;;
+
+(** Write a cache directory tagging file to the cache directory if and only if 
+    the default cache directory `$XDG_CACHE_HOME/dune/` is being used. This
+    convention allows achival and backup utilities to ignore the cache. See more
+    info at: https://bford.info/cachedir/ *)
+let write_cache_directory_tag () =
+  if is_default_root_dir () 
+  then (
+    let root_dir_str = Path.to_string root_dir in
+    let root_str = String.drop_suffix_if_exists root_dir_str ~suffix:"/db" in
+    let cache_tag_path = (Path.of_string root_str) / "CACHEDIR.TAG" in
+    let cache_tag_content = "Signature: 8a477f597d28d172789f06886806bc55" in
+    Io.write_file ~binary:false cache_tag_path cache_tag_content)
+;;
+
 let create_cache_directories () =
   List.iter
     [ temp_dir; metadata_storage_dir; file_storage_dir; value_storage_dir ]
-    ~f:(fun path -> ignore (Fpath.mkdir_p (Path.to_string path) : Fpath.mkdir_p_result))
+    ~f:(fun path -> ignore (Fpath.mkdir_p (Path.to_string path) : Fpath.mkdir_p_result));
+  write_cache_directory_tag ()
 ;;

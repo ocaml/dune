@@ -1,4 +1,3 @@
-
   $ cat > dune-project << EOF
   > (lang dune 3.0)
   > EOF

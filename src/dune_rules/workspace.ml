@@ -462,6 +462,14 @@ module Context = struct
       Common.equal base t.base && Opam_switch.equal switch t.switch
     ;;
 
+    let name_hint_opt name =
+      if String.is_prefix ~prefix:"/" name
+      then (
+        let context_name = Filename.basename name in
+        Some [ Pp.textf "(name %s) would be a valid context name" context_name ])
+      else None
+    ;;
+
     let decode =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
@@ -479,9 +487,10 @@ module Context = struct
              | None ->
                User_error.raise
                  ~loc:loc_switch
-                 [ Pp.textf "Generated context name %S is invalid" name
-                 ; Pp.text
-                     "Please specify a context name manually with the (name ..) field"
+                 ?hints:(name_hint_opt name)
+                 [ Pp.textf
+                     "The name generated from this switch can not be used as a context \
+                      name. Please use (name) to disambiguate."
                  ])
         in
         let base = { base with targets = Target.add base.targets x; name } in

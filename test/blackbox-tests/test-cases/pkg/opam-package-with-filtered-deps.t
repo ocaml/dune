@@ -30,3 +30,5 @@ Demonstrate the translation of filtered dependencies
   (version 0.0.1)
   
   (depends pkg-build)
+  
+  (post_depends pkg-post)

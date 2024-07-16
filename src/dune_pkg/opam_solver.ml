@@ -628,7 +628,7 @@ let opam_package_to_lock_file_pkg
     in
     { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
   in
-  let depends =
+  let depends, post_depends =
     match
       Resolve_opam_formula.filtered_formula_to_package_names
         ~with_test:false
@@ -636,7 +636,7 @@ let opam_package_to_lock_file_pkg
         version_by_package_name
         opam_file.depends
     with
-    | Ok { regular; _ } -> regular
+    | Ok { regular; post } -> regular, post
     | Error (`Formula_could_not_be_satisfied hints) ->
       Code_error.raise
         "Dependencies of package can't be satisfied from packages in solution"
@@ -651,6 +651,9 @@ let opam_package_to_lock_file_pkg
   in
   let depends =
     depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
+  in
+  let post_depends =
+    List.map post_depends ~f:(fun package_name -> Loc.none, package_name)
   in
   let build_env action =
     let env_update =
@@ -713,7 +716,14 @@ let opam_package_to_lock_file_pkg
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
   let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
-  kind, { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env }
+  ( kind
+  , { Lock_dir.Pkg.build_command
+    ; install_command
+    ; depends
+    ; post_depends
+    ; info
+    ; exported_env
+    } )
 ;;
 
 let solve_package_list packages context =

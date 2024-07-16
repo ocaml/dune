@@ -256,6 +256,10 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; inherited_post_depends : t list
+        (* post dependencies of direct regular (ie. non-post)
+           dependencies, excluding this package *)
+    ; post_depend_names : (Loc.t * Package.Name.t) list
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
@@ -266,7 +270,10 @@ module Pkg = struct
 
   let top_closure depends =
     match
-      Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps:(fun t -> t.depends)
+      Top_closure.top_closure
+        depends
+        ~key:(fun t -> t.id)
+        ~deps:(fun t -> t.depends @ t.inherited_post_depends)
     with
     | Ok s -> s
     | Error cycle ->
@@ -277,7 +284,7 @@ module Pkg = struct
         ]
   ;;
 
-  let deps_closure t = top_closure t.depends
+  let deps_closure t = top_closure (t.depends @ t.inherited_post_depends)
 
   let source_files t ~loc =
     let skip_dir = function
@@ -1160,7 +1167,14 @@ end = struct
   let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
-    | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
+    | Some
+        { Lock_dir.Pkg.build_command
+        ; install_command
+        ; depends
+        ; post_depends
+        ; info
+        ; exported_env
+        } ->
       assert (Package.Name.equal name info.name);
       let* depends =
         Memo.parallel_map depends ~f:(fun name ->
@@ -1175,6 +1189,36 @@ end = struct
           (Context_name.build_dir ctx)
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
+      let* inherited_post_depends =
+        let all_inherited_post_dependency_names =
+          List.concat_map depends ~f:(fun (pkg : Pkg.t) -> pkg.post_depend_names)
+          |> List.filter ~f:(fun (_loc, name) ->
+            (* It's possible for a package to be a post
+               dependency of one of its dependencies but we avoid
+               tracking that dependency here to prevent cycles in the
+               dependency hierarchy. *)
+            not (Package.Name.equal info.name name))
+        in
+        let all_inherited_post_dependency_names_deduped =
+          (* Deduplicate inherited post dependencies by name,
+             otherwise preserving their order. *)
+          List.fold_left
+            all_inherited_post_dependency_names
+            ~init:(Package.Name.Set.empty, [])
+            ~f:(fun (seen, xs) (loc, name) ->
+              if Package.Name.Set.mem seen name
+              then seen, xs
+              else Package.Name.Set.add seen name, (loc, name) :: xs)
+          |> snd
+          |> List.rev
+        in
+        Memo.parallel_map all_inherited_post_dependency_names_deduped ~f:(fun name ->
+          resolve db ctx name
+          >>| function
+          | `Inside_lock_dir pkg -> Some pkg
+          | `System_provided -> None)
+        >>| List.filter_opt
+      in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
       let t =
@@ -1182,6 +1226,8 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; inherited_post_depends
+        ; post_depend_names = post_depends
         ; paths
         ; info
         ; files_dir

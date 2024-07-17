@@ -96,6 +96,8 @@ In addition, ``(action ...)`` fields support the following special variables:
   ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
+- ``file-available:<path>`` expands to ``true`` or ``false``, depending on
+  whether the file at ``<path>`` is available in the current workspace.
 - ``lib:<public-library-name>:<file>`` expands to the file's installation path
   ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local

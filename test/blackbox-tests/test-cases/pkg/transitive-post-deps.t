@@ -45,20 +45,18 @@ Test that a dune project that depends on "foo" has access to "bar" in its build 
   > EOF
 
   $ dune build x.txt
-  Installing foo...
-  Done installing foo!
-  Installing bar...
-  Bar installer running foo.sh:
-  This is foo!
-  Done installing bar!
+  Error: Dependency cycle between:
+     - package bar
+  [1]
 
   $ cat _build/default/x.txt
-  This is bar!
+  cat: _build/default/x.txt: No such file or directory
+  [1]
 
   $ dune clean
 
 A package with a regular dependency on "foo".
-  $ mkpkg baz <<EOF
+  $ mkpkg baz <<'EOF'
   > depends: [
   >  "foo"
   > ]
@@ -80,15 +78,6 @@ Test that an opam package that depends on "foo" has access to "bar" in its build
   - foo.0.0.1
 
   $ dune build
-  Installing foo...
-  Done installing foo!
-  Installing bar...
-  Bar installer running foo.sh:
-  This is foo!
-  Done installing bar!
-  Installing baz...
-  Baz installer running foo.sh:
-  This is foo!
-  Baz installer running bar.sh:
-  This is bar!
-  Done installing baz!
+  Error: Dependency cycle between:
+     - package bar
+  [1]

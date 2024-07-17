@@ -255,26 +255,32 @@ module Pkg = struct
     { id : Id.t
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
-    ; depends : t list
-    ; inherited_post_depends : t list
-        (* post dependencies of direct regular (ie. non-post)
-           dependencies, excluding this package *)
-    ; post_depend_names : (Loc.t * Package.Name.t) list
+    ; depends : t list Memo.Lazy.t
+    ; post_depends : t list Memo.Lazy.t
     ; info : Pkg_info.t
     ; paths : Paths.t
     ; files_dir : Path.Build.t
     ; mutable exported_env : string Env_update.t list
     }
 
-  module Top_closure = Top_closure.Make (Id.Set) (Monad.Id)
+  module Top_closure = Top_closure.Make (Id.Set) (Memo)
+
+  let deps t =
+    let* depends = Memo.Lazy.force t.depends in
+    Memo.List.concat_map depends ~f:(fun dep ->
+      let+ post_depends =
+        Memo.Lazy.force dep.post_depends
+        (* It's possible for a package to be a post dependency of one of its
+           dependencies but we avoid tracking that dependency here to prevent
+           cycles in the dependency hierarchy. *)
+        >>| List.filter ~f:(fun dep -> not (Id.equal t.id dep.id))
+      in
+      dep :: post_depends)
+  ;;
 
   let top_closure depends =
-    match
-      Top_closure.top_closure
-        depends
-        ~key:(fun t -> t.id)
-        ~deps:(fun t -> t.depends @ t.inherited_post_depends)
-    with
+    Top_closure.top_closure depends ~key:(fun t -> t.id) ~deps
+    >>| function
     | Ok s -> s
     | Error cycle ->
       User_error.raise
@@ -284,7 +290,7 @@ module Pkg = struct
         ]
   ;;
 
-  let deps_closure t = top_closure (t.depends @ t.inherited_post_depends)
+  let deps_closure t = deps t >>= top_closure
 
   let source_files t ~loc =
     let skip_dir = function
@@ -338,7 +344,7 @@ module Pkg = struct
 
   let package_deps t =
     deps_closure t
-    |> List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
+    >>| List.fold_left ~init:Dep.Set.empty ~f:(fun acc t -> dep t |> Dep.Set.add acc)
   ;;
 
   (* Given a list of packages, construct an env containing variables
@@ -363,7 +369,7 @@ module Pkg = struct
   (* [build_env t] returns an env containing paths containing all the
      tools and libraries required to build the package [t] inside the
      faux opam directory contained in the _build dir. *)
-  let build_env t = build_env_of_deps @@ deps_closure t
+  let build_env t = deps_closure t >>| build_env_of_deps
 
   let base_env t =
     Env.Map.of_list_exn
@@ -381,7 +387,7 @@ module Pkg = struct
   (* [exported_value_env t] returns the complete env that will be used
      to build the package [t] *)
   let exported_value_env t =
-    let package_env = build_env t |> Env.Map.superpose (base_env t) in
+    let+ package_env = build_env t >>| Env.Map.superpose (base_env t) in
     (* TODO: Run actions in a constrained environment. [Global.env ()] is the
        environment from which dune was executed, and some of the environment
        variables may affect builds in unintended ways and make builds less
@@ -392,7 +398,7 @@ module Pkg = struct
     Value_list_env.extend_concat_path (Value_list_env.of_env (Global.env ())) package_env
   ;;
 
-  let exported_env t = Value_list_env.to_env @@ exported_value_env t
+  let exported_env t = exported_value_env t >>| Value_list_env.to_env
 end
 
 module Pkg_installed = struct
@@ -1070,10 +1076,10 @@ module Action_expander = struct
   end
 
   let expander context (pkg : Pkg.t) =
-    let+ { Artifacts_and_deps.binaries; dep_info } =
-      Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
+    let* { Artifacts_and_deps.binaries; dep_info } =
+      Pkg.deps_closure pkg >>= Artifacts_and_deps.of_closure
     in
-    let env = Pkg.exported_value_env pkg in
+    let+ env = Pkg.exported_value_env pkg in
     let depends =
       Package.Name.Map.add_exn
         dep_info
@@ -1176,48 +1182,21 @@ end = struct
         ; exported_env
         } ->
       assert (Package.Name.equal name info.name);
-      let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db ctx name
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
-      and+ files_dir =
+      let resolve name =
+        resolve db ctx name
+        >>| function
+        | `Inside_lock_dir pkg -> Some pkg
+        | `System_provided -> None
+      in
+      let* files_dir =
         let+ lock_dir = Lock_dir.get_path ctx >>| Option.value_exn in
         Path.Build.append_source
           (Context_name.build_dir ctx)
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
-      let* inherited_post_depends =
-        let all_inherited_post_dependency_names =
-          List.concat_map depends ~f:(fun (pkg : Pkg.t) -> pkg.post_depend_names)
-          |> List.filter ~f:(fun (_loc, name) ->
-            (* It's possible for a package to be a post
-               dependency of one of its dependencies but we avoid
-               tracking that dependency here to prevent cycles in the
-               dependency hierarchy. *)
-            not (Package.Name.equal info.name name))
-        in
-        let all_inherited_post_dependency_names_deduped =
-          (* Deduplicate inherited post dependencies by name,
-             otherwise preserving their order. *)
-          List.fold_left
-            all_inherited_post_dependency_names
-            ~init:(Package.Name.Set.empty, [])
-            ~f:(fun (seen, xs) (loc, name) ->
-              if Package.Name.Set.mem seen name
-              then seen, xs
-              else Package.Name.Set.add seen name, (loc, name) :: xs)
-          |> snd
-          |> List.rev
-        in
-        Memo.parallel_map all_inherited_post_dependency_names_deduped ~f:(fun name ->
-          resolve db ctx name
-          >>| function
-          | `Inside_lock_dir pkg -> Some pkg
-          | `System_provided -> None)
-        >>| List.filter_opt
+      let depends = Memo.lazy_ (fun () -> Memo.List.filter_map depends ~f:resolve) in
+      let post_depends =
+        Memo.lazy_ (fun () -> Memo.List.filter_map post_depends ~f:resolve)
       in
       let id = Pkg.Id.gen () in
       let paths = Paths.make name ctx in
@@ -1226,8 +1205,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
-        ; inherited_post_depends
-        ; post_depend_names = post_depends
+        ; post_depends
         ; paths
         ; info
         ; files_dir
@@ -1714,13 +1692,13 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       |> Action_builder.with_no_targets
     in
     Action_builder.progn (build_and_install @ [ install_file_action ])
-  in
-  let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+  and+ deps = Pkg.package_deps pkg >>| Dep.Set.union source_deps
+  and+ exported_env = Pkg.exported_env pkg in
   let open Action_builder.With_targets.O in
   Action_builder.deps deps
   |> Action_builder.with_no_targets
   (* TODO should we add env deps on these? *)
-  >>> add_env (Pkg.exported_env pkg) build_action
+  >>> add_env exported_env build_action
   |> Action_builder.With_targets.add_directories
        ~directory_targets:[ pkg.paths.target_dir ]
 ;;
@@ -1806,7 +1784,10 @@ let ocaml_toolchain context =
       let binaries =
         Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
       in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
+      let* env =
+        let+ exported_env = Action_builder.of_memo (Pkg.exported_env pkg) in
+        Env.extend_env (Global.env ()) exported_env
+      in
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
@@ -1823,7 +1804,7 @@ let all_packages context =
     | `Inside_lock_dir pkg -> Some pkg
     | `System_provided -> None)
   >>| List.filter_opt
-  >>| Pkg.top_closure
+  >>= Pkg.top_closure
 ;;
 
 let which context =

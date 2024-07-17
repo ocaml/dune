@@ -112,9 +112,17 @@ Lock the to trigger package management
   (no dependencies to lock)
 
 Format the foo.ml (it choose the old version of ocamlformat coming from ".ocamlformat").
-  $ dune fmt
+  $ dune build @fmt
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
+  File "foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
+  differ.
+  [1]
+
+The second time, it is not supposed to solve again (instead of using 'dune build @fmt',
+'dune fmt' is used).
+  $ dune fmt
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
   differ.
@@ -122,9 +130,6 @@ Format the foo.ml (it choose the old version of ocamlformat coming from ".ocamlf
   [1]
   $ cat foo.ml
   formatted
-
-The second time, it is not supposed to solve again.
-  $ dune fmt
 
 When dev-tools.locks is removed, the solving is renewed
   $ rm -r dev-tools.locks/ocamlformat
@@ -229,7 +234,7 @@ A version that does not exists in the local opam-repo
 
 
 The solving would fail because the version does not exist
-  $ dune fmt
+  $ dune build @fmt
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dev-tools.locks/ocamlformat:
   Can't find all required versions.
@@ -282,7 +287,7 @@ A version that exists for  now
   > version = 0.26.3
   > EOF
 It fails during the build because of a missing module.
-  $ dune fmt
+  $ dune build @fmt
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.3
   File "dev-tools.locks/ocamlformat/ocamlformat.pkg", line 4, characters 6-10:

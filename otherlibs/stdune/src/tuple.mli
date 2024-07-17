@@ -29,3 +29,32 @@ module T3 : sig
     -> ('a, 'b, 'c) t
     -> bool
 end
+
+module T4 : sig
+  type ('a, 'b, 'c, 'd) t = 'a * 'b * 'c * 'd
+
+  val to_dyn
+    :  ('a -> Dyn.t)
+    -> ('b -> Dyn.t)
+    -> ('c -> Dyn.t)
+    -> ('d -> Dyn.t)
+    -> ('a, 'b, 'c, 'd) t
+    -> Dyn.t
+
+  val hash
+    :  ('a -> int)
+    -> ('b -> int)
+    -> ('c -> int)
+    -> ('d -> int)
+    -> ('a, 'b, 'c, 'd) t
+    -> int
+
+  val equal
+    :  ('a -> 'a -> bool)
+    -> ('b -> 'b -> bool)
+    -> ('c -> 'c -> bool)
+    -> ('d -> 'd -> bool)
+    -> ('a, 'b, 'c, 'd) t
+    -> ('a, 'b, 'c, 'd) t
+    -> bool
+end

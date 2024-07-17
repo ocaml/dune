@@ -21,5 +21,6 @@ val of_string
   -> contexts:Context.t list
   -> t
 
+val equal : t -> t -> bool
 val pp : t -> _ Pp.t
 val request : t -> unit Action_builder.t

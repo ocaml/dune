@@ -58,19 +58,18 @@ let dev_tool_path pkg_name =
   Path.Source.relative Dune_pkg.Lock_dir.dev_tools_path pkg_name
 ;;
 
-let lock : Dune_pkg.Dev_tool.cmd -> unit Fiber.t = function
-  | Fmt ->
-    let pkg_name, version = Dune_pkg.Dev_tool.pkg_of_cmd Fmt in
-    let lock_dir = dev_tool_path pkg_name in
-    let is_dev_tool_active =
-      (not (exists_path lock_dir))
-      && default_lock_dir_active ()
-      && not (exists_pkg_in_default_lock_dir pkg_name)
-    in
-    if is_dev_tool_active
-    then (
-      let local_pkg = local_dev ~pkg_name ~version in
-      let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in
-      solve ~local_packages ~lock_dirs:[ lock_dir ])
-    else Fiber.return ()
+let lock_ocamlformat () : unit Fiber.t =
+  let pkg_name, version = Dune_pkg.Ocamlformat.pkg () in
+  let lock_dir = dev_tool_path pkg_name in
+  let is_dev_tool_active =
+    (not (exists_path lock_dir))
+    && default_lock_dir_active ()
+    && not (exists_pkg_in_default_lock_dir pkg_name)
+  in
+  if is_dev_tool_active
+  then (
+    let local_pkg = local_dev ~pkg_name ~version in
+    let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in
+    solve ~local_packages ~lock_dirs:[ lock_dir ])
+  else Fiber.return ()
 ;;

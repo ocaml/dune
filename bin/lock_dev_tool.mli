@@ -1,1 +1,1 @@
-val lock : Dune_pkg.Dev_tool.cmd -> unit Fiber.t
+val lock_ocamlformat : unit -> unit Fiber.t

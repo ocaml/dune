@@ -663,6 +663,14 @@ let expand_pform_macro
            let* artifacts_host = t.artifacts_host in
            let+ b = Artifacts.binary_available artifacts_host s in
            b |> string_of_bool |> string))
+  | File_available ->
+    Need_full_expander
+      (fun _ ->
+        Without
+          (let open Memo.O in
+           let file_path = Path.Outside_build_dir.of_string s in
+           let+ available = Fs_memo.file_exists file_path in
+           available |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:string
   | Read_lines ->
     expand_read_macro ~dir ~source s ~read:(fun x -> String.split_lines x |> strings)
@@ -681,6 +689,10 @@ let expand_pform_macro
       |> strings)
   | Coq_config ->
     Need_full_expander
+
+
+
+
       (fun t ->
         Without
           (let open Memo.O in

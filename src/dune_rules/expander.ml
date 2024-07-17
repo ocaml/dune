@@ -688,10 +688,6 @@ let expand_pform_macro
       |> strings)
   | Coq_config ->
     Need_full_expander
-
-
-
-
       (fun t ->
         Without
           (let open Memo.O in

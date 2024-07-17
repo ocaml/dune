@@ -13,6 +13,42 @@ include struct
   module Toolchain = Dune_pkg.Toolchain
 end
 
+module Toolchains_config = struct
+  let make_bool ~name ~default =
+    let of_string s =
+      match Bool.of_string s with
+      | Some b -> Ok b
+      | None ->
+        Error
+          (sprintf "%s is not a bool (must be \"true\" or \"false\")" (String.quoted s))
+    in
+    Config.make ~name ~of_string ~default
+  ;;
+
+  (* Dune will download and build the ocaml-base-compiler and
+     ocaml-variants packages into a user-wide directory (shared among
+     projects) rather than using the usual package management mechanism to
+     install such packages. Currently compiler packages can't be installed
+     by dune's package management features as the compiler is not
+     relocatable, and this flag allows dune to workaround this problem
+     providing an experience to users that is almost identical to dune
+     installing the compiler packgae.
+
+     When this flag is disabled, users of dune package management need to
+     manage their compiler installation with opam or a system package
+     manager, as compilers packages that would be installed by dune will
+     not work correctly. *)
+  let enabled = make_bool ~name:"toolchains_enabled" ~default:false
+
+  (* When building the compiler with toolchains, build it with `make
+     -j` rather than `make -j1`, allowing more parallelism. This can
+     theoretically lead to build failures, but these are extremely rare in
+     practice. *)
+  let build_compiler_in_parallel =
+    make_bool ~name:"toolchains_build_compiler_in_parallel" ~default:false
+  ;;
+end
+
 module Variable = struct
   type value = OpamVariable.variable_contents =
     | B of bool
@@ -283,7 +319,7 @@ module Pkg = struct
 
   module Toolchain = struct
     let is_compiler_and_toolchains_enabled =
-      if Dune_pkg.Feature_flags.use_toolchains
+      if Config.get Toolchains_config.enabled
       then
         let module Package_name = Dune_pkg.Package_name in
         let compiler_package_names =
@@ -373,7 +409,7 @@ module Pkg = struct
       { Override_pform.prefix = Some prefix
       ; doc = Some (Path.relative prefix "doc")
       ; jobs =
-          (if Dune_pkg.Feature_flags.toolchains_build_compiler_in_parallel
+          (if Config.get Toolchains_config.build_compiler_in_parallel
            then (* build with more parallelism (i.e. `make -j`) *)
              Some ""
            else None)

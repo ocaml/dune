@@ -14,20 +14,20 @@ main -> lib1 -> lib2 -> stdlib
   $ FILE=$PWD/bin/main.ml
   $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
   > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep ":S?"
-  ?:S?:/STDLIB)
   ?:S?:$TESTCASE_ROOT/bin)
   ?:S?:$TESTCASE_ROOT/src/lib1)
   ?:S?:$TESTCASE_ROOT/src/lib2)
+  ?:S?:$TESTCASE_ROOT/src/lib_dep)
 
   $ FILE=$PWD/src/lib1/lib1.ml
   $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
   > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep ":S?"
-  ?:S?:/STDLIB)
   ?:S?:$TESTCASE_ROOT/src/lib1)
   ?:S?:$TESTCASE_ROOT/src/lib2)
+  ?:S?:$TESTCASE_ROOT/src/lib_dep)
 
   $ FILE=$PWD/src/lib2/lib2.ml
   $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
   > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep ":S?"
-  ?:S?:/STDLIB)
   ?:S?:$TESTCASE_ROOT/src/lib2)
+  ?:S?:$TESTCASE_ROOT/src/lib_dep)

@@ -1,3 +1,3 @@
 type t = bool
 
-type r = Unix.error
+type r = Dep.t

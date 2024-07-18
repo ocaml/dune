@@ -6,25 +6,6 @@ DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./_boot/dune.exe
 
-# Dependencies used for testing dune, when developed locally and
-# when tested in CI
-TEST_DEPS := \
-lwt \
-cinaps \
-"csexp>=1.3.0" \
-js_of_ocaml \
-js_of_ocaml-compiler \
-"mdx>=2.3.0" \
-menhir \
-ocamlfind \
-ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
-"odoc>=2.4.0" \
-"ppx_expect>=v0.16.0" \
-ppx_inline_test \
-ppxlib \
-ctypes \
-"utop>=2.6.0" \
-"melange>=4.0.0-414"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
@@ -68,31 +49,33 @@ uninstall:
 .PHONY: reinstall
 reinstall: uninstall install
 
+.PHONY: install-ocamlformat
 install-ocamlformat:
 	opam install -y ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat)
 
-dev-depext:
-	opam depext -y $(TEST_DEPS)
-
 .PHONY: dev-deps
-dev-deps:
-	opam install -y $(TEST_DEPS)
+dev-deps: install-ocamlformat
+	opam install -y . --deps-only --with-dev-setup
 
 .PHONY: coverage-deps
 coverage-deps:
 	opam install -y bisect_ppx
 
 .PHONY: dev-deps-sans-melange
-dev-deps-sans-melange:
-	opam install -y $(TEST_DEPS)
+dev-deps-sans-melange: dev-deps
 
 .PHONY: dev-switch
 dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
-	test "$(shell opam switch show)" = "$(shell pwd)" || \
-		opam switch create -y . $(TEST_OCAMLVERSION) --deps-only --with-test
-	opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION) $(TEST_DEPS) $(DEV_DEPS)
+	if test -d _opam ; then \
+		opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION); \
+	else \
+		opam switch create -y . $(TEST_OCAMLVERSION) --no-install ; \
+	fi
+	opam install -y . --deps-only --with-test --with-dev-setup
+	$(MAKE) install-ocamlformat
+	opam install -y $(DEV_DEPS)
 
 .PHONY: test
 test: $(BIN)

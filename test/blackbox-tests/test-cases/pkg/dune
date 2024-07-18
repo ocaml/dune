@@ -44,7 +44,8 @@
   e2e
   source-caching
   tarball
-  extra-sources))
+  extra-sources
+  oneshot-webserver-large-file-curl-error))
 
 (cram
  (deps %{bin:md5sum})

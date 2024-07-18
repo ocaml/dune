@@ -54,7 +54,7 @@ install-ocamlformat:
 	opam install -y ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat)
 
 .PHONY: dev-deps
-dev-deps: install-ocamlformat
+dev-deps:
 	opam install -y . --deps-only --with-dev-setup
 
 .PHONY: coverage-deps

@@ -95,9 +95,6 @@ jobs:
       # away this makes it possible to see build errors as soon as possible
       - run: opam exec -- make _boot/dune.exe
 
-      # Ensure Dune can build itself
-      - run: opam exec -- make bootstrap
-
       - name: Install deps
         run: |
           opam install . --deps-only --with-test

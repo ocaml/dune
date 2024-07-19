@@ -69,6 +69,7 @@ module Extension : sig
     :  Dune_lang.Syntax.t
     -> ('a * Dune_lang.Stanza.Parser.t list) Dune_lang.Decoder.t
     -> ('a -> Dyn.t)
+    -> unit option
     -> 'a t
 
   (** A simple version where the arguments are not used through
@@ -124,6 +125,7 @@ val get : unit -> (t option, 'k) Dune_lang.Decoder.parser
     written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
+val all_opam_exts : t -> unit list
 val is_extension_set : t -> 'a Extension.t -> bool
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 val implicit_transitive_deps : t -> bool

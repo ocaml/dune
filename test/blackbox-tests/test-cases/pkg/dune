@@ -45,7 +45,7 @@
   source-caching
   tarball
   extra-sources
-  oneshot-webserver-large-file-curl-error))
+  gh10741))
 
 (cram
  (deps %{bin:md5sum})

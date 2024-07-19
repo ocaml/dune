@@ -85,7 +85,7 @@ module Server = struct
       let out_fd = Unix.descr_of_out_channel out in
       let header_bytes = Bytes.of_string (header `Ok `Binary length) in
       send_bytes out_fd header_bytes (Bytes.length header_bytes);
-      let buf_size = 4096 in
+      let buf_size = 512 in
       let buf = Bytes.create buf_size in
       let rec write () =
         match In_channel.input in_channel buf 0 buf_size with

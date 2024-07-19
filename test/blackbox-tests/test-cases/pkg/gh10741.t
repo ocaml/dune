@@ -1,9 +1,9 @@
-Reproduction for an issue with the oneshot webserver used for testing
+The issue with the oneshot webserver used for testing
 package management, where attempting to send a large file causes the
-connection to be reset before the transfer completes.
+connection to be reset before the transfer completes, is now fixed.
 
 Make a large file:
-  $ dd if=/dev/zero of=./large-file iflag=fullblock,count_bytes status=none count=20M
+  $ dd if=/dev/zero of=./large-file iflag=fullblock,count_bytes status=none count=64M
 
 Run the oneshot webserver to serve the large file:
   $ webserver_oneshot --content-file ./large-file --port-file port.txt &
@@ -11,7 +11,3 @@ Run the oneshot webserver to serve the large file:
 
 Download the large file with curl:
   $ curl -sS -o large-file-copy http://localhost:$(cat port.txt) > /dev/null
-  curl: (56) Recv failure: Connection reset by peer
-  [56]
-
-  $ wait

@@ -154,6 +154,67 @@ let formula_to_package_names version_by_package_name opam_formula =
     Ok package_names
 ;;
 
+(* Override the setting of the "post" variable to a given boolean
+   value by passing [Some value], or force it to be unset by passing
+   [None]. *)
+let override_post post_value env var =
+  match OpamVariable.Full.scope var with
+  | Global
+    when Package_variable_name.equal
+           (Package_variable_name.of_opam @@ OpamVariable.Full.variable var)
+           Package_variable_name.post -> Option.map post_value ~f:(fun b -> OpamTypes.B b)
+  | _ -> env var
+;;
+
+(* Check that a package version satisfies the version constraint
+   associated with a package dependency in an opam file. *)
+let package_version_satisfies_opam_version_constraint_opt
+  package_version
+  opam_version_constraint_opt
+  =
+  match opam_version_constraint_opt with
+  | None -> true
+  | Some (constraint_ : OpamFormula.version_constraint) ->
+    let opam_version = Package_version.to_opam_package_version package_version in
+    let version_formula = OpamFormula.Atom constraint_ in
+    OpamFormula.check_version_formula version_formula opam_version
+;;
+
+(* TODO (steve): This does a very similar thing to
+   [formula_to_package_names] so the two functions should be
+   combined. *)
+let formula_to_package_names_allow_missing version_by_package_name opam_formula =
+  let cnf_terms = OpamFormula.to_cnf opam_formula in
+  List.filter_map cnf_terms ~f:(fun disjunction ->
+    (* Take the first term of the disjunction that is part of the set of packages in the
+       solution, if any. *)
+    List.find_map disjunction ~f:(fun (opam_package_name, version_constraint_opt) ->
+      let package_name = Package_name.of_opam_package_name opam_package_name in
+      Package_name.Map.find version_by_package_name package_name
+      |> Option.bind ~f:(fun version_in_solution ->
+        if package_version_satisfies_opam_version_constraint_opt
+             version_in_solution
+             version_constraint_opt
+        then Some package_name
+        else None)))
+;;
+
+type deps =
+  { post : Package_name.t list
+  ; regular : Package_name.t list
+  }
+
 let filtered_formula_to_package_names env ~with_test version_by_package_name formula =
-  formula_to_package_names version_by_package_name (apply_filter ~with_test env formula)
+  let open Result.O in
+  let+ all =
+    formula_to_package_names version_by_package_name (apply_filter ~with_test env formula)
+  in
+  let regular_set =
+    formula_to_package_names_allow_missing
+      version_by_package_name
+      (apply_filter ~with_test (override_post (Some false) env) formula)
+    |> Package_name.Set.of_list
+  in
+  let regular, post = List.partition all ~f:(Package_name.Set.mem regular_set) in
+  { regular; post }
 ;;

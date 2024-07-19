@@ -44,12 +44,18 @@ val formula_to_package_names
   -> OpamTypes.formula
   -> (Package_name.t list, unsatisfied_formula) result
 
+type deps =
+  { post : Package_name.t list
+  ; regular : Package_name.t list
+  }
+
 (** Like [formula_to_package_name] but takes an [OpamTypes.filtered_formula]
     and evaluates its filters to produce a formula which is then resolved to a
-    list of package names. *)
+    list of package names, split into post and regular (ie. non-post)
+    dependencies. *)
 val filtered_formula_to_package_names
   :  OpamFilter.env
   -> with_test:bool
   -> Package_version.t Package_name.Map.t
   -> OpamTypes.filtered_formula
-  -> (Package_name.t list, unsatisfied_formula) result
+  -> (deps, unsatisfied_formula) result

@@ -40,11 +40,13 @@ Add some build contexts with different environments
   $ dune pkg print-solver-env --all
   Solver environment for lock directory change-opam-version.lock:
   - opam-version = 42
+  - post = true
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.linux.lock:
   - opam-version = 2.2.0~alpha-vendored
   - os = linux
+  - post = true
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.linux.no-doc.lock:
@@ -54,10 +56,12 @@ Add some build contexts with different environments
   - os-distribution = ubuntu
   - os-family = ubuntu
   - os-version = 22.04
+  - post = true
   - sys-ocaml-version = 5.0
   - with-dev-setup = false
   - with-doc = false
   Solver environment for lock directory dune.lock:
   - opam-version = 2.2.0~alpha-vendored
+  - post = true
   - with-dev-setup = false
   - with-doc = false

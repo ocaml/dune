@@ -413,7 +413,7 @@ let bootstrap_info_extension =
       ~desc:"private extension to handle Dune bootstrap"
       [ (0, 1), `Since (2, 0) ]
   in
-  Dune_project.Extension.register syntax (return ((), [])) Dyn.unit None
+  Dune_project.Extension.register syntax (return ((), [])) Dyn.unit []
 ;;
 
 let common =

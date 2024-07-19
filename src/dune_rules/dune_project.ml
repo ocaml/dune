@@ -47,7 +47,7 @@ type t =
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
   ; including_hidden_packages : Package.t Package.Name.Map.t
-  ; all_opam_exts : unit list
+  ; extension_package_deps : Package_dependency.t list
   }
 
 let key = Univ_map.Key.create ~name:"dune-project" Dyn.opaque
@@ -109,7 +109,7 @@ let to_dyn
   ; expand_aliases_in_sandbox
   ; opam_file_location
   ; including_hidden_packages = _
-  ; all_opam_exts = _ (* XXX *)
+  ; extension_package_deps
   }
   =
   let open Dyn in
@@ -144,6 +144,7 @@ let to_dyn
       , match opam_file_location with
         | `Relative_to_project -> variant "Relative_to_project" []
         | `Inside_opam_directory -> variant "Inside_opam_directory" [] )
+    ; "extension_package_deps", Dyn.list Package_dependency.to_dyn extension_package_deps
     ]
 ;;
 
@@ -169,7 +170,7 @@ module Extension = struct
     { syntax : Dune_lang.Syntax.t
     ; stanzas : ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
     ; key : 'a t
-    ; opam_info : unit option
+    ; package_deps : Package_dependency.t list
     }
 
   type packed_extension = Packed : 'a poly_info -> packed_extension
@@ -191,7 +192,7 @@ module Extension = struct
      which depends on the contents of dune files that declare extensions. *)
   let extensions = Table.create (module String) 32
 
-  let register syntax stanzas arg_to_dyn opam_info =
+  let register syntax stanzas arg_to_dyn package_deps =
     let name = Dune_lang.Syntax.name syntax in
     if Table.mem extensions name
     then
@@ -199,7 +200,7 @@ module Extension = struct
         "Dune_project.Extension.register: already registered"
         [ "name", Dyn.string name ];
     let key = Univ_map.Key.create ~name arg_to_dyn in
-    let ext = { syntax; stanzas; key; opam_info } in
+    let ext = { syntax; stanzas; key; package_deps } in
     Table.add_exn extensions name (Extension (Packed ext));
     key
   ;;
@@ -208,16 +209,16 @@ module Extension = struct
     Table.add_exn extensions name (Deleted_in deleted_in)
   ;;
 
-  let register_unit syntax stanzas =
+  let register_unit syntax stanzas pkgs =
     let unit_stanzas =
       let+ r = stanzas in
       (), r
     in
-    register syntax unit_stanzas Unit.to_dyn None
+    register syntax unit_stanzas Unit.to_dyn pkgs
   ;;
 
-  let register_simple syntax stanzas =
-    let (_ : unit t) = register_unit syntax stanzas in
+  let register_simple ?(pkgs = []) syntax stanzas =
+    let (_ : unit t) = register_unit syntax stanzas pkgs in
     ()
   ;;
 
@@ -381,7 +382,7 @@ let format_extension_key =
     Format_config.syntax
     Format_config.dparse_args
     Format_config.to_dyn
-    None
+    []
 ;;
 
 let format_config t =
@@ -391,7 +392,7 @@ let format_config t =
   Format_config.of_config ~ext ~dune_lang ~version
 ;;
 
-let all_opam_exts t = t.all_opam_exts
+let extension_package_deps t = t.extension_package_deps
 
 let subst_config t =
   let loc, subst_config =
@@ -464,7 +465,7 @@ let infer ~dir info packages =
   ; expand_aliases_in_sandbox
   ; opam_file_location
   ; including_hidden_packages = packages
-  ; all_opam_exts = []
+  ; extension_package_deps = []
   }
 ;;
 
@@ -508,7 +509,7 @@ let encode : t -> Dune_lang.t list =
       ; expand_aliases_in_sandbox
       ; opam_file_location = _
       ; including_hidden_packages = _
-      ; all_opam_exts = _
+      ; extension_package_deps = _
       } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -890,11 +891,10 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
            ~init:Dialect.DB.builtin
            ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
        in
-       let all_opam_exts =
+       let extension_package_deps =
          String.Map.values explicit_extensions
-         |> List.filter_map ~f:(fun (instance : Extension.instance) ->
-           let (Packed e) = instance.extension in
-           e.opam_info)
+         |> List.concat_map ~f:(fun { Extension.extension = Packed e; _ } ->
+           e.package_deps)
        in
        { name
        ; file_key
@@ -926,7 +926,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; expand_aliases_in_sandbox
        ; opam_file_location
        ; including_hidden_packages = packages
-       ; all_opam_exts
+       ; extension_package_deps
        }
 ;;
 
@@ -982,7 +982,7 @@ let map_workspace_root t = t.map_workspace_root
 let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
 let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
 let () = Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
-let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return [])
+let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return []) []
 let strict_package_deps t = t.strict_package_deps
 let allow_approximate_merlin t = t.allow_approximate_merlin
 let cram t = t.cram

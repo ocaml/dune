@@ -295,4 +295,4 @@ let unit_stanzas =
   (), r
 ;;
 
-let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn None
+let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn []

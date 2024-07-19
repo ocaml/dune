@@ -196,6 +196,10 @@ let insert_odoc_dep depends =
   loop [] depends
 ;;
 
+let insert_extension_deps project depends =
+  Dune_project.extension_package_deps project @ depends
+;;
+
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
   let package_name = Package.name package in
@@ -209,6 +213,10 @@ let opam_fields project (package : Package.t) =
     if dune_version < (2, 7) || Package.Name.equal package_name odoc_name
     then package
     else Package.map_depends package ~f:insert_odoc_dep
+  in
+  let package =
+    (* XXX version this *)
+    Package.map_depends package ~f:(insert_extension_deps project)
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

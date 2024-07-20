@@ -6,9 +6,9 @@ module Server = struct
     ; addr : Unix.sockaddr
     }
 
-  let auto_shutdown_seconds = 30.
+  type session = in_channel * out_channel
 
-  type session = out_channel
+  let close_session (_, out) = Out_channel.close out
 
   let make addr =
     let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
@@ -27,73 +27,63 @@ module Server = struct
     Unix.listen t.sock 1
   ;;
 
-  let accept t ~f =
-    let read_fds, _write_fds, _excpt_fds =
-      Unix.select [ t.sock ] [] [] auto_shutdown_seconds
+  let accept_request (in_, _) =
+    let rec loop () =
+      match In_channel.input_line in_ with
+      | Some "\r" | None -> ()
+      | Some _ -> loop ()
     in
-    match read_fds with
-    | [] ->
-      Printf.eprintf
-        "Exiting automatically due to reaching %.0fs timeout without any connection\n"
-        auto_shutdown_seconds
-    | sock :: _always_empty ->
-      let descr, _sockaddr = Unix.accept ~cloexec:true sock in
-      let out = Unix.out_channel_of_descr descr in
-      f out;
-      Out_channel.flush out;
-      Unix.shutdown descr Unix.SHUTDOWN_SEND;
-      close_out out
+    loop ()
+  ;;
+
+  let accept t ~f =
+    let descr, _sockaddr = Unix.accept ~cloexec:true t.sock in
+    let out = Unix.out_channel_of_descr descr in
+    let in_ = Unix.in_channel_of_descr descr in
+    let session = in_, out in
+    Exn.protect ~f:(fun () -> f session) ~finally:(fun () -> close_session session)
   ;;
 
   let stop t = Unix.close t.sock
 
-  let header status mime content_length =
-    let status_string =
+  let respond (_, out) ~status ~content_length =
+    let status =
       match status with
-      | `Ok -> "200 Ok"
+      | `Ok -> "200 OK"
       | `Not_found -> "404 Not Found"
     in
-    let mime_string =
-      match mime with
-      | `Text -> "text/plain"
-      | `Binary -> "application/octet-stream"
-    in
-    sprintf
-      "HTTP/1.1 %s\nContent-Type: %s\nContent-Length: %d\n\n"
-      status_string
-      mime_string
+    Printf.fprintf
+      out
+      "HTTP/1.1 %s\r\nConnection: close\r\nContent-Length: %Ld\r\n\r\n%!"
+      status
       content_length
   ;;
 
-  let respond_not_found out = Out_channel.output_string out (header `Not_found `Text 0)
-
-  (* Send a given number of bytes from a buffer to a file descriptor,
-     retrying the send until the requested number of bytes have been
-     sent. *)
-  let send_bytes fd buf num_bytes_to_send =
-    let total_bytes_sent = ref 0 in
-    while !total_bytes_sent < num_bytes_to_send do
-      let remaining_bytes_to_send = num_bytes_to_send - !total_bytes_sent in
-      let bytes_sent = Unix.send fd buf !total_bytes_sent remaining_bytes_to_send [] in
-      total_bytes_sent := !total_bytes_sent + bytes_sent
-    done
+  let respond_file session ~file =
+    In_channel.with_open_bin file (fun chan ->
+      let content_length = In_channel.length chan in
+      respond session ~status:`Ok ~content_length;
+      let bytes = Bytes.create 65536 in
+      let to_write = ref (Int64.to_int content_length) in
+      let out = snd session in
+      let rec loop () =
+        let size = In_channel.input chan bytes 0 (Bytes.length bytes) in
+        if size > 0
+        then (
+          to_write := !to_write - size;
+          Out_channel.output out bytes 0 size;
+          loop ())
+      in
+      loop ();
+      assert (!to_write = 0);
+      Out_channel.flush out)
   ;;
 
-  let respond_file out ~file =
-    In_channel.with_open_bin file (fun in_channel ->
-      let length = In_channel.length in_channel |> Int64.to_int in
-      let out_fd = Unix.descr_of_out_channel out in
-      let header_bytes = Bytes.of_string (header `Ok `Binary length) in
-      send_bytes out_fd header_bytes (Bytes.length header_bytes);
-      let buf_size = 4096 in
-      let buf = Bytes.create buf_size in
-      let rec write () =
-        match In_channel.input in_channel buf 0 buf_size with
-        | 0 -> ()
-        | bytes_read ->
-          send_bytes out_fd buf bytes_read;
-          write ()
-      in
-      write ())
+  let respond session ~status ~content =
+    let content_length = Int64.of_int (String.length content) in
+    respond session ~status ~content_length;
+    let out = snd session in
+    Out_channel.output_string out content;
+    Out_channel.flush out
   ;;
 end

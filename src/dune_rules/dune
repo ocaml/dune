@@ -37,6 +37,7 @@
   dune_patch
   scheme
   fs
+  xdg
   unix)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation

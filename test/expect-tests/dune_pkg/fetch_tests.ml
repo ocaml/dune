@@ -33,8 +33,9 @@ let serve_once ~filename =
   let thread =
     Thread.create
       (fun server ->
-        Http.Server.accept server ~f:(fun write_end ->
-          Http.Server.respond_file write_end ~file:filename);
+        Http.Server.accept server ~f:(fun session ->
+          let () = Http.Server.accept_request session in
+          Http.Server.respond_file session ~file:filename);
         Http.Server.stop server)
       server
   in

@@ -664,11 +664,11 @@ let expand_pform_macro
            let+ b = Artifacts.binary_available artifacts_host s in
            b |> string_of_bool |> string))
   | File_available ->
-    Direct (
-      Without
+    Direct
+      (Without
         (let open Memo.O in
-         let file_path = Path.of_string s in
-         let+ available = Fs.file_exists file_path in
+         let path = relative ~source dir s in
+         let+ available = Fs.file_exists path in
          available |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:string
   | Read_lines ->

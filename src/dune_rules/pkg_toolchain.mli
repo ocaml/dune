@@ -26,3 +26,11 @@ val build_compiler_in_parallel : bool Config.t
     manager, as compilers packages that would be installed by dune will
     not work correctly. *)
 val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
+
+val files : bin_dir:Path.Outside_build_dir.t -> Path.t list Section.Map.t Memo.t
+
+val ocaml
+  :  Context_name.t
+  -> Env.t
+  -> bin_dir:Path.Outside_build_dir.t
+  -> Ocaml_toolchain.t Memo.t

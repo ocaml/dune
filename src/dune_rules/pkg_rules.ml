@@ -469,39 +469,18 @@ module Pkg = struct
     let ocaml_toolchain t context =
       let env = env t |> Value_list_env.to_env in
       let bin_dir = bin_dir t in
-      let which prog =
-        let path = Path.Outside_build_dir.relative bin_dir prog in
-        let+ exists = Fs_memo.file_exists path in
-        if exists then Some (Path.outside_build_dir path) else None
-      in
-      let get_ocaml_tool ~dir:_ prog = which prog in
-      Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
+      Pkg_toolchain.ocaml context env ~bin_dir
     ;;
 
     (* An [Install_cookie.t] with a [bin] section populated with all
        the executable files from the bin directory of the toolchain
        installation. *)
     let install_cookie t =
-      let bin_dir = bin_dir t in
-      Fs_memo.dir_contents bin_dir
-      >>| function
-      | Error _ -> { Install_cookie.files = Section.Map.empty; variables = [] }
-      | Ok files ->
-        let bin_paths =
-          Fs_cache.Dir_contents.to_list files
-          |> List.filter_map ~f:(fun (filename, kind) ->
-            match kind with
-            | Unix.S_REG | S_LNK ->
-              let path = Path.Outside_build_dir.relative bin_dir filename in
-              (try
-                 Unix.access (Path.Outside_build_dir.to_string path) [ Unix.X_OK ];
-                 Some (Path.outside_build_dir path)
-               with
-               | Unix.Unix_error _ -> None)
-            | _ -> None)
-        in
-        let files = Section.Map.singleton Section.Bin bin_paths in
-        { Install_cookie.files; variables = [] }
+      let+ files =
+        let bin_dir = bin_dir t in
+        Pkg_toolchain.files ~bin_dir
+      in
+      { Install_cookie.files; variables = [] }
     ;;
   end
 

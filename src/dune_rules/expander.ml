@@ -666,10 +666,10 @@ let expand_pform_macro
   | File_available ->
     Direct
       (Without
-        (let open Memo.O in
-         let path = relative ~source dir s in
-         let+ available = Build_system.file_exists path in
-         available |> string_of_bool |> string))
+         (let open Memo.O in
+          let path = relative ~source dir s in
+          let+ available = Build_system.file_exists path in
+          available |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:string
   | Read_lines ->
     expand_read_macro ~dir ~source s ~read:(fun x -> String.split_lines x |> strings)

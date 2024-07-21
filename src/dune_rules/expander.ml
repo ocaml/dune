@@ -668,7 +668,7 @@ let expand_pform_macro
       (Without
         (let open Memo.O in
          let path = relative ~source dir s in
-         let+ available = Fs.file_exists path in
+         let+ available = Build_system.file_exists path in
          available |> string_of_bool |> string))
   | Read -> expand_read_macro ~dir ~source s ~read:string
   | Read_lines ->

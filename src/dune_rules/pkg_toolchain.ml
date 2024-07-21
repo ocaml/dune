@@ -30,6 +30,10 @@ let make_bool ~name ~default =
 
 let enabled = make_bool ~name:"toolchains_enabled" ~default:false
 
+(** When building the compiler with toolchains, build it with [make
+      -j] rather than [make -j1], allowing more parallelism. This can
+    theoretically lead to build failures, but these are extremely rare in
+    practice. *)
 let build_compiler_in_parallel =
   make_bool ~name:"toolchains_build_compiler_in_parallel" ~default:false
 ;;
@@ -186,3 +190,25 @@ let modify_install_action action ~installation_prefix ~suffix =
     (* Not a "run" action, so don't attempt to modify. *)
     action
 ;;
+
+module Override_pform = struct
+  type t =
+    { prefix : Path.t option
+    ; doc : Path.t option
+    ; jobs : string option
+    }
+
+  let empty = { prefix = None; doc = None; jobs = None }
+
+  let make ~installation_prefix =
+    let prefix = Path.outside_build_dir installation_prefix in
+    { prefix = Some prefix
+    ; doc = Some (Path.relative prefix "doc")
+    ; jobs =
+        (if Config.get build_compiler_in_parallel
+         then (* build with more parallelism (i.e. `make -j`) *)
+           Some ""
+         else None)
+    }
+  ;;
+end

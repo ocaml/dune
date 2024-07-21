@@ -4,14 +4,6 @@ open Import
     versions. Creates the directory if it doesn't already exist. *)
 val base_dir : unit -> Path.Outside_build_dir.t
 
-val enabled : bool Config.t
-
-(** When building the compiler with toolchains, build it with [make
-      -j] rather than [make -j1], allowing more parallelism. This can
-    theoretically lead to build failures, but these are extremely rare in
-    practice. *)
-val build_compiler_in_parallel : bool Config.t
-
 (** Dune will download and build the ocaml-base-compiler and
     ocaml-variants packages into a user-wide directory (shared among
     projects) rather than using the usual package management mechanism to
@@ -47,3 +39,20 @@ val modify_install_action
   -> installation_prefix:Path.Outside_build_dir.t
   -> suffix:string
   -> Dune_lang.Action.t
+
+module Override_pform : sig
+  (** Allows various pform values to be overriden when expanding pforms
+      inside package commands. *)
+  type t =
+    { prefix : Path.t option
+    ; doc : Path.t option
+    ; jobs : string option
+    }
+
+  val empty : t
+
+  (** Fields to override in the variable environment under which
+      commands are evaluated such that the package is installed to the
+      toolchains directory rather than inside the _build directory. *)
+  val make : installation_prefix:Path.Outside_build_dir.t -> t
+end

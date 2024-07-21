@@ -249,18 +249,6 @@ module Env_update = struct
   ;;
 end
 
-module Override_pform = struct
-  (* Allows various pform values to be overriden when expanding pforms
-     inside package commands. *)
-  type t =
-    { prefix : Path.t option
-    ; doc : Path.t option
-    ; jobs : string option
-    }
-
-  let empty = { prefix = None; doc = None; jobs = None }
-end
-
 module Pkg = struct
   module Id = Id.Make ()
 
@@ -325,21 +313,6 @@ module Pkg = struct
         if installed
         then dummy_fetch t target
         else Fetch_rules.fetch ~target `Directory source
-    ;;
-
-    (* Fields to override in the variable environment under which
-       commands are evaluated such that the package is installed to the
-       toolchains directory rather than inside the _build directory. *)
-    let override_pform t =
-      let prefix = Path.outside_build_dir @@ installation_prefix t in
-      { Override_pform.prefix = Some prefix
-      ; doc = Some (Path.relative prefix "doc")
-      ; jobs =
-          (if Config.get Pkg_toolchain.build_compiler_in_parallel
-           then (* build with more parallelism (i.e. `make -j`) *)
-             Some ""
-           else None)
-      }
     ;;
 
     let modify_build_action t action =
@@ -541,7 +514,7 @@ module Expander0 = struct
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
-    ; override_pform : Override_pform.t
+    ; override_pform : Pkg_toolchain.Override_pform.t
     }
 
   let expand_pform_fdecl
@@ -841,7 +814,7 @@ module Action_expander = struct
     let section_dir_of_root
       (roots : _ Install.Roots.t)
       (section : Pform.Var.Pkg.Section.t)
-      ~(override_pform : Override_pform.t)
+      ~(override_pform : Pkg_toolchain.Override_pform.t)
       =
       match section with
       | Lib -> roots.lib_root
@@ -874,7 +847,7 @@ module Action_expander = struct
     let expand_pkg
       (paths : Paths.t)
       (pform : Pform.Var.Pkg.t)
-      ~(override_pform : Override_pform.t)
+      ~(override_pform : Pkg_toolchain.Override_pform.t)
       =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
@@ -1273,8 +1246,10 @@ module Action_expander = struct
         let action_memo, override_pform =
           if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
           then
-            Pkg.Toolchain.modify_build_action pkg action, Pkg.Toolchain.override_pform pkg
-          else Memo.return action, Override_pform.empty
+            ( Pkg.Toolchain.modify_build_action pkg action
+            , Pkg_toolchain.Override_pform.make
+                ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg) )
+          else Memo.return action, Pkg_toolchain.Override_pform.empty
         in
         let* action = action_memo in
         expand context pkg action ~override_pform
@@ -1292,8 +1267,10 @@ module Action_expander = struct
       let action_memo, override_pform =
         if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
         then
-          Pkg.Toolchain.modify_install_action pkg action, Pkg.Toolchain.override_pform pkg
-        else Memo.return action, Override_pform.empty
+          ( Pkg.Toolchain.modify_install_action pkg action
+          , Pkg_toolchain.Override_pform.make
+              ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg) )
+        else Memo.return action, Pkg_toolchain.Override_pform.empty
       in
       let* action = action_memo in
       expand context pkg action ~override_pform)
@@ -1361,7 +1338,10 @@ end = struct
       in
       let+ exported_env =
         let* expander =
-          Action_expander.expander ctx t ~override_pform:Override_pform.empty
+          Action_expander.expander
+            ctx
+            t
+            ~override_pform:Pkg_toolchain.Override_pform.empty
         in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in

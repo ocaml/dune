@@ -147,12 +147,10 @@ let of_package (t : Dune_lang.Package.t) =
     let opam_file =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
-    let convert_filtered_formula filtered_formula =
-      Package_dependency.list_of_opam_filtered_formula loc filtered_formula
-    in
-    let dependencies = convert_filtered_formula (OpamFile.OPAM.depends opam_file) in
-    let conflicts = convert_filtered_formula (OpamFile.OPAM.conflicts opam_file) in
-    let depopts = convert_filtered_formula (OpamFile.OPAM.depopts opam_file) in
+    let convert_filtered_formula = Package_dependency.list_of_opam_filtered_formula loc in
+    let dependencies = convert_filtered_formula `And (OpamFile.OPAM.depends opam_file) in
+    let conflicts = convert_filtered_formula `And (OpamFile.OPAM.conflicts opam_file) in
+    let depopts = convert_filtered_formula `Or (OpamFile.OPAM.depopts opam_file) in
     let conflict_class =
       OpamFile.OPAM.conflict_class opam_file
       |> List.map ~f:Package_name.of_opam_package_name

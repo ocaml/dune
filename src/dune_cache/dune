@@ -10,6 +10,7 @@
   dune_targets
   fiber
   stdune
-  unix)
+  unix
+  creation_time)
  (instrumentation
   (backend bisect_ppx)))

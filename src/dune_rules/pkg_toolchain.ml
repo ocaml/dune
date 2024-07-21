@@ -109,3 +109,80 @@ let dummy_fetch ~target name version ~installation_prefix =
   |> Action_builder.With_targets.return
   |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;
+
+(* The path to the directory containing the artifacts within the
+   temporary install directory. When installing with the DESTDIR
+   variable, the absolute path to the final installation directory is
+   concatenated to the value of DESTDIR. *)
+let installation_prefix_within_tmp_install_dir ~installation_prefix:prefix tmp_install_dir
+  =
+  let target_without_root_prefix =
+    (* Remove the root directory prefix from the target directory so
+       it can be used to create a path relative to the temporary
+       install dir. *)
+    match
+      String.drop_prefix
+        (Path.Outside_build_dir.to_string prefix)
+        ~prefix:(Path.External.to_string Path.External.root)
+    with
+    | Some x -> x
+    | None ->
+      Code_error.raise
+        "Expected prefix to start with root"
+        [ "prefix", Path.Outside_build_dir.to_dyn prefix
+        ; "root", Path.External.to_dyn Path.External.root
+        ]
+  in
+  Path.relative tmp_install_dir target_without_root_prefix
+;;
+
+let modify_install_action action ~installation_prefix ~suffix =
+  match action with
+  | Dune_lang.Action.Run [ Literal make; Literal install ] ->
+    (match String_with_vars.pform_only make, String_with_vars.text_only install with
+     | Some (Pform.Var Pform.Var.Make), Some "install" ->
+       let tmp_install_dir = Temp.create Dir ~prefix:"dune-toolchain-destdir" ~suffix in
+       let action =
+         (* Set the DESTDIR variable so installed artifacts are not immediately
+            placed in the final installation directory. *)
+         Dune_lang.Action.Run
+           [ Literal make
+           ; Literal install
+           ; Slang.text (sprintf "DESTDIR=%s" (Path.to_string tmp_install_dir))
+           ]
+       in
+       let prefix = Path.outside_build_dir installation_prefix in
+       (* Append some commands to the install command that copy
+          the artifacts to their final installation directory. *)
+       Dune_lang.Action.Progn
+         [ action
+         ; Dune_lang.Action.Run
+             [ Slang.text "mkdir"
+             ; Slang.text "-p"
+             ; Slang.text @@ Path.to_string @@ Path.parent_exn prefix
+             ]
+         ; Dune_lang.Action.Run
+             [ Slang.text "mv"
+             ; (* Prevents mv from replacing the destination if it
+                  already exists. This can happen if two dune
+                  instances race to install the toolchain. Note
+                  that -n is not posix but it is supported by gnu
+                  coreutils and by the default mv command on
+                  macos, but not openbsd. *)
+               Slang.text "-n"
+             ; Slang.text
+                 (Path.to_string
+                  @@ installation_prefix_within_tmp_install_dir
+                       ~installation_prefix
+                       tmp_install_dir)
+             ; Slang.text @@ Path.to_string @@ Path.parent_exn prefix
+             ]
+         ]
+     | _ ->
+       (* The install command is something other than `make install`, so don't
+          attempt to modify. *)
+       action)
+  | _ ->
+    (* Not a "run" action, so don't attempt to modify. *)
+    action
+;;

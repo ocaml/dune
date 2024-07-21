@@ -41,3 +41,9 @@ val dummy_fetch
   -> Package_version.t
   -> installation_prefix:Path.Outside_build_dir.t
   -> Action.Full.t Action_builder.With_targets.t
+
+val modify_install_action
+  :  Dune_lang.Action.t
+  -> installation_prefix:Path.Outside_build_dir.t
+  -> suffix:string
+  -> Dune_lang.Action.t

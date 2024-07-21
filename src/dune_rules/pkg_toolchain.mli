@@ -44,12 +44,10 @@ module Override_pform : sig
   (** Allows various pform values to be overriden when expanding pforms
       inside package commands. *)
   type t =
-    { prefix : Path.t option
-    ; doc : Path.t option
+    { prefix : Path.t
+    ; doc : Path.t
     ; jobs : string option
     }
-
-  val empty : t
 
   (** Fields to override in the variable environment under which
       commands are evaluated such that the package is installed to the

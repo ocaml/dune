@@ -193,17 +193,15 @@ let modify_install_action action ~installation_prefix ~suffix =
 
 module Override_pform = struct
   type t =
-    { prefix : Path.t option
-    ; doc : Path.t option
+    { prefix : Path.t
+    ; doc : Path.t
     ; jobs : string option
     }
 
-  let empty = { prefix = None; doc = None; jobs = None }
-
   let make ~installation_prefix =
     let prefix = Path.outside_build_dir installation_prefix in
-    { prefix = Some prefix
-    ; doc = Some (Path.relative prefix "doc")
+    { prefix
+    ; doc = Path.relative prefix "doc"
     ; jobs =
         (if Config.get build_compiler_in_parallel
          then (* build with more parallelism (i.e. `make -j`) *)

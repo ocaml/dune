@@ -514,7 +514,7 @@ module Expander0 = struct
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
-    ; override_pform : Pkg_toolchain.Override_pform.t
+    ; override_pform : Pkg_toolchain.Override_pform.t option
     }
 
   let expand_pform_fdecl
@@ -814,7 +814,7 @@ module Action_expander = struct
     let section_dir_of_root
       (roots : _ Install.Roots.t)
       (section : Pform.Var.Pkg.Section.t)
-      ~(override_pform : Pkg_toolchain.Override_pform.t)
+      ~(override_pform : Pkg_toolchain.Override_pform.t option)
       =
       match section with
       | Lib -> roots.lib_root
@@ -824,8 +824,8 @@ module Action_expander = struct
       | Share -> roots.share_root
       | Etc -> roots.etc_root
       | Doc ->
-        (match override_pform.doc with
-         | Some doc -> doc
+        (match override_pform with
+         | Some { doc; _ } -> doc
          | None -> roots.doc_root)
       | Man -> roots.man
       | Toplevel -> Path.relative roots.lib_root "toplevel"
@@ -847,7 +847,7 @@ module Action_expander = struct
     let expand_pkg
       (paths : Paths.t)
       (pform : Pform.Var.Pkg.t)
-      ~(override_pform : Pkg_toolchain.Override_pform.t)
+      ~(override_pform : Pkg_toolchain.Override_pform.t option)
       =
       match pform with
       | Switch -> Memo.return [ Value.String "dune" ]
@@ -860,14 +860,14 @@ module Action_expander = struct
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
       | Prefix ->
         Memo.return
-          [ (match override_pform.prefix with
+          [ (match override_pform with
              | None -> Value.Dir (Path.build paths.target_dir)
-             | Some prefix -> Value.Dir prefix)
+             | Some { prefix; _ } -> Value.Dir prefix)
           ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs ->
         Memo.return
-          [ (match override_pform.jobs with
+          [ (match Option.bind override_pform ~f:(fun x -> x.jobs) with
              | Some jobs -> Value.String jobs
              | None -> Value.String (Int.to_string !Clflags.concurrency))
           ]
@@ -1247,9 +1247,10 @@ module Action_expander = struct
           if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
           then
             ( Pkg.Toolchain.modify_build_action pkg action
-            , Pkg_toolchain.Override_pform.make
-                ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg) )
-          else Memo.return action, Pkg_toolchain.Override_pform.empty
+            , Some
+                (Pkg_toolchain.Override_pform.make
+                   ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg)) )
+          else Memo.return action, None
         in
         let* action = action_memo in
         expand context pkg action ~override_pform
@@ -1268,9 +1269,10 @@ module Action_expander = struct
         if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
         then
           ( Pkg.Toolchain.modify_install_action pkg action
-          , Pkg_toolchain.Override_pform.make
-              ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg) )
-        else Memo.return action, Pkg_toolchain.Override_pform.empty
+          , Some
+              (Pkg_toolchain.Override_pform.make
+                 ~installation_prefix:(Pkg.Toolchain.installation_prefix pkg)) )
+        else Memo.return action, None
       in
       let* action = action_memo in
       expand context pkg action ~override_pform)
@@ -1337,12 +1339,7 @@ end = struct
         }
       in
       let+ exported_env =
-        let* expander =
-          Action_expander.expander
-            ctx
-            t
-            ~override_pform:Pkg_toolchain.Override_pform.empty
-        in
+        let* expander = Action_expander.expander ctx t ~override_pform:None in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)
       in
       t.exported_env <- exported_env;

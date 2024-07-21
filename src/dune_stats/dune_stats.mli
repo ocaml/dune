@@ -5,6 +5,7 @@ module Json : sig
 end
 
 type dst =
+  | File of string
   | Out of out_channel
   | Custom of
       { write : string -> unit
@@ -17,7 +18,10 @@ val set_global : t -> unit
 val create : extended_build_job_info:bool -> dst -> t
 val emit : t -> Chrome_trace.Event.t -> unit
 val record_gc_and_fd : t -> unit
+
+(** Close the trace. Subsequent calls to close are noops. *)
 val close : t -> unit
+
 val extended_build_job_info : t -> bool
 
 type event

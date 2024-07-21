@@ -309,22 +309,22 @@ module Pkg = struct
     let is_installed t = Fs_memo.dir_exists (installation_prefix t)
     let bin_dir t = Path.Outside_build_dir.relative (installation_prefix t) "bin"
 
-    (* Action which creates a fake package source in place of a compiler
-       package for use when a compiler from the toolchains directory will be
-       used instead of taking the compiler from a regular opam package. *)
-    let dummy_fetch t target =
-      let installation_prefix = installation_prefix t in
-      Pkg_toolchain.dummy_fetch ~target t.info.name t.info.version ~installation_prefix
-    ;;
-
     (* Fetches the source unless the toolchain package it refers to is
        already installed, in which case it creates a dummy package
        source. *)
-    let fetch_action t ~target ~source =
-      let+ installed = is_installed t in
-      if installed
-      then dummy_fetch t target
-      else Fetch_rules.fetch ~target `Directory source
+    let fetch_action =
+      (* Action which creates a fake package source in place of a compiler
+         package for use when a compiler from the toolchains directory will be
+         used instead of taking the compiler from a regular opam package. *)
+      let dummy_fetch t target =
+        let installation_prefix = installation_prefix t in
+        Pkg_toolchain.dummy_fetch ~target t.info.name t.info.version ~installation_prefix
+      in
+      fun t ~target ~source ->
+        let+ installed = is_installed t in
+        if installed
+        then dummy_fetch t target
+        else Fetch_rules.fetch ~target `Directory source
     ;;
 
     (* Fields to override in the variable environment under which

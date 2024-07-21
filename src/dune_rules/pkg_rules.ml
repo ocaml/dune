@@ -281,19 +281,6 @@ module Pkg = struct
   let is_system_provided t = t.system_provided
 
   module Toolchain = struct
-    let is_compiler_and_toolchains_enabled t =
-      Config.get Pkg_toolchain.Config.enabled
-      &&
-      let module Package_name = Dune_pkg.Package_name in
-      let compiler_package_names =
-        Package_name.Set.of_list (* TODO don't hardcode these names here *)
-          [ Package_name.of_string "ocaml-base-compiler"
-          ; Package_name.of_string "ocaml-variants"
-          ]
-      in
-      Package_name.Set.mem compiler_package_names t.info.name
-    ;;
-
     (* A hash of the fields of a package that affect its installed artifacts *)
     let pkg_hash t = Digest.generic (t.build_command, t.install_command, t.depends, t.info)
 
@@ -373,7 +360,7 @@ module Pkg = struct
       { Override_pform.prefix = Some prefix
       ; doc = Some (Path.relative prefix "doc")
       ; jobs =
-          (if Config.get Pkg_toolchain.Config.build_compiler_in_parallel
+          (if Config.get Pkg_toolchain.build_compiler_in_parallel
            then (* build with more parallelism (i.e. `make -j`) *)
              Some ""
            else None)
@@ -598,7 +585,7 @@ module Pkg = struct
      package in the same order as the argument list. *)
   let build_env_of_deps ts =
     List.fold_left ts ~init:Env.Map.empty ~f:(fun env t ->
-      if Toolchain.is_compiler_and_toolchains_enabled t
+      if Pkg_toolchain.is_compiler_and_toolchains_enabled t.info.name
       then Toolchain.env t
       else (
         let env =
@@ -1322,7 +1309,7 @@ module Action_expander = struct
 
     let of_closure closure =
       Memo.parallel_map closure ~f:(fun (pkg : Pkg.t) ->
-        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
         then
           let+ install_cookie = Pkg.Toolchain.install_cookie pkg in
           pkg, install_cookie
@@ -1401,7 +1388,7 @@ module Action_expander = struct
     Option.map pkg.build_command ~f:(function
       | Action action ->
         let action_memo, override_pform =
-          if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+          if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
           then
             Pkg.Toolchain.modify_build_action pkg action, Pkg.Toolchain.override_pform pkg
           else Memo.return action, Override_pform.empty
@@ -1420,7 +1407,7 @@ module Action_expander = struct
   let install_command context (pkg : Pkg.t) =
     Option.map pkg.install_command ~f:(fun action ->
       let action_memo, override_pform =
-        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
         then
           Pkg.Toolchain.modify_install_action pkg action, Pkg.Toolchain.override_pform pkg
         else Memo.return action, Override_pform.empty
@@ -1866,7 +1853,7 @@ let source_rules (pkg : Pkg.t) =
        | `Local (`File, _) | `Fetch ->
          let+ fetch =
            let target = pkg.paths.source_dir in
-           if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+           if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
            then Pkg.Toolchain.fetch_action pkg ~target ~source
            else Memo.return @@ Fetch_rules.fetch ~target `Directory source
          in
@@ -2059,7 +2046,7 @@ let ocaml_toolchain context =
     then None
     else (
       let toolchain =
-        if Pkg.Toolchain.is_compiler_and_toolchains_enabled pkg
+        if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
         then Action_builder.of_memo @@ Pkg.Toolchain.ocaml_toolchain pkg context
         else (
           let cookie = (Pkg_installed.of_paths pkg.paths).cookie in

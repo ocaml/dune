@@ -313,33 +313,8 @@ module Pkg = struct
        package for use when a compiler from the toolchains directory will be
        used instead of taking the compiler from a regular opam package. *)
     let dummy_fetch t target =
-      Action.progn
-        [ Action.mkdir target
-        ; Action.with_stdout_to
-            (Path.Build.relative target "debug_hint.txt")
-            (Action.echo
-               [ sprintf
-                   "This file was created as a hint to people debugging issues with dune \
-                    package management.\n\
-                    The current project attempted to download and install the package \
-                    %s.%s, however a matching package was found in the toolchains \
-                    directory %s, so the latter will be used instead."
-                   (Dune_pkg.Package_name.to_string t.info.name)
-                   (Dune_pkg.Package_version.to_string t.info.version)
-                   (installation_prefix t |> Path.Outside_build_dir.to_string)
-               ])
-        ; (* TODO: it doesn't seem like it should be necessary to generate
-             this file but without it dune complains *)
-          Action.with_stdout_to
-            (Path.Build.relative target "config.cache")
-            (Action.echo
-               [ "Dummy file created to placate dune's package installation rules. See \
-                  the debug_hint.txt file for more information."
-               ])
-        ]
-      |> Action.Full.make
-      |> Action_builder.With_targets.return
-      |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
+      let installation_prefix = installation_prefix t in
+      Pkg_toolchain.dummy_fetch ~target t.info.name t.info.version ~installation_prefix
     ;;
 
     (* Fetches the source unless the toolchain package it refers to is

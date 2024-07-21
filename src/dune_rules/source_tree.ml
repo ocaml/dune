@@ -522,3 +522,18 @@ let nearest_vcs dir =
   | This vcs -> Memo.return (Some vcs)
   | Ancestor_vcs -> Memo.Lazy.force ancestor_vcs
 ;;
+
+let rec descendant_dir_paths path =
+  let* result = Readdir.of_source_path path in
+  match result with
+  | Ok { Readdir.dirs; _ } ->
+    Memo.List.concat_map dirs ~f:(fun (subdir_name, _) ->
+      let subdir_path = Path.Source.relative path subdir_name in
+      let+ descendant_dir_paths_ = descendant_dir_paths subdir_path in
+      subdir_path :: descendant_dir_paths_)
+  | Error unix_error ->
+    User_error.raise
+      [ Pp.textf "Unable to read directory %s." (Path.Source.to_string_maybe_quoted path)
+      ; Unix_error.Detailed.pp ~prefix:"Reason: " unix_error
+      ]
+;;

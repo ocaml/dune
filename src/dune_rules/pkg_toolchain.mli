@@ -27,13 +27,6 @@ val ocaml
   -> bin_dir:Path.Outside_build_dir.t
   -> Ocaml_toolchain.t Memo.t
 
-val dummy_fetch
-  :  target:Path.Build.t
-  -> Package.Name.t
-  -> Package_version.t
-  -> installation_prefix:Path.Outside_build_dir.t
-  -> Action.Full.t Action_builder.With_targets.t
-
 val modify_install_action
   :  Dune_lang.Action.t
   -> installation_prefix:Path.Outside_build_dir.t

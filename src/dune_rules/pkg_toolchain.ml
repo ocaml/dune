@@ -84,36 +84,6 @@ let ocaml context env ~bin_dir =
   Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
 ;;
 
-let dummy_fetch ~target name version ~installation_prefix =
-  Action.progn
-    [ Action.mkdir target
-    ; Action.with_stdout_to
-        (Path.Build.relative target "debug_hint.txt")
-        (Action.echo
-           [ sprintf
-               "This file was created as a hint to people debugging issues with dune \
-                package management.\n\
-                The current project attempted to download and install the package %s.%s, \
-                however a matching package was found in the toolchains directory %s, so \
-                the latter will be used instead."
-               (Dune_pkg.Package_name.to_string name)
-               (Dune_pkg.Package_version.to_string version)
-               (installation_prefix |> Path.Outside_build_dir.to_string)
-           ])
-    ; (* TODO: it doesn't seem like it should be necessary to generate
-         this file but without it dune complains *)
-      Action.with_stdout_to
-        (Path.Build.relative target "config.cache")
-        (Action.echo
-           [ "Dummy file created to placate dune's package installation rules. See the \
-              debug_hint.txt file for more information."
-           ])
-    ]
-  |> Action.Full.make
-  |> Action_builder.With_targets.return
-  |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
-;;
-
 (* The path to the directory containing the artifacts within the
    temporary install directory. When installing with the DESTDIR
    variable, the absolute path to the final installation directory is

@@ -297,30 +297,24 @@ module Pkg = struct
     let is_installed t = Fs_memo.dir_exists (installation_prefix t)
     let bin_dir t = Path.Outside_build_dir.relative (installation_prefix t) "bin"
 
-    (* Fetches the source unless the toolchain package it refers to is
-       already installed, in which case it creates a dummy package
-       source. *)
-    let fetch_action =
-      (* Action which creates a fake package source in place of a compiler
-         package for use when a compiler from the toolchains directory will be
-         used instead of taking the compiler from a regular opam package. *)
-      let dummy_fetch t target =
-        let installation_prefix = installation_prefix t in
-        Pkg_toolchain.dummy_fetch ~target t.info.name t.info.version ~installation_prefix
-      in
-      fun t ~target ~source ->
-        let+ installed = is_installed t in
-        if installed
-        then dummy_fetch t target
-        else Fetch_rules.fetch ~target `Directory source
+    let touch_config_cache =
+      Dune_lang.Action.Run
+        [ Slang.text "touch"
+        ; Slang.concat
+            [ Slang.pform (Pform.Var (Pform.Var.Pkg Pform.Var.Pkg.Build))
+            ; Slang.text "/config.cache"
+            ]
+        ]
     ;;
 
     let modify_build_action t action =
       let+ installed = is_installed t in
       if installed
       then
-        (* Replace build command with no-op if the toolchain is already installed. *)
-        Dune_lang.Action.Progn []
+        (* If the toolchain is already installed, just create an empty
+           config.cache file so other packages see that the compiler
+           package is installed. *)
+        touch_config_cache
       else action
     ;;
 
@@ -1711,13 +1705,8 @@ let source_rules (pkg : Pkg.t) =
       Lock_dir.source_kind source
       >>= (function
        | `Local (`File, _) | `Fetch ->
-         let+ fetch =
-           let target = pkg.paths.source_dir in
-           if Pkg_toolchain.is_compiler_and_toolchains_enabled pkg.info.name
-           then Pkg.Toolchain.fetch_action pkg ~target ~source
-           else Memo.return @@ Fetch_rules.fetch ~target `Directory source
-         in
-         Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ]
+         let fetch = Fetch_rules.fetch ~target:pkg.paths.source_dir `Directory source in
+         Memo.return (Dep.Set.of_files [ Path.build pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
          let+ source_files, rules =
            let source_root = Path.external_ source_root in

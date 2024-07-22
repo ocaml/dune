@@ -7,7 +7,7 @@ module Convert_from_opam_error = struct
   type t =
     | Can't_convert_opam_filter_to_value of OpamTypes.filter
     | Can't_convert_opam_filter_to_condition of OpamTypes.filter
-    | Filtered_formula_is_not_a_conjunction_of_atoms of
+    | Filtered_formula_is_not_the_correct_kind of
         { non_atom : OpamTypes.filtered_formula }
 end
 
@@ -200,10 +200,13 @@ let list_to_opam_filtered_formula ts =
   |> OpamFormula.ands
 ;;
 
-let list_of_opam_filtered_formula loc filtered_formula =
+let list_of_opam_filtered_formula loc kind filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    OpamFormula.ands_to_list filtered_formula
+    (match kind with
+     | `And -> OpamFormula.ands_to_list
+     | `Or -> OpamFormula.ors_to_list)
+      filtered_formula
     |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
       match filtered_formula with
       | Atom (name, condition) ->
@@ -211,8 +214,7 @@ let list_of_opam_filtered_formula loc filtered_formula =
         (match Constraint.opt_of_opam_condition condition with
          | Ok constraint_ -> { name; constraint_ }
          | Error error -> raise (E error))
-      | non_atom ->
-        raise (E (Filtered_formula_is_not_a_conjunction_of_atoms { non_atom })))
+      | non_atom -> raise (E (Filtered_formula_is_not_the_correct_kind { non_atom })))
   with
   | E e ->
     let message =
@@ -229,11 +231,13 @@ let list_of_opam_filtered_formula loc filtered_formula =
           "Can't convert opam filter '%s' into dune condition. Only global variables may \
            appear in this position."
           filter_string
-      | Filtered_formula_is_not_a_conjunction_of_atoms { non_atom } ->
+      | Filtered_formula_is_not_the_correct_kind { non_atom } ->
         let formula_string = OpamFilter.string_of_filtered_formula non_atom in
         sprintf
-          "Expected formula to be a conjunction of atoms but encountered non-atom term \
-           '%s'"
+          "Expected formula to be a %s of atoms but encountered non-atom term '%s'"
+          (match kind with
+           | `And -> "conjunction"
+           | `Or -> "disjunction")
           formula_string
     in
     User_error.raise ~loc [ Pp.text message ]

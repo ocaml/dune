@@ -197,8 +197,8 @@ Continuing the example above, this would result in the source file at
 and ``content/bar/baz.html`` being installed to
 ``share/<package>/web/documents/bar/baz.html``. Note in the latter case
 ``with_prefix`` only replaced the ``content`` component of the path and not the
-``bar`` component since since it replaces the prefix of the glob - not the
-prefix of paths matching the glob.
+``bar`` component since it replaces the prefix of the glob - not the prefix
+of paths matching the glob.
 
 Installing Globs from Parent Directories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

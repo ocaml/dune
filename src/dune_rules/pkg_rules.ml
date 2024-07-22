@@ -859,12 +859,7 @@ module Action_expander = struct
              | Some { prefix; _ } -> Value.Dir prefix)
           ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs ->
-        Memo.return
-          [ (match Option.bind override_pform ~f:(fun x -> x.jobs) with
-             | Some jobs -> Value.String jobs
-             | None -> Value.String (Int.to_string !Clflags.concurrency))
-          ]
+      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in

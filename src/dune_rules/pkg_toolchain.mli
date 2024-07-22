@@ -39,7 +39,6 @@ module Override_pform : sig
   type t =
     { prefix : Path.t
     ; doc : Path.t
-    ; jobs : string option
     }
 
   (** Fields to override in the variable environment under which

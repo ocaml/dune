@@ -11,19 +11,18 @@ We should be able to use menhir as a library interface:
   > (menhir (modules foo))
   > EOF
 
-  $ touch m.ml
+  $ cat > m.ml << EOF
+  > let x = ()
+  > EOF
 
   $ cat >foo.mly <<EOF
-  > %{
-  > module M = M
-  > %}
   > %token EOF
   > 
   > %start<unit> unit
   > %%
   > 
   > unit:
-  > | EOF { () }
+  > | EOF { M.x }
   > EOF
 
   $ dune build foo.cma

@@ -6,6 +6,7 @@ let capture_outputs = Dune_engine.Clflags.capture_outputs
 let debug_artifact_substitution = ref false
 let debug_package_logs = ref false
 let ignore_lock_dir = ref false
+let concurrency = ref 1
 
 type on_missing_dune_project_file =
   | Error

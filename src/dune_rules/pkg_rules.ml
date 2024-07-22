@@ -750,7 +750,7 @@ module Action_expander = struct
       | Build -> Memo.return [ Value.Dir (Path.build paths.source_dir) ]
       | Prefix -> Memo.return [ Value.Dir (Path.build paths.target_dir) ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
-      | Jobs -> Memo.return [ Value.String "1" ]
+      | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
       | Group ->
         let group = Unix.getgid () |> Unix.getgrgid in

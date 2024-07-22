@@ -278,7 +278,7 @@ let () =
       ; constraint_ =
           Some (Uop (Gte, Package_constraint.Value.String_literal mdx_version_required))
       }
-      ~since:(3, 17)
+      ~since:(0, 5)
   in
   Dune_project.Extension.register_simple
     ~pkgs:[ mdx_dep ]

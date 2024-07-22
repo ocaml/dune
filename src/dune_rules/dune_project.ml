@@ -163,6 +163,12 @@ let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
 ;;
 
+module Extension_package_dependency = struct
+  type t = Package_dependency.t * Syntax.Version.t
+
+  let make dep ~since = dep, since
+end
+
 module Extension = struct
   type 'a t = 'a Univ_map.Key.t
 
@@ -170,7 +176,7 @@ module Extension = struct
     { syntax : Dune_lang.Syntax.t
     ; stanzas : ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
     ; key : 'a t
-    ; package_deps : Package_dependency.t list
+    ; package_deps : Extension_package_dependency.t list
     }
 
   type packed_extension = Packed : 'a poly_info -> packed_extension
@@ -894,7 +900,8 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        let extension_package_deps =
          String.Map.values explicit_extensions
          |> List.concat_map ~f:(fun { Extension.extension = Packed e; _ } ->
-           e.package_deps)
+           List.filter_map e.package_deps ~f:(fun (p, min_ver) ->
+             Option.some_if (dune_version >= min_ver) p))
        in
        { name
        ; file_key

@@ -272,10 +272,12 @@ let () =
   let open Dune_lang.Decoder in
   let decode = Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> decode in
   let mdx_dep =
-    { Package_dependency.name = Package.Name.of_string "mdx"
-    ; constraint_ =
-        Some (Uop (Gte, Package_constraint.Value.String_literal mdx_version_required))
-    }
+    Dune_project.Extension_package_dependency.make
+      { Package_dependency.name = Package.Name.of_string "mdx"
+      ; constraint_ =
+          Some (Uop (Gte, Package_constraint.Value.String_literal mdx_version_required))
+      }
+      ~since:(3, 17)
   in
   Dune_project.Extension.register_simple
     ~pkgs:[ mdx_dep ]

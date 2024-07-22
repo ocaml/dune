@@ -53,6 +53,12 @@ module Lang : sig
   val register : Dune_lang.Syntax.t -> Dune_lang.Stanza.Parser.t list -> unit
 end
 
+module Extension_package_dependency : sig
+  type t
+
+  val make : Package_dependency.t -> since:Syntax.Version.t -> t
+end
+
 module Extension : sig
   type 'a t
 
@@ -69,13 +75,13 @@ module Extension : sig
     :  Dune_lang.Syntax.t
     -> ('a * Dune_lang.Stanza.Parser.t list) Dune_lang.Decoder.t
     -> ('a -> Dyn.t)
-    -> Package_dependency.t list
+    -> Extension_package_dependency.t list
     -> 'a t
 
   (** A simple version where the arguments are not used through
       [find_extension_args]. *)
   val register_simple
-    :  ?pkgs:Package_dependency.t list
+    :  ?pkgs:Extension_package_dependency.t list
     -> Dune_lang.Syntax.t
     -> Dune_lang.Stanza.Parser.t list Dune_lang.Decoder.t
     -> unit

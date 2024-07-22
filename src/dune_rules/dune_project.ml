@@ -310,11 +310,11 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
       in
       Univ_map.set acc (Dune_lang.Syntax.key syntax) status)
   in
-  let extension_args, extension_stanzas =
+  let extension_args, extension_stanzas, extension_package_deps =
     List.fold_left
       extensions
-      ~init:(Univ_map.empty, [])
-      ~f:(fun (args_acc, stanzas_acc) (ext : Extension.automatic) ->
+      ~init:(Univ_map.empty, [], [])
+      ~f:(fun (args_acc, stanzas_acc, package_deps_acc) (ext : Extension.automatic) ->
         match ext with
         | Not_selected (Packed e) ->
           let stanzas =
@@ -342,7 +342,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
                    inactive *)
                 assert false ))
           in
-          args_acc, stanzas :: stanzas_acc
+          args_acc, stanzas :: stanzas_acc, package_deps_acc
         | Selected instance ->
           let (Packed e) = instance.extension in
           let args_acc, stanzas =
@@ -352,11 +352,15 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
             in
             instance.parse_args args
           in
-          args_acc, stanzas :: stanzas_acc)
+          let new_package_deps =
+            List.filter_map e.package_deps ~f:(fun (dep, min_ver) ->
+              Option.some_if (instance.version >= min_ver) dep)
+          in
+          args_acc, stanzas :: stanzas_acc, new_package_deps @ package_deps_acc)
   in
   let stanzas = List.concat (lang.data :: extension_stanzas) in
   let stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas)) in
-  parsing_context, stanza_parser, extension_args
+  parsing_context, stanza_parser, extension_args, extension_package_deps
 ;;
 
 let filename = "dune-project"
@@ -427,7 +431,7 @@ let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
 let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
-  let parsing_context, stanza_parser, extension_args =
+  let parsing_context, stanza_parser, extension_args, extension_package_deps =
     interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
@@ -471,7 +475,7 @@ let infer ~dir info packages =
   ; expand_aliases_in_sandbox
   ; opam_file_location
   ; including_hidden_packages = packages
-  ; extension_package_deps = []
+  ; extension_package_deps
   }
 ;;
 
@@ -843,7 +847,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          | None -> default_name ~dir ~packages
        in
        let explicit_extensions = explicit_extensions_map explicit_extensions in
-       let parsing_context, stanza_parser, extension_args =
+       let parsing_context, stanza_parser, extension_args, extension_package_deps =
          interpret_lang_and_extensions ~lang ~explicit_extensions
        in
        let implicit_transitive_deps =
@@ -896,12 +900,6 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
            dialects
            ~init:Dialect.DB.builtin
            ~f:(fun dialects (loc, dialect) -> Dialect.DB.add dialects ~loc dialect)
-       in
-       let extension_package_deps =
-         String.Map.values explicit_extensions
-         |> List.concat_map ~f:(fun { Extension.extension = Packed e; _ } ->
-           List.filter_map e.package_deps ~f:(fun (p, min_ver) ->
-             Option.some_if (dune_version >= min_ver) p))
        in
        { name
        ; file_key

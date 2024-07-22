@@ -12,6 +12,7 @@
   > (library (name lib_reason))
   > EOF
   $ dune build ./bin/.formatted/ocaml_file.ml
+  fake ocamlformat is running: "--impl" "bin/ocaml_file.ml"
 
 .formatted dir is loaded
 

@@ -24,6 +24,12 @@ To create a directory-local opam switch with the dependencies necessary to build
 
   $ make dev-switch
 
+This can also be used to keep the switch updated when dependencies change.
+
+The ``Makefile`` also has a ``make dev-deps`` which will install just the
+dependencies used by tests. These are marked ``{ with-dev-setup }`` in Dune's
+opam file.
+
 Bootstrapping
 =============
 

@@ -55,7 +55,7 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
          (Solver_env.to_env t.solver_env)
          t.version_by_package_name
   with
-  | Ok s -> s
+  | Ok { regular; post = _ } -> regular
   | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->
     User_error.raise
       ?hints:(Option.some_if with_test lockdir_regenerate_hints)

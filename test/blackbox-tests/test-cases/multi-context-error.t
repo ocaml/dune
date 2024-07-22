@@ -18,6 +18,7 @@
   > (library
   >  (name foo)
   >  (public_name bar.foo)
+  >  (libraries str)
   >  (enabled_if (= %{context_name} "default")))
   > (library
   >  (name foo)

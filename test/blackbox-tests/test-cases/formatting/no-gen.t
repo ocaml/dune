@@ -57,10 +57,15 @@ Now we add [mli] files for the two modules whose implementation is generated:
 
 We format again.
   $ dune build @fmt
+  fake ocamlformat is running: "--intf" "other_gen.mli"
   Warning: one state end-of-stream conflict was arbitrarily resolved.
   File "parser_raw.mly", line 5, characters 4-7:
   Warning: production prog -> EOL is never reduced.
   Warning: in total, 1 production is never reduced.
+  fake ocamlformat is running: "--intf" "parser_raw.mli"
+  File "other_gen.mli", line 1, characters 0-0:
+  Error: Files _build/default/other_gen.mli and
+  _build/default/.formatted/other_gen.mli differ.
   File "parser_raw.mli", line 1, characters 0-0:
   Error: Files _build/default/parser_raw.mli and
   _build/default/.formatted/parser_raw.mli differ.

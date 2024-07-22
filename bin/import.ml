@@ -223,6 +223,7 @@ module Scheduler = struct
         ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
+    Dune_rules.Clflags.concurrency := config.concurrency;
     let file_watcher = Common.file_watcher common in
     let run () =
       let open Fiber.O in

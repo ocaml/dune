@@ -197,7 +197,17 @@ let insert_odoc_dep depends =
 ;;
 
 let insert_extension_deps project depends =
-  Dune_project.extension_package_deps project @ depends
+  let rec loop to_add (deps : Package_dependency.t list) acc =
+    match deps with
+    | [] -> Package.Name.Map.values to_add @ List.rev acc
+    | dep :: deps -> loop (Package.Name.Map.remove to_add dep.name) deps (dep :: acc)
+  in
+  let to_add =
+    Package.Name.Map.of_list_map_exn
+      (Dune_project.extension_package_deps project)
+      ~f:(fun dep -> dep.name, dep)
+  in
+  loop to_add depends []
 ;;
 
 let opam_fields project (package : Package.t) =
@@ -214,10 +224,7 @@ let opam_fields project (package : Package.t) =
     then package
     else Package.map_depends package ~f:insert_odoc_dep
   in
-  let package =
-    (* XXX version this *)
-    Package.map_depends package ~f:(insert_extension_deps project)
-  in
+  let package = Package.map_depends package ~f:(insert_extension_deps project) in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in
   let info = Package.info package in

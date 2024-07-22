@@ -15,6 +15,10 @@ A file that will comprise the package source:
   $ echo "Hello, World!" > foo.txt
 
 Run the server in the background:
+
+We have some really slow tests here
+  $ export DUNE_WEBSERVER_TIMEOUT=10
+
   $ webserver_oneshot --content-file foo.txt --port-file port.txt &
   $ until test -f port.txt; do sleep 0.1; done
   $ PORT=$(cat port.txt)

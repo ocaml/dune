@@ -636,7 +636,7 @@ let opam_package_to_lock_file_pkg
         version_by_package_name
         opam_file.depends
     with
-    | Ok dep_package_names -> dep_package_names
+    | Ok { regular; _ } -> regular
     | Error (`Formula_could_not_be_satisfied hints) ->
       Code_error.raise
         "Dependencies of package can't be satisfied from packages in solution"

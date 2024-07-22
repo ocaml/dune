@@ -24,7 +24,6 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - windows-latest
         # Please keep the list in sync with the minimal version of OCaml in
         # dune-project, dune.opam.template and bootstrap.ml
         #
@@ -48,6 +47,12 @@ jobs:
           - ocaml-compiler: 4.14.x
             os: macos-13
             skip_test: true
+          # MSVC
+          - ocaml-compiler: ocaml-base-compiler.4.14.2,system-msvc
+            os: windows-latest
+          # mingw
+          - ocaml-compiler: ocaml-base-compiler.4.14.2,system-mingw
+            os: windows-latest
           # OCaml 4:
           - ocaml-compiler: 4.13.x
             os: ubuntu-latest

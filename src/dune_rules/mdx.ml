@@ -276,7 +276,11 @@ let () =
     Dune_project.Extension_package_dependency.make
       { Package_dependency.name = Package.Name.of_string "mdx"
       ; constraint_ =
-          Some (Uop (Gte, Package_constraint.Value.String_literal mdx_version_required))
+          Some
+            (And
+               [ Bvar Package_variable_name.with_test
+               ; Uop (Gte, Package_constraint.Value.String_literal mdx_version_required)
+               ])
       }
       ~since:(0, 5)
   in

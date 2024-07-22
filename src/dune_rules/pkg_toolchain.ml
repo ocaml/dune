@@ -43,12 +43,12 @@ let is_compiler_and_toolchains_enabled name =
   &&
   let module Package_name = Dune_pkg.Package_name in
   let compiler_package_names =
-    Package_name.Set.of_list (* TODO don't hardcode these names here *)
-      [ Package_name.of_string "ocaml-base-compiler"
-      ; Package_name.of_string "ocaml-variants"
-      ]
+    (* TODO don't hardcode these names here *)
+    [ Package_name.of_string "ocaml-base-compiler"
+    ; Package_name.of_string "ocaml-variants"
+    ]
   in
-  Package_name.Set.mem compiler_package_names name
+  List.mem compiler_package_names name ~equal:Package_name.equal
 ;;
 
 let files ~bin_dir =

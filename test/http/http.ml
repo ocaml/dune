@@ -36,8 +36,23 @@ module Server = struct
     loop ()
   ;;
 
+  let auto_shutdown_seconds =
+    match Sys.getenv_opt "DUNE_WEBSERVER_TIMEOUT" with
+    | None -> 5.
+    | Some s -> Float.of_string s |> Option.value_exn
+  ;;
+
   let accept t ~f =
-    let descr, _sockaddr = Unix.accept ~cloexec:true t.sock in
+    let descr, _sockaddr =
+      let read_fds, _write_fds, _excpt_fds =
+        Unix.select [ t.sock ] [] [] auto_shutdown_seconds
+      in
+      match read_fds with
+      | _ :: _ -> Unix.accept ~cloexec:true t.sock
+      | [] ->
+        Format.eprintf "Exiting after timeout@.";
+        failwith "timeout"
+    in
     let out = Unix.out_channel_of_descr descr in
     let in_ = Unix.in_channel_of_descr descr in
     let session = in_, out in

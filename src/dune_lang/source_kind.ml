@@ -15,17 +15,36 @@ module Host = struct
     | Sourcehut -> "sourcehut"
   ;;
 
+  type repo =
+    | User_repo of
+        { user : string
+        ; repo : string
+        }
+    | Org_repo of
+        { org : string
+        ; proj : string
+        ; repo : string
+        }
+
   type t =
-    { user : string
-    ; repo : string
+    { repo : repo
     ; kind : kind
     }
 
   let dyn_of_kind kind = kind |> to_string |> Dyn.string
 
-  let to_dyn { user; repo; kind } =
+  let to_dyn { repo; kind } =
     let open Dyn in
-    record [ "kind", dyn_of_kind kind; "user", string user; "repo", string repo ]
+    match repo with
+    | User_repo { user; repo } ->
+      record [ "kind", dyn_of_kind kind; "user", string user; "repo", string repo ]
+    | Org_repo { org; proj; repo } ->
+      record
+        [ "kind", dyn_of_kind kind
+        ; "org", string org
+        ; "proj", string proj
+        ; "repo", string repo
+        ]
   ;;
 
   let host_of_kind = function
@@ -35,15 +54,18 @@ module Host = struct
     | Sourcehut -> "sr.ht"
   ;;
 
-  let base_uri { kind; user; repo } =
+  let base_uri { repo; kind } =
     let host = host_of_kind kind in
-    sprintf
-      "%s/%s/%s"
-      host
-      (match kind with
-       | Sourcehut -> "~" ^ user
-       | _ -> user)
-      repo
+    match repo with
+    | User_repo { user; repo } ->
+      sprintf
+        "%s/%s/%s"
+        host
+        (match kind with
+         | Sourcehut -> "~" ^ user
+         | _ -> user)
+        repo
+    | Org_repo { org; proj; repo } -> sprintf "%s/%s/%s/%s" host org proj repo
   ;;
 
   let add_https s = "https://" ^ s
@@ -68,15 +90,16 @@ module Host = struct
     ; "Sourcehut", Sourcehut, Some (3, 1)
     ]
     |> List.map ~f:(fun (name, kind, since) ->
+      let of_string ~loc s =
+        match String.split ~on:'/' s with
+        | [ user; repo ] -> k { repo = User_repo { user; repo }; kind }
+        | [ org; proj; repo ] -> k { repo = Org_repo { org; proj; repo }; kind }
+        | _ ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "%s repository must be of form user/repo" name ]
+      in
       let decode =
-        let of_string ~loc s =
-          match String.split ~on:'/' s with
-          | [ user; repo ] -> k { kind; user; repo }
-          | _ ->
-            User_error.raise
-              ~loc
-              [ Pp.textf "%s repository must be of form user/repo" name ]
-        in
         let open Decoder in
         (match since with
          | None -> return ()
@@ -87,9 +110,13 @@ module Host = struct
       constr, decode)
   ;;
 
-  let encode { user; repo; kind } =
+  let encode { repo; kind } =
     let forge = to_string kind in
-    let path = user ^ "/" ^ repo in
+    let path =
+      match repo with
+      | User_repo { user; repo } -> sprintf "%s/%s" user repo
+      | Org_repo { org; proj; repo } -> sprintf "%s/%s/%s" org proj repo
+    in
     let open Encoder in
     pair string string (forge, path)
   ;;

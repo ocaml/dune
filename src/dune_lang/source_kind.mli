@@ -5,9 +5,19 @@ module Host : sig
     | Gitlab
     | Sourcehut
 
+  type repo =
+    | User_repo of
+        { user : string
+        ; repo : string
+        }
+    | Org_repo of
+        { org : string
+        ; proj : string
+        ; repo : string
+        }
+
   type t =
-    { user : string
-    ; repo : string
+    { repo : repo
     ; kind : kind
     }
 

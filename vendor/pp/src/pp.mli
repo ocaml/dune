@@ -102,7 +102,7 @@ val newline : _ t
     v} *)
 
 (** Try to put as much as possible on each line. Additionally, a break hint
-    always break the line if the breaking would reduce the indentation level
+    always breaks the line if the breaking would reduce the indentation level
     inside the box ([break] with negative [shift] value). *)
 val box : ?indent:int -> 'a t -> 'a t
 
@@ -178,7 +178,7 @@ val to_fmt_with_tags
 
 (** Inject a classic formatter in a document.
 
-    Disclaimer: this function is to meant to help using [Pp] in existing code
+    Disclaimer: this function is meant to help using [Pp] in existing code
     that already use the [Format] module without having to port everything to
     [Pp]. It is not meant as the normal way to create [Pp.t] values. *)
 val of_fmt : (Format.formatter -> 'a -> unit) -> 'a -> _ t

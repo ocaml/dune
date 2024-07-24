@@ -97,7 +97,7 @@ module Host = struct
         | _ ->
           User_error.raise
             ~loc
-            [ Pp.textf "%s repository must be of form user/repo" name ]
+            [ Pp.textf "%s repository must be of form user/repo or org/proj/repo" name ]
       in
       let decode =
         let open Decoder in

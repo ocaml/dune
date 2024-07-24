@@ -65,8 +65,7 @@ val break : nspaces:int -> shift:int -> _ t
     otherwise [a] will be printed, [b] spaces are printed and then [c] is
     printed. The indentation [y] can be negative, in which case the indentation
     will be reduced. *)
-val custom_break :
-  fits:string * int * string -> breaks:string * int * string -> _ t
+val custom_break : fits:string * int * string -> breaks:string * int * string -> _ t
 
 (** Force a newline to be printed *)
 val newline : _ t
@@ -169,8 +168,8 @@ end
 (** Render a document to a classic formatter *)
 val to_fmt : Format.formatter -> _ t -> unit
 
-val to_fmt_with_tags :
-     Format.formatter
+val to_fmt_with_tags
+  :  Format.formatter
   -> 'a t
   -> tag_handler:(Format.formatter -> 'a -> 'a t -> unit)
   -> unit

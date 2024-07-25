@@ -1,15 +1,11 @@
 module Host : sig
-  type kind =
-    | Github
-    | Bitbucket
-    | Gitlab
-    | Sourcehut
+  type user_repo =
+    { user : string
+    ; repo : string
+    }
 
-  type repo =
-    | User_repo of
-        { user : string
-        ; repo : string
-        }
+  type gitlab_repo =
+    | User_repo of user_repo
     | Org_repo of
         { org : string
         ; proj : string
@@ -17,9 +13,10 @@ module Host : sig
         }
 
   type t =
-    { repo : repo
-    ; kind : kind
-    }
+    | Github of user_repo
+    | Bitbucket of user_repo
+    | Gitlab of gitlab_repo
+    | Sourcehut of user_repo
 
   val homepage : t -> string
   val bug_reports : t -> string

@@ -43,11 +43,7 @@ let empty =
 
 let example =
   { source =
-      Some
-        (Host
-           { repo = Source_kind.Host.User_repo { user = "username"; repo = "reponame" }
-           ; kind = Source_kind.Host.Github
-           })
+      Some (Host (Source_kind.Host.Github { user = "username"; repo = "reponame" }))
   ; license = Some [ "LICENSE" ]
   ; authors = Some [ "Author Name" ]
   ; maintainers = Some [ "Maintainer Name" ]

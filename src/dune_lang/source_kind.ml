@@ -46,7 +46,7 @@ module Host = struct
     match repo with
     | Gitlab gitlab_repo -> dyn_of_gitlab_repo kind gitlab_repo
     | Github user_repo | Bitbucket user_repo | Sourcehut user_repo ->
-        dyn_of_user_repo kind user_repo
+      dyn_of_user_repo kind user_repo
   ;;
 
   let host_of_repo = function
@@ -59,10 +59,10 @@ module Host = struct
   let base_uri repo =
     let host = host_of_repo repo in
     match repo with
-    | Gitlab (Org_repo {org; proj; repo}) -> sprintf "%s/%s/%s/%s" host org proj repo
-    | Sourcehut {user; repo} -> sprintf "%s/~%s/%s" host user repo
-    | Gitlab (User_repo {user; repo}) | Github {user; repo} | Bitbucket {user; repo} ->
-        sprintf "%s/%s/%s" host user repo
+    | Gitlab (Org_repo { org; proj; repo }) -> sprintf "%s/%s/%s/%s" host org proj repo
+    | Sourcehut { user; repo } -> sprintf "%s/~%s/%s" host user repo
+    | Gitlab (User_repo { user; repo }) | Github { user; repo } | Bitbucket { user; repo }
+      -> sprintf "%s/%s/%s" host user repo
   ;;
 
   let add_https s = "https://" ^ s
@@ -75,49 +75,51 @@ module Host = struct
     | Sourcehut _ as repo -> add_https ("todo." ^ base_uri repo)
   ;;
 
-  (* todo -- @H-ANSEN
-     currently each forge in the list is evaluated in order, since 'gitlab' 
-     now has the option to specifiy a organization style repo we need some way
-     to identify this type and present a error in the case that the dune version
-     is not supported. Currently no error is thrown *)
   let enum k =
     let stub_user_repo = { user = ""; repo = "" } in
     let stub_org_repo = Org_repo { org = ""; proj = ""; repo = "" } in
-    [ "Github", Github stub_user_repo, None
-    ; "Bitbucket", Bitbucket stub_user_repo, Some (2, 8)
-    ; "Sourcehut", Sourcehut stub_user_repo, Some (3, 1)
-    ; "Gitlab", Gitlab (User_repo stub_user_repo), Some (2, 8)
-    ; "Gitlab", Gitlab stub_org_repo, Some (3, 17)
+    [ "Github", Github stub_user_repo
+    ; "Bitbucket", Bitbucket stub_user_repo
+    ; "Sourcehut", Sourcehut stub_user_repo
+    ; "Gitlab", Gitlab (User_repo stub_user_repo)
+    ; "Gitlab", Gitlab stub_org_repo
     ]
-    |> List.map ~f:(fun (name, kind, since) ->
+    |> List.map ~f:(fun (name, kind) ->
       let of_string ~loc str =
         match kind, String.split ~on:'/' str with
-        | Gitlab _, [ user; repo ] -> k @@ Gitlab (User_repo { user; repo })
-        | Gitlab _, [ org; proj; repo ] -> k @@ Gitlab (Org_repo { org; proj; repo })
-        | Github _, [ user; repo ] -> k @@ Github { user; repo }
-        | Bitbucket _, [ user; repo ] -> k @@ Bitbucket { user; repo }
-        | Sourcehut _, [ user; repo ] -> k @@ Sourcehut { user; repo }
+        | Github _, [ user; repo ] -> Github { user; repo }, (None, name)
+        | Bitbucket _, [ user; repo ] -> Bitbucket { user; repo }, (Some (2, 8), name)
+        | Sourcehut _, [ user; repo ] -> Sourcehut { user; repo }, (Some (3, 1), name)
+        | Gitlab _, [ user; repo ] ->
+          Gitlab (User_repo { user; repo }), (Some (2, 8), name)
+        | Gitlab _, [ org; proj; repo ] ->
+          Gitlab (Org_repo { org; proj; repo }), (Some (3, 17), "Gitlab organization repo")
+        | Gitlab _, _ ->
+          User_error.raise
+            ~loc
+            [ Pp.textf "%s repository must be of form user/repo or org/proj/repo" name ]
         | _, [ _; _; _ ] ->
           User_error.raise
             ~loc
             ~hints:
-              [ Pp.textf
-                  "The provided form 'org/proj/repo' is specific to Gitlab projects"
-              ]
+              [ Pp.textf "The provided form '%s' is specific to Gitlab projects" str ]
             [ Pp.textf "%s repository must be of form user/repo" name ]
         | _, _ ->
           User_error.raise
             ~loc
             [ Pp.textf "%s repository must be of form user/repo" name ]
       in
-      let decode =
+      let decoder =
         let open Decoder in
-        (match since with
-         | None -> return ()
-         | Some v -> Syntax.since Stanza.syntax v)
-        >>> plain_string of_string
+        plain_string of_string
+        >>= fun (t, since) ->
+        let decode_since = function
+          | None, _ -> return ()
+          | Some v, what -> Syntax.since ~what Stanza.syntax v
+        in
+        decode_since since >>> return t >>| k
       in
-      kind_string kind, decode)
+      kind_string kind, decoder)
   ;;
 
   let encode repo =

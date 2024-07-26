@@ -98,7 +98,7 @@ thrown telling us we need a more recent version of dune to use orginaziton
 syntax.
 
   $ sed -i -e '1s|.*|(lang dune 3.0)|' dune-project
-  $ sed -i '4s|.*|(source (gitlab org/proj/repo))|' dune-project
+  $ sed -i -e '4s|.*|(source (gitlab org/proj/repo))|' dune-project
   $ dune build
   File "dune-project", line 4, characters 8-30:
   4 | (source (gitlab org/proj/repo))

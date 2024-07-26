@@ -116,6 +116,7 @@ module Ext : sig
   val cma : mode:Mode.t -> t
   val runtime : mode:Mode.t -> t
   val wasm_dir : t
+  val js_shape : t
 end
 
 module Env : sig

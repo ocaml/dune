@@ -213,6 +213,27 @@ let wasmoo ~dir sctx =
   Super_context.resolve_program sctx ~dir ~loc:None "wasm_of_ocaml"
 ;;
 
+let jsoo_memo ~dir sctx =
+  Super_context.resolve_program_memo
+    sctx
+    ~dir
+    ~loc:None
+    ~where:Original_path
+    ~hint:install_jsoo_hint
+    "js_of_ocaml"
+;;
+
+let jsoo_has_shapes ~dir sctx =
+  let* jsoo = jsoo_memo ~dir sctx in
+  let+ jsoo_version = Version.jsoo_version jsoo in
+  match jsoo_version with
+  | Some version ->
+    (match Version.compare version (5, 8) with
+     | Lt -> false
+     | Gt | Eq -> true)
+  | None -> false
+;;
+
 type sub_command =
   | Compile
   | Link
@@ -477,8 +498,26 @@ let link_rule
     ~config:None
 ;;
 
-let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~sourcemap =
-  let spec = Command.Args.Dep src in
+let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~shapes ~sourcemap =
+  let spec =
+    Command.Args.(
+      S
+        [ Dep src
+        ; (match shapes, (mode : Js_of_ocaml.Mode.t) with
+           | Some shapes, JS ->
+             S
+               [ A "--shapes"
+               ; Hidden_targets
+                   [ Path.Build.set_extension target ~ext:Js_of_ocaml.Ext.js_shape ]
+               ; Dyn
+                   (let open Action_builder.O in
+                    let+ shapes = shapes in
+                    S (List.map shapes ~f:(fun s -> S [ A "--load"; Dep s ])))
+               ]
+           | Some _, Wasm -> S []
+           | None, _ -> S [])
+        ])
+  in
   let flags = in_context.Js_of_ocaml.In_context.flags in
   js_of_ocaml_rule
     sctx
@@ -493,9 +532,42 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~sourcemap =
     ~sourcemap
 ;;
 
-let build_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~config =
+let build_cm cctx ~dir ~in_context ~mode ~src ~obj_dir ~config:config_opt =
   let name = with_js_ext ~mode (Path.basename src) in
-  let target = in_obj_dir ~obj_dir ~config [ name ] in
+  let target = in_obj_dir ~obj_dir ~config:config_opt [ name ] in
+  let sctx = Compilation_context.super_context cctx in
+  let ctx = Super_context.context sctx |> Context.build_context in
+  let+ jsoo_has_shapes =
+    match mode with
+    | JS -> jsoo_has_shapes ~dir sctx
+    | Wasm -> Memo.return false
+  in
+  let shapes =
+    if jsoo_has_shapes
+    then
+      Some
+        (let open Action_builder.O in
+         let+ libs = Resolve.Memo.read (Compilation_context.requires_link cctx)
+         and+ config =
+           match config_opt with
+           | None ->
+             let flags = in_context.Js_of_ocaml.In_context.flags in
+             js_of_ocaml_flags sctx ~dir ~mode flags
+             |> Action_builder.bind ~f:(fun (x : _ Js_of_ocaml.Flags.t) -> x.compile)
+             |> Action_builder.map ~f:Config.of_flags
+           | Some config -> Action_builder.return config
+         in
+         Path.build
+           (in_build_dir
+              ctx
+              ~config
+              [ "stdlib"; "stdlib.cma" ^ Js_of_ocaml.Ext.js_shape ])
+         :: List.concat_map libs ~f:(fun lib ->
+           List.map
+             (jsoo_archives ~mode ctx config lib)
+             ~f:(Path.set_extension ~ext:Js_of_ocaml.Ext.js_shape)))
+    else None
+  in
   build_cm'
     sctx
     ~dir
@@ -503,7 +575,8 @@ let build_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~config =
     ~mode
     ~src
     ~target
-    ~config:(Option.map config ~f:Action_builder.return)
+    ~shapes
+    ~config:(Option.map config_opt ~f:Action_builder.return)
     ~sourcemap:Js_of_ocaml.Sourcemap.Inline
 ;;
 
@@ -514,7 +587,10 @@ let setup_separate_compilation_rules sctx components =
     let config = Config.of_string s_config in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
     let ctx = Super_context.context sctx in
-    let* installed_libs = Lib.DB.installed ctx in
+    let* installed_libs = Lib.DB.installed ctx
+    and* jsoo_has_shapes =
+      jsoo_has_shapes ~dir:(Context.build_context ctx).build_dir sctx
+    in
     Lib.DB.find installed_libs pkg
     >>= (function
      | None -> Memo.return ()
@@ -546,6 +622,12 @@ let setup_separate_compilation_rules sctx components =
            let target =
              in_build_dir build_context ~config [ lib_name; with_js_ext ~mode name ]
            in
+           let shapes =
+             if jsoo_has_shapes
+             then (* FIXME: we should load shapes *)
+               Some (Action_builder.return [])
+             else None
+           in
            build_cm'
              sctx
              ~dir
@@ -555,6 +637,7 @@ let setup_separate_compilation_rules sctx components =
              ~target
              ~config:(Some (Action_builder.return config))
              ~sourcemap:Js_of_ocaml.Sourcemap.Inline
+             ~shapes
            |> Super_context.add_rule sctx ~dir)))
 ;;
 

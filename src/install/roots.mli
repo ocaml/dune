@@ -22,7 +22,7 @@ val map : f:('a -> 'b) -> 'a t -> 'b t
 (** return the roots of the first argument if present *)
 val first_has_priority : 'a option t -> 'a option t -> 'a option t
 
-val to_env_without_path : Path.Build.t t -> (Env.Var.t * Path.Build.t) list
+val to_env_without_path : 'a t -> relative:('a -> string -> 'a) -> (Env.Var.t * 'a) list
 val add_to_env : Path.Build.t t -> Env.t -> Env.t
 val make : 'a -> relative:('a -> string -> 'a) -> 'a t
 val make_all : 'a -> 'a t

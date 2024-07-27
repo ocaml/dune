@@ -24,6 +24,13 @@ val of_env_with_findlib
   -> which:(Filename.t -> Path.t option Memo.t)
   -> t Memo.t
 
+val make
+  :  Context_name.t
+  -> which:(string -> Path.t option Memo.t)
+  -> env:Env.t
+  -> get_ocaml_tool:(dir:Path.t -> string -> Path.t option Memo.t)
+  -> t Memo.t
+
 val of_binaries : path:Path.t list -> Context_name.t -> Env.t -> Path.Set.t -> t Memo.t
 
 (** Return the compiler needed for this compilation mode *)

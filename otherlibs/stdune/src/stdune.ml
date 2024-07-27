@@ -18,6 +18,7 @@ module Table = Table
 module Int = Int
 module Id = Id
 module Io = Io
+module Lazy = Lazy
 module List = List
 module Map = Map
 module Option = Option

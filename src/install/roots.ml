@@ -80,10 +80,10 @@ open Dune_findlib
 let ocamlpath = Findlib.Config.ocamlpath_var
 let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
 
-let to_env_without_path t =
-  [ Ocaml.Env.caml_ld_library_path, Path.Build.relative t.lib_root "stublibs"
+let to_env_without_path t ~relative =
+  [ Ocaml.Env.caml_ld_library_path, relative t.lib_root "stublibs"
   ; ocamlpath, t.lib_root
-  ; "OCAMLTOP_INCLUDE_PATH", Path.Build.relative t.lib_root "toplevel"
+  ; "OCAMLTOP_INCLUDE_PATH", relative t.lib_root "toplevel"
   ; ocamlfind_ignore_dups_in, t.lib_root
   ; "MANPATH", t.man
   ]
@@ -96,7 +96,7 @@ let sep var =
 ;;
 
 let add_to_env t env =
-  to_env_without_path t
+  to_env_without_path t ~relative:Path.Build.relative
   |> List.fold_left ~init:env ~f:(fun env (var, path) ->
     Env.update env ~var ~f:(fun _PATH ->
       let path_sep = sep var in

@@ -334,6 +334,7 @@ let validate_packages packages =
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
       List.filter_map dependant_package.depends ~f:(fun (loc, dependency) ->
         if Package_name.Map.mem packages dependency
+           || Package_name.equal dependency Dune_dep.name
         then None
         else Some { dependant_package; dependency; loc }))
   in

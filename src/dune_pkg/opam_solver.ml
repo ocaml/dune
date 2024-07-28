@@ -245,9 +245,10 @@ module Context_for_dune = struct
 
   let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
     =
-    let dune = OpamPackage.Name.of_string "dune" in
     fun t pkg ->
-      if OpamPackage.Name.equal dune pkg then Some (`Eq, t.dune_version) else None
+    if Package_name.equal Dune_dep.name (Package_name.of_opam_package_name pkg)
+    then Some (`Eq, t.dune_version)
+    else None
   ;;
 
   let filter_deps t package filtered_formula =
@@ -784,14 +785,12 @@ let solve_lock_dir
   >>= function
   | Error _ as e -> Fiber.return e
   | Ok solution ->
-    (* don't include local packages in the lock dir *)
+    (* don't include local packages or dune in the lock dir *)
     let opam_packages_to_lock =
-      let is_local_package package =
-        OpamPackage.name package
-        |> Package_name.of_opam_package_name
-        |> Package_name.Map.mem local_packages
-      in
-      List.filter solution ~f:(Fun.negate is_local_package)
+      let is_local_package = Package_name.Map.mem local_packages in
+      List.filter solution ~f:(fun package ->
+        let name = OpamPackage.name package |> Package_name.of_opam_package_name in
+        (not (is_local_package name)) && not (Package_name.equal Dune_dep.name name))
     in
     let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
     let ocaml, pkgs =

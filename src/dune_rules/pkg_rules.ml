@@ -1168,7 +1168,9 @@ end = struct
   let resolve_impl ((db : DB.t), ctx, (name : Package.Name.t)) =
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
-    | Some { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } ->
+    | Some
+        ({ Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } as
+         pkg) ->
       assert (Package.Name.equal name info.name);
       let* depends =
         Memo.parallel_map depends ~f:(fun name ->
@@ -1185,7 +1187,34 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make name ctx in
-      let paths = Paths.map_path write_paths ~f:Path.build in
+      let* paths, build_command, install_command =
+        let paths = Paths.map_path write_paths ~f:Path.build in
+        match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
+        | false -> Memo.return (paths, build_command, install_command)
+        | true ->
+          let pkg_dir = Pkg_toolchain.pkg_dir pkg in
+          let suffix = Path.basename (Path.outside_build_dir pkg_dir) in
+          let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in
+          let doc =
+            Path.outside_build_dir @@ Path.Outside_build_dir.relative prefix "doc"
+          in
+          let+ install_command =
+            match install_command with
+            | None -> Memo.return None
+            | Some install_command ->
+              Pkg_toolchain.modify_install_action ~prefix ~suffix install_command
+              >>| Option.some
+          in
+          let build_command = Some (Build_command.Action Pkg_toolchain.build_action) in
+          ( { paths with
+              target_dir = Path.outside_build_dir prefix
+            ; install_roots =
+                Lazy.map paths.install_roots ~f:(fun root ->
+                  { root with Install.Roots.doc_root = doc })
+            }
+          , build_command
+          , install_command )
+      in
       let t =
         { Pkg.id
         ; build_command

@@ -324,22 +324,27 @@ type missing_dependency =
   ; loc : Loc.t
   }
 
-(* [validate_packages packages] returns
-   [Error (`Missing_dependencies missing_dependencies)] where
-   [missing_dependencies] is a non-empty list with an element for each package
-   dependency which doesn't have a corresponding entry in [packages]. *)
+(* Makes sure that every package in the lock directory has a dependency
+   that exists in the lock directory. *)
 let validate_packages packages =
-  let missing_dependencies =
+  match
     Package_name.Map.values packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
       List.filter_map dependant_package.depends ~f:(fun (loc, dependency) ->
         if Package_name.Map.mem packages dependency
         then None
         else Some { dependant_package; dependency; loc }))
-  in
-  if List.is_empty missing_dependencies
-  then Ok ()
-  else Error (`Missing_dependencies missing_dependencies)
+  with
+  | [] -> ()
+  | missing_dependencies ->
+    List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
+      ( "missing dependency"
+      , Dyn.record
+          [ "missing package", Package_name.to_dyn dependency
+          ; "dependency of", Package_name.to_dyn dependant_package.info.name
+          ; "loc", Loc.to_dyn_hum loc
+          ] ))
+    |> Code_error.raise "Invalid package table"
 ;;
 
 let create_latest_version
@@ -349,16 +354,7 @@ let create_latest_version
   ~repos
   ~expanded_solver_variable_bindings
   =
-  (match validate_packages packages with
-   | Ok () -> ()
-   | Error (`Missing_dependencies missing_dependencies) ->
-     List.map missing_dependencies ~f:(fun { dependant_package; dependency; loc = _ } ->
-       ( "missing dependency"
-       , Dyn.record
-           [ "missing package", Package_name.to_dyn dependency
-           ; "dependency of", Package_name.to_dyn dependant_package.info.name
-           ] ))
-     |> Code_error.raise "Invalid package table");
+  validate_packages packages;
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
     Local_package.(

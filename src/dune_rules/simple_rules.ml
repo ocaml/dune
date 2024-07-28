@@ -106,31 +106,15 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
     let* action =
-      let+ (action : _ Action_builder.With_targets.t) =
-        let chdir = Expander.dir expander in
-        Action_unexpanded.expand
-          (snd rule.action)
-          ~loc:(fst rule.action)
-          ~chdir
-          ~expander
-          ~deps:rule.deps
-          ~targets
-          ~targets_dir:dir
-      in
-      if rule.patch_back_source_tree
-      then
-        Action_builder.With_targets.map action ~f:(fun action ->
-          (* Here we expect that [action.sandbox] is [Sandbox_config.default]
-             because the parsing of [rule] stanzas forbids having both a
-             sandboxing setting in [deps] and a [patch_back_source_tree] field
-             at the same time.
-
-             If we didn't have this restriction and [action.sandbox] was
-             something that didn't permit [Some Patch_back_source_tree], Dune
-             would crash in a way that would be difficult for the user to
-             understand. *)
-          Action.Full.add_sandbox Sandbox_mode.Set.patch_back_source_tree_only action)
-      else action
+      let chdir = Expander.dir expander in
+      Action_unexpanded.expand
+        (snd rule.action)
+        ~loc:(fst rule.action)
+        ~chdir
+        ~expander
+        ~deps:rule.deps
+        ~targets
+        ~targets_dir:dir
     in
     (match rule_kind ~rule ~action with
      | No_alias ->

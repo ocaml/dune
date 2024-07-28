@@ -5,7 +5,6 @@ type t =
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
   ; mode : Rule.Mode.t
-  ; patch_back_source_tree : bool
   ; locks : Locks.t
   ; loc : Loc.t
   ; enabled_if : Blang.t

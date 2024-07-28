@@ -716,7 +716,7 @@ let opam_package_to_lock_file_pkg
   kind, { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env }
 ;;
 
-let solve_package_list packages context =
+let solve_package_list packages ~context =
   Fiber.collect_errors (fun () ->
     (* [Solver.solve] returns [Error] when it's unable to find a solution to
        the dependencies, but can also raise exceptions, for example if opam
@@ -778,20 +778,12 @@ let solve_lock_dir
       ~stats_updater
       ~constraints
   in
-  let packages =
-    Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
-      Package_name.to_opam_package_name name)
-  in
-  solve_package_list packages context
+  Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
+    Package_name.to_opam_package_name name)
+  |> solve_package_list ~context
   >>= function
   | Error _ as e -> Fiber.return e
   | Ok solution ->
-    let version_by_package_name =
-      List.map solution ~f:(fun (package : OpamPackage.t) ->
-        ( Package_name.of_opam_package_name (OpamPackage.name package)
-        , Package_version.of_opam_package_version (OpamPackage.version package) ))
-      |> Package_name.Map.of_list_exn
-    in
     (* don't include local packages in the lock dir *)
     let opam_packages_to_lock =
       let is_local_package package =
@@ -804,6 +796,12 @@ let solve_lock_dir
     let* candidates_cache = Fiber_cache.to_table context.candidates_cache in
     let ocaml, pkgs =
       let pkgs =
+        let version_by_package_name =
+          List.map solution ~f:(fun (package : OpamPackage.t) ->
+            ( Package_name.of_opam_package_name (OpamPackage.name package)
+            , Package_version.of_opam_package_version (OpamPackage.version package) ))
+          |> Package_name.Map.of_list_exn
+        in
         List.map opam_packages_to_lock ~f:(fun opam_package ->
           opam_package_to_lock_file_pkg
             solver_env
@@ -842,8 +840,8 @@ let solve_lock_dir
           "Solver selected multiple versions for the same package"
           [ "name", Package_name.to_dyn name ]
       | Ok pkgs_by_name ->
-        let stats = Solver_stats.Updater.snapshot stats_updater in
         let expanded_solver_variable_bindings =
+          let stats = Solver_stats.Updater.snapshot stats_updater in
           Solver_stats.Expanded_variable_bindings.of_variable_set
             stats.expanded_variables
             solver_env
@@ -873,12 +871,11 @@ let solve_lock_dir
     let+ files =
       let resolved_packages =
         List.map opam_packages_to_lock ~f:(fun opam_package ->
-          let package_name =
+          let candidates =
             OpamPackage.name opam_package
-            |> OpamPackage.Name.to_string
-            |> Package_name.of_string
+            |> Package_name.of_opam_package_name
+            |> Table.find_exn candidates_cache
           in
-          let candidates = Table.find_exn candidates_cache package_name in
           OpamPackage.Version.Map.find
             (OpamPackage.version opam_package)
             candidates.resolved)
@@ -888,8 +885,7 @@ let solve_lock_dir
         let package_name =
           Resolved_package.package resolved_package
           |> OpamPackage.name
-          |> OpamPackage.Name.to_string
-          |> Package_name.of_string
+          |> Package_name.of_opam_package_name
         in
         package_name, entries)
       >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)

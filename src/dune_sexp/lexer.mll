@@ -132,7 +132,7 @@ module Template = struct
       match !state with
       | String ->
         state := Template (v :: add_buf_to_parts []);
-      | Block_string -> assert false;
+      | Block_string -> state := Template (v :: add_buf_to_parts []);
       | Template parts ->
         let parts = add_buf_to_parts parts in
         state := Template (v::parts)

@@ -59,6 +59,8 @@ module Pkg_info = struct
 end
 
 module Paths = struct
+  (* The [paths] of a package are the information about the artifacts
+     that we know {e without} executing any commands. *)
   type 'a t =
     { source_dir : 'a
     ; target_dir : 'a
@@ -133,7 +135,15 @@ end
 
 module Install_cookie = struct
   (* The install cookie represents a serialized representation of all the
-     installed artifacts and variables. *)
+     installed artifacts and variables.
+
+     The install cookie of a package is the source of all data we must refer to
+     address a package's artifacts.
+
+     It is constructed after we've built and installed the packages. In this
+     sense, it is the "installation trace" that we must refer to so that we
+     don't have to know anything about the installation procedure.
+  *)
 
   type t =
     { files : Path.t list Section.Map.t
@@ -1267,6 +1277,14 @@ end = struct
 end
 
 module Install_action = struct
+  (* The install action does the following:
+
+     1. Runs the install action in the lock file (if exists)
+     2. Reads the .install file produced by the build command
+     3. Discoves all the files produced by 1.
+     4. Combines the set of files in 2. and 3. to produce a "cookie" file
+  *)
+
   let installable_sections =
     Section.(Set.diff all (Set.of_list [ Misc; Libexec; Libexec_root ]))
     |> Section.Set.to_list
@@ -1274,10 +1292,14 @@ module Install_action = struct
 
   module Spec = struct
     type ('path, 'target) t =
-      { install_file : 'path
-      ; config_file : 'path
-      ; target_dir : 'target
-      ; install_action : [ `Has_install_action | `No_install_action ]
+      { (* location of the install file we must read (if produced) *)
+        install_file : 'path
+      ; (* location of the variables we must read (if produced) *)
+        config_file : 'path
+      ; (* where we are supposed to put the installed artifacts *)
+        target_dir : 'target
+      ; (* does the package have its own install command? *)
+        install_action : [ `Has_install_action | `No_install_action ]
       ; package : Package.Name.t
       }
 
@@ -1379,6 +1401,9 @@ module Install_action = struct
     ;;
 
     let section_map_of_dir install_paths =
+      (* reverse engineer the installed artifacts from running the install
+         action by looking at the file system post running the action and
+         taking educated guesses about which section each file belongs to *)
       let get = Install.Paths.get install_paths in
       List.concat_map installable_sections ~f:(fun section ->
         let path = get section in
@@ -1517,6 +1542,9 @@ module Install_action = struct
             section_map_of_dir install_paths
         in
         let+ from_install_file =
+          (* Read all the artifacts from the .install file produced by
+             the build command. This is the happy path where we don't guess
+             anything. *)
           Async.async (fun () -> Path.Untracked.exists install_file)
           >>= function
           | false -> Fiber.return Section.Map.empty
@@ -1549,6 +1577,8 @@ module Install_action = struct
             let+ () = Async.async (fun () -> Path.unlink_exn install_file) in
             map
         in
+        (* Combine the artifacts declared in the .install, and the ones we discovered
+           by runing the install action *)
         (* TODO we should make sure that overwrites aren't allowed *)
         Section.Map.union from_install_action from_install_file ~f:(fun _ x y ->
           Some (x @ y))
@@ -1557,6 +1587,7 @@ module Install_action = struct
         let+ variables = Async.async (fun () -> read_variables config_file) in
         { Install_cookie.files; variables }
       in
+      (* Produce the cookie file in the standard path *)
       let cookie_file = Path.build @@ Paths.install_cookie' target_dir in
       Async.async (fun () ->
         cookie_file |> Path.parent_exn |> Path.mkdir_p;

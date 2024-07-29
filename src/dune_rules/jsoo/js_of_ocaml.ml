@@ -12,6 +12,23 @@ end
 
 let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
+module Sourcemap = struct
+  type t =
+    | No
+    | Inline
+    | File
+
+  let decode = enum [ "no", No; "inline", Inline; "file", File ]
+
+  let equal x y =
+    match x, y with
+    | No, No -> true
+    | Inline, Inline -> true
+    | File, File -> true
+    | No, _ | Inline, _ | File, _ -> false
+  ;;
+end
+
 module Flags = struct
   type 'flags t =
     { build_runtime : 'flags
@@ -38,11 +55,7 @@ module Flags = struct
 
   let default ~profile =
     if Profile.is_dev profile
-    then
-      { build_runtime = [ "--pretty"; "--source-map-inline" ]
-      ; compile = [ "--pretty"; "--source-map-inline" ]
-      ; link = [ "--source-map-inline" ]
-      }
+    then { build_runtime = [ "--pretty" ]; compile = [ "--pretty" ]; link = [] }
     else empty
   ;;
 
@@ -87,52 +100,6 @@ module Flags = struct
   ;;
 end
 
-module In_buildable = struct
-  type t =
-    { flags : Ordered_set_lang.Unexpanded.t Flags.t
-    ; javascript_files : string list
-    }
-
-  let decode =
-    let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    if syntax_version < (3, 0)
-    then
-      fields
-        (let+ flags = Ordered_set_lang.Unexpanded.field "flags"
-         and+ javascript_files = field "javascript_files" (repeat string) ~default:[] in
-         { flags =
-             { build_runtime = Ordered_set_lang.Unexpanded.standard
-             ; compile = flags
-             ; link = flags (* we set link as well to preserve the old semantic *)
-             }
-         ; javascript_files
-         })
-    else
-      fields
-        (let+ flags = Flags.decode
-         and+ javascript_files = field "javascript_files" (repeat string) ~default:[] in
-         { flags; javascript_files })
-  ;;
-
-  let default = { flags = Flags.standard; javascript_files = [] }
-end
-
-module In_context = struct
-  type t =
-    { flags : Ordered_set_lang.Unexpanded.t Flags.t
-    ; javascript_files : Path.Build.t list
-    }
-
-  let make ~(dir : Path.Build.t) (x : In_buildable.t) =
-    { flags = x.flags
-    ; javascript_files =
-        List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
-    }
-  ;;
-
-  let default = { flags = Flags.standard; javascript_files = [] }
-end
-
 module Compilation_mode = struct
   type t =
     | Whole_program
@@ -149,9 +116,91 @@ module Compilation_mode = struct
   ;;
 end
 
+module In_buildable = struct
+  type t =
+    { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; javascript_files : string list
+    ; compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
+    }
+
+  let decode ~executable =
+    let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    if syntax_version < (3, 0)
+    then
+      fields
+        (let+ flags = Ordered_set_lang.Unexpanded.field "flags"
+         and+ javascript_files = field "javascript_files" (repeat string) ~default:[] in
+         { flags =
+             { build_runtime = Ordered_set_lang.Unexpanded.standard
+             ; compile = flags
+             ; link = flags (* we set link as well to preserve the old semantic *)
+             }
+         ; javascript_files
+         ; compilation_mode = None
+         ; sourcemap = None
+         })
+    else
+      fields
+        (let+ flags = Flags.decode
+         and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ compilation_mode =
+           if executable
+           then
+             field_o
+               "compilation_mode"
+               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode)
+           else return None
+         and+ sourcemap =
+           if executable
+           then
+             field_o
+               "sourcemap"
+               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
+           else return None
+         in
+         { flags; javascript_files; compilation_mode; sourcemap })
+  ;;
+
+  let default =
+    { flags = Flags.standard
+    ; javascript_files = []
+    ; compilation_mode = None
+    ; sourcemap = None
+    }
+  ;;
+end
+
+module In_context = struct
+  type t =
+    { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; javascript_files : Path.Build.t list
+    ; compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
+    }
+
+  let make ~(dir : Path.Build.t) (x : In_buildable.t) =
+    { flags = x.flags
+    ; javascript_files =
+        List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; compilation_mode = x.compilation_mode
+    ; sourcemap = x.sourcemap
+    }
+  ;;
+
+  let default =
+    { flags = Flags.standard
+    ; javascript_files = []
+    ; compilation_mode = None
+    ; sourcemap = None
+    }
+  ;;
+end
+
 module Env = struct
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }
@@ -159,25 +208,40 @@ module Env = struct
   let decode =
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
+       and+ sourcemap =
+         field_o
+           "sourcemap"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
-       { compilation_mode; runtest_alias; flags }
+       { compilation_mode; sourcemap; runtest_alias; flags }
   ;;
 
-  let equal { compilation_mode; runtest_alias; flags } t =
+  let equal { compilation_mode; sourcemap; runtest_alias; flags } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
+    && Option.equal Sourcemap.equal sourcemap t.sourcemap
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
   ;;
 
-  let map ~f { compilation_mode; runtest_alias; flags } =
-    { compilation_mode; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; sourcemap; runtest_alias; flags } =
+    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags }
   ;;
 
-  let empty = { compilation_mode = None; runtest_alias = None; flags = Flags.standard }
+  let empty =
+    { compilation_mode = None
+    ; sourcemap = None
+    ; runtest_alias = None
+    ; flags = Flags.standard
+    }
+  ;;
 
   let default ~profile =
-    { compilation_mode = None; runtest_alias = None; flags = Flags.default ~profile }
+    { compilation_mode = None
+    ; sourcemap = None
+    ; runtest_alias = None
+    ; flags = Flags.default ~profile
+    }
   ;;
 end

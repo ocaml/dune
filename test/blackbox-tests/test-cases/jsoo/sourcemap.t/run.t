@@ -9,5 +9,3 @@
 
   $ dune clean
   $ dune build bin/main.bc.map
-  Error: Don't know how to build bin/main.bc.map
-  [1]

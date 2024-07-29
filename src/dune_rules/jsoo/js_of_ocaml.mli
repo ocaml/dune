@@ -38,24 +38,11 @@ module Flags : sig
   val dump : string list Action_builder.t t -> Dune_lang.t list Action_builder.t
 end
 
-module In_buildable : sig
+module Sourcemap : sig
   type t =
-    { flags : Flags.Spec.t
-    ; javascript_files : string list
-    }
-
-  val decode : t Dune_lang.Decoder.t
-  val default : t
-end
-
-module In_context : sig
-  type t =
-    { flags : Flags.Spec.t
-    ; javascript_files : Path.Build.t list
-    }
-
-  val make : dir:Path.Build.t -> In_buildable.t -> t
-  val default : t
+    | No
+    | Inline
+    | File
 end
 
 module Compilation_mode : sig
@@ -64,9 +51,34 @@ module Compilation_mode : sig
     | Separate_compilation
 end
 
+module In_buildable : sig
+  type t =
+    { flags : Flags.Spec.t
+    ; javascript_files : string list
+    ; compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
+    }
+
+  val decode : executable:bool -> t Dune_lang.Decoder.t
+  val default : t
+end
+
+module In_context : sig
+  type t =
+    { flags : Flags.Spec.t
+    ; javascript_files : Path.Build.t list
+    ; compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
+    }
+
+  val make : dir:Path.Build.t -> In_buildable.t -> t
+  val default : t
+end
+
 module Env : sig
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; sourcemap : Sourcemap.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }

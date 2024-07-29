@@ -3,7 +3,6 @@
   (libraries mylib)
   (modes js)
   (js_of_ocaml
-    (flags (:standard \ --source-map-inline) --sourcemap)
-    (link_flags (:standard \ --source-map-inline) --sourcemap)
+    (sourcemap file)
   )
 )

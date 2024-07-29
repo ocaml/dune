@@ -337,9 +337,19 @@ let until_keyword =
   fun kwd ~before ~after -> loop kwd before after []
 ;;
 
+let plain_string_of_block_string bs =
+  String.split bs ~on:'\n'
+  |> List.map ~f:(fun line ->
+    match String.length line with
+    | 0 -> line
+    | _ as length -> String.sub line ~pos:4 ~len:(length - 4))
+  |> String.concat ~sep:"\n"
+;;
+
 let plain_string f =
   next (function
-    | Atom (loc, A s) | Quoted_string (loc, s) | Block_string (loc, s) -> f ~loc s
+    | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
+    | Block_string (loc, s) -> f ~loc (plain_string_of_block_string s)
     | Template { loc; _ } | List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 ;;

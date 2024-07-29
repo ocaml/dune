@@ -74,6 +74,7 @@ module Context_for_dune = struct
   type rejection =
     | (* TODO proper error messages for packages skipped via avoid-version *)
       Unavailable
+    | Avoid_version
 
   let local_package_default_version =
     Package_version.to_opam_package_version Lock_dir.Pkg_info.default_version
@@ -145,6 +146,7 @@ module Context_for_dune = struct
 
   let pp_rejection f = function
     | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
+    | Avoid_version -> Format.pp_print_string f "Package is excluded by avoid-version"
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
@@ -217,7 +219,7 @@ module Context_for_dune = struct
       |> List.map ~f:(fun (resolved_package, (priority : Priority.t)) ->
         let opam_file = Resolved_package.opam_file resolved_package in
         let opam_file_result =
-          if priority.avoid then Error Unavailable else available_or_error t opam_file
+          if priority.avoid then Error Avoid_version else available_or_error t opam_file
         in
         OpamFile.OPAM.version opam_file, opam_file_result)
     in

@@ -466,10 +466,8 @@ let raw = next Fun.id
 
 let basic_loc desc f =
   next (function
-    | Template { loc; _ }
-    | List (loc, _)
-    | Quoted_string (loc, _)
-    | Block_string (loc, _) -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
+    | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) | Block_string (loc, _)
+      -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) ->
       (match f ~loc (Atom.to_string s) with
        | None -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
@@ -564,10 +562,8 @@ let sum ?(force_parens = false) cstrs =
 let enum' (type a) (cstrs : (string * a t) list) : a t =
   next_with_user_context (fun uc sexp ->
     match sexp with
-    | Quoted_string (loc, _)
-    | Block_string (loc, _)
-    | Template { loc; _ }
-    | List (loc, _) -> User_error.raise ~loc [ Pp.text "Atom expected" ]
+    | Quoted_string (loc, _) | Block_string (loc, _) | Template { loc; _ } | List (loc, _)
+      -> User_error.raise ~loc [ Pp.text "Atom expected" ]
     | Atom (loc, A s) ->
       (match List.assoc cstrs s with
        | Some k ->

@@ -50,8 +50,7 @@ let pp_list_with_comments pp_sexp sexps =
 ;;
 
 let rec pp_sexp ~version : Cst.t -> _ = function
-  | (Atom _ | Quoted_string _ | Block_string _ | Template _) as sexp ->
-    pp_simple sexp
+  | (Atom _ | Quoted_string _ | Block_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox
       ~indent:1

@@ -96,6 +96,8 @@ let decode_manually f =
   match x with
   | Atom (loc, A s) -> literal ~quoted:false ~loc s
   | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
+  (* TODO(maxrn) *)
+  | Block_string (loc, s) -> literal ~quoted:true ~loc s
   | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   | Template { quoted; loc; parts } ->
     { quoted

@@ -19,6 +19,7 @@ module Encoded : sig
   val template : Template.t -> t
   val atom : Loc.t -> Atom.t -> t
   val quoted_string : Loc.t -> string -> t
+  val block_string : Loc.t -> string -> t
   val comment : Loc.t -> string list -> t
   val list : Loc.t -> t list -> t
   val to_csts : t list -> Cst.t list
@@ -49,6 +50,7 @@ end = struct
 
   let atom loc a = Atom (loc, a)
   let quoted_string loc s = Quoted_string (loc, s)
+  let block_string loc s = Block_string (loc, s)
 
   let comment loc lines =
     List
@@ -64,6 +66,7 @@ end = struct
     match x with
     | Template t -> Template t
     | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Block_string (loc, s) -> Block_string (loc, s)
     | Atom (loc, a) -> Atom (loc, a)
     | List (loc, Template x :: l) when x = comment_marker ->
       Comment
@@ -118,6 +121,9 @@ let rec loop with_comments depth lexer lexbuf acc =
   | Quoted_string s ->
     let loc = Loc.of_lexbuf lexbuf in
     loop with_comments depth lexer lexbuf (Encoded.quoted_string loc s :: acc)
+  | Block_string s ->
+    let loc = Loc.of_lexbuf lexbuf in
+    loop with_comments depth lexer lexbuf (Encoded.block_string loc s :: acc)
   | Template t ->
     let loc = Loc.of_lexbuf lexbuf in
     loop with_comments depth lexer lexbuf (Encoded.template { t with loc } :: acc)

@@ -63,7 +63,7 @@ let rec decode_one =
     peek_exn
     >>= function
     | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-    | Atom (_, A "") | Quoted_string (_, _) | Template _ -> elt
+    | Atom (_, A "") | Quoted_string (_, _) | Block_string (_, _) | Template _ -> elt
     | Atom (loc, A s) ->
       (match s with
        | ":standard" -> junk >>> return Standard

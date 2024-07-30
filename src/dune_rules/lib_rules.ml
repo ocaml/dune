@@ -289,20 +289,13 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     Foreign_sources.for_lib foreign_sources ~name
   in
   let* o_files =
-    let lib_foreign_o_files =
-      let { Lib_config.ext_obj; _ } = (Compilation_context.ocaml cctx).lib_config in
-      Foreign.Objects.build_paths lib.buildable.extra_objects ~ext_obj ~dir
-    in
-    let+ tbl =
-      Foreign_rules.build_o_files
-        ~sctx
-        ~dir
-        ~expander
-        ~requires
-        ~dir_contents
-        ~foreign_sources
-    in
-    Mode.Map.Multi.add_all tbl Mode.Select.All lib_foreign_o_files
+    Foreign_rules.build_o_files
+      ~sctx
+      ~dir
+      ~expander
+      ~requires
+      ~dir_contents
+      ~foreign_sources
   in
   let all_o_files = Mode.Map.Multi.to_flat_list o_files in
   let* () = Check_rules.add_files sctx ~dir all_o_files in

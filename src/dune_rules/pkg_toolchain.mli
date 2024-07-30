@@ -39,21 +39,7 @@ val modify_install_action
   -> Dune_lang.Action.t
   -> Dune_lang.Action.t Memo.t
 
-(** If the toolchain is already installed, just create an empty
-    config.cache file so other packages see that the compiler package is
-    installed. *)
-val build_action : Dune_lang.Action.t
-
-module Override_pform : sig
-  (** Allows various pform values to be overriden when expanding pforms
-      inside package commands. *)
-  type t =
-    { prefix : Path.t
-    ; doc : Path.t
-    }
-
-  (** Fields to override in the variable environment under which
-      commands are evaluated such that the package is installed to the
-      toolchains directory rather than inside the _build directory. *)
-  val make : installation_prefix:Path.Outside_build_dir.t -> t
-end
+val modify_build_action
+  :  prefix:Path.Outside_build_dir.t
+  -> Dune_lang.Action.t
+  -> Dune_lang.Action.t Memo.t

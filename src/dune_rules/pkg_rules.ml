@@ -68,6 +68,7 @@ module Paths = struct
     ; name : Package.Name.t
     ; install_roots : 'a Install.Roots.t Lazy.t
     ; install_paths : 'a Install.Paths.t Lazy.t
+    ; prefix : 'a
     }
 
   let map_path t ~f =
@@ -77,24 +78,30 @@ module Paths = struct
     ; extra_sources = f t.extra_sources
     ; install_roots = Lazy.map ~f:(Install.Roots.map ~f) t.install_roots
     ; install_paths = Lazy.map ~f:(Install.Paths.map ~f) t.install_paths
+    ; prefix = f t.prefix
     }
   ;;
 
-  let install_roots ~target_dir =
-    Install.Roots.opam_from_prefix ~relative:Path.Build.relative target_dir
+  let install_roots ~target_dir ~relative =
+    Install.Roots.opam_from_prefix ~relative target_dir
   ;;
 
-  let install_paths roots package =
-    Install.Paths.make ~relative:Path.Build.relative ~package ~roots
-  ;;
+  let install_paths roots package ~relative = Install.Paths.make ~relative ~package ~roots
 
-  let of_root name ~root =
-    let source_dir = Path.Build.relative root "source" in
-    let target_dir = Path.Build.relative root "target" in
-    let extra_sources = Path.Build.relative root "extra_source" in
-    let install_roots = lazy (install_roots ~target_dir) in
-    let install_paths = lazy (install_paths (Lazy.force install_roots) name) in
-    { source_dir; target_dir; extra_sources; name; install_paths; install_roots }
+  let of_root name ~root ~relative =
+    let source_dir = relative root "source" in
+    let target_dir = relative root "target" in
+    let extra_sources = relative root "extra_source" in
+    let install_roots = lazy (install_roots ~target_dir ~relative) in
+    let install_paths = lazy (install_paths (Lazy.force install_roots) name ~relative) in
+    { source_dir
+    ; target_dir
+    ; extra_sources
+    ; name
+    ; install_paths
+    ; install_roots
+    ; prefix = target_dir
+    }
   ;;
 
   let extra_source t extra_source = Path.append_local t.extra_sources extra_source
@@ -778,7 +785,7 @@ module Action_expander = struct
       | Sys_ocaml_version ->
         sys_poll_var (fun { sys_ocaml_version; _ } -> sys_ocaml_version)
       | Build -> Memo.return [ Value.Dir paths.source_dir ]
-      | Prefix -> Memo.return [ Value.Dir paths.target_dir ]
+      | Prefix -> Memo.return [ Value.Dir paths.prefix ]
       | User -> Memo.return [ Value.String (Unix.getlogin ()) ]
       | Jobs -> Memo.return [ Value.String (Int.to_string !Clflags.concurrency) ]
       | Arch -> sys_poll_var (fun { arch; _ } -> arch)
@@ -1196,7 +1203,7 @@ end = struct
           (Dune_pkg.Lock_dir.Pkg.files_dir info.name ~lock_dir)
       in
       let id = Pkg.Id.gen () in
-      let write_paths = Paths.make name ctx in
+      let write_paths = Paths.make name ctx ~relative:Path.Build.relative in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -1208,6 +1215,13 @@ end = struct
           let doc =
             Path.outside_build_dir @@ Path.Outside_build_dir.relative prefix "doc"
           in
+          let* build_command =
+            match build_command with
+            | None | Some Dune -> Memo.return build_command
+            | Some (Action action) ->
+              let+ action = Pkg_toolchain.modify_build_action ~prefix action in
+              Some (Build_command.Action action)
+          in
           let+ install_command =
             match install_command with
             | None -> Memo.return None
@@ -1215,9 +1229,8 @@ end = struct
               Pkg_toolchain.modify_install_action ~prefix ~suffix install_command
               >>| Option.some
           in
-          let build_command = Some (Build_command.Action Pkg_toolchain.build_action) in
           ( { paths with
-              target_dir = Path.outside_build_dir prefix
+              prefix = Path.outside_build_dir prefix
             ; install_roots =
                 Lazy.map paths.install_roots ~f:(fun root ->
                   { root with Install.Roots.doc_root = doc })
@@ -1298,6 +1311,10 @@ module Install_action = struct
         config_file : 'path
       ; (* where we are supposed to put the installed artifacts *)
         target_dir : 'target
+      ; (* if the package's installation prefix is outside the build
+           dir, it's stored here and will be used instead of [target_dir]
+           as the location of insntalled artifacts *)
+        prefix_outside_build_dir : Path.Outside_build_dir.t option
       ; (* does the package have its own install command? *)
         install_action : [ `Has_install_action | `No_install_action ]
       ; package : Package.Name.t
@@ -1307,7 +1324,13 @@ module Install_action = struct
     let version = 1
 
     let bimap
-      ({ install_file; config_file; target_dir; install_action = _; package = _ } as t)
+      ({ install_file
+       ; config_file
+       ; target_dir
+       ; prefix_outside_build_dir = _
+       ; install_action = _
+       ; package = _
+       } as t)
       f
       g
       =
@@ -1321,7 +1344,13 @@ module Install_action = struct
     let is_useful_to ~memoize = memoize
 
     let encode
-      { install_file; config_file; target_dir; install_action; package }
+      { install_file
+      ; config_file
+      ; target_dir
+      ; prefix_outside_build_dir
+      ; install_action
+      ; package
+      }
       path
       target
       : Dune_lang.t
@@ -1331,6 +1360,11 @@ module Install_action = struct
         ; path install_file
         ; path config_file
         ; target target_dir
+        ; Dune_lang.Encoder.option
+            Dune_lang.Encoder.string
+            (Option.map
+               prefix_outside_build_dir
+               ~f:Path.Outside_build_dir.to_string_maybe_quoted)
         ; Dune_lang.atom_or_quoted_string (Package.Name.to_string package)
         ; Dune_lang.atom
             (match install_action with
@@ -1523,7 +1557,13 @@ module Install_action = struct
     ;;
 
     let action
-      { package; install_file; config_file; target_dir; install_action }
+      { package
+      ; install_file
+      ; config_file
+      ; target_dir
+      ; prefix_outside_build_dir
+      ; install_action
+      }
       ~ectx:_
       ~eenv:_
       =
@@ -1531,13 +1571,26 @@ module Install_action = struct
       let* () = Fiber.return () in
       let* files =
         let from_install_action =
+          let target_dir =
+            (* If the package used a prefix that was outside the build
+               directory (as is the case with toolchains), parse the
+               installed sections from that location. Otherwise parse the
+               installed sections from the package's location within the
+               build directory. *)
+            match prefix_outside_build_dir with
+            | Some prefix_outside_build_dir ->
+              Path.outside_build_dir prefix_outside_build_dir
+            | None -> Path.build target_dir
+          in
           match install_action with
           | `No_install_action -> Section.Map.empty
           | `Has_install_action ->
             let install_paths =
-              Paths.of_root package ~root:(Path.Build.parent_exn target_dir)
+              Paths.of_root
+                package
+                ~root:(Path.parent_exn target_dir)
+                ~relative:Path.relative
               |> Paths.install_paths
-              |> Install.Paths.map ~f:Path.build
             in
             section_map_of_dir install_paths
         in
@@ -1595,7 +1648,7 @@ module Install_action = struct
     ;;
   end
 
-  let action (p : _ Paths.t) install_action =
+  let action (p : Path.Build.t Paths.t) install_action ~prefix_outside_build_dir =
     let module M = struct
       type path = Path.t
       type target = Path.Build.t
@@ -1606,6 +1659,7 @@ module Install_action = struct
         { Spec.install_file = Path.build @@ Paths.install_file p
         ; config_file = Path.build @@ Paths.config_file p
         ; target_dir = p.target_dir
+        ; prefix_outside_build_dir
         ; install_action
         ; package = p.name
         }
@@ -1730,11 +1784,13 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       List.concat [ copy_action; build_action; install_action ]
     in
     let install_file_action =
+      let prefix_outside_build_dir = Path.as_outside_build_dir pkg.paths.prefix in
       Install_action.action
         pkg.write_paths
         (match Action_expander.install_command context_name pkg with
          | None -> `No_install_action
          | Some _ -> `Has_install_action)
+        ~prefix_outside_build_dir
       |> Action.Full.make
       |> Action_builder.return
       |> Action_builder.with_no_targets
@@ -1775,7 +1831,7 @@ let setup_package_rules context ~dir ~pkg_name : Gen_rules.result Memo.t =
             (Package.Name.to_string name)
         ]
   in
-  let paths = Paths.make name context in
+  let paths = Paths.make name context ~relative:Path.Build.relative in
   let+ directory_targets =
     let map =
       let target_dir = paths.target_dir in

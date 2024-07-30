@@ -229,6 +229,7 @@ module Table : sig
 end
 
 val equal : t -> t -> bool
+val as_outside_build_dir : t -> Outside_build_dir.t option
 val as_outside_build_dir_exn : t -> Outside_build_dir.t
 val destruct_build_dir : t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ]
 val outside_build_dir : Outside_build_dir.t -> t

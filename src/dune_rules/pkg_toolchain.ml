@@ -124,16 +124,6 @@ let installation_prefix_within_tmp_install_dir ~installation_prefix:prefix tmp_i
   Path.relative tmp_install_dir target_without_root_prefix
 ;;
 
-let build_action =
-  Dune_lang.Action.Run
-    [ Slang.text "touch"
-    ; Slang.concat
-        [ Slang.pform (Pform.Var (Pform.Var.Pkg Pform.Var.Pkg.Build))
-        ; Slang.text "/config.cache"
-        ]
-    ]
-;;
-
 let modify_install_action (action : Dune_lang.Action.t) ~installation_prefix ~suffix =
   match action with
   | Run [ Literal make; Literal install ] ->
@@ -190,19 +180,31 @@ let modify_install_action ~prefix ~suffix action =
   let+ installed = Fs_memo.dir_exists prefix in
   if installed
   then
-    (* Replace install command with no-op if the toolchain is already installed. *)
+    (* Replace install command with no-op if the toolchain is already installed.
+       TODO(steve): Move this check to action execution time *)
     Dune_lang.Action.Progn []
   else modify_install_action action ~installation_prefix:prefix ~suffix
 ;;
 
-module Override_pform = struct
-  type t =
-    { prefix : Path.t
-    ; doc : Path.t
-    }
+(* Create an empty config.cache file so other packages see that the
+   compiler package is installed. *)
+let touch_config_cache =
+  Dune_lang.Action.Run
+    [ Slang.text "touch"
+    ; Slang.concat
+        [ Slang.pform (Pform.Var (Pform.Var.Pkg Pform.Var.Pkg.Build))
+        ; Slang.text "/config.cache"
+        ]
+    ]
+;;
 
-  let make ~installation_prefix =
-    let prefix = Path.outside_build_dir installation_prefix in
-    { prefix; doc = Path.relative prefix "doc" }
-  ;;
-end
+let modify_build_action ~prefix action =
+  let open Memo.O in
+  let+ installed = Fs_memo.dir_exists prefix in
+  if installed
+  then
+    (* If the toolchain is already installed, just create config.cache file.
+       TODO(steve): Move this check to action execution time *)
+    touch_config_cache
+  else action
+;;

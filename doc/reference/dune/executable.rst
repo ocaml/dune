@@ -242,7 +242,7 @@ contains C stubs you may want to use ``(modes exe)``.
 js_of_ocaml
 ~~~~~~~~~~~
 
-In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
+In ``library`` and ``executable`` stanzas, you can specify ``js_of_ocaml``
 options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 ``<js_of_ocaml-options>`` are all optional:
@@ -259,10 +259,16 @@ options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
+- ``(compilation_mode <mode>)`` where ``<mode>>`` is either ``whole_program`` or ``separate``.
+  This is only available inside ``executable`` stanzas.
+
+- ``(sourcemap <config>)`` where ``<config>>`` is one of ``no``, ``file`` or ``inline``.
+  This is only available inside ``executable`` stanzas.
+
 ``<flags>`` is specified in the :doc:`/reference/ordered-set-language`.
 
-The default value for ``(flags ...)`` depends on the selected build profile. The
-build profile ``dev`` (the default) will enable sourcemap and the pretty
+The default values for ``flags``, ``compilation_mode`` and ``sourcemap`` depend on the selected build profile. The
+build profile ``dev`` (the default) will enable inline sourcemap, separate compilation and pretty
 JavaScript output.
 
 See :ref:`jsoo` for more information.

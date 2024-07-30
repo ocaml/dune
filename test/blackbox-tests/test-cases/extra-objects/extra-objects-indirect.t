@@ -21,7 +21,8 @@ Build an library which indirectly depends on foreign object files.
 
   $ cat >lib/dep.c <<EOF
   > #include <caml/mlvalues.h>
-  > value add(value x, value y);
+  > extern value add(value x, value y);
+  > value dummy() { return add(Val_int(1), Val_int(2)); }
   > EOF
 
   $ cat >lib/add.c <<EOF

@@ -10,19 +10,13 @@ Build a library which depends on foreign object files.
   $ cat >lib/dune <<EOF
   > (library
   >  (name calc)
-  >  (extra_objects add)
-  >  (foreign_stubs (language c) (names mul)))
-  > EOF
-
-  $ cat >lib/mul.c <<EOF
-  > #include <caml/mlvalues.h>
-  > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
+  >  (extra_objects add mul))
   > EOF
 
   $ dune build
-  File "lib/dune", line 3, characters 1-20:
-  3 |  (extra_objects add)
-       ^^^^^^^^^^^^^^^^^^^
+  File "lib/dune", line 3, characters 1-24:
+  3 |  (extra_objects add mul))
+       ^^^^^^^^^^^^^^^^^^^^^^^
   Error: 'extra_objects' is only available since version 3.5 of the dune
   language. Please update your dune-project file to have (lang dune 3.5).
   [1]
@@ -43,12 +37,16 @@ Build a library which depends on foreign object files.
   > EOF
 
   $ dune build
-  File "lib/dune", lines 1-4, characters 0-85:
+  File "lib/dune", lines 1-3, characters 0-47:
   1 | (library
   2 |  (name calc)
-  3 |  (extra_objects add)
-  4 |  (foreign_stubs (language c) (names mul)))
+  3 |  (extra_objects add mul))
   Error: No rule found for lib/add.o
+  File "lib/dune", lines 1-3, characters 0-47:
+  1 | (library
+  2 |  (name calc)
+  3 |  (extra_objects add mul))
+  Error: No rule found for lib/mul.o
   [1]
 
 ----------------------------------------------------------------------------------
@@ -59,7 +57,16 @@ Build a library which depends on foreign object files.
   > value add(value x, value y) { return Val_int(Int_val(x) + Int_val(y)); }
   > EOF
 
+  $ cat >lib/mul.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
+  > EOF
+
   $ cat >>lib/dune <<EOF
+  > (rule
+  >  (target mul.o)
+  >  (deps mul.c)
+  >  (action (run %{bin:ocamlc} mul.c)))
   > (rule
   >  (target add.o)
   >  (deps add.c)

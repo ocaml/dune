@@ -82,17 +82,12 @@ let run_build_system ~common ~request =
       Fiber.return ())
 ;;
 
-let run_build_command_poll_eager ~pre_build ~(common : Common.t) ~config ~request : unit =
-  let open Fiber.O in
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    Scheduler.Run.poll
-      (let* () = pre_build () in
-       run_build_system ~common ~request))
+    Scheduler.Run.poll (run_build_system ~common ~request))
 ;;
 
-let run_build_command_poll_passive ~pre_build ~(common : Common.t) ~config ~request:_
-  : unit
-  =
+let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
@@ -104,18 +99,16 @@ let run_build_command_poll_passive ~pre_build ~(common : Common.t) ~config ~requ
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
     Scheduler.Run.poll_passive
       ~get_build_request:
-        (let* () = pre_build () in
-         let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+        (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
          let request setup =
            Target.interpret_targets (Common.root common) config setup targets
          in
          run_build_system ~common ~request, ivar))
 ;;
 
-let run_build_command_once ~pre_build ~(common : Common.t) ~config ~request =
+let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let* () = pre_build () in
     let+ res = run_build_system ~common ~request in
     match res with
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
@@ -129,21 +122,27 @@ let run_build_command ~(common : Common.t) ~config ~request =
    | Yes Eager -> run_build_command_poll_eager
    | Yes Passive -> run_build_command_poll_passive
    | No -> run_build_command_once)
-    ~pre_build:(fun () -> Fiber.return ())
     ~common
     ~config
     ~request
 ;;
 
-let run_build_command_fmt ~(common : Common.t) ~config ~request =
-  (match Common.watch common with
-   | Yes Eager -> run_build_command_poll_eager
-   | Yes Passive -> run_build_command_poll_passive
-   | No -> run_build_command_once)
-    ~pre_build:(fun () -> Lock_dev_tool.lock_ocamlformat ())
-    ~common
-    ~config
-    ~request
+let is_fmt_target ~common ~contexts targets =
+  let dir = Path.(relative root) (Common.prefix_target common ".") in
+  let fmt_alias =
+    Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:false ~contexts dir
+  in
+  let fmt_rec_alias =
+    Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts dir
+  in
+  let resolved_aliases =
+    Target.resolve_target_aliases (Common.root common) ~targets ~contexts
+  in
+  List.map resolved_aliases ~f:(fun x -> Result.to_option x |> Option.to_list)
+  |> List.flatten
+  |> List.find ~f:(fun alias ->
+    Alias.equal fmt_alias alias || Alias.equal fmt_rec_alias alias)
+  |> Option.is_some
 ;;
 
 let runtest_info =
@@ -212,29 +211,18 @@ let build =
       | _ :: _ -> targets
     in
     let common, config = Common.init builder in
-    let request setup =
+    let request (setup : Dune_rules.Main.build_system) =
+      let open Action_builder.O in
+      let* () =
+        Action_builder.of_memo
+        @@
+        if is_fmt_target ~common ~contexts:setup.contexts targets
+        then Lock_dev_tool.lock_ocamlformat () |> Memo.of_non_reproducible_fiber
+        else Memo.return ()
+      in
       Target.interpret_targets (Common.root common) config setup targets
     in
-    let resolved_targets_contain_fmt =
-      let dir = Path.(relative root) (Common.prefix_target common ".") in
-      let fmt_alias =
-        Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:false ~contexts:[] dir
-      in
-      let fmt_rec_alias =
-        Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:[] dir
-      in
-      let resolved_aliases =
-        Target.resolve_target_aliases (Common.root common) ~targets ~contexts:[]
-      in
-      List.map resolved_aliases ~f:(fun x -> Result.to_option x |> Option.to_list)
-      |> List.flatten
-      |> List.find ~f:(fun alias ->
-        Alias.equal fmt_alias alias || Alias.equal fmt_rec_alias alias)
-      |> Option.is_some
-    in
-    if resolved_targets_contain_fmt
-    then run_build_command_fmt ~common ~config ~request
-    else run_build_command ~common ~config ~request
+    run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;
@@ -269,11 +257,16 @@ let fmt =
     in
     let common, config = Common.init builder in
     let request (setup : Import.Main.build_system) =
+      let open Action_builder.O in
+      let* () =
+        Action_builder.of_memo
+          (Lock_dev_tool.lock_ocamlformat () |> Memo.of_non_reproducible_fiber)
+      in
       let dir = Path.(relative root) (Common.prefix_target common ".") in
       Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    run_build_command_fmt ~common ~config ~request
+    run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

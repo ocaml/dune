@@ -15,9 +15,3 @@ val run_build_command
   -> config:Dune_config.t
   -> request:(Dune_rules.Main.build_system -> unit Action_builder.t)
   -> unit
-
-val run_build_command_fmt
-  :  common:Common.t
-  -> config:Dune_config.t
-  -> request:(Dune_rules.Main.build_system -> unit Action_builder.t)
-  -> unit

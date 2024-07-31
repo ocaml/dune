@@ -57,6 +57,7 @@ module T = struct
     ; mode : Mode.t
     ; info : Info.t
     ; loc : Loc.t
+    ; can_go_in_shared_cache : bool
     }
 
   let compare a b = Id.compare a.id b.id
@@ -69,7 +70,13 @@ end
 include T
 include Comparable.Make (T)
 
-let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
+let make
+  ?(mode = Mode.Standard)
+  ?(info = Info.Internal)
+  ?(can_go_in_shared_cache = true)
+  ~targets
+  action
+  =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with
@@ -106,7 +113,7 @@ let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~targets action =
            (Path.build (Path.Build.relative targets.root "_unknown_")))
     | Source_file_copy p -> Loc.in_file (Path.source p)
   in
-  { id = Id.gen (); targets; action; mode; info; loc }
+  { id = Id.gen (); targets; action; mode; info; loc; can_go_in_shared_cache }
 ;;
 
 let set_action t action =

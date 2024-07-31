@@ -144,14 +144,12 @@ module Full : sig
     { action : action
     ; env : Env.t
     ; locks : Path.t list
-    ; can_go_in_shared_cache : bool
     ; sandbox : Sandbox_config.t
     }
 
   val make
     :  ?env:Env.t (** default [Env.empty] *)
     -> ?locks:Path.t list (** default [[]] *)
-    -> ?can_go_in_shared_cache:bool (** default [true] *)
     -> ?sandbox:Sandbox_config.t (** default [Sandbox_config.default] *)
     -> action
     -> t
@@ -168,7 +166,6 @@ module Full : sig
   val add_env : Env.t -> t -> t
   val add_locks : Path.t list -> t -> t
   val add_sandbox : Sandbox_config.t -> t -> t
-  val add_can_go_in_shared_cache : bool -> t -> t
 
   include Monoid with type t := t
 end

@@ -211,7 +211,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     let rule =
       let info = Rule.Info.of_loc_opt (Some loc_url) in
       fun { Action_builder.With_targets.build; targets } ->
-        Rules.Produce.rule (Rule.make ~info ~targets build)
+        Rules.Produce.rule (Rule.make ~info ~targets ~can_go_in_shared_cache:false build)
     in
     let make_target = make_target checksum_or_url in
     let action ~target ~kind =

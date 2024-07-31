@@ -59,6 +59,7 @@ type t = private
   ; mode : Mode.t
   ; info : Info.t
   ; loc : Loc.t
+  ; can_go_in_shared_cache : bool
   }
 
 include Comparable_intf.S with type key := t
@@ -72,6 +73,7 @@ val to_dyn : t -> Dyn.t
 val make
   :  ?mode:Mode.t
   -> ?info:Info.t
+  -> ?can_go_in_shared_cache:bool (** default [true]*)
   -> targets:Targets.t
   -> Action.Full.t Action_builder.t
   -> t

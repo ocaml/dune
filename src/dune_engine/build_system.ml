@@ -257,7 +257,6 @@ end = struct
     let { Action.Full.action
         ; env
         ; locks
-        ; can_go_in_shared_cache
         ; sandbox = _ (* already taken into account in [sandbox_mode] *)
         }
       =
@@ -273,7 +272,7 @@ end = struct
       , Dep.Facts.digest facts ~env
       , target_paths rule.targets.files @ target_paths rule.targets.dirs
       , Action.for_shell action
-      , can_go_in_shared_cache
+      , true (* TODO: don't forget to remove this *)
       , List.map locks ~f:Path.to_string
       , Execution_parameters.action_stdout_on_success execution_parameters
       , Execution_parameters.action_stderr_on_success execution_parameters
@@ -336,9 +335,7 @@ end = struct
     : Exec_result.t Fiber.t
     =
     let open Fiber.O in
-    let { Action.Full.action; env; locks; can_go_in_shared_cache = _; sandbox = _ } =
-      action
-    in
+    let { Action.Full.action; env; locks; sandbox = _ } = action in
     let* dune_stats = Scheduler.stats () in
     let deps =
       Dep.Facts.paths
@@ -457,7 +454,9 @@ end = struct
   ;;
 
   let execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
+    let { Rule.id = _; targets; mode; action; info = _; loc; can_go_in_shared_cache } =
+      rule
+    in
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every
@@ -534,7 +533,7 @@ end = struct
         compute_rule_digest rule ~facts ~action ~sandbox_mode ~execution_parameters
       in
       let can_go_in_shared_cache =
-        action.can_go_in_shared_cache
+        can_go_in_shared_cache
         && (not
               (always_rerun
                || is_action_dynamic
@@ -699,6 +698,7 @@ end = struct
       Rule.make
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
         ~targets:(Targets.File.create target)
+        ~can_go_in_shared_cache:true
         ~mode:Standard
         (Action_builder.record act.action deps ~f:build_dep)
     in
@@ -758,8 +758,7 @@ end = struct
     let observing_facts = () in
     ignore observing_facts;
     let digest =
-      let { Rule.Anonymous_action.action =
-              { action; env; locks; can_go_in_shared_cache; sandbox }
+      let { Rule.Anonymous_action.action = { action; env; locks; sandbox }
           ; loc = _
           ; dir
           ; alias
@@ -791,7 +790,7 @@ end = struct
         , dir
         , alias
         , capture_stdout
-        , can_go_in_shared_cache
+        , true (* TODO: don't forget to remove this *)
         , sandbox )
     in
     (* It might seem superfluous to memoize the execution here, given that a

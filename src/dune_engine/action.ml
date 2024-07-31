@@ -328,24 +328,17 @@ module Full = struct
       { action : t
       ; env : Env.t
       ; locks : Path.t list
-      ; can_go_in_shared_cache : bool
       ; sandbox : Sandbox_config.t
       }
 
     let empty =
-      { action = Progn []
-      ; env = Env.empty
-      ; locks = []
-      ; can_go_in_shared_cache = true
-      ; sandbox = Sandbox_config.default
-      }
+      { action = Progn []; env = Env.empty; locks = []; sandbox = Sandbox_config.default }
     ;;
 
-    let combine { action; env; locks; can_go_in_shared_cache; sandbox } x =
+    let combine { action; env; locks; sandbox } x =
       { action = combine action x.action
       ; env = Env.extend_env env x.env
       ; locks = locks @ x.locks
-      ; can_go_in_shared_cache = can_go_in_shared_cache && x.can_go_in_shared_cache
       ; sandbox = Sandbox_config.inter sandbox x.sandbox
       }
     ;;
@@ -354,23 +347,12 @@ module Full = struct
   include T
   include Monoid.Make (T)
 
-  let make
-    ?(env = Env.empty)
-    ?(locks = [])
-    ?(can_go_in_shared_cache = true)
-    ?(sandbox = Sandbox_config.default)
-    action
-    =
-    { action; env; locks; can_go_in_shared_cache; sandbox }
+  let make ?(env = Env.empty) ?(locks = []) ?(sandbox = Sandbox_config.default) action =
+    { action; env; locks; sandbox }
   ;;
 
   let map t ~f = { t with action = f t.action }
   let add_env e t = { t with env = Env.extend_env t.env e }
   let add_locks l t = { t with locks = t.locks @ l }
-
-  let add_can_go_in_shared_cache b t =
-    { t with can_go_in_shared_cache = t.can_go_in_shared_cache && b }
-  ;;
-
   let add_sandbox s t = { t with sandbox = Sandbox_config.inter t.sandbox s }
 end

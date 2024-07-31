@@ -10,7 +10,7 @@ open Import
     [ocamlc -o src/foo.exe src/foo.ml], one might write:
 
     {[
-      [ A "-o"; Target (Path.relatie dir "foo.exe"); Dep (Path.relative dir "foo.ml") ]
+      [ A "-o"; Target (Path.relative dir "foo.exe"); Dep (Path.relative dir "foo.ml") ]
     ]}
 
     This DSL was inspired from the ocamlbuild API. *)

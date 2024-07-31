@@ -208,3 +208,7 @@ let modify_build_action ~prefix action =
     touch_config_cache
   else action
 ;;
+
+let install_roots ~prefix =
+  Install.Roots.make prefix ~relative:Path.Outside_build_dir.relative
+;;

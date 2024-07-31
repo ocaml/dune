@@ -43,3 +43,7 @@ val modify_build_action
   :  prefix:Path.Outside_build_dir.t
   -> Dune_lang.Action.t
   -> Dune_lang.Action.t Memo.t
+
+val install_roots
+  :  prefix:Path.Outside_build_dir.t
+  -> Path.Outside_build_dir.t Install.Roots.t

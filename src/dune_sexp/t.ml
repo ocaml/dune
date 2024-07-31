@@ -8,6 +8,7 @@ type t =
   | List of t list
   | Template of Template.t
 
+(* TODO(maxrn): could this also be a Block_string ? *)
 let atom_or_quoted_string s =
   if Atom.is_valid s then Atom (Atom.of_string s) else Quoted_string s
 ;;

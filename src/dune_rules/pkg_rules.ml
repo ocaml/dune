@@ -1212,8 +1212,9 @@ end = struct
           let pkg_dir = Pkg_toolchain.pkg_dir pkg in
           let suffix = Path.basename (Path.outside_build_dir pkg_dir) in
           let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in
-          let doc =
-            Path.outside_build_dir @@ Path.Outside_build_dir.relative prefix "doc"
+          let install_roots =
+            Pkg_toolchain.install_roots ~prefix
+            |> Install.Roots.map ~f:Path.outside_build_dir
           in
           let* build_command =
             match build_command with
@@ -1231,9 +1232,7 @@ end = struct
           in
           ( { paths with
               prefix = Path.outside_build_dir prefix
-            ; install_roots =
-                Lazy.map paths.install_roots ~f:(fun root ->
-                  { root with Install.Roots.doc_root = doc })
+            ; install_roots = Lazy.from_val install_roots
             }
           , build_command
           , install_command )

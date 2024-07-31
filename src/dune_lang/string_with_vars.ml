@@ -70,6 +70,7 @@ let make ?(quoted = false) loc parts =
   { quoted; loc; parts }
 ;;
 
+(* TODO(maxrn): escape Block_string here *)
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
 
 let decoding_env_key =
@@ -82,6 +83,16 @@ let add_user_vars_to_decoding_env vars =
   Decoder.update_var decoding_env_key ~f:(function
     | None -> Code_error.raise "Decoding env not set" []
     | Some env -> Some (Pform.Env.add_user_vars env vars))
+;;
+
+(* TODO(maxrn): remove duplicated code *)
+let plain_string_of_block_string bs =
+  String.split bs ~on:'\n'
+  |> List.map ~f:(fun line ->
+    match String.length line with
+    | 0 -> line
+    | _ as length -> String.sub line ~pos:4 ~len:(length - 4))
+  |> String.concat ~sep:"\n"
 ;;
 
 let decode_manually f =
@@ -97,7 +108,7 @@ let decode_manually f =
   | Atom (loc, A s) -> literal ~quoted:false ~loc s
   | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
   (* TODO(maxrn) *)
-  | Block_string (loc, s) -> literal ~quoted:true ~loc s
+  | Block_string (loc, s) -> literal ~quoted:true ~loc (plain_string_of_block_string s)
   | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   | Template { quoted; loc; parts } ->
     { quoted

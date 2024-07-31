@@ -191,6 +191,7 @@ module Pkg = struct
   ;;
 
   let encode_extra_source (local, source) : Dune_sexp.t =
+    (* TODO(maxrn): LOOK AT THIS *)
     List
       [ Dune_sexp.atom_or_quoted_string (Path.Local.to_string local)
       ; Source.encode source

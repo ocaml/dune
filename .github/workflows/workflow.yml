@@ -187,20 +187,9 @@ jobs:
     name: Coq 8.16.1
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Use OCaml 4.14.x
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: 4.14.x
-          opam-pin: false
-          opam-depext: false
-          dune-cache: true
-
-      - name: Install Coq
-        run: opam install coq.8.16.1 coq-native
-
-      - run: opam exec -- make test-coq
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v22
+      - run: nix develop .#coq -c make test-coq
         env:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled

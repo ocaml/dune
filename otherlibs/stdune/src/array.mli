@@ -8,6 +8,7 @@ val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
 module Immutable : sig
   type 'a t
 
+  val of_array_unsafe : 'a array -> 'a t
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
   val get : 'a t -> int -> 'a
   val of_array : 'a array -> 'a t

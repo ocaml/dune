@@ -10,11 +10,6 @@ general guidelines specific to Dune. However, given that Dune is a large project
 developed by many different people, it's important to follow these guidelines in
 order to keep the project in a good state and pleasant to work on for everybody.
 
-.. contents:: Table of Contents
-   :depth: 1
-   :local:
-   :backlinks: none
-
 Dependencies
 ============
 

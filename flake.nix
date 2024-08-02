@@ -126,7 +126,7 @@
 
               docInputs = with pkgs'.python3.pkgs; [
                 sphinx-autobuild
-                sphinx_rtd_theme
+                furo
                 sphinx-copybutton
                 sphinx-design
               ];
@@ -168,7 +168,7 @@
                   sphinx
                   sphinx-autobuild
                   python310Packages.sphinx-copybutton
-                  python310Packages.sphinx-rtd-theme
+                  python310Packages.furo
                   python310Packages.sphinx-design
                 ]
               );

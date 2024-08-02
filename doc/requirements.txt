@@ -1,4 +1,4 @@
-sphinx >= 4.5.0, < 6
-sphinx_rtd_theme >= 1.0.0
+sphinx >= 6
+furo
 sphinx-copybutton >= 0.5.0
 sphinx-design

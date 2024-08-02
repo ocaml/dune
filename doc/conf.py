@@ -42,7 +42,10 @@ lexers[CramLexer.name] = CramLexer()
 extensions = [
     'sphinx_copybutton',
     'sphinx_design',
+    'myst_parser',
 ]
+
+myst_enable_extensions = ["colon_fence"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -71,7 +74,14 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    'dev',
+    'papers',
+    'changes',
+]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'friendly'

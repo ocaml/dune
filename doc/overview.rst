@@ -149,6 +149,13 @@ Terminology
      :ref:`dune-subst` for development versions and dune-release_ for
      releases.
 
+   stanza
+     A fragment of a file interpreted by Dune, that will appear as a
+     s-expression at the top-level of a file. For example, the
+     :doc:`/reference/dune/library` stanza describes a library. This can be
+     either a generic term ("the library stanza") or it can refer to a
+     particular instance in a file ("the executable stanza in ``bin/dune``").
+
 Project Layout
 ==============
 

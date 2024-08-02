@@ -1,6 +1,4 @@
-The dune cache should be enabled by 'default'
-(not by default on main branch since it's a feature flag)
-  $ export DUNE_CACHE=enabled
+The dune cache should be enabled by default
   $ echo "(lang dune 3.16)" > dune-project
 
   $ cat > dune << EOF

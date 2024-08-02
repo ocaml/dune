@@ -11,7 +11,6 @@ module Dune_config = struct
   module Log = Dune_util.Log
   module Config = Dune_config.Config
   module Execution_env = Dune_util.Execution_env
-  module Feature_flags = Feature_flags
 
   (* the configuration file use the same version numbers as dune-project files for
      simplicity *)
@@ -133,6 +132,7 @@ module Dune_config = struct
       ; terminal_persistence : Terminal_persistence.t field
       ; sandboxing_preference : Sandboxing_preference.t field
       ; cache_enabled : Config.Toggle.t field
+      ; cache_user_rules : Config.Toggle.t field
       ; cache_reproducibility_check : Dune_cache.Config.Reproducibility_check.t field
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
@@ -157,6 +157,7 @@ module Dune_config = struct
       ; terminal_persistence = field a.terminal_persistence b.terminal_persistence
       ; sandboxing_preference = field a.sandboxing_preference b.sandboxing_preference
       ; cache_enabled = field a.cache_enabled b.cache_enabled
+      ; cache_user_rules = field a.cache_user_rules b.cache_user_rules
       ; cache_reproducibility_check =
           field a.cache_reproducibility_check b.cache_reproducibility_check
       ; cache_storage_mode = field a.cache_storage_mode b.cache_storage_mode
@@ -183,6 +184,7 @@ module Dune_config = struct
       ; terminal_persistence
       ; sandboxing_preference
       ; cache_enabled
+      ; cache_user_rules
       ; cache_reproducibility_check
       ; cache_storage_mode
       ; action_stdout_on_success
@@ -197,6 +199,7 @@ module Dune_config = struct
         ; ( "sandboxing_preference"
           , field (Dyn.list Sandbox_mode.to_dyn) sandboxing_preference )
         ; "cache_enabled", field Config.Toggle.to_dyn cache_enabled
+        ; "cache_user_rules", field Config.Toggle.to_dyn cache_user_rules
         ; ( "cache_reproducibility_check"
           , field
               Dune_cache.Config.Reproducibility_check.to_dyn
@@ -225,6 +228,7 @@ module Dune_config = struct
       ; terminal_persistence = None
       ; sandboxing_preference = None
       ; cache_enabled = None
+      ; cache_user_rules = None
       ; cache_reproducibility_check = None
       ; cache_storage_mode = None
       ; action_stdout_on_success = None
@@ -290,14 +294,10 @@ module Dune_config = struct
     ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled =
-        (if Feature_flags.cache_enabled_by_default then `Enabled else `Disabled)
-    ; cache_reproducibility_check =
-        (if Feature_flags.cache_enabled_by_default then Check else Skip)
-    ; cache_storage_mode =
-        (if Feature_flags.cache_enabled_by_default
-         then Some (Dune_cache_storage.Mode.default ())
-         else None)
+    ; cache_enabled = `Enabled
+    ; cache_user_rules = `Disabled
+    ; cache_reproducibility_check = Check
+    ; cache_storage_mode = Some (Dune_cache_storage.Mode.default ())
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; experimental = []
@@ -317,6 +317,7 @@ module Dune_config = struct
     and+ sandboxing_preference =
       field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
     and+ cache_enabled = field_o "cache" (2, 0) (enum Config.Toggle.all)
+    and+ cache_user_rules = field_o "cache-user-rules" (2, 0) (enum Config.Toggle.all)
     and+ _cache_transport_unused_since_3_0 =
       field_o
         "cache-transport"
@@ -379,6 +380,7 @@ module Dune_config = struct
     ; terminal_persistence
     ; sandboxing_preference
     ; cache_enabled
+    ; cache_user_rules
     ; cache_reproducibility_check
     ; cache_storage_mode
     ; action_stdout_on_success

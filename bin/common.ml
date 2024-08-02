@@ -419,6 +419,21 @@ let shared_with_config_file =
       value
       & opt (some (enum Config.Toggle.all)) None
       & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
+  and+ cache_user_rules =
+    let doc =
+      Printf.sprintf
+        "Enable or disable caching user-created rules (%s). Default is `%s'."
+        (Arg.doc_alts_enum Config.Toggle.all)
+        (Config.Toggle.to_string Dune_config.default.cache_user_rules)
+    in
+    Arg.(
+      value
+      & opt (some (enum Config.Toggle.all)) None
+      & info
+          [ "cache-user-rules" ]
+          ~docs
+          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_USER_RULES")
+          ~doc)
   and+ cache_storage_mode =
     let doc =
       Printf.sprintf
@@ -481,6 +496,7 @@ let shared_with_config_file =
   ; sandboxing_preference = Option.map sandboxing_preference ~f:(fun x -> [ x ])
   ; terminal_persistence
   ; cache_enabled
+  ; cache_user_rules
   ; cache_reproducibility_check =
       Option.map
         cache_check_probability
@@ -1205,6 +1221,7 @@ let init (builder : Builder.t) =
       Enabled
         { storage_mode = Option.value config.cache_storage_mode ~default:Hardlink
         ; reproducibility_check = config.cache_reproducibility_check
+        ; cache_user_rules = config.cache_user_rules = `Enabled
         }
   in
   Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];

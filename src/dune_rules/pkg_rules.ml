@@ -1757,9 +1757,27 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
         in
         copy_action
         @ List.map pkg.info.extra_sources ~f:(fun (local, _) ->
+          (* If the package has extra sources, they will be
+             initially stored in the extra_sources directory for that
+             package. Prior to building, the contents of
+             extra_sources must be copied into the package's source
+             directory. *)
           let src = Paths.extra_source pkg.paths local in
           let dst = Path.Build.append_local pkg.write_paths.source_dir local in
-          Action.copy src dst |> Action.Full.make |> Action_builder.With_targets.return)
+          Action.progn
+            [ (* If the package has no source directory (some
+                 low-level packages are exclusively made up of extra
+                 sources), the source directory is first created. *)
+              Action.mkdir pkg.write_paths.source_dir
+            ; (* It's possible for some extra sources to already be at
+                 the destination. If these files are write-protected
+                 then the copy action will fail if we don't first remove
+                 them. *)
+              Action.remove_tree dst
+            ; Action.copy src dst
+            ]
+          |> Action.Full.make
+          |> Action_builder.With_targets.return)
       and+ build_action =
         match Action_expander.build_command context_name pkg with
         | None -> Memo.return []

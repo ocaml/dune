@@ -77,22 +77,25 @@ module Command_to_exec = struct
 
   (* Helper function to spawn a new process running a command in an
      environment, returning the new process' pid *)
-  let spawn_process path ~args ~env =
+  let spawn_process root prog ~args ~env =
     let pid =
-      let path = Path.to_string path in
+      let prog = Path.to_string prog |> resolve_relative_path_within_root_dir root in
       let env = Env.to_unix env |> Spawn.Env.of_list in
-      let argv = path :: args in
+      let argv = prog :: args in
       let cwd = Spawn.Working_dir.Path Fpath.initial_cwd in
-      Spawn.spawn ~prog:path ~env ~cwd ~argv ()
+      Spawn.spawn ~prog ~env ~cwd ~argv ()
     in
     Pid.of_int pid
   ;;
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process { get_path_and_build_if_necessary; prog; args; env } =
+  let build_and_run_in_child_process
+    root
+    { get_path_and_build_if_necessary; prog; args; env }
+    =
     get_path_and_build_if_necessary prog
-    |> Fiber.map ~f:(Result.map ~f:(spawn_process ~args ~env))
+    |> Fiber.map ~f:(Result.map ~f:(spawn_process root ~args ~env))
   ;;
 end
 
@@ -139,18 +142,18 @@ module Watch = struct
 
   (* Kills the currently running process, then runs the given command after
      (re)building the program which it will invoke *)
-  let run state ~command_to_exec =
+  let run root state ~command_to_exec =
     let open Fiber.O in
     let* () = Fiber.return () in
     let* () = kill_currently_running_process state in
     let* command_to_exec = command_to_exec () in
-    Command_to_exec.build_and_run_in_child_process command_to_exec
+    Command_to_exec.build_and_run_in_child_process root command_to_exec
     >>| Result.map ~f:(fun pid -> state.currently_running_pid := Some pid)
   ;;
 
-  let loop ~command_to_exec =
+  let loop root ~command_to_exec =
     let state = init_state () in
-    Scheduler.Run.poll (run state ~command_to_exec)
+    Scheduler.Run.poll (run root state ~command_to_exec)
   ;;
 end
 
@@ -322,7 +325,7 @@ module Exec_context = struct
       ; env
       }
     in
-    Watch.loop ~command_to_exec
+    Watch.loop (Common.root common) ~command_to_exec
   ;;
 end
 

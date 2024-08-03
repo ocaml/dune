@@ -26,7 +26,6 @@
   dune_output_truncation
   csexp_rpc
   dune_rpc_private
-  dune_rpc_server
   dune_rpc_client
   dune_thread_pool
   spawn

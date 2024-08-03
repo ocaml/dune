@@ -46,8 +46,6 @@ let execution_parameters =
 ;;
 
 let init
-  ?(action_runner = fun _ -> None)
-  ?(action_runners = fun _ -> [])
   ~stats
   ~sandboxing_preference
   ~cache_config
@@ -97,8 +95,6 @@ let init
     ~execution_parameters
     ~source_tree:(module Source_tree)
     ~shared_cache:(module Shared_cache)
-    ~action_runner
-    ~action_runners
     ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 

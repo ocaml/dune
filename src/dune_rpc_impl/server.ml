@@ -396,7 +396,8 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
   let () =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
-      Diff_promotion.promote_files_registered_in_last_run (These ([ files ], ignore));
+      Promote.Diff_promotion.promote_files_registered_in_last_run
+        (These ([ files ], ignore));
       Fiber.return ()
     in
     Handler.implement_request rpc Procedures.Public.promote f

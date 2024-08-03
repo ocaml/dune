@@ -2,7 +2,7 @@ open Import
 
 let add_diff sctx loc alias ~dir ~input ~output =
   let open Action_builder.O in
-  let action = Action.Chdir (Path.build dir, Action.diff input output) in
+  let action = Action.Chdir (Path.build dir, Promote.Diff_action.diff input output) in
   Super_context.add_alias_action
     sctx
     alias

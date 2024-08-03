@@ -35,7 +35,7 @@ module Files = struct
     let open Action_builder.O in
     let+ () = Action_builder.path src
     and+ () = Action_builder.path (Path.build corrected) in
-    Action.Full.make (Action.diff ~optional:false src corrected)
+    Action.Full.make (Promote.Diff_action.diff ~optional:false src corrected)
   ;;
 end
 

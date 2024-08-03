@@ -69,18 +69,6 @@ let simplify act =
     | Rename (x, y) -> Run ("mv", [ x; y ]) :: acc
     | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
     | Mkdir x -> mkdir x :: acc
-    | Diff { optional; file1; file2; mode = Binary } ->
-      assert (not optional);
-      Run ("cmp", [ file1; file2 ]) :: acc
-    | Diff { optional = true; file1; file2; mode = _ } ->
-      Sh
-        (Printf.sprintf
-           "test ! -e file1 -o ! -e file2 || diff %s %s"
-           (String.quote_for_shell file1)
-           (String.quote_for_shell file2))
-      :: acc
-    | Diff { optional = false; file1; file2; mode = _ } ->
-      Run ("diff", [ file1; file2 ]) :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =

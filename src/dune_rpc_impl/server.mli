@@ -8,7 +8,6 @@ val create
   -> handle:(unit Dune_rpc_server.Handler.t -> unit)
        (** register additional requests or notifications *)
   -> Dune_stats.t option
-  -> Dune_engine.Action_runner.Rpc_server.t
   -> parse_build:(string -> 'a)
   -> 'a t
 
@@ -22,4 +21,3 @@ val stop : _ t -> unit Fiber.t
 
 val ready : _ t -> unit Fiber.t
 val run : _ t -> unit Fiber.t
-val action_runner : _ t -> Dune_engine.Action_runner.Rpc_server.t

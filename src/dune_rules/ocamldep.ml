@@ -14,6 +14,62 @@ end
 
 open Modules_data
 
+module Merge_files_into = struct
+  module Spec = struct
+    type ('src, 'dst) t = 'src list * string list * 'dst
+
+    let name = "merge_files_into"
+    let version = 1
+    let is_useful_to ~memoize:_ = true
+
+    let bimap (paths, extras, dst) path target =
+      List.map paths ~f:path, extras, target dst
+    ;;
+
+    let encode
+      (type src dst)
+      ((sources, extras, target) : (src, dst) t)
+      (input : src -> Dune_sexp.t)
+      (output : dst -> Dune_sexp.t)
+      : Dune_sexp.t
+      =
+      let open Dune_sexp in
+      List
+        [ atom_or_quoted_string name
+        ; List (List.map sources ~f:input)
+        ; List (List.map ~f:atom_or_quoted_string extras)
+        ; output target
+        ]
+    ;;
+
+    let action (sources, extras, target) ~ectx:_ ~eenv:_ =
+      Async.async (fun () ->
+        let lines =
+          List.fold_left
+            sources
+            ~init:(String.Set.of_list extras)
+            ~f:(fun set source_path ->
+              Io.lines_of_file source_path |> String.Set.of_list |> String.Set.union set)
+        in
+        let target = Path.build target in
+        Io.write_lines target (String.Set.to_list lines))
+    ;;
+  end
+
+  let action sources extras target =
+    let module M = struct
+      type path = Path.t
+      type target = Path.Build.t
+
+      module Spec = Spec
+
+      let v = sources, extras, target
+    end
+    in
+    Dune_engine.Action.Extension (module M)
+  ;;
+end
+
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =
   List.concat_map words ~f:(fun m ->
     let m = Module_name.of_string m in
@@ -135,7 +191,7 @@ let deps_of
              (let+ sources, extras = paths in
               (sources, extras), sources)
          in
-         Action.Merge_files_into (sources, extras, all_deps_file))
+         Merge_files_into.action sources extras all_deps_file)
     in
     Action_builder.With_targets.map ~f:Action.Full.make produce_all_deps
     |> Super_context.add_rule sctx ~dir

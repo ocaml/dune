@@ -81,14 +81,6 @@ let simplify act =
       :: acc
     | Diff { optional = false; file1; file2; mode = _ } ->
       Run ("diff", [ file1; file2 ]) :: acc
-    | Merge_files_into (srcs, extras, target) ->
-      Sh
-        (Printf.sprintf
-           "{ echo -ne %s; cat %s; } | sort -u > %s"
-           (Filename.quote (List.map extras ~f:(sprintf "%s\n") |> String.concat ~sep:""))
-           (String.quote_list_for_shell srcs)
-           (String.quote_for_shell target))
-      :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =

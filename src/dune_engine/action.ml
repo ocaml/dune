@@ -198,7 +198,6 @@ let fold_one_step t ~init:acc ~f =
   | Remove_tree _
   | Mkdir _
   | Diff _
-  | Merge_files_into _
   | Extension _ -> acc
 ;;
 
@@ -246,7 +245,6 @@ let rec is_dynamic = function
   | Remove_tree _
   | Diff _
   | Mkdir _
-  | Merge_files_into _
   | Extension _ -> false
 ;;
 
@@ -297,7 +295,6 @@ let is_useful_to memoize =
     | Remove_tree _ -> false
     | Diff _ -> true
     | Mkdir _ -> false
-    | Merge_files_into _ -> true
     | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true

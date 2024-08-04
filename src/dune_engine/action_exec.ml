@@ -481,20 +481,6 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
                Fiber.return ())
       in
       Done)
-  | Merge_files_into (sources, extras, target) ->
-    let+ () =
-      maybe_async (fun () ->
-        let lines =
-          List.fold_left
-            sources
-            ~init:(String.Set.of_list extras)
-            ~f:(fun set source_path ->
-              Io.lines_of_file source_path |> String.Set.of_list |> String.Set.union set)
-        in
-        let target = Path.build target in
-        Io.write_lines target (String.Set.to_list lines))
-    in
-    Done
   | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
   | Extension (module A) ->
     let+ () =

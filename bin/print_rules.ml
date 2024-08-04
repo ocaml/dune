@@ -105,13 +105,6 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
     List [ atom "diff"; path file1; target file2 ]
   | Diff { optional = true; file1; file2; mode = _ } ->
     List [ atom "diff?"; path file1; target file2 ]
-  | Merge_files_into (srcs, extras, into) ->
-    List
-      [ atom "merge-files-into"
-      ; List (List.map ~f:path srcs)
-      ; List (List.map ~f:string extras)
-      ; target into
-      ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Extension ext -> List [ atom "ext"; ext ]

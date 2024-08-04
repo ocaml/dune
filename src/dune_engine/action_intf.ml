@@ -51,7 +51,6 @@ module type Ast = sig
     | Remove_tree of target
     | Mkdir of target
     | Diff of (path, target) Diff.t
-    | Merge_files_into of path list * string list * target
     | Pipe of Outputs.t * t list
     | Extension of ext
 end

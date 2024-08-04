@@ -1,14 +1,9 @@
 open Import
 open Dune_lang.Decoder
 
-module Ext = struct
-  type t = string
-
-  let exe = ".bc.js"
-  let cmo = ".cmo.js"
-  let cma = ".cma.js"
-  let runtime = ".bc.runtime.js"
-end
+(* (js_of_ocaml ...) options are also used when producing Wasm code
+   with wasm_of_ocaml, since the compilation process is similar and
+   generates a JavaScript file with basically the same behavior. *)
 
 let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
@@ -87,10 +82,45 @@ module Flags = struct
   ;;
 end
 
+module Submode = struct
+  type t =
+    | JS
+    | Wasm
+
+  module Set = struct
+    type t =
+      { js : bool
+      ; wasm : bool
+      }
+
+    let decode =
+      map
+        (repeat1 (enum [ "js", JS; "wasm", Wasm ]))
+        ~f:(fun l ->
+          List.fold_left
+            ~f:(fun t submode ->
+              match submode with
+              | JS -> { t with js = true }
+              | Wasm -> { t with wasm = true })
+            ~init:{ js = false; wasm = false }
+            l)
+    ;;
+
+    let equal x y = x.js = y.js && x.wasm = y.wasm
+
+    let to_list x =
+      let l = if x.wasm then [ Wasm ] else [] in
+      if x.js then JS :: l else l
+    ;;
+  end
+end
+
 module In_buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : string list
+    ; wasm_files : string list
     }
 
   let decode =
@@ -105,32 +135,52 @@ module In_buildable = struct
              ; compile = flags
              ; link = flags (* we set link as well to preserve the old semantic *)
              }
+         ; submodes = None
          ; javascript_files
+         ; wasm_files = []
          })
     else
       fields
         (let+ flags = Flags.decode
-         and+ javascript_files = field "javascript_files" (repeat string) ~default:[] in
-         { flags; javascript_files })
+         and+ submodes =
+           field_o
+             "submodes"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Submode.Set.decode)
+         and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ wasm_files =
+           field
+             "wasm_files"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
+             ~default:[]
+         in
+         { flags; submodes; javascript_files; wasm_files })
   ;;
 
-  let default = { flags = Flags.standard; javascript_files = [] }
+  let default =
+    { flags = Flags.standard; submodes = None; javascript_files = []; wasm_files = [] }
+  ;;
 end
 
 module In_context = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     }
 
   let make ~(dir : Path.Build.t) (x : In_buildable.t) =
     { flags = x.flags
+    ; submodes = x.submodes
     ; javascript_files =
         List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; wasm_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.wasm_files
     }
   ;;
 
-  let default = { flags = Flags.standard; javascript_files = [] }
+  let default =
+    { flags = Flags.standard; submodes = None; javascript_files = []; wasm_files = [] }
+  ;;
 end
 
 module Compilation_mode = struct
@@ -149,9 +199,26 @@ module Compilation_mode = struct
   ;;
 end
 
+module Ext = struct
+  type t = string
+
+  let select ~submode js wasm =
+    match submode with
+    | Submode.JS -> js
+    | Wasm -> wasm
+  ;;
+
+  let exe ~submode = select ~submode ".bc.js" ".bc.wasm.js"
+  let cmo ~submode = select ~submode ".cmo.js" ".wasmo"
+  let cma ~submode = select ~submode ".cma.js" ".wasma"
+  let runtime ~submode = select ~submode ".bc.runtime.js" ".bc.runtime.wasma"
+  let wasm_dir = ".bc.wasm.assets"
+end
+
 module Env = struct
   type 'a t =
     { compilation_mode : Compilation_mode.t option
+    ; submodes : Submode.Set.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
     }
@@ -159,25 +226,40 @@ module Env = struct
   let decode =
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
+       and+ submodes =
+         field_o
+           "submodes"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Submode.Set.decode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
-       { compilation_mode; runtest_alias; flags }
+       { compilation_mode; submodes; runtest_alias; flags }
   ;;
 
-  let equal { compilation_mode; runtest_alias; flags } t =
+  let equal { compilation_mode; submodes; runtest_alias; flags } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
+    && Option.equal Submode.Set.equal submodes t.submodes
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
   ;;
 
-  let map ~f { compilation_mode; runtest_alias; flags } =
-    { compilation_mode; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; submodes; runtest_alias; flags } =
+    { compilation_mode; submodes; runtest_alias; flags = Flags.map ~f flags }
   ;;
 
-  let empty = { compilation_mode = None; runtest_alias = None; flags = Flags.standard }
+  let empty =
+    { compilation_mode = None
+    ; submodes = None
+    ; runtest_alias = None
+    ; flags = Flags.standard
+    }
+  ;;
 
   let default ~profile =
-    { compilation_mode = None; runtest_alias = None; flags = Flags.default ~profile }
+    { compilation_mode = None
+    ; submodes = None
+    ; runtest_alias = None
+    ; flags = Flags.default ~profile
+    }
   ;;
 end

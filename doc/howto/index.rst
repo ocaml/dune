@@ -15,6 +15,7 @@ These guides will help you use Dune's features in your project.
    ../sites
    ../instrumentation
    ../jsoo
+   ../wasmoo
    ../melange
    ../virtual-libraries
    ../tests

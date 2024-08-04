@@ -10,3 +10,8 @@ let roots : string option Install.Roots.t =
   ; sbin = None
   ; libexec_root = None
   }
+
+let toggles = []
+
+let init () = Dune_config.Config.set_configure_time_toggles ~names:[]
+

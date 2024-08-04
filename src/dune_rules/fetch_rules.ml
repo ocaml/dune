@@ -77,24 +77,23 @@ module Spec = struct
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
-  let encode { target; url = _, url; checksum; kind } _ encode_target : Dune_lang.t =
+  let encode { target; url = _, url; checksum; kind } _ encode_target : Sexp.t =
     List
-      ([ Dune_lang.atom_or_quoted_string name
+      ([ Sexp.Atom name
        ; encode_target target
-       ; Dune_lang.atom_or_quoted_string (OpamUrl.to_string url)
-       ; Dune_lang.atom_or_quoted_string
+       ; Atom (OpamUrl.to_string url)
+       ; Atom
            (match kind with
             | `File -> "file"
             | `Directory -> "directory")
        ]
        @ (match OpamUrl.rev url with
           | None -> []
-          | Some rev -> [ Dune_lang.atom_or_quoted_string rev ])
+          | Some rev -> [ Sexp.Atom rev ])
        @
        match checksum with
        | None -> []
-       | Some (_, checksum) ->
-         [ Checksum.to_string checksum |> Dune_lang.atom_or_quoted_string ])
+       | Some (_, checksum) -> [ Atom (Checksum.to_string checksum) ])
   ;;
 
   let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =
@@ -280,9 +279,8 @@ module Copy = struct
     let bimap t f g = { src_dir = f t.src_dir; dst_dir = g t.dst_dir }
     let is_useful_to ~memoize = memoize
 
-    let encode { src_dir; dst_dir } path target =
-      Dune_lang.List
-        [ Dune_lang.atom_or_quoted_string name; path src_dir; target dst_dir ]
+    let encode { src_dir; dst_dir } path target : Sexp.t =
+      List [ Atom name; path src_dir; target dst_dir ]
     ;;
 
     let action { src_dir; dst_dir } ~ectx:_ ~eenv:_ =

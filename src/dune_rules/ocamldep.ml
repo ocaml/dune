@@ -29,15 +29,14 @@ module Merge_files_into = struct
     let encode
       (type src dst)
       ((sources, extras, target) : (src, dst) t)
-      (input : src -> Dune_sexp.t)
-      (output : dst -> Dune_sexp.t)
-      : Dune_sexp.t
+      (input : src -> Sexp.t)
+      (output : dst -> Sexp.t)
+      : Sexp.t
       =
-      let open Dune_sexp in
       List
-        [ atom_or_quoted_string name
+        [ Atom name
         ; List (List.map sources ~f:input)
-        ; List (List.map ~f:atom_or_quoted_string extras)
+        ; List (List.map ~f:(fun s -> Sexp.Atom s) extras)
         ; output target
         ]
     ;;

@@ -100,7 +100,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Mkdir x -> List [ atom "mkdir"; target x ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
-  | Extension ext -> List [ atom "ext"; ext ]
+  | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;
 
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =

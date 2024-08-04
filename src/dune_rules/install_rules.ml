@@ -1088,10 +1088,7 @@ struct
     let version = 1
     let bimap (entries, dst) _ g = entries, g dst
     let is_useful_to ~memoize = memoize
-
-    let encode (_entries, dst) _path target : Dune_lang.t =
-      List [ Dune_lang.atom_or_quoted_string name; target dst ]
-    ;;
+    let encode (_entries, dst) _path target : Sexp.t = List [ Atom name; target dst ]
 
     let make_entry entry path comps =
       Install.Entry.set_src entry path

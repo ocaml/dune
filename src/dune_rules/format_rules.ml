@@ -35,10 +35,10 @@ let action =
     let bimap (ver, src, dst) f g = ver, f src, g dst
     let is_useful_to ~memoize = memoize
 
-    let encode (version, src, dst) path target : Dune_lang.t =
+    let encode (version, src, dst) path target : Sexp.t =
       List
-        [ Dune_lang.atom_or_quoted_string "format-dune-file"
-        ; Dune_lang.Syntax.Version.encode version
+        [ Atom "format-dune-file"
+        ; Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp
         ; path src
         ; target dst
         ]

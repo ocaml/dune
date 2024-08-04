@@ -458,11 +458,7 @@ module Spec = struct
   let version = 1
   let bimap path f _ = f path
   let is_useful_to ~memoize:_ = true
-
-  let encode script path _ : Dune_lang.t =
-    List [ Dune_lang.atom_or_quoted_string "cram"; path script ]
-  ;;
-
+  let encode script path _ : Sexp.t = List [ Atom name; path script ]
   let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
 end
 

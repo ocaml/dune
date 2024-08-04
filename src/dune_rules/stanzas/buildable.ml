@@ -92,9 +92,14 @@ let decode (for_ : for_) =
     field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
   and+ flags = Ocaml_flags.Spec.decode
   and+ js_of_ocaml =
+    let executable =
+      match for_ with
+      | Executable -> true
+      | Library _ -> false
+    in
     field
       "js_of_ocaml"
-      Js_of_ocaml.In_buildable.decode
+      (Js_of_ocaml.In_buildable.decode ~executable)
       ~default:Js_of_ocaml.In_buildable.default
   and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
   and+ version = Dune_lang.Syntax.get_exn Stanza.syntax

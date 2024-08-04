@@ -7,7 +7,6 @@
   > EOF
   $ dune printenv --field js_of_ocaml_flags --field js_of_ocaml_link_flags --field js_of_ocaml_build_runtime_flags 2>&1
   (js_of_ocaml_flags
-   (--pretty --source-map-inline --no-inline))
-  (js_of_ocaml_build_runtime_flags
-   (--pretty --source-map-inline))
-  (js_of_ocaml_link_flags (--source-map-inline))
+   (--pretty --no-inline))
+  (js_of_ocaml_build_runtime_flags (--pretty))
+  (js_of_ocaml_link_flags ())

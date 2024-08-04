@@ -13,6 +13,7 @@ let jsoo_env =
         let+ parent = parent in
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode parent.compilation_mode
+        ; sourcemap = Option.first_some local.sourcemap parent.sourcemap
         ; runtest_alias = Option.first_some local.runtest_alias parent.runtest_alias
         ; flags =
             Js_of_ocaml.Flags.make
@@ -219,6 +220,7 @@ let js_of_ocaml_rule
   ~config
   ~spec
   ~target
+  ~sourcemap
   =
   let open Action_builder.O in
   let jsoo = jsoo ~dir sctx in
@@ -236,6 +238,14 @@ let js_of_ocaml_rule
        | Compile -> S []
        | Link -> A "link"
        | Build_runtime -> A "build-runtime")
+    ; (match (sourcemap : Js_of_ocaml.Sourcemap.t) with
+       | No -> A "--no-source-map"
+       | Inline -> A "--source-map-inline"
+       | File ->
+         S
+           [ A "--source-map"
+           ; Hidden_targets [ Path.Build.set_extension target ~ext:".map" ]
+           ])
     ; Command.Args.dyn flags
     ; (match config with
        | None -> S []
@@ -380,10 +390,10 @@ let link_rule cc ~runtime ~target ~obj_dir cm ~flags ~linkall ~link_time_code_ge
   js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags ~config:None
 ;;
 
-let build_cm' sctx ~dir ~in_context ~src ~target ~config =
+let build_cm' sctx ~dir ~in_context ~src ~target ~config ~sourcemap =
   let spec = Command.Args.Dep src in
   let flags = in_context.Js_of_ocaml.In_context.flags in
-  js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~flags ~spec ~target ~config
+  js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~flags ~spec ~target ~config ~sourcemap
 ;;
 
 let build_cm sctx ~dir ~in_context ~src ~obj_dir ~config =
@@ -396,6 +406,7 @@ let build_cm sctx ~dir ~in_context ~src ~obj_dir ~config =
     ~src
     ~target
     ~config:(Option.map config ~f:Action_builder.return)
+    ~sourcemap:Js_of_ocaml.Sourcemap.Inline
 ;;
 
 let setup_separate_compilation_rules sctx components =
@@ -433,6 +444,8 @@ let setup_separate_compilation_rules sctx components =
          let in_context =
            { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
            ; javascript_files = []
+           ; compilation_mode = None
+           ; sourcemap = None
            }
          in
          let src =
@@ -447,6 +460,7 @@ let setup_separate_compilation_rules sctx components =
            ~src
            ~target
            ~config:(Some (Action_builder.return config))
+           ~sourcemap:Js_of_ocaml.Sourcemap.Inline
          |> Super_context.add_rule sctx ~dir))
 ;;
 
@@ -459,6 +473,17 @@ let js_of_ocaml_compilation_mode t ~dir =
     if Super_context.context t |> Context.profile |> Profile.is_dev
     then Js_of_ocaml.Compilation_mode.Separate_compilation
     else Whole_program
+;;
+
+let js_of_ocaml_sourcemap t ~dir =
+  let open Memo.O in
+  let+ js_of_ocaml = jsoo_env ~dir in
+  match js_of_ocaml.sourcemap with
+  | Some sm -> sm
+  | None ->
+    if Super_context.context t |> Context.profile |> Profile.is_dev
+    then Js_of_ocaml.Sourcemap.Inline
+    else No
 ;;
 
 let build_exe
@@ -474,7 +499,9 @@ let build_exe
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let { Js_of_ocaml.In_context.javascript_files; flags } = in_context in
+  let { Js_of_ocaml.In_context.javascript_files; flags; compilation_mode; sourcemap } =
+    in_context
+  in
   let target = Path.Build.set_extension src ~ext:Js_of_ocaml.Ext.exe in
   let standalone_runtime =
     in_obj_dir
@@ -488,11 +515,24 @@ let build_exe
     | Some p -> Promote p
   in
   let open Memo.O in
-  let* cmode = js_of_ocaml_compilation_mode sctx ~dir in
+  let* cmode =
+    match compilation_mode with
+    | None -> js_of_ocaml_compilation_mode sctx ~dir
+    | Some x -> Memo.return x
+  and* sourcemap =
+    match sourcemap with
+    | None -> js_of_ocaml_sourcemap sctx ~dir
+    | Some x -> Memo.return x
+  in
   match (cmode : Js_of_ocaml.Compilation_mode.t) with
   | Separate_compilation ->
     let+ () =
-      standalone_runtime_rule cc ~javascript_files ~target:standalone_runtime ~flags
+      standalone_runtime_rule
+        cc
+        ~javascript_files
+        ~target:standalone_runtime
+        ~flags
+        ~sourcemap:Js_of_ocaml.Sourcemap.Inline
       |> Super_context.add_rule ~loc sctx ~dir
     and+ () =
       link_rule
@@ -504,11 +544,12 @@ let build_exe
         ~flags
         ~linkall
         ~link_time_code_gen
+        ~sourcemap
       |> Super_context.add_rule sctx ~loc ~dir ~mode
     in
     ()
   | Whole_program ->
-    exe_rule cc ~javascript_files ~src ~target ~flags
+    exe_rule cc ~javascript_files ~src ~target ~flags ~sourcemap
     |> Super_context.add_rule sctx ~loc ~dir ~mode
 ;;
 

@@ -405,7 +405,13 @@ end = struct
                  then Artifacts.Original_path
                  else Install_dir
                and* artifacts = Expander.artifacts env.expander in
-               Artifacts.binary ~loc:(Some loc) ~where artifacts s)
+               let hint =
+                 match s with
+                 | "refmt" -> Some "opam install reason"
+                 | "rescript_syntax" -> Some "opam install rescript-syntax"
+                 | _ -> None
+               in
+               Artifacts.binary ?hint ~loc:(Some loc) ~where artifacts s)
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in

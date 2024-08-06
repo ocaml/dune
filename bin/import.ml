@@ -196,6 +196,7 @@ module Scheduler = struct
         ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
+    Dune_rules.Clflags.concurrency := config.concurrency;
     let f =
       match Common.rpc common with
       | `Allow server -> fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f

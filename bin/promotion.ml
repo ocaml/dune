@@ -1,4 +1,5 @@
 open Import
+module Diff_promotion = Promote.Diff_promotion
 
 let files_to_promote ~common files : Diff_promotion.files_to_promote =
   match files with

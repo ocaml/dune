@@ -1131,7 +1131,6 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  Hooks.End_of_build.once Diff_promotion.finalize;
   let* () = State.reset_progress () in
   let* () = State.reset_errors () in
   let f () =

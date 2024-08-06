@@ -17,9 +17,6 @@ val debug_fs_cache : bool ref
 (** Print debug info when loading rules in directories *)
 val debug_load_dir : bool ref
 
-(** Command to use to diff things *)
-val diff_command : string option ref
-
 module Promote : sig
   type t =
     | Automatically

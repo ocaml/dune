@@ -15,7 +15,6 @@ let debug_backtraces b =
 ;;
 
 let debug_load_dir = ref false
-let diff_command = ref None
 let promote = ref None
 let force = ref false
 let always_show_command_line = ref false

@@ -32,7 +32,7 @@ let with_metrics ~common f =
 
 let run_build_system ~common ~request =
   let run ~(toplevel : unit Memo.Lazy.t) =
-    with_metrics ~common (fun () -> Build_system.run (fun () -> Memo.Lazy.force toplevel))
+    with_metrics ~common (fun () -> build (fun () -> Memo.Lazy.force toplevel))
   in
   let open Fiber.O in
   Fiber.finalize

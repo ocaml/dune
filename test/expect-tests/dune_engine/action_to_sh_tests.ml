@@ -189,42 +189,6 @@ let%expect_test "bash" =
     bash -e -u -o pipefail -c 'echo Hello world' |}]
 ;;
 
-let%expect_test "diff" =
-  Diff
-    { Action.Diff.optional = false
-    ; file1 = "foo"
-    ; file2 = "bar"
-    ; mode = Action.Diff.Mode.Text
-    }
-  |> print;
-  [%expect {|
-    diff foo bar |}]
-;;
-
-let%expect_test "diff optional" =
-  Diff
-    { Action.Diff.optional = true
-    ; file1 = "foo"
-    ; file2 = "bar"
-    ; mode = Action.Diff.Mode.Text
-    }
-  |> print;
-  [%expect {|
-    test ! -e file1 -o ! -e file2 || diff foo bar |}]
-;;
-
-let%expect_test "cmp" =
-  Diff
-    { Action.Diff.optional = false
-    ; file1 = "foo"
-    ; file2 = "bar"
-    ; mode = Action.Diff.Mode.Binary
-    }
-  |> print;
-  [%expect {|
-    cmp foo bar |}]
-;;
-
 (* cmping a binary file in optional mode is not supported *)
 
 let%expect_test "pipe-stdout-to" =

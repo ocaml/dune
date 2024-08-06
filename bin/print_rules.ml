@@ -98,13 +98,6 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Rename (x, y) -> List [ atom "rename"; target x; target y ]
   | Remove_tree x -> List [ atom "remove-tree"; target x ]
   | Mkdir x -> List [ atom "mkdir"; target x ]
-  | Diff { optional; file1; file2; mode = Binary } ->
-    assert (not optional);
-    List [ atom "cmp"; path file1; target file2 ]
-  | Diff { optional = false; file1; file2; mode = _ } ->
-    List [ atom "diff"; path file1; target file2 ]
-  | Diff { optional = true; file1; file2; mode = _ } ->
-    List [ atom "diff?"; path file1; target file2 ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Extension ext -> List [ atom "ext"; ext ]
@@ -186,7 +179,7 @@ let term =
   Scheduler.go ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
-    Build_system.run_exn (fun () ->
+    build_exn (fun () ->
       let open Memo.O in
       let* setup = setup in
       let* request =

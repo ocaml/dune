@@ -25,7 +25,7 @@ let term =
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run_exn (fun () ->
+      build_exn (fun () ->
         let open Memo.O in
         let* setup = setup in
         let context = Import.Main.find_context_exn setup ~name:ctx_name in

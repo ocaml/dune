@@ -357,7 +357,7 @@ include Sub_system.Register_end_point (struct
                  List.map source_files ~f:(fun fn ->
                    Path.as_in_build_dir_exn fn
                    |> Path.Build.extend_basename ~suffix:".corrected"
-                   |> Action.diff ~optional:true fn)
+                   |> Promote.Diff_action.diff ~optional:true fn)
                  |> Action.concurrent
                in
                Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))

@@ -87,12 +87,11 @@ let test_rule
          and+ locks = locks >>| Path.Set.to_list in
          Action.progn
            [ Cram_exec.action (Path.build script)
-           ; Diff
-               { Diff.optional = true
-               ; mode = Text
-               ; file1 = Path.build script
-               ; file2 = Path.Build.extend_basename script ~suffix:".corrected"
-               }
+           ; Promote.Diff_action.diff
+               ~optional:true
+               ~mode:Text
+               (Path.build script)
+               (Path.Build.extend_basename script ~suffix:".corrected")
            ]
          |> Action.Full.make ~locks ~sandbox
        in

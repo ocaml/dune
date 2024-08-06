@@ -654,7 +654,7 @@ let term : unit Term.t =
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
-  Build_system.run_exn
+  build_exn
   @@ fun () ->
   let open Memo.O in
   let* setup = setup in

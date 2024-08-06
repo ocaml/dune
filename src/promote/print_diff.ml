@@ -1,5 +1,6 @@
 open Import
 open Fiber.O
+module Process = Dune_engine.Process
 
 (* [git diff] doesn't like symlink arguments *)
 let resolve_link_for_git path =
@@ -150,7 +151,7 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   match !Clflags.diff_command with
   | Some "-" -> fallback
   | Some cmd ->
-    let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
+    let sh, arg = Prog.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
       sprintf "%s %s %s" cmd (String.quote_for_shell file1) (String.quote_for_shell file2)
     in

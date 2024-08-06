@@ -2,10 +2,6 @@
 
 open Import
 
-(** Return the absolute path to the shell and the argument to pass it (-c or
-    /c). Raise in case in cannot be found. *)
-val system_shell_exn : needed_to:string -> Path.t * string
-
 (** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found
   :  ?context:Context_name.t

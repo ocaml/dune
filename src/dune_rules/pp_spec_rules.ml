@@ -56,7 +56,7 @@ let promote_correction fn build ~suffix =
   Action.Full.reduce
     [ act
     ; Action.Full.make
-        (Action.diff
+        (Promote.Diff_action.diff
            ~optional:true
            (Path.build fn)
            (Path.Build.extend_basename fn ~suffix))
@@ -69,7 +69,7 @@ let promote_correction_with_target fn build ~suffix =
     ; Action_builder.with_no_targets
         (Action_builder.return
            (Action.Full.make
-              (Action.diff
+              (Promote.Diff_action.diff
                  ~optional:true
                  (Path.build fn)
                  (Path.Build.extend_basename fn ~suffix))))

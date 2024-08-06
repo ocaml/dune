@@ -265,3 +265,13 @@ let command_alias ?orig_name cmd term name =
   in
   Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
 ;;
+
+let build f =
+  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Build_system.run f
+;;
+
+let build_exn f =
+  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Build_system.run_exn f
+;;

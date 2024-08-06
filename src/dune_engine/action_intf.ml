@@ -50,7 +50,6 @@ module type Ast = sig
     | Rename of target * target
     | Remove_tree of target
     | Mkdir of target
-    | Diff of (path, target) Diff.t
     | Pipe of Outputs.t * t list
     | Extension of ext
 end
@@ -85,7 +84,6 @@ module type Helpers = sig
   val rename : target -> target -> t
   val remove_tree : target -> t
   val mkdir : target -> t
-  val diff : ?optional:bool -> ?mode:Diff.Mode.t -> path -> target -> t
 end
 
 module Ext = struct

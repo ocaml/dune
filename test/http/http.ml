@@ -38,7 +38,7 @@ module Server = struct
 
   let auto_shutdown_seconds =
     match Sys.getenv_opt "DUNE_WEBSERVER_TIMEOUT" with
-    | None -> 5.
+    | None -> 30.
     | Some s -> Float.of_string s |> Option.value_exn
   ;;
 

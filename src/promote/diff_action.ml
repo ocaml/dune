@@ -87,21 +87,14 @@ module Spec = struct
   let bimap t path target = Diff.map t ~path ~target
   let is_useful_to ~memoize:_ = true
 
-  let encode { Diff.optional; mode; file1; file2 } input output : Dune_sexp.t =
-    let mode =
-      Dune_sexp.atom_or_quoted_string
-      @@
-      match mode with
-      | Binary -> "binary"
-      | Text -> "text"
+  let encode { Diff.optional; mode; file1; file2 } input output : Sexp.t =
+    let mode : Sexp.t =
+      Atom
+        (match mode with
+         | Binary -> "binary"
+         | Text -> "text")
     in
-    List
-      [ Dune_sexp.atom_or_quoted_string name
-      ; Dune_sexp.Encoder.bool optional
-      ; mode
-      ; input file1
-      ; output file2
-      ]
+    List [ Atom name; Atom (Bool.to_string optional); mode; input file1; output file2 ]
   ;;
 
   let action diff ~(ectx : Dune_engine.Action.Ext.context) ~eenv:_ =

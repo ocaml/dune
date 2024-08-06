@@ -74,12 +74,12 @@ module Spec = struct
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
   let is_useful_to ~memoize = memoize
 
-  let encode (src, dst, merlin) path target : Dune_lang.t =
+  let encode (src, dst, merlin) path target : Sexp.t =
     List
-      [ Dune_lang.atom_or_quoted_string "copy-line-directive"
+      [ Atom "copy-line-directive"
       ; path src
       ; target dst
-      ; Dune_lang.atom_or_quoted_string (Bool.to_string (bool_of_merlin merlin))
+      ; Atom (Bool.to_string (bool_of_merlin merlin))
       ]
   ;;
 

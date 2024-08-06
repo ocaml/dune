@@ -486,7 +486,7 @@ module Substitute = struct
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
-    let encode { expander; src; dst } input output : Dune_lang.t =
+    let encode { expander; src; dst } input output : Sexp.t =
       let e =
         let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
@@ -497,9 +497,8 @@ module Substitute = struct
         , expander.env )
         |> Digest.generic
         |> Digest.to_string_raw
-        |> Dune_sexp.atom_or_quoted_string
       in
-      List [ Dune_lang.atom_or_quoted_string name; e; input src; output dst ]
+      List [ Atom name; Atom e; input src; output dst ]
     ;;
 
     let action { expander; src; dst } ~ectx:_ ~eenv:_ =
@@ -642,25 +641,21 @@ module Run_with_path = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { prog; args; ocamlfind_destdir; pkg = _ } path _ : Dune_lang.t =
-      let prog =
-        Dune_lang.atom_or_quoted_string
-        @@
-        match prog with
-        | Ok p -> Path.reach p ~from:Path.root
-        | Error e -> e.program
+    let encode { prog; args; ocamlfind_destdir; pkg = _ } path _ : Sexp.t =
+      let prog : Sexp.t =
+        Atom
+          (match prog with
+           | Ok p -> Path.reach p ~from:Path.root
+           | Error e -> e.program)
       in
       let args =
         Array.Immutable.to_list_map args ~f:(fun x ->
-          Dune_lang.List
+          Sexp.List
             (Array.Immutable.to_list_map x ~f:(function
-              | String s -> Dune_lang.atom_or_quoted_string s
+              | String s -> Sexp.Atom s
               | Path p -> path p)))
       in
-      List
-        [ List ([ Dune_lang.atom_or_quoted_string name; prog ] @ args)
-        ; path ocamlfind_destdir
-        ]
+      List [ List ([ Sexp.Atom name; prog ] @ args); path ocamlfind_destdir ]
     ;;
 
     let action
@@ -1352,20 +1347,22 @@ module Install_action = struct
       }
       path
       target
-      : Dune_lang.t
+      : Sexp.t
       =
       List
-        [ Dune_lang.atom_or_quoted_string name
+        [ Atom name
         ; path install_file
         ; path config_file
         ; target target_dir
-        ; Dune_lang.Encoder.option
-            Dune_lang.Encoder.string
-            (Option.map
+        ; (match
+             Option.map
                prefix_outside_build_dir
-               ~f:Path.Outside_build_dir.to_string_maybe_quoted)
-        ; Dune_lang.atom_or_quoted_string (Package.Name.to_string package)
-        ; Dune_lang.atom
+               ~f:Path.Outside_build_dir.to_string_maybe_quoted
+           with
+           | None -> List []
+           | Some s -> List [ Atom s ])
+        ; Atom (Package.Name.to_string package)
+        ; Atom
             (match install_action with
              | `Has_install_action -> "has_install_action"
              | `No_install_action -> "no_install_action")

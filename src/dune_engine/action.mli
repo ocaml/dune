@@ -101,7 +101,7 @@ module For_shell : sig
     with type path := string
     with type target := string
     with type string := string
-    with type ext := Dune_sexp.t
+    with type ext := Sexp.t
 end
 
 (** Convert the action to a format suitable for printing *)

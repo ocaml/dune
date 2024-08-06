@@ -130,3 +130,11 @@ let rec to_dyn =
   | Quoted_string s -> string s
   | Template t -> variant "template" [ string (Template.to_string t) ]
 ;;
+
+let rec to_sexp = function
+  | Atom (A s) -> Sexp.Atom s
+  | List s -> List (List.map ~f:to_sexp s)
+  | Quoted_string s -> List [ Atom "quoted"; Atom s ]
+  | Template ({ quoted; parts = _; loc = _ } as t) ->
+    List [ Atom "template"; Atom (Bool.to_string quoted); Atom (Template.to_string t) ]
+;;

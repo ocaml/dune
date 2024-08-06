@@ -176,7 +176,7 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
          let exn =
            User_message.make
              [ Pp.textf
-                 "failed to unpackage archive downloaded from %s"
+                 "failed to unpack archive downloaded from %s"
                  (OpamUrl.to_string url)
              ; Pp.text "reason:"
              ; msg

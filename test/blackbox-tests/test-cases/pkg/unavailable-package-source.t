@@ -34,10 +34,11 @@ Git
   Hint: Check that this Git URL in the project configuration is correct:
   "file://PWD/dummy"
 
-Http
-A bit annoying that this test can pass by accident if there's a server running
-on 35000
-  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p'
-  Error: curl returned an invalid error code 7
-         
-         
+HTTP
+
+  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed -e 's/".*"/"<PATH>"/'
+  Error:
+  failed to unpack archive downloaded from https://0.0.0.0:35000
+  reason:
+  unable to extract "<PATH>"
+  

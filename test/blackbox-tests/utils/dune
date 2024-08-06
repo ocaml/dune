@@ -25,11 +25,6 @@
  (modules refmt))
 
 (executable
- (name webserver_oneshot)
- (modules webserver_oneshot)
- (libraries unix http stdune))
-
-(executable
  (name sherlodoc)
  (modules sherlodoc)
  (libraries stdune))

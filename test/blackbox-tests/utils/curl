@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# our tiny drop in fake version of curl
+# needs to support
+# curl -V
+# curl -L -s  --user-agent foo --write-out "%{http_code}" -o <path> -- uri
+
+SOURCE_FILE=fake-curls
+REPEAT_FILE=already-served
+
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -V)
+      VERSIONINFO=YES
+      shift # past argument
+      ;;
+    -L|-s|--)
+      shift # past argument
+      ;;
+    -o|--extension)
+      OUTPUT="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    --user-agent|--write-out)
+      shift # past argument
+      shift # past value
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+
+if [ "$VERSIONINFO" = "YES" ]; then
+  echo "curl 0.0.0 (dune-fake)"
+  exit 0
+fi
+
+# read the offset from the URL
+PORT_OFFSET=$(echo "$POSITIONAL_ARGS" | grep -Eo ':[0-9]+' | grep -o '[0-9]*')
+
+POSSIBLE_FILES=$(wc -l < "$SOURCE_FILE")
+
+write_out() {
+  # --write_out "${http_code}" does not write a newline
+  echo -n \"$1\"
+}
+
+>&2 echo '$POSSIBLE_FILES' \""$POSSIBLE_FILES"\" '$PORT_OFFSET' \""$PORT_OFFSET"\"
+
+if [ ! -f "$REPEAT_FILE" ]; then
+  file_already_served=false
+else
+  if grep "^$PORT_OFFSET\$" "$REPEAT_FILE" 2>/dev/null 1>&2 ; then
+    file_already_served=true
+  else
+    file_already_served=false
+  fi
+fi
+
+>&2 echo File already served: $file_already_served
+
+if [ $PORT_OFFSET -gt $POSSIBLE_FILES ] || [ $file_already_served = true ]; then
+  >&2 echo "Failing the download"
+  write_out 404
+else
+  >&2 echo "Succeeding the download"
+  # read the line signified by the port from the file
+  INPUT=$(head -n "$PORT_OFFSET" "$SOURCE_FILE" | tail -n 1)
+  echo "$PORT_OFFSET" >> "$REPEAT_FILE"
+  cp "$INPUT" "$OUTPUT"
+  write_out 200
+fi

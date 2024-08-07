@@ -69,12 +69,10 @@ First we need a project that will have the patch applied:
 
 Then we start the oneshot server for both the source and the patch.
 
-  $ webserver_oneshot --content-file needs-patch.tar --port-file tarball-port.txt &
-  $ until test -f tarball-port.txt ; do sleep 0.1; done
-  $ SRC_PORT=$(cat tarball-port.txt)
-  $ webserver_oneshot --content-file required.patch --port-file required-patch-port.txt &
-  $ until test -f required-patch-port.txt ; do sleep 0.1; done
-  $ REQUIRED_PATCH_PORT=$(cat required-patch-port.txt)
+  $ echo needs-patch.tar > fake-curls
+  $ SRC_PORT=1
+  $ echo required.patch >> fake-curls
+  $ REQUIRED_PATCH_PORT=2
 
 We now have the checksums as well as the port numbers, so we can define the
 package.
@@ -124,15 +122,12 @@ correct, patched, message:
 Set up a new version of the package which has multiple `extra-sources`, the
 application order of them mattering:
 
-  $ webserver_oneshot --content-file needs-patch.tar --port-file tarball-port.txt &
-  $ until test -f tarball-port.txt ; do sleep 0.1; done
-  $ SRC_PORT=$(cat tarball-port.txt)
-  $ webserver_oneshot --content-file required.patch --port-file required-patch-port.txt &
-  $ until test -f required-patch-port.txt ; do sleep 0.1; done
-  $ REQUIRED_PATCH_PORT=$(cat required-patch-port.txt)
-  $ webserver_oneshot --content-file additional.patch --port-file additional-patch-port.txt &
-  $ until test -f additional-patch-port.txt ; do sleep 0.1; done
-  $ ADDITIONAL_PATCH_PORT=$(cat additional-patch-port.txt)
+  $ echo needs-patch.tar >> fake-curls
+  $ SRC_PORT=3
+  $ echo required.patch >> fake-curls
+  $ REQUIRED_PATCH_PORT=4
+  $ echo additional.patch >> fake-curls
+  $ ADDITIONAL_PATCH_PORT=5
 
   $ mkpkg needs-patch 0.0.2 <<EOF
   > build: ["dune" "build" "-p" name "-j" jobs]

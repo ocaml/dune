@@ -38,8 +38,9 @@
  (applies_to pkg-deps))
 
 (cram
- (deps %{bin:webserver_oneshot})
+ (deps %{bin:curl})
  (applies_to
+  unavailable-source-package
   compute-checksums-when-missing
   e2e
   source-caching

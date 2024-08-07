@@ -22,10 +22,10 @@ Make a library:
   $ tar -czf foo.tar.gz foo
   $ rm -rf foo
 
-Start a oneshot webserver so dune can download the packgae with http:
-  $ webserver_oneshot --content-file foo.tar.gz --port-file port.txt &
-  $ until test -f port.txt; do sleep 0.1; done
-  $ PORT=$(cat port.txt)
+Configure our fake curl to serve the tarball
+
+  $ echo foo.tar.gz >> fake-curls
+  $ PORT=1
 
 Make a package for the library:
   $ mkpkg foo <<EOF
@@ -80,5 +80,3 @@ Lock, build, and run the executable in the project:
 
   $ dune exec bar
   Hello, World!
-
-  $ wait

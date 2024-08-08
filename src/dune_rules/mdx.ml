@@ -208,6 +208,7 @@ let syntax =
     ; (0, 2), `Since (3, 0)
     ; (0, 3), `Since (3, 2)
     ; (0, 4), `Since (3, 8)
+    ; (0, 5), `Since (3, 17)
     ]
 ;;
 
@@ -271,7 +272,20 @@ let decode =
 let () =
   let open Dune_lang.Decoder in
   let decode = Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> decode in
+  let mdx_dep =
+    Dune_project.Extension_package_dependency.make
+      { Package_dependency.name = Package.Name.of_string "mdx"
+      ; constraint_ =
+          Some
+            (And
+               [ Bvar Package_variable_name.with_test
+               ; Uop (Gte, Package_constraint.Value.String_literal mdx_version_required)
+               ])
+      }
+      ~since:(0, 5)
+  in
   Dune_project.Extension.register_simple
+    ~pkgs:[ mdx_dep ]
     syntax
     (return
        [ ( "mdx"

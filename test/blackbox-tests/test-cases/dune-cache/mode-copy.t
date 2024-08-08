@@ -7,12 +7,13 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
 
   $ cat > config <<EOF
-  > (lang dune 3.0)
+  > (lang dune 3.17)
   > (cache enabled)
+  > (cache-user-rules enabled)
   > (cache-storage-mode copy)
   > EOF
   $ cat > dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.17)
   > EOF
   $ cat > dune <<EOF
   > (rule
@@ -40,9 +41,9 @@ never built [target1] before.
   $ dune build --config-file=config target1 --debug-cache=shared,workspace-local \
   >   2>&1 | grep '_build/default/source\|_build/default/target'
   Workspace-local cache miss: _build/default/source: never seen this target before
-  Shared cache miss [13c77218604dc994750d09a29ee8afbc] (_build/default/source): not found in cache
+  Shared cache miss [e2f27218eba545659418b9c738e421ff] (_build/default/source): not found in cache
   Workspace-local cache miss: _build/default/target1: never seen this target before
-  Shared cache miss [20702b179e0171aac33d40d83f666fc2] (_build/default/target1): not found in cache
+  Shared cache miss [a7229c41061980fd1d56a29b34030b13] (_build/default/target1): not found in cache
 
   $ dune_cmd stat hardlinks _build/default/source
   1

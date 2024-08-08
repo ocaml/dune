@@ -3,6 +3,7 @@ the cache.
 
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/.cache
+  $ export DUNE_CACHE_USER_RULES=enabled
 
   $ cat > config << EOF
   > (lang dune 3.7)

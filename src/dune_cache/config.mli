@@ -47,4 +47,5 @@ type t =
   | Enabled of
       { storage_mode : Dune_cache_storage.Mode.t
       ; reproducibility_check : Reproducibility_check.t
+      ; cache_user_rules : bool
       }

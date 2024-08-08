@@ -18,17 +18,7 @@ let base_dir () =
   path
 ;;
 
-let make_bool ~name ~default =
-  let of_string s =
-    match Bool.of_string s with
-    | Some b -> Ok b
-    | None ->
-      Error (sprintf "%s is not a bool (must be \"true\" or \"false\")" (String.quoted s))
-  in
-  Config.make ~name ~of_string ~default
-;;
-
-let enabled = make_bool ~name:"toolchains_enabled" ~default:false
+let enabled = Config.make_toggle ~name:"toolchains" ~default:`Disabled
 
 let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
   (* The name of this package's directory within the toolchains
@@ -53,16 +43,17 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
 let installation_prefix ~pkg_dir = Path.Outside_build_dir.relative pkg_dir "target"
 
 let is_compiler_and_toolchains_enabled name =
-  Config.get enabled
-  &&
-  let module Package_name = Dune_pkg.Package_name in
-  let compiler_package_names =
-    (* TODO don't hardcode these names here *)
-    [ Package_name.of_string "ocaml-base-compiler"
-    ; Package_name.of_string "ocaml-variants"
-    ]
-  in
-  List.mem compiler_package_names name ~equal:Package_name.equal
+  match Config.get enabled with
+  | `Enabled ->
+    let module Package_name = Dune_pkg.Package_name in
+    let compiler_package_names =
+      (* TODO don't hardcode these names here *)
+      [ Package_name.of_string "ocaml-base-compiler"
+      ; Package_name.of_string "ocaml-variants"
+      ]
+    in
+    List.mem compiler_package_names name ~equal:Package_name.equal
+  | `Disabled -> false
 ;;
 
 let files ~bin_dir =

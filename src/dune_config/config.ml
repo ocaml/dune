@@ -85,6 +85,7 @@ let make ~name ~of_string ~default =
   t
 ;;
 
+let make_toggle ~name ~default = make ~name ~default ~of_string:Toggle.of_string
 let global_lock = make ~name:"global_lock" ~of_string:Toggle.of_string ~default:`Enabled
 
 let cutoffs_that_reduce_concurrency_in_watch_mode =

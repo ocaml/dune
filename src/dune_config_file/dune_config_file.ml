@@ -307,7 +307,7 @@ module Dune_config = struct
     and+ sandboxing_preference =
       field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
     and+ cache_enabled = field_o "cache" (2, 0) (enum Config.Toggle.all)
-    and+ cache_user_rules = field_o "cache-user-rules" (2, 0) (enum Config.Toggle.all)
+    and+ cache_user_rules = field_o "cache-user-rules" (3, 17) (enum Config.Toggle.all)
     and+ _cache_transport_unused_since_3_0 =
       field_o
         "cache-transport"

@@ -26,21 +26,13 @@ This test if `.odocl` files are generated
   ./_build/default/_doc_new/odoc/local/foo/byte/foo_byte.odocl
   ./_build/default/_doc_new/odoc/local/foo/foo.odocl
   ./_build/default/_doc_new/odoc/local/foo/foo2.odocl
-  ./_build/default/_doc_new/odoc/stdlib/bigarray.odocl
-  ./_build/default/_doc_new/odoc/stdlib/camlinternalAtomic.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalFormat.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalFormatBasics.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalLazy.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalMod.odocl
   ./_build/default/_doc_new/odoc/stdlib/camlinternalOO.odocl
-  ./_build/default/_doc_new/odoc/stdlib/dynlink.odocl
-  ./_build/default/_doc_new/odoc/stdlib/profiling.odocl
   ./_build/default/_doc_new/odoc/stdlib/std_exit.odocl
   ./_build/default/_doc_new/odoc/stdlib/stdlib.odocl
-  ./_build/default/_doc_new/odoc/stdlib/str.odocl
-  ./_build/default/_doc_new/odoc/stdlib/topdirs.odocl
-  ./_build/default/_doc_new/odoc/stdlib/unix.odocl
-  ./_build/default/_doc_new/odoc/stdlib/unixLabels.odocl
 
 This test if the sherlodoc js files are generated
   $ find . -name '*.js' | sort -n
@@ -52,21 +44,13 @@ This test if the sherlodoc js files are generated
 
   $ cat ./_build/default/_doc_new/html/docs/db.js | scrub_num
   /* Sherlodoc DB for: */
-  /*   - ../../odoc/stdlib/bigarray.odocl */
-  /*   - ../../odoc/stdlib/camlinternalAtomic.odocl */
   /*   - ../../odoc/stdlib/camlinternalFormat.odocl */
   /*   - ../../odoc/stdlib/camlinternalFormatBasics.odocl */
   /*   - ../../odoc/stdlib/camlinternalLazy.odocl */
   /*   - ../../odoc/stdlib/camlinternalMod.odocl */
   /*   - ../../odoc/stdlib/camlinternalOO.odocl */
-  /*   - ../../odoc/stdlib/dynlink.odocl */
-  /*   - ../../odoc/stdlib/profiling.odocl */
   /*   - ../../odoc/stdlib/std_exit.odocl */
   /*   - ../../odoc/stdlib/stdlib.odocl */
-  /*   - ../../odoc/stdlib/str.odocl */
-  /*   - ../../odoc/stdlib/topdirs.odocl */
-  /*   - ../../odoc/stdlib/unix.odocl */
-  /*   - ../../odoc/stdlib/unixLabels.odocl */
   /*   - --favored ../../index/page-docs.odocl */
   /*   - --favored ../../index/local/page-local.odocl */
   /*   - --favored ../../odoc/local/bar/bar.odocl */

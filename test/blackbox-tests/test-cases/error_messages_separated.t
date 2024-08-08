@@ -50,10 +50,12 @@ between error messages for different files, as expected.
   1 | let f x y z = ()
             ^
   Error (warning 27 [unused-var-strict]): unused variable x.
+  
   File "a.ml", line 1, characters 8-9:
   1 | let f x y z = ()
               ^
   Error (warning 27 [unused-var-strict]): unused variable y.
+  
   File "a.ml", line 1, characters 10-11:
   1 | let f x y z = ()
                 ^
@@ -78,10 +80,12 @@ message either.
   1 | let f x y z = ()
             ^
   Error (warning 27 [unused-var-strict]): unused variable x.
+  
   File "a.ml", line 1, characters 8-9:
   1 | let f x y z = ()
               ^
   Error (warning 27 [unused-var-strict]): unused variable y.
+  
   File "a.ml", line 1, characters 10-11:
   1 | let f x y z = ()
                 ^

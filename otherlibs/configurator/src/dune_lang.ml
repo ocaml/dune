@@ -78,10 +78,14 @@ end
 
 type t =
   | Quoted_string of string
+  | Block_string of string
+  (* TODO(maxrn): Why no Block_string here? *)
   | List of t list
 
 let rec to_string t =
   match t with
   | Quoted_string s -> Escape.quoted s
+  (* TODO(maxrn): should we do something here?? *)
+  | Block_string s -> Escape.quoted s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 ;;

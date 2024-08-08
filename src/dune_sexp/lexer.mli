@@ -4,6 +4,7 @@ module Token : sig
   type t =
     | Atom of Atom.t
     | Quoted_string of string
+    | Block_string of string
     | Lparen
     | Rparen
     | Eof

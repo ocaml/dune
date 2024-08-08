@@ -65,8 +65,7 @@ val break : nspaces:int -> shift:int -> _ t
     otherwise [a] will be printed, [b] spaces are printed and then [c] is
     printed. The indentation [y] can be negative, in which case the indentation
     will be reduced. *)
-val custom_break :
-  fits:string * int * string -> breaks:string * int * string -> _ t
+val custom_break : fits:string * int * string -> breaks:string * int * string -> _ t
 
 (** Force a newline to be printed *)
 val newline : _ t
@@ -103,7 +102,7 @@ val newline : _ t
     v} *)
 
 (** Try to put as much as possible on each line. Additionally, a break hint
-    always break the line if the breaking would reduce the indentation level
+    always breaks the line if the breaking would reduce the indentation level
     inside the box ([break] with negative [shift] value). *)
 val box : ?indent:int -> 'a t -> 'a t
 
@@ -169,8 +168,8 @@ end
 (** Render a document to a classic formatter *)
 val to_fmt : Format.formatter -> _ t -> unit
 
-val to_fmt_with_tags :
-     Format.formatter
+val to_fmt_with_tags
+  :  Format.formatter
   -> 'a t
   -> tag_handler:(Format.formatter -> 'a -> 'a t -> unit)
   -> unit
@@ -179,7 +178,7 @@ val to_fmt_with_tags :
 
 (** Inject a classic formatter in a document.
 
-    Disclaimer: this function is to meant to help using [Pp] in existing code
+    Disclaimer: this function is meant to help using [Pp] in existing code
     that already use the [Format] module without having to port everything to
     [Pp]. It is not meant as the normal way to create [Pp.t] values. *)
 val of_fmt : (Format.formatter -> 'a -> unit) -> 'a -> _ t

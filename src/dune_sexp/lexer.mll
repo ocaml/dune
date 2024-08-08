@@ -7,6 +7,7 @@ module Token = struct
   type t =
     | Atom of Atom.t
     | Quoted_string of string
+    | Block_string of string
     | Lparen
     | Rparen
     | Eof
@@ -83,9 +84,11 @@ module Template = struct
     val add_var : part -> unit
     val add_text : string -> unit
     val add_text_c : char -> unit
+    val start_block_string : unit -> unit
   end = struct
     type state =
       | String
+      | Block_string
       | Template of Template.part list
 
     let text_buf = Buffer.create 256
@@ -104,10 +107,15 @@ module Template = struct
       | "" -> parts
       | t -> add_text parts t
 
+    let start_block_string () =
+        state := Block_string
+
     let get () =
       match !state with
       | String -> Token.Quoted_string (take_buf ())
+      | Block_string -> state := String; Token.Block_string (take_buf ());
       | Template parts ->
+        (* TODO(maxrn): check what we need to do here for block strings in templates *)
         state := String;
         begin match add_buf_to_parts parts with
         | [] -> assert false
@@ -124,6 +132,7 @@ module Template = struct
       match !state with
       | String ->
         state := Template (v :: add_buf_to_parts []);
+      | Block_string -> state := Template (v :: add_buf_to_parts []);
       | Template parts ->
         let parts = add_buf_to_parts parts in
         state := Template (v::parts)
@@ -189,9 +198,9 @@ and atom acc start = parse
 
 and start_quoted_string = parse
   | "\\|"
-    { block_string_start With_escape_sequences lexbuf }
+    { Template.Buffer.start_block_string (); Template.Buffer.add_text "\"\\| "; block_string_start With_escape_sequences lexbuf }
   | "\\>"
-    { block_string_start Raw lexbuf }
+    {Template.Buffer.start_block_string (); Template.Buffer.add_text "\"\\> "; block_string_start Raw lexbuf }
   | ""
     { quoted_string lexbuf }
 
@@ -238,9 +247,9 @@ and block_string = parse
 
 and block_string_after_newline = parse
   | blank* "\"\\|"
-    { block_string_start With_escape_sequences lexbuf }
+    { Template.Buffer.add_text "\"\\| "; block_string_start With_escape_sequences lexbuf }
   | blank* "\"\\>"
-    { block_string_start Raw lexbuf }
+    { Template.Buffer.add_text "\"\\> "; block_string_start Raw lexbuf }
   | ""
     { Template.Buffer.get ()
     }

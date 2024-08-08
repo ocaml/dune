@@ -72,8 +72,10 @@ end = struct
                acc
                name
                { Unparsed.values; entry = sexp; prev = Name.Map.find acc name }
-           | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
-             User_error.raise ~loc [ Pp.text "Atom expected" ])
+           | List (loc, _)
+           | Quoted_string (loc, _)
+           | Block_string (loc, _)
+           | Template { loc; _ } -> User_error.raise ~loc [ Pp.text "Atom expected" ])
         | _ ->
           User_error.raise
             ~loc:(Ast.loc sexp)
@@ -335,9 +337,19 @@ let until_keyword =
   fun kwd ~before ~after -> loop kwd before after []
 ;;
 
+let plain_string_of_block_string bs =
+  String.split bs ~on:'\n'
+  |> List.map ~f:(fun line ->
+    match String.length line with
+    | 0 -> line
+    | _ as length -> String.sub line ~pos:4 ~len:(length - 4))
+  |> String.concat ~sep:"\n"
+;;
+
 let plain_string f =
   next (function
     | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
+    | Block_string (loc, s) -> f ~loc (plain_string_of_block_string s)
     | Template { loc; _ } | List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 ;;
@@ -464,8 +476,8 @@ let raw = next Fun.id
 
 let basic_loc desc f =
   next (function
-    | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
-      User_error.raise ~loc [ Pp.textf "%s expected" desc ]
+    | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) | Block_string (loc, _)
+      -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) ->
       (match f ~loc (Atom.to_string s) with
        | None -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
@@ -537,7 +549,11 @@ let sum ?(force_parens = false) cstrs =
     match sexp with
     | Atom (loc, A s) when not force_parens ->
       find_cstr cstrs loc s (Values (loc, Some s, uc)) []
-    | Atom (loc, _) | Template { loc; _ } | Quoted_string (loc, _) | List (loc, []) ->
+    | Atom (loc, _)
+    | Template { loc; _ }
+    | Quoted_string (loc, _)
+    | Block_string (loc, _)
+    | List (loc, []) ->
       User_error.raise
         ~loc
         [ Pp.textf
@@ -546,16 +562,18 @@ let sum ?(force_parens = false) cstrs =
         ]
     | List (loc, name :: args) ->
       (match name with
-       | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
-         User_error.raise ~loc [ Pp.text "Atom expected" ]
+       | Quoted_string (loc, _)
+       | Block_string (loc, _)
+       | List (loc, _)
+       | Template { loc; _ } -> User_error.raise ~loc [ Pp.text "Atom expected" ]
        | Atom (s_loc, A s) -> find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args))
 ;;
 
 let enum' (type a) (cstrs : (string * a t) list) : a t =
   next_with_user_context (fun uc sexp ->
     match sexp with
-    | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
-      User_error.raise ~loc [ Pp.text "Atom expected" ]
+    | Quoted_string (loc, _) | Block_string (loc, _) | Template { loc; _ } | List (loc, _)
+      -> User_error.raise ~loc [ Pp.text "Atom expected" ]
     | Atom (loc, A s) ->
       (match List.assoc cstrs s with
        | Some k ->

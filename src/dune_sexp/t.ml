@@ -4,9 +4,11 @@ module Format = Stdlib.Format
 type t =
   | Atom of Atom.t
   | Quoted_string of string
+  | Block_string of string
   | List of t list
   | Template of Template.t
 
+(* TODO(maxrn): could this also be a Block_string ? *)
 let atom_or_quoted_string s =
   if Atom.is_valid s then Atom (Atom.of_string s) else Quoted_string s
 ;;
@@ -17,6 +19,8 @@ let rec to_string t =
   match t with
   | Atom (A s) -> s
   | Quoted_string s -> Escape.quoted s
+  (* TODO(maxrn): where is this used? Do we need to remove the leading escape characters? *)
+  | Block_string s -> Escape.quoted s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
   | Template t -> Template.to_string t
 ;;
@@ -24,6 +28,9 @@ let rec to_string t =
 let rec pp = function
   | Atom (A s) -> Pp.verbatim s
   | Quoted_string s -> Pp.verbatim (Escape.quoted s)
+  | Block_string s ->
+    let lines = String.split_on_char ~sep:'\n' s |> List.map ~f:String.trim in
+    Pp.box (Pp.concat_map lines ~sep:Pp.newline ~f:Pp.verbatim)
   | List [] -> Pp.verbatim "()"
   | List l ->
     let open Pp.O in
@@ -51,6 +58,8 @@ module Deprecated = struct
   let rec pp_split_strings ppf = function
     | Atom (A s) -> Format.pp_print_string ppf s
     | Quoted_string s -> pp_print_quoted_string ppf s
+    (* TODO(maxrn): How is this used? *)
+    | Block_string s -> pp_print_quoted_string ppf s
     | List [] -> Format.pp_print_string ppf "()"
     | List (first :: rest) ->
       Format.pp_open_box ppf 1;
@@ -128,6 +137,9 @@ let rec to_dyn =
   | Atom (A a) -> string a
   | List s -> List (List.map s ~f:to_dyn)
   | Quoted_string s -> string s
+  (* TODO(maxrn): Should we remove the leading characters?
+     Should we remove linebreaks and condense into one string? *)
+  | Block_string s -> string s
   | Template t -> variant "template" [ string (Template.to_string t) ]
 ;;
 

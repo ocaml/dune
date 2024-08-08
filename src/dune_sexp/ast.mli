@@ -5,6 +5,7 @@ open Stdune
 type t =
   | Atom of Loc.t * Atom.t
   | Quoted_string of Loc.t * string
+  | Block_string of Loc.t * string
   | Template of Template.t
   | List of Loc.t * t list
 

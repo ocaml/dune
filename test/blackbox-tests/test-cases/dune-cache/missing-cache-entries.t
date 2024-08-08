@@ -6,6 +6,7 @@ Check that Dune cache can cope with missing file/metadata entries.
   > (lang dune 2.1)
   > (sandboxing_preference none)
   > (cache enabled)
+  > (cache-user-rules enabled)
   > (cache-duplication copy)
   > (cache-transport direct)
   > EOF

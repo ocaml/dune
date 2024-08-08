@@ -9,6 +9,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ cat > config <<EOF
   > (lang dune 3.0)
   > (cache enabled)
+  > (cache-user-rules enabled)
   > (cache-storage-mode copy)
   > EOF
   $ cat > dune-project <<EOF

@@ -9,6 +9,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (cache enabled)
+  > (cache-user-rules enabled)
   > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

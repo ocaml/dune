@@ -4,6 +4,7 @@ Test reproducibility check
   $ cat > config <<EOF
   > (lang dune 3.0)
   > (cache enabled)
+  > (cache-user-rules enabled)
   > EOF
   $ cat > dune-project <<EOF
   > (lang dune 3.0)

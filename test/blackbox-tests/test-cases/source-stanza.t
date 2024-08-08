@@ -1,4 +1,4 @@
-Test 'source' staza compatibility with both user and organization paths from
+Test 'source' stanza compatibility with both user and organization paths from
 the supported 'github', 'gitlab', 'sourcehut', and 'bitbucket'.
 
 Test a generated 'github' user repo
@@ -97,7 +97,7 @@ style syntax, we will bump the version down and check to make sure an error is
 thrown telling us we need a more recent version of dune to use orginaziton
 syntax.
 
-  $ sed -i -e '1s|.*|(lang dune 3.0)|' dune-project
+  $ sed -i -e '1s|.*|(lang dune 3.16)|' dune-project
   $ sed -i -e '4s|.*|(source (gitlab org/proj/repo))|' dune-project
   $ dune build
   File "dune-project", line 4, characters 8-30:

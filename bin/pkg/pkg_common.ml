@@ -136,6 +136,8 @@ module Lock_dirs_arg = struct
        All)
   ;;
 
+  let of_path p = Selected [ p ]
+
   let lock_dirs_of_workspace t (workspace : Workspace.t) =
     let workspace_lock_dirs =
       Lock_dir.default_path

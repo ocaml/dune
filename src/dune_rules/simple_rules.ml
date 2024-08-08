@@ -63,7 +63,7 @@ let add_user_rule
   sctx
   ~dir
   ~(rule : Rule_conf.t)
-  ~(action : _ Action_builder.With_targets.t)
+  ~(action : Action.Full.t Action_builder.With_targets.t)
   ~expander
   =
   let action =

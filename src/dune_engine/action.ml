@@ -336,7 +336,7 @@ module Full = struct
   let make
     ?(env = Env.empty)
     ?(locks = [])
-    ?(can_go_in_shared_cache = false)
+    ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
     ?(sandbox = Sandbox_config.default)
     action
     =

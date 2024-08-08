@@ -419,21 +419,6 @@ let shared_with_config_file =
       value
       & opt (some (enum Config.Toggle.all)) None
       & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
-  and+ cache_user_rules =
-    let doc =
-      Printf.sprintf
-        "Enable or disable caching user-created rules (%s). Default is `%s'."
-        (Arg.doc_alts_enum Config.Toggle.all)
-        (Config.Toggle.to_string Dune_config.default.cache_user_rules)
-    in
-    Arg.(
-      value
-      & opt (some (enum Config.Toggle.all)) None
-      & info
-          [ "cache-user-rules" ]
-          ~docs
-          ~env:(Cmd.Env.info ~doc "DUNE_CACHE_USER_RULES")
-          ~doc)
   and+ cache_storage_mode =
     let doc =
       Printf.sprintf
@@ -496,7 +481,6 @@ let shared_with_config_file =
   ; sandboxing_preference = Option.map sandboxing_preference ~f:(fun x -> [ x ])
   ; terminal_persistence
   ; cache_enabled
-  ; cache_user_rules
   ; cache_reproducibility_check =
       Option.map
         cache_check_probability
@@ -599,6 +583,7 @@ module Builder = struct
     ; file_watcher : Dune_engine.Scheduler.Run.file_watcher
     ; workspace_config : Dune_rules.Workspace.Clflags.t
     ; cache_debug_flags : Dune_engine.Cache_debug_flags.t
+    ; cache_rules_default : bool
     ; report_errors_config : Dune_engine.Report_errors_config.t
     ; separate_error_messages : bool
     ; stop_on_first_error : bool
@@ -948,6 +933,20 @@ module Builder = struct
                useful for Dune developers to make Dune tests of the digest cache more \
                reproducible.")
     and+ cache_debug_flags = cache_debug_flags_term
+    and+ cache_rules_default =
+      let default =
+        Dune_lang.Toggle.of_bool !Dune_engine.Clflags.can_go_in_shared_cache_default
+      in
+      let doc =
+        Printf.sprintf
+          "Enable or disable caching rules (%s). Default is `%s'."
+          (Arg.doc_alts_enum Config.Toggle.all)
+          (Config.Toggle.to_string default)
+      in
+      Arg.(
+        value
+        & opt (enum Config.Toggle.all) default
+        & info [ "cache-rules" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE_RULES") ~doc)
     and+ report_errors_config =
       Arg.(
         value
@@ -1024,6 +1023,7 @@ module Builder = struct
         ; config_from_config_file
         }
     ; cache_debug_flags
+    ; cache_rules_default = Dune_lang.Toggle.enabled cache_rules_default
     ; report_errors_config
     ; separate_error_messages
     ; stop_on_first_error
@@ -1221,7 +1221,6 @@ let init (builder : Builder.t) =
       Enabled
         { storage_mode = Option.value config.cache_storage_mode ~default:Hardlink
         ; reproducibility_check = config.cache_reproducibility_check
-        ; cache_user_rules = config.cache_user_rules = `Enabled
         }
   in
   Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];
@@ -1258,6 +1257,7 @@ let init (builder : Builder.t) =
   Dune_rules.Clflags.ignore_lock_dir := c.builder.ignore_lock_dir;
   Dune_rules.Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
+  Dune_engine.Clflags.can_go_in_shared_cache_default := c.builder.cache_rules_default;
   Log.info
     [ Pp.textf
         "Workspace root: %s"

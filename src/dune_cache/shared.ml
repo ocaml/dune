@@ -65,27 +65,28 @@ struct
     | Error exn -> Miss (Error (Printexc.to_string exn))
   ;;
 
-  let lookup_impl ~can_go_in_shared_cache ~rule_digest ~targets =
+  let lookup_impl ~rule_digest ~targets =
     match config with
     | Disabled -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cache_disabled)
-    | Enabled { storage_mode = mode; reproducibility_check; cache_user_rules } ->
-      if can_go_in_shared_cache || cache_user_rules
-      then (
-        match Config.Reproducibility_check.sample reproducibility_check with
-        | true ->
-          (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
-             [check_probability] more meaningful, we could first make sure that
-             the shared cache actually does contain an entry for [rule_digest]. *)
-          Fiber.return (Hit_or_miss.Miss Miss_reason.Rerunning_for_reproducibility_check)
-        | false -> try_to_restore_from_shared_cache ~mode ~rule_digest ~targets)
-      else Fiber.return (Hit_or_miss.Miss Miss_reason.Cannot_go_in_shared_cache)
+    | Enabled { storage_mode = mode; reproducibility_check } ->
+      (match Config.Reproducibility_check.sample reproducibility_check with
+       | true ->
+         (* CR-someday amokhov: Here we re-execute the rule, as in Jenga. To make
+            [check_probability] more meaningful, we could first make sure that
+            the shared cache actually does contain an entry for [rule_digest]. *)
+         Fiber.return (Hit_or_miss.Miss Miss_reason.Rerunning_for_reproducibility_check)
+       | false -> try_to_restore_from_shared_cache ~mode ~rule_digest ~targets)
   ;;
 
   let lookup ~can_go_in_shared_cache ~rule_digest ~targets
     : Digest.t Targets.Produced.t option Fiber.t
     =
     let open Fiber.O in
-    let+ result = lookup_impl ~can_go_in_shared_cache ~rule_digest ~targets in
+    let+ result =
+      match can_go_in_shared_cache with
+      | false -> Fiber.return (Hit_or_miss.Miss Miss_reason.Cannot_go_in_shared_cache)
+      | true -> lookup_impl ~rule_digest ~targets
+    in
     match result with
     | Hit result -> Some result
     | Miss reason ->
@@ -276,8 +277,8 @@ struct
     : Digest.t Targets.Produced.t Fiber.t
     =
     match config with
-    | Enabled { storage_mode = mode; reproducibility_check = _; cache_user_rules }
-      when can_go_in_shared_cache || cache_user_rules ->
+    | Enabled { storage_mode = mode; reproducibility_check = _ }
+      when can_go_in_shared_cache ->
       let open Fiber.O in
       let+ produced_targets_with_digests =
         try_to_store_to_shared_cache ~mode ~rule_digest ~produced_targets ~action

@@ -5,6 +5,7 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
 
   $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
+  $ export DUNE_CACHE_RULES=enabled
 
   $ cat > config <<EOF
   > (lang dune 2.1)

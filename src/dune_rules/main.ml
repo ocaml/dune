@@ -75,6 +75,32 @@ let init
       let download ~rule_digest:_ = Fiber.return ()
     end)
   in
+  let cache_config =
+    match cache_config with
+    | Disabled -> cache_config
+    | Enabled _ ->
+      (match Dune_cache_storage.Layout.create_cache_directories () with
+       | Ok () -> cache_config
+       | Error (path, exn) ->
+         (* temporary hack: make sure not to break the line by
+            disabling the line break *)
+         let original_margin = Format.get_margin () in
+         Fun.protect
+           ~finally:(fun () -> Format.set_margin original_margin)
+           (fun () ->
+             Format.set_margin Stdlib.Int.max_int;
+             User_warning.emit
+               ~hints:
+                 [ Pp.textf
+                     "Make sure the directory %s can be created"
+                     (Path.to_string path)
+                 ]
+               [ Pp.textf
+                   "Cache directories could not be created: %s; disabling cache"
+                   (Unix.error_message exn)
+               ]);
+         Disabled)
+  in
   Build_config.set
     ~stats
     ~sandboxing_preference

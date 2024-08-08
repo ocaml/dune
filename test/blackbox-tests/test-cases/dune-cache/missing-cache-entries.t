@@ -3,12 +3,10 @@ Check that Dune cache can cope with missing file/metadata entries.
   $ export DUNE_CACHE_ROOT=$PWD/.cache
 
   $ cat > config <<EOF
-  > (lang dune 2.1)
+  > (lang dune 3.17)
   > (sandboxing_preference none)
   > (cache enabled)
   > (cache-user-rules enabled)
-  > (cache-duplication copy)
-  > (cache-transport direct)
   > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

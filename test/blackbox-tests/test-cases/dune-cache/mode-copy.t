@@ -7,13 +7,13 @@ variable, and via the [DUNE_CACHE_ROOT] variable. Here we test the former.
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
 
   $ cat > config <<EOF
-  > (lang dune 3.0)
+  > (lang dune 3.17)
   > (cache enabled)
   > (cache-user-rules enabled)
   > (cache-storage-mode copy)
   > EOF
   $ cat > dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.17)
   > EOF
   $ cat > dune <<EOF
   > (rule

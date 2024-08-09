@@ -96,14 +96,14 @@ let solve
   ~project_sources
   ~solver_env_from_current_system
   ~version_preference
-  ~lock_dirs_arg
+  ~lock_dirs
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
      effects after performing validation so that if materializing any
      lockdir would fail then no side effect takes place. *)
   (let+ errors, solutions =
-     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+     lock_dirs
      |> Fiber.parallel_map
           ~f:
             (solve_lock_dir
@@ -154,13 +154,16 @@ let lock ~version_preference ~lock_dirs_arg =
     and+ project_sources = project_sources in
     workspace, local_packages, project_sources
   in
+  let lock_dirs =
+    Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
+  in
   solve
     workspace
     ~local_packages
     ~project_sources
     ~solver_env_from_current_system
     ~version_preference
-    ~lock_dirs_arg
+    ~lock_dirs
 ;;
 
 let term =

@@ -23,3 +23,9 @@ val expand_path_from_root
   -> Dune_rules.Super_context.t
   -> Dune_lang.String_with_vars.t
   -> string Dune_engine.Action_builder.t
+
+val resolve_target_aliases
+  :  Workspace_root.t
+  -> targets:Dune_lang.Dep_conf.t list
+  -> contexts:Context.t list
+  -> (Alias.t, 'a Pp.t list) result list

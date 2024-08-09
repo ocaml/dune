@@ -140,6 +140,18 @@ let get (ctx : Context_name.t) : t Memo.t =
   lock_dir
 ;;
 
+let dev_tool_path pkg_name = Path.Source.relative dev_tools_path pkg_name
+
+let of_dev_tool pkg_name =
+  let path = dev_tool_path pkg_name in
+  Fs_memo.dir_exists (In_source_dir path)
+  >>= function
+  | true -> Load.load path
+  | false ->
+    User_error.raise
+      [ Pp.textf "%s does not exist" (Path.Source.to_string_maybe_quoted path) ]
+;;
+
 let lock_dir_active ctx =
   if !Clflags.ignore_lock_dir
   then Memo.return false

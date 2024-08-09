@@ -49,7 +49,11 @@
 
 (cram
  (deps %{bin:md5sum})
- (applies_to source-caching extra-sources))
+ (applies_to
+  source-caching
+  extra-sources
+  ocamlformat-dev-tool
+  dev-tool-conflict-test))
 
 (cram
  (deps %{bin:tar})

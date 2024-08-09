@@ -1,0 +1,85 @@
+open Dune_config
+open Import
+
+let enabled = Config.make_toggle ~name:"lock_dev_tool" ~default:`Disabled
+
+let is_enabled =
+  lazy
+    (match Config.get enabled with
+     | `Enabled -> true
+     | `Disabled -> false)
+;;
+
+let local_dev ~pkg_name ~version : Dune_pkg.Local_package.t =
+  let dependency =
+    let open Dune_lang in
+    let open Package_dependency in
+    let constraint_ =
+      Option.map version ~f:(fun version ->
+        Package_constraint.Uop (Relop.Eq, Package_constraint.Value.String_literal version))
+    in
+    { name = Package_name.of_string pkg_name; constraint_ }
+  in
+  { Dune_pkg.Local_package.name = Package_name.of_string (pkg_name ^ "_dev")
+  ; version = None
+  ; dependencies = [ dependency ]
+  ; conflicts = []
+  ; depopts = []
+  ; pins = Package_name.Map.empty
+  ; conflict_class = []
+  ; loc = Loc.none
+  }
+;;
+
+let solve ~local_packages ~lock_dirs =
+  let open Fiber.O in
+  let* solver_env_from_current_system =
+    Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
+    |> Dune_pkg.Sys_poll.solver_env_from_current_system
+    >>| Option.some
+  and* workspace =
+    Memo.run
+    @@
+    let open Memo.O in
+    let+ workspace = Workspace.workspace () in
+    workspace
+  in
+  Lock.solve
+    workspace
+    ~local_packages
+    ~project_sources:Dune_pkg.Pin_stanza.DB.empty
+    ~solver_env_from_current_system
+    ~version_preference:None
+    ~lock_dirs
+;;
+
+let exists_path path = Path.exists @@ Path.source path
+let default_lock_dir_active () = exists_path Dune_pkg.Lock_dir.default_path
+
+let exists_pkg_in_default_lock_dir pkg_name =
+  let filename =
+    Dune_pkg.Lock_dir.Package_filename.of_package_name
+      (Dune_lang.Package_name.of_string pkg_name)
+  in
+  Path.Source.relative Dune_pkg.Lock_dir.default_path filename |> exists_path
+;;
+
+let dev_tool_path pkg_name =
+  Path.Source.relative Dune_pkg.Lock_dir.dev_tools_path pkg_name
+;;
+
+let lock_ocamlformat () : unit Fiber.t =
+  let pkg_name, version = Dune_pkg.Ocamlformat.pkg () in
+  let lock_dir = dev_tool_path pkg_name in
+  let is_dev_tool_active =
+    (not (exists_path lock_dir))
+    && default_lock_dir_active ()
+    && not (exists_pkg_in_default_lock_dir pkg_name)
+  in
+  if is_dev_tool_active
+  then (
+    let local_pkg = local_dev ~pkg_name ~version in
+    let local_packages = Package_name.Map.singleton local_pkg.name local_pkg in
+    solve ~local_packages ~lock_dirs:[ lock_dir ])
+  else Fiber.return ()
+;;

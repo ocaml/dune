@@ -134,6 +134,7 @@ let float x = Float x
 let bool x = Bool x
 let pair f g (x, y) = Tuple [ f x; g y ]
 let triple f g h (x, y, z) = Tuple [ f x; g y; h z ]
+let quadruple f g h v (x, y, z, t) = Tuple [ f x; g y; h z; v t ]
 let list f l = List (List.map ~f l)
 let array f a = Array (Array.map ~f a)
 

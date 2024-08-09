@@ -44,6 +44,14 @@ val float : float builder
 val bool : bool builder
 val pair : 'a builder -> 'b builder -> ('a * 'b) builder
 val triple : 'a builder -> 'b builder -> 'c builder -> ('a * 'b * 'c) builder
+
+val quadruple
+  :  'a builder
+  -> 'b builder
+  -> 'c builder
+  -> 'd builder
+  -> ('a * 'b * 'c * 'd) builder
+
 val list : 'a builder -> 'a list builder
 val array : 'a builder -> 'a array builder
 val option : 'a builder -> 'a option builder

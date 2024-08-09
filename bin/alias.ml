@@ -9,6 +9,13 @@ type t =
   ; contexts : Dune_rules.Context.t list
   }
 
+let equal t1 t2 =
+  Alias.Name.equal t1.name t2.name
+  && Bool.equal t1.recursive t2.recursive
+  && Path.Source.equal t1.dir t2.dir
+  && List.equal Dune_rules.Context.equal t1.contexts t2.contexts
+;;
+
 let pp { name; recursive; dir; contexts = _ } =
   let open Pp.O in
   let s =

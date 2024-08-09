@@ -9,6 +9,7 @@ include struct
   module Pkg = Lock_dir.Pkg
   module OpamUrl = OpamUrl
   module Source = Source
+  module Ocamlformat = Ocamlformat
 end
 
 let context_name = Context_name.of_string "_fetch"
@@ -164,6 +165,17 @@ let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
 ;;
 
 let find_checksum, find_url =
+  let extend_db all lockdir lockdir_path =
+    Fs_memo.dir_exists (In_source_dir lockdir_path)
+    >>= function
+    | false -> Memo.return all
+    | true ->
+      all
+      |> fun (checksums, urls) ->
+      let+ lockdir = lockdir in
+      let checksums', urls' = extract_checksums_and_urls lockdir in
+      Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'
+  in
   let all =
     Memo.lazy_ (fun () ->
       Per_context.list ()
@@ -172,7 +184,10 @@ let find_checksum, find_url =
             ~init:(Checksum.Map.empty, Digest.Map.empty)
             ~f:(fun (checksums, urls) (lockdir : Dune_pkg.Lock_dir.t) ->
               let checksums', urls' = extract_checksums_and_urls lockdir in
-              Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls'))
+              Checksum.Map.superpose checksums checksums', Digest.Map.superpose urls urls')
+      >>= fun all ->
+      let pkg_name = Ocamlformat.pkg_name in
+      extend_db all (Lock_dir.of_dev_tool pkg_name) (Lock_dir.dev_tool_path pkg_name))
   in
   let find_url digest =
     let+ _, urls = Memo.Lazy.force all in

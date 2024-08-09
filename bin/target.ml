@@ -188,25 +188,34 @@ let expand_path root sctx sv =
   Path.relative Path.root s
 ;;
 
-let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
+let resolve_alias root ~recursive sv ~contexts =
   match Dune_lang.String_with_vars.text_only sv with
-  | Some s ->
-    Ok [ Request.Alias (Alias.of_string root ~recursive s ~contexts:setup.contexts) ]
+  | Some s -> Ok (Alias.of_string root ~recursive s ~contexts)
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 ;;
 
-let resolve_target root ~setup target =
+let resolve_target_aliases root ~targets ~contexts =
+  List.filter_map targets ~f:(fun target ->
+    match (target : Dune_lang.Dep_conf.t) with
+    | Alias sv -> Option.some @@ resolve_alias root ~recursive:false sv ~contexts
+    | Alias_rec sv -> Option.some @@ resolve_alias root ~recursive:true sv ~contexts
+    | _ -> None)
+;;
+
+let resolve_target root ~(setup : Dune_rules.Main.build_system) target =
   match (target : Dune_lang.Dep_conf.t) with
   | Alias sv as dep ->
     Action_builder.return
       (Result.map_error
          ~f:(fun hints -> dep, hints)
-         (resolve_alias root ~recursive:false sv ~setup))
+         (Result.map ~f:(fun alias -> [ Request.Alias alias ])
+          @@ resolve_alias root ~recursive:false sv ~contexts:setup.contexts))
   | Alias_rec sv as dep ->
     Action_builder.return
       (Result.map_error
          ~f:(fun hints -> dep, hints)
-         (resolve_alias root ~recursive:true sv ~setup))
+         (Result.map ~f:(fun alias -> [ Request.Alias alias ])
+          @@ resolve_alias root ~recursive:true sv ~contexts:setup.contexts))
   | File sv as dep ->
     let f ctx =
       let sctx =

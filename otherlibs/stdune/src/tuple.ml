@@ -21,3 +21,14 @@ module T3 = struct
   let hash f g h (a, b, c) = Poly.hash (f a, g b, h c)
   let equal f g h (a1, b1, c1) (a2, b2, c2) = f a1 a2 && g b1 b2 && h c1 c2
 end
+
+module T4 = struct
+  type ('a, 'b, 'c, 'd) t = 'a * 'b * 'c * 'd
+
+  let to_dyn = Dyn.quadruple
+  let hash f g h v (a, b, c, d) = Poly.hash (f a, g b, h c, v d)
+
+  let equal f g h v (a1, b1, c1, d1) (a2, b2, c2, d2) =
+    f a1 a2 && g b1 b2 && h c1 c2 && v d1 d2
+  ;;
+end

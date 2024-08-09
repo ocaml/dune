@@ -383,6 +383,7 @@ let create_latest_version
   }
 ;;
 
+let dev_tools_path = Path.Source.(relative root "dev-tools.locks")
 let default_path = Path.Source.(relative root "dune.lock")
 let metadata_filename = "lock.dune"
 

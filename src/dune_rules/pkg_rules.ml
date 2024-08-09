@@ -1812,9 +1812,24 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
     Action_builder.progn (build_and_install @ [ install_file_action ])
   in
   let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
+  let progress =
+    Pkg_build_progress.display_build_progress
+      pkg.info.name
+      pkg.info.version
+      ~source_dir:
+        (if Option.is_some pkg.info.source
+         then `Some pkg.write_paths.source_dir
+         else `No_package_source)
+      ~target_dir:
+        (if Option.is_some pkg.build_command || Option.is_some pkg.install_command
+         then `Some pkg.write_paths.target_dir
+         else `No_build_or_install_command)
+    |> Action_builder.with_no_targets
+  in
   let open Action_builder.With_targets.O in
   Action_builder.deps deps
   |> Action_builder.with_no_targets
+  >>> progress
   (* TODO should we add env deps on these? *)
   >>> add_env (Pkg.exported_env pkg) build_action
   |> Action_builder.With_targets.add_directories

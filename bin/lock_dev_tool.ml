@@ -1,4 +1,14 @@
+open Dune_config
 open Import
+
+let enabled = Config.make_toggle ~name:"lock_dev_tool" ~default:`Disabled
+
+let is_enabled =
+  lazy
+    (match Config.get enabled with
+     | `Enabled -> true
+     | `Disabled -> false)
+;;
 
 let local_dev ~pkg_name ~version : Dune_pkg.Local_package.t =
   let dependency =

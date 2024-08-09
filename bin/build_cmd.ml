@@ -127,24 +127,6 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~request
 ;;
 
-let is_fmt_target ~common ~contexts targets =
-  let dir = Path.(relative root) (Common.prefix_target common ".") in
-  let fmt_alias =
-    Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:false ~contexts dir
-  in
-  let fmt_rec_alias =
-    Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts dir
-  in
-  let resolved_aliases =
-    Target.resolve_target_aliases (Common.root common) ~targets ~contexts
-  in
-  List.map resolved_aliases ~f:(fun x -> Result.to_option x |> Option.to_list)
-  |> List.flatten
-  |> List.find ~f:(fun alias ->
-    Alias.equal fmt_alias alias || Alias.equal fmt_rec_alias alias)
-  |> Option.is_some
-;;
-
 let runtest_info =
   let doc = "Run tests." in
   let man =
@@ -211,15 +193,7 @@ let build =
       | _ :: _ -> targets
     in
     let common, config = Common.init builder in
-    let request (setup : Dune_rules.Main.build_system) =
-      let open Action_builder.O in
-      let* () =
-        Action_builder.of_memo
-        @@
-        if is_fmt_target ~common ~contexts:setup.contexts targets
-        then Lock_dev_tool.lock_ocamlformat () |> Memo.of_non_reproducible_fiber
-        else Memo.return ()
-      in
+    let request setup =
       Target.interpret_targets (Common.root common) config setup targets
     in
     run_build_command ~common ~config ~request
@@ -259,6 +233,9 @@ let fmt =
     let request (setup : Import.Main.build_system) =
       let open Action_builder.O in
       let* () =
+        (* Note that generating the ocamlformat lockdir here means
+           that it will be created when a user runs `dune fmt` but not
+           when a user runs `dune build @fmt`. *)
         Action_builder.of_memo
           (Lock_dev_tool.lock_ocamlformat () |> Memo.of_non_reproducible_fiber)
       in

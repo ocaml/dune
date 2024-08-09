@@ -8,7 +8,6 @@ type 'a t =
   ; of_string : string -> ('a, string) result
   ; mutable value : 'a option
   ; default : 'a
-  ; witness : 'a Type_eq.Id.t
   ; mutable configure_time_value : 'a option
   }
 
@@ -27,6 +26,8 @@ type packed = E : 'a t -> packed
 
 let all = ref []
 let register t = all := E t :: !all
+let toggles = ref []
+let register_toggle t = toggles := t :: !toggles
 
 module Toggle = struct
   type t =
@@ -34,7 +35,6 @@ module Toggle = struct
     | `Disabled
     ]
 
-  let witness : t Type_eq.Id.t = Type_eq.Id.create ()
   let all : (string * t) list = [ "enabled", `Enabled; "disabled", `Disabled ]
 
   let to_string t =
@@ -87,10 +87,8 @@ let init values =
   initialized := true
 ;;
 
-let make ~name ~of_string ~default ~witness =
-  let t =
-    { name; of_string; value = None; default; configure_time_value = None; witness }
-  in
+let make ~name ~of_string ~default =
+  let t = { name; of_string; value = None; default; configure_time_value = None } in
   register t;
   t
 ;;
@@ -99,15 +97,15 @@ let set_configure_time_toggles ~names =
   if !configure_time_frozen
   then Code_error.raise "Config.set_configure_time_toggles: invalid access" [];
   List.iter names ~f:(fun name ->
-    let (E t) = List.find_exn !all ~f:(fun (E t) -> String.equal t.name name) in
-    match Type_eq.Id.same t.witness Toggle.witness with
-    | Some T -> t.configure_time_value <- Some `Enabled
-    | None -> ());
+    let t = List.find_exn !toggles ~f:(fun t -> String.equal t.name name) in
+    t.configure_time_value <- Some `Enabled);
   configure_time_frozen := true
 ;;
 
 let make_toggle ~name ~default =
-  make ~name ~default ~of_string:Toggle.of_string ~witness:Toggle.witness
+  let t = make ~name ~default ~of_string:Toggle.of_string in
+  register_toggle t;
+  t
 ;;
 
 let global_lock = make_toggle ~name:"global_lock" ~default:`Enabled
@@ -123,7 +121,6 @@ let copy_file =
       | "portable" -> Ok `Portable
       | "fast" -> Ok `Best
       | _ -> Error (sprintf "only %S and %S are allowed" "fast" "portable"))
-    ~witness:(Type_eq.Id.create () (* XXX *))
     ~default:`Best
 ;;
 
@@ -160,7 +157,6 @@ let threaded_console_frames_per_second =
       | Some _ -> Error (sprintf "value must be between 1 and 1000")
       | None -> Error (sprintf "could not parse %S as an integer" x))
     ~default:`Default
-    ~witness:(Type_eq.Id.create () (* XXX *))
 ;;
 
 let party_mode = make_toggle ~name:"party_mode" ~default:`Disabled

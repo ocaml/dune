@@ -51,11 +51,7 @@ let run_capture_line ~path ~prog ~args =
 module Config_override_variables = struct
   let string_option_config name =
     let config =
-      Dune_config.Config.make
-        ~name
-        ~of_string:(fun s -> Ok (Some s))
-        ~default:None
-        ~witness:(Type_eq.Id.create () (* XXX *))
+      Dune_config.Config.make ~name ~of_string:(fun s -> Ok (Some s)) ~default:None
     in
     fun () -> Dune_config.Config.get config
   ;;

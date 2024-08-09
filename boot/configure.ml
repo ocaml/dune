@@ -76,7 +76,10 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
-    ; "--toggles", Arg.String set_toggles, "TODO"
+    ; ( "--toggles"
+      , Arg.String set_toggles
+      , "NAMES comma-separated list of configuration options to be set to 'enabled' by \
+         default." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in

@@ -541,12 +541,12 @@ let make_action = function
 
 (* Returns the set of depopts of a package which are part of the solution
    represented by [version_by_package_name] *)
-let available_depopts solver_env version_by_package_name (opam_package : OpamFile.OPAM.t) =
+let available_depopts solver_env version_by_package_name depopts =
   let formula =
     Resolve_opam_formula.apply_filter
       (Solver_env.to_env solver_env)
       ~with_test:false
-      opam_package.depopts
+      depopts
   in
   let atoms = OpamFormula.to_dnf formula |> List.concat in
   List.filter_map atoms ~f:(fun (name, version_constraint) ->
@@ -647,7 +647,7 @@ let opam_package_to_lock_file_pkg
           ]
     in
     let depopts =
-      available_depopts solver_env version_by_package_name opam_file
+      available_depopts solver_env version_by_package_name opam_file.depopts
       |> List.filter ~f:(fun package_name ->
         not (List.mem depends package_name ~equal:Package_name.equal))
     in

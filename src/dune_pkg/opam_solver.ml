@@ -593,11 +593,8 @@ let opam_package_to_lock_file_pkg
     (Table.find_exn candidates_cache name).resolved
     |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
   in
-  let opam_file, loc =
-    let opam_file = Resolved_package.opam_file resolved_package in
-    let loc = Resolved_package.loc resolved_package in
-    opam_file, loc
-  in
+  let opam_file = Resolved_package.opam_file resolved_package in
+  let loc = Resolved_package.loc resolved_package in
   let extra_sources =
     OpamFile.OPAM.extra_sources opam_file
     |> List.map ~f:(fun (opam_basename, opam_url) ->
@@ -632,27 +629,28 @@ let opam_package_to_lock_file_pkg
     { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
   in
   let depends =
-    match
-      Resolve_opam_formula.filtered_formula_to_package_names
-        ~with_test:false
-        (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
-        version_by_package_name
-        opam_file.depends
-    with
-    | Ok { regular; _ } -> regular
-    | Error (`Formula_could_not_be_satisfied hints) ->
-      Code_error.raise
-        "Dependencies of package can't be satisfied from packages in solution"
-        [ "package", Dyn.string (OpamFile.OPAM.package opam_file |> OpamPackage.to_string)
-        ; "hints", Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
-        ]
-  in
-  let depopts =
-    available_depopts solver_env version_by_package_name opam_file
-    |> List.filter ~f:(fun package_name ->
-      not (List.mem depends package_name ~equal:Package_name.equal))
-  in
-  let depends =
+    let depends =
+      match
+        Resolve_opam_formula.filtered_formula_to_package_names
+          ~with_test:false
+          (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
+          version_by_package_name
+          opam_file.depends
+      with
+      | Ok { regular; _ } -> regular
+      | Error (`Formula_could_not_be_satisfied hints) ->
+        Code_error.raise
+          "Dependencies of package can't be satisfied from packages in solution"
+          [ ( "package"
+            , Dyn.string (OpamFile.OPAM.package opam_file |> OpamPackage.to_string) )
+          ; "hints", Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
+          ]
+    in
+    let depopts =
+      available_depopts solver_env version_by_package_name opam_file
+      |> List.filter ~f:(fun package_name ->
+        not (List.mem depends package_name ~equal:Package_name.equal))
+    in
     depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
   in
   let build_env action =

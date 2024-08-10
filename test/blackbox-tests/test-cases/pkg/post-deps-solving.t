@@ -9,15 +9,13 @@ Solving for post dependencies:
   > depends: [ "bar" {post} ]
   > EOF
 
-We don't need bar, but we still include it:
+We don't need bar, so we skip it
 
   $ solve foo
   Solution for dune.lock:
-  - bar.0.0.1
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg dune.lock/bar.pkg
-  (version 0.0.1)
+  $ cat dune.lock/foo.pkg
   (version 0.0.1)
 
 Self dependency
@@ -66,11 +64,9 @@ post "cycle":
 
   $ solve foo
   Solution for dune.lock:
-  - bar.0.0.1
   - foo.0.0.1
 
-  $ cat dune.lock/foo.pkg dune.lock/bar.pkg
-  (version 0.0.1)
+  $ cat dune.lock/foo.pkg
   (version 0.0.1)
 
 In depopts:

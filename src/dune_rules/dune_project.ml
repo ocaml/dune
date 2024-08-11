@@ -933,7 +933,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =
           let+ contents = read opam_file in
-          Package.load_opam_file_with_contents ~contents opam_file name
+          Dune_pkg.Opam_file.load_opam_file_with_contents ~contents opam_file name
         in
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn

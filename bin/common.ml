@@ -14,7 +14,6 @@ end
 
 open struct
   open Dune_rules
-  module Package = Package
   module Colors = Colors
   module Only_packages = Only_packages
 end
@@ -25,6 +24,8 @@ open struct
   module Term = Term
   module Manpage = Manpage
 end
+
+module Package = Dune_lang.Package
 
 module Let_syntax = struct
   let ( let+ ) t f = Term.(const f $ t)

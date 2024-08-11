@@ -499,6 +499,8 @@ end = struct
       Some (name, entries)
   ;;
 
+  module Package_map_traversals = Memo.Make_parallel_map (Package.Name.Map)
+
   let stanzas_to_entries sctx =
     let ctx = Context.build_context (Super_context.context sctx) in
     let* stanzas = Dune_load.dune_files ctx.name in

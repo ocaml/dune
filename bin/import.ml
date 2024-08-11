@@ -28,7 +28,6 @@ include struct
   module Super_context = Super_context
   module Context = Context
   module Workspace = Workspace
-  module Package = Package
   module Dune_project = Dune_project
   module Dune_package = Dune_package
   module Resolve = Resolve
@@ -67,6 +66,7 @@ include struct
   module Profile = Profile
   module Lib_name = Lib_name
   module Package_name = Package_name
+  module Package = Package
   module Package_version = Package_version
   module Source_kind = Source_kind
   module Package_info = Package_info

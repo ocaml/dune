@@ -40,6 +40,15 @@ module Pkg_info = struct
   ;;
 
   let default_version = Package_version.of_string "dev"
+
+  let variables t =
+    let module Variable = OpamVariable in
+    Package_variable_name.Map.of_list_exn
+      [ Package_variable_name.name, Variable.S (Package_name.to_string t.name)
+      ; Package_variable_name.version, S (Package_version.to_string t.version)
+      ; Package_variable_name.dev, B t.dev
+      ]
+  ;;
 end
 
 module Build_command = struct

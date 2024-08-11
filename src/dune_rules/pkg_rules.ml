@@ -10,6 +10,7 @@ include struct
   module Source = Source
   module Build_command = Lock_dir.Build_command
   module Display = Dune_engine.Display
+  module Pkg_info = Lock_dir.Pkg_info
 end
 
 module Variable = struct
@@ -43,18 +44,6 @@ module Variable = struct
 
   let to_dyn (name, value) =
     Dyn.(pair Package_variable_name.to_dyn dyn_of_value (name, value))
-  ;;
-end
-
-module Pkg_info = struct
-  include Dune_pkg.Lock_dir.Pkg_info
-
-  let variables t =
-    Package_variable_name.Map.of_list_exn
-      [ Package_variable_name.name, Variable.S (Package.Name.to_string t.name)
-      ; Package_variable_name.version, S (Package_version.to_string t.version)
-      ; Package_variable_name.dev, B t.dev
-      ]
   ;;
 end
 

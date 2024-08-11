@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 module T = struct
   type t =
@@ -48,8 +48,10 @@ let named loc name =
   else User_error.raise ~loc [ Pp.textf "%S is not a valid Dune project name." name ]
 ;;
 
-let decode = Dune_lang.Decoder.plain_string (fun ~loc s -> named loc s)
-let encode n = Dune_lang.Encoder.string (to_string_hum n)
+open Dune_sexp
+
+let decode = Decoder.plain_string (fun ~loc s -> named loc s)
+let encode n = Encoder.string (to_string_hum n)
 
 let name = function
   | Anonymous _ -> None

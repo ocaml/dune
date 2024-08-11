@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 (** Invariants: - Named s -> s <> "" and s does not contain '.' or '/' -
     Anonymous p -> p is a local path in the source tree *)

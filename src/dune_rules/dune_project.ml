@@ -395,7 +395,7 @@ let subst_config t =
 
 let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
   match
-    (* CR-rgrinberg: why do we pick a name randomly? How about just making it
+    (* CR rgrinberg: why do we pick a name randomly? How about just making it
        anonymous here *)
     Package.Name.Map.min_binding packages
   with
@@ -589,8 +589,6 @@ let encode : t -> Dune_lang.t list =
     ]
 ;;
 
-module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map)
-
 let forbid_opam_files_relative_to_project opam_file_location packages =
   match opam_file_location with
   | `Relative_to_project -> ()
@@ -606,8 +604,130 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
         ]
 ;;
 
+let set_parsing_context t parser =
+  let parsing_context = Univ_map.set t.parsing_context key t in
+  Dune_lang.Decoder.set_many parsing_context parser
+;;
+
+let wrapped_executables t = t.wrapped_executables
+let map_workspace_root t = t.map_workspace_root
+let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
+let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
+let () = Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
+let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return [])
+let strict_package_deps t = t.strict_package_deps
+let allow_approximate_merlin t = t.allow_approximate_merlin
+let cram t = t.cram
+let info t = t.info
+
+let update_execution_parameters t ep =
+  ep
+  |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
+  |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
+       (if t.map_workspace_root then Set "/workspace_root" else Unset)
+  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
+       (t.dune_version >= (2, 4))
+;;
+
+let opam_file_location t = t.opam_file_location
+
+let filter_packages t ~f =
+  let packages = Package.Name.Map.filter t.packages ~f:(fun p -> f (Package.name p)) in
+  { t with packages }
+;;
+
+let including_hidden_packages t = t.including_hidden_packages
+
+let make_packages
+  ~opam_packages
+  ~dir
+  ~generate_opam_files
+  ~opam_file_location
+  packages
+  name
+  =
+  (match packages, Option.bind ~f:Dune_project_name.name name with
+   | [ p ], Some name ->
+     if Package.Name.to_string (Package.name p) <> name
+     then
+       User_error.raise
+         ~loc:(Package.loc p)
+         [ Pp.textf
+             "when a single package is defined, it must have the same name as the \
+              project name: %s"
+             name
+         ]
+   | _, _ -> ());
+  (let package_defined_twice name loc1 loc2 =
+     let main_message =
+       [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
+     in
+     let annots =
+       let message loc =
+         User_message.make
+           ~loc
+           [ Pp.textf "package named %s" (Package.Name.to_string name) ]
+       in
+       let related = [ message loc1; message loc2 ] in
+       User_message.Annots.singleton
+         Compound_user_error.annot
+         [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
+     in
+     User_error.raise
+       ~annots
+       (main_message
+        @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+          ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+          ])
+   in
+   let deprecated_package_names =
+     List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
+       let deprecated_package_names = Package.deprecated_package_names package in
+       Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
+   in
+   List.iter packages ~f:(fun p ->
+     let name = Package.name p in
+     Package.Name.Map.find deprecated_package_names name
+     |> Option.iter ~f:(fun loc -> package_defined_twice name loc (Package.loc p))));
+  match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
+  | Error (_, _, p) ->
+    User_error.raise
+      ~loc:(Package.loc p)
+      [ Pp.textf "package %s is already defined" (Package.name p |> Package.Name.to_string)
+      ]
+  | Ok packages ->
+    let generated_opam_file =
+      if generate_opam_files
+      then fun p -> Package.set_has_opam_file p Package.Generated
+      else Fun.id
+    in
+    (match opam_file_location with
+     | `Inside_opam_directory ->
+       Package.Name.Map.map packages ~f:(fun p ->
+         let dir = Path.Source.relative dir "opam" in
+         let p = Package.set_inside_opam_dir p ~dir in
+         generated_opam_file p)
+     | `Relative_to_project ->
+       Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
+         match dune, opam with
+         | None, None -> assert false
+         | Some p, None -> Some (generated_opam_file p)
+         | Some p, Some _ ->
+           let p = Package.set_has_opam_file p (Exists true) in
+           Some (generated_opam_file p)
+         | None, Some (loc, _) ->
+           User_error.raise
+             ~loc
+             [ Pp.text
+                 "This opam file doesn't have a corresponding (package ...) stanza in \
+                  the dune-project file. Since you have at least one other (package ...) \
+                  stanza in your dune-project file, you must a (package ...) stanza for \
+                  each opam package in your project."
+             ]))
+;;
+
 let parse_packages
-  (name : Dune_project_name.t option)
+  name
   ~info
   ~dir
   ~version
@@ -616,98 +736,25 @@ let parse_packages
   ~generate_opam_files
   opam_packages
   =
+  forbid_opam_files_relative_to_project opam_file_location opam_packages;
   let open Memo.O in
-  let+ packages =
-    forbid_opam_files_relative_to_project opam_file_location opam_packages;
-    if List.is_empty packages
-    then
-      Package.Name.Map.to_list opam_packages
-      |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
-        let open Memo.O in
-        let+ pkg = pkg in
-        name, pkg)
-      |> Memo.map ~f:Package.Name.Map.of_list_exn
-    else (
-      (match packages, Option.bind ~f:Dune_project_name.name name with
-       | [ p ], Some name ->
-         if Package.Name.to_string (Package.name p) <> name
-         then
-           User_error.raise
-             ~loc:(Package.loc p)
-             [ Pp.textf
-                 "when a single package is defined, it must have the same name as the \
-                  project name: %s"
-                 name
-             ]
-       | _, _ -> ());
-      let package_defined_twice name loc1 loc2 =
-        let main_message =
-          [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
-        in
-        let name = Package.Name.to_string name in
-        let annots =
-          let message loc = User_message.make ~loc [ Pp.textf "package named %s" name ] in
-          let related = [ message loc1; message loc2 ] in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
-        in
-        User_error.raise
-          ~annots
-          (main_message
-           @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-             ])
-      in
-      let deprecated_package_names =
-        List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
-          let deprecated_package_names = Package.deprecated_package_names package in
-          Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
-      in
-      List.iter packages ~f:(fun p ->
-        let name = Package.name p in
-        match Package.Name.Map.find deprecated_package_names name with
-        | None -> ()
-        | Some loc -> package_defined_twice name loc (Package.loc p));
-      match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
-      | Error (_, _, p) ->
-        let name = Package.name p in
-        User_error.raise
-          ~loc:(Package.loc p)
-          [ Pp.textf "package %s is already defined" (Package.Name.to_string name) ]
-      | Ok packages ->
-        Memo.return
-        @@
-        let generated_opam_file =
-          if generate_opam_files
-          then fun p -> Package.set_has_opam_file p Package.Generated
-          else Fun.id
-        in
-        (match opam_file_location with
-         | `Inside_opam_directory ->
-           Package.Name.Map.map packages ~f:(fun p ->
-             let dir = Path.Source.relative dir "opam" in
-             let p = Package.set_inside_opam_dir p ~dir in
-             generated_opam_file p)
-         | `Relative_to_project ->
-           Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
-             match dune, opam with
-             | None, None -> assert false
-             | Some p, None -> Some (generated_opam_file p)
-             | Some p, Some _ ->
-               let p = Package.set_has_opam_file p (Exists true) in
-               Some (generated_opam_file p)
-             | None, Some (loc, _) ->
-               User_error.raise
-                 ~loc
-                 [ Pp.text
-                     "This opam file doesn't have a corresponding (package ...) stanza \
-                      in the dune-project file. Since you have at least one other \
-                      (package ...) stanza in your dune-project file, you must a \
-                      (package ...) stanza for each opam package in your project."
-                 ])))
-  in
-  Package.Name.Map.map packages ~f:(fun p ->
+  (if List.is_empty packages
+   then
+     Package.Name.Map.to_list opam_packages
+     |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
+       let+ pkg = pkg in
+       name, pkg)
+     |> Memo.map ~f:Package.Name.Map.of_list_exn
+   else
+     Memo.return
+       (make_packages
+          ~opam_packages
+          ~dir
+          ~generate_opam_files
+          ~opam_file_location
+          packages
+          name))
+  >>| Package.Name.Map.map ~f:(fun p ->
     let info = Package_info.superpose info (Package.info p) in
     let version =
       match Package.version p with
@@ -943,6 +990,7 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
+      let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
     Some (infer Package_info.empty ~dir opam_packages)
@@ -953,37 +1001,3 @@ let load =
   let read source = Fs_memo.file_contents (Path.Outside_build_dir.In_source_dir source) in
   gen_load ~read
 ;;
-
-let set_parsing_context t parser =
-  let parsing_context = Univ_map.set t.parsing_context key t in
-  Dune_lang.Decoder.set_many parsing_context parser
-;;
-
-let wrapped_executables t = t.wrapped_executables
-let map_workspace_root t = t.map_workspace_root
-let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
-let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
-let () = Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
-let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return [])
-let strict_package_deps t = t.strict_package_deps
-let allow_approximate_merlin t = t.allow_approximate_merlin
-let cram t = t.cram
-let info t = t.info
-
-let update_execution_parameters t ep =
-  ep
-  |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
-  |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
-       (if t.map_workspace_root then Set "/workspace_root" else Unset)
-  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
-       (t.dune_version >= (2, 4))
-;;
-
-let opam_file_location t = t.opam_file_location
-
-let filter_packages t ~f =
-  let packages = Package.Name.Map.filter t.packages ~f:(fun p -> f (Package.name p)) in
-  { t with packages }
-;;
-
-let including_hidden_packages t = t.including_hidden_packages

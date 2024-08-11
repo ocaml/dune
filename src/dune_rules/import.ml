@@ -101,6 +101,7 @@ include struct
   module Package_constraint = Package_constraint
   module Dune_project_name = Dune_project_name
   module Package = Package
+  module Dialect = Dialect
 end
 
 include Dune_engine.No_io

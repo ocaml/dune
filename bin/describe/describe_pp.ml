@@ -1,4 +1,5 @@
 open Import
+module Dialect = Dune_lang.Dialect
 
 let dialect_and_ml_kind file =
   let open Memo.O in
@@ -8,7 +9,7 @@ let dialect_and_ml_kind file =
   in
   let+ project = Source_tree.root () >>| Source_tree.Dir.project in
   let dialects = Dune_project.dialects project in
-  match Dune_rules.Dialect.DB.find_by_extension dialects ext with
+  match Dialect.DB.find_by_extension dialects ext with
   | None -> User_error.raise [ Pp.textf "unsupported extension: %s" ext ]
   | Some x -> x
 ;;
@@ -30,13 +31,12 @@ let execute_pp_action ~sctx file pp_file dump_file =
     let* action, _observing_facts =
       let* loc, action =
         let+ dialect, ml_kind = dialect_and_ml_kind file in
-        match Dune_rules.Dialect.print_ast dialect ml_kind with
+        match Dialect.print_ast dialect ml_kind with
         | Some print_ast -> print_ast
         | None ->
           (* fall back to the OCaml print_ast function, known to exist, if one
              doesn't exist for this dialect. *)
-          Dune_rules.Dialect.print_ast Dune_rules.Dialect.ocaml ml_kind
-          |> Option.value_exn
+          Dialect.print_ast Dialect.ocaml ml_kind |> Option.value_exn
       in
       let build =
         let open Action_builder.O in

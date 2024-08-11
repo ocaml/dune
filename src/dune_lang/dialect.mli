@@ -1,4 +1,5 @@
-open Import
+open Stdune
+open Dune_sexp
 open Ocaml
 
 (** Dialects
@@ -23,12 +24,12 @@ type t
 
 val name : t -> string
 val to_dyn : t -> Dyn.t
-val encode : t Dune_lang.Encoder.t
-val decode : t Dune_lang.Decoder.t
+val encode : t Encoder.t
+val decode : t Decoder.t
 val extension : t -> Ml_kind.t -> Filename.Extension.t option
-val preprocess : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
-val format : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t * string list) option
-val print_ast : t -> Ml_kind.t -> (Loc.t * Dune_lang.Action.t) option
+val preprocess : t -> Ml_kind.t -> (Loc.t * Action.t) option
+val format : t -> Ml_kind.t -> (Loc.t * Action.t * string list) option
+val print_ast : t -> Ml_kind.t -> (Loc.t * Action.t) option
 val ocaml : t
 val reason : t
 val rescript : t

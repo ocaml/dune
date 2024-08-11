@@ -41,3 +41,4 @@ module Package_info = Package_info
 module Section = Section
 module Package = Package
 module Dune_project_name = Dune_project_name
+module Dialect = Dialect

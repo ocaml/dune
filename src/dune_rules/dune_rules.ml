@@ -61,7 +61,6 @@ module Dune_project = Dune_project
 module Source_tree = Source_tree
 module Source_dir_status = Source_dir_status
 module Dune_file0 = Dune_file0
-module Dialect = Dialect
 module Private_context = Private_context
 module Odoc = Odoc
 module Library = Library

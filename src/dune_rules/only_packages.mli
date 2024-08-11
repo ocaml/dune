@@ -1,3 +1,5 @@
+open Import
+
 (** Restrict the set of visible packages *)
 
 module Clflags : sig

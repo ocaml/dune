@@ -100,6 +100,7 @@ include struct
   module Package_dependency = Package_dependency
   module Package_constraint = Package_constraint
   module Dune_project_name = Dune_project_name
+  module Package = Package
 end
 
 include Dune_engine.No_io

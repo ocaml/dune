@@ -12,6 +12,7 @@ module Pkg_info : sig
     }
 
   val default_version : Package_version.t
+  val variables : t -> OpamVariable.variable_contents Package_variable_name.Map.t
 end
 
 module Build_command : sig

@@ -30,7 +30,6 @@ include struct
   module Workspace = Workspace
   module Package = Package
   module Dune_project = Dune_project
-  module Dune_project_name = Dune_project_name
   module Dune_package = Dune_package
   module Resolve = Resolve
   module Source_dir_status = Source_dir_status
@@ -72,6 +71,7 @@ include struct
   module Source_kind = Source_kind
   module Package_info = Package_info
   module Section = Section
+  module Dune_project_name = Dune_project_name
 end
 
 module Log = Dune_util.Log

@@ -99,6 +99,7 @@ include struct
   module Section = Section
   module Package_dependency = Package_dependency
   module Package_constraint = Package_constraint
+  module Dune_project_name = Dune_project_name
 end
 
 include Dune_engine.No_io

@@ -1,5 +1,5 @@
-open Import
-module Action = Dune_lang.Action
+open Stdune
+open Dune_sexp
 module Ml_kind = Ocaml.Ml_kind
 module Cm_kind = Ocaml.Cm_kind
 module Mode = Ocaml.Mode
@@ -15,7 +15,7 @@ module File_kind = struct
     }
 
   let encode { kind; extension; preprocess; format; print_ast; merlin_reader } =
-    let open Dune_lang.Encoder in
+    let open Encoder in
     let kind =
       string
       @@
@@ -67,7 +67,7 @@ let to_dyn { name; file_kinds } =
 ;;
 
 let encode { name; file_kinds } =
-  let open Dune_lang.Encoder in
+  let open Encoder in
   let open Option.O in
   let file_kind_stanzas =
     List.filter_map Ml_kind.all ~f:(fun kind ->
@@ -79,7 +79,7 @@ let encode { name; file_kinds } =
 ;;
 
 let decode =
-  let open Dune_lang.Decoder in
+  let open Dune_sexp.Decoder in
   let kind kind =
     let+ loc, extension = field "extension" (located extension)
     and+ preprocess = field_o "preprocess" (located Action.decode_dune_file)
@@ -91,7 +91,7 @@ let decode =
     and+ merlin_reader =
       field_o
         "merlin_reader"
-        (Dune_lang.Syntax.since Stanza.syntax (3, 16) >>> located (repeat1 string))
+        (Syntax.since Stanza.syntax (3, 16) >>> located (repeat1 string))
     and+ syntax_ver = Syntax.get_exn Stanza.syntax in
     let ver = 3, 9 in
     if syntax_ver < ver && Option.is_some (String.index_from extension 1 '.')
@@ -105,7 +105,7 @@ let decode =
      and+ loc = loc
      and+ impl = field_o "implementation" (fields (kind Ml_kind.Impl))
      and+ intf = field_o "interface" (fields (kind Ml_kind.Intf))
-     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+     and+ version = Syntax.get_exn Stanza.syntax in
      let dialect_kind_optional_since = 3, 9 in
      if version < dialect_kind_optional_since
      then (
@@ -387,5 +387,5 @@ module DB = struct
 
   let to_dyn { by_name; _ } = String.Map.to_dyn to_dyn by_name
   let builtin = of_list [ ocaml; reason ]
-  let is_default t = phys_equal t builtin
+  let is_default t = t == builtin
 end

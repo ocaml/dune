@@ -19,7 +19,6 @@ val base_dir : unit -> Path.Outside_build_dir.t
     not work correctly. *)
 val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
 
-val files : bin_dir:Path.Outside_build_dir.t -> Path.t list Section.Map.t Memo.t
 val pkg_dir : Dune_pkg.Lock_dir.Pkg.t -> Path.Outside_build_dir.t
 
 (** Directory that will contain all the installed artifacts of the

@@ -15,6 +15,7 @@ module Repository : sig
     type t
 
     val equal : t -> t -> bool
+    val compare : t -> t -> ordering
     val pp : t -> 'a Pp.t
 
     include Stringlike with type t := t

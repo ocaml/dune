@@ -56,28 +56,6 @@ let is_compiler_and_toolchains_enabled name =
   | `Disabled -> false
 ;;
 
-let files ~bin_dir =
-  let open Memo.O in
-  Fs_memo.dir_contents bin_dir
-  >>| function
-  | Error _ -> Section.Map.empty
-  | Ok files ->
-    let bin_paths =
-      Fs_cache.Dir_contents.to_list files
-      |> List.filter_map ~f:(fun (filename, kind) ->
-        match kind with
-        | Unix.S_REG | S_LNK ->
-          let path = Path.Outside_build_dir.relative bin_dir filename in
-          (try
-             Unix.access (Path.Outside_build_dir.to_string path) [ Unix.X_OK ];
-             Some (Path.outside_build_dir path)
-           with
-           | Unix.Unix_error _ -> None)
-        | _ -> None)
-    in
-    Section.Map.singleton Section.Bin bin_paths
-;;
-
 let ocaml context env ~bin_dir =
   let which prog =
     let open Memo.O in

@@ -24,9 +24,9 @@ module Encoded : sig
   val to_csts : t list -> Cst.t list
   val to_asts : t list -> Ast.t list
 end = struct
-  open Ast
+  open Cst
 
-  type t = Ast.t
+  type t = Cst.t
 
   let comment_marker : Template.t =
     (* In this value, both the location and template values are non-sensical:
@@ -49,31 +49,40 @@ end = struct
 
   let atom loc a = Atom (loc, a)
   let quoted_string loc s = Quoted_string (loc, s)
+  let comment loc l = Comment (loc, l)
 
-  let comment loc lines =
-    List
+  let ast_comment_of_cst loc l =
+    Ast.List
       ( loc
-      , Template comment_marker
-        :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, line)) )
+      , Ast.Template comment_marker
+        :: List.map l ~f:(fun line -> Ast.Quoted_string (Loc.none, line)) )
   ;;
 
   let list loc l = List (loc, l)
-  let to_asts l = l
+  let to_csts l = l
 
-  let rec to_cst (x : Ast.t) : Cst.t =
+  let rec to_ast (x : Cst.t) : Ast.t =
     match x with
     | Template t -> Template t
     | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Comment (loc, l) -> ast_comment_of_cst loc l
     | Atom (loc, a) -> Atom (loc, a)
-    | List (loc, Template x :: l) when x = comment_marker ->
-      Comment
-        ( loc
-        , List.map l ~f:(function
-            | Quoted_string (_, s) -> s
-            | _ -> assert false) )
-    | List (loc, l) -> List (loc, to_csts l)
+    | List (loc, l) -> List (loc, to_asts l)
+  (*let rec to_ast (x : Cst.t) : Ast.t =*)
+  (*  match x with*)
+  (*  | Template t -> Template t*)
+  (*  | Quoted_string (loc, s) -> Quoted_string (loc, s)*)
+  (*  | Comment (_,_) -> assert false*)
+  (*  | Atom (loc, a) -> Atom (loc, a)*)
+  (*  | List (loc, Template x :: l) when x = comment_marker ->*)
+  (*    Comment*)
+  (*      ( loc*)
+  (*      , List.map l ~f:(function*)
+  (*          | Quoted_string (_, s) -> s*)
+  (*          | _ -> assert false) )*)
+  (*  | List (loc, l) -> List (loc, to_csts l)*)
 
-  and to_csts l = List.map l ~f:to_cst
+  and to_asts l = List.map l ~f:to_ast
 end
 
 module Mode = struct

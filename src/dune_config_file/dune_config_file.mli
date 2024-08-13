@@ -111,6 +111,4 @@ module Dune_config : sig
     -> Dune_stats.t option
     -> print_ctrl_c_warning:bool
     -> Dune_engine.Scheduler.Config.t
-
-  val set_configure_time_toggles : names:string list -> unit
 end

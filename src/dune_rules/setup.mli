@@ -9,5 +9,3 @@ val library_path : string list
 
 (** Where to install files. All the directories are absolute path *)
 val roots : string option Install.Roots.t
-
-val init : unit -> unit

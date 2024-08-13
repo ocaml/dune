@@ -1131,22 +1131,6 @@ let handle_final_exns exns =
 
 let run f =
   let open Fiber.O in
-  (match Dune_config.Config.get Dune_config.Config.party_mode with
-   | `Enabled ->
-     let tag i =
-       match i mod 4 with
-       | 0 -> User_message.Style.Ok
-       | 1 -> Error
-       | 2 -> Warning
-       | _ -> Kwd
-     in
-     let festive s =
-       String.fold_left s ~init:(Pp.nop, 0) ~f:(fun (acc, i) c ->
-         Pp.seq acc (Pp.tag (tag i) (Pp.char c)), i + 1)
-       |> fst
-     in
-     User_message.print (User_message.make [ festive "PARTY MODE enabled." ])
-   | `Disabled -> ());
   let* () = State.reset_progress () in
   let* () = State.reset_errors () in
   let f () =

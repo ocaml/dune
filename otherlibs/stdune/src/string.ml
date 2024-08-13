@@ -1,14 +1,5 @@
-(* Because otherwise the syntax s.[x] causes trouble *)
+(* Because other the syntax s.[x] causes trouble *)
 module String = Stdlib.String
-
-module StringLabels = struct
-  (* functions potentially in the stdlib, depending on OCaml version *)
-  let[@warning "-32"] fold_left ~f ~init s = s |> String.to_seq |> Seq.fold_left ~f ~init
-
-  (* overwrite them with stdlib versions if available *)
-  include Stdlib.StringLabels
-end
-
 include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)

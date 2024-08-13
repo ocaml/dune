@@ -501,6 +501,4 @@ module Dune_config = struct
         | Simple { verbosity; _ } -> verbosity);
     { Scheduler.Config.concurrency; stats; print_ctrl_c_warning; watch_exclusions }
   ;;
-
-  let set_configure_time_toggles = Config.set_configure_time_toggles
 end

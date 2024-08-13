@@ -162,5 +162,5 @@ let ( == ) = `Use_phys_equal
 
 (** Controls whether we use background threads in the dune rules *)
 let background_dune_rules =
-  Config.make_toggle ~name:"background_dune_rules" ~default:`Disabled
+  Config.make ~name:"background_dune_rules" ~of_string:Toggle.of_string ~default:`Disabled
 ;;

@@ -28,6 +28,7 @@ let () =
   let sbindir = ref None in
   let libexecdir = ref None in
   let datadir = ref None in
+  let pkg_toolchain = ref `Disabled in
   let cwd = lazy (Sys.getcwd ()) in
   let dir_of_string s =
     if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
@@ -40,6 +41,9 @@ let () =
   let set_dir v s =
     let dir = dir_of_string s in
     v := Some dir
+  in
+  let set_pkg_toolchain enabled =
+    pkg_toolchain := if enabled then `Enabled else `Disabled
   in
   let args =
     [ ( "--libdir"
@@ -70,6 +74,9 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
+    ; ( "--pkg-toolchain"
+      , Arg.Bool set_pkg_toolchain
+      , "BOOL install package toolchains into a special directory" )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in
@@ -90,5 +97,10 @@ let () =
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }";
+  pr
+    "let pkg_toolchain = `%s"
+    (match !pkg_toolchain with
+     | `Enabled -> "Enabled"
+     | `Disabled -> "Disabled");
   close_out oc
 ;;

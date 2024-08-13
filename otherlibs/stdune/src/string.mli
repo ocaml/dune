@@ -78,8 +78,8 @@ val longest : string list -> int
 
 val longest_map : 'a list -> f:('a -> string) -> int
 val longest_prefix : t list -> t
-val exists : t -> f:(char -> bool) -> bool
-val for_all : t -> f:(char -> bool) -> bool
+val exists : f:(char -> bool) -> t -> bool
+val for_all : f:(char -> bool) -> t -> bool
 
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
     lexing conventions and [sprintf "%S" s] otherwise.

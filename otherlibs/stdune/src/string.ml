@@ -1,5 +1,27 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Stdlib.String
+
+module StringLabels = struct
+  (* functions potentially in the stdlib, depending on OCaml version *)
+
+  let[@warning "-32"] exists =
+    let rec loop s i len f =
+      if i = len then false else f (String.unsafe_get s i) || loop s (i + 1) len f
+    in
+    fun ~f s -> loop s 0 (String.length s) f
+  ;;
+
+  let[@warning "-32"] for_all =
+    let rec loop s i len f =
+      i = len || (f (String.unsafe_get s i) && loop s (i + 1) len f)
+    in
+    fun ~f s -> loop s 0 (String.length s) f
+  ;;
+
+  (* overwrite them with stdlib versions if available *)
+  include Stdlib.StringLabels
+end
+
 include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
@@ -180,18 +202,6 @@ let longest_prefix = function
     sub ~pos:0 x ~len:(loop len 0)
 ;;
 
-let exists =
-  let rec loop s i len f =
-    if i = len then false else f (unsafe_get s i) || loop s (i + 1) len f
-  in
-  fun s ~f -> loop s 0 (length s) f
-;;
-
-let for_all =
-  let rec loop s i len f = i = len || (f (unsafe_get s i) && loop s (i + 1) len f) in
-  fun s ~f -> loop s 0 (length s) f
-;;
-
 let quoted = Printf.sprintf "%S"
 
 let maybe_quoted s =
@@ -219,12 +229,6 @@ let enumerate_or = enumerate_gen "or"
 let enumerate_one_of = function
   | [ x ] -> x
   | s -> "One of " ^ enumerate_or s
-;;
-
-let concat ~sep = function
-  | [] -> ""
-  | [ x ] -> x
-  | xs -> concat ~sep xs
 ;;
 
 let take s len = sub s ~pos:0 ~len:(min (length s) len)

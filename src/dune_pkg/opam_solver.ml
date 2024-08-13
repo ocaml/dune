@@ -758,6 +758,53 @@ module Solver_result = struct
     }
 end
 
+let reject_unreachable_packages =
+  let reachable deps_of_package ~roots =
+    let seen = ref Package_name.Set.empty in
+    let rec loop = function
+      | [] -> ()
+      | pkg :: rest ->
+        if Package_name.Set.mem !seen pkg
+        then loop rest
+        else (
+          seen := Package_name.Set.add !seen pkg;
+          let deps =
+            match Package_name.Map.find deps_of_package pkg with
+            | None -> []
+            | Some deps -> deps
+          in
+          loop (List.rev_append deps rest))
+    in
+    loop roots;
+    !seen
+  in
+  fun ~local_packages ~pkgs_by_name ->
+    let roots = Package_name.Map.keys local_packages in
+    let pkgs_by_name =
+      Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
+        match lhs, rhs with
+        | None, None -> assert false
+        | Some _, Some _ ->
+          Code_error.raise
+            "package is both local and returned by solver"
+            [ "name", Package_name.to_dyn name ]
+        | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
+        | None, Some (pkg : Local_package.For_solver.t) ->
+          let deps =
+            List.map pkg.dependencies ~f:(fun (d : Package_dependency.t) -> d.name)
+          in
+          let depopts =
+            List.filter_map pkg.depopts ~f:(fun (d : Package_dependency.t) ->
+              Option.some_if
+                (Package_name.Map.mem local_packages d.name
+                 || Package_name.Map.mem pkgs_by_name d.name)
+                d.name)
+          in
+          Some (deps @ depopts))
+    in
+    reachable pkgs_by_name ~roots
+;;
+
 let solve_lock_dir
   solver_env
   version_preference
@@ -860,6 +907,11 @@ let solve_lock_dir
                       (Package_name.to_string name)
                       (Package_name.to_string dep_name)
                   ]));
+        let reachable = reject_unreachable_packages ~local_packages ~pkgs_by_name in
+        let pkgs_by_name =
+          Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
+            Package_name.Set.mem reachable name)
+        in
         Lock_dir.create_latest_version
           pkgs_by_name
           ~local_packages:(Package_name.Map.values local_packages)

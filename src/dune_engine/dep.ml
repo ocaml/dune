@@ -45,17 +45,15 @@ module T = struct
     | Universe, Universe -> Ordering.Eq
   ;;
 
-  let encode t =
-    let open Dune_sexp.Encoder in
+  let to_dyn t =
+    let open Dyn in
     match t with
-    | File_selector g -> pair string File_selector.encode ("glob", g)
-    | Env e -> pair string string ("Env", e)
-    | File f -> pair string Dpath.encode ("File", f)
-    | Alias a -> pair string Alias.encode ("Alias", a)
-    | Universe -> string "Universe"
+    | File_selector g -> variant "File_selector" [ File_selector.to_dyn g ]
+    | Env e -> variant "Env" [ string e ]
+    | File f -> variant "File" [ Path.to_dyn f ]
+    | Alias a -> variant "Alias" [ Alias.to_dyn a ]
+    | Universe -> variant "Universe" []
   ;;
-
-  let to_dyn t = Dyn.String (Dune_sexp.to_string (encode t))
 end
 
 include T
@@ -254,7 +252,6 @@ module Set = struct
   let of_files l = of_list_map l ~f:file
   let of_files_set = Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
   let add_paths t paths = Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
-  let encode t = Dune_sexp.Encoder.list encode (to_list t)
 
   (* This is to force the rules to be loaded for directories without files when
      depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale

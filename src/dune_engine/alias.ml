@@ -3,8 +3,6 @@ open Import
 module Name = struct
   include Dune_util.Alias_name
 
-  let encode s = Dune_sexp.Encoder.string (to_string s)
-
   let of_string s =
     match of_string_opt s with
     | Some s -> s
@@ -95,11 +93,6 @@ let register_as_standard name =
 ;;
 
 let default = make_standard Name.default
-
-let encode { dir; name } =
-  let open Dune_sexp.Encoder in
-  record [ "dir", Dpath.encode (Path.build dir); "name", Name.encode name ]
-;;
 
 let get_ctx (path : Path.Build.t) =
   match Path.Build.extract_first_component path with

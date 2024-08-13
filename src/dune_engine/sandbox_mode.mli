@@ -80,6 +80,5 @@ val none : t
 val symlink : t
 val copy : t
 val hardlink : t
-val decode : t Dune_sexp.Decoder.t
 val to_string : t -> string
 val to_dyn : t -> Dyn.t

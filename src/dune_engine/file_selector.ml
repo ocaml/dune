@@ -11,6 +11,7 @@ type t =
 
 let dir t = t.dir
 let only_generated_files t = t.only_generated_files
+let predicate t = t.predicate
 
 let digest_exn { dir; predicate; only_generated_files } =
   Digest.generic (dir, Predicate_lang.Glob.digest_exn predicate, only_generated_files)
@@ -34,15 +35,6 @@ let to_dyn { dir; predicate; only_generated_files } =
     [ "dir", Path.to_dyn dir
     ; "predicate", Predicate_lang.Glob.to_dyn predicate
     ; "only_generated_files", Bool only_generated_files
-    ]
-;;
-
-let encode { dir; predicate; only_generated_files } =
-  let open Dune_sexp.Encoder in
-  record
-    [ "dir", Dpath.encode dir
-    ; "predicate", Predicate_lang.Glob.encode predicate
-    ; "only_generated_files", bool only_generated_files
     ]
 ;;
 

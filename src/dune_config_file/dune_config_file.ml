@@ -75,7 +75,17 @@ module Dune_config = struct
   module Sandboxing_preference = struct
     type t = Sandbox_mode.t list
 
-    let decode = repeat Sandbox_mode.decode
+    let decode : Sandbox_mode.t Dune_sexp.Decoder.t =
+      let open Dune_sexp.Decoder in
+      enum
+        [ "none", None
+        ; "symlink", Some Sandbox_mode.Symlink
+        ; "copy", Some Copy
+        ; "hardlink", Some Hardlink
+        ]
+    ;;
+
+    let decode = repeat decode
   end
 
   module Cache = struct

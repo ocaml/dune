@@ -68,7 +68,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | With_accepted_exit_codes (pred, t) ->
     List
       [ atom "with-accepted-exit-codes"
-      ; Predicate_lang.encode Dune_lang.Encoder.int pred
+      ; Predicate_lang.encode Dune_sexp.Encoder.int pred
       ; encode t
       ]
   | Dynamic_run (a, xs) -> List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
@@ -103,10 +103,58 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;
 
+let encode_path p =
+  let make constr arg =
+    Dune_sexp.List [ Dune_sexp.atom constr; Dune_sexp.atom_or_quoted_string arg ]
+  in
+  let open Path in
+  match p with
+  | In_build_dir p -> make "In_build_dir" (Path.Build.to_string p)
+  | In_source_tree p -> make "In_source_tree" (Path.Source.to_string p)
+  | External p -> make "External" (Path.External.to_string p)
+;;
+
+let encode_file_selector file_selector =
+  let open Dune_sexp.Encoder in
+  let module File_selector = Dune_engine.File_selector in
+  let dir = File_selector.dir file_selector in
+  let predicate = File_selector.predicate file_selector in
+  let only_generated_files = File_selector.only_generated_files file_selector in
+  record
+    [ "dir", encode_path dir
+    ; "predicate", Predicate_lang.Glob.encode predicate
+    ; "only_generated_files", bool only_generated_files
+    ]
+;;
+
+let encode_alias alias =
+  let open Dune_sexp.Encoder in
+  let dir = Dune_engine.Alias.dir alias in
+  let name = Dune_engine.Alias.name alias in
+  record
+    [ "dir", encode_path (Path.build dir)
+    ; "name", Dune_sexp.atom_or_quoted_string (Dune_util.Alias_name.to_string name)
+    ]
+;;
+
+let encode_dep_set deps =
+  Dune_sexp.List
+    (Dep.Set.to_list_map
+       deps
+       ~f:
+         (let open Dune_sexp.Encoder in
+          function
+          | File_selector g -> pair string encode_file_selector ("glob", g)
+          | Env e -> pair string string ("Env", e)
+          | File f -> pair string encode_path ("File", f)
+          | Alias a -> pair string encode_alias ("Alias", a)
+          | Universe -> string "Universe"))
+;;
+
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let sexp_of_action action = Action.for_shell action |> encode in
   let paths ps =
-    Dune_lang.Encoder.list
+    Dune_sexp.Encoder.list
       (fun p ->
         Path.Build.relative rule.targets.root p
         |> Path.Build.to_string
@@ -114,11 +162,11 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
       (Filename.Set.to_list ps)
   in
   let sexp =
-    Dune_lang.Encoder.record
+    Dune_sexp.Encoder.record
       (List.concat
-         [ [ "deps", Dep.Set.encode rule.deps
+         [ [ "deps", encode_dep_set rule.deps
            ; ( "targets"
-             , Dune_lang.Encoder.record
+             , Dune_sexp.Encoder.record
                  [ "files", paths rule.targets.files
                  ; "directories", paths rule.targets.dirs
                  ] )

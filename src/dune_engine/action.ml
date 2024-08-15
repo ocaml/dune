@@ -6,23 +6,7 @@ module type T = sig
   type t
 end
 
-type context = Action_intf.context =
-  { targets : Targets.Validated.t option
-  ; context : Build_context.t option
-  ; metadata : Process.metadata
-  ; rule_loc : Loc.t
-  ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
-  }
-
-type env = Action_intf.env =
-  { working_dir : Path.t
-  ; env : Env.t
-  ; stdout_to : Process.Io.output Process.Io.t
-  ; stderr_to : Process.Io.output Process.Io.t
-  ; stdin_from : Process.Io.input Process.Io.t
-  ; prepared_dependencies : Dune_action_plugin.Private.Protocol.Dependency.Set.t
-  ; exit_codes : int Predicate.t
-  }
+include Action_intf.Exec
 
 module Make
     (Program : T)

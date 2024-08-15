@@ -86,23 +86,25 @@ module type Helpers = sig
   val mkdir : target -> t
 end
 
-type context =
-  { targets : Targets.Validated.t option
-  ; context : Build_context.t option
-  ; metadata : Process.metadata
-  ; rule_loc : Loc.t
-  ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
-  }
+module Exec = struct
+  type context =
+    { targets : Targets.Validated.t option
+    ; context : Build_context.t option
+    ; metadata : Process.metadata
+    ; rule_loc : Loc.t
+    ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
+    }
 
-type env =
-  { working_dir : Path.t
-  ; env : Env.t
-  ; stdout_to : Process.Io.output Process.Io.t
-  ; stderr_to : Process.Io.output Process.Io.t
-  ; stdin_from : Process.Io.input Process.Io.t
-  ; prepared_dependencies : Dune_action_plugin.Private.Protocol.Dependency.Set.t
-  ; exit_codes : int Predicate.t
-  }
+  type env =
+    { working_dir : Path.t
+    ; env : Env.t
+    ; stdout_to : Process.Io.output Process.Io.t
+    ; stderr_to : Process.Io.output Process.Io.t
+    ; stdin_from : Process.Io.input Process.Io.t
+    ; prepared_dependencies : Dune_action_plugin.Private.Protocol.Dependency.Set.t
+    ; exit_codes : int Predicate.t
+    }
+end
 
 module Ext = struct
   module type Spec = sig
@@ -116,8 +118,8 @@ module Ext = struct
 
     val action
       :  (Path.t, Path.Build.t) t
-      -> ectx:context
-      -> eenv:env
+      -> ectx:Exec.context
+      -> eenv:Exec.env
       -> (* cwong: For now, I think we should only worry about extensions with
             known dependencies. In the future, we may generalize this to return
             an [Action_exec.done_or_more_deps], but that may be trickier to get

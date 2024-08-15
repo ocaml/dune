@@ -1,6 +1,7 @@
 open Import
 module DAP = Dune_action_plugin.Private.Protocol
 open Action_plugin
+open Action_intf.Exec
 
 let maybe_async =
   let maybe_async =
@@ -140,9 +141,7 @@ end
 
 open Produce.O
 
-let exec_run ~display ~(ectx : Action_intf.context) ~(eenv : Action_intf.env) prog args
-  : _ Produce.t
-  =
+let exec_run ~display ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
   let* (res : (Proc.Times.t, int) result) =
     Produce.of_fiber
     @@ Process.run_with_times
@@ -162,13 +161,7 @@ let exec_run ~display ~(ectx : Action_intf.context) ~(eenv : Action_intf.env) pr
   | Ok times -> Produce.incr_duration times.elapsed_time
 ;;
 
-let exec_run_dynamic_client
-  ~display
-  ~(ectx : Action_intf.context)
-  ~(eenv : Action_intf.env)
-  prog
-  args
-  =
+let exec_run_dynamic_client ~display ~(ectx : context) ~(eenv : env) prog args =
   let* () = Produce.of_fiber @@ Rpc.ensure_ready () in
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
@@ -507,7 +500,7 @@ let exec
   =
   let ectx =
     let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
-    { Action_intf.targets; metadata; context; rule_loc; build_deps }
+    { targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =
       match
@@ -521,7 +514,7 @@ let exec
           (* TODO generify *)
           [ Some { source = Path.to_absolute_filename root; target } ]
     in
-    { Action_intf.working_dir = Path.root
+    { working_dir = Path.root
     ; env
     ; stdout_to =
         Process.Io.make_stdout

@@ -649,8 +649,8 @@ module Run_with_path = struct
 
     let action
       { prog; args; ocamlfind_destdir; pkg }
-      ~(ectx : Action.Ext.context)
-      ~(eenv : Action.Ext.env)
+      ~(ectx : Action.context)
+      ~(eenv : Action.env)
       =
       let open Fiber.O in
       let display = !Clflags.display in
@@ -664,7 +664,7 @@ module Run_with_path = struct
               | Path p -> Path.to_absolute_filename p)
             |> String.concat ~sep:"")
         in
-        let metadata = Process.create_metadata ~purpose:ectx.purpose () in
+        let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
         let env =
           Env.add
             eenv.env

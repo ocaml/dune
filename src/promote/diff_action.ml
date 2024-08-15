@@ -97,7 +97,7 @@ module Spec = struct
     List [ Atom name; Atom (Bool.to_string optional); mode; input file1; output file2 ]
   ;;
 
-  let action diff ~(ectx : Dune_engine.Action.Ext.context) ~eenv:_ =
+  let action diff ~(ectx : Dune_engine.Action.context) ~eenv:_ =
     exec ~rule_loc:ectx.rule_loc diff
   ;;
 end

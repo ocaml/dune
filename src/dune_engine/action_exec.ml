@@ -138,27 +138,11 @@ module Exec_result = struct
   ;;
 end
 
-type exec_context =
-  { targets : Targets.Validated.t option
-  ; context : Build_context.t option
-  ; metadata : Process.metadata
-  ; rule_loc : Loc.t
-  ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
-  }
-
-type exec_environment =
-  { working_dir : Path.t
-  ; env : Env.t
-  ; stdout_to : Process.Io.output Process.Io.t
-  ; stderr_to : Process.Io.output Process.Io.t
-  ; stdin_from : Process.Io.input Process.Io.t
-  ; prepared_dependencies : DAP.Dependency.Set.t
-  ; exit_codes : int Predicate.t
-  }
-
 open Produce.O
 
-let exec_run ~display ~ectx ~eenv prog args : _ Produce.t =
+let exec_run ~display ~(ectx : Action_intf.context) ~(eenv : Action_intf.env) prog args
+  : _ Produce.t
+  =
   let* (res : (Proc.Times.t, int) result) =
     Produce.of_fiber
     @@ Process.run_with_times
@@ -178,7 +162,14 @@ let exec_run ~display ~ectx ~eenv prog args : _ Produce.t =
   | Ok times -> Produce.incr_duration times.elapsed_time
 ;;
 
-let exec_run_dynamic_client ~display ~ectx ~eenv prog args =
+let exec_run_dynamic_client
+  ~display
+  ~(ectx : Action_intf.context)
+  ~(eenv : Action_intf.env)
+  prog
+  args
+  =
+  let* () = Produce.of_fiber @@ Rpc.ensure_ready () in
   let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
   let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
   let run_arguments =
@@ -289,26 +280,6 @@ let bash_exn =
         [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
 ;;
 
-(* When passing these to an extension, they shouldn't need to know about any
-   kind of dynamic build dependency functions or prepped dependencies, etc,
-   which should be handled here instead. *)
-let restrict_ctx { targets; context; metadata; rule_loc; build_deps } =
-  { Action.Ext.targets; context; purpose = metadata.purpose; rule_loc; build_deps }
-;;
-
-let restrict_env
-  { working_dir
-  ; env
-  ; stdout_to
-  ; stderr_to
-  ; stdin_from
-  ; exit_codes
-  ; prepared_dependencies = _
-  }
-  =
-  { Action.Ext.working_dir; env; stdout_to; stderr_to; stdin_from; exit_codes }
-;;
-
 let zero = Predicate_lang.element 0
 let maybe_async f = Produce.of_fiber (maybe_async f)
 
@@ -402,10 +373,7 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     Done
   | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
   | Extension (module A) ->
-    let+ () =
-      Produce.of_fiber
-      @@ A.Spec.action A.v ~ectx:(restrict_ctx ectx) ~eenv:(restrict_env eenv)
-    in
+    let+ () = Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv in
     Done
 
 and redirect_out t ~display ~ectx ~eenv ~perm outputs fn =
@@ -539,7 +507,7 @@ let exec
   =
   let ectx =
     let metadata = Process.create_metadata ~purpose:(Build_job targets) () in
-    { targets; metadata; context; rule_loc; build_deps }
+    { Action_intf.targets; metadata; context; rule_loc; build_deps }
   and eenv =
     let env =
       match
@@ -553,7 +521,7 @@ let exec
           (* TODO generify *)
           [ Some { source = Path.to_absolute_filename root; target } ]
     in
-    { working_dir = Path.root
+    { Action_intf.working_dir = Path.root
     ; env
     ; stdout_to =
         Process.Io.make_stdout

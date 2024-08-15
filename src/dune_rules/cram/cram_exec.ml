@@ -459,7 +459,7 @@ module Spec = struct
   let bimap path f _ = f path
   let is_useful_to ~memoize:_ = true
   let encode script path _ : Sexp.t = List [ Atom name; path script ]
-  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+  let action script ~ectx:_ ~(eenv : Action.env) = run ~env:eenv.env ~script
 end
 
 let action script =

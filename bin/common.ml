@@ -553,14 +553,6 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
   value initial
 ;;
 
-module Action_runner = struct
-  type t =
-    | No
-    | Yes of
-        (Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t
-         -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option) Staged.t)
-end
-
 module Builder = struct
   type t =
     { debug_dep_path : bool
@@ -602,14 +594,12 @@ module Builder = struct
     ; stats_trace_extended : bool
     ; allow_builds : bool
     ; default_root_is_cwd : bool
-    ; action_runner : Action_runner.t
     ; log_file : Dune_util.Log.File.t
     }
 
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
-  let set_action_runner t x = { t with action_runner = x }
   let set_log_file t x = { t with log_file = x }
   let disable_log_file t = { t with log_file = No_log_file }
   let set_promote t v = { t with promote = Some v }
@@ -1029,7 +1019,6 @@ module Builder = struct
     ; stats_trace_extended
     ; allow_builds = true
     ; default_root_is_cwd = false
-    ; action_runner = No
     ; log_file = Default
     }
   ;;
@@ -1160,7 +1149,6 @@ let build (builder : Builder.t) =
              | Yes Passive -> Some 1.0
              | _ -> None
            in
-           let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
            Dune_rpc_impl.Server.create
              ~lock_timeout
              ~registry
@@ -1168,8 +1156,7 @@ let build (builder : Builder.t) =
              ~handle:Dune_rules_rpc.register
              ~watch_mode_config:builder.watch
              ~parse_build:Dune_rules_rpc.parse_build
-             stats
-             action_runner))
+             stats))
     else `Forbid_builds
   in
   if builder.print_metrics then Dune_metrics.enable ();
@@ -1226,16 +1213,7 @@ let init (builder : Builder.t) =
         "Shared cache location: %s"
         (Path.to_string Dune_cache_storage.Layout.root_dir)
     ];
-  let action_runner =
-    match builder.action_runner with
-    | No -> None
-    | Yes f ->
-      (match rpc c with
-       | `Forbid_builds -> Code_error.raise "action runners require building" []
-       | `Allow server -> Some (Staged.unstage @@ f server))
-  in
   Dune_rules.Main.init
-    ?action_runner
     ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference
     ~cache_config

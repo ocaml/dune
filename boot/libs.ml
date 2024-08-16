@@ -40,7 +40,6 @@ let local_libraries =
   ; ("src/dune_output_truncation", Some "Dune_output_truncation", false,
     None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
-  ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/dune_thread_pool", Some "Dune_thread_pool", false, None)
   ; ("otherlibs/ocamlc-loc/src", Some "Ocamlc_loc", false, None)
@@ -91,6 +90,7 @@ let local_libraries =
   ; ("src/upgrader", Some "Dune_upgrader", false, None)
   ; ("src/dune_pkg_outdated", Some "Dune_pkg_outdated", false, None)
   ; ("vendor/cmdliner/src", None, false, None)
+  ; ("src/dune_rpc_server", Some "Dune_rpc_server", false, None)
   ; ("src/dune_rpc_impl", Some "Dune_rpc_impl", false, None)
   ; ("src/dune_rules_rpc", Some "Dune_rules_rpc", false, None)
   ]

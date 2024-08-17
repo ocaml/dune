@@ -198,9 +198,10 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
            pub_name, entries)
       | Deprecated_library_name
           { old_name = old_public_name, _; new_public_name = _, new_public_name; _ } ->
+        let deps = Lib_name.Set.singleton new_public_name in
         Memo.return
           ( Pub_name.of_lib_name (Public_lib.name old_public_name)
-          , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
+          , version @ [ requires deps; exports deps ] ))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

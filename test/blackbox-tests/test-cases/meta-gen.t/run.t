@@ -14,6 +14,16 @@
     plugin(byte) = "foobar_baz.cma"
     plugin(native) = ""
   )
+  package "foobar2" (
+    directory = "foobar2"
+    description = ""
+    requires = "foobar foobar.ppd foobar.rewriter2"
+    exports = "foobar foobar.ppd"
+    archive(byte) = "foobar2.cma"
+    archive(native) = "foobar2.cmxa"
+    plugin(byte) = "foobar2.cma"
+    plugin(native) = "foobar2.cmxs"
+  )
   package "ppd" (
     directory = "ppd"
     description = "pp'd with a rewriter"

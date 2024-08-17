@@ -36,6 +36,7 @@ end
 let string_of_deps deps = Lib_name.Set.to_string_list deps |> String.concat ~sep:" "
 let rule var predicates action value = Rule { var; predicates; action; value }
 let requires ?(preds = []) pkgs = rule "requires" preds Set (string_of_deps pkgs)
+let exports pkgs = rule "exports" [] Set (string_of_deps pkgs)
 
 let ppx_runtime_deps ?(preds = []) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
@@ -87,6 +88,7 @@ let gen_lib pub_name lib ~version =
   in
   let to_names = Lib_name.Set.of_list_map ~f:name in
   let* lib_deps = Resolve.Memo.read_memo (Lib.requires lib) >>| to_names in
+  let* lib_re_exports = Resolve.Memo.read_memo (Lib.re_exports lib) >>| to_names in
   let* ppx_rt_deps =
     Lib.ppx_runtime_deps lib |> Memo.bind ~f:Resolve.read_memo |> Memo.map ~f:to_names
   in
@@ -109,6 +111,7 @@ let gen_lib pub_name lib ~version =
   List.concat
     [ version
     ; [ description desc; requires ~preds lib_deps ]
+    ; (if Lib_name.Set.is_empty lib_re_exports then [] else [ exports lib_re_exports ])
     ; archives ~preds lib
     ; (if Lib_name.Set.is_empty ppx_rt_deps
        then []

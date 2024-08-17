@@ -1,2 +1,3 @@
 requires = "bar"
-requires(ppx_driver) = "baz"
+requires(ppx_driver) = "baz xyz"
+exports = "baz wrong"

@@ -958,10 +958,9 @@ module Action_expander = struct
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
     | System arg ->
-      let+ arg =
-        Expander.expand_pform_gen ~mode:Single expander arg >>| Value.to_string ~dir
-      in
-      Action.System arg
+      Expander.expand_pform_gen ~mode:Single expander arg
+      >>| Value.to_string ~dir
+      >>| System.action
     | Patch p ->
       let+ patch =
         Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir

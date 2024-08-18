@@ -1,5 +1,4 @@
 open Import
-module DAP = Dune_action_plugin.Private.Protocol
 open Action_plugin
 open Action_intf.Exec
 
@@ -161,103 +160,6 @@ let exec_run ~display ~(ectx : context) ~(eenv : env) prog args : _ Produce.t =
   | Ok times -> Produce.incr_duration times.elapsed_time
 ;;
 
-let exec_run_dynamic_client ~display ~(ectx : context) ~(eenv : env) prog args =
-  let* () = Produce.of_fiber @@ Rpc.ensure_ready () in
-  let run_arguments_fn = Temp.create File ~prefix:"dune" ~suffix:"run" in
-  let response_fn = Temp.create File ~prefix:"dune" ~suffix:"response" in
-  let run_arguments =
-    let targets =
-      match ectx.targets with
-      | None -> String.Set.empty
-      | Some targets ->
-        if not (Filename.Set.is_empty targets.dirs)
-        then
-          User_error.raise
-            ~loc:ectx.rule_loc
-            [ Pp.text "Directory targets are not compatible with dynamic actions" ];
-        Filename.Set.to_list_map targets.files ~f:(fun target ->
-          Path.Build.relative targets.root target
-          |> Path.build
-          |> Path.reach ~from:eenv.working_dir)
-        |> String.Set.of_list
-    in
-    { DAP.Run_arguments.prepared_dependencies = eenv.prepared_dependencies; targets }
-  in
-  DAP.Run_arguments.to_sexp run_arguments
-  |> Csexp.to_string
-  |> Io.write_file run_arguments_fn;
-  let env =
-    let value =
-      DAP.Greeting.(
-        to_sexp
-          { run_arguments_fn = Path.to_absolute_filename run_arguments_fn
-          ; response_fn = Path.to_absolute_filename response_fn
-          })
-      |> Csexp.to_string
-    in
-    Env.add eenv.env ~var:DAP.run_by_dune_env_variable ~value
-  in
-  let+ () =
-    Produce.of_fiber
-    @@ Process.run
-         ~display
-         Strict
-         ~dir:eenv.working_dir
-         ~env
-         ~stderr_to:eenv.stderr_to
-         ~stdin_from:eenv.stdin_from
-         ~metadata:ectx.metadata
-         prog
-         args
-  in
-  let response_raw = Io.read_file response_fn in
-  Temp.destroy File run_arguments_fn;
-  Temp.destroy File response_fn;
-  let response =
-    match Csexp.parse_string response_raw with
-    | Ok s -> DAP.Response.of_sexp s
-    | Error _ -> Error DAP.Error.Parse_error
-  in
-  let prog_name = Path.reach ~from:eenv.working_dir prog in
-  match response with
-  | Error _ when String.is_empty response_raw ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared with \
-           'dynamic-run' tag) failed to respond to dune."
-          prog_name
-      ; Pp.nop
-      ; Pp.text
-          "If you don't use dynamic dependency discovery in your executable you may \
-           consider changing 'dynamic-run' to 'run' in your rule definition."
-      ]
-  | Error Parse_error ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared with \
-           'dynamic-run' tag) responded with invalid message."
-          prog_name
-      ]
-  | Error (Version_mismatch _) ->
-    User_error.raise
-      ~loc:ectx.rule_loc
-      [ Pp.textf
-          "Executable '%s' is linked against a version of dune-action-plugin library \
-           that is incompatible with this version of dune."
-          prog_name
-      ]
-  | Ok Done -> Done
-  | Ok (Need_more_deps deps) ->
-    Need_more_deps
-      ( deps
-      , Action_plugin.to_dune_dep_set
-          deps
-          ~loc:ectx.rule_loc
-          ~working_dir:eenv.working_dir )
-;;
-
 let exec_echo stdout_to str =
   Produce.return @@ output_string (Process.Io.out_channel stdout_to) str
 ;;
@@ -291,7 +193,8 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     in
     exec t ~display ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
-  | Dynamic_run (Ok prog, args) -> exec_run_dynamic_client ~display ~ectx ~eenv prog args
+  | Dynamic_run (Ok prog, args) ->
+    Produce.of_fiber (Action_plugin.exec ~display ~ectx ~eenv prog args)
   | Chdir (dir, t) -> exec t ~display ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec t ~display ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
@@ -474,7 +377,7 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
       let eenv =
         { eenv with
           prepared_dependencies =
-            DAP.Dependency.Set.union eenv.prepared_dependencies relative_deps
+            Action_plugin.Dependency.Set.union eenv.prepared_dependencies relative_deps
         }
       in
       loop ~eenv stages
@@ -527,7 +430,7 @@ let exec
             (Execution_parameters.action_stderr_on_success execution_parameters)
           ~output_limit:(Execution_parameters.action_stderr_limit execution_parameters)
     ; stdin_from = Process.Io.null In
-    ; prepared_dependencies = DAP.Dependency.Set.empty
+    ; prepared_dependencies = Action_plugin.Dependency.Set.empty
     ; exit_codes = Predicate.create (Int.equal 0)
     }
   in

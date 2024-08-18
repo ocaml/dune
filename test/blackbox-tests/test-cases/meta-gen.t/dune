@@ -41,11 +41,6 @@
  (libraries foobar)
  (preprocess (pps foobar_rewriter)))
 
-(rule
- (alias runtest)
+(alias
+ (name runtest)
  (action (echo "%{read:META.foobar}")))
-
-(library
- (name foobar2)
- (public_name foobar.foobar2)
- (libraries (re_export foobar) (re_export foobar_ppd) foobar_rewriter2))

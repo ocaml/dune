@@ -489,7 +489,6 @@ let shared_with_config_file =
   ; action_stdout_on_success
   ; action_stderr_on_success
   ; project_defaults = None
-  ; default_authors = None
   ; experimental = None
   }
 ;;

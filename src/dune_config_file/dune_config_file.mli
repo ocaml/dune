@@ -17,12 +17,6 @@ module Dune_config : sig
     val decode : t Dune_lang.Decoder.t
   end
 
-  module Default_authors : sig
-    type t = string list
-
-    val decode : t Dune_lang.Decoder.t
-  end
-
   module Concurrency : sig
     type t =
       | Fixed of int
@@ -75,7 +69,6 @@ module Dune_config : sig
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
       ; project_defaults : Project_defaults.t field
-      ; default_authors : Default_authors.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end

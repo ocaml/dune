@@ -471,7 +471,7 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 1
+    let version = 2
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
@@ -487,7 +487,7 @@ module Substitute = struct
         |> Digest.generic
         |> Digest.to_string_raw
       in
-      List [ Atom name; Atom e; input src; output dst ]
+      List [ Atom e; input src; output dst ]
     ;;
 
     let action { expander; src; dst } ~ectx:_ ~eenv:_ =
@@ -526,18 +526,9 @@ module Substitute = struct
     ;;
   end
 
-  let action expander ~src ~dst =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
+  module A = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = { Spec.expander; src; dst }
-    end
-    in
-    Action.Extension (module M)
-  ;;
+  let action expander ~src ~dst = A.action { Spec.expander; src; dst }
 end
 
 module Run_with_path = struct
@@ -613,7 +604,7 @@ module Run_with_path = struct
       }
 
     let name = "run-with-path"
-    let version = 1
+    let version = 2
 
     let map_arg arg ~f =
       Array.Immutable.map arg ~f:(function
@@ -644,7 +635,7 @@ module Run_with_path = struct
               | String s -> Sexp.Atom s
               | Path p -> path p)))
       in
-      List [ List ([ Sexp.Atom name; prog ] @ args); path ocamlfind_destdir ]
+      List [ List ([ prog ] @ args); path ocamlfind_destdir ]
     ;;
 
     let action
@@ -694,17 +685,10 @@ module Run_with_path = struct
     ;;
   end
 
+  module A = Action_ext.Make (Spec)
+
   let action ~pkg prog args ~ocamlfind_destdir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = { Spec.prog; args; ocamlfind_destdir; pkg }
-    end
-    in
-    Action.Extension (module M)
+    A.action { Spec.prog; args; ocamlfind_destdir; pkg }
   ;;
 end
 
@@ -1338,8 +1322,7 @@ module Install_action = struct
       : Sexp.t
       =
       List
-        [ Atom name
-        ; path install_file
+        [ path install_file
         ; path config_file
         ; target target_dir
         ; (match
@@ -1632,25 +1615,17 @@ module Install_action = struct
     ;;
   end
 
+  module A = Action_ext.Make (Spec)
+
   let action (p : Path.Build.t Paths.t) install_action ~prefix_outside_build_dir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v =
-        { Spec.install_file = Path.build @@ Paths.install_file p
-        ; config_file = Path.build @@ Paths.config_file p
-        ; target_dir = p.target_dir
-        ; prefix_outside_build_dir
-        ; install_action
-        ; package = p.name
-        }
-      ;;
-    end
-    in
-    Action.Extension (module M)
+    A.action
+      { Spec.install_file = Path.build @@ Paths.install_file p
+      ; config_file = Path.build @@ Paths.config_file p
+      ; target_dir = p.target_dir
+      ; prefix_outside_build_dir
+      ; install_action
+      ; package = p.name
+      }
   ;;
 end
 

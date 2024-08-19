@@ -104,10 +104,10 @@ module Spec = struct
   type ('path, 'target) t = 'path
 
   let name = "patch"
-  let version = 1
+  let version = 2
   let bimap patch f _ = f patch
   let is_useful_to ~memoize = memoize
-  let encode patch input _ : Sexp.t = List [ Atom name; input patch ]
+  let encode patch input _ : Sexp.t = input patch
 
   let action patch ~ectx:_ ~(eenv : Action.env) =
     exec !Dune_engine.Clflags.display ~patch ~dir:eenv.working_dir ~stderr:eenv.stderr_to
@@ -115,18 +115,9 @@ module Spec = struct
 end
 
 (* CR-someday alizter: This should be an action builder. *)
-let action ~patch =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
+module Action = Action_ext.Make (Spec)
 
-    module Spec = Spec
-
-    let v = patch
-  end
-  in
-  Action.Extension (module M)
-;;
+let action ~patch = Action.action patch
 
 module For_tests = struct
   let exec = exec

@@ -73,15 +73,14 @@ module Spec = struct
     }
 
   let name = "source-fetch"
-  let version = 1
+  let version = 2
   let bimap t _ g = { t with target = g t.target }
   let is_useful_to ~memoize = memoize
 
   let encode { target; url = _, url; checksum; kind } _ encode_target : Sexp.t =
     List
-      ([ Sexp.Atom name
-       ; encode_target target
-       ; Atom (OpamUrl.to_string url)
+      ([ encode_target target
+       ; Sexp.Atom (OpamUrl.to_string url)
        ; Atom
            (match kind with
             | `File -> "file"
@@ -128,18 +127,9 @@ module Spec = struct
   ;;
 end
 
-let action ~url ~checksum ~target ~kind =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
+module A = Action_ext.Make (Spec)
 
-    module Spec = Spec
-
-    let v = { Spec.target; checksum; url; kind }
-  end
-  in
-  Action.Extension (module M)
-;;
+let action ~url ~checksum ~target ~kind = A.action { Spec.target; checksum; url; kind }
 
 let extract_checksums_and_urls (lockdir : Dune_pkg.Lock_dir.t) =
   Package.Name.Map.fold
@@ -275,12 +265,12 @@ module Copy = struct
       }
 
     let name = "copy-dir"
-    let version = 1
+    let version = 2
     let bimap t f g = { src_dir = f t.src_dir; dst_dir = g t.dst_dir }
     let is_useful_to ~memoize = memoize
 
     let encode { src_dir; dst_dir } path target : Sexp.t =
-      List [ Atom name; path src_dir; target dst_dir ]
+      List [ path src_dir; target dst_dir ]
     ;;
 
     let action { src_dir; dst_dir } ~ectx:_ ~eenv:_ =
@@ -300,18 +290,9 @@ module Copy = struct
     ;;
   end
 
-  let action ~src_dir ~dst_dir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
+  module A = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = { Spec.dst_dir; src_dir }
-    end
-    in
-    Action.Extension (module M)
-  ;;
+  let action ~src_dir ~dst_dir = A.action { Spec.dst_dir; src_dir }
 end
 
 let fetch ~target kind (source : Source.t) =

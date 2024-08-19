@@ -236,12 +236,6 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   | Hardlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst)) in
     Done
-  | System cmd ->
-    let path, arg =
-      Dune_util.Prog.system_shell_exn ~needed_to:"interpret (system ...) actions"
-    in
-    let+ () = exec_run ~display ~ectx ~eenv path [ arg; cmd ] in
-    Done
   | Bash cmd ->
     let+ () =
       exec_run

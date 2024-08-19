@@ -245,7 +245,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 21
+  let rule_digest_version = 22
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -722,7 +722,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 1
+  let action_digest_version = 2
 
   let execute_action_generic
     ~observing_facts

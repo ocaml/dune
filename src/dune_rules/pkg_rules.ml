@@ -1675,6 +1675,16 @@ let source_rules (pkg : Pkg.t) =
        | `Local (`File, _) | `Fetch ->
          let fetch =
            Fetch_rules.fetch ~target:pkg.write_paths.source_dir `Directory source
+           |> With_targets.map
+                ~f:
+                  (Action.Full.map ~f:(fun action ->
+                     let progress =
+                       Pkg_build_progress.progress_action
+                         pkg.info.name
+                         pkg.info.version
+                         `Downloading
+                     in
+                     Action.progn [ progress; action ]))
          in
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
@@ -1713,7 +1723,7 @@ let source_rules (pkg : Pkg.t) =
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
-    let+ build_and_install =
+    let+ copy_action, build_action, install_action =
       let+ copy_action =
         let+ copy_action =
           Fs_memo.dir_exists
@@ -1784,7 +1794,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
           in
           [ mkdir_install_dirs; install_action ]
       in
-      List.concat [ copy_action; build_action; install_action ]
+      copy_action, build_action, install_action
     in
     let install_file_action =
       let prefix_outside_build_dir = Path.as_outside_build_dir pkg.paths.prefix in
@@ -1798,7 +1808,20 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       |> Action_builder.return
       |> Action_builder.with_no_targets
     in
-    Action_builder.progn (build_and_install @ [ install_file_action ])
+    (* Action to print a "Building" message for the package if its
+       target directory is not yet created. *)
+    let progress_building =
+      Pkg_build_progress.progress_action pkg.info.name pkg.info.version `Building
+      |> Action.Full.make
+      |> Action_builder.return
+      |> Action_builder.with_no_targets
+    in
+    Action_builder.progn
+      (copy_action
+       @ [ progress_building ]
+       @ build_action
+       @ install_action
+       @ [ install_file_action ])
   in
   let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
   let open Action_builder.With_targets.O in

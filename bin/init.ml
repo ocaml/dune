@@ -75,7 +75,8 @@ let context_cwd : Init_context.t Term.t =
   let builder = Common.Builder.set_default_root_is_cwd builder true in
   let common, config = Common.init builder in
   let project_defaults = config.project_defaults in
-  Scheduler.go ~common ~config (fun () -> Memo.run (Init_context.make path project_defaults))
+  Scheduler.go ~common ~config (fun () ->
+    Memo.run (Init_context.make path project_defaults))
 ;;
 
 module Public_name = struct

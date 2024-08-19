@@ -7,7 +7,7 @@ module Dune_config : sig
 
   module Project_defaults : sig
     (*
-    type t =
+       type t =
     { authors : string list option
     ; maintainers : string list option
     }

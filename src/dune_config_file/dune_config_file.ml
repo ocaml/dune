@@ -24,21 +24,20 @@ module Dune_config = struct
         (let+ authors = field_o "authors" (repeat1 string)
          and+ maintainers = field_o "maintainers" (repeat1 string)
          and+ license = field_o "license" (repeat1 string) in
-         [ ("authors", authors)
-         ; ("maintainers", maintainers)
-         ; ("license", license)
-         ])
+         [ "authors", authors; "maintainers", maintainers; "license", license ])
     ;;
 
     let to_dyn t =
-      Dyn.List (List.map ~f:(fun (name, values_o) ->
-        let values = Option.value values_o ~default:[] in
-        let values = List.map ~f:(fun s -> Dyn.String s) values in
-        Dyn.Tuple [Dyn.String name; Dyn.List values]
-      ) t)
+      Dyn.List
+        (List.map
+           ~f:(fun (name, values_o) ->
+             let values = Option.value values_o ~default:[] in
+             let values = List.map ~f:(fun s -> Dyn.String s) values in
+             Dyn.Tuple [ Dyn.String name; Dyn.List values ])
+           t)
     ;;
     (*
-    type t =
+       type t =
     { authors : string list option
     ; maintainers : string list option
     }
@@ -256,8 +255,7 @@ module Dune_config = struct
           , field Action_output_on_success.to_dyn action_stdout_on_success )
         ; ( "action_stderr_on_success"
           , field Action_output_on_success.to_dyn action_stderr_on_success )
-        ; ( "project_defaults"
-          , field Project_defaults.to_dyn project_defaults )
+        ; "project_defaults", field Project_defaults.to_dyn project_defaults
         ; ( "experimental"
           , field Dyn.(list (pair string (fun (_, v) -> string v))) experimental )
         ]
@@ -412,8 +410,7 @@ module Dune_config = struct
       field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
     and+ action_stderr_on_success =
       field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
-    and+ project_defaults =
-      field_o "project_defaults" (3, 0) Project_defaults.decode
+    and+ project_defaults = field_o "project_defaults" (3, 17) Project_defaults.decode
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in

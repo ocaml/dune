@@ -22,9 +22,11 @@ module Dune_config = struct
     let decode =
       fields
         (let+ authors = field_o "authors" (repeat1 string)
-         and+ maintainers = field_o "maintainers" (repeat1 string) in
+         and+ maintainers = field_o "maintainers" (repeat1 string)
+         and+ license = field_o "license" (repeat1 string) in
          [ ("authors", authors)
          ; ("maintainers", maintainers)
+         ; ("license", license)
          ])
     ;;
 
@@ -411,7 +413,7 @@ module Dune_config = struct
     and+ action_stderr_on_success =
       field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
     and+ project_defaults =
-      field_o "project_defaults" (3, 17) Project_defaults.decode
+      field_o "project_defaults" (3, 0) Project_defaults.decode
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in

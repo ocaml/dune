@@ -16,15 +16,50 @@ module Dune_config = struct
      simplicity *)
   let syntax = Stanza.syntax
 
-  module Default_authors = struct
-    type t = string list
+  module Project_defaults = struct
+    type t = (string * string list option) list
 
-    let to_dyn = function
-      | [] -> Dyn.Variant ("Not-Provided", [])
-      | lst -> Dyn.Set (List.map ~f:(fun s -> Dyn.String s) lst)
+    let decode =
+      fields
+        (let+ authors = field_o "authors" (repeat1 string)
+         and+ maintainers = field_o "maintainers" (repeat1 string) in
+         [ ("authors", authors)
+         ; ("maintainers", maintainers)
+         ])
     ;;
 
-    let decode = repeat1 string
+    let to_dyn t =
+      Dyn.List (List.map ~f:(fun (name, values_o) ->
+        let values = Option.value values_o ~default:[] in
+        let values = List.map ~f:(fun s -> Dyn.String s) values in
+        Dyn.Tuple [Dyn.String name; Dyn.List values]
+      ) t)
+    ;;
+    (*
+    type t =
+    { authors : string list option
+    ; maintainers : string list option
+    }
+
+    let to_dyn t =
+      let str_list_to_dyn_o lst =
+        let lst = Option.value lst ~default:[] in
+        let lst = List.map ~f:(fun s -> Dyn.String s) lst in
+        Dyn.List lst
+      in
+      Dyn.Record
+        [ ("authors", str_list_to_dyn_o t.authors)
+        ; ("maintainers", str_list_to_dyn_o t.maintainers)
+        ]
+    ;;
+
+    let decode =
+      fields
+        (let+ authors = field_o "authors" (repeat1 string)
+         and+ maintainers = field_o "maintainers" (repeat1 string) in
+        { authors; maintainers })
+    ;;
+    *)
   end
 
   module Terminal_persistence = struct
@@ -147,7 +182,7 @@ module Dune_config = struct
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
-      ; default_authors : Default_authors.t field
+      ; project_defaults : Project_defaults.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end
@@ -175,7 +210,7 @@ module Dune_config = struct
           field a.action_stdout_on_success b.action_stdout_on_success
       ; action_stderr_on_success =
           field a.action_stderr_on_success b.action_stderr_on_success
-      ; default_authors = field a.default_authors b.default_authors
+      ; project_defaults = field a.project_defaults b.project_defaults
       ; experimental = field a.experimental b.experimental
       }
     ;;
@@ -199,7 +234,7 @@ module Dune_config = struct
       ; cache_storage_mode
       ; action_stdout_on_success
       ; action_stderr_on_success
-      ; default_authors
+      ; project_defaults
       ; experimental
       }
       =
@@ -219,8 +254,8 @@ module Dune_config = struct
           , field Action_output_on_success.to_dyn action_stdout_on_success )
         ; ( "action_stderr_on_success"
           , field Action_output_on_success.to_dyn action_stderr_on_success )
-        ; ( "default_authors"
-          , field Default_authors.to_dyn default_authors )
+        ; ( "project_defaults"
+          , field Project_defaults.to_dyn project_defaults )
         ; ( "experimental"
           , field Dyn.(list (pair string (fun (_, v) -> string v))) experimental )
         ]
@@ -244,7 +279,7 @@ module Dune_config = struct
       ; cache_storage_mode = None
       ; action_stdout_on_success = None
       ; action_stderr_on_success = None
-      ; default_authors = None
+      ; project_defaults = None
       ; experimental = None
       }
     ;;
@@ -311,7 +346,7 @@ module Dune_config = struct
     ; cache_storage_mode = None
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
-    ; default_authors = []
+    ; project_defaults = []
     ; experimental = []
     }
   ;;
@@ -375,8 +410,8 @@ module Dune_config = struct
       field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
     and+ action_stderr_on_success =
       field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
-    and+ default_authors =
-      field_o "default_authors" (3, 0) Default_authors.decode
+    and+ project_defaults =
+      field_o "project_defaults" (3, 17) Project_defaults.decode
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in
@@ -397,7 +432,7 @@ module Dune_config = struct
     ; cache_storage_mode
     ; action_stdout_on_success
     ; action_stderr_on_success
-    ; default_authors
+    ; project_defaults
     ; experimental
     }
   ;;

@@ -5,6 +5,18 @@ module Dune_config : sig
   open Dune_config
   module Display : module type of Display
 
+  module Project_defaults : sig
+    (*
+    type t =
+    { authors : string list option
+    ; maintainers : string list option
+    }
+    *)
+    type t = (string * string list option) list
+
+    val decode : t Dune_lang.Decoder.t
+  end
+
   module Default_authors : sig
     type t = string list
 
@@ -62,6 +74,7 @@ module Dune_config : sig
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
+      ; project_defaults : Project_defaults.t field
       ; default_authors : Default_authors.t field
       ; experimental : (string * (Loc.t * string)) list field
       }

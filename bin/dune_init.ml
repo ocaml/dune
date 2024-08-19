@@ -169,17 +169,16 @@ end
 
 (** The context in which the initialization is executed *)
 module Init_context = struct
+  open Dune_config_file
+
   type t =
     { dir : Path.t
     ; project : Dune_project.t
-    ; defaults : Dune_config_file.Dune_config.t
+    ; defaults : Dune_config.Project_defaults.t
     }
 
-  let make path config =
+  let make path defaults =
     let open Memo.O in
-
-    let _ = config in
-
     let+ project =
       (* CR-rgrinberg: why not get the project from the source tree? *)
       Dune_project.load
@@ -200,7 +199,7 @@ module Init_context = struct
       | Some p -> Path.of_string p
     in
     File.create_dir dir;
-    { dir; project; defaults=config }
+    { dir; project; defaults }
   ;;
 end
 
@@ -480,7 +479,7 @@ module Component = struct
       let content =
         Stanza_cst.dune_project
           ~opam_file_gen
-          ~defaults:context.defaults.default_authors
+          ~defaults:context.defaults
           Path.(as_in_source_tree_exn context.dir)
           common
       in

@@ -41,12 +41,14 @@ let empty =
   }
 ;;
 
-let example defaults =
+let example (conf : (string * string list option) list) =
+  let authors = List.assoc conf "authors" in
+  let maintainers = List.assoc conf "maintainers" in
   { source =
       Some (Host (Source_kind.Host.Github { user = "username"; repo = "reponame" }))
   ; license = Some [ "LICENSE" ]
-  ; authors = Some defaults
-  ; maintainers = Some [ "Maintainer Name" ]
+  ; authors = Option.value authors ~default:(Some [ "Author Name" ])
+  ; maintainers = Option.value maintainers ~default:(Some [ "Maintainer Name" ])
   ; documentation =
       Some "https://url/to/documentation"
       (* homepage and bug_reports are inferred from the source *)

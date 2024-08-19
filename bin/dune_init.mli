@@ -4,13 +4,15 @@ open Import
 
 (** The context in which the initialization is executed *)
 module Init_context : sig
+  open Dune_config_file
+
   type t =
     { dir : Path.t
     ; project : Dune_project.t
-    ; defaults : Dune_config_file.Dune_config.t
+    ; defaults : Dune_config.Project_defaults.t
     }
 
-  val make : string option -> Dune_config_file.Dune_config.t -> t Memo.t
+  val make : string option -> Dune_config.Project_defaults.t -> t Memo.t
 end
 
 module Public_name : sig

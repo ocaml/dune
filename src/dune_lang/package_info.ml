@@ -41,11 +41,11 @@ let empty =
   }
 ;;
 
-let example =
+let example defaults =
   { source =
       Some (Host (Source_kind.Host.Github { user = "username"; repo = "reponame" }))
   ; license = Some [ "LICENSE" ]
-  ; authors = Some [ "Author Name" ]
+  ; authors = Some defaults
   ; maintainers = Some [ "Maintainer Name" ]
   ; documentation =
       Some "https://url/to/documentation"

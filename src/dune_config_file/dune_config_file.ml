@@ -16,6 +16,17 @@ module Dune_config = struct
      simplicity *)
   let syntax = Stanza.syntax
 
+  module Default_authors = struct
+    type t = string list
+
+    let to_dyn = function
+      | [] -> Dyn.Variant ("Not-Provided", [])
+      | lst -> Dyn.Set (List.map ~f:(fun s -> Dyn.String s) lst)
+    ;;
+
+    let decode = repeat1 string
+  end
+
   module Terminal_persistence = struct
     type t =
       | Preserve
@@ -136,6 +147,7 @@ module Dune_config = struct
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
+      ; default_authors : Default_authors.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end
@@ -163,6 +175,7 @@ module Dune_config = struct
           field a.action_stdout_on_success b.action_stdout_on_success
       ; action_stderr_on_success =
           field a.action_stderr_on_success b.action_stderr_on_success
+      ; default_authors = field a.default_authors b.default_authors
       ; experimental = field a.experimental b.experimental
       }
     ;;
@@ -186,6 +199,7 @@ module Dune_config = struct
       ; cache_storage_mode
       ; action_stdout_on_success
       ; action_stderr_on_success
+      ; default_authors
       ; experimental
       }
       =
@@ -205,6 +219,8 @@ module Dune_config = struct
           , field Action_output_on_success.to_dyn action_stdout_on_success )
         ; ( "action_stderr_on_success"
           , field Action_output_on_success.to_dyn action_stderr_on_success )
+        ; ( "default_authors"
+          , field Default_authors.to_dyn default_authors )
         ; ( "experimental"
           , field Dyn.(list (pair string (fun (_, v) -> string v))) experimental )
         ]
@@ -228,6 +244,7 @@ module Dune_config = struct
       ; cache_storage_mode = None
       ; action_stdout_on_success = None
       ; action_stderr_on_success = None
+      ; default_authors = None
       ; experimental = None
       }
     ;;
@@ -294,6 +311,7 @@ module Dune_config = struct
     ; cache_storage_mode = None
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; default_authors = []
     ; experimental = []
     }
   ;;
@@ -357,6 +375,8 @@ module Dune_config = struct
       field_o "action_stdout_on_success" (3, 0) Action_output_on_success.decode
     and+ action_stderr_on_success =
       field_o "action_stderr_on_success" (3, 0) Action_output_on_success.decode
+    and+ default_authors =
+      field_o "default_authors" (3, 0) Default_authors.decode
     and+ experimental =
       field_o "experimental" (3, 8) (repeat (pair string (located string)))
     in
@@ -377,6 +397,7 @@ module Dune_config = struct
     ; cache_storage_mode
     ; action_stdout_on_success
     ; action_stderr_on_success
+    ; default_authors
     ; experimental
     }
   ;;

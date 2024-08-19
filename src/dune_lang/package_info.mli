@@ -9,7 +9,7 @@ val documentation : t -> string option
 val maintainers : t -> string list option
 
 (** example package info (used for project initialization ) *)
-val example : t
+val example : string list -> t
 
 val empty : t
 val to_dyn : t Dyn.builder

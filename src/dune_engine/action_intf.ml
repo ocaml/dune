@@ -44,7 +44,6 @@ module type Ast = sig
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
-    | System of string
     | Bash of string
     | Write_file of target * File_perm.t * string
     | Rename of target * target
@@ -78,7 +77,6 @@ module type Helpers = sig
   val cat : path list -> t
   val copy : path -> target -> t
   val symlink : path -> target -> t
-  val system : string -> t
   val bash : string -> t
   val write_file : ?perm:File_perm.t -> target -> string -> t
   val rename : target -> target -> t

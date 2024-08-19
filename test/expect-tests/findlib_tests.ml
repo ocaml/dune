@@ -134,7 +134,7 @@ let%expect_test _ =
   let dyn = Dyn.list Lib_dep.to_dyn requires in
   let pp = Dyn.pp dyn in
   Format.printf "%a@." Pp.to_fmt pp;
-  [%expect {|[ "baz" ]|}]
+  [%expect {|[ re_export "baz"; "xyz" ]|}]
 ;;
 
 (* Meta parsing/simplification *)

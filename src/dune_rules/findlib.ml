@@ -121,8 +121,13 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
     let main_module_name : Lib_info.Main_module_name.t = This None in
     let enabled = Memo.return Lib_info.Enabled_status.Normal in
     let requires =
+      let exports = Lib_name.Set.of_list (Findlib.Package.exports t) in
       Findlib.Package.requires t
-      |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
+      |> List.map ~f:(fun name ->
+        let lib_dep =
+          if Lib_name.Set.mem exports name then Lib_dep.re_export else Lib_dep.direct
+        in
+        lib_dep (add_loc name))
     in
     let ppx_runtime_deps = List.map ~f:add_loc (Findlib.Package.ppx_runtime_deps t) in
     let special_builtin_support : (Loc.t * Lib_info.Special_builtin_support.t) option =

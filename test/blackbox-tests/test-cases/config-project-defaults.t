@@ -47,7 +47,8 @@ Change the version of the config file to one which does not support the
 Check to ensure that the default values are used when optional stanzas are 
 removed/not used.
 
-  $ sed -i -e '3,5c\)' dune-config
+  $ sed -i -e '3,5c\
+  > )' dune-config
   $ dune init proj test_proj1 --config-file=dune-config
   Entering directory 'test_proj1'
   Success: initialized project component named test_proj1

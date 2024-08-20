@@ -376,7 +376,12 @@ module Component = struct
     let test common (() : Options.Test.t) = make "test" common []
 
     (* A list of CSTs for dune-project file content *)
-    let dune_project ~opam_file_gen ~defaults dir (common : Options.Common.t) =
+    let dune_project
+      ~opam_file_gen
+      ~(defaults : Dune_config_file.Dune_config.Project_defaults.t)
+      dir
+      (common : Options.Common.t)
+      =
       let cst =
         let package =
           Package.create
@@ -403,7 +408,12 @@ module Component = struct
               ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
-        let info = Package_info.example defaults in
+        let info =
+          Package_info.example
+            ~authors:defaults.authors
+            ~maintainers:defaults.maintainers
+            ~license:defaults.license
+        in
         Dune_project.anonymous ~dir info packages
         |> Dune_project.set_generate_opam_files opam_file_gen
         |> Dune_project.encode

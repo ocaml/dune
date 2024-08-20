@@ -41,10 +41,7 @@ let empty =
   }
 ;;
 
-let example (conf : (string * string list option) list) =
-  let authors = Option.value ~default:None (List.assoc conf "authors") in
-  let maintainers = Option.value ~default:None (List.assoc conf "maintainers") in
-  let license = Option.value ~default:None (List.assoc conf "license") in
+let example ~authors ~maintainers ~license =
   { source =
       Some (Host (Source_kind.Host.Github { user = "username"; repo = "reponame" }))
   ; license = Some (Option.value license ~default:[ "LICENSE" ])

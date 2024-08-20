@@ -17,30 +17,19 @@ module Dune_config = struct
   let syntax = Stanza.syntax
 
   module Project_defaults = struct
-    type t = (string * string list option) list
+    type t =
+      { authors : string list option
+      ; maintainers : string list option
+      ; license : string list option
+      }
 
     let decode =
       fields
         (let+ authors = field_o "authors" (repeat1 string)
          and+ maintainers = field_o "maintainers" (repeat1 string)
          and+ license = field_o "license" (repeat1 string) in
-         [ "authors", authors; "maintainers", maintainers; "license", license ])
+         { authors; maintainers; license })
     ;;
-
-    let to_dyn t =
-      Dyn.List
-        (List.map
-           ~f:(fun (name, values_o) ->
-             let values = Option.value values_o ~default:[] in
-             let values = List.map ~f:(fun s -> Dyn.String s) values in
-             Dyn.Tuple [ Dyn.String name; Dyn.List values ])
-           t)
-    ;;
-    (*
-       type t =
-    { authors : string list option
-    ; maintainers : string list option
-    }
 
     let to_dyn t =
       let str_list_to_dyn_o lst =
@@ -49,18 +38,11 @@ module Dune_config = struct
         Dyn.List lst
       in
       Dyn.Record
-        [ ("authors", str_list_to_dyn_o t.authors)
-        ; ("maintainers", str_list_to_dyn_o t.maintainers)
+        [ "authors", str_list_to_dyn_o t.authors
+        ; "maintainers", str_list_to_dyn_o t.maintainers
+        ; "license", str_list_to_dyn_o t.license
         ]
     ;;
-
-    let decode =
-      fields
-        (let+ authors = field_o "authors" (repeat1 string)
-         and+ maintainers = field_o "maintainers" (repeat1 string) in
-        { authors; maintainers })
-    ;;
-    *)
   end
 
   module Terminal_persistence = struct
@@ -346,7 +328,11 @@ module Dune_config = struct
     ; cache_storage_mode = None
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
-    ; project_defaults = []
+    ; project_defaults =
+        { authors = Some [ "Author Name" ]
+        ; maintainers = Some [ "Maintainer Name" ]
+        ; license = Some [ "LICENSE" ]
+        }
     ; experimental = []
     }
   ;;

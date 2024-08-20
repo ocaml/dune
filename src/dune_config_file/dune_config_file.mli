@@ -6,13 +6,11 @@ module Dune_config : sig
   module Display : module type of Display
 
   module Project_defaults : sig
-    (*
-       type t =
-    { authors : string list option
-    ; maintainers : string list option
-    }
-    *)
-    type t = (string * string list option) list
+    type t =
+      { authors : string list option
+      ; maintainers : string list option
+      ; license : string list option
+      }
 
     val decode : t Dune_lang.Decoder.t
   end

@@ -22,10 +22,10 @@ module Message = struct
     }
 
   let user_message { package_name; package_version; status } =
-    let status_tag = User_message.Style.Ok in
+    let status_tag = User_message.Style.Success in
     User_message.make
       [ Pp.concat
-          [ Pp.tag status_tag (Pp.text (Status.to_string status))
+          [ Pp.tag status_tag (Pp.textf "%12s" (Status.to_string status))
           ; Pp.textf
               " %s.%s"
               (Package.Name.to_string package_name)

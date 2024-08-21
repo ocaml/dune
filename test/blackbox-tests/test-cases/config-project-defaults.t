@@ -62,3 +62,63 @@ removed/not used.
 
   $ cat test_proj1/dune-project | grep -i license
   (license LICENSE)
+
+In the previous test all sub stanzas of the 'project_default' stanza where
+removed so we will create a new config file continue testing. This time we will
+used quoted string values and test the ability to add multiple
+authors/maintainers.
+
+  $ rm dune-config; touch dune-config
+  $ cat >dune-config <<EOF
+  > (lang dune 3.17)
+  > (project_defaults
+  >  (authors "AuthorTest1" "AuthorTest2")
+  >  (maintainers "Maintainer1" "Maintainer2" "Maintainer3")
+  >  (license "BSD"))
+  > EOF
+
+Now we test to see if quoted list values are properly generated in the
+dune-project file.
+
+  $ dune init proj test_proj2 --config-file=dune-config
+  Entering directory 'test_proj2'
+  Success: initialized project component named test_proj2
+  Leaving directory 'test_proj2'
+
+  $ cat test_proj2/dune-project | grep -i authors
+  (authors AuthorTest1 AuthorTest2)
+
+  $ cat test_proj2/dune-project | grep -i maintainers
+  (maintainers Maintainer1 Maintainer2 Maintainer3)
+
+  $ cat test_proj2/dune-project | grep -i license
+  (license BSD)
+
+Ensure that an error is raised when an optional stanza is provided but its value
+is omitted.
+
+  $ sed -i -e '3s|.*|(authors)|' dune-config
+  $ dune init proj test_proj3 --config-file=dune-config
+  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-9:
+  3 | (authors)
+      ^^^^^^^^^
+  Error: Not enough arguments for "authors"
+  [1]
+
+  $ sed -i -e '3d' dune-config
+  $ sed -i -e '3s|.*|(maintainers)|' dune-config
+  $ dune init proj test_proj3 --config-file=dune-config
+  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-13:
+  3 | (maintainers)
+      ^^^^^^^^^^^^^
+  Error: Not enough arguments for "maintainers"
+  [1]
+
+  $ sed -i -e '3d' dune-config
+  $ sed -i -e '3s|.*|(license))|' dune-config
+  $ dune init proj test_proj3 --config-file=dune-config
+  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-9:
+  3 | (license))
+      ^^^^^^^^^
+  Error: Not enough arguments for "license"
+  [1]

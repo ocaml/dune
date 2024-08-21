@@ -1,16 +1,16 @@
 project_defaults
 ----------------
 
-Specifies default values for various stanzas in the generated ``dune-project``
-file when using ``dune init project``. The format of the project default stanza
-is as follows:
+Specify default values for stanzas ``authors``, ``maintainers``, and ``license``
+of the dune-project file when initializing a project with ``dune init proj``.
+The format of the 'project_defaults' stanza is as follows:
 
 .. code:: dune
 
    (project_defaults
     <optional-fields>)
 
-``<optional-fields`` are:
+``<optional-fields>`` are:
 
 .. describe:: (authors <string(s)>)
 

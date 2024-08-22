@@ -10,5 +10,5 @@ val library_path : string list
 (** Where to install files. All the directories are absolute path *)
 val roots : string option Install.Roots.t
 
-val toolchains : [ `Enabled | `Disabled ]
-val pkg_build_progress : [ `Enabled | `Disabled ]
+val toolchains : Dune_config.Config.Toggle.t
+val pkg_build_progress : Dune_config.Config.Toggle.t

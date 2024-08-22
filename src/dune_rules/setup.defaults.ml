@@ -11,4 +11,5 @@ let roots : string option Install.Roots.t =
   ; libexec_root = None
   }
 
-let init () = Dune_config.Compile_time.init ~names:[]
+let toolchains = `Disabled
+let pkg_build_progress = `Disabled

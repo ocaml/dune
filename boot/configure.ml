@@ -17,7 +17,9 @@ let out =
   | Some out -> out
 ;;
 
-let toggle_inits l = sprintf "Dune_config.Compile_time.init ~names:%s" (list string l)
+let default_toggles : (string * [ `Disabled | `Enabled ]) list =
+  [ "toolchains", `Disabled; "pkg_build_progress", `Disabled ]
+;;
 
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
@@ -30,7 +32,7 @@ let () =
   let sbindir = ref None in
   let libexecdir = ref None in
   let datadir = ref None in
-  let toggles = ref [] in
+  let toggles = ref default_toggles in
   let cwd = lazy (Sys.getcwd ()) in
   let dir_of_string s =
     if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
@@ -44,7 +46,9 @@ let () =
     let dir = dir_of_string s in
     v := Some dir
   in
-  let toggle name () = toggles := name :: !toggles in
+  let toggle name () =
+    toggles := List.map !toggles ~f:(fun (x, y) -> x, if x = name then `Enabled else y)
+  in
   let args =
     [ ( "--libdir"
       , Arg.String set_libdir
@@ -104,6 +108,12 @@ let () =
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }";
   pr "";
-  pr "let init () = %s" (toggle_inits !toggles);
+  List.iter !toggles ~f:(fun (name, value) ->
+    pr
+      "let %s = `%s"
+      name
+      (match value with
+       | `Enabled -> "Enabled"
+       | `Disabled -> "Disabled"));
   close_out oc
 ;;

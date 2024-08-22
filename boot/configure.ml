@@ -17,6 +17,10 @@ let out =
   | Some out -> out
 ;;
 
+let default_toggles : (string * [ `Disabled | `Enabled ]) list =
+  [ "toolchains", `Disabled; "pkg_build_progress", `Disabled ]
+;;
+
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
   let library_path = ref [] in
@@ -28,6 +32,7 @@ let () =
   let sbindir = ref None in
   let libexecdir = ref None in
   let datadir = ref None in
+  let toggles = ref default_toggles in
   let cwd = lazy (Sys.getcwd ()) in
   let dir_of_string s =
     if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
@@ -40,6 +45,9 @@ let () =
   let set_dir v s =
     let dir = dir_of_string s in
     v := Some dir
+  in
+  let toggle name () =
+    toggles := List.map !toggles ~f:(fun (x, y) -> x, if x = name then `Enabled else y)
   in
   let args =
     [ ( "--libdir"
@@ -70,6 +78,15 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
+    ; ( "--enable-toolchains"
+      , Arg.Unit (toggle "toolchains")
+      , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
+         user-wide directory.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--enable-pkg-build-progress"
+      , Arg.Unit (toggle "pkg_build_progress")
+      , " Enable the displaying of package build progress.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in
@@ -90,5 +107,13 @@ let () =
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }";
+  pr "";
+  List.iter !toggles ~f:(fun (name, value) ->
+    pr
+      "let %s = `%s"
+      name
+      (match value with
+       | `Enabled -> "Enabled"
+       | `Disabled -> "Disabled"));
   close_out oc
 ;;

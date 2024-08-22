@@ -1,7 +1,5 @@
 open! Import
 
-let enabled = Config.make_toggle ~name:"pkg_build_progress" ~default:`Disabled
-
 module Status = struct
   type t =
     [ `Downloading
@@ -35,7 +33,7 @@ module Message = struct
   ;;
 
   let display t =
-    match Config.get enabled with
+    match Config.get Compile_time.pkg_build_progress with
     | `Enabled -> Console.print_user_message (user_message t)
     | `Disabled -> ()
   ;;

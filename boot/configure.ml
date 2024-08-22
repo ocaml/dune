@@ -44,7 +44,7 @@ let () =
     let dir = dir_of_string s in
     v := Some dir
   in
-  let set_toggles s = toggles := String.split_on_char ~sep:',' s in
+  let toggle name () = toggles := name :: !toggles in
   let args =
     [ ( "--libdir"
       , Arg.String set_libdir
@@ -74,10 +74,15 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
-    ; ( "--toggles"
-      , Arg.String set_toggles
-      , "NAMES comma-separated list of configuration options to be set to 'enabled'. See \
-         the list of options in dune_config/compile_time." )
+    ; ( "--enable-toolchains"
+      , Arg.Unit (toggle "toolchains")
+      , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
+         user-wide directory.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--enable-pkg-build-progress"
+      , Arg.Unit (toggle "pkg_build_progress")
+      , " Enable the displaying of package build progress.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in

@@ -38,7 +38,7 @@ a different position:
 Disabling line breaks should thus only break lines where there are explicit
 line breaks in the input and not when the line gets too long.
 
-  $ export DUNE_TEST__DISABLE_LINE_BREAK=1
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
   $ dune build
   Error: The package verylongnamethatcauseslinewrappingincases does not have any user defined stanzas attached to it. If this is intentional, add (allow_empty) to the package definition in the dune-project file
   -> required by _build/default/verylongnamethatcauseslinewrappingincases.install

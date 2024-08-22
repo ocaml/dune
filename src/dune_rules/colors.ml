@@ -41,13 +41,6 @@ let mark_open_stag = function
   | _ -> ""
 ;;
 
-let setup_terminal_width () =
-  let env = Env.initial in
-  match Env.mem ~var:"DUNE_TEST__DISABLE_LINE_BREAK" env with
-  | false -> ()
-  | true -> Format.set_margin Format.pp_infinity
-;;
-
 let setup_err_formatter_colors () =
   if Lazy.force Ansi_color.stderr_supports_color
   then (

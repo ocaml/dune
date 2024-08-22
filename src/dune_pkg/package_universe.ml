@@ -127,6 +127,25 @@ let check_for_unnecessary_packges_in_lock_dir
       ])
 ;;
 
+let up_to_date local_packages (lock_dir : Lock_dir.t) =
+  let local_packages =
+    Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
+  in
+  let non_local_dependencies =
+    Local_package.For_solver.list_non_local_dependency_set local_packages
+  in
+  let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
+  match lock_dir.dependency_hash, dependency_hash with
+  | None, None -> `Valid
+  | Some (_, lock_dir_dependency_hash), Some non_local_dependencies_hash
+    when Local_package.Dependency_hash.equal
+           lock_dir_dependency_hash
+           non_local_dependencies_hash -> `Valid
+  | None, Some non_local_dependencies_hash | Some _, Some non_local_dependencies_hash ->
+    `Invalid (Some non_local_dependencies_hash)
+  | Some _, None -> `Invalid None
+;;
+
 let validate_dependency_hash { local_packages; lock_dir; _ } =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver

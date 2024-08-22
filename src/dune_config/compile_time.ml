@@ -9,11 +9,11 @@ let init ~names =
   initialized := true
 ;;
 
-let set name =
+let make name =
   Config.make_toggle
     ~name
     ~default:(if List.exists ~f:(String.equal name) !toggled then `Enabled else `Disabled)
 ;;
 
-let toolchains = set "toolchains"
-let pkg_build_progress = set "pkg_build_progress"
+let toolchains = make "toolchains"
+let pkg_build_progress = make "pkg_build_progress"

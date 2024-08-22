@@ -8,7 +8,7 @@ module Spec = struct
   let version = 1
   let bimap t _ _ = t
   let is_useful_to ~memoize = memoize
-  let encode cmd _ _ : Sexp.t = List [ Atom name; Atom cmd ]
+  let encode cmd _ _ : Sexp.t = Atom cmd
 
   let action cmd ~(ectx : Action.context) ~(eenv : Action.env) =
     let prog, arg =
@@ -32,14 +32,6 @@ module Spec = struct
   ;;
 end
 
-let action cmd =
-  Action.Extension
-    (module struct
-      type path = Path.t
-      type target = Path.Build.t
+module A = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = cmd
-    end)
-;;
+let action = A.action

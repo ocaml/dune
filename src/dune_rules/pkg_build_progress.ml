@@ -56,10 +56,7 @@ module Spec = struct
   let version = 1
   let is_useful_to ~memoize:_ = true
   let bimap t _f _g = t
-
-  let encode t _ _ =
-    Sexp.List [ Sexp.Atom name; Sexp.Atom (Int.to_string version); Message.encode t ]
-  ;;
+  let encode t _ _ = Message.encode t
 
   let action t ~ectx:_ ~eenv:_ =
     let open Fiber.O in
@@ -68,15 +65,8 @@ module Spec = struct
   ;;
 end
 
+module Action = Action_ext.Make (Spec)
+
 let progress_action package_name package_version status =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
-
-    module Spec = Spec
-
-    let v = { Message.package_name; package_version; status }
-  end
-  in
-  Action.Extension (module M)
+  Action.action { Message.package_name; package_version; status }
 ;;

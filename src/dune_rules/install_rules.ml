@@ -1087,10 +1087,10 @@ struct
     type ('path, 'target) t = Path.t Install.Entry.t list * 'target
 
     let name = "gen-install-file"
-    let version = 1
+    let version = 2
     let bimap (entries, dst) _ g = entries, g dst
     let is_useful_to ~memoize = memoize
-    let encode (_entries, dst) _path target : Sexp.t = List [ Atom name; target dst ]
+    let encode (_entries, dst) _path target : Sexp.t = List [ target dst ]
 
     let make_entry entry path comps =
       Install.Entry.set_src entry path
@@ -1144,18 +1144,9 @@ struct
     ;;
   end
 
-  let gen_install_file entries ~dst =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
+  module A = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = entries, dst
-    end
-    in
-    Dune_engine.Action.Extension (module M)
-  ;;
+  let gen_install_file entries ~dst = A.action (entries, dst)
 end :
 sig
   val gen_install_file : Path.t Install.Entry.t list -> dst:Path.Build.t -> Action.t

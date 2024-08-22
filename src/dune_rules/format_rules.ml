@@ -37,8 +37,7 @@ let action =
 
     let encode (version, src, dst) path target : Sexp.t =
       List
-        [ Atom "format-dune-file"
-        ; Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp
+        [ Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp
         ; path src
         ; target dst
         ]
@@ -50,18 +49,8 @@ let action =
     ;;
   end
   in
-  fun ~version (src : Path.t) (dst : Path.Build.t) ->
-    let module M :
-      Action.Ext.Instance with type path = Path.t and type target = Path.Build.t = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = version, src, dst
-    end
-    in
-    Action.Extension (module M)
+  let module A = Action_ext.Make (Spec) in
+  fun ~version (src : Path.t) (dst : Path.Build.t) -> A.action (version, src, dst)
 ;;
 
 module Alias = struct

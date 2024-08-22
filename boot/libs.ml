@@ -50,6 +50,7 @@ let local_libraries =
   ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
+  ; ("src/action_ext", Some "Action_ext", false, None)
   ; ("src/promote", Some "Promote", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("src/ocaml", Some "Ocaml", false, None)

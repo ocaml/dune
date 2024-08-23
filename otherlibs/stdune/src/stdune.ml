@@ -13,6 +13,7 @@ module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace
 module Filename = Filename
 module Filename_set = Filename_set
+module Format = Format
 module Hashtbl = Hashtbl
 module Table = Table
 module Int = Int

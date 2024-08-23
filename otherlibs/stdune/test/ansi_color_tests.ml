@@ -39,9 +39,7 @@ let%expect_test "reproduce #2664" =
   let ansi_colors_from_pp =
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    Staged.unstage
-      (Ansi_color.make_printer ~line_break:true ~supports_color:(lazy true) ppf)
-      pp;
+    Staged.unstage (Ansi_color.make_printer (lazy true) ppf) pp;
     Buffer.contents b
   in
   printfn "Original : %S" string_with_ansi_colors;

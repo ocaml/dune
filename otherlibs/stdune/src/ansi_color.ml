@@ -494,7 +494,14 @@ let rec tag_handler buf current_styles ppf (styles : Style.t list) pp =
     (Style.escape_sequence_buf buf (current_styles :> Style.t list))
 ;;
 
-let make_printer ~line_break ~supports_color ppf =
+let skip_line_break =
+  lazy
+    (match Sys.getenv_opt "DUNE_CONFIG__SKIP_LINE_BREAK" with
+     | Some "enabled" -> true
+     | _ -> false)
+;;
+
+let make_printer supports_color ppf =
   let f =
     lazy
       (if Lazy.force supports_color
@@ -504,26 +511,13 @@ let make_printer ~line_break ~supports_color ppf =
        else Pp.to_fmt ppf)
   in
   Staged.stage (fun pp ->
-    if not line_break then Format.pp_set_margin ppf Format.pp_infinity;
+    if Lazy.force skip_line_break then Format.pp_set_margin ppf Format.pp_infinity;
     Lazy.force f pp;
     Format.pp_print_flush ppf ())
 ;;
 
-let print =
-  Staged.unstage
-    (make_printer
-       ~line_break:true
-       ~supports_color:stdout_supports_color
-       Format.std_formatter)
-;;
-
-let prerr =
-  Staged.unstage
-    (make_printer
-       ~line_break:true
-       ~supports_color:stderr_supports_color
-       Format.err_formatter)
-;;
+let print = Staged.unstage (make_printer stdout_supports_color Format.std_formatter)
+let prerr = Staged.unstage (make_printer stderr_supports_color Format.err_formatter)
 
 let strip str =
   let len = String.length str in

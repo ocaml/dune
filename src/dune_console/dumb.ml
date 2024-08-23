@@ -1,5 +1,4 @@
 open Stdune
-module Config = Dune_config.Config
 
 module No_flush : Backend_intf.S = struct
   let start () = ()
@@ -8,22 +7,7 @@ module No_flush : Backend_intf.S = struct
   let print_user_message msg =
     Option.iter msg.User_message.loc ~f:(fun loc ->
       Loc.render Format.err_formatter (Loc.pp loc));
-    let msg = { msg with loc = None } in
-    let prerr =
-      match Config.get Config.skip_line_break with
-      | `Disabled -> User_message.prerr
-      | `Enabled ->
-        fun ?(config = User_message.Print_config.default) t ->
-          let prerr =
-            Staged.unstage
-              (Ansi_color.make_printer
-                 ~line_break:false
-                 ~supports_color:Ansi_color.stderr_supports_color
-                 Format.err_formatter)
-          in
-          prerr (Pp.map_tags (User_message.pp t) ~f:config)
-    in
-    prerr msg
+    User_message.prerr { msg with loc = None }
   ;;
 
   let set_status_line _ = ()

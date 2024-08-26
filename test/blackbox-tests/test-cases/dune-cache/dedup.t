@@ -2,6 +2,7 @@ Test deduplication of build artifacts when using Dune cache with hard links.
 
   $ export DUNE_CACHE=enabled
   $ export DUNE_CACHE_ROOT=$PWD/.cache
+  $ export DUNE_CACHE_RULES=enabled
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

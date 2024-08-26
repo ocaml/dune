@@ -1135,7 +1135,7 @@ module DB = struct
   let get =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
-      let+ all = Lock_dir.get context in
+      let+ all = Lock_dir.get_exn context in
       { all = all.packages; system_provided = dune }
   ;;
 end
@@ -1872,7 +1872,7 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  (let* lock_dir = Lock_dir.get context in
+  (let* lock_dir = Lock_dir.get_exn context in
    let* db = DB.get context in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided

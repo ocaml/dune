@@ -206,7 +206,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     let make_target = make_target checksum_or_url in
     let action ~target ~kind =
       action ~url:(loc_url, url) ~checksum ~target ~kind
-      |> Action.Full.make
+      |> Action.Full.make ~can_go_in_shared_cache:true
       |> Action_builder.return
       |> Action_builder.with_no_targets
     in
@@ -327,7 +327,7 @@ let fetch ~target kind (source : Source.t) =
            .fetch context. This would just add pointless additional overhead. *)
         action ~url:source.url ~checksum:source.checksum ~target ~kind
     in
-    Action.Full.make action
+    Action.Full.make ~can_go_in_shared_cache:true action
     |> Action_builder.With_targets.return
     |> Action_builder.With_targets.add_directories ~directory_targets:[ target ]
 ;;

@@ -570,8 +570,8 @@ module Write_disk = struct
     in
     let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
     let lock_dir_path_external = Path.source lock_dir_path_src in
-    let remove_hidden_dir_if_exists =
-      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src
+    let remove_hidden_dir_if_exists () =
+      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src ()
     in
     let rename_old_lock_dir_to_hidden =
       safely_rename_lock_dir ~dst:lock_dir_hidden_src lock_dir_path_external

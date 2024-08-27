@@ -579,7 +579,6 @@ module Write_disk = struct
     let build lock_dir_path =
       rename_old_lock_dir_to_hidden ();
       let lock_dir_path = Result.ok_exn lock_dir_path in
-      Path.mkdir_p lock_dir_path;
       file_contents_by_path lock_dir
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
         let path = Path.relative lock_dir_path path_within_lock_dir in
@@ -594,7 +593,7 @@ module Write_disk = struct
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
         Package_name.Map.iteri files ~f:(fun package_name files ->
           let files_dir =
-            Pkg.files_dir package_name ~lock_dir:lock_dir_path_src |> Path.source
+            Path.relative lock_dir_path (Package_name.to_string package_name ^ ".files")
           in
           Path.mkdir_p files_dir;
           List.iter files ~f:(fun { File_entry.original; local_file } ->
@@ -608,7 +607,7 @@ module Write_disk = struct
     in
     fun () ->
       Temp.with_temp_dir
-        ~parent_dir:(Path.of_string "/tmp")
+        ~parent_dir:(Path.source Path.Source.root)
         ~prefix:"dune"
         ~suffix:"lock"
         ~f:build

@@ -345,9 +345,9 @@ In particular, the `dune-project` file has the expected content:
   (source
    (github username/reponame))
   
-  (authors "Author Name")
+  (authors "Author Name <author@example.com>")
   
-  (maintainers "Maintainer Name")
+  (maintainers "Maintainer Name <maintainer@example.com>")
   
   (license LICENSE)
   
@@ -376,8 +376,8 @@ And the opam file will be generated as expected
   opam-version: "2.0"
   synopsis: "A short synopsis"
   description: "A longer description"
-  maintainer: ["Maintainer Name"]
-  authors: ["Author Name"]
+  maintainer: ["Maintainer Name <maintainer@example.com>"]
+  authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
   tags: ["topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"
@@ -455,9 +455,9 @@ In particular, the `dune-project` file has the expected content:
   (source
    (github username/reponame))
   
-  (authors "Author Name")
+  (authors "Author Name <author@example.com>")
   
-  (maintainers "Maintainer Name")
+  (maintainers "Maintainer Name <maintainer@example.com>")
   
   (license LICENSE)
   
@@ -486,8 +486,8 @@ And the opam file will be generated as expected
   opam-version: "2.0"
   synopsis: "A short synopsis"
   description: "A longer description"
-  maintainer: ["Maintainer Name"]
-  authors: ["Author Name"]
+  maintainer: ["Maintainer Name <maintainer@example.com>"]
+  authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
   tags: ["topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"

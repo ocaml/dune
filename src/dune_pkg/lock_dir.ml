@@ -498,6 +498,32 @@ module Write_disk = struct
     | Ok _ -> Error `Not_directory
   ;;
 
+  let raise_user_error_on_check_existance path e =
+    let error_reason_pp =
+      match e with
+      | `Unreadable -> Pp.text "Unable to read lock directory"
+      | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
+      | `No_metadata_file ->
+        Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
+      | `Failed_to_parse_metadata (path, exn) ->
+        Pp.concat
+          ~sep:Pp.cut
+          [ Pp.textf
+              "Unable to parse lock directory metadata file (%s):"
+              (Path.to_string_maybe_quoted path)
+            |> Pp.hovbox
+          ; Exn.pp exn |> Pp.hovbox
+          ]
+        |> Pp.vbox
+    in
+    User_error.raise
+      [ Pp.textf
+          "Refusing to regenerate lock directory %s"
+          (Path.to_string_maybe_quoted path)
+      ; error_reason_pp
+      ]
+  ;;
+
   (* Removes the existing lock directory at the specified path if it exists and
      is a valid lock directory. Checks the validity of the existing lockdir (if
      any) and raises if it's invalid before constructing the returned thunk, so
@@ -507,23 +533,20 @@ module Write_disk = struct
     match check_existing_lock_dir path with
     | Ok `Non_existant -> Fun.const ()
     | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
-    | Error e ->
+    | Error e -> raise_user_error_on_check_existance path e
+  ;;
+
+  (* Does the same checks as [safely_remove_lock_dir_if_exists_thunk] but it raises an
+     error if the lock dir already exists. [dst] is the new file name *)
+  let safely_rename_lock_dir ~dst path =
+    match check_existing_lock_dir dst, check_existing_lock_dir path with
+    | Ok `Non_existant, Ok `Is_existing_lock_dir -> fun () -> Path.rename path dst
+    | Ok `Non_existant, Ok `Non_existant -> Fun.const ()
+    | Ok `Is_existing_lock_dir, _ ->
       let error_reason_pp =
-        match e with
-        | `Unreadable -> Pp.text "Unable to read lock directory"
-        | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
-        | `No_metadata_file ->
-          Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
-        | `Failed_to_parse_metadata (path, exn) ->
-          Pp.concat
-            ~sep:Pp.cut
-            [ Pp.textf
-                "Unable to parse lock directory metadata file (%s):"
-                (Path.to_string_maybe_quoted path)
-              |> Pp.hovbox
-            ; Exn.pp exn |> Pp.hovbox
-            ]
-          |> Pp.vbox
+        Pp.textf
+          "Directory %s already exists: can't rename safely"
+          (Path.to_string_maybe_quoted path)
       in
       User_error.raise
         [ Pp.textf
@@ -531,15 +554,31 @@ module Write_disk = struct
             (Path.to_string_maybe_quoted path)
         ; error_reason_pp
         ]
+    | Error e, _ | _, Error e -> raise_user_error_on_check_existance path e
   ;;
 
   type t = unit -> unit
 
-  let prepare ~lock_dir_path:lock_dir_path_src ~files lock_dir =
-    let lock_dir_path = Path.source lock_dir_path_src in
-    let remove_dir_if_exists = safely_remove_lock_dir_if_exists_thunk lock_dir_path in
-    fun () ->
-      remove_dir_if_exists ();
+  let prepare
+    ~lock_dir_path:lock_dir_path_src
+    ~(files : File_entry.t Package_name.Map.Multi.t)
+    lock_dir
+    =
+    let lock_dir_hidden_src =
+      Format.sprintf ".%s" (Path.Source.to_string lock_dir_path_src)
+      |> Path.Source.of_string
+    in
+    let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
+    let lock_dir_path_external = Path.source lock_dir_path_src in
+    let remove_hidden_dir_if_exists =
+      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src
+    in
+    let rename_old_lock_dir_to_hidden =
+      safely_rename_lock_dir ~dst:lock_dir_hidden_src lock_dir_path_external
+    in
+    let build lock_dir_path =
+      rename_old_lock_dir_to_hidden ();
+      let lock_dir_path = Result.ok_exn lock_dir_path in
       Path.mkdir_p lock_dir_path;
       file_contents_by_path lock_dir
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
@@ -563,7 +602,16 @@ module Write_disk = struct
             Path.mkdir_p (Path.parent_exn dst);
             match original with
             | Path src -> Io.copy_file ~src ~dst ()
-            | Content content -> Io.write_file dst content)))
+            | Content content -> Io.write_file dst content)));
+      safely_rename_lock_dir ~dst:lock_dir_path_external lock_dir_path ();
+      remove_hidden_dir_if_exists ()
+    in
+    fun () ->
+      Temp.with_temp_dir
+        ~parent_dir:(Path.of_string "/tmp")
+        ~prefix:"dune"
+        ~suffix:"lock"
+        ~f:build
   ;;
 
   let commit t = t ()

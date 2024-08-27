@@ -30,34 +30,43 @@ let with_metrics ~common f =
     Fiber.return ())
 ;;
 
-let raise_on_lock_dir_out_of_sync () =
-  Memo.of_thunk (fun () ->
-    let open Memo.O in
-    let lock_dir_path = Dune_pkg.Lock_dir.default_path in
-    let lock_dirs = Pkg_common.Lock_dirs_arg.of_path lock_dir_path in
-    let* per_contexts =
-      Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
-    in
-    let lock_dirs =
-      List.filter_map per_contexts ~f:(fun lock_dir_path ->
-        match Path.exists (Path.source lock_dir_path) with
-        | true -> Some (Dune_pkg.Lock_dir.read_disk lock_dir_path)
-        | false -> None)
-    in
-    match lock_dirs with
-    | [] -> Memo.return ()
-    | lock_dirs ->
-      let* local_packages = Pkg_common.find_local_packages in
-      let locks =
-        List.map lock_dirs ~f:(fun lock_dir ->
+let raise_on_lock_dir_out_of_sync profile =
+  let skip_check =
+    match profile with
+    | None -> false
+    | Some profile -> Profile.is_release profile
+  in
+  if skip_check
+  then Memo.Lazy.of_val ()
+  else
+    Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let lock_dir_path = Dune_pkg.Lock_dir.default_path in
+      let lock_dirs = Pkg_common.Lock_dirs_arg.of_path lock_dir_path in
+      let* per_contexts =
+        Workspace.workspace ()
+        >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
+      in
+      let lock_dirs =
+        List.filter_map per_contexts ~f:(fun lock_dir_path ->
+          match Path.exists (Path.source lock_dir_path) with
+          | true -> Some (Dune_pkg.Lock_dir.read_disk_exn lock_dir_path)
+          | false -> None)
+      in
+      match lock_dirs with
+      | [] -> Memo.return ()
+      | lock_dirs ->
+        let* local_packages = Pkg_common.find_local_packages in
+        let f lock_dir =
           match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
           | `Valid -> Memo.return ()
           | `Invalid _ ->
             let hints = Pp.[ text "run dune pkg lock" ] in
-            User_error.raise ~hints [ Pp.text "The lock dir is not sync with your dune-project" ])
-      in
-      let+ (_ : unit list) = Memo.all_concurrently locks in
-      ())
+            User_error.raise
+              ~hints
+              [ Pp.text "The lock dir is not sync with your dune-project" ]
+        in
+        Memo.parallel_iter ~f lock_dirs)
 ;;
 
 let run_build_system ~common ~request =
@@ -77,7 +86,9 @@ let run_build_system ~common ~request =
       Cached_digest.invalidate_cached_timestamps ();
       let* setup = Import.Main.setup () in
       let setup_with_check =
-        Memo.bind (raise_on_lock_dir_out_of_sync ()) ~f:(fun () -> setup)
+        Memo.bind
+          (Memo.Lazy.force (raise_on_lock_dir_out_of_sync @@ Common.profile common))
+          ~f:(fun () -> setup)
       in
       let request =
         Action_builder.bind (Action_builder.of_memo setup_with_check) ~f:(fun setup ->

@@ -141,7 +141,9 @@ let up_to_date local_packages (lock_dir : Lock_dir.t) =
     when Local_package.Dependency_hash.equal
            lock_dir_dependency_hash
            non_local_dependencies_hash -> `Valid
-  | None, Some non_local_dependencies_hash | Some _, Some non_local_dependencies_hash ->
+  | None, Some _ ->
+    `Valid (* This case happens when the user writes themselves their lock.dune. *)
+  | Some _, Some non_local_dependencies_hash ->
     `Invalid (Some non_local_dependencies_hash)
   | Some _, None -> `Invalid None
 ;;

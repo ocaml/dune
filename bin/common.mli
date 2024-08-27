@@ -5,6 +5,7 @@ type t
 
 val x : t -> Dune_engine.Context_name.t option
 val capture_outputs : t -> bool
+val profile : t -> Dune_lang.Profile.t option
 val root : t -> Workspace_root.t
 
 val rpc

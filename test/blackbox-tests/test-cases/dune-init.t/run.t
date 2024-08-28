@@ -359,7 +359,7 @@ In particular, the `dune-project` file has the expected content:
    (description "A longer description")
    (depends ocaml dune)
    (tags
-    (topics "to describe" your project)))
+    ("add topics" "to describe" your project)))
   
   ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
@@ -379,7 +379,7 @@ And the opam file will be generated as expected
   maintainer: ["Maintainer Name <maintainer@example.com>"]
   authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
-  tags: ["topics" "to describe" "your" "project"]
+  tags: ["add topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
@@ -469,7 +469,7 @@ In particular, the `dune-project` file has the expected content:
    (description "A longer description")
    (depends ocaml dune)
    (tags
-    (topics "to describe" your project)))
+    ("add topics" "to describe" your project)))
   
   ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
@@ -489,7 +489,7 @@ And the opam file will be generated as expected
   maintainer: ["Maintainer Name <maintainer@example.com>"]
   authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
-  tags: ["topics" "to describe" "your" "project"]
+  tags: ["add topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"

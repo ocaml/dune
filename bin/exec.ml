@@ -227,18 +227,27 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | Some path -> build_prog ~no_rebuild ~prog path
      | None -> not_found ~dir ~prog)
   | Absolute ->
-    (match
-       let path = Path.of_string prog in
-       if Path.exists path
-       then Some path
-       else if not Sys.win32
-       then Some (Path.relative_to_source_in_build_or_external ~dir prog)
-       else (
-         let prog = Path.extend_basename path ~suffix:Bin.exe in
-         Option.some_if (Path.exists prog) prog)
-     with
-     | Some prog -> Memo.return prog
-     | None -> not_found ~dir ~prog)
+    let path = Path.of_string prog in
+    if Path.exists path
+    then Memo.return path
+    else (
+      let path = Path.relative_to_source_in_build_or_external ~dir prog in
+      Build_system.file_exists path
+      >>= (function
+            | true -> Memo.return (Some path)
+            | false ->
+              if not (Filename.check_suffix prog ".exe")
+              then Memo.return None
+              else (
+                let path = Path.extend_basename path ~suffix:".exe" in
+                Build_system.file_exists path
+                >>| function
+                | true -> Some path
+                | false -> None))
+      >>= (function
+      | Some path -> Memo.return path
+      | None -> not_found ~dir ~prog)
+    )
 ;;
 
 module Exec_context = struct

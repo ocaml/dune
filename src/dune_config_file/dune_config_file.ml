@@ -329,8 +329,8 @@ module Dune_config = struct
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; project_defaults =
-        { authors = Some [ "Author Name" ]
-        ; maintainers = Some [ "Maintainer Name" ]
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
         ; license = Some [ "LICENSE" ]
         }
     ; experimental = []

@@ -128,17 +128,22 @@ let get_workspace_lock_dir ctx =
   Workspace.find_lock_dir workspace path
 ;;
 
-let get (ctx : Context_name.t) : t Memo.t =
-  let* lock_dir = get_path ctx >>| Option.value_exn >>= Load.load in
-  let+ workspace_lock_dir = get_workspace_lock_dir ctx in
-  (match workspace_lock_dir with
-   | None -> ()
-   | Some workspace_lock_dir ->
-     Solver_stats.Expanded_variable_bindings.validate_against_solver_env
-       lock_dir.expanded_solver_variable_bindings
-       (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-  lock_dir
+let get ctx =
+  let* result = get_path ctx >>| Option.value_exn >>= Load.load in
+  match result with
+  | Error e -> Memo.return (Error e)
+  | Ok lock_dir ->
+    let+ workspace_lock_dir = get_workspace_lock_dir ctx in
+    (match workspace_lock_dir with
+     | None -> ()
+     | Some workspace_lock_dir ->
+       Solver_stats.Expanded_variable_bindings.validate_against_solver_env
+         lock_dir.expanded_solver_variable_bindings
+         (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
+    Ok lock_dir
 ;;
+
+let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let lock_dir_active ctx =
   if !Clflags.ignore_lock_dir

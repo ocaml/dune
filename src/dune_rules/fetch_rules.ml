@@ -158,6 +158,7 @@ let find_checksum, find_url =
     Memo.lazy_ (fun () ->
       Per_context.list ()
       >>= Memo.parallel_map ~f:Lock_dir.get
+      >>| List.filter_map ~f:Result.to_option
       >>| List.fold_left
             ~init:(Checksum.Map.empty, Digest.Map.empty)
             ~f:(fun (checksums, urls) (lockdir : Dune_pkg.Lock_dir.t) ->

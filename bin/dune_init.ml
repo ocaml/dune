@@ -399,7 +399,7 @@ module Component = struct
             ~dir
             ~synopsis:(Some "A short synopsis")
             ~description:(Some "A longer description")
-            ~tags:[ "topics"; "to describe"; "your"; "project" ]
+            ~tags:[ "add topics"; "to describe"; "your"; "project" ]
             ~depends:
               [ { Package_dependency.name = Package.Name.of_string "ocaml"
                 ; constraint_ = None

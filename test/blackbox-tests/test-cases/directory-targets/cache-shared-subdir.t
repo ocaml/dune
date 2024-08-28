@@ -1,6 +1,7 @@
 We create 2 directory targets which share a whole subdirectory.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
+  $ export DUNE_CACHE_RULES=enabled
   $ export DUNE_CACHE=enabled
   $ . ./helpers.sh
 

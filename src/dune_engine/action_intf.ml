@@ -44,7 +44,6 @@ module type Ast = sig
     | Copy of path * target
     | Symlink of path * target
     | Hardlink of path * target
-    | System of string
     | Bash of string
     | Write_file of target * File_perm.t * string
     | Rename of target * target
@@ -78,7 +77,6 @@ module type Helpers = sig
   val cat : path list -> t
   val copy : path -> target -> t
   val symlink : path -> target -> t
-  val system : string -> t
   val bash : string -> t
   val write_file : ?perm:File_perm.t -> target -> string -> t
   val rename : target -> target -> t
@@ -86,11 +84,11 @@ module type Helpers = sig
   val mkdir : target -> t
 end
 
-module Ext = struct
+module Exec = struct
   type context =
     { targets : Targets.Validated.t option
     ; context : Build_context.t option
-    ; purpose : Process.purpose
+    ; metadata : Process.metadata
     ; rule_loc : Loc.t
     ; build_deps : Dep.Set.t -> Dep.Facts.t Fiber.t
     }
@@ -101,9 +99,12 @@ module Ext = struct
     ; stdout_to : Process.Io.output Process.Io.t
     ; stderr_to : Process.Io.output Process.Io.t
     ; stdin_from : Process.Io.input Process.Io.t
+    ; prepared_dependencies : Dune_action_plugin.Private.Protocol.Dependency.Set.t
     ; exit_codes : int Predicate.t
     }
+end
 
+module Ext = struct
   module type Spec = sig
     type ('path, 'target) t
 
@@ -115,8 +116,8 @@ module Ext = struct
 
     val action
       :  (Path.t, Path.Build.t) t
-      -> ectx:context
-      -> eenv:env
+      -> ectx:Exec.context
+      -> eenv:Exec.env
       -> (* cwong: For now, I think we should only worry about extensions with
             known dependencies. In the future, we may generalize this to return
             an [Action_exec.done_or_more_deps], but that may be trickier to get

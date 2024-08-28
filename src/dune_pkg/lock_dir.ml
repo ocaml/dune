@@ -634,32 +634,35 @@ struct
     let open Io.O in
     Io.stats_kind lock_dir_path
     >>| function
-    | Ok S_DIR -> ()
+    | Ok S_DIR -> Ok ()
     | Error (Unix.ENOENT, _, _) ->
-      User_error.raise
-        ~hints:
-          [ Pp.concat
-              ~sep:Pp.space
-              [ Pp.text "Run"
-              ; User_message.command "dune pkg lock"
-              ; Pp.text "to generate it."
-              ]
-            |> Pp.hovbox
-          ]
-        [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
+      Error
+        (User_error.make
+           ~hints:
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ Pp.text "Run"
+                 ; User_message.command "dune pkg lock"
+                 ; Pp.text "to generate it."
+                 ]
+               |> Pp.hovbox
+             ]
+           [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ])
     | Error e ->
-      User_error.raise
-        [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
-        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
-        ]
+      Error
+        (User_error.make
+           [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+           ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
+           ])
     | _ ->
-      User_error.raise
-        [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
+      Error
+        (User_error.make
+           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ])
   ;;
 
   let check_packages packages ~lock_dir_path =
     match validate_packages packages with
-    | Ok () -> ()
+    | Ok () -> Ok ()
     | Error (`Missing_dependencies missing_dependencies) ->
       List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
         User_message.prerr
@@ -673,50 +676,60 @@ struct
                  (Package_name.to_string dependency)
                  (Path.Source.to_string_maybe_quoted lock_dir_path)
              ]));
-      User_error.raise
-        ~hints:
-          [ Pp.concat
-              ~sep:Pp.space
-              [ Pp.text
-                  "This could indicate that the lockdir is corrupted. Delete it and then \
-                   regenerate it by running:"
-              ; User_message.command "dune pkg lock"
-              ]
-          ]
-        [ Pp.textf
-            "At least one package dependency is itself not present as a package in the \
-             lockdir %s."
-            (Path.Source.to_string_maybe_quoted lock_dir_path)
-        ]
+      Error
+        (User_error.make
+           ~hints:
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ Pp.text
+                     "This could indicate that the lockdir is corrupted. Delete it and \
+                      then regenerate it by running:"
+                 ; User_message.command "dune pkg lock"
+                 ]
+             ]
+           [ Pp.textf
+               "At least one package dependency is itself not present as a package in \
+                the lockdir %s."
+               (Path.Source.to_string_maybe_quoted lock_dir_path)
+           ])
   ;;
 
   let load lock_dir_path =
     let open Io.O in
-    let* () = check_path lock_dir_path in
-    let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
-      load_metadata (Path.Source.relative lock_dir_path metadata_filename)
-    in
-    let+ packages =
-      Io.readdir_with_kinds lock_dir_path
-      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-        match kind with
-        | S_REG -> Package_filename.to_package_name name |> Result.to_option
-        | _ ->
-          (* TODO *)
-          None)
-      >>= Io.parallel_map ~f:(fun package_name ->
-        let+ pkg = load_pkg ~version ~lock_dir_path package_name in
-        package_name, pkg)
-      >>| Package_name.Map.of_list_exn
-    in
-    check_packages packages ~lock_dir_path;
-    { version
-    ; dependency_hash
-    ; packages
-    ; ocaml
-    ; repos
-    ; expanded_solver_variable_bindings
-    }
+    let* result = check_path lock_dir_path in
+    match result with
+    | Error e -> Io.return (Error e)
+    | Ok () ->
+      let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
+        load_metadata (Path.Source.relative lock_dir_path metadata_filename)
+      in
+      let+ packages =
+        Io.readdir_with_kinds lock_dir_path
+        >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+          match kind with
+          | S_REG -> Package_filename.to_package_name name |> Result.to_option
+          | _ ->
+            (* TODO *)
+            None)
+        >>= Io.parallel_map ~f:(fun package_name ->
+          let+ pkg = load_pkg ~version ~lock_dir_path package_name in
+          package_name, pkg)
+        >>| Package_name.Map.of_list_exn
+      in
+      check_packages packages ~lock_dir_path
+      |> Result.map ~f:(fun () ->
+        { version
+        ; dependency_hash
+        ; packages
+        ; ocaml
+        ; repos
+        ; expanded_solver_variable_bindings
+        })
+  ;;
+
+  let load_exn lock_dir_path =
+    let open Io.O in
+    load lock_dir_path >>| User_error.ok_exn
   ;;
 end
 
@@ -740,7 +753,7 @@ module Load_immediate = Make_load (struct
     let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f
   end)
 
-let read_disk = Load_immediate.load
+let read_disk = Load_immediate.load_exn
 
 let transitive_dependency_closure t start =
   let missing_packages =

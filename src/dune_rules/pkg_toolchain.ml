@@ -18,8 +18,6 @@ let base_dir () =
   path
 ;;
 
-let enabled = Config.make_toggle ~name:"toolchains" ~default:`Disabled
-
 let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
   (* The name of this package's directory within the toolchains
      directory. Includes a hash of some of the package's fields so that
@@ -43,7 +41,7 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
 let installation_prefix ~pkg_dir = Path.Outside_build_dir.relative pkg_dir "target"
 
 let is_compiler_and_toolchains_enabled name =
-  match Config.get enabled with
+  match Config.get Compile_time.toolchains with
   | `Enabled ->
     let module Package_name = Dune_pkg.Package_name in
     let compiler_package_names =

@@ -12,6 +12,7 @@ val version : t -> string option
 val description : t -> string option
 val jsoo_runtime : t -> Path.t list
 val requires : t -> Lib_name.t list
+val exports : t -> Lib_name.t list
 val ppx_runtime_deps : t -> Lib_name.t list
 val kind : t -> Lib_kind.t
 val archives : t -> Path.t list Mode.Dict.t

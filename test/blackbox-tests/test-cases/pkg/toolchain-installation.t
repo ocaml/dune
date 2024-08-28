@@ -85,9 +85,7 @@ but the fake compiler will end up installed as a toolchain package.
   Unrecognized line: "Hello from fake ocamlc!"
 
 Enumerate the contents of the fake toolchains directory:
-  $ find fake-cache | sort | remove_hash
-  fake-cache
-  fake-cache/dune
+  $ find fake-cache/dune/toolchains | sort | remove_hash
   fake-cache/dune/toolchains
   fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH
   fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target

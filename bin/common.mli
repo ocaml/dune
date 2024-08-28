@@ -24,14 +24,6 @@ val watch : t -> Dune_rpc_impl.Watch_mode_config.t
 val file_watcher : t -> Dune_engine.Scheduler.Run.file_watcher
 val prefix_target : t -> string -> string
 
-module Action_runner : sig
-  type t =
-    | No
-    | Yes of
-        (Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t
-         -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option) Staged.t)
-end
-
 (** [Builder] describes how to initialize Dune. *)
 module Builder : sig
   type t
@@ -39,7 +31,6 @@ module Builder : sig
   val set_root : t -> string -> t
   val forbid_builds : t -> t
   val set_default_root_is_cwd : t -> bool -> t
-  val set_action_runner : t -> Action_runner.t -> t
   val set_log_file : t -> Dune_util.Log.File.t -> t
   val disable_log_file : t -> t
   val set_promote : t -> Dune_engine.Clflags.Promote.t -> t

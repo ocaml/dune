@@ -24,6 +24,7 @@ val wrapped : t -> Wrapped.t option Resolve.Memo.t
 (** Direct library dependencies of this library *)
 val requires : t -> t list Resolve.Memo.t
 
+val re_exports : t -> t list Resolve.Memo.t
 val ppx_runtime_deps : t -> t list Resolve.Memo.t
 val pps : t -> t list Resolve.Memo.t
 

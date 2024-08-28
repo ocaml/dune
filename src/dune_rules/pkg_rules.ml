@@ -471,7 +471,7 @@ module Substitute = struct
       }
 
     let name = "substitute"
-    let version = 1
+    let version = 2
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
@@ -487,7 +487,7 @@ module Substitute = struct
         |> Digest.generic
         |> Digest.to_string_raw
       in
-      List [ Atom name; Atom e; input src; output dst ]
+      List [ Atom e; input src; output dst ]
     ;;
 
     let action { expander; src; dst } ~ectx:_ ~eenv:_ =
@@ -526,18 +526,9 @@ module Substitute = struct
     ;;
   end
 
-  let action expander ~src ~dst =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
+  module A = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = { Spec.expander; src; dst }
-    end
-    in
-    Action.Extension (module M)
-  ;;
+  let action expander ~src ~dst = A.action { Spec.expander; src; dst }
 end
 
 module Run_with_path = struct
@@ -613,7 +604,7 @@ module Run_with_path = struct
       }
 
     let name = "run-with-path"
-    let version = 1
+    let version = 2
 
     let map_arg arg ~f =
       Array.Immutable.map arg ~f:(function
@@ -644,13 +635,13 @@ module Run_with_path = struct
               | String s -> Sexp.Atom s
               | Path p -> path p)))
       in
-      List [ List ([ Sexp.Atom name; prog ] @ args); path ocamlfind_destdir ]
+      List [ List ([ prog ] @ args); path ocamlfind_destdir ]
     ;;
 
     let action
       { prog; args; ocamlfind_destdir; pkg }
-      ~(ectx : Action.Ext.context)
-      ~(eenv : Action.Ext.env)
+      ~(ectx : Action.context)
+      ~(eenv : Action.env)
       =
       let open Fiber.O in
       let display = !Clflags.display in
@@ -664,7 +655,7 @@ module Run_with_path = struct
               | Path p -> Path.to_absolute_filename p)
             |> String.concat ~sep:"")
         in
-        let metadata = Process.create_metadata ~purpose:ectx.purpose () in
+        let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
         let env =
           Env.add
             eenv.env
@@ -694,17 +685,10 @@ module Run_with_path = struct
     ;;
   end
 
+  module A = Action_ext.Make (Spec)
+
   let action ~pkg prog args ~ocamlfind_destdir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v = { Spec.prog; args; ocamlfind_destdir; pkg }
-    end
-    in
-    Action.Extension (module M)
+    A.action { Spec.prog; args; ocamlfind_destdir; pkg }
   ;;
 end
 
@@ -958,10 +942,9 @@ module Action_expander = struct
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
     | System arg ->
-      let+ arg =
-        Expander.expand_pform_gen ~mode:Single expander arg >>| Value.to_string ~dir
-      in
-      Action.System arg
+      Expander.expand_pform_gen ~mode:Single expander arg
+      >>| Value.to_string ~dir
+      >>| System.action
     | Patch p ->
       let+ patch =
         Expander.expand_pform_gen ~mode:Single expander p >>| Value.to_path ~dir
@@ -1152,7 +1135,7 @@ module DB = struct
   let get =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
     fun context ->
-      let+ all = Lock_dir.get context in
+      let+ all = Lock_dir.get_exn context in
       { all = all.packages; system_provided = dune }
   ;;
 end
@@ -1339,8 +1322,7 @@ module Install_action = struct
       : Sexp.t
       =
       List
-        [ Atom name
-        ; path install_file
+        [ path install_file
         ; path config_file
         ; target target_dir
         ; (match
@@ -1633,25 +1615,17 @@ module Install_action = struct
     ;;
   end
 
+  module A = Action_ext.Make (Spec)
+
   let action (p : Path.Build.t Paths.t) install_action ~prefix_outside_build_dir =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
-
-      module Spec = Spec
-
-      let v =
-        { Spec.install_file = Path.build @@ Paths.install_file p
-        ; config_file = Path.build @@ Paths.config_file p
-        ; target_dir = p.target_dir
-        ; prefix_outside_build_dir
-        ; install_action
-        ; package = p.name
-        }
-      ;;
-    end
-    in
-    Action.Extension (module M)
+    A.action
+      { Spec.install_file = Path.build @@ Paths.install_file p
+      ; config_file = Path.build @@ Paths.config_file p
+      ; target_dir = p.target_dir
+      ; prefix_outside_build_dir
+      ; install_action
+      ; package = p.name
+      }
   ;;
 end
 
@@ -1675,6 +1649,16 @@ let source_rules (pkg : Pkg.t) =
        | `Local (`File, _) | `Fetch ->
          let fetch =
            Fetch_rules.fetch ~target:pkg.write_paths.source_dir `Directory source
+           |> With_targets.map
+                ~f:
+                  (Action.Full.map ~f:(fun action ->
+                     let progress =
+                       Pkg_build_progress.progress_action
+                         pkg.info.name
+                         pkg.info.version
+                         `Downloading
+                     in
+                     Action.progn [ progress; action ]))
          in
          Memo.return (Dep.Set.of_files [ pkg.paths.source_dir ], [ loc, fetch ])
        | `Local (`Directory, source_root) ->
@@ -1713,7 +1697,7 @@ let source_rules (pkg : Pkg.t) =
 
 let build_rule context_name ~source_deps (pkg : Pkg.t) =
   let+ build_action =
-    let+ build_and_install =
+    let+ copy_action, build_action, install_action =
       let+ copy_action =
         let+ copy_action =
           Fs_memo.dir_exists
@@ -1784,7 +1768,7 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
           in
           [ mkdir_install_dirs; install_action ]
       in
-      List.concat [ copy_action; build_action; install_action ]
+      copy_action, build_action, install_action
     in
     let install_file_action =
       let prefix_outside_build_dir = Path.as_outside_build_dir pkg.paths.prefix in
@@ -1798,7 +1782,20 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
       |> Action_builder.return
       |> Action_builder.with_no_targets
     in
-    Action_builder.progn (build_and_install @ [ install_file_action ])
+    (* Action to print a "Building" message for the package if its
+       target directory is not yet created. *)
+    let progress_building =
+      Pkg_build_progress.progress_action pkg.info.name pkg.info.version `Building
+      |> Action.Full.make
+      |> Action_builder.return
+      |> Action_builder.with_no_targets
+    in
+    Action_builder.progn
+      (copy_action
+       @ [ progress_building ]
+       @ build_action
+       @ install_action
+       @ [ install_file_action ])
   in
   let deps = Dep.Set.union source_deps (Pkg.package_deps pkg) in
   let open Action_builder.With_targets.O in
@@ -1875,7 +1872,7 @@ let setup_rules ~components ~dir ctx =
 ;;
 
 let ocaml_toolchain context =
-  (let* lock_dir = Lock_dir.get context in
+  (let* lock_dir = Lock_dir.get_exn context in
    let* db = DB.get context in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided

@@ -433,6 +433,7 @@ let info t = t.info
 let project t = t.project
 let implements t = Option.map ~f:Memo.return t.implements
 let requires t = Memo.return t.requires
+let re_exports t = Memo.return t.re_exports
 let ppx_runtime_deps t = Memo.return t.ppx_runtime_deps
 let pps t = Memo.return t.pps
 

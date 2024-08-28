@@ -77,8 +77,6 @@ type t =
   ; implicit_default_alias : Path.Build.t -> unit Action_builder.t option Memo.t
   ; execution_parameters : dir:Path.Build.t -> Execution_parameters.t Memo.t
   ; source_tree : (module Source_tree)
-  ; action_runner : Action_exec.input -> Action_runner.t option
-  ; action_runners : unit -> Action_runner.t list
   ; shared_cache : (module Dune_cache.Shared.S)
   ; write_error_summary : Build_system_error.Set.t -> unit Fiber.t
   }
@@ -87,8 +85,6 @@ let t : t Fdecl.t = Fdecl.create Dyn.opaque
 let get () = Fdecl.get t
 
 let set
-  ~action_runner
-  ~action_runners
   ~stats
   ~contexts
   ~promote_source
@@ -110,11 +106,6 @@ let set
         contexts
         ~f:(fun ((ctx : Build_context.t), ctx_type) -> ctx.name, (ctx, ctx_type)))
   in
-  let () =
-    match (cache_config : Dune_cache.Config.t) with
-    | Disabled -> ()
-    | Enabled _ -> Dune_cache_storage.Layout.create_cache_directories ()
-  in
   Fdecl.set
     t
     { contexts
@@ -128,8 +119,6 @@ let set
     ; implicit_default_alias
     ; execution_parameters
     ; source_tree
-    ; action_runner
-    ; action_runners
     ; shared_cache
     ; write_error_summary
     }

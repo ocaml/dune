@@ -455,22 +455,13 @@ module Spec = struct
   type ('path, _) t = 'path
 
   let name = "cram"
-  let version = 1
+  let version = 2
   let bimap path f _ = f path
   let is_useful_to ~memoize:_ = true
-  let encode script path _ : Sexp.t = List [ Atom name; path script ]
-  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+  let encode script path _ : Sexp.t = List [ path script ]
+  let action script ~ectx:_ ~(eenv : Action.env) = run ~env:eenv.env ~script
 end
 
-let action script =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
+module Action = Action_ext.Make (Spec)
 
-    module Spec = Spec
-
-    let v = script
-  end
-  in
-  Action.Extension (module M)
-;;
+let action = Action.action

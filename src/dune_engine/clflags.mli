@@ -34,3 +34,6 @@ val always_show_command_line : bool ref
 
 (** The display mode *)
 val display : Display.t ref
+
+(** Whether actions are cacheable by default, default [false] *)
+val can_go_in_shared_cache_default : bool ref

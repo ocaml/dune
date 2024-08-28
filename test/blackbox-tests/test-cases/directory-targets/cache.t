@@ -1,6 +1,7 @@
 We test that directory targets can go in the shared cache. See #8067.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
+  $ export DUNE_CACHE_RULES=enabled
   $ export DUNE_CACHE=enabled
 
 In project a, we create a rule with a directory target. The script that creates

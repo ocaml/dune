@@ -177,12 +177,6 @@ let%expect_test "copy" =
     cp foo bar |}]
 ;;
 
-let%expect_test "system" =
-  System "foo bar baz" |> print;
-  [%expect {|
-    foo bar baz |}]
-;;
-
 let%expect_test "bash" =
   Bash "echo Hello world" |> print;
   [%expect {|

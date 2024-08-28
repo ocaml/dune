@@ -100,7 +100,8 @@ module Make_load (Io : sig
     val with_lexbuf_from_file : Path.Source.t -> f:(Lexing.lexbuf -> 'a) -> 'a t
     val stats_kind : Path.Source.t -> (File_kind.t, Unix_error.Detailed.t) result t
   end) : sig
-  val load : Path.Source.t -> t Io.t
+  val load : Path.Source.t -> (t, User_message.t) result Io.t
+  val load_exn : Path.Source.t -> t Io.t
 end
 
 (** [transitive_dependency_closure t names] returns the set of package names

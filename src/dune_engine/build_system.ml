@@ -245,7 +245,7 @@ end = struct
 
   (* The current version of the rule digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let rule_digest_version = 21
+  let rule_digest_version = 22
 
   let compute_rule_digest
     (rule : Rule.t)
@@ -420,11 +420,8 @@ end = struct
               ; action
               }
             in
-            match (Build_config.get ()).action_runner input with
-            | None ->
-              let build_deps deps = Memo.run (build_deps deps) in
-              Action_exec.exec input ~build_deps
-            | Some runner -> Action_runner.exec_action runner input
+            let build_deps deps = Memo.run (build_deps deps) in
+            Action_exec.exec input ~build_deps
           in
           let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
           let* () =
@@ -725,7 +722,7 @@ end = struct
 
   (* The current version of the action digest scheme. We should increment it when
      making any changes to the scheme, to avoid collisions. *)
-  let action_digest_version = 1
+  let action_digest_version = 2
 
   let execute_action_generic
     ~observing_facts
@@ -1106,12 +1103,7 @@ let report_early_exn exn =
     let+ () = State.add_errors errors
     and+ () =
       match !Clflags.stop_on_first_error with
-      | true ->
-        let* () =
-          (Build_config.get ()).action_runners ()
-          |> Fiber.parallel_iter ~f:Action_runner.cancel_build
-        in
-        Scheduler.cancel_current_build ()
+      | true -> Scheduler.cancel_current_build ()
       | false -> Fiber.return ()
     in
     (match !Clflags.report_errors_config with

@@ -83,7 +83,7 @@ module Spec = struct
   type ('src, 'dst) t = ('src, 'dst) Diff.t
 
   let name = "diff"
-  let version = 1
+  let version = 2
   let bimap t path target = Diff.map t ~path ~target
   let is_useful_to ~memoize:_ = true
 
@@ -94,23 +94,16 @@ module Spec = struct
          | Binary -> "binary"
          | Text -> "text")
     in
-    List [ Atom name; Atom (Bool.to_string optional); mode; input file1; output file2 ]
+    List [ Atom (Bool.to_string optional); mode; input file1; output file2 ]
   ;;
 
-  let action diff ~(ectx : Dune_engine.Action.Ext.context) ~eenv:_ =
+  let action diff ~(ectx : Dune_engine.Action.context) ~eenv:_ =
     exec ~rule_loc:ectx.rule_loc diff
   ;;
 end
 
+module Action = Action_ext.Make (Spec)
+
 let diff ?(optional = false) ?(mode = Diff.Mode.Text) file1 file2 =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
-
-    module Spec = Spec
-
-    let v = { Diff.optional; mode; file1; file2 }
-  end
-  in
-  Dune_engine.Action.Extension (module M)
+  Action.action { Diff.optional; mode; file1; file2 }
 ;;

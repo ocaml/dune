@@ -1204,7 +1204,7 @@ let explode_exn t =
   | None -> Code_error.raise "Path.explode_exn" [ "path", to_dyn t ]
 ;;
 
-let relative_to_source_in_build_or_external ?error_loc ~dir s =
+let rec relative_to_source_in_build_or_external ?error_loc ~dir s =
   match Build.extract_build_context dir with
   | None -> relative ?error_loc (In_build_dir dir) s
   | Some (bctxt, source) ->
@@ -1212,7 +1212,11 @@ let relative_to_source_in_build_or_external ?error_loc ~dir s =
     (match path with
      | In_source_tree s ->
        In_build_dir (Build.relative (Build.of_string bctxt) (Source0.to_string s))
-     | In_build_dir _ | External _ -> path)
+     | In_build_dir _ -> path
+     | External _ -> (if (String.starts_with ~prefix:(External.to_string (External.cwd ())) s)
+                    then relative_to_source_in_build_or_external ?error_loc:error_loc ~dir (String.sub s ~pos:((String.length (External.to_string (External.cwd ())))+1) ~len:((String.length s)-(String.length (External.to_string (External.cwd ())))-1) )
+                    else path)
+    )
 ;;
 
 let exists t =

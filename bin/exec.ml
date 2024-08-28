@@ -228,13 +228,13 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | None -> not_found ~dir ~prog)
   | Absolute ->
     (match
-       let prog = Path.of_string prog in
-       if Path.exists prog
-       then Some prog
+       let path = Path.of_string prog in
+       if Path.exists path
+       then Some path
        else if not Sys.win32
-       then None
+       then Some (Path.relative_to_source_in_build_or_external ~dir prog)
        else (
-         let prog = Path.extend_basename prog ~suffix:Bin.exe in
+         let prog = Path.extend_basename path ~suffix:Bin.exe in
          Option.some_if (Path.exists prog) prog)
      with
      | Some prog -> Memo.return prog

@@ -55,10 +55,10 @@ removed/not used.
   Leaving directory 'test_proj1'
 
   $ cat test_proj1/dune-project | grep -i authors
-  (authors "Author Name")
+  (authors "Author Name <author@example.com>")
 
   $ cat test_proj1/dune-project | grep -i maintainers
-  (maintainers "Maintainer Name")
+  (maintainers "Maintainer Name <maintainer@example.com>")
 
   $ cat test_proj1/dune-project | grep -i license
   (license LICENSE)

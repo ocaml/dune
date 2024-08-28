@@ -3,7 +3,7 @@
 Preprocessing Specification
 ===========================
 
-Some stanzas including ``(library)`` accept a ``(preprocessing)`` field. The
+Some stanzas including ``(library)`` accept a ``(preprocess)`` field. The
 possible values for its argument are:
 
 .. productionlist::

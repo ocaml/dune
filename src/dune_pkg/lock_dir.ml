@@ -499,7 +499,7 @@ module Write_disk = struct
   ;;
 
   let raise_user_error_on_check_existance path e =
-    let error_reason_pp =
+    let error_reason =
       match e with
       | `Unreadable ->
         Pp.textf "Unable to read lock directory (%s)" (Path.to_string_maybe_quoted path)
@@ -524,7 +524,7 @@ module Write_disk = struct
       [ Pp.textf
           "Refusing to regenerate lock directory %s"
           (Path.to_string_maybe_quoted path)
-      ; error_reason_pp
+      ; error_reason
       ]
   ;;
 
@@ -570,7 +570,7 @@ module Write_disk = struct
     lock_dir
     =
     let lock_dir_hidden_src =
-      Path.Source.(Format.sprintf ".%s" (to_string lock_dir_path_src) |> of_string)
+      lock_dir_path_src |> Path.Source.to_string |> sprintf ".%s" |> Path.Source.of_string
     in
     let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
     let lock_dir_path_external = Path.source lock_dir_path_src in
@@ -581,7 +581,6 @@ module Write_disk = struct
       safely_rename_lock_dir_thunk ~dst:lock_dir_hidden_src lock_dir_path_external
     in
     let build lock_dir_path =
-      rename_old_lock_dir_to_hidden ();
       let lock_dir_path = Result.ok_exn lock_dir_path in
       file_contents_by_path lock_dir
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
@@ -606,15 +605,16 @@ module Write_disk = struct
             match original with
             | Path src -> Io.copy_file ~src ~dst ()
             | Content content -> Io.write_file dst content)));
+      rename_old_lock_dir_to_hidden ();
       safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();
       remove_hidden_dir_if_exists ()
     in
-    fun () ->
-      Temp.with_temp_dir
-        ~parent_dir:(Path.source Path.Source.root)
-        ~prefix:"dune"
-        ~suffix:"lock"
-        ~f:build
+    match Path.(parent (source lock_dir_path_src)) with
+    | Some parent_dir ->
+      fun () -> Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
+    | None ->
+      User_error.raise
+        [ Pp.textf "Temporary directory can't be created by deriving the lock dir path" ]
   ;;
 
   let commit t = t ()

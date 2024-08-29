@@ -1213,10 +1213,19 @@ let rec relative_to_source_in_build_or_external ?error_loc ~dir s =
      | In_source_tree s ->
        In_build_dir (Build.relative (Build.of_string bctxt) (Source0.to_string s))
      | In_build_dir _ -> path
-     | External _ -> (if (String.starts_with ~prefix:(External.to_string (External.cwd ())) s)
-                    then relative_to_source_in_build_or_external ?error_loc:error_loc ~dir (String.sub s ~pos:((String.length (External.to_string (External.cwd ())))+1) ~len:((String.length s)-(String.length (External.to_string (External.cwd ())))-1) )
-                    else path)
-    )
+     | External _ ->
+       let cwd =
+         to_absolute_filename
+           (of_filename_relative_to_initial_cwd Filename.current_dir_name)
+       in
+       let cwd_len = String.length cwd in
+       if String.starts_with ~prefix:cwd s
+       then
+         relative_to_source_in_build_or_external
+           ?error_loc
+           ~dir
+           (String.sub s ~pos:(cwd_len + 1) ~len:(String.length s - cwd_len - 1))
+       else path)
 ;;
 
 let exists t =

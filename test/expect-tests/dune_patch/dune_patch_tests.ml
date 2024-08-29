@@ -58,6 +58,18 @@ index ea988f6bd..000000000
 |}
 ;;
 
+(* Use GNU diff 'unified' format instead of 'git diff' *)
+let unified =
+  {|
+diff -u a/foo.ml b/foo.ml
+--- a/foo.ml	2024-08-29 17:37:53.114980665 +0200
++++ b/foo.ml	2024-08-29 17:38:00.243088256 +0200
+@@ -1 +1 @@
+-This is wrong
++This is right
+|}
+;;
+
 (* Testing the patch action *)
 
 include struct
@@ -146,4 +158,16 @@ let%expect_test "patching a deleted file" =
   check "foo.ml";
   [%expect {|
     File foo.ml not found |}]
+;;
+
+let%expect_test "Using a patch from 'diff' with a timestamp" =
+  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
+  check "foo.ml";
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Error: /tmp/build_b1b383_dune/dune_71088f_patch_test/foo.ml	2024-08-29
+  17:38:00.243088256 +0200: No such file or directory |}]
 ;;

@@ -171,15 +171,10 @@ let%expect_test "patching a deleted file" =
 ;;
 
 let%expect_test "Using a patch from 'diff' with a timestamp" =
-  try
-    test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
-    check "foo.ml";
-    [%expect.unreachable]
-  with
-  | Dune_util.Report_error.Already_reported ->
-    if String.ends_with ~suffix:"No such file or directory\n" [%expect.output]
-    then [%expect ""]
-    else [%expect.unreachable]
+  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
+  check "foo.ml";
+  [%expect {|
+    This is right |}]
 ;;
 
 let%expect_test "patching a file without prefix" =

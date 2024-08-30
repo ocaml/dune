@@ -15,18 +15,15 @@ include struct
 end
 
 let re =
-  let line xs = Re.seq ((Re.bol :: xs) @ [ Re.eol ]) in
-  let followed_by_line xs = Re.seq [ Re.str "\n"; line xs ] in
-  Re.compile
-  @@ Re.seq
-       [ Re.alt
-           [ line [ Re.str {|--- a/|}; Re.group (Re.rep1 Re.notnl) ]
-           ; line [ Re.str {|--- |}; Re.group (Re.rep1 Re.notnl) ]
-           ]
-       ; Re.alt
-           [ followed_by_line [ Re.str {|+++ b/|}; Re.group (Re.rep1 Re.notnl) ]
-           ; followed_by_line [ Re.str {|+++ |}; Re.group (Re.rep1 Re.notnl) ]
-           ]
+  let open Re in
+  let line xs = seq ((bol :: xs) @ [ eol ]) in
+  let filename = group @@ rep1 @@ compl [ space ] in
+  let timestamp = rep notnl in
+  compile
+  @@ seq
+       [ line [ str {|--- |}; opt (str "a/"); filename; timestamp ]
+       ; str "\n"
+       ; line [ str {|+++ |}; opt (str "b/"); filename; timestamp ]
        ]
 ;;
 
@@ -44,25 +41,22 @@ let patches_of_string patch_string =
   Re.all re patch_string
   |> List.filter_map ~f:(fun group ->
     let open Option.O in
-    (* If these are [Some] then they are [/dev/null] *)
-    let old_file_dev_null = Re.Group.get_opt group 2 in
-    let new_file_dev_null = Re.Group.get_opt group 4 in
-    match old_file_dev_null, new_file_dev_null with
-    | Some _dev_null, Some _ ->
+    (* A match failure means a file name couldn't be parsed. *)
+    let* old_file = Re.Group.get_opt group 1 in
+    let* new_file = Re.Group.get_opt group 2 in
+    match old_file = "/dev/null", new_file = "/dev/null" with
+    | true, true ->
       (* when both files are /dev/null we don't care about the patch. *)
       None
-    | Some _, None ->
+    | true, false ->
       (* New file *)
-      let+ new_file = Re.Group.get_opt group 3 in
-      Patch.New (Path.Local.of_string new_file)
-    | None, Some _ ->
+      Some (Patch.New (Path.Local.of_string new_file))
+    | false, true ->
       (* Delete file *)
-      let+ new_file = Re.Group.get_opt group 1 in
-      Patch.Delete (Path.Local.of_string new_file)
-    | None, None ->
+      Some (Patch.Delete (Path.Local.of_string old_file))
+    | false, false ->
       (* Replace file *)
-      let+ new_file = Re.Group.get_opt group 3 in
-      Patch.Replace (Path.Local.of_string new_file))
+      Some (Patch.Replace (Path.Local.of_string new_file)))
 ;;
 
 let prog =

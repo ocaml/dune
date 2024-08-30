@@ -161,13 +161,13 @@ let%expect_test "patching a deleted file" =
 ;;
 
 let%expect_test "Using a patch from 'diff' with a timestamp" =
-  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
-  check "foo.ml";
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  Error: /tmp/build_b1b383_dune/dune_71088f_patch_test/foo.ml	2024-08-29
-  17:38:00.243088256 +0200: No such file or directory |}]
+  try
+    test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
+    check "foo.ml";
+    [%expect.unreachable]
+  with
+  | Dune_util.Report_error.Already_reported ->
+    if String.ends_with ~suffix:"No such file or directory\n" [%expect.output]
+    then [%expect ""]
+    else [%expect.unreachable]
 ;;

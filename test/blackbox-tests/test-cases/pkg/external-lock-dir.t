@@ -17,8 +17,8 @@ A lock directory which does not exist in the source tree:
   Internal error, please report upstream including the contents of _build/log.
   Description:
     ("Local.relative: received absolute path",
-    { t = "."
-    ; path =
-        "$TESTCASE_ROOT/dune.lock"
-    })
+     { t = "."
+     ; path =
+         "$TESTCASE_ROOT/dune.lock"
+     })
   Raised at Stdune__Code_error.raise in file

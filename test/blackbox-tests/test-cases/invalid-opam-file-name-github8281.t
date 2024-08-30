@@ -27,14 +27,14 @@ Whenever an invalid package name is used, dune crashes when building @doc
   Internal error, please report upstream including the contents of _build/log.
   Description:
     ("[gen_rules] returned rules in a directory that is not a descendant of the directory it was called for",
-    { dir = In_build_dir "default/_doc/_html/x.y"
-    ; example =
-        Rule
-          { targets =
-              { root = In_build_dir "default/_doc/_html/x"
-              ; files = set { "db.js" }
-              ; dirs = set {}
-              }
-          }
-    })
+     { dir = In_build_dir "default/_doc/_html/x.y"
+     ; example =
+         Rule
+           { targets =
+               { root = In_build_dir "default/_doc/_html/x"
+               ; files = set { "db.js" }
+               ; dirs = set {}
+               }
+           }
+     })
   Raised at Stdune__Code_error.raise in file

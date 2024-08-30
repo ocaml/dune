@@ -43,7 +43,7 @@ let%expect_test _ =
   let p = Path.(relative root) "foo" in
   descendant p ~of_:p;
   [%expect {|
-  Some In_source_tree "."
+  Some (In_source_tree ".")
   |}]
 ;;
 
@@ -149,21 +149,21 @@ false
 let%expect_test _ =
   descendant (r "foo") ~of_:(r "foo/");
   [%expect {|
-Some In_source_tree "."
+Some (In_source_tree ".")
 |}]
 ;;
 
 let%expect_test _ =
   descendant (r "foo/") ~of_:(r "foo");
   [%expect {|
-Some In_source_tree "."
+Some (In_source_tree ".")
 |}]
 ;;
 
 let%expect_test _ =
   descendant (r "foo/bar") ~of_:(r "foo");
   [%expect {|
-Some In_source_tree "bar"
+Some (In_source_tree "bar")
 |}]
 ;;
 
@@ -177,14 +177,14 @@ None
 let%expect_test _ =
   descendant Path.root ~of_:Path.root;
   [%expect {|
-Some In_source_tree "."
+Some (In_source_tree ".")
 |}]
 ;;
 
 let%expect_test _ =
   descendant (r "foo") ~of_:Path.root;
   [%expect {|
-Some In_source_tree "foo"
+Some (In_source_tree "foo")
 |}]
 ;;
 
@@ -205,21 +205,21 @@ None
 let%expect_test _ =
   descendant (Path.relative build_dir "foo/bar") ~of_:build_dir;
   [%expect {|
-Some In_source_tree "foo/bar"
+Some (In_source_tree "foo/bar")
 |}]
 ;;
 
 let%expect_test _ =
   descendant (Path.relative build_dir "foo/bar") ~of_:(Path.relative build_dir "foo");
   [%expect {|
-Some In_source_tree "bar"
+Some (In_source_tree "bar")
 |}]
 ;;
 
 let%expect_test _ =
   descendant (Path.relative build_dir "foo/bar") ~of_:(Path.relative build_dir "foo");
   [%expect {|
-Some In_source_tree "bar"
+Some (In_source_tree "bar")
 |}]
 ;;
 
@@ -453,13 +453,13 @@ let%expect_test _ =
 [@@expect.uncaught_exn
   {|
   ( "(\"Path.rm_rf called on external dir\",\
-   \n{ t = External \"/does/not/exist/foo/bar/baz\" })") |}]
+   \n { t = External \"/does/not/exist/foo/bar/baz\" })") |}]
 ;;
 
 let%expect_test _ =
   drop_build_context (Path.relative Path.build_dir "foo/bar");
   [%expect {|
-Some In_source_tree "bar"
+Some (In_source_tree "bar")
 |}]
 ;;
 

@@ -51,28 +51,32 @@ let%expect_test "serialize and deserialize error message" =
     Error: Oh no!
     ---- Original ----
     Vbox
-      0,
-      Seq
-        Box
-          0,
-          Concat
-            Break ("", 1, ""), ("", 0, ""),
-            [ Seq Tag Error, Verbatim "Error", Char :; Verbatim "Oh no!" ],
-        Break ("", 0, ""), ("", 0, "")
+      (0,
+       Seq
+         (Box
+            (0,
+             Concat
+               (Break (("", 1, ""), ("", 0, "")),
+                [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                ; Verbatim "Oh no!"
+                ])),
+          Break (("", 0, ""), ("", 0, ""))))
     ------- RPC ------
     Vbox
-      0,
-      Seq
-        Box
-          0,
-          Vbox
-            0,
-            Box
-              0,
-              Concat
-                Break ("", 1, ""), ("", 0, ""),
-                [ Seq Tag Error, Verbatim "Error", Char :; Verbatim "Oh no!" ],
-        Break ("", 0, ""), ("", 0, "") |}]
+      (0,
+       Seq
+         (Box
+            (0,
+             Vbox
+               (0,
+                Box
+                  (0,
+                   Concat
+                     (Break (("", 1, ""), ("", 0, "")),
+                      [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                      ; Verbatim "Oh no!"
+                      ])))),
+          Break (("", 0, ""), ("", 0, "")))) |}]
 ;;
 
 let%expect_test "serialize and deserialize error message with location" =
@@ -91,44 +95,45 @@ let%expect_test "serialize and deserialize error message with location" =
     Error: An error with location!
     ---- Original ----
     Vbox
-      0,
-      Concat
-        Nop,
-        [ Seq
-            Box 0, Tag Loc, Text "File \"Bar\", line 1, characters 2-3:",
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Concat
-                Break ("", 1, ""), ("", 0, ""),
-                [ Seq Tag Error, Verbatim "Error", Char :
-                ; Verbatim "An error with location!"
-                ],
-            Break ("", 0, ""), ("", 0, "")
-        ]
+      (0,
+       Concat
+         (Nop,
+          [ Seq
+              (Box (0, Tag (Loc, Text "File \"Bar\", line 1, characters 2-3:")),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Concat
+                    (Break (("", 1, ""), ("", 0, "")),
+                     [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                     ; Verbatim "An error with location!"
+                     ])),
+               Break (("", 0, ""), ("", 0, "")))
+          ]))
     ------- RPC ------
     Vbox
-      0,
-      Concat
-        Nop,
-        [ Seq
-            Box 0, Tag Loc, Text "File \"/Foo/Bar\", line 1, characters 2-3:",
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Vbox
-                0,
-                Box
-                  0,
-                  Concat
-                    Break ("", 1, ""), ("", 0, ""),
-                    [ Seq Tag Error, Verbatim "Error", Char :
-                    ; Verbatim "An error with location!"
-                    ],
-            Break ("", 0, ""), ("", 0, "")
-        ] |}]
+      (0,
+       Concat
+         (Nop,
+          [ Seq
+              (Box
+                 (0, Tag (Loc, Text "File \"/Foo/Bar\", line 1, characters 2-3:")),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Vbox
+                    (0,
+                     Box
+                       (0,
+                        Concat
+                          (Break (("", 1, ""), ("", 0, "")),
+                           [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                           ; Verbatim "An error with location!"
+                           ])))),
+               Break (("", 0, ""), ("", 0, "")))
+          ])) |}]
 ;;
 
 let%expect_test "serialize and deserialize error with location excerpt and hint" =
@@ -158,78 +163,83 @@ let%expect_test "serialize and deserialize error with location excerpt and hint"
     Hint: Hint 2
     ---- Original ----
     Vbox
-      0,
-      Concat
-        Nop,
-        [ Seq
-            Box 0, Tag Loc, Text "File \"foo.ml\", line 1, characters 2-3:",
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Concat
-                Break ("", 1, ""), ("", 0, ""),
-                [ Seq Tag Error, Verbatim "Error", Char :
-                ; Verbatim "An error with location!"
-                ],
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Seq
-                Seq Tag Hint, Verbatim "Hint:", Break ("", 1, ""), ("", 0, ""),
-                Verbatim "Hint 1",
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Seq
-                Seq Tag Hint, Verbatim "Hint:", Break ("", 1, ""), ("", 0, ""),
-                Verbatim "Hint 2",
-            Break ("", 0, ""), ("", 0, "")
-        ]
+      (0,
+       Concat
+         (Nop,
+          [ Seq
+              (Box
+                 (0, Tag (Loc, Text "File \"foo.ml\", line 1, characters 2-3:")),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Concat
+                    (Break (("", 1, ""), ("", 0, "")),
+                     [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                     ; Verbatim "An error with location!"
+                     ])),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Seq
+                    (Seq
+                       (Tag (Hint, Verbatim "Hint:"),
+                        Break (("", 1, ""), ("", 0, ""))),
+                     Verbatim "Hint 1")),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Seq
+                    (Seq
+                       (Tag (Hint, Verbatim "Hint:"),
+                        Break (("", 1, ""), ("", 0, ""))),
+                     Verbatim "Hint 2")),
+               Break (("", 0, ""), ("", 0, "")))
+          ]))
     ------- RPC ------
     Vbox
-      0,
-      Concat
-        Nop,
-        [ Seq
-            Box
-              0,
-              Tag
-                Loc,
-                Text
-                  "File \"TEST/foo.ml\", line 1, characters 2-3:",
-            Break ("", 0, ""), ("", 0, "")
-        ; Seq
-            Box
-              0,
-              Vbox
-                0,
-                Concat
-                  Break ("", 0, ""), ("", 0, ""),
-                  [ Box
-                      0,
-                      Concat
-                        Break ("", 1, ""), ("", 0, ""),
-                        [ Seq Tag Error, Verbatim "Error", Char :
-                        ; Verbatim "An error with location!"
-                        ]
-                  ; Box
-                      0,
-                      Seq
-                        Seq
-                          Tag Hint, Verbatim "Hint:",
-                          Break ("", 1, ""), ("", 0, ""),
-                        Verbatim "Hint 1"
-                  ; Box
-                      0,
-                      Seq
-                        Seq
-                          Tag Hint, Verbatim "Hint:",
-                          Break ("", 1, ""), ("", 0, ""),
-                        Verbatim "Hint 2"
-                  ],
-            Break ("", 0, ""), ("", 0, "")
-        ] |}]
+      (0,
+       Concat
+         (Nop,
+          [ Seq
+              (Box
+                 (0,
+                  Tag
+                    (Loc,
+                     Text
+                       "File \"TEST/foo.ml\", line 1, characters 2-3:")),
+               Break (("", 0, ""), ("", 0, "")))
+          ; Seq
+              (Box
+                 (0,
+                  Vbox
+                    (0,
+                     Concat
+                       (Break (("", 0, ""), ("", 0, "")),
+                        [ Box
+                            (0,
+                             Concat
+                               (Break (("", 1, ""), ("", 0, "")),
+                                [ Seq (Tag (Error, Verbatim "Error"), Char :)
+                                ; Verbatim "An error with location!"
+                                ]))
+                        ; Box
+                            (0,
+                             Seq
+                               (Seq
+                                  (Tag (Hint, Verbatim "Hint:"),
+                                   Break (("", 1, ""), ("", 0, ""))),
+                                Verbatim "Hint 1"))
+                        ; Box
+                            (0,
+                             Seq
+                               (Seq
+                                  (Tag (Hint, Verbatim "Hint:"),
+                                   Break (("", 1, ""), ("", 0, ""))),
+                                Verbatim "Hint 2"))
+                        ]))),
+               Break (("", 0, ""), ("", 0, "")))
+          ])) |}]
 ;;

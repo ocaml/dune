@@ -28,5 +28,5 @@
   Internal error, please report upstream including the contents of _build/log.
   Description:
     ("modules_and_obj_dir: failed lookup",
-    { keys = []; for_ = Exe { first_exe = "test" } })
+     { keys = []; for_ = Exe { first_exe = "test" } })
   Raised at Stdune__Code_error.raise in file

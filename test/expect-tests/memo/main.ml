@@ -308,7 +308,7 @@ let%expect_test _ =
   [%expect
     {|
       (Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ],
-      Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ])
+       Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ])
     |}]
 ;;
 
@@ -331,7 +331,7 @@ let%expect_test _ =
   [%expect
     {|
     (Some [ (Some "lazy_memo", "foo"); (None, ()) ],
-    Some [ (Some "lazy_memo", "foo"); (None, ()) ])
+     Some [ (Some "lazy_memo", "foo"); (None, ()) ])
   |}]
 ;;
 

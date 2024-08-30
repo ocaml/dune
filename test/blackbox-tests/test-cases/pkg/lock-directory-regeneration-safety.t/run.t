@@ -53,5 +53,5 @@ Attempt to create a lock directory with the same name as an existing regular fil
   $ touch dune.lock
   $ dune pkg lock
   Error: Refusing to regenerate lock directory dune.lock
-  Specified lock dir path is not a directory
+  Specified lock dir path (dune.lock) is not a directory
   [1]

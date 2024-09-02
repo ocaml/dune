@@ -30,16 +30,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1716253143,
-        "narHash": "sha256-O7ngCB6zKjwa38c12V3uRDRhmhaNtyYlArf3FMWB7u0=",
+        "lastModified": 1716253671,
+        "narHash": "sha256-mZmwADSNpDlJDzQZVn0yU9z4SzEhsa9ItYbNGwIpZRQ=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "fb58cb9a8e870187b5be2a6b09924cfa79996401",
+        "rev": "3a953fa32ed26449e5e8304c12d6ba18a4f08438",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
-        "ref": "refs/tags/4.0.0-414",
+        "ref": "refs/tags/4.0.0-51",
         "repo": "melange",
         "type": "github"
       }
@@ -56,16 +56,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1714082982,
-        "narHash": "sha256-Ig8pHs5jjOenKxpM1lKieKdfHYJujZG7GdoNv8gwFxY=",
+        "lastModified": 1712870503,
+        "narHash": "sha256-am2qlo/n9edHsSWc5Lq9Cy0H/rU3lfnp/Ltyw1vBYGs=",
         "owner": "melange-re",
         "repo": "melange-compiler-libs",
-        "rev": "8c749c9c8c735f2f2df48742dec19f5bc22839b6",
+        "rev": "566ed4134bf9caca87e7fe5fa9db6df801578db9",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
-        "ref": "4.14",
+        "ref": "5.1",
         "repo": "melange-compiler-libs",
         "type": "github"
       }

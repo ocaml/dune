@@ -106,11 +106,6 @@ let set
         contexts
         ~f:(fun ((ctx : Build_context.t), ctx_type) -> ctx.name, (ctx, ctx_type)))
   in
-  let () =
-    match (cache_config : Dune_cache.Config.t) with
-    | Disabled -> ()
-    | Enabled _ -> Dune_cache_storage.Layout.create_cache_directories ()
-  in
   Fdecl.set
     t
     { contexts

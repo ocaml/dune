@@ -17,16 +17,24 @@ where Dune is supposed to store the cache:
   $ export DUNE_CACHE_ROOT=$(pwd)/readonly/cache-dir
 
   $ dune build
-  Error:
-  mkdir($TESTCASE_ROOT/readonly/cache-dir): Permission denied
-  [1]
+  Warning: Cache directories could not be created: Permission denied; disabling
+  cache
+  Hint: Make sure the directory
+  $TESTCASE_ROOT/readonly/cache-dir/temp
+  can be created
 
 Likewise, this should also happen if the location is set via XDG variables.
 
   $ unset DUNE_CACHE_ROOT
   $ export XDG_CACHE_HOME=$(pwd)/readonly/xdg-cache-dir
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
-  $ dune build
-  Error:
-  mkdir($TESTCASE_ROOT/readonly/xdg-cache-dir): Permission denied
-  [1]
+  $ dune build 2>&1 | sed 's/created: .*;/created: $REASON:/'
+  Warning: Cache directories could not be created: $REASON: disabling cache
+  Hint: Make sure the directory $TESTCASE_ROOT/readonly/xdg-cache-dir/dune/db/temp can be created
+
+  $ HOME=/homeless-shelter
+  $ unset XDG_CACHE_HOME
+  $ dune build 2>&1 | sed 's/created: .*;/created: $REASON:/'
+  Warning: Cache directories could not be created: $REASON: disabling cache
+  Hint: Make sure the directory /homeless-shelter/.cache/dune/db/temp can be created

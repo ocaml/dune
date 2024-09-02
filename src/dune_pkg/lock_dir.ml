@@ -498,6 +498,36 @@ module Write_disk = struct
     | Ok _ -> Error `Not_directory
   ;;
 
+  let raise_user_error_on_check_existance path e =
+    let error_reason =
+      match e with
+      | `Unreadable ->
+        Pp.textf "Unable to read lock directory (%s)" (Path.to_string_maybe_quoted path)
+      | `Not_directory ->
+        Pp.textf
+          "Specified lock dir path (%s) is not a directory"
+          (Path.to_string_maybe_quoted path)
+      | `No_metadata_file ->
+        Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
+      | `Failed_to_parse_metadata (path, exn) ->
+        Pp.concat
+          ~sep:Pp.cut
+          [ Pp.textf
+              "Unable to parse lock directory metadata file (%s):"
+              (Path.to_string_maybe_quoted path)
+            |> Pp.hovbox
+          ; Exn.pp exn |> Pp.hovbox
+          ]
+        |> Pp.vbox
+    in
+    User_error.raise
+      [ Pp.textf
+          "Refusing to regenerate lock directory %s"
+          (Path.to_string_maybe_quoted path)
+      ; error_reason
+      ]
+  ;;
+
   (* Removes the existing lock directory at the specified path if it exists and
      is a valid lock directory. Checks the validity of the existing lockdir (if
      any) and raises if it's invalid before constructing the returned thunk, so
@@ -507,40 +537,51 @@ module Write_disk = struct
     match check_existing_lock_dir path with
     | Ok `Non_existant -> Fun.const ()
     | Ok `Is_existing_lock_dir -> fun () -> Path.rm_rf path
-    | Error e ->
+    | Error e -> raise_user_error_on_check_existance path e
+  ;;
+
+  (* Does the same checks as [safely_remove_lock_dir_if_exists_thunk] but it raises an
+     error if the lock dir already exists. [dst] is the new file name *)
+  let safely_rename_lock_dir_thunk ~dst src =
+    match check_existing_lock_dir src, check_existing_lock_dir dst with
+    | Ok `Is_existing_lock_dir, Ok `Non_existant -> fun () -> Path.rename src dst
+    | Ok `Non_existant, Ok `Non_existant -> Fun.const ()
+    | _, Ok `Is_existing_lock_dir ->
       let error_reason_pp =
-        match e with
-        | `Unreadable -> Pp.text "Unable to read lock directory"
-        | `Not_directory -> Pp.text "Specified lock dir path is not a directory"
-        | `No_metadata_file ->
-          Pp.textf "Specified lock dir lacks metadata file (%s)" metadata_filename
-        | `Failed_to_parse_metadata (path, exn) ->
-          Pp.concat
-            ~sep:Pp.cut
-            [ Pp.textf
-                "Unable to parse lock directory metadata file (%s):"
-                (Path.to_string_maybe_quoted path)
-              |> Pp.hovbox
-            ; Exn.pp exn |> Pp.hovbox
-            ]
-          |> Pp.vbox
+        Pp.textf
+          "Directory %s already exists: can't rename safely"
+          (Path.to_string_maybe_quoted src)
       in
       User_error.raise
         [ Pp.textf
             "Refusing to regenerate lock directory %s"
-            (Path.to_string_maybe_quoted path)
+            (Path.to_string_maybe_quoted src)
         ; error_reason_pp
         ]
+    | Error e, _ -> raise_user_error_on_check_existance src e
+    | _, Error e -> raise_user_error_on_check_existance dst e
   ;;
 
   type t = unit -> unit
 
-  let prepare ~lock_dir_path:lock_dir_path_src ~files lock_dir =
-    let lock_dir_path = Path.source lock_dir_path_src in
-    let remove_dir_if_exists = safely_remove_lock_dir_if_exists_thunk lock_dir_path in
-    fun () ->
-      remove_dir_if_exists ();
-      Path.mkdir_p lock_dir_path;
+  let prepare
+    ~lock_dir_path:lock_dir_path_src
+    ~(files : File_entry.t Package_name.Map.Multi.t)
+    lock_dir
+    =
+    let lock_dir_hidden_src =
+      lock_dir_path_src |> Path.Source.to_string |> sprintf ".%s" |> Path.Source.of_string
+    in
+    let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
+    let lock_dir_path_external = Path.source lock_dir_path_src in
+    let remove_hidden_dir_if_exists () =
+      safely_remove_lock_dir_if_exists_thunk lock_dir_hidden_src ()
+    in
+    let rename_old_lock_dir_to_hidden =
+      safely_rename_lock_dir_thunk ~dst:lock_dir_hidden_src lock_dir_path_external
+    in
+    let build lock_dir_path =
+      let lock_dir_path = Result.ok_exn lock_dir_path in
       file_contents_by_path lock_dir
       |> List.iter ~f:(fun (path_within_lock_dir, contents) ->
         let path = Path.relative lock_dir_path path_within_lock_dir in
@@ -555,7 +596,7 @@ module Write_disk = struct
         Format.asprintf "%a" Pp.to_fmt pp |> Io.write_file path;
         Package_name.Map.iteri files ~f:(fun package_name files ->
           let files_dir =
-            Pkg.files_dir package_name ~lock_dir:lock_dir_path_src |> Path.source
+            Path.relative lock_dir_path (Package_name.to_string package_name ^ ".files")
           in
           Path.mkdir_p files_dir;
           List.iter files ~f:(fun { File_entry.original; local_file } ->
@@ -563,7 +604,17 @@ module Write_disk = struct
             Path.mkdir_p (Path.parent_exn dst);
             match original with
             | Path src -> Io.copy_file ~src ~dst ()
-            | Content content -> Io.write_file dst content)))
+            | Content content -> Io.write_file dst content)));
+      rename_old_lock_dir_to_hidden ();
+      safely_rename_lock_dir_thunk ~dst:lock_dir_path_external lock_dir_path ();
+      remove_hidden_dir_if_exists ()
+    in
+    match Path.(parent (source lock_dir_path_src)) with
+    | Some parent_dir ->
+      fun () -> Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
+    | None ->
+      User_error.raise
+        [ Pp.textf "Temporary directory can't be created by deriving the lock dir path" ]
   ;;
 
   let commit t = t ()
@@ -634,32 +685,35 @@ struct
     let open Io.O in
     Io.stats_kind lock_dir_path
     >>| function
-    | Ok S_DIR -> ()
+    | Ok S_DIR -> Ok ()
     | Error (Unix.ENOENT, _, _) ->
-      User_error.raise
-        ~hints:
-          [ Pp.concat
-              ~sep:Pp.space
-              [ Pp.text "Run"
-              ; User_message.command "dune pkg lock"
-              ; Pp.text "to generate it."
-              ]
-            |> Pp.hovbox
-          ]
-        [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ]
+      Error
+        (User_error.make
+           ~hints:
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ Pp.text "Run"
+                 ; User_message.command "dune pkg lock"
+                 ; Pp.text "to generate it."
+                 ]
+               |> Pp.hovbox
+             ]
+           [ Pp.textf "%s does not exist." (Path.Source.to_string lock_dir_path) ])
     | Error e ->
-      User_error.raise
-        [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
-        ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
-        ]
+      Error
+        (User_error.make
+           [ Pp.textf "%s is not accessible" (Path.Source.to_string lock_dir_path)
+           ; Pp.textf "reason: %s" (Unix_error.Detailed.to_string_hum e)
+           ])
     | _ ->
-      User_error.raise
-        [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ]
+      Error
+        (User_error.make
+           [ Pp.textf "%s is not a directory." (Path.Source.to_string lock_dir_path) ])
   ;;
 
   let check_packages packages ~lock_dir_path =
     match validate_packages packages with
-    | Ok () -> ()
+    | Ok () -> Ok ()
     | Error (`Missing_dependencies missing_dependencies) ->
       List.iter missing_dependencies ~f:(fun { dependant_package; dependency; loc } ->
         User_message.prerr
@@ -673,50 +727,60 @@ struct
                  (Package_name.to_string dependency)
                  (Path.Source.to_string_maybe_quoted lock_dir_path)
              ]));
-      User_error.raise
-        ~hints:
-          [ Pp.concat
-              ~sep:Pp.space
-              [ Pp.text
-                  "This could indicate that the lockdir is corrupted. Delete it and then \
-                   regenerate it by running:"
-              ; User_message.command "dune pkg lock"
-              ]
-          ]
-        [ Pp.textf
-            "At least one package dependency is itself not present as a package in the \
-             lockdir %s."
-            (Path.Source.to_string_maybe_quoted lock_dir_path)
-        ]
+      Error
+        (User_error.make
+           ~hints:
+             [ Pp.concat
+                 ~sep:Pp.space
+                 [ Pp.text
+                     "This could indicate that the lockdir is corrupted. Delete it and \
+                      then regenerate it by running:"
+                 ; User_message.command "dune pkg lock"
+                 ]
+             ]
+           [ Pp.textf
+               "At least one package dependency is itself not present as a package in \
+                the lockdir %s."
+               (Path.Source.to_string_maybe_quoted lock_dir_path)
+           ])
   ;;
 
   let load lock_dir_path =
     let open Io.O in
-    let* () = check_path lock_dir_path in
-    let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
-      load_metadata (Path.Source.relative lock_dir_path metadata_filename)
-    in
-    let+ packages =
-      Io.readdir_with_kinds lock_dir_path
-      >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
-        match kind with
-        | S_REG -> Package_filename.to_package_name name |> Result.to_option
-        | _ ->
-          (* TODO *)
-          None)
-      >>= Io.parallel_map ~f:(fun package_name ->
-        let+ pkg = load_pkg ~version ~lock_dir_path package_name in
-        package_name, pkg)
-      >>| Package_name.Map.of_list_exn
-    in
-    check_packages packages ~lock_dir_path;
-    { version
-    ; dependency_hash
-    ; packages
-    ; ocaml
-    ; repos
-    ; expanded_solver_variable_bindings
-    }
+    let* result = check_path lock_dir_path in
+    match result with
+    | Error e -> Io.return (Error e)
+    | Ok () ->
+      let* version, dependency_hash, ocaml, repos, expanded_solver_variable_bindings =
+        load_metadata (Path.Source.relative lock_dir_path metadata_filename)
+      in
+      let+ packages =
+        Io.readdir_with_kinds lock_dir_path
+        >>| List.filter_map ~f:(fun (name, (kind : Unix.file_kind)) ->
+          match kind with
+          | S_REG -> Package_filename.to_package_name name |> Result.to_option
+          | _ ->
+            (* TODO *)
+            None)
+        >>= Io.parallel_map ~f:(fun package_name ->
+          let+ pkg = load_pkg ~version ~lock_dir_path package_name in
+          package_name, pkg)
+        >>| Package_name.Map.of_list_exn
+      in
+      check_packages packages ~lock_dir_path
+      |> Result.map ~f:(fun () ->
+        { version
+        ; dependency_hash
+        ; packages
+        ; ocaml
+        ; repos
+        ; expanded_solver_variable_bindings
+        })
+  ;;
+
+  let load_exn lock_dir_path =
+    let open Io.O in
+    load lock_dir_path >>| User_error.ok_exn
   ;;
 end
 
@@ -740,7 +804,7 @@ module Load_immediate = Make_load (struct
     let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f
   end)
 
-let read_disk = Load_immediate.load
+let read_disk = Load_immediate.load_exn
 
 let transitive_dependency_closure t start =
   let missing_packages =

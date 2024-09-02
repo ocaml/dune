@@ -49,7 +49,6 @@ struct
   let cat ps = Cat ps
   let copy a b = Copy (a, b)
   let symlink a b = Symlink (a, b)
-  let system s = System s
   let bash s = Bash s
   let write_file ?(perm = File_perm.Normal) p s = Write_file (p, perm, s)
   let rename a b = Rename (a, b)
@@ -189,7 +188,6 @@ let fold_one_step t ~init:acc ~f =
   | Copy _
   | Symlink _
   | Hardlink _
-  | System _
   | Bash _
   | Write_file _
   | Rename _
@@ -230,7 +228,6 @@ let rec is_dynamic = function
   | With_accepted_exit_codes (_, t) -> is_dynamic t
   | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:is_dynamic
   | Run _
-  | System _
   | Bash _
   | Echo _
   | Cat _
@@ -292,7 +289,6 @@ let is_useful_to memoize =
     | Mkdir _ -> false
     | Run _ -> true
     | Dynamic_run _ -> true
-    | System _ -> true
     | Bash _ -> true
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
   in
@@ -340,7 +336,7 @@ module Full = struct
   let make
     ?(env = Env.empty)
     ?(locks = [])
-    ?(can_go_in_shared_cache = true)
+    ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
     ?(sandbox = Sandbox_config.default)
     action
     =

@@ -34,8 +34,7 @@ module Merge_files_into = struct
       : Sexp.t
       =
       List
-        [ Atom name
-        ; List (List.map sources ~f:input)
+        [ List (List.map sources ~f:input)
         ; List (List.map ~f:(fun s -> Sexp.Atom s) extras)
         ; output target
         ]
@@ -55,18 +54,9 @@ module Merge_files_into = struct
     ;;
   end
 
-  let action sources extras target =
-    let module M = struct
-      type path = Path.t
-      type target = Path.Build.t
+  module Action = Action_ext.Make (Spec)
 
-      module Spec = Spec
-
-      let v = sources, extras, target
-    end
-    in
-    Dune_engine.Action.Extension (module M)
-  ;;
+  let action sources extras target = Action.action (sources, extras, target)
 end
 
 let parse_module_names ~dir ~(unit : Module.t) ~modules words =

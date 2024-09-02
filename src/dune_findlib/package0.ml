@@ -31,6 +31,11 @@ let requires t =
   |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
 ;;
 
+let exports t =
+  Vars.get_words t.vars "exports" Ps.empty
+  |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
+;;
+
 let ppx_runtime_deps t =
   Vars.get_words t.vars "ppx_runtime_deps" preds
   |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))

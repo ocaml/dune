@@ -1,4 +1,5 @@
   $ export DUNE_CACHE=enabled
+  $ export DUNE_CACHE_RULES=enabled
   $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
 
@@ -78,8 +79,8 @@ entries uniformly.
 
   $ (cd "$PWD/.xdg-cache/dune/db/meta/v5"; grep -rws . -e 'metadata' | sort ) > out
   $ cat out
-  ./c2/c2ad4d4223dc4899614b496fe575ab08:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
-  ./d9/d9253f5d1695e3bee65f4e6e63b4dc5e:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./9e/9ec477cee96a2159fd639e0c0d70f065:((8:metadata)(5:files(8:target_a32:5637dd9730e430c7477f52d46de3909c)))
+  ./cb/cbd5fd268a285fca51c14f9b818506fb:((8:metadata)(5:files(8:target_b32:8a53bfae3829b48866079fa7f2d97781)))
 
   $ digest="$(awk -F: '/target_b/ { digest=$1 } END { print digest }' < out)"
 

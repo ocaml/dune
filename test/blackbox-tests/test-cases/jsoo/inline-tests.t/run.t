@@ -4,9 +4,12 @@ Run inline tests using node js
   > (lang dune 2.6)
   > EOF
 
+(With the dev profile on OCaml 5, the warning is expected)
+
   $ dune runtest
   inline tests (Byte)
   inline tests (Byte)
+  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--enable=effects'
   inline tests (Native)
   inline tests (Native)
   inline tests (JS)

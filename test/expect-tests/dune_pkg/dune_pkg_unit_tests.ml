@@ -303,7 +303,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ; packages =
         map
           { "a" :
-              { build_command = Some Action [ "progn"; [ "echo"; "hello" ] ]
+              { build_command = Some (Action [ "progn"; [ "echo"; "hello" ] ])
               ; install_command = Some [ "system"; "echo 'world'" ]
               ; depends = []
               ; info =

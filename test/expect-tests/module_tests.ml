@@ -23,9 +23,9 @@ let%expect_test "Module.Kind encoding round trip" =
   test Impl;
   [%expect {| { ast = "impl"; decoded = Ok Impl } |}];
   test (Alias []);
-  [%expect {| { ast = "alias"; decoded = Ok Alias [] } |}];
+  [%expect {| { ast = "alias"; decoded = Ok (Alias []) } |}];
   test (Alias [ module_name "A" ]);
-  [%expect {| { ast = "(alias (A))"; decoded = Ok Alias [ "A" ] } |}];
+  [%expect {| { ast = "(alias (A))"; decoded = Ok (Alias [ "A" ]) } |}];
   test (Alias [ module_name "A"; module_name "B" ]);
-  [%expect {| { ast = "(alias (A B))"; decoded = Ok Alias [ "A"; "B" ] } |}]
+  [%expect {| { ast = "(alias (A B))"; decoded = Ok (Alias [ "A"; "B" ]) } |}]
 ;;

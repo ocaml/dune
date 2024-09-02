@@ -308,7 +308,8 @@ let%expect_test _ =
    \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n },\
-   \n\"Invalid text in unquoted template\", { s = \"x%{\" })") |}]
+   \n \"Invalid text in unquoted template\",\
+   \n { s = \"x%{\" })") |}]
 ;;
 
 let%expect_test _ =
@@ -320,7 +321,8 @@ let%expect_test _ =
    \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
    \n },\
-   \n\"Invalid text in unquoted template\", { s = \"x%{\" })") |}]
+   \n \"Invalid text in unquoted template\",\
+   \n { s = \"x%{\" })") |}]
 ;;
 
 let%expect_test _ =
@@ -358,11 +360,11 @@ world
   |> print_dyn;
   [%expect
     {|
-[ Atom A "hello"
+[ Atom (A "hello")
 ; Comment [ " comment" ]
-; Atom A "world"
+; Atom (A "world")
 ; Comment [ " multiline"; " comment" ]
-; List [ Atom A "x"; Comment [ " comment inside list" ]; Atom A "y" ]
+; List [ Atom (A "x"); Comment [ " comment inside list" ]; Atom (A "y") ]
 ]
 |}]
 ;;

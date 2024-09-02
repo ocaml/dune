@@ -12,8 +12,11 @@ open Import
 val root_dir : Path.t
 
 (** Create a few subdirectories in [root_dir]. We expose this function because
-    we don't want to modify the file system when the cache is disabled. *)
-val create_cache_directories : unit -> unit
+    we don't want to modify the file system when the cache is disabled.
+
+    Returns whether creation has succeeded or in the case of error which directory
+    could not be created. *)
+val create_cache_directories : unit -> (unit, Path.t * Unix.error) result
 
 (** This directory stores metadata files, one per each historically executed
     build rule or output-producing action. (While this is a convenient mental

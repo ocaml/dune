@@ -70,17 +70,12 @@ module Spec = struct
   type ('path, 'target) t = 'path * 'target * merlin
 
   let name = "copy-line-directive"
-  let version = 1
+  let version = 2
   let bimap (src, dst, merlin) f g = f src, g dst, merlin
   let is_useful_to ~memoize = memoize
 
   let encode (src, dst, merlin) path target : Sexp.t =
-    List
-      [ Atom "copy-line-directive"
-      ; path src
-      ; target dst
-      ; Atom (Bool.to_string (bool_of_merlin merlin))
-      ]
+    List [ path src; target dst; Atom (Bool.to_string (bool_of_merlin merlin)) ]
   ;;
 
   let action (src, dst, merlin) ~ectx:_ ~eenv:_ =
@@ -97,17 +92,10 @@ module Spec = struct
   ;;
 end
 
+module A = Action_ext.Make (Spec)
+
 let action (context : Context.t) ~src ~dst =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
-
-    module Spec = Spec
-
-    let v = src, dst, if Context.merlin context then Spec.Yes else No
-  end
-  in
-  Action.Extension (module M)
+  A.action (src, dst, if Context.merlin context then Spec.Yes else No)
 ;;
 
 let builder context ~src ~dst =

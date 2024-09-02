@@ -2,6 +2,7 @@ This checks what happens when a file available in the cache is used in a directo
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
   $ export DUNE_CACHE=enabled
+  $ export DUNE_CACHE_RULES=enabled
   $ . ./helpers.sh
 
   $ cat > dune-project << EOF

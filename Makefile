@@ -12,7 +12,7 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.2
+TEST_OCAMLVERSION := 5.1.1
 
 -include Makefile.dev
 

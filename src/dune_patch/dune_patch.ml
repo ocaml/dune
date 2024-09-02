@@ -18,12 +18,13 @@ let re =
   let open Re in
   let line xs = seq ((bol :: xs) @ [ eol ]) in
   let filename = group @@ rep1 @@ compl [ space ] in
-  let timestamp = rep notnl in
+  (* We don't care about what's after the filename. (likely a timestamp) *)
+  let junk = rep notnl in
   compile
   @@ seq
-       [ line [ str {|--- |}; opt (str "a/"); filename; timestamp ]
+       [ line [ str {|--- |}; opt (str "a/"); filename; junk ]
        ; str "\n"
-       ; line [ str {|+++ |}; opt (str "b/"); filename; timestamp ]
+       ; line [ str {|+++ |}; opt (str "b/"); filename; junk ]
        ]
 ;;
 

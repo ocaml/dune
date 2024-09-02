@@ -2,6 +2,7 @@
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
   $ ocamlfind_libs="$(ocamlfind printconf path | while read line; do printf lib=${line}:; done)"
   $ export BUILD_PATH_PREFIX_MAP="$ocamlfind_libs:$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
   $ cat >dune-project <<EOF
   > (lang dune 3.11)

@@ -18,6 +18,7 @@
 
   $ opam_prefix="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
   $ dune build .merlin-conf/lib-foo
   $ dune ocaml merlin dump-config .

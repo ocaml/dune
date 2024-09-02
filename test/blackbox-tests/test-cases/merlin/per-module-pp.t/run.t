@@ -2,6 +2,7 @@
 
   $ ocamlc_where="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OCAMLC_WHERE=$ocamlc_where:$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
 We dump the config for Foo and Bar modules but the pp.exe preprocessor
 should appear only once since only Foo is using it.

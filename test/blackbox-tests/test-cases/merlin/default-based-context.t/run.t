@@ -1,5 +1,6 @@
   $ export BUILD_PATH_PREFIX_MAP=\
   > "OPAM_PREFIX=$(ocamlc -where):$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
 If Merlin field is absent, default context is chosen
 

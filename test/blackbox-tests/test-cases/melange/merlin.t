@@ -6,6 +6,7 @@
   $ export BUILD_PATH_PREFIX_MAP="$(melc_stdlib_prefix)":$BUILD_PATH_PREFIX_MAP
   $ export BUILD_PATH_PREFIX_MAP="/MELC_COMPILER=$melc_compiler:$BUILD_PATH_PREFIX_MAP"
   $ export BUILD_PATH_PREFIX_MAP="/MELC_STDLIB=$(ocamlfind query melange):$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
   $ cat >dune-project <<EOF
   > (lang dune 3.8)

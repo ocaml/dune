@@ -19,6 +19,7 @@ library also has more than one src dir.
 
   $ opam_prefix="$(ocamlc -where)"
   $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
 
   $ dune build lib2/.merlin-conf/lib-lib2
   $ dune ocaml merlin dump-config $PWD/lib2

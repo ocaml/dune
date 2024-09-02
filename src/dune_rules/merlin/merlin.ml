@@ -327,7 +327,15 @@ module Processed = struct
         |> Pp.concat_map ~sep:Pp.cut ~f:pp_one
         |> Pp.vbox
       in
-      Format.printf "%a%a@." Format.pp_set_margin 1000 Pp.to_fmt pp
+      let pp_format =
+        match Lazy.force Ansi_color.skip_line_break with
+        | false -> Pp.to_fmt
+        | true ->
+          fun ppf ->
+            Format.pp_set_margin ppf 1000;
+            Pp.to_fmt ppf
+      in
+      Format.printf "%a@." pp_format pp
   ;;
 
   let print_generic_dot_merlin paths =

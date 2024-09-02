@@ -1,5 +1,7 @@
 Show that the merlin config knows about melange.compile_flags
 
+  $ export DUNE_CONFIG__SKIP_LINE_BREAK=enabled
+
   $ cat >dune-project <<EOF
   > (lang dune 3.8)
   > (using melange 0.1)

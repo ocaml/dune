@@ -181,7 +181,7 @@ Test with an opam like installation
     "_build/install/default/lib/a/a__.cmx"
     "_build/install/default/lib/a/a__.ml"
     "_build/install/default/lib/a/a__Sites.cmi"
-    "_destdir/_destdir/lib/a/a__Sites.cmt"
+    "_build/install/default/lib/a/a__Sites.cmt"
     "_build/install/default/lib/a/a__Sites.cmx"
     "_destdir/_destdir/lib/a/dune-package"
     "_build/install/default/lib/a/opam"

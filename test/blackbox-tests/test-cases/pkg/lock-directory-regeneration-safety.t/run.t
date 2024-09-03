@@ -4,10 +4,16 @@ Create a lock directory that didn't originally exist
   > (lang dune 3.10)
   > (lock_dir
   >  (repositories mock))
+  > (lock_dir
+  >  (path "dev/dune.lock")
+  >  (repositories mock))
   > (repository
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
+  $ dune pkg lock "dev/dune.lock"
+  Solution for dev/dune.lock:
+  (no dependencies to lock)
   $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)

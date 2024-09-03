@@ -227,26 +227,22 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | Some path -> build_prog ~no_rebuild ~prog path
      | None -> not_found ~dir ~prog)
   | Absolute ->
-    let path = Path.of_string prog in
-    if Path.exists path
-    then Memo.return path
-    else (
-      let path = Path.relative_to_source_in_build_or_external ~dir prog in
-      Build_system.file_exists path
-      >>= (function
-             | true -> Memo.return (Some path)
-             | false ->
-               if not (Filename.check_suffix prog ".exe")
-               then Memo.return None
-               else (
-                 let path = Path.extend_basename path ~suffix:".exe" in
-                 Build_system.file_exists path
-                 >>| function
-                 | true -> Some path
-                 | false -> None))
-      >>= function
-      | Some path -> Memo.return path
-      | None -> not_found ~dir ~prog)
+    (match
+       let path = Path.of_string prog in
+       if Path.exists path
+       then Some path
+       else (
+         let path = Path.extend_basename path ~suffix:Bin.exe in
+         if Path.exists path
+         then Some path
+         else (
+           let path =
+             Path.relative_to_source_in_build_or_external ~dir (Filename.basename prog)
+           in
+           Option.some_if (Path.exists path) path))
+     with
+     | Some path -> build_prog ~no_rebuild ~prog path
+     | None -> not_found ~dir ~prog)
 ;;
 
 module Exec_context = struct
@@ -344,6 +340,14 @@ let term =
   (* TODO we should make sure to finalize the current backend before exiting dune.
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
+  let builder =
+    match prog with
+    | Cmd_arg.Terminal prog ->
+      if String.starts_with ~prefix:"/" prog
+      then Common.Builder.set_root builder (Filename.dirname prog)
+      else builder
+    | _ -> builder
+  in
   let common, config = Common.init builder in
   let exec_context = Exec_context.init ~common ~context ~no_rebuild ~prog ~args in
   let f =

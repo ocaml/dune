@@ -15,16 +15,15 @@ include struct
 end
 
 let re =
-  let open Re in
-  let line xs = seq ((bol :: xs) @ [ eol ]) in
-  let filename = group @@ rep1 @@ compl [ space ] in
+  let line xs = Re.seq ((Re.bol :: xs) @ [ Re.eol ]) in
+  let followed_by_line xs = Re.seq [ Re.str "\n"; line xs ] in
+  let filename = Re.group (Re.rep1 (Re.compl [ Re.space ])) in
   (* We don't care about what's after the filename. (likely a timestamp) *)
-  let junk = rep notnl in
-  compile
-  @@ seq
-       [ line [ str {|--- |}; opt (str "a/"); filename; junk ]
-       ; str "\n"
-       ; line [ str {|+++ |}; opt (str "b/"); filename; junk ]
+  let junk = Re.rep Re.notnl in
+  Re.compile
+  @@ Re.seq
+       [ line [ Re.str {|--- |}; Re.opt (Re.str "a/"); filename; junk ]
+       ; followed_by_line [ Re.str {|+++ |}; Re.opt (Re.str "b/"); filename; junk ]
        ]
 ;;
 

@@ -281,16 +281,6 @@ let pp_one_module
                ~dir:(Super_context.context sctx |> Context.build_dir |> Path.build)
                (S [ Dep (Path.build exe); As driver_flags; As flags ]))
         in
-        let args =
-          match args with
-          | exe :: args when Sys.win32 ->
-            (* On Windows, [exe] is executed by the compiler using
-               [Sys.command], ie [cmd.exe].  Thus, its path must contain
-               backslashes only, as forward slashes are used to introduce
-               options, eg "dir/?". *)
-            String.concat ~sep:"\\" (String.split_on_char ~sep:'/' exe) :: args
-          | _ -> args
-        in
         [ "-ppx"; String.quote_list_for_shell args ]
       in
       let pp =

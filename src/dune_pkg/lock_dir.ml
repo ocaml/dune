@@ -611,7 +611,9 @@ module Write_disk = struct
     in
     match Path.(parent (source lock_dir_path_src)) with
     | Some parent_dir ->
-      fun () -> Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
+      fun () ->
+        Path.mkdir_p parent_dir;
+        Temp.with_temp_dir ~parent_dir ~prefix:"dune" ~suffix:"lock" ~f:build
     | None ->
       User_error.raise
         [ Pp.textf "Temporary directory can't be created by deriving the lock dir path" ]

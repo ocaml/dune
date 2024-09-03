@@ -286,8 +286,8 @@ let quote_for_shell s = if need_quoting s then Stdlib.Filename.quote s else s
 
 let quote_cmd s =
   let b = Buffer.create (String.length s + 20) in
-  String.iter
-    (fun c ->
+  iter
+    ~f:(fun c ->
       match c with
       | '(' | ')' | '!' | '^' | '%' | '\"' | '<' | '>' | '&' | '|' ->
         Buffer.add_char b '^';
@@ -298,18 +298,18 @@ let quote_cmd s =
 ;;
 
 let quote_cmd_filename f =
-  if String.exists
-       (function
+  if exists
+       ~f:(function
          | '\"' | '%' -> true
          | _ -> false)
        f
   then failwith ("Filename.quote_command: bad file name " ^ f)
-  else if String.exists
-            (function
+  else if exists
+            ~f:(function
               | ' ' | '/' -> true
               | _ -> false)
             f
-  then String.concat "" [ "\""; f; "\"" ]
+  then concat ~sep:"" [ "\""; f; "\"" ]
   else f
 ;;
 
@@ -319,14 +319,18 @@ let quote_command cmd args =
     [ "\""
     ; quote_cmd_filename cmd
     ; " "
-    ; quote_cmd (String.concat " " (List.map ~f:Stdlib.Filename.quote args))
+    ; quote_cmd (concat ~sep:" " (List.map ~f:Stdlib.Filename.quote args))
     ; "\""
     ]
 ;;
 
-let quote_list_for_shell = function
-  | [] -> ""
-  | prog :: args -> quote_command prog args
+let quote_list_for_shell =
+  if Sys.win32
+  then
+    function
+    | [] -> ""
+    | prog :: args -> quote_command prog args
+  else fun l -> List.map ~f:quote_for_shell l |> concat ~sep:" "
 ;;
 
 let of_list chars =

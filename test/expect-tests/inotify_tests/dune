@@ -10,7 +10,6 @@
   threads
   ppx_expect.config
   ppx_expect.config_types
-  ppx_expect.common
   base
   stdune
   ppx_inline_test.config

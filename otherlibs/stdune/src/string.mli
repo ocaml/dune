@@ -116,8 +116,8 @@ val need_quoting : string -> bool
     [true] *)
 val quote_for_shell : string -> string
 
-(** [quote_list_for_shell l] is
-    [List.map l ~f:quote_for_shell |> concat ~sep:" "] *)
+(** [quote_list_for_shell l] quotes a command-line so that it can be passed to
+    the system shell (eg by using [Sys.command]). *)
 val quote_list_for_shell : string list -> string
 
 val filter_map : string -> f:(char -> char option) -> string

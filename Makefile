@@ -34,6 +34,9 @@ $(BIN):
 dev: $(BIN)
 	$(BIN) build @install
 
+watch: $(BIN)
+	$(BIN) build @install --watch
+
 all: $(BIN)
 	$(BIN) build
 

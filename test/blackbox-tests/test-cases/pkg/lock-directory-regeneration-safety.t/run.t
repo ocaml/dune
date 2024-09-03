@@ -4,10 +4,36 @@ Create a lock directory that didn't originally exist
   > (lang dune 3.10)
   > (lock_dir
   >  (repositories mock))
+  > (lock_dir
+  >  (path "dev/dune.lock")
+  >  (repositories mock))
   > (repository
   >  (name mock)
   >  (source "file://$(pwd)/mock-opam-repository"))
   > EOF
+  $ dune pkg lock "dev/dune.lock"
+  Solution for dev/dune.lock:
+  (no dependencies to lock)
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+    ("[Temp.create_temp_dir] called in a nonexistent directory",
+     { dir = In_source_tree "dev/dune_f9d74c_lock" })
+  Raised at Stdune__Result.ok_exn in file "otherlibs/stdune/src/result.ml",
+    line 26, characters 15-22
+  Called from Dune_pkg__Lock_dir.Write_disk.prepare.build in file
+    "src/dune_pkg/lock_dir.ml", line 584, characters 26-53
+  Called from Stdlib__List.iter in file "list.ml", line 112, characters 12-15
+  Called from Fiber__Core.O.(>>|).(fun) in file "vendor/fiber/src/core.ml",
+    line 253, characters 36-41
+  Called from Fiber__Scheduler.exec in file "vendor/fiber/src/scheduler.ml",
+    line 76, characters 8-11
+  
+  I must not crash.  Uncertainty is the mind-killer. Exceptions are the
+  little-death that brings total obliteration.  I will fully express my cases. 
+  Execution will pass over me and through me.  And when it has gone past, I
+  will unwind the stack along its path.  Where the cases are handled there will
+  be nothing.  Only I will remain.
+  [1]
   $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)

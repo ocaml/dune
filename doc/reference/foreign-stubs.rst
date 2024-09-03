@@ -62,9 +62,9 @@ Here is a complete list of supported subfields:
     The contents of included directories are tracked recursively, e.g., if you
     use ``(include_dir dir)`` and have headers ``dir/base.h`` and
     ``dir/lib/lib.h``, they both will be tracked as dependencies.
-  - ``extra_deps`` specifies any other dependencies that should be tracked.
-    This is useful when dealing with ``#include`` statements that escape into
-    a parent directory like ``#include "../a.h"``.
+- ``extra_deps`` specifies any other dependencies that should be tracked.  This
+    is useful when dealing with ``#include`` statements that escape into a
+    parent directory like ``#include "../a.h"``.
 
 
 Mode-Dependent Stubs

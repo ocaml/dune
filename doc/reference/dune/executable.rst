@@ -87,8 +87,7 @@ files for executables. See
 - ``(preprocess <preprocess-spec>)`` is the same as the ``(preprocess ...)``
   field of :doc:`library`.
 
-  ``(preprocessor_deps ...)`` field of :doc:`library`.
-- ``(preprocessor_deps (<deps-conf list>))`` is the same as the
+- ``(preprocessor_deps (<deps-conf list>))`` is the same as the ``(preprocessor_deps ...)`` field of :doc:`library`.
 
 - ``js_of_ocaml``: See the section about :ref:`jsoo-field`
 

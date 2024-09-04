@@ -17,7 +17,7 @@ depends: [
   "menhir" { with-dev-setup & os != "win32" }
   "ocamlfind" { with-dev-setup & os != "win32" }
   "odoc" { with-dev-setup & >= "2.4.0" & os != "win32" }
-  "ppx_expect" { with-dev-setup & >= "v0.16" & < "v0.17" & os != "win32" }
+  "ppx_expect" { with-dev-setup & >= "v0.17" & os != "win32" }
   "ppx_inline_test" { with-dev-setup & os != "win32" }
   "ppxlib" { with-dev-setup & os != "win32" }
   "ctypes" { with-dev-setup & os != "win32" }

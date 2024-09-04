@@ -24,9 +24,7 @@
 
   $ dune build
   $ dune runtest
-  $ dune describe 2>&1 | head -n 5
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("modules_and_obj_dir: failed lookup",
-     { keys = []; for_ = Exe { first_exe = "test" } })
-  Raised at Stdune__Code_error.raise in file
+  $ dune describe 2>&1
+  ((root
+    $TESTCASE_ROOT)
+   (build_context _build/default))

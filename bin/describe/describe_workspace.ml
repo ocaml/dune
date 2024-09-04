@@ -562,8 +562,13 @@ module Crawl = struct
                 (Context.build_dir context)
                 (Dune_file.dir dune_file)
             in
-            let project = Dune_file.project dune_file in
-            executables sctx ~options ~project ~dir exes
+            let* expander = Super_context.expander sctx ~dir in
+            Expander.eval_blang expander exes.enabled_if
+            >>= (function
+             | false -> Memo.return None
+             | true ->
+               let project = Dune_file.project dune_file in
+               executables sctx ~options ~project ~dir exes)
           | _ -> Memo.return None)
         >>| List.filter_opt)
       >>| List.concat

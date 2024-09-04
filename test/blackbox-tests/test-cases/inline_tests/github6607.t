@@ -43,7 +43,7 @@ file.
   
   let%expect_test _ =
     User_message.print (User_error.make []);
-    [%expect{| Error: |}]
+    [%expect {| Error: |}]
   $ dune clean
   $ CLICOLOR_FORCE=1 dune runtest --auto-promote
   File "l.ml", line 1, characters 0-0:
@@ -55,4 +55,4 @@ file.
   
   let%expect_test _ =
     User_message.print (User_error.make []);
-    [%expect{| ?[1;31mError?[0m: |}]
+    [%expect {| ?[1;31mError?[0m: |}]

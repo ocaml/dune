@@ -284,7 +284,12 @@ let quote_list_for_shell = function
   | prog :: args ->
     let prog =
       if Sys.win32 && contains prog '/'
-      then concat ~sep:"\\" (split_on_char ~sep:'/' prog)
+      then
+        map
+          ~f:(function
+            | '/' -> '\\'
+            | c -> c)
+          prog
       else prog
     in
     prog :: List.map ~f:quote_for_shell args |> concat ~sep:" "

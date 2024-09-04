@@ -292,7 +292,7 @@ let quote_list_for_shell = function
           prog
       else prog
     in
-    prog :: List.map ~f:quote_for_shell args |> concat ~sep:" "
+    quote_for_shell prog :: List.map ~f:quote_for_shell args |> concat ~sep:" "
 ;;
 
 let of_list chars =

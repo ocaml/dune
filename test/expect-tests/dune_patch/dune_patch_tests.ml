@@ -80,6 +80,30 @@ let no_prefix =
 |}
 ;;
 
+(* The file is called "foo bar" *)
+let spaces =
+  {|
+diff --git a/foo bar b/foo bar
+index ef00db3..88adca3 100644
+--- a/foo bar   
++++ b/foo bar   
+@@ -1 +1 @@
+-This is wrong.
++This is right.
+|}
+;;
+
+(* The file is called "foo bar" but in unified diff its quoted *)
+let unified_spaces =
+  {|
+--- "a/foo bar"	2024-09-04 10:56:24.139293679 +0200
++++ "b/foo bar"	2024-09-04 10:56:12.519195763 +0200
+@@ -1 +1 @@
+-This is wrong.
++This is right.
+|}
+;;
+
 (* Testing the patch action *)
 
 include struct
@@ -170,6 +194,26 @@ let%expect_test "patching a deleted file" =
     File foo.ml not found |}]
 ;;
 
+let undo_breaks =
+  String.map ~f:(function
+    | '\n' -> ' '
+    | c -> c)
+;;
+
+let rsplit2_exn s ~on =
+  match String.rsplit2 s ~on with
+  | Some s -> s
+  | None -> Code_error.raise "rsplit2_exn" [ "s", String s; "on", Char on ]
+;;
+
+let normalize_error_path s =
+  let s = undo_breaks s in
+  let location, reason = rsplit2_exn s ~on:':' in
+  let prefix, path = String.lsplit2_exn location ~on:' ' in
+  let path = Filename.basename path in
+  sprintf "%s %s:%s" prefix path reason
+;;
+
 let%expect_test "Using a patch from 'diff' with a timestamp" =
   test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
   check "foo.ml";
@@ -187,4 +231,26 @@ let%expect_test "patching a file without prefix" =
   Trailing output
   ---------------
   Command exited with code 1. |}]
+;;
+
+let%expect_test "patching files with spaces" =
+  try
+    test [ "foo bar", "This is wrong\n" ] ("foo.patch", spaces);
+    check "foo bar";
+    [%expect.unreachable]
+  with
+  | Dune_util.Report_error.Already_reported ->
+    print_endline @@ normalize_error_path [%expect.output];
+    [%expect {| Error: foo: No such file or directory |}]
+;;
+
+let%expect_test "patching files with (unified) spaces" =
+  try
+    test [ "foo bar", "This is wrong\n" ] ("foo.patch", unified_spaces);
+    check "foo bar";
+    [%expect.unreachable]
+  with
+  | Dune_util.Report_error.Already_reported ->
+    print_endline @@ normalize_error_path [%expect.output];
+    [%expect {| Error: foo: No such file or directory |}]
 ;;

@@ -70,6 +70,16 @@ diff -u a/foo.ml b/foo.ml
 |}
 ;;
 
+let no_prefix =
+  {|
+--- foo.ml	2024-08-29 17:37:53.114980665 +0200
++++ foo.ml	2024-08-29 17:38:00.243088256 +0200
+@@ -1 +1 @@
+-This is wrong
++This is right
+|}
+;;
+
 (* Testing the patch action *)
 
 include struct
@@ -170,4 +180,16 @@ let%expect_test "Using a patch from 'diff' with a timestamp" =
     if String.ends_with ~suffix:"No such file or directory\n" [%expect.output]
     then [%expect ""]
     else [%expect.unreachable]
+;;
+
+let%expect_test "patching a file without prefix" =
+  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", no_prefix);
+  check "foo.ml";
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  Command exited with code 1. |}]
 ;;

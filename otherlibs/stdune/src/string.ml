@@ -279,58 +279,15 @@ let need_quoting s =
 
 let quote_for_shell s = if need_quoting s then Stdlib.Filename.quote s else s
 
-(* The code below is essentially a patched version of
-   [Filename.quote_command]. It can be removed once the minmium supported
-   version of OCaml is >= 5.3. Note that versions < 5.3 are buggy: see
-   https://github.com/ocaml/ocaml/issues/13415 *)
-
-let quote_cmd s =
-  let b = Buffer.create (String.length s + 20) in
-  iter
-    ~f:(fun c ->
-      match c with
-      | '(' | ')' | '!' | '^' | '%' | '\"' | '<' | '>' | '&' | '|' ->
-        Buffer.add_char b '^';
-        Buffer.add_char b c
-      | _ -> Buffer.add_char b c)
-    s;
-  Buffer.contents b
-;;
-
-let quote_cmd_filename f =
-  if exists
-       ~f:(function
-         | '\"' | '%' -> true
-         | _ -> false)
-       f
-  then failwith ("Filename.quote_command: bad file name " ^ f)
-  else if exists
-            ~f:(function
-              | ' ' | '/' -> true
-              | _ -> false)
-            f
-  then concat ~sep:"" [ "\""; f; "\"" ]
-  else f
-;;
-
-let quote_command cmd args =
-  String.concat
-    ""
-    [ "\""
-    ; quote_cmd_filename cmd
-    ; " "
-    ; quote_cmd (concat ~sep:" " (List.map ~f:Stdlib.Filename.quote args))
-    ; "\""
-    ]
-;;
-
-let quote_list_for_shell =
-  if Sys.win32
-  then
-    function
-    | [] -> ""
-    | prog :: args -> quote_command prog args
-  else fun l -> List.map ~f:quote_for_shell l |> concat ~sep:" "
+let quote_list_for_shell = function
+  | [] -> ""
+  | prog :: args ->
+    let prog =
+      if Sys.win32 && contains prog '/'
+      then concat ~sep:"\\" (split_on_char ~sep:'/' prog)
+      else prog
+    in
+    prog :: List.map ~f:quote_for_shell args |> concat ~sep:" "
 ;;
 
 let of_list chars =

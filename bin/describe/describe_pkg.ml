@@ -11,7 +11,7 @@ module Show_lock = struct
     in
     Console.print
     @@ List.map lock_dir_paths ~f:(fun lock_dir_path ->
-      let lock_dir = Lock_dir.read_disk lock_dir_path in
+      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
       Pp.concat
         ~sep:Pp.space
         [ Pp.hovbox
@@ -120,7 +120,7 @@ module List_locked_dependencies = struct
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
-        try Some (lock_dir_path, Lock_dir.read_disk lock_dir_path) with
+        try Some (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path) with
         | User_error.E e ->
           User_warning.emit
             [ Pp.textf

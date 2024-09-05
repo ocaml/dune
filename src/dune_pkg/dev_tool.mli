@@ -3,6 +3,7 @@ open! Import
 type t =
   | Ocamlformat
   | Odoc
+  | Ocamllsp
 
 val all : t list
 val equal : t -> t -> bool

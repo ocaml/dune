@@ -164,6 +164,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
                      Source_tree_map_reduce.map_reduce
                        dir
                        ~traverse:Source_dir_status.Set.all
+                       ~trace_event_name:"Foreign rules"
                        ~f:(fun t ->
                          let deps =
                            let dir =

@@ -53,6 +53,7 @@ let all_direct_targets dir =
     Source_tree_map_reduce.map_reduce
       root
       ~traverse:Source_dir_status.Set.all
+      ~trace_event_name:"All direct targets"
       ~f:(fun dir ->
         Dune_engine.Load_rules.load_dir
           ~dir:

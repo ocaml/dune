@@ -422,7 +422,7 @@ module Dir = struct
     open M.O
 
     let map_reduce =
-      let rec map_reduce t ~traverse ~f =
+      let rec map_reduce t ~traverse ~trace_event_name ~f =
         let must_traverse = Source_dir_status.Map.find traverse t.status in
         match must_traverse with
         | false -> M.return Outcome.empty
@@ -431,7 +431,7 @@ module Dir = struct
           and+ in_sub_dirs =
             M.List.map (Filename.Map.values t.sub_dirs) ~f:(fun s ->
               let* t = M.of_memo (sub_dir_as_t s) in
-              map_reduce t ~traverse ~f)
+              map_reduce t ~traverse ~trace_event_name ~f)
           in
           List.fold_left in_sub_dirs ~init:here ~f:Outcome.combine
       in
@@ -440,9 +440,9 @@ module Dir = struct
           (match Dune_stats.global () with
            | None -> map_reduce
            | Some stats ->
-             fun t ~traverse ~f ->
+             fun t ~traverse ~trace_event_name ~f ->
                let start = Unix.gettimeofday () in
-               let+ res = map_reduce t ~traverse ~f in
+               let+ res = map_reduce t ~traverse ~trace_event_name ~f in
                let event =
                  let stop = Unix.gettimeofday () in
                  let module Event = Chrome_trace.Event in
@@ -450,7 +450,7 @@ module Dir = struct
                  let dur = Timestamp.of_float_seconds (stop -. start) in
                  let common =
                    Event.common_fields
-                     ~name:"Source tree scan"
+                     ~name:(trace_event_name ^ ": " ^ Path.Source.to_string t.path)
                      ~ts:(Timestamp.of_float_seconds start)
                      ()
                  in
@@ -460,7 +460,8 @@ module Dir = struct
                Dune_stats.emit stats event;
                res)
       in
-      fun t ~traverse ~f -> (Lazy.force impl) t ~traverse ~f
+      fun t ~traverse ~trace_event_name ~f ->
+        (Lazy.force impl) t ~traverse ~trace_event_name ~f
     ;;
   end
 end
@@ -469,7 +470,7 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct
   open M.O
   include Dir.Make_map_reduce (M) (Outcome)
 
-  let map_reduce ~traverse ~f =
+  let map_reduce ~traverse ~trace_event_name ~f =
     let* root = M.of_memo (root ()) in
     let nb_path_visited = ref 0 in
     let overlay =
@@ -477,7 +478,7 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) = struct
         (Live (fun () -> Pp.textf "Scanned %i directories" !nb_path_visited))
     in
     let+ res =
-      map_reduce root ~traverse ~f:(fun dir ->
+      map_reduce root ~traverse ~trace_event_name ~f:(fun dir ->
         incr nb_path_visited;
         if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
         f dir)

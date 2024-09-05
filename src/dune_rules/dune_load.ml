@@ -64,7 +64,10 @@ let load () =
       in
       Memo.return (projects, dune_files)
     in
-    Source_tree_map_reduce.map_reduce ~traverse:Source_dir_status.Set.all ~f
+    Source_tree_map_reduce.map_reduce
+      ~traverse:Source_dir_status.Set.all
+      ~trace_event_name:"Dune load"
+      ~f
   in
   let projects = Appendable_list.to_list_rev projects in
   let packages, vendored_packages =

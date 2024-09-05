@@ -19,6 +19,7 @@ module Dir : sig
     val map_reduce
       :  t
       -> traverse:Source_dir_status.Set.t
+      -> trace_event_name:string
       -> f:(t -> Outcome.t M.t)
       -> Outcome.t M.t
   end
@@ -41,6 +42,7 @@ module Make_map_reduce_with_progress (M : Memo.S) (Outcome : Monoid) : sig
   (** Traverse starting from the root and report progress in the status line *)
   val map_reduce
     :  traverse:Source_dir_status.Set.t
+    -> trace_event_name:string
     -> f:(Dir.t -> Outcome.t M.t)
     -> Outcome.t M.t
 end

@@ -16,6 +16,9 @@ configuration happens in that file. If you want to format OCaml sources and
 ``dune`` files, you don't have anything to add. Otherwise, refer to the
 :doc:`/reference/dune-project/formatting` stanza.
 
+Starting with version ``3.17`` ``dune`` will also automatically format ``dune-project``
+files.
+
 Next we need to install some code formatting tools. For OCaml code, this means
 installing OCamlFormat_ with ``opam install ocamlformat``. Formatting ``dune``
 files is built into Dune and does not require any extra tools. For Reason code,

@@ -21,7 +21,7 @@ formatting
         (formatting
          (enabled_for <languages>))
 
-     The list of `<languages>` can be either ``dune`` (formatting of ``dune``
-     files) or a :term:`dialect` name.
+     Valid entries for the list of `<languages>` are ``dune``, ``dune-project``,
+     or a :term:`dialect` name.
 
    .. seealso:: :doc:`/howto/formatting`

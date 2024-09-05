@@ -57,6 +57,19 @@ module Alias = struct
   let fmt ~dir = Alias.make Alias0.fmt ~dir
 end
 
+let add_diff_rule ~sctx ~loc ~alias_formatted ~dir ~output_dir ~version path =
+  let open Memo.O in
+  let input_basename = Path.Source.basename path in
+  let input = Path.build (Path.Build.relative dir input_basename) in
+  let output = Path.Build.relative output_dir input_basename in
+  (let open Action_builder.O in
+   let+ () = Action_builder.path input in
+   Action.Full.make (action ~version input output))
+  |> Action_builder.with_file_targets ~file_targets:[ output ]
+  |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
+  >>> add_diff sctx loc alias_formatted ~dir ~input ~output
+;;
+
 let gen_rules_output
   sctx
   (config : Format_config.t)
@@ -64,6 +77,7 @@ let gen_rules_output
   ~dialects
   ~expander
   ~output_dir
+  ~project
   =
   assert (formatted_dir_basename = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
@@ -122,16 +136,18 @@ let gen_rules_output
         Source_tree.Dir.dune_file source_dir
         |> Memo.Option.iter ~f:(fun f ->
           Dune_file0.path f
-          |> Memo.Option.iter ~f:(fun path ->
-            let input_basename = Path.Source.basename path in
-            let input = Path.build (Path.Build.relative dir input_basename) in
-            let output = Path.Build.relative output_dir input_basename in
-            (let open Action_builder.O in
-             let+ () = Action_builder.path input in
-             Action.Full.make (action ~version input output))
-            |> Action_builder.with_file_targets ~file_targets:[ output ]
-            |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
-            >>> add_diff sctx loc alias_formatted ~dir ~input ~output)))
+          |> Memo.Option.iter
+               ~f:(add_diff_rule ~sctx ~loc ~alias_formatted ~dir ~output_dir ~version)))
+  and* () =
+    match Format_config.includes config Dune_project with
+    | false -> Memo.return ()
+    | true ->
+      Dune_project.file project
+      |> Memo.Option.iter ~f:(fun path ->
+        let build_dir = Super_context.context sctx |> Context.build_dir in
+        if Path.Build.equal build_dir dir
+        then add_diff_rule ~sctx ~loc ~alias_formatted ~dir ~output_dir ~version path
+        else Memo.return ())
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;
@@ -170,7 +186,7 @@ let gen_rules sctx ~output_dir =
     let* project = Dune_load.find_project ~dir in
     let dialects = Dune_project.dialects project in
     let version = Dune_project.dune_version project in
-    gen_rules_output sctx config ~version ~dialects ~expander ~output_dir)
+    gen_rules_output sctx config ~version ~dialects ~expander ~output_dir ~project)
 ;;
 
 let setup_alias ~dir =

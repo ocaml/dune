@@ -118,6 +118,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
       Source_tree_map_reduce.map_reduce
         dir
         ~traverse:Source_dir_status.Set.all
+        ~trace_event_name:"Utop rules loading"
         ~f:(fun dir ->
           let dir =
             Path.Build.append_source

@@ -2,7 +2,7 @@ open Import
 
 let man =
   [ `S "DESCRIPTION"
-  ; `P {|Commands for doing package management with dune|}
+  ; `P {|Commands for OCaml package management|}
   ; `Blocks Common.help_secs
   ]
 ;;

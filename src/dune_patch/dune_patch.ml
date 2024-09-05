@@ -22,8 +22,8 @@ let re =
   let junk = Re.rep Re.notnl in
   Re.compile
   @@ Re.seq
-       [ line [ Re.str {|--- |}; Re.opt (Re.str "a/"); filename; junk ]
-       ; followed_by_line [ Re.str {|+++ |}; Re.opt (Re.str "b/"); filename; junk ]
+       [ line [ Re.str {|--- |}; filename; junk ]
+       ; followed_by_line [ Re.str {|+++ |}; filename; junk ]
        ]
 ;;
 
@@ -31,10 +31,15 @@ module Patch = struct
   (* CR-someday alizter: more parsed information about the patch should go here.
      Eventually we wish to replace the patch command inside the patch action with a pure
      OCaml implementation. *)
-  type t =
+  type operation =
     | New of Path.Local.t
     | Delete of Path.Local.t
     | Replace of Path.Local.t
+
+  type t =
+    { prefix : int
+    ; op : operation
+    }
 end
 
 let patches_of_string patch_string =
@@ -50,13 +55,35 @@ let patches_of_string patch_string =
       None
     | true, false ->
       (* New file *)
-      Some (Patch.New (Path.Local.of_string new_file))
+      let path = Path.Local.of_string new_file in
+      let prefix, path =
+        match Path.Local.split_first_component path with
+        | Some ("b", path) -> 1, path
+        | _ -> 0, path
+      in
+      Some { Patch.op = Patch.New path; prefix }
     | false, true ->
       (* Delete file *)
-      Some (Patch.Delete (Path.Local.of_string old_file))
+      let path = Path.Local.of_string old_file in
+      let prefix, path =
+        match Path.Local.split_first_component path with
+        | Some ("a", path) -> 1, path
+        | _ -> 0, path
+      in
+      Some { Patch.op = Patch.Delete path; prefix }
     | false, false ->
+      let old_path = Path.Local.of_string old_file in
+      let new_path = Path.Local.of_string new_file in
+      let new_path, prefix =
+        match
+          ( Path.Local.split_first_component old_path
+          , Path.Local.split_first_component new_path )
+        with
+        | Some ("a", _old_path), Some ("b", new_path) -> new_path, 1
+        | _, _ -> new_path, 0
+      in
       (* Replace file *)
-      Some (Patch.Replace (Path.Local.of_string new_file)))
+      Some { Patch.op = Patch.Replace new_path; prefix })
 ;;
 
 let prog =
@@ -69,29 +96,43 @@ let prog =
 let exec display ~patch ~dir ~stderr =
   let open Fiber.O in
   let* () = Fiber.return () in
-  (* Read the patch file. *)
-  Io.read_file patch
-  (* Collect all the patches. *)
-  |> patches_of_string
-  (* Depending on whether it is creating a new file or modifying an existing file
-     prepare the files that will be modified accordingly. For modifying existing files
-     this means materializing any symlinks or hardlinks. *)
-  |> List.iter ~f:(function
+  let patches =
+    patch
+    (* Read the patch file. *)
+    |> Io.read_file
+    (* Collect all the patches. *)
+    |> patches_of_string
+  in
+  List.iter patches ~f:(fun { Patch.op; prefix = _ } ->
+    (* Depending on whether it is creating a new file or modifying an existing file
+       prepare the files that will be modified accordingly. For modifying existing files
+       this means materializing any symlinks or hardlinks. *)
+    match op with
     | Patch.New _ | Delete _ -> ()
     | Replace file ->
       let file = Path.append_local dir file in
       let temp = Path.extend_basename file ~suffix:".for_patch" in
       Io.copy_file ~src:file ~dst:temp ();
       Path.rename temp file);
-  Process.run
-    ~dir
-    ~display
-    ~stdout_to:Process.(Io.null Out)
-    ~stderr_to:stderr
-    ~stdin_from:Process.(Io.null In)
-    Process.Failure_mode.Strict
-    (Lazy.force prog)
-    [ "-p1"; "-i"; Path.reach_for_running ~from:dir patch ]
+  match patches with
+  | [] -> User_error.raise [ Pp.text "No patches in patch file detected" ]
+  | { Patch.op = _; prefix } :: patches ->
+    (match
+       List.for_all ~f:(fun { Patch.op = _; prefix = p } -> Int.equal prefix p) patches
+     with
+     | false ->
+       User_error.raise [ Pp.text "Different prefix lengths in file unsupported" ]
+     | true ->
+       let p_flag = sprintf "-p%d" prefix in
+       Process.run
+         ~dir
+         ~display
+         ~stdout_to:Process.(Io.null Out)
+         ~stderr_to:stderr
+         ~stdin_from:Process.(Io.null In)
+         Process.Failure_mode.Strict
+         (Lazy.force prog)
+         [ p_flag; "-i"; Path.reach_for_running ~from:dir patch ])
 ;;
 
 module Spec = struct

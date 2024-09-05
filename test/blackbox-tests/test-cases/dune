@@ -29,7 +29,7 @@
   (alias runtest-js)))
 
 (cram
- (applies_to windows-diff)
+ (applies_to windows-diff github6644)
  (alias runtest-windows))
 
 ; DISABLED TESTS

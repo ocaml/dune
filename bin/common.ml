@@ -598,8 +598,10 @@ module Builder = struct
     ; log_file : Dune_util.Log.File.t
     }
 
+  let root t = t.root
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
+  let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
   let set_log_file t x = { t with log_file = x }
   let disable_log_file t = { t with log_file = No_log_file }
@@ -1136,7 +1138,7 @@ let print_entering_message c =
    we should probably refactor that at some point. *)
 let build (builder : Builder.t) =
   let root =
-    Workspace_root.create
+    Workspace_root.create_exn
       ~default_is_cwd:builder.default_root_is_cwd
       ~specified_by_user:builder.root
   in

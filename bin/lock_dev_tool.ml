@@ -208,3 +208,4 @@ let lock_ocamlformat () =
 ;;
 
 let lock_odoc () = lock_dev_tool Odoc None
+let lock_ocamllsp () = lock_dev_tool Ocamllsp None

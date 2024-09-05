@@ -39,6 +39,7 @@ let all : _ Cmdliner.Cmd.t list =
     ; Promotion.group
     ; Pkg.group
     ; Pkg.Alias.group
+    ; Tools.group
     ]
   in
   terms @ groups

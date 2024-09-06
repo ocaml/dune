@@ -159,9 +159,9 @@ module Print_config = struct
     | Kwd -> [ `Bold; `Fg_blue ]
     | Id -> [ `Bold; `Fg_yellow ]
     | Prompt -> [ `Bold; `Fg_green ]
-    | Hint -> [ `Italic; `Fg_white ]
-    | Details -> [ `Dim; `Fg_white ]
-    | Ok -> [ `Dim; `Fg_green ]
+    | Hint -> [ `Italic ]
+    | Details -> [ `Dim ]
+    | Ok -> [ `Fg_green ]
     | Debug -> [ `Underline; `Fg_bright_cyan ]
     | Success -> [ `Bold; `Fg_green ]
     | Ansi_styles l -> l

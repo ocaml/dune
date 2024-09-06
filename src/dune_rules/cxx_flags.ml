@@ -22,8 +22,7 @@ let base_cxx_flags ~for_ cc =
 ;;
 
 let fdiagnostics_color = function
-  | (Gcc | Clang) when Lazy.force Ansi_color.stderr_supports_color ->
-    [ "-fdiagnostics-color=always" ]
+  | Gcc | Clang -> [ "-fdiagnostics-color=always" ]
   | _ -> []
 ;;
 

@@ -57,6 +57,54 @@ module Alias = struct
   let fmt ~dir = Alias.make Alias0.fmt ~dir
 end
 
+module Ocamlformat = struct
+  (* Config files for ocamlformat. When these are changed, running
+     `dune fmt` should cause ocamlformat to re-format the ocaml files
+     in the project. *)
+  let config_files = [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ]
+
+  let extra_deps dir =
+    (* Set up the dependency on ocamlformat config files so changing
+       these files triggers ocamlformat to run again. *)
+    depend_on_files ~named:config_files (Path.build dir) |> Action_builder.with_no_targets
+  ;;
+
+  let flag_of_kind = function
+    | Ml_kind.Impl -> "--impl"
+    | Intf -> "--intf"
+  ;;
+
+  let action ~input kind =
+    let module S = String_with_vars in
+    let dir = Path.Build.parent_exn input in
+    ( Dune_lang.Action.chdir
+        (S.make_pform Loc.none (Var Workspace_root))
+        (Dune_lang.Action.run
+           (S.make_text Loc.none "ocamlformat")
+           [ S.make_text Loc.none (flag_of_kind kind)
+           ; S.make_pform Loc.none (Var Input_file)
+           ])
+    , extra_deps dir )
+  ;;
+end
+
+let format_action format ~input ~output ~expander kind =
+  let loc, (action, extra_deps) =
+    match (format : Dialect.Format.t) with
+    | Ocamlformat -> Loc.none, Ocamlformat.action ~input kind
+    | Action (loc, action) -> loc, (action, With_targets.return ())
+  in
+  let open Action_builder.With_targets.O in
+  extra_deps
+  >>> Pp_spec_rules.action_for_pp_with_target
+        ~sandbox:Sandbox_config.default
+        ~loc
+        ~expander
+        ~action
+        ~src:input
+        ~target:output
+;;
+
 let gen_rules_output
   sctx
   (config : Format_config.t)
@@ -81,7 +129,7 @@ let gen_rules_output
      let* () =
        Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
      in
-     let+ loc, action, extra_deps =
+     let+ format =
        match Dialect.format dialect kind with
        | Some _ as action -> action
        | None ->
@@ -89,23 +137,10 @@ let gen_rules_output
           | None -> Dialect.format Dialect.ocaml kind
           | Some _ -> None)
      in
-     let extra_deps =
-       match extra_deps with
-       | [] -> Action_builder.return ()
-       | extra_deps -> depend_on_files ~named:extra_deps (Path.build dir)
-     in
-     let open Action_builder.With_targets.O in
-     Action_builder.with_no_targets extra_deps
-     >>> Pp_spec_rules.action_for_pp_with_target
-           ~sandbox:Sandbox_config.default
-           ~loc
-           ~expander
-           ~action
-           ~src:input
-           ~target:output)
-    |> Memo.Option.iter ~f:(fun action ->
-      Super_context.add_rule sctx ~mode:Standard ~loc ~dir action
-      >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
+     format_action format ~input ~output ~expander kind
+     |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
+     >>> add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
+    |> Memo.Option.iter ~f:Fun.id
   in
   let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
   let* () =

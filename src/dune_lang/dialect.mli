@@ -22,13 +22,19 @@ open Ocaml
 
 type t
 
+module Format : sig
+  type t =
+    | Action of (Loc.t * Action.t)
+    | Ocamlformat
+end
+
 val name : t -> string
 val to_dyn : t -> Dyn.t
 val encode : t Encoder.t
 val decode : t Decoder.t
 val extension : t -> Ml_kind.t -> Filename.Extension.t option
 val preprocess : t -> Ml_kind.t -> (Loc.t * Action.t) option
-val format : t -> Ml_kind.t -> (Loc.t * Action.t * string list) option
+val format : t -> Ml_kind.t -> Format.t option
 val print_ast : t -> Ml_kind.t -> (Loc.t * Action.t) option
 val ocaml : t
 val reason : t

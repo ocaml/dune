@@ -790,83 +790,162 @@ end = struct
         ])
   ;;
 
+  let write_event ~start ~dir name =
+    let () =
+      match Dune_stats.global () with
+      | None -> ()
+      | Some stats ->
+        let stop = Unix.gettimeofday () in
+        let module Event = Chrome_trace.Event in
+        let module Timestamp = Event.Timestamp in
+        let dur = Timestamp.of_float_seconds (stop -. start) in
+        let common =
+          Event.common_fields ~name ~ts:(Timestamp.of_float_seconds start) ()
+        in
+        let args = [ "dir", `String (Path.Build.to_string dir) ] in
+        if Timestamp.to_float_seconds dur < 1.0
+        then ()
+        else Dune_stats.emit stats (Event.complete common ~args ~dur)
+    in
+    Unix.gettimeofday ()
+  ;;
+
   let load_build_directory_exn
     ({ Dir_triage.Build_directory.dir; context_name; context_type; sub_dir } as build_dir)
     =
+    let load_init = Unix.gettimeofday () in
     (* Load all the rules *)
-    Gen_rules.gen_rules build_dir
-    >>= function
-    | Under_directory_target { directory_target_ancestor } ->
-      Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
-    | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
-      let build_dir_only_sub_dirs =
-        Build_only_sub_dirs.find build_dir_only_sub_dirs dir
-      in
-      Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
-        let name = Path.Build.basename dir_target in
-        if Path.Build.equal (Path.Build.parent_exn dir_target) dir
-           && Subdir_set.mem build_dir_only_sub_dirs name
-        then report_rule_internal_dir_conflict name loc);
-      let* rules_produced = Memo.Lazy.force rules in
-      let rules =
-        let dir = Path.build dir in
-        Rules.find rules_produced dir
-      in
-      let collected = Rules.Dir_rules.consume rules in
-      let rules = collected.rules in
-      (* Compute the set of sources and targets promoted to the source tree that
-         must not be copied to the build directory. *)
-      (* Take into account the source files *)
-      let* { source_filenames; source_dirs } =
-        match context_type with
-        | Empty -> Memo.return Source_files_and_dirs.empty
-        | With_sources ->
-          let source_paths_to_ignore =
-            source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
-          in
-          source_files_and_dirs source_paths_to_ignore sub_dir
-      in
-      let copy_rules =
-        let ctx_dir = Context_name.build_dir context_name in
-        create_copy_rules
-          ~dir:sub_dir
-          ~ctx_dir
-          ~non_target_source_filenames:source_filenames
-      in
-      (* Compile the rules and cleanup stale artifacts *)
-      let rules =
-        (* Filter out fallback rules *)
-        if Filename.Set.is_empty source_filenames
-        then
-          (* If there are no source files to copy, fallback rules are
-             automatically kept *)
-          rules
-        else add_non_fallback_rules ~init:copy_rules ~dir ~source_filenames rules
-      in
-      let* descendants_to_keep =
-        descendants_to_keep build_dir build_dir_only_sub_dirs ~source_dirs rules_produced
-      in
-      let rules_here = compile_rules ~dir ~source_dirs rules in
-      validate_directory_targets
-        ~dir
-        ~real_directory_targets:(Rules.directory_targets rules_produced)
-        ~directory_targets;
-      (let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
-       remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
-       remove_old_sub_dirs_in_anonymous_actions_dir
-         ~dir:
-           (Path.Build.append_local
-              Dpath.Build.anonymous_actions_dir
-              (Path.Build.local dir))
-         ~subdirs_to_keep);
-      let+ aliases =
-        match context_type with
-        | With_sources -> compute_alias_expansions ~collected ~dir
-        | Empty ->
-          (* There are no aliases in contexts without sources *)
-          Memo.return Alias.Name.Map.empty
-      in
-      Loaded.Build { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
+    let* rules = Gen_rules.gen_rules build_dir in
+    let timer =
+      write_event ~start:load_init ~dir ("Gen rules: " ^ Path.Build.to_string dir)
+    in
+    let+ res =
+      match rules with
+      | Under_directory_target { directory_target_ancestor } ->
+        Memo.return (Loaded.Build_under_directory_target { directory_target_ancestor })
+      | Normal { rules; build_dir_only_sub_dirs; directory_targets } ->
+        let build_dir_only_sub_dirs =
+          Build_only_sub_dirs.find build_dir_only_sub_dirs dir
+        in
+        let timer =
+          write_event ~start:timer ~dir ("Find build subdirs: " ^ Path.Build.to_string dir)
+        in
+        Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
+          let name = Path.Build.basename dir_target in
+          if Path.Build.equal (Path.Build.parent_exn dir_target) dir
+             && Subdir_set.mem build_dir_only_sub_dirs name
+          then report_rule_internal_dir_conflict name loc);
+        let timer =
+          write_event
+            ~start:timer
+            ~dir
+            ("Check rule conflicts: " ^ Path.Build.to_string dir)
+        in
+        let* rules_produced = Memo.Lazy.force rules in
+        let timer =
+          write_event ~start:timer ~dir ("Produce rules: " ^ Path.Build.to_string dir)
+        in
+        let rules =
+          let dir = Path.build dir in
+          Rules.find rules_produced dir
+        in
+        let timer =
+          write_event ~start:timer ~dir ("Find rules: " ^ Path.Build.to_string dir)
+        in
+        let collected = Rules.Dir_rules.consume rules in
+        let timer =
+          write_event ~start:timer ~dir ("Consume rules: " ^ Path.Build.to_string dir)
+        in
+        let rules = collected.rules in
+        (* Compute the set of sources and targets promoted to the source tree that
+           must not be copied to the build directory. *)
+        (* Take into account the source files *)
+        let* { source_filenames; source_dirs } =
+          match context_type with
+          | Empty -> Memo.return Source_files_and_dirs.empty
+          | With_sources ->
+            let source_paths_to_ignore =
+              source_paths_to_ignore ~dir build_dir_only_sub_dirs rules
+            in
+            source_files_and_dirs source_paths_to_ignore sub_dir
+        in
+        let timer =
+          write_event
+            ~start:timer
+            ~dir
+            ("Compute sources and targets: " ^ Path.Build.to_string dir)
+        in
+        let copy_rules =
+          let ctx_dir = Context_name.build_dir context_name in
+          create_copy_rules
+            ~dir:sub_dir
+            ~ctx_dir
+            ~non_target_source_filenames:source_filenames
+        in
+        let timer =
+          write_event ~start:timer ~dir ("Create copy rules: " ^ Path.Build.to_string dir)
+        in
+        (* Compile the rules and cleanup stale artifacts *)
+        let rules =
+          (* Filter out fallback rules *)
+          if Filename.Set.is_empty source_filenames
+          then
+            (* If there are no source files to copy, fallback rules are
+               automatically kept *)
+            rules
+          else add_non_fallback_rules ~init:copy_rules ~dir ~source_filenames rules
+        in
+        let* descendants_to_keep =
+          descendants_to_keep
+            build_dir
+            build_dir_only_sub_dirs
+            ~source_dirs
+            rules_produced
+        in
+        let rules_here = compile_rules ~dir ~source_dirs rules in
+        let timer =
+          write_event ~start:timer ~dir ("Compile rules: " ^ Path.Build.to_string dir)
+        in
+        validate_directory_targets
+          ~dir
+          ~real_directory_targets:(Rules.directory_targets rules_produced)
+          ~directory_targets;
+        let timer =
+          write_event
+            ~start:timer
+            ~dir
+            ("Validate dir targets: " ^ Path.Build.to_string dir)
+        in
+        (let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
+         remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
+         remove_old_sub_dirs_in_anonymous_actions_dir
+           ~dir:
+             (Path.Build.append_local
+                Dpath.Build.anonymous_actions_dir
+                (Path.Build.local dir))
+           ~subdirs_to_keep);
+        let timer =
+          write_event
+            ~start:timer
+            ~dir
+            ("Remove old artifacts: " ^ Path.Build.to_string dir)
+        in
+        let+ aliases =
+          match context_type with
+          | With_sources -> compute_alias_expansions ~collected ~dir
+          | Empty ->
+            (* There are no aliases in contexts without sources *)
+            Memo.return Alias.Name.Map.empty
+        in
+        ignore
+          (write_event
+             ~start:timer
+             ~dir
+             ("Compute alias expansions: " ^ Path.Build.to_string dir));
+        Loaded.Build { Loaded.allowed_subdirs = descendants_to_keep; rules_here; aliases }
+    in
+    ignore (write_event ~start:load_init ~dir ("Load rules: " ^ Path.Build.to_string dir));
+    res
   ;;
 
   let load_dir_impl ~dir : Loaded.t Memo.t =

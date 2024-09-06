@@ -45,11 +45,7 @@ test that we correctly filter out the color codes
   >   (language c) (names stub)))
   > EOF
 
-  $ dune build
-  File "dune", line 4, characters 22-26:
-  4 |   (language c) (names stub)))
-                            ^^^^
-  stub.c:1:2: error: #error "error message"
-      1 | #error "error message"
-        |  ^~~~~
+We check there is no ESC [ sequence.
+
+  $ dune build 2>&1 | grep `printf '\033\\['`
   [1]

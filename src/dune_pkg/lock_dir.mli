@@ -90,7 +90,8 @@ module Write_disk : sig
   val commit : t -> unit
 end
 
-val read_disk : Path.Source.t -> t
+val read_disk : Path.Source.t -> (t, User_message.t) result
+val read_disk_exn : Path.Source.t -> t
 
 module Make_load (Io : sig
     include Monad.S

@@ -806,7 +806,8 @@ module Load_immediate = Make_load (struct
     let with_lexbuf_from_file path ~f = Io.with_lexbuf_from_file (Path.source path) ~f
   end)
 
-let read_disk = Load_immediate.load_exn
+let read_disk = Load_immediate.load
+let read_disk_exn = Load_immediate.load_exn
 
 let transitive_dependency_closure t start =
   let missing_packages =

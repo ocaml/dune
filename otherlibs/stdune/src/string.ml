@@ -278,7 +278,22 @@ let need_quoting s =
 ;;
 
 let quote_for_shell s = if need_quoting s then Stdlib.Filename.quote s else s
-let quote_list_for_shell l = List.map l ~f:quote_for_shell |> concat ~sep:" "
+
+let quote_list_for_shell = function
+  | [] -> ""
+  | prog :: args ->
+    let prog =
+      if Sys.win32 && contains prog '/'
+      then
+        map
+          ~f:(function
+            | '/' -> '\\'
+            | c -> c)
+          prog
+      else prog
+    in
+    quote_for_shell prog :: List.map ~f:quote_for_shell args |> concat ~sep:" "
+;;
 
 let of_list chars =
   let s = Bytes.make (List.length chars) '0' in

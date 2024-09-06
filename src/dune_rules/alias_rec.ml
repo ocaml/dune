@@ -70,6 +70,10 @@ include Alias_builder.Alias_rec (struct
       >>= function
       | None -> Action_builder.return Alias_builder.Alias_status.Not_defined
       | Some src_dir ->
-        Map_reduce.map_reduce src_dir ~traverse:Source_dir_status.Set.normal_only ~f
+        Map_reduce.map_reduce
+          src_dir
+          ~traverse:Source_dir_status.Set.normal_only
+          ~trace_event_name:"Alias builder"
+          ~f
     ;;
   end)

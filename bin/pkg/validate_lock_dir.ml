@@ -22,7 +22,7 @@ let enumerate_lock_dirs_by_path ~lock_dirs () =
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
     then (
-      try Some (Ok (lock_dir_path, Lock_dir.read_disk lock_dir_path)) with
+      try Some (Ok (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path)) with
       | User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
     else None)
 ;;

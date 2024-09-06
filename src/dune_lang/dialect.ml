@@ -4,12 +4,38 @@ module Ml_kind = Ocaml.Ml_kind
 module Cm_kind = Ocaml.Cm_kind
 module Mode = Ocaml.Mode
 
+module Format = struct
+  type t =
+    | Action of (Loc.t * Action.t)
+    | Ocamlformat
+
+  let decode =
+    let open Dune_sexp.Decoder in
+    map ~f:(fun (loc, x) -> Action (loc, x)) (located Action.decode_dune_file)
+  ;;
+
+  let encode = function
+    | Action (_, action) -> Action.encode action
+    | Ocamlformat ->
+      (* There is no way for a user to cause this case to be encoded,
+         and supporting it would complicate the code. *)
+      Code_error.raise
+        "Attempted to encode the [Ocamlformat] case of [Format.t] which is not supported."
+        []
+  ;;
+
+  let to_dyn = function
+    | Action (_, action) -> Dyn.variant "Action" [ Action.to_dyn action ]
+    | Ocamlformat -> Dyn.variant "Ocamlformat" []
+  ;;
+end
+
 module File_kind = struct
   type t =
     { kind : Ml_kind.t
     ; extension : Filename.Extension.t
     ; preprocess : (Loc.t * Action.t) option
-    ; format : (Loc.t * Action.t * string list) option
+    ; format : Format.t option
     ; print_ast : (Loc.t * Action.t) option
     ; merlin_reader : (Loc.t * string list) option
     }
@@ -29,7 +55,7 @@ module File_kind = struct
        :: record_fields
             [ field "extension" string extension
             ; field_o "preprocess" Action.encode (Option.map ~f:snd preprocess)
-            ; field_o "format" Action.encode (Option.map ~f:(fun (_, x, _) -> x) format)
+            ; field_o "format" Format.encode format
             ; field_o
                 "print_ast"
                 Action.encode
@@ -44,7 +70,7 @@ module File_kind = struct
       [ "kind", Ml_kind.to_dyn kind
       ; "extension", string extension
       ; "preprocess", option (fun (_, x) -> Action.to_dyn x) preprocess
-      ; "format", option (fun (_, x, y) -> pair Action.to_dyn (list string) (x, y)) format
+      ; "format", option Format.to_dyn format
       ; "print_ast", option (fun (_, x) -> Action.to_dyn x) print_ast
       ; "merlin_reader", option (fun (_, x) -> list string x) merlin_reader
       ]
@@ -83,10 +109,7 @@ let decode =
   let kind kind =
     let+ loc, extension = field "extension" (located extension)
     and+ preprocess = field_o "preprocess" (located Action.decode_dune_file)
-    and+ format =
-      field_o
-        "format"
-        (map ~f:(fun (loc, x) -> loc, x, []) (located Action.decode_dune_file))
+    and+ format = field_o "format" Format.decode
     and+ print_ast = field_o "print_ast" (located Action.decode_dune_file)
     and+ merlin_reader =
       field_o
@@ -158,20 +181,7 @@ let merlin_reader { file_kinds; _ } ml_kind =
 ;;
 
 let ocaml =
-  let format kind =
-    let flag_of_kind = function
-      | Ml_kind.Impl -> "--impl"
-      | Intf -> "--intf"
-    in
-    let module S = String_with_vars in
-    Action.chdir
-      (S.make_pform Loc.none (Var Workspace_root))
-      (Action.run
-         (S.make_text Loc.none "ocamlformat")
-         [ S.make_text Loc.none (flag_of_kind kind)
-         ; S.make_pform Loc.none (Var Input_file)
-         ])
-  in
+  let format = Fun.const Format.Ocamlformat in
   let print_ast _kind =
     let module S = String_with_vars in
     Action.chdir
@@ -188,11 +198,7 @@ let ocaml =
     { File_kind.kind
     ; extension
     ; preprocess = None
-    ; format =
-        Some
-          ( Loc.none
-          , format kind
-          , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
+    ; format = Some (format kind)
     ; print_ast = Some (Loc.none, print_ast kind)
     ; merlin_reader = None
     }
@@ -213,7 +219,7 @@ let reason =
         ; S.make_pform Loc.none (Var Input_file)
         ]
     in
-    let format =
+    let format_action =
       Action.run (S.make_text Loc.none "refmt") [ S.make_pform Loc.none (Var Input_file) ]
     in
     let print_ast =
@@ -235,7 +241,7 @@ let reason =
     { File_kind.kind
     ; extension
     ; preprocess = Some (Loc.none, preprocess)
-    ; format = Some (Loc.none, format, [])
+    ; format = Some (Format.Action (Loc.none, format_action))
     ; print_ast = Some (Loc.none, print_ast)
     ; merlin_reader = None
     }
@@ -257,7 +263,7 @@ let rescript =
         ; S.make_pform Loc.none (Var Input_file)
         ]
     in
-    let format =
+    let format_action =
       Action.run
         (S.make_text Loc.none exe_name)
         [ S.make_pform Loc.none (Var Input_file) ]
@@ -265,7 +271,7 @@ let rescript =
     { File_kind.kind
     ; extension
     ; preprocess = Some (Loc.none, preprocess)
-    ; format = Some (Loc.none, format, [])
+    ; format = Some (Format.Action (Loc.none, format_action))
     ; print_ast = None
     ; merlin_reader = None
     }

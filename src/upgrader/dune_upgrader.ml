@@ -369,10 +369,13 @@ let upgrade () =
                   type t = Source_tree.Dir.t * project_version
                 end))
          in
-        M.map_reduce ~traverse:Source_dir_status.Set.normal_only ~f:(fun dir ->
-          let project = Source_tree.Dir.project dir in
-          let detected_version = detect_project_version project dir in
-          Memo.return (Appendable_list.singleton (dir, detected_version))))
+        M.map_reduce
+          ~traverse:Source_dir_status.Set.normal_only
+          ~trace_event_name:"Upgrader"
+          ~f:(fun dir ->
+            let project = Source_tree.Dir.project dir in
+            let detected_version = detect_project_version project dir in
+            Memo.return (Appendable_list.singleton (dir, detected_version))))
       >>| Appendable_list.to_list
     in
     let v1_updates = ref false in

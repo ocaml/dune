@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - bench/fix-melange-pupilfirst
+      - ci-bench/fix-after-ocaml51
 
 permissions:
   # deployments permission to deploy GitHub pages website
@@ -22,7 +22,7 @@ jobs:
         os:
           - ubuntu-latest
         ocaml-compiler:
-          - 4.14.x
+          - 5.1.x
 
     runs-on: ${{ matrix.os }}
 

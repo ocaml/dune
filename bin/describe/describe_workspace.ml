@@ -387,58 +387,63 @@ module Crawl = struct
   let executables sctx ~options ~project ~dir (exes : Executables.t)
     : (Descr.Item.t * Lib.Set.t) option Memo.t
     =
-    let first_exe = snd (Nonempty_list.hd exes.names) in
-    let* scope =
-      Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
-    in
-    let* modules_, obj_dir =
-      let+ modules_, obj_dir =
-        Dir_contents.get sctx ~dir
-        >>= Dir_contents.ocaml
-        >>= Ml_sources.modules_and_obj_dir
-              ~libs:(Scope.libs scope)
-              ~for_:(Exe { first_exe })
+    let* expander = Super_context.expander sctx ~dir in
+    Expander.eval_blang expander exes.enabled_if
+    >>= function
+    | false -> Memo.return None
+    | true ->
+      let first_exe = snd (Nonempty_list.hd exes.names) in
+      let* scope =
+        Scope.DB.find_by_project (Super_context.context sctx |> Context.name) project
       in
-      Modules.With_vlib.modules modules_, obj_dir
-    in
-    let* pp_map =
-      let+ version =
-        let+ ocaml = Super_context.context sctx |> Context.ocaml in
-        ocaml.version
+      let* modules_, obj_dir =
+        let+ modules_, obj_dir =
+          Dir_contents.get sctx ~dir
+          >>= Dir_contents.ocaml
+          >>= Ml_sources.modules_and_obj_dir
+                ~libs:(Scope.libs scope)
+                ~for_:(Exe { first_exe })
+        in
+        Modules.With_vlib.modules modules_, obj_dir
       in
-      Staged.unstage
-      @@ Pp_spec.pped_modules_map
-           (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
-           version
-    in
-    let deps_of module_ =
-      let module_ = pp_map module_ in
-      immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
-    in
-    let obj_dir = Obj_dir.of_local obj_dir in
-    let* modules_ = modules ~obj_dir ~deps_of modules_ in
-    let+ requires =
-      let* compile_info = Exe_rules.compile_info ~scope exes in
-      let open Resolve.Memo.O in
-      let* requires = Lib.Compile.direct_requires compile_info in
-      if options.with_pps
-      then
-        let+ pps = Lib.Compile.pps compile_info in
-        pps @ requires
-      else Resolve.Memo.return requires
-    in
-    match Resolve.peek requires with
-    | Error () -> None
-    | Ok libs ->
-      let include_dirs = Obj_dir.all_cmis obj_dir in
-      let exe_descr =
-        { Descr.Exe.names = List.map ~f:snd (Nonempty_list.to_list exes.names)
-        ; requires = List.map ~f:uid_of_library libs
-        ; modules = modules_
-        ; include_dirs
-        }
+      let* pp_map =
+        let+ version =
+          let+ ocaml = Super_context.context sctx |> Context.ocaml in
+          ocaml.version
+        in
+        Staged.unstage
+        @@ Pp_spec.pped_modules_map
+             (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+             version
       in
-      Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs)
+      let deps_of module_ =
+        let module_ = pp_map module_ in
+        immediate_deps_of_module ~options ~obj_dir ~modules:modules_ module_
+      in
+      let obj_dir = Obj_dir.of_local obj_dir in
+      let* modules_ = modules ~obj_dir ~deps_of modules_ in
+      let+ requires =
+        let* compile_info = Exe_rules.compile_info ~scope exes in
+        let open Resolve.Memo.O in
+        let* requires = Lib.Compile.direct_requires compile_info in
+        if options.with_pps
+        then
+          let+ pps = Lib.Compile.pps compile_info in
+          pps @ requires
+        else Resolve.Memo.return requires
+      in
+      (match Resolve.peek requires with
+       | Error () -> None
+       | Ok libs ->
+         let include_dirs = Obj_dir.all_cmis obj_dir in
+         let exe_descr =
+           { Descr.Exe.names = List.map ~f:snd (Nonempty_list.to_list exes.names)
+           ; requires = List.map ~f:uid_of_library libs
+           ; modules = modules_
+           ; include_dirs
+           }
+         in
+         Some (Descr.Item.Executables exe_descr, Lib.Set.of_list libs))
   ;;
 
   (* Builds a workspace item for the provided library object *)

@@ -80,6 +80,17 @@ let no_prefix =
 |}
 ;;
 
+let random_prefix =
+  {|
+diff -u bar/foo.ml baz/foo.ml
+--- bar/foo.ml	2024-08-29 17:37:53.114980665 +0200
++++ baz/foo.ml	2024-08-29 17:38:00.243088256 +0200
+@@ -1 +1 @@
+-This is wrong
++This is right
+|}
+;;
+
 (* The file is called "foo bar" *)
 let spaces =
   {|
@@ -225,6 +236,17 @@ let%expect_test "patching a file without prefix" =
   test [ "foo.ml", "This is wrong\n" ] ("foo.patch", no_prefix);
   check "foo.ml";
   [%expect {| This is right |}]
+;;
+
+let%expect_test "patching files with freestyle prefix" =
+  try
+    test [ "foo.ml", "This is wrong\n" ] ("foo.patch", random_prefix);
+    check "foo.ml";
+    [%expect.unreachable]
+  with
+  | Dune_util.Report_error.Already_reported ->
+    print_endline @@ normalize_error_path [%expect.output];
+    [%expect {| Error: foo.ml: No such file or directory |}]
 ;;
 
 let%expect_test "patching files with spaces" =

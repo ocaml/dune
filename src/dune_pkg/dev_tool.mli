@@ -2,6 +2,7 @@ open! Import
 
 type t = Ocamlformat
 
+val all : t list
 val equal : t -> t -> bool
 val package_name : t -> Package_name.t
 val of_package_name : Package_name.t -> t

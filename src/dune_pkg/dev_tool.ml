@@ -2,6 +2,8 @@ open! Import
 
 type t = Ocamlformat
 
+let all = [ Ocamlformat ]
+
 let equal a b =
   match a, b with
   | Ocamlformat, Ocamlformat -> true

@@ -224,13 +224,7 @@ let%expect_test "Using a patch from 'diff' with a timestamp" =
 let%expect_test "patching a file without prefix" =
   test [ "foo.ml", "This is wrong\n" ] ("foo.patch", no_prefix);
   check "foo.ml";
-  [%expect.unreachable]
-[@@expect.uncaught_exn
-  {|
-  (Dune_util__Report_error.Already_reported)
-  Trailing output
-  ---------------
-  Command exited with code 1. |}]
+  [%expect {| This is right |}]
 ;;
 
 let%expect_test "patching files with spaces" =

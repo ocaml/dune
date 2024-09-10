@@ -239,14 +239,9 @@ let%expect_test "patching a file without prefix" =
 ;;
 
 let%expect_test "patching files with freestyle prefix" =
-  try
-    test [ "foo.ml", "This is wrong\n" ] ("foo.patch", random_prefix);
-    check "foo.ml";
-    [%expect.unreachable]
-  with
-  | Dune_util.Report_error.Already_reported ->
-    print_endline @@ normalize_error_path [%expect.output];
-    [%expect {| Error: foo.ml: No such file or directory |}]
+  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", random_prefix);
+  check "foo.ml";
+  [%expect {| This is right |}]
 ;;
 
 let%expect_test "patching files with spaces" =

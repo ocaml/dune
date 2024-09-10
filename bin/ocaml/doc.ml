@@ -23,7 +23,7 @@ let term =
       Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request
     in
-    let absolute_toplevel_index_path =
+    let relative_toplevel_index_path =
       let toplevel_index_path =
         let is_default ctx = ctx |> Context.name |> Dune_engine.Context_name.is_default in
         let doc_ctx = List.find_exn setup.contexts ~f:is_default in
@@ -32,12 +32,12 @@ let term =
       Path.(toplevel_index_path |> build |> to_string_maybe_quoted)
     in
     Console.print
-      [ Pp.textf "Docs built. Index can be found here: %s" absolute_toplevel_index_path ];
+      [ Pp.textf "Docs built. Index can be found here: %s" relative_toplevel_index_path ];
     match
       let open Option.O in
       let* cmd_name, args =
         match Platform.OS.value with
-        | Darwin -> Some ("open", [ "-u" ])
+        | Darwin -> Some ("open", [])
         | Other | FreeBSD | NetBSD | OpenBSD | Haiku | Linux -> Some ("xdg-open", [])
         | Windows -> None
       in
@@ -47,8 +47,7 @@ let term =
       in
       ( open_command
       , (* First element of argv is the name of the command. *)
-        let url = "file://" ^ absolute_toplevel_index_path in
-        (cmd_name :: args) @ [ url ] )
+        (cmd_name :: args) @ [ relative_toplevel_index_path ] )
     with
     | Some (cmd, args) ->
       Proc.restore_cwd_and_execve (Path.to_absolute_filename cmd) args ~env:Env.initial

@@ -105,15 +105,17 @@ module Pkg = struct
     { build_command : Build_command.t option
     ; install_command : Action.t option
     ; depends : (Loc.t * Package_name.t) list
+    ; depexts : string list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
-  let equal { build_command; install_command; depends; info; exported_env } t =
+  let equal { build_command; install_command; depends; depexts; info; exported_env } t =
     Option.equal Build_command.equal build_command t.build_command
     (* CR-rgrinberg: why do we ignore locations? *)
     && Option.equal Action.equal_no_locs install_command t.install_command
     && List.equal (Tuple.T2.equal Loc.equal Package_name.equal) depends t.depends
+    && List.equal String.equal depexts t.depexts
     && Pkg_info.equal info t.info
     && List.equal
          (Action.Env_update.equal String_with_vars.equal)
@@ -121,21 +123,24 @@ module Pkg = struct
          t.exported_env
   ;;
 
-  let remove_locs { build_command; install_command; depends; info; exported_env } =
+  let remove_locs { build_command; install_command; depends; depexts; info; exported_env }
+    =
     { info = Pkg_info.remove_locs info
     ; exported_env =
         List.map exported_env ~f:(Action.Env_update.map ~f:String_with_vars.remove_locs)
     ; depends = List.map depends ~f:(fun (_, pkg) -> Loc.none, pkg)
+    ; depexts
     ; build_command = Option.map build_command ~f:Build_command.remove_locs
     ; install_command = Option.map install_command ~f:Action.remove_locs
     }
   ;;
 
-  let to_dyn { build_command; install_command; depends; info; exported_env } =
+  let to_dyn { build_command; install_command; depends; depexts; info; exported_env } =
     Dyn.record
       [ "build_command", Dyn.option Build_command.to_dyn build_command
       ; "install_command", Dyn.option Action.to_dyn install_command
       ; "depends", Dyn.list (Dyn.pair Loc.to_dyn_hum Package_name.to_dyn) depends
+      ; "depexts", Dyn.list String.to_dyn depexts
       ; "info", Pkg_info.to_dyn info
       ; ( "exported_env"
         , Dyn.list (Action.Env_update.to_dyn String_with_vars.to_dyn) exported_env )
@@ -157,6 +162,7 @@ module Pkg = struct
     let version = "version"
     let install = "install"
     let depends = "depends"
+    let depexts = "depexts"
     let source = "source"
     let dev = "dev"
     let exported_env = "exported_env"
@@ -172,6 +178,7 @@ module Pkg = struct
        and+ build_command = Build_command.decode
        and+ depends =
          field ~default:[] Fields.depends (repeat (located Package_name.decode))
+       and+ depexts = field ~default:[] Fields.depexts (repeat string)
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
        and+ exported_env =
@@ -196,7 +203,7 @@ module Pkg = struct
            in
            { Pkg_info.name; version; dev; source; extra_sources }
          in
-         { build_command; depends; install_command; info; exported_env }
+         { build_command; depends; depexts; install_command; info; exported_env }
   ;;
 
   let encode_extra_source (local, source) : Dune_sexp.t =
@@ -210,6 +217,7 @@ module Pkg = struct
     { build_command
     ; install_command
     ; depends
+    ; depexts
     ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
     ; exported_env
     }
@@ -220,6 +228,7 @@ module Pkg = struct
       ; field_o Fields.install Action.encode install_command
       ; Build_command.encode build_command
       ; field_l Fields.depends Package_name.encode (List.map depends ~f:snd)
+      ; field_l Fields.depexts string depexts
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
       ; field_l Fields.exported_env Action.Env_update.encode exported_env

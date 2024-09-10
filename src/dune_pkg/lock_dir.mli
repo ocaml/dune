@@ -26,6 +26,7 @@ module Pkg : sig
     { build_command : Build_command.t option
     ; install_command : Action.t option
     ; depends : (Loc.t * Package_name.t) list
+    ; depexts : string list
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }

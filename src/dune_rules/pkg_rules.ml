@@ -327,6 +327,7 @@ module Pkg = struct
     ; build_command : Build_command.t option
     ; install_command : Dune_lang.Action.t option
     ; depends : t list
+    ; depexts : string list
     ; info : Pkg_info.t
     ; paths : Path.t Paths.t
     ; write_paths : Path.Build.t Paths.t
@@ -482,6 +483,7 @@ module Expander0 = struct
     ; artifacts : Path.t Filename.Map.t
     ; depends :
         (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
+    ; depexts : string list
     ; context : Context_name.t
     ; version : Package_version.t
     ; env : Value.t list Env.Map.t
@@ -586,6 +588,7 @@ module Run_with_path = struct
     val with_error
       :  accepted_exit_codes:int Predicate.t
       -> pkg:Dune_pkg.Package_name.t * Loc.t
+      -> depexts:string list
       -> display:Display.t
       -> (error -> 'a)
       -> 'a
@@ -594,6 +597,7 @@ module Run_with_path = struct
   end = struct
     type error =
       { pkg : Dune_pkg.Package_name.t * Loc.t
+      ; depexts : string list
       ; filename : Dpath.t
       ; io : Process.Io.output Process.Io.t
       ; accepted_exit_codes : int Predicate.t
@@ -602,22 +606,29 @@ module Run_with_path = struct
 
     let io t = t.io
 
-    let with_error ~accepted_exit_codes ~pkg ~display f =
+    let with_error ~accepted_exit_codes ~pkg ~depexts ~display f =
       let filename = Temp.create File ~prefix:"dune-pkg" ~suffix:"stderr" in
       let io = Process.Io.(file filename Out) in
-      let t = { filename; io; accepted_exit_codes; display; pkg } in
+      let t = { filename; io; accepted_exit_codes; display; pkg; depexts } in
       let result = f t in
       Temp.destroy File filename;
       result
     ;;
 
     let to_paragraphs t error =
+      let _ = t.depexts in
       let pp_pkg =
         let pkg_name = Dune_pkg.Package_name.to_string (fst t.pkg) in
         Pp.textf "Logs for package %s" pkg_name
       in
       let loc = snd t.pkg in
-      [ pp_pkg; Pp.verbatim error ], loc
+      ( [ pp_pkg
+        ; Pp.verbatim error
+        ; Pp.textf "May have been due to the missing depexts:"
+        ; Pp.enumerate ~f:Pp.verbatim t.depexts
+        ; Pp.textf "(If already installed, you could ignore this message)"
+        ]
+      , loc )
     ;;
 
     let prerr ~rc error =
@@ -647,6 +658,7 @@ module Run_with_path = struct
       ; args : 'path arg Array.Immutable.t
       ; ocamlfind_destdir : 'path
       ; pkg : Dune_pkg.Package_name.t * Loc.t
+      ; depexts : string list
       }
 
     let name = "run-with-path"
@@ -667,7 +679,7 @@ module Run_with_path = struct
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { prog; args; ocamlfind_destdir; pkg = _ } path _ : Sexp.t =
+    let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
       let prog : Sexp.t =
         Atom
           (match prog with
@@ -685,7 +697,7 @@ module Run_with_path = struct
     ;;
 
     let action
-      { prog; args; ocamlfind_destdir; pkg }
+      { prog; args; ocamlfind_destdir; pkg; depexts }
       ~(ectx : Action.context)
       ~(eenv : Action.env)
       =
@@ -708,33 +720,38 @@ module Run_with_path = struct
             ~var:"OCAMLFIND_DESTDIR"
             ~value:(Path.to_absolute_filename ocamlfind_destdir)
         in
-        Output.with_error ~accepted_exit_codes:eenv.exit_codes ~pkg ~display (fun error ->
-          let stdout_to =
-            match !Clflags.debug_package_logs, display with
-            | true, _ | false, Display.Verbose -> eenv.stdout_to
-            | _ -> Process.Io.(null Out)
-          in
-          Process.run
-            Return
-            prog
-            args
-            ~display
-            ~metadata
-            ~stdout_to
-            ~stderr_to:(Output.io error)
-            ~stdin_from:eenv.stdin_from
-            ~dir:eenv.working_dir
-            ~env
-          >>= fun (_, rc) ->
-          Output.prerr ~rc error;
-          Fiber.return ())
+        Output.with_error
+          ~accepted_exit_codes:eenv.exit_codes
+          ~pkg
+          ~depexts
+          ~display
+          (fun error ->
+             let stdout_to =
+               match !Clflags.debug_package_logs, display with
+               | true, _ | false, Display.Verbose -> eenv.stdout_to
+               | _ -> Process.Io.(null Out)
+             in
+             Process.run
+               Return
+               prog
+               args
+               ~display
+               ~metadata
+               ~stdout_to
+               ~stderr_to:(Output.io error)
+               ~stdin_from:eenv.stdin_from
+               ~dir:eenv.working_dir
+               ~env
+             >>= fun (_, rc) ->
+             Output.prerr ~rc error;
+             Fiber.return ())
     ;;
   end
 
   module A = Action_ext.Make (Spec)
 
-  let action ~pkg prog args ~ocamlfind_destdir =
-    A.action { Spec.prog; args; ocamlfind_destdir; pkg }
+  let action ~pkg ~depexts prog args ~ocamlfind_destdir =
+    A.action { Spec.prog; args; ocamlfind_destdir; pkg; depexts }
   ;;
 end
 
@@ -858,7 +875,15 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { name = _; env = _; paths; artifacts = _; context; depends; version = _ }
+      { name = _
+      ; env = _
+      ; paths
+      ; artifacts = _
+      ; context
+      ; depends
+      ; version = _
+      ; depexts = _
+      }
       ~source
       (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
@@ -983,7 +1008,12 @@ module Action_expander = struct
                | Path p | Dir p -> Path p))
          in
          let ocamlfind_destdir = (Lazy.force expander.paths.install_roots).lib_root in
-         Run_with_path.action ~pkg:(expander.name, prog_loc) exe args ~ocamlfind_destdir)
+         Run_with_path.action
+           ~depexts:expander.depexts
+           ~pkg:(expander.name, prog_loc)
+           exe
+           args
+           ~ocamlfind_destdir)
     | Progn t ->
       let+ args = Memo.parallel_map t ~f:(expand ~expander) in
       Action.Progn args
@@ -1116,6 +1146,7 @@ module Action_expander = struct
     ; artifacts = binaries
     ; context
     ; depends
+    ; depexts = pkg.depexts
     ; version = pkg.info.version
     ; env
     }
@@ -1218,8 +1249,13 @@ end = struct
     match Package.Name.Map.find db.all name with
     | None -> Memo.return None
     | Some
-        ({ Lock_dir.Pkg.build_command; install_command; depends; info; exported_env } as
-         pkg) ->
+        ({ Lock_dir.Pkg.build_command
+         ; install_command
+         ; depends
+         ; info
+         ; exported_env
+         ; depexts
+         } as pkg) ->
       assert (Package.Name.equal name info.name);
       let* depends =
         Memo.parallel_map depends ~f:(fun name ->
@@ -1276,6 +1312,7 @@ end = struct
         ; build_command
         ; install_command
         ; depends
+        ; depexts
         ; paths
         ; write_paths
         ; info

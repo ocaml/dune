@@ -704,6 +704,13 @@ let opam_package_to_lock_file_pkg
       |> Option.map ~f:build_env
       |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
+  let depexts =
+    OpamFile.OPAM.depexts opam_file
+    |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
+      if OpamFilter.eval_to_bool (Solver_env.to_env solver_env) filter
+      then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
+      else [])
+  in
   let install_command =
     OpamFile.OPAM.install opam_file
     |> opam_commands_to_actions get_solver_var loc opam_package
@@ -714,7 +721,9 @@ let opam_package_to_lock_file_pkg
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
   let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
-  kind, { Lock_dir.Pkg.build_command; install_command; depends; info; exported_env }
+  ( kind
+  , { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
+  )
 ;;
 
 let solve_package_list packages ~context =

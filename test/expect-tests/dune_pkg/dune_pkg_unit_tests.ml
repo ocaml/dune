@@ -130,6 +130,7 @@ let empty_package name ~version =
   { Lock_dir.Pkg.build_command = None
   ; install_command = None
   ; depends = []
+  ; depexts = []
   ; info =
       { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
   ; exported_env = []

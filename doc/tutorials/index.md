@@ -7,4 +7,5 @@ These tutorials are hands-on lessons to learn about Dune.
 :maxdepth: 1
 
 developing-with-dune/index
+dune-package-management/index
 :::

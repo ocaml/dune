@@ -616,19 +616,21 @@ module Run_with_path = struct
     ;;
 
     let to_paragraphs t error =
-      let _ = t.depexts in
+      let depexts_warning =
+        if not @@ List.is_empty t.depexts
+        then
+          [ Pp.textf "May have been due to the missing depexts:"
+          ; Pp.enumerate ~f:Pp.verbatim t.depexts
+          ; Pp.textf "(If already installed, you could ignore this message)"
+          ]
+        else []
+      in
       let pp_pkg =
         let pkg_name = Dune_pkg.Package_name.to_string (fst t.pkg) in
         Pp.textf "Logs for package %s" pkg_name
       in
       let loc = snd t.pkg in
-      ( [ pp_pkg
-        ; Pp.verbatim error
-        ; Pp.textf "May have been due to the missing depexts:"
-        ; Pp.enumerate ~f:Pp.verbatim t.depexts
-        ; Pp.textf "(If already installed, you could ignore this message)"
-        ]
-      , loc )
+      [ pp_pkg; Pp.verbatim error ] @ depexts_warning, loc
     ;;
 
     let prerr ~rc error =

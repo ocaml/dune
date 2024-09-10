@@ -15,7 +15,7 @@ Make a library that would fail when building it:
   $ tar -czf foo.tar.gz foo
   $ rm -rf foo
 
-Make a package for the library:
+Make a package for the library with depexts:
   $ mkpkg foo <<EOF
   > depexts: [["unzip" "gnupg"]]
   > build: [
@@ -66,4 +66,39 @@ Lock, build, and run the executable in the project:
   - unzip
   - gnupg
   (If already installed, you could ignore this message)
+  [1]
+
+Now make a package for the library without depexts:
+  $ mkpkg foo <<EOF
+  > build: [
+  >   [
+  >     "dune"
+  >     "build"
+  >     "-p"
+  >     name
+  >     "-j"
+  >     jobs
+  >     "@install"
+  >   ]
+  > ]
+  > url {
+  >  src: "file://$PWD/foo.tar.gz"
+  >  checksum: [
+  >   "md5=$(md5sum foo.tar.gz | cut -f1 -d' ')"
+  >  ]
+  > }
+  > EOF
+
+Lock, build, and run the executable in the project:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.0.0.1
+  $ dune build
+  File "dune.lock/foo.pkg", line 4, characters 6-10:
+  4 |  (run dune build -p %{pkg-self:name} -j %{jobs} @install))
+            ^^^^
+  Error: Logs for package foo
+  File "dune-project", line 3, characters 0-0:
+  Error: unclosed parenthesis at end of input
+  
   [1]

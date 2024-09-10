@@ -170,6 +170,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               { build_command = None
               ; install_command = None
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "bar"
                   ; version = "0.2.0"
@@ -183,6 +184,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               { build_command = None
               ; install_command = None
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "foo"
                   ; version = "0.1.0"
@@ -199,7 +201,8 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
         { variable_values = [ ("os", "linux") ]
         ; unset_variables = [ "os-family" ]
         }
-    } |}]
+    }
+    |}]
 ;;
 
 let%expect_test "encode/decode round trip test for lockdir with complex deps" =
@@ -307,6 +310,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               { build_command = Some (Action [ "progn"; [ "echo"; "hello" ] ])
               ; install_command = Some [ "system"; "echo 'world'" ]
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "a"
                   ; version = "0.1.0"
@@ -323,6 +327,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               { build_command = None
               ; install_command = None
               ; depends = [ ("complex_lock_dir/b.pkg:3", "a") ]
+              ; depexts = []
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -345,6 +350,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   [ ("complex_lock_dir/c.pkg:3", "a")
                   ; ("complex_lock_dir/c.pkg:3", "b")
                   ]
+              ; depexts = []
               ; info =
                   { name = "c"
                   ; version = "0.2"
@@ -363,7 +369,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
         }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    } |}]
+    }
+    |}]
 ;;
 
 let%expect_test "encode/decode round trip test with locked repo revision" =
@@ -414,6 +421,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               { build_command = None
               ; install_command = None
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "a"
                   ; version = "0.1.0"
@@ -427,6 +435,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               { build_command = None
               ; install_command = None
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "b"
                   ; version = "dev"
@@ -440,6 +449,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               { build_command = None
               ; install_command = None
               ; depends = []
+              ; depexts = []
               ; info =
                   { name = "c"
                   ; version = "0.2"
@@ -461,5 +471,6 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
         }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    } |}]
+    }
+    |}]
 ;;

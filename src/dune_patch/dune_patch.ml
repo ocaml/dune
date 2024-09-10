@@ -79,7 +79,10 @@ let patches_of_string patch_string =
           ( Path.Local.split_first_component old_path
           , Path.Local.split_first_component new_path )
         with
-        | Some ("a", _old_path), Some ("b", new_path) -> new_path, 1
+        | Some (_, old_path), Some (_, new_path)
+          when Path.Local.equal old_path new_path && not (Path.Local.is_root new_path) ->
+          (* suffixes are the same and not empty *)
+          new_path, 1
         | _, _ -> new_path, 0
       in
       (* Replace file *)

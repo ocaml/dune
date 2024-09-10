@@ -1,6 +1,8 @@
 open! Import
 
-type t = Ocamlformat
+type t =
+  | Ocamlformat
+  | Odoc
 
 val all : t list
 val equal : t -> t -> bool
@@ -11,3 +13,5 @@ val exe_name : t -> string
 (** Returns the path to this tool's executable relative to the root of
     this tool's package directory *)
 val exe_path_components_within_package : t -> string list
+
+val needs_to_build_with_same_compiler_as_project : t -> bool

@@ -69,6 +69,7 @@ module Melange_stanzas = Melange_stanzas
 module Executables = Executables
 module Tests = Tests
 module Stanzas = Stanzas
+module Lock_dir = Lock_dir
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

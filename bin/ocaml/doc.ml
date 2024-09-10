@@ -13,12 +13,19 @@ let man =
 
 let info = Cmd.info "doc" ~doc ~man
 
+let lock_odoc_if_dev_tool_enabled () =
+  match Lazy.force Lock_dev_tool.is_enabled with
+  | false -> Action_builder.return ()
+  | true -> Action_builder.of_memo (Lock_dev_tool.lock_odoc ())
+;;
+
 let term =
   let+ builder = Common.Builder.term in
   let common, config = Common.init builder in
   let request (setup : Main.build_system) =
     let dir = Path.(relative root) (Common.prefix_target common ".") in
     let open Action_builder.O in
+    let* () = lock_odoc_if_dev_tool_enabled () in
     let+ () =
       Alias.in_dir ~name:Dune_rules.Alias.doc ~recursive:true ~contexts:setup.contexts dir
       |> Alias.request

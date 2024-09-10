@@ -241,8 +241,7 @@ let fmt =
              this logic remain outside of `dune build`, as `dune
              build` is intended to only build targets, and generating
              a lockdir is not building a target. *)
-          Action_builder.of_memo
-            (Lock_dev_tool.lock_ocamlformat () |> Memo.of_non_reproducible_fiber)
+          Action_builder.of_memo (Lock_dev_tool.lock_ocamlformat ())
         else Action_builder.return ()
       in
       let dir = Path.(relative root) (Common.prefix_target common ".") in

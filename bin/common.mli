@@ -28,8 +28,10 @@ val prefix_target : t -> string -> string
 module Builder : sig
   type t
 
+  val root : t -> string option
   val set_root : t -> string -> t
   val forbid_builds : t -> t
+  val default_root_is_cwd : t -> bool
   val set_default_root_is_cwd : t -> bool -> t
   val set_log_file : t -> Dune_util.Log.File.t -> t
   val disable_log_file : t -> t

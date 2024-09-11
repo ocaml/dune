@@ -27,7 +27,7 @@ let pkg_dir (pkg : Dune_pkg.Lock_dir.Pkg.t) =
      way). *)
   let dir_name =
     (* TODO should include resolved deps *)
-    let pkg_hash = Digest.generic pkg in
+    let pkg_hash = Digest.generic (Lock_dir.Pkg.remove_locs pkg) in
     (* A hash of the fields of a package that affect its installed artifacts *)
     sprintf
       "%s.%s-%s"

@@ -30,6 +30,7 @@ module Pkg : sig
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
 
+  val remove_locs : t -> t
   val equal : t -> t -> bool
   val decode : (lock_dir:Path.Source.t -> Package_name.t -> t) Decoder.t
   val files_dir : Package_name.t -> lock_dir:Path.Source.t -> Path.Source.t

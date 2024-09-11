@@ -93,32 +93,3 @@ dune-project file.
 
   $ cat test_proj2/dune-project | grep -i license
   (license BSD)
-
-Ensure that an error is raised when an optional stanza is provided but its value
-is omitted.
-
-  $ sed -i -e '3s|.*|(authors)|' dune-config
-  $ dune init proj test_proj3 --config-file=dune-config
-  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-9:
-  3 | (authors)
-      ^^^^^^^^^
-  Error: Not enough arguments for "authors"
-  [1]
-
-  $ sed -i -e '3d' dune-config
-  $ sed -i -e '3s|.*|(maintainers)|' dune-config
-  $ dune init proj test_proj3 --config-file=dune-config
-  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-13:
-  3 | (maintainers)
-      ^^^^^^^^^^^^^
-  Error: Not enough arguments for "maintainers"
-  [1]
-
-  $ sed -i -e '3d' dune-config
-  $ sed -i -e '3s|.*|(license))|' dune-config
-  $ dune init proj test_proj3 --config-file=dune-config
-  File "$TESTCASE_ROOT/dune-config", line 3, characters 0-9:
-  3 | (license))
-      ^^^^^^^^^
-  Error: Not enough arguments for "license"
-  [1]

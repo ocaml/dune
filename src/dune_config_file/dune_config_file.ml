@@ -25,9 +25,9 @@ module Dune_config = struct
 
     let decode =
       fields
-        (let+ authors = field_o "authors" (repeat1 string)
-         and+ maintainers = field_o "maintainers" (repeat1 string)
-         and+ license = field_o "license" (repeat1 string) in
+        (let+ authors = field_o "authors" (repeat string)
+         and+ maintainers = field_o "maintainers" (repeat string)
+         and+ license = field_o "license" (repeat string) in
          { authors; maintainers; license })
     ;;
 

@@ -12,6 +12,12 @@ module Status = struct
   ;;
 end
 
+let format_user_message ~verb ~object_ =
+  let status_tag = User_message.Style.Success in
+  User_message.make
+    [ Pp.concat ~sep:Pp.space [ Pp.tag status_tag (Pp.textf "%12s" verb); object_ ] ]
+;;
+
 module Message = struct
   type t =
     { package_name : Package.Name.t
@@ -20,16 +26,13 @@ module Message = struct
     }
 
   let user_message { package_name; package_version; status } =
-    let status_tag = User_message.Style.Success in
-    User_message.make
-      [ Pp.concat
-          [ Pp.tag status_tag (Pp.textf "%12s" (Status.to_string status))
-          ; Pp.textf
-              " %s.%s"
-              (Package.Name.to_string package_name)
-              (Package_version.to_string package_version)
-          ]
-      ]
+    format_user_message
+      ~verb:(Status.to_string status)
+      ~object_:
+        (Pp.textf
+           "%s.%s"
+           (Package.Name.to_string package_name)
+           (Package_version.to_string package_version))
   ;;
 
   let display t =

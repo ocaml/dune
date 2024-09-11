@@ -55,6 +55,15 @@ Test a generated 'gitlab' organization repo
   bug-reports: "https://gitlab.com/organization/project/repo/-/issues"
   dev-repo: "git+https://gitlab.com/organization/project/repo.git"
 
+Test a generated 'codeberg' user repo
+
+  $ sed -i -e '4s|.*|(source (codeberg user/repo))|' dune-project
+  $ dune build
+  $ cat foo.opam | grep -i codeberg.org
+  homepage: "https://codeberg.org/user/repo"
+  bug-reports: "https://codeberg.org/user/repo/issues"
+  dev-repo: "git+https://codeberg.org/user/repo.git"
+
 Test that the creation of a source stanza of the form 'org/project/repo' is
 disallowed by any forge type other than gitlab and that associated error
 messages are provided
@@ -89,6 +98,17 @@ Test sourcehut forge.
   4 | (source (sourcehut org/proj/repo))
                          ^^^^^^^^^^^^^
   Error: Sourcehut repository must be of form user/repo
+  Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
+  [1]
+
+Test codeberg forge.
+
+  $ sed -i -e '4s|.*|(source (codeberg org/proj/repo))|' dune-project
+  $ dune build
+  File "dune-project", line 4, characters 18-31:
+  4 | (source (codeberg org/proj/repo))
+                        ^^^^^^^^^^^^^
+  Error: Codeberg repository must be of form user/repo
   Hint: The provided form 'org/proj/repo' is specific to Gitlab projects
   [1]
 

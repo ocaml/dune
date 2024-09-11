@@ -17,6 +17,7 @@ module Host : sig
     | Bitbucket of user_repo
     | Gitlab of gitlab_repo
     | Sourcehut of user_repo
+    | Codeberg of user_repo
 
   val homepage : t -> string
   val bug_reports : t -> string

@@ -20,12 +20,14 @@ module Host = struct
     | Bitbucket of user_repo
     | Gitlab of gitlab_repo
     | Sourcehut of user_repo
+    | Codeberg of user_repo
 
   let kind_string = function
     | Github _ -> "github"
     | Bitbucket _ -> "bitbucket"
     | Gitlab _ -> "gitlab"
     | Sourcehut _ -> "sourcehut"
+    | Codeberg _ -> "codeberg"
   ;;
 
   let dyn_of_user_repo kind { user; repo } =
@@ -45,7 +47,7 @@ module Host = struct
     let kind = Dyn.string (kind_string repo) in
     match repo with
     | Gitlab gitlab_repo -> dyn_of_gitlab_repo kind gitlab_repo
-    | Github user_repo | Bitbucket user_repo | Sourcehut user_repo ->
+    | Github user_repo | Bitbucket user_repo | Sourcehut user_repo | Codeberg user_repo ->
       dyn_of_user_repo kind user_repo
   ;;
 
@@ -54,6 +56,7 @@ module Host = struct
     | Bitbucket _ -> "bitbucket.org"
     | Gitlab _ -> "gitlab.com"
     | Sourcehut _ -> "sr.ht"
+    | Codeberg _ -> "codeberg.org"
   ;;
 
   let base_uri repo =
@@ -61,18 +64,21 @@ module Host = struct
     match repo with
     | Gitlab (Org_repo { org; proj; repo }) -> sprintf "%s/%s/%s/%s" host org proj repo
     | Sourcehut { user; repo } -> sprintf "%s/~%s/%s" host user repo
-    | Gitlab (User_repo { user; repo }) | Github { user; repo } | Bitbucket { user; repo }
-      -> sprintf "%s/%s/%s" host user repo
+    | Github { user; repo }
+    | Bitbucket { user; repo }
+    | Gitlab (User_repo { user; repo })
+    | Codeberg { user; repo } -> sprintf "%s/%s/%s" host user repo
   ;;
 
   let add_https s = "https://" ^ s
   let homepage t = add_https (base_uri t)
 
   let bug_reports = function
-    | Gitlab _ as repo -> homepage repo ^ "/-/issues"
     | Github _ as repo -> homepage repo ^ "/issues"
     | Bitbucket _ as repo -> homepage repo ^ "/issues"
+    | Gitlab _ as repo -> homepage repo ^ "/-/issues"
     | Sourcehut _ as repo -> add_https ("todo." ^ base_uri repo)
+    | Codeberg _ as repo -> homepage repo ^ "/issues"
   ;;
 
   let enum k =
@@ -82,6 +88,7 @@ module Host = struct
     [ Github stub_user_repo
     ; Bitbucket stub_user_repo
     ; Sourcehut stub_user_repo
+    ; Codeberg stub_user_repo
     ; Gitlab (User_repo stub_user_repo)
     ; Gitlab stub_org_repo
     ]
@@ -92,6 +99,7 @@ module Host = struct
         | Github _, [ user; repo ] -> Github { user; repo }, None
         | Bitbucket _, [ user; repo ] -> Bitbucket { user; repo }, Some ((2, 8), name)
         | Sourcehut _, [ user; repo ] -> Sourcehut { user; repo }, Some ((3, 1), name)
+        | Codeberg _, [ user; repo ] -> Codeberg { user; repo }, Some ((3, 17), name)
         | Gitlab _, [ user; repo ] ->
           Gitlab (User_repo { user; repo }), Some ((2, 8), name)
         | Gitlab _, [ org; proj; repo ] ->
@@ -128,10 +136,11 @@ module Host = struct
     let path =
       match repo with
       | Gitlab (Org_repo { org; proj; repo }) -> sprintf "%s/%s/%s" org proj repo
-      | Gitlab (User_repo { user; repo }) -> sprintf "%s/%s" user repo
-      | Sourcehut { user; repo } -> sprintf "%s/%s" user repo
-      | Github { user; repo } -> sprintf "%s/%s" user repo
-      | Bitbucket { user; repo } -> sprintf "%s/%s" user repo
+      | Github { user; repo }
+      | Bitbucket { user; repo }
+      | Gitlab (User_repo { user; repo })
+      | Sourcehut { user; repo }
+      | Codeberg { user; repo } -> sprintf "%s/%s" user repo
     in
     let open Encoder in
     let forge = kind_string repo in

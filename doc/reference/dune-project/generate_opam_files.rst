@@ -75,6 +75,8 @@ defined in the project:
          | ``(gitlab organization/project/repo)`` *(New in 3.17)*
      * - `Sourcehut <https://sr.ht>`_
        - ``(sourcehut user/repo)``
+     * - `Codeberg <https://codeberg.org>`_
+       - ``(codeberg user/repo)``
 
    Examples:
 

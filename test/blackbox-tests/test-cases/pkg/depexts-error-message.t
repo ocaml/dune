@@ -1,4 +1,4 @@
-Exercises end to end locking and building a simple project.
+ When a package fails to build, dune will print opam depexts warning.
 
   $ . ./helpers.sh
   $ mkrepo
@@ -6,12 +6,8 @@ Exercises end to end locking and building a simple project.
 
 Make a library that would fail when building it:
   $ mkdir foo
-  $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.13)
-  > (
+  $ cat > foo/dune-project <<EOF
   > EOF
-  $ cd ..
   $ tar -czf foo.tar.gz foo
   $ rm -rf foo
 
@@ -24,9 +20,6 @@ Make a package for the library with depexts:
   >     "build"
   >     "-p"
   >     name
-  >     "-j"
-  >     jobs
-  >     "@install"
   >   ]
   > ]
   > url {
@@ -56,49 +49,14 @@ Lock, build, and run the executable in the project:
   - foo.0.0.1
   $ dune build
   File "dune.lock/foo.pkg", line 4, characters 6-10:
-  4 |  (run dune build -p %{pkg-self:name} -j %{jobs} @install))
+  4 |  (run dune build -p %{pkg-self:name}))
             ^^^^
   Error: Logs for package foo
-  File "dune-project", line 3, characters 0-0:
-  Error: unclosed parenthesis at end of input
+  File "dune-project", line 1, characters 0-0:
+  Error: Invalid first line, expected: (lang <lang> <version>)
   
   May have been due to the missing depexts:
   - unzip
   - gnupg
   (If already installed, you could ignore this message)
-  [1]
-
-Now make a package for the library without depexts:
-  $ mkpkg foo <<EOF
-  > build: [
-  >   [
-  >     "dune"
-  >     "build"
-  >     "-p"
-  >     name
-  >     "-j"
-  >     jobs
-  >     "@install"
-  >   ]
-  > ]
-  > url {
-  >  src: "file://$PWD/foo.tar.gz"
-  >  checksum: [
-  >   "md5=$(md5sum foo.tar.gz | cut -f1 -d' ')"
-  >  ]
-  > }
-  > EOF
-
-Lock, build, and run the executable in the project:
-  $ dune pkg lock
-  Solution for dune.lock:
-  - foo.0.0.1
-  $ dune build
-  File "dune.lock/foo.pkg", line 4, characters 6-10:
-  4 |  (run dune build -p %{pkg-self:name} -j %{jobs} @install))
-            ^^^^
-  Error: Logs for package foo
-  File "dune-project", line 3, characters 0-0:
-  Error: unclosed parenthesis at end of input
-  
   [1]

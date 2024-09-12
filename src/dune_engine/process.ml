@@ -425,9 +425,9 @@ end = struct
   ;;
 
   let progname_and_purpose ~tag ~prog ~purpose =
-    let open Pp.O in
-    let progname = sprintf "%12s" (Fancy.short_prog_name_of_prog prog) in
-    Pp.tag tag (Pp.verbatim progname) ++ Pp.char ' ' ++ pp_purpose purpose
+    User_message.aligned_message
+      ~left:(tag, Fancy.short_prog_name_of_prog prog)
+      ~right:(pp_purpose purpose)
   ;;
 
   let pp_ok = progname_and_purpose ~tag:Ok

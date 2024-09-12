@@ -311,3 +311,9 @@ let command cmd =
     ; Pp.verbatim "'"
     ]
 ;;
+
+let aligned_message ~left:(left_tag, left_string) ~right =
+  let open Pp.O in
+  let left_padded = Printf.sprintf "%12s" left_string in
+  Pp.tag left_tag (Pp.verbatim left_padded) ++ Pp.char ' ' ++ right
+;;

@@ -15,7 +15,7 @@ end
 let format_user_message ~verb ~object_ =
   let status_tag = User_message.Style.Success in
   User_message.make
-    [ Pp.concat ~sep:Pp.space [ Pp.tag status_tag (Pp.textf "%12s" verb); object_ ] ]
+    [ User_message.aligned_message ~left:(status_tag, verb) ~right:object_ ]
 ;;
 
 module Message = struct

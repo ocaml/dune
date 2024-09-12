@@ -578,7 +578,9 @@ module Write_disk = struct
     lock_dir
     =
     let lock_dir_hidden_src =
-      lock_dir_path_src |> Path.Source.to_string |> sprintf ".%s" |> Path.Source.of_string
+      (* The original lockdir path with the lockdir renamed to begin with a ".". *)
+      let hidden_basename = sprintf ".%s" (Path.Source.basename lock_dir_path_src) in
+      Path.Source.relative (Path.Source.parent_exn lock_dir_path_src) hidden_basename
     in
     let lock_dir_hidden_src = Path.source lock_dir_hidden_src in
     let lock_dir_path_external = Path.source lock_dir_path_src in

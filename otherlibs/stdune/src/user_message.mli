@@ -124,3 +124,8 @@ val needs_stack_trace : t -> bool
 
 (** Formatting of shell commands *)
 val command : string -> Style.t Pp.t
+
+(** A message with a left and right component separated by a
+    space. The left component is padded to 12 characters so that the space
+    separating the left and right side of all messages are aligned. *)
+val aligned_message : left:Style.t * string -> right:Style.t Pp.t -> Style.t Pp.t

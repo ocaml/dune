@@ -12,3 +12,4 @@ val roots : string option Install.Roots.t
 
 val toolchains : Dune_config.Config.Toggle.t
 val pkg_build_progress : Dune_config.Config.Toggle.t
+val lock_dev_tool : Dune_config.Config.Toggle.t

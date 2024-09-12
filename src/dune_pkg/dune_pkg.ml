@@ -22,3 +22,5 @@ module Variable_value = Variable_value
 module Resolved_package = Resolved_package
 module Pin_stanza = Pin_stanza
 module Package_name = Package_name
+module Ocamlformat = Ocamlformat
+module Dev_tool = Dev_tool

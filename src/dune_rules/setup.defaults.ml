@@ -13,3 +13,4 @@ let roots : string option Install.Roots.t =
 
 let toolchains = `Disabled
 let pkg_build_progress = `Disabled
+let lock_dev_tool = `Disabled

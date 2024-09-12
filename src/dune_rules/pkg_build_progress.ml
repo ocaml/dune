@@ -13,7 +13,7 @@ module Status = struct
 end
 
 let format_user_message ~verb ~object_ =
-  let status_tag = User_message.Style.Success in
+  let status_tag = User_message.Style.Ok in
   User_message.make
     [ User_message.aligned_message ~left:(status_tag, verb) ~right:object_ ]
 ;;

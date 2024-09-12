@@ -1052,7 +1052,6 @@ type t =
   }
 
 let capture_outputs t = t.builder.capture_outputs
-let profile t = t.builder.workspace_config.profile
 let root t = t.root
 let watch t = t.builder.watch
 let x t = t.builder.workspace_config.x

@@ -131,10 +131,9 @@ let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
-  let non_local_dependencies =
-    Local_package.For_solver.list_non_local_dependency_set local_packages
+  let dependency_hash =
+    Local_package.For_solver.non_local_dependency_hash local_packages
   in
-  let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
   match saved_dependency_hash, dependency_hash with
   | None, None -> `Valid
   | Some lock_dir_dependency_hash, Some non_local_dependencies_hash
@@ -159,10 +158,9 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
         ]
     ]
   in
-  let non_local_dependencies =
-    Local_package.For_solver.list_non_local_dependency_set local_packages
+  let dependency_hash =
+    Local_package.For_solver.non_local_dependency_hash local_packages
   in
-  let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
   match saved_dependency_hash, dependency_hash with
   | None, None -> ()
   | Some (loc, lock_dir_dependency_hash), None ->
@@ -175,8 +173,8 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
           (Local_package.Dependency_hash.to_string lock_dir_dependency_hash)
       ]
   | None, Some _ ->
-    let any_non_local_dependency : Package_dependency.t =
-      List.hd (Local_package.Dependency_set.package_dependencies non_local_dependencies)
+    let any_non_local_dependency_name =
+      Local_package.For_solver.any_non_local_dependency_name local_packages
     in
     User_error.raise
       ~hints:regenerate_lock_dir_hints
@@ -185,7 +183,7 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
            contain a dependency hash."
       ; Pp.textf
           "An example of a non-local dependency of this project is: %s"
-          (Package_name.to_string any_non_local_dependency.name)
+          (Package_name.to_string any_non_local_dependency_name)
       ]
   | Some (loc, lock_dir_dependency_hash), Some non_local_dependency_hash ->
     if Local_package.Dependency_hash.equal

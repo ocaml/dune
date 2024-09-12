@@ -20,7 +20,7 @@ type pins = pin Package_name.Map.t
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
-  ; dependencies : Package_dependency.t list
+  ; dependencies : OpamTypes.filtered_formula
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
@@ -61,7 +61,7 @@ module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
     { name : Package_name.t
-    ; dependencies : Package_dependency.t list
+    ; dependencies : OpamTypes.filtered_formula
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
@@ -80,7 +80,11 @@ module For_solver : sig
       dependencies which are packages in the provided list. Pass this the list
       of all local package in a project to get a set of all non-local
       dependencies of the project. *)
-  val list_non_local_dependency_set : t list -> Dependency_set.t
+  (* val list_non_local_dependency_set : t list -> Dependency_set.t *)
+
+  val non_local_dependency_hash : t list -> Dependency_hash.t option
+  val any_non_local_dependency_name : t list -> Package_name.t
+  val dependency_names : t -> Package_name.t list
 end
 
 val for_solver : t -> For_solver.t

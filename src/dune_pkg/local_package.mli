@@ -38,25 +38,6 @@ module Dependency_hash : sig
   val decode : t Decoder.t
 end
 
-module Dependency_set : sig
-  (** A set of dependencies belonging to one or more local packages. Two
-      different local packages may depend on the same packages with different
-      version constraints provided that the two constraints intersect
-      (otherwise there will be no solution). In this case the conjunction of
-      both constraints will form the constraint associated with that
-      dependency. Package constraints are de-duplicated by comparing them only
-      on their syntax. *)
-  type t
-
-  (** Returns a hash of all dependencies in the set or [None] if the set is
-      empty. The reason for behaving differently when the set is empty is so
-      that callers are forced to explicitly handle the case where there are no
-      dependencies which will likely lead to better user experience. *)
-  val hash : t -> Dependency_hash.t option
-
-  val package_dependencies : t -> Package_dependency.t list
-end
-
 module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
@@ -76,14 +57,13 @@ module For_solver : sig
   (** Returns an opam dependency formula for this package *)
   val opam_filtered_dependency_formula : t -> OpamTypes.filtered_formula
 
-  (** Returns the set of dependencies of all given local packages excluding
-      dependencies which are packages in the provided list. Pass this the list
-      of all local package in a project to get a set of all non-local
-      dependencies of the project. *)
-  (* val list_non_local_dependency_set : t list -> Dependency_set.t *)
-
+  (** Returns a hash of the dependencies that are not local to the project (if any) *)
   val non_local_dependency_hash : t list -> Dependency_hash.t option
+
+  (** Returns the name of the first non-local dependency it can find *)
   val any_non_local_dependency_name : t list -> Package_name.t
+
+  (** Returns the names of packages that it depends on *)
   val dependency_names : t -> Package_name.t list
 end
 

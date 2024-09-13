@@ -656,29 +656,31 @@ let private_context ~dir components _ctx =
     Gen_rules.make ~build_dir_only_sub_dirs (Memo.return Rules.empty)
 ;;
 
-let raise_on_lock_dir_out_of_sync ctx =
-  Memo.lazy_ (fun () ->
-    let open Memo.O in
-    let* lock_dir_available = Lock_dir.lock_dir_active ctx in
-    if lock_dir_available
-    then
-      let* lock_dir = Lock_dir.get_exn ctx in
-      let+ local_packages =
-        Dune_load.packages ()
-        >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
-      in
-      match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
-      | `Valid -> ()
-      | `Invalid _ ->
-        let hints = Pp.[ text "run dune pkg lock" ] in
-        User_error.raise
-          ~hints
-          [ Pp.text "The lock dir is not sync with your dune-project" ]
-    else Memo.return ())
+let raise_on_lock_dir_out_of_sync =
+  Per_context.create_by_name ~name:"check-lock-dir" (fun ctx ->
+    Memo.lazy_ (fun () ->
+      let open Memo.O in
+      let* lock_dir_available = Lock_dir.lock_dir_active ctx in
+      if lock_dir_available
+      then
+        let* lock_dir = Lock_dir.get_exn ctx in
+        let+ local_packages =
+          Dune_load.packages ()
+          >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
+        in
+        match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
+        | `Valid -> ()
+        | `Invalid _ ->
+          let hints = Pp.[ text "run dune pkg lock" ] in
+          User_error.raise
+            ~hints
+            [ Pp.text "The lock dir is not sync with your dune-project" ]
+      else Memo.return ())
+    |> Memo.Lazy.force)
+  |> Staged.unstage
 ;;
 
 let gen_rules ctx ~dir components =
-  let raise_on_lock_dir_out_of_sync = raise_on_lock_dir_out_of_sync ctx in
   if Context_name.equal ctx Install.Context.install_context.name
   then (
     match components with
@@ -707,6 +709,6 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Fetch_rules.context.name
   then Fetch_rules.gen_rules ~dir ~components
   else
-    Memo.bind (Memo.Lazy.force raise_on_lock_dir_out_of_sync) ~f:(fun () ->
+    Memo.bind (raise_on_lock_dir_out_of_sync ctx) ~f:(fun () ->
       gen_rules ctx (Super_context.find_exn ctx) ~dir components)
 ;;

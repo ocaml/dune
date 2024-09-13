@@ -15,18 +15,25 @@ or simply undoing some changes within the same workspace.
 Configuration
 =============
 
-For now, Dune cache is an opt-in feature. There are three ways to enable it.
-Choose the one that is more convenient for you:
+.. TODO (ElectreAAS): update version number here when releasing
+Since %version%, Dune cache is now an opt-out feature: it is enabled by default.
+There are three ways to disable it. Choose the one that is more convenient for you:
 
-* Add ``(cache enabled)`` to your Dune configuration file
+* Add ``(cache disabled)`` to your Dune configuration file
   (``~/.config/dune/config`` by default).
-* Set the environment variable ``DUNE_CACHE`` to ``enabled``
-* Run Dune with the ``--cache=enabled`` flag.
+* Set the environment variable ``DUNE_CACHE`` to ``disabled``
+* Run Dune with the ``--cache=disabled`` flag.
 
 By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
 systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.
 You can change the default location by setting the environment variable
 ``DUNE_CACHE_ROOT``.
+
+Caching User Rules
+==================
+
+Not all rules are cached by default: user-created ``(rule _)`` actions are not to prevent mistakes.
+You can enable the caching of these rules by setting the environment variable ``DUNE_CACHE_RULES`` to ``enabled``.
 
 
 Cache Storage Mode

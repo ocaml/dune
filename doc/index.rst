@@ -8,6 +8,7 @@ libraries, run tests, and much more.
    :maxdepth: 2
 
    getting-started/index
+   tutorials/index
    howto/index
    reference/index
    explanation/index

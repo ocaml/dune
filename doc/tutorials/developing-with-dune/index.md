@@ -1,6 +1,5 @@
 ---
 author: Etienne Millon
-orphan: true
 ---
 
 Developing with Dune

@@ -1,9 +1,11 @@
 project_defaults
 ----------------
 
+.. versionadded:: 3.17
+
 Specify default values for stanzas ``authors``, ``maintainers``, and ``license``
-of the dune-project file when initializing a project with ``dune init proj``.
-The format of the 'project_defaults' stanza is as follows:
+of the :doc:`../dune-project/index` file when initializing a project with 
+``dune init proj``. The format of the 'project_defaults' stanza is as follows:
 
 .. code:: dune
 
@@ -40,7 +42,8 @@ The format of the 'project_defaults' stanza is as follows:
 
 .. describe:: (license <string(s)>)
 
-   Specify license.
+   Specify license, ideally as an identifier from the `SPDX License List
+   <https://spdx.org/licenses/>`__.
 
    Example:
 

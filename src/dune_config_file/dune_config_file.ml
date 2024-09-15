@@ -32,16 +32,9 @@ module Dune_config = struct
     ;;
 
     let to_dyn t =
-      let str_list_to_dyn_o lst =
-        let lst = Option.value lst ~default:[] in
-        let lst = List.map ~f:(fun s -> Dyn.String s) lst in
-        Dyn.List lst
-      in
-      Dyn.Record
-        [ "authors", str_list_to_dyn_o t.authors
-        ; "maintainers", str_list_to_dyn_o t.maintainers
-        ; "license", str_list_to_dyn_o t.license
-        ]
+      let f = Dyn.(option (list string)) in
+      Dyn.record
+        [ "authors", f t.authors; "maintainers", f t.maintainers; "license", f t.license ]
     ;;
   end
 

@@ -29,7 +29,14 @@ end
 type t
 
 module Error_msg : sig
+  (** [since t ver what] formats an error string indicating that the syntax
+      [t] described by [what] is only available since [ver] of the dune-project
+      file. *)
   val since : t -> Version.t -> what:string -> string
+
+  (** Like [since] but formats an error message relating to the dune config file
+      rather than the dune-project file. *)
+  val since_config : t -> Version.t -> what:string -> string
 end
 
 module Error : sig
@@ -71,6 +78,9 @@ val create
 (** Return the name of the syntax. *)
 val name : t -> string
 
+(** Indicate the location and kind of value being parsed *)
+val desc : unit -> (Loc.t * string, 'a) Decoder.parser
+
 (** Check that the given version is supported and raise otherwise. *)
 val check_supported : dune_lang_ver:Version.t -> t -> Loc.t * Version.t -> unit
 
@@ -97,6 +107,16 @@ val renamed_in : t -> Version.t -> to_:string -> (unit, _) Decoder.parser
     version. When [fatal] is false, simply emit a warning instead of error.
     [fatal] defaults to true. [what] allows customizing the error message. *)
 val since : ?what:string -> ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
+
+(** Like [since] but accepts a function [fmt] allowing custom formatting of the
+    entire error/warning message. See [Error_msg] for format functions. *)
+val since_fmt
+  :  ?fatal:bool
+  -> fmt:(t -> Version.t -> string)
+  -> t
+  -> Version.t
+  -> Loc.t
+  -> (unit, 'a) Decoder.parser
 
 (** {2 Low-level functions} *)
 

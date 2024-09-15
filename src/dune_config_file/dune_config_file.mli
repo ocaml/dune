@@ -5,6 +5,16 @@ module Dune_config : sig
   open Dune_config
   module Display : module type of Display
 
+  module Project_defaults : sig
+    type t =
+      { authors : string list option
+      ; maintainers : string list option
+      ; license : string list option
+      }
+
+    val decode : t Dune_lang.Decoder.t
+  end
+
   module Concurrency : sig
     type t =
       | Fixed of int
@@ -56,6 +66,7 @@ module Dune_config : sig
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
       ; action_stderr_on_success : Action_output_on_success.t field
+      ; project_defaults : Project_defaults.t field
       ; experimental : (string * (Loc.t * string)) list field
       }
   end

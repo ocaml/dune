@@ -74,7 +74,9 @@ let context_cwd : Init_context.t Term.t =
   and+ path = path in
   let builder = Common.Builder.set_default_root_is_cwd builder true in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () -> Memo.run (Init_context.make path))
+  let project_defaults = config.project_defaults in
+  Scheduler.go ~common ~config (fun () ->
+    Memo.run (Init_context.make path project_defaults))
 ;;
 
 module Public_name = struct
@@ -228,7 +230,8 @@ let project =
        let builder = Builder.set_root common_builder root in
        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p root in
        let common, config = Common.init builder in
-       Scheduler.go ~common ~config (fun () -> Memo.run init_context)
+       let project_defaults = config.project_defaults in
+       Scheduler.go ~common ~config (fun () -> Memo.run @@ init_context project_defaults)
      in
      Component.init
        (Project { context; common; options = { template; inline_tests; pkg } });

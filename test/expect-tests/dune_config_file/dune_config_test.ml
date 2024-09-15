@@ -27,6 +27,11 @@ let%expect_test "cache-check-probability 0.1" =
     ; cache_storage_mode = Some Hardlink
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = [ "Author Name <author@example.com>" ]
+        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = [ "LICENSE" ]
+        }
     ; experimental = []
     }
  |}]
@@ -45,6 +50,11 @@ let%expect_test "cache-storage-mode copy" =
     ; cache_storage_mode = Some Copy
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = [ "Author Name <author@example.com>" ]
+        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = [ "LICENSE" ]
+        }
     ; experimental = []
     }
  |}]
@@ -63,6 +73,11 @@ let%expect_test "cache-storage-mode hardlink" =
     ; cache_storage_mode = Some Hardlink
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = [ "Author Name <author@example.com>" ]
+        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = [ "LICENSE" ]
+        }
     ; experimental = []
     }
  |}]

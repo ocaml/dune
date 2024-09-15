@@ -169,12 +169,15 @@ end
 
 (** The context in which the initialization is executed *)
 module Init_context = struct
+  open Dune_config_file
+
   type t =
     { dir : Path.t
     ; project : Dune_project.t
+    ; defaults : Dune_config.Project_defaults.t
     }
 
-  let make path =
+  let make path defaults =
     let open Memo.O in
     let+ project =
       (* CR-rgrinberg: why not get the project from the source tree? *)
@@ -196,7 +199,7 @@ module Init_context = struct
       | Some p -> Path.of_string p
     in
     File.create_dir dir;
-    { dir; project }
+    { dir; project; defaults }
   ;;
 end
 
@@ -373,7 +376,12 @@ module Component = struct
     let test common (() : Options.Test.t) = make "test" common []
 
     (* A list of CSTs for dune-project file content *)
-    let dune_project ~opam_file_gen dir (common : Options.Common.t) =
+    let dune_project
+      ~opam_file_gen
+      ~(defaults : Dune_config_file.Dune_config.Project_defaults.t)
+      dir
+      (common : Options.Common.t)
+      =
       let cst =
         let package =
           Package.create
@@ -400,7 +408,12 @@ module Component = struct
               ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
-        let info = Package_info.example in
+        let info =
+          Package_info.example
+            ~authors:defaults.authors
+            ~maintainers:defaults.maintainers
+            ~license:defaults.license
+        in
         Dune_project.anonymous ~dir info packages
         |> Dune_project.set_generate_opam_files opam_file_gen
         |> Dune_project.encode
@@ -476,6 +489,7 @@ module Component = struct
       let content =
         Stanza_cst.dune_project
           ~opam_file_gen
+          ~defaults:context.defaults
           Path.(as_in_source_tree_exn context.dir)
           common
       in

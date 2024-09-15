@@ -41,12 +41,14 @@ let empty =
   }
 ;;
 
-let example =
+let example ~authors ~maintainers ~license =
   { source =
       Some (Host (Source_kind.Host.Github { user = "username"; repo = "reponame" }))
-  ; license = Some [ "LICENSE" ]
-  ; authors = Some [ "Author Name <author@example.com>" ]
-  ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+  ; license = Some (Option.value license ~default:[ "LICENSE" ])
+  ; authors = Some (Option.value authors ~default:[ "Author Name <author@example.com>" ])
+  ; maintainers =
+      Some
+        (Option.value maintainers ~default:[ "Maintainer Name <maintainer@example.com>" ])
   ; documentation =
       Some "https://url/to/documentation"
       (* homepage and bug_reports are inferred from the source *)

@@ -709,6 +709,6 @@ let gen_rules ctx ~dir components =
   else if Context_name.equal ctx Fetch_rules.context.name
   then Fetch_rules.gen_rules ~dir ~components
   else
-    Memo.bind (raise_on_lock_dir_out_of_sync ctx) ~f:(fun () ->
-      gen_rules ctx (Super_context.find_exn ctx) ~dir components)
+    let* () = raise_on_lock_dir_out_of_sync ctx in
+    gen_rules ctx (Super_context.find_exn ctx) ~dir components
 ;;

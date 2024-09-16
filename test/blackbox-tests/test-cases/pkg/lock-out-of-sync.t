@@ -19,8 +19,7 @@ Create a fake project and lock it:
   > (package
   >  (name test)
   >  (allow_empty)
-  >  (depends foo)
-  > )
+  >  (depends foo))
   > EOF
   $ add_mock_repo_if_needed
   $ dune pkg lock
@@ -37,8 +36,7 @@ We add the bar dependency to the test package
   > (package
   >  (name test)
   >  (allow_empty)
-  >  (depends foo bar)
-  > )
+  >  (depends foo bar))
   > EOF
 
 It fails as we have not regenerated the lock:

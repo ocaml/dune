@@ -1,6 +1,6 @@
  When a package fails to build, dune will print opam depexts warning.
 
-  $ . ./helpers.sh
+  $ . ../helpers.sh
   $ mkrepo
   $ add_mock_repo_if_needed
 
@@ -10,25 +10,6 @@ Make a library that would fail when building it:
   > EOF
   $ tar -czf foo.tar.gz foo
   $ rm -rf foo
-
-Make a package for the library with depexts:
-  $ mkpkg foo <<EOF
-  > depexts: [["unzip" "gnupg"]]
-  > build: [
-  >   [
-  >     "dune"
-  >     "build"
-  >     "-p"
-  >     name
-  >   ]
-  > ]
-  > url {
-  >  src: "file://$PWD/foo.tar.gz"
-  >  checksum: [
-  >   "md5=$(md5sum foo.tar.gz | cut -f1 -d' ')"
-  >  ]
-  > }
-  > EOF
 
 Make a project that uses the foo library:
   $ cat > dune-project <<EOF
@@ -43,13 +24,24 @@ Make a project that uses the foo library:
   >  (libraries foo))
   > EOF
 
-Lock, build, and run the executable in the project:
-  $ dune pkg lock
-  Solution for dune.lock:
-  - foo.0.0.1
+Make dune.lock files
+  $ make_lockdir
+  $ cat > dune.lock/foo.pkg <<EOF
+  > (version 0.0.1)
+  > (build
+  >  (run dune build))
+  > (depexts unzip gnupg)
+  > (source
+  >  (fetch
+  >   (url file://$PWD/foo.tar.gz)
+  >   (checksum md5=$(md5sum foo.tar.gz | cut -f1 -d' '))))
+  > EOF
+
+Build the project, when it fails building 'foo' package, it shows
+the depexts error message.
   $ dune build
-  File "dune.lock/foo.pkg", line 4, characters 6-10:
-  4 |  (run dune build -p %{pkg-self:name}))
+  File "dune.lock/foo.pkg", line 3, characters 6-10:
+  3 |  (run dune build))
             ^^^^
   Error: Logs for package foo
   File "dune-project", line 1, characters 0-0:

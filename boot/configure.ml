@@ -21,6 +21,18 @@ let default_toggles : (string * [ `Disabled | `Enabled ]) list =
   [ "toolchains", `Disabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
 ;;
 
+let toggles = ref default_toggles
+
+let toggle name v =
+  toggles := List.map !toggles ~f:(fun (x, y) -> x, if x = name then v else y)
+;;
+
+let toggle =
+  let toggles = [ "enable", `Enabled; "disable", `Disabled ] in
+  let options = List.map toggles ~f:fst in
+  fun name -> Arg.Symbol (options, fun s -> List.assoc s toggles |> toggle name)
+;;
+
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
   let library_path = ref [] in
@@ -32,7 +44,6 @@ let () =
   let sbindir = ref None in
   let libexecdir = ref None in
   let datadir = ref None in
-  let toggles = ref default_toggles in
   let cwd = lazy (Sys.getcwd ()) in
   let dir_of_string s =
     if Filename.is_relative s then Filename.concat (Lazy.force cwd) s else s
@@ -45,9 +56,6 @@ let () =
   let set_dir v s =
     let dir = dir_of_string s in
     v := Some dir
-  in
-  let toggle name () =
-    toggles := List.map !toggles ~f:(fun (x, y) -> x, if x = name then `Enabled else y)
   in
   let args =
     [ ( "--libdir"
@@ -78,17 +86,17 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
-    ; ( "--enable-toolchains"
-      , Arg.Unit (toggle "toolchains")
+    ; ( "--toolchains"
+      , toggle "toolchains"
       , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
          user-wide directory.\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
-    ; ( "--enable-pkg-build-progress"
-      , Arg.Unit (toggle "pkg_build_progress")
+    ; ( "--pkg-build-progress"
+      , toggle "pkg_build_progress"
       , " Enable the displaying of package build progress.\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
-    ; ( "--enable-lock-dev-tool"
-      , Arg.Unit (toggle "lock_dev_tool")
+    ; ( "--lock-dev-tool"
+      , toggle "lock_dev_tool"
       , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
          it, independently from the project depenedencies .\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )

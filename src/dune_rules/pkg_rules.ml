@@ -616,6 +616,7 @@ module Run_with_path = struct
     ;;
 
     let to_paragraphs t error =
+      let pkg_name, loc = t.pkg in
       let depexts_warning =
         match t.depexts with
         | [] -> []
@@ -624,11 +625,7 @@ module Run_with_path = struct
           ; Pp.enumerate ~f:Pp.verbatim t.depexts
           ]
       in
-      let pp_pkg =
-        let pkg_name = Dune_pkg.Package_name.to_string (fst t.pkg) in
-        Pp.textf "Logs for package %s" pkg_name
-      in
-      let loc = snd t.pkg in
+      let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string pkg_name) in
       [ pp_pkg; Pp.verbatim error ] @ depexts_warning, loc
     ;;
 

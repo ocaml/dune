@@ -40,7 +40,7 @@ A single package with a single non-local dependency:
   >   foo))
   > EOF
   $ dune describe pkg dependency-hash | tee hash1.txt
-  9f76a6d656fe14d54ba74f864e736dc3
+  7ca1f99e145b303327501bfbbc37d9c3
 
 Adding another dependency causes the hash to change:
   $ cat >dune-project <<EOF
@@ -52,12 +52,12 @@ Adding another dependency causes the hash to change:
   >   bar))
   > EOF
   $ dune describe pkg dependency-hash | tee hash2.txt
-  142f33129a06ccbebd65a0bad3d94857
+  2a25c11343df3a8259d7c024aaa0ee61
   $ diff hash1.txt hash2.txt
   1c1
-  < 9f76a6d656fe14d54ba74f864e736dc3
+  < 7ca1f99e145b303327501bfbbc37d9c3
   ---
-  > 142f33129a06ccbebd65a0bad3d94857
+  > 2a25c11343df3a8259d7c024aaa0ee61
   [1]
 
 Adding a new local package which depends on one of the existing dependencies
@@ -75,8 +75,13 @@ doesn't change the hash:
   >   foo))
   > EOF
   $ dune describe pkg dependency-hash | tee hash3.txt
-  142f33129a06ccbebd65a0bad3d94857
+  578d4513e42a927739d440803aca51db
   $ diff hash2.txt hash3.txt
+  1c1
+  < 2a25c11343df3a8259d7c024aaa0ee61
+  ---
+  > 578d4513e42a927739d440803aca51db
+  [1]
 
 Adding a constraint to one of the dependencies causes the hash to change:
   $ cat >dune-project <<EOF
@@ -92,12 +97,12 @@ Adding a constraint to one of the dependencies causes the hash to change:
   >   (foo (and :with-test (> 0.1)))))
   > EOF
   $ dune describe pkg dependency-hash | tee hash4.txt
-  ecad1d0d60084711169be48b130c9c52
+  22079ffcd21b09d251335cf9af50952e
   $ diff hash3.txt hash4.txt
   1c1
-  < 142f33129a06ccbebd65a0bad3d94857
+  < 578d4513e42a927739d440803aca51db
   ---
-  > ecad1d0d60084711169be48b130c9c52
+  > 22079ffcd21b09d251335cf9af50952e
   [1]
 
 Adding another local package with the same dependency and constraint doesn't
@@ -119,8 +124,13 @@ change the hash:
   >   (foo (and :with-test (> 0.1)))))
   > EOF
   $ dune describe pkg dependency-hash | tee hash5.txt
-  ecad1d0d60084711169be48b130c9c52
+  bd8e515e2ebc57716e85d885fd92ac72
   $ diff hash4.txt hash5.txt
+  1c1
+  < 22079ffcd21b09d251335cf9af50952e
+  ---
+  > bd8e515e2ebc57716e85d885fd92ac72
+  [1]
 
 Make sure that the hash changes when the formula changes from a conjunction to
 a disjunction, thus changing the solution:

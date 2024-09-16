@@ -10,6 +10,14 @@ val create
   -> Lock_dir.t
   -> (t, User_message.t) result
 
+(** Verifies if the dependencies described in the project file are still
+    synchronize with the dependencies selected in the lock directroy. If it is
+    not the case, it returns the hash of the new dependency set. *)
+val up_to_date
+  :  Local_package.t Package_name.Map.t
+  -> Lock_dir.t
+  -> [ `Valid | `Invalid of Local_package.Dependency_hash.t option ]
+
 (** Returns the dependencies of the specified package within the package
     universe *)
 val opam_package_dependencies_of_package

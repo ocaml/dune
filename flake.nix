@@ -65,6 +65,7 @@
           [
             "--enable-toolchains"
             "--enable-pkg-build-progress"
+            "--enable-lock-dev-tool"
           ];
       };
 

@@ -28,9 +28,9 @@ let%expect_test "cache-check-probability 0.1" =
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; project_defaults =
-        { authors = [ "Author Name <author@example.com>" ]
-        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
-        ; license = [ "LICENSE" ]
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = Some [ "LICENSE" ]
         }
     ; experimental = []
     }
@@ -51,9 +51,9 @@ let%expect_test "cache-storage-mode copy" =
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; project_defaults =
-        { authors = [ "Author Name <author@example.com>" ]
-        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
-        ; license = [ "LICENSE" ]
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = Some [ "LICENSE" ]
         }
     ; experimental = []
     }
@@ -74,9 +74,9 @@ let%expect_test "cache-storage-mode hardlink" =
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
     ; project_defaults =
-        { authors = [ "Author Name <author@example.com>" ]
-        ; maintainers = [ "Maintainer Name <maintainer@example.com>" ]
-        ; license = [ "LICENSE" ]
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; license = Some [ "LICENSE" ]
         }
     ; experimental = []
     }

@@ -55,8 +55,7 @@ Lock, build, and run the executable in the project:
   File "dune-project", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
   
-  May have been due to the missing depexts:
+  You may want to verify the following depexts are installed:
   - unzip
   - gnupg
-  (If already installed, you could ignore this message)
   [1]

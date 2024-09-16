@@ -617,13 +617,12 @@ module Run_with_path = struct
 
     let to_paragraphs t error =
       let depexts_warning =
-        if not @@ List.is_empty t.depexts
-        then
-          [ Pp.textf "May have been due to the missing depexts:"
+        match t.depexts with
+        | [] -> []
+        | _ :: _ ->
+          [ Pp.textf "You may want to verify the following depexts are installed:"
           ; Pp.enumerate ~f:Pp.verbatim t.depexts
-          ; Pp.textf "(If already installed, you could ignore this message)"
           ]
-        else []
       in
       let pp_pkg =
         let pkg_name = Dune_pkg.Package_name.to_string (fst t.pkg) in

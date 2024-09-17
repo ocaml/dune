@@ -15,8 +15,7 @@ or simply undoing some changes within the same workspace.
 Configuration
 =============
 
-.. TODO (ElectreAAS): update version number here when releasing
-Since %version%, Dune cache is now an opt-out feature: it is enabled by default.
+Since version 3.17, Dune cache is an opt-out feature: it is enabled by default.
 There are three ways to disable it. Choose the one that is more convenient for you:
 
 * Add ``(cache disabled)`` to your Dune configuration file
@@ -28,6 +27,8 @@ By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
 systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.
 You can change the default location by setting the environment variable
 ``DUNE_CACHE_ROOT``.
+
+.. versionchanged:: 3.17 The cache used to be opt-in, disabled by default.
 
 Caching User Rules
 ==================

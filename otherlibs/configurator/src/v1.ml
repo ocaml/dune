@@ -91,8 +91,13 @@ module Find_in_path = struct
   ;;
 
   let which prog =
-    List.find_map (get_path ()) ~f:(fun dir ->
-      let fn = dir ^/ prog ^ exe in
+    if Filename.is_implicit prog
+    then
+      List.find_map (get_path ()) ~f:(fun dir ->
+        let fn = dir ^/ prog ^ exe in
+        Option.some_if (Sys.file_exists fn) fn)
+    else (
+      let fn = if Filename.check_suffix prog exe then prog else prog ^ exe in
       Option.some_if (Sys.file_exists fn) fn)
   ;;
 end

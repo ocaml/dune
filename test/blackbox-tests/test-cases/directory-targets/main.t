@@ -57,8 +57,8 @@ Error message when the matching directory target is empty.
   2 |   (deps (sandbox always))
   3 |   (targets (dir output))
   4 |   (action (bash "mkdir output")))
-  Error: Rule produced directory "output" that contains no files nor non-empty
-  subdirectories
+  Error: This rule defines a directory target "output" that matches the
+  requested path "output/x" but the rule's action didn't produce it
   [1]
 
 Error message when the matching directory target doesn't contain a requested path.

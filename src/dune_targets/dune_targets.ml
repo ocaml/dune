@@ -243,9 +243,7 @@ module Produced = struct
                 acc_filenames, Path.Local.Map.union_exn acc_dirs dir
               | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
         in
-        if not (Filename.Map.is_empty filenames)
-        then Path.Local.Map.add_exn dirs local filenames
-        else dirs
+        Path.Local.Map.add_exn dirs local filenames
     in
     let directory root dirname =
       let open Result.O in

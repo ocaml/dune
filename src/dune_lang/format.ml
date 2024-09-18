@@ -16,7 +16,9 @@ let parse lb =
 let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Cst.t) ->
     match c with
-    | Atom _ | Quoted_string _ | Template _ | List (_, []) | List (_, [ _ ]) -> true
+    | Atom _ | Quoted_string _ | Block_string _ | Template _
+    | List (_, [])
+    | List (_, [ _ ]) -> true
     | List _ | Comment _ -> false)
 ;;
 
@@ -48,7 +50,7 @@ let pp_list_with_comments pp_sexp sexps =
 ;;
 
 let rec pp_sexp ~version : Cst.t -> _ = function
-  | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple sexp
+  | (Atom _ | Quoted_string _ | Block_string _ | Template _) as sexp -> pp_simple sexp
   | List (_, sexps) ->
     Pp.vbox
       ~indent:1

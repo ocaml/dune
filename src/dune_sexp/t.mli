@@ -7,6 +7,7 @@ open! Stdune
 type t =
   | Atom of Atom.t
   | Quoted_string of string
+  | Block_string of string
   | List of t list
   | Template of Template.t
 

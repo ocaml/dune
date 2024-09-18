@@ -6,7 +6,7 @@ Test that installed binaries are visible in dependent packages
   $ cat >dune.lock/test.pkg <<EOF
   > (version 0.0.1)
   > (build
-  >  (system "\| echo "#!/bin/sh\necho from test package" > foo;
+  >  (system "\> echo "#!/bin/sh\necho from test package" > foo;
   >          "\| chmod +x foo;
   >          "\| touch libxxx lib_rootxxx;
   >          "\| cat >test.install <<EOF

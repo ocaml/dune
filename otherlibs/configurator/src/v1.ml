@@ -672,7 +672,16 @@ module Pkg_config = struct
        | None ->
          Option.map (which c "pkg-config") ~f:(fun pkg_config ->
            { pkg_config; pkg_config_args; configurator = c })
-       | Some pkg_config -> Some { pkg_config; pkg_config_args; configurator = c })
+       | Some pkg_config ->
+         let pkg_config_args =
+           match Sys.getenv "PKG_CONFIG_ARGN" with
+           | s -> String.split ~on:' ' s
+           | exception Not_found ->
+             (match ocaml_config_var c "target" with
+              | None -> []
+              | Some target -> [ "--personality=" ^ target ])
+         in
+         Some { pkg_config; pkg_config_args; configurator = c })
   ;;
 
   type package_conf =

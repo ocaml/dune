@@ -63,9 +63,9 @@
       add-experimental-configure-flags = pkg: pkg.overrideAttrs {
         configureFlags =
           [
-            "--enable-toolchains"
-            "--enable-pkg-build-progress"
-            "--enable-lock-dev-tool"
+            "--toolchains" "enable"
+            "--pkg-build-progress" "enable"
+            "--lock-dev-tool" "enable"
           ];
       };
 

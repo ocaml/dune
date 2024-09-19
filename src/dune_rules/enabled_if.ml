@@ -19,6 +19,7 @@ let common_vars_list =
   ; "ocaml_version"
   ; "context_name"
   ; "arch_sixtyfour"
+  ; "env"
   ]
 ;;
 
@@ -29,6 +30,7 @@ let common_vars ~since =
          match var with
          | "context_name" -> var, (2, 7)
          | "arch_sixtyfour" -> var, (3, 11)
+         | "env" -> var, (1, 14)
          | _ -> var, since)
        common_vars_list)
 ;;
@@ -53,12 +55,12 @@ let decode_value ~allowed_vars ?(is_error = true) () =
     Blang.Ast.decode
       ~override_decode_bare_literal:None
       (String_with_vars.decode_manually (fun env var ->
+         let name = Dune_lang.Template.Pform.name var in
          match Dune_lang.Template.Pform.payload var with
-         | Some _ ->
+         | _ when not @@ List.exists ~f:(String.equal name) common_vars_list ->
            emit_warning allowed_vars is_error var;
            Pform.Env.parse env var
-         | None ->
-           let name = Dune_lang.Template.Pform.name var in
+         | _ ->
            (match List.assoc allowed_vars name with
             | None ->
               emit_warning allowed_vars is_error var;

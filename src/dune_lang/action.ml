@@ -176,6 +176,7 @@ type t =
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
   | When of Slang.blang * t
+  | Needed_deps of String_with_vars.t list
 
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
@@ -350,6 +351,10 @@ let cstrs_dune_file t =
     , Syntax.since Stanza.syntax (2, 7)
       >>> let+ script = sw in
           Cram script )
+  ; ( "needed_deps"
+    , Syntax.since Stanza.syntax (3, 17)
+      >>> let* xs = repeat1 sw in
+          return (Needed_deps xs) )
   ]
 ;;
 
@@ -458,6 +463,7 @@ let rec encode =
     List [ atom "withenv"; List (List.map ~f:Env_update.encode ops); encode t ]
   | When (condition, action) ->
     List [ atom "when"; Slang.encode_blang condition; encode action ]
+  | Needed_deps xs -> List (atom "needed_deps" :: List.map xs ~f:sw)
 ;;
 
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
@@ -495,6 +501,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Diff _
     | Substitute _
     | Patch _
+    | Needed_deps _
     | Cram _ -> false
     | Pipe (_, ts) | Progn ts | Concurrent ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
@@ -597,6 +604,7 @@ let rec map_string_with_vars t ~f =
     When
       ( blang_map_string_with_vars condition ~f:(slang_map_string_with_vars ~f)
       , map_string_with_vars t ~f )
+  | Needed_deps xs -> Needed_deps (List.map ~f xs)
 ;;
 
 let remove_locs = map_string_with_vars ~f:String_with_vars.remove_locs

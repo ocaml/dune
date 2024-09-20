@@ -54,6 +54,7 @@ struct
   let rename a b = Rename (a, b)
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
+  let needed_deps xs = Needed_deps xs
 end
 
 module Prog = struct
@@ -193,7 +194,8 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Extension _ -> acc
+  | Extension _
+  | Needed_deps _ -> acc
 ;;
 
 include Action_mapper.Make (Ast) (Ast)
@@ -238,7 +240,8 @@ let rec is_dynamic = function
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Extension _ -> false
+  | Extension _
+  | Needed_deps _ -> false
 ;;
 
 let maybe_sandbox_path sandbox p =
@@ -291,6 +294,7 @@ let is_useful_to memoize =
     | Dynamic_run _ -> true
     | Bash _ -> true
     | Extension (module A) -> A.Spec.is_useful_to ~memoize
+    | Needed_deps _ -> false
   in
   fun t ->
     match loop t with

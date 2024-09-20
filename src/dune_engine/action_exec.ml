@@ -125,6 +125,7 @@ module Exec_result = struct
   type ok =
     { dynamic_deps_stages : (Dep.Set.t * Dep.Facts.t) list
     ; duration : float option
+    ; needed_deps : Dep.Set.t * Dep.Facts.t
     }
 
   type t = (ok, Error.t list) Result.t
@@ -178,12 +179,12 @@ let bash_exn =
 let zero = Predicate_lang.element 0
 let maybe_async f = Produce.of_fiber (maybe_async f)
 
-let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+let rec exec t ~display ~ectx ~eenv : Action_res.t Produce.t =
   match (t : Action.t) with
   | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
     let+ () = exec_run ~display ~ectx ~eenv prog (Array.Immutable.to_list args) in
-    Done
+    Action_res.done_
   | With_accepted_exit_codes (exit_codes, t) ->
     let eenv =
       let exit_codes =
@@ -204,7 +205,7 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
       maybe_async (fun () ->
         Io.write_file (Path.build fn) (String.concat s ~sep:" ") ~perm)
     in
-    Done
+    Action_res.done_
   | Redirect_out (outputs, fn, perm, t) ->
     let fn = Path.build fn in
     redirect_out t ~display ~ectx ~eenv outputs ~perm fn
@@ -214,10 +215,10 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   | Progn ts -> exec_list ts ~display ~ectx ~eenv
   | Concurrent ts ->
     Produce.parallel_map ts ~f:(exec ~display ~ectx ~eenv)
-    >>| List.fold_left ~f:done_or_more_deps_union ~init:Done
+    >>| List.fold_left ~f:Action_res.union ~init:Action_res.done_
   | Echo strs ->
     let+ () = exec_echo eenv.stdout_to (String.concat strs ~sep:" ") in
-    Done
+    Action_res.done_
   | Cat xs ->
     let+ () =
       maybe_async (fun () ->
@@ -225,17 +226,17 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
           Io.with_file_in fn ~f:(fun ic ->
             Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to))))
     in
-    Done
+    Action_res.done_
   | Copy (src, dst) ->
     let dst = Path.build dst in
     let+ () = maybe_async (fun () -> Io.copy_file ~src ~dst ()) in
-    Done
+    Action_res.done_
   | Symlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_symlink ~src ~dst:(Path.build dst)) in
-    Done
+    Action_res.done_
   | Hardlink (src, dst) ->
     let+ () = maybe_async (fun () -> Io.portable_hardlink ~src ~dst:(Path.build dst)) in
-    Done
+    Action_res.done_
   | Bash cmd ->
     let+ () =
       exec_run
@@ -245,26 +246,34 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
         (bash_exn ~loc:ectx.rule_loc ~needed_to:"interpret (bash ...) actions")
         [ "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd ]
     in
-    Done
+    Action_res.done_
   | Write_file (fn, perm, s) ->
     let perm = Action.File_perm.to_unix_perm perm in
     let+ () = maybe_async (fun () -> Io.write_file (Path.build fn) s ~perm) in
-    Done
+    Action_res.done_
   | Rename (src, dst) ->
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in
     let+ () = maybe_async (fun () -> Unix.rename src dst) in
-    Done
+    Action_res.done_
   | Remove_tree path ->
     let+ () = maybe_async (fun () -> Path.rm_rf (Path.build path)) in
-    Done
+    Action_res.done_
   | Mkdir path ->
     let+ () = maybe_async (fun () -> Path.mkdir_p (Path.build path)) in
-    Done
+    Action_res.done_
   | Pipe (outputs, l) -> exec_pipe ~display ~ectx ~eenv outputs l
   | Extension (module A) ->
     let+ () = Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv in
-    Done
+    Action_res.done_
+  | Needed_deps paths ->
+    let needed_deps =
+      Dep.Set.union_map paths ~f:(fun path ->
+        Dep.Set.of_list_map
+          ~f:(Dune_sexp.Decoder.parse (Dep.decode eenv.working_dir) Univ_map.empty)
+          (Dune_sexp.Parser.load ~mode:Many path))
+    in
+    Produce.return (Action_res.needed_deps needed_deps)
 
 and redirect_out t ~display ~ectx ~eenv ~perm outputs fn =
   redirect t ~display ~ectx ~eenv ~out:(outputs, fn, perm) ()
@@ -302,22 +311,25 @@ and redirect t ~display ~ectx ~eenv ?in_ ?out () =
   release_out ();
   result
 
-and exec_list ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_list ts ~display ~ectx ~eenv : Action_res.t Produce.t =
   match ts with
-  | [] -> Produce.return Done
+  | [] -> Produce.return Action_res.done_
   | [ t ] -> exec t ~display ~ectx ~eenv
   | t :: rest ->
-    let* done_or_deps =
+    let* action_res =
       let stdout_to = Process.Io.multi_use eenv.stdout_to in
       let stderr_to = Process.Io.multi_use eenv.stderr_to in
       let stdin_from = Process.Io.multi_use eenv.stdin_from in
       exec t ~display ~ectx ~eenv:{ eenv with stdout_to; stderr_to; stdin_from }
     in
-    (match done_or_deps with
-     | Need_more_deps _ as need -> Produce.return need
-     | Done -> exec_list rest ~display ~ectx ~eenv)
+    (match action_res with
+     | { done_or_more_deps = Need_more_deps _; _ } -> Produce.return action_res
+     | { done_or_more_deps = Done; needed_deps } ->
+       let* x = exec_list rest ~display ~ectx ~eenv in
+       let needed_deps = Dep.Set.union x.needed_deps needed_deps in
+       Produce.return (Action_res.needed_deps needed_deps))
 
-and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
+and exec_pipe outputs ts ~display ~ectx ~eenv : Action_res.t Produce.t =
   let tmp_file () =
     Dtemp.file ~prefix:"dune-pipe-action-" ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
@@ -335,14 +347,17 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
       result
     | t :: ts ->
       let out = tmp_file () in
-      let* done_or_deps =
+      let* action_res =
         let eenv = { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to } in
         redirect t ~display ~ectx ~eenv ~in_:(Stdin, in_) ~out:(Stdout, out, Normal) ()
       in
       Dtemp.destroy File in_;
-      (match done_or_deps with
-       | Need_more_deps _ as need -> Produce.return need
-       | Done -> loop ~in_:out ts)
+      (match action_res with
+       | { done_or_more_deps = Need_more_deps _; _ } -> Produce.return action_res
+       | { done_or_more_deps = Done; needed_deps } ->
+         let* res = loop ~in_:out ts in
+         let needed_deps = Dep.Set.union res.needed_deps needed_deps in
+         Produce.return (Action_res.needed_deps needed_deps))
   in
   match ts with
   | [] -> assert false
@@ -356,16 +371,23 @@ and exec_pipe outputs ts ~display ~ectx ~eenv : done_or_more_deps Produce.t =
     in
     let* done_or_deps = redirect_out t1 ~display ~ectx ~eenv ~perm:Normal outputs out in
     (match done_or_deps with
-     | Need_more_deps _ as need -> Produce.return need
-     | Done -> loop ~in_:out ts)
+     | { done_or_more_deps = Need_more_deps _; _ } -> Produce.return done_or_deps
+     | { done_or_more_deps = Done; needed_deps } ->
+       let* res = loop ~in_:out ts in
+       let needed_deps = Dep.Set.union res.needed_deps needed_deps in
+       Produce.return (Action_res.needed_deps needed_deps))
 ;;
 
 let exec_until_all_deps_ready ~display ~ectx ~eenv t =
   let rec loop ~eenv stages =
     let* result = exec ~display ~ectx ~eenv t in
     match result with
-    | Done -> Produce.return stages
-    | Need_more_deps (relative_deps, deps_to_build) ->
+    | { done_or_more_deps = Done; needed_deps = deps } ->
+      let* fact_map = Produce.of_fiber @@ ectx.build_deps deps in
+      Produce.return (stages, (deps, fact_map))
+    | { done_or_more_deps = Need_more_deps (relative_deps, deps_to_build)
+      ; needed_deps = _
+      } ->
       let* fact_map = Produce.of_fiber @@ ectx.build_deps deps_to_build in
       let stages = (deps_to_build, fact_map) :: stages in
       let eenv =
@@ -377,8 +399,11 @@ let exec_until_all_deps_ready ~display ~ectx ~eenv t =
       loop ~eenv stages
   in
   let open Fiber.O in
-  let+ stages, state = Produce.run Produce.State.empty (loop ~eenv []) in
-  { Exec_result.dynamic_deps_stages = List.rev stages; duration = state.duration }
+  let+ (stages, needed_deps), state = Produce.run Produce.State.empty (loop ~eenv []) in
+  { Exec_result.dynamic_deps_stages = List.rev stages
+  ; duration = state.duration
+  ; needed_deps
+  }
 ;;
 
 type input =

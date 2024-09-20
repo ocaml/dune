@@ -707,7 +707,8 @@ let opam_package_to_lock_file_pkg
   let depexts =
     OpamFile.OPAM.depexts opam_file
     |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
-      if OpamFilter.eval_to_bool (Solver_env.to_env solver_env) filter
+      let env = Solver_env.to_env solver_env in
+      if OpamFilter.eval_to_bool ~default:false env filter
       then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
       else [])
   in

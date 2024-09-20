@@ -1,7 +1,7 @@
 Test enabled_if with 'env' variable.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.16)
+  > (lang dune 3.14)
   > (name dune-test)
   > (package
   >  (name dune-test))
@@ -21,6 +21,21 @@ Test enabled_if with 'env' variable.
   >  (modules main_2)
   >  (package dune-test)
   >  (modes exe))
+  > EOF
+
+  $ MYVAR=disabled dune exec -- dune_test
+  File "dune", line 10, characters 24-45:
+  10 |  (enabled_if (= enabled %{env:MYVAR=disabled}))
+                               ^^^^^^^^^^^^^^^^^^^^^
+  Error: %{env:..} is only available since version 3.15 of the dune language.
+  Please update your dune-project file to have (lang dune 3.15).
+  [1]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.15)
+  > (name dune-test)
+  > (package
+  >  (name dune-test))
   > EOF
 
   $ cat > main.ml <<EOF

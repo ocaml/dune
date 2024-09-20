@@ -30,7 +30,7 @@ let common_vars ~since =
          match var with
          | "context_name" -> var, (2, 7)
          | "arch_sixtyfour" -> var, (3, 11)
-         | "env" -> var, (1, 14)
+         | "env" -> var, (3, 15)
          | _ -> var, since)
        common_vars_list)
 ;;

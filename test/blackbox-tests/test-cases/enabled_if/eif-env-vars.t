@@ -29,3 +29,9 @@ Test enabled_if with 'env' variable.
 
   $ MYVAR=disabled dune exec -- dune_test
   Hello world
+  $ MYVAR=enabled dune exec -- dune_test
+  File "dune", line 11, characters 10-16:
+  11 |  (modules main_2)
+                 ^^^^^^
+  Error: Module Main_2 doesn't exist.
+  [1]

@@ -9,6 +9,7 @@ the rest of the OCaml ecosystem.
 
    preprocessing
    ocaml-ecosystem
+   package-management
    opam-integration
    bootstrap
    mental-model

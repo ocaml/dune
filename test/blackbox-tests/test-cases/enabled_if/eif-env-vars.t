@@ -1,3 +1,4 @@
+Test enabled_if with 'env' variable.
 
   $ cat > dune-project <<EOF
   > (lang dune 3.16)

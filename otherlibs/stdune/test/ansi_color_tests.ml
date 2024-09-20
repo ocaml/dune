@@ -21,10 +21,7 @@ let dyn_of_pp tag pp =
     | Tag (ta, t) -> variant "Tag" [ tag ta; conv t ]
     | Text s -> variant "Text" [ string s ]
   in
-  conv
-    (match Pp.to_ast pp with
-     | Ok s -> s
-     | Error () -> assert false)
+  conv (Pp.to_ast pp)
 ;;
 
 let%expect_test "reproduce #2664" =

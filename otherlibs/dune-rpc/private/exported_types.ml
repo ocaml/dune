@@ -379,14 +379,7 @@ let sexp_pp_unit : unit Pp.t Conv.value =
           | Text s -> case s text
           | Tag ((), t) -> case t tag))
   in
-  let to_ast x =
-    match Pp.to_ast x with
-    | Ok s -> s
-    | Error () ->
-      (* We don't use the format constructor in dune. *)
-      assert false
-  in
-  iso t Pp.of_ast to_ast
+  iso t Pp.of_ast Pp.to_ast
 ;;
 
 module Diagnostic = struct
@@ -469,14 +462,7 @@ module Diagnostic = struct
             | Text s -> case s text
             | Tag (s, t) -> case (s, t) tag))
     in
-    let to_ast x =
-      match Pp.to_ast x with
-      | Ok s -> s
-      | Error () ->
-        (* We don't use the format constructor in dune. *)
-        assert false
-    in
-    iso t Pp.of_ast to_ast
+    iso t Pp.of_ast Pp.to_ast
   ;;
 
   module Id = struct

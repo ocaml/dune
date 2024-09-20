@@ -24,59 +24,12 @@ module Ast = struct
     | Tag of 'a * 'a t
 end
 
-type +'a t =
-  | Nop
-  | Seq of 'a t * 'a t
-  | Concat of 'a t * 'a t list
-  | Box of int * 'a t
-  | Vbox of int * 'a t
-  | Hbox of 'a t
-  | Hvbox of int * 'a t
-  | Hovbox of int * 'a t
-  | Verbatim of string
-  | Char of char
-  | Break of (string * int * string) * (string * int * string)
-  | Newline
-  | Text of string
-  | Tag of 'a * 'a t
-  | Format of (Format.formatter -> unit)
+include Ast
 
-let rec of_ast : 'a. 'a Ast.t -> 'a t = function
-  | Nop -> Nop
-  | Seq (x, y) -> Seq (of_ast x, of_ast y)
-  | Concat (x, y) -> Concat (of_ast x, List.map ~f:of_ast y)
-  | Box (x, y) -> Box (x, of_ast y)
-  | Vbox (x, y) -> Vbox (x, of_ast y)
-  | Hbox x -> Hbox (of_ast x)
-  | Hvbox (x, y) -> Hvbox (x, of_ast y)
-  | Hovbox (x, y) -> Hovbox (x, of_ast y)
-  | Verbatim s -> Verbatim s
-  | Char c -> Char c
-  | Break (x, y) -> Break (x, y)
-  | Newline -> Newline
-  | Text s -> Text s
-  | Tag (a, x) -> Tag (a, of_ast x)
+let of_ast = Fun.id
+let to_ast = Fun.id
 
-let to_ast x =
-  let rec to_ast : 'a t -> 'a Ast.t = function
-    | Nop -> Nop
-    | Seq (x, y) -> Seq (to_ast x, to_ast y)
-    | Concat (x, y) -> Concat (to_ast x, List.map ~f:(fun x -> to_ast x) y)
-    | Box (x, y) -> Box (x, to_ast y)
-    | Vbox (x, y) -> Vbox (x, to_ast y)
-    | Hbox x -> Hbox (to_ast x)
-    | Hvbox (x, y) -> Hvbox (x, to_ast y)
-    | Hovbox (x, y) -> Hovbox (x, to_ast y)
-    | Verbatim s -> Verbatim s
-    | Char c -> Char c
-    | Break (x, y) -> Break (x, y)
-    | Newline -> Newline
-    | Tag (a, x) -> Tag (a, to_ast x)
-    | Text s -> Text s
-    | Format _ -> raise_notrace Exit
-  in
-  try Ok (to_ast x) with
-  | Exit -> Error ()
+type ('a, 'tag) format_string = ('a, unit, string, 'tag t) format4
 
 let rec map_tags t ~f =
   match t with
@@ -90,7 +43,6 @@ let rec map_tags t ~f =
   | Hovbox (indent, t) -> Hovbox (indent, map_tags t ~f)
   | (Verbatim _ | Char _ | Break _ | Newline | Text _) as t -> t
   | Tag (tag, t) -> Tag (f tag, map_tags t ~f)
-  | Format f -> Format f
 
 let rec filter_map_tags t ~f =
   match t with
@@ -109,7 +61,6 @@ let rec filter_map_tags t ~f =
     match f tag with
     | None -> t
     | Some tag -> Tag (tag, t))
-  | Format f -> Format f
 
 module Render = struct
   open Format
@@ -152,7 +103,6 @@ module Render = struct
     | Newline -> pp_force_newline ppf ()
     | Text s -> pp_print_text ppf s
     | Tag (tag, t) -> tag_handler ppf tag t
-    | Format f -> f ppf
 end
 
 let to_fmt_with_tags = Render.render
@@ -186,6 +136,7 @@ let hbox t = Hbox t
 let hvbox ?(indent = 0) t = Hvbox (indent, t)
 let hovbox ?(indent = 0) t = Hovbox (indent, t)
 let verbatim x = Verbatim x
+let verbatimf fmt = Printf.ksprintf verbatim fmt
 let char x = Char x
 let custom_break ~fits ~breaks = Break (fits, breaks)
 
@@ -196,8 +147,10 @@ let space = break ~nspaces:1 ~shift:0
 let cut = break ~nspaces:0 ~shift:0
 let newline = Newline
 let text s = Text s
-let textf fmt = Printf.ksprintf text fmt
+let textf (fmt : ('a, 'tag) format_string) = Printf.ksprintf text fmt
 let tag tag t = Tag (tag, t)
+let paragraph s = hovbox (text s)
+let paragraphf (fmt : ('a, 'tag) format_string) = Printf.ksprintf paragraph fmt
 
 let enumerate l ~f =
   vbox
@@ -220,8 +173,6 @@ let chain l ~f =
 module O = struct
   let ( ++ ) = seq
 end
-
-let of_fmt f x = Format (fun ppf -> f ppf x)
 
 let compare =
   let compare_both (type a b) (f : a -> a -> int) (g : b -> b -> int) (a, b)
@@ -297,10 +248,5 @@ let compare =
       | Text _, _ -> -1
       | _, Text _ -> 1
       | Tag (a, b), Tag (c, d) -> compare_both compare_tag compare (a, b) (c, d)
-      | Format _, Format _ ->
-        raise
-          (Invalid_argument "[Pp.of_fmt] values not supported in [Pp.compare]")
-      | Format _, _ -> -1
-      | _, Format _ -> 1
     in
     compare

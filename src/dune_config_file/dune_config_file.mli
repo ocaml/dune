@@ -31,7 +31,7 @@ module Dune_config : sig
     module Toggle : sig
       type t =
         | Disabled
-        | Exclude_user_rules
+        | Enabled_except_user_rules
         | Enabled
 
       val all : (string * t) list

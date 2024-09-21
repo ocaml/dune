@@ -114,17 +114,19 @@ module Dune_config = struct
     module Toggle = struct
       type t =
         | Disabled
-        | Exclude_user_rules
+        | Enabled_except_user_rules
         | Enabled
 
       let to_string = function
         | Disabled -> "disabled"
-        | Exclude_user_rules -> "exclude-user-rules"
+        | Enabled_except_user_rules -> "enabled-except-user-rules"
         | Enabled -> "enabled"
       ;;
 
       let all =
-        List.map ~f:(fun x -> to_string x, x) [ Disabled; Exclude_user_rules; Enabled ]
+        List.map
+          ~f:(fun x -> to_string x, x)
+          [ Disabled; Enabled_except_user_rules; Enabled ]
       ;;
 
       let decode ~check =
@@ -132,13 +134,14 @@ module Dune_config = struct
         enum'
           [ to_string Disabled, return Disabled
           ; to_string Enabled, return Enabled
-          ; to_string Exclude_user_rules, check (3, 17) >>> return Exclude_user_rules
+          ; ( to_string Enabled_except_user_rules
+            , check (3, 17) >>> return Enabled_except_user_rules )
           ]
       ;;
 
       let to_dyn = function
         | Disabled -> Dyn.variant "Disabed" []
-        | Exclude_user_rules -> Dyn.variant "Exclude_user_rules" []
+        | Enabled_except_user_rules -> Dyn.variant "Enabled_except_user_rules" []
         | Enabled -> Dyn.variant "Enabled" []
       ;;
     end
@@ -348,7 +351,7 @@ module Dune_config = struct
     ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = Exclude_user_rules
+    ; cache_enabled = Enabled_except_user_rules
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some (Dune_cache_storage.Mode.default ())
     ; action_stdout_on_success = Print

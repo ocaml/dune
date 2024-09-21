@@ -1220,7 +1220,7 @@ let init (builder : Builder.t) =
   let cache_config =
     match config.cache_enabled with
     | Disabled -> Dune_cache.Config.Disabled
-    | Exclude_user_rules | Enabled ->
+    | Enabled_except_user_rules | Enabled ->
       Enabled
         { storage_mode = Option.value config.cache_storage_mode ~default:Hardlink
         ; reproducibility_check = config.cache_reproducibility_check
@@ -1266,7 +1266,7 @@ let init (builder : Builder.t) =
   := if c.builder.require_dune_project_file then Error else Warn;
   (Dune_engine.Clflags.can_go_in_shared_cache_default
    := match config.cache_enabled with
-      | Disabled | Exclude_user_rules -> false
+      | Disabled | Enabled_except_user_rules -> false
       | Enabled -> true);
   Log.info
     [ Pp.textf

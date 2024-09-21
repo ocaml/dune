@@ -27,9 +27,10 @@ Here, ``<setting>`` must be one of:
 
 * ``disabled``: disables the Dune cache completely.
 
-* ``exclude-user-rules``: enables the Dune cache, but excludes user-written
-  rules. This setting is a conservative choice that can avoid breaking rules
-  whose dependencies are not correctly specified. Currently the default.
+* ``enabled-except-user-rules``: enables the Dune cache, but excludes
+  user-written rules. This setting is a conservative choice that can avoid
+  breaking rules whose dependencies are not correctly specified. Currently the
+  default.
 
 * ``enabled``: enables the Dune cache unconditionally.
 

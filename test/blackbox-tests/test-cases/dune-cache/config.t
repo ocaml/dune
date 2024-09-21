@@ -26,7 +26,6 @@ Check that old cache configuration format works fine with an old language
 Test that DUNE_CACHE_ROOT can be used to control the cache location
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
-  $ export DUNE_CACHE_RULES=enabled
 
 Build succeeds and the 'copy' mode is respected
 

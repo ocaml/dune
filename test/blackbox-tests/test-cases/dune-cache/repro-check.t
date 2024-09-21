@@ -1,7 +1,6 @@
 Test reproducibility check
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
-  $ export DUNE_CACHE_RULES=enabled
   $ cat > config <<EOF
   > (lang dune 3.0)
   > (cache enabled)

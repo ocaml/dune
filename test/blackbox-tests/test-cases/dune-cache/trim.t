@@ -1,5 +1,4 @@
   $ export DUNE_CACHE=enabled
-  $ export DUNE_CACHE_RULES=enabled
   $ export XDG_RUNTIME_DIR=$PWD/.xdg-runtime
   $ export XDG_CACHE_HOME=$PWD/.xdg-cache
 

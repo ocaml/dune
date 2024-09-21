@@ -1,7 +1,6 @@
 Check that Dune cache can cope with missing file/metadata entries.
 
   $ export DUNE_CACHE_ROOT=$PWD/.cache
-  $ export DUNE_CACHE_RULES=enabled
 
   $ cat > config <<EOF
   > (lang dune 2.1)

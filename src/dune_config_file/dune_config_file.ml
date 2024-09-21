@@ -111,6 +111,38 @@ module Dune_config = struct
   end
 
   module Cache = struct
+    module Toggle = struct
+      type t =
+        | Disabled
+        | Exclude_user_rules
+        | Enabled
+
+      let to_string = function
+        | Disabled -> "disabled"
+        | Exclude_user_rules -> "exclude-user-rules"
+        | Enabled -> "enabled"
+      ;;
+
+      let all =
+        List.map ~f:(fun x -> to_string x, x) [ Disabled; Exclude_user_rules; Enabled ]
+      ;;
+
+      let decode ~check =
+        let open Dune_lang.Decoder in
+        enum'
+          [ to_string Disabled, return Disabled
+          ; to_string Enabled, return Enabled
+          ; to_string Exclude_user_rules, check (3, 17) >>> return Exclude_user_rules
+          ]
+      ;;
+
+      let to_dyn = function
+        | Disabled -> Dyn.variant "Disabed" []
+        | Exclude_user_rules -> Dyn.variant "Exclude_user_rules" []
+        | Enabled -> Dyn.variant "Enabled" []
+      ;;
+    end
+
     module Transport_deprecated = struct
       type t =
         | Daemon
@@ -153,7 +185,7 @@ module Dune_config = struct
       ; concurrency : Concurrency.t field
       ; terminal_persistence : Terminal_persistence.t field
       ; sandboxing_preference : Sandboxing_preference.t field
-      ; cache_enabled : Config.Toggle.t field
+      ; cache_enabled : Cache.Toggle.t field
       ; cache_reproducibility_check : Dune_cache.Config.Reproducibility_check.t field
       ; cache_storage_mode : Cache.Storage_mode.t field
       ; action_stdout_on_success : Action_output_on_success.t field
@@ -220,7 +252,7 @@ module Dune_config = struct
         ; "terminal_persistence", field Terminal_persistence.to_dyn terminal_persistence
         ; ( "sandboxing_preference"
           , field (Dyn.list Sandbox_mode.to_dyn) sandboxing_preference )
-        ; "cache_enabled", field Config.Toggle.to_dyn cache_enabled
+        ; "cache_enabled", field Cache.Toggle.to_dyn cache_enabled
         ; ( "cache_reproducibility_check"
           , field
               Dune_cache.Config.Reproducibility_check.to_dyn
@@ -316,7 +348,7 @@ module Dune_config = struct
     ; concurrency = (if Execution_env.inside_dune then Fixed 1 else Auto)
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = `Enabled
+    ; cache_enabled = Exclude_user_rules
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some (Dune_cache_storage.Mode.default ())
     ; action_stdout_on_success = Print
@@ -342,7 +374,7 @@ module Dune_config = struct
       field_o "terminal-persistence" (1, 0) Terminal_persistence.decode
     and+ sandboxing_preference =
       field_o "sandboxing_preference" (1, 0) Sandboxing_preference.decode
-    and+ cache_enabled = field_o "cache" (2, 0) (enum Config.Toggle.all)
+    and+ cache_enabled = field_o "cache" (2, 0) (Cache.Toggle.decode ~check)
     and+ _cache_transport_unused_since_3_0 =
       field_o
         "cache-transport"

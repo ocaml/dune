@@ -15,13 +15,23 @@ or simply undoing some changes within the same workspace.
 Configuration
 =============
 
-For now, Dune cache is an opt-in feature. There are three ways to enable it.
-Choose the one that is more convenient for you:
+There are three ways to configure the Dune cache.  Choose the one that is more
+convenient for you:
 
-* Add ``(cache enabled)`` to your Dune configuration file
+* Add ``(cache <setting>)`` to your Dune configuration file
   (``~/.config/dune/config`` by default).
-* Set the environment variable ``DUNE_CACHE`` to ``enabled``
-* Run Dune with the ``--cache=enabled`` flag.
+* Set the environment variable ``DUNE_CACHE`` to ``<setting>``
+* Run Dune with the ``--cache=<setting>`` flag.
+
+Here, ``<setting>`` must be one of:
+
+* ``disabled``: disables the Dune cache completely.
+
+* ``exclude-user-rules``: enables the Dune cache, but excludes user-written
+  rules. This setting is a conservative choice that can avoid breaking rules
+  whose dependencies are not correctly specified. Currently the default.
+
+* ``enabled``: enables the Dune cache unconditionally.
 
 By default, Dune stores the cache in your ``XDG_CACHE_HOME`` directory on \*nix
 systems and ``%LOCALAPPDATA%\Microsoft\Windows\Temporary Internet Files\dune`` on Windows.

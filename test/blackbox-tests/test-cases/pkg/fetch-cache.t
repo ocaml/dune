@@ -2,13 +2,12 @@ Testing that files are only fetched once.
 
   $ . ./helpers.sh
 
-No need to set DUNE_CACHE (enabled by default) nor DUNE_CACHE_RULES as the
+No need to set DUNE_CACHE (enabled by default) as the
 fetch rules are always considered safe to cache, but we'll set a custom
 directory for the shared cache.
 
   $ export DUNE_CACHE_ROOT=$(pwd)/dune-cache
   $ unset DUNE_CACHE
-  $ unset DUNE_CACHE_RULES
 
 Set up a project that depends on a package that is being downloaded
 

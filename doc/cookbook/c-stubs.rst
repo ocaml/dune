@@ -1,7 +1,7 @@
-Defining a Library with C Stubs
+Defining a Library With C Stubs
 ===============================
 
-Assuming you have a file called ``mystubs.c``, that you need to pass
+Assuming you have a file called ``mystubs.c`` that you need to pass
 ``-I/blah/include`` to compile it and ``-lblah`` at link time, write
 this ``dune`` file:
 

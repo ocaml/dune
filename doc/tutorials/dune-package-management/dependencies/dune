@@ -1,0 +1,3 @@
+(executable
+  (public_name test)
+  (libraries fmt))

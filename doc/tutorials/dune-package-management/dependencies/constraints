@@ -1,0 +1,8 @@
+(lang dune 3.17)
+(name test)
+
+(package
+ (name test)
+ (depends
+  (ocaml (>= 4.14))
+  (fmt (and (>= 0.6) (< 1.0)))))

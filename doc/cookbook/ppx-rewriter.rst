@@ -1,7 +1,7 @@
-Using a PPX rewriter
+Using a PPX Rewriter
 ====================
 
-This is a sequel to :doc:`external-library` where in addition to an external
+This is a sequel to :doc:`external-library` where, in addition to an external
 library, we will use a PPX rewriter.
 
 ``dune``

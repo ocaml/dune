@@ -8,7 +8,7 @@ Make a library that would fail when building it:
   $ mkdir foo
   $ cat > foo/dune-project <<EOF
   > EOF
-  $ tar -czf foo.tar.gz foo
+  $ tar cf foo.tar foo
   $ rm -rf foo
 
 Make a project that uses the foo library:
@@ -33,8 +33,8 @@ Make dune.lock files
   > (depexts unzip gnupg)
   > (source
   >  (fetch
-  >   (url file://$PWD/foo.tar.gz)
-  >   (checksum md5=$(md5sum foo.tar.gz | cut -f1 -d' '))))
+  >   (url file://$PWD/foo.tar)
+  >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
   > EOF
 
 Build the project, when it fails building 'foo' package, it shows

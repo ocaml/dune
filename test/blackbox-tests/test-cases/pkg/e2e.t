@@ -19,12 +19,12 @@ Make a library:
   >  (public_name foo))
   > EOF
   $ cd ..
-  $ tar -czf foo.tar.gz foo
+  $ tar cf foo.tar foo
   $ rm -rf foo
 
 Configure our fake curl to serve the tarball
 
-  $ echo foo.tar.gz >> fake-curls
+  $ echo foo.tar >> fake-curls
   $ PORT=1
 
 Make a package for the library:
@@ -46,7 +46,7 @@ Make a package for the library:
   > url {
   >  src: "http://0.0.0.0:$PORT"
   >  checksum: [
-  >   "md5=$(md5sum foo.tar.gz | cut -f1 -d' ')"
+  >   "md5=$(md5sum foo.tar | cut -f1 -d' ')"
   >  ]
   > }
   > EOF

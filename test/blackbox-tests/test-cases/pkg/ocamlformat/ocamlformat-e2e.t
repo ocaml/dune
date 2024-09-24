@@ -7,13 +7,13 @@ Exercises end to end, locking and building ocamlformat dev tool.
   $ make_fake_ocamlformat "0.26.3"
 
 Add the tar file for the fake curl to copy it:
-  $ echo ocamlformat-0.26.2.tar.gz > fake-curls
+  $ echo ocamlformat-0.26.2.tar > fake-curls
   $ PORT=1
 
   $ make_ocamlformat_opam_pkg "0.26.2" $PORT
 
 Add the tar file for the fake curl to copy it:
-  $ echo ocamlformat-0.26.3.tar.gz >> fake-curls
+  $ echo ocamlformat-0.26.3.tar >> fake-curls
   $ PORT=2
 
 We consider this version of OCamlFormat as the latest version:

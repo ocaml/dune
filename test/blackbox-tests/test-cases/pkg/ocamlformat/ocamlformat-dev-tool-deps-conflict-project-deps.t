@@ -25,7 +25,7 @@ Make a fake OCamlFormat which depends on printer lib:
   >  (libraries printer))
   > EOF
   $ cd ..
-  $ tar -czf ocamlformat.tar.gz ocamlformat
+  $ tar cf ocamlformat.tar ocamlformat
   $ rm -rf ocamlformat
 
 Make a printer lib(version 1) that prints "formatted":
@@ -51,9 +51,9 @@ Make a package for the fake OCamlFormat library which depends on printer.1.0:
   >   ]
   > ]
   > url {
-  >  src: "file://$PWD/ocamlformat.tar.gz"
+  >  src: "file://$PWD/ocamlformat.tar"
   >  checksum: [
-  >   "md5=$(md5sum ocamlformat.tar.gz | cut -f1 -d' ')"
+  >   "md5=$(md5sum ocamlformat.tar | cut -f1 -d' ')"
   >  ]
   > }
   > EOF

@@ -4,10 +4,10 @@ This test demonstrates that fetching package sources should be cached
 
   $ make_lockdir
 
-  $ tarball=source.tar.gz
+  $ tarball=source.tar
   $ sources="sources/"
   $ mkdir $sources; touch $sources/dummy
-  $ tar -czf $tarball $sources
+  $ tar cf $tarball $sources
   $ checksum=$(md5sum $tarball | awk '{ print $1 }')
   $ echo $tarball > fake-curls
   $ port=1

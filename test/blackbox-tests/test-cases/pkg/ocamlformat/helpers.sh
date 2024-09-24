@@ -28,7 +28,7 @@ EOF
 (executable
  (public_name ocamlformat))
 EOF
-  tar -czf ocamlformat-$version.tar.gz ocamlformat
+  tar cf ocamlformat-$version.tar ocamlformat
   rm -rf ocamlformat
 }
 
@@ -55,7 +55,7 @@ build: [
 url {
   src: "http://127.0.0.1:$port"
   checksum: [
-    "md5=$(md5sum ocamlformat-$version.tar.gz | cut -f1 -d' ')"
+    "md5=$(md5sum ocamlformat-$version.tar | cut -f1 -d' ')"
   ]
 }
 EOF
@@ -71,9 +71,9 @@ build: [
   ]
 ]
 url {
-  src: "file://$PWD/ocamlformat-$version.tar.gz"
+  src: "file://$PWD/ocamlformat-$version.tar"
   checksum: [
-    "md5=$(md5sum ocamlformat-$version.tar.gz | cut -f1 -d' ')"
+    "md5=$(md5sum ocamlformat-$version.tar | cut -f1 -d' ')"
   ]
 }
 EOF
@@ -128,7 +128,7 @@ EOF
 (library
  (public_name printer))
 EOF
-  tar -czf printer.$version.tar.gz printer
+  tar cf printer.$version.tar printer
   rm -r printer
 }
 
@@ -145,9 +145,9 @@ build: [
    ]
  ]
  url {
- src: "file://$PWD/printer.$version.tar.gz"
+ src: "file://$PWD/printer.$version.tar"
  checksum: [
-  "md5=$(md5sum printer.$version.tar.gz | cut -f1 -d' ')"
+  "md5=$(md5sum printer.$version.tar | cut -f1 -d' ')"
  ]
 }
 EOF

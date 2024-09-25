@@ -367,8 +367,10 @@ module Dune_config = struct
 
   let decode_generic ~min_dune_version =
     let check min_ver =
-      let ver = Dune_lang.Syntax.Version.max min_ver min_dune_version in
-      Dune_lang.Syntax.since Stanza.syntax ver
+      let module S = Dune_lang.Syntax in
+      let ver = S.Version.max min_ver min_dune_version in
+      let* loc, what = S.desc () in
+      S.since_fmt ~fmt:(S.Error_msg.since_config ~what) Stanza.syntax ver loc
     in
     let field_o n v d = field_o n (check v >>> d) in
     let+ display = field_o "display" (1, 0) (enum Display.all)

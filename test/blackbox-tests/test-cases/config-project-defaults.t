@@ -39,7 +39,7 @@ Change the version of the config file to one which does not support the
   4 |  (maintainers MaintainerTest)
   5 |  (license MIT))
   Error: 'project_defaults' is only available since version 3.17 of the dune
-  language. Please update your dune-project file to have (lang dune 3.17).
+  language. Please update your dune config file to have (lang dune 3.17).
   [1]
 
   $ sed -i -e '1s|.*|(lang dune 3.17)|' dune-config

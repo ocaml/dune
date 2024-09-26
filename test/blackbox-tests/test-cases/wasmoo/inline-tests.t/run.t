@@ -1,4 +1,4 @@
-Run inline tests using node js
+Run inline tests using Node.js
 
   $ cat >dune-project <<EOF
   > (lang dune 3.17)

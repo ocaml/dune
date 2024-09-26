@@ -18,8 +18,8 @@ Compiling to Wasm is very similar to compiling to JavaScript. See
 Compiling to Wasm
 =================
 
-Dune has full support building Wasm_of_ocaml libraries and executables transparently.
-There's no need to customize or enable anything to compile OCaml
+Dune has full support for building wasm_of_ocaml libraries and executables transparently.
+There's no need to customise or enable anything to compile OCaml
 libraries/executables to Wasm.
 
 To build a Wasm executable, just define an executable as you would normally.

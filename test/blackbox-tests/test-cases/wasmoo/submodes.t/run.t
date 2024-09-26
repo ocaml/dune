@@ -9,7 +9,7 @@ The default is to only compile to JavaScript
   Error: Don't know how to build main.bc.wasm.js
   [1]
 
-Compiling to Wasm. One can still use the .bc.js binary but it runs
+Compiling to Wasm. One can still use the `.bc.js` binary but it runs
 the Wasm code.
 
   $ dune build --profile wasm

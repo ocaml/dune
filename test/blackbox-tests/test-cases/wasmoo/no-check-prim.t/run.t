@@ -1,4 +1,4 @@
-Compilation using jsoo
+Compilation using WasmOO
 
   $ dune build --display short bin/technologic.bc.js @install  2>&1 | \
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g

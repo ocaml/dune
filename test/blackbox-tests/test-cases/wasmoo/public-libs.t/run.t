@@ -1,3 +1,3 @@
-Compilation of libraries with public-names
+Compilation of libraries with `public-names`
 
   $ dune build

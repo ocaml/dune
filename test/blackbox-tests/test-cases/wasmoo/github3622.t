@@ -1,6 +1,6 @@
-This test demonstrates a bug in dune's separation compilation of jsoo.
-std_exit.cmo wasn't being linked in the end, which was causing at_exit hooks not
-being ran and channels not being flushed.
+This test demonstrates a bug in Dune's separation compilation of JSOO.
+`std_exit.cmo` wasn't being linked in the end, so the `at_exit`
+hooks didn't run and the channels weren't flushed.
 
 Setup fixtures:
 

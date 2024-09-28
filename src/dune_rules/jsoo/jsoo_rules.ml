@@ -291,10 +291,25 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
     ~config:(Some config)
 ;;
 
-let exe_rule cc ~javascript_files ~src ~target ~flags =
+let exe_rule cc ~linkall ~javascript_files ~src ~target ~flags =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let libs = Compilation_context.requires_link cc in
+  let linkall =
+    let open Action_builder.O in
+    let+ linkall = linkall
+    and+ jsoo_version =
+      let* jsoo = jsoo ~dir sctx in
+      Action_builder.of_memo @@ Version.jsoo_version jsoo
+    in
+    Command.Args.As
+      (match jsoo_version, linkall with
+       | Some version, true ->
+         (match Version.compare version (5, 1) with
+          | Lt -> []
+          | Gt | Eq -> [ "--linkall" ])
+       | None, _ | _, false -> [])
+  in
   let spec =
     Command.Args.S
       [ Resolve.Memo.args
@@ -303,6 +318,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
            Command.Args.Deps (jsoo_runtime_files libs))
       ; Deps (List.map ~f:Path.build javascript_files)
       ; Dep (Path.build src)
+      ; Dyn linkall
       ]
   in
   js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~spec ~target ~flags ~config:None
@@ -549,7 +565,7 @@ let build_exe
     in
     ()
   | Whole_program ->
-    exe_rule cc ~javascript_files ~src ~target ~flags ~sourcemap
+    exe_rule cc ~linkall ~javascript_files ~src ~target ~flags ~sourcemap
     |> Super_context.add_rule sctx ~loc ~dir ~mode
 ;;
 

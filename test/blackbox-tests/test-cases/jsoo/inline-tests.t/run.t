@@ -16,6 +16,7 @@ Run inline tests using node js
   inline tests (JS)
 
   $ dune runtest --profile release
+  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--enable=effects'
   inline tests (JS)
   inline tests (JS)
   inline tests (Native)

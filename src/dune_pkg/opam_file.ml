@@ -57,12 +57,14 @@ let parse =
 
 let parse_value = parse_gen OpamBaseParser.value
 
-let get_field t name =
+let get_field_with_pos t name =
   List.find_map t.file_contents ~f:(fun value ->
     match value.pelem with
-    | Variable (var, value) when var.pelem = name -> Some value
+    | Variable (var, value) when var.pelem = name -> Some (value, var.pos)
     | _ -> None)
 ;;
+
+let get_field t name = get_field_with_pos t name |> Option.map ~f:fst
 
 let absolutify_positions ~file_contents t =
   let bols = ref [ 0 ] in
@@ -225,15 +227,16 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
       None
   in
   let open Option.O in
-  let get_one name =
-    let* value =
+  let get_one_with_loc name =
+    let* value, pos =
       let* opam = opam in
-      get_field opam name
+      get_field_with_pos opam name
     in
     match value.pelem with
-    | String s -> Some s
+    | String s -> Some (loc_of_opam_pos pos, s)
     | _ -> None
   in
+  let get_one name = get_one_with_loc name >>| snd in
   let get_many name =
     let* value =
       let* opam = opam in
@@ -270,7 +273,10 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
     ~name
     ~dir
     ~loc
-    ~version:(get_one "version" |> Option.map ~f:Package_version.of_string)
+    ~version:
+      (get_one_with_loc "version"
+       |> Option.map ~f:Package_version.of_string_user_error
+       >>| User_error.ok_exn)
     ~conflicts:[]
     ~depends:[]
     ~depopts:[]

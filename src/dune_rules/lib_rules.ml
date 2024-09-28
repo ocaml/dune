@@ -67,7 +67,7 @@ let build_lib
       let+ project = Dune_load.find_project ~dir in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Buildable.has_foreign_cxx lib.buildable ->
-        Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
+        Cxx_flags.get_link_flags (Context.build_context ctx)
       | _ -> Action_builder.return []
     in
     let cclibs = Expander.expand_and_eval_set expander lib.c_library_flags ~standard in
@@ -263,7 +263,7 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir ~dir_conten
     match Dune_project.use_standard_c_and_cxx_flags project with
     | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
       let ctx = Super_context.context sctx in
-      Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
+      Cxx_flags.get_link_flags (Context.build_context ctx)
     | _ -> Action_builder.return []
   in
   let c_library_flags =
@@ -317,7 +317,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       let+ project = Dune_load.find_project ~dir in
       match Dune_project.use_standard_c_and_cxx_flags project with
       | Some true when Foreign.Sources.has_cxx_sources foreign_sources ->
-        Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
+        Cxx_flags.get_link_flags (Context.build_context ctx)
       | _ -> Action_builder.return []
     in
     let c_library_flags =

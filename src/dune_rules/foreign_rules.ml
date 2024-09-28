@@ -28,7 +28,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
       in
       let cxx =
         let+ fdiagnostics_color = fdiagnostics_color
-        and+ db_flags = Cxx_flags.get_flags ~for_:Compile ctx in
+        and+ db_flags = Cxx_flags.get_compile_flags ocaml_config ctx in
         List.concat [ db_flags; cxxflags; fdiagnostics_color ]
       in
       c, cxx

@@ -1,24 +1,25 @@
 open Import
 
-type phase =
-  | Compile
-  | Link
-
 type ccomp_type =
   | Gcc
   | Msvc
   | Clang
   | Other of string
 
-let base_cxx_flags ~for_ cc =
-  match cc, for_ with
-  | Gcc, Compile -> [ "-x"; "c++" ]
-  | Gcc, Link -> [ "-lstdc++"; "-shared-libgcc" ]
-  | Clang, Compile -> [ "-x"; "c++" ]
-  | Clang, Link -> [ "-lc++" ]
-  | Msvc, Compile -> [ "/TP" ]
-  | Msvc, Link -> []
-  | Other _, (Link | Compile) -> []
+let base_cxx_compile_flags ocaml_config = function
+  | Gcc | Clang ->
+    "-x"
+    :: "c++"
+    :: (if Ocaml_config.version ocaml_config >= (5, 0, 0) then [ "-std=c++11" ] else [])
+  | Msvc -> [ "/TP" ]
+  | Other _ -> []
+;;
+
+let base_cxx_link_flags = function
+  | Gcc -> [ "-lstdc++"; "-shared-libgcc" ]
+  | Clang -> [ "-lc++" ]
+  | Msvc -> []
+  | Other _ -> []
 ;;
 
 let fdiagnostics_color = function
@@ -59,8 +60,14 @@ let ccomp_type (ctx : Build_context.t) =
   ccomp_type
 ;;
 
-let get_flags ~for_ ctx =
+let get_compile_flags ocaml_version ctx =
   let open Action_builder.O in
   let+ ccomp_type = ccomp_type ctx in
-  base_cxx_flags ~for_ ccomp_type
+  base_cxx_compile_flags ocaml_version ccomp_type
+;;
+
+let get_link_flags ctx =
+  let open Action_builder.O in
+  let+ ccomp_type = ccomp_type ctx in
+  base_cxx_link_flags ccomp_type
 ;;

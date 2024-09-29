@@ -463,7 +463,14 @@ module Eval = struct
       let set_dynamic_stanzas = set_dynamic_stanzas ~context in
       let+ ocaml_syntax =
         Memo.parallel_map ocaml_syntax ~f:(fun script ->
-          let+ dune_file, dynamic_includes = Script.eval_one ~context script in
+          let+ dune_file, dynamic_includes =
+            Memo.push_stack_frame
+              ~human_readable_description:(fun () ->
+                Pp.textf
+                  "- evaluating dune file %S in OCaml syntax"
+                  (Path.Source.to_string script.file))
+              (fun () -> Script.eval_one ~context script)
+          in
           set_dynamic_stanzas dune_file ~eval:script.eval ~dynamic_includes)
       in
       let dune_syntax =

@@ -14,6 +14,7 @@
   (deps
    (sandbox always)))
  (libraries
+  unix
   dune_file_watcher
   dune_file_watcher_tests_lib
   ppx_expect.config

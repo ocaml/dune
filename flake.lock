@@ -5,11 +5,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1710146030,
-        "narHash": "sha256-SZ5L6eA7HJ/nmkzGG7/ISclqe6oZdOZTNoesiInkXPQ=",
+        "lastModified": 1726560853,
+        "narHash": "sha256-X6rJYSESBVr3hBoH0WbKE5KvhPU5bloyZ2L4K60/fPQ=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "b1d9ab70662946ef0850d488da1c9019f3a9752a",
+        "rev": "c1dfcf08411b08f6b8615f7d8971a2bfa81d5e8a",
         "type": "github"
       },
       "original": {
@@ -73,33 +73,33 @@
     "merlin4_14": {
       "flake": false,
       "locked": {
-        "lastModified": 1708603952,
-        "narHash": "sha256-UV/0OLSKJnUixytdn2yxsUvnAy6Q+1UnTRKBWKg3OLU=",
+        "lastModified": 1718033880,
+        "narHash": "sha256-YSmtCKaQc6MfrAFQPKy4nIqXUSBAFAINTQS40lcJDgU=",
         "owner": "ocaml",
         "repo": "merlin",
-        "rev": "7017cc271403487756e412349f3718a8ba2e6a36",
+        "rev": "16a12743b3b615a1a4f528dae26426b3073f8f24",
         "type": "github"
       },
       "original": {
         "owner": "ocaml",
-        "ref": "v4.14-414",
+        "ref": "v4.16-414",
         "repo": "merlin",
         "type": "github"
       }
     },
-    "merlin5_1": {
+    "merlin5_2": {
       "flake": false,
       "locked": {
-        "lastModified": 1708603966,
-        "narHash": "sha256-rXN+r5xDlF9uty0YPZO0pNy2E3T1yPCM2h82xZFGylw=",
+        "lastModified": 1718703123,
+        "narHash": "sha256-XAaRd3R8NAbB8QZHoG2FPguygkHobLy6iblq9zBRzlw=",
         "owner": "ocaml",
         "repo": "merlin",
-        "rev": "7d7f525180f5979516e10c05d0cd49823edb5ef1",
+        "rev": "ce00b5bc2bc813bd1b0e2a49438b095042ff7727",
         "type": "github"
       },
       "original": {
         "owner": "ocaml",
-        "ref": "v4.14-501",
+        "ref": "v5.1-502",
         "repo": "merlin",
         "type": "github"
       }
@@ -121,11 +121,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1726142289,
-        "narHash": "sha256-Jks8O42La+nm5AMTSq/PvM5O+fUAhIy0Ce1QYqLkyZ4=",
+        "lastModified": 1727586919,
+        "narHash": "sha256-e/YXG0tO5GWHDS8QQauj8aj4HhXEm602q9swrrlTlKQ=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "280db3decab4cbeb22a4599bd472229ab74d25e1",
+        "rev": "2dcd9c55e8914017226f5948ac22c53872a13ee2",
         "type": "github"
       },
       "original": {
@@ -145,11 +145,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1717813629,
-        "narHash": "sha256-CyM8f1XZ3OaJH2Z4qSHwMTi1S40uzRzUD4Lh+eQLNFk=",
+        "lastModified": 1727603600,
+        "narHash": "sha256-bffkUWgbvlDEXPR0QUyHKPuI1FdMmIZvRwIWPP14SYQ=",
         "owner": "nix-ocaml",
         "repo": "nix-overlays",
-        "rev": "7fdbb404f573cc6ac77926cbd6de475accff5cf5",
+        "rev": "b5c11f8e03530ab94cd251871bd1a0abcf7bef54",
         "type": "github"
       },
       "original": {
@@ -164,17 +164,17 @@
           "flake-utils"
         ],
         "merlin4_14": "merlin4_14",
-        "merlin5_1": "merlin5_1",
+        "merlin5_2": "merlin5_2",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1715989198,
-        "narHash": "sha256-QGBm2M3X/AdRWNOXxUaEE7DnsgfNJKwdlxvp2Xgsx6k=",
+        "lastModified": 1727429529,
+        "narHash": "sha256-NQ9MT8dJMs4MwfQdjYRq+TZT6vvnHoodNVNu7sx0qw8=",
         "ref": "refs/heads/master",
-        "rev": "70574f6c302000e15756c8e2fb8f9fc9e1e6696b",
-        "revCount": 2101,
+        "rev": "671fbedc2bbe51b93f9a78d4344cbfa82a109d3f",
+        "revCount": 2160,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/ocaml/ocaml-lsp"

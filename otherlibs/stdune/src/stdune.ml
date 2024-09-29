@@ -1,5 +1,11 @@
-[@@@alert unstable "The API of this library is not stable and may change without notice."]
-[@@@alert "-unstable"]
+include struct
+  [@@@ocaml.warning "-53"]
+
+  [@@@alert
+    unstable "The API of this library is not stable and may change without notice."]
+
+  [@@@alert "-unstable"]
+end
 
 module Appendable_list = Appendable_list
 module Nonempty_list = Nonempty_list

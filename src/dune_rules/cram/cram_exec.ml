@@ -424,7 +424,12 @@ let run ~env ~script lexbuf : string Fiber.t =
   let+ () =
     let sh =
       let path = Env_path.path Env.initial in
-      Option.value_exn (Bin.which ~path "sh")
+      match Bin.which ~path "sh" with
+      | Some sh -> sh
+      | None ->
+        let hints = Pp.[ text "Try to add (deps %{bin:sh} ) to the (cram) stanza" ] in
+        let msg = Pp.[ text "CRAM test aborted, \"sh\" can not be found PATH" ] in
+        User_error.raise ~hints msg
     in
     let metadata =
       let name =

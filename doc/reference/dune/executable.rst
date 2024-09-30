@@ -304,7 +304,8 @@ simplify the code:
 .. code:: dune
 
    (executables
-     (names foo bar))
+     (names foo bar)
+     (libraries baz))
 
 Instead of the more complex
 

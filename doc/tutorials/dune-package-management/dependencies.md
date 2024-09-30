@@ -24,7 +24,7 @@ First we update the `dune-project` file to add a dependeny on the opam package.
 After this change to our project dependencies, we need to relock dependencies
 to update our lock directory with the new packages.
 
-```sh
+```
 $ dune pkg lock
 Solution for dune.lock:
 - base-unix.base
@@ -45,7 +45,7 @@ including transitive dependencies.
 :::
 
 This will take care of installing the dependencies, but we still need to add it to
-our build as a library, as usual:
+our build as a library as usual:
 
 ::::{dropdown} `dune`
 :icon: file-code
@@ -76,7 +76,7 @@ and then use it to print the value.
 
 To build it we just call `build` again.
 
-```sh
+```
 $ dune build
 ```
 
@@ -85,7 +85,7 @@ before.
 
 As we see, the code works and uses `fmt` to do the pretty-printing:
 
-```sh
+```
 $ dune exec ./test.exe
 Hello, OCaml, Rust!
 ```
@@ -110,7 +110,7 @@ This ensures the `fmt` package to install will be compatible with
 our request. These constraints will be taken into account the next time the
 package is locked:
 
-```sh
+```
 $ dune pkg lock
 Solution for dune.lock:
 - base-unix.base

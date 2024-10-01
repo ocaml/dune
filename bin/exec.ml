@@ -94,10 +94,17 @@ module Command_to_exec = struct
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process ~root { get_env_and_build_if_necessary; prog; args } =
+  let build_and_run_in_child_process
+    ~root
+    ~config
+    { get_env_and_build_if_necessary; prog; args }
+    =
     get_env_and_build_if_necessary prog
     |> Fiber.map
-         ~f:(Result.map ~f:(fun { path; env } -> spawn_process ~root ~args ~env path))
+         ~f:
+           (Result.map ~f:(fun { path; env } ->
+              Scheduler.maybe_clear_screen ~details_hum:[] config;
+              spawn_process ~root ~args ~env path))
   ;;
 end
 
@@ -144,18 +151,18 @@ module Watch = struct
 
   (* Kills the currently running process, then runs the given command after
      (re)building the program which it will invoke *)
-  let run ~root state ~command_to_exec =
+  let run ~root ~config state ~command_to_exec =
     let open Fiber.O in
     let* () = Fiber.return () in
     let* () = kill_currently_running_process state in
     let* command_to_exec = command_to_exec () in
-    Command_to_exec.build_and_run_in_child_process ~root command_to_exec
+    Command_to_exec.build_and_run_in_child_process ~root ~config command_to_exec
     >>| Result.map ~f:(fun pid -> state.currently_running_pid := Some pid)
   ;;
 
-  let loop ~root ~command_to_exec =
+  let loop ~root ~config ~command_to_exec =
     let state = init_state () in
-    Scheduler.Run.poll (run ~root state ~command_to_exec)
+    Scheduler.Run.poll (run ~root ~config state ~command_to_exec)
   ;;
 end
 
@@ -328,7 +335,7 @@ module Exec_context = struct
       ; args
       }
     in
-    Watch.loop ~root:(Common.root common) ~command_to_exec
+    Watch.loop ~root:(Common.root common) ~config ~command_to_exec
   ;;
 end
 

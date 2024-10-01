@@ -37,8 +37,8 @@ Repro `dune exec --watch` crash with pkg management
   $ dune exec -w ./x.exe > output.log 2>&1 &
   $ PID=$!
   $ sleep 2
-  $ cat output.log
-  building test
+  $ cat output.log | sort
   Success, waiting for filesystem changes...
+  building test
   hello
   $ kill $PID

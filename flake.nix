@@ -140,6 +140,7 @@
                 furo
                 sphinx-copybutton
                 sphinx-design
+                myst-parser
               ];
               duneScript =
                 writeScriptBin "dune" ''

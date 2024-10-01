@@ -18,7 +18,7 @@ Repro `dune exec --watch` crash with pkg management
   >  (name x))
   > EOF
   $ cat >x.ml <<EOF
-  > let () = print_endline "x"
+  > let () = print_endline "hello"
   > EOF
 
   $ mkdir dune.lock
@@ -34,6 +34,11 @@ Repro `dune exec --watch` crash with pkg management
   >  (system "echo building test"))
   > EOF
 
-  $ dune exec -w ./x.exe 2>&1 | grep -io "I must not crash"
-  I must not crash
-
+  $ dune exec -w ./x.exe > output.log 2>&1 &
+  $ PID=$!
+  $ sleep 2
+  $ cat output.log
+  building test
+  Success, waiting for filesystem changes...
+  hello
+  $ kill $PID

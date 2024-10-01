@@ -69,10 +69,9 @@ module Command_to_exec = struct
 
   type t =
     { get_path_and_build_if_necessary :
-        string -> (Path.t, [ `Already_reported ]) result Fiber.t
+        string -> (Path.t * Env.t, [ `Already_reported ]) result Fiber.t
     ; prog : string
     ; args : string list
-    ; env : Env.t
     }
 
   (* Helper function to spawn a new process running a command in an
@@ -90,9 +89,9 @@ module Command_to_exec = struct
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process { get_path_and_build_if_necessary; prog; args; env } =
+  let build_and_run_in_child_process { get_path_and_build_if_necessary; prog; args } =
     get_path_and_build_if_necessary prog
-    |> Fiber.map ~f:(Result.map ~f:(spawn_process ~args ~env))
+    |> Fiber.map ~f:(Result.map ~f:(fun (p, env) -> spawn_process ~args ~env p))
   ;;
 end
 
@@ -306,8 +305,7 @@ module Exec_context = struct
       Memo.run
       @@
       let open Memo.O in
-      let* env = env
-      and* sctx = sctx in
+      let* sctx = sctx in
       let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
       let* prog = expand prog in
       let+ args = Memo.parallel_map args ~f:expand in
@@ -316,10 +314,12 @@ module Exec_context = struct
             (* TODO we should release the dune lock. But we aren't doing it
                because we don't unload the database files we've marshalled.
             *)
-            build (fun () -> get_path_and_build_if_necessary ~prog))
+            build (fun () ->
+              let+ env = env
+              and+ path = get_path_and_build_if_necessary ~prog in
+              path, env))
       ; prog
       ; args
-      ; env
       }
     in
     Watch.loop ~command_to_exec

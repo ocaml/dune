@@ -45,8 +45,8 @@ Unlike previously, the version of the `fmt` library that is picked is `dev`, to
 signify a development version.
 
 The next time the project is built, the `fmt` package will be built from the
-source in the specified git repository rather than from the source tarball
-released in the opam repository.
+source in the specified Git repository rather than from the source tarball
+released in the `opam-repository`.
 
 ```
 $ dune exec ./test.exe

@@ -1,0 +1,3 @@
+(library
+ (public_name mypkg.lib)
+ (name test_lib))

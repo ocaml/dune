@@ -1,0 +1,4 @@
+(dirs (:standard \ external_sources))
+(library
+ (name foo)
+ (libraries mypkg.lib))

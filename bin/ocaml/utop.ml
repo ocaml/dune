@@ -56,7 +56,7 @@ let term =
          ~f:(fun dir env -> Env_path.cons ~var:Ocaml.Env.caml_ld_library_path env ~dir)
          ~init:env
   in
-  restore_cwd_and_execve common utop_path (utop_path :: args) env
+  restore_cwd_and_execve (Common.root common) utop_path (utop_path :: args) env
 ;;
 
 let command = Cmd.v info term

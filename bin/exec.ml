@@ -79,7 +79,9 @@ module Command_to_exec = struct
      environment, returning the new process' pid *)
   let spawn_process (common : Common.t) path ~args ~env =
     let pid =
-      let prog = string_path_relative_to_specified_root common (Path.to_string path) in
+      let prog =
+        string_path_relative_to_specified_root (Common.root common) (Path.to_string path)
+      in
       let env = Env.to_unix env |> Spawn.Env.of_list in
       let argv = prog :: args in
       let cwd = Spawn.Working_dir.Path Fpath.initial_cwd in
@@ -298,7 +300,7 @@ module Exec_context = struct
     in
     let prog = Path.to_string path in
     let argv = prog :: args in
-    restore_cwd_and_execve common prog argv env
+    restore_cwd_and_execve (Common.root common) prog argv env
   ;;
 
   let run_eager_watch t common config =

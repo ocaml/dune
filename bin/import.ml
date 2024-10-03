@@ -237,16 +237,12 @@ module Scheduler = struct
   ;;
 end
 
-let string_path_relative_to_specified_root (common : Common.t) path =
-  if Filename.is_relative path
-  then (
-    let root = Common.root common in
-    Filename.concat root.dir path)
-  else path
+let string_path_relative_to_specified_root (root : Workspace_root.t) path =
+  if Filename.is_relative path then Filename.concat root.dir path else path
 ;;
 
-let restore_cwd_and_execve common prog argv env =
-  let prog = string_path_relative_to_specified_root common prog in
+let restore_cwd_and_execve root prog argv env =
+  let prog = string_path_relative_to_specified_root root prog in
   Proc.restore_cwd_and_execve prog argv ~env
 ;;
 

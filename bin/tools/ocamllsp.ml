@@ -51,7 +51,7 @@ let term =
       let open Fiber.O in
       let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
       let+ () = build_ocamllsp common in
-      run_ocamllsp common ~args)
+      run_ocamllsp (Common.root common) ~args)
 ;;
 
 let info =

@@ -20,7 +20,7 @@ dependencies in the `dune-project` file.
 :emphasize-lines: 6-7
 :::
 
-We define a project called `test` and define that to build it we need an OCaml
+We define a project called `test` and declare that to build it we need an OCaml
 compiler that is at least version 4.14.
 
 This is exactly the same information that is used to generate opam files using
@@ -61,7 +61,7 @@ After declaring the dependencies, you will need to tell Dune which package
 versions to use for your project. This is done by creating a lock directory.
 This is easily done with a new Dune command:
 
-```sh
+```
 $ dune pkg lock
 Solution for dune.lock:
 - ocaml.5.2.0
@@ -95,7 +95,7 @@ before.
 
 We can show that the package has been built successfully and works as expected:
 
-```sh
+```
 $ dune exec ./test.exe
 Hello, OCaml, Rust!
 ```
@@ -103,7 +103,7 @@ Hello, OCaml, Rust!
 ## Conclusion
 
 In this section we learned how to set up a Dune project that picks a compiler
-and installs it without need for any additional tooling.
+and installs it without the need for any additional tooling.
 
 In the next section {doc}`dependencies` we will look on how to add third party
 dependencies.

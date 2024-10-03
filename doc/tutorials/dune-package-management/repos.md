@@ -22,14 +22,14 @@ if it didn't exist):
 ::::
 
 In this case, we want to select a specific revision of the community repository
-instead of always using the most recent one, as it would do by default. We
+instead of always using the most recent one as it would do by default. We
 define a new repository and configure the lock directory to use this
 repository.
 
 When relocking the dependencies, the list of packages that are found as
 dependencies changes accordingly:
 
-```sh
+```
 $ dune pkg lock
 Solution for dune.lock:
 - base-unix.base

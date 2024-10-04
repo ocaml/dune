@@ -28,13 +28,11 @@ Merlin.
   ?:B?:$TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte)
   ?:S?:$TESTCASE_ROOT/src/lib1)
   ?:S?:$TESTCASE_ROOT/src/lib2)
-  ?:S?:$TESTCASE_ROOT/src/lib_dep)
 
   $ FILE=$PWD/src/lib2/lib2.ml
   $ printf "(4:File%d:%s)" ${#FILE} $FILE | dune ocaml-merlin |
   > sed -E "s/[[:digit:]]+:/\?:/g" | tr '(' '\n' | grep -E ":[BS]H?\?"
-  ?:B?:/STDLIB)
   ?:B?:$TESTCASE_ROOT/_build/default/src/lib2/.lib2.objs/byte)
-  ?:S?:/STDLIB)
+  ?:B?:$TESTCASE_ROOT/_build/default/src/lib_dep/.dep.objs/byte)
   ?:S?:$TESTCASE_ROOT/src/lib2)
   ?:S?:$TESTCASE_ROOT/src/lib_dep)

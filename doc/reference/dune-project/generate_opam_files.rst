@@ -86,7 +86,7 @@ defined in the project:
      * - `Sourcehut <https://sr.ht>`_
        - ``(sourcehut user/repo)``
      * - `Codeberg <https://codeberg.org>`_
-       - ``(codeberg user/repo)``
+       - ``(codeberg user/repo)`` *(New in 3.17)*
 
    Examples:
 

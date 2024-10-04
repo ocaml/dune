@@ -3,6 +3,8 @@ generate_opam_files
 
 .. describe:: (generate_opam_files ...)
 
+   .. versionadded:: 1.10
+
    Use metadata specified in the ``dune-project`` file to generate ``.opam``
    files.
 
@@ -20,6 +22,8 @@ defined in the project:
 
 .. describe:: (license <strings>)
 
+   .. versionadded:: 1.9
+
    Specify the license of the project, ideally as an identifier from the `SPDX
    License List <https://spdx.org/licenses/>`__.
 
@@ -33,6 +37,8 @@ defined in the project:
 
 .. describe:: (authors <strings>)
 
+   .. versionadded:: 1.9
+
    Specify authors.
 
    Example:
@@ -45,6 +51,8 @@ defined in the project:
 
 .. describe:: (maintainers <strings>)
 
+   .. versionadded:: 1.10
+
    Specify maintainers.
 
    Example:
@@ -56,6 +64,8 @@ defined in the project:
        "John Doe <john.doe@example.com>")
 
 .. describe:: (source ...)
+
+   .. versionadded:: 1.7
 
    Specify where the source for the package can be found.
 
@@ -92,6 +102,8 @@ defined in the project:
 
 .. describe:: (bug_reports <url>)
 
+   .. versionadded:: 1.10
+
    Where bugs should be reported.
 
    If a hosting service is used in ``(source)``, a default value is provided.
@@ -104,6 +116,8 @@ defined in the project:
 
 .. describe:: (homepage <url>)
 
+   .. versionadded:: 1.10
+
    The homepage of the project.
 
    If a hosting service is used in ``(source)``, a default value is provided.
@@ -115,6 +129,8 @@ defined in the project:
       (bug_reports https://example.com/)
 
 .. describe:: (documentation <url>)
+
+   .. versionadded:: 1.10
 
    Where the documentation is hosted.
 

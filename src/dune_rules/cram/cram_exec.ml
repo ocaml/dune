@@ -424,7 +424,10 @@ let run ~env ~script lexbuf : string Fiber.t =
   let+ () =
     let sh =
       let path = Env_path.path Env.initial in
-      Option.value_exn (Bin.which ~path "sh")
+      match Bin.which ~path "sh" with
+      | Some sh -> sh
+      | None ->
+        User_error.raise [ Pp.text "CRAM test aborted, \"sh\" can not be found in PATH" ]
     in
     let metadata =
       let name =

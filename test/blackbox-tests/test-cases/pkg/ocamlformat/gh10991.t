@@ -18,19 +18,18 @@ Initial file:
   $ cat foo.ml
   let () = print_endline "Hello, world"
 
-Formatting failed because the input file was not copied into the sandbox.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.0.1
-  cat: foo.ml: No such file or directory
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
   differ.
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
 
-No formatting occured because input file wasn't copied to the sandbox.
+After formatting the fake ocamlformat has added a suffix:
   $ cat foo.ml
+  let () = print_endline "Hello, world"
   (* formatted with fake ocamlformat *)
 
 Update the file:
@@ -45,6 +44,7 @@ Update the file:
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
 
-No formatting occured because input file wasn't copied to the sandbox.
+The update to the file persists after formatting it a second time:
   $ cat foo.ml
+  let () = print_endline "Hello, ocaml!"
   (* formatted with fake ocamlformat *)

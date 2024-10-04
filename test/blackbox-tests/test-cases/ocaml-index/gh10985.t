@@ -17,6 +17,11 @@ We set up a library that will be installed as part of the package:
   > let x = ()
   > EOF
 
+We put the actual build in a separate directory, so we don't have to ignore
+the package directory in the dune file:
+  $ mkdir actual
+  $ cd actual
+
 Now we set up a lock file with this package and then attempt to use it:
 
   $ cat >dune-project <<EOF
@@ -30,12 +35,11 @@ Now we set up a lock file with this package and then attempt to use it:
 
   $ cat >dune.lock/mypkg.pkg <<EOF
   > (version 0.0.1)
-  > (source (copy $PWD/external_sources))
+  > (source (copy $PWD/../external_sources))
   > (build (run dune build --release --promote-install-file=true . @install))
   > EOF
 
   $ cat >dune <<EOF
-  > (dirs (:standard \ external_sources))
   > (library
   >  (name foo)
   >  (libraries mypkg.lib))

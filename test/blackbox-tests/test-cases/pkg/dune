@@ -59,3 +59,7 @@
 (cram
  (deps %{bin:tar})
  (applies_to source-caching tarball extra-sources))
+
+(cram
+ (deps %{bin:ocaml_index})
+ (applies_to gh10985))

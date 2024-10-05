@@ -6,6 +6,10 @@ type ccomp_type =
   | Clang
   | Other of string
 
+type phase =
+  | Compile of Ocaml_config.t
+  | Link
+
 let base_cxx_compile_flags ocaml_config = function
   | Gcc | Clang ->
     "-x"
@@ -70,4 +74,11 @@ let get_link_flags ctx =
   let open Action_builder.O in
   let+ ccomp_type = ccomp_type ctx in
   base_cxx_link_flags ccomp_type
+;;
+
+let get_flags ~for_ ctx =
+  (match for_ with
+   | Compile config -> get_compile_flags config
+   | Link -> get_link_flags)
+    ctx
 ;;

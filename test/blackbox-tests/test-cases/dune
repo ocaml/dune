@@ -119,7 +119,7 @@
   (enabled_if %{bin-available:hg})))
 
 (cram
- (applies_to patch-back-source-tree cpp-std-ocaml5)
+ (applies_to patch-back-source-tree)
  (enabled_if
   (<> %{system} macosx)))
 

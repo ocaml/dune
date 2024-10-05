@@ -79,3 +79,5 @@ val supports_bin_annot_occurrences : t -> bool
 
 (** Whether the compiler supports the -H flag *)
 val supports_hidden_includes : t -> bool
+
+val add_std_cxx_flag : t -> bool

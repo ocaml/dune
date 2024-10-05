@@ -7,14 +7,14 @@ type ccomp_type =
   | Other of string
 
 type phase =
-  | Compile of Ocaml_config.t
+  | Compile of Ocaml.Version.t
   | Link
 
-let base_cxx_compile_flags ocaml_config = function
+let base_cxx_compile_flags version = function
   | Gcc | Clang ->
     "-x"
     :: "c++"
-    :: (if Ocaml_config.version ocaml_config >= (5, 0, 0) then [ "-std=c++11" ] else [])
+    :: (if Ocaml.Version.add_std_cxx_flag version then [ "-std=c++11" ] else [])
   | Msvc -> [ "/TP" ]
   | Other _ -> []
 ;;
@@ -64,21 +64,11 @@ let ccomp_type (ctx : Build_context.t) =
   ccomp_type
 ;;
 
-let get_compile_flags ocaml_version ctx =
-  let open Action_builder.O in
-  let+ ccomp_type = ccomp_type ctx in
-  base_cxx_compile_flags ocaml_version ccomp_type
-;;
-
-let get_link_flags ctx =
-  let open Action_builder.O in
-  let+ ccomp_type = ccomp_type ctx in
-  base_cxx_link_flags ccomp_type
-;;
-
 let get_flags ~for_ ctx =
+  let open Action_builder.O in
+  let+ ccomp_type = ccomp_type ctx in
   (match for_ with
-   | Compile config -> get_compile_flags config
-   | Link -> get_link_flags)
-    ctx
+   | Compile version -> base_cxx_compile_flags version
+   | Link -> base_cxx_link_flags)
+    ccomp_type
 ;;

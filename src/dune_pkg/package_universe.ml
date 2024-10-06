@@ -85,14 +85,14 @@ let all_non_local_dependencies_of_local_packages t =
 ;;
 
 let check_for_unnecessary_packges_in_lock_dir
-  t
+  lock_dir
   all_non_local_dependencies_of_local_packages
   =
   let unneeded_packages_in_lock_dir =
     let locked_transitive_closure_of_local_package_dependencies =
       match
         Lock_dir.transitive_dependency_closure
-          t.lock_dir
+          lock_dir
           all_non_local_dependencies_of_local_packages
       with
       | Ok x -> x
@@ -102,7 +102,7 @@ let check_for_unnecessary_packges_in_lock_dir
           "Missing packages from lockdir after confirming no missing packages in lockdir"
           [ "missing package", Package_name.Set.to_dyn missing_packages ]
     in
-    let all_locked_packages = Package_name.Set.of_keys t.lock_dir.packages in
+    let all_locked_packages = Package_name.Set.of_keys lock_dir.packages in
     Package_name.Set.diff
       all_locked_packages
       locked_transitive_closure_of_local_package_dependencies
@@ -112,7 +112,7 @@ let check_for_unnecessary_packges_in_lock_dir
   else (
     let packages =
       Package_name.Set.to_list unneeded_packages_in_lock_dir
-      |> List.map ~f:(Package_name.Map.find_exn t.lock_dir.packages)
+      |> List.map ~f:(Package_name.Map.find_exn lock_dir.packages)
     in
     User_error.raise
       ~hints:lockdir_regenerate_hints
@@ -127,7 +127,7 @@ let check_for_unnecessary_packges_in_lock_dir
       ])
 ;;
 
-let up_to_date local_packages (lock_dir : Lock_dir.t) =
+let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
@@ -135,9 +135,9 @@ let up_to_date local_packages (lock_dir : Lock_dir.t) =
     Local_package.For_solver.list_non_local_dependency_set local_packages
   in
   let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
-  match lock_dir.dependency_hash, dependency_hash with
+  match saved_dependency_hash, dependency_hash with
   | None, None -> `Valid
-  | Some (_, lock_dir_dependency_hash), Some non_local_dependencies_hash
+  | Some lock_dir_dependency_hash, Some non_local_dependencies_hash
     when Local_package.Dependency_hash.equal
            lock_dir_dependency_hash
            non_local_dependencies_hash -> `Valid
@@ -148,7 +148,7 @@ let up_to_date local_packages (lock_dir : Lock_dir.t) =
   | Some _, None -> `Invalid None
 ;;
 
-let validate_dependency_hash { local_packages; lock_dir; _ } =
+let validate_dependency_hash local_packages ~saved_dependency_hash =
   let local_packages =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
@@ -164,7 +164,7 @@ let validate_dependency_hash { local_packages; lock_dir; _ } =
     Local_package.For_solver.list_non_local_dependency_set local_packages
   in
   let dependency_hash = Local_package.Dependency_set.hash non_local_dependencies in
-  match lock_dir.dependency_hash, dependency_hash with
+  match saved_dependency_hash, dependency_hash with
   | None, None -> ()
   | Some (loc, lock_dir_dependency_hash), None ->
     User_error.raise
@@ -208,9 +208,11 @@ let validate_dependency_hash { local_packages; lock_dir; _ } =
 ;;
 
 let validate t =
-  validate_dependency_hash t;
+  validate_dependency_hash
+    t.local_packages
+    ~saved_dependency_hash:t.lock_dir.dependency_hash;
   all_non_local_dependencies_of_local_packages t
-  |> check_for_unnecessary_packges_in_lock_dir t
+  |> check_for_unnecessary_packges_in_lock_dir t.lock_dir
 ;;
 
 let create local_packages lock_dir =
@@ -221,7 +223,7 @@ let create local_packages lock_dir =
         lock_dir.expanded_solver_variable_bindings
     in
     let t = { local_packages; lock_dir; version_by_package_name; solver_env } in
-    let () = validate t in
+    validate t;
     Ok t
   with
   | User_error.E e -> Error e

@@ -15,7 +15,7 @@ val create
     not the case, it returns the hash of the new dependency set. *)
 val up_to_date
   :  Local_package.t Package_name.Map.t
-  -> Lock_dir.t
+  -> dependency_hash:Local_package.Dependency_hash.t option
   -> [ `Valid | `Invalid of Local_package.Dependency_hash.t option ]
 
 (** Returns the dependencies of the specified package within the package

@@ -663,7 +663,7 @@ let raise_on_lock_dir_out_of_sync =
       let* lock_dir_available = Lock_dir.lock_dir_active ctx in
       if lock_dir_available
       then
-        let* lock_dir = Lock_dir.get_exn ctx in
+        let* path, lock_dir = Lock_dir.get_with_path ctx >>| User_error.ok_exn in
         let+ local_packages =
           Dune_load.packages ()
           >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
@@ -674,9 +674,11 @@ let raise_on_lock_dir_out_of_sync =
             ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
         with
         | `Valid -> ()
-        | `Invalid _ ->
+        | `Invalid ->
+          let loc = Loc.in_file (Path.source (Path.Source.relative path "lock.dune")) in
           let hints = Pp.[ text "run dune pkg lock" ] in
           User_error.raise
+            ~loc
             ~hints
             [ Pp.text "The lock dir is not sync with your dune-project" ]
       else Memo.return ())

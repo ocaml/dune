@@ -16,7 +16,7 @@ val create
 val up_to_date
   :  Local_package.t Package_name.Map.t
   -> dependency_hash:Local_package.Dependency_hash.t option
-  -> [ `Valid | `Invalid of Local_package.Dependency_hash.t option ]
+  -> [ `Valid | `Invalid ]
 
 (** Returns the dependencies of the specified package within the package
     universe *)

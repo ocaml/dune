@@ -128,9 +128,10 @@ let get_workspace_lock_dir ctx =
   Workspace.find_lock_dir workspace path
 ;;
 
-let get ctx =
-  let* result = get_path ctx >>| Option.value_exn >>= Load.load in
-  match result with
+let get_with_path ctx =
+  let* path = get_path ctx >>| Option.value_exn in
+  Load.load path
+  >>= function
   | Error e -> Memo.return (Error e)
   | Ok lock_dir ->
     let+ workspace_lock_dir = get_workspace_lock_dir ctx in
@@ -140,9 +141,10 @@ let get ctx =
        Solver_stats.Expanded_variable_bindings.validate_against_solver_env
          lock_dir.expanded_solver_variable_bindings
          (workspace_lock_dir.solver_env |> Option.value ~default:Solver_env.empty));
-    Ok lock_dir
+    Ok (path, lock_dir)
 ;;
 
+let get ctx = get_with_path ctx >>| Result.map ~f:snd
 let get_exn ctx = get ctx >>| User_error.ok_exn
 
 let of_dev_tool dev_tool =

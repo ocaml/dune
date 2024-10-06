@@ -120,9 +120,6 @@ promote: $(BIN)
 .PHONY: accept-corrections
 accept-corrections: promote
 
-all-supported-ocaml-versions: $(BIN)
-	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
-
 .PHONY: clean
 clean:
 	rm -rf _boot _build

@@ -16,4 +16,4 @@
   > EOF
 
   $ (dune build ./cpp11.exe 2>/dev/null) && _build/default/cpp11.exe
-  [1]
+  Hi from C++11

@@ -22,8 +22,10 @@ Perform the same test above but first enter the "bin" directory.
   Success, waiting for filesystem changes...
   foo
   Leaving directory '..'
+  $ PID=$!
   $ cd ..
-  $ wait
+  $ ../wait-for-file.sh $DONE_FLAG
+  $ kill $PID
 
 Test that the behaviour is the same when not running with "--watch"
   $ cd bin && dune exec --root .. ./bin/main.exe

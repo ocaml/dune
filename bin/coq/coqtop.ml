@@ -153,7 +153,7 @@ let term =
     in
     Fiber.return (coqtop, argv, env)
   in
-  restore_cwd_and_execve common coqtop argv env
+  restore_cwd_and_execve (Common.root common) coqtop argv env
 ;;
 
 let command = Cmd.v info term

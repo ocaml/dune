@@ -24,7 +24,7 @@ Make a project that uses the foo library:
   >  (libraries foo))
   > EOF
 
-Make dune.lock files
+Make dune.lock files with known program "dune".
   $ make_lockdir
   $ cat > dune.lock/foo.pkg <<EOF
   > (version 0.0.1)
@@ -50,4 +50,28 @@ the depexts error message.
   You may want to verify the following depexts are installed:
   - unzip
   - gnupg
+  [1]
+
+Make dune.lock files with unknown program and unknown package.
+  $ make_lockdir
+  $ cat > dune.lock/foo.pkg <<EOF
+  > (version 0.0.1)
+  > (build
+  >  (run unknown-program))
+  > (depexts unknown-package)
+  > (source
+  >  (fetch
+  >   (url file://$PWD/foo.tar)
+  >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
+  > EOF
+
+Doing the same build which is supposed to show the depexts message at the end.
+There is a bug at the moment, it shows the correct error message but without
+depexts message.
+  $ dune build
+  File "dune.lock/foo.pkg", line 3, characters 6-21:
+  3 |  (run unknown-program))
+            ^^^^^^^^^^^^^^^
+  Error: Program unknown-program not found in the tree or in PATH
+   (context: default)
   [1]

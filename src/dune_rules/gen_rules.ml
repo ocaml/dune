@@ -668,7 +668,11 @@ let raise_on_lock_dir_out_of_sync =
           Dune_load.packages ()
           >>| Dune_lang.Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
         in
-        match Dune_pkg.Package_universe.up_to_date local_packages lock_dir with
+        match
+          Dune_pkg.Package_universe.up_to_date
+            local_packages
+            ~dependency_hash:(Option.map ~f:snd lock_dir.dependency_hash)
+        with
         | `Valid -> ()
         | `Invalid _ ->
           let hints = Pp.[ text "run dune pkg lock" ] in

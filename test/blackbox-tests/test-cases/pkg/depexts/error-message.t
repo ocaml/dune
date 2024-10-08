@@ -65,9 +65,8 @@ Make dune.lock files with unknown program and unknown package.
   >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
   > EOF
 
-Doing the same build which is supposed to show the depexts message at the end.
-There is a bug at the moment, it shows the correct error message but without
-depexts message.
+Running the same build. It is supposed to show the depexts message at the end, when
+the program is not found.
   $ dune build
   File "dune.lock/foo.pkg", line 3, characters 6-21:
   3 |  (run unknown-program))

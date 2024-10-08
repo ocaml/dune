@@ -579,6 +579,16 @@ module Substitute = struct
   let action expander ~src ~dst = A.action { Spec.expander; src; dst }
 end
 
+module Depexts = struct
+  type t = string list
+
+  let message (t : t) =
+    [ Pp.textf "You may want to verify the following depexts are installed:"
+    ; Pp.enumerate ~f:Pp.verbatim t
+    ]
+  ;;
+end
+
 module Run_with_path = struct
   module Output : sig
     type error
@@ -620,10 +630,7 @@ module Run_with_path = struct
       let depexts_warning =
         match t.depexts with
         | [] -> []
-        | _ :: _ ->
-          [ Pp.textf "You may want to verify the following depexts are installed:"
-          ; Pp.enumerate ~f:Pp.verbatim t.depexts
-          ]
+        | _ -> Depexts.message t.depexts
       in
       let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string pkg_name) in
       [ pp_pkg; Pp.verbatim error ] @ depexts_warning, loc
@@ -702,7 +709,11 @@ module Run_with_path = struct
       let open Fiber.O in
       let display = !Clflags.display in
       match prog with
-      | Error e -> Action.Prog.Not_found.raise e
+      | Error e ->
+        let _, loc = pkg in
+        let depexts_msg = if List.is_empty depexts then [] else Depexts.message depexts in
+        let error_msg = (Action.Prog.Not_found.message e).paragraphs in
+        raise (User_error.E (error_msg @ depexts_msg |> User_message.make ~loc))
       | Ok prog ->
         let args =
           Array.Immutable.to_list_map args ~f:(fun arg ->

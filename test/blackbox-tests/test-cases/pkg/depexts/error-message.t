@@ -74,4 +74,6 @@ depexts message.
             ^^^^^^^^^^^^^^^
   Error: Program unknown-program not found in the tree or in PATH
    (context: default)
+  You may want to verify the following depexts are installed:
+  - unknown-package
   [1]

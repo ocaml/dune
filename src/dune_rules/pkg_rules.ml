@@ -582,11 +582,13 @@ end
 module Depexts = struct
   type t = string list
 
-  let message (t : t) =
+  let pp (t : t) =
     [ Pp.textf "You may want to verify the following depexts are installed:"
     ; Pp.enumerate ~f:Pp.verbatim t
     ]
   ;;
+
+  let message (t : t) = User_message.make (pp t)
 end
 
 module Run_with_path = struct
@@ -630,7 +632,7 @@ module Run_with_path = struct
       let depexts_warning =
         match t.depexts with
         | [] -> []
-        | _ -> Depexts.message t.depexts
+        | _ :: _ -> Depexts.pp t.depexts
       in
       let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string pkg_name) in
       [ pp_pkg; Pp.verbatim error ] @ depexts_warning, loc
@@ -709,11 +711,7 @@ module Run_with_path = struct
       let open Fiber.O in
       let display = !Clflags.display in
       match prog with
-      | Error e ->
-        let _, loc = pkg in
-        let depexts_msg = if List.is_empty depexts then [] else Depexts.message depexts in
-        let error_msg = (Action.Prog.Not_found.message e).paragraphs in
-        raise (User_error.E (error_msg @ depexts_msg |> User_message.make ~loc))
+      | Error e -> Action.Prog.Not_found.raise e
       | Ok prog ->
         let args =
           Array.Immutable.to_list_map args ~f:(fun arg ->
@@ -954,12 +952,22 @@ module Action_expander = struct
                 >>| (function
                  | Some p -> Ok p
                  | None ->
-                   Error
-                     (Action.Prog.Not_found.create
-                        ~program
-                        ~context:t.context
-                        ~loc:(Some loc)
-                        ()))))
+                   if List.is_empty t.depexts
+                   then
+                     Error
+                       (Action.Prog.Not_found.create
+                          ~program
+                          ~context:t.context
+                          ~loc:(Some loc)
+                          ())
+                   else
+                     Error
+                       (Action.Prog.Not_found.create
+                          ~hint:(Depexts.message t.depexts |> User_message.to_string)
+                          ~program
+                          ~context:t.context
+                          ~loc:(Some loc)
+                          ()))))
       in
       Result.map prog ~f:(map_exe t)
     ;;

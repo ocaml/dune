@@ -71,10 +71,6 @@ module Prog = struct
       raise (User_error.E (Utils.program_not_found_message ?hint ~loc ~context program))
     ;;
 
-    let message { context; program; hint; loc } =
-      Utils.program_not_found_message ?hint ~loc ~context program
-    ;;
-
     let to_dyn { context; program; hint; loc = _ } =
       let open Dyn in
       record

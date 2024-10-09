@@ -67,7 +67,6 @@ module Prog : sig
       -> unit
       -> t
 
-    val message : t -> User_message.t
     val raise : t -> _
   end
 

@@ -30,5 +30,6 @@ Test the enabled_if field for libraries:
   Error: Library "foo" in _build/default is hidden (unsatisfied 'enabled_if').
   -> required by library "bar" in _build/default
   -> required by executable main in dune:44
+  -> required by _build/default/.merlin-conf/exe-main
   -> required by _build/default/main.exe
   [1]

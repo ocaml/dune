@@ -23,8 +23,8 @@ where vlib is a virtual library, and impl implements this library.
   Error: Library "vlib" was pulled in.
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
-  -> required by _build/default/impl/.impl.objs/byte/vlib.cmo
-  -> required by _build/default/impl/impl.cma
+  -> required by _build/default/impl/.merlin-conf/lib-impl
+  -> required by _build/default/impl/vlib__impl__.ml-gen
   -> required by alias impl/all
   [1]
 
@@ -37,7 +37,6 @@ The implementation impl was built, but it's not usable:
   -> required by library "lib" in _build/default/lib
   -> required by library "impl" in _build/default/impl
   -> required by executable foo in dune:1
-  -> required by _build/default/.foo.eobjs/byte/dune__exe__Foo.cmi
-  -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
+  -> required by _build/default/.merlin-conf/exe-foo
   -> required by _build/default/foo.exe
   [1]

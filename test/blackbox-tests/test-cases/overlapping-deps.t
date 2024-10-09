@@ -67,7 +67,7 @@ And we see the error:
     $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package2
     -> required by library "some_package1" in
        $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
-  -> required by _build/default/proj2/.bar.objs/byte/bar.cmo
+  -> required by _build/default/proj2/.merlin-conf/lib-bar
   -> required by _build/default/proj2/bar.cma
   -> required by %{cma:proj2/bar} at command line:1
   [1]
@@ -106,7 +106,6 @@ We also make sure the error exists for executables:
     -> required by library "some_package1" in
        $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
   -> required by executable bar in proj2/dune:2
-  -> required by _build/default/proj2/.bar.eobjs/byte/dune__exe__Bar.cmi
-  -> required by _build/default/proj2/.bar.eobjs/native/dune__exe__Bar.cmx
+  -> required by _build/default/proj2/.merlin-conf/exe-bar
   -> required by _build/default/proj2/bar.exe
   [1]

@@ -26,8 +26,7 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  -> required by _build/default/.x.eobjs/byte/dune__exe__X.cmi
-  -> required by _build/default/.x.eobjs/native/dune__exe__X.cmx
+  -> required by _build/default/.merlin-conf/exe-x
   -> required by _build/default/x.exe
   -> required by alias all
   [1]
@@ -37,8 +36,7 @@ Test optional executable
   3 |  (libraries does-not-exist)
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  -> required by _build/default/.x.eobjs/byte/dune__exe__X.cmi
-  -> required by _build/default/.x.eobjs/native/dune__exe__X.cmx
+  -> required by _build/default/.merlin-conf/exe-x
   -> required by _build/default/x.exe
   -> required by %{exe:x.exe} at dune:8
   -> required by alias run-x in dune:6
@@ -60,8 +58,7 @@ The following command should fail because the executable is not optional:
   3 |  (libraries does-not-exist))
                   ^^^^^^^^^^^^^^
   Error: Library "does-not-exist" not found.
-  -> required by _build/default/.x.eobjs/byte/dune__exe__X.cmi
-  -> required by _build/default/.x.eobjs/native/dune__exe__X.cmx
+  -> required by _build/default/.merlin-conf/exe-x
   -> required by _build/default/x.exe
   -> required by _build/install/default/bin/x
   -> required by _build/default/x.install
@@ -152,8 +149,7 @@ present even if the binary is not optional.
   3 |  (libraries doesnotexistatall)
                   ^^^^^^^^^^^^^^^^^
   Error: Library "doesnotexistatall" not found.
-  -> required by _build/default/exe/.bar.eobjs/byte/dune__exe__Bar.cmi
-  -> required by _build/default/exe/.bar.eobjs/native/dune__exe__Bar.cmx
+  -> required by _build/default/exe/.merlin-conf/exe-bar
   -> required by _build/default/exe/bar.exe
   -> required by _build/install/default/bin/dunetestbar
   -> required by %{bin:dunetestbar} at dune:3

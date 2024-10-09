@@ -37,8 +37,8 @@ Make dune.lock files with known program "dune".
   >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
   > EOF
 
-Build the project, when it fails building 'foo' package, it shows
-the depexts error message.
+Build the project, when it fails building 'foo' package, it shows the depexts
+error message.
   $ dune build
   File "dune.lock/foo.pkg", line 3, characters 6-10:
   3 |  (run dune build))
@@ -47,7 +47,7 @@ the depexts error message.
   File "dune-project", line 1, characters 0-0:
   Error: Invalid first line, expected: (lang <lang> <version>)
   
-  You may want to verify the following depexts are installed:
+  Hint: You may want to verify the following depexts are installed:
   - unzip
   - gnupg
   [1]
@@ -65,13 +65,14 @@ Make dune.lock files with unknown program and unknown package.
   >   (checksum md5=$(md5sum foo.tar | cut -f1 -d' '))))
   > EOF
 
-Doing the same build which is supposed to show the depexts message at the end.
-There is a bug at the moment, it shows the correct error message but without
-depexts message.
+Running the same build. It is supposed to show the depexts message at the end,
+when the program is not found.
   $ dune build
   File "dune.lock/foo.pkg", line 3, characters 6-21:
   3 |  (run unknown-program))
             ^^^^^^^^^^^^^^^
   Error: Program unknown-program not found in the tree or in PATH
    (context: default)
+  Hint: You may want to verify the following depexts are installed:
+  - unknown-package
   [1]

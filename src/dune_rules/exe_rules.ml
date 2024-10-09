@@ -286,7 +286,6 @@ let executables_rules
       ~stdlib_dir
       ~flags
       ~modules
-      ~source_dirs:Path.Source.Set.empty
       ~libname:None
       ~obj_dir
       ~preprocess:

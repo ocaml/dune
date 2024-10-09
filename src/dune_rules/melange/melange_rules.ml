@@ -360,7 +360,6 @@ let setup_emit_cmj_rules
         ~stdlib_dir
         ~flags
         ~modules
-        ~source_dirs:Path.Source.Set.empty
         ~libname:None
         ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess)
         ~obj_dir

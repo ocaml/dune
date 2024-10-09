@@ -464,7 +464,6 @@ module Unprocessed = struct
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
     ; libname : Lib_name.Local.t option
-    ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
@@ -484,7 +483,6 @@ module Unprocessed = struct
     ~flags
     ~preprocess
     ~libname
-    ~source_dirs
     ~modules
     ~obj_dir
     ~dialects
@@ -511,7 +509,6 @@ module Unprocessed = struct
       ; flags
       ; preprocess
       ; libname
-      ; source_dirs
       ; objs_dirs
       ; extensions
       ; readers
@@ -613,19 +610,21 @@ module Unprocessed = struct
       ~f:(pp_flags ctx ~expander t.config.libname)
   ;;
 
-  let add_lib_dirs sctx mode ~init libs =
+  let add_lib_dirs sctx mode libs =
     Action_builder.of_memo
       (let open Memo.O in
        Memo.parallel_map libs ~f:(fun lib ->
          let+ dirs = src_dirs sctx lib in
          lib, dirs)
-       >>| List.fold_left ~init ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-         ( Path.Set.union src_dirs more_src_dirs
-         , let public_cmi_dir =
-             let info = Lib.info lib in
-             obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
-           in
-           Path.Set.add obj_dirs public_cmi_dir )))
+       >>| List.fold_left
+             ~init:(Path.Set.empty, Path.Set.empty)
+             ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
+               ( Path.Set.union src_dirs more_src_dirs
+               , let public_cmi_dir =
+                   let info = Lib.info lib in
+                   obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
+                 in
+                 Path.Set.add obj_dirs public_cmi_dir )))
   ;;
 
   let process
@@ -637,7 +636,6 @@ module Unprocessed = struct
          ; readers
          ; flags
          ; objs_dirs
-         ; source_dirs
          ; requires_compile
          ; requires_hidden
          ; preprocess = _
@@ -692,15 +690,12 @@ module Unprocessed = struct
       in
       let+ flags = flags
       and+ indexes = Action_builder.of_memo (Ocaml_index.context_indexes sctx)
-      and+ src_dirs, obj_dirs =
-        let init = Path.set_of_source_paths source_dirs, objs_dirs in
-        add_lib_dirs sctx mode ~init requires_compile
-      and+ hidden_src_dirs, hidden_obj_dirs =
-        add_lib_dirs sctx mode ~init:(Path.Set.empty, Path.Set.empty) requires_hidden
-      in
+      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx mode requires_compile
+      and+ hidden_src_dirs, hidden_obj_dirs = add_lib_dirs sctx mode requires_hidden in
       let src_dirs =
-        Path.Set.union src_dirs (Path.Set.of_list_map ~f:Path.source more_src_dirs)
+        Path.Set.of_list_map ~f:Path.source more_src_dirs |> Path.Set.union deps_src_dirs
       in
+      let obj_dirs = Path.Set.union deps_obj_dirs objs_dirs in
       let source_root = Path.Source.root |> Path.source in
       { Processed.stdlib_dir
       ; source_root

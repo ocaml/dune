@@ -633,7 +633,6 @@ let library_rules
       ~stdlib_dir
       ~flags
       ~modules
-      ~source_dirs:Path.Source.Set.empty
       ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
       ~libname:(Some (snd lib.name))
       ~obj_dir

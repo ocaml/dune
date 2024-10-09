@@ -579,17 +579,12 @@ module Substitute = struct
   let action expander ~src ~dst = A.action { Spec.expander; src; dst }
 end
 
-module Depexts = struct
-  type t = string list
-
-  let pp (t : t) =
+let depexts_hint = function
+  | [] -> None
+  | _ :: _ ->
     [ Pp.textf "You may want to verify the following depexts are installed:"
     ; Pp.enumerate ~f:Pp.verbatim t
     ]
-  ;;
-
-  let message (t : t) = User_message.make (pp t)
-end
 
 module Run_with_path = struct
   module Output : sig

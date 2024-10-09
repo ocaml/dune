@@ -581,10 +581,13 @@ end
 
 let depexts_hint = function
   | [] -> None
-  | _ :: _ ->
+  | depexts ->
     [ Pp.textf "You may want to verify the following depexts are installed:"
-    ; Pp.enumerate ~f:Pp.verbatim t
+    ; Pp.enumerate ~f:Pp.verbatim depexts
     ]
+    |> Pp.concat_map ~sep:Pp.cut ~f:(fun pp -> Pp.box pp)
+    |> Option.some
+;;
 
 module Run_with_path = struct
   module Output : sig
@@ -623,27 +626,28 @@ module Run_with_path = struct
     ;;
 
     let to_paragraphs t error =
-      let pkg_name, loc = t.pkg in
-      let depexts_warning =
-        match t.depexts with
-        | [] -> []
-        | _ :: _ -> Depexts.pp t.depexts
-      in
-      let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string pkg_name) in
-      [ pp_pkg; Pp.verbatim error ] @ depexts_warning, loc
+      let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string (fst t.pkg)) in
+      [ pp_pkg; Pp.verbatim error ]
     ;;
 
     let prerr ~rc error =
+      let hints =
+        lazy
+          (match depexts_hint error.depexts with
+           | None -> []
+           | Some h -> [ h ])
+      in
+      let loc = snd error.pkg in
       match Predicate.test error.accepted_exit_codes rc, error.display with
       | false, _ ->
-        let paragraphs, loc = Stdune.Io.read_file error.filename |> to_paragraphs error in
-        User_warning.emit ~loc ~is_error:true paragraphs
+        let paragraphs = Stdune.Io.read_file error.filename |> to_paragraphs error in
+        User_warning.emit ~hints:(Lazy.force hints) ~loc ~is_error:true paragraphs
       | true, Display.Verbose ->
         let content = Stdune.Io.read_file error.filename in
         if not (String.is_empty content)
         then (
-          let paragraphs, loc = to_paragraphs error content in
-          User_warning.emit ~loc paragraphs)
+          let paragraphs = to_paragraphs error content in
+          User_warning.emit ~hints:(Lazy.force hints) ~loc paragraphs)
       | true, _ -> ()
     ;;
   end
@@ -947,22 +951,17 @@ module Action_expander = struct
                 >>| (function
                  | Some p -> Ok p
                  | None ->
-                   if List.is_empty t.depexts
-                   then
-                     Error
-                       (Action.Prog.Not_found.create
-                          ~program
-                          ~context:t.context
-                          ~loc:(Some loc)
-                          ())
-                   else
-                     Error
-                       (Action.Prog.Not_found.create
-                          ~hint:(Depexts.message t.depexts |> User_message.to_string)
-                          ~program
-                          ~context:t.context
-                          ~loc:(Some loc)
-                          ()))))
+                   let hint =
+                     depexts_hint t.depexts
+                     |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
+                   in
+                   Error
+                     (Action.Prog.Not_found.create
+                        ?hint
+                        ~program
+                        ~context:t.context
+                        ~loc:(Some loc)
+                        ()))))
       in
       Result.map prog ~f:(map_exe t)
     ;;

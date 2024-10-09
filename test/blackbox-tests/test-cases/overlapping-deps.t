@@ -81,7 +81,7 @@ We can fix the error by allow overlapping dependencies:
   > EOF
   $ OCAMLPATH=$PWD/../external/_build/install/default/lib dune build %{cma:proj2/bar} --root .
 
-Strangely, the error disappears if we remove the source for the bar lib:
+The error does not disappears if we remove the source for the bar lib:
 
   $ cat >proj2/dune <<EOF
   > (library
@@ -90,6 +90,16 @@ Strangely, the error disappears if we remove the source for the bar lib:
   > EOF
   $ rm proj2/bar.ml
   $ OCAMLPATH=$PWD/../external/_build/install/default/lib dune build %{cma:proj2/bar} --root .
+  Error: Conflict between the following libraries:
+  - "some_package2" in _build/default/proj1
+  - "some_package2" in
+    $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package2
+    -> required by library "some_package1" in
+       $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
+  -> required by _build/default/proj2/.merlin-conf/lib-bar
+  -> required by _build/default/proj2/bar.cma
+  -> required by %{cma:proj2/bar} at command line:1
+  [1]
 
 We also make sure the error exists for executables:
   $ cat >proj2/dune <<EOF

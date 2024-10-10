@@ -20,7 +20,7 @@ type pins = pin Package_name.Map.t
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
-  ; dependencies : OpamTypes.filtered_formula
+  ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
@@ -42,7 +42,7 @@ module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
     { name : Package_name.t
-    ; dependencies : OpamTypes.filtered_formula
+    ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list

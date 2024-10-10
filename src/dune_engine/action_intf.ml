@@ -51,6 +51,7 @@ module type Ast = sig
     | Mkdir of target
     | Pipe of Outputs.t * t list
     | Extension of ext
+    | Needed_deps of path list
 end
 
 module type Helpers = sig
@@ -82,6 +83,7 @@ module type Helpers = sig
   val rename : target -> target -> t
   val remove_tree : target -> t
   val mkdir : target -> t
+  val needed_deps : path list -> t
 end
 
 module Exec = struct

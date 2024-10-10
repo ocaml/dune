@@ -13,6 +13,7 @@ val universe : t
 val file_selector : File_selector.t -> t
 val alias : Alias.t -> t
 val compare : t -> t -> Ordering.t
+val decode : Dpath.t -> t Dune_sexp.Decoder.t
 
 module Map : sig
   type dep := t

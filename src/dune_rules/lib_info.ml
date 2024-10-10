@@ -316,6 +316,7 @@ type 'path t =
   ; native_archives : 'path native_archives
   ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
+  ; wasmoo_runtime : 'path list
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -371,6 +372,7 @@ let synopsis t = t.synopsis
 let wrapped t = t.wrapped
 let special_builtin_support t = t.special_builtin_support
 let jsoo_runtime t = t.jsoo_runtime
+let wasmoo_runtime t = t.wasmoo_runtime
 let main_module_name t = t.main_module_name
 let orig_src_dir t = t.orig_src_dir
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
@@ -414,6 +416,7 @@ let create
   ~native_archives
   ~foreign_dll_files
   ~jsoo_runtime
+  ~wasmoo_runtime
   ~preprocess
   ~enabled
   ~virtual_deps
@@ -451,6 +454,7 @@ let create
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
+  ; wasmoo_runtime
   ; preprocess
   ; enabled
   ; virtual_deps
@@ -495,6 +499,7 @@ let map t ~path_kind ~f_path ~f_obj_dir ~f_public_deps =
   ; foreign_dll_files = List.map ~f t.foreign_dll_files
   ; native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
+  ; wasmoo_runtime = List.map ~f t.wasmoo_runtime
   ; melange_runtime_deps = File_deps.map ~f:f_public_deps t.melange_runtime_deps
   ; path_kind
   }
@@ -544,6 +549,7 @@ let to_dyn
   ; native_archives
   ; foreign_dll_files
   ; jsoo_runtime
+  ; wasmoo_runtime
   ; preprocess = _
   ; enabled = _
   ; virtual_deps
@@ -583,6 +589,7 @@ let to_dyn
     ; "native_archives", dyn_of_native_archives path native_archives
     ; "foreign_dll_files", list path foreign_dll_files
     ; "jsoo_runtime", list path jsoo_runtime
+    ; "wasmoo_runtime", list path wasmoo_runtime
     ; "requires", list Lib_dep.to_dyn requires
     ; "ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps
     ; "virtual_deps", list (snd Lib_name.to_dyn) virtual_deps

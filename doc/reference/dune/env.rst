@@ -51,6 +51,10 @@ Fields supported in ``<settings>`` are:
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
   :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the `js` mode.
 
+- ``(js_of_ocaml (submodes <submodes>))`` controls whether to generate
+  JavaScript, Wasm code, or both. Each submode is either ``js`` or ``wasm``.
+  The default is to generate JavaScript code.
+
 - ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries of the
   form ``(<filepath> as <name>)``. ``(<filepath> as <name>)`` makes the binary
   ``<filepath>`` available in the command search as just ``<name>``. For

@@ -380,8 +380,8 @@ let create_latest_version
      |> Code_error.raise "Invalid package table");
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
-    Local_package.(
-      For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
+    local_packages
+    |> Local_package.For_solver.non_local_dependency_hash
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
   let complete, used =

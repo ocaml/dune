@@ -14,7 +14,7 @@ let base_cxx_compile_flags version = function
   | Gcc | Clang ->
     "-x"
     :: "c++"
-    :: (if Ocaml.Version.add_std_cxx_flag version then [ "-std=c++11" ] else [])
+    :: (if Ocaml.Version.add_std_cxx_flag version then [ "-std=gnu++11" ] else [])
   | Msvc -> [ "/TP" ]
   | Other _ -> []
 ;;

@@ -51,13 +51,24 @@ module Processed = struct
     ; source_root : Path.t
     ; obj_dirs : Path.Set.t
     ; src_dirs : Path.Set.t
+    ; hidden_obj_dirs : Path.Set.t
+    ; hidden_src_dirs : Path.Set.t
     ; flags : string list
     ; extensions : string option Ml_kind.Dict.t list
     ; indexes : Path.t list
     }
 
   let dyn_of_config
-    { stdlib_dir; source_root; obj_dirs; src_dirs; flags; extensions; indexes }
+    { stdlib_dir
+    ; source_root
+    ; obj_dirs
+    ; src_dirs
+    ; hidden_obj_dirs
+    ; hidden_src_dirs
+    ; flags
+    ; extensions
+    ; indexes
+    }
     =
     let open Dyn in
     record
@@ -65,6 +76,8 @@ module Processed = struct
       ; "source_root", Path.to_dyn source_root
       ; "obj_dirs", Path.Set.to_dyn obj_dirs
       ; "src_dirs", Path.Set.to_dyn src_dirs
+      ; "hidden_obj_dirs", Path.Set.to_dyn hidden_obj_dirs
+      ; "hidden_src_dirs", Path.Set.to_dyn hidden_src_dirs
       ; "flags", list string flags
       ; "extensions", list (Ml_kind.Dict.to_dyn (Dyn.option string)) extensions
       ; "indexes", list Path.to_dyn indexes
@@ -106,7 +119,7 @@ module Processed = struct
     type nonrec t = t
 
     let name = "merlin-conf"
-    let version = 5
+    let version = 6
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
 
     let test_example () =
@@ -115,6 +128,8 @@ module Processed = struct
           ; source_root = Path.Source.root |> Path.source
           ; obj_dirs = Path.Set.empty
           ; src_dirs = Path.Set.empty
+          ; hidden_obj_dirs = Path.Set.empty
+          ; hidden_src_dirs = Path.Set.empty
           ; flags = [ "-x" ]
           ; extensions = [ { Ml_kind.Dict.intf = None; impl = Some "ext" } ]
           ; indexes = []
@@ -162,7 +177,16 @@ module Processed = struct
     ~opens
     ~pp
     ~reader
-    { stdlib_dir; source_root; obj_dirs; src_dirs; flags; extensions; indexes }
+    { stdlib_dir
+    ; source_root
+    ; obj_dirs
+    ; src_dirs
+    ; hidden_obj_dirs
+    ; hidden_src_dirs
+    ; flags
+    ; extensions
+    ; indexes
+    }
     =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
@@ -178,6 +202,12 @@ module Processed = struct
     let exclude_query_dir = [ Sexp.List [ Atom "EXCLUDE_QUERY_DIR" ] ] in
     let obj_dirs = Path.Set.to_list_map obj_dirs ~f:(make_directive_of_path "B") in
     let src_dirs = Path.Set.to_list_map src_dirs ~f:(make_directive_of_path "S") in
+    let hidden_obj_dirs =
+      Path.Set.to_list_map hidden_obj_dirs ~f:(make_directive_of_path "BH")
+    in
+    let hidden_src_dirs =
+      Path.Set.to_list_map hidden_src_dirs ~f:(make_directive_of_path "SH")
+    in
     let flags =
       let flags =
         match flags with
@@ -222,6 +252,8 @@ module Processed = struct
          ; exclude_query_dir
          ; obj_dirs
          ; src_dirs
+         ; hidden_obj_dirs
+         ; hidden_src_dirs
          ; flags
          ; unit_name
          ; suffixes
@@ -249,6 +281,8 @@ module Processed = struct
     flags
     obj_dirs
     src_dirs
+    hidden_obj_dirs
+    hidden_src_dirs
     extensions
     indexes
     =
@@ -261,6 +295,8 @@ module Processed = struct
     printf "SOURCE_ROOT %s\n" (serialize_path source_root);
     Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
+    Path.Set.iter hidden_obj_dirs ~f:(fun p -> printf "BH %s\n" (serialize_path p));
+    Path.Set.iter hidden_src_dirs ~f:(fun p -> printf "SH %s\n" (serialize_path p));
     List.iter indexes ~f:(fun p -> printf "INDEX %s\n" (serialize_path p));
     List.iter extensions ~f:(fun x ->
       Option.iter (get_ext x) ~f:(fun (impl, intf) ->
@@ -335,7 +371,15 @@ module Processed = struct
     | Error msg -> Printf.eprintf "%s\n" msg
     | Ok [] -> Printf.eprintf "No merlin configuration found.\n"
     | Ok (init :: tl) ->
-      let pp_configs, obj_dirs, src_dirs, flags, extensions, indexes =
+      let ( pp_configs
+          , obj_dirs
+          , src_dirs
+          , hidden_obj_dirs
+          , hidden_src_dirs
+          , flags
+          , extensions
+          , indexes )
+        =
         (* We merge what is easy to merge and ignore the rest *)
         List.fold_left
           tl
@@ -343,12 +387,21 @@ module Processed = struct
             ( [ init.pp_config ]
             , init.config.obj_dirs
             , init.config.src_dirs
+            , init.config.hidden_obj_dirs
+            , init.config.hidden_src_dirs
             , [ init.config.flags ]
             , init.config.extensions
             , init.config.indexes )
           ~f:
             (fun
-              (acc_pp, acc_obj, acc_src, acc_flags, acc_ext, acc_indexes)
+              ( acc_pp
+              , acc_obj
+              , acc_src
+              , acc_hidden_obj
+              , acc_hidden_src
+              , acc_flags
+              , acc_ext
+              , acc_indexes )
               { per_file_config = _
               ; pp_config
               ; config =
@@ -356,6 +409,8 @@ module Processed = struct
                   ; source_root = _
                   ; obj_dirs
                   ; src_dirs
+                  ; hidden_obj_dirs
+                  ; hidden_src_dirs
                   ; flags
                   ; extensions
                   ; indexes
@@ -365,6 +420,8 @@ module Processed = struct
             ( pp_config :: acc_pp
             , Path.Set.union acc_obj obj_dirs
             , Path.Set.union acc_src src_dirs
+            , Path.Set.union acc_hidden_obj hidden_obj_dirs
+            , Path.Set.union acc_hidden_src hidden_src_dirs
             , flags :: acc_flags
             , extensions @ acc_ext
             , indexes @ acc_indexes ))
@@ -378,6 +435,8 @@ module Processed = struct
            flags
            obj_dirs
            src_dirs
+           hidden_obj_dirs
+           hidden_src_dirs
            extensions
            indexes)
   ;;
@@ -399,12 +458,12 @@ module Unprocessed = struct
      Processed.t] *)
   type config =
     { stdlib_dir : Path.t
-    ; requires : Lib.Set.t
+    ; requires_compile : Lib.t list Resolve.t
+    ; requires_hidden : Lib.t list Resolve.t
     ; flags : string list Action_builder.t
     ; preprocess :
         Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
     ; libname : Lib_name.Local.t option
-    ; source_dirs : Path.Source.Set.t
     ; objs_dirs : Path.Set.t
     ; extensions : string option Ml_kind.Dict.t list
     ; readers : string list String.Map.t
@@ -418,12 +477,12 @@ module Unprocessed = struct
     }
 
   let make
-    ~requires
+    ~requires_compile
+    ~requires_hidden
     ~stdlib_dir
     ~flags
     ~preprocess
     ~libname
-    ~source_dirs
     ~modules
     ~obj_dir
     ~dialects
@@ -437,11 +496,6 @@ module Unprocessed = struct
       | `Melange_emit -> Melange
       | `Lib (m : Lib_mode.Map.Set.t) -> Lib_mode.Map.Set.for_merlin m
     in
-    let requires =
-      match Resolve.peek requires with
-      | Ok l -> Lib.Set.of_list l
-      | Error () -> Lib.Set.empty
-    in
     let objs_dirs =
       Path.Set.singleton @@ obj_dir_of_lib `Private mode (Obj_dir.of_local obj_dir)
     in
@@ -450,11 +504,11 @@ module Unprocessed = struct
     let config =
       { stdlib_dir
       ; mode
-      ; requires
+      ; requires_compile
+      ; requires_hidden
       ; flags
       ; preprocess
       ; libname
-      ; source_dirs
       ; objs_dirs
       ; extensions
       ; readers
@@ -556,6 +610,23 @@ module Unprocessed = struct
       ~f:(pp_flags ctx ~expander t.config.libname)
   ;;
 
+  let add_lib_dirs sctx mode libs =
+    Action_builder.of_memo
+      (let open Memo.O in
+       Memo.parallel_map libs ~f:(fun lib ->
+         let+ dirs = src_dirs sctx lib in
+         lib, dirs)
+       >>| List.fold_left
+             ~init:(Path.Set.empty, Path.Set.empty)
+             ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
+               ( Path.Set.union src_dirs more_src_dirs
+               , let public_cmi_dir =
+                   let info = Lib.info lib in
+                   obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
+                 in
+                 Path.Set.add obj_dirs public_cmi_dir )))
+  ;;
+
   let process
     ({ modules
      ; ident = _
@@ -565,8 +636,8 @@ module Unprocessed = struct
          ; readers
          ; flags
          ; objs_dirs
-         ; source_dirs
-         ; requires
+         ; requires_compile
+         ; requires_hidden
          ; preprocess = _
          ; libname = _
          ; mode
@@ -591,9 +662,11 @@ module Unprocessed = struct
            | [] -> None
            | stdlib_dir :: _ -> Some stdlib_dir)
       in
-      let* requires =
+      let requires_compile = Resolve.peek requires_compile |> Result.value ~default:[] in
+      let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
+      let* requires_compile, requires_hidden =
         match t.config.mode with
-        | Ocaml _ -> Action_builder.return requires
+        | Ocaml _ -> Action_builder.return (requires_compile, requires_hidden)
         | Melange ->
           Action_builder.of_memo
             (let open Memo.O in
@@ -612,34 +685,24 @@ module Unprocessed = struct
                  | Ok libs -> libs
                  | Error _ -> []
                in
-               Lib.Set.union requires (Lib.Set.of_list libs)
-             | None -> Memo.return requires)
+               List.concat [ requires_compile; libs ], requires_hidden
+             | None -> Memo.return (requires_compile, requires_hidden))
       in
       let+ flags = flags
-      and+ src_dirs, obj_dirs =
-        Action_builder.of_memo
-          (let open Memo.O in
-           Memo.parallel_map (Lib.Set.to_list requires) ~f:(fun lib ->
-             let+ dirs = src_dirs sctx lib in
-             lib, dirs)
-           >>| List.fold_left
-                 ~init:(Path.set_of_source_paths source_dirs, objs_dirs)
-                 ~f:(fun (src_dirs, obj_dirs) (lib, more_src_dirs) ->
-                   ( Path.Set.union src_dirs more_src_dirs
-                   , let public_cmi_dir =
-                       let info = Lib.info lib in
-                       obj_dir_of_lib `Public mode (Lib_info.obj_dir info)
-                     in
-                     Path.Set.add obj_dirs public_cmi_dir )))
-      and+ indexes = Action_builder.of_memo (Ocaml_index.context_indexes sctx) in
+      and+ indexes = Action_builder.of_memo (Ocaml_index.context_indexes sctx)
+      and+ deps_src_dirs, deps_obj_dirs = add_lib_dirs sctx mode requires_compile
+      and+ hidden_src_dirs, hidden_obj_dirs = add_lib_dirs sctx mode requires_hidden in
       let src_dirs =
-        Path.Set.union src_dirs (Path.Set.of_list_map ~f:Path.source more_src_dirs)
+        Path.Set.of_list_map ~f:Path.source more_src_dirs |> Path.Set.union deps_src_dirs
       in
+      let obj_dirs = Path.Set.union deps_obj_dirs objs_dirs in
       let source_root = Path.Source.root |> Path.source in
       { Processed.stdlib_dir
       ; source_root
       ; src_dirs
       ; obj_dirs
+      ; hidden_src_dirs
+      ; hidden_obj_dirs
       ; flags
       ; extensions
       ; indexes

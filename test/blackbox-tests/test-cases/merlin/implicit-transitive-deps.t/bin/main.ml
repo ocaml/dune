@@ -1,1 +1,1 @@
-type t = Lib1.t
+type _t = Lib1.t

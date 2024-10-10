@@ -43,8 +43,8 @@ let%expect_test "persistent digests" =
     7dac5b11f6f654bb6f230392493b363f
     ---
 
-    merlin-conf version 5
-    49e3a1010b7218f5b229d98991d6d11d
+    merlin-conf version 6
+    880477921df9a8915d57c0e8bdfb2fc1
     ---
 
     INCREMENTAL-DB version 5

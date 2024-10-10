@@ -270,6 +270,15 @@
  (files   dune-subst.1))
 
 (rule
+ (with-stdout-to dune-tools.1
+  (run dune tools --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-tools.1))
+
+(rule
  (with-stdout-to dune-top.1
   (run dune top --help=groff)))
 

@@ -67,7 +67,7 @@ And we see the error:
     $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package2
     -> required by library "some_package1" in
        $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
-  -> required by _build/default/proj2/.merlin-conf/lib-bar
+  -> required by _build/default/proj2/.bar.objs/byte/bar.cmo
   -> required by _build/default/proj2/bar.cma
   -> required by %{cma:proj2/bar} at command line:1
   [1]
@@ -81,7 +81,7 @@ We can fix the error by allow overlapping dependencies:
   > EOF
   $ OCAMLPATH=$PWD/../external/_build/install/default/lib dune build %{cma:proj2/bar} --root .
 
-The error does not disappear if we remove the source for the bar lib:
+Strangely, the error disappears if we remove the source for the bar lib:
 
   $ cat >proj2/dune <<EOF
   > (library
@@ -90,16 +90,6 @@ The error does not disappear if we remove the source for the bar lib:
   > EOF
   $ rm proj2/bar.ml
   $ OCAMLPATH=$PWD/../external/_build/install/default/lib dune build %{cma:proj2/bar} --root .
-  Error: Conflict between the following libraries:
-  - "some_package2" in _build/default/proj1
-  - "some_package2" in
-    $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package2
-    -> required by library "some_package1" in
-       $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
-  -> required by _build/default/proj2/.merlin-conf/lib-bar
-  -> required by _build/default/proj2/bar.cma
-  -> required by %{cma:proj2/bar} at command line:1
-  [1]
 
 We also make sure the error exists for executables:
   $ cat >proj2/dune <<EOF
@@ -116,6 +106,7 @@ We also make sure the error exists for executables:
     -> required by library "some_package1" in
        $TESTCASE_ROOT/use/../external/_build/install/default/lib/some_package1
   -> required by executable bar in proj2/dune:2
-  -> required by _build/default/proj2/.merlin-conf/exe-bar
+  -> required by _build/default/proj2/.bar.eobjs/byte/dune__exe__Bar.cmi
+  -> required by _build/default/proj2/.bar.eobjs/native/dune__exe__Bar.cmx
   -> required by _build/default/proj2/bar.exe
   [1]

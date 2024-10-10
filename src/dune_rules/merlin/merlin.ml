@@ -662,8 +662,8 @@ module Unprocessed = struct
            | [] -> None
            | stdlib_dir :: _ -> Some stdlib_dir)
       in
-      let* requires_compile = Resolve.read requires_compile in
-      let* requires_hidden = Resolve.read requires_hidden in
+      let requires_compile = Resolve.peek requires_compile |> Result.value ~default:[] in
+      let requires_hidden = Resolve.peek requires_hidden |> Result.value ~default:[] in
       let* requires_compile, requires_hidden =
         match t.config.mode with
         | Ocaml _ -> Action_builder.return (requires_compile, requires_hidden)

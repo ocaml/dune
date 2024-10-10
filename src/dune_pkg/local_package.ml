@@ -15,7 +15,7 @@ type pins = pin Package_name.Map.t
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
-  ; dependencies : OpamTypes.filtered_formula
+  ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
@@ -43,7 +43,7 @@ end
 module For_solver = struct
   type t =
     { name : Package_name.t
-    ; dependencies : OpamTypes.filtered_formula
+    ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
@@ -55,7 +55,7 @@ module For_solver = struct
        them *)
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
-    |> OpamFile.OPAM.with_depends dependencies
+    |> OpamFile.OPAM.with_depends (Dependency_formula.to_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
          (Package_dependency.list_to_opam_filtered_formula conflicts)
     |> OpamFile.OPAM.with_conflict_class
@@ -64,7 +64,9 @@ module For_solver = struct
          (Package_dependency.list_to_opam_filtered_formula depopts)
   ;;
 
-  let opam_filtered_dependency_formula { dependencies; _ } = dependencies
+  let opam_filtered_dependency_formula { dependencies; _ } =
+    Dependency_formula.to_filtered_formula dependencies
+  ;;
 
   module T = struct
     type t = Package_name.t * OpamTypes.condition
@@ -110,7 +112,11 @@ module For_solver = struct
 
   let non_local_deps local_deps =
     let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
-    List.map ~f:(fun local_dep -> maximum_package_set local_dep.dependencies) local_deps
+    List.map
+      ~f:(fun local_dep ->
+        maximum_package_set
+          (Dependency_formula.to_filtered_formula local_dep.dependencies))
+      local_deps
     |> Set.union_all
     |> Set.filter ~f:(fun (name, _condition) ->
       (* remove all packages that are local deps, regardless of conditions *)
@@ -139,7 +145,11 @@ module For_solver = struct
   ;;
 
   let dependency_names t =
-    maximum_package_set t.dependencies |> Set.to_list |> List.map ~f:fst
+    t.dependencies
+    |> Dependency_formula.to_filtered_formula
+    |> maximum_package_set
+    |> Set.to_list
+    |> List.map ~f:fst
   ;;
 end
 
@@ -156,9 +166,7 @@ let of_package (t : Dune_lang.Package.t) =
   let name = Package.name t in
   match Package.original_opam_file t with
   | None ->
-    let dependencies =
-      t |> Package.depends |> Package_dependency.list_to_opam_filtered_formula
-    in
+    let dependencies = t |> Package.depends |> Dependency_formula.of_dependencies in
     { name
     ; version
     ; dependencies
@@ -173,7 +181,9 @@ let of_package (t : Dune_lang.Package.t) =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
     let convert_filtered_formula = Package_dependency.list_of_opam_filtered_formula loc in
-    let dependencies = OpamFile.OPAM.depends opam_file in
+    let dependencies =
+      opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
+    in
     let conflicts = convert_filtered_formula `And (OpamFile.OPAM.conflicts opam_file) in
     let depopts = convert_filtered_formula `Or (OpamFile.OPAM.depopts opam_file) in
     let conflict_class =

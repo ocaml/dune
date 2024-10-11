@@ -174,7 +174,12 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
       ]
   | None, Some _ ->
     let any_non_local_dependency_name =
-      Local_package.For_solver.any_non_local_dependency_name local_packages
+      match Local_package.For_solver.any_non_local_dependency_name local_packages with
+      | Some x -> x
+      | None ->
+        Code_error.raise
+          "Attempting to retrieve a non-local dependency but there aren't any"
+          []
     in
     User_error.raise
       ~hints:regenerate_lock_dir_hints

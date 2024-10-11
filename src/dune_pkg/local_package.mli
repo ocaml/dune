@@ -61,7 +61,7 @@ module For_solver : sig
   val non_local_dependency_hash : t list -> Dependency_hash.t option
 
   (** Returns the name of the first non-local dependency it can find *)
-  val any_non_local_dependency_name : t list -> Package_name.t
+  val any_non_local_dependency_name : t list -> Package_name.t option
 
   (** Returns the names of packages that it depends on *)
   val dependency_names : t -> Package_name.t list

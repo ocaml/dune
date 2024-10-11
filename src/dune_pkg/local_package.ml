@@ -110,38 +110,27 @@ module For_solver = struct
     loop formula
   ;;
 
-  let non_local_deps local_deps =
+  let non_local_dependencies local_deps =
     let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
-    List.map
-      ~f:(fun local_dep ->
-        maximum_package_set
-          (Dependency_formula.to_filtered_formula local_dep.dependencies))
-      local_deps
-    |> Set.union_all
-    |> Set.filter ~f:(fun (name, _condition) ->
-      (* remove all packages that are local deps, regardless of conditions *)
-      not (Package_name.Set.mem local_deps_names name))
+    let deps = List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps in
+    let formula = Dependency_formula.union deps in
+    Dependency_formula.remove_packages formula local_deps_names
   ;;
 
   let non_local_dependency_hash local_deps =
-    let non_local_deps = non_local_deps local_deps in
-    match Set.is_empty non_local_deps with
-    | true -> None
-    | false ->
+    let non_local_deps = non_local_dependencies local_deps in
+    match Dependency_formula.has_entries non_local_deps with
+    | false -> None
+    | true ->
       let hashable =
-        non_local_deps
-        |> Set.to_list
-        |> List.map ~f:(fun (name, condition) ->
-          let condition = condition |> Opam_dyn.condition |> Dyn.to_string in
-          let name = Package_name.to_string name in
-          sprintf "%s %s" name condition)
-        |> String.concat ~sep:"\n"
+        non_local_deps |> Dependency_formula.to_sexp |> Dune_sexp.to_string
       in
       Some (Dependency_hash.string hashable)
   ;;
 
   let any_non_local_dependency_name local_deps =
-    non_local_deps local_deps |> Set.choose_exn |> fst
+    let non_local_deps = non_local_dependencies local_deps in
+    Dependency_formula.any_package_name non_local_deps
   ;;
 
   let dependency_names t =

@@ -143,9 +143,8 @@ let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
            non_local_dependencies_hash -> `Valid
   | None, Some _ ->
     `Valid (* This case happens when the user writes themselves their lock.dune. *)
-  | Some _, Some non_local_dependencies_hash ->
-    `Invalid (Some non_local_dependencies_hash)
-  | Some _, None -> `Invalid None
+  | Some _, Some _ -> `Invalid
+  | Some _, None -> `Invalid
 ;;
 
 let validate_dependency_hash local_packages ~saved_dependency_hash =

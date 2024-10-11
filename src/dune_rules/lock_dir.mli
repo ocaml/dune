@@ -3,6 +3,7 @@ module Pkg = Dune_pkg.Lock_dir.Pkg
 
 type t := Dune_pkg.Lock_dir.t
 
+val get_with_path : Context_name.t -> (Path.Source.t * t, User_message.t) result Memo.t
 val get : Context_name.t -> (t, User_message.t) result Memo.t
 val get_exn : Context_name.t -> t Memo.t
 val of_dev_tool : Dune_pkg.Dev_tool.t -> t Memo.t

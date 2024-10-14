@@ -97,7 +97,9 @@ module Ocamlformat = struct
     let open Action_builder.With_targets.O in
     (* Depend on [extra_deps] so if the ocamlformat config file
        changes then ocamlformat will run again. *)
-    extra_deps dir >>> action
+    extra_deps dir
+    >>> action
+    |> With_targets.map ~f:(Action.Full.add_sandbox Sandbox_config.needs_sandboxing)
   ;;
 
   let action_when_ocamlformat_isn't_locked ~input kind =

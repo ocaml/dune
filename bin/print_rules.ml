@@ -99,6 +99,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Mkdir x -> List [ atom "mkdir"; target x ]
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
+  | Needed_deps xs -> List (atom "needed_deps" :: List.map xs ~f:path)
   | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
 ;;
 

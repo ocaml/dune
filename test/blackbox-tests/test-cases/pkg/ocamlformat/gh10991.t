@@ -44,7 +44,7 @@ Update the file:
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
 
-After formatting a second time, the recent change to the file was ignored:
+The update to the file persists after formatting it a second time:
   $ cat foo.ml
-  let () = print_endline "Hello, world"
+  let () = print_endline "Hello, ocaml!"
   (* formatted with fake ocamlformat *)

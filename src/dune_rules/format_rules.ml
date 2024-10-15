@@ -90,14 +90,19 @@ module Ocamlformat = struct
         (let open Action_builder.O in
          (* This ensures that at is installed as a dev tool before
             running it. *)
-         let+ () = Action_builder.path path in
+         let+ () = Action_builder.path path
+         (* Declare the dependency on the input file so changes to the input
+            file trigger ocamlformat to run again on the updated file. *)
+         and+ () = Action_builder.path (Path.build input) in
          let args = [ flag_of_kind kind; Path.Build.basename input ] in
          Action.chdir (Path.build dir) @@ Action.run (Ok path) args |> Action.Full.make)
     in
     let open Action_builder.With_targets.O in
     (* Depend on [extra_deps] so if the ocamlformat config file
        changes then ocamlformat will run again. *)
-    extra_deps dir >>> action
+    extra_deps dir
+    >>> action
+    |> With_targets.map ~f:(Action.Full.add_sandbox Sandbox_config.needs_sandboxing)
   ;;
 
   let action_when_ocamlformat_isn't_locked ~input kind =

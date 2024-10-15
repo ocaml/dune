@@ -61,6 +61,7 @@
     plugin(byte) = "foobar_runtime_lib2.cma"
     plugin(native) = "foobar_runtime_lib2.cmxs"
     jsoo_runtime = "foobar_runtime.js foobar_runtime2.js"
+    wasmoo_runtime = "foobar_runtime.wat foobar_runtime2.wat"
   )
   package "sub" (
     directory = "sub"

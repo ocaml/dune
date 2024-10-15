@@ -1,0 +1,5 @@
+(tests
+  (names a b)
+  (modes js))
+
+(env (_ (js_of_ocaml (runtest_alias runtest-js) (submodes wasm) (compilation_mode whole_program))))

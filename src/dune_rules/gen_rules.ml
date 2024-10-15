@@ -137,7 +137,10 @@ end = struct
           js =
             Some
               (List.map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
-                 Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe)))
+                 [ Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~submode:JS)
+                 ; Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~submode:Wasm)
+                 ])
+               |> List.flatten)
         })
     | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
@@ -520,7 +523,12 @@ let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
       in
       let+ rules =
         let+ make_rules =
-          let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
+          let+ directory_targets =
+            Dir_status.directory_targets
+              dir_status
+              ~jsoo_submodes:Jsoo_rules.jsoo_submodes
+              ~dir
+          in
           let allowed_subdirs =
             let automatic = Automatic_subdir.subdirs components in
             let toplevel =

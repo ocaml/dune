@@ -1,14 +1,9 @@
 open Import
 open Dune_lang.Decoder
 
-module Ext = struct
-  type t = string
-
-  let exe = ".bc.js"
-  let cmo = ".cmo.js"
-  let cma = ".cma.js"
-  let runtime = ".bc.runtime.js"
-end
+(* (js_of_ocaml ...) options are also used when producing Wasm code
+   with wasm_of_ocaml, since the compilation process is similar and
+   generates a JavaScript file with basically the same behavior. *)
 
 let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
@@ -100,6 +95,39 @@ module Flags = struct
   ;;
 end
 
+module Submode = struct
+  type t =
+    | JS
+    | Wasm
+
+  module Set = struct
+    type t =
+      { js : bool
+      ; wasm : bool
+      }
+
+    let decode =
+      map
+        (repeat1 (enum [ "js", JS; "wasm", Wasm ]))
+        ~f:(fun l ->
+          List.fold_left
+            ~f:(fun t submode ->
+              match submode with
+              | JS -> { t with js = true }
+              | Wasm -> { t with wasm = true })
+            ~init:{ js = false; wasm = false }
+            l)
+    ;;
+
+    let equal x y = x.js = y.js && x.wasm = y.wasm
+
+    let to_list x =
+      let l = if x.wasm then [ Wasm ] else [] in
+      if x.js then JS :: l else l
+    ;;
+  end
+end
+
 module Compilation_mode = struct
   type t =
     | Whole_program
@@ -119,7 +147,9 @@ end
 module In_buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : string list
+    ; wasm_files : string list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
@@ -136,14 +166,25 @@ module In_buildable = struct
              ; compile = flags
              ; link = flags (* we set link as well to preserve the old semantic *)
              }
+         ; submodes = None
          ; javascript_files
+         ; wasm_files = []
          ; compilation_mode = None
          ; sourcemap = None
          })
     else
       fields
         (let+ flags = Flags.decode
+         and+ submodes =
+           field_o
+             "submodes"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Submode.Set.decode)
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ wasm_files =
+           field
+             "wasm_files"
+             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
+             ~default:[]
          and+ compilation_mode =
            if executable
            then
@@ -159,12 +200,14 @@ module In_buildable = struct
                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
            else return None
          in
-         { flags; javascript_files; compilation_mode; sourcemap })
+         { flags; submodes; javascript_files; wasm_files; compilation_mode; sourcemap })
   ;;
 
   let default =
     { flags = Flags.standard
+    ; submodes = None
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }
@@ -174,15 +217,19 @@ end
 module In_context = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; submodes : Submode.Set.t option
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
 
   let make ~(dir : Path.Build.t) (x : In_buildable.t) =
     { flags = x.flags
+    ; submodes = x.submodes
     ; javascript_files =
         List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; wasm_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.wasm_files
     ; compilation_mode = x.compilation_mode
     ; sourcemap = x.sourcemap
     }
@@ -190,11 +237,29 @@ module In_context = struct
 
   let default =
     { flags = Flags.standard
+    ; submodes = None
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }
   ;;
+end
+
+module Ext = struct
+  type t = string
+
+  let select ~submode js wasm =
+    match submode with
+    | Submode.JS -> js
+    | Wasm -> wasm
+  ;;
+
+  let exe ~submode = select ~submode ".bc.js" ".bc.wasm.js"
+  let cmo ~submode = select ~submode ".cmo.js" ".wasmo"
+  let cma ~submode = select ~submode ".cma.js" ".wasma"
+  let runtime ~submode = select ~submode ".bc.runtime.js" ".bc.runtime.wasma"
+  let wasm_dir = ".bc.wasm.assets"
 end
 
 module Env = struct
@@ -203,6 +268,7 @@ module Env = struct
     ; sourcemap : Sourcemap.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
+    ; submodes : Submode.Set.t option
     }
 
   let decode =
@@ -213,20 +279,26 @@ module Env = struct
            "sourcemap"
            (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
-       and+ flags = Flags.decode in
+       and+ flags = Flags.decode
+       and+ submodes =
+         field_o
+           "submodes"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Submode.Set.decode)
+       in
        Option.iter ~f:Alias.register_as_standard runtest_alias;
-       { compilation_mode; sourcemap; runtest_alias; flags }
+       { compilation_mode; sourcemap; runtest_alias; flags; submodes }
   ;;
 
-  let equal { compilation_mode; sourcemap; runtest_alias; flags } t =
+  let equal { compilation_mode; sourcemap; submodes; runtest_alias; flags } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Sourcemap.equal sourcemap t.sourcemap
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
+    && Option.equal Submode.Set.equal submodes t.submodes
   ;;
 
-  let map ~f { compilation_mode; sourcemap; runtest_alias; flags } =
-    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; sourcemap; runtest_alias; flags; submodes } =
+    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags; submodes }
   ;;
 
   let empty =
@@ -234,6 +306,7 @@ module Env = struct
     ; sourcemap = None
     ; runtest_alias = None
     ; flags = Flags.standard
+    ; submodes = None
     }
   ;;
 
@@ -242,6 +315,7 @@ module Env = struct
     ; sourcemap = None
     ; runtest_alias = None
     ; flags = Flags.default ~profile
+    ; submodes = None
     }
   ;;
 end

@@ -546,14 +546,10 @@ not stable across different setups.
      (uid 2c61db8e94cb08e0fe642152aee8121a)
      (local false)
      (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2363fd46dac995a1c79679dfa1a9881b
-       5014e215e204cf8da6c32644cda1b31e
-       43b7cbe1f93f4f502ec614971027cff9
-       e68a558facd1546b51c7abdbf6aed1cb
-       24f4eb12e3ff51b310dbf7443c6087be
-       5ae836dcdead11d5c16815297c5a1ae6
-       249b2edaf3cc552a247667041bb5f015
+      (ba85adfb1c97e7d7af3df35b16b2fc0d 2363fd46dac995a1c79679dfa1a9881b
+       5014e215e204cf8da6c32644cda1b31e 43b7cbe1f93f4f502ec614971027cff9
+       e68a558facd1546b51c7abdbf6aed1cb 24f4eb12e3ff51b310dbf7443c6087be
+       5ae836dcdead11d5c16815297c5a1ae6 249b2edaf3cc552a247667041bb5f015
        449445be7a24ce51e119d57e9e255d3f))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
@@ -1120,14 +1116,10 @@ not stable across different setups.
      (uid 2c61db8e94cb08e0fe642152aee8121a)
      (local false)
      (requires
-      (ba85adfb1c97e7d7af3df35b16b2fc0d
-       2363fd46dac995a1c79679dfa1a9881b
-       5014e215e204cf8da6c32644cda1b31e
-       43b7cbe1f93f4f502ec614971027cff9
-       e68a558facd1546b51c7abdbf6aed1cb
-       24f4eb12e3ff51b310dbf7443c6087be
-       5ae836dcdead11d5c16815297c5a1ae6
-       249b2edaf3cc552a247667041bb5f015
+      (ba85adfb1c97e7d7af3df35b16b2fc0d 2363fd46dac995a1c79679dfa1a9881b
+       5014e215e204cf8da6c32644cda1b31e 43b7cbe1f93f4f502ec614971027cff9
+       e68a558facd1546b51c7abdbf6aed1cb 24f4eb12e3ff51b310dbf7443c6087be
+       5ae836dcdead11d5c16815297c5a1ae6 249b2edaf3cc552a247667041bb5f015
        449445be7a24ce51e119d57e9e255d3f))
      (source_dir /FINDLIB/ppxlib)
      (modules ())

@@ -29,7 +29,6 @@ module Diagnostics(Monad : S.Monad)(Result : S.SOLVER_RESULT with type 'a Input.
       | ReplacesConflict of Result.Role.t
       | ReplacedByConflict of Result.Role.t
       | Restricts of Result.Role.t * Result.Input.impl * Result.Input.restriction list
-      | RequiresCommand of Result.Role.t * Result.Input.impl * Result.Input.command_name
       | Feed_problem of string
 
     val pp : Format.formatter -> t -> unit
@@ -46,7 +45,6 @@ module Diagnostics(Monad : S.Monad)(Result : S.SOLVER_RESULT with type 'a Input.
       | `MachineGroupConflict of Result.Role.t * Result.Input.impl (** A selected impl has a different machine type. *)
       | `ClassConflict of Result.Role.t * Result.Input.conflict_class (** A selected impl has the same conflict class. *)
       | `ConflictsRole of Result.Role.t                 (** A selected role conflicts with this (e.g. replaced-by). *)
-      | `MissingCommand of Result.Input.command_name    (** Doesn't have a command we need. *)
       | `DiagnosticsFailure of string                   (** Unknown failure reason (gives raw error from SAT solver). *)
     ]
     (** Why a particular implementation was rejected. This could be because the

@@ -23,7 +23,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
       | ReplacesConflict of Model.Role.t
       | ReplacedByConflict of Model.Role.t
       | Restricts of Model.Role.t * Model.impl * Model.restriction list
-      | RequiresCommand of Model.Role.t * Model.impl * Model.command_name
       | Feed_problem of string
 
     let pp f = function
@@ -32,8 +31,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
       | ReplacedByConflict replacement -> pf f "Replaced by (and therefore conflicts with) %a" format_role replacement
       | Restricts (other_role, impl, r) ->
         pf f "%a %a requires %s" format_role other_role Model.pp_version impl (format_restrictions r)
-      | RequiresCommand (other_role, impl, command) ->
-        pf f "%a %a requires '%s' command" format_role other_role Model.pp_version impl (command :> string)
       | Feed_problem msg -> pf f "%s" msg
   end
 
@@ -48,7 +45,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
       | `MachineGroupConflict of Model.Role.t * Model.impl
       | `ClassConflict of Model.Role.t * Model.conflict_class
       | `ConflictsRole of Model.Role.t
-      | `MissingCommand of Model.command_name
       | `DiagnosticsFailure of string
     ]
     (* Why a particular implementation was rejected. This could be because the model rejected it,
@@ -61,7 +57,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
       replacement : Model.Role.t option;
       diagnostics : string Lazy.t;
       selected_impl : Model.impl option;
-      selected_commands : Model.command_name list;
       (* orig_good is all the implementations passed to the SAT solver (these are the
          ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
       orig_good : Model.impl list;
@@ -79,8 +74,7 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
         ~role
         (candidates, orig_bad, feed_problems)
         (diagnostics:string Lazy.t)
-        (selected_impl:Model.impl option)
-        (selected_commands:Model.command_name list) =
+        (selected_impl:Model.impl option) =
       let {Model.impls; Model.replacement} = candidates in
       let notes = List.map (fun x -> Note.Feed_problem x) feed_problems in
       {
@@ -90,7 +84,7 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
         orig_bad;
         good = impls;
         bad = List.map (fun (impl, reason) -> (impl, `Model_rejection reason)) orig_bad;
-        notes; diagnostics; selected_impl; selected_commands
+        notes; diagnostics; selected_impl
       }
 
     let note t note = t.notes <- note :: t.notes
@@ -158,14 +152,13 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
 
     let replacement t = t.replacement
     let selected_impl t = t.selected_impl
-    let selected_commands t = t.selected_commands
 
     (* When something conflicts with itself then our usual trick of selecting
        the main implementation and failing the dependency doesn't work, so
        special-case that here. *)
     let reject_self_conflicts t =
       filter_impls t (fun impl ->
-          let deps, _ = Model.requires t.role impl in
+          let deps = Model.requires t.role impl in
           deps |> List.find_map (fun dep ->
               let { Model.dep_role; _ } = Model.dep_info dep in
               if Model.Role.compare dep_role t.role <> 0 then None else (
@@ -201,7 +194,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
             (cl :> string)
             format_role other_role
       | `ConflictsRole other_role -> pf f "Conflicts with %a" format_role other_role
-      | `MissingCommand command -> pf f "No %s command" (command : Model.command_name :> string)
       | `DiagnosticsFailure msg -> pf f "Reason for rejection unknown: %s" msg
 
     let show_rejections ~verbose f rejected =
@@ -279,19 +271,13 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
                 if Model.meets_restriction dep_impl r then None
                 else Some (`DepFailsRestriction (dep, r)) in
               List.find_map check_restriction (Model.restrictions dep) in
-    let deps, commands_needed = Model.requires role impl in
-    commands_needed |> List.find_map (fun command ->
-      if Model.get_command impl command <> None then None
-      else Some (`MissingCommand command : Component.rejection_reason)
-    )
-    |> function
-    | Some _ as r -> r
-    | None -> List.find_map check_dep deps
+    let deps = Model.requires role impl in
+    List.find_map check_dep deps
 
   (** A selected component has [dep] as a dependency. Use this to explain why some implementations
       of the required interface were rejected. *)
   let examine_dep requiring_role requiring_impl report dep =
-    let {Model.dep_role = other_role; dep_importance = _; dep_required_commands} = Model.dep_info dep in
+    let {Model.dep_role = other_role; dep_importance = _} = Model.dep_info dep in
     match RoleMap.find_opt other_role report with
     | None -> ()
     | Some required_component ->
@@ -300,14 +286,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
           (* Remove implementations incompatible with the other selections *)
           Component.apply_restrictions required_component dep_restrictions
             ~note:(Restricts (requiring_role, requiring_impl, dep_restrictions))
-        );
-
-        dep_required_commands |> List.iter (fun command ->
-            let note = Note.RequiresCommand (requiring_role, requiring_impl, command) in
-            Component.filter_impls ~note required_component (fun impl ->
-                if Model.get_command impl command <> None then None
-                else Some (`MissingCommand command)
-              )
         )
 
   (* Find all restrictions that are in play and affect this interface *)
@@ -329,16 +307,9 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
     match Component.selected_impl component with
     | Some our_impl ->
         (* For each dependency of our selected impl, explain why it rejected impls in the dependency's interface. *)
-        let deps, _commands_needed = Model.requires role our_impl in
+        let deps = Model.requires role our_impl in
         (* We can ignore [commands_needed] here because we obviously were selected. *)
-        List.iter (examine_dep role our_impl report) deps;
-        Component.selected_commands component |> List.iter (fun name ->
-            match Model.get_command our_impl name with
-            | None -> failwith "BUG: missing command!"    (* Can't happen - it's a "selected" command *)
-            | Some command ->
-              let deps, _commands_needed = Model.command_requires role command in
-              List.iter (examine_dep role our_impl report) deps;
-          )
+        List.iter (examine_dep role our_impl report) deps
     | None ->
         (* For each of our remaining unrejected impls, check whether a dependency prevented its selection. *)
         Component.filter_impls component (get_dependency_problem role report)
@@ -350,16 +321,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
         Component.apply_user_restriction component restriction
       )
     )
-
-  (** If we wanted a command on the root, add that as a restriction. *)
-  let process_root_req report = function
-    | {Model.command = Some root_command; role = root_role} ->
-        let component = find_component_ex root_role report in
-        Component.filter_impls component (fun impl ->
-          if Model.get_command impl root_command <> None then None
-          else Some (`MissingCommand root_command)
-        )
-    | _ -> ()
 
   (** Find an implementation which requires a machine group. Use this to
       explain the rejection of all implementations requiring other groups. *)
@@ -410,7 +371,6 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
 
   let of_result result =
     let impls = Results.to_map result in
-    let root_req = Results.requirements result in
     let+ report =
       let get_selected role sel =
         let impl = Results.unwrap sel in
@@ -418,13 +378,11 @@ module Make (Monad : S.Monad) (Results : S.SOLVER_RESULT with type 'a Input.mona
         let impl = if impl == Model.dummy_impl then None else Some impl in
         let* impl_candidates = Model.implementations role in
         let+ rejects, feed_problems = Model.rejects role in
-        let selected_commands = Results.selected_commands sel in
-        Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl selected_commands in
+        Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl in
       RoleMap.to_seq impls
       |> Monad.Seq.parallel_map (fun (k, v) -> let+ v = get_selected k v in (k, v))
       >>| RoleMap.of_seq
     in
-    process_root_req report root_req;
     examine_extra_restrictions report;
     check_machine_groups report;
     check_conflict_classes report;

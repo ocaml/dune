@@ -18,7 +18,7 @@ struct
         let impl = Input.virtual_impl ~context ~depends:pkgs () in
         Input.virtual_role [ impl ]
     in
-    { Input.role }
+    role
   ;;
 
   module Solver = Zeroinstall_solver.Make (Monad) (Input)
@@ -26,7 +26,7 @@ struct
 
   type t = Context.t
   type selections = Solver.Output.t
-  type diagnostics = Input.requirements (* So we can run another solve *)
+  type diagnostics = Input.Role.t (* So we can run another solve *)
 
   let solve context pkgs =
     let req = requirements ~context pkgs in

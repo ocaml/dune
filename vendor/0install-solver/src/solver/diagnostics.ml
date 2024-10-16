@@ -68,20 +68,20 @@ struct
       ; replacement : Model.Role.t option
       ; diagnostics : string Lazy.t
       ; selected_impl : Model.impl option
-      ; (* orig_good is all the implementations passed to the SAT solver (these are the
-           ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
-        orig_good : Model.impl list
+      ; orig_good : Model.impl list
+      (** orig_good is all the implementations passed to the SAT solver (these are the
+          ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
       ; orig_bad : (Model.impl * Model.rejection) list
       ; mutable good : Model.impl list
       ; mutable bad : (Model.impl * rejection_reason) list
       ; mutable notes : Note.t list
       }
 
-    (* Initialise a new component.
-       @param candidates is the result from the impl_provider.
-       @param selected_impl
-         is the selected implementation, or [None] if we chose [dummy_impl].
-       @param diagnostics can be used to produce diagnostics as a last resort. *)
+    (** Initialise a new component.
+        @param candidates is the result from the impl_provider.
+        @param selected_impl
+          is the selected implementation, or [None] if we chose [dummy_impl].
+        @param diagnostics can be used to produce diagnostics as a last resort. *)
     let create
       ~role
       (candidates, orig_bad, feed_problems)
@@ -113,8 +113,8 @@ struct
       | _ -> true
     ;;
 
-    (* Call [get_problem impl] on each good impl. If a problem is returned, move [impl] to [bad_impls].
-       If anything changes and [!note] is not None, report it and clear the pending note. *)
+    (** Call [get_problem impl] on each good impl. If a problem is returned, move [impl] to [bad_impls].
+        If anything changes and [!note] is not None, report it and clear the pending note. *)
     let filter_impls_ref ~note:n t get_problem =
       let old_good = List.rev t.good in
       t.good <- [];
@@ -137,8 +137,8 @@ struct
       filter_impls_ref ~note t get_problem
     ;;
 
-    (* Remove from [good_impls] anything that fails to meet these restrictions.
-       Add removed items to [bad_impls], along with the cause. *)
+    (** Remove from [good_impls] anything that fails to meet these restrictions.
+        Add removed items to [bad_impls], along with the cause. *)
     let apply_restrictions ~note t restrictions =
       let note = ref (Some note) in
       restrictions
@@ -170,9 +170,9 @@ struct
     let replacement t = t.replacement
     let selected_impl t = t.selected_impl
 
-    (* When something conflicts with itself then our usual trick of selecting
-       the main implementation and failing the dependency doesn't work, so
-       special-case that here. *)
+    (** When something conflicts with itself then our usual trick of selecting
+        the main implementation and failing the dependency doesn't work, so
+        special-case that here. *)
     let reject_self_conflicts t =
       filter_impls t (fun impl ->
         let deps = Model.requires t.role impl in
@@ -261,7 +261,7 @@ struct
       | None -> Format.pp_print_string f "(problem)"
     ;;
 
-    (* Format a textual description of this component's report. *)
+    (** Format a textual description of this component's report. *)
     let pp ~verbose f t =
       pf
         f
@@ -285,7 +285,7 @@ struct
     | None -> failwith (Format.asprintf "Can't find component %a!" format_role role)
   ;;
 
-  (* Did any dependency of [impl] prevent it being selected?
+  (** Did any dependency of [impl] prevent it being selected?
      This can only happen if a component conflicts with something more important
      than itself (otherwise, we'd select something in [impl]'s interface and
      complain about the dependency instead).
@@ -330,7 +330,7 @@ struct
           ~note:(Restricts (requiring_role, requiring_impl, dep_restrictions))
   ;;
 
-  (* Find all restrictions that are in play and affect this interface *)
+  (** Find all restrictions that are in play and affect this interface *)
   let examine_selection report role component =
     (* Note any conflicts caused by <replaced-by> elements *)
     let () =
@@ -356,7 +356,7 @@ struct
       Component.filter_impls component (get_dependency_problem role report)
   ;;
 
-  (* Check for user-supplied restrictions *)
+  (** Check for user-supplied restrictions *)
   let examine_extra_restrictions report =
     report
     |> RoleMap.iter (fun role component ->

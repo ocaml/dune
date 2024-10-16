@@ -145,12 +145,6 @@ struct
     ; impls : impl list
     }
 
-  type machine_group =
-    private
-    string (* We don't use machine groups because opam is source-only. *)
-
-  let machine_group _impl = None
-
   type conflict_class = string
 
   let conflict_class = function
@@ -264,8 +258,6 @@ struct
        | None -> None
        | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f })
   ;;
-
-  let format_machine _impl = "(src)"
 
   let string_of_op = function
     | `Eq -> "="

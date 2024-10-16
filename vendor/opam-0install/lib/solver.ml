@@ -17,7 +17,7 @@ module Make(Monad : S.Monad)(Context : S.CONTEXT with type 'a monad = 'a Monad.t
         let impl = Input.virtual_impl ~context ~depends:pkgs () in
         Input.virtual_role [impl]
     in
-    { Input.role; command = None }
+    { Input.role; }
 
   module Solver = Zeroinstall_solver.Make(Monad)(Input)
   module Diagnostics = Zeroinstall_solver.Diagnostics(Monad)(Solver.Output)

@@ -795,7 +795,11 @@ let reject_unreachable_packages =
             [ "name", Package_name.to_dyn name ]
         | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
         | None, Some (pkg : Local_package.For_solver.t) ->
-          let deps = Local_package.For_solver.dependency_names pkg in
+          let deps =
+            pkg.dependencies
+            |> Dependency_formula.reachable_dependencies
+            |> Package_name.Set.to_list
+          in
           let depopts =
             List.filter_map pkg.depopts ~f:(fun (d : Package_dependency.t) ->
               Option.some_if

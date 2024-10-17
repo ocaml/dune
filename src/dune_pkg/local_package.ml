@@ -68,48 +68,6 @@ module For_solver = struct
     Dependency_formula.to_filtered_formula dependencies
   ;;
 
-  module T = struct
-    type t = Package_name.t * OpamTypes.condition
-
-    let to_dyn = Dyn.pair Package_name.to_dyn Opam_dyn.condition
-
-    let compare (name, condition) (other_name, other_condition) =
-      let open Ordering.O in
-      let= () = Package_name.compare name other_name in
-      let compare_filters filter filter' =
-        let get_vars = function
-          | OpamTypes.Constraint _ -> []
-          | Filter filter -> Stdlib.List.sort Stdlib.compare (OpamFilter.variables filter)
-        in
-        match get_vars filter, get_vars filter' with
-        | v :: _, v' :: _ -> Stdlib.compare v v'
-        | [], _ :: _ -> 1
-        | _ :: _, [] -> -1
-        | [], [] -> 0
-      in
-      Ordering.of_int
-        (OpamFormula.compare_formula compare_filters condition other_condition)
-    ;;
-  end
-
-  module Map = Map.Make (T)
-  module Set = Set.Make (T) (Map)
-
-  let maximum_package_set formula =
-    let rec loop = function
-      | OpamFormula.Empty -> Set.empty
-      | Atom (name, condition) ->
-        let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
-        Set.singleton (name, condition)
-      | Block b -> loop b
-      | And (l, r) | Or (l, r) ->
-        let l = loop l in
-        let r = loop r in
-        Set.union l r
-    in
-    loop formula
-  ;;
-
   let non_local_dependencies local_deps =
     let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
     let deps = List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps in
@@ -131,14 +89,6 @@ module For_solver = struct
   let any_non_local_dependency_name local_deps =
     let non_local_deps = non_local_dependencies local_deps in
     Dependency_formula.any_package_name non_local_deps
-  ;;
-
-  let dependency_names t =
-    t.dependencies
-    |> Dependency_formula.to_filtered_formula
-    |> maximum_package_set
-    |> Set.to_list
-    |> List.map ~f:fst
   ;;
 end
 

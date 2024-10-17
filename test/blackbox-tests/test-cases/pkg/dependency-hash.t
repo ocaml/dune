@@ -121,3 +121,32 @@ change the hash:
   $ dune describe pkg dependency-hash | tee hash5.txt
   ecad1d0d60084711169be48b130c9c52
   $ diff hash4.txt hash5.txt
+
+Make sure that the hash changes when the formula changes from a conjunction to
+a disjunction, thus changing the solution:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.11)
+  > EOF
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" "b" ]
+  > EOF
+  $ dune describe pkg dependency-hash
+  0957b29d20339bd1b51e20e42066782c
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" | "b" ]
+  > EOF
+  $ dune describe pkg dependency-hash
+  d46871f184041027247cf4495376acc8
+
+The formula also changes if the dependencies being picked end up being the same
+("a" and "b") but the formula changed by including another dependency:
+
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" & ("b" | "c") ]
+  > EOF
+  $ dune describe pkg dependency-hash
+  498c68b425dcbea875ff4248ec63c3a7

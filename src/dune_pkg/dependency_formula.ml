@@ -132,6 +132,22 @@ let rec remove_packages v pkgs =
     Or (l, r)
 ;;
 
+let reachable_dependencies v =
+  let rec loop v =
+    match (v : OpamTypes.filtered_formula) with
+    | Empty -> Package_name.Set.empty
+    | Atom (name, _condition) ->
+      let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
+      Package_name.Set.singleton name
+    | Block b -> loop b
+    | And (l, r) | Or (l, r) ->
+      let l = loop l in
+      let r = loop r in
+      Package_name.Set.union l r
+  in
+  loop v
+;;
+
 let rec any_package_name v =
   match (v : OpamTypes.filtered_formula) with
   | Empty -> None

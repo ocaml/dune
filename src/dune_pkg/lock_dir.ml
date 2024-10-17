@@ -381,7 +381,8 @@ let create_latest_version
   let version = Syntax.greatest_supported_version_exn Dune_lang.Pkg.syntax in
   let dependency_hash =
     local_packages
-    |> Local_package.For_solver.non_local_dependency_hash
+    |> Local_package.For_solver.non_local_dependencies
+    |> Local_package.Dependency_hash.of_dependency_formula
     |> Option.map ~f:(fun dependency_hash -> Loc.none, dependency_hash)
   in
   let complete, used =

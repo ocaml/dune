@@ -36,6 +36,7 @@ module Dependency_hash : sig
   val to_string : t -> string
   val encode : t Encoder.t
   val decode : t Decoder.t
+  val of_dependency_formula : Dependency_formula.t -> t option
 end
 
 module For_solver : sig
@@ -54,14 +55,7 @@ module For_solver : sig
       on disk. *)
   val to_opam_file : t -> OpamFile.OPAM.t
 
-  (** Returns an opam dependency formula for this package *)
-  val opam_filtered_dependency_formula : t -> OpamTypes.filtered_formula
-
-  (** Returns a hash of the dependencies that are not local to the project (if any) *)
-  val non_local_dependency_hash : t list -> Dependency_hash.t option
-
-  (** Returns the name of the first non-local dependency it can find *)
-  val any_non_local_dependency_name : t list -> Package_name.t option
+  val non_local_dependencies : t list -> Dependency_formula.t
 end
 
 val for_solver : t -> For_solver.t

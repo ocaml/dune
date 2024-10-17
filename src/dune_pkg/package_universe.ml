@@ -49,7 +49,9 @@ let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   match
     Local_package.(
-      for_solver local_package |> For_solver.opam_filtered_dependency_formula)
+      for_solver local_package
+      |> (fun x -> x.dependencies)
+      |> Dependency_formula.to_filtered_formula)
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
          (Solver_env.to_env t.solver_env)
@@ -132,7 +134,8 @@ let up_to_date local_packages ~dependency_hash:saved_dependency_hash =
     Package_name.Map.values local_packages |> List.map ~f:Local_package.for_solver
   in
   let dependency_hash =
-    Local_package.For_solver.non_local_dependency_hash local_packages
+    Local_package.For_solver.non_local_dependencies local_packages
+    |> Local_package.Dependency_hash.of_dependency_formula
   in
   match saved_dependency_hash, dependency_hash with
   | None, None -> `Valid
@@ -159,7 +162,8 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
     ]
   in
   let dependency_hash =
-    Local_package.For_solver.non_local_dependency_hash local_packages
+    Local_package.For_solver.non_local_dependencies local_packages
+    |> Local_package.Dependency_hash.of_dependency_formula
   in
   match saved_dependency_hash, dependency_hash with
   | None, None -> ()
@@ -174,7 +178,10 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
       ]
   | None, Some _ ->
     let any_non_local_dependency_name =
-      match Local_package.For_solver.any_non_local_dependency_name local_packages with
+      let non_local_dependencies =
+        Local_package.For_solver.non_local_dependencies local_packages
+      in
+      match Dependency_formula.any_package_name non_local_dependencies with
       | Some x -> x
       | None ->
         Code_error.raise

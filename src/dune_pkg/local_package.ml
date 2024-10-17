@@ -38,6 +38,14 @@ module Dependency_hash = struct
         ~loc
         [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ]
   ;;
+
+  let of_dependency_formula formula =
+    match Dependency_formula.has_entries formula with
+    | false -> None
+    | true ->
+      let hashable = formula |> Dependency_formula.to_sexp |> Dune_sexp.to_string in
+      Some (string hashable)
+  ;;
 end
 
 module For_solver = struct
@@ -64,31 +72,11 @@ module For_solver = struct
          (Package_dependency.list_to_opam_filtered_formula depopts)
   ;;
 
-  let opam_filtered_dependency_formula { dependencies; _ } =
-    Dependency_formula.to_filtered_formula dependencies
-  ;;
-
   let non_local_dependencies local_deps =
     let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
     let deps = List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps in
     let formula = Dependency_formula.union deps in
     Dependency_formula.remove_packages formula local_deps_names
-  ;;
-
-  let non_local_dependency_hash local_deps =
-    let non_local_deps = non_local_dependencies local_deps in
-    match Dependency_formula.has_entries non_local_deps with
-    | false -> None
-    | true ->
-      let hashable =
-        non_local_deps |> Dependency_formula.to_sexp |> Dune_sexp.to_string
-      in
-      Some (Dependency_hash.string hashable)
-  ;;
-
-  let any_non_local_dependency_name local_deps =
-    let non_local_deps = non_local_dependencies local_deps in
-    Dependency_formula.any_package_name non_local_deps
   ;;
 end
 

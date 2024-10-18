@@ -62,7 +62,7 @@ let repositories_of_lock_dir workspace ~lock_dir_path =
   match Workspace.find_lock_dir workspace lock_dir_path with
   | Some lock_dir -> lock_dir.repositories
   | None ->
-    List.map Workspace.default_repositories ~f:(fun repo ->
+    List.map workspace.repos ~f:(fun repo ->
       let name = Dune_pkg.Pkg_workspace.Repository.name repo in
       let loc = Loc.none in
       loc, name)

@@ -52,6 +52,15 @@ module Repository = struct
     }
   ;;
 
+  let binary_packages =
+    { name = "binary-packages"
+    ; source =
+        ( Loc.none
+        , OpamUrl.of_string "git+https://github.com/ocaml-dune/ocaml-binary-packages.git"
+        )
+    }
+  ;;
+
   let decode =
     let open Decoder in
     fields

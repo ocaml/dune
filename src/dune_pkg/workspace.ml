@@ -52,6 +52,15 @@ module Repository = struct
     }
   ;;
 
+  let binary_dev_tools =
+    { name = "binary-dev-tools"
+    ; source =
+        ( Loc.none
+        , OpamUrl.of_string "git+https://github.com/ocaml-dune/ocaml-binary-dev-tools.git"
+        )
+    }
+  ;;
+
   let decode =
     let open Decoder in
     fields

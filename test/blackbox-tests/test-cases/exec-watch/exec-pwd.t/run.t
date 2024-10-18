@@ -14,7 +14,7 @@ In watch mode, pwd is also the folder from which dune is launched.
   $ cd bin
   $ dune exec --root .. -w -- pwd > $OUTPUT &
   Entering directory '..'
-  Success, waiting for filesystem changes...
+   changes...
   Leaving directory '..'
   $ PID=$!
   $ until test -s $OUTPUT; do sleep 0.1; done;

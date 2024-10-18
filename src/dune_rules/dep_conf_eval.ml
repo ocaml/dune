@@ -256,6 +256,12 @@ let rec dep expander : Dep_conf.t -> _ = function
        let+ () = Action_builder.env_var var in
        [])
   | Sandbox_config _ -> Other (Action_builder.return [])
+  | Order_only s ->
+    let l = List.map ~f:(dep expander) s in
+    let builder =
+      Action_builder.goal (Action_builder.List.concat_map l ~f:to_action_builder)
+    in
+    Other builder
 
 and named_paths_builder ~expander l =
   let builders, bindings =

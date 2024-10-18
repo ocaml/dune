@@ -38,3 +38,17 @@ With the right filters, the other side of the disjunction should get picked:
   $ dune pkg lock
   Solution for dune.lock:
   - b.0.0.1
+
+Unreachable packages should not be included. In the next test, "b" should not
+be included in the lock directory because it is a post dep. Those are only
+necessary during solving.
+
+  $ cat > x.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [
+  >   "a" {> "1.0"} | "b" {< "1.0" post}
+  > ]
+  > EOF
+  $ dune pkg lock
+  Solution for dune.lock:
+  - b.0.0.1

@@ -89,6 +89,9 @@ test-windows: $(BIN)
 test-js: $(BIN)
 	$(BIN) build @runtest-js
 
+test-wasm: $(BIN)
+	DUNE_WASM_TEST=enable $(BIN) build @runtest-wasm
+
 test-coq: $(BIN)
 	DUNE_COQ_TEST=enable $(BIN) build @runtest-coq
 

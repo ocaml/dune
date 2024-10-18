@@ -39,31 +39,47 @@ struct
   let pp_short f (impl : Input.impl) = Input.pp_impl f impl
 
   let rec partition f = function
-    | [] -> [], []
-    | x :: xs ->
-      let ys, zs = partition f xs in
-      (match f x with
-       | `Left y -> y :: ys, zs
-       | `Right z -> ys, z :: zs)
+    | [] -> [], [], []
+    | first :: rest ->
+      let xs, ys, zs = partition f rest in
+      (match f first with
+       | `Left x -> x :: xs, ys, zs
+       | `Middle y -> xs, y :: ys, zs
+       | `Right z -> xs, ys, z :: zs)
   ;;
 
   let pp_rolemap ~verbose f reasons =
-    let short, long =
+    let short, unknowns, long =
       reasons
       |> Solver.Output.RoleMap.bindings
-      |> partition (fun (_role, component) ->
+      |> partition (fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
-        | _ -> `Right component)
+        | _ ->
+          let _, fail_reason = Diagnostics.Component.rejects component in
+          if fail_reason = `No_candidates
+          then `Middle (role, component)
+          else `Right component)
     in
     let pp_item f c = Fmt.pf f "- @[%a@]" (Diagnostics.Component.pp ~verbose) c in
-    Fmt.pf
-      f
-      "Selected: @[<hov>%a@]@,%a"
-      (Fmt.(list ~sep:sp) pp_short)
-      short
-      (Fmt.(list ~sep:cut) pp_item)
-      long
+    let pp_unknown f (role, _) = Fmt.pf f "- @[%a@]" Solver.Output.Role.pp role in
+    let pp_normals f (short, long) =
+      Fmt.pf
+        f
+        "Selected: @[<hov>%a@]@,%a"
+        (Fmt.(list ~sep:sp) pp_short)
+        short
+        (Fmt.(list ~sep:cut) pp_item)
+        long
+    in
+    if unknowns = []
+    then pp_normals f (short, long)
+    else
+      Fmt.pf
+        f
+        "The following packages couldn't be found: @[<hov>%a@]@,"
+        Fmt.(list ~sep:sp pp_unknown)
+        unknowns
   ;;
 
   let diagnostics_rolemap req =

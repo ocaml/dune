@@ -480,9 +480,10 @@ module Expander0 = struct
   type t =
     { name : Dune_pkg.Package_name.t
     ; paths : Path.t Paths.t
-    ; artifacts : Path.t Filename.Map.t
+    ; artifacts : Path.t Filename.Map.t Memo.t
     ; depends :
         (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
+          Memo.t
     ; depexts : string list
     ; context : Context_name.t
     ; version : Package_version.t
@@ -514,6 +515,9 @@ module Substitute = struct
            reconstruct everything that is needed to call our one and only
            substitution function. *)
         expander : Expander.t
+      ; depends :
+          (Variable.value Package_variable_name.Map.t * Path.t Paths.t) Package.Name.Map.t
+      ; artifacts : Path.t Filename.Map.t
       ; src : 'src
       ; dst : 'dst
       }
@@ -523,12 +527,12 @@ module Substitute = struct
     let bimap t f g = { t with src = f t.src; dst = g t.dst }
     let is_useful_to ~memoize = memoize
 
-    let encode { expander; src; dst } input output : Sexp.t =
+    let encode { expander; depends; artifacts; src; dst } input output : Sexp.t =
       let e =
         let paths (p : Path.t Paths.t) = p.source_dir, p.target_dir, p.name in
         ( paths expander.paths
-        , expander.artifacts
-        , Package.Name.Map.to_list_map expander.depends ~f:(fun _ (m, p) -> m, paths p)
+        , artifacts
+        , Package.Name.Map.to_list_map depends ~f:(fun _ (m, p) -> m, paths p)
         , expander.version
         , expander.context
         , expander.env )
@@ -538,7 +542,7 @@ module Substitute = struct
       List [ Atom e; input src; output dst ]
     ;;
 
-    let action { expander; src; dst } ~ectx:_ ~eenv:_ =
+    let action { expander; depends = _; artifacts = _; src; dst } ~ectx:_ ~eenv:_ =
       let open Fiber.O in
       let* () = Fiber.return () in
       let env (var : Substs.Variable.t) =
@@ -576,7 +580,11 @@ module Substitute = struct
 
   module A = Action_ext.Make (Spec)
 
-  let action expander ~src ~dst = A.action { Spec.expander; src; dst }
+  let action (expander : Expander.t) ~src ~dst =
+    let+ depends = expander.depends
+    and+ artifacts = expander.artifacts in
+    A.action { Spec.expander; depends; artifacts; src; dst }
+  ;;
 end
 
 let depexts_hint = function
@@ -836,6 +844,7 @@ module Action_expander = struct
     ;;
 
     let expand_pkg_macro ~loc (paths : _ Paths.t) deps macro_invocation =
+      let* deps = deps in
       let { Package_variable.name = variable_name; scope } =
         match Package_variable.of_macro_invocation ~loc macro_invocation with
         | Ok package_variable -> package_variable
@@ -943,7 +952,8 @@ module Action_expander = struct
              let dir = t.paths.source_dir in
              Memo.return @@ Ok (Path.relative dir program)
            | In_path ->
-             (match Filename.Map.find t.artifacts program with
+             let* artifacts = t.artifacts in
+             (match Filename.Map.find artifacts program with
               | Some s -> Memo.return @@ Ok s
               | None ->
                 (let path = Global.env () |> Env_path.path in
@@ -1038,9 +1048,9 @@ module Action_expander = struct
       in
       Dune_patch.action ~patch
     | Substitute (src, dst) ->
-      let+ src =
+      let* src =
         Expander.expand_pform_gen ~mode:Single expander src >>| Value.to_path ~dir
-      and+ dst =
+      and* dst =
         Expander.expand_pform_gen ~mode:Single expander dst
         >>| Value.to_path ~dir
         >>| Expander0.as_in_build_dir ~what:"substitute" ~loc:(String_with_vars.loc dst)
@@ -1142,8 +1152,8 @@ module Action_expander = struct
   end
 
   let expander context (pkg : Pkg.t) =
-    let+ { Artifacts_and_deps.binaries; dep_info } =
-      Memo.push_stack_frame
+    let closure =
+      Memo.lazy_
         ~human_readable_description:(fun () ->
           Pp.textf
             "Computing closure for package %S"
@@ -1152,14 +1162,20 @@ module Action_expander = struct
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
-      Package.Name.Map.add_exn
-        dep_info
-        pkg.info.name
-        (Pkg_info.variables pkg.info, pkg.paths)
+      Memo.Lazy.map closure ~f:(fun { Artifacts_and_deps.dep_info; _ } ->
+        Package.Name.Map.add_exn
+          dep_info
+          pkg.info.name
+          (Pkg_info.variables pkg.info, pkg.paths))
+      |> Memo.Lazy.force
+    in
+    let artifacts =
+      let+ { Artifacts_and_deps.binaries; _ } = Memo.Lazy.force closure in
+      binaries
     in
     { Expander.paths = pkg.paths
     ; name = pkg.info.name
-    ; artifacts = binaries
+    ; artifacts
     ; context
     ; depends
     ; depexts = pkg.depexts
@@ -1172,7 +1188,7 @@ module Action_expander = struct
 
   let expand context (pkg : Pkg.t) action =
     let+ action =
-      let* expander = expander context pkg in
+      let expander = expander context pkg in
       expand action ~expander >>| Action.chdir pkg.paths.source_dir
     in
     (* TODO copying is needed for build systems that aren't dune and those
@@ -1337,7 +1353,7 @@ end = struct
         }
       in
       let+ exported_env =
-        let* expander =
+        let expander =
           Action_expander.expander (Package_universe.context_name package_universe) t
         in
         Memo.parallel_map exported_env ~f:(Action_expander.exported_env expander)

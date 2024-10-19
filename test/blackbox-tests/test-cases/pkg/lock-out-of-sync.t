@@ -27,7 +27,7 @@ Create a fake project and lock it:
   - foo.0.0.1
 
 As the lock file is syncronised with `dune-pkg`, the build succeeds:
-  $ dune build
+  $ build_pkg foo
   foo
 
 We add the bar dependency to the test package
@@ -51,5 +51,6 @@ We fix it and the build succeeds again:
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
-  $ dune build
+  $ build_pkg foo
+  $ build_pkg bar
   bar

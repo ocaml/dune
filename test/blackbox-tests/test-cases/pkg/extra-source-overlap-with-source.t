@@ -27,7 +27,7 @@ file in the package's source.
   >  (depends foo))
   > EOF
 
-  $ dune build
+  $ build_pkg foo
 
 Make sure that the package's source directory ends up with the version
 of foo.txt from extra_sources:

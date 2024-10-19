@@ -63,7 +63,7 @@ Make lockfiles for the packages.
   > EOF
 
 Test that the project can be built normally.
-  $ dune build
+  $ build_pkg foo
 
 Make a fake dune exe:
   $ mkdir bin
@@ -76,6 +76,7 @@ Make a fake dune exe:
   $ dune clean
 Try building in an environment where `dune` refers to the fake dune.
   $ DUNE=$(which dune)  # otherwise we would start by running the wrong dune
-  $ PATH=$PWD/bin:$PATH $DUNE build
-  Fake dune! (args: build -p bar @install)
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/foo/target/
   Fake dune! (args: build -p foo @install)
+  $ PATH=$PWD/bin:$PATH $DUNE build $pkg_root/bar/target/
+  Fake dune! (args: build -p bar @install)

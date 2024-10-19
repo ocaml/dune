@@ -78,12 +78,7 @@ name so the output is consistent across test runs.
 
 Attempt to build the project. This will fail due to the fake compiler
 but the fake compiler will end up installed as a toolchain package.
-  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled dune build 2>&1 | remove_hash
-  Error: Failed to parse the output of
-  '$TESTCASE_ROOT/fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
-  -config':
-  Unrecognized line: "Hello from fake ocamlc!"
-  -> required by loading the OCaml compiler for context "default"
+  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
 
 Enumerate the contents of the fake toolchains directory:
   $ find fake-cache/dune/toolchains | sort | remove_hash

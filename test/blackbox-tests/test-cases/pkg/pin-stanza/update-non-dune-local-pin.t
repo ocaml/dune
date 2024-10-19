@@ -37,7 +37,7 @@ Make a package "foo" whose build will fail after printing a message:
 
 Attempt to build the package the first time:
 (the error from make is grep'd out because it is not consistant across different systems)
-  $ dune build 2>&1 | grep -v -e "^make" -e "^gmake"
+  $ build_pkg foo 2>&1 | grep -v -e "^make" -e "^gmake"
   echo aaa
   aaa
   false
@@ -55,7 +55,7 @@ Update the message that gets printed while building foo:
   > EOF
 
 The change to the package is picked up:
-  $ dune build 2>&1 | grep -v -e "^make" -e "^gmake"
+  $ build_pkg foo 2>&1 | grep -v -e "^make" -e "^gmake"
   echo bbb
   bbb
   false

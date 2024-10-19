@@ -4,7 +4,7 @@ project root directory.
 "dune exec --watch" works fine when invoked at the root level
   $ DONE_FLAG=_build/done_flag
   $ dune exec --watch ./bin/main.exe $DONE_FLAG &
-  Success, waiting for filesystem changes...
+   changes...
   foo
   $ PID=$!
 
@@ -19,7 +19,7 @@ Perform the same test above but first enter the "bin" directory.
   $ cd bin
   $ dune exec --root .. --watch ./bin/main.exe ../$DONE_FLAG &
   Entering directory '..'
-  Success, waiting for filesystem changes...
+   changes...
   foo
   Leaving directory '..'
   $ PID=$!

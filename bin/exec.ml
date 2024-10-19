@@ -95,7 +95,11 @@ module Command_to_exec = struct
     { get_path_and_build_if_necessary; prog; args; env }
     =
     get_path_and_build_if_necessary prog
-    |> Fiber.map ~f:(Result.map ~f:(spawn_process ~root ~args ~env))
+    |> Fiber.map
+         ~f:
+           (Result.map ~f:(fun prog ->
+              Console.reset ();
+              spawn_process ~root ~args ~env prog))
   ;;
 end
 

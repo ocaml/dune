@@ -83,6 +83,7 @@ but the fake compiler will end up installed as a toolchain package.
   '$TESTCASE_ROOT/fake-cache/dune/toolchains/ocaml-base-compiler.1-HASH/target/bin/ocamlc
   -config':
   Unrecognized line: "Hello from fake ocamlc!"
+  -> required by loading the OCaml compiler for context "default"
 
 Enumerate the contents of the fake toolchains directory:
   $ find fake-cache/dune/toolchains | sort | remove_hash

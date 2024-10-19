@@ -1143,7 +1143,12 @@ module Action_expander = struct
 
   let expander context (pkg : Pkg.t) =
     let+ { Artifacts_and_deps.binaries; dep_info } =
-      Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure
+      Memo.push_stack_frame
+        ~human_readable_description:(fun () ->
+          Pp.textf
+            "Computing closure for package %S"
+            (Package.Name.to_string pkg.info.name))
+        (fun () -> Pkg.deps_closure pkg |> Artifacts_and_deps.of_closure)
     in
     let env = Pkg.exported_value_env pkg in
     let depends =
@@ -2011,6 +2016,11 @@ let resolve_pkg_project context pkg =
 ;;
 
 let ocaml_toolchain context =
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf
+      "Loading OCaml toolchain from Lock directory for context %S"
+      (Context_name.to_string context))
+  @@ fun () ->
   (let* lock_dir = Lock_dir.get_exn context in
    match lock_dir.ocaml with
    | None -> Memo.return `System_provided
@@ -2048,11 +2058,16 @@ let all_packages context =
 
 let which context =
   let artifacts_and_deps =
-    Memo.lazy_ (fun () ->
-      let+ { binaries; dep_info = _ } =
-        all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
-      in
-      binaries)
+    Memo.lazy_
+      ~human_readable_description:(fun () ->
+        Pp.textf
+          "Loading all binaries in the lock directory for %S"
+          (Context_name.to_string context))
+      (fun () ->
+        let+ { binaries; dep_info = _ } =
+          all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+        in
+        binaries)
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
@@ -2073,6 +2088,9 @@ let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
 let exported_env context =
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf "lock directory environment for context %S" (Context_name.to_string context))
+  @@ fun () ->
   let+ all_packages = all_packages context in
   let env = Pkg.build_env_of_deps all_packages in
   let vars = Env.Map.map env ~f:Value_list_env.string_of_env_values in

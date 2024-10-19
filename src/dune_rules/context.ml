@@ -413,9 +413,10 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
       in
       { builder with env }
   in
+  let which_outside_lockdir = Which.which ~path:builder.path in
   let which =
     match kind with
-    | Default | Opam _ -> Which.which ~path:builder.path
+    | Default | Opam _ -> which_outside_lockdir
     | Lock _ ->
       let which = Staged.unstage @@ Pkg_rules.which builder.name in
       fun prog ->
@@ -467,7 +468,11 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
           and* env = builder.env in
           let toolchain kind =
             let+ toolchain =
-              Ocaml_toolchain.of_env_with_findlib builder.name env findlib ~which
+              Ocaml_toolchain.of_env_with_findlib
+                builder.name
+                env
+                findlib
+                ~which:which_outside_lockdir
             in
             toolchain, kind
           in

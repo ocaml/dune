@@ -31,11 +31,3 @@ Dune file in OCaml syntax and a files directory should work
   $ touch dune.lock/ocamlfind.files/foo.patch
 
   $ dune build
-  Error: Dependency cycle between:
-     - evaluating dune file "dune" in OCaml syntax
-  -> _build/_private/default/.pkg/ocamlfind/target/cookie
-  -> Loading all binaries in the lock directory for "default"
-  -> looking up binary "ocamlc" in context "default"
-  -> loading the OCaml compiler for context "default"
-  -> - evaluating dune file "dune" in OCaml syntax
-  [1]

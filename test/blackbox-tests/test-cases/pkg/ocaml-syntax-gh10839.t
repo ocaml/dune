@@ -34,6 +34,11 @@ Dune file in OCaml syntax and a files directory should work
   Error: Dependency cycle between:
      - evaluating dune file "dune" in OCaml syntax
   -> _build/_private/default/.pkg/ocamlfind/target/cookie
+  -> Computing closure for package "base-bytes"
   -> - package base-bytes
+  -> lock directory environment for context "default"
+  -> base environment for context "default"
+  -> loading findlib for context "default"
+  -> loading the OCaml compiler for context "default"
   -> - evaluating dune file "dune" in OCaml syntax
   [1]

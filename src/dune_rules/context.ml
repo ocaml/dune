@@ -400,10 +400,15 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     | Default | Opam _ -> builder
     | Lock _ ->
       let env =
-        Memo.lazy_ (fun () ->
-          let+ current_env = builder.env
-          and+ pkg_env = Pkg_rules.exported_env builder.name in
-          Env_path.extend_env_concat_path current_env pkg_env)
+        Memo.lazy_
+          ~human_readable_description:(fun () ->
+            Pp.textf
+              "base environment for context %S"
+              (Context_name.to_string builder.name))
+          (fun () ->
+            let+ current_env = builder.env
+            and+ pkg_env = Pkg_rules.exported_env builder.name in
+            Env_path.extend_env_concat_path current_env pkg_env)
         |> Memo.Lazy.force
       in
       { builder with env }
@@ -414,54 +419,73 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
     | Lock _ ->
       let which = Staged.unstage @@ Pkg_rules.which builder.name in
       fun prog ->
-        which prog
-        >>= (function
-         | Some p -> Memo.return (Some p)
-         | None -> Which.which ~path:builder.path prog)
+        Memo.push_stack_frame
+          ~human_readable_description:(fun () ->
+            Pp.textf
+              "looking up binary %S in context %S"
+              prog
+              (Context_name.to_string builder.name))
+          (fun () ->
+            which prog
+            >>= function
+            | Some p -> Memo.return (Some p)
+            | None -> Which.which ~path:builder.path prog)
   in
   let ocamlpath =
-    Memo.lazy_ (fun () ->
-      match kind with
-      | Lock _ -> Pkg_rules.ocamlpath builder.name
-      | Default | Opam _ ->
-        let+ ocamlpath = builder.env >>| Findlib_config.ocamlpath_of_env in
-        Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain)
+    Memo.lazy_
+      ~human_readable_description:(fun () ->
+        Pp.textf "loading OCAMLPATH for context %S" (Context_name.to_string builder.name))
+      (fun () ->
+        match kind with
+        | Lock _ -> Pkg_rules.ocamlpath builder.name
+        | Default | Opam _ ->
+          let+ ocamlpath = builder.env >>| Findlib_config.ocamlpath_of_env in
+          Kind.ocamlpath kind ~ocamlpath ~findlib_toolchain:builder.findlib_toolchain)
   in
   let findlib =
-    Memo.lazy_ (fun () ->
-      let ocamlpath = Memo.Lazy.force ocamlpath in
-      let* env = builder.env in
-      let findlib_toolchain =
-        Option.map builder.findlib_toolchain ~f:Context_name.to_string
-      in
-      Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain)
+    Memo.lazy_
+      ~human_readable_description:(fun () ->
+        Pp.textf "loading findlib for context %S" (Context_name.to_string builder.name))
+      (fun () ->
+        let ocamlpath = Memo.Lazy.force ocamlpath in
+        let* env = builder.env in
+        let findlib_toolchain =
+          Option.map builder.findlib_toolchain ~f:Context_name.to_string
+        in
+        Findlib_config.discover_from_env ~env ~which ~ocamlpath ~findlib_toolchain)
   in
   let ocaml_and_build_env_kind =
-    Memo.Lazy.create ~name:"ocaml_and_build_env_kind" (fun () ->
-      let+ ocaml, env =
-        let* findlib = Memo.Lazy.force findlib
-        and* env = builder.env in
-        let toolchain kind =
-          let+ toolchain =
-            Ocaml_toolchain.of_env_with_findlib builder.name env findlib ~which
+    Memo.Lazy.create
+      ~name:"ocaml_and_build_env_kind"
+      ~human_readable_description:(fun () ->
+        Pp.textf
+          "loading the OCaml compiler for context %S"
+          (Context_name.to_string builder.name))
+      (fun () ->
+        let+ ocaml, env =
+          let* findlib = Memo.Lazy.force findlib
+          and* env = builder.env in
+          let toolchain kind =
+            let+ toolchain =
+              Ocaml_toolchain.of_env_with_findlib builder.name env findlib ~which
+            in
+            toolchain, kind
           in
-          toolchain, kind
+          match kind with
+          | Default -> toolchain `Default
+          | Opam _ -> toolchain `Opam
+          | Lock _ ->
+            Pkg_rules.ocaml_toolchain builder.name
+            >>= (function
+             | None -> toolchain `Lock
+             | Some toolchain ->
+               let+ toolchain, _ = Action_builder.evaluate_and_collect_facts toolchain in
+               toolchain, `Default)
         in
-        match kind with
-        | Default -> toolchain `Default
-        | Opam _ -> toolchain `Opam
-        | Lock _ ->
-          Pkg_rules.ocaml_toolchain builder.name
-          >>= (function
-           | None -> toolchain `Lock
-           | Some toolchain ->
-             let+ toolchain, _ = Action_builder.evaluate_and_collect_facts toolchain in
-             toolchain, `Default)
-      in
-      Ocaml_toolchain.register_response_file_support ocaml;
-      if Option.is_some builder.fdo_target_exe
-      then Ocaml_toolchain.check_fdo_support ocaml builder.name;
-      ocaml, env)
+        Ocaml_toolchain.register_response_file_support ocaml;
+        if Option.is_some builder.fdo_target_exe
+        then Ocaml_toolchain.check_fdo_support ocaml builder.name;
+        ocaml, env)
   in
   let default_ocamlpath =
     Memo.Lazy.create ~name:"default_ocamlpath" ~cutoff:(List.equal Path.equal) (fun () ->
@@ -481,10 +505,15 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
   in
   let builder =
     let installed_env =
-      Memo.lazy_ (fun () ->
-        let* findlib = Memo.Lazy.force findlib in
-        let+ env = builder.env in
-        make_installed_env env builder.name findlib builder.env_nodes builder.profile)
+      Memo.lazy_
+        ~human_readable_description:(fun () ->
+          Pp.textf
+            "creating installed environment for %S"
+            (Context_name.to_string builder.name))
+        (fun () ->
+          let* findlib = Memo.Lazy.force findlib in
+          let+ env = builder.env in
+          make_installed_env env builder.name findlib builder.env_nodes builder.profile)
     in
     { builder with env = Memo.Lazy.force installed_env }
   in

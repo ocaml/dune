@@ -629,14 +629,14 @@ let build_exe
     | Some x -> Memo.return x
   and* submodes = jsoo_submodes ~dir ~submodes in
   let* () =
-    match List.mem ~equal:Poly.equal submodes JS with
-    | false -> Memo.return ()
-    | true ->
+    if List.mem ~equal:Poly.equal submodes JS
+    then Memo.return ()
+    else (
       let dst = Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~submode:JS) in
       let src =
         Path.build (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~submode:Wasm))
       in
-      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst)
+      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst))
   in
   Memo.parallel_iter submodes ~f:(fun submode ->
     let standalone_runtime =

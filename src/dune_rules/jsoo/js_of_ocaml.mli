@@ -43,6 +43,8 @@ module Submode : sig
 
   type submode := t
 
+  val equal : t -> t -> bool
+
   module Set : sig
     type t =
       { js : bool

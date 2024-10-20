@@ -100,23 +100,25 @@ module Submode = struct
     | JS
     | Wasm
 
+  let equal = Poly.equal
+
   module Set = struct
     type t =
       { js : bool
       ; wasm : bool
       }
 
+    let empty = { js = false; wasm = false }
+
+    let add t = function
+      | JS -> { t with js = true }
+      | Wasm -> { t with wasm = true }
+    ;;
+
     let decode =
       map
         (repeat1 (enum [ "js", JS; "wasm", Wasm ]))
-        ~f:(fun l ->
-          List.fold_left
-            ~f:(fun t submode ->
-              match submode with
-              | JS -> { t with js = true }
-              | Wasm -> { t with wasm = true })
-            ~init:{ js = false; wasm = false }
-            l)
+        ~f:(List.fold_left ~init:empty ~f:add)
     ;;
 
     let equal x y = x.js = y.js && x.wasm = y.wasm

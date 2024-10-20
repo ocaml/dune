@@ -67,12 +67,16 @@ module Command_to_exec = struct
   (* A command to execute, which knows how to (re)build the program and then
      run it with some arguments in an environment *)
 
+  type command_env =
+    { path : Path.t
+    ; env : Env.t
+    }
+
   type t =
-    { get_path_and_build_if_necessary :
-        string -> (Path.t, [ `Already_reported ]) result Fiber.t
+    { get_env_and_build_if_necessary :
+        string -> (command_env, [ `Already_reported ]) result Fiber.t
     ; prog : string
     ; args : string list
-    ; env : Env.t
     }
 
   (* Helper function to spawn a new process running a command in an
@@ -90,12 +94,10 @@ module Command_to_exec = struct
 
   (* Run the command, first (re)building the program which the command is
      invoking *)
-  let build_and_run_in_child_process
-    ~root
-    { get_path_and_build_if_necessary; prog; args; env }
-    =
-    get_path_and_build_if_necessary prog
-    |> Fiber.map ~f:(Result.map ~f:(spawn_process ~root ~args ~env))
+  let build_and_run_in_child_process ~root { get_env_and_build_if_necessary; prog; args } =
+    get_env_and_build_if_necessary prog
+    |> Fiber.map
+         ~f:(Result.map ~f:(fun { path; env } -> spawn_process ~root ~args ~env path))
   ;;
 end
 
@@ -309,20 +311,21 @@ module Exec_context = struct
       Memo.run
       @@
       let open Memo.O in
-      let* env = env
-      and* sctx = sctx in
+      let* sctx = sctx in
       let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
       let* prog = expand prog in
       let+ args = Memo.parallel_map args ~f:expand in
-      { Command_to_exec.get_path_and_build_if_necessary =
+      { Command_to_exec.get_env_and_build_if_necessary =
           (fun prog ->
             (* TODO we should release the dune lock. But we aren't doing it
                because we don't unload the database files we've marshalled.
             *)
-            build (fun () -> get_path_and_build_if_necessary ~prog))
+            build (fun () ->
+              let+ env = env
+              and+ path = get_path_and_build_if_necessary ~prog in
+              { Command_to_exec.path; env }))
       ; prog
       ; args
-      ; env
       }
     in
     Watch.loop ~root:(Common.root common) ~command_to_exec

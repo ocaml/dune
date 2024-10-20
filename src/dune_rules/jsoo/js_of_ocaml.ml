@@ -214,7 +214,7 @@ module Env = struct
            (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode in
-       Option.iter ~f:Alias.register_as_standard runtest_alias;
+       Option.iter ~f:Alias0.register_as_standard runtest_alias;
        { compilation_mode; sourcemap; runtest_alias; flags }
   ;;
 

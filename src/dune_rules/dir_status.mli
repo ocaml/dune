@@ -45,7 +45,7 @@ end
 val directory_targets
   :  t
   -> jsoo_submodes:
-       (dir:Import.Path.Build.t
+       (dir:Path.Build.t
         -> submodes:Js_of_ocaml.Submode.Set.t option
         -> Js_of_ocaml.Submode.t list Memo.t)
   -> dir:Path.Build.t

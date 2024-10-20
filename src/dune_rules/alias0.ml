@@ -1,8 +1,17 @@
 open Import
 
+(* This mutable table is safe: it's modified only at the top level. *)
+let standard_aliases = Table.create (module Dune_engine.Alias.Name) 7
+let is_standard name = Table.mem standard_aliases name
+
+let register_as_standard name =
+  let (_ : (unit, _) result) = Table.add standard_aliases name () in
+  ()
+;;
+
 let standard name =
   let name = Alias.Name.of_string name in
-  Alias.register_as_standard name;
+  register_as_standard name;
   name
 ;;
 

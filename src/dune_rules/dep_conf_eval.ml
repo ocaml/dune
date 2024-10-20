@@ -63,7 +63,7 @@ let dep_on_alias_rec alias ~loc =
     >>| (function
      | Defined -> ()
      | Not_defined ->
-       if not (Alias.is_standard name)
+       if not (Alias0.is_standard name)
        then
          User_error.raise
            ~loc

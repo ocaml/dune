@@ -1,5 +1,6 @@
 open Import
 module Alias = Dune_engine.Alias
+module Alias0 = Dune_rules.Alias
 module Alias_builder = Dune_rules.Alias_builder
 
 type t =
@@ -96,7 +97,7 @@ let dep_on_alias_rec_multi_contexts ~dir:src_dir ~name ~contexts =
          Dune_rules.Alias_rec.dep_on_alias_rec name dir))
   in
   match
-    Alias.is_standard name
+    Alias0.is_standard name
     || List.exists alias_statuses ~f:(fun (x : Alias_builder.Alias_status.t) ->
       match x with
       | Defined -> true

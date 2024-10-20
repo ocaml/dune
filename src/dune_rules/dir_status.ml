@@ -136,7 +136,7 @@ let directory_targets_of_rule ~dir { Rule_conf.targets; loc = rule_loc; enabled_
 
 let jsoo_wasm_enabled
   ~(jsoo_submodes :
-     dir:Import.Path.Build.t
+     dir:Path.Build.t
      -> submodes:Js_of_ocaml.Submode.Set.t option
      -> Js_of_ocaml.Submode.t list Memo.t)
   ~dir
@@ -152,25 +152,24 @@ let directory_targets_of_executables
   { Executables.names; modes; enabled_if; buildable; _ }
   =
   let* directory_targets =
-    let* wasm_enabled =
+    (* CR-someday rgrinberg: we don't necessarily need to evalute
+       [explicit_js_mode] or [wasm_enabled] here *)
+    let+ wasm_enabled =
       jsoo_wasm_enabled ~jsoo_submodes ~dir ~submodes:buildable.js_of_ocaml.submodes
+    and+ explicit_js_mode =
+      Scope.DB.find_by_dir dir >>| Scope.project >>| Dune_project.explicit_js_mode
     in
-    let* explicit_js_mode =
-      let+ scope = Scope.DB.find_by_dir dir in
-      let project = Scope.project scope in
-      Dune_project.explicit_js_mode project
-    in
-    if Executables.Link_mode.(
-         Map.mem modes js || ((not explicit_js_mode) && Map.mem modes byte))
-       && wasm_enabled
-    then
-      Memo.List.fold_left
-        (Nonempty_list.to_list names)
-        ~init:Path.Build.Map.empty
-        ~f:(fun acc (_, name) ->
-          let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
-          Path.Build.Map.set acc dir_target buildable.loc |> Memo.return)
-    else Memo.return Path.Build.Map.empty
+    match
+      Executables.Link_mode.(
+        Map.mem modes js || ((not explicit_js_mode) && Map.mem modes byte))
+      && wasm_enabled
+    with
+    | false -> Path.Build.Map.empty
+    | true ->
+      Nonempty_list.to_list names
+      |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (_, name) ->
+        let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
+        Path.Build.Map.set acc dir_target buildable.loc)
   in
   when_enabled ~dir ~enabled_if directory_targets
 ;;

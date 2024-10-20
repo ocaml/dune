@@ -561,7 +561,6 @@ let setup_separate_compilation_rules sctx components =
 ;;
 
 let js_of_ocaml_compilation_mode t ~dir =
-  let open Memo.O in
   let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.compilation_mode with
   | Some m -> m
@@ -572,7 +571,6 @@ let js_of_ocaml_compilation_mode t ~dir =
 ;;
 
 let js_of_ocaml_sourcemap t ~dir =
-  let open Memo.O in
   let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.sourcemap with
   | Some sm -> sm

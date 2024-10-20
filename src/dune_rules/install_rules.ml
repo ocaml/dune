@@ -112,9 +112,9 @@ end = struct
          (let { Mode.Dict.byte; native } = Lib_info.archives lib in
           let jsoo_files =
             (* A same runtime file can be used both for jsoo and wasmoo *)
-            List.sort_uniq
-              ~compare:Path.Build.compare
-              (Lib_info.jsoo_runtime lib @ Lib_info.wasmoo_runtime lib)
+            Lib_info.jsoo_runtime lib
+            |> List.rev_append (Lib_info.wasmoo_runtime lib)
+            |> List.sort_uniq ~compare:Path.Build.compare
           in
           [ byte
           ; native

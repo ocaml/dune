@@ -274,13 +274,11 @@ let js_of_ocaml_rule
 ;;
 
 let jsoo_runtime_files ~(submode : Js_of_ocaml.Submode.t) libs =
-  List.concat_map
-    ~f:(fun t ->
-      (match submode with
-       | JS -> Lib_info.jsoo_runtime
-       | Wasm -> Lib_info.wasmoo_runtime)
-        (Lib.info t))
-    libs
+  List.concat_map libs ~f:(fun t ->
+    (match submode with
+     | JS -> Lib_info.jsoo_runtime
+     | Wasm -> Lib_info.wasmoo_runtime)
+      (Lib.info t))
 ;;
 
 let standalone_runtime_rule ~submode cc ~runtime_files ~target ~flags =
@@ -580,16 +578,14 @@ let js_of_ocaml_sourcemap t ~dir =
 ;;
 
 let jsoo_submodes ~dir ~submodes =
-  let+ submodes =
-    match submodes with
-    | Some _ -> Memo.return submodes
-    | None ->
-      let+ js_of_ocaml = jsoo_env ~dir in
-      js_of_ocaml.submodes
-  in
-  match submodes with
+  (match submodes with
+   | Some _ -> Memo.return submodes
+   | None ->
+     let+ js_of_ocaml = jsoo_env ~dir in
+     js_of_ocaml.submodes)
+  >>| function
+  | None -> [ Js_of_ocaml.Submode.JS ]
   | Some m -> Js_of_ocaml.Submode.Set.to_list m
-  | None -> [ JS ]
 ;;
 
 let build_exe
@@ -630,14 +626,14 @@ let build_exe
     | Some x -> Memo.return x
   and* submodes = jsoo_submodes ~dir ~submodes in
   let* () =
-    if not (List.mem ~equal:Poly.equal submodes JS)
-    then (
+    match List.mem ~equal:Poly.equal submodes JS with
+    | false -> Memo.return ()
+    | true ->
       let dst = Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~submode:JS) in
       let src =
         Path.build (Path.Build.set_extension src ~ext:(Js_of_ocaml.Ext.exe ~submode:Wasm))
       in
-      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst))
-    else Memo.return ()
+      Super_context.add_rule ~loc ~dir ~mode sctx (Action_builder.copy ~src ~dst)
   in
   Memo.parallel_iter submodes ~f:(fun submode ->
     let standalone_runtime =

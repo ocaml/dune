@@ -143,7 +143,7 @@ let jsoo_wasm_enabled
   ~submodes
   =
   let+ submodes = jsoo_submodes ~dir ~submodes in
-  List.mem ~equal:Poly.equal submodes Wasm
+  List.mem ~equal:Js_of_ocaml.Submode.equal submodes Wasm
 ;;
 
 let directory_targets_of_executables
@@ -184,29 +184,25 @@ let directory_targets_of_library
     match Sub_system_name.Map.find sub_systems Inline_tests_info.Tests.name with
     | Some (Inline_tests_info.Tests.T { modes; loc; enabled_if; _ })
       when Inline_tests_info.Mode_conf.Set.mem modes Javascript ->
-      let* directory_targets =
-        let+ wasm_enabled =
-          jsoo_wasm_enabled ~jsoo_submodes ~dir ~submodes:buildable.js_of_ocaml.submodes
-        in
-        if wasm_enabled
-        then (
-          let lib_name = snd name in
-          let inline_test_dir =
-            let inline_test_name =
-              sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
-            in
-            Path.Build.relative dir ("." ^ inline_test_name)
-          in
-          let name =
-            sprintf "inline_test_runner_%s" (Lib_name.Local.to_string lib_name)
-          in
-          let dir_target =
-            Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)
-          in
-          Path.Build.Map.singleton dir_target loc)
-        else Path.Build.Map.empty
-      in
-      when_enabled ~dir ~enabled_if directory_targets
+      jsoo_wasm_enabled ~jsoo_submodes ~dir ~submodes:buildable.js_of_ocaml.submodes
+      >>| (function
+             | false -> Path.Build.Map.empty
+             | true ->
+               let dir_target =
+                 let lib_name = snd name in
+                 let name =
+                   sprintf "inline_test_runner_%s" (Lib_name.Local.to_string lib_name)
+                 in
+                 let inline_test_dir =
+                   let inline_test_name =
+                     sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
+                   in
+                   Path.Build.relative dir ("." ^ inline_test_name)
+                 in
+                 Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)
+               in
+               Path.Build.Map.singleton dir_target loc)
+      >>= when_enabled ~dir ~enabled_if
     | _ -> Memo.return Path.Build.Map.empty
   in
   when_enabled ~dir ~enabled_if directory_targets

@@ -11,6 +11,7 @@ val meta_fn : Filename.t
 val version : t -> string option
 val description : t -> string option
 val jsoo_runtime : t -> Path.t list
+val wasmoo_runtime : t -> Path.t list
 val requires : t -> Lib_name.t list
 val exports : t -> Lib_name.t list
 val ppx_runtime_deps : t -> Lib_name.t list

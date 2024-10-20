@@ -116,9 +116,9 @@ module Submode = struct
     ;;
 
     let decode =
-      map
-        (repeat1 (enum [ "js", JS; "wasm", Wasm ]))
-        ~f:(List.fold_left ~init:empty ~f:add)
+      enum [ "js", JS; "wasm", Wasm ]
+      |> repeat1
+      |> map ~f:(List.fold_left ~init:empty ~f:add)
     ;;
 
     let equal x y = x.js = y.js && x.wasm = y.wasm

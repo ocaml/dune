@@ -10,8 +10,6 @@ open Import
       modules in that cctx in the corresponding obj_dir.
     - then we aggregate all these separate indexes into a unique one. *)
 
-val project_index : build_dir:Path.Build.t -> Path.Build.t
-
 (** [cctx_rules cctx] sets the rules needed to generate the indexes for every
     module in the compilation context [cctx] and aggregate them in a
     [cctx.uideps] index covering the whole compilation context. *)

@@ -8,4 +8,4 @@ end
 
 let doc = "Command group for wrapped tools."
 let info = Cmd.info ~doc "tools"
-let group = Cmd.group info [ Exec.group ]
+let group = Cmd.group info [ Exec.group; Install_tools.command ]

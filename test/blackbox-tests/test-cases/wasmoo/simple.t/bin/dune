@@ -3,6 +3,6 @@
  (libraries js_of_ocaml x)
  (modes js)
  (js_of_ocaml
-   (submodes wasm)
-   (flags (:standard))
-   (wasm_files runtime.js)))
+  (submodes wasm)
+  (flags (:standard))
+  (wasm_files runtime.js)))

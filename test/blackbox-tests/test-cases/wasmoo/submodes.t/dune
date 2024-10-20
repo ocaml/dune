@@ -1,8 +1,7 @@
-
 (executable
-  (name main)
-  (modes js))
+ (name main)
+ (modes js))
 
 (env
-   (wasm (js_of_ocaml (submodes wasm)))
-   (both (js_of_ocaml (submodes js wasm))))
+ (wasm (js_of_ocaml (submodes wasm)))
+ (both (js_of_ocaml (submodes js wasm))))

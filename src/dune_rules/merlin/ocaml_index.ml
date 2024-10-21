@@ -20,7 +20,7 @@ let cctx_rules cctx =
   let dir = Compilation_context.dir cctx in
   let aggregate =
     let obj_dir = Compilation_context.obj_dir cctx in
-    let fn = index_path_in_obj_dir obj_dir in
+    let target = index_path_in_obj_dir obj_dir in
     let additional_libs =
       let scope = Compilation_context.scope cctx in
       (* Dune language >= 3.17 correctly passes the `-H` flag to the compiler. *)
@@ -79,7 +79,7 @@ let cctx_rules cctx =
       (ocaml_index sctx ~dir)
       [ A "aggregate"
       ; A "-o"
-      ; Target fn
+      ; Target target
       ; Deps modules_deps
       ; Dyn (Resolve.Memo.read additional_libs)
       ; Dyn (Resolve.Memo.read other_indexes_deps)

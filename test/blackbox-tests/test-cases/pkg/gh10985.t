@@ -49,11 +49,16 @@ Now we set up a lock file with this package and then attempt to use it:
   > let () = Test_lib.x
   > EOF
 
+  $ mkdir .bin
+  $ cat > .bin/ocaml-index <<EOF
+  > #!/usr/bin/env sh
+  > exit 1
+  > EOF
+
+  $ chmod +x .bin/ocaml-index
+  $ export PATH="$PWD/.bin:$PATH"
+
   $ dune build @ocaml-index
-  Error: This rule defines a directory target "default/.pkg/mypkg/target" that
-  matches the requested path
-  "default/.pkg/mypkg/target/lib/mypkg/lib/cctx.ocaml-index" but the rule's
-  action didn't produce it
-  -> required by _build/default/.foo.objs/cctx.ocaml-index
-  -> required by alias ocaml-index
+  File ".foo.objs/_unknown_", line 1, characters 0-0:
+  Command exited with code 1.
   [1]

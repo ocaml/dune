@@ -16,7 +16,7 @@ end
 module Mode_conf : sig
   type t =
     | Byte
-    | Javascript
+    | Jsoo of Js_of_ocaml.Mode.t
     | Native
     | Best
 

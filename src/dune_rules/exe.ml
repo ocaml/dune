@@ -10,28 +10,47 @@ module Program = struct
 end
 
 module Linkage = struct
+  type mode =
+    | Ocaml of Link_mode.t
+    | Jsoo of Js_of_ocaml.Mode.t
+
   type t =
-    { mode : Link_mode.t
+    { mode : mode
     ; ext : string
     ; flags : string list
     }
 
-  let byte = { mode = Byte; ext = ".bc"; flags = [] }
+  let byte = { mode = Ocaml Byte; ext = ".bc"; flags = [] }
 
   let byte_for_jsoo =
-    { mode = Byte_for_jsoo
+    { mode = Ocaml Byte_for_jsoo
     ; ext = ".bc-for-jsoo"
     ; flags = [ "-no-check-prims"; "-noautolink" ]
     }
   ;;
 
-  let native = { mode = Native; ext = ".exe"; flags = [] }
-  let is_native x = x.mode = Native
-  let is_js x = x.mode = Byte && x.ext = Js_of_ocaml.Ext.exe ~submode:JS
-  let is_byte x = x.mode = Byte && not (is_js x)
+  let native = { mode = Ocaml Native; ext = ".exe"; flags = [] }
+
+  let is_native x =
+    match x.mode with
+    | Ocaml Native -> true
+    | _ -> false
+  ;;
+
+  let is_jsoo ~mode x =
+    match x.mode with
+    | Jsoo m -> Js_of_ocaml.Mode.equal mode m
+    | _ -> false
+  ;;
+
+  let is_byte x =
+    match x.mode with
+    | Ocaml Byte -> true
+    | _ -> false
+  ;;
 
   let custom_with_ext ~ext ocaml_version =
-    { mode = Byte_with_stubs_statically_linked_in
+    { mode = Ocaml Byte_with_stubs_statically_linked_in
     ; ext
     ; flags = [ Ocaml.Version.custom_or_output_complete_exe ocaml_version ]
     }
@@ -45,7 +64,8 @@ module Linkage = struct
     | Ok _ -> native
   ;;
 
-  let js = { mode = Byte; ext = Js_of_ocaml.Ext.exe ~submode:JS; flags = [] }
+  let js = { mode = Jsoo JS; ext = Js_of_ocaml.Ext.exe ~mode:JS; flags = [] }
+  let wasm = { mode = Jsoo Wasm; ext = Js_of_ocaml.Ext.exe ~mode:Wasm; flags = [] }
 
   let is_plugin t =
     List.mem (List.map ~f:Mode.plugin_ext Mode.all) t.ext ~equal:String.equal
@@ -65,7 +85,8 @@ module Linkage = struct
     (m : Executables.Link_mode.t)
     =
     match m with
-    | Other { mode = Byte; kind = Js } -> js
+    | Jsoo JS -> js
+    | Jsoo Wasm -> wasm
     | _ ->
       let link_mode : Link_mode.t =
         match m with
@@ -85,6 +106,7 @@ module Linkage = struct
              if Result.is_ok ocaml.ocamlopt
              then Native
              else Byte_with_stubs_statically_linked_in)
+        | Jsoo _ -> assert false (* Handled above *)
       in
       let ext =
         let lib_config = ocaml.lib_config in
@@ -100,7 +122,6 @@ module Linkage = struct
         | Other { kind; _ } ->
           (match kind with
            | C -> c_flags
-           | Js -> []
            | Exe ->
              (match link_mode with
               | Byte_with_stubs_statically_linked_in ->
@@ -126,8 +147,9 @@ module Linkage = struct
                 List.concat_map native_c_libraries ~f:(fun flag -> [ "-cclib"; flag ])
                 @ so_flags
               | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in -> so_flags))
+        | Jsoo _ -> assert false (* Handled above *)
       in
-      { ext; mode = link_mode; flags }
+      { ext; mode = Ocaml link_mode; flags }
   ;;
 end
 
@@ -139,6 +161,7 @@ let link_exe
   ~loc
   ~name
   ~(linkage : Linkage.t)
+  ~linkage_mode
   ~cm_files
   ~link_time_code_gen
   ~promote
@@ -150,7 +173,7 @@ let link_exe
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let dir = Compilation_context.dir cctx in
-  let mode = Link_mode.mode linkage.mode in
+  let mode = Link_mode.mode linkage_mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
@@ -199,7 +222,7 @@ let link_exe
                      sctx
                      to_link
                      ~lib_config:ocaml.lib_config
-                     ~mode:linkage.mode
+                     ~mode:linkage_mode
                  ])
           ; Deps o_files
           ; Dyn (Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
@@ -227,10 +250,12 @@ let link_js
   ~link_args
   ~promote
   ~link_time_code_gen
+  ~jsoo_mode
   cctx
   =
   let in_context =
     Compilation_context.js_of_ocaml cctx
+    |> Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode
     |> Option.value ~default:Js_of_ocaml.In_context.default
   in
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte_for_jsoo in
@@ -252,6 +277,7 @@ let link_js
     ~promote
     ~link_time_code_gen
     ~linkall
+    ~jsoo_mode
 ;;
 
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
@@ -302,8 +328,8 @@ let link_many
       in
       let+ () =
         Memo.parallel_iter linkages ~f:(fun linkage ->
-          if Linkage.is_js linkage
-          then (
+          match linkage.Linkage.mode with
+          | Jsoo jsoo_mode ->
             let obj_dir = Compilation_context.obj_dir cctx in
             link_js
               ~loc
@@ -313,8 +339,9 @@ let link_many
               ~promote
               ~link_args
               cctx
-              ~link_time_code_gen)
-          else
+              ~link_time_code_gen
+              ~jsoo_mode
+          | Ocaml linkage_mode ->
             let* link_time_code_gen =
               match Linkage.is_plugin linkage with
               | false -> Memo.return link_time_code_gen
@@ -328,7 +355,7 @@ let link_many
             in
             let link_args, o_files =
               let select_o_files = Mode.Map.Multi.for_only ~and_all:true o_files in
-              match linkage.mode with
+              match linkage_mode with
               | Native -> link_args, select_o_files Mode.Native
               | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
                 link_args, select_o_files Mode.Byte
@@ -338,6 +365,7 @@ let link_many
               ~loc
               ~name
               ~linkage
+              ~linkage_mode
               ~cm_files
               ~link_time_code_gen
               ~promote

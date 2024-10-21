@@ -311,18 +311,19 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
       | None -> Memo.return ()
       | Some src ->
-        Compilation_context.js_of_ocaml cctx
-        |> Memo.Option.iter ~f:(fun in_context ->
-          (* Build *.cmo.js / *.wasmo *)
-          let sctx = Compilation_context.super_context cctx in
-          let dir = Compilation_context.dir cctx in
-          Jsoo_rules.iter_submodes ~f:(fun submode ->
+        Jsoo_rules.iter_jsoo_modes ~f:(fun mode ->
+          Compilation_context.js_of_ocaml cctx
+          |> Js_of_ocaml.Mode.Pair.select ~mode
+          |> Memo.Option.iter ~f:(fun in_context ->
+            (* Build *.cmo.js / *.wasmo *)
+            let sctx = Compilation_context.super_context cctx in
+            let dir = Compilation_context.dir cctx in
             let action_with_targets =
               Jsoo_rules.build_cm
                 sctx
                 ~dir
                 ~in_context
-                ~submode
+                ~mode
                 ~src:(Path.build src)
                 ~obj_dir
                 ~config:None

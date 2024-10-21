@@ -1,6 +1,6 @@
 (library
  (name inline_tests_wasm)
- (js_of_ocaml (wasm_files wasm.wat) (submodes wasm))
+ (wasm_of_ocaml (wasm_files wasm.wat))
  (inline_tests
-  (modes js)
+  (modes wasm)
   (backend fake_backend)))

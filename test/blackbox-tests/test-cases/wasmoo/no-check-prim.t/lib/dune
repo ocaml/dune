@@ -2,6 +2,6 @@
  (name x)
  (libraries js_of_ocaml)
  (public_name x)
- (js_of_ocaml
-  (flags (--pretty)) (wasm_files runtime.js runtime.wat))
+ (wasm_of_ocaml
+  (flags (--pretty)) (javascript_files runtime.js) (wasm_files runtime.wat))
  )

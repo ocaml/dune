@@ -2,5 +2,5 @@
 
 //Provides: jsPrint
 function jsPrint(x){
-  joo_global_object.console.log(x);
+  globalThis.console.log(x);
 }

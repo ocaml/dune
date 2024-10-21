@@ -8,13 +8,19 @@ let linkages
   (ocaml : Ocaml_toolchain.t)
   ~(exes : Executables.t)
   ~explicit_js_mode
-  ~(jsoo_compilation_mode : Js_of_ocaml.Compilation_mode.t)
+  ~jsoo_enabled_modes
+  ~jsoo_is_whole_program
   =
   let module L = Executables.Link_mode in
   let l =
     let has_native = Result.is_ok ocaml.ocamlopt in
     let modes =
       L.Map.to_list exes.modes
+      |> List.filter ~f:(fun (mode, _) ->
+        match mode with
+        | Executables.Link_mode.Jsoo mode ->
+          Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
+        | Byte_complete | Other _ -> true)
       |> List.map ~f:(fun (mode, loc) ->
         Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
     in
@@ -24,20 +30,31 @@ let linkages
       else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
     in
     let modes =
-      if L.Map.mem exes.modes L.js
+      if L.Map.existsi ~f:(fun m _ -> L.is_jsoo m) exes.modes
       then (
-        match jsoo_compilation_mode with
-        | Whole_program -> Exe.Linkage.byte_for_jsoo :: modes
-        | Separate_compilation -> modes)
+        let jsoo_bytecode_exe_needed =
+          Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
+        in
+        let bytecode_exe_needed =
+          L.Map.foldi
+            ~f:(fun m _ p ->
+              match m with
+              | Executables.Link_mode.Jsoo mode ->
+                Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed || p
+              | Byte_complete | Other _ -> p)
+            ~init:false
+            exes.modes
+        in
+        if bytecode_exe_needed then Exe.Linkage.byte_for_jsoo :: modes else modes)
       else if explicit_js_mode
       then modes
       else if L.Map.mem exes.modes L.byte
       then
         Exe.Linkage.js
         ::
-        (match jsoo_compilation_mode with
-         | Whole_program -> Exe.Linkage.byte_for_jsoo :: modes
-         | Separate_compilation -> modes)
+        (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
+         then Exe.Linkage.byte_for_jsoo :: modes
+         else modes)
       else modes
     in
     modes
@@ -143,8 +160,11 @@ let executables_rules
   let* ocaml = Context.ocaml ctx in
   let project = Scope.project scope in
   let explicit_js_mode = Dune_project.explicit_js_mode project in
+  let js_of_ocaml = Js_of_ocaml.In_context.make ~dir exes.buildable.js_of_ocaml in
   let* linkages =
-    let* jsoo_compilation_mode = Jsoo_rules.js_of_ocaml_compilation_mode sctx ~dir in
+    let* jsoo_enabled_modes =
+      Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
+    and* jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
     let+ dynamically_linked_foreign_archives =
       Context.dynamically_linked_foreign_archives ctx
     in
@@ -153,7 +173,8 @@ let executables_rules
       ~dynamically_linked_foreign_archives
       ~exes
       ~explicit_js_mode
-      ~jsoo_compilation_mode
+      ~jsoo_enabled_modes
+      ~jsoo_is_whole_program
   in
   let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
   let* modules, pp =
@@ -173,10 +194,12 @@ let executables_rules
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
-      let js_of_ocaml = Js_of_ocaml.In_context.make ~dir exes.buildable.js_of_ocaml in
-      if explicit_js_mode
-      then Option.some_if (List.exists linkages ~f:Exe.Linkage.is_js) js_of_ocaml
-      else Some js_of_ocaml
+      Js_of_ocaml.Mode.Pair.mapi
+        ~f:(fun mode x ->
+          Option.some_if
+            ((not explicit_js_mode) || List.exists linkages ~f:(Exe.Linkage.is_jsoo ~mode))
+            x)
+        js_of_ocaml
     in
     Compilation_context.create
       ()

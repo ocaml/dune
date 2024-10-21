@@ -476,7 +476,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~requires_compile
       ~requires_link
       ~opaque:(Explicit false)
-      ~js_of_ocaml:None
+      ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None
       ()

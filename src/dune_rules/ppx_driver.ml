@@ -323,7 +323,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~requires_compile:(Memo.return requires_compile)
       ~requires_link
       ~opaque
-      ~js_of_ocaml:None
+      ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None
       ~bin_annot:false

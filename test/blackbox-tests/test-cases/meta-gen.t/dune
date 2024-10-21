@@ -14,6 +14,8 @@
 (library
  (name foobar_runtime_lib2)
  (js_of_ocaml
+  (javascript_files foobar_runtime.js foobar_runtime2.js))
+ (wasm_of_ocaml
   (javascript_files foobar_runtime.js foobar_runtime2.js)
   (wasm_files foobar_runtime.wat foobar_runtime2.wat))
  (public_name foobar.runtime-lib2)

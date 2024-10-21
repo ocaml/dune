@@ -1,7 +1,8 @@
 (library
  (name foo)
  (install_c_headers cfoo)
- (js_of_ocaml (javascript_files foo.js) (wasm_files foo.js foo.wat))
+ (js_of_ocaml (javascript_files foo.js))
+ (wasm_of_ocaml (javascript_files foo.js) (wasm_files foo.wat))
  (foreign_stubs (language c) (names c))
  (foreign_stubs (language cxx) (names cpp))
  (public_name foo))

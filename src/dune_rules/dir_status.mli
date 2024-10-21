@@ -44,9 +44,11 @@ end
 
 val directory_targets
   :  t
-  -> jsoo_submodes:
-       (dir:Path.Build.t
-        -> submodes:Js_of_ocaml.Submode.Set.t option
-        -> Js_of_ocaml.Submode.t list Memo.t)
+  -> jsoo_enabled:
+       (eval:(Blang.t -> bool Memo.t)
+        -> dir:Path.Build.t
+        -> in_context:Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t
+        -> mode:Js_of_ocaml.Mode.t
+        -> bool Memo.t)
   -> dir:Path.Build.t
   -> Loc.t Path.Build.Map.t Memo.t

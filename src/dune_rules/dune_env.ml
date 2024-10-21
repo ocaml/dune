@@ -80,6 +80,7 @@ type config =
   ; menhir : Ordered_set_lang.Unexpanded.t Menhir_env.t
   ; odoc : Odoc.t
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
+  ; wasm_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t
   ; format_config : Format_config.t option
   ; error_on_use : User_message.t option
@@ -102,6 +103,7 @@ let equal_config
   ; menhir
   ; odoc
   ; js_of_ocaml
+  ; wasm_of_ocaml
   ; coq
   ; format_config
   ; error_on_use
@@ -124,6 +126,7 @@ let equal_config
   && Coq_env.equal coq t.coq
   && Option.equal Format_config.equal format_config t.format_config
   && Js_of_ocaml.Env.equal js_of_ocaml t.js_of_ocaml
+  && Js_of_ocaml.Env.equal wasm_of_ocaml t.wasm_of_ocaml
   && Option.equal User_message.equal error_on_use t.error_on_use
   && Option.equal User_message.equal warn_on_load t.warn_on_load
   && Option.equal Bool.equal bin_annot t.bin_annot
@@ -141,6 +144,7 @@ let empty_config =
   ; menhir = Menhir_env.empty
   ; odoc = Odoc.empty
   ; js_of_ocaml = Js_of_ocaml.Env.empty
+  ; wasm_of_ocaml = Js_of_ocaml.Env.empty
   ; coq = Coq_env.default
   ; format_config = None
   ; error_on_use = None
@@ -224,6 +228,13 @@ let js_of_ocaml_field =
     (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode)
 ;;
 
+let wasm_of_ocaml_field =
+  field
+    "wasm_of_ocaml"
+    ~default:Js_of_ocaml.Env.empty
+    (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Js_of_ocaml.Env.decode)
+;;
+
 let bin_annot = field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)
 
 let config =
@@ -241,6 +252,7 @@ let config =
   and+ menhir_flags = menhir_flags ~since:(2, 1) ~deleted_in:Menhir_stanza.explain_since
   and+ odoc = odoc_field
   and+ js_of_ocaml = js_of_ocaml_field
+  and+ wasm_of_ocaml = wasm_of_ocaml_field
   and+ coq = Coq_env.decode
   and+ format_config = Format_config.field ~since:(2, 8)
   and+ bin_annot = bin_annot in
@@ -261,6 +273,7 @@ let config =
   ; menhir
   ; odoc
   ; js_of_ocaml
+  ; wasm_of_ocaml
   ; coq
   ; format_config
   ; error_on_use = None

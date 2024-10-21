@@ -68,18 +68,6 @@ include Sub_system.Register_end_point (struct
     module Mode_conf = Inline_tests_info.Mode_conf
     module Info = Inline_tests_info.Tests
 
-    let configurations ~dir modes submodes =
-      let open Memo.O in
-      Memo.sequential_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
-        match mode with
-        | Native | Best -> Memo.return [ mode, ".exe" ]
-        | Byte -> Memo.return [ mode, ".bc" ]
-        | Javascript ->
-          let+ submodes = Jsoo_rules.jsoo_submodes ~dir ~submodes in
-          List.map submodes ~f:(fun submode -> mode, Js_of_ocaml.Ext.exe ~submode))
-      >>| List.flatten
-    ;;
-
     let gen_rules c ~expander ~(info : Info.t) ~backends =
       let { Sub_system.Library_compilation_context.super_context = sctx
           ; dir
@@ -119,6 +107,12 @@ include Sub_system.Register_end_point (struct
         Lib.closure ~linking:true ((lib :: libs) @ more_libs)
       in
       (* Generate the runner file *)
+      let js_of_ocaml =
+        Js_of_ocaml.Mode.Pair.map
+          ~f:(fun (x : Js_of_ocaml.In_context.t) ->
+            { x with javascript_files = []; wasm_files = [] })
+          (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml)
+      in
       let* () =
         Super_context.add_rule
           sctx
@@ -162,11 +156,6 @@ include Sub_system.Register_end_point (struct
           Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
         in
         let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
-        let js_of_ocaml =
-          Js_of_ocaml.In_context.make
-            ~dir
-            { lib.buildable.js_of_ocaml with javascript_files = []; wasm_files = [] }
-        in
         Compilation_context.create
           ()
           ~super_context:sctx
@@ -177,23 +166,37 @@ include Sub_system.Register_end_point (struct
           ~requires_compile:runner_libs
           ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
           ~flags
-          ~js_of_ocaml:(Some js_of_ocaml)
+          ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
           ~melange_package_name:None
           ~package
       in
+      let* modes =
+        let+ jsoo_enabled_modes =
+          Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
+        in
+        Mode_conf.Set.to_list info.modes
+        |> List.filter ~f:(fun (mode : Mode_conf.t) ->
+          match mode with
+          | Native | Best | Byte -> true
+          | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes)
+      in
       let* linkages =
-        let+ jsoo_compilation_mode = Jsoo_rules.js_of_ocaml_compilation_mode sctx ~dir in
+        let+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
         let ocaml = Compilation_context.ocaml cctx in
-        List.concat_map (Mode_conf.Set.to_list info.modes) ~f:(fun (mode : Mode_conf.t) ->
+        List.concat_map modes ~f:(fun (mode : Mode_conf.t) ->
           match mode with
           | Native -> [ Exe.Linkage.native ]
           | Best -> [ Exe.Linkage.native_or_custom ocaml ]
           | Byte -> [ Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version ]
-          | Javascript ->
-            (match jsoo_compilation_mode with
-             | Js_of_ocaml.Compilation_mode.Whole_program ->
-               [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ]
-             | Separate_compilation -> [ Exe.Linkage.js ]))
+          | Jsoo jsoo_mode ->
+            let linkage =
+              match jsoo_mode with
+              | JS -> Exe.Linkage.js
+              | Wasm -> Exe.Linkage.wasm
+            in
+            if Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode jsoo_is_whole_program
+            then [ Exe.Linkage.byte_for_jsoo; linkage ]
+            else [ linkage ])
       in
       let* (_ : Exe.dep_graphs) =
         let link_args =
@@ -249,18 +252,21 @@ include Sub_system.Register_end_point (struct
         else Sandbox_config.needs_sandboxing
       in
       let deps, sandbox = Dep_conf_eval.unnamed ~sandbox info.deps ~expander in
-      let action
-        (mode : Mode_conf.t)
-        (ext : string)
-        (flags : string list Action_builder.t)
+      let action (mode : Mode_conf.t) (flags : string list Action_builder.t)
         : Action.t Action_builder.t
         =
         (* [action] needs to run from [dir] as we use [dir] to resolve
            the exe path in case of a custom [runner] *)
+        let ext =
+          match mode with
+          | Native | Best -> ".exe"
+          | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
+          | Byte -> ".bc"
+        in
         let custom_runner =
           match mode with
           | Native | Best | Byte -> None
-          | Javascript -> Some Jsoo_rules.runner
+          | Jsoo _ -> Some Jsoo_rules.runner
         in
         let exe = Path.build (Path.Build.relative inline_test_dir (name ^ ext)) in
         let open Action_builder.O in
@@ -317,8 +323,7 @@ include Sub_system.Register_end_point (struct
         List.concat l
       in
       let source_files = List.concat_map source_modules ~f:Module.sources in
-      let* confs = configurations ~dir info.modes lib.buildable.js_of_ocaml.submodes in
-      Memo.parallel_iter confs ~f:(fun ((mode : Mode_conf.t), ext) ->
+      Memo.parallel_iter modes ~f:(fun (mode : Mode_conf.t) ->
         let partition_file =
           Path.Build.relative inline_test_dir ("partitions-" ^ Mode_conf.to_string mode)
         in
@@ -327,7 +332,7 @@ include Sub_system.Register_end_point (struct
           | None -> Memo.return ()
           | Some partitions_flags ->
             let open Action_builder.O in
-            action mode ext partitions_flags
+            action mode partitions_flags
             >>| Action.Full.make ~sandbox
             |> Action_builder.with_stdout_to partition_file
             |> Super_context.add_rule sctx ~dir ~loc
@@ -335,7 +340,7 @@ include Sub_system.Register_end_point (struct
         let* runtest_alias =
           match mode with
           | Native | Best | Byte -> Memo.return Alias0.runtest
-          | Javascript -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir
+          | Jsoo mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
         in
         Super_context.add_alias_action
           sctx
@@ -351,7 +356,7 @@ include Sub_system.Register_end_point (struct
                  let+ partitions = Action_builder.lines_of (Path.build partition_file) in
                  List.map ~f:(fun x -> Some x) partitions
              in
-             List.map partitions_flags ~f:(fun p -> action mode ext (flags p))
+             List.map partitions_flags ~f:(fun p -> action mode (flags p))
              |> Action_builder.all
            and+ () = Action_builder.paths source_files in
            match actions with

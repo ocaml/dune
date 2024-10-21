@@ -134,36 +134,25 @@ let directory_targets_of_rule ~dir { Rule_conf.targets; loc = rule_loc; enabled_
     when_enabled ~dir ~enabled_if directory_targets
 ;;
 
-let jsoo_wasm_enabled
-  ~(jsoo_submodes :
-     dir:Path.Build.t
-     -> submodes:Js_of_ocaml.Submode.Set.t option
-     -> Js_of_ocaml.Submode.t list Memo.t)
-  ~dir
-  ~submodes
-  =
-  let+ submodes = jsoo_submodes ~dir ~submodes in
-  List.mem ~equal:Js_of_ocaml.Submode.equal submodes Wasm
+let jsoo_wasm_enabled ~jsoo_enabled ~dir ~(buildable : Buildable.t) =
+  let* expander = Expander0.get ~dir in
+  jsoo_enabled
+    ~eval:(Expander0.eval_blang expander)
+    ~dir
+    ~in_context:(Js_of_ocaml.In_context.make ~dir buildable.js_of_ocaml)
+    ~mode:Js_of_ocaml.Mode.Wasm
 ;;
 
 let directory_targets_of_executables
-  ~jsoo_submodes
+  ~jsoo_enabled
   ~dir
   { Executables.names; modes; enabled_if; buildable; _ }
   =
   let* directory_targets =
     (* CR-someday rgrinberg: we don't necessarily need to evalute
-       [explicit_js_mode] or [wasm_enabled] here *)
-    let+ wasm_enabled =
-      jsoo_wasm_enabled ~jsoo_submodes ~dir ~submodes:buildable.js_of_ocaml.submodes
-    and+ explicit_js_mode =
-      Scope.DB.find_by_dir dir >>| Scope.project >>| Dune_project.explicit_js_mode
-    in
-    match
-      Executables.Link_mode.(
-        Map.mem modes js || ((not explicit_js_mode) && Map.mem modes byte))
-      && wasm_enabled
-    with
+       [wasm_enabled] here *)
+    let+ wasm_enabled = jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable in
+    match Executables.Link_mode.(Map.mem modes wasm) && wasm_enabled with
     | false -> Path.Build.Map.empty
     | true ->
       Nonempty_list.to_list names
@@ -175,15 +164,15 @@ let directory_targets_of_executables
 ;;
 
 let directory_targets_of_library
-  ~jsoo_submodes
+  ~jsoo_enabled
   ~dir
   { Library.sub_systems; name; enabled_if; buildable; _ }
   =
   let* directory_targets =
     match Sub_system_name.Map.find sub_systems Inline_tests_info.Tests.name with
     | Some (Inline_tests_info.Tests.T { modes; loc; enabled_if; _ })
-      when Inline_tests_info.Mode_conf.Set.mem modes Javascript ->
-      jsoo_wasm_enabled ~jsoo_submodes ~dir ~submodes:buildable.js_of_ocaml.submodes
+      when Inline_tests_info.Mode_conf.Set.mem modes (Jsoo Wasm) ->
+      jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
       >>| (function
              | false -> Path.Build.Map.empty
              | true ->
@@ -207,13 +196,13 @@ let directory_targets_of_library
   when_enabled ~dir ~enabled_if directory_targets
 ;;
 
-let extract_directory_targets ~jsoo_submodes ~dir stanzas =
+let extract_directory_targets ~jsoo_enabled ~dir stanzas =
   Memo.parallel_map stanzas ~f:(fun stanza ->
     match Stanza.repr stanza with
     | Rule_conf.T rule -> directory_targets_of_rule ~dir rule
     | Executables.T exes | Tests.T { exes; _ } ->
-      directory_targets_of_executables ~jsoo_submodes ~dir exes
-    | Library.T lib -> directory_targets_of_library ~jsoo_submodes ~dir lib
+      directory_targets_of_executables ~jsoo_enabled ~dir exes
+    | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
     | Coq_stanza.Theory.T m ->
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)
@@ -360,15 +349,15 @@ end = struct
   ;;
 end
 
-let directory_targets t ~jsoo_submodes ~dir =
+let directory_targets t ~jsoo_enabled ~dir =
   match t with
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
   | Standalone (_, dune_file) ->
-    Dune_file.stanzas dune_file >>= extract_directory_targets ~jsoo_submodes ~dir
+    Dune_file.stanzas dune_file >>= extract_directory_targets ~jsoo_enabled ~dir
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
-      extract_directory_targets ~jsoo_submodes ~dir stanzas
+      extract_directory_targets ~jsoo_enabled ~dir stanzas
       >>| Path.Build.Map.superpose acc
     in
     let* init =

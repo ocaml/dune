@@ -1,6 +1,6 @@
 Building with different combinations of submodes
 
-The default is to only compile to JavaScript
+Compiling to JavaScript
 
   $ dune build --profile js
   $ node _build/default/main.bc.js
@@ -9,14 +9,14 @@ The default is to only compile to JavaScript
   Error: Don't know how to build main.bc.wasm.js
   [1]
 
-Compiling to Wasm. One can still use the `.bc.js` binary but it runs
-the Wasm code.
+Compiling to Wasm.
 
   $ dune build --profile wasm
-  $ node _build/default/main.bc.js
-  wasm_of_ocaml
   $ node _build/default/main.bc.wasm.js
   wasm_of_ocaml
+  $ dune build --profile wasm main.bc.js
+  Error: Don't know how to build main.bc.js
+  [1]
 
 Compiling to both JS and Wasm.
 

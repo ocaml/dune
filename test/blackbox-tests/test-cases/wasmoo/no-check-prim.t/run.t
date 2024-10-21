@@ -1,6 +1,6 @@
 Compilation using WasmOO
 
-  $ dune build --display short bin/technologic.bc.js @install  2>&1 | \
+  $ dune build --display short bin/technologic.bc.wasm.js @install  2>&1 | \
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
   wasm_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.wasma
       ocamldep bin/.technologic.eobjs/dune__exe__Technologic.impl.d

@@ -9,8 +9,7 @@ Setup fixtures:
   $ cat >dune <<EOF
   > (executable
   >  (name main)
-  >  (modes js)
-  >  (js_of_ocaml (submodes wasm)))
+  >  (modes wasm))
   > EOF
 
 Test without separate compilation:

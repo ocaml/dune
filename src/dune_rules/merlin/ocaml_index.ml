@@ -23,21 +23,21 @@ let cctx_rules cctx =
     let target = index_path_in_obj_dir obj_dir in
     let additional_libs =
       let scope = Compilation_context.scope cctx in
-      (* Dune language >= 3.17 correctly passes the `-H` flag to the compiler. *)
-      if Dune_project.dune_version (Scope.project scope) < (3, 17)
+      if Dune_project.dune_version (Scope.project scope) >= (3, 17)
       then
+        (* Dune language >= 3.17 correctly passes the `-H` flag to the compiler. *)
+        Resolve.Memo.return Command.Args.empty
+      else
         let open Resolve.Memo.O in
         let+ non_compile_libs =
-          let* req_link = Compilation_context.requires_link cctx in
-          let+ req_compile = Compilation_context.requires_compile cctx in
-          List.filter req_link ~f:(fun l ->
-            not (List.exists req_compile ~f:(Lib.equal l)))
+          let* req_compile = Compilation_context.requires_compile cctx in
+          Compilation_context.requires_link cctx
+          >>| List.filter ~f:(fun l -> not (List.exists req_compile ~f:(Lib.equal l)))
         in
         Lib_flags.L.include_flags
           ~direct_libs:non_compile_libs
           ~hidden_libs:[]
           (Lib_mode.Ocaml Byte)
-      else Resolve.Memo.return Command.Args.empty
     in
     (* Indexing depends (recursively) on [required_compile] libs:
        - These libs's cmt files should be built before indexing starts

@@ -539,33 +539,6 @@ let make_action = function
   | actions -> Some (Action.Progn actions)
 ;;
 
-(* Returns the set of depopts of a package which are part of the solution
-   represented by [version_by_package_name] *)
-let available_depopts solver_env version_by_package_name depopts =
-  let formula =
-    Resolve_opam_formula.apply_filter
-      (Solver_env.to_env solver_env)
-      ~with_test:false
-      depopts
-  in
-  let atoms = OpamFormula.to_dnf formula |> List.concat in
-  List.filter_map atoms ~f:(fun (name, version_constraint) ->
-    let name = Package_name.of_opam_package_name name in
-    Package_name.Map.find version_by_package_name name
-    |> Option.bind ~f:(fun available_version ->
-      match version_constraint with
-      | None -> Some name
-      | Some version_constraint ->
-        let available_opam_version =
-          Package_version.to_opam_package_version available_version
-        in
-        if OpamFormula.check_version_formula
-             (OpamFormula.Atom version_constraint)
-             available_opam_version
-        then Some name
-        else None))
-;;
-
 (* Heuristic to determine whether a package is an ocaml compiler *)
 let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
   (* Identify compiler packages by using the fact that all compiler
@@ -575,6 +548,28 @@ let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
      ocaml-option-flambda) also have this flag. *)
   let ocaml_core_compiler = OpamPackage.Name.of_string "ocaml-core-compiler" in
   List.mem opam_package.conflict_class ocaml_core_compiler ~equal:OpamPackage.Name.equal
+;;
+
+let resolve_depopts ~resolve depopts =
+  (let rec collect acc depopts =
+     match (depopts : OpamTypes.filtered_formula) with
+     | Or ((Atom (_, _) as dep), depopts) -> collect (dep :: acc) depopts
+     | Atom (_, _) -> depopts :: acc
+     | Empty -> acc
+     | _ ->
+       (* We rely on depopts always being a list of or'ed package names. Opam
+          verifies this for us at parsing time. Dune projects have this
+          restriction for depopts and regular deps *)
+       Code_error.raise "invalid depopts" []
+   in
+   collect [] depopts)
+  |> List.rev
+  |> List.concat_map ~f:(fun depopt ->
+    match resolve depopt with
+    | Error _ -> []
+    | Ok { Resolve_opam_formula.post = _; regular } ->
+      (* CR-someday rgrinberg: think about post deps *)
+      regular)
 ;;
 
 let opam_package_to_lock_file_pkg
@@ -629,25 +624,25 @@ let opam_package_to_lock_file_pkg
     { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
   in
   let depends =
+    let resolve what =
+      Resolve_opam_formula.filtered_formula_to_package_names
+        ~with_test:false
+        (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
+        version_by_package_name
+        what
+    in
     let depends =
-      match
-        Resolve_opam_formula.filtered_formula_to_package_names
-          ~with_test:false
-          (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
-          version_by_package_name
-          opam_file.depends
-      with
+      match resolve opam_file.depends with
       | Ok { regular; _ } -> regular
       | Error (`Formula_could_not_be_satisfied hints) ->
         Code_error.raise
           "Dependencies of package can't be satisfied from packages in solution"
-          [ ( "package"
-            , Dyn.string (OpamFile.OPAM.package opam_file |> OpamPackage.to_string) )
+          [ "package", Dyn.string (opam_package |> OpamPackage.to_string)
           ; "hints", Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
           ]
     in
     let depopts =
-      available_depopts solver_env version_by_package_name opam_file.depopts
+      resolve_depopts ~resolve opam_file.depopts
       |> List.filter ~f:(fun package_name ->
         not (List.mem depends package_name ~equal:Package_name.equal))
     in

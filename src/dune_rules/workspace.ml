@@ -682,6 +682,8 @@ let find_lock_dir t path =
   List.find t.lock_dirs ~f:(fun lock_dir -> Path.Source.equal lock_dir.path path)
 ;;
 
+let add_repo t repo = { t with repos = repo :: t.repos }
+
 include Dune_lang.Versioned_file.Make (struct
     type t = unit
   end)

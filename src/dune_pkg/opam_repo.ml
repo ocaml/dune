@@ -47,6 +47,14 @@ type t =
   ; serializable : Serializable.t option
   }
 
+let to_dyn { source; loc; serializable } =
+  Dyn.record
+    [ "source", Source_backend.to_dyn source
+    ; "loc", Loc.to_dyn loc
+    ; "serializable", Dyn.option Serializable.to_dyn serializable
+    ]
+;;
+
 let equal { source; serializable; loc } t =
   Source_backend.equal source t.source
   && Option.equal Serializable.equal serializable t.serializable

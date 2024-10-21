@@ -11,8 +11,6 @@ let index_path_in_obj_dir obj_dir =
   Path.Build.relative dir index_file_name
 ;;
 
-let project_index ~build_dir = Path.Build.relative build_dir "project.ocaml-index"
-
 let cctx_rules cctx =
   (* Indexing is performed by the external binary [ocaml-index] which performs
      full shape reduction to compute the actual definition of all the elements in

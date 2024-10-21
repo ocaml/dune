@@ -70,6 +70,7 @@ let simplify act =
     | Mkdir x -> mkdir x :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
+    | Needed_deps _ -> Sh "# needed deps are not supported" :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

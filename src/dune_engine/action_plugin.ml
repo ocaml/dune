@@ -37,6 +37,27 @@ let done_or_more_deps_union x y =
     Need_more_deps (Dependency.Set.union deps1 deps2, Dep.Set.union dyn_deps1 dyn_deps2)
 ;;
 
+module Action_res = struct
+  type t =
+    { done_or_more_deps : done_or_more_deps
+    ; needed_deps : Dep.Set.t
+    }
+
+  let union x y =
+    match x, y with
+    | ( { done_or_more_deps = x; needed_deps = a }
+      , { done_or_more_deps = y; needed_deps = b } ) ->
+      { done_or_more_deps = done_or_more_deps_union x y; needed_deps = Dep.Set.union a b }
+  ;;
+
+  let needed_deps needed_deps = { done_or_more_deps = Done; needed_deps }
+  let done_ = { done_or_more_deps = Done; needed_deps = Dep.Set.empty }
+
+  let need_more_deps deps dyn_deps =
+    { done_or_more_deps = Need_more_deps (deps, dyn_deps); needed_deps = Dep.Set.empty }
+  ;;
+end
+
 open Action_intf.Exec
 
 let exec ~display ~(ectx : context) ~(eenv : env) prog args =
@@ -126,8 +147,9 @@ let exec ~display ~(ectx : context) ~(eenv : env) prog args =
            that is incompatible with this version of dune."
           prog_name
       ]
-  | Ok Done -> Done
+  | Ok Done -> Action_res.done_
   | Ok (Need_more_deps deps) ->
-    Need_more_deps
-      (deps, to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir)
+    Action_res.need_more_deps
+      deps
+      (to_dune_dep_set deps ~loc:ectx.rule_loc ~working_dir:eenv.working_dir)
 ;;

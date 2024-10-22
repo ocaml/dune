@@ -44,14 +44,15 @@ let cctx_rules cctx =
        - If these libs are rebuilt a re-indexation is needed *)
     let other_indexes_deps =
       let open Resolve.Memo.O in
-      let+ requires_compile = Compilation_context.requires_compile cctx in
-      let deps =
-        List.filter_map requires_compile ~f:(fun l ->
-          match Lib.info l |> Lib_info.obj_dir |> Obj_dir.obj_dir with
-          | In_build_dir dir -> Some (Path.relative (Path.build dir) index_file_name)
-          | _ -> None)
+      let+ deps =
+        Compilation_context.requires_compile cctx
+        >>| List.filter_map ~f:(fun lib ->
+          Lib.Local.of_lib lib
+          |> Option.map ~f:(fun lib ->
+            Lib.Local.obj_dir lib |> index_path_in_obj_dir |> Path.build))
+        >>| Dep.Set.of_files
       in
-      Command.Args.Hidden_deps (Dep.Set.of_files deps)
+      Command.Args.Hidden_deps deps
     in
     let context_dir =
       Compilation_context.context cctx

@@ -90,8 +90,4 @@ let rec any_package_name v =
      | None -> any_package_name r)
 ;;
 
-let has_entries v =
-  match any_package_name v with
-  | None -> false
-  | Some _ -> true
-;;
+let has_entries v = v |> any_package_name |> Option.is_some

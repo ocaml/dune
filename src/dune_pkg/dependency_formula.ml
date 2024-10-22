@@ -5,7 +5,7 @@ type t = OpamTypes.filtered_formula
 let of_dependencies deps = Package_dependency.list_to_opam_filtered_formula deps
 let to_filtered_formula v = v
 let of_filtered_formula v = v
-let to_dyn v = Opam_dyn.filtered_formula v
+let to_dyn = Opam_dyn.filtered_formula
 
 let rec union = function
   | [] -> OpamTypes.Empty

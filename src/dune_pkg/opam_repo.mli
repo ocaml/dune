@@ -11,6 +11,7 @@ module Serializable : sig
   val to_dyn : t -> Dyn.t
 end
 
+val to_dyn : t -> Dyn.t
 val equal : t -> t -> bool
 
 (** [of_opam_repo_dir_path opam_repo_dir] creates a repo represented by a local

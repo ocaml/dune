@@ -78,7 +78,7 @@ let solve ~dev_tool ~local_packages =
   let lock_dir = Lock_dir.dev_tool_lock_dir_path dev_tool in
   Memo.of_reproducible_fiber
   @@ Lock.solve
-       workspace
+       (Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages)
        ~local_packages
        ~project_sources:Dune_pkg.Pin_stanza.DB.empty
        ~solver_env_from_current_system

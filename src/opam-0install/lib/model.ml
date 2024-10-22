@@ -102,8 +102,6 @@ struct
     ; dep_importance : [ `Essential | `Recommended | `Restricts ]
     }
 
-  type requirements = { role : Role.t }
-
   let dummy_impl = Dummy
 
   (* Turn an opam dependency formula into a 0install list of dependencies. *)

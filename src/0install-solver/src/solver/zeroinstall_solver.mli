@@ -18,7 +18,7 @@ module Make
         every interface, so we can always select something. Useful for diagnostics.
         Note: always try without [closest_match] first, or it may miss a valid solution.
       @return None if the solve fails (only happens if [closest_match] is false). *)
-  val do_solve : closest_match:bool -> Input.requirements -> Output.t option Monad.t
+  val do_solve : closest_match:bool -> Input.Role.t -> Output.t option Monad.t
 end
 
 (** Explaining why a solve failed or gave an unexpected answer. *)

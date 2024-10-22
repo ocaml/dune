@@ -54,7 +54,6 @@ struct
       [ `Model_rejection of Model.rejection
       | `FailsRestriction of Model.restriction
       | `DepFailsRestriction of Model.dependency * Model.restriction
-      | `MachineGroupConflict of Model.Role.t * Model.impl
       | `ClassConflict of Model.Role.t * Model.conflict_class
       | `ConflictsRole of Model.Role.t
       | `DiagnosticsFailure of string
@@ -211,14 +210,6 @@ struct
           format_role
           dep_info.Model.dep_role
           (format_restrictions [ restriction ])
-      | `MachineGroupConflict (other_role, other_impl) ->
-        pf
-          f
-          "Can't use %s with selection of %a (%s)"
-          (Model.format_machine impl)
-          format_role
-          other_role
-          (Model.format_machine other_impl)
       | `ClassConflict (other_role, cl) ->
         pf f "In same conflict class (%s) as %a" (cl :> string) format_role other_role
       | `ConflictsRole other_role -> pf f "Conflicts with %a" format_role other_role
@@ -373,31 +364,6 @@ struct
         Component.apply_user_restriction component restriction))
   ;;
 
-  (** Find an implementation which requires a machine group. Use this to
-      explain the rejection of all implementations requiring other groups. *)
-  exception Found of (Model.Role.t * Model.impl * Model.machine_group)
-
-  let check_machine_groups report =
-    let check role compoment =
-      match Component.selected_impl compoment with
-      | None -> ()
-      | Some impl ->
-        (match Model.machine_group impl with
-         | None -> ()
-         | Some group -> raise (Found (role, impl, group)))
-    in
-    try RoleMap.iter check report with
-    | Found (example_role, example_impl, example_group) ->
-      let filter _key component =
-        Component.filter_impls component (fun impl ->
-          match Model.machine_group impl with
-          | Some group when group <> example_group ->
-            Some (`MachineGroupConflict (example_role, example_impl))
-          | _ -> None)
-      in
-      RoleMap.iter filter report
-  ;;
-
   module Classes = Map.Make (struct
       type t = Model.conflict_class
 
@@ -452,7 +418,6 @@ struct
       >>| RoleMap.of_seq
     in
     examine_extra_restrictions report;
-    check_machine_groups report;
     check_conflict_classes report;
     RoleMap.iter (examine_selection report) report;
     RoleMap.iter (fun _ c -> Component.finalise c) report;

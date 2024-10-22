@@ -51,8 +51,6 @@ module Diagnostics
         (** e.g. version too old for another component. *)
       | `DepFailsRestriction of Result.Input.dependency * Result.Input.restriction
         (** Couldn't satisfy its dependencies. *)
-      | `MachineGroupConflict of Result.Role.t * Result.Input.impl
-        (** A selected impl has a different machine type. *)
       | `ClassConflict of Result.Role.t * Result.Input.conflict_class
         (** A selected impl has the same conflict class. *)
       | `ConflictsRole of Result.Role.t

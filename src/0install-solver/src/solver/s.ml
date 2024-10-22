@@ -89,12 +89,6 @@ module type SOLVER_INPUT = sig
   (** A restriction limits which implementations can fill a role. *)
   type restriction
 
-  (** The solver will avoid selections with mixed machine groups.
-      This is useful if e.g. the CPU supports 32-bit and 64-bit programs,
-      but we can't mix them in a single process. The string simply has
-      to be unique for each group (e.g. "32" and "64"). *)
-  type machine_group = private string
-
   val pp_impl : Format.formatter -> impl -> unit
 
   (** The list of candidates to fill a role. *)
@@ -104,7 +98,6 @@ module type SOLVER_INPUT = sig
   val restrictions : dependency -> restriction list
 
   val meets_restriction : impl -> restriction -> bool
-  val machine_group : impl -> machine_group option
 
   (** There can be only one implementation in each conflict class. *)
   type conflict_class = private string
@@ -134,7 +127,6 @@ module type SOLVER_INPUT = sig
       number and part of the hash. *)
   val pp_impl_long : Format.formatter -> impl -> unit
 
-  val format_machine : impl -> string
   val string_of_restriction : restriction -> string
   val describe_problem : impl -> rejection -> string
 

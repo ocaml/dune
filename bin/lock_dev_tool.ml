@@ -13,6 +13,31 @@ let is_enabled =
      | `Disabled -> false)
 ;;
 
+(* Returns a version constraint accepting (almost) all versions whose prefix is
+   the given version. This allows alternative distributions of packages to be
+   chosen, such as choosing "ocamlformat.0.26.2+binary" when .ocamlformat
+   contains "version=0.26.2". *)
+let relaxed_version_constraint_of_version version =
+  let open Dune_lang in
+  let min_version = Package_version.to_string version in
+  (* The goal here is to add a suffix to [min_version] to construct a version
+     number higher than than any version number likely to appear with
+     [min_version] as a prefix. "_" is the highest ascii symbol that can appear
+     in version numbers, excluding "~" which has a special meaning. It's
+     conceivable that one or two consecutive "_" characters may be used in a
+     version, so this appends "___" to [min_version].
+
+     Read more at: https://opam.ocaml.org/doc/Manual.html#Version-ordering
+  *)
+  let max_version = min_version ^ "___MAX_VERSION" in
+  Package_constraint.And
+    [ Package_constraint.Uop
+        (Relop.Gte, Package_constraint.Value.String_literal min_version)
+    ; Package_constraint.Uop
+        (Relop.Lte, Package_constraint.Value.String_literal max_version)
+    ]
+;;
+
 (* The solver satisfies dependencies for local packages, but dev tools
    are not local packages. As a workaround, create an empty local package
    which depends on the dev tool package. *)
@@ -24,10 +49,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
     let open Dune_lang in
     let open Package_dependency in
     let constraint_ =
-      Option.map dev_tool_version ~f:(fun version ->
-        Package_constraint.Uop
-          ( Relop.Eq
-          , Package_constraint.Value.String_literal (Package_version.to_string version) ))
+      Option.map dev_tool_version ~f:relaxed_version_constraint_of_version
     in
     { name = dev_tool_pkg_name; constraint_ }
   in

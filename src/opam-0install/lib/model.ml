@@ -19,8 +19,7 @@ struct
     | Virtual of < > * impl list (* (Object just for sorting) *)
 
   and real_impl =
-    { context : Context.t
-    ; pkg : OpamPackage.t
+    { pkg : OpamPackage.t
     ; opam : OpamFile.OPAM.t
     ; requires : dependency list
     }
@@ -231,7 +230,7 @@ struct
               make_deps `Essential ensure OpamFile.OPAM.depends
               @ make_deps `Restricts prevent OpamFile.OPAM.conflicts
             in
-            Some (RealImpl { context; pkg; opam; requires }))
+            Some (RealImpl { pkg; opam; requires }))
       in
       { impls; replacement = None }
   ;;

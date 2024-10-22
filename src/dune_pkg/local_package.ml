@@ -43,7 +43,7 @@ module Dependency_hash = struct
     match Dependency_formula.has_entries formula with
     | false -> None
     | true ->
-      let hashable = formula |> Dependency_formula.to_sexp |> Dune_sexp.to_string in
+      let hashable = formula |> Dependency_formula.to_dyn |> Dyn.to_string in
       Some (string hashable)
   ;;
 end

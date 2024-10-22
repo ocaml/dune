@@ -10,8 +10,8 @@ val to_filtered_formula : t -> OpamTypes.filtered_formula
 (** Convert from the OPAM data type to this *)
 val of_filtered_formula : OpamTypes.filtered_formula -> t
 
-(** Create an s-exp representation of the dependency formulat *)
-val to_sexp : t -> Dune_sexp.t
+(** Create a Dyn representation of the dependency formula *)
+val to_dyn : t -> Dyn.t
 
 (* Join two dependency formulas into one that represents a dependency on
    both LHS and RHS *)

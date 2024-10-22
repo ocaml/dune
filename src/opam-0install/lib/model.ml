@@ -97,31 +97,12 @@ struct
     Virtual (object end, impls)
   ;;
 
-  type command = |
-
-  (* We don't use 0install commands anywhere *)
-  type command_name = private string
-
-  let pp_command _ = function
-    | (_ : command) -> .
-  ;;
-
-  let command_requires _role = function
-    | (_ : command) -> .
-  ;;
-
-  let get_command _impl _command_name = None
-
   type dep_info =
     { dep_role : Role.t
     ; dep_importance : [ `Essential | `Recommended | `Restricts ]
-    ; dep_required_commands : command_name list
     }
 
-  type requirements =
-    { role : Role.t
-    ; command : command_name option
-    }
+  type requirements = { role : Role.t }
 
   let dummy_impl = Dummy
 
@@ -152,13 +133,13 @@ struct
   ;;
 
   let requires _ = function
-    | Dummy | Reject _ -> [], []
-    | VirtualImpl (_, deps) -> deps, []
-    | RealImpl impl -> impl.requires, []
+    | Dummy | Reject _ -> []
+    | VirtualImpl (_, deps) -> deps
+    | RealImpl impl -> impl.requires
   ;;
 
   let dep_info { drole; importance; restrictions = _ } =
-    { dep_role = drole; dep_importance = importance; dep_required_commands = [] }
+    { dep_role = drole; dep_importance = importance }
   ;;
 
   type role_information =

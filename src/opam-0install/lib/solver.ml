@@ -18,7 +18,7 @@ struct
         let impl = Input.virtual_impl ~context ~depends:pkgs () in
         Input.virtual_role [ impl ]
     in
-    { Input.role; command = None }
+    { Input.role }
   ;;
 
   module Solver = Zeroinstall_solver.Make (Monad) (Input)

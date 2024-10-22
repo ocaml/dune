@@ -110,13 +110,11 @@ struct
     type t =
       (* If the SAT variable is True then we selected this... *)
       | ImplElem of Model.impl
-      | CommandElem of Model.command
       | MachineGroup of string
       | Role of Model.Role.t
 
     let pp f = function
       | ImplElem impl -> Model.pp_impl f impl
-      | CommandElem command -> Model.pp_command f command
       | MachineGroup name -> Format.pp_print_string f name
       | Role role -> Model.Role.pp f role
     ;;
@@ -128,7 +126,7 @@ struct
     (* The next candidate to try *)
     | Undecided of S.lit
     (* The dependencies to check next *)
-    | Selected of (Model.dependency list * Model.command_name list)
+    | Selected of Model.dependency list
     | Unselected
 
   class type candidates = object
@@ -149,15 +147,6 @@ struct
     in
     object (_ : #candidates)
       method get_clause = clause
-
-      (** Get just those implementations that have a command with this name. *)
-      method get_commands name =
-        let match_command (impl_var, impl) =
-          match Model.get_command impl name with
-          | Some command -> Some (impl_var, command)
-          | None -> None
-        in
-        vars |> List.filter_map match_command
 
       (** Get all variables, except dummy_impl (if present) *)
       method get_real_vars =
@@ -201,45 +190,6 @@ struct
         partition (fun (var, impl) -> if test impl then Left var else Right var) vars
     end
 
-  (** Holds all the commands with a given name within an interface. *)
-  class command_candidates
-    role
-    (clause : S.at_most_one_clause option)
-    (vars : (S.lit * Model.command) list) =
-    object (_ : #candidates)
-      method get_clause = clause
-      method get_vars = List.map (fun (var, _command) -> var) vars
-
-      method get_state =
-        match clause with
-        | None -> Unselected (* There were never any candidates *)
-        | Some clause ->
-          (match S.get_selected clause with
-           | Some lit ->
-             (* We've already chosen which <command> to use. Follow dependencies. *)
-             let command =
-               match S.get_user_data_for_lit lit with
-               | SolverData.CommandElem command -> command
-               | _ -> assert false
-             in
-             Selected (Model.command_requires role command)
-           | None ->
-             (match S.get_best_undecided clause with
-              | Some lit -> Undecided lit
-              | None -> Unselected (* No remaining candidates, and none was chosen. *)))
-    end
-
-  module CommandRoleEntry = struct
-    type t = Model.command_name * Model.Role.t
-    type value = command_candidates
-
-    let compare ((an, ar) : t) ((bn, br) : t) =
-      match String.compare (an :> string) (bn :> string) with
-      | 0 -> Model.Role.compare ar br
-      | r -> r
-    ;;
-  end
-
   module RoleEntry = struct
     include Model.Role
 
@@ -247,7 +197,6 @@ struct
   end
 
   module ImplCache = Cache (Monad) (RoleEntry)
-  module CommandCache = Cache (Monad) (CommandRoleEntry)
   module RoleMap = ImplCache.M
 
   type diagnostics = S.lit
@@ -256,7 +205,6 @@ struct
 
   type selection =
     { impl : Model.impl (** The implementation chosen to fill the role *)
-    ; commands : Model.command_name list (** The commands required *)
     ; diagnostics : diagnostics (** Extra information useful for diagnostics *)
     }
 
@@ -365,50 +313,20 @@ struct
     ;;
   end
 
-  (** If this binding depends on a command (<executable-in-*>), add that to the problem.
-      @param user_var indicates when this binding is used
-      @param dep_iface the required interface this binding targets *)
-  let process_self_command sat lookup_command user_var dep_role name =
-    (* Note: we only call this for self-bindings, so we could be efficient by selecting the exact command here... *)
-    let+ candidates = lookup_command (name, dep_role) in
-    S.implies sat ~reason:"binding on command" user_var candidates#get_vars
-  ;;
-
   (* Process a dependency of [user_var]:
-     - find the candidate implementations/commands to satisfy it
+     - find the candidate implementations to satisfy it
      - take just those that satisfy any restrictions in the dependency
      - ensure that we don't pick an incompatbile version if we select [user_var]
      - ensure that we do pick a compatible version if we select [user_var] (for "essential" dependencies only) *)
-  let process_dep sat lookup_impl lookup_command user_var dep : unit Monad.t =
-    let { Model.dep_role; dep_importance; dep_required_commands } = Model.dep_info dep in
+  let process_dep sat lookup_impl user_var dep : unit Monad.t =
+    let { Model.dep_role; dep_importance } = Model.dep_info dep in
     let dep_restrictions = Model.restrictions dep in
     (* Restrictions on the candidates *)
     let meets_restrictions impl =
       List.for_all (Model.meets_restriction impl) dep_restrictions
     in
-    let* candidates = lookup_impl dep_role in
+    let+ candidates = lookup_impl dep_role in
     let pass, fail = candidates#partition meets_restrictions in
-    (* Dependencies on commands *)
-    let+ () =
-      dep_required_commands
-      |> Monad.List.iter (fun name ->
-        let+ candidates = lookup_command (name, dep_role) in
-        if dep_importance = `Essential
-        then S.implies sat ~reason:"dep on command" user_var candidates#get_vars
-        else (
-          (* An optional dependency is selected when any implementation of the target interface
-           * is selected. Force [dep_iface_selected] to be true in that case. We only need to test
-           * [pass] here, because we always avoid [fail] anyway. *)
-          let dep_iface_selected = S.add_variable sat (SolverData.Role dep_role) in
-          S.at_most_one sat (S.neg dep_iface_selected :: pass) |> ignore;
-          (* If user_var is selected, then either we don't select this interface, or we select
-           * a suitable command. *)
-          S.implies
-            sat
-            ~reason:"opt dep on command"
-            user_var
-            (S.neg dep_iface_selected :: candidates#get_vars)))
-    in
     if dep_importance = `Essential
     then
       S.implies
@@ -452,41 +370,11 @@ struct
     clause, impls
   ;;
 
-  (* Create a new CommandCache entry (called the first time we request this key). *)
-  let make_commands_clause sat lookup_impl process_self_commands process_deps key =
-    let command, role = key in
-    let+ impls = lookup_impl role in
-    let commands = impls#get_commands command in
-    let make_provides_command (_impl, elem) =
-      (* [var] will be true iff this <command> is selected. *)
-      let var = S.add_variable sat (SolverData.CommandElem elem) in
-      var, elem
-    in
-    let vars = List.map make_provides_command commands in
-    let command_clause =
-      if vars <> [] then Some (S.at_most_one sat @@ List.map fst vars) else None
-    in
-    let data = new command_candidates role command_clause vars in
-    ( data
-    , fun () ->
-        let depend_on_impl (command_var, command) (impl_var, _command) =
-          (* For each command, require that we select the corresponding implementation. *)
-          S.implies sat ~reason:"impl for command" command_var [ impl_var ];
-          let deps, self_commands = Model.command_requires role command in
-          (* Commands can depend on other commands in the same implementation *)
-          let* () = process_self_commands command_var role self_commands in
-          (* Process command-specific dependencies *)
-          process_deps command_var deps
-        in
-        Monad.List.iter2 depend_on_impl vars commands )
-  ;;
-
-  (** Starting from [root_req], explore all the feeds, commands and implementations we might need, adding
+  (** Starting from [root_req], explore all the feeds and implementations we might need, adding
       * all of them to [sat_problem]. *)
   let build_problem root_req sat ~dummy_impl =
-    (* For each (iface, command, source) we have a list of implementations (or commands). *)
+    (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
-    let command_cache = CommandCache.create () in
     let machine_groups = Machine_group.create sat in
     let conflict_classes = Conflict_classes.create sat in
     (* Handle <replaced-by> conflicts after building the problem. *)
@@ -499,37 +387,25 @@ struct
           |> Monad.List.iter (fun (impl_var, impl) ->
             Machine_group.process machine_groups impl_var impl;
             Conflict_classes.process conflict_classes impl_var impl;
-            let deps, self_commands = Model.requires role impl in
-            let* () = process_self_commands impl_var role self_commands in
+            let deps = Model.requires role impl in
             process_deps impl_var deps) )
-    and add_commands_to_cache key =
-      make_commands_clause sat lookup_impl process_self_commands process_deps key
     and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key
-    and lookup_command key = CommandCache.lookup command_cache add_commands_to_cache key
-    and process_self_commands user_var dep_role =
-      Monad.List.iter (process_self_command sat lookup_command user_var dep_role)
     and process_deps user_var : _ -> unit Monad.t =
-      Monad.List.iter (process_dep sat lookup_impl lookup_command user_var)
+      Monad.List.iter (process_dep sat lookup_impl user_var)
     in
     let+ () =
       (* This recursively builds the whole problem up. *)
-      (match root_req with
-       | { Model.role; command = None } ->
-         let+ impl = lookup_impl role in
-         impl#get_vars
-       | { Model.role; command = Some command } ->
-         let+ command = lookup_command (command, role) in
-         command#get_vars)
+      (let { Model.role } = root_req in
+       let+ impl = lookup_impl role in
+       impl#get_vars)
       >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
     in
-    (* All impl_candidates and command_candidates have now been added, so snapshot the cache. *)
-    let impl_clauses, command_clauses =
-      ImplCache.snapshot impl_cache, CommandCache.snapshot command_cache
-    in
+    (* All impl_candidates have now been added, so snapshot the cache. *)
+    let impl_clauses = ImplCache.snapshot impl_cache in
     add_replaced_by_conflicts sat impl_clauses !replacements;
     Machine_group.seal machine_groups;
     Conflict_classes.seal conflict_classes;
-    impl_clauses, command_clauses
+    impl_clauses
   ;;
 
   module Output = struct
@@ -538,25 +414,17 @@ struct
     module RoleMap = RoleMap
 
     type impl = selection
-    type command = Model.command
-    type command_name = Model.command_name
     type dependency = Model.dependency
 
     type dep_info = Model.dep_info =
       { dep_role : Role.t
       ; dep_importance : [ `Essential | `Recommended | `Restricts ]
-      ; dep_required_commands : command_name list
       }
 
-    type requirements = Model.requirements =
-      { role : Role.t
-      ; command : command_name option
-      }
+    type requirements = Model.requirements = { role : Role.t }
 
     let dep_info = Model.dep_info
     let requires role impl = Model.requires role impl.impl
-    let command_requires role cmd = Model.command_requires role cmd
-    let get_command impl name = Model.get_command impl.impl name
 
     type t =
       { root_req : requirements
@@ -578,7 +446,6 @@ struct
       | x -> x
     ;;
 
-    let selected_commands sel = sel.commands
     let unwrap sel = sel.impl
   end
 
@@ -592,18 +459,11 @@ struct
        1) we follow every dependency of every implementation (order not important)
        2) we follow every dependency of every selected implementation (better versions first)
        3) we follow every dependency of every selected implementation
-
-       In all cases, a dependency may be on an <implementation> or on a specific <command>.
     *)
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
-    let+ impl_clauses, command_clauses = build_problem root_req sat ~dummy_impl in
-    let lookup = function
-      | { Model.role; command = None } ->
-        (ImplCache.get_exn role impl_clauses :> candidates)
-      | { Model.role; command = Some command } ->
-        CommandCache.get_exn (command, role) command_clauses
-    in
+    let+ impl_clauses = build_problem root_req sat ~dummy_impl in
+    let lookup { Model.role } = (ImplCache.get_exn role impl_clauses :> candidates) in
     (* Run the solve *)
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -618,42 +478,20 @@ struct
           match candidates#get_state with
           | Unselected -> None
           | Undecided lit -> Some lit
-          | Selected (deps, self_commands) ->
+          | Selected deps ->
             (* We've already selected a candidate for this component. Now check its dependencies. *)
-            let check_self_command name =
-              find_undecided { req with Model.command = Some name }
+            let check_dep dep =
+              let { Model.dep_role; dep_importance } = Model.dep_info dep in
+              if dep_importance = `Restricts
+              then
+                (* Restrictions don't express that we do or don't want the
+                   dependency, so skip them here. If someone else needs this,
+                   we'll handle it when we get to them.
+                   If noone wants it, it will be set to unselected at the end. *)
+                None
+              else find_undecided { Model.role = dep_role }
             in
-            (match List.find_map check_self_command self_commands with
-             | Some _ as r -> r
-             | None ->
-               (* Self-commands already done; now try the dependencies *)
-               let check_dep dep =
-                 let { Model.dep_role; dep_importance; dep_required_commands } =
-                   Model.dep_info dep
-                 in
-                 if dep_importance = `Restricts
-                 then
-                   (* Restrictions don't express that we do or don't want the
-                      dependency, so skip them here. If someone else needs this,
-                      we'll handle it when we get to them.
-                      If noone wants it, it will be set to unselected at the end. *)
-                   None
-                 else (
-                   match find_undecided { Model.role = dep_role; command = None } with
-                   | Some lit -> Some lit
-                   | None ->
-                     (* Command dependencies next *)
-                     let check_command_dep name =
-                       find_undecided { Model.command = Some name; role = dep_role }
-                     in
-                     List.find_map check_command_dep dep_required_commands)
-               in
-               (match List.find_map check_dep deps with
-                | Some _ as r -> r
-                | None ->
-                  (* All dependencies checked; now to the impl (if we're a <command>) *)
-                  Option.bind req.Model.command (fun _command ->
-                    find_undecided { req with Model.command = None }))))
+            List.find_map check_dep deps)
       in
       find_undecided root_req
     in
@@ -661,22 +499,11 @@ struct
     | None -> None
     | Some _solution ->
       (* Build the results object *)
-
-      (* For each implementation, remember which commands we need. *)
-      let commands_needed = Hashtbl.create 10 in
-      command_clauses
-      |> CommandCache.M.iter (fun (command_name, role) candidates ->
-        candidates#get_clause
-        |> Option.iter (fun clause ->
-          if S.get_selected clause <> None
-          then Hashtbl.add commands_needed role command_name));
       let selections =
         impl_clauses
-        |> ImplCache.filter_map (fun role candidates ->
+        |> ImplCache.filter_map (fun _role candidates ->
           candidates#get_selected
-          |> Option.map (fun (lit, impl) ->
-            let commands = Hashtbl.find_all commands_needed role in
-            { impl; commands; diagnostics = lit }))
+          |> Option.map (fun (lit, impl) -> { impl; diagnostics = lit }))
       in
       Some { Output.root_req; selections }
   ;;

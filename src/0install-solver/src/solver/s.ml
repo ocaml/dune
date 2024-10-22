@@ -46,18 +46,7 @@ module type CORE_MODEL = sig
       a package). *)
   type impl
 
-  (** A [command] is an entry-point provided by an implementation.
-      Using a command may require extra dependencies (for example, a "test" command
-      might depend on a test runner). *)
-  type command
-
-  (** An identifier for a command within a role.
-      Note: It might not be necessary to use any commands - we could instead
-      treat the command name as an optional part of the role, and treat each
-      command as a separate impl instead. *)
-  type command_name = private string
-
-  (** A dependency indicates that an impl or command requires another role to be filled. *)
+  (** A dependency indicates that an impl requires another role to be filled. *)
   type dependency
 
   type dep_info =
@@ -67,15 +56,10 @@ module type CORE_MODEL = sig
          A [`Restricts] dependency does not cause the solver to try to fill a role, it just
          adds restrictions if it is used for some other reason. *)
       dep_importance : [ `Essential | `Recommended | `Restricts ]
-    ; (* Any commands on [dep_role] required by this dependency. *)
-      dep_required_commands : command_name list
     }
 
   (* The top-level requirements from the user. *)
-  type requirements =
-    { role : Role.t
-    ; command : command_name option
-    }
+  type requirements = { role : Role.t }
 
   (** Get an implementation's dependencies.
 
@@ -84,17 +68,10 @@ module type CORE_MODEL = sig
       dependency, even if that means selecting a worse version of a later one
       ([restricts_only] dependencies are ignored for this).
 
-      An implementation or command can also bind to itself.
-      e.g. "test" command that requires its own "run" command.
-      We also return all such required commands. *)
-  val requires : Role.t -> impl -> dependency list * command_name list
+      An implementation can also bind to itself. *)
+  val requires : Role.t -> impl -> dependency list
 
   val dep_info : dependency -> dep_info
-
-  (** As [requires], but for commands. *)
-  val command_requires : Role.t -> command -> dependency list * command_name list
-
-  val get_command : impl -> command_name -> command option
 end
 
 module type SOLVER_INPUT = sig
@@ -119,7 +96,6 @@ module type SOLVER_INPUT = sig
   type machine_group = private string
 
   val pp_impl : Format.formatter -> impl -> unit
-  val pp_command : Format.formatter -> command -> unit
 
   (** The list of candidates to fill a role. *)
   val implementations : Role.t -> role_information monad
@@ -177,7 +153,6 @@ module type SELECTIONS = sig
 
   val to_map : t -> impl RoleMap.t
   val get_selected : Role.t -> t -> impl option
-  val selected_commands : impl -> command_name list
   val requirements : t -> requirements
 end
 
@@ -191,9 +166,7 @@ module type SOLVER_RESULT = sig
   include
     SELECTIONS
     with module Role = Input.Role
-     and type command = Input.command
      and type dependency = Input.dependency
-     and type command_name = Input.command_name
      and type dep_info = Input.dep_info
      and type requirements = Input.requirements
 

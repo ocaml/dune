@@ -4,22 +4,25 @@
 
 (** A general purpose SAT solver. *)
 
-module type USER =
-  sig
-    type t
-    val pp : Format.formatter -> t -> unit
-  end
+module type USER = sig
+  type t
+
+  val pp : Format.formatter -> t -> unit
+end
 
 module Make (User : USER) : sig
   (** A SAT problem consists of a set of variables and a set of clauses which must be satisfied. *)
   type t
 
-  type var_value = True | False | Undecided
+  type var_value =
+    | True
+    | False
+    | Undecided
 
   (** A literal is either a variable (e.g. [A]) or a negated variable ([not A]). *)
   type lit
-  val neg : lit -> lit
 
+  val neg : lit -> lit
   val add_variable : t -> User.t -> lit
 
   (** A clause is a boolean expression made up of literals. e.g. [A and B and not(C)] *)
@@ -69,7 +72,9 @@ module Make (User : USER) : sig
 
   (** {2 Debugging} *)
 
-  type reason = Clause of clause | External of string
+  type reason =
+    | Clause of clause
+    | External of string
 
   val lit_value : lit -> var_value
   val get_user_data_for_lit : lit -> User.t

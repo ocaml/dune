@@ -18,10 +18,10 @@ module type Monad = sig
   end
 
   module O : sig
-    val (>>|) : 'a t -> ('a -> 'b) -> 'b t
-    val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
-    val (let+) : 'a t -> ('a -> 'b) -> 'b t
-    val (let*) : 'a t -> ('a -> 'b t) -> 'b t
+    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
+    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
   end
 end
 
@@ -37,6 +37,7 @@ module type CORE_MODEL = sig
         This could be the package name, although 0install also includes
         whether you want source code or a binary in the role. *)
     type t
+
     val pp : Format.formatter -> t -> unit
     val compare : t -> t -> int
   end
@@ -59,35 +60,33 @@ module type CORE_MODEL = sig
   (** A dependency indicates that an impl or command requires another role to be filled. *)
   type dependency
 
-  type dep_info = {
-    dep_role : Role.t;
-
-    (* If the dependency is [`Essential] then its role must be filled.
-       Otherwise, we just prefer to fill it if possible.
-       A [`Restricts] dependency does not cause the solver to try to fill a role, it just
-       adds restrictions if it is used for some other reason. *)
-    dep_importance : [ `Essential | `Recommended | `Restricts ];
-
-    (* Any commands on [dep_role] required by this dependency. *)
-    dep_required_commands : command_name list;
-  }
+  type dep_info =
+    { dep_role : Role.t
+    ; (* If the dependency is [`Essential] then its role must be filled.
+         Otherwise, we just prefer to fill it if possible.
+         A [`Restricts] dependency does not cause the solver to try to fill a role, it just
+         adds restrictions if it is used for some other reason. *)
+      dep_importance : [ `Essential | `Recommended | `Restricts ]
+    ; (* Any commands on [dep_role] required by this dependency. *)
+      dep_required_commands : command_name list
+    }
 
   (* The top-level requirements from the user. *)
-  type requirements = {
-    role : Role.t;
-    command : command_name option;
-  }
+  type requirements =
+    { role : Role.t
+    ; command : command_name option
+    }
 
   (** Get an implementation's dependencies.
-    
-     The dependencies should be ordered with the most important first.
-     The solver will prefer to select the best possible version of an earlier
-     dependency, even if that means selecting a worse version of a later one
-     ([restricts_only] dependencies are ignored for this).
-    
-     An implementation or command can also bind to itself.
-     e.g. "test" command that requires its own "run" command.
-     We also return all such required commands. *)
+
+      The dependencies should be ordered with the most important first.
+      The solver will prefer to select the best possible version of an earlier
+      dependency, even if that means selecting a worse version of a later one
+      ([restricts_only] dependencies are ignored for this).
+
+      An implementation or command can also bind to itself.
+      e.g. "test" command that requires its own "run" command.
+      We also return all such required commands. *)
   val requires : Role.t -> impl -> dependency list * command_name list
 
   val dep_info : dependency -> dep_info
@@ -99,16 +98,16 @@ module type CORE_MODEL = sig
 end
 
 module type SOLVER_INPUT = sig
-  type 'a monad
   (** This defines what the solver sees (hiding the raw XML, etc). *)
+  type 'a monad
 
   include CORE_MODEL
 
   (** Information provided to the solver about a role. *)
-  type role_information = {
-    replacement : Role.t option;  (** Another role that conflicts with this one. *)
-    impls : impl list;            (** Candidates to fill the role. *)
-  }
+  type role_information =
+    { replacement : Role.t option (** Another role that conflicts with this one. *)
+    ; impls : impl list (** Candidates to fill the role. *)
+    }
 
   (** A restriction limits which implementations can fill a role. *)
   type restriction
@@ -127,12 +126,13 @@ module type SOLVER_INPUT = sig
 
   (** Restrictions on how the role is filled *)
   val restrictions : dependency -> restriction list
-  val meets_restriction : impl -> restriction -> bool
 
+  val meets_restriction : impl -> restriction -> bool
   val machine_group : impl -> machine_group option
 
   (** There can be only one implementation in each conflict class. *)
   type conflict_class = private string
+
   val conflict_class : impl -> conflict_class list
 
   (** {2 The following are used for diagnostics only} *)
@@ -147,6 +147,7 @@ module type SOLVER_INPUT = sig
 
   (** Used to sort the results. *)
   val compare_version : impl -> impl -> int
+
   val pp_version : Format.formatter -> impl -> unit
 
   (** Get any user-specified restrictions affecting a role.
@@ -170,7 +171,6 @@ module type SELECTIONS = sig
   (** Some selections previously produced by a solver. *)
 
   include CORE_MODEL
-
   module RoleMap : Map.S with type key = Role.t
 
   type t
@@ -188,13 +188,14 @@ module type SOLVER_RESULT = sig
 
   module Input : SOLVER_INPUT
 
-  include SELECTIONS with
-    module Role = Input.Role and
-    type command = Input.command and
-    type dependency = Input.dependency and
-    type command_name = Input.command_name and
-    type dep_info = Input.dep_info and
-    type requirements = Input.requirements
+  include
+    SELECTIONS
+    with module Role = Input.Role
+     and type command = Input.command
+     and type dependency = Input.dependency
+     and type command_name = Input.command_name
+     and type dep_info = Input.dep_info
+     and type requirements = Input.requirements
 
   val unwrap : impl -> Input.impl
 

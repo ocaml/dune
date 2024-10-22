@@ -58,9 +58,6 @@ module type CORE_MODEL = sig
       dep_importance : [ `Essential | `Recommended | `Restricts ]
     }
 
-  (* The top-level requirements from the user. *)
-  type requirements = { role : Role.t }
-
   (** Get an implementation's dependencies.
 
       The dependencies should be ordered with the most important first.
@@ -145,7 +142,7 @@ module type SELECTIONS = sig
 
   val to_map : t -> impl RoleMap.t
   val get_selected : Role.t -> t -> impl option
-  val requirements : t -> requirements
+  val requirements : t -> Role.t
 end
 
 module type SOLVER_RESULT = sig
@@ -160,7 +157,6 @@ module type SOLVER_RESULT = sig
     with module Role = Input.Role
      and type dependency = Input.dependency
      and type dep_info = Input.dep_info
-     and type requirements = Input.requirements
 
   val unwrap : impl -> Input.impl
 

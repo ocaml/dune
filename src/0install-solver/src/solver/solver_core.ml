@@ -345,8 +345,7 @@ struct
     in
     let+ () =
       (* This recursively builds the whole problem up. *)
-      (let { Model.role } = root_req in
-       let+ impl = lookup_impl role in
+      (let+ impl = lookup_impl root_req in
        impl#get_vars)
       >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
     in
@@ -370,7 +369,7 @@ struct
       ; dep_importance : [ `Essential | `Recommended | `Restricts ]
       }
 
-    type requirements = Model.requirements = { role : Role.t }
+    type requirements = Role.t
 
     let dep_info = Model.dep_info
     let requires role impl = Model.requires role impl.impl
@@ -412,7 +411,7 @@ struct
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
     let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-    let lookup { Model.role } = (ImplCache.get_exn role impl_clauses :> candidates) in
+    let lookup role = (ImplCache.get_exn role impl_clauses :> candidates) in
     (* Run the solve *)
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -438,7 +437,7 @@ struct
                    we'll handle it when we get to them.
                    If noone wants it, it will be set to unselected at the end. *)
                 None
-              else find_undecided { Model.role = dep_role }
+              else find_undecided dep_role
             in
             List.find_map check_dep deps)
       in

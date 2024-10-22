@@ -132,13 +132,41 @@ let rec remove_packages v pkgs =
     Or (l, r)
 ;;
 
+let rec is_post_filter filter =
+  match (filter : OpamTypes.filter) with
+  | FBool _ -> false
+  | FString _ -> false
+  | FIdent (_, var, _) ->
+    (match OpamVariable.to_string var with
+     | "post" -> true
+     | _ -> false)
+  | FOp (l, _relop, r) -> is_post_filter l || is_post_filter r
+  | FAnd (l, r) | FOr (l, r) -> is_post_filter l || is_post_filter r
+  | FNot filter -> not (is_post_filter filter)
+  | FDefined filter -> is_post_filter filter
+  | FUndef filter -> not (is_post_filter filter)
+;;
+
+let is_post_foc filter_or_constraint =
+  match (filter_or_constraint : OpamTypes.filter OpamTypes.filter_or_constraint) with
+  | Filter filter -> is_post_filter filter
+  | Constraint _ -> false
+;;
+
+let is_post condition =
+  condition |> OpamFormula.formula_to_cnf |> List.exists ~f:(List.exists ~f:is_post_foc)
+;;
+
 let reachable_dependencies v =
   let rec loop v =
     match (v : OpamTypes.filtered_formula) with
     | Empty -> Package_name.Set.empty
-    | Atom (name, _condition) ->
-      let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
-      Package_name.Set.singleton name
+    | Atom (name, condition) ->
+      (match is_post condition with
+       | true -> Package_name.Set.empty
+       | false ->
+         let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
+         Package_name.Set.singleton name)
     | Block b -> loop b
     | And (l, r) | Or (l, r) ->
       let l = loop l in

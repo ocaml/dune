@@ -51,4 +51,4 @@ necessary during solving.
   > EOF
   $ dune pkg lock
   Solution for dune.lock:
-  - b.0.0.1
+  (no dependencies to lock)

@@ -110,12 +110,10 @@ struct
     type t =
       (* If the SAT variable is True then we selected this... *)
       | ImplElem of Model.impl
-      | MachineGroup of string
       | Role of Model.Role.t
 
     let pp f = function
       | ImplElem impl -> Model.pp_impl f impl
-      | MachineGroup name -> Format.pp_print_string f name
       | Role role -> Model.Role.pp f role
     ;;
   end
@@ -225,52 +223,6 @@ struct
           S.at_most_one sat (our_vars @ replacements) |> ignore))
   ;;
 
-  (** On multi-arch systems, we can select 32-bit or 64-bit implementations,
-      but not both in the same set of selections. *)
-  module Machine_group = struct
-    module Map = Map.Make (struct
-        type t = Model.machine_group
-
-        let compare = compare
-      end)
-
-    type t =
-      { sat : S.t
-      ; mutable groups : S.lit Map.t
-      }
-
-    let create sat = { sat; groups = Map.empty }
-
-    let var t name =
-      match Map.find_opt name t.groups with
-      | Some v -> v
-      | None ->
-        let v =
-          S.add_variable t.sat @@ SolverData.MachineGroup ("m." ^ (name :> string))
-        in
-        t.groups <- Map.add name v t.groups;
-        v
-    ;;
-
-    (* If [impl] requires a particular machine group, add a constraint to the problem. *)
-    let process t impl_var impl =
-      Model.machine_group impl
-      |> Option.iter (fun group ->
-        S.implies t.sat ~reason:"machine group" impl_var [ var t group ])
-    ;;
-
-    (* Call this at the end to add the final clause with all discovered groups.
-       [t] must not be used after this. *)
-    let seal t =
-      let xs = Map.bindings t.groups in
-      if List.length xs > 1
-      then
-        (* If we get to the end of the solve without deciding then nothing we selected cares about the
-           type of CPU. The solver will set them all to false at the end. *)
-        S.at_most_one t.sat (List.map snd xs) |> ignore
-    ;;
-  end
-
   module Conflict_classes = struct
     module Map = Map.Make (struct
         type t = Model.conflict_class
@@ -375,7 +327,6 @@ struct
   let build_problem root_req sat ~dummy_impl =
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
-    let machine_groups = Machine_group.create sat in
     let conflict_classes = Conflict_classes.create sat in
     (* Handle <replaced-by> conflicts after building the problem. *)
     let replacements = ref [] in
@@ -385,7 +336,6 @@ struct
       , fun () ->
           impls
           |> Monad.List.iter (fun (impl_var, impl) ->
-            Machine_group.process machine_groups impl_var impl;
             Conflict_classes.process conflict_classes impl_var impl;
             let deps = Model.requires role impl in
             process_deps impl_var deps) )
@@ -403,7 +353,6 @@ struct
     (* All impl_candidates have now been added, so snapshot the cache. *)
     let impl_clauses = ImplCache.snapshot impl_cache in
     add_replaced_by_conflicts sat impl_clauses !replacements;
-    Machine_group.seal machine_groups;
     Conflict_classes.seal conflict_classes;
     impl_clauses
   ;;

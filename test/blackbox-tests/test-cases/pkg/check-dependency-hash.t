@@ -52,7 +52,7 @@ Add a non-local dependency to the package:
   $ cat dune.lock/lock.dune
   (lang package 0.1)
   
-  (dependency_hash 69dfdf4e6a7c8489262f9d8b9958c9b3)
+  (dependency_hash f1e56bb42cde8af54da48a2326e4ee6b)
   
   (repositories
    (complete false)
@@ -72,9 +72,9 @@ Add a second dependency to the project:
   Error: Dependency hash in lockdir does not match the hash of non-local
   dependencies of this project. The lockdir expects the the non-local
   dependencies to hash to:
-  69dfdf4e6a7c8489262f9d8b9958c9b3
+  f1e56bb42cde8af54da48a2326e4ee6b
   ...but the non-local dependencies of this project hash to:
-  0cd7f9253f917ae8182c904fac99c3d9
+  042ac3b5e7278b59ead45a429cb5f41f
   Hint: Regenerate the lockdir by running 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
   - dune.lock
@@ -90,7 +90,7 @@ Remove all dependencies from the project:
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune.lock/lock.dune", line 3, characters 17-49:
   Error: This project has no non-local dependencies yet the lockfile contains a
-  dependency hash: 69dfdf4e6a7c8489262f9d8b9958c9b3
+  dependency hash: f1e56bb42cde8af54da48a2326e4ee6b
   Hint: Regenerate the lockdir by running 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
   - dune.lock

@@ -40,7 +40,7 @@ A single package with a single non-local dependency:
   >   foo))
   > EOF
   $ dune describe pkg dependency-hash | tee hash1.txt
-  9f76a6d656fe14d54ba74f864e736dc3
+  65f81963821a7d85d097492eb291c056
 
 Adding another dependency causes the hash to change:
   $ cat >dune-project <<EOF
@@ -52,16 +52,17 @@ Adding another dependency causes the hash to change:
   >   bar))
   > EOF
   $ dune describe pkg dependency-hash | tee hash2.txt
-  142f33129a06ccbebd65a0bad3d94857
+  9ff493c5828eb20423a750fcce2a398a
   $ diff hash1.txt hash2.txt
   1c1
-  < 9f76a6d656fe14d54ba74f864e736dc3
+  < 65f81963821a7d85d097492eb291c056
   ---
-  > 142f33129a06ccbebd65a0bad3d94857
+  > 9ff493c5828eb20423a750fcce2a398a
   [1]
 
 Adding a new local package which depends on one of the existing dependencies
-doesn't change the hash:
+changes the hash:
+
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > (package
@@ -75,8 +76,13 @@ doesn't change the hash:
   >   foo))
   > EOF
   $ dune describe pkg dependency-hash | tee hash3.txt
-  142f33129a06ccbebd65a0bad3d94857
+  0fa245ec7efc807bb09d1e3025703006
   $ diff hash2.txt hash3.txt
+  1c1
+  < 9ff493c5828eb20423a750fcce2a398a
+  ---
+  > 0fa245ec7efc807bb09d1e3025703006
+  [1]
 
 Adding a constraint to one of the dependencies causes the hash to change:
   $ cat >dune-project <<EOF
@@ -92,16 +98,17 @@ Adding a constraint to one of the dependencies causes the hash to change:
   >   (foo (and :with-test (> 0.1)))))
   > EOF
   $ dune describe pkg dependency-hash | tee hash4.txt
-  ecad1d0d60084711169be48b130c9c52
+  cef4eb066b1ebb65cd9c9a2ac5a50434
   $ diff hash3.txt hash4.txt
   1c1
-  < 142f33129a06ccbebd65a0bad3d94857
+  < 0fa245ec7efc807bb09d1e3025703006
   ---
-  > ecad1d0d60084711169be48b130c9c52
+  > cef4eb066b1ebb65cd9c9a2ac5a50434
   [1]
 
-Adding another local package with the same dependency and constraint doesn't
-change the hash:
+Adding another local package with the same dependency and constraint changes
+the hash:
+
   $ cat >dune-project <<EOF
   > (lang dune 3.11)
   > (package
@@ -119,5 +126,48 @@ change the hash:
   >   (foo (and :with-test (> 0.1)))))
   > EOF
   $ dune describe pkg dependency-hash | tee hash5.txt
-  ecad1d0d60084711169be48b130c9c52
+  221410e0ccae4048b10fae20508f4085
   $ diff hash4.txt hash5.txt
+  1c1
+  < cef4eb066b1ebb65cd9c9a2ac5a50434
+  ---
+  > 221410e0ccae4048b10fae20508f4085
+  [1]
+
+Make sure that the hash changes when the formula changes from a conjunction to
+a disjunction, thus changing the solution:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 3.11)
+  > EOF
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" "b" ]
+  > EOF
+  $ dune describe pkg dependency-hash | tee hash-a-b.txt
+  042ac3b5e7278b59ead45a429cb5f41f
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" | "b" ]
+  > EOF
+  $ dune describe pkg dependency-hash | tee hash-a-or-b.txt
+  f915a9b3c6c1aeb0fef5fd35e119221c
+  $ diff hash-a-and-b.txt hash-a-or-b.txt
+  diff: hash-a-and-b.txt: No such file or directory
+  [2]
+
+The formula also changes if the dependencies being picked end up being the same
+("a" and "b") but the formula changed by including another dependency:
+
+  $ cat > local.opam <<EOF
+  > opam-version: "2.0"
+  > depends: [ "a" & ("b" | "c") ]
+  > EOF
+  $ dune describe pkg dependency-hash | tee hash-a-b-or-c.txt
+  36f1aeb9d1a55dee71685c4d783cbde9
+  $ diff hash-a-b.txt hash-a-b-or-c.txt
+  1c1
+  < 042ac3b5e7278b59ead45a429cb5f41f
+  ---
+  > 36f1aeb9d1a55dee71685c4d783cbde9
+  [1]

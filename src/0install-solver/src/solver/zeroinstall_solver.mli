@@ -16,7 +16,6 @@ module Make
       @param closest_match
         adds a lowest-ranked (but valid) implementation ([Input.dummy_impl]) to
         every interface, so we can always select something. Useful for diagnostics.
-        You should ensure that [Input.get_command] always returns a dummy command for dummy_impl too.
         Note: always try without [closest_match] first, or it may miss a valid solution.
       @return None if the solve fails (only happens if [closest_match] is false). *)
   val do_solve : closest_match:bool -> Input.requirements -> Output.t option Monad.t
@@ -33,7 +32,6 @@ module Diagnostics
       | ReplacesConflict of Result.Role.t
       | ReplacedByConflict of Result.Role.t
       | Restricts of Result.Role.t * Result.Input.impl * Result.Input.restriction list
-      | RequiresCommand of Result.Role.t * Result.Input.impl * Result.Input.command_name
       | Feed_problem of string
 
     val pp : Format.formatter -> t -> unit
@@ -59,8 +57,6 @@ module Diagnostics
         (** A selected impl has the same conflict class. *)
       | `ConflictsRole of Result.Role.t
         (** A selected role conflicts with this (e.g. replaced-by). *)
-      | `MissingCommand of Result.Input.command_name
-        (** Doesn't have a command we need. *)
       | `DiagnosticsFailure of string
         (** Unknown failure reason (gives raw error from SAT solver). *)
       ]

@@ -1937,8 +1937,14 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
-let gen_rules context_name (pkg : Pkg.t) =
+let gen_package_alias_rules ~dir source_deps =
+  let alias = Alias.make Alias0.pkg_deps ~dir in
+  Action_builder.deps source_deps |> Rules.Produce.Alias.add_deps alias
+;;
+
+let gen_rules ~dir context_name (pkg : Pkg.t) =
   let* source_deps, copy_rules = source_rules pkg in
+  let* () = gen_package_alias_rules ~dir source_deps in
   let* () = copy_rules
   and* build_rule = build_rule context_name pkg ~source_deps in
   rule ~loc:Loc.none (* TODO *) build_rule
@@ -1980,7 +1986,7 @@ let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
   in
   let context_name = Package_universe.context_name package_universe in
-  let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
+  let rules = Rules.collect_unit (fun () -> gen_rules ~dir context_name pkg) in
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 

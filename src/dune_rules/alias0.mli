@@ -14,6 +14,7 @@ val check : Name.t
 val ocaml_index : Name.t
 val install : Name.t
 val runtest : Name.t
+val pkg_deps : Name.t
 val all : Name.t
 val is_standard : Name.t -> bool
 val register_as_standard : Name.t -> unit

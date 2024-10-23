@@ -58,7 +58,7 @@ module Make(Monad : S.Monad)(Context : S.CONTEXT with type 'a monad = 'a Monad.t
             else `Right component)
     in
     let pp_item f c = Fmt.pf f "- @[%a@]" (Diagnostics.Component.pp ~verbose) c in
-    let pp_unknown f (role, _) = Fmt.pf f "- @[%a@]" Solver.Output.Role.pp role in
+    let pp_unknown f (role, _) = Fmt.pf f "@[%a@]" Solver.Output.Role.pp role in
     let pp_normals f short long =
       Fmt.pf
         f
@@ -73,7 +73,7 @@ module Make(Monad : S.Monad)(Context : S.CONTEXT with type 'a monad = 'a Monad.t
     else
       Fmt.pf
         f
-        "The following packages couldn't be found: @[<hov>%a@]"
+        "The following packages couldn't be found: @[<h>%a@]"
         Fmt.(list ~sep:sp pp_unknown)
         unknowns
 

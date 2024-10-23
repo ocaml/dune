@@ -37,6 +37,6 @@ A few packages here so the errors could get large.
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Can't find all required versions.
-  The following packages couldn't be found: - foobar
+  The following packages couldn't be found: foobar
   [1]
 We only report about non-existent packages.

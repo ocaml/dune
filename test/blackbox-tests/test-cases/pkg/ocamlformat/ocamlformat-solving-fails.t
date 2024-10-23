@@ -17,7 +17,5 @@ Format, it shows the solving error.
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dev-tools.locks/ocamlformat:
   Can't find all required versions.
-  Selected: ocamlformat_dev_tool_wrapper.dev
-  - ocamlformat -> (problem)
-      No known implementations at all
+  The following packages couldn't be found: ocamlformat
   [1]

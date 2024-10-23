@@ -27,6 +27,7 @@ module Workspace_local : sig
     -> rule_digest:Digest.t
     -> dynamic_deps_stages:(Dep.Set.t * Digest.t) list
     -> targets_digest:Digest.t
+    -> needed_deps:Dep.Set.t * Digest.t
     -> unit
 end
 

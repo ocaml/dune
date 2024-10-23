@@ -68,7 +68,7 @@ module Make(Monad : S.Monad)(Context : S.CONTEXT with type 'a monad = 'a Monad.t
         (Fmt.(list ~sep:cut) pp_item)
         long
     in
-    if List.is_empty unknowns
+    if unknowns = []
     then pp_normals f short long
     else
       Fmt.pf

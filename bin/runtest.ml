@@ -5,11 +5,28 @@ let info =
   let doc = "Run tests." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|This is a short-hand for calling:|}
-    ; `Pre {|  dune build @runtest|}
+    ; `P "Run the given tests. The [TEST] argument can be either:"
+    ; `I
+        ( "-"
+        , "A directory: If a directory is provided, dune will recursively run all tests \
+           within that directory." )
+    ; `I
+        ( "-"
+        , "A file name: If a specific file name is provided, dune will run the tests \
+           with that name. The file name can be specified with or without its extension \
+           or its directory structure. This only applies to cram tests and not other \
+           kinds of tests. Other tests can be supported by adding an alias and asking \
+           for that instead." )
+    ; `P
+        "If no [TEST] is provided, dune will run all tests in the current directory and \
+         its subdirectories."
+    ; `P "See EXAMPLES below for additional information on use cases."
     ; `Blocks Common.help_secs
     ; Common.examples
-        [ ( "Run all tests in the current source tree (including those that passed on \
+        [ "Run all tests in a given directory", "dune runtest DIR"
+        ; "Run a specific cram test", "dune runtest mytest.t"
+        ; "Run a specific alias (note the missing @ syntax):", "dune runtest myalias"
+        ; ( "Run all tests in the current source tree (including those that passed on \
              the last run)"
           , "dune runtest --force" )
         ; ( "Run tests sequentially without output buffering"
@@ -21,9 +38,9 @@ let info =
 ;;
 
 let term =
-  let name_ = Arg.info [] ~docv:"DIR" in
+  let name = Arg.info [] ~docv:"TEST" in
   let+ builder = Common.Builder.term
-  and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
+  and+ dirs = Arg.(value & pos_all string [ "." ] name) in
   let common, config = Common.init builder in
   let request (setup : Import.Main.build_system) =
     Action_builder.all_unit

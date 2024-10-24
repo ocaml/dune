@@ -129,7 +129,8 @@ Dune can build *files* and *aliases*. These can be found on the command line:
 - ``dune build tool.exe @example`` will build both the file ``tool.exe`` and
   the ``example`` alias.
 - ``dune runtest`` is a shortcut for ``dune build @runtest``: it will build the
-  ``runtest`` alias.
+  ``runtest`` alias. Passing a directory will build all tests in that directory.
+  Passing the path to a cram test will run that test individually.
 - ``dune build`` is a shortcut for ``dune build @@default``: it will build the
   default alias in the current directory (by default the ``all`` alias).
 

@@ -13,36 +13,68 @@ Here we test the features of the `dune runtest` command.
   >   $ echo "Hello, world!"
   > "Goodbye, world!"
   > EOF
+  $ cat > tests/filetest.t <<EOF
+  >   $ echo "Hello, world!"
+  > "Goodbye, world!"
+  > EOF
 
 Passing no arguments to `dune runtest` should be equivalent to `dune build
 @runtest`.
 
   $ dune test 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
+  File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
 
 Passing the name of a test should only run that test.
-Currently, this is not the case.
 
-  $ dune test mytest
-  Error: Don't know about directory mytest specified on the command line!
+  $ dune test mytest.t 2>&1 | grep "^File"
+  File "mytest.t", line 1, characters 0-0:
+  $ dune test tests/myothertest.t 2>&1 | grep "^File"
   [1]
-  $ dune test mytest.t
-  Error: Don't know about directory mytest.t specified on the command line!
-  [1]
-  $ dune test tests/myothertest
-  Error: Don't know about directory tests/myothertest specified on the command
-  line!
-  [1]
-  $ dune test tests/myothertest.t
 
 Passing a directory should run all the tests in that directory (recursively).
 
-The current working directory:
+- The current working directory:
   $ dune test . 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
+  File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
 
-The tests/ subdirectory:
+- The tests/ subdirectory:
   $ dune test tests/ 2>&1 | grep "^File"
+  File "tests/filetest.t", line 1, characters 0-0:
   File "tests/myothertest.t/run.t", line 1, characters 0-0:
+
+- We can also build in _build/ directories:
+  $ dune test _build/default 2>&1 | grep "^File"
+  File "mytest.t", line 1, characters 0-0:
+  File "tests/filetest.t", line 1, characters 0-0:
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  $ dune test _build/default/tests 2>&1 | grep "^File"
+  File "tests/filetest.t", line 1, characters 0-0:
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+
+Here we test some error cases a user may encounter and make sure the error
+messages are informative enough.
+
+- Giving a path outside the workspace gives an informative error:
+  $ dune test ..
+  Error: path outside the workspace: .. from .
+  [1]
+- Giving a nonexistent path gives an informative error:
+  $ dune test nonexistent
+  Error: "nonexistent" was not found.
+  [1]
+  $ dune test tests/non
+  Error: "tests/non" was not found.
+  [1]
+- Passing the _build directory on its own is an error.
+  $ dune test _build
+  Error: This path is internal to dune: _build
+  [1]
+- Typos are caught and aided with hints:
+  $ dune test mytest1.t
+  Error: "mytest1.t" was not found.
+  Hint: did you mean mytest.t?
+  [1]

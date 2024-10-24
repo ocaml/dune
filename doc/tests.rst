@@ -63,16 +63,12 @@ exec`` to run the test executable (for the sake of this example,
 
   $ dune exec project/tests/myTest.exe
 
-To run :ref:`cram-tests`, you can use the alias that is created for the test.
-The name of the alias corresponds to the name of the test without the ``.t``
-extension. For directory tests, this is the name of the directory without the
-``.t`` extension. Assuming a ``cram-test.t`` or ``cram-test.t/run.t`` file
-exists, it can be run with:
+To run :ref:`cram-tests` you can pass their paths to the ``dune test``  command.
 
 .. code:: console
+   $ dune test tests/myCramTest.t
 
-   $ dune build @cram-test
-
+This works both for directory and file cram tests.
 
 Running Tests in a Directory
 ----------------------------

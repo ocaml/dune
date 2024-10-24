@@ -29,12 +29,29 @@ let term =
     Action_builder.all_unit
       (List.map dirs ~f:(fun dir ->
          let dir = Path.(relative root) (Common.prefix_target common dir) in
-         Alias.in_dir
-           ~name:Dune_rules.Alias.runtest
-           ~recursive:true
-           ~contexts:setup.contexts
-           dir
-         |> Alias.request))
+         Alias.request
+         @@
+         let base_dir, ext = Path.split_extension dir in
+         let alias_kind =
+           match ext, Path.is_directory dir with
+           | ".t", true -> `Test (Path.to_string base_dir)
+           | ".t", false -> `Test (Path.basename base_dir)
+           | _, false -> `Test (Path.to_string dir)
+           | _, true -> `Runtest
+         in
+         match alias_kind with
+         | `Test alias_name ->
+           Alias.of_string
+             (Common.root common)
+             ~recursive:true
+             ~contexts:setup.contexts
+             alias_name
+         | `Runtest ->
+           Alias.in_dir
+             ~name:Dune_rules.Alias.runtest
+             ~recursive:true
+             ~contexts:setup.contexts
+             dir))
   in
   Build_cmd.run_build_command ~common ~config ~request
 ;;

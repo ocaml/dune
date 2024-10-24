@@ -5,8 +5,6 @@ val run_build_system
   -> request:(Dune_rules.Main.build_system -> unit Action_builder.t)
   -> (unit, [ `Already_reported ]) result Fiber.t
 
-val runtest : unit Cmd.t
-val runtest_term : unit Term.t
 val build : unit Cmd.t
 val fmt : unit Cmd.t
 

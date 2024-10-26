@@ -2,31 +2,30 @@ open Import
 
 let all : _ Cmdliner.Cmd.t list =
   let terms =
-    [ Installed_libraries.command
-    ; External_lib_deps.command
-    ; Build_cmd.build
-    ; Build_cmd.runtest
-    ; Build_cmd.fmt
-    ; command_alias Build_cmd.runtest Build_cmd.runtest_term "test"
-    ; Clean.command
-    ; Install_uninstall.install
-    ; Install_uninstall.uninstall
-    ; Exec.command
-    ; Subst.command
-    ; Print_rules.command
-    ; Utop.command
-    ; Promotion.promote
-    ; command_alias Printenv.command Printenv.term "printenv"
-    ; Help.command
-    ; Format_dune_file.command
-    ; Upgrade.command
-    ; Cache.command
-    ; Top.command
-    ; Ocaml_merlin.command
-    ; Shutdown.command
-    ; Diagnostics.command
-    ; Monitor.command
-    ]
+    Runtest.commands
+    @ [ Installed_libraries.command
+      ; External_lib_deps.command
+      ; Build_cmd.build
+      ; Build_cmd.fmt
+      ; Clean.command
+      ; Install_uninstall.install
+      ; Install_uninstall.uninstall
+      ; Exec.command
+      ; Subst.command
+      ; Print_rules.command
+      ; Utop.command
+      ; Promotion.promote
+      ; command_alias Printenv.command Printenv.term "printenv"
+      ; Help.command
+      ; Format_dune_file.command
+      ; Upgrade.command
+      ; Cache.command
+      ; Top.command
+      ; Ocaml_merlin.command
+      ; Shutdown.command
+      ; Diagnostics.command
+      ; Monitor.command
+      ]
   in
   let groups =
     [ Ocaml_cmd.group

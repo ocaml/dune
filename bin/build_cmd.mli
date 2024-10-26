@@ -6,7 +6,6 @@ val run_build_system
   -> (unit, [ `Already_reported ]) result Fiber.t
 
 val build : unit Cmd.t
-val fmt : unit Cmd.t
 
 val run_build_command
   :  common:Common.t

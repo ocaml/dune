@@ -6,7 +6,7 @@ let all : _ Cmdliner.Cmd.t list =
     @ [ Installed_libraries.command
       ; External_lib_deps.command
       ; Build_cmd.build
-      ; Build_cmd.fmt
+      ; Fmt.command
       ; Clean.command
       ; Install_uninstall.install
       ; Install_uninstall.uninstall

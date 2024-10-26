@@ -1,7 +1,7 @@
 Demonstrate $ dune subst without a git repository
 
   $ cat > dune-project << EOF
-  > (lang dune 3.16)
+  > (lang dune 3.17)
   > (name test)
   > EOF
 
@@ -10,4 +10,4 @@ Demonstrate $ dune subst without a git repository
   $ dune subst
 
   $ cat README.md
-  %%NAME%%
+  test

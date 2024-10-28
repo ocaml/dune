@@ -18,7 +18,7 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Disabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
+  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
 ;;
 
 let toggles = ref default_toggles
@@ -89,8 +89,7 @@ let () =
     ; ( "--toolchains"
       , toggle "toolchains"
       , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
-         user-wide directory.\n\
-        \      This flag is experimental and shouldn't be relied on by packagers." )
+         user-wide directory." )
     ; ( "--pkg-build-progress"
       , toggle "pkg_build_progress"
       , " Enable the displaying of package build progress.\n\

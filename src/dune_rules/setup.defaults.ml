@@ -11,6 +11,6 @@ let roots : string option Install.Roots.t =
   ; libexec_root = None
   }
 
-let toolchains = `Disabled
+let toolchains = `Enabled
 let pkg_build_progress = `Disabled
 let lock_dev_tool = `Disabled

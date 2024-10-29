@@ -51,9 +51,9 @@ let find_cram_test path ~parent_dir =
     Path.Source.equal path src)
 ;;
 
-(** [disambiguate_test_name path] is a memoized function that takes in a
-    directory [path] and classifies it as either a cram test or a directory to
-    run tests in. *)
+(* [disambiguate_test_name path] is a function that takes in a
+   directory [path] and classifies it as either a cram test or a directory to
+   run tests in. *)
 let disambiguate_test_name path =
   match Path.Source.parent path with
   | None -> Memo.return @@ `Runtest (Path.source Path.Source.root)

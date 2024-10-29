@@ -63,7 +63,7 @@ let disambiguate_test_name path =
     >>= (function
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
-       Memo.return (`Test (Dune_rules.Cram_test.name test))
+       Memo.return (`Test (parent_dir, Dune_rules.Cram_test.name test))
      | None ->
        (* If we don't find it, then we assume the user intended a directory for
           @runtest to be used. *)
@@ -92,10 +92,9 @@ let runtest_term =
   let common, config = Common.init builder in
   let request (setup : Import.Main.build_system) =
     List.map dirs ~f:(fun dir ->
+      let dir = Path.(relative root) (Common.prefix_target common dir) in
       let open Action_builder.O in
       let* alias_kind =
-        (* We always interpret the arguments as paths *)
-        let dir = Path.of_string dir in
         match Path.as_in_source_tree dir with
         | Some path -> Action_builder.of_memo (disambiguate_test_name path)
         | None ->
@@ -106,12 +105,12 @@ let runtest_term =
       Alias.request
       @@
       match alias_kind with
-      | `Test alias_name ->
-        Alias.of_string
-          (Common.root common)
+      | `Test (dir, alias_name) ->
+        Alias.in_dir
+          ~name:(Dune_engine.Alias.Name.of_string alias_name)
           ~recursive:false
           ~contexts:setup.contexts
-          alias_name
+          (Path.source dir)
       | `Runtest dir ->
         Alias.in_dir
           ~name:Dune_rules.Alias.runtest

@@ -18,8 +18,31 @@ Here we test the features of the `dune runtest` command.
   > "Goodbye, world!"
   > EOF
 
-Passing no arguments to `dune runtest` should be equivalent to `dune build
-@runtest`.
+
+This should work:
+
+  $ dune test tests/myothertest.t
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  Error: Files _build/default/tests/myothertest.t/run.t and
+  _build/default/tests/myothertest.t/run.t.corrected differ.
+  [1]
+
+This should not work
+
+  $ dune test myotherttest.t
+  Error: "myotherttest.t" was not found.
+  [1]
+
+Should this work? Debatable but giving a hint if it doesn't would be good.
+
+  $ dune test tests/myothertest.t/run.t
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
+  Error: Files _build/default/tests/myothertest.t/run.t and
+  _build/default/tests/myothertest.t/run.t.corrected differ.
+  [1]
+
+Passing no arguments to $ dune runtest should be equivalent to $ dune build
+@runtest.
 
   $ dune test 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
@@ -31,7 +54,7 @@ Passing the name of a test should only run that test.
   $ dune test mytest.t 2>&1 | grep "^File"
   File "mytest.t", line 1, characters 0-0:
   $ dune test tests/myothertest.t 2>&1 | grep "^File"
-  [1]
+  File "tests/myothertest.t/run.t", line 1, characters 0-0:
 
 Passing a directory should run all the tests in that directory (recursively).
 
@@ -60,7 +83,7 @@ messages are informative enough.
 
 - Giving a path outside the workspace gives an informative error:
   $ dune test ..
-  Error: path outside the workspace: .. from .
+  Error: @@ on the command line must be followed by a relative path
   [1]
 - Giving a nonexistent path gives an informative error:
   $ dune test nonexistent

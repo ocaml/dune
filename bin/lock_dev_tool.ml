@@ -2,13 +2,9 @@ open Dune_config
 open Import
 module Lock_dir = Dune_pkg.Lock_dir
 
-let enabled =
-  Config.make_toggle ~name:"lock_dev_tool" ~default:Dune_rules.Setup.lock_dev_tool
-;;
-
 let is_enabled =
   lazy
-    (match Config.get enabled with
+    (match Config.get Dune_rules.Compile_time.lock_dev_tools with
      | `Enabled -> true
      | `Disabled -> false)
 ;;

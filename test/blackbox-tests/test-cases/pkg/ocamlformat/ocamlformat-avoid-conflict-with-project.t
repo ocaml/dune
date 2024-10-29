@@ -27,9 +27,18 @@ Add a fake executable in the PATH
   $ which ocamlformat
   $TESTCASE_ROOT/.bin/ocamlformat
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
+The ocamlformat dev tool requires the project to be locked:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - ocaml.0.0.1
+
 Build the OCamlFormat binary dev-tool
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   File "dune", line 1, characters 0-0:
   Error: Files _build/default/dune and _build/default/.formatted/dune differ.

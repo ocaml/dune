@@ -22,10 +22,19 @@ We consider this version of OCamlFormat as the latest version:
 Make dune-project that uses the mocked dev-tool opam-reposiotry.
   $ make_project_with_dev_tool_lockdir
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
+The ocamlformat dev tool requires the project to be locked:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - ocaml.0.0.1
+
 Without a ".ocamlformat" file, "dune fmt" takes the latest version of
 OCamlFormat.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.3
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -47,6 +56,7 @@ With a ".ocamlformat" file, "dune fmt" takes the version mentioned inside ".ocam
 file.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -68,6 +78,7 @@ When "dev-tools.locks" is removed, the solving/lock is renewed
   $ rm -r dev-tools.locks/ocamlformat
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

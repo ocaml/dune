@@ -59,9 +59,18 @@ Make the ocamlformat opam package which uses a patch:
 Make a project that uses the fake ocamlformat:
   $ make_project_with_dev_tool_lockdir
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
+The ocamlformat dev tool requires the project to be locked:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - ocaml.0.0.1
+
 First run of 'dune fmt' is supposed to format the fail.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml

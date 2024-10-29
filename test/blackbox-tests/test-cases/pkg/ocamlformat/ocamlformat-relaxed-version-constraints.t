@@ -25,10 +25,19 @@ Initial file:
   $ cat foo.ml
   let () = print_endline "Hello, world"
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
+The ocamlformat dev tool requires the project to be locked:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - ocaml.0.0.1
+
 This should choose the 0.24+foo version:
   $ echo "version=0.24" > .ocamlformat
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.24+foo
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -44,6 +53,7 @@ This should choose the 0.24+bar version:
   $ rm -rf dev-tools.locks
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.25+bar
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
@@ -62,7 +72,7 @@ This should fail as there is no version matching 0.24.1:
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dev-tools.locks/ocamlformat:
   Couldn't solve the package dependency formula.
-  Selected candidates: ocamlformat_dev_tool_wrapper.dev
+  Selected candidates: ocaml.0.0.1 ocamlformat_dev_tool_wrapper.dev
   - ocamlformat -> (problem)
       ocamlformat_dev_tool_wrapper dev requires
         >= 0.24.1 & <= 0.24.1___MAX_VERSION

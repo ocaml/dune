@@ -80,11 +80,17 @@ EOF
   fi
 }
 
+make_ocaml_opam_pkg() {
+  mkpkg ocaml <<EOF
+EOF
+}
+
 make_project_with_dev_tool_lockdir() {
   cat > dune-project <<EOF
 (lang dune 3.13)
 (package
- (name foo))
+ (name foo)
+ (depends ocaml))
 EOF
   cat > foo.ml <<EOF
 let () = print_endline "Hello, world"

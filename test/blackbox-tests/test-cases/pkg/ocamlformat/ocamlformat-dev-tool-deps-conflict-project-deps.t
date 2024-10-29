@@ -66,7 +66,9 @@ Update the project to depends on printer.2.0:
   > (lang dune 3.13)
   > (package
   >  (name foo)
-  >  (depends (printer (= 2.0))))
+  >  (depends
+  >   (printer (= 2.0))
+  >   ocaml))
   > EOF
   $ cat > foo.ml <<EOF
   > let () = Printer.print ()
@@ -82,9 +84,13 @@ Add ".ocamlformat" file.
   > version = 0.26.2
   > EOF
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
 Lock the to trigger package management
   $ dune pkg lock
   Solution for dune.lock:
+  - ocaml.0.0.1
   - printer.2.0
 
 It shows that the project uses printer.2.0
@@ -95,6 +101,7 @@ Format foo.ml, "dune fmt" uses printer.1.0 instead. There is no conflict with di
 versions of the same dependency.
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt --preview
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   - printer.1.0
   File "foo.ml", line 1, characters 0-0:

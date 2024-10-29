@@ -43,7 +43,15 @@ let exe_path_components_within_package t =
 ;;
 
 let needs_to_build_with_same_compiler_as_project = function
-  | Ocamlformat -> false
+  | Ocamlformat ->
+    (* XXX Technically ocamlformat doesn't need to build with the same
+       compiler as the project, however without a lockdir, `dune fmt` will
+       attempt to run `ocamlc -compile` to get system info, and `ocamlc`
+       might not be in PATH. Forcing the user to lock their project before
+       running commands involving ocamlformat is a workaround for this
+       problem until it can be solved in a better way. See this issue for
+       more information: https://github.com/ocaml/dune/issues/11038 *)
+    true
   | Odoc -> true
   | Ocamllsp -> true
 ;;

@@ -61,12 +61,12 @@ let disambiguate_test_name path =
     let open Memo.O in
     find_cram_test path ~parent_dir
     >>= (function
-     (* If we find the cram test, then we request that is run. *)
      | Some test ->
+       (* If we find the cram test, then we request that is run. *)
        Memo.return (`Test (Dune_rules.Cram_test.name test))
+     | None ->
        (* If we don't find it, then we assume the user intended a directory for
           @runtest to be used. *)
-     | None ->
        Source_tree.find_dir path
        >>= (function
         (* We need to make sure that this directory or file exists. *)

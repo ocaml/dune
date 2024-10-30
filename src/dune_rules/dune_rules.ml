@@ -72,6 +72,7 @@ module Stanzas = Stanzas
 module Lock_dir = Lock_dir
 module Pkg_dev_tool = Pkg_dev_tool
 module Pkg_build_progress = Pkg_build_progress
+module Compile_time = Compile_time
 
 module Install_rules = struct
   let install_file = Install_rules.install_file

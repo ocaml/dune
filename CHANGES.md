@@ -1,7 +1,7 @@
 3.16.1 (2024-10-30)
 -------------------
 
-## Fixed
+### Fixed
 
 - Call the C++ compiler with `-std=c++11` when using OCaml >= 5.0
   (#10962, @kit-ty-kate)

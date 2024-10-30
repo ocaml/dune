@@ -189,7 +189,7 @@ understood by dune language."))
   base-unix
   (dyn (= :version))
   (ordering (= :version))
-  (pp (>= 1.2.0))
+  (pp (and (>= 1.2.0) (< 2.0)))
   (csexp (>= 1.5.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

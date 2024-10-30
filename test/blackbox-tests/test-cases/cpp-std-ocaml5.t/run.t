@@ -15,5 +15,5 @@
   >   (flags -std=c++98 :standard)))
   > EOF
 
-  $ dune exec ./cpp11.exe 2>/dev/null 
+  $ dune exec ./cpp11.exe
   Hi from C++11

@@ -1,7 +1,7 @@
-#include <caml/misc.h>
-#include <caml/mlvalues.h>
 #include <iostream>
 #include <cstring>
+#include <caml/misc.h>
+#include <caml/mlvalues.h>
 
 // strdup is not part of the C standard library but is part of POSIX.
 // By default GCC and Clang both use the GNU variant of the C standard,

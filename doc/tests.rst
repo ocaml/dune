@@ -66,6 +66,7 @@ exec`` to run the test executable (for the sake of this example,
 To run :ref:`cram-tests` you can pass their paths to the ``dune test``  command.
 
 .. code:: console
+
    $ dune test tests/myCramTest.t
 
 This works both for directory and file cram tests.

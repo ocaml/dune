@@ -179,10 +179,13 @@ Every Cram test has a name. For file tests, the name of ``something.t`` is
 
 There are several ways to execute Cram tests:
 
+- Running ``dune runtest something.t`` will run the cram test with filename
+  ``something.t``.
 - All Cram tests are attached to the :doc:`/reference/aliases/runtest` alias.
   So ``dune runtest`` will run all Cram tests.
 - Every Cram test creates an alias after its name. So, ``dune build
   @something`` will run tests named ``something``.
+
 
 When a Cram test is executed, the commands it contains are executed, and a
 corrected file is created where the command outputs are inserted after

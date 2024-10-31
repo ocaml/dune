@@ -74,7 +74,7 @@ let local_libraries =
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("vendor/opam/src/repository", None, false, None)
   ; ("vendor/opam/src/state", None, false, None)
-  ; ("src/0install-solver/src/solver", Some "Zeroinstall_solver", false, None)
+  ; ("src/0install-solver", Some "Zeroinstall_solver", false, None)
   ; ("vendor/fmt/src", None, false, None)
   ; ("src/opam-0install/lib", Some "Opam_0install", false, None)
   ; ("otherlibs/dune-build-info/src",

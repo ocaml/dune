@@ -101,7 +101,6 @@ let runtest_term =
           (* If the path is in the source tree, we disambiguate it. *)
           Action_builder.return (`Runtest dir)
       in
-      (* In either case, we just call the alias. *)
       Alias.request
       @@
       match alias_kind with

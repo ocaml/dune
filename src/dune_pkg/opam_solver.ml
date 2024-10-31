@@ -560,7 +560,7 @@ let resolve_depopts ~resolve depopts =
        (* We rely on depopts always being a list of or'ed package names. Opam
           verifies this for us at parsing time. Dune projects have this
           restriction for depopts and regular deps *)
-       Code_error.raise "invalid depopts" []
+       Code_error.raise "invalid depopts" [ "depopts", Opam_dyn.filtered_formula depopts ]
    in
    collect [] depopts)
   |> List.rev

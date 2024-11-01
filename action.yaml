@@ -1,0 +1,14 @@
+name: ocaml/dune
+description: Setup dune using the latest dune release
+branding:
+  icon: ci
+  color: green
+author: ocaml
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download and install dune
+      run: curl -fsSL https://get.dune.build/install | sh
+    - name: Add dune to PATH
+      run: echo "$HOME/.dune/bin" >> "$GITHUB_PATH"

@@ -207,7 +207,7 @@ module Stanza = struct
       let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd names) in
       Lib.DB.resolve_user_written_deps
         (Scope.libs scope)
-        (`Exe (Nonempty_list.to_list names))
+        (`Exe names)
         ~forbidden_libraries:[]
         (Lib_dep.Direct (source.loc, compiler_libs)
          :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d))

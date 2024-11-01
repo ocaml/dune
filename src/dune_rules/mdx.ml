@@ -457,7 +457,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd names) in
       Lib.DB.resolve_user_written_deps
         (Scope.libs scope)
-        (`Exe (Nonempty_list.to_list names))
+        (`Exe names)
         ~allow_overlaps:false
         ~forbidden_libraries:[]
         (lib "mdx.test" :: lib "mdx.top" :: t.libraries)

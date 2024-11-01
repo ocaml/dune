@@ -84,7 +84,7 @@ let add_stanza db ~dir (acc, pps) stanza =
         in
         Lib.DB.resolve_user_written_deps
           db
-          (`Exe (Nonempty_list.to_list exes.names))
+          (`Exe exes.names)
           exes.buildable.libraries
           ~pps
           ~dune_version

@@ -24,7 +24,7 @@ let available_exes ~dir (exes : Executables.t) =
     in
     Lib.DB.resolve_user_written_deps
       libs
-      (`Exe (Nonempty_list.to_list exes.names))
+      (`Exe exes.names)
       exes.buildable.libraries
       ~pps
       ~dune_version

@@ -308,7 +308,7 @@ let compile_info ~scope (exes : Executables.t) =
   let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
-    (`Exe (Nonempty_list.to_list exes.names))
+    (`Exe exes.names)
     exes.buildable.libraries
     ~pps
     ~dune_version

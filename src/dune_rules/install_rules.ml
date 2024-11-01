@@ -389,7 +389,7 @@ end = struct
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
-                 (`Exe (Nonempty_list.to_list exes.names))
+                 (`Exe exes.names)
                  exes.buildable.libraries
                  ~pps
                  ~dune_version

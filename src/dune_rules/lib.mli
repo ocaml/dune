@@ -147,7 +147,7 @@ module DB : sig
       This function is for executables or melange.emit stanzas. *)
   val resolve_user_written_deps
     :  t
-    -> [ `Exe of (Loc.t * string) list | `Melange_emit of string ]
+    -> [ `Exe of (Loc.t * string) Nonempty_list.t | `Melange_emit of string ]
     -> allow_overlaps:bool
     -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list

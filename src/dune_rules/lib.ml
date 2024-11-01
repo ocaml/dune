@@ -2091,13 +2091,13 @@ module DB = struct
           ~human_readable_description:(fun () ->
             match targets with
             | `Melange_emit name -> Pp.textf "melange target %s" name
-            | `Exe [ (loc, name) ] ->
+            | `Exe Nonempty_list.[ (loc, name) ] ->
               Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
-            | `Exe names ->
-              let loc, _ = List.hd names in
+            | `Exe (Nonempty_list.((loc, _) :: _) as names) ->
               Pp.textf
                 "executables %s in %s"
-                (String.enumerate_and (List.map ~f:snd names))
+                (String.enumerate_and
+                   (Nonempty_list.map ~f:snd names |> Nonempty_list.to_list))
                 (Loc.to_file_colon_line loc)))
     in
     let pps =

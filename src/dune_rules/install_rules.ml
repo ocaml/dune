@@ -733,17 +733,14 @@ end = struct
       Action_builder.write_file_dyn
         dune_package_file
         (let open Action_builder.O in
-         let+ pkg =
-           Package_paths.meta_template ctx pkg
-           |> Path.build
-           |> Action_builder.if_file_exists
-                ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
-                ~else_:(make_dune_package sctx lib_entries pkg)
-         in
-         Format.asprintf
-           "%a"
-           (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
-           pkg)
+         Package_paths.meta_template ctx pkg
+         |> Path.build
+         |> Action_builder.if_file_exists
+              ~then_:(Action_builder.return Dune_package.Or_meta.Use_meta)
+              ~else_:(make_dune_package sctx lib_entries pkg)
+         >>| Format.asprintf
+               "%a"
+               (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative))
     in
     let* () =
       let deprecated_dune_packages =

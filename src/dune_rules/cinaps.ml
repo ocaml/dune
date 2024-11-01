@@ -154,12 +154,12 @@ let gen_rules sctx t ~dir ~scope =
     Pp_spec.pp_module preprocess module_ >>| Modules.With_vlib.singleton_exe
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let names = [ t.loc, name ] in
-  let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
+  let names = Nonempty_list.[ t.loc, name ] in
+  let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd names) in
   let compile_info =
     Lib.DB.resolve_user_written_deps
       (Scope.libs scope)
-      (`Exe names)
+      (`Exe (Nonempty_list.to_list names))
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Preprocess.Per_module.pps t.preprocess)
       ~dune_version

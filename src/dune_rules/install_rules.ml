@@ -626,7 +626,8 @@ end = struct
       Path.Build.append_local pkg_root subdir
     in
     let* entries =
-      Memo.parallel_map lib_entries ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
+      lib_entries
+      >>= Memo.parallel_map ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
         match stanza with
         | Deprecated_library_name { old_name = _, Deprecated _; _ } -> Memo.return None
         | Deprecated_library_name
@@ -727,7 +728,7 @@ end = struct
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx |> Context.build_context in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let* lib_entries = Scope.DB.lib_entries_of_package ctx.name (Package.name pkg) in
+    let lib_entries = Scope.DB.lib_entries_of_package ctx.name (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -747,14 +748,19 @@ end = struct
     in
     let* () =
       let deprecated_dune_packages =
-        List.filter_map lib_entries ~f:(function
-          | Deprecated_library_name ({ old_name = old_public_name, Deprecated _; _ } as t)
-            -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
-          | _ -> None)
-        |> Package.Name.Map.of_list_multi
+        Memo.lazy_ ~name:"deprecated dune packages" (fun () ->
+          lib_entries
+          >>| List.filter_map ~f:(function
+            | Scope.DB.Lib_entry.Deprecated_library_name
+                ({ old_name = old_public_name, Deprecated _; _ } as t) ->
+              Some (Lib_name.package_name (Public_lib.name old_public_name), t)
+            | _ -> None)
+          >>| Package.Name.Map.of_list_multi)
+        |> Memo.Lazy.force
       in
       Package.deprecated_package_names pkg
       |> Package.Name.Map.foldi ~init:(Memo.return ()) ~f:(fun name loc acc ->
+        let* deprecated_dune_packages = deprecated_dune_packages in
         acc
         >>>
         let dune_pkg =

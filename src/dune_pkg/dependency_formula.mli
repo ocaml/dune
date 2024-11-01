@@ -26,7 +26,3 @@ val has_entries : t -> bool
 (** Returns the [Package_name.t] of a dependency from the formula, if it
     exists. *)
 val any_package_name : t -> Package_name.t option
-
-(** Returns all dependency names that can be found in the formula, no matter
-    whether they can be satisfied or not *)
-val reachable_dependencies : t -> Package_name.Set.t

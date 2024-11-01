@@ -43,5 +43,5 @@ val jsoo_env : dir:Path.Build.t -> string list Action_builder.t Js_of_ocaml.Env.
 
 val js_of_ocaml_compilation_mode
   :  Super_context.t
-  -> dir:Import.Path.Build.t
+  -> dir:Path.Build.t
   -> Js_of_ocaml.Compilation_mode.t Memo.t

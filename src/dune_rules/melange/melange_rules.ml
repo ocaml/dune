@@ -756,7 +756,7 @@ let gen_emit_rules sctx ~dir ({ stanza_dir; stanza } as for_melange) =
          ~hints:[ Pp.text "Move both `melange.emit' stanzas to the same level." ])
 ;;
 
-module Gen_rules = Import.Build_config.Gen_rules
+module Gen_rules = Build_config.Gen_rules
 
 let setup_emit_js_rules sctx ~dir =
   under_melange_emit_target ~sctx ~dir

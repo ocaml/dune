@@ -19,7 +19,7 @@ val odoc_program : Super_context.t -> Path.Build.t -> Action.Prog.t Action_build
 val check_mlds_no_dupes
   :  pkg:Dune_lang.Package_name.t
   -> mlds:Path.Build.t list
-  -> Path.Build.t Import.String.Map.t
+  -> Path.Build.t String.Map.t
 
 val libs_of_pkg : Context_name.t -> pkg:Package.Name.t -> Lib.Local.t list Memo.t
 

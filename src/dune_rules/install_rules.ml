@@ -756,10 +756,9 @@ end = struct
         |> Memo.Lazy.force
       in
       Package.deprecated_package_names pkg
-      |> Package.Name.Map.foldi ~init:(Memo.return ()) ~f:(fun name loc acc ->
+      |> Package.Name.Map.to_seq
+      |> Memo.parallel_iter_seq ~f:(fun (name, loc) ->
         let* deprecated_dune_packages = deprecated_dune_packages in
-        acc
-        >>>
         let dune_pkg =
           let entries =
             match Package.Name.Map.find deprecated_dune_packages name with

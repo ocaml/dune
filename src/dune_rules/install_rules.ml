@@ -383,12 +383,13 @@ end = struct
                  |> Resolve.Memo.read_memo
                  >>| Preprocess.Per_module.pps
                in
-               let names = Nonempty_list.to_list exes.names in
-               let merlin_ident = Merlin_ident.for_exes ~names:(List.map ~f:snd names) in
+               let merlin_ident =
+                 Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names)
+               in
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
-                 (`Exe names)
+                 (`Exe (Nonempty_list.to_list exes.names))
                  exes.buildable.libraries
                  ~pps
                  ~dune_version

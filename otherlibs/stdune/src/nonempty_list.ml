@@ -8,3 +8,4 @@ let of_list = function
 ;;
 
 let to_list (x :: xs) = List.cons x xs
+let map (x :: xs) ~f = f x :: List.map xs ~f

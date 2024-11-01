@@ -758,50 +758,54 @@ end = struct
       Package.deprecated_package_names pkg
       |> Package.Name.Map.to_seq
       |> Memo.parallel_iter_seq ~f:(fun (name, loc) ->
-        let* deprecated_dune_packages = deprecated_dune_packages in
         let dune_pkg =
-          let entries =
-            match Package.Name.Map.find deprecated_dune_packages name with
-            | None -> Lib_name.Map.empty
-            | Some entries ->
-              List.fold_left
-                entries
-                ~init:Lib_name.Map.empty
-                ~f:
-                  (fun
-                    acc
-                    { Library_redirect.old_name = old_public_name, _
-                    ; new_public_name = _, new_public_name
-                    ; loc
-                    ; _
-                    }
-                  ->
-                  let old_public_name = Public_lib.name old_public_name in
-                  Lib_name.Map.add_exn
-                    acc
-                    old_public_name
-                    (Dune_package.Entry.Deprecated_library_name
-                       { loc; old_public_name; new_public_name }))
+          let open Action_builder.O in
+          let+ dune_pkg =
+            let+ deprecated_dune_packages =
+              Action_builder.of_memo deprecated_dune_packages
+            in
+            let entries =
+              match Package.Name.Map.find deprecated_dune_packages name with
+              | None -> Lib_name.Map.empty
+              | Some entries ->
+                List.fold_left
+                  entries
+                  ~init:Lib_name.Map.empty
+                  ~f:
+                    (fun
+                      acc
+                      { Library_redirect.old_name = old_public_name, _
+                      ; new_public_name = _, new_public_name
+                      ; loc
+                      ; _
+                      }
+                    ->
+                    let old_public_name = Public_lib.name old_public_name in
+                    Lib_name.Map.add_exn
+                      acc
+                      old_public_name
+                      (Dune_package.Entry.Deprecated_library_name
+                         { loc; old_public_name; new_public_name }))
+            in
+            let sections = sections ctx.name [] pkg in
+            { Dune_package.version = Package.version pkg
+            ; name
+            ; entries
+            ; dir = Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
+            ; sections
+            ; sites = Package.sites pkg
+            ; files = []
+            }
           in
-          let sections = sections ctx.name [] pkg in
-          { Dune_package.version = Package.version pkg
-          ; name
-          ; entries
-          ; dir = Path.build (Install.Context.lib_dir ~context:ctx.name ~package:name)
-          ; sections
-          ; sites = Package.sites pkg
-          ; files = []
-          }
+          Format.asprintf
+            "%a"
+            (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
+            (Dune_package dune_pkg)
         in
-        let action_with_targets =
-          Action_builder.write_file
-            (Package_paths.deprecated_dune_package_file ctx pkg dune_pkg.name)
-            (Format.asprintf
-               "%a"
-               (Dune_package.Or_meta.pp ~dune_version ~encoding:Relative)
-               (Dune_package dune_pkg))
-        in
-        Super_context.add_rule sctx ~dir:ctx.build_dir ~loc action_with_targets)
+        Action_builder.write_file_dyn
+          (Package_paths.deprecated_dune_package_file ctx pkg name)
+          dune_pkg
+        |> Super_context.add_rule sctx ~dir:ctx.build_dir ~loc)
     in
     Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;

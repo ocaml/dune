@@ -91,8 +91,13 @@ module Find_in_path = struct
   ;;
 
   let which prog =
-    List.find_map (get_path ()) ~f:(fun dir ->
-      let fn = dir ^/ prog ^ exe in
+    if Filename.is_implicit prog
+    then
+      List.find_map (get_path ()) ~f:(fun dir ->
+        let fn = dir ^/ prog ^ exe in
+        Option.some_if (Sys.file_exists fn) fn)
+    else (
+      let fn = if Filename.check_suffix prog exe then prog else prog ^ exe in
       Option.some_if (Sys.file_exists fn) fn)
   ;;
 end
@@ -653,18 +658,30 @@ module Pkg_config = struct
     }
 
   let get c =
-    let pkg_config_exe_name =
-      match Sys.getenv "PKG_CONFIG" with
-      | s -> s
-      | exception Not_found -> "pkg-config"
-    in
-    let pkg_config_args =
+    let get_pkg_config_args default =
       match Sys.getenv "PKG_CONFIG_ARGN" with
       | s -> String.split ~on:' ' s
-      | exception Not_found -> []
+      | exception Not_found -> default
     in
-    Option.map (which c pkg_config_exe_name) ~f:(fun pkg_config ->
-      { pkg_config; pkg_config_args; configurator = c })
+    match Sys.getenv "PKG_CONFIG" with
+    | s ->
+      Option.map (which c s) ~f:(fun pkg_config ->
+        let pkg_config_args = get_pkg_config_args [] in
+        { pkg_config; pkg_config_args; configurator = c })
+    | exception Not_found ->
+      (match which c "pkgconf" with
+       | None ->
+         Option.map (which c "pkg-config") ~f:(fun pkg_config ->
+           let pkg_config_args = get_pkg_config_args [] in
+           { pkg_config; pkg_config_args; configurator = c })
+       | Some pkg_config ->
+         let pkg_config_args =
+           get_pkg_config_args
+             (match ocaml_config_var c "target" with
+              | None -> []
+              | Some target -> [ "--personality"; target ])
+         in
+         Some { pkg_config; pkg_config_args; configurator = c })
   ;;
 
   type package_conf =

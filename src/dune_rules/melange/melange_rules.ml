@@ -368,7 +368,8 @@ let setup_emit_cmj_rules
         ~modes:`Melange_emit )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps ctx compile_info ~dir ~f
+  let merlin_ident = Lib.Compile.merlin_ident compile_info in
+  Buildable_rules.with_lib_deps ctx merlin_ident ~dir ~f
 ;;
 
 module Runtime_deps = struct

@@ -204,7 +204,6 @@ module Stanza = struct
         Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
       in
       let names = Nonempty_list.[ source.loc, source.name ] in
-      let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd names) in
       Lib.DB.resolve_user_written_deps
         (Scope.libs scope)
         (`Exe names)
@@ -214,7 +213,6 @@ module Stanza = struct
         ~pps
         ~dune_version
         ~allow_overlaps:false
-        ~merlin_ident
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

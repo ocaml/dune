@@ -19,9 +19,6 @@ let available_exes ~dir (exes : Executables.t) =
       |> Resolve.Memo.read_memo
       >>| Preprocess.Per_module.pps
     in
-    let merlin_ident =
-      Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names)
-    in
     Lib.DB.resolve_user_written_deps
       libs
       (`Exe exes.names)
@@ -30,7 +27,6 @@ let available_exes ~dir (exes : Executables.t) =
       ~dune_version
       ~forbidden_libraries:exes.forbidden_libraries
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-      ~merlin_ident
   in
   let open Memo.O in
   let+ available = Lib.Compile.direct_requires compile_info in

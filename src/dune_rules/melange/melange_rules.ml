@@ -136,13 +136,12 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   let libraries =
     match mel.emit_stdlib with
+    | false -> mel.libraries
     | true ->
       let builtin_melange_dep = Lib_dep.Direct (mel.loc, Lib_name.of_string "melange") in
       builtin_melange_dep :: mel.libraries
-    | false -> mel.libraries
   in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
@@ -152,7 +151,6 @@ let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
     libraries
     ~pps
     ~dune_version
-    ~merlin_ident
 ;;
 
 let js_targets_of_modules modules ~module_systems ~output =
@@ -271,6 +269,7 @@ let setup_emit_cmj_rules
   =
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
+  let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
   let f () =
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents
@@ -363,12 +362,11 @@ let setup_emit_cmj_rules
         ~libname:None
         ~preprocess:(Preprocess.Per_module.without_instrumentation mel.preprocess)
         ~obj_dir
-        ~ident:(Lib.Compile.merlin_ident compile_info)
+        ~ident:merlin_ident
         ~dialects:(Dune_project.dialects (Scope.project scope))
         ~modes:`Melange_emit )
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  let merlin_ident = Lib.Compile.merlin_ident compile_info in
   Buildable_rules.with_lib_deps ctx merlin_ident ~dir ~f
 ;;
 

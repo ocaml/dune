@@ -79,9 +79,6 @@ let add_stanza db ~dir (acc, pps) stanza =
                  (Lib.DB.instrumentation_backend (Scope.libs scope)))
           >>| Preprocess.Per_module.pps
         in
-        let merlin_ident =
-          Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names)
-        in
         Lib.DB.resolve_user_written_deps
           db
           (`Exe exes.names)
@@ -90,7 +87,6 @@ let add_stanza db ~dir (acc, pps) stanza =
           ~dune_version
           ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
           ~forbidden_libraries:exes.forbidden_libraries
-          ~merlin_ident
       in
       let+ available = Lib.Compile.direct_requires compile_info in
       Resolve.peek available

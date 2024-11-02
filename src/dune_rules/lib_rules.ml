@@ -637,7 +637,7 @@ let library_rules
       ~libname:(Some (snd lib.name))
       ~obj_dir
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Lib.Compile.merlin_ident compile_info)
+      ~ident:(Merlin_ident.for_lib (Library.best_name lib))
       ~modes:(`Lib (Lib_info.modes lib_info)) )
 ;;
 
@@ -675,6 +675,6 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       ~ctx_dir:dir
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  let merlin_ident = Lib.Compile.merlin_ident compile_info in
+  let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

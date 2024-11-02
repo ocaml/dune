@@ -24,5 +24,4 @@
 (install
  (section share)
  (package a)
- (files foo.txt)
-)
+ (files foo.txt))

@@ -599,15 +599,14 @@ let setup_toplevel_index_rules sctx =
 ;;
 
 let libs_of_pkg ctx ~pkg =
-  let+ entries = Scope.DB.lib_entries_of_package ctx pkg in
+  let+ { Scope.DB.Lib_entry.Set.libraries; _ } =
+    Scope.DB.lib_entries_of_package ctx pkg
+  in
   (* Filter out all implementations of virtual libraries *)
-  List.filter_map entries ~f:(fun (entry : Scope.DB.Lib_entry.t) ->
-    match entry with
-    | Deprecated_library_name _ -> None
-    | Library lib ->
-      (match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
-       | None -> Some lib
-       | Some _ -> None))
+  List.filter_map libraries ~f:(fun lib ->
+    match Lib.Local.to_lib lib |> Lib.info |> Lib_info.implements with
+    | None -> Some lib
+    | Some _ -> None)
 ;;
 
 let entry_modules_by_lib sctx lib =

@@ -447,6 +447,54 @@ module DB = struct
       | Deprecated_library_name { old_name = old_public_name, _; _ } ->
         Public_lib.loc old_public_name
     ;;
+
+    module Set = struct
+      type t =
+        { libraries : Lib.Local.t list
+        ; deprecated_library_names : Deprecated_library_name.t list
+        }
+
+      let empty = { libraries = []; deprecated_library_names = [] }
+
+      let of_list =
+        let by_name x = Lib.Local.info x |> Lib_info.name in
+        fun xs ->
+          let libraries, deprecated_library_names =
+            List.partition_map xs ~f:(function
+              | Library l -> Left l
+              | Deprecated_library_name l -> Right l)
+          in
+          { libraries =
+              List.sort libraries ~compare:(fun x y ->
+                Lib_name.compare (by_name x) (by_name y))
+          ; deprecated_library_names =
+              List.sort
+                deprecated_library_names
+                ~compare:(fun { old_name = old_public_name, _; _ } y ->
+                  Lib_name.compare
+                    (Public_lib.name old_public_name)
+                    (Public_lib.name (fst y.old_name)))
+          }
+      ;;
+
+      let fold { libraries; deprecated_library_names } ~init ~f =
+        let init =
+          List.fold_left ~init libraries ~f:(fun acc lib -> f (Library lib) acc)
+        in
+        List.fold_left deprecated_library_names ~init ~f:(fun acc dep ->
+          f (Deprecated_library_name dep) acc)
+      ;;
+
+      let partition_map t ~f =
+        let l, r =
+          fold t ~init:([], []) ~f:(fun x (l, r) ->
+            match f x with
+            | Left x -> x :: l, r
+            | Right x -> l, x :: r)
+        in
+        List.(rev l, rev r)
+      ;;
+    end
   end
 
   let lib_entries_of_package =
@@ -489,11 +537,7 @@ module DB = struct
             Memo.return ((name, Lib_entry.Deprecated_library_name d) :: acc)
           | _ -> Memo.return acc)
       in
-      Package.Name.Map.of_list_multi libs
-      |> Package.Name.Map.map
-           ~f:
-             (List.sort ~compare:(fun a b ->
-                Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
+      Package.Name.Map.of_list_multi libs |> Package.Name.Map.map ~f:Lib_entry.Set.of_list
     in
     let per_context =
       Per_context.create_by_name ~name:"scope-db" (fun ctx ->
@@ -508,11 +552,11 @@ module DB = struct
     in
     fun (ctx : Context_name.t) pkg_name ->
       let+ map = per_context ctx in
-      match Package.Name.Map.Multi.find map pkg_name with
-      | ([] | [ _ ]) as xs -> xs
-      | libs ->
+      match Package.Name.Map.find map pkg_name with
+      | None -> Lib_entry.Set.empty
+      | Some libs ->
         let _by_name =
-          List.fold_left libs ~init:Lib_name.Map.empty ~f:(fun by_name entry2 ->
+          Lib_entry.Set.fold libs ~init:Lib_name.Map.empty ~f:(fun entry2 by_name ->
             let public_name = Lib_entry.name entry2 in
             Lib_name.Map.update by_name public_name ~f:(function
               | None -> Some entry2

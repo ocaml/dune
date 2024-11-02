@@ -24,8 +24,19 @@ module DB : sig
     type t =
       | Library of Lib.Local.t
       | Deprecated_library_name of Deprecated_library_name.t
+
+    module Set : sig
+      type entry := t
+
+      type t =
+        { libraries : Lib.Local.t list
+        ; deprecated_library_names : Deprecated_library_name.t list
+        }
+
+      val partition_map : t -> f:(entry -> ('a, 'b) Either.t) -> 'a list * 'b list
+    end
   end
 
-  val lib_entries_of_package : Context_name.t -> Package.Name.t -> Lib_entry.t list Memo.t
+  val lib_entries_of_package : Context_name.t -> Package.Name.t -> Lib_entry.Set.t Memo.t
   val with_all : Context.t -> f:((Dune_project.t -> t) -> 'a) -> 'a Memo.t
 end

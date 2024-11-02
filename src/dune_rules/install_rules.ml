@@ -626,23 +626,23 @@ end = struct
       Path.Build.append_local pkg_root subdir
     in
     let* entries =
-      lib_entries
-      >>= Memo.parallel_map ~f:(fun (stanza : Scope.DB.Lib_entry.t) ->
-        match stanza with
-        | Deprecated_library_name { old_name = _, Deprecated _; _ } -> Memo.return None
-        | Deprecated_library_name
-            { old_name = old_public_name, Not_deprecated
+      let* { Scope.DB.Lib_entry.Set.deprecated_library_names; libraries } = lib_entries in
+      let deprecated =
+        List.filter_map deprecated_library_names ~f:(function
+          | { old_name = _, Deprecated _; _ } -> None
+          | { old_name = old_public_name, Not_deprecated
             ; new_public_name = _, new_public_name
             ; loc
             ; project = _
             } ->
-          let old_public_name = Public_lib.name old_public_name in
-          Memo.return
-            (Some
-               ( old_public_name
-               , Dune_package.Entry.Deprecated_library_name
-                   { loc; old_public_name; new_public_name } ))
-        | Library lib ->
+            let old_public_name = Public_lib.name old_public_name in
+            Some
+              ( old_public_name
+              , Dune_package.Entry.Deprecated_library_name
+                  { loc; old_public_name; new_public_name } ))
+      in
+      let+ libraries =
+        Memo.parallel_map libraries ~f:(fun lib ->
           let info = Lib.Local.info lib in
           let dir = Lib_info.src_dir info in
           let* dir_contents = Dir_contents.get sctx ~dir in
@@ -692,13 +692,12 @@ end = struct
               ~public_headers
             >>= Resolve.read_memo
           in
-          Some (name, Dune_package.Entry.Library dune_lib))
-    in
-    let entries =
-      List.fold_left entries ~init:Lib_name.Map.empty ~f:(fun acc x ->
-        match x with
-        | None -> acc
-        | Some (name, x) -> Lib_name.Map.add_exn acc name x)
+          name, Dune_package.Entry.Library dune_lib)
+      in
+      List.rev_append libraries deprecated
+      |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
+      |> List.fold_left ~init:Lib_name.Map.empty ~f:(fun acc (name, x) ->
+        Lib_name.Map.add_exn acc name x)
     in
     let+ files =
       let+ map = Stanzas_to_entries.stanzas_to_entries sctx in
@@ -746,13 +745,14 @@ end = struct
     let* () =
       let deprecated_dune_packages =
         Memo.lazy_ ~name:"deprecated dune packages" (fun () ->
-          lib_entries
-          >>| List.filter_map ~f:(function
-            | Scope.DB.Lib_entry.Deprecated_library_name
-                ({ old_name = old_public_name, Deprecated _; _ } as t) ->
-              Some (Lib_name.package_name (Public_lib.name old_public_name), t)
+          let+ { deprecated_library_names; _ } = lib_entries in
+          List.filter_map deprecated_library_names ~f:(function
+            | { Library_redirect.old_name =
+                  old_public_name, Deprecated_library_name.Old_name.Deprecated _
+              ; _
+              } as t -> Some (Lib_name.package_name (Public_lib.name old_public_name), t)
             | _ -> None)
-          >>| Package.Name.Map.of_list_multi)
+          |> Package.Name.Map.of_list_multi)
         |> Memo.Lazy.force
       in
       Package.deprecated_package_names pkg
@@ -815,7 +815,7 @@ end = struct
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
       Scope.DB.lib_entries_of_package ctx.name pkg_name
-      >>| List.partition_map ~f:(function
+      >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
         | Scope.DB.Lib_entry.Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
           (match Public_lib.sub_dir public with

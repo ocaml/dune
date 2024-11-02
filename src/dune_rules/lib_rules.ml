@@ -643,21 +643,20 @@ let library_rules
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
   let buildable = lib.buildable in
-  let* local_lib, compile_info =
+  let libs = Scope.libs scope in
+  let lib_id =
     let src_dir = Path.Build.drop_build_context_exn dir in
+    Library.to_lib_id ~src_dir lib
+  in
+  let* local_lib, compile_info =
     Lib.DB.get_compile_info
-      (Scope.libs scope)
-      (Local (Library.to_lib_id ~src_dir lib))
+      libs
+      (Local lib_id)
       ~allow_overlaps:buildable.allow_overlapping_dependencies
   in
-  let local_lib = Lib.Local.of_lib_exn local_lib in
   let f () =
     let* source_modules =
-      Dir_contents.ocaml dir_contents
-      >>= Ml_sources.modules
-            ~libs:(Scope.libs scope)
-            ~for_:
-              (Library (Lib_info.lib_id (Lib.Local.info local_lib) |> Lib_id.to_local_exn))
+      Dir_contents.ocaml dir_contents >>= Ml_sources.modules ~libs ~for_:(Library lib_id)
     in
     let* cctx = cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info in
     let* () =
@@ -668,7 +667,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
     in
     library_rules
       lib
-      ~local_lib
+      ~local_lib:(Lib.Local.of_lib_exn local_lib)
       ~cctx
       ~source_modules
       ~dir_contents

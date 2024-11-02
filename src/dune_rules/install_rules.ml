@@ -811,8 +811,7 @@ end = struct
 
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
-    let pkg_name = Package.name pkg in
-    let* deprecated_packages, entries =
+    let* deprecated_packages, meta_entries =
       entries
       >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
         | Scope.DB.Lib_entry.Deprecated_library_name
@@ -822,19 +821,17 @@ end = struct
            | Some _ -> Right entry)
         | entry -> Right entry)
     in
-    let meta = Package_paths.meta_file ctx pkg in
     let* () =
       let template =
         let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
         let meta_template_lines_or_fail =
           let open Action_builder.O in
           let* () = Action_builder.return () in
+          let* { Scope.DB.Lib_entry.Set.libraries; _ } = Action_builder.of_memo entries in
           match
-            List.find_map entries ~f:(function
-              | Library lib ->
-                let info = Lib.Local.info lib in
-                Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
-              | Deprecated_library_name _ -> None)
+            List.find_map libraries ~f:(fun lib ->
+              let info = Lib.Local.info lib in
+              Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib)
           with
           | None -> Action_builder.lines_of meta_template
           | Some vlib ->
@@ -842,6 +839,7 @@ end = struct
               { fail =
                   (fun () ->
                     let name = Lib.name (Lib.Local.to_lib vlib) in
+                    let pkg_name = Package.name pkg in
                     User_error.raise
                       ~loc:(Loc.in_file meta_template)
                       [ Pp.textf
@@ -863,21 +861,21 @@ end = struct
         (let open Action_builder.O in
          (let+ template = template
           and+ meta =
-            Action_builder.of_memo
-              (Gen_meta.gen ~package:pkg ~add_directory_entry:true entries)
+            Gen_meta.gen ~package:pkg ~add_directory_entry:true meta_entries
+            |> Action_builder.of_memo
           in
           let pp =
-            Pp.vbox
-              (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
-                 if String.is_prefix s ~prefix:"#"
-                 then (
-                   match String.extract_blank_separated_words (String.drop s 1) with
-                   | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
-                   | _ -> Pp.verbatim s)
-                 else Pp.verbatim s))
+            Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
+              if String.is_prefix s ~prefix:"#"
+              then (
+                match String.extract_blank_separated_words (String.drop s 1) with
+                | [ ("JBUILDER_GEN" | "DUNE_GEN") ] -> Meta.pp meta.entries
+                | _ -> Pp.verbatim s)
+              else Pp.verbatim s)
+            |> Pp.vbox
           in
           Format.asprintf "%a" Pp.to_fmt pp)
-         |> Action_builder.write_file_dyn meta)
+         |> Action_builder.write_file_dyn (Package_paths.meta_file ctx pkg))
     in
     let deprecated_packages = Package.Name.Map.of_list_multi deprecated_packages in
     Package.deprecated_package_names pkg
@@ -893,8 +891,7 @@ end = struct
            (let open Action_builder.O in
             let+ pp =
               let+ meta =
-                Package.Name.Map.find deprecated_packages name
-                |> Option.value ~default:[]
+                Package.Name.Map.Multi.find deprecated_packages name
                 |> Gen_meta.gen ~package:pkg ~add_directory_entry:false
                 |> Action_builder.of_memo
               in

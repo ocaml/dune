@@ -1,3 +1,6 @@
 (library
  (name testv)
-(foreign_stubs (language c) (names barv) (flags)))
+ (foreign_stubs
+  (language c)
+  (names barv)
+  (flags)))

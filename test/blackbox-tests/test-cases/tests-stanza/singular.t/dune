@@ -1,1 +1,2 @@
-(test (name singular))
+(test
+ (name singular))

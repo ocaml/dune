@@ -383,9 +383,6 @@ end = struct
                  |> Resolve.Memo.read_memo
                  >>| Preprocess.Per_module.pps
                in
-               let merlin_ident =
-                 Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names)
-               in
                Lib.DB.resolve_user_written_deps
                  (Scope.libs scope)
                  ~forbidden_libraries:[]
@@ -394,7 +391,6 @@ end = struct
                  ~pps
                  ~dune_version
                  ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-                 ~merlin_ident
              in
              let+ requires = Lib.Compile.direct_requires compile_info in
              Resolve.is_ok requires)

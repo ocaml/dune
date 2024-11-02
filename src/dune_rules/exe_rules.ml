@@ -291,7 +291,7 @@ let executables_rules
       ~preprocess:
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
       ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Lib.Compile.merlin_ident compile_info)
+      ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
       ~modes:`Exe )
 ;;
 
@@ -305,7 +305,6 @@ let compile_info ~scope (exes : Executables.t) =
          ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
     >>| Preprocess.Per_module.pps
   in
-  let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Lib.DB.resolve_user_written_deps
     (Scope.libs scope)
     (`Exe exes.names)
@@ -314,7 +313,6 @@ let compile_info ~scope (exes : Executables.t) =
     ~dune_version
     ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     ~forbidden_libraries:exes.forbidden_libraries
-    ~merlin_ident
 ;;
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
@@ -335,6 +333,6 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
     let requires_link = Lib.Compile.requires_link compile_info in
     Bootstrap_info.gen_rules sctx exes ~dir ~requires_link
   in
-  let merlin_ident = Lib.Compile.merlin_ident compile_info in
+  let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names) in
   Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

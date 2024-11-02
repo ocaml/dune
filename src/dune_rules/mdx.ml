@@ -453,17 +453,14 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
   let lib name = Lib_dep.Direct (loc, Lib_name.of_string name) in
   let* cctx =
     let compile_info =
-      let names = Nonempty_list.[ t.loc, name ] in
-      let merlin_ident = Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd names) in
       Lib.DB.resolve_user_written_deps
         (Scope.libs scope)
-        (`Exe names)
+        (`Exe Nonempty_list.[ t.loc, name ])
         ~allow_overlaps:false
         ~forbidden_libraries:[]
         (lib "mdx.test" :: lib "mdx.top" :: t.libraries)
         ~pps:[]
         ~dune_version
-        ~merlin_ident
     in
     let requires_compile = Lib.Compile.direct_requires compile_info
     and requires_link = Lib.Compile.requires_link compile_info in

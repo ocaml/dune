@@ -1826,7 +1826,6 @@ module Compile = struct
     ; pps : t list Resolve.Memo.t
     ; resolved_selects : Resolved_select.t list Resolve.Memo.t
     ; sub_systems : Sub_system0.Instance.t Memo.Lazy.t Sub_system_name.Map.t
-    ; merlin_ident : Merlin_ident.t
     }
 
   let for_lib ~allow_overlaps db (t : lib) =
@@ -1850,13 +1849,11 @@ module Compile = struct
               db
               ~forbidden_libraries:Map.empty)
     in
-    let merlin_ident = Merlin_ident.for_lib t.name in
     { direct_requires = requires
     ; requires_link
     ; resolved_selects = Memo.return t.resolved_selects
     ; pps = Memo.return t.pps
     ; sub_systems = t.sub_systems
-    ; merlin_ident
     }
   ;;
 
@@ -1864,7 +1861,6 @@ module Compile = struct
   let requires_link t = t.requires_link
   let resolved_selects t = t.resolved_selects
   let pps t = t.pps
-  let merlin_ident t = t.merlin_ident
 
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
@@ -2050,7 +2046,6 @@ module DB = struct
     deps
     ~pps
     ~dune_version
-    ~merlin_ident
     =
     let resolved =
       Memo.lazy_ (fun () ->
@@ -2120,7 +2115,6 @@ module DB = struct
     ; pps
     ; resolved_selects = resolved_selects |> Memo.map ~f:Resolve.return
     ; sub_systems = Sub_system_name.Map.empty
-    ; merlin_ident
     }
   ;;
 

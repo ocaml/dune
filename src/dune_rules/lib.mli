@@ -77,8 +77,6 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> lib list Resolve.Memo.t
 
-  val merlin_ident : t -> Merlin_ident.t
-
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list Memo.t
 end
@@ -153,7 +151,6 @@ module DB : sig
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
-    -> merlin_ident:Merlin_ident.t
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t

@@ -724,10 +724,9 @@ end = struct
       }
   ;;
 
-  let gen_dune_package sctx (pkg : Package.t) =
+  let gen_dune_package sctx (pkg : Package.t) lib_entries =
     let ctx = Super_context.context sctx |> Context.build_context in
     let dune_version = Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax in
-    let lib_entries = Scope.DB.lib_entries_of_package ctx.name (Package.name pkg) in
     let action =
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       Action_builder.write_file_dyn
@@ -810,11 +809,11 @@ end = struct
     Super_context.add_rule sctx ~dir:ctx.build_dir action
   ;;
 
-  let gen_meta_file sctx (pkg : Package.t) =
+  let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
     let pkg_name = Package.name pkg in
     let* deprecated_packages, entries =
-      Scope.DB.lib_entries_of_package ctx.name pkg_name
+      entries
       >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
         | Scope.DB.Lib_entry.Deprecated_library_name
             { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
@@ -906,10 +905,12 @@ end = struct
   ;;
 
   let meta_and_dune_package_rules sctx project =
+    let ctx = Super_context.context sctx |> Context.name in
     Dune_project.packages project
     |> Dune_lang.Package_name.Map.to_seq
-    |> Memo.parallel_iter_seq ~f:(fun (_name, (pkg : Package.t)) ->
-      gen_dune_package sctx pkg >>> gen_meta_file sctx pkg)
+    |> Memo.parallel_iter_seq ~f:(fun (name, (pkg : Package.t)) ->
+      let entries = Scope.DB.lib_entries_of_package ctx name in
+      gen_dune_package sctx pkg entries >>> gen_meta_file sctx pkg entries)
   ;;
 end
 

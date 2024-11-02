@@ -811,16 +811,6 @@ end = struct
 
   let gen_meta_file sctx (pkg : Package.t) entries =
     let ctx = Super_context.context sctx |> Context.build_context in
-    let* deprecated_packages, meta_entries =
-      entries
-      >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
-        | Scope.DB.Lib_entry.Deprecated_library_name
-            { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
-          (match Public_lib.sub_dir public with
-           | None -> Left (deprecated_package, entry)
-           | Some _ -> Right entry)
-        | entry -> Right entry)
-    in
     let* () =
       let template =
         let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
@@ -855,13 +845,26 @@ end = struct
           ~then_:meta_template_lines_or_fail
           ~else_:(Action_builder.return [ "# DUNE_GEN" ])
       in
+      let meta_entries =
+        entries
+        >>| Scope.DB.Lib_entry.Set.partition_map ~f:(function
+          | Scope.DB.Lib_entry.Deprecated_library_name
+              { old_name = public, Deprecated { deprecated_package }; _ } as entry ->
+            (match Public_lib.sub_dir public with
+             | None -> Left (deprecated_package, entry)
+             | Some _ -> Right entry)
+          | entry -> Right entry)
+        >>| snd
+      in
       Super_context.add_rule
         sctx
         ~dir:ctx.build_dir
         (let open Action_builder.O in
          (let+ template = template
-          and+ meta =
-            Gen_meta.gen ~package:pkg ~add_directory_entry:true meta_entries
+          and+ (meta : Meta.t) =
+            let open Memo.O in
+            meta_entries
+            >>= Gen_meta.gen ~package:pkg ~add_directory_entry:true
             |> Action_builder.of_memo
           in
           let pp =
@@ -877,7 +880,22 @@ end = struct
           Format.asprintf "%a" Pp.to_fmt pp)
          |> Action_builder.write_file_dyn (Package_paths.meta_file ctx pkg))
     in
-    let deprecated_packages = Package.Name.Map.of_list_multi deprecated_packages in
+    let deprecated_packages =
+      Memo.lazy_ ~name:"deprecated packages" (fun () ->
+        let+ { Scope.DB.Lib_entry.Set.deprecated_library_names; _ } = entries in
+        List.filter_map deprecated_library_names ~f:(function
+          | { Library_redirect.old_name =
+                public, Deprecated_library_name.Old_name.Deprecated { deprecated_package }
+            ; _
+            } as entry ->
+            (match Public_lib.sub_dir public with
+             | None -> Some (deprecated_package, entry)
+             | Some _ -> None)
+          | _ -> None)
+        |> Package.Name.Map.of_list_multi)
+      |> Memo.Lazy.force
+      |> Action_builder.of_memo
+    in
     Package.deprecated_package_names pkg
     |> Dune_lang.Package_name.Map.to_seq
     |> Memo.parallel_iter_seq ~f:(fun (name, loc) ->
@@ -891,7 +909,10 @@ end = struct
            (let open Action_builder.O in
             let+ pp =
               let+ meta =
+                let* deprecated_packages = deprecated_packages in
                 Package.Name.Map.Multi.find deprecated_packages name
+                |> List.map ~f:(fun deprecated ->
+                  Scope.DB.Lib_entry.Deprecated_library_name deprecated)
                 |> Gen_meta.gen ~package:pkg ~add_directory_entry:false
                 |> Action_builder.of_memo
               in

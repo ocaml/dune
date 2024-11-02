@@ -40,12 +40,11 @@ let gen_select_rules sctx ~dir compile_info =
           Action.Full.make (Copy_line_directive.action context ~src ~dst))))
 ;;
 
-let with_lib_deps (t : Context.t) compile_info ~dir ~f =
+let with_lib_deps (t : Context.t) merlin_ident ~dir ~f =
   let prefix =
     if Context.merlin t
     then
-      Lib.Compile.merlin_ident compile_info
-      |> Merlin_ident.merlin_file_path dir
+      Merlin_ident.merlin_file_path dir merlin_ident
       |> Path.build
       |> Action_builder.path
       |> Action_builder.goal

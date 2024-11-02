@@ -676,5 +676,6 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       ~ctx_dir:dir
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
-  Buildable_rules.with_lib_deps (Super_context.context sctx) compile_info ~dir ~f
+  let merlin_ident = Lib.Compile.merlin_ident compile_info in
+  Buildable_rules.with_lib_deps (Super_context.context sctx) merlin_ident ~dir ~f
 ;;

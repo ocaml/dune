@@ -14,8 +14,8 @@ let rec union = function
     OpamTypes.And (x, xs)
 ;;
 
-let rec remove_packages v pkgs =
-  match (v : OpamTypes.filtered_formula) with
+let rec remove_packages (v : OpamTypes.filtered_formula) pkgs =
+  match v with
   | Empty -> OpamTypes.Empty
   | Block b -> Block (remove_packages b pkgs)
   | Atom (name, _condition) as a ->
@@ -33,17 +33,18 @@ let rec remove_packages v pkgs =
     Or (l, r)
 ;;
 
-let rec any_package_name v =
-  match (v : OpamTypes.filtered_formula) with
-  | Empty -> None
-  | Block b -> any_package_name b
-  | Atom (name, _condition) ->
-    let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
-    Some name
-  | And (l, r) | Or (l, r) ->
-    (match any_package_name l with
-     | Some _ as r -> r
-     | None -> any_package_name r)
+exception Found of Package_name.t
+
+let any_package_name (v : OpamTypes.filtered_formula) =
+  try
+    OpamFormula.iter
+      (fun (name, _condition) ->
+        let name = Package_name.of_opam_package_name name in
+        raise_notrace (Found name))
+      v;
+    None
+  with
+  | Found name -> Some name
 ;;
 
 let has_entries v = v |> any_package_name |> Option.is_some

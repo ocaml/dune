@@ -551,25 +551,27 @@ let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
 ;;
 
 let resolve_depopts ~resolve depopts =
-  (let rec collect acc depopts =
-     match (depopts : OpamTypes.filtered_formula) with
-     | Or ((Atom (_, _) as dep), depopts) -> collect (dep :: acc) depopts
-     | Atom (_, _) -> depopts :: acc
-     | Empty -> acc
-     | _ ->
-       (* We rely on depopts always being a list of or'ed package names. Opam
-          verifies this for us at parsing time. Dune projects have this
-          restriction for depopts and regular deps *)
-       Code_error.raise "invalid depopts" [ "depopts", Opam_dyn.filtered_formula depopts ]
-   in
-   collect [] depopts)
-  |> List.rev
-  |> List.concat_map ~f:(fun depopt ->
-    match resolve depopt with
-    | Error _ -> []
-    | Ok { Resolve_opam_formula.post = _; regular } ->
-      (* CR-someday rgrinberg: think about post deps *)
-      regular)
+  let rec collect acc depopts =
+    match (depopts : OpamTypes.filtered_formula) with
+    | Or ((Atom (_, _) as dep), depopts) -> collect (dep :: acc) depopts
+    | Atom (_, _) as dep -> dep :: acc
+    | Empty -> acc
+    | _ ->
+      (* We rely on depopts always being a list of or'ed package names. Opam
+         verifies this for us at parsing time. Dune projects have this
+         restriction for depopts and regular deps *)
+      Code_error.raise "invalid depopts" [ "depopts", Opam_dyn.filtered_formula depopts ]
+  in
+  OpamFormula.ors_to_list depopts
+  |> List.concat_map ~f:(fun x ->
+    collect [] x
+    |> List.rev
+    |> List.concat_map ~f:(fun depopt ->
+      match resolve depopt with
+      | Error _ -> []
+      | Ok { Resolve_opam_formula.post = _; regular } ->
+        (* CR-someday rgrinberg: think about post deps *)
+        regular))
 ;;
 
 let opam_package_to_lock_file_pkg

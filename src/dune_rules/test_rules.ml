@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let alias mode ~dir =
   match mode with
@@ -6,38 +7,53 @@ let alias mode ~dir =
   | `exe | `bc -> Memo.return Alias0.runtest
 ;;
 
+let test_kind dir_contents (loc, name, ext) =
+  let files = Dir_contents.text_files dir_contents in
+  let expected_basename = name ^ ".expected" in
+  if Filename.Set.mem files expected_basename
+  then
+    `Expect
+      { Diff.file1 = String_with_vars.make_text loc expected_basename
+      ; file2 = String_with_vars.make_text loc (name ^ ext ^ ".output")
+      ; optional = false
+      ; mode = Text
+      }
+  else `Regular
+;;
+
+let ext_of_mode runtest_mode =
+  match runtest_mode with
+  | `js -> Js_of_ocaml.Ext.exe
+  | `bc -> ".bc"
+  | `exe -> ".exe"
+;;
+
+let custom_runner runtest_mode =
+  match runtest_mode with
+  | `js -> Some Jsoo_rules.runner
+  | `bc | `exe -> None
+;;
+
+let runtest_modes modes project =
+  if Dune_project.dune_version project < (3, 0)
+  then [ `exe ]
+  else
+    Executables.Link_mode.Map.to_list modes
+    |> List.filter_map ~f:(fun ((mode : Executables.Link_mode.t), _) ->
+      match mode with
+      | Byte_complete -> Some `exe
+      | Other { kind = Exe; mode = Native | Best } -> Some `exe
+      | Other { kind = Exe; mode = Byte } -> Some `bc
+      | Other { kind = Js; _ } -> Some `js
+      | Other { kind = C | Object | Shared_object | Plugin; _ } ->
+        (* We don't know how to run tests in these cases *)
+        None)
+    |> List.sort_uniq ~compare:Poly.compare
+;;
+
 let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
-  let test_kind (loc, name, ext) =
-    let files = Dir_contents.text_files dir_contents in
-    let expected_basename = name ^ ".expected" in
-    if Filename.Set.mem files expected_basename
-    then
-      `Expect
-        { Diff.file1 = String_with_vars.make_text loc expected_basename
-        ; file2 = String_with_vars.make_text loc (name ^ ext ^ ".output")
-        ; optional = false
-        ; mode = Text
-        }
-    else `Regular
-  in
-  let open Memo.O in
-  let runtest_modes =
-    if Dune_project.dune_version (Scope.project scope) < (3, 0)
-    then [ `exe ]
-    else
-      Executables.Link_mode.Map.to_list t.exes.modes
-      |> List.filter_map ~f:(fun ((mode : Executables.Link_mode.t), _) ->
-        match mode with
-        | Byte_complete -> Some `exe
-        | Other { kind = Exe; mode = Native | Best } -> Some `exe
-        | Other { kind = Exe; mode = Byte } -> Some `bc
-        | Other { kind = Js; _ } -> Some `js
-        | Other { kind = C | Object | Shared_object | Plugin; _ } ->
-          (* We don't know how to run tests in these cases *)
-          None)
-      |> List.sort_uniq ~compare:Poly.compare
-  in
   let* () =
+    let runtest_modes = runtest_modes t.exes.modes (Scope.project scope) in
     Expander.eval_blang expander t.enabled_if
     >>= function
     | false ->
@@ -50,17 +66,8 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       Nonempty_list.to_list t.exes.names
       |> Memo.parallel_iter ~f:(fun (loc, s) ->
         Memo.parallel_iter runtest_modes ~f:(fun runtest_mode ->
-          let ext =
-            match runtest_mode with
-            | `js -> Js_of_ocaml.Ext.exe
-            | `bc -> ".bc"
-            | `exe -> ".exe"
-          in
-          let custom_runner =
-            match runtest_mode with
-            | `js -> Some Jsoo_rules.runner
-            | `bc | `exe -> None
-          in
+          let ext = ext_of_mode runtest_mode in
+          let custom_runner = custom_runner runtest_mode in
           let test_pform = Pform.Var Test in
           let run_action =
             match t.action with
@@ -83,11 +90,12 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           in
           let* runtest_alias = alias runtest_mode ~dir in
           let deps =
+            (* is this useless? we are going to infer the dependency anyway *)
             match custom_runner with
+            | None -> t.deps
             | Some _ ->
               Bindings.Unnamed (Dep_conf.File (String_with_vars.make_text loc test_exe))
               :: t.deps
-            | None -> t.deps
           in
           let add_alias ~loc ~action =
             (* CR rgrinberg: why are we going through the stanza api? *)
@@ -103,7 +111,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             in
             Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
           in
-          match test_kind (loc, s, ext) with
+          match test_kind dir_contents (loc, s, ext) with
           | `Regular -> add_alias ~loc ~action:run_action
           | `Expect diff ->
             let rule =

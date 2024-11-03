@@ -63,3 +63,9 @@
 (cram
  (deps %{bin:ocaml_index})
  (applies_to gh10985))
+
+;; disabled for flakiness
+
+(cram
+ (enabled_if false)
+ (applies_to gh10959))

@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
@@ -145,7 +146,6 @@ let create
   ?loc
   ()
   =
-  let open Memo.O in
   let project = Scope.project scope in
   let context = Super_context.context super_context in
   let* ocaml = Context.ocaml context in
@@ -325,7 +325,6 @@ let entry_module_names sctx t =
   match Lib_info.entry_modules (Lib.info t) with
   | External d -> Resolve.Memo.of_result d
   | Local ->
-    let open Memo.O in
     let+ modules = Dir_contents.modules_of_lib sctx t in
     let modules = Option.value_exn modules in
     Resolve.return (Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name)

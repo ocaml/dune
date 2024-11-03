@@ -2,7 +2,6 @@ open Import
 open Memo.O
 
 let pped_module m ~f =
-  let open Memo.O in
   let pped = Module.pped m in
   let+ () =
     Module.iter m ~f:(fun ml_kind file ->
@@ -36,7 +35,6 @@ let get_rules sctx key =
       in
       pps, scope
   in
-  let open Memo.O in
   let* pps =
     let lib_db = Scope.libs scope in
     List.map pp_names ~f:(fun x -> Loc.none, x) |> Lib.DB.resolve_pps lib_db
@@ -105,7 +103,6 @@ let action_for_pp_with_target ~sandbox ~loc ~expander ~action ~src ~target =
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
 let setup_dialect_rules sctx ~sandbox ~dir ~expander (m : Module.t) =
-  let open Memo.O in
   let ml = Module.ml_source m in
   let+ () =
     Module.iter m ~f:(fun ml_kind f ->

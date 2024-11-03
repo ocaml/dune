@@ -83,7 +83,6 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind source
       let impl = Vimpl.impl vimpl in
       Dune_project.dune_version impl.project
     in
-    let open Memo.O in
     let+ deps = ooi_deps md ~dune_version ~vlib_obj_map ~ml_kind sourced_module in
     Action_builder.map deps ~f:(List.map ~f:Modules.Sourced_module.to_module)
   | Some lib ->

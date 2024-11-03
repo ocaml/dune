@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t =
   { dir : Path.Source.t
@@ -91,7 +92,6 @@ let rec parse_file_includes ~stanza_parser ~context sexps =
   |> Memo.List.concat_map ~f:(fun stanza ->
     match Stanza.repr stanza with
     | Stanzas.Include.T (loc, fn) ->
-      let open Memo.O in
       let* sexps, context = Include_stanza.load_sexps ~context (loc, fn) in
       parse_file_includes ~stanza_parser ~context sexps
     | _ -> Memo.return [ stanza ])
@@ -105,7 +105,6 @@ type eval =
 
 let parse_stanzas ~file ~(eval : eval) sexps =
   let warnings = Warning_emit.Bag.create () in
-  let open Memo.O in
   let* stanzas =
     let context =
       Include_stanza.in_src_file
@@ -146,7 +145,6 @@ let parse_stanzas ~file ~(eval : eval) sexps =
 ;;
 
 let parse sexps ~file ~(eval : eval) =
-  let open Memo.O in
   let+ stanzas, dynamic_includes = parse_stanzas sexps ~file ~eval in
   ( { dir = eval.dir
     ; project = eval.project
@@ -180,7 +178,6 @@ let fold_static_stanzas t ~init ~f = Id_fold.fold_static_stanzas t ~init ~f
 let to_dyn = Dyn.opaque
 
 let find_stanzas t key =
-  let open Memo.O in
   let+ stanzas = Memo.Lazy.force t.stanzas in
   (* CR-rgrinberg: save a map to represent the stanzas to make this fast. *)
   List.filter_map stanzas ~f:(Stanza.Key.get key)
@@ -293,7 +290,6 @@ end = struct
   ;;
 
   let create_plugin_wrapper context ocaml_config ~exec_dir ~plugin ~wrapper ~target =
-    let open Memo.O in
     let+ plugin_contents = Fs_memo.file_contents plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
       write oc ~context ~ocaml_config ~target ~exec_dir ~plugin ~plugin_contents);

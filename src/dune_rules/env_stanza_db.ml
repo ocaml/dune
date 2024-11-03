@@ -8,7 +8,6 @@ module Node = struct
     }
 
   let by_context dir =
-    let open Memo.O in
     let+ context = Context.DB.by_dir dir in
     let { Context.Env_nodes.context; workspace } = Context.env_nodes context in
     match context, workspace with

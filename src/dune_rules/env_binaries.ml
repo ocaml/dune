@@ -5,7 +5,6 @@ let expand_str_lazy expander sw =
   match String_with_vars.text_only sw with
   | Some s -> Memo.return s
   | None ->
-    let open Memo.O in
     let* expander = Memo.Lazy.force expander in
     Expander.No_deps.expand_str expander sw
 ;;

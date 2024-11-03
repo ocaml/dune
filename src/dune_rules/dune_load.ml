@@ -42,7 +42,6 @@ module Source_tree_map_reduce =
   Source_tree.Make_map_reduce_with_progress (Memo) (Projects_and_dune_files)
 
 let load () =
-  let open Memo.O in
   let status dir =
     match Source_tree.Dir.status dir with
     | Vendored -> `Vendored

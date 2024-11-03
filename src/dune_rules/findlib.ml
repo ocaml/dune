@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 module Opam_package = Package
 module P = Ocaml.Variant
 module Ps = Ocaml.Variant.Set
@@ -76,7 +77,6 @@ module DB = struct
   let create ~paths ~(lib_config : Lib_config.t) =
     let stdlib_dir = lib_config.stdlib_dir in
     let ext_lib = lib_config.ext_lib in
-    let open Memo.O in
     let+ builtins =
       let version = lib_config.ocaml_version in
       Meta.builtins ~stdlib_dir ~version
@@ -483,7 +483,6 @@ type t = DB.t
 let create =
   Per_context.create_by_name ~name:"findlib" (fun context ->
     Memo.lazy_ (fun () ->
-      let open Memo.O in
       let* context = Context.DB.get context in
       let* paths = Context.findlib_paths context
       and* lib_config =

@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let ctx = Super_context.context sctx in
@@ -10,7 +11,6 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   let copy_to_obj_dir ~src ~dst =
     add_rule ~loc:(Loc.of_pos __POS__) (Action_builder.symlink ~src ~dst)
   in
-  let open Memo.O in
   let* { Lib_config.has_native; ext_obj; _ } =
     let+ ocaml = Context.ocaml ctx in
     ocaml.lib_config
@@ -60,7 +60,6 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
 ;;
 
 let impl sctx ~(lib : Library.t) ~scope =
-  let open Memo.O in
   match lib.implements with
   | None -> Memo.return None
   | Some (loc, implements) ->

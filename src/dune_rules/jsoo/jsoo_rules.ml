@@ -145,7 +145,6 @@ module Version = struct
   ;;
 
   let impl_version bin =
-    let open Memo.O in
     let* _ = Build_system.build_file bin in
     Memo.of_reproducible_fiber
     @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
@@ -203,7 +202,6 @@ type sub_command =
 let js_of_ocaml_flags t ~dir (spec : Js_of_ocaml.Flags.Spec.t) =
   Action_builder.of_memo
   @@
-  let open Memo.O in
   let+ expander = Super_context.expander t ~dir
   and+ js_of_ocaml = jsoo_env ~dir in
   Js_of_ocaml.Flags.make
@@ -432,7 +430,6 @@ let setup_separate_compilation_rules sctx components =
     let config = Config.of_string s_config in
     let pkg = Lib_name.parse_string_exn (Loc.none, s_pkg) in
     let ctx = Super_context.context sctx in
-    let open Memo.O in
     let* installed_libs = Lib.DB.installed ctx in
     Lib.DB.find installed_libs pkg
     >>= (function
@@ -481,7 +478,6 @@ let setup_separate_compilation_rules sctx components =
 ;;
 
 let js_of_ocaml_compilation_mode t ~dir =
-  let open Memo.O in
   let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.compilation_mode with
   | Some m -> m
@@ -492,7 +488,6 @@ let js_of_ocaml_compilation_mode t ~dir =
 ;;
 
 let js_of_ocaml_sourcemap t ~dir =
-  let open Memo.O in
   let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.sourcemap with
   | Some sm -> sm
@@ -530,7 +525,6 @@ let build_exe
     | None -> Standard
     | Some p -> Promote p
   in
-  let open Memo.O in
   let* cmode =
     match compilation_mode with
     | None -> js_of_ocaml_compilation_mode sctx ~dir
@@ -572,7 +566,6 @@ let build_exe
 let runner = "node"
 
 let js_of_ocaml_runtest_alias ~dir =
-  let open Memo.O in
   let+ js_of_ocaml = jsoo_env ~dir in
   match js_of_ocaml.runtest_alias with
   | Some a -> a

@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Common = struct
   module Encode = struct
@@ -72,7 +73,6 @@ module Stdlib = struct
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
 
   let traverse t ~f =
-    let open Memo.O in
     let+ modules = Module_name.Parallel_map.parallel_map t.modules ~f:(fun _ -> f) in
     { t with modules }
   ;;
@@ -421,14 +421,12 @@ module Group = struct
 
   module Memo_traversals = struct
     let rec parallel_map ({ alias; modules; name = _ } as t) ~f =
-      let open Memo.O in
       let+ alias, modules =
         Memo.fork_and_join (fun () -> f alias) (fun () -> parallel_map_modules modules ~f)
       in
       { t with alias; modules }
 
     and parallel_map_modules modules ~f =
-      let open Memo.O in
       Module_name.Parallel_map.parallel_map modules ~f:(fun _ n ->
         match n with
         | Module m ->
@@ -885,7 +883,6 @@ let fold_user_available t ~f ~init =
 
 let map_user_written t ~f =
   let f m = if is_user_written m then f m else Memo.return m in
-  let open Memo.O in
   let+ modules =
     match t.modules with
     | Singleton m ->

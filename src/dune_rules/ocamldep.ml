@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Modules_data = struct
   type t =
@@ -133,11 +134,9 @@ let deps_of
   let context = Super_context.context sctx in
   let all_deps_file = dep (Transitive (unit, ml_kind)) in
   let ocamldep_output = dep (Immediate (unit, ml_kind)) in
-  let open Memo.O in
   let* () =
     let ocamldep =
-      (let open Memo.O in
-       let+ ocaml = Context.ocaml context in
+      (let+ ocaml = Context.ocaml context in
        ocaml.ocamldep)
       |> Action_builder.of_memo
     in

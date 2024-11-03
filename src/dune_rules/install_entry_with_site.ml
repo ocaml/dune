@@ -1,5 +1,5 @@
-open! Stdune
 open Import
+open Memo.O
 module Entry = Install.Entry
 module Dst = Entry.Dst
 
@@ -7,7 +7,6 @@ let make_with_site (section : Section_with_site.t) ?dst get_section ~kind src =
   match section with
   | Section section -> Memo.return (Entry.make section ?dst ~kind src)
   | Site { pkg; site; loc } ->
-    let open Memo.O in
     let+ section = get_section ~loc ~pkg ~site in
     let dst =
       let dst = Entry.adjust_dst' ~src ~dst ~section in

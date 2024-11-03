@@ -22,7 +22,6 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 ;;
 
 let gen_select_rules sctx ~dir compile_info =
-  let open Memo.O in
   Lib.Compile.resolved_selects compile_info
   |> Resolve.Memo.read_memo
   >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn } ->

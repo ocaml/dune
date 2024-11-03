@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Virtual = struct
   type t = { virtual_modules : Ordered_set_lang.Unexpanded.t }
@@ -51,7 +52,6 @@ let eval0 =
       Error name
   in
   fun ~expander ~loc ~all_modules ~standard osl ->
-    let open Memo.O in
     let parse = parse ~all_modules in
     let standard = Module_trie.map standard ~f:(fun m -> loc, Ok m) in
     let+ (modules, fake_modules), _ =
@@ -340,7 +340,6 @@ let eval
   }
   modules
   =
-  let open Memo.O in
   (* Fake modules are modules that do not exist but it doesn't matter because
      they are only removed from a set (for jbuild file compatibility) *)
   let eval = eval0 ~expander ~loc:stanza_loc ~all_modules in
@@ -408,7 +407,6 @@ let eval
   ~version
   (settings : Stanza_common.Modules_settings.t)
   =
-  let open Memo.O in
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf "(modules) field at %s" (Loc.to_file_colon_line stanza_loc))
   @@ fun () ->

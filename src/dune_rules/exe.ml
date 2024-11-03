@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Program = struct
   type t =
@@ -153,7 +154,6 @@ let link_exe
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
-  let open Memo.O in
   let* action_with_targets =
     let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml mode) in
     let prefix =
@@ -266,7 +266,6 @@ let link_many
   ~promote
   cctx
   =
-  let open Memo.O in
   let o_files =
     match o_files with
     | None -> Mode.Map.empty
@@ -361,7 +360,6 @@ let build_and_link_many
   ~promote
   cctx
   =
-  let open Memo.O in
   let* () = Module_compilation.build_all cctx in
   let* () =
     Memo.when_ (Compilation_context.bin_annot cctx) (fun () ->

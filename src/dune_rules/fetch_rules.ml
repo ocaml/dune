@@ -232,7 +232,6 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
       action ~target ~kind:`File
       |> Action_builder.With_targets.add ~file_targets:[ target ]
     in
-    let open Memo.O in
     let+ () = rule dir_rule
     and+ () = rule file_rule in
     ()

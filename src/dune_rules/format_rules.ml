@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let add_diff sctx loc alias ~input ~output =
   let open Action_builder.O in
@@ -120,7 +121,6 @@ module Ocamlformat = struct
 end
 
 let format_action format ~input ~output ~expander kind =
-  let open Memo.O in
   let+ ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
   match (format : Dialect.Format.t) with
   | Ocamlformat when ocamlformat_is_locked ->
@@ -156,7 +156,6 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let open Memo.O in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
     let input = Path.Build.relative dir input_basename in
@@ -211,7 +210,6 @@ let gen_rules_output
 ;;
 
 let format_config ~dir =
-  let open Memo.O in
   let+ value =
     Env_stanza_db.value_opt ~dir ~f:(fun (t : Dune_env.config) ->
       Memo.return t.format_config)
@@ -226,7 +224,6 @@ let format_config ~dir =
 ;;
 
 let with_config ~dir f =
-  let open Memo.O in
   let* config = format_config ~dir in
   if Format_config.is_empty config
   then
@@ -237,7 +234,6 @@ let with_config ~dir f =
 ;;
 
 let gen_rules sctx ~output_dir =
-  let open Memo.O in
   let dir = Path.Build.parent_exn output_dir in
   with_config ~dir (fun config ->
     let* expander = Super_context.expander sctx ~dir in

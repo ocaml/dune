@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 (* This module expands either a (library ... (ctypes ...)) rule or an
    (executables ... (ctypes ...)) rule into the generated set of .ml and .c
@@ -295,7 +296,6 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let type_description_functor = ctypes.type_description.functor_ in
   let c_types_includer_module = ctypes.generated_types in
   let c_generated_types_module = Ctypes_field.c_generated_types_module ctypes in
-  let open Memo.O in
   let foreign_archives_deps =
     let { Lib_config.ext_lib; ext_dll; _ } =
       (Compilation_context.ocaml cctx).lib_config
@@ -331,7 +331,6 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
       |> Memo.return
     | Pkg_config ->
       let+ () =
-        let open Memo.O in
         let setup query =
           let* res = Pkg_config.gen_rule sctx ~dir ~loc query in
           match res with

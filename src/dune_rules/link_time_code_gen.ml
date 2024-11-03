@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t = Link_time_code_gen_type.t =
   { to_link : Lib_flags.Lib_and_module.L.t
@@ -8,7 +9,6 @@ type t = Link_time_code_gen_type.t =
 let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code ~requires
   =
   let sctx = Compilation_context.super_context cctx in
-  let open Memo.O in
   let* module_ =
     let+ modules = Dir_contents.modules_of_lib sctx lib in
     let obj_name =

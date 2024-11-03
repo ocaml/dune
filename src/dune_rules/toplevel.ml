@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let toplevel_dir_prefix = ".toplevel."
 
@@ -24,7 +25,6 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    let open Memo.O in
     main_module t |> Pp_spec.pp_module pp >>| Modules.With_vlib.singleton_exe
   ;;
 
@@ -130,7 +130,6 @@ let setup_module_rules t =
 ;;
 
 let setup_rules_and_return_exe_path t ~linkage =
-  let open Memo.O in
   let program = Source.program t.source in
   let* (_ : Exe.dep_graphs) =
     Exe.build_and_link
@@ -175,7 +174,6 @@ let print_toplevel_init_file { include_paths; files_to_load; uses; pp; ppx; code
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Toplevel_stanza.t) =
-    let open Memo.O in
     let source = Source.of_stanza ~dir ~toplevel in
     let* expander = Super_context.expander sctx ~dir in
     let* scope = Scope.DB.find_by_dir dir in

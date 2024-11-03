@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Map_reduce =
   Source_tree.Dir.Make_map_reduce
@@ -7,7 +8,6 @@ module Map_reduce =
 
 let files dir =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  let open Memo.O in
   Source_tree.find_dir dir
   >>= function
   | None -> Memo.return (Dep.Set.empty, Path.Set.empty)

@@ -74,7 +74,7 @@ Solve the packages again, this time with the variables set.
   - static-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash aea7daa72b636fa3a44973ec5e29d225)
+  (dependency_hash 3f813eed4e2e65a0b1d17fee9b738899)
   
   (repositories
    (complete false)
@@ -85,7 +85,7 @@ Solve the packages again, this time with the variables set.
   - no-deps-b.1.0
   (lang package 0.1)
   
-  (dependency_hash 6957fba0128609ffc98fac2561c329cb)
+  (dependency_hash 2b84dc8b1f93a9cb3c8c060235c014a2)
   
   (repositories
    (complete false)
@@ -101,7 +101,7 @@ Solve the packages again, this time with the variables set.
   - no-deps-b.1.0
   (lang package 0.1)
   
-  (dependency_hash 9675a3014e7e2db0f946b3ad2a95c037)
+  (dependency_hash dcccc0b378d9035f0f00a871c2d29359)
   
   (repositories
    (complete false)
@@ -149,7 +149,7 @@ stored in the lockdir metadata:
   $ cat dune.lock/lock.dune
   (lang package 0.1)
   
-  (dependency_hash 72ab96748951e41c88d4ad9673fea081)
+  (dependency_hash e99c6a04197fafe2e8b7153de21bba97)
   
   (repositories
    (complete false)

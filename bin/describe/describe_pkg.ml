@@ -46,10 +46,11 @@ module Dependency_hash = struct
       >>| Package_name.Map.values
       >>| List.map ~f:Local_package.for_solver
     in
-    match
-      Local_package.(
-        For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
-    with
+    let hash =
+      Local_package.For_solver.non_local_dependencies local_packages
+      |> Local_package.Dependency_hash.of_dependency_formula
+    in
+    match hash with
     | None -> User_error.raise [ Pp.text "No non-local dependencies" ]
     | Some dependency_hash ->
       print_endline (Local_package.Dependency_hash.to_string dependency_hash)

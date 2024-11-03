@@ -783,8 +783,21 @@ let reject_unreachable_packages =
     loop roots;
     !seen
   in
-  fun ~local_packages ~pkgs_by_name ->
+  fun solver_env ~local_packages ~pkgs_by_name ->
     let roots = Package_name.Map.keys local_packages in
+    let pkgs_by_version =
+      Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
+        match lhs, rhs with
+        | None, None -> assert false
+        | Some _, Some _ ->
+          Code_error.raise
+            "package is both local and returned by solver"
+            [ "name", Package_name.to_dyn name ]
+        | Some (lock_dir_pkg : Lock_dir.Pkg.t), None -> Some lock_dir_pkg.info.version
+        | None, Some _pkg ->
+          let version = Package_version.of_string "dev" in
+          Some version)
+    in
     let pkgs_by_name =
       Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
         match lhs, rhs with
@@ -795,8 +808,28 @@ let reject_unreachable_packages =
             [ "name", Package_name.to_dyn name ]
         | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
         | None, Some (pkg : Local_package.For_solver.t) ->
+          let formula = pkg.dependencies |> Dependency_formula.to_filtered_formula in
+          (* Use `dev` because at this point we don't have any version *)
+          let opam_package =
+            OpamPackage.of_string (sprintf "%s.dev" (Package_name.to_string pkg.name))
+          in
+          let env = add_self_to_filter_env opam_package (Solver_env.to_env solver_env) in
+          let resolved =
+            Resolve_opam_formula.filtered_formula_to_package_names
+              env
+              ~with_test:true
+              pkgs_by_version
+              formula
+          in
           let deps =
-            List.map pkg.dependencies ~f:(fun (d : Package_dependency.t) -> d.name)
+            match resolved with
+            | Ok { regular; post = _ } ->
+              (* discard post deps *)
+              regular
+            | Error _ ->
+              Code_error.raise
+                "can't find a valid solution for the dependencies"
+                [ "name", Package_name.to_dyn pkg.name ]
           in
           let depopts =
             List.filter_map pkg.depopts ~f:(fun (d : Package_dependency.t) ->
@@ -912,7 +945,9 @@ let solve_lock_dir
                       (Package_name.to_string name)
                       (Package_name.to_string dep_name)
                   ]));
-        let reachable = reject_unreachable_packages ~local_packages ~pkgs_by_name in
+        let reachable =
+          reject_unreachable_packages solver_env ~local_packages ~pkgs_by_name
+        in
         let pkgs_by_name =
           Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
             Package_name.Set.mem reachable name)

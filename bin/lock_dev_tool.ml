@@ -54,7 +54,8 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   in
   { Dune_pkg.Local_package.name = local_package_name
   ; version = None
-  ; dependencies = dependency :: extra_dependencies
+  ; dependencies =
+      Dune_pkg.Dependency_formula.of_dependencies (dependency :: extra_dependencies)
   ; conflicts = []
   ; depopts = []
   ; pins = Package_name.Map.empty

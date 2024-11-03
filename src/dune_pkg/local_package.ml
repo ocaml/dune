@@ -15,7 +15,7 @@ type pins = pin Package_name.Map.t
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
-  ; dependencies : Package_dependency.t list
+  ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
@@ -38,55 +38,20 @@ module Dependency_hash = struct
         ~loc
         [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ]
   ;;
-end
 
-module Dependency_set = struct
-  type t = Package_constraint.Set.t Package_name.Map.t
-
-  let empty = Package_name.Map.empty
-
-  let of_list =
-    List.fold_left ~init:empty ~f:(fun acc { Package_dependency.name; constraint_ } ->
-      Package_name.Map.update acc name ~f:(fun existing ->
-        match existing, constraint_ with
-        | None, None -> Some Package_constraint.Set.empty
-        | None, Some constraint_ -> Some (Package_constraint.Set.singleton constraint_)
-        | Some existing, None -> Some existing
-        | Some existing, Some constraint_ ->
-          Some (Package_constraint.Set.add existing constraint_)))
-  ;;
-
-  let union =
-    Package_name.Map.union ~f:(fun _name a b -> Some (Package_constraint.Set.union a b))
-  ;;
-
-  let union_all = List.fold_left ~init:empty ~f:union
-
-  let package_dependencies =
-    Package_name.Map.to_list_map ~f:(fun name constraints ->
-      let constraint_ =
-        if Package_constraint.Set.is_empty constraints
-        then None
-        else Some (Package_constraint.And (Package_constraint.Set.to_list constraints))
-      in
-      { Package_dependency.name; constraint_ })
-  ;;
-
-  let encode_for_hash t =
-    package_dependencies t |> Dune_lang.Encoder.list Package_dependency.encode
-  ;;
-
-  let hash t =
-    if Package_name.Map.is_empty t
-    then None
-    else Some (encode_for_hash t |> Dune_sexp.to_string |> Dune_digest.string)
+  let of_dependency_formula formula =
+    match Dependency_formula.has_entries formula with
+    | false -> None
+    | true ->
+      let hashable = formula |> Dependency_formula.to_dyn |> Dyn.to_string in
+      Some (string hashable)
   ;;
 end
 
 module For_solver = struct
   type t =
     { name : Package_name.t
-    ; dependencies : Package_dependency.t list
+    ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
@@ -98,8 +63,7 @@ module For_solver = struct
        them *)
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
-    |> OpamFile.OPAM.with_depends
-         (Package_dependency.list_to_opam_filtered_formula dependencies)
+    |> OpamFile.OPAM.with_depends (Dependency_formula.to_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
          (Package_dependency.list_to_opam_filtered_formula conflicts)
     |> OpamFile.OPAM.with_conflict_class
@@ -108,16 +72,13 @@ module For_solver = struct
          (Package_dependency.list_to_opam_filtered_formula depopts)
   ;;
 
-  let opam_filtered_dependency_formula { dependencies; _ } =
-    Package_dependency.list_to_opam_filtered_formula dependencies
-  ;;
-
-  let dependency_set { dependencies; _ } = Dependency_set.of_list dependencies
-  let list_dependency_set ts = List.map ts ~f:dependency_set |> Dependency_set.union_all
-
-  let list_non_local_dependency_set ts =
-    List.fold_left ts ~init:(list_dependency_set ts) ~f:(fun acc { name; _ } ->
-      Package_name.Map.remove acc name)
+  let non_local_dependencies local_deps =
+    let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
+    let formula =
+      List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps
+      |> Dependency_formula.ands
+    in
+    Dependency_formula.remove_packages formula local_deps_names
   ;;
 end
 
@@ -134,9 +95,10 @@ let of_package (t : Dune_lang.Package.t) =
   let name = Package.name t in
   match Package.original_opam_file t with
   | None ->
+    let dependencies = t |> Package.depends |> Dependency_formula.of_dependencies in
     { name
     ; version
-    ; dependencies = Package.depends t
+    ; dependencies
     ; conflicts = Package.conflicts t
     ; depopts = Package.depopts t
     ; loc
@@ -148,7 +110,9 @@ let of_package (t : Dune_lang.Package.t) =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
     let convert_filtered_formula = Package_dependency.list_of_opam_filtered_formula loc in
-    let dependencies = convert_filtered_formula `And (OpamFile.OPAM.depends opam_file) in
+    let dependencies =
+      opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
+    in
     let conflicts = convert_filtered_formula `And (OpamFile.OPAM.conflicts opam_file) in
     let depopts = convert_filtered_formula `Or (OpamFile.OPAM.depopts opam_file) in
     let conflict_class =

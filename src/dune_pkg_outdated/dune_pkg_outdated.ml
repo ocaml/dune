@@ -91,7 +91,9 @@ let better_candidate
   let is_immediate_dep_of_local_package =
     Package_name.Map.exists local_packages ~f:(fun local_package ->
       Dune_pkg.Local_package.(
-        for_solver local_package |> For_solver.opam_filtered_dependency_formula)
+        for_solver local_package
+        |> (fun x -> x.dependencies)
+        |> Dune_pkg.Dependency_formula.to_filtered_formula)
       |> OpamFilter.filter_deps
            ~build:true
            ~post:false

@@ -63,7 +63,7 @@ first checksum to the lockfile for this package.
   $ cat dune.lock/*
   (lang package 0.1)
   
-  (dependency_hash 4435ebc0724374e2f76349d7a2e7ab6e)
+  (dependency_hash 32180cf311133b30d0b5be2a40c89f43)
   
   (repositories
    (complete false)

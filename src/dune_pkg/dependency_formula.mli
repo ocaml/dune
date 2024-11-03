@@ -13,9 +13,8 @@ val of_filtered_formula : OpamTypes.filtered_formula -> t
 (** Create a Dyn representation of the dependency formula *)
 val to_dyn : t -> Dyn.t
 
-(* Join two dependency formulas into one that represents a dependency on
-   both LHS and RHS *)
-val union : t list -> t
+(* Join all dependencies in the list to a single conjunction *)
+val ands : t list -> t
 
 (** Remove a package from the entire formula *)
 val remove_packages : t -> Package_name.Set.t -> t

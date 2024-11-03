@@ -6,31 +6,18 @@ let of_dependencies deps = Package_dependency.list_to_opam_filtered_formula deps
 let to_filtered_formula v = v
 let of_filtered_formula v = v
 let to_dyn = Opam_dyn.filtered_formula
+let ands = OpamFormula.ands
 
-let rec union = function
-  | [] -> OpamTypes.Empty
-  | x :: xs ->
-    let xs = union xs in
-    OpamTypes.And (x, xs)
-;;
-
-let rec remove_packages (v : OpamTypes.filtered_formula) pkgs =
-  match v with
-  | Empty -> OpamTypes.Empty
-  | Block b -> Block (remove_packages b pkgs)
-  | Atom (name, _condition) as a ->
-    let name = name |> OpamPackage.Name.to_string |> Package_name.of_string in
-    (match Package_name.Set.mem pkgs name with
-     | true -> Empty
-     | false -> a)
-  | And (l, r) ->
-    let l = remove_packages l pkgs in
-    let r = remove_packages r pkgs in
-    And (l, r)
-  | Or (l, r) ->
-    let l = remove_packages l pkgs in
-    let r = remove_packages r pkgs in
-    Or (l, r)
+let remove_packages (v : OpamTypes.filtered_formula) pkgs =
+  OpamFormula.map_up_formula
+    (function
+      | Atom (name, _condition) as a ->
+        if let name = Package_name.of_opam_package_name name in
+           Package_name.Set.mem pkgs name
+        then Empty
+        else a
+      | x -> x)
+    v
 ;;
 
 exception Found of Package_name.t

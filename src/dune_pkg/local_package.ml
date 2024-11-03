@@ -74,8 +74,10 @@ module For_solver = struct
 
   let non_local_dependencies local_deps =
     let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
-    let deps = List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps in
-    let formula = Dependency_formula.union deps in
+    let formula =
+      List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps
+      |> Dependency_formula.ands
+    in
     Dependency_formula.remove_packages formula local_deps_names
   ;;
 end

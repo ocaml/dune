@@ -78,7 +78,7 @@ Print the contents of each file in the lockdir:
   
   (lang package 0.1)
   
-  (dependency_hash fe8a4a69d1174a108c3d53a7e115289e)
+  (dependency_hash 8940266fc1693f5f2a008d1d58c1e1b9)
   
   (repositories
    (complete false)
@@ -123,7 +123,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   (lang package 0.1)
   
-  (dependency_hash fe8a4a69d1174a108c3d53a7e115289e)
+  (dependency_hash 8940266fc1693f5f2a008d1d58c1e1b9)
   
   (repositories
    (complete false)

@@ -170,7 +170,6 @@ module Driver = struct
     let replaces t = t.replaces
 
     let instantiate ~resolve ~get lib (info : Info.t) =
-      let open Memo.O in
       let+ replaces =
         Memo.parallel_map info.replaces ~f:(fun ((loc, name) as x) ->
           Resolve.Memo.bind (resolve x) ~f:(fun lib ->
@@ -233,7 +232,6 @@ module Driver = struct
   ;;
 
   let select libs ~loc =
-    let open Memo.O in
     select_replaceable_backend libs ~replaces
     >>| Resolve.bind ~f:(function
       | Ok x -> Resolve.return x
@@ -276,7 +274,6 @@ module Driver = struct
 end
 
 let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
-  let open Memo.O in
   let* driver_and_libs =
     let ( let& ) t f = Resolve.Memo.bind t ~f in
     let& pps = Resolve.Memo.lift pps in
@@ -356,7 +353,6 @@ let ppx_driver_exe (ctx : Context.t) libs =
 ;;
 
 let get_cookies ~loc ~expander ~lib_name libs =
-  let open Memo.O in
   let expander, library_name_cookie =
     match lib_name with
     | None -> expander, None

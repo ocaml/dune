@@ -1,4 +1,5 @@
 open! Import
+open Memo.O
 
 (* Returns a list containing all descendant directories of the directory whose
    path is the concatenation of [relative_dir] onto [base_dir]. E.g., if
@@ -14,7 +15,6 @@ let get_descendants_of_relative_dir_relative_to_base_dir_local
   let base_dir = Path.Build.drop_build_context_exn base_dir in
   let rec get_descendants_rec relative_dir prefix =
     let absolute_dir = Path.Source.relative base_dir relative_dir in
-    let open Memo.O in
     let* children =
       Source_tree.find_dir absolute_dir
       >>| function

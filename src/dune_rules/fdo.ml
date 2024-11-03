@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type phase =
   | All
@@ -44,7 +45,6 @@ let ocamlfdo_binary sctx dir =
 (* FDO flags are context dependent. *)
 let get_flags var =
   let f (ctx : Context.t) =
-    let open Memo.O in
     let+ env = Context.installed_env ctx in
     Env.get env var |> Option.value ~default:"" |> String.extract_blank_separated_words
   in
@@ -165,7 +165,6 @@ module Linker_script = struct
       | Some fdo_profile_path -> Command.Args.S [ A "-fdo-profile"; Dep fdo_profile_path ]
       | None -> As []
     in
-    let open Memo.O in
     let ocamlfdo_binary = ocamlfdo_binary sctx dir in
     let ocamlfdo_linker_script_flags =
       Action_builder.of_memo @@ ocamlfdo_linker_script_flags ctx
@@ -202,7 +201,6 @@ module Linker_script = struct
   ;;
 
   let flags t =
-    let open Memo.O in
     let open Command.Args in
     match t with
     | None -> Memo.return (As [])

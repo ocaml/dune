@@ -126,7 +126,6 @@ let collect_stanzas =
 ;;
 
 let rules ~sctx ~dir tests =
-  let open Memo.O in
   let* stanzas = collect_stanzas ~dir
   and* with_package_mask =
     Dune_load.mask ()

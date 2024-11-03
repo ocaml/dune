@@ -612,8 +612,7 @@ module Unprocessed = struct
 
   let add_lib_dirs sctx mode libs =
     Action_builder.of_memo
-      (let open Memo.O in
-       Memo.parallel_map libs ~f:(fun lib ->
+      (Memo.parallel_map libs ~f:(fun lib ->
          let+ dirs = src_dirs sctx lib in
          lib, dirs)
        >>| List.fold_left
@@ -733,7 +732,6 @@ module Unprocessed = struct
 end
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander (t : Unprocessed.t) =
-  let open Memo.O in
   let merlin_file = Merlin_ident.merlin_file_path dir t.ident in
   let* () =
     Rules.Produce.Alias.add_deps

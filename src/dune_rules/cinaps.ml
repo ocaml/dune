@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t =
   { loc : Loc.t
@@ -75,7 +76,6 @@ let () =
 ;;
 
 let gen_rules sctx t ~dir ~scope =
-  let open Memo.O in
   let loc = t.loc in
   (* Files checked by cinaps *)
   let* cinapsed_files =

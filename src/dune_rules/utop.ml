@@ -35,7 +35,6 @@ let add_stanza db ~dir (acc, pps) stanza =
   match Stanza.repr stanza with
   | Library.T l ->
     let+ lib =
-      let open Memo.O in
       let+ resolve =
         Lib.DB.resolve_when_exists db (l.buildable.loc, Library.best_name l)
       in
@@ -64,7 +63,6 @@ let add_stanza db ~dir (acc, pps) stanza =
        else acc, pps)
   | Executables.T exes ->
     let+ libs =
-      let open Memo.O in
       let* compile_info =
         let* scope = Scope.DB.find_by_dir dir in
         let dune_version =
@@ -143,7 +141,6 @@ let requires ~loc ~db ~libs =
 ;;
 
 let setup sctx ~dir =
-  let open Memo.O in
   let* expander = Super_context.expander sctx ~dir in
   let* scope = Scope.DB.find_by_dir dir in
   let db = Scope.libs scope in
@@ -199,7 +196,6 @@ let setup sctx ~dir =
 ;;
 
 let requires_under_dir sctx ~dir =
-  let open Memo.O in
   let* scope = Scope.DB.find_by_dir dir in
   let db = Scope.libs scope in
   let* libs = libs_under_dir sctx ~db ~dir:(Path.build dir) in

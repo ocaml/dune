@@ -1,7 +1,7 @@
 open Import
+open Memo.O
 
 let pkg_config_binary sctx ~dir =
-  let open Memo.O in
   let+ env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
   match Env.get env "PKG_CONFIG" with
   | None -> "pkg-config"
@@ -58,9 +58,7 @@ module Query = struct
 end
 
 let gen_rule sctx ~loc ~dir query =
-  let open Memo.O in
   let* bin =
-    let open Memo.O in
     let* pkg_config = pkg_config_binary sctx ~dir in
     Super_context.resolve_program_memo sctx ~loc:(Some loc) ~dir pkg_config
   in

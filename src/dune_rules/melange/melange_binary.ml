@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let melc sctx ~loc ~dir =
   Super_context.resolve_program_memo
@@ -12,7 +13,6 @@ let melc sctx ~loc ~dir =
 
 let where =
   let impl bin =
-    let open Memo.O in
     let* _ = Build_system.build_file bin in
     let+ where =
       Memo.of_reproducible_fiber
@@ -22,7 +22,6 @@ let where =
   in
   let memo = Memo.create "melange-where" ~input:(module Path) ~cutoff:String.equal impl in
   fun sctx ~loc ~dir ->
-    let open Memo.O in
     let* env = Super_context.env_node sctx ~dir >>= Env_node.external_env in
     let+ melange_dirs =
       match Env.get env "MELANGELIB" with

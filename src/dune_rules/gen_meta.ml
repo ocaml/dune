@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 open Meta
 
 module Pub_name = struct
@@ -60,7 +61,6 @@ let archives ?(preds = []) lib =
 ;;
 
 let gen_lib pub_name lib ~version =
-  let open Memo.O in
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
   let kind = Lib_info.kind info in

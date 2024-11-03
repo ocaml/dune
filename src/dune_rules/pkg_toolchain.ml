@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let base_dir () =
   let cache_dir =
@@ -56,7 +57,6 @@ let is_compiler_and_toolchains_enabled name =
 
 let ocaml context env ~bin_dir =
   let which prog =
-    let open Memo.O in
     let path = Path.Outside_build_dir.relative bin_dir prog in
     let+ exists = Fs_memo.file_exists path in
     if exists then Some (Path.outside_build_dir path) else None
@@ -143,7 +143,6 @@ let modify_install_action (action : Dune_lang.Action.t) ~installation_prefix ~su
 ;;
 
 let modify_install_action ~prefix ~suffix action =
-  let open Memo.O in
   let+ installed = Fs_memo.dir_exists prefix in
   if installed
   then
@@ -166,7 +165,6 @@ let touch_config_cache =
 ;;
 
 let modify_build_action ~prefix action =
-  let open Memo.O in
   let+ installed = Fs_memo.dir_exists prefix in
   if installed
   then

@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 let ocaml_index sctx ~dir =
   Super_context.resolve_program ~loc:None ~dir sctx "ocaml-index"
@@ -90,7 +91,6 @@ let cctx_rules cctx =
 ;;
 
 let context_indexes sctx =
-  let open Memo.O in
   let ctx = Super_context.context sctx in
   Context.name ctx
   |> Dune_load.dune_files
@@ -111,7 +111,6 @@ let context_indexes sctx =
 ;;
 
 let project_rule sctx project =
-  let open Memo.O in
   let ocaml_index_alias =
     let dir =
       let build_dir =

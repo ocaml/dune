@@ -28,14 +28,12 @@ let available_exes ~dir (exes : Executables.t) =
       ~forbidden_libraries:exes.forbidden_libraries
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
   in
-  let open Memo.O in
   let+ available = Lib.Compile.direct_requires compile_info in
   Resolve.is_ok available
 ;;
 
 let get_installed_binaries ~(context : Context.t) stanzas =
   let merge _ x y = Some (Appendable_list.( @ ) x y) in
-  let open Memo.O in
   Memo.List.map stanzas ~f:(fun d ->
     let dir = Path.Build.append_source (Context.build_dir context) (Dune_file.dir d) in
     let* expander = Expander0.get ~dir in

@@ -1,8 +1,7 @@
-open! Stdune
 open! Import
+open Memo.O
 
 let eval (cond : Dune_lang.Cond.t) ~dir ~f =
-  let open Memo.O in
   let expand_sw = String_expander.Memo.expand ~mode:Single ~dir ~f in
   let* from_case =
     Memo.List.find_map cond.cases ~f:(fun (blang, sw) ->

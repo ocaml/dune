@@ -313,7 +313,6 @@ let compile_module
   ~mode
   =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
-  let open Memo.O in
   let+ () =
     let action_with_targets =
       let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
@@ -352,7 +351,6 @@ let compile_module
 ;;
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
-  let open Memo.O in
   let odoc_file = Mld.odoc_file m ~doc_dir in
   let odoc_input = Mld.odoc_input m in
   let run_odoc =

@@ -58,7 +58,6 @@ let expander t ~dir =
 ;;
 
 let get_env_stanza ~dir =
-  let open Memo.O in
   Dune_load.stanzas_in_dir dir
   >>= (function
          | None -> Memo.return None
@@ -143,8 +142,6 @@ let create ~context ~host_env_tree ~default_env ~root_expander ~artifacts ~conte
   Non_rec.Rec.env_tree ()
 ;;
 
-open Memo.O
-
 let extend_action t ~dir action =
   let open Action_builder.O in
   let+ (action : Action.Full.t) = action
@@ -224,7 +221,6 @@ let make_default_env_node
 ;;
 
 let make_root_env (context : Context.t) ~(host : t option) : Env.t Memo.t =
-  let open Memo.O in
   let* env =
     let roots =
       let context = Context.name context in
@@ -306,7 +302,6 @@ let create ~(context : Context.t) ~(host : t option) ~packages ~stanzas =
 
 let all =
   Memo.lazy_ ~name:"Super_context.all" (fun () ->
-    let open Memo.O in
     let* packages = Dune_load.packages ()
     and* contexts = Context.DB.all () in
     let rec sctxs =
@@ -340,13 +335,11 @@ let all =
 ;;
 
 let find name =
-  let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find all name
 ;;
 
 let find_exn name =
-  let open Memo.O in
   let+ all = Memo.Lazy.force all in
   Context_name.Map.find_exn all name
 ;;

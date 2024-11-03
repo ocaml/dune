@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Link_params = struct
   type t =
@@ -12,7 +13,6 @@ module Link_params = struct
     }
 
   let get sctx (t : Lib.t) (mode : Link_mode.t) =
-    let open Memo.O in
     let info = Lib.info t in
     let lib_files = Lib_info.foreign_archives info
     and dll_files = Lib_info.foreign_dll_files info in
@@ -77,7 +77,6 @@ module Link_params = struct
 end
 
 let link_deps sctx t mode =
-  let open Memo.O in
   let+ x = Link_params.get sctx t mode in
   List.rev_append x.hidden_deps x.deps
 ;;
@@ -185,7 +184,6 @@ module L = struct
   ;;
 
   let c_include_flags ts sctx =
-    let open Memo.O in
     let local, external_ =
       List.fold_left ts ~init:([], Dep.Set.empty) ~f:(fun (local, external_) lib ->
         let info = Lib.info lib in

@@ -343,7 +343,6 @@ module DB = struct
   ;;
 
   let create ~context ~projects_by_root stanzas coq_stanzas =
-    let open Memo.O in
     let t = Fdecl.create Dyn.opaque in
     let* context = Context.DB.get context in
     let build_dir = Context.build_dir context in

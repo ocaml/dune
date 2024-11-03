@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module type Path = sig
   type t
@@ -77,7 +78,6 @@ let load_sexps
   let module Path = (val path : Path with type t = a) in
   let include_stack = (loc, current_file) :: include_stack in
   let current_file = file_path context loc fn in
-  let open Memo.O in
   let* exists = Path.file_exists current_file in
   if not exists
   then

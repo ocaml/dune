@@ -49,7 +49,6 @@ let foreign_flags_env =
         let+ ocaml = Context.ocaml context in
         default_context_flags (Context.build_context context) ocaml.ocaml_config ~project)
       ~f:(fun ~parent expander (env : Dune_env.config) ->
-        let open Memo.O in
         let+ parent = parent in
         let foreign_flags lang =
           Foreign_language.Dict.get env.foreign_flags lang

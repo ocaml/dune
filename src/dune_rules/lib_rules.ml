@@ -213,7 +213,6 @@ let ocamlmklib
            | false -> [ static_target ])
     >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
-    let open Memo.O in
     (* Build the static target only by passing the [-custom] flag. *)
     let* () =
       build ~sandbox:Sandbox_config.no_special_requirements ~custom:true [ static_target ]
@@ -415,7 +414,6 @@ let build_shared lib ~native_archives ~sctx ~dir ~flags =
 ;;
 
 let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t) ~(f : Ocaml.Mode.t -> unit Memo.t) =
-  let open Memo.O in
   let+ () = Memo.when_ t.byte (fun () -> f Byte)
   and+ () = Memo.when_ t.native (fun () -> f Native) in
   ()
@@ -430,7 +428,6 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
   let sctx = Compilation_context.super_context cctx in
   let ocaml = Compilation_context.ocaml cctx in
   let { Lib_config.ext_obj; natdynlink_supported; _ } = ocaml.lib_config in
-  let open Memo.O in
   let* () =
     Modules.With_vlib.exit_module modules
     |> Memo.Option.iter ~f:(fun m ->

@@ -1,7 +1,7 @@
 open Import
+open Memo.O
 
 let rec eval (t : Blang.t) ~dir ~f =
-  let open Memo.O in
   match t with
   | Const x -> Memo.return x
   | Expr sw ->

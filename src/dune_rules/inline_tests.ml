@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Backend = struct
   module M = struct
@@ -17,7 +18,6 @@ module Backend = struct
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
-      let open Memo.O in
       let+ extends =
         Memo.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
           Resolve.Memo.bind (resolve x) ~f:(fun lib ->
@@ -93,7 +93,6 @@ include Sub_system.Register_end_point (struct
         let name = Module_name.of_string name in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
-      let open Memo.O in
       let modules = Modules.With_vlib.singleton_exe main_module in
       let runner_libs =
         let open Resolve.Memo.O in
@@ -364,7 +363,6 @@ include Sub_system.Register_end_point (struct
     ;;
 
     let gen_rules c ~(info : Info.t) ~backends =
-      let open Memo.O in
       let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ } = c in
       let* expander = Super_context.expander sctx ~dir in
       let* enabled_if = Expander.eval_blang expander info.enabled_if in

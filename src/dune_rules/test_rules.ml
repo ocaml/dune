@@ -78,11 +78,11 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             :: t.deps
           | None -> t.deps
         in
-        let add_alias ~loc ~action ~locks =
-          (* CR-rgrinberg: why are we going through the stanza api? *)
+        let add_alias ~loc ~action =
+          (* CR rgrinberg: why are we going through the stanza api? *)
           let alias =
             { Alias_conf.name = runtest_alias
-            ; locks
+            ; locks = t.locks
             ; package = t.package
             ; deps
             ; action = Some (loc, action)
@@ -93,7 +93,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
         in
         match test_kind (loc, s, ext) with
-        | `Regular -> add_alias ~loc ~action:run_action ~locks:[]
+        | `Regular -> add_alias ~loc ~action:run_action
         | `Expect diff ->
           let rule =
             { Rule_conf.targets = Infer
@@ -110,7 +110,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             ; package = t.package
             }
           in
-          add_alias ~loc ~action:(Diff diff) ~locks:t.locks
+          add_alias ~loc ~action:(Diff diff)
           >>> let+ (_ignored_targets : Targets.Validated.t option) =
                 Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
               in

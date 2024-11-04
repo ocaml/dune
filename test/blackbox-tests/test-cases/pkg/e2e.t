@@ -75,8 +75,5 @@ Lock, build, and run the executable in the project:
   $ dune pkg lock
   Solution for dune.lock:
   - foo.0.0.1
-
-# Temporary failure until 10080 is fixed
-
   $ dune exec bar
   Hello, World!

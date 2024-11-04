@@ -13,6 +13,7 @@ Workspaces also allow you to set the env for a context:
   (menhir_flags ())
   (menhir_explain ())
   (coq_flags (-q))
+  (coqdep_flags ())
   (coqdoc_flags (--toc))
   (js_of_ocaml_flags ())
   (js_of_ocaml_build_runtime_flags ())

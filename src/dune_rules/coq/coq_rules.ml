@@ -141,6 +141,15 @@ let coq_env =
             x.coq_flags
           in
           Expander.expand_and_eval_set expander (Coq_env.flags config.coq) ~standard
+        and+ coqdep_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdep_flags
+          in
+          Expander.expand_and_eval_set
+            expander
+            (Coq_env.coqdep_flags config.coq)
+            ~standard
         and+ coqdoc_flags =
           let standard =
             let+ x = Action_builder.of_memo_join parent in
@@ -151,7 +160,7 @@ let coq_env =
             (Coq_env.coqdoc_flags config.coq)
             ~standard
         in
-        { Coq_flags.coq_flags; coqdoc_flags })
+        { Coq_flags.coq_flags; coqdep_flags; coqdoc_flags })
   in
   fun ~dir ->
     (let* () = Memo.return () in
@@ -174,6 +183,16 @@ let coq_flags ~dir ~stanza_flags ~per_file_flags ~expander =
       , per_file_flags )
   in
   Expander.expand_and_eval_set expander flags_to_expand ~standard
+;;
+
+let coqdep_flags ~dir ~stanza_coqdep_flags ~expander =
+  Expander.expand_and_eval_set
+    expander
+    stanza_coqdep_flags
+    ~standard:
+      (Action_builder.map
+         ~f:(fun { Coq_flags.coqdep_flags; _ } -> coqdep_flags)
+         (coq_env ~dir))
 ;;
 
 let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander =
@@ -474,6 +493,7 @@ let setup_coqdep_for_theory_rule
   ~ml_flags
   ~mlpack_rule
   ~boot_flags
+  ~stanza_coqdep_flags
   coq_modules
   =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -484,7 +504,15 @@ let setup_coqdep_for_theory_rule
     ; Deps sources
     ]
   in
-  let coqdep_flags = Command.Args.Dyn boot_flags :: file_flags in
+  let extra_coqdep_flags =
+    (* Standard flags for coqdep *)
+    let open Action_builder.O in
+    let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+    coqdep_flags ~dir ~stanza_coqdep_flags ~expander
+  in
+  let coqdep_flags =
+    Command.Args.Dyn boot_flags :: Command.Args.dyn extra_coqdep_flags :: file_flags
+  in
   let stdout_to = dep_theory_file ~dir ~wrapper_name in
   let* coqdep =
     Super_context.resolve_program_memo
@@ -968,6 +996,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
     ~ml_flags
     ~mlpack_rule
     ~boot_flags
+    ~stanza_coqdep_flags:s.coqdep_flags
     coq_modules
   >>> Memo.parallel_iter
         coq_modules
@@ -1189,6 +1218,7 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Extraction.t
     ~ml_flags
     ~mlpack_rule
     ~boot_flags
+    ~stanza_coqdep_flags:Ordered_set_lang.Unexpanded.standard
     [ coq_module ]
   >>> setup_coqc_rule
         ~scope

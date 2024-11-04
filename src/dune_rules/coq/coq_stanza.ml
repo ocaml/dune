@@ -14,6 +14,7 @@ let coq_syntax =
     ; (0, 7), `Since (3, 7)
     ; (0, 8), `Since (3, 8)
     ; (0, 9), `Since (3, 16)
+    ; (0, 10), `Since (3, 17)
     ]
 ;;
 
@@ -169,6 +170,7 @@ module Theory = struct
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
+    ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
     }
 
@@ -249,6 +251,10 @@ module Theory = struct
            (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.decode)
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode
+       and+ coqdep_flags =
+         Ordered_set_lang.Unexpanded.field
+           "coqdep_flags"
+           ~check:(Dune_lang.Syntax.since coq_syntax (0, 10))
        and+ coqdoc_flags =
          Ordered_set_lang.Unexpanded.field
            "coqdoc_flags"
@@ -266,6 +272,7 @@ module Theory = struct
        ; boot
        ; buildable
        ; enabled_if
+       ; coqdep_flags
        ; coqdoc_flags
        })
   ;;

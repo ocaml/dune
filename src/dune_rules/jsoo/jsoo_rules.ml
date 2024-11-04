@@ -670,6 +670,10 @@ let build_exe
     | None -> js_of_ocaml_sourcemap sctx ~dir ~mode
     | Some x -> Memo.return x
   in
+  assert (
+    match mode with
+    | JS -> wasm_files = []
+    | Wasm -> true);
   let runtime_files = javascript_files @ wasm_files in
   let directory_targets =
     match mode with

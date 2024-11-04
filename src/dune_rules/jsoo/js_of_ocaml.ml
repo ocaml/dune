@@ -29,7 +29,7 @@ module Mode = struct
     | JS
     | Wasm
 
-  let equal = Poly.equal
+  let equal (a : t) b = Poly.equal a b
 
   let select ~mode js wasm =
     match mode with
@@ -89,9 +89,9 @@ module Mode = struct
     let union = Pair.map2 ~f:( || )
     let is_empty (x : t) = not (x.js || x.wasm)
 
-    let to_list (x : t) =
-      let l = if x.wasm then [ Wasm ] else [] in
-      if x.js then JS :: l else l
+    let to_list ({ js; wasm } : t) =
+      let l = if wasm then [ Wasm ] else [] in
+      if js then JS :: l else l
     ;;
   end
 end
@@ -159,8 +159,8 @@ module Flags = struct
     and+ compile = t.compile
     and+ link = t.link in
     let prefix =
-      match mode with
-      | Mode.JS -> "js"
+      match (mode : Mode.t) with
+      | JS -> "js"
       | Wasm -> "wasm"
     in
     List.map
@@ -225,8 +225,8 @@ module In_buildable = struct
              (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
          and+ wasm_files =
-           match mode with
-           | Mode.JS -> return []
+           match (mode : Mode.t) with
+           | JS -> return []
            | Wasm ->
              field
                "wasm_files"

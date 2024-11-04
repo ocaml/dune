@@ -181,22 +181,23 @@ include Sub_system.Register_end_point (struct
           | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes)
       in
       let* linkages =
-        let+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
         let ocaml = Compilation_context.ocaml cctx in
-        List.concat_map modes ~f:(fun (mode : Mode_conf.t) ->
-          match mode with
-          | Native -> [ Exe.Linkage.native ]
-          | Best -> [ Exe.Linkage.native_or_custom ocaml ]
-          | Byte -> [ Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version ]
-          | Jsoo jsoo_mode ->
-            let linkage =
-              match jsoo_mode with
-              | JS -> Exe.Linkage.js
-              | Wasm -> Exe.Linkage.wasm
-            in
-            if Js_of_ocaml.Mode.Pair.select ~mode:jsoo_mode jsoo_is_whole_program
-            then [ Exe.Linkage.byte_for_jsoo; linkage ]
-            else [ linkage ])
+        let l =
+          List.map modes ~f:(fun (mode : Mode_conf.t) ->
+            match mode with
+            | Native -> Exe.Linkage.native
+            | Best -> Exe.Linkage.native_or_custom ocaml
+            | Byte -> Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version
+            | Jsoo JS -> Exe.Linkage.js
+            | Jsoo Wasm -> Exe.Linkage.wasm)
+        in
+        let+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
+        if List.exists modes ~f:(fun mode ->
+             match (mode : Mode_conf.t) with
+             | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
+             | Native | Best | Byte -> false)
+        then Exe.Linkage.byte_for_jsoo :: l
+        else l
       in
       let* (_ : Exe.dep_graphs) =
         let link_args =

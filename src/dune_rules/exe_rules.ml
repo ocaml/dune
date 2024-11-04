@@ -17,9 +17,8 @@ let linkages
     let modes =
       L.Map.to_list exes.modes
       |> List.filter ~f:(fun (mode, _) ->
-        match mode with
-        | Executables.Link_mode.Jsoo mode ->
-          Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
+        match (mode : Executables.Link_mode.t) with
+        | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
         | Byte_complete | Other _ -> true)
       |> List.map ~f:(fun (mode, loc) ->
         Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
@@ -36,13 +35,11 @@ let linkages
           Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
         in
         let bytecode_exe_needed =
-          L.Map.foldi
-            ~f:(fun m _ p ->
-              match m with
-              | Executables.Link_mode.Jsoo mode ->
-                Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed || p
-              | Byte_complete | Other _ -> p)
-            ~init:false
+          L.Map.existsi
+            ~f:(fun mode _ ->
+              match (mode : Executables.Link_mode.t) with
+              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed
+              | Byte_complete | Other _ -> false)
             exes.modes
         in
         if bytecode_exe_needed then Exe.Linkage.byte_for_jsoo :: modes else modes)

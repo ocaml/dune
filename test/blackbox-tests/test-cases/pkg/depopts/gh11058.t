@@ -4,10 +4,40 @@ Handling of more than one depopt:
 
   $ . ../helpers.sh
 
-  $ mkpkg bar <<'EOF'
+  $ mkpkg a
+  $ mkpkg b
+  $ mkpkg c
+  $ mkpkg d
+  $ mkpkg e
+  $ mkpkg f
+
+  $ runtest() {
+  > mkpkg bar <<'EOF'
   > depopts: [ "a" "b" "c" ]
   > EOF
+  > solve bar
+  > }
 
-  $ solve bar
+  $ runtest <<'EOF'
+  > depopts: [ "a" "b" "c" ]
+  > EOF
+  Solution for dune.lock:
+  - bar.0.0.1
+
+  $ runtest <<'EOF'
+  > depopts: [ "a" "b" "c" "d" ]
+  > EOF
+  Solution for dune.lock:
+  - bar.0.0.1
+
+  $ runtest <<'EOF'
+  > depopts: [ ("a" | "b") "c" "d" ]
+  > EOF
+  Solution for dune.lock:
+  - bar.0.0.1
+
+  $ runtest <<'EOF'
+  > depopts: [ (("e" | "a") | ("d" | "f")) "b" "c" ]
+  > EOF
   Solution for dune.lock:
   - bar.0.0.1

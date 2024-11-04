@@ -104,5 +104,4 @@ messages are informative enough.
 - Running a non-test file should give a suitable error message
   $ dune test dune-project
   Error: "dune-project" was not found.
-  Hint: did you mean dune-project?
   [1]

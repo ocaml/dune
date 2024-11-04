@@ -278,7 +278,9 @@ let levenshtein_distance s t =
 
 let did_you_mean s ~candidates =
   let candidates =
-    List.filter candidates ~f:(fun candidate -> levenshtein_distance s candidate < 3)
+    List.filter candidates ~f:(fun candidate ->
+      let distance = levenshtein_distance s candidate in
+      0 < distance && distance < 3)
   in
   match candidates with
   | [] -> []

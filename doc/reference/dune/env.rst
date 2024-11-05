@@ -49,11 +49,24 @@ Fields supported in ``<settings>`` are:
   or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next the the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
 
 - ``(js_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
-  :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the `js` mode.
+  :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the ``js`` mode.
 
-- ``(js_of_ocaml (submodes <submodes>))`` controls whether to generate
-  JavaScript, Wasm code, or both. Each submode is either ``js`` or ``wasm``.
-  The default is to generate JavaScript code.
+- ``(js_of_ocaml (enabled_if <blang expression>))`` specifies whether the ``js`` mode is enabled. It is enabled by default.
+
+- ``(wasm_of_ocaml (flags <flags>)(build_runtime <flags>)(link_flags <flags>))``
+  specifies ``wasm_of_ocaml`` flags. See :ref:`wasmoo-field` for more details.
+
+- ``(wasm_of_ocaml (compilation_mode <mode>))`` controls whether to use separate
+  compilation or not where ``<mode>`` is either ``whole_program`` or
+  ``separate``.
+
+- ``(wasm_of_ocaml (sourcemap <mode>))`` controls whether to generate sourcemap
+  or not where ``<mode>`` is either ``no``, ``file`` (to generate sourcemap in a ``.map`` file next the the generated javascript file) or ``inline`` (to inline the sourcemap at the end of the generated JavaScript file).
+
+- ``(wasm_of_ocaml (runtest_alias <alias-name>))`` specifies the alias under which
+  :ref:`inline_tests` and tests (:ref:`tests-stanza`) run for the ``wasm`` mode.
+
+- ``(wasm_of_ocaml (enabled_if <blang expression>))`` specifies whether the ``wasm`` mode is enabled. It is enabled by default.
 
 - ``(binaries <binaries>)``, where ``<binaries>`` is a list of entries of the
   form ``(<filepath> as <name>)``. ``(<filepath> as <name>)`` makes the binary

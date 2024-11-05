@@ -800,13 +800,6 @@ let reject_unreachable_packages =
           let version = Package_version.of_string "dev" in
           Some version)
     in
-    (* Dune is removed from the packages, but added here to allow formula
-       resolution to pick "dune" *)
-    let pkgs_by_version =
-      Package_name.Map.update pkgs_by_version Dune_dep.name ~f:(function
-        | Some _ as version -> version
-        | None -> Some (Package_version.of_string "dev"))
-    in
     let pkgs_by_name =
       Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
         match lhs, rhs with
@@ -817,7 +810,13 @@ let reject_unreachable_packages =
             [ "name", Package_name.to_dyn name ]
         | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
         | None, Some (pkg : Local_package.For_solver.t) ->
-          let formula = pkg.dependencies |> Dependency_formula.to_filtered_formula in
+          (* remove Dune from the formula as we remove it from solutions *)
+          let formula =
+            Dependency_formula.remove_packages
+              pkg.dependencies
+              (Package_name.Set.singleton Dune_dep.name)
+            |> Dependency_formula.to_filtered_formula
+          in
           (* Use `dev` because at this point we don't have any version *)
           let opam_package =
             OpamPackage.of_string (sprintf "%s.dev" (Package_name.to_string pkg.name))

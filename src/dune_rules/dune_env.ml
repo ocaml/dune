@@ -225,14 +225,14 @@ let js_of_ocaml_field =
   field
     "js_of_ocaml"
     ~default:Js_of_ocaml.Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode)
+    (Dune_lang.Syntax.since Stanza.syntax (3, 0) >>> Js_of_ocaml.Env.decode ~mode:JS)
 ;;
 
 let wasm_of_ocaml_field =
   field
     "wasm_of_ocaml"
     ~default:Js_of_ocaml.Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Js_of_ocaml.Env.decode)
+    (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Js_of_ocaml.Env.decode ~mode:Wasm)
 ;;
 
 let bin_annot = field_o "bin_annot" (Dune_lang.Syntax.since Stanza.syntax (3, 8) >>> bool)

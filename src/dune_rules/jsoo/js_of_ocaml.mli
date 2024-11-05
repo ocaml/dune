@@ -127,7 +127,7 @@ module Env : sig
 
   val map : f:('a -> 'b) -> 'a t -> 'b t
   val equal : Ordered_set_lang.Unexpanded.t t -> Ordered_set_lang.Unexpanded.t t -> bool
-  val decode : Ordered_set_lang.Unexpanded.t t Dune_lang.Decoder.t
+  val decode : mode:Mode.t -> Ordered_set_lang.Unexpanded.t t Dune_lang.Decoder.t
   val default : profile:Profile.t -> string list t
   val empty : Ordered_set_lang.Unexpanded.t t
 end

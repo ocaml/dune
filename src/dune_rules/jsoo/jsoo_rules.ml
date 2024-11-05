@@ -259,12 +259,14 @@ let js_of_ocaml_rule
        | Compile -> S []
        | Link -> A "link"
        | Build_runtime -> A "build-runtime")
-    ; (match (sourcemap : Js_of_ocaml.Sourcemap.t), mode with
-       | No, _ -> A "--no-source-map"
-       | Inline, _ | File, Wasm ->
-         (* With wasm_of_ocaml, source maps are always inline *)
-         A "--source-map-inline"
-       | File, JS ->
+    ; (match (sourcemap : Js_of_ocaml.Sourcemap.t) with
+       | No -> A "--no-source-map"
+       | Inline -> A "--source-map-inline"
+       | File ->
+         assert (
+           match mode with
+           | JS -> true
+           | Wasm -> false);
          S
            [ A "--source-map"
            ; Hidden_targets [ Path.Build.set_extension target ~ext:".map" ]

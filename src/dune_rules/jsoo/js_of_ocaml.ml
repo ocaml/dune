@@ -74,7 +74,11 @@ module Sourcemap = struct
     | Inline
     | File
 
-  let decode = enum [ "no", No; "inline", Inline; "file", File ]
+  let decode ~mode =
+    match (mode : Mode.t) with
+    | JS -> enum [ "no", No; "inline", Inline; "file", File ]
+    | Wasm -> enum [ "no", No; "inline", Inline ]
+  ;;
 
   let equal x y =
     match x, y with
@@ -232,7 +236,7 @@ module In_buildable = struct
            only_in_executable
              (field_o
                 "sourcemap"
-                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode))
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode))
          in
          { flags; enabled_if; javascript_files; wasm_files; compilation_mode; sourcemap }))
   ;;
@@ -301,13 +305,13 @@ module Env = struct
     ; enabled_if : Blang.t option
     }
 
-  let decode =
+  let decode ~mode =
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
        and+ sourcemap =
          field_o
            "sourcemap"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
        and+ flags = Flags.decode
        and+ enabled_if =

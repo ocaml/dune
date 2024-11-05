@@ -297,7 +297,7 @@ options using ``(wasm_of_ocaml (<wasm_of_ocaml-options>))``.
 - ``(wasm_files (<files-list>))`` to specify ``wasm_of_ocaml``
   Wasm runtime files.
 
-For the ``(sourcemap <config>)`` option, source maps are generated when ``<config>>`` is either ``file`` or ``inline``. They are put within the ``.bc.wasm.assets``  directory in both cases.
+For the ``(sourcemap <config>)`` option, ``<config>`` must be one of ``no`` or ``inline``. Source maps are put within the ``.bc.wasm.assets``  directory.
 
 The default values for ``flags``, ``compilation_mode`` and ``sourcemap`` depend on the selected build profile. The
 build profile ``dev`` (the default) will enable sourcemaps, separate compilation and pretty Wasm output.

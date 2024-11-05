@@ -351,6 +351,8 @@ let validate_packages packages =
     Package_name.Map.values packages
     |> List.concat_map ~f:(fun (dependant_package : Pkg.t) ->
       List.filter_map dependant_package.depends ~f:(fun (loc, dependency) ->
+        (* CR-someday rgrinberg: do we need the dune check? aren't
+           we supposed to filter these upfront? *)
         if Package_name.Map.mem packages dependency
            || Package_name.equal dependency Dune_dep.name
         then None

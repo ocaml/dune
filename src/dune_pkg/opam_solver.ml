@@ -111,10 +111,6 @@ module Context_for_dune = struct
     ~stats_updater
     ~constraints
     =
-    let dune_version =
-      let major, minor = Dune_lang.Stanza.latest_version in
-      OpamPackage.Version.of_string @@ sprintf "%d.%d" major minor
-    in
     let candidates_cache = Fiber_cache.create (module Package_name) in
     let constraints =
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
@@ -136,7 +132,7 @@ module Context_for_dune = struct
     ; local_packages
     ; pinned_packages
     ; solver_env
-    ; dune_version
+    ; dune_version = Dune_dep.version
     ; stats_updater
     ; candidates_cache
     ; available_cache
@@ -785,7 +781,7 @@ let reject_unreachable_packages =
     loop roots;
     !seen
   in
-  fun solver_env ~local_packages ~pkgs_by_name ->
+  fun solver_env ~dune_version ~local_packages ~pkgs_by_name ->
     let roots = Package_name.Map.keys local_packages in
     let pkgs_by_version =
       Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
@@ -810,13 +806,7 @@ let reject_unreachable_packages =
             [ "name", Package_name.to_dyn name ]
         | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
         | None, Some (pkg : Local_package.For_solver.t) ->
-          (* remove Dune from the formula as we remove it from solutions *)
-          let formula =
-            Dependency_formula.remove_packages
-              pkg.dependencies
-              (Package_name.Set.singleton Dune_dep.name)
-            |> Dependency_formula.to_filtered_formula
-          in
+          let formula = Dependency_formula.to_filtered_formula pkg.dependencies in
           (* Use `dev` because at this point we don't have any version *)
           let opam_package =
             OpamPackage.of_string (sprintf "%s.dev" (Package_name.to_string pkg.name))
@@ -826,14 +816,15 @@ let reject_unreachable_packages =
             Resolve_opam_formula.filtered_formula_to_package_names
               env
               ~with_test:true
-              pkgs_by_version
+              (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
               formula
           in
           let deps =
             match resolved with
-            | Ok { regular; post = _ } ->
-              (* discard post deps *)
-              regular
+            | Ok { regular; post = _ (* discard post deps *) } ->
+              (* remove Dune from the formula as we remove it from solutions *)
+              List.filter regular ~f:(fun pkg ->
+                not (Package_name.equal Dune_dep.name pkg))
             | Error _ ->
               Code_error.raise
                 "can't find a valid solution for the dependencies"
@@ -954,7 +945,11 @@ let solve_lock_dir
                       (Package_name.to_string dep_name)
                   ]));
         let reachable =
-          reject_unreachable_packages solver_env ~local_packages ~pkgs_by_name
+          reject_unreachable_packages
+            solver_env
+            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
+            ~local_packages
+            ~pkgs_by_name
         in
         let pkgs_by_name =
           Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->

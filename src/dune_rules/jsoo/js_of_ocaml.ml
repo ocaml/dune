@@ -201,9 +201,10 @@ module In_buildable = struct
       fields
         (let+ flags = Flags.decode
          and+ enabled_if =
-           field_o
-             "enabled_if"
-             (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
+           only_in_executable
+             (field_o
+                "enabled_if"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode))
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
          and+ wasm_files =
            match (mode : Mode.t) with

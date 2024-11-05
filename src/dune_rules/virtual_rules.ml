@@ -75,8 +75,7 @@ let impl sctx ~(lib : Library.t) ~scope =
      | Some vlib ->
        let info = Lib.info vlib in
        let virtual_ =
-         let virtual_ = Lib_info.virtual_ info in
-         match virtual_ with
+         match Lib_info.virtual_ info with
          | Some v -> v
          | None ->
            User_error.raise
@@ -104,28 +103,28 @@ let impl sctx ~(lib : Library.t) ~scope =
              let db = Scope.libs scope in
              let* preprocess =
                (* TODO wrong, this should be delayed *)
-               Resolve.Memo.read_memo
-                 (Preprocess.Per_module.with_instrumentation
-                    lib.buildable.preprocess
-                    ~instrumentation_backend:(Lib.DB.instrumentation_backend db))
-             in
-             let pp_spec =
-               Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
+               Preprocess.Per_module.with_instrumentation
+                 lib.buildable.preprocess
+                 ~instrumentation_backend:(Lib.DB.instrumentation_backend db)
+               |> Resolve.Memo.read_memo
              in
              Dir_contents.ocaml dir_contents
              >>= Ml_sources.modules
                    ~libs:db
                    ~for_:(Library (Lib_info.lib_id info |> Lib_id.to_local_exn))
-             >>= Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
+             >>=
+             let pp_spec =
+               Staged.unstage (Pp_spec.pped_modules_map preprocess ocaml.version)
+             in
+             Modules.map_user_written ~f:(fun m -> Memo.return (pp_spec m))
            in
            let+ foreign_objects =
-             let ext_obj = ocaml.lib_config.ext_obj in
-             let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
-             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
-             foreign_sources
-             |> Foreign_sources.for_lib ~name
-             |> Foreign.Sources.object_files ~ext_obj ~dir
-             |> List.map ~f:Path.build
+             Dir_contents.foreign_sources dir_contents
+             >>| Foreign_sources.for_lib ~name
+             >>| (let ext_obj = ocaml.lib_config.ext_obj in
+                  let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
+                  Foreign.Sources.object_files ~ext_obj ~dir)
+             >>| List.map ~f:Path.build
            in
            modules, foreign_objects
        in

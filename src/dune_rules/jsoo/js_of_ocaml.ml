@@ -207,7 +207,7 @@ module In_buildable = struct
          ; sourcemap = None
          })
     else (
-      let only_in_library decode = if in_library then decode else return None in
+      let only_in_executable decode = if in_library then return None else decode in
       fields
         (let+ flags = Flags.decode
          and+ enabled_if =
@@ -224,12 +224,12 @@ module In_buildable = struct
                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
                ~default:[]
          and+ compilation_mode =
-           only_in_library
+           only_in_executable
              (field_o
                 "compilation_mode"
                 (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode))
          and+ sourcemap =
-           only_in_library
+           only_in_executable
              (field_o
                 "sourcemap"
                 (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode))

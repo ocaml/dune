@@ -299,17 +299,18 @@ module Link_mode = struct
   let to_dyn t =
     match t with
     | Byte_complete -> Dyn.Variant ("Byte_complete", [])
+    | Jsoo mode -> Dyn.Variant ("Jsoo", [ Js_of_ocaml.Mode.to_dyn mode ])
     | Other { mode; kind } ->
       let open Dyn in
       Variant
         ( "Other"
         , [ record [ "mode", Mode_conf.to_dyn mode; "kind", Binary_kind.to_dyn kind ] ] )
-    | Jsoo mode -> Dyn.Variant ("Jsoo", [ Js_of_ocaml.Mode.to_dyn mode ])
   ;;
 
   let extension t ~loc ~ext_obj ~ext_dll =
     match t with
     | Byte_complete -> ".bc.exe"
+    | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
     | Other { mode; kind } ->
       let same_as_mode : Mode.t =
         match mode with
@@ -330,10 +331,6 @@ module Link_mode = struct
        | Byte, Shared_object -> ".bc" ^ ext_dll
        | Native, Shared_object -> ext_dll
        | mode, Plugin -> Mode.plugin_ext mode)
-    | Jsoo kind ->
-      (match kind with
-       | JS -> Js_of_ocaml.Ext.exe ~mode:JS
-       | Wasm -> Js_of_ocaml.Ext.exe ~mode:Wasm)
   ;;
 
   module O = Comparable.Make (T)
@@ -518,10 +515,9 @@ let common =
         let ext =
           match mode with
           | Byte_complete -> ".bc.exe"
+          | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
           | Other { mode = Byte; _ } -> ".bc"
           | Other { mode = Native | Best; _ } -> ".exe"
-          | Jsoo JS -> Js_of_ocaml.Ext.exe ~mode:JS
-          | Jsoo Wasm -> Js_of_ocaml.Ext.exe ~mode:Wasm
         in
         Names.install_conf names ~ext ~enabled_if ~dir:project_root
     in

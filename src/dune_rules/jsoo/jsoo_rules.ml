@@ -9,7 +9,9 @@ let compute_env ~mode =
         let+ profile = Per_context.profile ctx in
         Js_of_ocaml.Env.(map ~f:Action_builder.return (default ~profile)))
       ~f:(fun ~parent expander (local : Dune_env.config) ->
-        let local = Js_of_ocaml.Mode.select ~mode local.js_of_ocaml local.wasm_of_ocaml in
+        let local =
+          Js_of_ocaml.Mode.select ~mode ~js:local.js_of_ocaml ~wasm:local.wasm_of_ocaml
+        in
         let* parent = parent in
         let+ enabled_if =
           match Option.first_some local.enabled_if parent.enabled_if with
@@ -37,7 +39,7 @@ let compute_env ~mode =
 
 let js_env = compute_env ~mode:JS
 let wasm_env = compute_env ~mode:Wasm
-let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode js_env wasm_env) ~dir
+let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode ~js:js_env ~wasm:wasm_env) ~dir
 
 module Config : sig
   type t
@@ -263,10 +265,7 @@ let js_of_ocaml_rule
        | No -> A "--no-source-map"
        | Inline -> A "--source-map-inline"
        | File ->
-         assert (
-           match mode with
-           | JS -> true
-           | Wasm -> false);
+         assert (Js_of_ocaml.Mode.select ~mode ~js:true ~wasm:false);
          S
            [ A "--source-map"
            ; Hidden_targets [ Path.Build.set_extension target ~ext:".map" ]
@@ -654,10 +653,7 @@ let build_exe
     | None -> js_of_ocaml_sourcemap sctx ~dir ~mode
     | Some x -> Memo.return x
   in
-  assert (
-    match mode with
-    | JS -> wasm_files = []
-    | Wasm -> true);
+  assert (Js_of_ocaml.Mode.select ~mode ~js:(wasm_files = []) ~wasm:true);
   let runtime_files = javascript_files @ wasm_files in
   let directory_targets =
     match mode with

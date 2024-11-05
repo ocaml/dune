@@ -136,11 +136,9 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
-                 [ Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode:JS)
-                 ; Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode:Wasm)
-                 ])
-               |> List.flatten)
+              (List.concat_map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
+                 List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
+                   Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
         })
     | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in

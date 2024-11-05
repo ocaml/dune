@@ -7,7 +7,7 @@ module Mode : sig
 
   type mode := t
 
-  val select : mode:t -> 'a -> 'a -> 'a
+  val select : mode:t -> js:'a -> wasm:'a -> 'a
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
   val decode : t Dune_lang.Decoder.t

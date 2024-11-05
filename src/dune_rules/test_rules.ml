@@ -48,9 +48,7 @@ let runtest_modes modes jsoo_enabled_modes project =
         (* We don't know how to run tests in these cases *)
         None
       | Jsoo mode ->
-        if Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
-        then Some (`js mode)
-        else None)
+        Option.some_if (Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes) (`js mode))
     |> List.sort_uniq ~compare:Poly.compare
 ;;
 

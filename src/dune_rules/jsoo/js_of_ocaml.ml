@@ -12,7 +12,7 @@ module Mode = struct
 
   let equal (a : t) b = Poly.equal a b
 
-  let select ~mode js wasm =
+  let select ~mode ~js ~wasm =
     match mode with
     | JS -> js
     | Wasm -> wasm
@@ -31,12 +31,7 @@ module Mode = struct
     sum [ "js", return JS; "wasm", return Wasm ]
   ;;
 
-  let to_string s =
-    match s with
-    | JS -> "js"
-    | Wasm -> "wasm"
-  ;;
-
+  let to_string mode = select ~mode ~js:"js" ~wasm:"wasm"
   let to_dyn t = Dyn.variant (to_string t) []
   let all = [ JS; Wasm ]
 
@@ -46,12 +41,7 @@ module Mode = struct
       ; wasm : 'a
       }
 
-    let select ~mode { js; wasm } =
-      match mode with
-      | JS -> js
-      | Wasm -> wasm
-    ;;
-
+    let select ~mode { js; wasm } = select ~mode ~js ~wasm
     let make v = { js = v; wasm = v }
     let map ~f { js; wasm } = { js = f js; wasm = f wasm }
     let mapi ~f { js; wasm } = { js = f JS js; wasm = f Wasm wasm }
@@ -152,11 +142,7 @@ module Flags = struct
     let+ build_runtime = t.build_runtime
     and+ compile = t.compile
     and+ link = t.link in
-    let prefix =
-      match (mode : Mode.t) with
-      | JS -> "js"
-      | Wasm -> "wasm"
-    in
+    let prefix = Mode.to_string mode in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ prefix ^ "_of_ocaml_flags", compile
@@ -289,10 +275,10 @@ end
 module Ext = struct
   type t = string
 
-  let exe ~mode = Mode.select ~mode ".bc.js" ".bc.wasm.js"
-  let cmo ~mode = Mode.select ~mode ".cmo.js" ".wasmo"
-  let cma ~mode = Mode.select ~mode ".cma.js" ".wasma"
-  let runtime ~mode = Mode.select ~mode ".bc.runtime.js" ".bc.runtime.wasma"
+  let exe ~mode = Mode.select ~mode ~js:".bc.js" ~wasm:".bc.wasm.js"
+  let cmo ~mode = Mode.select ~mode ~js:".cmo.js" ~wasm:".wasmo"
+  let cma ~mode = Mode.select ~mode ~js:".cma.js" ~wasm:".wasma"
+  let runtime ~mode = Mode.select ~mode ~js:".bc.runtime.js" ~wasm:".bc.runtime.wasma"
   let wasm_dir = ".bc.wasm.assets"
 end
 

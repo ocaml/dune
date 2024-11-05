@@ -149,16 +149,17 @@ let directory_targets_of_executables
   { Executables.names; modes; enabled_if; buildable; _ }
   =
   let* directory_targets =
-    (* CR-someday rgrinberg: we don't necessarily need to evalute
-       [wasm_enabled] here *)
-    let+ wasm_enabled = jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable in
-    match Executables.Link_mode.(Map.mem modes wasm) && wasm_enabled with
-    | false -> Path.Build.Map.empty
+    match Executables.Link_mode.(Map.mem modes wasm) with
+    | false -> Memo.return Path.Build.Map.empty
     | true ->
-      Nonempty_list.to_list names
-      |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (_, name) ->
-        let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
-        Path.Build.Map.set acc dir_target buildable.loc)
+      jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
+      >>| (function
+       | false -> Path.Build.Map.empty
+       | true ->
+         Nonempty_list.to_list names
+         |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (_, name) ->
+           let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
+           Path.Build.Map.set acc dir_target buildable.loc))
   in
   when_enabled ~dir ~enabled_if directory_targets
 ;;
@@ -177,14 +178,10 @@ let directory_targets_of_library
              | false -> Path.Build.Map.empty
              | true ->
                let dir_target =
-                 let lib_name = snd name in
-                 let name =
-                   sprintf "inline_test_runner_%s" (Lib_name.Local.to_string lib_name)
-                 in
+                 let lib_name = Lib_name.Local.to_string (snd name) in
+                 let name = sprintf "inline_test_runner_%s" lib_name in
                  let inline_test_dir =
-                   let inline_test_name =
-                     sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
-                   in
+                   let inline_test_name = sprintf "%s.inline-tests" lib_name in
                    Path.Build.relative dir ("." ^ inline_test_name)
                  in
                  Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)

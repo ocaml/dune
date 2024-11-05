@@ -159,10 +159,10 @@ let executables_rules
   let explicit_js_mode = Dune_project.explicit_js_mode project in
   let js_of_ocaml = Js_of_ocaml.In_context.make ~dir exes.buildable.js_of_ocaml in
   let* linkages =
-    let* jsoo_enabled_modes =
+    let+ jsoo_enabled_modes =
       Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
-    and* jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
-    let+ dynamically_linked_foreign_archives =
+    and+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir
+    and+ dynamically_linked_foreign_archives =
       Context.dynamically_linked_foreign_archives ctx
     in
     linkages

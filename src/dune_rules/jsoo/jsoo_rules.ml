@@ -538,15 +538,6 @@ let setup_separate_compilation_rules sctx components =
            let build_context = Context.build_context ctx in
            let name = Path.basename fn in
            let dir = in_build_dir build_context ~config [ lib_name ] in
-           let in_context =
-             { Js_of_ocaml.In_context.flags = Js_of_ocaml.Flags.standard
-             ; enabled_if = Some Blang.true_
-             ; javascript_files = []
-             ; wasm_files = []
-             ; compilation_mode = None
-             ; sourcemap = None
-             }
-           in
            let src =
              let src_dir = Lib_info.src_dir info in
              Path.relative src_dir name
@@ -557,7 +548,7 @@ let setup_separate_compilation_rules sctx components =
            build_cm'
              sctx
              ~dir
-             ~in_context
+             ~in_context:Js_of_ocaml.In_context.default
              ~mode
              ~src
              ~target

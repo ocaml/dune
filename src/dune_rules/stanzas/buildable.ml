@@ -29,11 +29,12 @@ let decode (for_ : for_) =
       (2, 0)
       ~extra_info:"Use the (foreign_stubs ...) field instead."
   in
-  let only_in_library decode =
+  let in_library =
     match for_ with
-    | Executable -> return None
-    | Library _ -> decode
+    | Library _ -> true
+    | Executable -> false
   in
+  let only_in_library decode = if in_library then decode else return None in
   let add_stubs language ~loc ~names ~flags foreign_stubs =
     match names with
     | None -> foreign_stubs
@@ -84,33 +85,18 @@ let decode (for_ : for_) =
                ~extra_info:"Use the (foreign_archives ...) field instead."
              >>> enter (maybe string))))
   and+ libraries =
-    let allow_re_export =
-      match for_ with
-      | Library _ -> true
-      | Executable -> false
-    in
-    field "libraries" (Lib_dep.L.decode ~allow_re_export) ~default:[]
+    field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
   and+ flags = Ocaml_flags.Spec.decode
   and+ js_of_ocaml =
-    let executable =
-      match for_ with
-      | Executable -> true
-      | Library _ -> false
-    in
     field
       "js_of_ocaml"
-      (Js_of_ocaml.In_buildable.decode ~executable ~mode:JS)
+      (Js_of_ocaml.In_buildable.decode ~in_library ~mode:JS)
       ~default:Js_of_ocaml.In_buildable.default
   and+ wasm_of_ocaml =
-    let executable =
-      match for_ with
-      | Executable -> true
-      | Library _ -> false
-    in
     field
       "wasm_of_ocaml"
       (Dune_lang.Syntax.since Stanza.syntax (3, 17)
-       >>> Js_of_ocaml.In_buildable.decode ~executable ~mode:Wasm)
+       >>> Js_of_ocaml.In_buildable.decode ~in_library ~mode:Wasm)
       ~default:Js_of_ocaml.In_buildable.default
   and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
   and+ version = Dune_lang.Syntax.get_exn Stanza.syntax

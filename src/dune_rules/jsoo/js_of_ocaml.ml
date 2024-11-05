@@ -188,7 +188,7 @@ module In_buildable = struct
     ; sourcemap : Sourcemap.t option
     }
 
-  let decode ~executable ~mode =
+  let decode ~in_library ~mode =
     let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     if syntax_version < (3, 0)
     then
@@ -206,7 +206,8 @@ module In_buildable = struct
          ; compilation_mode = None
          ; sourcemap = None
          })
-    else
+    else (
+      let only_in_library decode = if in_library then decode else return None in
       fields
         (let+ flags = Flags.decode
          and+ enabled_if =
@@ -223,21 +224,17 @@ module In_buildable = struct
                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
                ~default:[]
          and+ compilation_mode =
-           if executable
-           then
-             field_o
-               "compilation_mode"
-               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode)
-           else return None
+           only_in_library
+             (field_o
+                "compilation_mode"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode))
          and+ sourcemap =
-           if executable
-           then
-             field_o
-               "sourcemap"
-               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
-           else return None
+           only_in_library
+             (field_o
+                "sourcemap"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode))
          in
-         { flags; enabled_if; javascript_files; wasm_files; compilation_mode; sourcemap })
+         { flags; enabled_if; javascript_files; wasm_files; compilation_mode; sourcemap }))
   ;;
 
   let default =

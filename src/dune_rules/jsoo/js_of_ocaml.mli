@@ -88,7 +88,7 @@ module In_buildable : sig
     ; sourcemap : Sourcemap.t option
     }
 
-  val decode : executable:bool -> mode:Mode.t -> t Dune_lang.Decoder.t
+  val decode : in_library:bool -> mode:Mode.t -> t Dune_lang.Decoder.t
   val default : t
 end
 

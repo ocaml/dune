@@ -82,40 +82,12 @@ let run_build_system ~common ~request =
       Fiber.return ())
 ;;
 
-let lock_ocamlformat () =
-  if Lazy.force Lock_dev_tool.is_enabled
-  then
-    (* Note that generating the ocamlformat lockdir here means
-       that it will be created when a user runs `dune fmt` but not
-       when a user runs `dune build @fmt`. It's important that
-       this logic remain outside of `dune build`, as `dune
-       build` is intended to only build targets, and generating
-       a lockdir is not building a target. *)
-    Lock_dev_tool.lock_ocamlformat () |> Memo.run
-  else Fiber.return ()
-;;
-
-let run_build_command_poll_eager
-  ~with_lock_ocamlformat
-  ~(common : Common.t)
-  ~config
-  ~request
-  : unit
-  =
-  let open Fiber.O in
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    Scheduler.Run.poll
-      (let* () = if with_lock_ocamlformat then lock_ocamlformat () else Fiber.return () in
-       run_build_system ~common ~request))
+    Scheduler.Run.poll (run_build_system ~common ~request))
 ;;
 
-let run_build_command_poll_passive
-  ~with_lock_ocamlformat
-  ~(common : Common.t)
-  ~config
-  ~request:_
-  : unit
-  =
+let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ : unit =
   (* CR-someday aalekseyev: It would've been better to complain if [request] is
      non-empty, but we can't check that here because [request] is a function.*)
   let open Fiber.O in
@@ -127,20 +99,16 @@ let run_build_command_poll_passive
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
     Scheduler.Run.poll_passive
       ~get_build_request:
-        (let* () =
-           if with_lock_ocamlformat then lock_ocamlformat () else Fiber.return ()
-         in
-         let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+        (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
          let request setup =
            Target.interpret_targets (Common.root common) config setup targets
          in
          run_build_system ~common ~request, ivar))
 ;;
 
-let run_build_command_once ~with_lock_ocamlformat ~(common : Common.t) ~config ~request =
+let run_build_command_once ~(common : Common.t) ~config ~request =
   let open Fiber.O in
   let once () =
-    let* () = if with_lock_ocamlformat then lock_ocamlformat () else Fiber.return () in
     let+ res = run_build_system ~common ~request in
     match res with
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
@@ -154,18 +122,6 @@ let run_build_command ~(common : Common.t) ~config ~request =
    | Yes Eager -> run_build_command_poll_eager
    | Yes Passive -> run_build_command_poll_passive
    | No -> run_build_command_once)
-    ~with_lock_ocamlformat:false
-    ~common
-    ~config
-    ~request
-;;
-
-let run_build_command_fmt ~(common : Common.t) ~config ~request =
-  (match Common.watch common with
-   | Yes Eager -> run_build_command_poll_eager
-   | Yes Passive -> run_build_command_poll_passive
-   | No -> run_build_command_once)
-    ~with_lock_ocamlformat:true
     ~common
     ~config
     ~request

@@ -12,18 +12,16 @@ let compute_env ~mode =
         let local = Js_of_ocaml.Mode.select ~mode local.js_of_ocaml local.wasm_of_ocaml in
         let* parent = parent in
         let+ enabled_if =
-          match local.enabled_if with
-          | None ->
-            Memo.return
-              (match parent.enabled_if with
-               | Some (Const default) -> default
-               | _ -> assert false)
-          | Some enabled_if -> Expander.eval_blang expander enabled_if
+          match Option.first_some local.enabled_if parent.enabled_if with
+          | None -> Memo.return None
+          | Some enabled_if ->
+            let+ v = Expander.eval_blang expander enabled_if in
+            Some (Blang.Const v)
         in
         { Js_of_ocaml.Env.compilation_mode =
             Option.first_some local.compilation_mode parent.compilation_mode
         ; sourcemap = Option.first_some local.sourcemap parent.sourcemap
-        ; enabled_if = Some (Const enabled_if)
+        ; enabled_if
         ; runtest_alias = Option.first_some local.runtest_alias parent.runtest_alias
         ; flags =
             Js_of_ocaml.Flags.make
@@ -601,8 +599,8 @@ let jsoo_enabled
   | None ->
     let* js_of_ocaml = jsoo_env ~dir ~mode in
     (match js_of_ocaml.enabled_if with
-     | Some (Const default) -> Memo.return default
-     | _ -> assert false)
+     | Some enabled_if -> eval enabled_if
+     | None -> Memo.return true)
 ;;
 
 let jsoo_enabled_modes ~expander ~dir ~in_context =

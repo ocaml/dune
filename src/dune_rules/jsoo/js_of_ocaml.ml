@@ -358,7 +358,7 @@ module Env = struct
     ; sourcemap = None
     ; runtest_alias = None
     ; flags = Flags.default ~profile
-    ; enabled_if = Some Blang.true_
+    ; enabled_if = None
     }
   ;;
 end

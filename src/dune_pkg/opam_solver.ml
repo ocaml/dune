@@ -551,19 +551,18 @@ let opam_file_is_compiler (opam_package : OpamFile.OPAM.t) =
 ;;
 
 let resolve_depopts ~resolve depopts =
-  (let rec collect acc depopts =
+  (let rec collect depopts =
      match (depopts : OpamTypes.filtered_formula) with
-     | Or ((Atom (_, _) as dep), depopts) -> collect (dep :: acc) depopts
-     | Atom (_, _) -> depopts :: acc
-     | Empty -> acc
+     | Or (lhs, rhs) -> collect lhs @ collect rhs
+     | Atom (_, _) -> [ depopts ]
+     | Empty -> []
      | _ ->
        (* We rely on depopts always being a list of or'ed package names. Opam
           verifies this for us at parsing time. Dune projects have this
           restriction for depopts and regular deps *)
        Code_error.raise "invalid depopts" [ "depopts", Opam_dyn.filtered_formula depopts ]
    in
-   collect [] depopts)
-  |> List.rev
+   collect depopts)
   |> List.concat_map ~f:(fun depopt ->
     match resolve depopt with
     | Error _ -> []

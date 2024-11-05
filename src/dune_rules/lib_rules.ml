@@ -474,7 +474,7 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     (* Build *.cma.js / *.wasma *)
     Memo.when_ modes.ocaml.byte (fun () ->
       let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Jsoo_rules.iter_jsoo_modes ~f:(fun mode ->
+      Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
         let action_with_targets =
           List.map Jsoo_rules.Config.all ~f:(fun config ->
             Jsoo_rules.build_cm
@@ -542,7 +542,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~requires_link
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
-    ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:(fun x -> Some x) js_of_ocaml)
+    ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
     ?stdlib:lib.stdlib
     ~package
     ?vimpl

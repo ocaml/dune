@@ -69,8 +69,6 @@ val jsoo_is_whole_program
   -> dir:Path.Build.t
   -> Js_of_ocaml.Mode.Set.t Memo.t
 
-val iter_jsoo_modes : f:(Js_of_ocaml.Mode.t -> unit Memo.t) -> unit Memo.t
-
 val js_of_ocaml_compilation_mode
   :  Super_context.t
   -> dir:Path.Build.t

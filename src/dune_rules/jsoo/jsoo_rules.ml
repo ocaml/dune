@@ -492,8 +492,6 @@ let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~sourcemap =
     ~sourcemap
 ;;
 
-let iter_jsoo_modes ~f = Memo.parallel_iter [ Js_of_ocaml.Mode.JS; Wasm ] ~f
-
 let build_cm sctx ~dir ~in_context ~mode ~src ~obj_dir ~config =
   let name = with_js_ext ~mode (Path.basename src) in
   let target = in_obj_dir ~obj_dir ~config [ name ] in
@@ -535,7 +533,7 @@ let setup_separate_compilation_rules sctx components =
            archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
          | _ -> archives
        in
-       iter_jsoo_modes ~f:(fun mode ->
+       Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
          Memo.parallel_iter archives ~f:(fun fn ->
            let build_context = Context.build_context ctx in
            let name = Path.basename fn in
@@ -635,13 +633,8 @@ let build_exe
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let { Js_of_ocaml.In_context.javascript_files
-      ; wasm_files
-      ; flags
-      ; compilation_mode
-      ; sourcemap
-      ; _
-      }
+  let { javascript_files; wasm_files; flags; compilation_mode; sourcemap; _ }
+    : Js_of_ocaml.In_context.t
     =
     in_context
   in

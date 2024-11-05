@@ -182,7 +182,7 @@ let decode (for_ : for_) =
   ; extra_objects
   ; libraries
   ; flags
-  ; js_of_ocaml = { Js_of_ocaml.Mode.Pair.js = js_of_ocaml; wasm = wasm_of_ocaml }
+  ; js_of_ocaml = { js = js_of_ocaml; wasm = wasm_of_ocaml }
   ; allow_overlapping_dependencies
   ; ctypes
   }

@@ -5,25 +5,6 @@ open Dune_lang.Decoder
    wasm_of_ocaml, since the compilation process is similar and
    generates a JavaScript file with basically the same behavior. *)
 
-let field_oslu name = Ordered_set_lang.Unexpanded.field name
-
-module Sourcemap = struct
-  type t =
-    | No
-    | Inline
-    | File
-
-  let decode = enum [ "no", No; "inline", Inline; "file", File ]
-
-  let equal x y =
-    match x, y with
-    | No, No -> true
-    | Inline, Inline -> true
-    | File, File -> true
-    | No, _ | Inline, _ | File, _ -> false
-  ;;
-end
-
 module Mode = struct
   type t =
     | JS
@@ -46,8 +27,7 @@ module Mode = struct
   ;;
 
   let decode =
-    let open Dune_sexp in
-    let open Decoder in
+    let open Dune_sexp.Decoder in
     sum [ "js", return JS; "wasm", return Wasm ]
   ;;
 
@@ -58,7 +38,7 @@ module Mode = struct
   ;;
 
   let to_dyn t = Dyn.variant (to_string t) []
-  let encode t = Dune_sexp.atom (to_string t)
+  let all = [ JS; Wasm ]
 
   module Pair = struct
     type 'a t =
@@ -73,7 +53,6 @@ module Mode = struct
     ;;
 
     let make v = { js = v; wasm = v }
-    let init ~f = { js = f JS; wasm = f Wasm }
     let map ~f { js; wasm } = { js = f js; wasm = f wasm }
     let mapi ~f { js; wasm } = { js = f JS js; wasm = f Wasm wasm }
 
@@ -86,14 +65,24 @@ module Mode = struct
     type t = bool Pair.t
 
     let inter = Pair.map2 ~f:( && )
-    let union = Pair.map2 ~f:( || )
-    let is_empty (x : t) = not (x.js || x.wasm)
-
-    let to_list ({ js; wasm } : t) =
-      let l = if wasm then [ Wasm ] else [] in
-      if js then JS :: l else l
-    ;;
   end
+end
+
+module Sourcemap = struct
+  type t =
+    | No
+    | Inline
+    | File
+
+  let decode = enum [ "no", No; "inline", Inline; "file", File ]
+
+  let equal x y =
+    match x, y with
+    | No, No -> true
+    | Inline, Inline -> true
+    | File, File -> true
+    | No, _ | Inline, _ | File, _ -> false
+  ;;
 end
 
 module Flags = struct
@@ -110,6 +99,7 @@ module Flags = struct
   let build_runtime t = t.build_runtime
   let compile t = t.compile
   let link t = t.link
+  let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
   let decode =
     let+ build_runtime = field_oslu "build_runtime_flags"
@@ -332,7 +322,7 @@ module Env = struct
        { compilation_mode; sourcemap; runtest_alias; flags; enabled_if }
   ;;
 
-  let equal { compilation_mode; sourcemap; enabled_if; runtest_alias; flags } t =
+  let equal { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Sourcemap.equal sourcemap t.sourcemap
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias

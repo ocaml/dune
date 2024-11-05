@@ -311,7 +311,7 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
       | None -> Memo.return ()
       | Some src ->
-        Jsoo_rules.iter_jsoo_modes ~f:(fun mode ->
+        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
           Compilation_context.js_of_ocaml cctx
           |> Js_of_ocaml.Mode.Pair.select ~mode
           |> Memo.Option.iter ~f:(fun in_context ->

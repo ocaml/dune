@@ -11,8 +11,8 @@ module Mode : sig
   val equal : t -> t -> bool
   val compare : t -> t -> Ordering.t
   val decode : t Dune_lang.Decoder.t
-  val encode : t Dune_lang.Encoder.t
   val to_dyn : t -> Dyn.t
+  val all : t list
 
   module Pair : sig
     type 'a t =
@@ -22,7 +22,6 @@ module Mode : sig
 
     val select : mode:mode -> 'a t -> 'a
     val make : 'a -> 'a t
-    val init : f:(mode -> 'a) -> 'a t
     val map : f:('a -> 'b) -> 'a t -> 'b t
     val mapi : f:(mode -> 'a -> 'b) -> 'a t -> 'b t
   end
@@ -31,9 +30,6 @@ module Mode : sig
     type t = bool Pair.t
 
     val inter : t -> t -> t
-    val union : t -> t -> t
-    val to_list : t -> mode list
-    val is_empty : t -> bool
   end
 end
 

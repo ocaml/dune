@@ -158,6 +158,7 @@
                 ++ [ duneScript ];
               inputsFrom = [ pkgs'.ocamlPackages.dune_3 ];
               buildInputs = testBuildInputs ++ (with pkgs'.ocamlPackages; [
+                ocaml-lsp
                 merlin
                 ppx_expect
                 ctypes

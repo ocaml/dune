@@ -246,9 +246,6 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4.14.x
-          opam-pin: false
-          opam-depext: false
-          dune-cache: true
 
       - name: Update Dune
         working-directory: ./dune

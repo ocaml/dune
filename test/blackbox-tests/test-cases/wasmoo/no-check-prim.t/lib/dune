@@ -1,0 +1,7 @@
+(library
+ (name x)
+ (libraries js_of_ocaml)
+ (public_name x)
+ (wasm_of_ocaml
+  (flags (--pretty)) (javascript_files runtime.js) (wasm_files runtime.wat))
+ )

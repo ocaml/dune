@@ -19,6 +19,7 @@ val build_cm
   :  Super_context.t
   -> dir:Path.Build.t
   -> in_context:Js_of_ocaml.In_context.t
+  -> mode:Js_of_ocaml.Mode.t
   -> src:Path.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> config:Config.t option
@@ -34,14 +35,42 @@ val build_exe
   -> promote:Rule.Promote.t option
   -> linkall:bool Action_builder.t
   -> link_time_code_gen:Link_time_code_gen_type.t Resolve.t
+  -> jsoo_mode:Js_of_ocaml.Mode.t
   -> unit Memo.t
 
 val setup_separate_compilation_rules : Super_context.t -> string list -> unit Memo.t
 val runner : string
-val js_of_ocaml_runtest_alias : dir:Path.Build.t -> Alias.Name.t Memo.t
-val jsoo_env : dir:Path.Build.t -> string list Action_builder.t Js_of_ocaml.Env.t Memo.t
+
+val js_of_ocaml_runtest_alias
+  :  dir:Path.Build.t
+  -> mode:Js_of_ocaml.Mode.t
+  -> Alias.Name.t Memo.t
+
+val jsoo_env
+  :  dir:Path.Build.t
+  -> mode:Js_of_ocaml.Mode.t
+  -> string list Action_builder.t Js_of_ocaml.Env.t Memo.t
+
+val jsoo_enabled
+  :  eval:(Blang.t -> bool Memo.t)
+  -> dir:Path.Build.t
+  -> in_context:Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t
+  -> mode:Js_of_ocaml.Mode.t
+  -> bool Memo.t
+
+val jsoo_enabled_modes
+  :  expander:Expander.t
+  -> dir:Path.Build.t
+  -> in_context:Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t
+  -> Js_of_ocaml.Mode.Set.t Memo.t
+
+val jsoo_is_whole_program
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> Js_of_ocaml.Mode.Set.t Memo.t
 
 val js_of_ocaml_compilation_mode
   :  Super_context.t
   -> dir:Path.Build.t
+  -> mode:Js_of_ocaml.Mode.t
   -> Js_of_ocaml.Compilation_mode.t Memo.t

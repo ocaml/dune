@@ -1,0 +1,11 @@
+(cram
+ (applies_to :whole_subtree)
+ (deps %{bin:node} %{bin:js_of_ocaml} %{bin:wasm_of_ocaml})
+ (alias runtest-wasm)
+ (enabled_if
+  (= %{env:DUNE_WASM_TEST=disable} enable)))
+
+(cram
+ (applies_to build-info)
+ (deps
+  (package dune-build-info)))

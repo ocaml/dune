@@ -30,6 +30,7 @@ type config =
   ; menhir : Ordered_set_lang.Unexpanded.t Menhir_env.t
   ; odoc : Odoc.t
   ; js_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
+  ; wasm_of_ocaml : Ordered_set_lang.Unexpanded.t Js_of_ocaml.Env.t
   ; coq : Coq_env.t
   ; format_config : Format_config.t option
   ; error_on_use : User_message.t option

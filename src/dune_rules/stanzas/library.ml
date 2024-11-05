@@ -426,7 +426,13 @@ let to_lib_info
     Mode.Dict.of_func (fun ~mode -> archive_for_mode ~f_ext ~mode |> Option.to_list)
   in
   let jsoo_runtime =
-    List.map conf.buildable.js_of_ocaml.javascript_files ~f:(Path.Build.relative dir)
+    let in_buildable = conf.buildable.js_of_ocaml.js in
+    List.map in_buildable.javascript_files ~f:(Path.Build.relative dir)
+  in
+  let wasmoo_runtime =
+    let in_buildable = conf.buildable.js_of_ocaml.wasm in
+    List.map in_buildable.javascript_files ~f:(Path.Build.relative dir)
+    @ List.map in_buildable.wasm_files ~f:(Path.Build.relative dir)
   in
   let status =
     match conf.visibility with
@@ -566,6 +572,7 @@ let to_lib_info
     ~native_archives
     ~foreign_dll_files
     ~jsoo_runtime
+    ~wasmoo_runtime
     ~preprocess
     ~enabled
     ~virtual_deps

@@ -136,8 +136,9 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
-                 Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe)))
+              (List.concat_map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
+                 List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
+                   Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
         })
     | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
@@ -520,7 +521,12 @@ let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
       in
       let+ rules =
         let+ make_rules =
-          let+ directory_targets = Dir_status.directory_targets dir_status ~dir in
+          let+ directory_targets =
+            Dir_status.directory_targets
+              dir_status
+              ~jsoo_enabled:Jsoo_rules.jsoo_enabled
+              ~dir
+          in
           let allowed_subdirs =
             let automatic = Automatic_subdir.subdirs components in
             let toplevel =

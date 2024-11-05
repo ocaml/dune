@@ -206,6 +206,7 @@ module Link_mode = struct
   module T = struct
     type t =
       | Byte_complete
+      | Jsoo of Js_of_ocaml.Mode.t
       | Other of
           { mode : Mode_conf.t
           ; kind : Binary_kind.t
@@ -220,6 +221,9 @@ module Link_mode = struct
         let open Ordering.O in
         let= () = Mode_conf.compare mode t.mode in
         Binary_kind.compare kind t.kind
+      | Other _, _ -> Lt
+      | _, Other _ -> Gt
+      | Jsoo m, Jsoo m' -> Js_of_ocaml.Mode.compare m m'
     ;;
 
     let to_dyn = Dyn.opaque
@@ -233,8 +237,15 @@ module Link_mode = struct
   let shared_object = make Best Shared_object
   let byte = make Byte Exe
   let native = make Native Exe
-  let js = make Byte Js
   let plugin = make Best Plugin
+  let js = Jsoo JS
+  let wasm = Jsoo Wasm
+
+  let is_jsoo m =
+    match m with
+    | Jsoo _ -> true
+    | Byte_complete | Other _ -> false
+  ;;
 
   let simple_representations =
     [ "exe", exe
@@ -248,7 +259,12 @@ module Link_mode = struct
     ]
   ;;
 
-  let simple = Dune_lang.Decoder.enum simple_representations
+  let simple_representations_including_wasm = ("wasm", wasm) :: simple_representations
+
+  let simple =
+    Dune_lang.Decoder.enum simple_representations
+    <|> sum [ "wasm", Syntax.since Stanza.syntax (3, 17) >>> return wasm ]
+  ;;
 
   let decode =
     enter
@@ -256,11 +272,17 @@ module Link_mode = struct
        and+ kind = Binary_kind.decode in
        make mode kind)
     <|> simple
+    <|> enter
+          (keyword "byte"
+           >>> sum
+                 [ "js", Syntax.since Stanza.syntax (1, 11) >>> return js
+                 ; "wasm", Syntax.since Stanza.syntax (3, 17) >>> return wasm
+                 ])
   ;;
 
   let simple_encode link_mode =
     let is_ok (_, candidate) = compare candidate link_mode = Eq in
-    List.find ~f:is_ok simple_representations
+    List.find ~f:is_ok simple_representations_including_wasm
     |> Option.map ~f:(fun (s, _) -> Dune_lang.atom s)
   ;;
 
@@ -269,7 +291,7 @@ module Link_mode = struct
     | Some s -> s
     | None ->
       (match link_mode with
-       | Byte_complete -> assert false
+       | Byte_complete | Jsoo _ -> assert false
        | Other { mode; kind } ->
          Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind))
   ;;
@@ -277,6 +299,7 @@ module Link_mode = struct
   let to_dyn t =
     match t with
     | Byte_complete -> Dyn.Variant ("Byte_complete", [])
+    | Jsoo mode -> Dyn.Variant ("Jsoo", [ Js_of_ocaml.Mode.to_dyn mode ])
     | Other { mode; kind } ->
       let open Dyn in
       Variant
@@ -287,6 +310,7 @@ module Link_mode = struct
   let extension t ~loc ~ext_obj ~ext_dll =
     match t with
     | Byte_complete -> ".bc.exe"
+    | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
     | Other { mode; kind } ->
       let same_as_mode : Mode.t =
         match mode with
@@ -306,10 +330,7 @@ module Link_mode = struct
        | Native, Object -> ".exe" ^ ext_obj
        | Byte, Shared_object -> ".bc" ^ ext_dll
        | Native, Shared_object -> ext_dll
-       | mode, Plugin -> Mode.plugin_ext mode
-       | Byte, Js -> Js_of_ocaml.Ext.exe
-       | Native, Js ->
-         User_error.raise ~loc [ Pp.text "Javascript generation only supports bytecode!" ])
+       | mode, Plugin -> Mode.plugin_ext mode)
   ;;
 
   module O = Comparable.Make (T)
@@ -494,6 +515,7 @@ let common =
         let ext =
           match mode with
           | Byte_complete -> ".bc.exe"
+          | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
           | Other { mode = Byte; _ } -> ".bc"
           | Other { mode = Native | Best; _ } -> ".exe"
         in

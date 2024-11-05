@@ -316,7 +316,7 @@ let setup_emit_cmj_rules
         ~requires_link
         ~requires_compile:direct_requires
         ~preprocessing:pp
-        ~js_of_ocaml:None
+        ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings
         ~melange_package_name:None
         ~package:mel.package

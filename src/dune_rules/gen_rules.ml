@@ -338,6 +338,19 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   contexts
 ;;
 
+let gen_project_rule_for_package_alias sctx project =
+  let ctx = Super_context.context sctx in
+  let ctx_name = Context.name ctx in
+  let* is_lock_dir_active = Lock_dir.lock_dir_active ctx_name in
+  if is_lock_dir_active
+  then (
+    let dir =
+      Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
+    in
+    Pkg_rules.gen_rule_alias_from_package_universe ~dir ctx_name)
+  else Memo.return ()
+;;
+
 (* Warn whenever [(name <name>)]) is missing from the [dune-project] file *)
 let missing_project_name =
   Warning.make
@@ -355,6 +368,7 @@ let gen_project_rules =
     and+ () = Odoc.gen_project_rules sctx project
     and+ () = Odoc_new.gen_project_rules sctx project
     and+ () = Ocaml_index.project_rule sctx project
+    and+ () = gen_project_rule_for_package_alias sctx project
     and+ () =
       let version = 2, 8 in
       match Dune_project.allow_approximate_merlin project with

@@ -7,7 +7,10 @@ open Import
     - A rule for fetching the source to produce .pkg/$package/source
 
     - A rule to build the package and produce the artifacts in
-      .pkg/$package/target *)
+      .pkg/$package/target.
+
+    It setups an alias rules to trigger the fetch and build of the
+    package universe. *)
 
 val setup_rules
   :  components:string list
@@ -22,3 +25,4 @@ val which : Context_name.t -> (Filename.t -> Path.t option Memo.t) Staged.t
 val exported_env : Context_name.t -> Env.t Memo.t
 val ocamlpath : Context_name.t -> Path.t list Memo.t
 val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
+val gen_rule_alias_from_package_universe : dir:Path.Build.t -> Context_name.t -> unit Memo.t

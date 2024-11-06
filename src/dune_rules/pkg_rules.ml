@@ -1937,14 +1937,27 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
-let gen_package_alias_rules ~dir source_deps =
-  let alias = Alias.make Alias0.pkg_deps ~dir in
-  Action_builder.deps source_deps |> Rules.Produce.Alias.add_deps alias
+let gen_rule_alias_from_package_universe ~dir ctx_name =
+  let target_path_of_pkg pkg =
+    let pkg_name = Dune_lang.Package_name.to_string pkg in
+    Path.Build.L.relative
+      Private_context.t.build_dir
+      [ Context_name.to_string ctx_name; ".pkg"; pkg_name; "target" ]
+    |> Path.build
+  in
+  let* packages =
+    Package_universe.lock_dir (Project_dependencies ctx_name)
+    >>| (fun lock_dir -> lock_dir.packages)
+    >>| Dune_lang.Package_name.Map.keys
+  in
+  let alias = Alias.make Alias0.pkg_install ~dir in
+  List.map ~f:target_path_of_pkg packages
+  |> Action_builder.paths
+  |> Rules.Produce.Alias.add_deps alias
 ;;
 
-let gen_rules ~dir context_name (pkg : Pkg.t) =
+let gen_rules context_name (pkg : Pkg.t) =
   let* source_deps, copy_rules = source_rules pkg in
-  let* () = gen_package_alias_rules ~dir source_deps in
   let* () = copy_rules
   and* build_rule = build_rule context_name pkg ~source_deps in
   rule ~loc:Loc.none (* TODO *) build_rule
@@ -1986,7 +1999,7 @@ let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo
     Gen_rules.Build_only_sub_dirs.singleton ~dir Subdir_set.empty
   in
   let context_name = Package_universe.context_name package_universe in
-  let rules = Rules.collect_unit (fun () -> gen_rules ~dir context_name pkg) in
+  let rules = Rules.collect_unit (fun () -> gen_rules context_name pkg) in
   Gen_rules.make ~directory_targets ~build_dir_only_sub_dirs rules
 ;;
 

@@ -38,6 +38,6 @@ Create a fake project and ensure `dune` can be used as a dependency:
   >  (allow_empty)
   >  (depends dune))
   > EOF
-  $ dune pkg lock 2>&1 | head -2
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
+  $ dune pkg lock
+  Solution for dune.lock:
+  (no dependencies to lock)

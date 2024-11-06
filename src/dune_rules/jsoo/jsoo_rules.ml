@@ -521,18 +521,22 @@ let setup_separate_compilation_rules sctx components =
      | Some pkg ->
        let info = Lib.info pkg in
        let lib_name = Lib_name.to_string (Lib.name pkg) in
-       let archives =
+       let* archives =
          let archives = (Lib_info.archives info).byte in
          (* Special case for the stdlib because it is not referenced in the
             META *)
          match lib_name with
          | "stdlib" ->
+           let+ lib_config =
+             let+ ocaml = Context.ocaml ctx in
+             ocaml.lib_config
+           in
            let archive =
-             let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+             let stdlib_dir = lib_config.stdlib_dir in
              Path.relative stdlib_dir
            in
            archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
-         | _ -> archives
+         | _ -> Memo.return archives
        in
        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
          Memo.parallel_iter archives ~f:(fun fn ->

@@ -19,8 +19,12 @@ let info = Cmd.info "top" ~doc ~man
 
 let link_deps sctx link =
   let open Memo.O in
+  let* lib_config =
+    let+ ocaml = Super_context.context sctx |> Context.ocaml in
+    ocaml.lib_config
+  in
   Memo.parallel_map link ~f:(fun t ->
-    Dune_rules.Lib_flags.link_deps sctx t Dune_rules.Link_mode.Byte)
+    Dune_rules.Lib_flags.link_deps sctx t Dune_rules.Link_mode.Byte lib_config)
   >>| List.concat
 ;;
 
@@ -47,9 +51,10 @@ let term =
       let sctx =
         Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
       in
+      let context = Super_context.context sctx in
       let* libs =
         let dir =
-          let build_dir = Super_context.context sctx |> Context.build_dir in
+          let build_dir = Context.build_dir context in
           Path.Build.relative build_dir (Common.prefix_target common dir)
         in
         let* db =
@@ -62,7 +67,13 @@ let term =
       let* requires =
         Dune_rules.Resolve.Memo.read_memo (Dune_rules.Lib.closure ~linking:true libs)
       in
-      let include_paths = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
+      let* lib_config =
+        let+ ocaml = Context.ocaml context in
+        ocaml.lib_config
+      in
+      let include_paths =
+        Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+      in
       let+ files_to_load = files_to_load_of_requires sctx requires in
       Dune_rules.Toplevel.print_toplevel_init_file
         { include_paths; files_to_load; uses = []; pp = None; ppx = None; code = [] }))
@@ -116,7 +127,10 @@ module Module = struct
       in
       let private_obj_dir = Top_module.private_obj_dir ctx mod_ in
       let include_paths =
-        let libs = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
+        let libs =
+          let lib_config = (Compilation_context.ocaml cctx).lib_config in
+          Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+        in
         Path.Set.add libs (Path.build (Obj_dir.byte_dir private_obj_dir))
       in
       let files_to_load () =

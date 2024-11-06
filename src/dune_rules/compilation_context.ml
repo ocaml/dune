@@ -4,11 +4,13 @@ open Memo.O
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make ~project ~opaque ~direct_requires ~hidden_requires : _ Lib_mode.Cm_kind.Map.t =
+  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
+    : _ Lib_mode.Cm_kind.Map.t
+    =
     (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
     let iflags direct_libs hidden_libs mode =
-      Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode
+      Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
     in
     let make_includes_args ~mode groups =
       Command.Args.memo
@@ -203,7 +205,8 @@ let create
   ; requires_compile = direct_requires
   ; requires_hidden = hidden_requires
   ; requires_link
-  ; includes = Includes.make ~project ~opaque ~direct_requires ~hidden_requires
+  ; includes =
+      Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing
   ; opaque
   ; stdlib
@@ -293,6 +296,7 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
       ~opaque
       ~direct_requires
       ~hidden_requires
+      cctx.ocaml.lib_config
   in
   { cctx with
     opaque

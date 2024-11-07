@@ -1,0 +1,51 @@
+How to override the default entry point
+---------------------------------------
+
+In some cases, it may be necessary to override the default main entry point of
+an OCaml program. For example, this is the case if you want to let your program
+handle argument wildcards expansion on Windows.
+
+Let's consider a trivial "Hello world" program, contained in a ``hello.ml``
+file:
+
+.. code:: ocaml
+
+    let () = print_endline "Hello, world!"
+
+The default entry point is a C ``main`` function, originally defined in
+`runtime/main.c <https://github.com/ocaml/ocaml/blob/trunk/runtime/main.c>`_. It
+can be overriden by defining a ``main`` function that will at some point call
+the OCaml runtime. Let's write such a minimal example in a ``main.c`` file:
+
+.. code:: C
+
+    #include <stdio.h>
+
+    #include "caml/misc.h"
+    #include "caml/mlvalues.h"
+    #include "caml/sys.h"
+    #include "caml/callback.h"
+
+    /* This is the new entry point */
+    int main(int argc, char_os **argv)
+    {
+        /* Here, we just print a statement */
+        printf("Do stuff before calling the OCaml runtime\n");
+
+        /* Before calling the OCaml runtime */
+        caml_main(argv);
+        caml_do_exit(0);
+        return 0;
+    }
+
+The :doc:`foreign_stubs </reference/foreign-stubs>` stanza can be leveraged to
+compile and link our OCaml program with the new C entry point defined in
+``main.c``:
+
+.. code:: dune
+
+    (executable
+     (name hello)
+     (foreign_stubs
+      (language c)
+      (names main)))

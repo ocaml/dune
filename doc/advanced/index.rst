@@ -12,4 +12,3 @@ These documents describe some advanced or very specific features of Dune.
    ocaml-syntax
    variables-artifacts
    custom-cmxs
-   override-default-entrypoint

@@ -21,7 +21,7 @@ let term =
   let dir = Common.prefix_target common dir in
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
-  let env, utop_path, requires =
+  let env, lib_config, utop_path, requires =
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
@@ -46,12 +46,15 @@ let term =
             Utop.requires_under_dir sctx ~dir
           in
           let+ requires = Resolve.read_memo requires
+          and+ lib_config =
+            let+ ocaml = Context.ocaml context in
+            ocaml.lib_config
           and+ env = Super_context.context_env sctx in
-          env, Path.to_string utop_target, requires))
+          env, lib_config, Path.to_string utop_target, requires))
   in
   Hooks.End_of_build.run ();
   let env =
-    Dune_rules.Lib_flags.L.toplevel_ld_paths requires
+    Dune_rules.Lib_flags.L.toplevel_ld_paths requires lib_config
     |> Path.Set.fold
          ~f:(fun dir env -> Env_path.cons ~var:Ocaml.Env.caml_ld_library_path env ~dir)
          ~init:env

@@ -225,7 +225,8 @@ let build_c_program
       Lib.DB.resolve (Scope.libs scope) (Loc.none, ctypes) |> Resolve.Memo.read
     in
     let ctypes_include_dirs =
-      Lib_flags.L.include_paths [ lib ] (Ocaml Native) |> Path.Set.to_list
+      Lib_flags.L.include_paths [ lib ] (Ocaml Native) ocaml.lib_config
+      |> Path.Set.to_list
     in
     let include_dirs = ocaml_where :: ctypes_include_dirs in
     Command.Args.S

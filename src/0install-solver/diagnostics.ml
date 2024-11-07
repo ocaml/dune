@@ -8,11 +8,8 @@ module List = Solver_core.List
 
 let pf = Format.fprintf
 
-module Make
-    (Monad : S.Monad)
-    (Results : S.SOLVER_RESULT with type 'a Input.monad := 'a Monad.t) =
-struct
-  open Monad.O
+module Make (Results : S.SOLVER_RESULT) = struct
+  open Fiber.O
   module Model = Results.Input
   module RoleMap = Results.RoleMap
 
@@ -411,11 +408,11 @@ struct
         let+ rejects, feed_problems = Model.rejects role in
         Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl
       in
-      RoleMap.to_seq impls
-      |> Monad.Seq.parallel_map (fun (k, v) ->
+      RoleMap.to_list impls
+      |> Fiber.parallel_map ~f:(fun (k, v) ->
         let+ v = get_selected k v in
         k, v)
-      >>| RoleMap.of_seq
+      |> Fiber.map ~f:RoleMap.of_list
     in
     examine_extra_restrictions report;
     check_conflict_classes report;

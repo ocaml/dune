@@ -1,10 +1,6 @@
-module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad.t) =
-struct
-  open Monad.O
-
-  type 'a monad = 'a Monad.t
-
-  module Input = Model.Make (Monad) (Context)
+module Make (Context : S.CONTEXT) = struct
+  open Fiber.O
+  module Input = Model.Make (Context)
 
   let version = Input.version
   let package_name = Input.package_name
@@ -21,8 +17,8 @@ struct
     role
   ;;
 
-  module Solver = Zeroinstall_solver.Make (Monad) (Input)
-  module Diagnostics = Zeroinstall_solver.Diagnostics (Monad) (Solver.Output)
+  module Solver = Zeroinstall_solver.Make (Input)
+  module Diagnostics = Zeroinstall_solver.Diagnostics (Solver.Output)
 
   type t = Context.t
   type selections = Solver.Output.t

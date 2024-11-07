@@ -1,5 +1,5 @@
-How to override the default entry point
----------------------------------------
+How to override the default Ocaml entrypoint with C Stubs
+---------------------------------------------------------
 
 In some cases, it may be necessary to override the default main entry point of
 an OCaml program. For example, this is the case if you want to let your program
@@ -21,6 +21,7 @@ the OCaml runtime. Let's write such a minimal example in a ``main.c`` file:
 
     #include <stdio.h>
 
+    #define CAML_INTERNALS
     #include "caml/misc.h"
     #include "caml/mlvalues.h"
     #include "caml/sys.h"
@@ -30,7 +31,7 @@ the OCaml runtime. Let's write such a minimal example in a ``main.c`` file:
     int main(int argc, char_os **argv)
     {
         /* Here, we just print a statement */
-        printf("Do stuff before calling the OCaml runtime\n");
+        printf("Doing stuff before calling the OCaml runtime\n");
 
         /* Before calling the OCaml runtime */
         caml_main(argv);
@@ -49,3 +50,13 @@ compile and link our OCaml program with the new C entry point defined in
      (foreign_stubs
       (language c)
       (names main)))
+
+The program can be compiled using ``dune``. When run, the output shows that it
+runs the custom entry point we defined:
+
+.. code:: shell-session
+
+    $ dune build
+    $ _build/default/hello.exe
+    Doing stuff before calling the OCaml runtime
+    Hello, world!

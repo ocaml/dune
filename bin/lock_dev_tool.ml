@@ -229,9 +229,10 @@ let lock_ocamlformat () =
 let lock_odoc () = lock_dev_tool Odoc None
 let lock_ocamllsp () = lock_dev_tool Ocamllsp None
 
-let lock_tools (tools : Dune_pkg.Dev_tool.t list) =
-  List.map tools ~f:(function
-    | Dune_pkg.Dev_tool.Odoc -> lock_odoc ()
+let lock_tools tools =
+  List.map tools ~f:(fun (tool : Dune_pkg.Dev_tool.t) ->
+    match tool with
+    | Odoc -> lock_odoc ()
     | Ocamllsp -> lock_ocamllsp ()
     | Ocamlformat -> lock_ocamlformat ())
 ;;

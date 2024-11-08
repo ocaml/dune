@@ -1,11 +1,11 @@
-How to override the default Ocaml entrypoint with C Stubs
+How to Override the Default OCaml Entrypoint With C Stubs
 ---------------------------------------------------------
 
 In some cases, it may be necessary to override the default main entry point of
 an OCaml program. For example, this is the case if you want to let your program
 handle argument wildcards expansion on Windows.
 
-Let's consider a trivial "Hello world" program, contained in a ``hello.ml``
+Let's consider a trivial "Hello world" program contained in a ``hello.ml``
 file:
 
 .. code:: ocaml

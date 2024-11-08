@@ -51,8 +51,9 @@ compile and link our OCaml program with the new C entry point defined in
       (language c)
       (names main)))
 
-The program can be compiled using ``dune``. When run, the output shows that it
-runs the custom entry point we defined:
+With this ``dune`` file, the whole program can be compiled by merely calling
+``dune build``. When run, the output shows that it runs the custom entry point
+we defined:
 
 .. code:: shell-session
 

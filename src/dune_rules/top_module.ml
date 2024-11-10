@@ -44,6 +44,7 @@ let find_module sctx src =
          match origin with
          | Executables exes ->
            Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
+         | Tests tests -> Test_rules.rules ~sctx ~dir_contents ~dir ~expander ~scope tests
          | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
          | Melange mel ->
            Melange_rules.setup_emit_cmj_rules

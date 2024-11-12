@@ -4,7 +4,7 @@
 
 (** Explaining why a solve failed or gave an unexpected answer. *)
 
-module List = Solver_core.List
+module List = Stdune.List
 
 let pf = Format.fprintf
 
@@ -14,7 +14,10 @@ module Make (Results : S.SOLVER_RESULT) = struct
   module RoleMap = Results.RoleMap
 
   let format_role = Model.Role.pp
-  let format_restrictions r = String.concat ", " (List.map Model.string_of_restriction r)
+
+  let format_restrictions r =
+    String.concat ", " (List.map ~f:Model.string_of_restriction r)
+  ;;
 
   module Note = struct
     type t =
@@ -86,13 +89,13 @@ module Make (Results : S.SOLVER_RESULT) = struct
       (selected_impl : Model.impl option)
       =
       let { Model.impls; Model.replacement } = candidates in
-      let notes = List.map (fun x -> Note.Feed_problem x) feed_problems in
+      let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
       { role
       ; replacement
       ; orig_good = impls
       ; orig_bad
       ; good = impls
-      ; bad = List.map (fun (impl, reason) -> impl, `Model_rejection reason) orig_bad
+      ; bad = List.map ~f:(fun (impl, reason) -> impl, `Model_rejection reason) orig_bad
       ; notes
       ; diagnostics
       ; selected_impl
@@ -115,8 +118,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     let filter_impls_ref ~note:n t get_problem =
       let old_good = List.rev t.good in
       t.good <- [];
-      old_good
-      |> List.iter (fun impl ->
+      List.iter old_good ~f:(fun impl ->
         match get_problem impl with
         | None -> t.good <- impl :: t.good
         | Some problem ->
@@ -138,8 +140,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
        Add removed items to [bad_impls], along with the cause. *)
     let apply_restrictions ~note t restrictions =
       let note = ref (Some note) in
-      restrictions
-      |> List.iter (fun r ->
+      List.iter restrictions ~f:(fun r ->
         filter_impls_ref ~note t (fun impl ->
           if Model.meets_restriction impl r then None else Some (`FailsRestriction r)))
     ;;
@@ -152,15 +153,14 @@ module Make (Results : S.SOLVER_RESULT) = struct
       (* Completely remove non-matching impls.
          The user will only want to see the version they asked for. *)
       let new_bad =
-        t.bad
-        |> List.filter (fun (impl, _) ->
+        List.filter t.bad ~f:(fun (impl, _) ->
           if Model.meets_restriction impl r then true else false)
       in
       if new_bad <> [] || t.good <> [] then t.bad <- new_bad
     ;;
 
     let reject_all t reason =
-      t.bad <- List.map (fun impl -> impl, reason) t.good @ t.bad;
+      t.bad <- List.map ~f:(fun impl -> impl, reason) t.good @ t.bad;
       t.good <- []
     ;;
 
@@ -173,15 +173,14 @@ module Make (Results : S.SOLVER_RESULT) = struct
     let reject_self_conflicts t =
       filter_impls t (fun impl ->
         let deps = Model.requires t.role impl in
-        deps
-        |> List.find_map (fun dep ->
+        List.find_map deps ~f:(fun dep ->
           let { Model.dep_role; _ } = Model.dep_info dep in
           if Model.Role.compare dep_role t.role <> 0
           then None
           else
             (* It depends on itself. *)
             Model.restrictions dep
-            |> List.find_map (fun r ->
+            |> List.find_map ~f:(fun r ->
               if Model.meets_restriction impl r
               then None
               else Some (`DepFailsRestriction (dep, r)))))
@@ -214,8 +213,10 @@ module Make (Results : S.SOLVER_RESULT) = struct
     ;;
 
     let show_rejections ~verbose f rejected =
-      let by_version (a, _) (b, _) = Model.compare_version b a in
-      let rejected = List.sort by_version rejected in
+      let by_version (a, _) (b, _) =
+        Model.compare_version b a |> Stdune.Ordering.of_int
+      in
+      let rejected = List.sort ~compare:by_version rejected in
       let rec aux i = function
         | [] -> ()
         | _ when i = 5 && not verbose -> pf f "@,..."
@@ -304,10 +305,10 @@ module Make (Results : S.SOLVER_RESULT) = struct
              then None
              else Some (`DepFailsRestriction (dep, r))
            in
-           List.find_map check_restriction (Model.restrictions dep))
+           List.find_map ~f:check_restriction (Model.restrictions dep))
     in
     let deps = Model.requires role impl in
-    List.find_map check_dep deps
+    List.find_map ~f:check_dep deps
   ;;
 
   (** A selected component has [dep] as a dependency. Use this to explain why some implementations
@@ -346,7 +347,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     | Some our_impl ->
       (* For each dependency of our selected impl, explain why it rejected impls in the dependency's interface. *)
       let deps = Model.requires role our_impl in
-      List.iter (examine_dep role our_impl report) deps
+      List.iter ~f:(examine_dep role our_impl report) deps
     | None ->
       (* For each of our remaining unrejected impls, check whether a dependency prevented its selection. *)
       Component.filter_impls component (get_dependency_problem role report)
@@ -377,7 +378,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
           | None -> acc
           | Some impl ->
             Model.conflict_class impl
-            |> List.fold_left (fun acc x -> Classes.add x role acc) acc)
+            |> List.fold_left ~f:(fun acc x -> Classes.add x role acc) ~init:acc)
         report
         Classes.empty
     in

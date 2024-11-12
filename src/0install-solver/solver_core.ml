@@ -4,31 +4,7 @@
 
 (** Select a compatible set of components to run a program. *)
 
-module List = struct
-  include List
-
-  let rec find_map f = function
-    | [] -> None
-    | x :: xs ->
-      (match f x with
-       | Some _ as result -> result
-       | None -> find_map f xs)
-  ;;
-end
-
-type ('a, 'b) partition_result =
-  | Left of 'a
-  | Right of 'b
-
-let partition fn lst =
-  let pass = ref [] in
-  let fail = ref [] in
-  ListLabels.iter lst ~f:(fun item ->
-    match fn item with
-    | Left x -> pass := x :: !pass
-    | Right x -> fail := x :: !fail);
-  List.rev !pass, List.rev !fail
-;;
+module List = Stdune.List
 
 module type CACHE_ENTRY = sig
   type t
@@ -145,9 +121,10 @@ module Make (Model : S.SOLVER_INPUT) = struct
       (** Get all variables, except dummy_impl (if present) *)
       method get_real_vars =
         vars
-        |> List.filter_map (fun (var, impl) -> if is_dummy impl then None else Some var)
+        |> List.filter_map ~f:(fun (var, impl) ->
+          if is_dummy impl then None else Some var)
 
-      method get_vars = List.map (fun (var, _impl) -> var) vars
+      method get_vars = List.map ~f:(fun (var, _impl) -> var) vars
 
       method get_selected =
         match clause with
@@ -181,7 +158,9 @@ module Make (Model : S.SOLVER_INPUT) = struct
       (** Apply [test impl] to each implementation, partitioning the vars into two lists.
           Only defined for [impl_candidates]. *)
       method partition test =
-        partition (fun (var, impl) -> if test impl then Left var else Right var) vars
+        List.partition_map
+          ~f:(fun (var, impl) -> if test impl then Stdune.Either.Left var else Right var)
+          vars
     end
 
   module RoleEntry = struct
@@ -206,7 +185,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
    * We do this at the end because if we didn't use the replacement feed, there's no need to conflict
    * (avoids getting it added to feeds_used). *)
   let add_replaced_by_conflicts sat impl_clauses =
-    List.iter (fun (clause, replacement) ->
+    List.iter ~f:(fun (clause, replacement) ->
       ImplCache.get replacement impl_clauses
       |> Option.iter (fun replacement_candidates ->
         (* Our replacement was also added to [sat], so conflict with it. *)
@@ -245,7 +224,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* Add [impl] to its conflict groups, if any. *)
     let process t impl_var impl =
       Model.conflict_class impl
-      |> List.iter (fun name ->
+      |> List.iter ~f:(fun name ->
         let impls = var t name in
         impls := impl_var :: !impls)
     ;;
@@ -271,7 +250,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let dep_restrictions = Model.restrictions dep in
     (* Restrictions on the candidates *)
     let meets_restrictions impl =
-      List.for_all (Model.meets_restriction impl) dep_restrictions
+      List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
     in
     let+ candidates = lookup_impl dep_role in
     let pass, fail = candidates#partition meets_restrictions in
@@ -302,13 +281,12 @@ module Make (Model : S.SOLVER_INPUT) = struct
       | Some dummy_impl -> impls @ [ dummy_impl ]
     in
     let impls =
-      impls
-      |> List.map (fun impl ->
+      List.map impls ~f:(fun impl ->
         let var = S.add_variable sat (SolverData.ImplElem impl) in
         var, impl)
     in
     let impl_clause =
-      if impls <> [] then Some (S.at_most_one sat (List.map fst impls)) else None
+      if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
     in
     let clause = new impl_candidates role impl_clause impls dummy_impl in
     (* If we have a <replaced-by>, remember to add a conflict with our replacement *)
@@ -435,7 +413,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
                 None
               else find_undecided dep_role
             in
-            List.find_map check_dep deps)
+            List.find_map ~f:check_dep deps)
       in
       find_undecided root_req
     in

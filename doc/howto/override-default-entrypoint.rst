@@ -1,8 +1,8 @@
-How to Override the Default OCaml Entrypoint With C Stubs
----------------------------------------------------------
+How to Override the Default C Entrypoint With C Stubs
+-----------------------------------------------------
 
-In some cases, it may be necessary to override the default main entry point of
-an OCaml program. For example, this is the case if you want to let your program
+In some cases, it may be necessary to override the default C entry point of an
+OCaml program. For example, this is the case if you want to let your program
 handle argument wildcards expansion on Windows.
 
 Let's consider a trivial "Hello world" program contained in a ``hello.ml``
@@ -12,7 +12,7 @@ file:
 
     let () = print_endline "Hello, world!"
 
-The default entry point is a C ``main`` function, originally defined in
+The default C entry point is a ``main`` function, originally defined in
 `runtime/main.c <https://github.com/ocaml/ocaml/blob/trunk/runtime/main.c>`_. It
 can be overriden by defining a ``main`` function that will at some point call
 the OCaml runtime. Let's write such a minimal example in a ``main.c`` file:
@@ -52,7 +52,7 @@ compile and link our OCaml program with the new C entry point defined in
       (names main)))
 
 With this ``dune`` file, the whole program can be compiled by merely calling
-``dune build``. When run, the output shows that it runs the custom entry point
+``dune build``. When run, the output shows that it calls the custom entry point
 we defined:
 
 .. code:: shell-session

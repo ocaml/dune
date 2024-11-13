@@ -136,8 +136,9 @@ The semantics of the fields are:
   lang 0.9<coq-lang>`)
 
 - ``<coqdep_flags>`` are extra user-configurable flags passed to ``coqdep``. The
-  default value for ``:standard`` is empty. (Appeared in :ref:`Coq
-  lang 0.10<coq-lang>`)
+  default value for ``:standard`` is empty. This field exists for transient
+  use-cases, in particular disabling ``coqdep`` warnings, but it should not be
+  used in normal operations. (Appeared in :ref:`Coq lang 0.10<coq-lang>`)
 
 
 - ``<coqdoc_flags>`` are extra user-configurable flags passed to ``coqdoc``. The
@@ -842,7 +843,9 @@ with the following values for ``<coq_fields>``:
   ``(coq.theory (flags <flags>))`` field. 
 - ``(coqdep_flags <flags>)``: The default flags passed to ``coqdep``. The default
   value is empty. Values set here become the ``:standard`` value in the
-  ``(coq.theory (coqdep_flags <flags>))`` field.
+  ``(coq.theory (coqdep_flags <flags>))`` field. As noted in the documentation
+  of the ``(coq.theory (coqdep_flags <flags>))`` field, changing the ``coqdep``
+  flags is discouraged.
 - ``(coqdoc_flags <flags>)``: The default flags passed to ``coqdoc``. The default
   value is ``--toc``. Values set here become the ``:standard`` value in the
   ``(coq.theory (coqdoc_flags <flags>))`` field.

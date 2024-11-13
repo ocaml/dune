@@ -258,6 +258,7 @@ field. Available modes are:
 - ``best`` for running tests in native mode with fallback to byte code,
   if native compilation is not available
 - ``js`` for running tests in JavaScript using Node.js
+- ``wasm`` for running tests in Wasm using Node.js
 
 For instance:
 
@@ -265,7 +266,7 @@ For instance:
 
    (library
     (name foo)
-    (inline_tests (modes byte best js))
+    (inline_tests (modes byte best js wasm))
     (preprocess (pps ppx_expect)))
 
 

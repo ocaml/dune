@@ -337,7 +337,6 @@ module T = struct
     ; pps : t list Resolve.t
     ; resolved_selects : Resolved_select.t list Resolve.t
     ; implements : t Resolve.t option
-    ; lib_config : Lib_config.t
     ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Resolve.t Memo.Lazy.t option
@@ -413,7 +412,6 @@ type db =
   ; instantiate :
       (Lib_name.t -> Path.t Lib_info.t -> hidden:string option -> Status.t Memo.t) Lazy.t
   ; all : Lib_name.t list Memo.Lazy.t
-  ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
   }
 
@@ -427,7 +425,6 @@ and resolve_result =
   | Redirect_by_name of db * (Loc.t * Lib_name.t)
   | Redirect_by_id of db * Lib_id.t
 
-let lib_config (t : lib) = t.lib_config
 let name t = t.name
 let info t = t.info
 let project t = t.project
@@ -1070,7 +1067,6 @@ end = struct
          ; re_exports
          ; implements
          ; default_implementation
-         ; lib_config = db.lib_config
          ; project
          ; sub_systems =
              Sub_system_name.Map.mapi (Lib_info.sub_systems info) ~f:(fun name info ->
@@ -1909,14 +1905,13 @@ module DB = struct
 
   type t = db
 
-  let create ~parent ~resolve ~resolve_lib_id ~all ~lib_config ~instrument_with () =
+  let create ~parent ~resolve ~resolve_lib_id ~all ~instrument_with () =
     let rec t =
       lazy
         { parent
         ; resolve
         ; resolve_lib_id
         ; all = Memo.lazy_ all
-        ; lib_config
         ; instrument_with
         ; instantiate
         }
@@ -1926,7 +1921,7 @@ module DB = struct
 
   let create_from_findlib =
     let bigarray = Lib_name.of_string "bigarray" in
-    fun findlib ~has_bigarray_library ~lib_config ->
+    fun findlib ~has_bigarray_library ->
       let resolve name =
         let open Memo.O in
         Findlib.find findlib name
@@ -1951,7 +1946,6 @@ module DB = struct
       create
         ()
         ~parent:None
-        ~lib_config
         ~resolve
         ~resolve_lib_id:(fun lib_id ->
           let open Memo.O in
@@ -1969,7 +1963,6 @@ module DB = struct
       findlib
       ~has_bigarray_library:(Ocaml.Version.has_bigarray_library ocaml.version)
       ~instrument_with:(Context.instrument_with context)
-      ~lib_config:ocaml.lib_config
   ;;
 
   let find t name =

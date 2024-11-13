@@ -1,16 +1,62 @@
 open Import
 open Dune_lang.Decoder
 
-module Ext = struct
-  type t = string
+(* We use the same set of options when producing Wasm code with
+   wasm_of_ocaml, since the compilation process is similar and
+   generates a JavaScript file with basically the same behavior. *)
 
-  let exe = ".bc.js"
-  let cmo = ".cmo.js"
-  let cma = ".cma.js"
-  let runtime = ".bc.runtime.js"
+module Mode = struct
+  type t =
+    | JS
+    | Wasm
+
+  let equal (a : t) b = Poly.equal a b
+
+  let select ~mode ~js ~wasm =
+    match mode with
+    | JS -> js
+    | Wasm -> wasm
+  ;;
+
+  let compare m m' =
+    match m, m' with
+    | JS, JS -> Eq
+    | JS, _ -> Lt
+    | _, JS -> Gt
+    | Wasm, Wasm -> Eq
+  ;;
+
+  let decode =
+    let open Dune_sexp.Decoder in
+    sum [ "js", return JS; "wasm", return Wasm ]
+  ;;
+
+  let to_string mode = select ~mode ~js:"js" ~wasm:"wasm"
+  let to_dyn t = Dyn.variant (to_string t) []
+  let all = [ JS; Wasm ]
+
+  module Pair = struct
+    type 'a t =
+      { js : 'a
+      ; wasm : 'a
+      }
+
+    let select ~mode { js; wasm } = select ~mode ~js ~wasm
+    let make v = { js = v; wasm = v }
+    let map ~f { js; wasm } = { js = f js; wasm = f wasm }
+    let mapi ~f { js; wasm } = { js = f JS js; wasm = f Wasm wasm }
+
+    let map2 ~f { js; wasm } { js = js'; wasm = wasm' } =
+      { js = f js js'; wasm = f wasm wasm' }
+    ;;
+  end
+
+  module Set = struct
+    type t = bool Pair.t
+
+    let inter = Pair.map2 ~f:( && )
+  end
 end
-
-let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
 module Sourcemap = struct
   type t =
@@ -18,7 +64,11 @@ module Sourcemap = struct
     | Inline
     | File
 
-  let decode = enum [ "no", No; "inline", Inline; "file", File ]
+  let decode ~mode =
+    match (mode : Mode.t) with
+    | JS -> enum [ "no", No; "inline", Inline; "file", File ]
+    | Wasm -> enum [ "no", No; "inline", Inline ]
+  ;;
 
   let equal x y =
     match x, y with
@@ -43,6 +93,7 @@ module Flags = struct
   let build_runtime t = t.build_runtime
   let compile t = t.compile
   let link t = t.link
+  let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
   let decode =
     let+ build_runtime = field_oslu "build_runtime_flags"
@@ -86,16 +137,17 @@ module Flags = struct
     { build_runtime; compile; link }
   ;;
 
-  let dump t =
+  let dump ~mode t =
     let open Action_builder.O in
     let+ build_runtime = t.build_runtime
     and+ compile = t.compile
     and+ link = t.link in
+    let prefix = Mode.to_string mode in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
-      [ "js_of_ocaml_flags", compile
-      ; "js_of_ocaml_build_runtime_flags", build_runtime
-      ; "js_of_ocaml_link_flags", link
+      [ prefix ^ "_of_ocaml_flags", compile
+      ; prefix ^ "_of_ocaml_build_runtime_flags", build_runtime
+      ; prefix ^ "_of_ocaml_link_flags", link
       ]
   ;;
 end
@@ -119,12 +171,14 @@ end
 module In_buildable = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; enabled_if : Blang.t option
     ; javascript_files : string list
+    ; wasm_files : string list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
 
-  let decode ~executable =
+  let decode ~in_library ~mode =
     let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     if syntax_version < (3, 0)
     then
@@ -136,35 +190,49 @@ module In_buildable = struct
              ; compile = flags
              ; link = flags (* we set link as well to preserve the old semantic *)
              }
+         ; enabled_if = Some Blang.true_
          ; javascript_files
+         ; wasm_files = []
          ; compilation_mode = None
          ; sourcemap = None
          })
-    else
+    else (
+      let only_in_executable decode = if in_library then return None else decode in
       fields
         (let+ flags = Flags.decode
+         and+ enabled_if =
+           only_in_executable
+             (field_o
+                "enabled_if"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode))
          and+ javascript_files = field "javascript_files" (repeat string) ~default:[]
+         and+ wasm_files =
+           match (mode : Mode.t) with
+           | JS -> return []
+           | Wasm ->
+             field
+               "wasm_files"
+               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> repeat string)
+               ~default:[]
          and+ compilation_mode =
-           if executable
-           then
-             field_o
-               "compilation_mode"
-               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode)
-           else return None
+           only_in_executable
+             (field_o
+                "compilation_mode"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Compilation_mode.decode))
          and+ sourcemap =
-           if executable
-           then
-             field_o
-               "sourcemap"
-               (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
-           else return None
+           only_in_executable
+             (field_o
+                "sourcemap"
+                (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode))
          in
-         { flags; javascript_files; compilation_mode; sourcemap })
+         { flags; enabled_if; javascript_files; wasm_files; compilation_mode; sourcemap }))
   ;;
 
   let default =
     { flags = Flags.standard
+    ; enabled_if = None
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }
@@ -174,27 +242,45 @@ end
 module In_context = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t Flags.t
+    ; enabled_if : Blang.t option
     ; javascript_files : Path.Build.t list
+    ; wasm_files : Path.Build.t list
     ; compilation_mode : Compilation_mode.t option
     ; sourcemap : Sourcemap.t option
     }
 
-  let make ~(dir : Path.Build.t) (x : In_buildable.t) =
+  let make_one ~(dir : Path.Build.t) (x : In_buildable.t) =
     { flags = x.flags
+    ; enabled_if = x.enabled_if
     ; javascript_files =
         List.map ~f:(fun name -> Path.Build.relative dir name) x.javascript_files
+    ; wasm_files = List.map ~f:(fun name -> Path.Build.relative dir name) x.wasm_files
     ; compilation_mode = x.compilation_mode
     ; sourcemap = x.sourcemap
     }
   ;;
 
+  let make ~dir x = Mode.Pair.map ~f:(fun x -> make_one ~dir x) x
+
   let default =
     { flags = Flags.standard
+    ; enabled_if = None
     ; javascript_files = []
+    ; wasm_files = []
     ; compilation_mode = None
     ; sourcemap = None
     }
   ;;
+end
+
+module Ext = struct
+  type t = string
+
+  let exe ~mode = Mode.select ~mode ~js:".bc.js" ~wasm:".bc.wasm.js"
+  let cmo ~mode = Mode.select ~mode ~js:".cmo.js" ~wasm:".wasmo"
+  let cma ~mode = Mode.select ~mode ~js:".cma.js" ~wasm:".wasma"
+  let runtime ~mode = Mode.select ~mode ~js:".bc.runtime.js" ~wasm:".bc.runtime.wasma"
+  let wasm_dir = ".bc.wasm.assets"
 end
 
 module Env = struct
@@ -203,30 +289,37 @@ module Env = struct
     ; sourcemap : Sourcemap.t option
     ; runtest_alias : Alias.Name.t option
     ; flags : 'a Flags.t
+    ; enabled_if : Blang.t option
     }
 
-  let decode =
+  let decode ~mode =
     fields
     @@ let+ compilation_mode = field_o "compilation_mode" Compilation_mode.decode
        and+ sourcemap =
          field_o
            "sourcemap"
-           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Sourcemap.decode ~mode)
        and+ runtest_alias = field_o "runtest_alias" Dune_lang.Alias.decode
-       and+ flags = Flags.decode in
+       and+ flags = Flags.decode
+       and+ enabled_if =
+         field_o
+           "enabled_if"
+           (Dune_lang.Syntax.since Stanza.syntax (3, 17) >>> Blang.decode)
+       in
        Option.iter ~f:Alias0.register_as_standard runtest_alias;
-       { compilation_mode; sourcemap; runtest_alias; flags }
+       { compilation_mode; sourcemap; runtest_alias; flags; enabled_if }
   ;;
 
-  let equal { compilation_mode; sourcemap; runtest_alias; flags } t =
+  let equal { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } t =
     Option.equal Compilation_mode.equal compilation_mode t.compilation_mode
     && Option.equal Sourcemap.equal sourcemap t.sourcemap
     && Option.equal Alias.Name.equal runtest_alias t.runtest_alias
     && Flags.equal Ordered_set_lang.Unexpanded.equal flags t.flags
+    && Option.equal Blang.equal enabled_if t.enabled_if
   ;;
 
-  let map ~f { compilation_mode; sourcemap; runtest_alias; flags } =
-    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags }
+  let map ~f { compilation_mode; sourcemap; runtest_alias; flags; enabled_if } =
+    { compilation_mode; sourcemap; runtest_alias; flags = Flags.map ~f flags; enabled_if }
   ;;
 
   let empty =
@@ -234,6 +327,7 @@ module Env = struct
     ; sourcemap = None
     ; runtest_alias = None
     ; flags = Flags.standard
+    ; enabled_if = None
     }
   ;;
 
@@ -242,6 +336,7 @@ module Env = struct
     ; sourcemap = None
     ; runtest_alias = None
     ; flags = Flags.default ~profile
+    ; enabled_if = None
     }
   ;;
 end

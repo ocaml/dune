@@ -471,21 +471,23 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
     iter_modes_concurrently modes.ocaml ~f:(fun mode ->
       build_lib lib ~native_archives ~dir ~sctx ~expander ~flags ~mode ~cm_files)
   and* () =
-    (* Build *.cma.js *)
+    (* Build *.cma.js / *.wasma *)
     Memo.when_ modes.ocaml.byte (fun () ->
       let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      let action_with_targets =
-        List.map Jsoo_rules.Config.all ~f:(fun config ->
-          Jsoo_rules.build_cm
-            sctx
-            ~dir
-            ~in_context:js_of_ocaml
-            ~config:(Some config)
-            ~src:(Path.build src)
-            ~obj_dir)
-      in
-      Memo.parallel_iter action_with_targets ~f:(fun rule ->
-        Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule))
+      Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+        let action_with_targets =
+          List.map Jsoo_rules.Config.all ~f:(fun config ->
+            Jsoo_rules.build_cm
+              sctx
+              ~dir
+              ~in_context:(Js_of_ocaml.Mode.Pair.select ~mode js_of_ocaml)
+              ~mode
+              ~config:(Some config)
+              ~src:(Path.build src)
+              ~obj_dir)
+        in
+        Memo.parallel_iter action_with_targets ~f:(fun rule ->
+          Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
   in
   Memo.when_
     (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)
@@ -540,7 +542,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~requires_link
     ~preprocessing:pp
     ~opaque:Inherit_from_settings
-    ~js_of_ocaml:(Some js_of_ocaml)
+    ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
     ?stdlib:lib.stdlib
     ~package
     ?vimpl

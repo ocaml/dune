@@ -198,7 +198,6 @@ module DB = struct
         ~resolve
         ~resolve_lib_id
         ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
-        ~lib_config
         ~instrument_with
   ;;
 
@@ -232,7 +231,7 @@ module DB = struct
       | None -> Memo.return Lib.DB.Resolve_result.not_found
       | Some rt -> resolve_redirect_to t rt
     in
-    fun t ~installed_libs ~lib_config stanzas ->
+    fun t ~installed_libs stanzas ->
       let by_name, by_id =
         List.fold_left
           stanzas
@@ -292,7 +291,6 @@ module DB = struct
         ~resolve
         ~resolve_lib_id
         ~all:(fun () -> Lib_name.Map.keys by_name |> Memo.return)
-        ~lib_config
         ()
   ;;
 
@@ -353,7 +351,7 @@ module DB = struct
     let instrument_with = Context.instrument_with context in
     let+ public_libs =
       let+ installed_libs = Lib.DB.installed context in
-      public_libs t ~instrument_with ~lib_config ~installed_libs stanzas
+      public_libs t ~instrument_with ~installed_libs stanzas
     in
     let by_dir =
       scopes_by_dir

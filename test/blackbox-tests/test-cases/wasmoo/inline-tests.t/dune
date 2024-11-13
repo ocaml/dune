@@ -1,0 +1,8 @@
+(library
+ (name fake_backend)
+ (modules ())
+ (inline_tests.backend
+  (generate_runner
+   (progn
+    (echo "[@@@warning \"-40\"]\n")
+    (cat %{impl-files})))))

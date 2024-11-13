@@ -421,11 +421,16 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
             let+ lib = Lib.DB.resolve (Scope.libs scope) lib in
             Some lib
           | _ -> Resolve.Memo.return None)
+      and+ lib_config =
+        Resolve.Memo.lift_memo
+        @@ Memo.O.(
+             let+ ocaml = Super_context.context sctx |> Context.ocaml in
+             ocaml.lib_config)
       in
       let mode = ocaml_toolchain |> Ocaml_toolchain.best_mode in
       let open Command.Args in
       S
-        (Lib_flags.L.include_paths libs_to_include (Ocaml mode)
+        (Lib_flags.L.include_paths libs_to_include (Ocaml mode) lib_config
          |> Path.Set.to_list_map ~f:(fun p -> S [ A "--directory"; Path p ]))
     in
     let open Command.Args in
@@ -476,7 +481,7 @@ let mdx_prog_gen t ~sctx ~dir ~scope ~mdx_prog =
       ~requires_compile
       ~requires_link
       ~opaque:(Explicit false)
-      ~js_of_ocaml:None
+      ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None
       ()

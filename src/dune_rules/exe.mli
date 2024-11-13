@@ -33,8 +33,11 @@ module Linkage : sig
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
 
+  (** Wasm compilation, extension [.bc.wasm.js] *)
+  val wasm : t
+
   val is_native : t -> bool
-  val is_js : t -> bool
+  val is_jsoo : mode:Js_of_ocaml.Mode.t -> t -> bool
   val is_byte : t -> bool
 
   val of_user_config

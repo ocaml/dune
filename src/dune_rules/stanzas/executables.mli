@@ -3,6 +3,7 @@ open Import
 module Link_mode : sig
   type t =
     | Byte_complete
+    | Jsoo of Js_of_ocaml.Mode.t
     | Other of
         { mode : Mode_conf.t
         ; kind : Binary_kind.t
@@ -16,6 +17,8 @@ module Link_mode : sig
   val byte : t
   val native : t
   val js : t
+  val wasm : t
+  val is_jsoo : t -> bool
   val compare : t -> t -> Ordering.t
   val to_dyn : t -> Dyn.t
 

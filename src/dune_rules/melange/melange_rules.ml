@@ -107,7 +107,7 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 
-let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
+let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope lib_config =
   let project = Scope.project scope in
   let deps_of_lib lib =
     let info = Lib.info lib in
@@ -122,7 +122,7 @@ let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope =
   let+ requires_link = requires_link in
   let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
   Command.Args.S
-    [ Lib_flags.L.melange_emission_include_flags ~project requires_link
+    [ Lib_flags.L.melange_emission_include_flags ~project requires_link lib_config
     ; Hidden_deps deps
     ]
 ;;
@@ -316,7 +316,7 @@ let setup_emit_cmj_rules
         ~requires_link
         ~requires_compile:direct_requires
         ~preprocessing:pp
-        ~js_of_ocaml:None
+        ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~opaque:Inherit_from_settings
         ~melange_package_name:None
         ~package:mel.package
@@ -468,7 +468,13 @@ let setup_entries_js
   let loc = mel.loc in
   let module_systems = mel.module_systems in
   let* requires_link = Memo.Lazy.force requires_link in
-  let includes = cmj_includes ~requires_link ~scope in
+  let* includes =
+    let+ lib_config =
+      let+ ocaml = Super_context.context sctx |> Context.ocaml in
+      ocaml.lib_config
+    in
+    cmj_includes ~requires_link ~scope lib_config
+  in
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
@@ -526,6 +532,10 @@ let setup_js_rules_libraries =
           | None -> acc
           | Some sub -> if Lib.equal sub lib then acc else sub :: acc)
     in
+    let* lib_config =
+      let+ ocaml = Super_context.context sctx |> Context.ocaml in
+      ocaml.lib_config
+    in
     Memo.parallel_iter requires_link ~f:(fun lib ->
       let lib_compile_info =
         Lib.Compile.for_lib
@@ -546,7 +556,7 @@ let setup_js_rules_libraries =
           Memo.Lazy.force (Lib.Compile.requires_link lib_compile_info)
           |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
         in
-        cmj_includes ~requires_link ~scope
+        cmj_includes ~requires_link ~scope lib_config
       in
       let+ () =
         setup_runtime_assets_rules
@@ -586,7 +596,7 @@ let setup_js_rules_libraries =
                  path in `import` / `require`. *)
               lib :: requires_link
             in
-            cmj_includes ~requires_link ~scope
+            cmj_includes ~requires_link ~scope lib_config
           in
           parallel_build_source_modules
             ~sctx

@@ -213,6 +213,10 @@ order to declare a multi-directory library, you need to use the
 
    Sets options for JavaScript compilation, see :ref:`jsoo-field`.
 
+.. describe:: (wasm_of_ocaml ...)
+
+   Sets options for JavaScript compilation, see :ref:`wasmoo-field`.
+
 .. describe:: (flags ...)
 
    See :doc:`/concepts/ocaml-flags`.

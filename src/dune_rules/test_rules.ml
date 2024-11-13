@@ -3,7 +3,7 @@ open Memo.O
 
 let alias mode ~dir =
   match mode with
-  | `js -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir
+  | `js mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
   | `exe | `bc -> Memo.return Alias0.runtest
 ;;
 
@@ -23,18 +23,18 @@ let test_kind dir_contents (loc, name, ext) =
 
 let ext_of_mode runtest_mode =
   match runtest_mode with
-  | `js -> Js_of_ocaml.Ext.exe
+  | `js mode -> Js_of_ocaml.Ext.exe ~mode
   | `bc -> ".bc"
   | `exe -> ".exe"
 ;;
 
 let custom_runner runtest_mode =
   match runtest_mode with
-  | `js -> Some Jsoo_rules.runner
+  | `js _ -> Some Jsoo_rules.runner
   | `bc | `exe -> None
 ;;
 
-let runtest_modes modes project =
+let runtest_modes modes jsoo_enabled_modes project =
   if Dune_project.dune_version project < (3, 0)
   then [ `exe ]
   else
@@ -44,16 +44,25 @@ let runtest_modes modes project =
       | Byte_complete -> Some `exe
       | Other { kind = Exe; mode = Native | Best } -> Some `exe
       | Other { kind = Exe; mode = Byte } -> Some `bc
-      | Other { kind = Js; _ } -> Some `js
       | Other { kind = C | Object | Shared_object | Plugin; _ } ->
         (* We don't know how to run tests in these cases *)
-        None)
+        None
+      | Jsoo mode ->
+        Option.some_if (Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes) (`js mode))
     |> List.sort_uniq ~compare:Poly.compare
 ;;
 
 let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
   let* () =
-    let runtest_modes = runtest_modes t.exes.modes (Scope.project scope) in
+    let* runtest_modes =
+      let+ jsoo_enabled_modes =
+        Jsoo_rules.jsoo_enabled_modes
+          ~expander
+          ~dir
+          ~in_context:(Js_of_ocaml.In_context.make ~dir t.exes.buildable.js_of_ocaml)
+      in
+      runtest_modes t.exes.modes jsoo_enabled_modes (Scope.project scope)
+    in
     Expander.eval_blang expander t.enabled_if
     >>= function
     | false ->

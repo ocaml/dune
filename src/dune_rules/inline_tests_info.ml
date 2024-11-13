@@ -68,7 +68,7 @@ module Mode_conf = struct
   module T = struct
     type t =
       | Byte
-      | Javascript
+      | Jsoo of Js_of_ocaml.Mode.t
       | Native
       | Best
 
@@ -77,9 +77,9 @@ module Mode_conf = struct
       | Byte, Byte -> Eq
       | Byte, _ -> Lt
       | _, Byte -> Gt
-      | Javascript, Javascript -> Eq
-      | Javascript, _ -> Lt
-      | _, Javascript -> Gt
+      | Jsoo m, Jsoo m' -> Js_of_ocaml.Mode.compare m m'
+      | Jsoo _, _ -> Lt
+      | _, Jsoo _ -> Gt
       | Native, Native -> Eq
       | Native, _ -> Lt
       | _, Native -> Gt
@@ -94,12 +94,16 @@ module Mode_conf = struct
 
   let to_string = function
     | Byte -> "byte"
-    | Javascript -> "js"
+    | Jsoo JS -> "js"
+    | Jsoo Wasm -> "wasm"
     | Native -> "native"
     | Best -> "best"
   ;;
 
-  let decode = enum [ "byte", Byte; "js", Javascript; "native", Native; "best", Best ]
+  let decode =
+    enum [ "byte", Byte; "js", Jsoo JS; "native", Native; "best", Best ]
+    <|> sum [ "wasm", Syntax.since Stanza.syntax (3, 17) >>> return (Jsoo Wasm) ]
+  ;;
 
   module O = Comparable.Make (T)
   module Map = O.Map

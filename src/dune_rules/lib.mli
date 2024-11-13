@@ -11,7 +11,6 @@ val to_dyn : t -> Dyn.t
     or the [name] if not. *)
 val name : t -> Lib_name.t
 
-val lib_config : t -> Lib_config.t
 val implements : t -> t Resolve.Memo.t option
 
 (** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
@@ -116,7 +115,6 @@ module DB : sig
     -> resolve:(Lib_name.t -> Resolve_result.t list Memo.t)
     -> resolve_lib_id:(Lib_id.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
-    -> lib_config:Lib_config.t
     -> instrument_with:Lib_name.t list
     -> unit
     -> t

@@ -418,9 +418,9 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
          [ c_flags
          ; [ "-I"; t.stdlib_dir ]
          ; output_flag
-         ; [ c_fname ]
          ; t.c_libraries
          ; link_flags
+         ; [ c_fname ]
          ])
   in
   if ok then Ok () else Error ()

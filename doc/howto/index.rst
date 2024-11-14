@@ -22,3 +22,4 @@ These guides will help you use Dune's features in your project.
    bundle
    toplevel
    rule-generation
+   override-default-entrypoint

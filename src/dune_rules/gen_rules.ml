@@ -338,19 +338,6 @@ let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   contexts
 ;;
 
-let gen_project_rule_for_package_alias sctx project =
-  let ctx = Super_context.context sctx in
-  let ctx_name = Context.name ctx in
-  let* is_lock_dir_active = Lock_dir.lock_dir_active ctx_name in
-  if is_lock_dir_active
-  then (
-    let dir =
-      Path.Build.append_source (Context.build_dir ctx) @@ Dune_project.root project
-    in
-    Pkg_rules.gen_rule_alias_from_package_universe ~dir ctx_name)
-  else Memo.return ()
-;;
-
 (* Warn whenever [(name <name>)]) is missing from the [dune-project] file *)
 let missing_project_name =
   Warning.make
@@ -368,7 +355,6 @@ let gen_project_rules =
     and+ () = Odoc.gen_project_rules sctx project
     and+ () = Odoc_new.gen_project_rules sctx project
     and+ () = Ocaml_index.project_rule sctx project
-    and+ () = gen_project_rule_for_package_alias sctx project
     and+ () =
       let version = 2, 8 in
       match Dune_project.allow_approximate_merlin project with
@@ -705,6 +691,27 @@ let raise_on_lock_dir_out_of_sync =
   |> Staged.unstage
 ;;
 
+let gen_pkg_install_rule ~dir ctx_name =
+  let+ sctx = Super_context.find_exn ctx_name in
+  let ctx = Super_context.context sctx in
+  let build_dir = Context.build_dir ctx in
+  let rule =
+    (* We only to build when the build_dir is the root of the context *)
+    if Path.Build.equal dir build_dir
+    then
+      Rules.collect_unit (fun () ->
+        let* is_lock_dir_active = Lock_dir.lock_dir_active ctx_name in
+        if is_lock_dir_active
+        then (
+          let build_pkg_deps = Alias.make ~dir Alias0.pkg_install in
+          let* action = Pkg_rules.install_packages_from_universe ctx_name in
+          Super_context.add_alias_action sctx ~loc:Loc.none ~dir build_pkg_deps action)
+        else Memo.return ())
+    else Memo.return Rules.empty
+  in
+  Gen_rules.(rules_for ~dir ~allowed_subdirs:String.Set.empty rule |> rules_here)
+;;
+
 let gen_rules ctx ~dir components =
   if Context_name.equal ctx Install.Context.install_context.name
   then (
@@ -735,5 +742,7 @@ let gen_rules ctx ~dir components =
   then Fetch_rules.gen_rules ~dir ~components
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
-    gen_rules ctx (Super_context.find_exn ctx) ~dir components
+    let* gen_pkg_alias_rule = gen_pkg_install_rule ~dir ctx in
+    let+ general_rule = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+    Gen_rules.combine general_rule gen_pkg_alias_rule
 ;;

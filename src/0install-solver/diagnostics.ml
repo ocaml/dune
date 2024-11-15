@@ -40,7 +40,8 @@ module Make (Results : S.SOLVER_RESULT) = struct
           (format_role other_role
            ++ Pp.char ' '
            ++ Model.pp_version impl
-           ++ Pp.textf " requires %s" (format_restrictions r))
+           ++ Pp.text " requires "
+           ++ Pp.paragraph (format_restrictions r))
       | Feed_problem msg -> Pp.text msg
     ;;
   end

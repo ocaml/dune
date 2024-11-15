@@ -57,8 +57,8 @@ Conflicting packages can't be co-installed:
   $ solve foo conflicts-with-foo
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: foo.0.0.1 foo-dependency.0.0.1 x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.0.0.1 foo-dependency.0.0.1 x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
         conflicts-with-foo.0.0.1: Requires foo conflict with all versions
@@ -68,8 +68,9 @@ Conflicting packages in transitive dependencies can't be co-installed:
   $ solve depends-on-foo conflicts-with-foo
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1 x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: depends-on-foo.0.0.1 foo.0.0.1 foo-dependency.0.0.1
+                       x.dev
   - conflicts-with-foo -> (problem)
       Rejected candidates:
         conflicts-with-foo.0.0.1: Requires foo conflict with all versions

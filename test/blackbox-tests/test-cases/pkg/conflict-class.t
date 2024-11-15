@@ -32,8 +32,8 @@ Local conflict class defined in a local package:
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: foo.dev x.dev foo&x
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.dev x.dev foo&x
   - bar -> (problem)
       Rejected candidates:
         bar.0.0.1: In same conflict class (ccc) as foo
@@ -51,8 +51,8 @@ Now the conflict class comes from the opam repository
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: foo.0.0.1 x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.0.0.1 x.dev
   - bar -> (problem)
       Rejected candidates:
         bar.0.0.1: In same conflict class (ccc) as foo

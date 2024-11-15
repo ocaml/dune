@@ -1,5 +1,6 @@
 module Make (Context : S.CONTEXT) = struct
   open Fiber.O
+  open Pp.O
   module Input = Model.Make (Context)
 
   let version = Input.version
@@ -32,7 +33,7 @@ module Make (Context : S.CONTEXT) = struct
     | None -> Error req
   ;;
 
-  let pp_short f (impl : Input.impl) = Input.pp_impl f impl
+  let pp_short = Input.pp_impl
 
   let rec partition f = function
     | [] -> [], []
@@ -43,7 +44,7 @@ module Make (Context : S.CONTEXT) = struct
        | `Right z -> ys, z :: zs)
   ;;
 
-  let pp_rolemap ~verbose f reasons =
+  let pp_rolemap ~verbose reasons =
     let short, long =
       reasons
       |> Solver.Output.RoleMap.bindings
@@ -52,14 +53,11 @@ module Make (Context : S.CONTEXT) = struct
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
         | _ -> `Right component)
     in
-    let pp_item f c = Fmt.pf f "- @[%a@]" (Diagnostics.Component.pp ~verbose) c in
-    Fmt.pf
-      f
-      "Selected: @[<hov>%a@]@,%a"
-      (Fmt.(list ~sep:sp) pp_short)
-      short
-      (Fmt.(list ~sep:cut) pp_item)
-      long
+    let pp_item = Diagnostics.Component.pp ~verbose in
+    Pp.paragraph "Selected: "
+    ++ Pp.hovbox (Pp.concat_map ~sep:Pp.space short ~f:pp_short)
+    ++ Pp.cut
+    ++ Pp.enumerate long ~f:pp_item
   ;;
 
   let diagnostics_rolemap req =
@@ -67,8 +65,10 @@ module Make (Context : S.CONTEXT) = struct
   ;;
 
   let diagnostics ?(verbose = false) req =
-    diagnostics_rolemap req
-    >>| Fmt.str "Can't find all required versions.@\n@[<v0>%a@]" (pp_rolemap ~verbose)
+    let+ diag = diagnostics_rolemap req in
+    Pp.paragraph "Can't find all required versions."
+    ++ Pp.cut
+    ++ Pp.vbox (pp_rolemap ~verbose diag)
   ;;
 
   let packages_of_result sels =

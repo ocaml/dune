@@ -30,7 +30,7 @@ module Diagnostics (Result : S.SOLVER_RESULT) : sig
       | Restricts of Result.Role.t * Result.Input.impl * Result.Input.restriction list
       | Feed_problem of string
 
-    val pp : Format.formatter -> t -> unit
+    val pp : t -> 'tag Pp.t
   end
 
   (** Information about a single role in the example (failed) selections produced by the solver. *)
@@ -51,13 +51,13 @@ module Diagnostics (Result : S.SOLVER_RESULT) : sig
         (** A selected impl has the same conflict class. *)
       | `ConflictsRole of Result.Role.t
         (** A selected role conflicts with this (e.g. replaced-by). *)
-      | `DiagnosticsFailure of string
+      | `DiagnosticsFailure of Stdune.User_message.Style.t Pp.t
         (** Unknown failure reason (gives raw error from SAT solver). *)
       ]
 
     type reject = Result.Input.impl * rejection_reason
 
-    val pp_reject : Format.formatter -> reject -> unit
+    val pp_reject : reject -> Stdune.User_message.Style.t Pp.t
 
     (** [selected_impl t] is the implementation selected to fill [t]'s role, or
         [None] if no implementation was suitable. *)
@@ -78,7 +78,7 @@ module Diagnostics (Result : S.SOLVER_RESULT) : sig
         including all of its notes and, if there was no selected impl, the rejects.
         @param verbose
           If [false], limit the list of rejected candidates (if any) to five entries. *)
-    val pp : verbose:bool -> Format.formatter -> t -> unit
+    val pp : verbose:bool -> t -> Stdune.User_message.Style.t Pp.t
   end
 
   (** An analysis of why the solve failed. *)
@@ -92,7 +92,10 @@ module Diagnostics (Result : S.SOLVER_RESULT) : sig
 
   (** [get_failure_reason r] analyses [r] with [of_result] and formats the
       analysis as a string. *)
-  val get_failure_reason : ?verbose:bool -> Result.t -> string Fiber.t
+  val get_failure_reason
+    :  ?verbose:bool
+    -> Result.t
+    -> Stdune.User_message.Style.t Pp.t Fiber.t
 end
 
 (** The low-level SAT solver. *)

@@ -643,7 +643,7 @@ let build_exe
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let { javascript_files; wasm_files; flags; compilation_mode; sourcemap; _ }
+  let { javascript_files; wasm_files; flags; compilation_mode; sourcemap; enabled_if = _ }
     : Js_of_ocaml.In_context.t
     =
     in_context

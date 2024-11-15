@@ -191,7 +191,9 @@ include Sub_system.Register_end_point (struct
             | Jsoo JS -> Exe.Linkage.js
             | Jsoo Wasm -> Exe.Linkage.wasm)
         in
-        let+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
+        let+ jsoo_is_whole_program =
+          Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
+        in
         if List.exists modes ~f:(fun mode ->
              match (mode : Mode_conf.t) with
              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program

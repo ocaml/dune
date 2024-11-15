@@ -161,7 +161,8 @@ let executables_rules
   let* linkages =
     let+ jsoo_enabled_modes =
       Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
-    and+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir
+    and+ jsoo_is_whole_program =
+      Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
     and+ dynamically_linked_foreign_archives =
       Context.dynamically_linked_foreign_archives ctx
     in

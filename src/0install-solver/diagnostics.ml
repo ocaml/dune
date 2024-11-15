@@ -409,11 +409,11 @@ module Make (Results : S.SOLVER_RESULT) = struct
         let+ rejects, feed_problems = Model.rejects role in
         Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl
       in
-      RoleMap.to_list impls
+      RoleMap.bindings impls
       |> Fiber.parallel_map ~f:(fun (k, v) ->
         let+ v = get_selected k v in
         k, v)
-      |> Fiber.map ~f:RoleMap.of_list
+      |> Fiber.map ~f:(fun s -> RoleMap.of_seq (List.to_seq s))
     in
     examine_extra_restrictions report;
     check_conflict_classes report;

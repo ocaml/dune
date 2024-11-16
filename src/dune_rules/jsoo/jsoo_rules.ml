@@ -618,14 +618,25 @@ let jsoo_enabled_modes ~expander ~dir ~in_context =
   { Js_of_ocaml.Mode.Pair.js; wasm }
 ;;
 
-let jsoo_is_whole_program t ~dir =
+let jsoo_compilation_mode
+  t
+  ~dir
+  ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
+  ~mode
+  =
+  match (Js_of_ocaml.Mode.Pair.select ~mode in_context).compilation_mode with
+  | None -> js_of_ocaml_compilation_mode t ~dir ~mode
+  | Some x -> Memo.return x
+;;
+
+let jsoo_is_whole_program t ~dir ~in_context =
   let is_whole_program (mode : Js_of_ocaml.Compilation_mode.t) =
     match mode with
     | Whole_program -> true
     | Separate_compilation -> false
   in
-  let+ js = js_of_ocaml_compilation_mode t ~dir ~mode:JS
-  and+ wasm = js_of_ocaml_compilation_mode t ~dir ~mode:Wasm in
+  let+ js = jsoo_compilation_mode t ~dir ~in_context ~mode:JS
+  and+ wasm = jsoo_compilation_mode t ~dir ~in_context ~mode:Wasm in
   { Js_of_ocaml.Mode.Pair.js = is_whole_program js; wasm = is_whole_program wasm }
 ;;
 

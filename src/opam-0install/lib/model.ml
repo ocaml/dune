@@ -1,7 +1,4 @@
-module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad.t) =
-struct
-  type 'a monad = 'a Monad.t
-
+module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
   type restriction =
@@ -73,7 +70,7 @@ struct
 
   let role context name = Real { context; name }
 
-  open Monad.O
+  open Fiber.O
 
   let virtual_impl ~context ~depends () =
     let depends =
@@ -182,7 +179,7 @@ struct
 
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> Monad.return { impls; replacement = None }
+    | Virtual (_, impls) -> Fiber.return { impls; replacement = None }
     | Real role ->
       let context = role.context in
       let+ impls =
@@ -228,7 +225,7 @@ struct
 
   let rejects role =
     match role with
-    | Virtual _ -> Monad.return ([], [])
+    | Virtual _ -> Fiber.return ([], [])
     | Real role ->
       let context = role.context in
       let+ rejects =

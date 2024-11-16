@@ -14,11 +14,8 @@
     become a dependency on a virtual package which has each choice as an
     implementation. *)
 
-module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad.t) : sig
-  include
-    Zeroinstall_solver.S.SOLVER_INPUT
-    with type rejection = Context.rejection
-     and type 'a monad = 'a Monad.t
+module Make (Context : S.CONTEXT) : sig
+  include Zeroinstall_solver.S.SOLVER_INPUT with type rejection = Context.rejection
 
   val role : Context.t -> OpamPackage.Name.t -> Role.t
 

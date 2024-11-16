@@ -4,31 +4,7 @@
 
 (** Select a compatible set of components to run a program. *)
 
-module List = struct
-  include List
-
-  let rec find_map f = function
-    | [] -> None
-    | x :: xs ->
-      (match f x with
-       | Some _ as result -> result
-       | None -> find_map f xs)
-  ;;
-end
-
-type ('a, 'b) partition_result =
-  | Left of 'a
-  | Right of 'b
-
-let partition fn lst =
-  let pass = ref [] in
-  let fail = ref [] in
-  ListLabels.iter lst ~f:(fun item ->
-    match fn item with
-    | Left x -> pass := x :: !pass
-    | Right x -> fail := x :: !fail);
-  List.rev !pass, List.rev !fail
-;;
+module List = Stdune.List
 
 module type CACHE_ENTRY = sig
   type t
@@ -37,7 +13,9 @@ module type CACHE_ENTRY = sig
   val compare : t -> t -> int
 end
 
-module Cache (Monad : S.Monad) (CacheEntry : CACHE_ENTRY) : sig
+open Fiber.O
+
+module Cache (CacheEntry : CACHE_ENTRY) : sig
   (** The cache is used in [build_problem], while the clauses are still being added. *)
   type t
 
@@ -57,9 +35,9 @@ module Cache (Monad : S.Monad) (CacheEntry : CACHE_ENTRY) : sig
       * setup that can be done afterwards. *)
   val lookup
     :  t
-    -> (CacheEntry.t -> (CacheEntry.value * (unit -> unit Monad.t)) Monad.t)
+    -> (CacheEntry.t -> (CacheEntry.value * (unit -> unit Fiber.t)) Fiber.t)
     -> CacheEntry.t
-    -> CacheEntry.value Monad.t
+    -> CacheEntry.value Fiber.t
 
   val snapshot : t -> snapshot
   val get : CacheEntry.t -> snapshot -> CacheEntry.value option
@@ -74,9 +52,8 @@ end = struct
   let create () = ref M.empty
 
   let lookup table make key =
-    let open Monad.O in
     match M.find_opt key !table with
-    | Some x -> Monad.return x
+    | Some x -> Fiber.return x
     | None ->
       let* value, process = make key in
       table := M.add key value !table;
@@ -99,12 +76,7 @@ end = struct
   ;;
 end
 
-module Make (Monad : S.Monad) (Model : S.SOLVER_INPUT with type 'a monad = 'a Monad.t) =
-struct
-  open Monad.O
-
-  type 'a monad = 'a Monad.t
-
+module Make (Model : S.SOLVER_INPUT) = struct
   (** We attach this data to each SAT variable. *)
   module SolverData = struct
     type t =
@@ -149,9 +121,10 @@ struct
       (** Get all variables, except dummy_impl (if present) *)
       method get_real_vars =
         vars
-        |> List.filter_map (fun (var, impl) -> if is_dummy impl then None else Some var)
+        |> List.filter_map ~f:(fun (var, impl) ->
+          if is_dummy impl then None else Some var)
 
-      method get_vars = List.map (fun (var, _impl) -> var) vars
+      method get_vars = List.map ~f:(fun (var, _impl) -> var) vars
 
       method get_selected =
         match clause with
@@ -185,7 +158,9 @@ struct
       (** Apply [test impl] to each implementation, partitioning the vars into two lists.
           Only defined for [impl_candidates]. *)
       method partition test =
-        partition (fun (var, impl) -> if test impl then Left var else Right var) vars
+        List.partition_map
+          ~f:(fun (var, impl) -> if test impl then Stdune.Either.Left var else Right var)
+          vars
     end
 
   module RoleEntry = struct
@@ -194,7 +169,7 @@ struct
     type value = impl_candidates
   end
 
-  module ImplCache = Cache (Monad) (RoleEntry)
+  module ImplCache = Cache (RoleEntry)
   module RoleMap = ImplCache.M
 
   type diagnostics = S.lit
@@ -210,7 +185,7 @@ struct
    * We do this at the end because if we didn't use the replacement feed, there's no need to conflict
    * (avoids getting it added to feeds_used). *)
   let add_replaced_by_conflicts sat impl_clauses =
-    List.iter (fun (clause, replacement) ->
+    List.iter ~f:(fun (clause, replacement) ->
       ImplCache.get replacement impl_clauses
       |> Option.iter (fun replacement_candidates ->
         (* Our replacement was also added to [sat], so conflict with it. *)
@@ -249,7 +224,7 @@ struct
     (* Add [impl] to its conflict groups, if any. *)
     let process t impl_var impl =
       Model.conflict_class impl
-      |> List.iter (fun name ->
+      |> List.iter ~f:(fun name ->
         let impls = var t name in
         impls := impl_var :: !impls)
     ;;
@@ -270,12 +245,12 @@ struct
      - take just those that satisfy any restrictions in the dependency
      - ensure that we don't pick an incompatbile version if we select [user_var]
      - ensure that we do pick a compatible version if we select [user_var] (for "essential" dependencies only) *)
-  let process_dep sat lookup_impl user_var dep : unit Monad.t =
+  let process_dep sat lookup_impl user_var dep : unit Fiber.t =
     let { Model.dep_role; dep_importance } = Model.dep_info dep in
     let dep_restrictions = Model.restrictions dep in
     (* Restrictions on the candidates *)
     let meets_restrictions impl =
-      List.for_all (Model.meets_restriction impl) dep_restrictions
+      List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
     in
     let+ candidates = lookup_impl dep_role in
     let pass, fail = candidates#partition meets_restrictions in
@@ -306,13 +281,12 @@ struct
       | Some dummy_impl -> impls @ [ dummy_impl ]
     in
     let impls =
-      impls
-      |> List.map (fun impl ->
+      List.map impls ~f:(fun impl ->
         let var = S.add_variable sat (SolverData.ImplElem impl) in
         var, impl)
     in
     let impl_clause =
-      if impls <> [] then Some (S.at_most_one sat (List.map fst impls)) else None
+      if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
     in
     let clause = new impl_candidates role impl_clause impls dummy_impl in
     (* If we have a <replaced-by>, remember to add a conflict with our replacement *)
@@ -335,13 +309,13 @@ struct
       ( clause
       , fun () ->
           impls
-          |> Monad.List.iter (fun (impl_var, impl) ->
+          |> Fiber.sequential_iter ~f:(fun (impl_var, impl) ->
             Conflict_classes.process conflict_classes impl_var impl;
             let deps = Model.requires role impl in
             process_deps impl_var deps) )
     and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key
-    and process_deps user_var : _ -> unit Monad.t =
-      Monad.List.iter (process_dep sat lookup_impl user_var)
+    and process_deps user_var : _ -> unit Fiber.t =
+      Fiber.sequential_iter ~f:(process_dep sat lookup_impl user_var)
     in
     let+ () =
       (* This recursively builds the whole problem up. *)
@@ -439,7 +413,7 @@ struct
                 None
               else find_undecided dep_role
             in
-            List.find_map check_dep deps)
+            List.find_map ~f:check_dep deps)
       in
       find_undecided root_req
     in

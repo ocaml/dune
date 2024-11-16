@@ -1,30 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
    See the README file for details, or visit http://0install.net. *)
 
-(** Some useful abstract module types. *)
-
-module type Monad = sig
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  module List : sig
-    val iter : ('a -> unit t) -> 'a list -> unit t
-    val iter2 : ('a -> 'b -> unit t) -> 'a list -> 'b list -> unit t
-  end
-
-  module Seq : sig
-    val parallel_map : ('a -> 'b t) -> 'a Seq.t -> 'b Seq.t t
-  end
-
-  module O : sig
-    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-  end
-end
-
 module type CORE_MODEL = sig
   (** To use the solver with a particular packaging system (e.g. 0install), you need
       to provide an implementation of this module to map your system's concepts on to
@@ -73,7 +49,6 @@ end
 
 module type SOLVER_INPUT = sig
   (** This defines what the solver sees (hiding the raw XML, etc). *)
-  type 'a monad
 
   include CORE_MODEL
 
@@ -89,7 +64,7 @@ module type SOLVER_INPUT = sig
   val pp_impl : Format.formatter -> impl -> unit
 
   (** The list of candidates to fill a role. *)
-  val implementations : Role.t -> role_information monad
+  val implementations : Role.t -> role_information Fiber.t
 
   (** Restrictions on how the role is filled *)
   val restrictions : dependency -> restriction list
@@ -109,7 +84,7 @@ module type SOLVER_INPUT = sig
 
   (** Get the candidates which were rejected for a role (and not passed to the solver),
       as well as any general notes and warnings not tied to a particular impl. *)
-  val rejects : Role.t -> ((impl * rejection) list * string list) monad
+  val rejects : Role.t -> ((impl * rejection) list * string list) Fiber.t
 
   (** Used to sort the results. *)
   val compare_version : impl -> impl -> int

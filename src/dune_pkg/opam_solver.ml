@@ -1,25 +1,6 @@
 open Import
 open Fiber.O
 
-module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
-  type 'a t = 'a Fiber.t
-
-  module O = Fiber.O
-
-  let return a = Fiber.return a
-
-  module Seq = struct
-    let parallel_map f t =
-      Fiber.parallel_map (List.of_seq t) ~f |> Fiber.map ~f:List.to_seq
-    ;;
-  end
-
-  module List = struct
-    let iter f x = Fiber.sequential_iter x ~f
-    let iter2 f x y = Fiber.sequential_iter (List.combine x y) ~f:(fun (x, y) -> f x y)
-  end
-end
-
 let add_self_to_filter_env package env variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> env variable
@@ -68,7 +49,6 @@ module Priority = struct
 end
 
 module Context_for_dune = struct
-  type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
 
   type rejection =
@@ -277,7 +257,7 @@ module Context_for_dune = struct
   ;;
 end
 
-module Solver = Opam_0install.Solver.Make (Monad) (Context_for_dune)
+module Solver = Opam_0install.Solver.Make (Context_for_dune)
 
 let is_valid_global_variable_name = function
   | "root" -> false

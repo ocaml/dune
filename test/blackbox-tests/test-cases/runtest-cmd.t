@@ -101,3 +101,7 @@ messages are informative enough.
   Error: "mytest1.t" was not found.
   Hint: did you mean mytest.t?
   [1]
+- Running a non-test file should give a suitable error message
+  $ dune test dune-project
+  Error: "dune-project" was not found.
+  [1]

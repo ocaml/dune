@@ -55,9 +55,18 @@ Make the ocamlformat opam package which uses a patch:
 Make a project that uses the fake ocamlformat:
   $ make_project_with_dev_tool_lockdir
 
+The project depends on ocaml, so provide a fake ocaml package:
+  $ make_ocaml_opam_pkg
+
+The ocamlformat dev tool requires the project ot be locked:
+  $ dune pkg lock
+  Solution for dune.lock:
+  - ocaml.0.0.1
+
 First run of 'dune fmt'
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
   Solution for dev-tools.locks/ocamlformat:
+  - ocaml.0.0.1
   - ocamlformat.0.26.2
   Error:
   .sandbox/$SANDBOX/_private/default/.dev-tool/ocamlformat/ocamlformat/source/patch-for-ocamlformat.patch:

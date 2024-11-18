@@ -3,10 +3,13 @@ ocamlformat and its dependencies during the same run of the "dune fmt" command. 
 loaded before the lock files are produced, this is why any 'patch' file inside
 'dev-tools.locks/ocmalformat' is not copied inside the 'build' directory when a rule depends on it.
 
-In the case of this issue, there is a rule that depends on an 'patch' file in order to copy the file
+The issue was that there is a rule that depends on an 'patch' file in order to copy the file
 inside '_private/default/..' directory, since the file could not be copied, the rule is not activated.
 So it fails when 'dune' trying to apply the patch. After any follwing run of 'dune fmt', it works
 because the 'patch' file is already present.
+
+The issue is now fixed.
+
 
   $ . ./helpers.sh
   $ mkrepo
@@ -14,6 +17,7 @@ because the 'patch' file is already present.
 Make a fake ocamlformat:
   $ make_fake_ocamlformat "0.1"
 
+A patch that changes the version from "0.1" to "0.26.2":
   $ cat > patch-for-ocamlformat.patch <<EOF
   > diff a/ocamlformat.ml b/ocamlformat.ml
   > --- a/ocamlformat.ml
@@ -55,29 +59,16 @@ Make the ocamlformat opam package which uses a patch:
 Make a project that uses the fake ocamlformat:
   $ make_project_with_dev_tool_lockdir
 
-First run of 'dune fmt'
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt 2>&1 | sed -E 's#.*.sandbox/[^/]+#.sandbox/$SANDBOX#g'
+First run of 'dune fmt' is supposed to format the fail.
+  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Solution for dev-tools.locks/ocamlformat:
   - ocamlformat.0.26.2
-  Error:
-  .sandbox/$SANDBOX/_private/default/.dev-tool/ocamlformat/ocamlformat/source/patch-for-ocamlformat.patch:
-  No such file or directory
-  -> required by
-     _build/_private/default/.dev-tool/ocamlformat/ocamlformat/target/bin/ocamlformat
-  -> required by _build/default/.formatted/foo.ml
-  -> required by alias .formatted/fmt
-  -> required by alias fmt
-
-The second run will works because the 'patch' is already in the source.
-  $ ls dev-tools.locks/ocamlformat/ocamlformat.files
-  patch-for-ocamlformat.patch
-
-Second run of 'dune fmt'
-  $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   File "foo.ml", line 1, characters 0-0:
   Error: Files _build/default/foo.ml and _build/default/.formatted/foo.ml
   differ.
   Promoting _build/default/.formatted/foo.ml to foo.ml.
   [1]
+
+The foo.ml file is now formatted with the patched version of ocamlformat.
   $ cat foo.ml
   formatted with version 0.26.2

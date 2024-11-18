@@ -1,3 +1,3 @@
 (library
  (name zeroinstall_solver)
- (libraries fiber stdune))
+ (libraries fiber pp stdune))

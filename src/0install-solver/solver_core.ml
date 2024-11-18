@@ -84,9 +84,9 @@ module Make (Model : S.SOLVER_INPUT) = struct
       | ImplElem of Model.impl
       | Role of Model.Role.t
 
-    let pp f = function
-      | ImplElem impl -> Model.pp_impl f impl
-      | Role role -> Model.Role.pp f role
+    let pp = function
+      | ImplElem impl -> Model.pp_impl impl
+      | Role role -> Model.Role.pp role
     ;;
   end
 
@@ -359,7 +359,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let explain t role =
       match RoleMap.find_opt role t.selections with
       | Some sel -> explain sel.diagnostics
-      | None -> "Role not used!"
+      | None -> Pp.text "Role not used!"
     ;;
 
     let get_selected role t =

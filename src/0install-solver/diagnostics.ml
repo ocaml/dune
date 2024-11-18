@@ -6,10 +6,9 @@
 
 module List = Stdune.List
 
-let pf = Format.fprintf
-
 module Make (Results : S.SOLVER_RESULT) = struct
   open Fiber.O
+  open Pp.O
   module Model = Results.Input
   module RoleMap = Results.RoleMap
 
@@ -27,22 +26,22 @@ module Make (Results : S.SOLVER_RESULT) = struct
       | Restricts of Model.Role.t * Model.impl * Model.restriction list
       | Feed_problem of string
 
-    let pp f = function
-      | UserRequested r -> pf f "User requested %s" (format_restrictions [ r ])
+    let pp = function
+      | UserRequested r -> Pp.paragraphf "User requested %s" (format_restrictions [ r ])
       | ReplacesConflict old ->
-        pf f "Replaces (and therefore conflicts with) %a" format_role old
+        Pp.hovbox (Pp.text "Replaces (and therefore conflicts with) " ++ format_role old)
       | ReplacedByConflict replacement ->
-        pf f "Replaced by (and therefore conflicts with) %a" format_role replacement
+        Pp.hovbox
+          (Pp.text "Replaced by (and therefore conflicts with) "
+           ++ format_role replacement)
       | Restricts (other_role, impl, r) ->
-        pf
-          f
-          "%a %a requires %s"
-          format_role
-          other_role
-          Model.pp_version
-          impl
-          (format_restrictions r)
-      | Feed_problem msg -> pf f "%s" msg
+        Pp.hovbox
+          ~indent:2
+          (format_role other_role
+           ++ Pp.char ' '
+           ++ Model.pp_version impl
+           ++ Pp.textf " requires %s" (format_restrictions r))
+      | Feed_problem msg -> Pp.text msg
     ;;
   end
 
@@ -56,7 +55,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
       | `DepFailsRestriction of Model.dependency * Model.restriction
       | `ClassConflict of Model.Role.t * Model.conflict_class
       | `ConflictsRole of Model.Role.t
-      | `DiagnosticsFailure of string
+      | `DiagnosticsFailure of Stdune.User_message.Style.t Pp.t
       ]
     (* Why a particular implementation was rejected. This could be because the model rejected it,
        or because it conflicts with something else in the example (partial) solution. *)
@@ -66,7 +65,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     type t =
       { role : Model.Role.t
       ; replacement : Model.Role.t option
-      ; diagnostics : string Lazy.t
+      ; diagnostics : Stdune.User_message.Style.t Pp.t Lazy.t
       ; selected_impl : Model.impl option
       ; (* orig_good is all the implementations passed to the SAT solver (these are the
            ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
@@ -85,7 +84,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     let create
       ~role
       (candidates, orig_bad, feed_problems)
-      (diagnostics : string Lazy.t)
+      (diagnostics : _ Pp.t Lazy.t)
       (selected_impl : Model.impl option)
       =
       let { Model.impls; Model.replacement } = candidates in
@@ -193,36 +192,41 @@ module Make (Results : S.SOLVER_RESULT) = struct
         reject_all t (`DiagnosticsFailure (Lazy.force t.diagnostics)))
     ;;
 
-    let pp_reject f ((impl, reason) : reject) =
+    let pp_reject ((impl, reason) : reject) =
       match reason with
-      | `Model_rejection r -> Format.pp_print_string f (Model.describe_problem impl r)
+      | `Model_rejection r -> Model.describe_problem impl r
       | `FailsRestriction r ->
-        pf f "Incompatible with restriction: %s" (Model.string_of_restriction r)
+        Pp.paragraphf "Incompatible with restriction: %s" (Model.string_of_restriction r)
       | `DepFailsRestriction (dep, restriction) ->
         let dep_info = Model.dep_info dep in
-        pf
-          f
-          "Requires %a %s"
-          format_role
-          dep_info.Model.dep_role
-          (format_restrictions [ restriction ])
+        Pp.hovbox
+          (Pp.text "Requires "
+           ++ format_role dep_info.Model.dep_role
+           ++ Pp.textf " %s" (format_restrictions [ restriction ]))
       | `ClassConflict (other_role, cl) ->
-        pf f "In same conflict class (%s) as %a" (cl :> string) format_role other_role
-      | `ConflictsRole other_role -> pf f "Conflicts with %a" format_role other_role
-      | `DiagnosticsFailure msg -> pf f "Reason for rejection unknown: %s" msg
+        Pp.hovbox
+          (Pp.textf "In same conflict class (%s) as " (cl :> string)
+           ++ format_role other_role)
+      | `ConflictsRole other_role ->
+        Pp.hovbox (Pp.text "Conflicts with " ++ format_role other_role)
+      | `DiagnosticsFailure msg ->
+        Pp.hovbox (Pp.text "Reason for rejection unknown: " ++ msg)
     ;;
 
-    let show_rejections ~verbose f rejected =
+    let show_rejections ~verbose rejected =
       let by_version (a, _) (b, _) =
         Model.compare_version b a |> Stdune.Ordering.of_int
       in
       let rejected = List.sort ~compare:by_version rejected in
       let rec aux i = function
-        | [] -> ()
-        | _ when i = 5 && not verbose -> pf f "@,..."
+        | [] -> Pp.nop
+        | _ when i = 5 && not verbose -> Pp.cut ++ Pp.text "..."
         | (impl, problem) :: xs ->
-          pf f "@,%a: %a" Model.pp_impl_long impl pp_reject (impl, problem);
-          aux (i + 1) xs
+          Pp.cut
+          ++ Pp.hovbox
+               ~indent:2
+               (Model.pp_impl_long impl ++ Pp.text ": " ++ pp_reject (impl, problem))
+          ++ aux (i + 1) xs
       in
       aux 0 rejected
     ;;
@@ -236,42 +240,43 @@ module Make (Results : S.SOLVER_RESULT) = struct
       t.bad, summary
     ;;
 
-    let pp_candidates ~verbose f t =
+    let pp_candidates ~verbose t =
       if t.selected_impl = None
-      then (
+      then
+        Pp.cut
+        ++
         match rejects t with
-        | _, `No_candidates -> pf f "@,No known implementations at all"
+        | _, `No_candidates -> Pp.paragraph "No known implementations at all"
         | bad, `All_unusable ->
-          pf f "@,@[<v2>No usable implementations:%a@]" (show_rejections ~verbose) bad
+          Pp.vbox
+            ~indent:2
+            (Pp.paragraph "No usable implementations:" ++ show_rejections ~verbose bad)
         | bad, `Conflicts ->
-          pf f "@,@[<v2>Rejected candidates:%a@]" (show_rejections ~verbose) bad)
+          Pp.vbox
+            ~indent:2
+            (Pp.paragraph "Rejected candidates:" ++ show_rejections ~verbose bad)
+      else Pp.nop
     ;;
 
-    let pp_notes f t =
+    let pp_notes t =
       match notes t with
-      | [] -> ()
-      | notes -> pf f "@,%a" Format.(pp_print_list ~pp_sep:pp_print_cut Note.pp) notes
+      | [] -> Pp.nop
+      | notes -> Pp.cut ++ Pp.concat_map ~sep:Pp.cut notes ~f:Note.pp
     ;;
 
-    let pp_outcome f t =
+    let pp_outcome t =
       match t.selected_impl with
-      | Some sel -> Model.pp_impl_long f sel
-      | None -> Format.pp_print_string f "(problem)"
+      | Some sel -> Model.pp_impl_long sel
+      | None -> Pp.text "(problem)"
     ;;
 
     (* Format a textual description of this component's report. *)
-    let pp ~verbose f t =
-      pf
-        f
-        "@[<v2>%a -> %a%a%a@]"
-        format_role
-        t.role
-        pp_outcome
-        t
-        pp_notes
-        t
-        (pp_candidates ~verbose)
-        t
+    let pp ~verbose t =
+      Pp.vbox
+        ~indent:2
+        (Pp.hovbox (format_role t.role ++ Pp.text " -> " ++ pp_outcome t)
+         ++ pp_notes t
+         ++ pp_candidates ~verbose t)
     ;;
   end
 
@@ -280,7 +285,9 @@ module Make (Results : S.SOLVER_RESULT) = struct
   let find_component_ex role report =
     match RoleMap.find_opt role report with
     | Some c -> c
-    | None -> failwith (Format.asprintf "Can't find component %a!" format_role role)
+    | None ->
+      Stdune.User_error.raise
+        [ Pp.text "Can't find component " ++ format_role role ++ Pp.char '!' ]
   ;;
 
   (* Did any dependency of [impl] prevent it being selected?
@@ -422,17 +429,16 @@ module Make (Results : S.SOLVER_RESULT) = struct
     report
   ;;
 
-  let pp_rolemap ~verbose f reasons =
-    let pp_item f (_, c) = pf f "- @[%a@]" (Component.pp ~verbose) c in
-    Format.(pp_print_list ~pp_sep:pp_print_cut) pp_item f (RoleMap.bindings reasons)
+  let pp_rolemap ~verbose reasons =
+    let pp_item (_, c) = Pp.text "- " ++ Pp.box (Component.pp ~verbose c) in
+    Pp.concat_map ~sep:Pp.cut (RoleMap.bindings reasons) ~f:pp_item
   ;;
 
   (** Return a message explaining why the solve failed. *)
   let get_failure_reason ?(verbose = false) result =
     let+ reasons = of_result result in
-    Format.asprintf
-      "Can't find all required implementations:@\n@[<v0>%a@]"
-      (pp_rolemap ~verbose)
-      reasons
+    Pp.paragraph "Can't find all required implementations:"
+    ++ Pp.cut
+    ++ Pp.vbox (pp_rolemap ~verbose reasons)
   ;;
 end

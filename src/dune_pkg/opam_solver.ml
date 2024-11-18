@@ -120,9 +120,9 @@ module Context_for_dune = struct
     }
   ;;
 
-  let pp_rejection f = function
-    | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
-    | Avoid_version -> Format.pp_print_string f "Package is excluded by avoid-version"
+  let pp_rejection = function
+    | Unavailable -> Pp.paragraph "Availability condition not satisfied"
+    | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
@@ -720,7 +720,7 @@ let solve_package_list packages ~context =
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics e in
-    Error (`Diagnostic_message (Pp.text diagnostics))
+    Error (`Diagnostic_message diagnostics)
   | Error (`Exn exn) ->
     (match exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->

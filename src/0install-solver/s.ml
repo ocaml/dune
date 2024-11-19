@@ -1,30 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
    See the README file for details, or visit http://0install.net. *)
 
-(** Some useful abstract module types. *)
-
-module type Monad = sig
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  module List : sig
-    val iter : ('a -> unit t) -> 'a list -> unit t
-    val iter2 : ('a -> 'b -> unit t) -> 'a list -> 'b list -> unit t
-  end
-
-  module Seq : sig
-    val parallel_map : ('a -> 'b t) -> 'a Seq.t -> 'b Seq.t t
-  end
-
-  module O : sig
-    val ( >>| ) : 'a t -> ('a -> 'b) -> 'b t
-    val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-    val ( let* ) : 'a t -> ('a -> 'b t) -> 'b t
-  end
-end
-
 module type CORE_MODEL = sig
   (** To use the solver with a particular packaging system (e.g. 0install), you need
       to provide an implementation of this module to map your system's concepts on to
@@ -38,7 +14,7 @@ module type CORE_MODEL = sig
         whether you want source code or a binary in the role. *)
     type t
 
-    val pp : Format.formatter -> t -> unit
+    val pp : t -> 'tag Pp.t
     val compare : t -> t -> int
   end
 
@@ -73,7 +49,6 @@ end
 
 module type SOLVER_INPUT = sig
   (** This defines what the solver sees (hiding the raw XML, etc). *)
-  type 'a monad
 
   include CORE_MODEL
 
@@ -86,10 +61,10 @@ module type SOLVER_INPUT = sig
   (** A restriction limits which implementations can fill a role. *)
   type restriction
 
-  val pp_impl : Format.formatter -> impl -> unit
+  val pp_impl : impl -> 'tag Pp.t
 
   (** The list of candidates to fill a role. *)
-  val implementations : Role.t -> role_information monad
+  val implementations : Role.t -> role_information Fiber.t
 
   (** Restrictions on how the role is filled *)
   val restrictions : dependency -> restriction list
@@ -109,12 +84,12 @@ module type SOLVER_INPUT = sig
 
   (** Get the candidates which were rejected for a role (and not passed to the solver),
       as well as any general notes and warnings not tied to a particular impl. *)
-  val rejects : Role.t -> ((impl * rejection) list * string list) monad
+  val rejects : Role.t -> ((impl * rejection) list * string list) Fiber.t
 
   (** Used to sort the results. *)
   val compare_version : impl -> impl -> int
 
-  val pp_version : Format.formatter -> impl -> unit
+  val pp_version : impl -> 'tag Pp.t
 
   (** Get any user-specified restrictions affecting a role.
       These are used to filter out implementations before they get to the solver. *)
@@ -122,10 +97,10 @@ module type SOLVER_INPUT = sig
 
   (** A detailed identifier for the implementation. In 0install, this is the version
       number and part of the hash. *)
-  val pp_impl_long : Format.formatter -> impl -> unit
+  val pp_impl_long : impl -> 'tag Pp.t
 
   val string_of_restriction : restriction -> string
-  val describe_problem : impl -> rejection -> string
+  val describe_problem : impl -> rejection -> 'tag Pp.t
 
   (** A dummy implementation, used to get diagnostic information if the solve fails.
       It satisfies all requirements, even conflicting ones. *)
@@ -161,5 +136,5 @@ module type SOLVER_RESULT = sig
   val unwrap : impl -> Input.impl
 
   (** Get diagnostics-of-last-resort. *)
-  val explain : t -> Role.t -> string
+  val explain : t -> Role.t -> 'tag Pp.t
 end

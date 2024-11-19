@@ -357,7 +357,7 @@ In particular, the `dune-project` file has the expected content:
    (name new_exec_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
     ("add topics" "to describe" your project)))
   
@@ -384,8 +384,8 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
-    "ocaml"
     $dune {>= "3.17"}
+    "ocaml"
     "odoc" {with-doc}
   ]
   build: [
@@ -467,7 +467,7 @@ In particular, the `dune-project` file has the expected content:
    (name new_lib_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
     ("add topics" "to describe" your project)))
   
@@ -494,8 +494,8 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
-    "ocaml"
     "dune" {>= "3.17"}
+    "ocaml"
     "odoc" {with-doc}
   ]
   build: [

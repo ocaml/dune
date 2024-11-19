@@ -21,7 +21,7 @@ let debug = false
 module type USER = sig
   type t
 
-  val pp : Format.formatter -> t -> unit
+  val pp : t -> 'tag Pp.t
 end
 
 module VarID : sig
@@ -46,14 +46,15 @@ end = struct
 end
 
 module Make (User : USER) = struct
+  open Pp.O
+
   type var_value =
     | True
     | False
     | Undecided
 
-  let log_debug fmt =
-    let do_print msg = print_endline ("sat: " ^ msg) in
-    Format.kasprintf do_print fmt
+  let log_debug p =
+    Pp.to_fmt Format.std_formatter (Pp.vbox (Pp.hovbox (Pp.text "sat: " ++ p)) ++ Pp.cut)
   ;;
 
   type sign =
@@ -71,7 +72,7 @@ module Make (User : USER) = struct
          @return a list of literals which caused the problem by all being True. *)
     calc_reason_for : lit -> lit list
     ; (* For debugging *)
-    pp : Format.formatter -> unit >
+    pp : Stdune.User_message.Style.t Pp.t >
 
   (** The reason why a literal is set. *)
   and reason =
@@ -139,9 +140,9 @@ module Make (User : USER) = struct
     (* we are finishing up by setting everything else to False *)
     }
 
-  let pp_reason f = function
-    | Clause clause -> clause#pp f
-    | External msg -> Format.pp_print_string f msg
+  let pp_reason = function
+    | Clause clause -> clause#pp
+    | External msg -> Pp.text msg
   ;;
 
   let neg = function
@@ -188,7 +189,7 @@ module Make (User : USER) = struct
     | AddedClause of clause
 
   let create () =
-    if debug then log_debug "--- new SAT problem ---";
+    if debug then log_debug (Pp.text "--- new SAT problem ---");
     { id_maker = VarID.make_mint ()
     ; vars = []
     ; propQ = Queue.create ()
@@ -200,17 +201,13 @@ module Make (User : USER) = struct
   ;;
 
   (* For nicer log_debug messages *)
-  let name_lit f (sign, var) =
+  let name_lit (sign, var) =
     match sign with
-    | Pos -> User.pp f var.obj
-    | Neg -> Format.fprintf f "not(%a)" User.pp var.obj
+    | Pos -> User.pp var.obj
+    | Neg -> Pp.text "not(" ++ User.pp var.obj ++ Pp.char ')'
   ;;
 
-  let pp_comma_sep f () = Format.pp_print_string f ", "
-
-  let pp_lits f lits =
-    Format.fprintf f "[%a]" (Format.pp_print_list ~pp_sep:pp_comma_sep name_lit) lits
-  ;;
+  let pp_lits lits = Pp.concat_map ~sep:(Pp.text ", ") lits ~f:name_lit
 
   let lit_value (sign, var) =
     match sign with
@@ -224,27 +221,26 @@ module Make (User : USER) = struct
 
   let get_user_data_for_lit lit = (var_of_lit lit).obj
 
-  let pp_lit_assignment f l =
+  let pp_lit_assignment l =
     let info = var_of_lit l in
-    Format.fprintf f "%a=%s" User.pp info.obj (string_of_value info.value)
+    User.pp info.obj ++ Pp.textf "=%s" (string_of_value info.value)
   ;;
 
-  let pp_lit_reason f lit =
+  let pp_lit_reason lit =
     match (var_of_lit lit).reason with
-    | None -> Format.pp_print_string f "no reason (BUG)"
-    | Some (External reason) -> Format.pp_print_string f reason
+    | None -> Pp.text "no reason (BUG)"
+    | Some (External reason) -> Pp.text reason
     | Some (Clause c) ->
       let reason = c#calc_reason_for lit in
-      let pp_sep f () = Format.pp_print_string f " && " in
-      Format.pp_print_list ~pp_sep pp_lit_assignment f reason
+      Pp.concat_map ~sep:(Pp.text " && ") reason ~f:pp_lit_assignment
   ;;
 
   (* Why is [lit] assigned the way it is? For debugging. *)
   let explain_reason lit =
     let value = lit_value lit in
     if value = Undecided
-    then "undecided!"
-    else Format.asprintf "%a => %a" pp_lit_reason lit pp_lit_assignment lit
+    then Pp.text "undecided!"
+    else Pp.hovbox (pp_lit_reason lit ++ Pp.text " => " ++ pp_lit_assignment lit)
   ;;
 
   let get_decision_level problem = List.length problem.trail_lim
@@ -261,7 +257,14 @@ module Make (User : USER) = struct
      [reason] is the clause that is asserting this.
      @return [false] if this immediately causes a conflict. *)
   let enqueue problem lit reason =
-    if debug then log_debug "enqueue: %a (%a)" name_lit lit pp_reason reason;
+    if debug
+    then
+      log_debug
+        (Pp.text "enqueue: "
+         ++ name_lit lit
+         ++ Pp.text " ("
+         ++ pp_reason reason
+         ++ Pp.char ')');
     let old_value = lit_value lit in
     match old_value with
     | False -> false (* Conflict *)
@@ -299,9 +302,10 @@ module Make (User : USER) = struct
     if debug
     then
       log_debug
-        "backtracking from level %d (%d assignments)"
-        (get_decision_level problem)
-        n_this_level;
+        (Pp.textf
+           "backtracking from level %d (%d assignments)"
+           (get_decision_level problem)
+           n_this_level);
     for _i = 1 to n_this_level do
       undo_one problem
     done;
@@ -423,13 +427,10 @@ module Make (User : USER) = struct
         in
         get_cause 0
 
-      method pp f =
-        let pp_sep f () = Format.pp_print_string f ", " in
-        Format.fprintf
-          f
-          "<some: %a>"
-          (Format.pp_print_list ~pp_sep name_lit)
-          (Array.to_list lits)
+      method pp =
+        Pp.text "<some: "
+        ++ Pp.concat_map ~sep:(Pp.text ", ") ~f:name_lit (Array.to_list lits)
+        ++ Pp.char '>'
     end
   ;;
 
@@ -461,7 +462,10 @@ module Make (User : USER) = struct
         current := Some lit;
         (* If we later backtrack, unset current *)
         let undo lit =
-          if debug then log_debug "(backtracking: no longer selected %a)" name_lit lit;
+          if debug
+          then
+            log_debug
+              (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
           (match !current with
            | Some l -> assert (lit_equal lit l)
            | None -> assert false);
@@ -477,14 +481,16 @@ module Make (User : USER) = struct
             | True when not (lit_equal l lit) ->
               (* Due to queuing, we might get called with current = None
                  and two versions already selected. *)
-              if debug then log_debug "CONFLICT: already selected %a" name_lit l;
+              if debug then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
               raise Conflict
             | Undecided ->
               (* Since one of our lits is already true, all unknown ones
                  can be set to False. *)
               if not (enqueue problem (neg l) (Clause (self :> clause)))
               then (
-                if debug then log_debug "CONFLICT: enqueue failed for %a" name_lit (neg l);
+                if debug
+                then
+                  log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
                 raise
                   Conflict (* Can't happen, since we already checked we're Undecided *))
             | _ -> ());
@@ -515,7 +521,7 @@ module Make (User : USER) = struct
         List.find_opt (fun l -> lit_value l = Undecided) lits
 
       method get_selected = !current
-      method pp f = Format.fprintf f "<at most one: %a>" pp_lits lits
+      method pp = Pp.text "<at most one: " ++ pp_lits lits ++ Pp.char '>'
     end
 
   let get_best_undecided clause = clause#best_undecided
@@ -604,7 +610,10 @@ module Make (User : USER) = struct
 
     (* Ensure no duplicates *)
     if List.length (remove_duplicates lits) <> List.length lits
-    then invalid_arg (Format.asprintf "at_most_one(%a): duplicates in list!" pp_lits lits);
+    then
+      Stdune.User_error.raise
+        [ Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
+        ];
     (* Ignore any literals already known to be False.
        If any are True then they're enqueued and we'll process them
        soon. *)
@@ -671,13 +680,12 @@ module Make (User : USER) = struct
        we get bored, return the literal we were processing at the time. *)
     let rec follow_causes p_reason outcome =
       if debug
-      then (
-        let pp_sep f () = Format.pp_print_string f " and " in
+      then
         log_debug
-          "because %a => %s"
-          (Format.pp_print_list ~pp_sep name_lit)
-          p_reason
-          outcome);
+          (Pp.text "because "
+           ++ Pp.concat_map ~sep:(Pp.text " and ") ~f:name_lit p_reason
+           ++ Pp.text " => "
+           ++ outcome);
       (* p_reason is in the form (A and B and ...) *)
 
       (* Check each of the variables in p_reason that we haven't
@@ -750,8 +758,15 @@ module Make (User : USER) = struct
         in
         (* Can't happen *)
         let p_reason = cause#calc_reason_for p in
-        let outcome = Format.asprintf "%a" name_lit p in
-        if debug then log_debug "why did %t lead to %s?" cause#pp outcome;
+        let outcome = name_lit p in
+        if debug
+        then
+          log_debug
+            (Pp.text "why did "
+             ++ cause#pp
+             ++ Pp.text " lead to "
+             ++ outcome
+             ++ Pp.char '?');
         follow_causes p_reason outcome)
       else
         (* If counter = 0 then we still have one more
@@ -762,8 +777,10 @@ module Make (User : USER) = struct
         p
     in
     (* Start with all the literals involved in the conflict. *)
-    if debug then log_debug "why did %t lead to conflict?" original_cause#pp;
-    let p = follow_causes original_cause#calc_reason "conflict" in
+    if debug
+    then
+      log_debug (Pp.text "why did " ++ original_cause#pp ++ Pp.text " lead to conflict?");
+    let p = follow_causes original_cause#calc_reason (Pp.text "conflict") in
     assert (!counter = 0);
     (* p is the literal we decided to stop processing on. It's either
        a derived variable at the current level, or the decision that
@@ -771,9 +788,9 @@ module Make (User : USER) = struct
        directly to the learnt clause. *)
     let learnt = neg p :: !learnt in
     if debug
-    then (
-      let pp_sep f () = Format.pp_print_string f " or " in
-      log_debug "learnt: %a" (Format.pp_print_list ~pp_sep name_lit) learnt);
+    then
+      log_debug
+        (Pp.text "learnt: " ++ Pp.concat_map ~sep:(Pp.text " or ") ~f:name_lit learnt);
     learnt, !btlevel
   ;;
 
@@ -788,7 +805,7 @@ module Make (User : USER) = struct
     (* Check whether we detected a trivial problem during setup. *)
     if problem.toplevel_conflict
     then (
-      if debug then log_debug "FAIL: toplevel_conflict before starting solve!";
+      if debug then log_debug (Pp.text "FAIL: toplevel_conflict before starting solve!");
       None)
     else (
       try
@@ -825,15 +842,15 @@ module Make (User : USER) = struct
                   (* Printf.printf "%s -> false\n" (name_lit undecided); *)
                   Neg, undecided)
             in
-            if debug then log_debug "TRYING: %a" name_lit lit;
+            if debug then log_debug (Pp.text "TRYING: " ++ name_lit lit);
             let old = lit_value lit in
             if old <> Undecided
             then
               failwith
                 (Format.asprintf
                    "Decider chose already-decided variable: %a was %s"
-                   name_lit
-                   lit
+                   Pp.to_fmt
+                   (name_lit lit)
                    (string_of_value old));
             problem.trail_lim <- List.length problem.trail :: problem.trail_lim;
             let r = enqueue problem lit (External "considering") in
@@ -841,7 +858,7 @@ module Make (User : USER) = struct
           | Some conflicting_clause ->
             if get_decision_level problem = 0
             then (
-              if debug then log_debug "FAIL: conflict found at top level";
+              if debug then log_debug (Pp.text "FAIL: conflict found at top level");
               raise (SolveDone None))
             else (
               (* Figure out the root cause of this failure. *)

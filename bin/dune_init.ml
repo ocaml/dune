@@ -404,7 +404,6 @@ module Component = struct
               [ { Package_dependency.name = Package.Name.of_string "ocaml"
                 ; constraint_ = None
                 }
-              ; { name = Package.Name.of_string "dune"; constraint_ = None }
               ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in

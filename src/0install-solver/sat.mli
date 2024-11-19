@@ -7,7 +7,7 @@
 module type USER = sig
   type t
 
-  val pp : Format.formatter -> t -> unit
+  val pp : t -> 'tag Pp.t
 end
 
 module Make (User : USER) : sig
@@ -78,5 +78,5 @@ module Make (User : USER) : sig
 
   val lit_value : lit -> var_value
   val get_user_data_for_lit : lit -> User.t
-  val explain_reason : lit -> string
+  val explain_reason : lit -> 'tag Pp.t
 end

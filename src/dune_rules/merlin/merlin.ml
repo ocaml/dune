@@ -3,7 +3,12 @@ open Memo.O
 
 let remove_extension file =
   let dir = Path.Build.parent_exn file in
-  let basename, _ext = String.lsplit2_exn (Path.Build.basename file) ~on:'.' in
+  let basename =
+    let basename = Path.Build.basename file in
+    match String.lsplit2 basename ~on:'.' with
+    | Some (basename, _ext) -> basename
+    | None -> basename
+  in
   Path.Build.relative dir basename
 ;;
 

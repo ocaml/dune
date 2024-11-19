@@ -1,7 +1,4 @@
-module Make (Monad : S.Monad) (Context : S.CONTEXT with type 'a monad = 'a Monad.t) =
-struct
-  type 'a monad = 'a Monad.t
-
+module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
   type restriction =
@@ -36,23 +33,23 @@ struct
     | Reject of OpamPackage.t
     | Dummy (* Used for diagnostics *)
 
-  let rec pp_version f = function
+  let rec pp_version = function
     | RealImpl impl ->
-      Fmt.string f @@ OpamPackage.Version.to_string (OpamPackage.version impl.pkg)
-    | Reject pkg -> Fmt.string f @@ OpamPackage.version_to_string pkg
+      Pp.text (OpamPackage.Version.to_string (OpamPackage.version impl.pkg))
+    | Reject pkg -> Pp.text (OpamPackage.version_to_string pkg)
     | VirtualImpl (_i, deps) ->
-      Fmt.(list ~sep:(any "&") pp_role) f (List.map (fun d -> d.drole) deps)
-    | Dummy -> Fmt.string f "(no version)"
+      Pp.concat_map ~sep:(Pp.char '&') deps ~f:(fun d -> pp_role d.drole)
+    | Dummy -> Pp.text "(no version)"
 
-  and pp_impl f = function
-    | RealImpl impl -> Fmt.string f (OpamPackage.to_string impl.pkg)
-    | Reject pkg -> Fmt.string f @@ OpamPackage.to_string pkg
-    | VirtualImpl _ as x -> pp_version f x
-    | Dummy -> Fmt.string f "(no solution found)"
+  and pp_impl = function
+    | RealImpl impl -> Pp.text (OpamPackage.to_string impl.pkg)
+    | Reject pkg -> Pp.text (OpamPackage.to_string pkg)
+    | VirtualImpl _ as x -> pp_version x
+    | Dummy -> Pp.text "(no solution found)"
 
-  and pp_role f = function
-    | Real t -> Fmt.string f (OpamPackage.Name.to_string t.name)
-    | Virtual (_, impls) -> Fmt.pf f "%a" Fmt.(list ~sep:(any "|") pp_impl) impls
+  and pp_role = function
+    | Real t -> Pp.text (OpamPackage.Name.to_string t.name)
+    | Virtual (_, impls) -> Pp.concat_map ~sep:(Pp.char '|') impls ~f:pp_impl
   ;;
 
   let pp_impl_long = pp_impl
@@ -73,7 +70,7 @@ struct
 
   let role context name = Real { context; name }
 
-  open Monad.O
+  open Fiber.O
 
   let virtual_impl ~context ~depends () =
     let depends =
@@ -182,7 +179,7 @@ struct
 
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> Monad.return { impls; replacement = None }
+    | Virtual (_, impls) -> Fiber.return { impls; replacement = None }
     | Real role ->
       let context = role.context in
       let+ impls =
@@ -228,7 +225,7 @@ struct
 
   let rejects role =
     match role with
-    | Virtual _ -> Monad.return ([], [])
+    | Virtual _ -> Fiber.return ([], [])
     | Real role ->
       let context = role.context in
       let+ rejects =
@@ -276,11 +273,12 @@ struct
 
   let string_of_restriction = function
     | { kind = `Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
-    | { kind = `Prevent; expr } -> Fmt.str "not(%s)" (string_of_version_formula expr)
+    | { kind = `Prevent; expr } ->
+      Format.sprintf "not(%s)" (string_of_version_formula expr)
     | { kind = `Ensure; expr } -> string_of_version_formula expr
   ;;
 
-  let describe_problem _impl = Fmt.to_to_string Context.pp_rejection
+  let describe_problem _impl = Context.pp_rejection
 
   let version = function
     | RealImpl impl -> Some impl.pkg

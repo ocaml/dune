@@ -293,7 +293,7 @@ let jsoo_runtime_files ~(mode : Js_of_ocaml.Mode.t) libs =
       (Lib.info t))
 ;;
 
-let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags =
+let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let config =
@@ -322,9 +322,20 @@ let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags =
     ~directory_targets:[]
     ~spec
     ~config:(Some config)
+    ~sourcemap
 ;;
 
-let exe_rule ~mode cc ~linkall ~runtime_files ~src ~target ~directory_targets ~flags =
+let exe_rule
+  ~mode
+  cc
+  ~linkall
+  ~runtime_files
+  ~src
+  ~target
+  ~directory_targets
+  ~flags
+  ~sourcemap
+  =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
   let libs = Compilation_context.requires_link cc in
@@ -364,6 +375,7 @@ let exe_rule ~mode cc ~linkall ~runtime_files ~src ~target ~directory_targets ~f
     ~directory_targets
     ~flags
     ~config:None
+    ~sourcemap
 ;;
 
 let with_js_ext ~mode s =
@@ -406,6 +418,7 @@ let link_rule
   ~flags
   ~linkall
   ~link_time_code_gen
+  ~sourcemap
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
@@ -475,6 +488,7 @@ let link_rule
     ~directory_targets
     ~flags
     ~config:None
+    ~sourcemap
 ;;
 
 let build_cm' sctx ~dir ~in_context ~mode ~src ~target ~config ~sourcemap =
@@ -604,14 +618,25 @@ let jsoo_enabled_modes ~expander ~dir ~in_context =
   { Js_of_ocaml.Mode.Pair.js; wasm }
 ;;
 
-let jsoo_is_whole_program t ~dir =
+let jsoo_compilation_mode
+  t
+  ~dir
+  ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
+  ~mode
+  =
+  match (Js_of_ocaml.Mode.Pair.select ~mode in_context).compilation_mode with
+  | None -> js_of_ocaml_compilation_mode t ~dir ~mode
+  | Some x -> Memo.return x
+;;
+
+let jsoo_is_whole_program t ~dir ~in_context =
   let is_whole_program (mode : Js_of_ocaml.Compilation_mode.t) =
     match mode with
     | Whole_program -> true
     | Separate_compilation -> false
   in
-  let+ js = js_of_ocaml_compilation_mode t ~dir ~mode:JS
-  and+ wasm = js_of_ocaml_compilation_mode t ~dir ~mode:Wasm in
+  let+ js = jsoo_compilation_mode t ~dir ~in_context ~mode:JS
+  and+ wasm = jsoo_compilation_mode t ~dir ~in_context ~mode:Wasm in
   { Js_of_ocaml.Mode.Pair.js = is_whole_program js; wasm = is_whole_program wasm }
 ;;
 
@@ -629,7 +654,7 @@ let build_exe
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
-  let { javascript_files; wasm_files; flags; compilation_mode; sourcemap; _ }
+  let { javascript_files; wasm_files; flags; compilation_mode; sourcemap; enabled_if = _ }
     : Js_of_ocaml.In_context.t
     =
     in_context

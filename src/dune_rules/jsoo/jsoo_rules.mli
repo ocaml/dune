@@ -67,10 +67,5 @@ val jsoo_enabled_modes
 val jsoo_is_whole_program
   :  Super_context.t
   -> dir:Path.Build.t
+  -> in_context:Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t
   -> Js_of_ocaml.Mode.Set.t Memo.t
-
-val js_of_ocaml_compilation_mode
-  :  Super_context.t
-  -> dir:Path.Build.t
-  -> mode:Js_of_ocaml.Mode.t
-  -> Js_of_ocaml.Compilation_mode.t Memo.t

@@ -1,25 +1,6 @@
 open Import
 open Fiber.O
 
-module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
-  type 'a t = 'a Fiber.t
-
-  module O = Fiber.O
-
-  let return a = Fiber.return a
-
-  module Seq = struct
-    let parallel_map f t =
-      Fiber.parallel_map (List.of_seq t) ~f |> Fiber.map ~f:List.to_seq
-    ;;
-  end
-
-  module List = struct
-    let iter f x = Fiber.sequential_iter x ~f
-    let iter2 f x y = Fiber.sequential_iter (List.combine x y) ~f:(fun (x, y) -> f x y)
-  end
-end
-
 let add_self_to_filter_env package env variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> env variable
@@ -68,7 +49,6 @@ module Priority = struct
 end
 
 module Context_for_dune = struct
-  type 'a monad = 'a Monad.t
   type filter = OpamTypes.filter
 
   type rejection =
@@ -140,9 +120,9 @@ module Context_for_dune = struct
     }
   ;;
 
-  let pp_rejection f = function
-    | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
-    | Avoid_version -> Format.pp_print_string f "Package is excluded by avoid-version"
+  let pp_rejection = function
+    | Unavailable -> Pp.paragraph "Availability condition not satisfied"
+    | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
   ;;
 
   let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
@@ -277,7 +257,7 @@ module Context_for_dune = struct
   ;;
 end
 
-module Solver = Opam_0install.Solver.Make (Monad) (Context_for_dune)
+module Solver = Opam_0install.Solver.Make (Context_for_dune)
 
 let is_valid_global_variable_name = function
   | "root" -> false
@@ -740,7 +720,7 @@ let solve_package_list packages ~context =
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics e in
-    Error (`Diagnostic_message (Pp.text diagnostics))
+    Error (`Diagnostic_message diagnostics)
   | Error (`Exn exn) ->
     (match exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->

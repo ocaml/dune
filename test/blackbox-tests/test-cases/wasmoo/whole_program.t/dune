@@ -1,0 +1,4 @@
+(tests
+ (names a b)
+ (wasm_of_ocaml (compilation_mode whole_program))
+ (modes wasm))

@@ -6,9 +6,7 @@ module S = S
 (** Select a compatible set of components to run a program.
     See [Zeroinstall.Solver] for the instantiation of this functor on the
     actual 0install types. *)
-module Make
-    (Monad : S.Monad)
-    (Input : S.SOLVER_INPUT with type 'a monad = 'a Monad.t) : sig
+module Make (Input : S.SOLVER_INPUT) : sig
   module Output : S.SOLVER_RESULT with module Input = Input
 
   (** [do_solve model req] finds an implementation matching the given requirements, plus any other implementations needed
@@ -18,13 +16,11 @@ module Make
         every interface, so we can always select something. Useful for diagnostics.
         Note: always try without [closest_match] first, or it may miss a valid solution.
       @return None if the solve fails (only happens if [closest_match] is false). *)
-  val do_solve : closest_match:bool -> Input.Role.t -> Output.t option Monad.t
+  val do_solve : closest_match:bool -> Input.Role.t -> Output.t option Fiber.t
 end
 
 (** Explaining why a solve failed or gave an unexpected answer. *)
-module Diagnostics
-    (Monad : S.Monad)
-    (Result : S.SOLVER_RESULT with type 'a Input.monad := 'a Monad.t) : sig
+module Diagnostics (Result : S.SOLVER_RESULT) : sig
   (** An item of information to display for a component. *)
   module Note : sig
     type t =
@@ -34,7 +30,7 @@ module Diagnostics
       | Restricts of Result.Role.t * Result.Input.impl * Result.Input.restriction list
       | Feed_problem of string
 
-    val pp : Format.formatter -> t -> unit
+    val pp : t -> 'tag Pp.t
   end
 
   (** Information about a single role in the example (failed) selections produced by the solver. *)
@@ -55,13 +51,13 @@ module Diagnostics
         (** A selected impl has the same conflict class. *)
       | `ConflictsRole of Result.Role.t
         (** A selected role conflicts with this (e.g. replaced-by). *)
-      | `DiagnosticsFailure of string
+      | `DiagnosticsFailure of Stdune.User_message.Style.t Pp.t
         (** Unknown failure reason (gives raw error from SAT solver). *)
       ]
 
     type reject = Result.Input.impl * rejection_reason
 
-    val pp_reject : Format.formatter -> reject -> unit
+    val pp_reject : reject -> Stdune.User_message.Style.t Pp.t
 
     (** [selected_impl t] is the implementation selected to fill [t]'s role, or
         [None] if no implementation was suitable. *)
@@ -82,7 +78,7 @@ module Diagnostics
         including all of its notes and, if there was no selected impl, the rejects.
         @param verbose
           If [false], limit the list of rejected candidates (if any) to five entries. *)
-    val pp : verbose:bool -> Format.formatter -> t -> unit
+    val pp : verbose:bool -> t -> Stdune.User_message.Style.t Pp.t
   end
 
   (** An analysis of why the solve failed. *)
@@ -92,11 +88,14 @@ module Diagnostics
       We take the partial solution from the solver and discover, for each
       component we couldn't select, which constraints caused the candidates to
       be rejected. *)
-  val of_result : Result.t -> t Monad.t
+  val of_result : Result.t -> t Fiber.t
 
   (** [get_failure_reason r] analyses [r] with [of_result] and formats the
       analysis as a string. *)
-  val get_failure_reason : ?verbose:bool -> Result.t -> string Monad.t
+  val get_failure_reason
+    :  ?verbose:bool
+    -> Result.t
+    -> Stdune.User_message.Style.t Pp.t Fiber.t
 end
 
 (** The low-level SAT solver. *)

@@ -25,4 +25,4 @@ val which : Context_name.t -> (Filename.t -> Path.t option Memo.t) Staged.t
 val exported_env : Context_name.t -> Env.t Memo.t
 val ocamlpath : Context_name.t -> Path.t list Memo.t
 val find_package : Context_name.t -> Package.Name.t -> unit Action_builder.t option Memo.t
-val build_packages_of_context : Context_name.t -> Action.Full.t Action_builder.t Memo.t
+val setup_pkg_install_alias : dir:Path.Build.t -> Context_name.t -> Build_config.Gen_rules.t

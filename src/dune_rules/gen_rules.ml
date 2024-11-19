@@ -691,29 +691,6 @@ let raise_on_lock_dir_out_of_sync =
   |> Staged.unstage
 ;;
 
-let gen_pkg_install_rule ~dir ctx_name =
-  let rule =
-    (* We only to build when the build_dir is the root of the context *)
-    match
-      let build_dir = Context_name.build_dir ctx_name in
-      Path.Build.equal dir build_dir
-    with
-    | false -> Memo.return Rules.empty
-    | true ->
-      Rules.collect_unit (fun () ->
-        Lock_dir.lock_dir_active ctx_name
-        >>= function
-        | false -> Memo.return ()
-        | true ->
-          let build_pkg_deps = Alias.make ~dir Alias0.pkg_install in
-          let* action = Pkg_rules.build_packages_of_context ctx_name in
-          let* sctx = Super_context.find_exn ctx_name in
-          Super_context.add_alias_action sctx ~loc:Loc.none ~dir build_pkg_deps action)
-  in
-  Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
-  |> Gen_rules.rules_here
-;;
-
 let gen_rules ctx ~dir components =
   if Context_name.equal ctx Install.Context.install_context.name
   then (
@@ -744,7 +721,7 @@ let gen_rules ctx ~dir components =
   then Fetch_rules.gen_rules ~dir ~components
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
-    let gen_pkg_alias_rule = gen_pkg_install_rule ~dir ctx in
+    let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
     let+ general_rule = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
     Gen_rules.combine general_rule gen_pkg_alias_rule
 ;;

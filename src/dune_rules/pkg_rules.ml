@@ -1970,14 +1970,14 @@ let setup_pkg_install_alias =
       with
       | false -> Memo.return Rules.empty
       | true ->
-        Rules.collect_unit (fun () ->
-          Lock_dir.lock_dir_active ctx_name
-          >>= function
-          | false -> Memo.return ()
-          | true ->
-            let alias = Alias.make ~dir Alias0.pkg_install in
-            let deps = build_packages_of_context ctx_name in
-            Rules.Produce.Alias.add_deps alias deps)
+        Lock_dir.lock_dir_active ctx_name
+        >>= (function
+         | false -> Memo.return Rules.empty
+         | true ->
+           Rules.collect_unit (fun () ->
+             let alias = Alias.make ~dir Alias0.pkg_install in
+             let deps = build_packages_of_context ctx_name in
+             Rules.Produce.Alias.add_deps alias deps))
     in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here

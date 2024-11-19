@@ -2,7 +2,7 @@
 Diffing and Promotion
 =====================
 
-dune writes its build output to a separate directory from your source code tree 
+Dune writes its build output to a separate directory from your source code tree 
 (usually ``_build/<profile_name>``). You can use Diffing and Promotion flows 
 to compare your build output with your source tree, and/or copy the result of 
 rule output into your source tree to store the changes.
@@ -60,12 +60,12 @@ binary files.
 Promotion
 =========
 
-Promotion relates to copying the output of a dune rule to your source tree.
-Common uses include updating rule output after a failed diff (e.g. from a
+Promotion relates to copying the output of a Dune rule to your source tree.
+Common uses include updating rule output after a failed diff (e.g., from a
 test) or committing output to source control to cut down on dependencies 
 during packaging.
 
-Promoting test or rule output after diffing
+Promoting Test or Rule Output After Diffing
 -------------------------------------------
 
 Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
@@ -98,7 +98,7 @@ repository. You can use the following workflow to update your test:
 You can also use ``dune runtest --auto-promote``, which will
 automatically do the promotion.
 
-Automatically promoting rule output into the source tree
+Automatically Promoting Rule Output Into the Source Tree
 --------------------------------------------------------
 
 Dune rules support a ``(mode promote)`` directive that will automatically

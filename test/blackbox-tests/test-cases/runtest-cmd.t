@@ -30,7 +30,7 @@ This should work:
 This should not work
 
   $ dune test myotherttest.t
-  Error: "myotherttest.t" was not found.
+  Error: "myotherttest.t" does not match any known test.
   [1]
 
 Should this work? Debatable but giving a hint if it doesn't would be good.
@@ -87,10 +87,10 @@ messages are informative enough.
   [1]
 - Giving a nonexistent path gives an informative error:
   $ dune test nonexistent
-  Error: "nonexistent" was not found.
+  Error: "nonexistent" does not match any known test.
   [1]
   $ dune test tests/non
-  Error: "tests/non" was not found.
+  Error: "tests/non" does not match any known test.
   [1]
 - Passing the _build directory on its own is an error.
   $ dune test _build
@@ -98,10 +98,24 @@ messages are informative enough.
   [1]
 - Typos are caught and aided with hints:
   $ dune test mytest1.t
-  Error: "mytest1.t" was not found.
+  Error: "mytest1.t" does not match any known test.
   Hint: did you mean mytest.t?
   [1]
 - Running a non-test file should give a suitable error message
   $ dune test dune-project
-  Error: "dune-project" was not found.
+  Error: "dune-project" does not match any known test.
+  [1]
+- Typos of diretories are also caught and aided:
+  $ dune test tests/myothertest1.t
+  Error: "tests/myothertest1.t" does not match any known test.
+  Hint: did you mean tests/myothertest.t?
+  [1]
+  $ dune test testt/
+  Error: "testt" does not match any known test.
+  Hint: did you mean tests?
+  [1]
+- Note that this doesn't handle the case where the path is mostly correct but
+the directory is mispelled.
+  $ dune test testss/myothertest.t
+  Error: "testss/myothertest.t" does not match any known test.
   [1]

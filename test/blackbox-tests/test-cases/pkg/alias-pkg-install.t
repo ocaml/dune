@@ -1,34 +1,16 @@
-This test verifies the @pkg-deps alias fetch and build the project dependencies
+This test verifies the @pkg-install alias fetch and build the project dependencies
 without building the project itself.
 
   $ . ./helpers.sh
 
-Create a fake library to install in the target project as a dependency:
-  $ mkdir foo
-  $ cd foo
-  $ cat > dune-project <<EOF
-  > (lang dune 3.16)
-  > (package (name foo))
-  > EOF
-  $ cat > foo.ml <<EOF
-  > let foo = "Hello, World!"
-  > EOF
-  $ cat > dune <<EOF
-  > (library
-  >  (public_name foo))
-  > EOF
-  $ cd ..
-  $ tar cf foo.tar foo
-  $ rm -rf foo
-
-Make an opam package for the library:
+Create a fake package which echoes information to stdout when build:
   $ make_lockdir
   $ cat > dune.lock/foo.pkg << EOF
   > (version 0.0.1)
   > (build
-  >  (run dune build -p %{pkg-self:name} @install))
-  > (source
-  >  (fetch (url file://$PWD/foo.tar)))
+  >  (run echo "Build package foo"))
+  > (install
+  >  (run echo "Install package foo"))
   > EOF
 
 Create a project using the fake library as a dependency:
@@ -40,9 +22,28 @@ Create a project using the fake library as a dependency:
   >  (depends foo))
   > EOF
 
-The alias call builds the `foo` dependency but not the project itself. We
-verify we have the `foo` package but not the `bar.exe` in the build directory:
+Create a rule to show that this rule is not called with `@pkg-install` as `bar`
+is not build when calling the alias. If called, it would output the content of
+the `bar.ml` file:
+  $ cat > dune << EOF
+  > (executable
+  >  (name bar))
+  > (rule
+  >  (target bar.ml)
+  >  (action
+  >   (progn
+  >    (with-stdout-to %{target} (echo "let _ = 42"))
+  >    (system "cat %{target}"))))
+  > EOF
+
+The alias call builds the `foo` dependency but not the project itself. It
+displays the output of the fake package but not of the `bar.exe` executable:
   $ dune build @pkg-install
-  $ ls _build/_private/default/.pkg/
-  foo
-  $ ls _build/default/
+  Build package foo
+  Install package foo
+
+If we build the executable, it only shows the content of the executable as dune
+already built the `foo` dependency when calling `@pkg-install`:
+
+  $ dune build ./bar.exe
+  let _ = 42

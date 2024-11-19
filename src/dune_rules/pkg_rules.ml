@@ -1938,24 +1938,21 @@ let build_rule context_name ~source_deps (pkg : Pkg.t) =
        ~directory_targets:[ pkg.write_paths.target_dir ]
 ;;
 
-let install_packages_from_universe ctx_name =
+let build_packages_of_context ctx_name =
   let+ packages =
-    (* Fetching the package target implies that we wuill also fetch the extra sources. *)
+    (* Fetching the package target implies that we will also fetch the extra sources. *)
     Package_universe.lock_dir (Project_dependencies ctx_name)
     >>| (fun lock_dir -> lock_dir.packages)
     >>| Dune_lang.Package_name.Map.keys
   in
-  let deps =
-    List.map
-      ~f:(fun pkg ->
-        Paths.make ~relative:Path.Build.relative (Project_dependencies ctx_name) pkg
-        |> Paths.target_dir
-        |> Path.build)
-      packages
-    |> Action_builder.paths
-  in
-  Action_builder.bind deps ~f:(fun () ->
-    Action_builder.return (Action.Full.make (Action.Progn [])))
+  let open Action_builder.O in
+  packages
+  |> List.map ~f:(fun pkg ->
+    Paths.make ~relative:Path.Build.relative (Project_dependencies ctx_name) pkg
+    |> Paths.target_dir
+    |> Path.build)
+  |> Action_builder.paths
+  >>> Action_builder.return @@ Action.Full.make (Action.Progn [])
 ;;
 
 let gen_rules context_name (pkg : Pkg.t) =

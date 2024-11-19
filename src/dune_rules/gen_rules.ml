@@ -704,12 +704,12 @@ let gen_pkg_install_rule ~dir ctx_name =
         if is_lock_dir_active
         then (
           let build_pkg_deps = Alias.make ~dir Alias0.pkg_install in
-          let* action = Pkg_rules.install_packages_from_universe ctx_name in
+          let* action = Pkg_rules.build_packages_of_context ctx_name in
           Super_context.add_alias_action sctx ~loc:Loc.none ~dir build_pkg_deps action)
         else Memo.return ())
     else Memo.return Rules.empty
   in
-  Gen_rules.(rules_for ~dir ~allowed_subdirs:String.Set.empty rule |> rules_here)
+  Gen_rules.rules_for ~dir ~allowed_subdirs:String.Set.empty rule |> Gen_rules.rules_here
 ;;
 
 let gen_rules ctx ~dir components =

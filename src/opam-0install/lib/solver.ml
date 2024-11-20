@@ -33,31 +33,41 @@ module Make (Context : S.CONTEXT) = struct
     | None -> Error req
   ;;
 
-  let pp_short = Input.pp_impl
-
-  let rec partition f = function
-    | [] -> [], []
-    | x :: xs ->
-      let ys, zs = partition f xs in
-      (match f x with
-       | `Left y -> y :: ys, zs
-       | `Right z -> ys, z :: zs)
+  let rec partition_three f = function
+    | [] -> [], [], []
+    | first :: rest ->
+      let xs, ys, zs = partition_three f rest in
+      (match f first with
+       | `Left x -> x :: xs, ys, zs
+       | `Middle y -> xs, y :: ys, zs
+       | `Right z -> xs, ys, z :: zs)
   ;;
 
   let pp_rolemap ~verbose reasons =
-    let short, long =
+    let good, bad, unknown =
       reasons
       |> Solver.Output.RoleMap.bindings
-      |> partition (fun (_role, component) ->
+      |> partition_three (fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
-        | _ -> `Right component)
+        | _ ->
+          (match Diagnostics.Component.rejects component with
+           | _, `No_candidates -> `Right role
+           | _, _ -> `Middle component))
     in
-    let pp_item = Diagnostics.Component.pp ~verbose in
-    Pp.paragraph "Selected: "
-    ++ Pp.hovbox (Pp.concat_map ~sep:Pp.space short ~f:pp_short)
-    ++ Pp.cut
-    ++ Pp.enumerate long ~f:pp_item
+    let pp_bad = Diagnostics.Component.pp ~verbose in
+    let pp_unknown role = Pp.box (Solver.Output.Role.pp role) in
+    match unknown with
+    | [] ->
+      Pp.paragraph "Selected candidates: "
+      ++ Pp.hovbox (Pp.concat_map ~sep:Pp.space good ~f:Input.pp_impl)
+      ++ Pp.cut
+      ++ Pp.enumerate bad ~f:pp_bad
+    | _ ->
+      (* In case of unknown packages, no need to print the full diagnostic list, the problem is simpler. *)
+      Pp.hovbox
+        (Pp.text "The following packages couldn't be found: "
+         ++ Pp.concat_map ~sep:Pp.space unknown ~f:pp_unknown)
   ;;
 
   let diagnostics_rolemap req =
@@ -66,7 +76,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let diagnostics ?(verbose = false) req =
     let+ diag = diagnostics_rolemap req in
-    Pp.paragraph "Can't find all required versions."
+    Pp.paragraph "Couldn't solve the package dependency formula."
     ++ Pp.cut
     ++ Pp.vbox (pp_rolemap ~verbose diag)
   ;;

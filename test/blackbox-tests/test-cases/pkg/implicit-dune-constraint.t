@@ -19,8 +19,8 @@ dependency.
   $ test "2.0.0"
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: foo.0.0.1 x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
       User requested = 3.17
       Rejected candidates:

@@ -83,8 +83,8 @@ available on linux.
   - linux-only.0.0.2
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - linux-only -> (problem)
       No usable implementations:
         linux-only.0.0.2: Availability condition not satisfied
@@ -107,8 +107,8 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
   - undefined-var.0.0.2
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - undefined-var -> (problem)
       No usable implementations:
         undefined-var.0.0.2: Availability condition not satisfied
@@ -120,16 +120,16 @@ filter resolves to a string instead of to a boolean.
   $ solve availability-string
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied

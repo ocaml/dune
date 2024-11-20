@@ -12,7 +12,7 @@ Diffing
 
 You can use the ``(diff <file1> <file2>)`` directive in a rule to compare
 the output of the rule with a copy in your source tree. It is useful when
-your tests produce a file output, and you want to make sure that output has
+your tests produce a file output and you want to make sure that output has
 not changed.
 
 .. TODO(diataxis)
@@ -104,7 +104,7 @@ Automatically Promoting Rule Output Into the Source Tree
 Dune rules support a ``(mode promote)`` directive that will automatically
 copy their output into your source tree. This is more suitable for code or
 documentation generation flows where you want to check in the output to make
-it easier to browse, or to remove dependencies on the code generation step for 
+it easier to browse or to remove dependencies on the code generation step for 
 packaging in opam.
 
 More information, including customising when the source is copied, can be found

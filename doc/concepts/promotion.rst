@@ -4,7 +4,7 @@ Diffing and Promotion
 
 Dune writes its build output to a separate directory from your source code tree 
 (usually ``_build/<profile_name>``). You can use Diffing and Promotion flows 
-to compare your build output with your source tree, and/or copy the result of 
+to compare your build output with your source tree and/or copy the result of 
 rule output into your source tree to store the changes.
 
 Diffing

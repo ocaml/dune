@@ -1963,7 +1963,7 @@ let setup_pkg_install_alias =
   in
   fun ~dir ctx_name ->
     let rule =
-      (* We only to build when the build_dir is the root of the context *)
+      (* We only need to build when the build_dir is the root of the context *)
       match
         let build_dir = Context_name.build_dir ctx_name in
         Path.Build.equal dir build_dir

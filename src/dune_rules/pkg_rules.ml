@@ -173,6 +173,7 @@ module Paths = struct
 
   let install_paths t = Lazy.force t.install_paths
   let install_roots t = Lazy.force t.install_roots
+  let target_dir t = t.target_dir
 end
 
 module Install_cookie = struct
@@ -1945,6 +1946,42 @@ let gen_rules context_name (pkg : Pkg.t) =
 ;;
 
 module Gen_rules = Build_config.Gen_rules
+
+let setup_pkg_install_alias =
+  let build_packages_of_context ctx_name =
+    (* Fetching the package target implies that we will also fetch the extra
+       sources. *)
+    let open Action_builder.O in
+    let project_deps : Package_universe.t = Project_dependencies ctx_name in
+    let* lock_dir = Action_builder.of_memo (Package_universe.lock_dir project_deps) in
+    Dune_lang.Package_name.Map.keys lock_dir.packages
+    |> List.map ~f:(fun pkg ->
+      Paths.make ~relative:Path.Build.relative project_deps pkg
+      |> Paths.target_dir
+      |> Path.build)
+    |> Action_builder.paths
+  in
+  fun ~dir ctx_name ->
+    let rule =
+      (* We only need to build when the build_dir is the root of the context *)
+      match
+        let build_dir = Context_name.build_dir ctx_name in
+        Path.Build.equal dir build_dir
+      with
+      | false -> Memo.return Rules.empty
+      | true ->
+        Lock_dir.lock_dir_active ctx_name
+        >>= (function
+         | false -> Memo.return Rules.empty
+         | true ->
+           Rules.collect_unit (fun () ->
+             let alias = Alias.make ~dir Alias0.pkg_install in
+             let deps = build_packages_of_context ctx_name in
+             Rules.Produce.Alias.add_deps alias deps))
+    in
+    Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
+    |> Gen_rules.rules_here
+;;
 
 let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in

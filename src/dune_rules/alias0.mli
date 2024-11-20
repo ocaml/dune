@@ -13,6 +13,7 @@ val doc_new : Name.t
 val check : Name.t
 val ocaml_index : Name.t
 val install : Name.t
+val pkg_install : Name.t
 val runtest : Name.t
 val all : Name.t
 val is_standard : Name.t -> bool

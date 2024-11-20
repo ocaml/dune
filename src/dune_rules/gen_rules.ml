@@ -721,5 +721,7 @@ let gen_rules ctx ~dir components =
   then Fetch_rules.gen_rules ~dir ~components
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
-    gen_rules ctx (Super_context.find_exn ctx) ~dir components
+    let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
+    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+    Gen_rules.combine sctx_rules gen_pkg_alias_rule
 ;;

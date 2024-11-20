@@ -102,7 +102,11 @@ Hello, OCaml, Rust!
 
 :::{note}
 If you want to only build and fetch the project dependencies, you can use
-`@pkg-install` build alias.
+the `@pkg-install` alias like so
+
+```shell
+$ dune build @pkg-install
+```
 
 See {doc}`/reference/aliases/pkg-install` for more information.
 :::

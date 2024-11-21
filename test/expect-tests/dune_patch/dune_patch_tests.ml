@@ -9,7 +9,7 @@ diff --git a/foo.ml b/foo.ml
 index b69a69a5a..ea988f6bd 100644
 --- a/foo.ml
 +++ b/foo.ml
-@@ -1,2 +1,2 @@
+@@ -1,1 +1,1 @@
 -This is wrong
 +This is right
 |}
@@ -22,7 +22,7 @@ diff --git a/dir/foo.ml b/dir/foo.ml
 index b69a69a5a..ea988f6bd 100644
 --- a/dir/foo.ml
 +++ b/dir/foo.ml
-@@ -1,2 +1,2 @@
+@@ -1,1 +1,1 @@
 -This is wrong
 +This is right
 |}
@@ -199,10 +199,21 @@ let%expect_test "patching a new file" =
 let () = Dune_util.Report_error.report_backtraces true
 
 let%expect_test "patching a deleted file" =
-  test [ "foo.ml", "This is wrong\n" ] ("foo.patch", delete_file);
-  check "foo.ml";
-  [%expect {|
-    File foo.ml not found |}]
+  let filename = "foo.ml" in
+  test [ filename, "This is wrong\n" ] ("foo.patch", delete_file);
+  (* Different implementations of the patch command behave differently when the
+     patch specifies deleting a file: *)
+  match Unix.stat filename with
+  | { st_kind = S_REG; st_size; _ } ->
+    (* Some implementations of patch (e.g. the patch that ships with macOS
+       15.1) do not delete files, and instead truncate them to 0 length. If
+       the file still exists after applying the patch, assert that it is now
+       empty. *)
+    assert (st_size == 0)
+  | _ -> failwith "Not a regular file"
+  | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+    (* Most implementations of patch will delete the file. *)
+    ()
 ;;
 
 let undo_breaks =

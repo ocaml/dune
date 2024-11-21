@@ -88,9 +88,8 @@ Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags
 
 Locking should work, as there are no ambiguous references.
 
-  $ dune pkg lock 2>&1 | sed -z 's/\n/ /' | sed 's#/.*/git #git #'
-  Error: Command returned nothing: cd $TESTCASE_ROOT/.cache/dune/git-repo
-  && git rev-parse --verify --quiet refs/tags/duplicated^{commit}
+  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
+  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/tags/duplicated^{commit} 
 
 For branches the namespace is `refs/heads/`:
 
@@ -106,6 +105,5 @@ For branches the namespace is `refs/heads/`:
 
 Likewise locking a branch this way should work as well:
 
-  $ dune pkg lock 2>&1 | sed -z 's/\n/ /' | sed 's#/.*/git #git #'
-  Error: Command returned nothing: cd $TESTCASE_ROOT/.cache/dune/git-repo
-  && git rev-parse --verify --quiet refs/heads/duplicated^{commit}
+  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
+  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/heads/duplicated^{commit} 

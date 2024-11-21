@@ -1,9 +1,129 @@
-Unreleased
-----------
+3.17.0~alpha0 (Unreleased)
+-------------------------
 
-If you're a contributor, please include your CHANGES entry in a file
-`doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.  
+### Fixed
+
+- Show the context name for errors happening in non-default contexts.
+  (#10414, fixes #10378, @jchavarri)
+
+- Correctly declare dependencies of indexes so that they are rebuilt when
+  needed. (#10623, @voodoos)
+
+- Don't depend on coq-stdlib being installed when expanding variables
+  of the `coq.version` family (#10631, fixes #10629, @gares)
+
+- Error out if no files are found when using `copy_files`. (#10649, @jchavarri)
+
+- Re_export dune-section private library in the dune-site library stanza,
+  in order to avoid failure when generating and building sites modules
+  with implicit_transitive_deps = false. (#10650, fixes #9661, @MA0100)
+
+- Expect test fixes: support multiple modes and fix dependencies when there is
+  a custom runner (#10671, @vouillon)
+
+- In a `(library)` stanza with `(extra_objects)` and `(foreign_stubs)`, avoid
+  double linking the extra object files in the final executable.
+  (#10783, fixes #10785, @nojb)
+
+- Map `(re_export)` library dependencies to the `exports` field in `META` files,
+  and vice-versa. This field was proposed in to
+  https://discuss.ocaml.org/t/proposal-a-new-exports-field-in-findlib-meta-files/13947.
+  The field is included in Dune-generated `META` files only when the Dune lang
+  version is >= 3.17.
+  (#10831, fixes #10830, @nojb)
+
+- Fix staged pps preprocessors on Windows (which were not working at all
+  previously) (#10869, fixes #10867, @nojb)
+
+- Fix `dune describe` when an executable is disabled with `enabled_if`.
+  (#10881, fixes #10779, @moyodiallo)
+
+- Fix an issue where C stubs would be rebuilt whenever the stderr of Dune was
+  redirected. (#10883, fixes #10882, @nojb)
+
+- Format long lists in s-expressions to fill the line instead of formatting
+  them in a vertical way (#10892, fixes #10860, @nojb)
+
+- Fix the URL opened by the command `dune ocaml doc`. (#10897, @gridbugs)
+
+- Fix the file referred to in the error/warning message displayed due to the
+  dune configuration version not supporting a particular configuration
+  stanza in use. (#10923, @H-ANSEN)
+
+- Fix `enabled_if` when it uses `env` variable. (#10936, fixes #10905, @moyodiallo)
+
+- Fix exec -w for relative paths with --root argument (#10982, @gridbugs)
+
+- Do not ignore the `(locks ..)` field in the `test` and `tests` stanza
+  (#11081, @rgrinberg)
+
+- Tolerate files without extension when generating merlin rules.
+  (#11128, @anmonteiro)
+
+### Added
+
+- Make Merlin/OCaml-LSP aware of "hidden" dependencies used by
+  `(implicit_transitive_deps false)` via the `-H` compiler flag. (#10535, @voodoos)
+
+- Add support for the -H flag (introduced in OCaml compiler 5.2) in dune
+  (requires lang versions 3.17). This adaptation gives
+  the correct semantics for `(implicit_transitive_deps false)`.
+  (#10644, fixes #9333, ocsigen/tyxml#274, #2733, #4963, @MA0100)
+
+- Add support for specifying Gitlab organization repositories in `source`
+  stanzas (#10766, fixes #6723, @H-ANSEN)
+
+- New option to control jsoo sourcemap generation in env and executable stanza
+  (#10777, fixes #10673, @hhugo)
+
+- One can now control jsoo compilation_mode inside an executable stanza
+  (#10777, fixes #10673, @hhugo)
+
+- Add support for specifying default values of the `authors`, `maintainers`, and
+  `license` stanzas of the `dune-project` file via the dune config file. Default
+  values are set using the `(project_defaults)` stanza (#10835, @H-ANSEN)
+
+- Add names to source tree events in performance traces (#10884, @jchavarri)
+
+- Add `codeberg` as an option for defining project sources in dune-project
+  files. For example, `(source (codeberg user/repo))`. (#10904, @nlordell)
+
+- `dune runtest` can now run individual tests with `dune runtest mytest.t`
+  (#11041, @Alizter).
+
+- Wasm_of_ocaml support (#11093, @vouillon)
+
+- Add a `coqdep_flags` field to the `coq` field of the `env` stanza, and to the `coq.theory` stanza, allowing to configure `coqdep` flags.
+  (#11094, @rlepigre)
+
+### Changed
+
+- Remove all remnants of the experimental `patch-back-source-tree`. (#10771,
+  @rgrinberg)
+
+- Change the preset value for author and maintainer fields in the
+  `dune-project` file to encourage including emails. (#10848, @punchagan)
+
+- Tweak the preset value for tags in the `dune-project` file to hint at topics
+  not having a special meaning. (#10849, @punchagan)
+
+- Change some colors to improve readability in light-mode terminals
+  (#10890, @gridbugs)
+
+- Forward the linkall flag to jsoo in whole program compilation as well (#10935, @hhugo)
+
+- Configurator uses `pkgconf` as pkg-config implementation when available
+  and forwards it the `target` of `ocamlc -config`. (#10937, @pirbo)
+
+- Enable Dune cache by default. Add a new Dune cache setting
+  `enabled-except-user-rules`, which enables the Dune cache, but excludes
+  user-written rules from it. This is a conservative choice that can avoid
+  breaking rules whose dependencies are not correctly specified. This is the
+  current default. (#10944, #10710, @nojb, @ElectreAAS)
+
+- Do not add `dune` dependency in `dune-project` when creating projects with
+  `dune init proj`. The Dune dependency is implicitely added when generating
+  opam files (#11129, @Leonidas-from-XIV)
 
 3.16.1 (2024-10-30)
 -------------------

@@ -73,3 +73,37 @@ In this case Dune can't determine which reference to use and will error out:
   Error: Reference "duplicated" in remote
   "file://$PWD/_repo"
   is ambiguous
+
+Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags/`.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > (pin
+  >  (url "git+file://$PWD/_repo#refs/tags/duplicated")
+  >  (package (name foo)))
+  > (package
+  >  (name main)
+  >  (depends foo))
+  > EOF
+
+Locking should work, as there are no ambiguous references.
+
+  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
+  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/tags/duplicated^{commit} 
+
+For branches the namespace is `refs/heads/`:
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > (pin
+  >  (url "git+file://$PWD/_repo#refs/heads/duplicated")
+  >  (package (name foo)))
+  > (package
+  >  (name main)
+  >  (depends foo))
+  > EOF
+
+Likewise locking a branch this way should work as well:
+
+  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
+  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/heads/duplicated^{commit} 

@@ -34,15 +34,19 @@ let is_in_dune_project builder =
   |> Result.is_ok
 ;;
 
-let term =
-  let+ builder = Common.Builder.term
-  and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+let go builder command =
   match is_in_dune_project builder with
   | false ->
+    let verb =
+      match command with
+      | `Run_with_args _ -> "run"
+      | `Install -> "install"
+    in
     User_error.raise
       [ Pp.textf
-          "Unable to run %s as a dev-tool because you don't appear to be inside a dune \
+          "Unable to %s %s as a dev-tool because you don't appear to be inside a dune \
            project."
+          verb
           ocamllsp_exe_name
       ]
   | true ->
@@ -51,12 +55,36 @@ let term =
       let open Fiber.O in
       let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
       let+ () = build_ocamllsp common in
-      run_ocamllsp (Common.root common) ~args)
+      match command with
+      | `Run_with_args args -> run_ocamllsp (Common.root common) ~args
+      | `Install -> ())
 ;;
 
-let info =
-  let doc = "Run ocamllsp, installing it as a dev tool if necessary." in
-  Cmd.info "ocamllsp" ~doc
-;;
+module Exec = struct
+  let term =
+    let+ builder = Common.Builder.term
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    go builder (`Run_with_args args)
+  ;;
 
-let command = Cmd.v info term
+  let info =
+    let doc = "Run ocamllsp, installing it as a dev tool if necessary." in
+    Cmd.info "ocamllsp" ~doc
+  ;;
+
+  let command = Cmd.v info term
+end
+
+module Install = struct
+  let term =
+    let+ builder = Common.Builder.term in
+    go builder `Install
+  ;;
+
+  let info =
+    let doc = "Install ocamllsp as a dev tool." in
+    Cmd.info "ocamllsp" ~doc
+  ;;
+
+  let command = Cmd.v info term
+end

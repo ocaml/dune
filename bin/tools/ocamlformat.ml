@@ -37,25 +37,47 @@ let build_dev_tool common =
      | Ok () -> ())
 ;;
 
-let term =
-  let+ builder = Common.Builder.term
-  and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+let go builder command =
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
     let open Fiber.O in
     let* () = Lock_dev_tool.lock_ocamlformat () |> Memo.run in
     let+ () = build_dev_tool common in
-    run_dev_tool (Common.root common) ~args)
+    match command with
+    | `Run_with_args args -> run_dev_tool (Common.root common) ~args
+    | `Install -> ())
 ;;
 
-let info =
-  let doc =
-    {|Wrapper for running ocamlformat intended to be run automatically
+module Exec = struct
+  let term =
+    let+ builder = Common.Builder.term
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    go builder (`Run_with_args args)
+  ;;
+
+  let info =
+    let doc =
+      {|Wrapper for running ocamlformat intended to be run automatically
      by a text editor. All positional arguments will be passed to the
      ocamlformat executable (pass flags to ocamlformat after the '--'
      argument, such as 'dune ocamlformat -- --help').|}
-  in
-  Cmd.info "ocamlformat" ~doc
-;;
+    in
+    Cmd.info "ocamlformat" ~doc
+  ;;
 
-let command = Cmd.v info term
+  let command = Cmd.v info term
+end
+
+module Install = struct
+  let term =
+    let+ builder = Common.Builder.term in
+    go builder `Install
+  ;;
+
+  let info =
+    let doc = "Install ocamlformat as a dev tool." in
+    Cmd.info "ocamlformat" ~doc
+  ;;
+
+  let command = Cmd.v info term
+end

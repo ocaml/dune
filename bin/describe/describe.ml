@@ -20,7 +20,7 @@ let subcommands =
   ; Package_entries.command
   ; Describe_pkg.command
   ; Describe_contexts.command
-  ; Print_depexts.command
+  ; Describe_depexts.command
   ]
 ;;
 

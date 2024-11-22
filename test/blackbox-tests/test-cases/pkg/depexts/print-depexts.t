@@ -1,29 +1,24 @@
- When a package fails to build, dune will print opam depexts warning.
+Show that the depexts that a project has can be printed.
 
   $ . ../helpers.sh
   $ mkrepo
-  $ add_mock_repo_if_needed
 
-Make a project :
+Make a project:
+
   $ cat > dune-project <<EOF
   > (lang dune 3.13)
-  > (package
-  >  (name bar)
-  >  (depends foo))
-  > EOF
-  $ cat > dune <<EOF
-  > (executable
-  >  (public_name bar))
   > EOF
 
-Make dune.lock file with some depexts.
+Create a lockdir with a package that features some depexts.
+
   $ make_lockdir
   $ cat > dune.lock/foo.pkg <<EOF
   > (version 0.0.1)
   > (depexts unzip gnupg)
   > EOF
 
-Print the available depexts
+Printing the depexts should show all the depexts that the project has:
+
   $ dune show depexts
   unzip
   gnupg

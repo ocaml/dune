@@ -121,10 +121,10 @@ module Ocamlformat = struct
 end
 
 let format_action format ~input ~output ~expander kind =
-  let+ ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
   match (format : Dialect.Format.t) with
   | Ocamlformat when ocamlformat_is_locked ->
-    Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind
+    Memo.return (Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind)
   | _ ->
     assert (not ocamlformat_is_locked);
     let loc, (action, extra_deps) =
@@ -133,6 +133,7 @@ let format_action format ~input ~output ~expander kind =
         Loc.none, Ocamlformat.action_when_ocamlformat_isn't_locked ~input kind
       | Action (loc, action) -> loc, (action, With_targets.return ())
     in
+    let+ expander = expander in
     let open Action_builder.With_targets.O in
     extra_deps
     >>> Pp_spec_rules.action_for_pp_with_target
@@ -157,10 +158,10 @@ let gen_rules_output
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
   let setup_formatting file =
-    let input_basename = Path.Source.basename file in
-    let input = Path.Build.relative dir input_basename in
-    let output = Path.Build.relative output_dir input_basename in
-    (let open Option.O in
+    (let input_basename = Path.Source.basename file in
+     let input = Path.Build.relative dir input_basename in
+     let output = Path.Build.relative output_dir input_basename in
+     let open Option.O in
      let* dialect, kind =
        Path.Source.extension file |> Dialect.DB.find_by_extension dialects
      in
@@ -236,7 +237,8 @@ let with_config ~dir f =
 let gen_rules sctx ~output_dir =
   let dir = Path.Build.parent_exn output_dir in
   with_config ~dir (fun config ->
-    let* expander = Super_context.expander sctx ~dir in
+    let* sctx = sctx in
+    let expander = Super_context.expander sctx ~dir in
     let* project = Dune_load.find_project ~dir in
     let dialects = Dune_project.dialects project in
     let version = Dune_project.dune_version project in

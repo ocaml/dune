@@ -442,9 +442,10 @@ module Automatic_subdir = struct
 
   let gen_rules ~sctx ~dir kind =
     match kind with
-    | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
+    | Utop -> sctx >>= Utop.setup ~dir:(Path.Build.parent_exn dir)
     | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
+      let* sctx = sctx in
       Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)
       >>= Env_node.local_binaries
       >>= Memo.parallel_iter ~f:(fun t ->
@@ -501,13 +502,10 @@ let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
     | Some _ -> Automatic_subdir.of_src_dir src_dir
   with
   | None -> Memo.return Rules.empty
-  | Some kind ->
-    Rules.collect_unit (fun () ->
-      let* sctx = sctx in
-      Automatic_subdir.gen_rules ~sctx ~dir kind)
+  | Some kind -> Rules.collect_unit (fun () -> Automatic_subdir.gen_rules ~sctx ~dir kind)
 ;;
 
-let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
+let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~components ~dir =
   Dir_status.DB.get ~dir
   >>= function
   | Lock_dir -> Memo.return Gen_rules.no_rules

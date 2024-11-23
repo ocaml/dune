@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let add_diff sctx loc alias ~input ~output =
+let add_diff loc alias ~input ~output =
   let open Action_builder.O in
   let dir = Alias.dir alias in
   let action =
@@ -10,7 +10,7 @@ let add_diff sctx loc alias ~input ~output =
   in
   Action_builder.paths [ input; Path.build output ]
   >>> Action_builder.return (Action.Full.make action)
-  |> Super_context.add_alias_action sctx alias ~dir ~loc
+  |> Rules.Produce.Alias.add_action alias ~loc
 ;;
 
 let rec subdirs_until_root dir =
@@ -177,7 +177,7 @@ let gen_rules_output
      in
      format_action format ~input ~output ~expander kind
      |> Memo.bind ~f:(Super_context.add_rule sctx ~mode:Standard ~loc ~dir)
-     >>> add_diff sctx loc alias_formatted ~input:(Path.build input) ~output)
+     >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
     |> Memo.Option.iter ~f:Fun.id
   in
   let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
@@ -204,7 +204,7 @@ let gen_rules_output
              Action.Full.make (action ~version input output))
             |> Action_builder.with_file_targets ~file_targets:[ output ]
             |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
-            >>> add_diff sctx loc alias_formatted ~input ~output)))
+            >>> add_diff loc alias_formatted ~input ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;

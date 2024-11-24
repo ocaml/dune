@@ -200,12 +200,14 @@ let gen_rules_output
             let input_basename = Path.Source.basename path in
             let input = Path.build (Path.Build.relative dir input_basename) in
             let output = Path.Build.relative output_dir input_basename in
-            (let open Action_builder.O in
-             let+ () = Action_builder.path input in
-             Action.Full.make (action ~version input output))
-            |> Action_builder.with_file_targets ~file_targets:[ output ]
-            |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
-            >>> add_diff loc alias_formatted ~input ~output)))
+            let { Action_builder.With_targets.build; targets } =
+              (let open Action_builder.O in
+               let+ () = Action_builder.path input in
+               Action.Full.make (action ~version input output))
+              |> Action_builder.with_file_targets ~file_targets:[ output ]
+            in
+            let rule = Rule.make ~mode:Standard ~targets build in
+            Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;

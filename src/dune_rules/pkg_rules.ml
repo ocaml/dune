@@ -2140,6 +2140,21 @@ let ocamlpath context =
 let lock_dir_active = Lock_dir.lock_dir_active
 let lock_dir_path = Lock_dir.get_path
 
+let dev_tool_env tool =
+  let package_name = Dune_pkg.Dev_tool.package_name tool in
+  Memo.push_stack_frame ~human_readable_description:(fun () ->
+    Pp.textf
+      "lock directory environment for dev tools %S"
+      (Package.Name.to_string package_name))
+  @@ fun () ->
+  let universe : Package_universe.t = Dev_tool tool in
+  let* db = DB.get universe in
+  Resolve.resolve db (Loc.none, package_name) universe
+  >>| function
+  | `System_provided -> assert false
+  | `Inside_lock_dir pkg -> Pkg.exported_env pkg
+;;
+
 let exported_env context =
   Memo.push_stack_frame ~human_readable_description:(fun () ->
     Pp.textf "lock directory environment for context %S" (Context_name.to_string context))

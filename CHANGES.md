@@ -3,7 +3,7 @@ Unreleased
 
 If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
-changelog properly.  
+changelog properly.
 
 3.16.1 (2024-10-30)
 -------------------

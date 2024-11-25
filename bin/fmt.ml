@@ -26,14 +26,19 @@ let lock_ocamlformat () =
   else Fiber.return ()
 ;;
 
-let run_fmt_command ~(common : Common.t) ~config ~request =
+let run_fmt_command ~(common : Common.t) ~config =
   let open Fiber.O in
   let once () =
     let* () = lock_ocamlformat () in
-    let+ res = Build_cmd.run_build_system ~common ~request in
-    match res with
-    | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
+    let request (setup : Import.Main.build_system) =
+      let dir = Path.(relative root) (Common.prefix_target common ".") in
+      Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
+      |> Alias.request
+    in
+    Build_cmd.run_build_system ~common ~request
+    >>| function
     | Ok () -> ()
+    | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
   Scheduler.go ~common ~config once
 ;;
@@ -56,12 +61,7 @@ let command =
       Common.Builder.set_promote builder (if no_promote then Never else Automatically)
     in
     let common, config = Common.init builder in
-    let request (setup : Import.Main.build_system) =
-      let dir = Path.(relative root) (Common.prefix_target common ".") in
-      Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
-      |> Alias.request
-    in
-    run_fmt_command ~common ~config ~request
+    run_fmt_command ~common ~config
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

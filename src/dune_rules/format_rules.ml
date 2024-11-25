@@ -181,6 +181,12 @@ let gen_rules_output
        if ocamlformat_is_locked
        then (
          let { Action_builder.With_targets.build; targets } = rule in
+         let build =
+           let open Action_builder.O in
+           let+ build = build
+           and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
+           Action.Full.add_env env build
+         in
          Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
        else
          let open Memo.O in

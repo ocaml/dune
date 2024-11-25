@@ -146,13 +146,14 @@ let modify_install_action (action : Dune_lang.Action.t) ~installation_prefix ~su
              ; Slang.text @@ Path.to_string @@ Path.parent_exn prefix
              ]
          ]
+       |> Option.some
      | _ ->
        (* The install command is something other than `make install`, so don't
           attempt to modify. *)
-       action)
+       None)
   | _ ->
     (* Not a "run" action, so don't attempt to modify. *)
-    action
+    None
 ;;
 
 let modify_install_action ~prefix ~suffix action =
@@ -162,7 +163,10 @@ let modify_install_action ~prefix ~suffix action =
     (* Replace install command with no-op if the toolchain is already installed.
        TODO(steve): Move this check to action execution time *)
     Dune_lang.Action.Progn []
-  else modify_install_action action ~installation_prefix:prefix ~suffix
+  else (
+    match modify_install_action action ~installation_prefix:prefix ~suffix with
+    | None -> action
+    | Some action -> action)
 ;;
 
 let touch file =

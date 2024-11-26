@@ -1312,6 +1312,17 @@ end = struct
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
         | false -> Memo.return (paths, build_command, install_command)
         | true ->
+          (* Modify the environment as well as build and install commands for
+             the compiler package. The specific changes are:
+             - setting the prefix in the build environment to inside the user's
+               toolchain directory
+             - changing the install command so that the
+               package is installed with the DESTDIR variable set to a
+               temporary directory, and the result is then moved to the user's
+               toolchain directory
+             - if a matching version of the compiler is
+               already installed in the user's toolchain directory then the
+               build and install commands are replaced with no-ops *)
           let pkg_dir = Pkg_toolchain.pkg_dir pkg in
           let suffix = Path.basename (Path.outside_build_dir pkg_dir) in
           let prefix = Pkg_toolchain.installation_prefix ~pkg_dir in

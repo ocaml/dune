@@ -41,9 +41,6 @@
 - Fix an issue where C stubs would be rebuilt whenever the stderr of Dune was
   redirected. (#10883, fixes #10882, @nojb)
 
-- Format long lists in s-expressions to fill the line instead of formatting
-  them in a vertical way (#10892, fixes #10860, @nojb)
-
 - Fix the URL opened by the command `dune ocaml doc`. (#10897, @gridbugs)
 
 - Fix the file referred to in the error/warning message displayed due to the

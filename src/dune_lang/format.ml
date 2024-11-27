@@ -26,10 +26,7 @@ let print_wrapped_list ~version x =
   let inner = Pp.concat_map ~sep:Pp.space ~f:pp_simple x in
   if version < (2, 8)
   then Pp.char '(' ++ Pp.hovbox ~indent:1 inner ++ Pp.char ')'
-  else
-    (if version < (3, 17) then Pp.hvbox else Pp.hovbox)
-      ~indent:1
-      (Pp.char '(' ++ inner ++ Pp.char ')')
+  else Pp.hvbox ~indent:1 (Pp.char '(' ++ inner ++ Pp.char ')')
 ;;
 
 let pp_comment_line l = Pp.char ';' ++ Pp.verbatim l

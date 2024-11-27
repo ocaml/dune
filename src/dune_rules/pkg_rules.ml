@@ -1983,7 +1983,14 @@ let setup_pkg_install_alias =
       | true ->
         Lock_dir.lock_dir_active ctx_name
         >>= (function
-         | false -> Memo.return Rules.empty
+         | false ->
+           let error =
+             [ Pp.text "The @pkg-install alias can't be used without a lock dir" ]
+           in
+           let hints =
+             [ Pp.text "You might want to create the lock dir with dune pkg lock" ]
+           in
+           User_error.raise ~hints error
          | true ->
            Rules.collect_unit (fun () ->
              let alias = Alias.make ~dir Alias0.pkg_install in

@@ -14,8 +14,8 @@ Create a project using the fake library as a dependency:
 
 Ensure the alias is not available outside of the package manamgent context:
   $ dune build @pkg-install
-  Error: Alias "pkg-install" specified on the command line is empty.
-  It is not defined in . or any of its descendants.
+  Error: The @pkg-install alias can't be used without a lock dir
+  Hint: You might want to create the lock dir with dune pkg lock
   [1]
 
 Create a fake package which echoes information to stdout when build:

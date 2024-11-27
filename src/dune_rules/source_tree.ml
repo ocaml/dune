@@ -512,7 +512,16 @@ let ancestor_vcs =
             |> Vcs.Kind.of_dir_contents
           with
           | Some kind -> Some { Vcs.kind; root = Path.of_string dir }
-          | None -> loop dir)
+          | None -> loop dir
+          | exception Sys_error msg ->
+            User_warning.emit
+              [ Pp.textf
+                  "Unable to read directory %s. Will not look for VCS root in parent \
+                   directories."
+                  dir
+              ; Pp.textf "Reason: %s" msg
+              ];
+            None)
       in
       Memo.return (loop (Path.to_absolute_filename Path.root))))
 ;;

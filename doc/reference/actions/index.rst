@@ -53,6 +53,7 @@ The following constructions are available:
        copy#
        write-file
        pipe-outputs
+       format-dune-file
 
   .. grid-item::
 

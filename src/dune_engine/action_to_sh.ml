@@ -70,6 +70,15 @@ let simplify act =
     | Mkdir x -> mkdir x :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
+    | Format_dune_file (version, x) ->
+      Run
+        ( "dune"
+        , [ "format-dune-file"
+          ; "--version"
+          ; Dune_lang.Syntax.Version.to_string version
+          ; x
+          ] )
+      :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

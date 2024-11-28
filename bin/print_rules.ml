@@ -100,6 +100,7 @@ let rec encode : Action.For_shell.t -> Dune_lang.t =
   | Pipe (outputs, l) ->
     List (atom (sprintf "pipe-%s" (Outputs.to_string outputs)) :: List.map l ~f:encode)
   | Extension ext -> List [ atom "ext"; Dune_sexp.Quoted_string (Sexp.to_string ext) ]
+  | Format_dune_file (_version, x) -> List [ atom "format-dune-file"; path x ]
 ;;
 
 let encode_path p =

@@ -743,6 +743,19 @@ let map_exe (context : t) =
        | _ -> exe)
 ;;
 
+let roots =
+  lazy
+    (let open Setup in
+     match prefix with
+     | None -> roots
+     | Some prefix ->
+       let prefix = Install.Roots.make prefix ~relative:Filename.concat in
+       Install.Roots.map2 roots prefix ~f:(fun root prefix ->
+         match root with
+         | None -> Some prefix
+         | Some _ -> root))
+;;
+
 let roots t =
   let module Roots = Install.Roots in
   let+ prefix_roots =
@@ -756,7 +769,7 @@ let roots t =
   in
   match t.kind with
   | Lock _ | Default ->
-    let setup_roots = Roots.map ~f:(Option.map ~f:Path.of_string) Setup.roots in
+    let setup_roots = Roots.map ~f:(Option.map ~f:Path.of_string) (Lazy.force roots) in
     Roots.first_has_priority setup_roots prefix_roots
   | Opam _ -> prefix_roots
 ;;

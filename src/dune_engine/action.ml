@@ -193,8 +193,7 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Extension _
-  | Format_dune_file _ -> acc
+  | Extension _ -> acc
 ;;
 
 include Action_mapper.Make (Ast) (Ast)
@@ -239,8 +238,7 @@ let rec is_dynamic = function
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Extension _
-  | Format_dune_file _ -> false
+  | Extension _ -> false
 ;;
 
 let maybe_sandbox_path sandbox p =
@@ -281,7 +279,7 @@ let is_useful_to memoize =
     | Ignore (_, t) | With_accepted_exit_codes (_, t) -> loop t
     | Progn l | Pipe (_, l) | Concurrent l -> List.exists l ~f:loop
     | Echo _ -> false
-    | Cat _ | Format_dune_file _ -> memoize
+    | Cat _ -> memoize
     | Copy _ -> memoize
     | Symlink _ -> false
     | Hardlink _ -> false

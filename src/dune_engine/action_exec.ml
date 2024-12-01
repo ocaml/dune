@@ -265,20 +265,6 @@ let rec exec t ~display ~ectx ~eenv : done_or_more_deps Produce.t =
   | Extension (module A) ->
     let+ () = Produce.of_fiber @@ A.Spec.action A.v ~ectx ~eenv in
     Done
-  | Format_dune_file (version, path) ->
-    let+ () =
-      match Io.Untracked.with_lexbuf_from_file path ~f:Dune_lang.Format.parse with
-      | Sexps sexps ->
-        let str =
-          Format.asprintf "%a" Pp.to_fmt (Dune_lang.Format.pp_top_sexps ~version sexps)
-        in
-        exec_echo eenv.stdout_to str
-      | OCaml_syntax _ ->
-        maybe_async (fun () ->
-          Io.with_file_in path ~f:(fun ic ->
-            Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to)))
-    in
-    Done
 
 and redirect_out t ~display ~ectx ~eenv ~perm outputs fn =
   redirect t ~display ~ectx ~eenv ~out:(outputs, fn, perm) ()

@@ -3,7 +3,6 @@
 (library
  (name dune_engine)
  (libraries
-  dune_lang
   unix
   csexp
   stdune

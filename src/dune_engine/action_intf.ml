@@ -51,7 +51,6 @@ module type Ast = sig
     | Mkdir of target
     | Pipe of Outputs.t * t list
     | Extension of ext
-    | Format_dune_file of Dune_lang.Syntax.Version.t * path
 end
 
 module type Helpers = sig

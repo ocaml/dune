@@ -197,10 +197,12 @@ Using the built-in action.
 
   $ cat >dune <<EOF
   > (rule (with-stdout-to file (echo "(   a     c)")))
-  > (rule (alias format) (action (format-dune-file file)))
+  > (rule (format-dune-file file file.formatted))
   > EOF
 
-  $ dune build @format
+  $ dune build file.formatted
+
+  $ cat _build/default/file.formatted
   (a c)
 
 Version check.
@@ -209,10 +211,24 @@ Version check.
   > (lang dune 3.17)
   > EOF
 
-  $ dune build @format
-  File "dune", line 2, characters 29-52:
-  2 | (rule (alias format) (action (format-dune-file file)))
-                                   ^^^^^^^^^^^^^^^^^^^^^^^
+  $ dune build file.out
+  File "dune", line 2, characters 0-45:
+  2 | (rule (format-dune-file file file.formatted))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'format-dune-file' in short-form 'rule' is only available since
+  version 3.18 of the dune language. Please update your dune-project file to
+  have (lang dune 3.18).
+  [1]
+
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to file (echo "(   a     c)")))
+  > (rule (action (format-dune-file file file.formatted)))
+  > EOF
+
+  $ dune build file.out
+  File "dune", line 2, characters 14-52:
+  2 | (rule (action (format-dune-file file file.formatted)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: 'format-dune-file' is only available since version 3.18 of the dune
   language. Please update your dune-project file to have (lang dune 3.18).
   [1]

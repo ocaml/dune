@@ -566,7 +566,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
-  | Format_dune_file x ->
+  | Format_dune_file (src, dst) ->
     A.with_expander (fun expander ->
       let open Memo.O in
       let+ version =
@@ -574,8 +574,9 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         Dune_load.find_project ~dir >>| Dune_project.dune_version
       in
       let open Action_expander.O in
-      let+ x = E.dep x in
-      O.Format_dune_file (version, x))
+      let+ src = E.dep src
+      and+ dst = E.target dst in
+      Format_dune_file.action ~version src dst)
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false

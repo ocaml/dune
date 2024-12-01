@@ -41,7 +41,6 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Mkdir x -> Mkdir (f_target ~dir x)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
     | Extension ext -> Extension (f_ext ~dir ext)
-    | Format_dune_file (version, x) -> Format_dune_file (version, f_path ~dir x)
   ;;
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target ~f_ext =

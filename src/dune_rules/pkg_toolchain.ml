@@ -65,10 +65,28 @@ let ocaml context env ~bin_dir =
   Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
 ;;
 
-(* The path to the directory containing the artifacts within the
-   temporary install directory. When installing with the DESTDIR
-   variable, the absolute path to the final installation directory is
-   concatenated to the value of DESTDIR. *)
+(* Returns the path to the directory containing the artifacts within the
+   temporary install directory. When installing with the DESTDIR variable, the
+   absolute path to the final installation directory is concatenated to the
+   value of DESTDIR. That is, the artifacts will be at a path like
+   "/tmp/dune-toolchain-destdir_RRR_ocaml-base-compiler.5.2.1-XXXXXXXX/home/user/.cache/dune/toolchains/ocaml-base-compiler.5.2.1-XXXXXXXX/target"
+   where RRR is a random value to avoid collisions and XXXXXXXX is the hash of
+   the package's lockfile. Note that the absolute path to the eventual install
+   location (the path beginning with "/home" above) is appended to the
+   temporary install path.
+
+   [installation_prefix] is the path to where the package will eventually be
+   installed, such as
+   "/home/user/.cache/dune/toolchains/ocaml-base-compiler.5.2.1-XXXXXXX/target"
+   where XXXXXXXX is the hash of the package lockfile.
+
+   [tmp_install_dir] is the path to the temporary directory where the package's
+   files were placed when `make install` was run. This is identical to the
+   value of DESTDIR passed to `make install` and will be something like
+   "/tmp/dune-toolchain-destdir_RRR_ocaml-base-compiler.5.2.1-XXXXXXXX" where
+   RRR is a random value to avoid collisions and XXXXXXXX is the hash of the
+   package's lockfile.
+*)
 let installation_prefix_within_tmp_install_dir ~installation_prefix:prefix tmp_install_dir
   =
   let target_without_root_prefix =
@@ -86,6 +104,7 @@ let installation_prefix_within_tmp_install_dir ~installation_prefix:prefix tmp_i
         "Expected prefix to start with root"
         [ "prefix", Path.Outside_build_dir.to_dyn prefix
         ; "root", Path.External.to_dyn Path.External.root
+        ; "tmp_install_dir", Path.to_dyn tmp_install_dir
         ]
   in
   Path.relative tmp_install_dir target_without_root_prefix

@@ -11,6 +11,20 @@ type 'a t =
   ; man : 'a
   }
 
+let to_dyn f { lib_root; libexec_root; bin; sbin; share_root; etc_root; doc_root; man } =
+  let open Dyn in
+  record
+    [ "lib_root", f lib_root
+    ; "libexec_root", f libexec_root
+    ; "bin", f bin
+    ; "sbin", f sbin
+    ; "share_root", f share_root
+    ; "etc_root", f etc_root
+    ; "doc_root", f doc_root
+    ; "man", f man
+    ]
+;;
+
 let make prefix ~relative =
   let lib_root = relative prefix "lib" in
   { lib_root

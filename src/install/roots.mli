@@ -11,6 +11,8 @@ type 'a t =
   ; man : 'a
   }
 
+val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
+
 (** Compute the opam layout from prefix. the opam layout is used for _build *)
 val opam_from_prefix : 'a -> relative:('a -> string -> 'a) -> 'a t
 

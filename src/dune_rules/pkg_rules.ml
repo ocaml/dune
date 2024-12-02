@@ -1958,6 +1958,25 @@ let gen_rules context_name (pkg : Pkg.t) =
 
 module Gen_rules = Build_config.Gen_rules
 
+let pkg_alias_disabled =
+  Action_builder.fail
+    { fail =
+        (fun () ->
+          let error =
+            [ Pp.text "The @pkg-install alias cannot be used without a lock dir" ]
+          in
+          let hints =
+            [ Pp.concat
+                ~sep:Pp.space
+                [ Pp.text "You might want to create the lock dir with"
+                ; User_message.command "dune pkg lock"
+                ]
+            ]
+          in
+          User_error.raise ~hints error)
+    }
+;;
+
 let setup_pkg_install_alias =
   let build_packages_of_context ctx_name =
     (* Fetching the package target implies that we will also fetch the extra
@@ -1981,21 +2000,15 @@ let setup_pkg_install_alias =
       with
       | false -> Memo.return Rules.empty
       | true ->
-        Lock_dir.lock_dir_active ctx_name
-        >>= (function
-         | false ->
-           let error =
-             [ Pp.text "The @pkg-install alias can't be used without a lock dir" ]
-           in
-           let hints =
-             [ Pp.text "You might want to create the lock dir with dune pkg lock" ]
-           in
-           User_error.raise ~hints error
-         | true ->
-           Rules.collect_unit (fun () ->
-             let alias = Alias.make ~dir Alias0.pkg_install in
-             let deps = build_packages_of_context ctx_name in
-             Rules.Produce.Alias.add_deps alias deps))
+        let* active = Lock_dir.lock_dir_active ctx_name in
+        let alias = Alias.make ~dir Alias0.pkg_install in
+        Rules.collect_unit (fun () ->
+          let deps =
+            match active with
+            | true -> build_packages_of_context ctx_name
+            | false -> pkg_alias_disabled
+          in
+          Rules.Produce.Alias.add_deps alias deps)
     in
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here

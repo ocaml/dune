@@ -3,6 +3,22 @@ without building the project itself.
 
   $ . ./helpers.sh
 
+Create a project using the fake library as a dependency:
+  $ cat > dune-project << EOF
+  > (lang dune 3.16)
+  > (package
+  >  (name bar)
+  >  (allow_empty)
+  >  (depends foo))
+  > EOF
+
+Ensure the alias is not available outside of the package manamgent context:
+  $ dune build @pkg-install
+  Error: The @pkg-install alias cannot be used without a lock dir
+  -> required by alias pkg-install
+  Hint: You might want to create the lock dir with 'dune pkg lock'
+  [1]
+
 Create a fake package which echoes information to stdout when build:
   $ make_lockdir
   $ cat > dune.lock/foo.pkg << EOF
@@ -11,15 +27,6 @@ Create a fake package which echoes information to stdout when build:
   >  (run echo "Build package foo"))
   > (install
   >  (run echo "Install package foo"))
-  > EOF
-
-Create a project using the fake library as a dependency:
-  $ cat > dune-project << EOF
-  > (lang dune 3.16)
-  > (package
-  >  (name bar)
-  >  (allow_empty)
-  >  (depends foo))
   > EOF
 
 Create a rule to show that this rule is not called with `@pkg-install` as `bar`

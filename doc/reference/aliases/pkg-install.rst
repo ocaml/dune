@@ -18,6 +18,6 @@ downloaded, ``dune build`` will **also** take care of getting and building them.
     change less regularly.
 
 If you are building the ``@pkg-install`` alias in a repository where package
-management is not activated, the command has no effect.
+management is not activated, the command will fail.
 
 .. seealso:: :doc:`/explanation/package-management`

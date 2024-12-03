@@ -43,7 +43,7 @@ This should work without issue, as we never reference the ambiguous reference:
   Solution for dune.lock:
   - foo.dev
 
-If we use the duplicate reference in the condig
+If we use the duplicate reference in the config
 
   $ cat >dune-project <<EOF
   > (lang dune 3.13)
@@ -73,6 +73,8 @@ In this case Dune can't determine which reference to use and will error out:
   Error: Reference "duplicated" in remote
   "file://$PWD/_repo"
   is ambiguous
+  Hint: If you want to specify a tag use refs/tags/duplicated
+  Hint: If you want to specify a branch use refs/branches/duplicated
 
 Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags/`.
 
@@ -88,8 +90,9 @@ Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags
 
 Locking should work, as there are no ambiguous references.
 
-  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
-  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/tags/duplicated^{commit} 
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev
 
 For branches the namespace is `refs/heads/`:
 
@@ -105,5 +108,6 @@ For branches the namespace is `refs/heads/`:
 
 Likewise locking a branch this way should work as well:
 
-  $ dune pkg lock 2>&1 | tr '\n' ' ' | sed 's#/.*/git #git #'
-  Error: Command returned nothing: cd git rev-parse --verify --quiet refs/heads/duplicated^{commit} 
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev

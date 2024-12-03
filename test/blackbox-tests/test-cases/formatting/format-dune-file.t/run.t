@@ -232,3 +232,21 @@ Version check.
   Error: 'format-dune-file' is only available since version 3.18 of the dune
   language. Please update your dune-project file to have (lang dune 3.18).
   [1]
+
+Behaviour when the dune file is not syntactically valid.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to file (echo "xxx yyy (")))
+  > (rule (format-dune-file file file.formatted))
+  > EOF
+
+  $ dune build file.formatted
+  File "_build/default/file", line 1, characters 9-9:
+  1 | xxx yyy (
+               
+  Error: unclosed parenthesis at end of input
+  [1]

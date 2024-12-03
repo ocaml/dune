@@ -1,4 +1,5 @@
 open Import
+open Dune_sexp.Decoder
 
 (* CR-someday amokhov: We probably want to add a new variant [Dir] to provide
    first-class support for depending on directory targets. *)
@@ -27,6 +28,26 @@ module T = struct
   let alias a = Alias a
   let universe = Universe
   let file_selector g = File_selector g
+
+  let decode dir =
+    let s = string in
+    sum
+      [ ("env", s >>| fun x -> Env x)
+      ; ("file", s >>| fun x -> File (Path.relative dir x))
+      ; ( "alias"
+        , s
+          >>| fun name ->
+          let alias = Alias.of_user_written_path ~loc:Loc.none (Path.relative dir name) in
+          Alias alias )
+      ; ( "file_selector"
+        , Predicate_lang.Glob.decode
+          >>| fun glob ->
+          let dir = dir in
+          let file_selector = File_selector.of_predicate_lang ~dir glob in
+          File_selector file_selector )
+      ; "universe", return Universe
+      ]
+  ;;
 
   let compare x y =
     match x, y with

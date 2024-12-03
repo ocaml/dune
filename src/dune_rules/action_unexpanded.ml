@@ -569,6 +569,9 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false
+  | Needed_deps xs ->
+    let+ xs = A.all (List.map ~f:E.dep xs) in
+    O.Needed_deps xs
 ;;
 
 let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =

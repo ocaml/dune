@@ -33,7 +33,8 @@
   dune_file_watcher
   dune_filesystem_stubs
   dune_digest
-  dune_metrics)
+  dune_metrics
+  dune_lang)
  (synopsis "Internal Dune library, do not use!")
  (instrumentation
   (backend bisect_ppx)))

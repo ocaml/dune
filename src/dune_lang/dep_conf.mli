@@ -42,6 +42,7 @@ type t =
      (e.g. absolute path of cwd) and you want to allow it) *)
   | Sandbox_config of Sandbox_config.t
   | Include of string
+  | Order_only of t list
 
 val remove_locs : t -> t
 

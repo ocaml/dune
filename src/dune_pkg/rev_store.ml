@@ -32,8 +32,7 @@ module Remote = struct
   type nonrec t =
     { url : string
     ; default_branch : Object.resolved option Fiber.t
-    ; branches : Object.resolved String.Map.t Fiber.t
-    ; tags : Object.resolved String.Map.t Fiber.t
+    ; refs : Object.resolved String.Map.t Fiber.t
     }
 
   let default_branch t = t.default_branch
@@ -733,24 +732,8 @@ end
 let remote =
   let hash = Re.(rep1 alnum) in
   let head_mark, head = Re.mark (Re.str "HEAD") in
-  let re =
-    Re.(
-      compile
-      @@ seq
-           [ bol
-           ; group hash
-           ; rep1 space
-           ; alt
-               [ head
-               ; seq
-                   [ str "refs/"
-                   ; group (alt [ str "heads"; str "tags" ])
-                   ; str "/"
-                   ; group (rep1 any)
-                   ]
-               ]
-           ])
-  in
+  let ref = Re.(group (seq [ str "refs/"; rep1 any ])) in
+  let re = Re.(compile @@ seq [ bol; group hash; rep1 space; alt [ head; ref ] ]) in
   fun t ~url:(url_loc, url) ->
     let f url =
       let command = [ "ls-remote"; url ] in
@@ -776,37 +759,24 @@ let remote =
                    ]
                | _ -> Git_error.raise_code_error git_error)
           in
-          let default_branch, branches, tags =
-            List.fold_left
-              hits
-              ~init:(None, [], [])
-              ~f:(fun (default_branch, branches, tags) line ->
-                match Re.exec_opt re line with
-                | None -> default_branch, branches, tags
-                | Some group ->
-                  let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
-                  if Re.Mark.test group head_mark
-                  then Some hash, branches, tags
-                  else (
-                    let name = Re.Group.get group 3 in
-                    let entry = name, hash in
-                    match Re.Group.get group 2 with
-                    | "heads" -> default_branch, entry :: branches, tags
-                    | "tags" -> default_branch, branches, entry :: tags
-                    | type_ ->
-                      Code_error.raise
-                        "ls-remote matched unexpected type of ref"
-                        [ "ref", Dyn.string name
-                        ; "hash", Object.to_dyn hash
-                        ; "type", Dyn.string type_
-                        ]))
+          let default_branch, refs =
+            List.fold_left hits ~init:(None, []) ~f:(fun (default_branch, refs) line ->
+              match Re.exec_opt re line with
+              | None -> default_branch, refs
+              | Some group ->
+                let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
+                if Re.Mark.test group head_mark
+                then Some hash, refs
+                else (
+                  let name = Re.Group.get group 2 in
+                  let entry = name, hash in
+                  default_branch, entry :: refs))
           in
-          default_branch, String.Map.of_list_exn branches, String.Map.of_list_exn tags)
+          default_branch, String.Map.of_list_exn refs)
       in
       { Remote.url
-      ; default_branch = (Fiber_lazy.force refs >>| fun (v, _, _) -> v)
-      ; branches = (Fiber_lazy.force refs >>| fun (_, v, _) -> v)
-      ; tags = (Fiber_lazy.force refs >>| fun (_, _, v) -> v)
+      ; default_branch = Fiber_lazy.force refs >>| fst
+      ; refs = Fiber_lazy.force refs >>| snd
       }
     in
     Table.find_or_add t.remotes ~f url
@@ -818,19 +788,31 @@ let fetch_resolved t (remote : Remote.t) revision =
 ;;
 
 let resolve_revision t (remote : Remote.t) ~revision =
-  let* branches = remote.branches in
-  let* tags = remote.tags in
+  let* refs = remote.refs in
   let obj =
-    match String.Map.find branches revision, String.Map.find tags revision with
-    | (Some _ as obj), None -> obj
-    | None, (Some _ as obj) -> obj
-    | None, None -> None
-    | Some branch_obj, Some tag_obj ->
-      (match Object.equal branch_obj tag_obj with
-       | true -> Some branch_obj
-       | false ->
-         User_error.raise
-           [ Pp.textf "Reference %S in remote %S is ambiguous" revision remote.url ])
+    match String.Map.find refs revision with
+    | Some _ as obj -> obj
+    | None ->
+      (* revision was not found as-is, try formatting as branch/tag *)
+      let lookup_in format = String.Map.find refs (sprintf format revision) in
+      let as_branch = lookup_in "refs/heads/%s" in
+      let as_tag = lookup_in "refs/tags/%s" in
+      (match as_branch, as_tag with
+       | (Some _ as obj), None -> obj
+       | None, (Some _ as obj) -> obj
+       | None, None -> None
+       | Some branch_obj, Some tag_obj ->
+         (match Object.equal branch_obj tag_obj with
+          | true -> Some branch_obj
+          | false ->
+            let hints =
+              [ Pp.textf "If you want to specify a tag use refs/tags/%s" revision
+              ; Pp.textf "If you want to specify a branch use refs/branches/%s" revision
+              ]
+            in
+            User_error.raise
+              ~hints
+              [ Pp.textf "Reference %S in remote %S is ambiguous" revision remote.url ]))
   in
   match obj with
   | Some obj as s ->

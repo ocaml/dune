@@ -490,7 +490,9 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
           Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc rule)))
   in
   Memo.when_
-    (Dynlink_supported.By_the_os.get natdynlink_supported && modes.ocaml.native)
+    (Lib_info.dynlink_supported lib_info
+     && Dynlink_supported.By_the_os.get natdynlink_supported
+     && modes.ocaml.native)
     (fun () -> build_shared ~native_archives ~sctx lib ~dir ~flags)
 ;;
 

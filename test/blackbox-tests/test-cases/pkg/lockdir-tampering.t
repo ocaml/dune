@@ -25,14 +25,7 @@ Define some local packages.
   > (package (name foo) (depends a (b (>= 0.0.2))))
   > (package (name bar) (depends foo c))
   > EOF
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.11)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
 Without a lockdir this command prints a hint but exits successfully.
   $ dune pkg validate-lockdir

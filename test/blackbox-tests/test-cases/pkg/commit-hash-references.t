@@ -17,17 +17,7 @@ What happens if a branch has the same format as a ref?
 
 Use this ref in a project
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "git+file://$PWD/mock-opam-repository#$AMBIGUOUS_REF"))
-  > (context
-  >  (default
-  >   (name default)))
-  > EOF
+  $ add_mock_repo_if_needed "git+file://$PWD/mock-opam-repository#$AMBIGUOUS_REF"
 
 Depend on foo from the repo
 
@@ -41,5 +31,5 @@ Depend on foo from the repo
 
 Which foo will we get?
 
-  $ dune pkg lock 2>&1 | head -1 | sed "s/$AMBIGUOUS_REF/AMBIGUOUS_REF/g"
-  revision "AMBIGUOUS_REF" not found in
+  $ dune pkg lock 2>&1 | head -1 | sed "s/$AMBIGUOUS_REF/\$AMBIGUOUS_REF/g"
+  revision "$AMBIGUOUS_REF" not found in

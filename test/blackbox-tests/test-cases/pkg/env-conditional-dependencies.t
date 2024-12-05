@@ -51,7 +51,7 @@ Create a workspace config that defines separate build contexts for macos and lin
   >   (lock_dir dune.macos.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Now the os-specific dependencies are included on their respective systems.

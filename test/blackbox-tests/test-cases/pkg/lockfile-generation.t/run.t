@@ -34,7 +34,7 @@ Generate a `dune-project` file.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Run the solver and generate a lock directory.

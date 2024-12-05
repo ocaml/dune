@@ -22,9 +22,11 @@ Set up two build contexts: a default one for linux and another for macos.
   >   (lock_dir dune.macos.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
+
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
+
   $ solve_project() {
   >   cat >dune-project
   >   dune pkg lock dune.lock

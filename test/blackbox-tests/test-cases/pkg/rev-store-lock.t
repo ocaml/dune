@@ -20,7 +20,7 @@ We set this repository as sole source for opam repositories.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (context
   >  (default
   >   (name default)

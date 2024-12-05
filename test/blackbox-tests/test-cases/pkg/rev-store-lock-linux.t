@@ -16,7 +16,7 @@ Thus we first create a repo:
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (lock_dir
   >  (repositories mock))
   > (context

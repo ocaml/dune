@@ -9,7 +9,7 @@ Create a lock directory that didn't originally exist
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
   $ dune pkg lock "dev/dune.lock"
   Solution for dev/dune.lock:

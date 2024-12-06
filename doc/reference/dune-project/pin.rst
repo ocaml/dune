@@ -39,5 +39,5 @@ package repositories selected.
 
          The version that the package should be assumed to be.
 
-.. seealso:: :doc:`</reference/dune-workspace/pin> stanza in dune-workspace` for
+.. seealso:: :doc:`pin stanza in dune-workspace </reference/dune-workspace/pin>` for
    workspace-wide pinning.

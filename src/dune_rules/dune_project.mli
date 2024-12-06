@@ -136,7 +136,7 @@ val strict_package_deps : t -> bool
 val cram : t -> bool
 val info : t -> Package_info.t
 val warnings : t -> Warning.Settings.t
-val sources : t -> Dune_pkg.Pin_stanza.DB.t
+val pins : t -> Dune_pkg.Pin_stanza.DB.t
 
 (** Update the execution parameters according to what is written in the
     [dune-project] file. *)

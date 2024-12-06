@@ -52,24 +52,24 @@ module Progress_indicator = struct
   let add_overlay (t : t) = Console.Status_line.add_overlay (Live (fun () -> pp t))
 end
 
-let resolve_project_sources sources =
+let resolve_project_pins project_pins =
   let scan_project ~read ~files =
     let read file = Memo.of_reproducible_fiber (read file) in
     let open Memo.O in
     Dune_project.gen_load ~read ~files ~dir:Path.Source.root ~infer_from_opam_files:false
     >>| Option.map ~f:(fun project ->
-      let sources = Dune_project.sources project in
+      let pins = Dune_project.pins project in
       let packages = Dune_project.packages project in
-      sources, packages)
+      pins, packages)
     |> Memo.run
   in
-  Pin_stanza.resolve sources ~scan_project
+  Pin_stanza.resolve project_pins ~scan_project
 ;;
 
 let solve_lock_dir
   workspace
   ~local_packages
-  ~project_sources
+  ~project_pins
   version_preference
   solver_env_from_current_system
   lock_dir_path
@@ -77,14 +77,14 @@ let solve_lock_dir
   =
   let open Fiber.O in
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
-  let project_sources =
+  let project_pins =
     match lock_dir with
-    | None -> project_sources
+    | None -> project_pins
     | Some lock_dir ->
       let workspace =
-        Pin_stanza.DB.Workspace.extract workspace.sources ~names:lock_dir.pins
+        Pin_stanza.DB.Workspace.extract workspace.pins ~names:lock_dir.pins
       in
-      Pin_stanza.DB.combine_exn workspace project_sources
+      Pin_stanza.DB.combine_exn workspace project_pins
   in
   let solver_env =
     solver_env
@@ -104,7 +104,7 @@ let solve_lock_dir
     := Some (Progress_indicator.Per_lockdir.State.Updating_repos repo_names);
     get_repos repo_map ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
-  let* pins = resolve_project_sources project_sources in
+  let* pins = resolve_project_pins project_pins in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   Dune_pkg.Opam_solver.solve_lock_dir
     solver_env
@@ -141,7 +141,7 @@ let solve_lock_dir
 let solve
   workspace
   ~local_packages
-  ~project_sources
+  ~project_pins
   ~solver_env_from_current_system
   ~version_preference
   ~lock_dirs
@@ -165,7 +165,7 @@ let solve
              solve_lock_dir
                workspace
                ~local_packages
-               ~project_sources
+               ~project_pins
                version_preference
                solver_env_from_current_system
                lockdir_path
@@ -191,11 +191,11 @@ let solve
     List.iter write_disk_list ~f:Lock_dir.Write_disk.commit
 ;;
 
-let project_sources =
+let project_pins =
   let open Memo.O in
   Dune_rules.Dune_load.projects ()
   >>| List.fold_left ~init:Pin_stanza.DB.empty ~f:(fun acc project ->
-    Pin_stanza.DB.combine_exn acc (Dune_project.sources project))
+    Pin_stanza.DB.combine_exn acc (Dune_project.pins project))
 ;;
 
 let lock ~version_preference ~lock_dirs_arg =
@@ -204,14 +204,14 @@ let lock ~version_preference ~lock_dirs_arg =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
     |> Dune_pkg.Sys_poll.solver_env_from_current_system
     >>| Option.some
-  and* workspace, local_packages, project_sources =
+  and* workspace, local_packages, project_pins =
     Memo.run
     @@
     let open Memo.O in
     let+ workspace = Workspace.workspace ()
     and+ local_packages = find_local_packages
-    and+ project_sources = project_sources in
-    workspace, local_packages, project_sources
+    and+ project_pins = project_pins in
+    workspace, local_packages, project_pins
   in
   let lock_dirs =
     Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs_arg workspace
@@ -219,7 +219,7 @@ let lock ~version_preference ~lock_dirs_arg =
   solve
     workspace
     ~local_packages
-    ~project_sources
+    ~project_pins
     ~solver_env_from_current_system
     ~version_preference
     ~lock_dirs

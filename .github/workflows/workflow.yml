@@ -254,8 +254,7 @@ jobs:
       - name: Checkout Wasm_of_ocaml
         uses: actions/checkout@v4
         with:
-          repository: ocaml-wasm/wasm_of_ocaml
-          ref: wasm-dune
+          repository: ocsigen/js_of_ocaml
           path: wasm_of_ocaml
 
       - name: Install Wasm_of_ocaml

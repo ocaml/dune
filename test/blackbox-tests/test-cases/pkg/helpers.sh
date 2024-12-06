@@ -44,6 +44,9 @@ mkpkg() {
 }
 
 add_mock_repo_if_needed() {
+  # default, but can be overridden, e.g. if git is required
+  repo="${1:-file://$(pwd)/mock-opam-repository}"
+
   if [ ! -e dune-workspace ]
   then
       cat >dune-workspace <<EOF
@@ -52,7 +55,7 @@ add_mock_repo_if_needed() {
  (repositories mock))
 (repository
  (name mock)
- (url "file://$(pwd)/mock-opam-repository"))
+ (url "${repo}"))
 EOF
   else
     if ! grep '(name mock)' > /dev/null dune-workspace
@@ -61,7 +64,7 @@ EOF
       cat >>dune-workspace <<EOF
 (repository
  (name mock)
- (url "file://$(pwd)/mock-opam-repository"))
+ (url "${repo}"))
 EOF
  
       # reference the repo

@@ -78,37 +78,37 @@ let explicit_js_mode t = t.explicit_js_mode
 let dune_version t = t.dune_version
 
 let to_dyn
-  { name
-  ; root
-  ; version
-  ; dune_version
-  ; info
-  ; project_file
-  ; parsing_context = _
-  ; extension_args = _
-  ; stanza_parser = _
-  ; packages
-  ; implicit_transitive_deps
-  ; wrapped_executables
-  ; map_workspace_root
-  ; executables_implicit_empty_intf
-  ; accept_alternative_dune_file_name
-  ; generate_opam_files
-  ; warnings
-  ; use_standard_c_and_cxx_flags
-  ; file_key
-  ; dialects
-  ; explicit_js_mode
-  ; format_config
-  ; subst_config
-  ; strict_package_deps
-  ; allow_approximate_merlin
-  ; sources = _
-  ; cram
-  ; expand_aliases_in_sandbox
-  ; opam_file_location
-  ; including_hidden_packages = _
-  }
+      { name
+      ; root
+      ; version
+      ; dune_version
+      ; info
+      ; project_file
+      ; parsing_context = _
+      ; extension_args = _
+      ; stanza_parser = _
+      ; packages
+      ; implicit_transitive_deps
+      ; wrapped_executables
+      ; map_workspace_root
+      ; executables_implicit_empty_intf
+      ; accept_alternative_dune_file_name
+      ; generate_opam_files
+      ; warnings
+      ; use_standard_c_and_cxx_flags
+      ; file_key
+      ; dialects
+      ; explicit_js_mode
+      ; format_config
+      ; subst_config
+      ; strict_package_deps
+      ; allow_approximate_merlin
+      ; sources = _
+      ; cram
+      ; expand_aliases_in_sandbox
+      ; opam_file_location
+      ; including_hidden_packages = _
+      }
   =
   let open Dyn in
   record
@@ -534,11 +534,12 @@ let encode : t -> Dune_lang.t list =
       ; (match use_standard_c_and_cxx_flags with
          | None -> None
          | Some b ->
-           if not
-                (Option.equal
-                   Bool.equal
-                   (Some b)
-                   (use_standard_c_and_cxx_flags_default ~lang))
+           if
+             not
+               (Option.equal
+                  Bool.equal
+                  (Some b)
+                  (use_standard_c_and_cxx_flags_default ~lang))
            then Some (constr "use_standard_c_and_cxx_flags" bool b)
            else None)
       ; (if Bool.equal cram (cram_default ~lang)
@@ -639,12 +640,12 @@ let filter_packages t ~f =
 let including_hidden_packages t = t.including_hidden_packages
 
 let make_packages
-  ~opam_packages
-  ~dir
-  ~generate_opam_files
-  ~opam_file_location
-  packages
-  name
+      ~opam_packages
+      ~dir
+      ~generate_opam_files
+      ~opam_file_location
+      packages
+      name
   =
   (match packages, Option.bind ~f:Dune_project_name.name name with
    | [ p ], Some name ->
@@ -727,14 +728,14 @@ let make_packages
 ;;
 
 let parse_packages
-  name
-  ~info
-  ~dir
-  ~version
-  packages
-  opam_file_location
-  ~generate_opam_files
-  opam_packages
+      name
+      ~info
+      ~dir
+      ~version
+      packages
+      opam_file_location
+      ~generate_opam_files
+      opam_packages
   =
   forbid_opam_files_relative_to_project opam_file_location opam_packages;
   let open Memo.O in

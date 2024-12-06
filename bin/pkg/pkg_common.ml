@@ -5,9 +5,9 @@ module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
 let solver_env
-  ~solver_env_from_current_system
-  ~solver_env_from_context
-  ~unset_solver_vars_from_context
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context
   =
   let solver_env =
     [ solver_env_from_current_system; solver_env_from_context ]

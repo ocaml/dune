@@ -290,9 +290,10 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       assigned := Package_name.Map.add_exn !assigned package.name (package, stack);
       `Continue
     | Some (assigned, prefix) ->
-      if Stack.is_prefix stack ~prefix
-         || (OpamUrl.equal (snd assigned.url) (snd package.url)
-             && Package_version.equal package.version assigned.version)
+      if
+        Stack.is_prefix stack ~prefix
+        || (OpamUrl.equal (snd assigned.url) (snd package.url)
+            && Package_version.equal package.version assigned.version)
       then `Skip
       else
         (* CR-rgrinberg: we need to cancel all the other fibers *)

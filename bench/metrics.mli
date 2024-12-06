@@ -6,41 +6,41 @@ open Stdune
     [unzip] functions which make serialisation easier. *)
 type ('float, 'int) t =
   { elapsed_time : 'float
-  (** Real time elapsed since the process started and the process
+    (** Real time elapsed since the process started and the process
       finished. *)
   ; user_cpu_time : 'float
-  (** The amount of CPU time spent in user mode during the process. Other
+    (** The amount of CPU time spent in user mode during the process. Other
       processes and blocked time are not included. *)
   ; system_cpu_time : 'float
-  (** The amount of CPU time spent in kernel mode during the process.
+    (** The amount of CPU time spent in kernel mode during the process.
       Similar to user time, other processes and time spent blocked by
       other processes are not counted. *)
   ; minor_words : 'float
-  (** Number of words allocated in the minor heap since the program was
+    (** Number of words allocated in the minor heap since the program was
       started. *)
   ; promoted_words : 'float
-  (** Number of words that have been promoted from the minor to the major
+    (** Number of words that have been promoted from the minor to the major
       heap since the program was started. *)
   ; major_words : 'float
-  (** Number of words allocated in the major heap since the program was
+    (** Number of words allocated in the major heap since the program was
       started. *)
   ; minor_collections : 'int
-  (** Number of minor collections since the program was started. *)
+    (** Number of minor collections since the program was started. *)
   ; major_collections : 'int
-  (** Number of major collection cycles completed since the program was
+    (** Number of major collection cycles completed since the program was
       started. *)
   ; heap_words : 'int (** Total size of the major heap, in words. *)
   ; heap_chunks : 'int
-  (** Number of contiguous pieces of memory that make up the major heap. *)
+    (** Number of contiguous pieces of memory that make up the major heap. *)
   ; live_words : 'int
-  (** Number of words of live data in the major heap, including the header
+    (** Number of words of live data in the major heap, including the header
       words. *)
   ; live_blocks : 'int (** Number of live blocks in the major heap. *)
   ; free_words : 'int (** Number of words in the free list. *)
   ; free_blocks : 'int (** Number of blocks in the free list. *)
   ; largest_free : 'int (** Size (in words) of the largest block in the free list. *)
   ; fragments : 'int
-  (** Number of wasted words due to fragmentation. These are 1-words free
+    (** Number of wasted words due to fragmentation. These are 1-words free
       blocks placed between two live blocks. They are not available for
       allocation. *)
   ; compactions : 'int (** Number of heap compactions since the program was started. *)

@@ -118,12 +118,12 @@ let format_action format ~ocamlformat_is_locked ~input ~output ~expander kind =
 ;;
 
 let gen_rules_output
-  sctx
-  (config : Format_config.t)
-  ~version
-  ~dialects
-  ~expander
-  ~output_dir
+      sctx
+      (config : Format_config.t)
+      ~version
+      ~dialects
+      ~expander
+      ~output_dir
   =
   assert (formatted_dir_basename = Path.Build.basename output_dir);
   let loc = Format_config.loc config in

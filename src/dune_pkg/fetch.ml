@@ -188,8 +188,8 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
 let fetch_git rev_store ~target ~url:(url_loc, url) =
   OpamUrl.resolve url ~loc:url_loc rev_store
   >>= (function
-         | Error _ as e -> Fiber.return e
-         | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
+   | Error _ as e -> Fiber.return e
+   | Ok r -> OpamUrl.fetch_revision url ~loc:url_loc r rev_store)
   >>= function
   | Error msg -> Fiber.return @@ Error (Unavailable (Some msg))
   | Ok at_rev ->
@@ -240,18 +240,18 @@ let fetch ~unpack ~checksum ~target ~url:(url_loc, url) =
       Dune_stats.finish event;
       Fiber.return ())
     (fun () ->
-      match url.backend with
-      | `git ->
-        let* rev_store = Rev_store.get in
-        fetch_git rev_store ~target ~url:(url_loc, url)
-      | `http -> fetch_curl ~unpack ~checksum ~target url
-      | `rsync ->
-        if not unpack
-        then
-          Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
-        fetch_local ~checksum ~target (url, url_loc)
-      | `hg -> unsupported_backend "mercurial"
-      | `darcs -> unsupported_backend "darcs")
+       match url.backend with
+       | `git ->
+         let* rev_store = Rev_store.get in
+         fetch_git rev_store ~target ~url:(url_loc, url)
+       | `http -> fetch_curl ~unpack ~checksum ~target url
+       | `rsync ->
+         if not unpack
+         then
+           Code_error.raise "fetch_local: unpack is not set" [ "url", OpamUrl.to_dyn url ];
+         fetch_local ~checksum ~target (url, url_loc)
+       | `hg -> unsupported_backend "mercurial"
+       | `darcs -> unsupported_backend "darcs")
 ;;
 
 let fetch_without_checksum ~unpack ~target ~url =

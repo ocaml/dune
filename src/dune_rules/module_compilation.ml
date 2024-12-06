@@ -39,13 +39,13 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
     (Module.visibility m <> Visibility.Private
      && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
-      let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
-      Super_context.add_rule
-        sctx
-        ~dir
-        (Action_builder.symlink
-           ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
-           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
+       let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+       Super_context.add_rule
+         sctx
+         ~dir
+         (Action_builder.symlink
+            ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
+            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 ;;
 
 let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) module_ =
@@ -84,12 +84,12 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
 ;;
 
 let build_cm
-  cctx
-  ~force_write_cmi
-  ~precompiled_cmi
-  ~cm_kind
-  (m : Module.t)
-  ~(phase : Fdo.phase option)
+      cctx
+      ~force_write_cmi
+      ~precompiled_cmi
+      ~cm_kind
+      (m : Module.t)
+      ~(phase : Fdo.phase option)
   =
   if force_write_cmi && precompiled_cmi
   then Code_error.raise "force_read_cmi and precompiled_cmi are mutually exclusive" [];

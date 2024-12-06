@@ -129,24 +129,24 @@ let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
 let create
-  ~super_context
-  ~scope
-  ~obj_dir
-  ~modules
-  ~flags
-  ~requires_compile
-  ~requires_link
-  ?(preprocessing = Pp_spec.dummy)
-  ~opaque
-  ?stdlib
-  ~js_of_ocaml
-  ~package
-  ~melange_package_name
-  ?vimpl
-  ?modes
-  ?bin_annot
-  ?loc
-  ()
+      ~super_context
+      ~scope
+      ~obj_dir
+      ~modules
+      ~flags
+      ~requires_compile
+      ~requires_link
+      ?(preprocessing = Pp_spec.dummy)
+      ~opaque
+      ?stdlib
+      ~js_of_ocaml
+      ~package
+      ~melange_package_name
+      ?vimpl
+      ?modes
+      ?bin_annot
+      ?loc
+      ()
   =
   let project = Scope.project scope in
   let context = Super_context.context super_context in
@@ -154,8 +154,9 @@ let create
   let direct_requires, hidden_requires =
     if Dune_project.implicit_transitive_deps project
     then Memo.Lazy.force requires_link, Resolve.Memo.return []
-    else if Version.supports_hidden_includes ocaml.version
-            && Dune_project.dune_version project >= (3, 17)
+    else if
+      Version.supports_hidden_includes ocaml.version
+      && Dune_project.dune_version project >= (3, 17)
     then (
       let requires_hidden =
         let open Resolve.Memo.O in

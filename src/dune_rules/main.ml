@@ -46,11 +46,11 @@ let execution_parameters =
 ;;
 
 let init
-  ~stats
-  ~sandboxing_preference
-  ~cache_config
-  ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
-  ()
+      ~stats
+      ~sandboxing_preference
+      ~cache_config
+      ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
+      ()
   : unit
   =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =

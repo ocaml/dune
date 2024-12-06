@@ -214,13 +214,13 @@ module Pkg = struct
   ;;
 
   let encode
-    { build_command
-    ; install_command
-    ; depends
-    ; depexts
-    ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
-    ; exported_env
-    }
+        { build_command
+        ; install_command
+        ; depends
+        ; depexts
+        ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
+        ; exported_env
+        }
     =
     let open Encoder in
     record_fields
@@ -303,8 +303,14 @@ let remove_locs t =
 ;;
 
 let equal
-  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
-  t
+      { version
+      ; dependency_hash
+      ; packages
+      ; ocaml
+      ; repos
+      ; expanded_solver_variable_bindings
+      }
+      t
   =
   Syntax.Version.equal version t.version
   && Option.equal
@@ -320,7 +326,13 @@ let equal
 ;;
 
 let to_dyn
-  { version; dependency_hash; packages; ocaml; repos; expanded_solver_variable_bindings }
+      { version
+      ; dependency_hash
+      ; packages
+      ; ocaml
+      ; repos
+      ; expanded_solver_variable_bindings
+      }
   =
   Dyn.record
     [ "version", Syntax.Version.to_dyn version
@@ -353,8 +365,9 @@ let validate_packages packages =
       List.filter_map dependant_package.depends ~f:(fun (loc, dependency) ->
         (* CR-someday rgrinberg: do we need the dune check? aren't
            we supposed to filter these upfront? *)
-        if Package_name.Map.mem packages dependency
-           || Package_name.equal dependency Dune_dep.name
+        if
+          Package_name.Map.mem packages dependency
+          || Package_name.equal dependency Dune_dep.name
         then None
         else Some { dependant_package; dependency; loc }))
   in
@@ -364,11 +377,11 @@ let validate_packages packages =
 ;;
 
 let create_latest_version
-  packages
-  ~local_packages
-  ~ocaml
-  ~repos
-  ~expanded_solver_variable_bindings
+      packages
+      ~local_packages
+      ~ocaml
+      ~repos
+      ~expanded_solver_variable_bindings
   =
   (match validate_packages packages with
    | Ok () -> ()
@@ -420,13 +433,13 @@ module Metadata = Dune_sexp.Versioned_file.Make (Unit)
 let () = Metadata.Lang.register Dune_lang.Pkg.syntax ()
 
 let encode_metadata
-  { version
-  ; dependency_hash
-  ; ocaml
-  ; repos
-  ; packages = _
-  ; expanded_solver_variable_bindings
-  }
+      { version
+      ; dependency_hash
+      ; ocaml
+      ; repos
+      ; packages = _
+      ; expanded_solver_variable_bindings
+      }
   =
   let open Encoder in
   let base =
@@ -585,9 +598,9 @@ module Write_disk = struct
   type t = unit -> unit
 
   let prepare
-    ~lock_dir_path:lock_dir_path_src
-    ~(files : File_entry.t Package_name.Map.Multi.t)
-    lock_dir
+        ~lock_dir_path:lock_dir_path_src
+        ~(files : File_entry.t Package_name.Map.Multi.t)
+        lock_dir
     =
     let lock_dir_hidden_src =
       (* The original lockdir path with the lockdir renamed to begin with a ".". *)

@@ -86,10 +86,9 @@ module Make (Context : S.CONTEXT) = struct
   let virtual_role impls =
     let impls =
       impls
-      |> List.mapi (fun i ->
-           function
-           | VirtualImpl (_, x) -> VirtualImpl (i, x)
-           | x -> x)
+      |> List.mapi (fun i -> function
+        | VirtualImpl (_, x) -> VirtualImpl (i, x)
+        | x -> x)
     in
     Virtual (object end, impls)
   ;;

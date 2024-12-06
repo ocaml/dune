@@ -43,8 +43,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
           (Module.visibility src = Public
            && Obj_dir.need_dedicated_public_dir impl_obj_dir)
           (fun () ->
-            Memo.when_ (byte || native) (copy_interface_to_impl ~src (Ocaml Cmi))
-            >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
+             Memo.when_ (byte || native) (copy_interface_to_impl ~src (Ocaml Cmi))
+             >>> Memo.when_ melange (copy_interface_to_impl ~src (Melange Cmi)))
     >>> Memo.when_ (Module.has src ~ml_kind:Impl) (fun () ->
       Memo.when_ byte (fun () -> copy_obj_file src (Ocaml Cmo))
       >>> Memo.when_ melange (fun () ->

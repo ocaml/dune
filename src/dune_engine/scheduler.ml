@@ -88,8 +88,8 @@ end = struct
       (* On unix, we make sure to block signals globally before starting a
          thread so that only the signal watcher thread can receive signals. *)
       fun f x ->
-      Lazy.force block_signals;
-      Thread.create f x
+        Lazy.force block_signals;
+        Thread.create f x
   ;;
 
   let spawn f =
@@ -1227,11 +1227,11 @@ module Run = struct
   ;;
 
   let go
-    (config : Config.t)
-    ?timeout_seconds
-    ?(file_watcher = No_watcher)
-    ~(on_event : Config.t -> Handler.Event.t -> unit)
-    run
+        (config : Config.t)
+        ?timeout_seconds
+        ?(file_watcher = No_watcher)
+        ~(on_event : Config.t -> Handler.Event.t -> unit)
+        run
     =
     let events = Event_queue.create config.stats in
     let file_watcher =
@@ -1260,14 +1260,14 @@ module Run = struct
             let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) ~seconds:timeout in
             Fiber.fork_and_join_unit
               (fun () ->
-                let+ res = Alarm_clock.await sleep in
-                match res with
-                | `Finished -> Event_queue.send_shutdown t.events Timeout
-                | `Cancelled -> ())
+                 let+ res = Alarm_clock.await sleep in
+                 match res with
+                 | `Finished -> Event_queue.send_shutdown t.events Timeout
+                 | `Cancelled -> ())
               (fun () ->
-                Fiber.finalize run ~finally:(fun () ->
-                  Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-                  Fiber.return ()))
+                 Fiber.finalize run ~finally:(fun () ->
+                   Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+                   Fiber.return ()))
       in
       match Run_once.run_and_cleanup t run with
       | Ok a -> Result.Ok a
@@ -1318,16 +1318,16 @@ let wait_for_process_with_timeout t pid waiter ~timeout_seconds ~is_process_grou
     let sleep = Alarm_clock.sleep (Lazy.force t.alarm_clock) ~seconds:timeout_seconds in
     Fiber.fork_and_join_unit
       (fun () ->
-        let+ res = Alarm_clock.await sleep in
-        if res = `Finished && Process_watcher.is_running t.process_watcher pid
-        then
-          if is_process_group_leader
-          then kill_process_group pid Sys.sigkill
-          else Unix.kill (Pid.to_int pid) Sys.sigkill)
+         let+ res = Alarm_clock.await sleep in
+         if res = `Finished && Process_watcher.is_running t.process_watcher pid
+         then
+           if is_process_group_leader
+           then kill_process_group pid Sys.sigkill
+           else Unix.kill (Pid.to_int pid) Sys.sigkill)
       (fun () ->
-        let+ res = waiter t pid in
-        Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
-        res))
+         let+ res = waiter t pid in
+         Alarm_clock.cancel (Lazy.force t.alarm_clock) sleep;
+         res))
 ;;
 
 let wait_for_build_process ?timeout_seconds ?(is_process_group_leader = false) pid =

@@ -87,8 +87,8 @@ let all_non_local_dependencies_of_local_packages t =
 ;;
 
 let check_for_unnecessary_packges_in_lock_dir
-  lock_dir
-  all_non_local_dependencies_of_local_packages
+      lock_dir
+      all_non_local_dependencies_of_local_packages
   =
   let unneeded_packages_in_lock_dir =
     let locked_transitive_closure_of_local_package_dependencies =
@@ -198,9 +198,10 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
           (Package_name.to_string any_non_local_dependency_name)
       ]
   | Some (loc, lock_dir_dependency_hash), Some non_local_dependency_hash ->
-    if Local_package.Dependency_hash.equal
-         lock_dir_dependency_hash
-         non_local_dependency_hash
+    if
+      Local_package.Dependency_hash.equal
+        lock_dir_dependency_hash
+        non_local_dependency_hash
     then ()
     else
       User_error.raise

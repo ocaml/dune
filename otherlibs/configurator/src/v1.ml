@@ -696,9 +696,10 @@ module Pkg_config = struct
       match expr with
       | Some e -> e
       | None ->
-        if String.exists package ~f:(function
-             | '=' | '>' | '<' -> true
-             | _ -> false)
+        if
+          String.exists package ~f:(function
+            | '=' | '>' | '<' -> true
+            | _ -> false)
         then
           warn
             "Package name %S contains invalid characters. Use Pkg_config.query_expr to \

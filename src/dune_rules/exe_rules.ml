@@ -4,12 +4,12 @@ open Memo.O
 let first_exe (exes : Executables.t) = snd (Nonempty_list.hd exes.names)
 
 let linkages
-  ~dynamically_linked_foreign_archives
-  (ocaml : Ocaml_toolchain.t)
-  ~(exes : Executables.t)
-  ~explicit_js_mode
-  ~jsoo_enabled_modes
-  ~jsoo_is_whole_program
+      ~dynamically_linked_foreign_archives
+      (ocaml : Ocaml_toolchain.t)
+      ~(exes : Executables.t)
+      ~explicit_js_mode
+      ~jsoo_enabled_modes
+      ~jsoo_is_whole_program
   =
   let module L = Executables.Link_mode in
   let l =
@@ -58,9 +58,10 @@ let linkages
   in
   (* If bytecode was requested but not native or best version, add custom
      linking *)
-  if L.Map.mem exes.modes L.byte
-     && (not (L.Map.mem exes.modes L.native))
-     && not (L.Map.mem exes.modes L.exe)
+  if
+    L.Map.mem exes.modes L.byte
+    && (not (L.Map.mem exes.modes L.native))
+    && not (L.Map.mem exes.modes L.exe)
   then Exe.Linkage.custom ocaml.version :: l
   else l
 ;;
@@ -89,13 +90,13 @@ let programs ~modules ~(exes : Executables.t) =
 ;;
 
 let o_files
-  sctx
-  ~dir
-  ~expander
-  ~(exes : Executables.t)
-  ~linkages
-  ~dir_contents
-  ~requires_compile
+      sctx
+      ~dir
+      ~expander
+      ~(exes : Executables.t)
+      ~linkages
+      ~dir_contents
+      ~requires_compile
   =
   if not (Executables.has_foreign exes)
   then Memo.return @@ Mode.Map.empty
@@ -136,14 +137,14 @@ let o_files
 ;;
 
 let executables_rules
-  ~sctx
-  ~dir
-  ~expander
-  ~dir_contents
-  ~scope
-  ~compile_info
-  ~embed_in_plugin_libraries
-  (exes : Executables.t)
+      ~sctx
+      ~dir
+      ~expander
+      ~dir_contents
+      ~scope
+      ~compile_info
+      ~embed_in_plugin_libraries
+      (exes : Executables.t)
   =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)

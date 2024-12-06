@@ -187,8 +187,9 @@ let insert_odoc_dep depends =
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)
     | (dep : Package_dependency.t) :: rest ->
-      if Package.Name.equal dep.name odoc_name
-         && Option.forall ~f:already_requires_odoc dep.constraint_
+      if
+        Package.Name.equal dep.name odoc_name
+        && Option.forall ~f:already_requires_odoc dep.constraint_
       then (* Stop now as odoc will be required anyway *)
         List.rev_append (dep :: acc) rest
       else loop (dep :: acc) rest

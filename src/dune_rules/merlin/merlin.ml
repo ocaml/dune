@@ -64,16 +64,16 @@ module Processed = struct
     }
 
   let dyn_of_config
-    { stdlib_dir
-    ; source_root
-    ; obj_dirs
-    ; src_dirs
-    ; hidden_obj_dirs
-    ; hidden_src_dirs
-    ; flags
-    ; extensions
-    ; indexes
-    }
+        { stdlib_dir
+        ; source_root
+        ; obj_dirs
+        ; src_dirs
+        ; hidden_obj_dirs
+        ; hidden_src_dirs
+        ; flags
+        ; extensions
+        ; indexes
+        }
     =
     let open Dyn in
     record
@@ -178,20 +178,20 @@ module Processed = struct
   ;;
 
   let to_sexp
-    ~unit_name
-    ~opens
-    ~pp
-    ~reader
-    { stdlib_dir
-    ; source_root
-    ; obj_dirs
-    ; src_dirs
-    ; hidden_obj_dirs
-    ; hidden_src_dirs
-    ; flags
-    ; extensions
-    ; indexes
-    }
+        ~unit_name
+        ~opens
+        ~pp
+        ~reader
+        { stdlib_dir
+        ; source_root
+        ; obj_dirs
+        ; src_dirs
+        ; hidden_obj_dirs
+        ; hidden_src_dirs
+        ; flags
+        ; extensions
+        ; indexes
+        }
     =
     let make_directive tag value = Sexp.List [ Atom tag; value ] in
     let make_directive_of_path tag path =
@@ -280,16 +280,16 @@ module Processed = struct
   ;;
 
   let to_dot_merlin
-    stdlib_dir
-    source_root
-    pp_configs
-    flags
-    obj_dirs
-    src_dirs
-    hidden_obj_dirs
-    hidden_src_dirs
-    extensions
-    indexes
+        stdlib_dir
+        source_root
+        pp_configs
+        flags
+        obj_dirs
+        src_dirs
+        hidden_obj_dirs
+        hidden_src_dirs
+        extensions
+        indexes
     =
     let b = Buffer.create 256 in
     let printf = Printf.bprintf b in
@@ -482,17 +482,17 @@ module Unprocessed = struct
     }
 
   let make
-    ~requires_compile
-    ~requires_hidden
-    ~stdlib_dir
-    ~flags
-    ~preprocess
-    ~libname
-    ~modules
-    ~obj_dir
-    ~dialects
-    ~ident
-    ~modes
+        ~requires_compile
+        ~requires_hidden
+        ~stdlib_dir
+        ~flags
+        ~preprocess
+        ~libname
+        ~modules
+        ~obj_dir
+        ~dialects
+        ~ident
+        ~modes
     =
     (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
     let mode =
@@ -632,25 +632,25 @@ module Unprocessed = struct
   ;;
 
   let process
-    ({ modules
-     ; ident = _
-     ; config =
-         { stdlib_dir
-         ; extensions
-         ; readers
-         ; flags
-         ; objs_dirs
-         ; requires_compile
-         ; requires_hidden
-         ; preprocess = _
-         ; libname = _
-         ; mode
-         }
-     } as t)
-    sctx
-    ~dir
-    ~more_src_dirs
-    ~expander
+        ({ modules
+         ; ident = _
+         ; config =
+             { stdlib_dir
+             ; extensions
+             ; readers
+             ; flags
+             ; objs_dirs
+             ; requires_compile
+             ; requires_hidden
+             ; preprocess = _
+             ; libname = _
+             ; mode
+             }
+         } as t)
+        sctx
+        ~dir
+        ~more_src_dirs
+        ~expander
     =
     let open Action_builder.O in
     let+ config =

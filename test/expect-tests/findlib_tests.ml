@@ -15,10 +15,12 @@ open Dune_tests_common
 
 let () = init ()
 
-let foo_meta = {|
+let foo_meta =
+  {|
 requires = "bar"
 requires(ppx_driver) = "baz"
 |}
+;;
 
 let db_path : Path.Outside_build_dir.t =
   External (Path.External.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db")
@@ -113,7 +115,8 @@ let%expect_test "configurator" =
 
 let%expect_test "builtins" =
   print_pkg_archives "str";
-  [%expect {|
+  [%expect
+    {|
     Available { byte = []; native = [] } |}];
   print_pkg_archives "dynlink";
   [%expect

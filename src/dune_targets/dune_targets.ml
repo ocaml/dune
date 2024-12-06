@@ -330,9 +330,9 @@ module Produced = struct
   ;;
 
   let equal
-    { root = root1; files = files1; dirs = dirs1 }
-    { root = root2; files = files2; dirs = dirs2 }
-    ~equal
+        { root = root1; files = files1; dirs = dirs1 }
+        { root = root2; files = files2; dirs = dirs2 }
+        ~equal
     =
     Path.Build.equal root1 root2
     && Filename.Map.equal files1 files2 ~equal
@@ -368,12 +368,12 @@ module Produced = struct
     let+ files, dirs =
       Fiber.fork_and_join
         (fun () ->
-          Filename_traversal.parallel_map files ~f:(fun file ->
-            f (Path.Local.of_string file)))
+           Filename_traversal.parallel_map files ~f:(fun file ->
+             f (Path.Local.of_string file)))
         (fun () ->
-          Path_traversal.parallel_map dirs ~f:(fun dir files ->
-            Filename_traversal.parallel_map files ~f:(fun file payload ->
-              f (Path.Local.relative dir file) payload)))
+           Path_traversal.parallel_map dirs ~f:(fun dir files ->
+             Filename_traversal.parallel_map files ~f:(fun file payload ->
+               f (Path.Local.relative dir file) payload)))
     in
     { root; files; dirs }
   ;;
@@ -389,9 +389,9 @@ module Produced = struct
   exception Short_circuit
 
   let map_with_errors
-    { root; files; dirs }
-    ~all_errors
-    ~(f : Path.Build.t -> 'a -> ('b, 'e) result)
+        { root; files; dirs }
+        ~all_errors
+        ~(f : Path.Build.t -> 'a -> ('b, 'e) result)
     =
     let errors = ref [] in
     let f path a =

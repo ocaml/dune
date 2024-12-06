@@ -8,9 +8,9 @@ open Memo.O
    "foo/bar/baz/qux". The descendants of a directory are that directory's
    subdirectories, and each of of their subdirectories, and so on ad infinitum. *)
 let get_descendants_of_relative_dir_relative_to_base_dir_local
-  ~base_dir
-  ~relative_dir
-  ~prefix
+      ~base_dir
+      ~relative_dir
+      ~prefix
   =
   let base_dir = Path.Build.drop_build_context_exn base_dir in
   let rec get_descendants_rec relative_dir prefix =

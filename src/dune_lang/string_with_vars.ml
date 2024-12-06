@@ -135,10 +135,8 @@ module Mode = struct
   type (_, _) t =
     | Single : (Value.Deferred_concat.t, Value.t) t
     | Many : (Value.Deferred_concat.t list, Value.t list) t
-    | At_least_one
-        : ( Value.Deferred_concat.t * Value.Deferred_concat.t list
-            , Value.t * Value.t list )
-            t
+    | At_least_one :
+        (Value.Deferred_concat.t * Value.Deferred_concat.t list, Value.t * Value.t list) t
 
   let string
     : type deferred_concat value. (deferred_concat, value) t -> string -> deferred_concat
@@ -341,16 +339,16 @@ module Make_expander (A : Applicative) : Expander with type 'a app := 'a A.t = s
       let+ chunks =
         A.all
           (List.map t.parts ~f:(function
-            | Text s -> A.return (Ok (Value.Deferred_concat.singleton (Value.String s)))
-            | Error (_, msg) ->
-              (* The [let+ () = A.return () in ...] is to delay the error until
+             | Text s -> A.return (Ok (Value.Deferred_concat.singleton (Value.String s)))
+             | Error (_, msg) ->
+               (* The [let+ () = A.return () in ...] is to delay the error until
                  the evaluation of the applicative *)
-              let+ () = A.return () in
-              raise (User_error.E msg)
-            | Pform (source, p) ->
-              let+ v = f ~source p in
-              Result.map v ~f:(fun v ->
-                Value.Deferred_concat.concat_values v ~sep:inner_sep)))
+               let+ () = A.return () in
+               raise (User_error.E msg)
+             | Pform (source, p) ->
+               let+ v = f ~source p in
+               Result.map v ~f:(fun v ->
+                 Value.Deferred_concat.concat_values v ~sep:inner_sep)))
       in
       Result.map (Result.List.all chunks) ~f:(fun chunks ->
         Value.Deferred_concat.concat chunks ~sep:None |> Mode.deferred_concat mode)

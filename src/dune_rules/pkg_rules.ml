@@ -705,16 +705,16 @@ module Run_with_path = struct
         Array.Immutable.to_list_map args ~f:(fun x ->
           Sexp.List
             (Array.Immutable.to_list_map x ~f:(function
-              | String s -> Sexp.Atom s
-              | Path p -> path p)))
+               | String s -> Sexp.Atom s
+               | Path p -> path p)))
       in
       List [ List ([ prog ] @ args); path ocamlfind_destdir ]
     ;;
 
     let action
-      { prog; args; ocamlfind_destdir; pkg; depexts }
-      ~(ectx : Action.context)
-      ~(eenv : Action.env)
+          { prog; args; ocamlfind_destdir; pkg; depexts }
+          ~(ectx : Action.context)
+          ~(eenv : Action.env)
       =
       let open Fiber.O in
       let display = !Clflags.display in
@@ -793,8 +793,8 @@ module Action_expander = struct
     ;;
 
     let section_dir_of_root
-      (roots : _ Install.Roots.t)
-      (section : Pform.Var.Pkg.Section.t)
+          (roots : _ Install.Roots.t)
+          (section : Pform.Var.Pkg.Section.t)
       =
       match section with
       | Lib -> roots.lib_root
@@ -891,17 +891,17 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { name = _
-      ; env = _
-      ; paths
-      ; artifacts = _
-      ; context
-      ; depends
-      ; version = _
-      ; depexts = _
-      }
-      ~source
-      (pform : Pform.t)
+          { name = _
+          ; env = _
+          ; paths
+          ; artifacts = _
+          ; context
+          ; depends
+          ; version = _
+          ; depexts = _
+          }
+          ~source
+          (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
@@ -1432,15 +1432,15 @@ module Install_action = struct
     let version = 1
 
     let bimap
-      ({ install_file
-       ; config_file
-       ; target_dir
-       ; prefix_outside_build_dir = _
-       ; install_action = _
-       ; package = _
-       } as t)
-      f
-      g
+          ({ install_file
+           ; config_file
+           ; target_dir
+           ; prefix_outside_build_dir = _
+           ; install_action = _
+           ; package = _
+           } as t)
+          f
+          g
       =
       { t with
         install_file = f install_file
@@ -1452,15 +1452,15 @@ module Install_action = struct
     let is_useful_to ~memoize = memoize
 
     let encode
-      { install_file
-      ; config_file
-      ; target_dir
-      ; prefix_outside_build_dir
-      ; install_action
-      ; package
-      }
-      path
-      target
+          { install_file
+          ; config_file
+          ; target_dir
+          ; prefix_outside_build_dir
+          ; install_action
+          ; package
+          }
+          path
+          target
       : Sexp.t
       =
       List
@@ -1666,15 +1666,15 @@ module Install_action = struct
     ;;
 
     let action
-      { package
-      ; install_file
-      ; config_file
-      ; target_dir
-      ; prefix_outside_build_dir
-      ; install_action
-      }
-      ~ectx:_
-      ~eenv:_
+          { package
+          ; install_file
+          ; config_file
+          ; target_dir
+          ; prefix_outside_build_dir
+          ; install_action
+          }
+          ~ectx:_
+          ~eenv:_
       =
       let open Fiber.O in
       let* () = Fiber.return () in
@@ -2148,10 +2148,10 @@ let which context =
           "Loading all binaries in the lock directory for %S"
           (Context_name.to_string context))
       (fun () ->
-        let+ { binaries; dep_info = _ } =
-          all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
-        in
-        binaries)
+         let+ { binaries; dep_info = _ } =
+           all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+         in
+         binaries)
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
@@ -2203,10 +2203,10 @@ let find_package ctx pkg =
   | true ->
     resolve_pkg_project ctx (Loc.none, pkg)
     >>| (function
-           | `System_provided -> Action_builder.return ()
-           | `Inside_lock_dir pkg ->
-             let open Action_builder.O in
-             let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             ())
+     | `System_provided -> Action_builder.return ()
+     | `Inside_lock_dir pkg ->
+       let open Action_builder.O in
+       let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+       ())
     >>| Option.some
 ;;

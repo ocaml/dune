@@ -100,7 +100,7 @@ module Session = struct
       ; mutable state : 'a state
       ; (* TODO these should be cancelled when the connection closes *)
         pending : (Dune_rpc_private.Id.t, Response.t Fiber.Ivar.t) Table.t
-      (** Pending requests sent to the client. When a response is
+        (** Pending requests sent to the client. When a response is
           received, the ivar for the response will be filled. *)
       ; name : string
       }
@@ -177,8 +177,8 @@ module Session = struct
     ;;
 
     let to_dyn
-      f
-      { id; state; close; queries = _; send = _; pool = _; pending = _; menu; name }
+          f
+          { id; state; close; queries = _; send = _; pool = _; pending = _; menu; name }
       =
       let open Dyn in
       record
@@ -503,11 +503,11 @@ module H = struct
     ;;
 
     let create
-      ?(on_terminate = fun _ -> Fiber.return ())
-      ~on_init
-      ?(on_upgrade = fun _ _ -> Fiber.return ())
-      ~version
-      ()
+          ?(on_terminate = fun _ -> Fiber.return ())
+          ~on_init
+          ?(on_upgrade = fun _ _ -> Fiber.return ())
+          ~version
+          ()
       =
       { builder = V.Builder.create (); on_init; on_terminate; version; on_upgrade }
     ;;
@@ -630,8 +630,8 @@ let new_session (Server handler) stats ~name ~queries ~send =
       Fiber.fork_and_join_unit
         (fun () -> Fiber.Pool.run session.pool)
         (fun () ->
-          let* () = H.handle handler stats session in
-          Session.Stage1.close session)
+           let* () = H.handle handler stats session in
+           Session.Stage1.close session)
   end
 ;;
 

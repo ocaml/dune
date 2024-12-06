@@ -83,13 +83,13 @@ module Context_for_dune = struct
     }
 
   let create
-    ~pinned_packages
-    ~solver_env
-    ~repos
-    ~local_packages
-    ~version_preference
-    ~stats_updater
-    ~constraints
+        ~pinned_packages
+        ~solver_env
+        ~repos
+        ~local_packages
+        ~version_preference
+        ~stats_updater
+        ~constraints
     =
     let candidates_cache = Fiber_cache.create (module Package_name) in
     let constraints =
@@ -238,10 +238,10 @@ module Context_for_dune = struct
     let filtered_formula =
       OpamFormula.fold_left
         (fun additional_formulae (pkg, _) ->
-          let name = Package_name.of_opam_package_name pkg in
-          match Package_name.Map.find t.constraints name with
-          | None -> additional_formulae
-          | Some additional -> additional :: additional_formulae)
+           let name = Package_name.of_opam_package_name pkg in
+           match Package_name.Map.find t.constraints name with
+           | None -> additional_formulae
+           | Some additional -> additional :: additional_formulae)
         []
         filtered_formula
       |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
@@ -443,10 +443,10 @@ let partial_eval_filter = function
 ;;
 
 let opam_commands_to_actions
-  get_solver_var
-  loc
-  package
-  (commands : OpamTypes.command list)
+      get_solver_var
+      loc
+      package
+      (commands : OpamTypes.command list)
   =
   List.filter_map commands ~f:(fun (args, filter) ->
     let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
@@ -551,12 +551,12 @@ let resolve_depopts ~resolve depopts =
 ;;
 
 let opam_package_to_lock_file_pkg
-  solver_env
-  stats_updater
-  version_by_package_name
-  opam_package
-  ~pinned_package_names
-  ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
+      solver_env
+      stats_updater
+      version_by_package_name
+      opam_package
+      ~pinned_package_names
+      ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -710,12 +710,12 @@ let solve_package_list packages ~context =
        instead. *)
     Solver.solve context packages)
   >>| (function
-         | Ok (Ok res) -> Ok res
-         | Ok (Error e) -> Error (`Diagnostics e)
-         | Error [] -> assert false
-         | Error (exn :: _) ->
-           (* CR-rgrinberg: this needs to be handled right *)
-           Error (`Exn exn.exn))
+   | Ok (Ok res) -> Ok res
+   | Ok (Error e) -> Error (`Diagnostics e)
+   | Error [] -> assert false
+   | Error (exn :: _) ->
+     (* CR-rgrinberg: this needs to be handled right *)
+     Error (`Exn exn.exn))
   >>= function
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
@@ -823,12 +823,12 @@ let reject_unreachable_packages =
 ;;
 
 let solve_lock_dir
-  solver_env
-  version_preference
-  repos
-  ~local_packages
-  ~pins:pinned_packages
-  ~constraints
+      solver_env
+      version_preference
+      repos
+      ~local_packages
+      ~pins:pinned_packages
+      ~constraints
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in

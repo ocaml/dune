@@ -62,7 +62,8 @@ let%expect_test "Testing significant digit boundaries" =
 (* Negative units get truncated but still printed as a negative. *)
 let%expect_test "Negative units" =
   test [ -1L; -10L ];
-  [%expect {|
+  [%expect
+    {|
     -0.00TB
     -0.00TB
     |}]

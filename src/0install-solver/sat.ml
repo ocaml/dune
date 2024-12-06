@@ -1,6 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
  * See the README file for details, or visit http://0install.net.
- *)
+*)
 
 (** A general purpose SAT solver. *)
 
@@ -83,11 +83,11 @@ module Make (User : USER) = struct
     { id : VarID.t (* A unique ID, used to test identity *)
     ; mutable value : var_value (* True/False/Undecided *)
     ; mutable reason : reason option
-        (* The constraint that implied our value, if True or False *)
+      (* The constraint that implied our value, if True or False *)
     ; mutable level : int
-        (* The decision level at which we got a value (when not Undecided) *)
+      (* The decision level at which we got a value (when not Undecided) *)
     ; mutable undo : (lit -> unit) list
-        (* Functions to call if we become unbound (by backtracking) *)
+      (* Functions to call if we become unbound (by backtracking) *)
     ; watch_queue : clause Queue.t (* Clauses to notify when var becomes True *)
     ; neg_watch_queue : clause Queue.t (* Clauses to notify when var becomes False *)
     ; obj : User.t (* The object this corresponds to (for our caller and for debugging) *)
@@ -137,7 +137,7 @@ module Make (User : USER) = struct
     ; mutable trail_lim : int list (* decision levels (len(trail) at each decision) *)
     ; mutable toplevel_conflict : bool
     ; mutable set_to_false : bool
-    (* we are finishing up by setting everything else to False *)
+      (* we are finishing up by setting everything else to False *)
     }
 
   let pp_reason = function
@@ -567,8 +567,9 @@ module Make (User : USER) = struct
   let at_least_one problem ?(reason = "input fact") lits =
     if List.length lits = 0
     then problem.toplevel_conflict <- true
-    else if (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
-            List.exists (fun l -> lit_value l = True) lits
+    else if
+      (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
+      List.exists (fun l -> lit_value l = True) lits
     then (* Trivially true already if any literal is True. *)
       ()
     else (
@@ -589,8 +590,9 @@ module Make (User : USER) = struct
       | Some [] ->
         problem.toplevel_conflict <- true (* Everything in the list was False *)
       | Some unique ->
-        if internal_at_most_one problem unique ~learnt:false ~reason:(External reason)
-           = AddedFact false
+        if
+          internal_at_most_one problem unique ~learnt:false ~reason:(External reason)
+          = AddedFact false
         then problem.toplevel_conflict <- true)
   ;;
 
@@ -674,7 +676,6 @@ module Make (User : USER) = struct
     (* The variables involved in the conflict *)
     let counter = ref 0 in
     (* The number of pending variables to check *)
-
     (* [outcome] was caused by the literals [p_reason] all being True. Follow the
        causes back, adding anything decided before this level to [learnt]. When
        we get bored, return the literal we were processing at the time. *)

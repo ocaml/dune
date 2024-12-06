@@ -7,7 +7,8 @@ let print x = x |> Action_to_sh.pp |> Dune_tests_common.print
 
 let%expect_test "run" =
   Run ("my_program", Array.Immutable.of_array [| "my"; "-I"; "args" |]) |> print;
-  [%expect {|
+  [%expect
+    {|
     my_program my -I args |}]
 ;;
 
@@ -23,7 +24,8 @@ let%expect_test "chdir" =
 
 let%expect_test "setenv" =
   Setenv ("FOO", "bar", Bash "echo Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
     FOO=bar;
     bash -e -u -o pipefail -c 'echo Hello world' |}]
 ;;
@@ -32,7 +34,8 @@ let%expect_test "with-stdout-to" =
   Redirect_out
     (Action.Outputs.Stdout, "foo", Action.File_perm.Normal, Bash "echo Hello world")
   |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' > foo |}]
 ;;
 
@@ -40,7 +43,8 @@ let%expect_test "with-stderr-to" =
   Redirect_out
     (Action.Outputs.Stderr, "foo", Action.File_perm.Normal, Bash "echo Hello world")
   |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' 2> foo |}]
 ;;
 
@@ -72,19 +76,22 @@ let%expect_test "with-outputs-to executable" =
 
 let%expect_test "ignore stdout" =
   Ignore (Action.Outputs.Stdout, Bash "echo Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' > /dev/null |}]
 ;;
 
 let%expect_test "ignore stderr" =
   Ignore (Action.Outputs.Stderr, Bash "echo Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' 2> /dev/null |}]
 ;;
 
 let%expect_test "ignore outputs" =
   Ignore (Action.Outputs.Outputs, Bash "echo Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' &> /dev/null |}]
 ;;
 
@@ -92,11 +99,13 @@ let%expect_test "with-stdin-from" =
   Redirect_in
     ( Action.Inputs.Stdin
     , "foo"
-    , Bash {|
+    , Bash
+        {|
     while read line; do
       echo $line
     done
-  |} )
+  |}
+    )
   |> print;
   [%expect
     {|
@@ -111,10 +120,13 @@ let%expect_test "with-stdin-from" =
 (* TODO currently no special printing for with-accepted-exit-codes *)
 let%expect_test "with-accepted-exit-codes" =
   With_accepted_exit_codes
-    (Predicate_lang.of_list [ 0; 1; 123 ], Bash {|
+    ( Predicate_lang.of_list [ 0; 1; 123 ]
+    , Bash
+        {|
     echo Hello world
     exit 123
-  |})
+  |}
+    )
   |> print;
   [%expect
     {|
@@ -142,44 +154,51 @@ let%expect_test "concurrent" =
 
 let%expect_test "echo" =
   Echo [ "Hello"; "world" ] |> print;
-  [%expect {|
+  [%expect
+    {|
     echo -n Helloworld |}]
 ;;
 
 let%expect_test "write-file" =
   Write_file ("foo", Action.File_perm.Normal, "Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
     echo -n 'Hello world' > foo |}]
 ;;
 
 let%expect_test "write-file executable" =
   Write_file ("foo", Action.File_perm.Executable, "Hello world") |> print;
-  [%expect {|
+  [%expect
+    {|
       echo -n 'Hello world' > foo;
       chmod +x foo |}]
 ;;
 
 let%expect_test "cat" =
   Cat [ "foo" ] |> print;
-  [%expect {|
+  [%expect
+    {|
     cat foo |}]
 ;;
 
 let%expect_test "cat multiple" =
   Cat [ "foo"; "bar" ] |> print;
-  [%expect {|
+  [%expect
+    {|
     cat foo bar |}]
 ;;
 
 let%expect_test "copy" =
   Copy ("foo", "bar") |> print;
-  [%expect {|
+  [%expect
+    {|
     cp foo bar |}]
 ;;
 
 let%expect_test "bash" =
   Bash "echo Hello world" |> print;
-  [%expect {|
+  [%expect
+    {|
     bash -e -u -o pipefail -c 'echo Hello world' |}]
 ;;
 

@@ -33,10 +33,10 @@ let serve_once ~filename =
   let thread =
     Thread.create
       (fun server ->
-        Http.Server.accept server ~f:(fun session ->
-          let () = Http.Server.accept_request session in
-          Http.Server.respond_file session ~file:filename);
-        Http.Server.stop server)
+         Http.Server.accept server ~f:(fun session ->
+           let () = Http.Server.accept_request session in
+           Http.Server.respond_file session ~file:filename);
+         Http.Server.stop server)
       server
   in
   port, thread
@@ -145,7 +145,8 @@ let%expect_test "downloading, without any checksum" =
   run (download ~unpack:false ~port ~filename:"" ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
-  [%expect {|
+  [%expect
+    {|
     Done downloading
     Finished successfully, no checksum verification |}]
 ;;

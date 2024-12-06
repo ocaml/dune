@@ -409,11 +409,12 @@ let to_lib_id ~src_dir t =
 ;;
 
 let to_lib_info
-  conf
-  ~expander
-  ~dir
-  ~lib_config:
-    ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as lib_config)
+      conf
+      ~expander
+      ~dir
+      ~lib_config:
+        ({ Lib_config.has_native; ext_lib; ext_dll; natdynlink_supported; _ } as
+         lib_config)
   =
   let open Memo.O in
   let obj_dir = obj_dir ~dir conf in
@@ -457,10 +458,10 @@ let to_lib_info
     let archive = archive ext_lib in
     if virtual_library || not modes.ocaml.native
     then Lib_info.Files []
-    else if Option.is_some conf.implements
-            || (Lib_config.linker_can_create_empty_archives lib_config
-                && Ocaml.Version.ocamlopt_always_calls_library_linker
-                     lib_config.ocaml_version)
+    else if
+      Option.is_some conf.implements
+      || (Lib_config.linker_can_create_empty_archives lib_config
+          && Ocaml.Version.ocamlopt_always_calls_library_linker lib_config.ocaml_version)
     then Lib_info.Files [ archive ]
     else Lib_info.Needs_module_info archive
   in

@@ -4,7 +4,7 @@ open Memo.O
 type ('src, 'dst) t =
   { src : 'src
   ; dst : 'dst option
-      (* The [dune_syntax] field is used for validation which has different
+    (* The [dune_syntax] field is used for validation which has different
          behaviour depending on the version of dune syntax in use. *)
   ; dune_syntax : Syntax.Version.t
   ; dir : Path.Source.t option
@@ -41,10 +41,10 @@ let escaping_paths_in_install_stanza =
 ;;
 
 let validate_dst_for_install_stanza
-  ~relative_dst_path_starts_with_parent_error_when
-  ~loc
-  ~dst
-  ~dir
+      ~relative_dst_path_starts_with_parent_error_when
+      ~loc
+      ~dst
+      ~dir
   =
   match relative_path_starts_with_parent dst with
   | false -> Memo.return ()

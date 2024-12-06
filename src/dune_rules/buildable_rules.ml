@@ -63,17 +63,17 @@ type kind =
       }
 
 let modules_rules
-  ~preprocess
-  ~preprocessor_deps
-  ~lint
-  ~empty_module_interface_if_absent
-  sctx
-  expander
-  ~dir
-  scope
-  modules
-  ~lib_name
-  ~empty_intf_modules
+      ~preprocess
+      ~preprocessor_deps
+      ~lint
+      ~empty_module_interface_if_absent
+      sctx
+      expander
+      ~dir
+      scope
+      modules
+      ~lib_name
+      ~empty_intf_modules
   =
   let* pp =
     let instrumentation_backend = Lib.DB.instrumentation_backend (Scope.libs scope) in

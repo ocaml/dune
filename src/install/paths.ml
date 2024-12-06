@@ -17,21 +17,21 @@ type 'path t =
   }
 
 let map
-  { lib
-  ; lib_root
-  ; libexec
-  ; libexec_root
-  ; bin
-  ; sbin
-  ; toplevel
-  ; share
-  ; share_root
-  ; etc
-  ; doc
-  ; stublibs
-  ; man
-  }
-  ~f
+      { lib
+      ; lib_root
+      ; libexec
+      ; libexec_root
+      ; bin
+      ; sbin
+      ; toplevel
+      ; share
+      ; share_root
+      ; etc
+      ; doc
+      ; stublibs
+      ; man
+      }
+      ~f
   =
   { lib = f lib
   ; lib_root = f lib_root

@@ -847,15 +847,15 @@ let index_dep index =
 ;;
 
 let compile_module
-  sctx
-  all
-  ~artifact:a
-  ~quiet
-  ~requires
-  ~package
-  ~module_deps
-  ~parent_opt
-  ~indices
+      sctx
+      all
+      ~artifact:a
+      ~quiet
+      ~requires
+      ~package
+      ~module_deps
+      ~parent_opt
+      ~indices
   =
   let odoc_file = Artifact.odoc_file a in
   let ctx = Super_context.context sctx in
@@ -1173,9 +1173,9 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
    to be documented - packages, fallback dirs, libraries (both private and those
    in packages) *)
 let fallback_artifacts
-  ctx
-  (location : Dune_package.External_location.t)
-  (libs : Lib.t Lib_name.Map.t)
+      ctx
+      (location : Dune_package.External_location.t)
+      (libs : Lib.t Lib_name.Map.t)
   =
   let* maps = Valid.libs_maps ctx ~all:true in
   match Index.of_external_loc maps location with
@@ -1242,12 +1242,12 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
           (List.filter_map fs ~f:(function
-            | `File, dst ->
-              let str = Install.Entry.Dst.to_string dst in
-              if Filename.check_suffix str ".mld"
-              then Some (Path.relative doc_path str)
-              else None
-            | _ -> None))
+             | `File, dst ->
+               let str = Install.Entry.Dst.to_string dst in
+               if Filename.check_suffix str ".mld"
+               then Some (Path.relative doc_path str)
+               else None
+             | _ -> None))
       | _ -> None)
     |> List.concat
 ;;
@@ -1721,19 +1721,19 @@ let toplevel_index_contents t =
   output_indices
     "Local Packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir Local_packages ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir Local_packages ] -> Some x
+       | _ -> None));
   output_indices
     "Switch-installed packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
-      | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
+       | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
+       | _ -> None));
   output_indices
     "Private libraries"
     (List.filter_map sorted ~f:(function
-      | [ (Index.Private_lib _ as x) ] -> Some x
-      | _ -> None));
+       | [ (Index.Private_lib _ as x) ] -> Some x
+       | _ -> None));
   Buffer.contents b
 ;;
 

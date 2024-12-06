@@ -13,14 +13,14 @@ let msvc_hack_cclibs =
 
 (* Build an OCaml library. *)
 let build_lib
-  (lib : Library.t)
-  ~native_archives
-  ~sctx
-  ~expander
-  ~flags
-  ~dir
-  ~mode
-  ~cm_files
+      (lib : Library.t)
+      ~native_archives
+      ~sctx
+      ~expander
+      ~flags
+      ~dir
+      ~mode
+      ~cm_files
   =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
@@ -152,14 +152,14 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
 let ocamlmklib
-  ~loc
-  ~c_library_flags
-  ~sctx
-  ~dir
-  ~o_files
-  ~archive_name
-  ~stubs_mode
-  ~build_targets_together
+      ~loc
+      ~c_library_flags
+      ~sctx
+      ~dir
+      ~o_files
+      ~archive_name
+      ~stubs_mode
+      ~build_targets_together
   =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
@@ -209,8 +209,8 @@ let ocamlmklib
        unless dynamically linked foreign archives are disabled. *)
     Context.dynamically_linked_foreign_archives ctx
     >>| (function
-           | true -> [ static_target; dynamic_target ]
-           | false -> [ static_target ])
+     | true -> [ static_target; dynamic_target ]
+     | false -> [ static_target ])
     >>= build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
   else
     (* Build the static target only by passing the [-custom] flag. *)
@@ -331,9 +331,10 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
     in
     let lib_o_files_for_all_modes = Mode.Map.Multi.for_all_modes o_files in
     let for_all_modes = List.rev_append vlib_stubs_o_files lib_o_files_for_all_modes in
-    if Mode.Dict.Set.to_list modes.ocaml
-       |> List.for_all ~f:(fun mode ->
-         List.is_empty @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
+    if
+      Mode.Dict.Set.to_list modes.ocaml
+      |> List.for_all ~f:(fun mode ->
+        List.is_empty @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
     then (
       (* if stubs are not mode dependent *)
       let o_files = for_all_modes in
@@ -553,13 +554,13 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
 ;;
 
 let library_rules
-  (lib : Library.t)
-  ~local_lib
-  ~cctx
-  ~source_modules
-  ~dir_contents
-  ~compile_info
-  ~ctx_dir
+      (lib : Library.t)
+      ~local_lib
+      ~cctx
+      ~source_modules
+      ~dir_contents
+      ~compile_info
+      ~ctx_dir
   =
   let source_modules =
     Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
@@ -613,14 +614,14 @@ let library_rules
     Memo.when_
       (Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files)
       (fun () ->
-        build_stubs
-          lib
-          ~cctx
-          ~dir
-          ~expander
-          ~requires:requires_compile
-          ~dir_contents
-          ~vlib_stubs_o_files)
+         build_stubs
+           lib
+           ~cctx
+           ~dir
+           ~expander
+           ~requires:requires_compile
+           ~dir_contents
+           ~vlib_stubs_o_files)
   and+ () = Odoc.setup_private_library_doc_alias sctx ~scope ~dir:ctx_dir lib
   and+ () = Odoc.setup_library_odoc_rules cctx local_lib
   and+ () =

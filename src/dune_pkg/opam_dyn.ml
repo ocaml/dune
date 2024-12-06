@@ -43,8 +43,8 @@ let rec filter (filter_ : OpamTypes.filter) =
 ;;
 
 let filter_or_constraint
-  atom_to_dyn
-  (filter_or_constraint_ : _ OpamTypes.filter_or_constraint)
+      atom_to_dyn
+      (filter_or_constraint_ : _ OpamTypes.filter_or_constraint)
   =
   match filter_or_constraint_ with
   | Filter filter_ -> Dyn.variant "Filter" [ filter filter_ ]

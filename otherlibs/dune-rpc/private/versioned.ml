@@ -217,18 +217,18 @@ module Make (Fiber : Fiber_intf.S) = struct
        all related operations (declaring, implementing, dispatching) share
        uniform implementations as much as possible. *)
     type (_, _, _) field_witness =
-      | Declared_requests
-          : ( _
-              , Method.Name.t
-                * ('req, 'resp) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
-              , ('req, 'resp) Decl.Generation.t )
-              field_witness
-      | Declared_notifs
-          : ( _
-              , Method.Name.t
-                * ('a, unit) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
-              , ('a, unit) Decl.Generation.t )
-              field_witness
+      | Declared_requests :
+          ( _
+            , Method.Name.t
+              * ('req, 'resp) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
+            , ('req, 'resp) Decl.Generation.t )
+            field_witness
+      | Declared_notifs :
+          ( _
+            , Method.Name.t
+              * ('a, unit) Decl.Generation.t Method.Version.Map.t Univ_map.Key.t
+            , ('a, unit) Decl.Generation.t )
+            field_witness
       | Impl_requests : ('state, string, 'state r_handler) field_witness
       | Impl_notifs : ('state, string, 'state n_handler) field_witness
 
@@ -249,11 +249,11 @@ module Make (Fiber : Fiber_intf.S) = struct
     ;;
 
     let set
-      (type st a b)
-      (t : st t)
-      (witness : (st, a, b) field_witness)
-      (key : a)
-      (value : b Method.Version.Map.t)
+          (type st a b)
+          (t : st t)
+          (witness : (st, a, b) field_witness)
+          (key : a)
+          (value : b Method.Version.Map.t)
       =
       match witness with
       | Declared_requests ->
@@ -271,11 +271,12 @@ module Make (Fiber : Fiber_intf.S) = struct
     ;;
 
     let registered_procedures
-      { declared_requests = declared_request_keys, declared_request_table
-      ; declared_notifications = declared_notification_keys, declared_notification_table
-      ; implemented_requests
-      ; implemented_notifications
-      }
+          { declared_requests = declared_request_keys, declared_request_table
+          ; declared_notifications =
+              declared_notification_keys, declared_notification_table
+          ; implemented_requests
+          ; implemented_notifications
+          }
       =
       let batch_declarations which declared_keys declaration_table =
         Method.Name.Map.foldi declared_keys ~init:[] ~f:(fun name keys acc ->
@@ -329,14 +330,14 @@ module Make (Fiber : Fiber_intf.S) = struct
     ;;
 
     let register_generic
-      t
-      ~method_
-      ~generations
-      ~registry
-      ~registry_key
-      ~other
-      ~other_key
-      ~pack
+          t
+          ~method_
+          ~generations
+          ~registry
+          ~registry_key
+          ~other
+          ~other_key
+          ~pack
       =
       let () =
         get t other other_key
@@ -441,19 +442,19 @@ module Make (Fiber : Fiber_intf.S) = struct
           ~method_:n.method_
           (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
           (fun (handlers, version) ->
-            match Method.Version.Map.find handlers version with
-            | None ->
-              raise_version_bug
-                ~method_:n.method_
-                ~selected:version
-                ~verb:"unimplemented"
-                ~known:(Method.Version.Map.keys handlers)
-            | Some (R (f, T gen)) ->
-              (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
-               | Error e -> Fiber.return (Error (Response.Error.of_conv e))
-               | Ok req ->
-                 let+ resp = f state (gen.upgrade_req req) in
-                 Ok (Conv.to_sexp gen.resp (gen.downgrade_resp resp))))
+             match Method.Version.Map.find handlers version with
+             | None ->
+               raise_version_bug
+                 ~method_:n.method_
+                 ~selected:version
+                 ~verb:"unimplemented"
+                 ~known:(Method.Version.Map.keys handlers)
+             | Some (R (f, T gen)) ->
+               (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
+                | Error e -> Fiber.return (Error (Response.Error.of_conv e))
+                | Ok req ->
+                  let+ resp = f state (gen.upgrade_req req) in
+                  Ok (Conv.to_sexp gen.resp (gen.downgrade_resp resp))))
       in
       let handle_notification menu state (n : Call.t) =
         lookup_method_generic
@@ -464,19 +465,19 @@ module Make (Fiber : Fiber_intf.S) = struct
           ~method_:n.method_
           (fun e -> Fiber.return (Error (Version_error.to_response_error e)))
           (fun (handlers, version) ->
-            match Method.Version.Map.find handlers version with
-            | None ->
-              raise_version_bug
-                ~method_:n.method_
-                ~selected:version
-                ~verb:"unimplemented"
-                ~known:(Method.Version.Map.keys handlers)
-            | Some (N (f, T gen)) ->
-              (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
-               | Error e -> Fiber.return (Error (Response.Error.of_conv e))
-               | Ok req ->
-                 let+ () = f state (gen.upgrade_req req) in
-                 Ok ()))
+             match Method.Version.Map.find handlers version with
+             | None ->
+               raise_version_bug
+                 ~method_:n.method_
+                 ~selected:version
+                 ~verb:"unimplemented"
+                 ~known:(Method.Version.Map.keys handlers)
+             | Some (N (f, T gen)) ->
+               (match Conv.of_sexp gen.req ~version:(session_version state) n.params with
+                | Error e -> Fiber.return (Error (Response.Error.of_conv e))
+                | Ok req ->
+                  let+ () = f state (gen.upgrade_req req) in
+                  Ok ()))
       in
       let prepare_request (type a b) menu (decl : (a, b) Decl.Request.witness)
         : ((a, b) Staged.request, Version_error.t) result
@@ -490,23 +491,23 @@ module Make (Fiber : Fiber_intf.S) = struct
           ~method_
           (fun e -> Error e)
           (fun (decls, version) ->
-            match Method.Version.Map.find decls version with
-            | None ->
-              raise_version_bug
-                ~method_
-                ~selected:version
-                ~verb:"undeclared"
-                ~known:(Method.Version.Map.keys decls)
-            | Some (T gen) ->
-              let encode_req (req : a) =
-                { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
-              in
-              let decode_resp sexp =
-                match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
-                | Ok resp -> Ok (gen.upgrade_resp resp)
-                | Error e -> Error (Response.Error.of_conv e)
-              in
-              Ok { Staged.encode_req; decode_resp })
+             match Method.Version.Map.find decls version with
+             | None ->
+               raise_version_bug
+                 ~method_
+                 ~selected:version
+                 ~verb:"undeclared"
+                 ~known:(Method.Version.Map.keys decls)
+             | Some (T gen) ->
+               let encode_req (req : a) =
+                 { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
+               in
+               let decode_resp sexp =
+                 match Conv.of_sexp gen.resp ~version:(3, 0) sexp with
+                 | Ok resp -> Ok (gen.upgrade_resp resp)
+                 | Error e -> Error (Response.Error.of_conv e)
+               in
+               Ok { Staged.encode_req; decode_resp })
       in
       let prepare_notification (type a) menu (decl : a Decl.Notification.witness)
         : (a Staged.notification, Version_error.t) result
@@ -520,18 +521,18 @@ module Make (Fiber : Fiber_intf.S) = struct
           ~method_
           (fun e -> Error e)
           (fun (decls, version) ->
-            match Method.Version.Map.find decls version with
-            | None ->
-              raise_version_bug
-                ~method_
-                ~selected:version
-                ~verb:"undeclared"
-                ~known:(Method.Version.Map.keys decls)
-            | Some (T gen) ->
-              let encode (req : a) =
-                { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
-              in
-              Ok { Staged.encode })
+             match Method.Version.Map.find decls version with
+             | None ->
+               raise_version_bug
+                 ~method_
+                 ~selected:version
+                 ~verb:"undeclared"
+                 ~known:(Method.Version.Map.keys decls)
+             | Some (T gen) ->
+               let encode (req : a) =
+                 { Call.method_; params = Conv.to_sexp gen.req (gen.downgrade_req req) }
+               in
+               Ok { Staged.encode })
       in
       fun ~menu ->
         { Handler.menu

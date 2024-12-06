@@ -47,10 +47,10 @@ let missing_run_t (error : Cram_test.t) =
 ;;
 
 let test_rule
-  ~sctx
-  ~dir
-  ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
-  (test : (Cram_test.t, error) result)
+      ~sctx
+      ~dir
+      ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
+      (test : (Cram_test.t, error) result)
   =
   let module Alias_rules = Simple_rules.Alias_rules in
   let aliases = Alias.Name.Set.to_list_map alias ~f:(Alias.make ~dir) in

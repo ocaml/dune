@@ -13,7 +13,8 @@ let%expect_test "resize" =
   let buf = Io_buffer.create ~size:2 in
   Io_buffer.write_csexps buf [ Csexp.Atom "xxx" ];
   print_dyn buf;
-  [%expect {|
+  [%expect
+    {|
     { total_written = 0; contents = "3:xxx"; pos_w = 5; pos_r = 0 } |}];
   Io_buffer.write_csexps buf [ Csexp.Atom "xxxyyy" ];
   print_dyn buf;
@@ -26,15 +27,18 @@ let%expect_test "reading" =
   let buf = Io_buffer.create ~size:10 in
   Io_buffer.write_csexps buf [ Csexp.Atom "abcde" ];
   print_dyn buf;
-  [%expect {|
+  [%expect
+    {|
     { total_written = 0; contents = "5:abcde"; pos_w = 7; pos_r = 0 } |}];
   Io_buffer.read buf 4;
   print_dyn buf;
-  [%expect {|
+  [%expect
+    {|
     { total_written = 4; contents = "cde"; pos_w = 7; pos_r = 4 } |}];
   Io_buffer.read buf 2;
   print_dyn buf;
-  [%expect {|
+  [%expect
+    {|
     { total_written = 6; contents = "e"; pos_w = 7; pos_r = 6 } |}];
   (* buffer is now empty, this should now error *)
   Io_buffer.read buf 2;
@@ -49,18 +53,22 @@ let%expect_test "reading" =
   let buf = Io_buffer.create ~size:1 in
   Io_buffer.write_csexps buf [ Atom "abc" ];
   print_dyn buf;
-  [%expect {|
+  [%expect
+    {|
     { total_written = 0; contents = "3:abc"; pos_w = 5; pos_r = 0 } |}];
   let flush = Io_buffer.flush_token buf in
   printfn "token: %b" (Io_buffer.flushed buf flush);
-  [%expect {|
+  [%expect
+    {|
     token: false |}];
   Io_buffer.read buf 4;
   printfn "token: %b" (Io_buffer.flushed buf flush);
-  [%expect {|
+  [%expect
+    {|
     token: false |}];
   Io_buffer.read buf 1;
   printfn "token: %b" (Io_buffer.flushed buf flush);
-  [%expect {|
+  [%expect
+    {|
     token: true |}]
 ;;

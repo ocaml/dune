@@ -113,9 +113,9 @@ module Build_config = struct
     module Rules = Rules
 
     let make
-      ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
-      ?(directory_targets = Rules.empty.directory_targets)
-      rules
+          ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
+          ?(directory_targets = Rules.empty.directory_targets)
+          rules
       =
       let rules = { Rules.build_dir_only_sub_dirs; directory_targets; rules } in
       Gen_rules_result.rules_here rules

@@ -4,8 +4,8 @@ open OpamParserTypes.FullPos
 type t = opamfile
 
 let loc_of_opam_pos
-  ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
-    OpamParserTypes.FullPos.pos)
+      ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
+        OpamParserTypes.FullPos.pos)
   =
   let start =
     { Lexing.pos_fname = filename

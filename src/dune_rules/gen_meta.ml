@@ -111,10 +111,11 @@ let gen_lib pub_name lib ~version =
   List.concat
     [ version
     ; [ description desc; requires ~preds lib_deps ]
-    ; (if (match Lib.project lib with
-           | None -> true
-           | Some project -> Dune_project.dune_version project < (3, 17))
-          || Lib_name.Set.is_empty lib_re_exports
+    ; (if
+         (match Lib.project lib with
+          | None -> true
+          | Some project -> Dune_project.dune_version project < (3, 17))
+         || Lib_name.Set.is_empty lib_re_exports
        then []
        else [ exports lib_re_exports ])
     ; archives ~preds lib

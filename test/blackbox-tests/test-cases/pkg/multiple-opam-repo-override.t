@@ -17,10 +17,10 @@ Multiple opam repositories that define the same package:
   $ repos12=`cat <<EOF
   > (repository
   >  (name repo1)
-  >  (source "file://$PWD/repo1"))
+  >  (url "file://$PWD/repo1"))
   > (repository
   >  (name repo2)
-  >  (source "file://$PWD/repo2"))
+  >  (url "file://$PWD/repo2"))
   > EOF
   > `
 
@@ -101,7 +101,7 @@ Now we repeat the tests but with a git repo:
   > $repos12
   > (repository
   >  (name git-repo)
-  >  (source "git+file://$PWD/git-repo"))
+  >  (url "git+file://$PWD/git-repo"))
   > EOF
   > }
 

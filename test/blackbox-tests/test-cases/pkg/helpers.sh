@@ -52,7 +52,7 @@ add_mock_repo_if_needed() {
  (repositories mock))
 (repository
  (name mock)
- (source "file://$(pwd)/mock-opam-repository"))
+ (url "file://$(pwd)/mock-opam-repository"))
 EOF
   else
     if ! grep '(name mock)' > /dev/null dune-workspace
@@ -61,7 +61,7 @@ EOF
       cat >>dune-workspace <<EOF
 (repository
  (name mock)
- (source "file://$(pwd)/mock-opam-repository"))
+ (url "file://$(pwd)/mock-opam-repository"))
 EOF
  
       # reference the repo

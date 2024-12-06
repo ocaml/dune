@@ -32,7 +32,7 @@ Helper function that creates a workspace file with a given solver env.
   >   (name default)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
   > }
 

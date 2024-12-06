@@ -59,7 +59,7 @@ Test that we can read package metadata from opam files.
   >   (with-doc true)))
   > (repository
   >  (name mock)
-  >  (source "$PWD/mock-opam-repository"))
+  >  (url "$PWD/mock-opam-repository"))
   > EOF
 
   $ dune pkg lock

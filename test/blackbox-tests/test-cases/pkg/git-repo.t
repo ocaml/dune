@@ -19,7 +19,7 @@ We'll set up a project that uses (only this) this repository, so doesn't use
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "git+file://$PWD/mock-opam-repository"))
+  >  (url "git+file://$PWD/mock-opam-repository"))
   > (context
   >  (default
   >   (name default)))

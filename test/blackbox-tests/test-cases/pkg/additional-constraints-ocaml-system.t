@@ -47,7 +47,7 @@ Now make a workspace file adding the constarint on ocaml-system:
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Solve again. This time ocaml-system is chosen.

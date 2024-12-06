@@ -18,7 +18,7 @@ In this case we could also hint at the correct syntax for dune-project files.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ dune pkg lock 2>&1

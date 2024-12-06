@@ -63,7 +63,7 @@ Make a workspace file which sets some of the variables.
   >   (name default)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Solve the packages again, this time with the variables set.

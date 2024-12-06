@@ -10,7 +10,7 @@ setup_ocamllsp_workspace() {
   (repositories mock))
 (repository
  (name mock)
- (source "file://$(pwd)/mock-opam-repository"))
+ (url "file://$(pwd)/mock-opam-repository"))
 EOF
 }
 

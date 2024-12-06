@@ -31,7 +31,7 @@ Make a mock repo tarball that will get used by dune to download the package
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ dune pkg lock
@@ -58,7 +58,7 @@ other systems and thus shouldn't be included.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
   $ dune pkg lock
   Solution for dune.lock:
@@ -87,7 +87,7 @@ in the repo and make sure it locks the older version.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"))
+  >  (url "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"))
   > EOF
   $ dune pkg lock
   Solution for dune.lock:
@@ -102,7 +102,7 @@ repository and thus the new foo package.
   > (lang dune 3.10)
   > (repository
   >  (name foo)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (lock_dir
   >  (repositories foo))
   > EOF
@@ -130,7 +130,7 @@ out of the auto update.
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#${NEW_REPO_HASH}"))
+  >  (url "git+file://$(pwd)/mock-opam-repository#${NEW_REPO_HASH}"))
   > (lock_dir
   >  (repositories mock))
   > EOF
@@ -154,7 +154,7 @@ restored the repo to where it was before)
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"))
+  >  (url "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"))
   > (lock_dir
   >  (repositories mock))
   > EOF
@@ -183,7 +183,7 @@ sure that the default branch differs from `bar-2`).
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#bar-2"))
+  >  (url "git+file://$(pwd)/mock-opam-repository#bar-2"))
   > (lock_dir
   >  (repositories mock))
   > EOF
@@ -215,7 +215,7 @@ The repo should be using the `1.0` tag, as we don't want `bar.3.0.0`.
   > (lang dune 3.10)
   > (repository
   >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#1.0"))
+  >  (url "git+file://$(pwd)/mock-opam-repository#1.0"))
   > (lock_dir
   >  (repositories mock))
   > EOF

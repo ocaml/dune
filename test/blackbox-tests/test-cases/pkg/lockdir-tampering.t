@@ -31,7 +31,7 @@ Define some local packages.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Without a lockdir this command prints a hint but exits successfully.

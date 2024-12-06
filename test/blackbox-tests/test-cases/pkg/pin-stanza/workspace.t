@@ -22,11 +22,10 @@ It should be possible to include custom repos from the workspace:
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ mkrepo
-  $ add_mock_repo_if_needed
 
 Note that sources in the projects are overriden by the workspace
 

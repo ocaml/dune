@@ -23,7 +23,7 @@ Use this ref in a project
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "git+file://$PWD/mock-opam-repository#$AMBIGUOUS_REF"))
+  >  (url "git+file://$PWD/mock-opam-repository#$AMBIGUOUS_REF"))
   > (context
   >  (default
   >   (name default)))

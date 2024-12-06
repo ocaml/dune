@@ -4,10 +4,8 @@ let local_libraries =
   [ ("otherlibs/ordering", Some "Ordering", false, None)
   ; ("vendor/pp/src", Some "Pp", false, None)
   ; ("otherlibs/dyn", Some "Dyn", false, None)
-  ; ("otherlibs/stdune/dune_filesystem_stubs",
-     Some "Dune_filesystem_stubs",
-     false,
-     None)
+  ; ("otherlibs/stdune/dune_filesystem_stubs", Some "Dune_filesystem_stubs",
+    false, None)
   ; ("vendor/csexp/src", Some "Csexp", false, None)
   ; ("otherlibs/stdune/src", Some "Stdune", false, None)
   ; ("src/dune_graph", Some "Dune_graph", false, None)
@@ -25,10 +23,8 @@ let local_libraries =
   ; ("vendor/spawn/src", Some "Spawn", false, None)
   ; ("src/dune_stats", Some "Dune_stats", false, None)
   ; ("otherlibs/xdg", Some "Xdg", false, None)
-  ; ("vendor/build_path_prefix_map/src",
-     Some "Build_path_prefix_map",
-     false,
-     None)
+  ; ("vendor/build_path_prefix_map/src", Some "Build_path_prefix_map", false,
+    None)
   ; ("vendor/uutf", None, false, None)
   ; ("src/dune_sexp", Some "Dune_sexp", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
@@ -39,18 +35,18 @@ let local_libraries =
   ; ("src/dune_targets", Some "Dune_targets", false, None)
   ; ("src/dune_cache", Some "Dune_cache", false, None)
   ; ("otherlibs/dune-rpc/private", Some "Dune_rpc_private", false, None)
-  ; ("otherlibs/dune-action-plugin/src",
-     Some "Dune_action_plugin",
-     false,
-     None)
-  ; ("src/dune_output_truncation", Some "Dune_output_truncation", false, None)
+  ; ("otherlibs/dune-action-plugin/src", Some "Dune_action_plugin", false,
+    None)
+  ; ("src/dune_output_truncation", Some "Dune_output_truncation", false,
+    None)
   ; ("src/csexp_rpc", Some "Csexp_rpc", false, None)
   ; ("src/dune_rpc_client", Some "Dune_rpc_client", false, None)
   ; ("src/dune_thread_pool", Some "Dune_thread_pool", false, None)
   ; ("otherlibs/ocamlc-loc/src", Some "Ocamlc_loc", false, None)
   ; ("src/fsevents", Some "Fsevents", false, None)
   ; ("vendor/ocaml-inotify/src", Some "Ocaml_inotify", false, None)
-  ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false, None)
+  ; ("src/async_inotify_for_dune", Some "Async_inotify_for_dune", false,
+    None)
   ; ("src/fswatch_win", Some "Fswatch_win", false, None)
   ; ("src/dune_file_watcher", Some "Dune_file_watcher", false, None)
   ; ("src/dune_engine", Some "Dune_engine", false, None)
@@ -65,10 +61,8 @@ let local_libraries =
   ; ("otherlibs/dune-private-libs/section", Some "Dune_section", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("src/fiber_event_bus", Some "Fiber_event_bus", false, None)
-  ; ("otherlibs/dune-private-libs/meta_parser",
-     Some "Dune_meta_parser",
-     false,
-     None)
+  ; ("otherlibs/dune-private-libs/meta_parser", Some "Dune_meta_parser",
+    false, None)
   ; ("src/fs", Some "Fs", false, None)
   ; ("src/dune_findlib", Some "Dune_findlib", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
@@ -76,14 +70,13 @@ let local_libraries =
   ; ("vendor/opam/src/state", None, false, None)
   ; ("src/0install-solver", Some "Zeroinstall_solver", false, None)
   ; ("src/opam-0install/lib", Some "Opam_0install", false, None)
-  ; ("otherlibs/dune-build-info/src",
-     Some "Build_info",
-     false,
-     Some "Build_info_data")
+  ; ("otherlibs/dune-build-info/src", Some "Build_info", false,
+    Some "Build_info_data")
   ; ("vendor/fmt/src", None, false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
-  ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false, None)
+  ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false,
+    None)
   ; ("src/dune_threaded_console", Some "Dune_threaded_console", false, None)
   ; ("vendor/lwd/lwd", None, false, None)
   ; ("vendor/notty/src", None, true, None)
@@ -104,17 +97,17 @@ let local_libraries =
 
 let build_flags =
   [ ([ "win32"; "win64"; "mingw"; "mingw64" ],
-     [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
+    [ "-ccopt"; "-D_UNICODE"; "-ccopt"; "-DUNICODE" ])
   ]
 
 let link_flags =
   [ ([ "macosx" ],
-     [ "-cclib"
-     ; "-framework CoreFoundation"
-     ; "-cclib"
-     ; "-framework CoreServices"
-     ])
+    [ "-cclib"
+    ; "-framework CoreFoundation"
+    ; "-cclib"
+    ; "-framework CoreServices"
+    ])
   ; ([ "win32"; "win64"; "mingw"; "mingw64" ],
-     [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
+    [ "-cclib"; "-lshell32"; "-cclib"; "-lole32"; "-cclib"; "-luuid" ])
   ; ([ "beos" ], [ "-cclib"; "-lbsd" ])
   ]

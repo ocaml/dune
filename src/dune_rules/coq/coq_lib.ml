@@ -72,7 +72,7 @@ and Dune : sig
     ; id : Id.t
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
-        (* whether this theory uses the stdlib, eventually set to false for all libs *)
+      (* whether this theory uses the stdlib, eventually set to false for all libs *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
@@ -95,7 +95,7 @@ end = struct
     ; id : Id.t
     ; implicit : bool (* Only useful for the stdlib *)
     ; use_stdlib : bool
-        (* whether this theory uses the stdlib, eventually set to false for all libs *)
+      (* whether this theory uses the stdlib, eventually set to false for all libs *)
     ; src_root : Path.Build.t
     ; obj_root : Path.Build.t
     ; theories : (Loc.t * R.t) list Resolve.t
@@ -105,18 +105,18 @@ end = struct
     }
 
   let to_dyn
-    { loc
-    ; boot_id
-    ; id
-    ; implicit
-    ; use_stdlib
-    ; src_root
-    ; obj_root
-    ; theories
-    ; libraries
-    ; theories_closure
-    ; package
-    }
+        { loc
+        ; boot_id
+        ; id
+        ; implicit
+        ; use_stdlib
+        ; src_root
+        ; obj_root
+        ; theories
+        ; libraries
+        ; theories_closure
+        ; package
+        }
     =
     Dyn.(
       record
@@ -433,11 +433,11 @@ module DB = struct
     ;;
 
     let resolve_theory
-      ~coq_lang_version
-      ~allow_private_deps
-      ~coq_db
-      ~boot_id
-      (loc, theory_name)
+          ~coq_lang_version
+          ~allow_private_deps
+          ~coq_db
+          ~boot_id
+          (loc, theory_name)
       =
       let open Resolve.Memo.O in
       let* theory = resolve ~coq_lang_version coq_db (loc, theory_name) in
@@ -624,9 +624,9 @@ module DB = struct
   ;;
 
   let create_from_coqlib_stanzas
-    ~(parent : t option)
-    ~find_db
-    (entries : (Coq_stanza.Theory.t * Entry.t) list)
+        ~(parent : t option)
+        ~find_db
+        (entries : (Coq_stanza.Theory.t * Entry.t) list)
     =
     let boot_id = select_boot_id entries in
     let map =

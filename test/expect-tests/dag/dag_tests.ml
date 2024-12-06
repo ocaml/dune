@@ -149,7 +149,8 @@ let cycle_test variant =
 
 let%expect_test _ =
   cycle_test `a;
-  [%expect {|
+  [%expect
+    {|
     23 22 21 20 14 13 12
     11
   |}]
@@ -157,7 +158,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   cycle_test `b;
-  [%expect {|
+  [%expect
+    {|
     23 22 21 20 14 13 12
     11
   |}]

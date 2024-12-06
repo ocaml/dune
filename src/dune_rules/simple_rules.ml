@@ -60,11 +60,11 @@ let interpret_and_add_locks ~expander locks action =
 ;;
 
 let add_user_rule
-  sctx
-  ~dir
-  ~(rule : Rule_conf.t)
-  ~(action : Action.Full.t Action_builder.With_targets.t)
-  ~expander
+      sctx
+      ~dir
+      ~(rule : Rule_conf.t)
+      ~(action : Action.Full.t Action_builder.With_targets.t)
+      ~expander
   =
   let action =
     let build = interpret_and_add_locks ~expander rule.locks action.build in
@@ -157,8 +157,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.external_ (Path.External.of_string src_glob))
   in
   let since = 1, 3 in
-  if def.syntax_version < since
-     && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
+  if
+    def.syntax_version < since
+    && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
   then
     Dune_lang.Syntax.Error.since
       loc

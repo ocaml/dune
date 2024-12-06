@@ -154,7 +154,7 @@ type kind =
 type t =
   { kind : kind
   ; sync_table : (string, Sync_id.t) Table.t
-  (* Pending fs sync operations indexed by the special sync filename. *)
+    (* Pending fs sync operations indexed by the special sync filename. *)
   }
 
 module Re = Dune_re
@@ -170,8 +170,8 @@ module For_tests = struct
 end
 
 let process_inotify_event
-  (event : Async_inotify_for_dune.Async_inotify.Event.t)
-  should_exclude
+      (event : Async_inotify_for_dune.Async_inotify.Event.t)
+      should_exclude
   : Event.t list
   =
   let create_event_unless_excluded ~kind ~path =
@@ -575,15 +575,15 @@ let create_fsevents ?(latency = 0.2) ~(scheduler : Scheduler.t) ~should_exclude 
       ~paths:[ Path.build (Lazy.force Fs_sync.special_dir_path) ]
       scheduler
       (fun event localized_path ->
-        let path = Fsevents.Event.path event in
-        if not (Fs_sync.is_special_file_fsevents localized_path)
-        then None
-        else (
-          match Fsevents.Event.action event with
-          | Remove -> None
-          | Rename | Unknown | Create | Modify ->
-            Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
-              Event.Sync id)))
+         let path = Fsevents.Event.path event in
+         if not (Fs_sync.is_special_file_fsevents localized_path)
+         then None
+         else (
+           match Fsevents.Event.action event with
+           | Remove -> None
+           | Rename | Unknown | Create | Modify ->
+             Option.map (Fs_sync.consume_event sync_table path) ~f:(fun id ->
+               Event.Sync id)))
   in
   let on_event = fsevents_standard_event ~should_exclude in
   let source =

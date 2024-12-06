@@ -49,13 +49,13 @@ type t = private
   { version : Syntax.Version.t
   ; dependency_hash : (Loc.t * Local_package.Dependency_hash.t) option
   ; packages : Pkg.t Package_name.Map.t
-  (** It's guaranteed that this map will contain an entry for all dependencies
+    (** It's guaranteed that this map will contain an entry for all dependencies
       of all packages in this map. That is, the set of packages is closed under
       the "depends on" relationship between packages. *)
   ; ocaml : (Loc.t * Package_name.t) option
   ; repos : Repositories.t
   ; expanded_solver_variable_bindings : Solver_stats.Expanded_variable_bindings.t
-  (** Stores the solver variables that were evaluated while solving
+    (** Stores the solver variables that were evaluated while solving
       dependencies. Can be used to determine if a lockdir is compatible
       with a particular system. *)
   }

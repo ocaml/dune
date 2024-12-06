@@ -206,9 +206,9 @@ module Scheduler = struct
   ;;
 
   let go_with_rpc_server_and_console_status_reporting
-    ~(common : Common.t)
-    ~config:dune_config
-    run
+        ~(common : Common.t)
+        ~config:dune_config
+        run
     =
     let server =
       match Common.rpc common with

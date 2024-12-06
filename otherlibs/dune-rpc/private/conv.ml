@@ -129,7 +129,8 @@ type ('a, 'kind) t =
   | Version : ('a, 'kind) t * version -> ('a, 'kind) t
   | Both :
       (* Invariant: field names must be different *)
-      ('a, fields) t * ('b, fields) t
+      ('a, fields) t
+      * ('b, fields) t
       -> ('a * 'b, fields) t
   | Sexp : (Sexp.t, values) t
   | List : ('a, values) t -> ('a list, values) t
@@ -141,7 +142,8 @@ type ('a, 'kind) t =
   | Fdecl : int * ('a, 'k) t Fdecl.t -> ('a, 'k) t
   | Either :
       (* Invariant: field names must be different *)
-      ('a, fields) t * ('b, fields) t
+      ('a, fields) t
+      * ('b, fields) t
       -> (('a, 'b) Either.t, fields) t
   | Record : ('a, fields) t -> ('a, values) t
 
@@ -199,56 +201,56 @@ let char = Char
 let sexp_for_digest t =
   let rec iter : type a b. int list -> (a, b) t -> Sexp.t =
     fun ids -> function
-    | String -> Atom "String"
-    | Int -> Atom "Int"
-    | Float -> Atom "Float"
-    | Unit -> Atom "Unit"
-    | Char -> Atom "Char"
-    | Iso (t, _, _) -> List [ Atom "Iso"; iter ids t ]
-    | Iso_result (t, _, _) -> List [ Atom "Iso_result"; iter ids t ]
-    | Version (t, { since = a, b; until }) ->
-      let items : Sexp.t list =
-        [ Atom "Version"
-        ; iter ids t
-        ; List [ Atom "since"; Atom (Int.to_string a); Atom (Int.to_string b) ]
-        ]
-      in
-      let items =
-        match until with
-        | None -> items
-        | Some (a, b) ->
-          items
-          @ [ List [ Atom "until"; Atom (Int.to_string a); Atom (Int.to_string b) ] ]
-      in
-      List items
-    | Both (a, b) -> List [ Atom "Both"; iter ids a; iter ids b ]
-    | Sexp -> Atom "Sexp"
-    | List t -> List [ Atom "List"; iter ids t ]
-    | Field (name, field) ->
-      let field : Sexp.t =
-        match field with
-        | Required t -> List [ Atom "Required"; iter ids t ]
-        | Optional t -> List [ Atom "Optional"; iter ids t ]
-      in
-      List [ Atom "Field"; Atom name; field ]
-    | Enum cases ->
-      List (Atom "Enum" :: List.map cases ~f:(fun (name, _) : Sexp.t -> Atom name))
-    | Sum (constrs, _) ->
-      List
-        (Atom "Sum"
-         :: List.map constrs ~f:(fun (Constr { name; arg; inj = _ }) : Sexp.t ->
-           List [ Atom name; iter ids arg ]))
-    | Pair (a, b) -> List [ Atom "Pair"; iter ids a; iter ids b ]
-    | Triple (a, b, c) -> List [ Atom "Triple"; iter ids a; iter ids b; iter ids c ]
-    | Fdecl (id, fdecl) ->
-      (* Although the id is represented as an auto-incrementing integer, we
+      | String -> Atom "String"
+      | Int -> Atom "Int"
+      | Float -> Atom "Float"
+      | Unit -> Atom "Unit"
+      | Char -> Atom "Char"
+      | Iso (t, _, _) -> List [ Atom "Iso"; iter ids t ]
+      | Iso_result (t, _, _) -> List [ Atom "Iso_result"; iter ids t ]
+      | Version (t, { since = a, b; until }) ->
+        let items : Sexp.t list =
+          [ Atom "Version"
+          ; iter ids t
+          ; List [ Atom "since"; Atom (Int.to_string a); Atom (Int.to_string b) ]
+          ]
+        in
+        let items =
+          match until with
+          | None -> items
+          | Some (a, b) ->
+            items
+            @ [ List [ Atom "until"; Atom (Int.to_string a); Atom (Int.to_string b) ] ]
+        in
+        List items
+      | Both (a, b) -> List [ Atom "Both"; iter ids a; iter ids b ]
+      | Sexp -> Atom "Sexp"
+      | List t -> List [ Atom "List"; iter ids t ]
+      | Field (name, field) ->
+        let field : Sexp.t =
+          match field with
+          | Required t -> List [ Atom "Required"; iter ids t ]
+          | Optional t -> List [ Atom "Optional"; iter ids t ]
+        in
+        List [ Atom "Field"; Atom name; field ]
+      | Enum cases ->
+        List (Atom "Enum" :: List.map cases ~f:(fun (name, _) : Sexp.t -> Atom name))
+      | Sum (constrs, _) ->
+        List
+          (Atom "Sum"
+           :: List.map constrs ~f:(fun (Constr { name; arg; inj = _ }) : Sexp.t ->
+             List [ Atom name; iter ids arg ]))
+      | Pair (a, b) -> List [ Atom "Pair"; iter ids a; iter ids b ]
+      | Triple (a, b, c) -> List [ Atom "Triple"; iter ids a; iter ids b; iter ids c ]
+      | Fdecl (id, fdecl) ->
+        (* Although the id is represented as an auto-incrementing integer, we
          find De Bruijn indices to put in the digest so that equivalent
          structures produce the same digest. *)
-      (match List.findi ids ~f:(Int.equal id) with
-       | Some (_, index) -> List [ Atom "Recurse"; Atom (Int.to_string index) ]
-       | None -> List [ Atom "Fixpoint"; iter (id :: ids) (Fdecl.get fdecl) ])
-    | Either (a, b) -> List [ Atom "Either"; iter ids a; iter ids b ]
-    | Record t -> List [ Atom "Record"; iter ids t ]
+        (match List.findi ids ~f:(Int.equal id) with
+         | Some (_, index) -> List [ Atom "Recurse"; Atom (Int.to_string index) ]
+         | None -> List [ Atom "Fixpoint"; iter (id :: ids) (Fdecl.get fdecl) ])
+      | Either (a, b) -> List [ Atom "Either"; iter ids a; iter ids b ]
+      | Record t -> List [ Atom "Record"; iter ids t ]
   in
   iter [] t
 ;;
@@ -313,11 +315,12 @@ let to_sexp : 'a. ('a, values) t -> 'a -> Sexp.t =
 ;;
 
 let check_version ~version ~since ~until _ctx =
-  if version < since
-     ||
-     match until with
-     | None -> false
-     | Some until -> version > until
+  if
+    version < since
+    ||
+    match until with
+    | None -> false
+    | Some until -> version > until
   then raise_version_error ?until ~since "invalid version"
 ;;
 

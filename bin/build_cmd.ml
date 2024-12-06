@@ -37,46 +37,47 @@ let run_build_system ~common ~request =
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
-      (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+       (* CR-someday amokhov: Currently we invalidate cached timestamps on every
          incremental rebuild. This conservative approach helps us to work around
          some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
          find a way to avoid doing this. In fact, this may be unnecessary even
          for the initial build if we assume that the user does not modify files
          in the [_build] directory. For now, it's unclear if optimising this is
          worth the effort. *)
-      Cached_digest.invalidate_cached_timestamps ();
-      let* setup = Import.Main.setup () in
-      let request =
-        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup -> request setup)
-      in
-      (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
+       Cached_digest.invalidate_cached_timestamps ();
+       let* setup = Import.Main.setup () in
+       let request =
+         Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup ->
+           request setup)
+       in
+       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)
-      (* This top-level node is used for traversing the whole Memo graph. *)
-      let toplevel_cell, toplevel =
-        Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-          let open Memo.O in
-          let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-            Action_builder.evaluate_and_collect_facts request
-          in
-          ())
-      in
-      let* res = run ~toplevel in
-      let+ () =
-        match Common.dump_memo_graph_file common with
-        | None -> Fiber.return ()
-        | Some file ->
-          let path = Path.external_ file in
-          let+ graph =
-            Memo.dump_cached_graph
-              ~time_nodes:(Common.dump_memo_graph_with_timing common)
-              toplevel_cell
-          in
-          Graph.serialize graph ~path ~format:(Common.dump_memo_graph_format common)
-        (* CR-someday cmoseley: It would be nice to use Persistent to dump a
+       (* This top-level node is used for traversing the whole Memo graph. *)
+       let toplevel_cell, toplevel =
+         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
+           let open Memo.O in
+           let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+             Action_builder.evaluate_and_collect_facts request
+           in
+           ())
+       in
+       let* res = run ~toplevel in
+       let+ () =
+         match Common.dump_memo_graph_file common with
+         | None -> Fiber.return ()
+         | Some file ->
+           let path = Path.external_ file in
+           let+ graph =
+             Memo.dump_cached_graph
+               ~time_nodes:(Common.dump_memo_graph_with_timing common)
+               toplevel_cell
+           in
+           Graph.serialize graph ~path ~format:(Common.dump_memo_graph_format common)
+         (* CR-someday cmoseley: It would be nice to use Persistent to dump a
            copy of the graph's internal representation here, so it could be used
            without needing to re-run the build*)
-      in
-      res)
+       in
+       res)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())

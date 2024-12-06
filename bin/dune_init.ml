@@ -377,10 +377,10 @@ module Component = struct
 
     (* A list of CSTs for dune-project file content *)
     let dune_project
-      ~opam_file_gen
-      ~(defaults : Dune_config_file.Dune_config.Project_defaults.t)
-      dir
-      (common : Options.Common.t)
+          ~opam_file_gen
+          ~(defaults : Dune_config_file.Dune_config.Project_defaults.t)
+          dir
+          (common : Options.Common.t)
       =
       let cst =
         let package =

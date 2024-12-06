@@ -73,10 +73,10 @@ module Artifacts = struct
   include Dune_cache_storage.Artifacts
 
   let store_metadata
-    ~mode
-    ~metadata
-    ~rule_digest
-    (artifacts : Digest.t Targets.Produced.t)
+        ~mode
+        ~metadata
+        ~rule_digest
+        (artifacts : Digest.t Targets.Produced.t)
     =
     let entries =
       Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
@@ -258,8 +258,8 @@ module Artifacts = struct
     ;;
 
     let create_all_or_none
-      (mode : Dune_cache_storage.Mode.t)
-      (artifacts : _ Targets.Produced.t)
+          (mode : Dune_cache_storage.Mode.t)
+          (artifacts : _ Targets.Produced.t)
       =
       let unwind = Unwind.make () in
       let rec mk_dir (dir : Path.Local.t) =

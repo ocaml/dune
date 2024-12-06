@@ -10,8 +10,8 @@ let () =
 let fail fmt =
   Printf.ksprintf
     (fun msg ->
-      prerr_endline msg;
-      exit 1)
+       prerr_endline msg;
+       exit 1)
     fmt
 ;;
 

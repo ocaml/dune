@@ -72,7 +72,7 @@ let to_dyn { source; license; authors; homepage; bug_reports; documentation; mai
 ;;
 
 let encode_fields
-  { source; authors; license; homepage; documentation; bug_reports; maintainers }
+      { source; authors; license; homepage; documentation; bug_reports; maintainers }
   =
   let open Encoder in
   record_fields

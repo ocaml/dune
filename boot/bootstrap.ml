@@ -38,8 +38,9 @@ let () =
   then
     at_exit (fun () ->
       Array.iter (Sys.readdir ".") ~f:(fun fn ->
-        if String.length fn >= String.length duneboot
-           && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
+        if
+          String.length fn >= String.length duneboot
+          && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
         then (
           try Sys.remove fn with
           | Sys_error _ -> ())))
@@ -48,8 +49,8 @@ let () =
 let runf fmt =
   ksprintf
     (fun cmd ->
-      prerr_endline cmd;
-      Sys.command cmd)
+       prerr_endline cmd;
+       Sys.command cmd)
     fmt
 ;;
 

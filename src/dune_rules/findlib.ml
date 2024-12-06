@@ -199,9 +199,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                 match Filename.check_suffix fname ext with
                 | false -> Ok None
                 | true ->
-                  if (* We add this hack to skip manually mangled
+                  if
+                    (* We add this hack to skip manually mangled
                         libraries *)
-                     String.contains_double_underscore fname
+                    String.contains_double_underscore fname
                   then Ok None
                   else (
                     match

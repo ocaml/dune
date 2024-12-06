@@ -67,8 +67,8 @@ let ( ^/ ) = Filename.concat
 let fatal fmt =
   ksprintf
     (fun s ->
-      prerr_endline s;
-      exit 2)
+       prerr_endline s;
+       exit 2)
     fmt
 ;;
 
@@ -816,8 +816,8 @@ module Library = struct
         let oc = open_out (build_dir ^/ fn) in
         StringSet.iter
           (fun m ->
-            if m <> t.toplevel_module
-            then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
+             if m <> t.toplevel_module
+             then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
           modules;
         close_out oc;
         Some fn
@@ -865,29 +865,29 @@ module Library = struct
     let header = Wrapper.header wrapper in
     Fiber.fork_and_join
       (fun () ->
-        Fiber.parallel_map files ~f:(fun (fn, kind) ->
-          let mangled = Wrapper.mangle_filename wrapper fn kind in
-          let dst = build_dir ^/ mangled in
-          match kind with
-          | Header | C ->
-            copy "line" fn dst;
-            Fiber.return [ mangled ]
-          | Ml | Mli ->
-            copy "" fn dst ~header;
-            Fiber.return [ mangled ]
-          | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-          | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))
+         Fiber.parallel_map files ~f:(fun (fn, kind) ->
+           let mangled = Wrapper.mangle_filename wrapper fn kind in
+           let dst = build_dir ^/ mangled in
+           match kind with
+           | Header | C ->
+             copy "line" fn dst;
+             Fiber.return [ mangled ]
+           | Ml | Mli ->
+             copy "" fn dst ~header;
+             Fiber.return [ mangled ]
+           | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+           | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))
       (fun () ->
-        match build_info_module with
-        | None -> Fiber.return None
-        | Some m ->
-          let fn = String.uncapitalize_ascii m ^ ".ml" in
-          let mangled = Wrapper.mangle_filename wrapper fn Ml in
-          let oc = open_out (build_dir ^/ mangled) in
-          Build_info.gen_data_module oc
-          >>| fun () ->
-          close_out oc;
-          Some mangled)
+         match build_info_module with
+         | None -> Fiber.return None
+         | Some m ->
+           let fn = String.uncapitalize_ascii m ^ ".ml" in
+           let mangled = Wrapper.mangle_filename wrapper fn Ml in
+           let oc = open_out (build_dir ^/ mangled) in
+           Build_info.gen_data_module oc
+           >>| fun () ->
+           close_out oc;
+           Some mangled)
     >>| fun (files, build_info_file) ->
     let files = List.concat files in
     let files =
@@ -982,7 +982,9 @@ let get_dependencies libraries =
   let deps =
     List.rev_append
       ((* Alias files have no dependencies *)
-       List.rev_map alias_files ~f:(fun fn -> fn, []))
+       List.rev_map
+         alias_files
+         ~f:(fun fn -> fn, []))
       (List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
   in
   if debug
@@ -1060,12 +1062,12 @@ let common_build_args name ~external_includes ~external_libraries =
 let allow_unstable_sources = [ "-alert"; "-unstable" ]
 
 let build
-  ~ocaml_config
-  ~dependencies
-  ~c_files
-  ~build_flags
-  ~link_flags
-  { target = name, main; external_libraries; _ }
+      ~ocaml_config
+      ~dependencies
+      ~c_files
+      ~build_flags
+      ~link_flags
+      { target = name, main; external_libraries; _ }
   =
   let ext_obj =
     try StringMap.find "ext_obj" ocaml_config with
@@ -1107,12 +1109,12 @@ let build
   Fiber.fork_and_join_unit
     (fun () -> build (Filename.basename main))
     (fun () ->
-      Fiber.parallel_map c_files ~f:(fun file ->
-        Process.run
-          ~cwd:build_dir
-          Config.compiler
-          (List.concat [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ] ])
-        >>| fun () -> Filename.chop_extension file ^ ext_obj))
+       Fiber.parallel_map c_files ~f:(fun file ->
+         Process.run
+           ~cwd:build_dir
+           Config.compiler
+           (List.concat [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ] ])
+         >>| fun () -> Filename.chop_extension file ^ ext_obj))
   >>= fun obj_files ->
   let compiled_ml_ext =
     match Config.mode with

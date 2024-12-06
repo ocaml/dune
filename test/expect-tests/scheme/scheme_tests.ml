@@ -153,7 +153,8 @@ open Scheme
 let%expect_test _ =
   let scheme = Scheme.Thunk (fun () -> Memo.return Scheme.Empty) in
   print_rules scheme ~dir:(Path.of_string "foo/bar");
-  [%expect {|
+  [%expect
+    {|
 calls:
     thunk
 rules:
@@ -169,7 +170,8 @@ let scheme_all_but_foo_bar =
 
 let%expect_test _ =
   print_rules scheme_all_but_foo_bar ~dir:(Path.of_string "unrelated/dir");
-  [%expect {|
+  [%expect
+    {|
 calls:
     t:thunk
 rules:

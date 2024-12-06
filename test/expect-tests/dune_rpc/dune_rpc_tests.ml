@@ -107,7 +107,8 @@ let%expect_test "initialize scheduler with rpc" =
       Fiber.return ())
     ~handler
     ();
-  [%expect {|
+  [%expect
+    {|
     client: connected. now terminating
     server: finished. |}]
 ;;
@@ -127,11 +128,11 @@ let%expect_test "no methods in common" =
 ;;
 
 let simple_request
-  (type a b)
-  ?(version = 1)
-  ~method_
-  (req : (a, Conv.values) Conv.t)
-  (resp : (b, Conv.values) Conv.t)
+      (type a b)
+      ?(version = 1)
+      ~method_
+      (req : (a, Conv.values) Conv.t)
+      (resp : (b, Conv.values) Conv.t)
   =
   let v = Decl.Request.make_current_gen ~req ~resp ~version in
   Decl.Request.make ~method_ ~generations:[ v ]
@@ -333,7 +334,8 @@ let%expect_test "client is newer than server" =
     }
   in
   test ~private_menu:[ Request add_v1_v2 ] ~init ~client ~handler ();
-  [%expect {|
+  [%expect
+    {|
     client: sending request
     client: 25
     server: finished. |}]
@@ -366,7 +368,8 @@ let%expect_test "client is older than server" =
     }
   in
   test ~private_menu:[ Request add_v1_only ] ~init ~client ~handler ();
-  [%expect {|
+  [%expect
+    {|
     client: sending request
     client: 50
     server: finished. |}]
@@ -506,13 +509,13 @@ let%test_module "long polling" =
         let* () = req () in
         Fiber.fork_and_join_unit
           (fun () ->
-            let* () = Fiber.Ivar.read ready_to_cancel in
-            printfn "client: cancelling";
-            Client.Stream.cancel poller)
+             let* () = Fiber.Ivar.read ready_to_cancel in
+             printfn "client: cancelling";
+             Client.Stream.cancel poller)
           (fun () ->
-            printfn "client: waiting for second value (that will never come)";
-            let+ () = Fiber.fork_and_join_unit req (Fiber.Ivar.fill ready_to_cancel) in
-            printfn "client: finishing session")
+             printfn "client: waiting for second value (that will never come)";
+             let+ () = Fiber.fork_and_join_unit req (Fiber.Ivar.fill ready_to_cancel) in
+             printfn "client: finishing session")
       in
       test ~init ~client ~handler ~private_menu:[ Poll sub_proc ] ();
       [%expect.unreachable]
@@ -871,7 +874,8 @@ let%expect_test "sexp_for_digest" =
 let%expect_test "print digests for all public RPCs" =
   let open Dune_rpc_private in
   Decl.Request.print_generations Procedures.Public.ping;
-  [%expect {|
+  [%expect
+    {|
     Version 1:
       Request: Unit
       Response: Unit
@@ -896,13 +900,15 @@ let%expect_test "print digests for all public RPCs" =
       Response: String
     |}];
   Decl.Request.print_generations Procedures.Public.promote;
-  [%expect {|
+  [%expect
+    {|
     Version 1:
       Request: String
       Response: Unit
     |}];
   Decl.Request.print_generations Procedures.Public.build_dir;
-  [%expect {|
+  [%expect
+    {|
     Version 1:
       Request: Unit
       Response: String

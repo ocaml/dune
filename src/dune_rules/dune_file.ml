@@ -230,13 +230,13 @@ end = struct
   ;;
 
   let write
-    oc
-    ~(context : Context_name.t)
-    ~ocaml_config
-    ~target
-    ~exec_dir
-    ~plugin
-    ~plugin_contents
+        oc
+        ~(context : Context_name.t)
+        ~ocaml_config
+        ~target
+        ~exec_dir
+        ~plugin
+        ~plugin_contents
     =
     let ocamlc_config =
       let vars =
@@ -409,14 +409,14 @@ module Eval = struct
              |> Path.to_string_maybe_quoted)
             (Path.Source.to_string_maybe_quoted eval.dir))
         (fun () ->
-          let* ast, include_context =
-            Include_stanza.load_sexps ~context:include_context (loc, include_file)
-          in
-          let* stanzas, dynamic_includes = parse_stanzas ast ~file:None ~eval in
-          let+ dynamic =
-            collect_dynamic_includes eval include_context origin dynamic_includes
-          in
-          List.rev_append stanzas dynamic))
+           let* ast, include_context =
+             Include_stanza.load_sexps ~context:include_context (loc, include_file)
+           in
+           let* stanzas, dynamic_includes = parse_stanzas ast ~file:None ~eval in
+           let+ dynamic =
+             collect_dynamic_includes eval include_context origin dynamic_includes
+           in
+           List.rev_append stanzas dynamic))
   ;;
 
   let set_dynamic_stanzas t ~context ~eval ~dynamic_includes =

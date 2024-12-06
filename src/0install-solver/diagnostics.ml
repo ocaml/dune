@@ -1,6 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
  * See the README file for details, or visit http://0install.net.
- *)
+*)
 
 (** Explaining why a solve failed or gave an unexpected answer. *)
 
@@ -83,10 +83,10 @@ module Make (Results : S.SOLVER_RESULT) = struct
          is the selected implementation, or [None] if we chose [dummy_impl].
        @param diagnostics can be used to produce diagnostics as a last resort. *)
     let create
-      ~role
-      (candidates, orig_bad, feed_problems)
-      (diagnostics : _ Pp.t Lazy.t)
-      (selected_impl : Model.impl option)
+          ~role
+          (candidates, orig_bad, feed_problems)
+          (diagnostics : _ Pp.t Lazy.t)
+          (selected_impl : Model.impl option)
       =
       let { Model.impls; Model.replacement } = candidates in
       let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
@@ -382,11 +382,11 @@ module Make (Results : S.SOLVER_RESULT) = struct
     let classes =
       RoleMap.fold
         (fun role component acc ->
-          match Component.selected_impl component with
-          | None -> acc
-          | Some impl ->
-            Model.conflict_class impl
-            |> List.fold_left ~f:(fun acc x -> Classes.add x role acc) ~init:acc)
+           match Component.selected_impl component with
+           | None -> acc
+           | Some impl ->
+             Model.conflict_class impl
+             |> List.fold_left ~f:(fun acc x -> Classes.add x role acc) ~init:acc)
         report
         Classes.empty
     in

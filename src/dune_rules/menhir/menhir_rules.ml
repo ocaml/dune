@@ -216,15 +216,16 @@ module Run (P : PARAMS) = struct
                    should not be explicitly added to the list of Menhir flags."
               ]
         | Some text ->
-          if List.mem
-               ~equal:String.equal
-               [ "--depend"
-               ; "--raw-depend"
-               ; "--infer"
-               ; "--infer-write-query"
-               ; "--infer-read-reply"
-               ]
-               text
+          if
+            List.mem
+              ~equal:String.equal
+              [ "--depend"
+              ; "--raw-depend"
+              ; "--infer"
+              ; "--infer-write-query"
+              ; "--infer-read-reply"
+              ]
+              text
           then
             User_error.raise
               ~loc:(String_with_vars.loc sw)

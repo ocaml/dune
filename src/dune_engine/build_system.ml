@@ -10,8 +10,8 @@ module Progress = struct
     }
 
   let equal
-    { number_of_rules_discovered; number_of_rules_executed; number_of_rules_failed }
-    t
+        { number_of_rules_discovered; number_of_rules_executed; number_of_rules_failed }
+        t
     =
     Int.equal number_of_rules_discovered t.number_of_rules_discovered
     && Int.equal number_of_rules_executed t.number_of_rules_executed
@@ -248,11 +248,11 @@ end = struct
   let rule_digest_version = 22
 
   let compute_rule_digest
-    (rule : Rule.t)
-    ~facts
-    ~action
-    ~sandbox_mode
-    ~execution_parameters
+        (rule : Rule.t)
+        ~facts
+        ~action
+        ~sandbox_mode
+        ~execution_parameters
     =
     let { Action.Full.action
         ; env
@@ -325,14 +325,14 @@ end = struct
   ;;
 
   let execute_action_for_rule
-    ~rule_kind
-    ~rule_digest
-    ~action
-    ~facts
-    ~loc
-    ~execution_parameters
-    ~sandbox_mode
-    ~(targets : Targets.Validated.t)
+        ~rule_kind
+        ~rule_digest
+        ~action
+        ~facts
+        ~loc
+        ~execution_parameters
+        ~sandbox_mode
+        ~(targets : Targets.Validated.t)
     : Exec_result.t Fiber.t
     =
     let open Fiber.O in
@@ -408,41 +408,41 @@ end = struct
           Pending_targets.remove targets;
           Fiber.return ())
       (fun () ->
-        with_locks locks ~f:(fun () ->
-          let* action_exec_result =
-            let input =
-              { Action_exec.root
-              ; context (* can be derived from the root *)
-              ; env
-              ; targets = Some targets
-              ; rule_loc = loc
-              ; execution_parameters
-              ; action
-              }
-            in
-            let build_deps deps = Memo.run (build_deps deps) in
-            Action_exec.exec input ~build_deps
-          in
-          let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
-          let* () =
-            match sandbox with
-            | None -> Fiber.return ()
-            | Some sandbox ->
-              (* The stamp file for anonymous actions is always created outside
+         with_locks locks ~f:(fun () ->
+           let* action_exec_result =
+             let input =
+               { Action_exec.root
+               ; context (* can be derived from the root *)
+               ; env
+               ; targets = Some targets
+               ; rule_loc = loc
+               ; execution_parameters
+               ; action
+               }
+             in
+             let build_deps deps = Memo.run (build_deps deps) in
+             Action_exec.exec input ~build_deps
+           in
+           let* action_exec_result = Action_exec.Exec_result.ok_exn action_exec_result in
+           let* () =
+             match sandbox with
+             | None -> Fiber.return ()
+             | Some sandbox ->
+               (* The stamp file for anonymous actions is always created outside
                  the sandbox, so we can't move it. *)
-              let should_be_skipped =
-                match rule_kind with
-                | Normal_rule -> fun (_ : Path.Build.t) -> false
-                | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
-              in
-              Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
-          in
-          let+ produced_targets =
-            maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
-          in
-          match produced_targets with
-          | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
-          | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
+               let should_be_skipped =
+                 match rule_kind with
+                 | Normal_rule -> fun (_ : Path.Build.t) -> false
+                 | Anonymous_action { stamp_file; _ } -> Path.Build.equal stamp_file
+               in
+               Sandbox.move_targets_to_build_dir sandbox ~should_be_skipped ~targets
+           in
+           let+ produced_targets =
+             maybe_async_rule_file_op (fun () -> Targets.Produced.of_validated targets)
+           in
+           match produced_targets with
+           | Ok produced_targets -> { Exec_result.produced_targets; action_exec_result }
+           | Error error -> User_error.raise ~loc (Targets.Produced.Error.message error)))
   ;;
 
   let promote_targets ~rule_mode ~targets ~promote_source =
@@ -675,7 +675,7 @@ end = struct
 
   (* Returns the action's stdout or the empty string if [capture_stdout = false]. *)
   let execute_action_generic_stage2_impl
-    { Anonymous_action.action = act; deps; capture_stdout; digest }
+        { Anonymous_action.action = act; deps; capture_stdout; digest }
     =
     let target =
       let dir =
@@ -725,9 +725,9 @@ end = struct
   let action_digest_version = 2
 
   let execute_action_generic
-    ~observing_facts
-    (act : Rule.Anonymous_action.t)
-    ~capture_stdout
+        ~observing_facts
+        (act : Rule.Anonymous_action.t)
+        ~capture_stdout
     =
     (* We memoize the execution of anonymous actions, both via the persistent
        mechanism for not re-running build rules between invocations of [dune
@@ -920,8 +920,9 @@ end = struct
       >>= Memo.parallel_map ~f:(fun (loc, definition) ->
         Memo.push_stack_frame
           (fun () ->
-            Action_builder.evaluate_and_collect_facts (dep_on_alias_definition definition)
-            >>| snd)
+             Action_builder.evaluate_and_collect_facts
+               (dep_on_alias_definition definition)
+             >>| snd)
           ~human_readable_description:(fun () -> Alias.describe alias ~loc))
     in
     Dep.Facts.group_paths_as_fact_files l

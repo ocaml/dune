@@ -1,6 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
  * See the README file for details, or visit http://0install.net.
- *)
+*)
 
 (** Select a compatible set of components to run a program. *)
 
@@ -68,9 +68,9 @@ end = struct
   let filter_map f m =
     M.merge
       (fun key ao _bo ->
-        match ao with
-        | Some x -> f key x
-        | None -> assert false)
+         match ao with
+         | Some x -> f key x
+         | None -> assert false)
       m
       M.empty
   ;;

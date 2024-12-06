@@ -196,9 +196,9 @@ module Event = struct
     let fields = add_field_opt (fun tts -> "tts", Timestamp.to_json tts) tts fields in
     add_field_opt
       (fun stackframe ->
-        match stackframe with
-        | `Id id -> "sf", Id.to_json id
-        | `Raw r -> "stack", Stack_frame.Raw.to_json r)
+         match stackframe with
+         | `Id id -> "sf", Id.to_json id
+         | `Raw r -> "stack", Stack_frame.Raw.to_json r)
       stackframe
       fields
   ;;

@@ -96,18 +96,18 @@ let translate_path_for_sh =
   then fun fn -> Fiber.return (Path.to_absolute_filename fn)
   else
     fun fn ->
-    let cygpath =
-      let path = Env_path.path Env.initial in
-      Bin.which ~path "cygpath"
-    in
-    match cygpath with
-    | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
-    | Some cygpath ->
-      Process.run_capture_line
-        ~display:Quiet
-        Strict
-        cygpath
-        [ Path.to_absolute_filename fn ]
+      let cygpath =
+        let path = Env_path.path Env.initial in
+        Bin.which ~path "cygpath"
+      in
+      match cygpath with
+      | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
+      | Some cygpath ->
+        Process.run_capture_line
+          ~display:Quiet
+          Strict
+          cygpath
+          [ Path.to_absolute_filename fn ]
 ;;
 
 (* Quote a filename for sh, independently of whether we are on Windows or Unix.

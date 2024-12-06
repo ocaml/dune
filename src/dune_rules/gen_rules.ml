@@ -376,8 +376,9 @@ let gen_project_rules =
       | Some _ -> Memo.return ()
       | None ->
         (match
-           if Dune_project.dune_version project >= (2, 8)
-              && Dune_project.generate_opam_files project
+           if
+             Dune_project.dune_version project >= (2, 8)
+             && Dune_project.generate_opam_files project
            then Dune_project.file project
            else None
          with
@@ -587,12 +588,12 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        (* XXX the use of the super context is dubious here. We're using it to
+         (* XXX the use of the super context is dubious here. We're using it to
            take into account the env stanza. But really, these are internal
            libraries that are being compiled and user settings should be
            ignored. *)
-        let* sctx = sctx in
-        Jsoo_rules.setup_separate_compilation_rules sctx rest)
+         let* sctx = sctx in
+         Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest ->
     let* sctx = sctx in
     Odoc.gen_rules sctx rest ~dir
@@ -606,8 +607,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        let* sctx = sctx in
-        Top_module.gen_rules sctx ~dir ~comps)
+         let* sctx = sctx in
+         Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       ~dir
@@ -615,8 +616,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        let* sctx = sctx in
-        Pp_spec_rules.gen_rules sctx rest)
+         let* sctx = sctx in
+         Pp_spec_rules.gen_rules sctx rest)
   | [ ".dune" ] ->
     has_rules
       ~dir

@@ -71,34 +71,34 @@ module Run = struct
       let* () = Fiber.Ivar.fill t.server_ivar server in
       Fiber.fork_and_join_unit
         (fun () ->
-          let* sessions = Csexp_rpc.Server.serve server in
-          let () =
-            with_registry
-            @@ fun () ->
-            let (`Caller_should_write { Registry.File.path; contents }) =
-              let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
-              let dune =
-                let pid = Unix.getpid () in
-                let where =
-                  match t.where with
-                  | `Ip (host, port) -> `Ip (host, port)
-                  | `Unix a ->
-                    `Unix
-                      (if Filename.is_relative a
-                       then Filename.concat (Sys.getcwd ()) a
-                       else a)
-                in
-                Registry.Dune.create ~where ~root:t.root ~pid
-              in
-              Registry.Config.register registry_config dune
-            in
-            let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
-            Io.String_path.write_file path contents;
-            cleanup_registry := Some path;
-            at_exit run_cleanup_registry
-          in
-          let* () = Server.serve sessions t.stats t.handler in
-          Fiber.Pool.close t.pool)
+           let* sessions = Csexp_rpc.Server.serve server in
+           let () =
+             with_registry
+             @@ fun () ->
+             let (`Caller_should_write { Registry.File.path; contents }) =
+               let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
+               let dune =
+                 let pid = Unix.getpid () in
+                 let where =
+                   match t.where with
+                   | `Ip (host, port) -> `Ip (host, port)
+                   | `Unix a ->
+                     `Unix
+                       (if Filename.is_relative a
+                        then Filename.concat (Sys.getcwd ()) a
+                        else a)
+                 in
+                 Registry.Dune.create ~where ~root:t.root ~pid
+               in
+               Registry.Config.register registry_config dune
+             in
+             let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
+             Io.String_path.write_file path contents;
+             cleanup_registry := Some path;
+             at_exit run_cleanup_registry
+           in
+           let* () = Server.serve sessions t.stats t.handler in
+           Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
     Fiber.finalize (with_print_errors run) ~finally:(fun () ->

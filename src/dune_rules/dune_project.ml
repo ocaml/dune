@@ -103,7 +103,7 @@ let to_dyn
   ; subst_config
   ; strict_package_deps
   ; allow_approximate_merlin
-  ; sources = _
+  ; sources
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
@@ -135,6 +135,7 @@ let to_dyn
     ; "format_config", option Format_config.to_dyn format_config
     ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
+    ; "sources", Dune_pkg.Pin_stanza.DB.to_dyn sources
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
     ; "expand_aliases_in_sandbox", bool expand_aliases_in_sandbox

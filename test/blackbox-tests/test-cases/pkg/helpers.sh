@@ -117,3 +117,15 @@ print_source() {
 solve() {
   make_project $@ | solve_project
 }
+
+make_mock_tool_package() {
+  package=$1
+  binary=$2
+  mkpkg $package <<EOF
+install: [
+  [ "sh" "-c" "echo '#!/bin/sh' > %{bin}%/$binary" ]
+  [ "sh" "-c" "echo 'echo hello from fake $binary' >> %{bin}%/$binary" ]
+  [ "sh" "-c" "chmod a+x %{bin}%/$binary" ]
+]
+EOF
+}

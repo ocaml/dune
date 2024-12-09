@@ -1,0 +1,9 @@
+(coq.theory
+ (name coqlib)
+ (package coqlib)
+ (plugins coqlib-plugin.plugin))
+
+;(rule
+; (targets dummy.v)
+; (deps (package coqlib-plugin))
+; (action (with-stdout-to %{targets} (echo "(* dummy file *)"))))

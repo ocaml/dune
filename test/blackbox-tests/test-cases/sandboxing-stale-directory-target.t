@@ -1,8 +1,7 @@
 A faulty test escapes the sandbox by creating its target outside the sandbox
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.11)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat >dune <<EOF

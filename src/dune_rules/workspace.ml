@@ -638,10 +638,10 @@ type t =
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
   ; dir : Path.Source.t
-  ; sources : Dune_pkg.Pin_stanza.DB.Workspace.t
+  ; pins : Dune_pkg.Pin_stanza.DB.Workspace.t
   }
 
-let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; sources; dir } =
+let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; pins; dir } =
   let open Dyn in
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
@@ -651,11 +651,11 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; sources; d
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
     ; "dir", Path.Source.to_dyn dir
-    ; "sources", Dune_pkg.Pin_stanza.DB.Workspace.to_dyn sources
+    ; "pins", Dune_pkg.Pin_stanza.DB.Workspace.to_dyn pins
     ]
 ;;
 
-let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; sources } w =
+let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Option.equal Dune_env.equal env w.env
@@ -663,10 +663,10 @@ let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; source
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
   && Path.Source.equal dir w.dir
-  && Dune_pkg.Pin_stanza.DB.Workspace.equal sources w.sources
+  && Dune_pkg.Pin_stanza.DB.Workspace.equal pins w.pins
 ;;
 
-let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; sources } =
+let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
@@ -675,7 +675,7 @@ let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; sources
     , List.hash Repository.hash repos
     , List.hash Lock_dir.hash lock_dirs
     , Path.Source.hash dir
-    , Dune_pkg.Pin_stanza.DB.Workspace.hash sources )
+    , Dune_pkg.Pin_stanza.DB.Workspace.hash pins )
 ;;
 
 let find_lock_dir t path =
@@ -845,7 +845,7 @@ let step1 clflags =
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
   and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
-  and+ sources = Dune_pkg.Pin_stanza.DB.Workspace.decode in
+  and+ pins = Dune_pkg.Pin_stanza.DB.Workspace.decode in
   let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
     create_final_config
@@ -918,7 +918,7 @@ let step1 clflags =
        ; repos
        ; lock_dirs
        ; dir
-       ; sources
+       ; pins
        })
   in
   { Step1.t; config }
@@ -951,7 +951,7 @@ let default clflags =
   ; repos = default_repositories
   ; lock_dirs = []
   ; dir = Path.Source.root
-  ; sources = Dune_pkg.Pin_stanza.DB.Workspace.empty
+  ; pins = Dune_pkg.Pin_stanza.DB.Workspace.empty
   }
 ;;
 

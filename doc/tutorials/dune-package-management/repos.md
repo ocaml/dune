@@ -26,6 +26,10 @@ instead of always using the most recent one as it would do by default. We
 define a new repository and configure the lock directory to use this
 repository.
 
+For more information about the stanzas refer to the {doc}`repositories stanza
+</reference/dune-workspace/repository>` as well as the {doc}`lock_dir stanza
+</reference/dune-workspace/lock_dir>`.
+
 When relocking the dependencies, the list of packages that are found as
 dependencies changes accordingly:
 

@@ -28,14 +28,7 @@ Generate a `dune-project` file.
   >     "bar" {>= "0.2"}
   > ]
   > EOF
-  > cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
 Run the solver and generate a lock directory.
 

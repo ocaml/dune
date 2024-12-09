@@ -1,18 +1,13 @@
 Test the error cases for invalid opam repositories
 
+  $ . ../helpers.sh
+
   $ cat >dune-project <<EOF
   > (lang dune 3.8)
   > (package
   >  (name lockfile_generation_test))
   > EOF
-  > cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/directory-that-does-not-exist"))
-  > EOF
+  $ add_mock_repo_if_needed "file://$(pwd)/directory-that-does-not-exist"
 
   $ lock() {
   > out="$(dune pkg lock 2>&1)"
@@ -32,14 +27,8 @@ Test the error cases for invalid opam repositories
   [1]
 
   $ touch empty
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/empty"))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "file://$(pwd)/empty"
   $ lock
   File "dune-workspace", line 6, characters X-X:
   6 |  (url ..))
@@ -48,14 +37,8 @@ Test the error cases for invalid opam repositories
   is not a directory
   [1]
 
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (url "file://$(pwd)/no-packages-dir"))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "file://$(pwd)/no-packages-dir"
   $ lock
   File "dune-workspace", line 6, characters X-X:
   6 |  (url ..))

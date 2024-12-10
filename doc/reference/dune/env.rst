@@ -34,7 +34,7 @@ Fields supported in ``<settings>`` are:
   replaced by the ``(menhir)`` field (see below) starting in version 3.0 of the
   Menhir extension.
 
-- ``(menhir (flags <flags) (explain <blang expression>))`` specifies the Menhir
+- ``(menhir (flags <flags>) (explain <blang expression>))`` specifies the Menhir
   settings. See :doc:`menhir` for more details. This field was introduced in version
   3.0 of the Menhir extension.
 

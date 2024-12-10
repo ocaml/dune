@@ -43,4 +43,7 @@ project.
   config
   context
   env
+  lock_dir
+  pin
   profile
+  repository

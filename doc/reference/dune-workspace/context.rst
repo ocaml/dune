@@ -15,6 +15,12 @@ the description of an opam switch, as follows:
 -  ``(name <name>)`` is the subdirectory's name for ``_build``, where this
    build's context artifacts will be stored.
 
+-  ``(lock_dir <path>)`` specifies the lock directory that will be used for
+   building this context (if any). If no lock directory is specified
+   ``dune.lock`` will be used. See the
+   :doc:`/reference/dune-workspace/lock_dir` stanza for lock directory
+   configuration options.
+
 -  ``(root <opam-root>)`` is the opam root. By default, it will take the opam
    root defined by the environment in which ``dune`` is run, which is usually
    ``~/.opam``.

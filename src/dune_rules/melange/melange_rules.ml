@@ -47,6 +47,48 @@ let make_js_name ~js_ext ~output m =
     Path.Build.relative dst_dir basename
 ;;
 
+module Manifest = struct
+  type mapping =
+    { source : Path.t
+    ; targets : Path.Build.t list
+    }
+
+  type t = { mappings : mapping list }
+
+  let sexp_of_mapping { source; targets } =
+    let source_str = Path.to_string source in
+    let target_strs = List.map targets ~f:Path.Build.to_string in
+    Sexp.List
+      [ Sexp.Atom source_str; Sexp.List (List.map target_strs ~f:(fun s -> Sexp.Atom s)) ]
+  ;;
+
+  let sexp_of_t t = Sexp.List (List.map t.mappings ~f:sexp_of_mapping)
+  let to_string t = Sexp.to_string (sexp_of_t t)
+
+  let create_mapping ~module_systems ~output m =
+    let source = Module.file m ~ml_kind:Impl |> Option.value_exn in
+    let targets =
+      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output m)
+    in
+    { source; targets }
+  ;;
+
+  let create_manifest_rule ~sctx ~dir ~target_dir ~mode mappings =
+    let manifest_path = Path.Build.relative target_dir "melange-manifest.sexp" in
+    Format.eprintf "Creating manifest rule@.";
+    Format.eprintf "  dir: %s@." (Path.Build.to_string dir);
+    Format.eprintf "  target_dir: %s@." (Path.Build.to_string target_dir);
+    Format.eprintf "  mappings count: %d@." (List.length mappings);
+    Format.eprintf "  manifest path: %s@." (Path.Build.to_string manifest_path);
+    let manifest = { mappings } in
+    let manifest_str = to_string manifest in
+    Format.eprintf "  manifest content:@.%s@." manifest_str;
+    Action_builder.return manifest_str
+    |> Action_builder.write_file_dyn manifest_path
+    |> Super_context.add_rule sctx ~dir ~mode
+  ;;
+end
+
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   let* version =
     let+ ocaml = Context.ocaml (Super_context.context sctx) in
@@ -476,6 +518,11 @@ let setup_entries_js
     cmj_includes ~requires_link ~scope lib_config
   in
   let output = `Private_library_or_emit target_dir in
+  let mappings =
+    List.map modules_for_js ~f:(fun m ->
+      Manifest.create_mapping ~module_systems ~output m)
+  in
+  let* () = Manifest.create_manifest_rule ~sctx ~dir ~target_dir ~mode mappings in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel

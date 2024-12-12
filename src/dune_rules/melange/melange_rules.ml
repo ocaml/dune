@@ -1,5 +1,17 @@
 open Import
 open Memo.O
+module Json = Dune_stats.Json
+
+(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
+
+   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
+   assumed. *)
+let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
+  let alias = Alias.make alias ~dir in
+  let dune_default_alias = Alias.make Alias0.all ~dir in
+  let attach alias = Rules.Produce.Alias.add_deps alias deps in
+  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
+;;
 
 let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
@@ -46,6 +58,52 @@ let make_js_name ~js_ext ~output m =
     in
     Path.Build.relative dst_dir basename
 ;;
+
+module Manifest = struct
+  type mapping =
+    { source : Path.t
+    ; targets : Path.Build.t list
+    }
+
+  type t = { mappings : mapping list }
+
+  let sexp_of_mapping { source; targets } =
+    let source_str = Path.to_string source in
+    let target_strs = List.map targets ~f:Path.Build.to_string in
+    `Assoc [ source_str, `List (List.map target_strs ~f:(fun s -> `String s)) ]
+  ;;
+
+  let json_of_t t = `List (List.map t.mappings ~f:sexp_of_mapping)
+  let to_string t = Json.to_string (json_of_t t)
+
+  let create_mapping ~module_systems ~output m =
+    let source = Module.file m ~ml_kind:Impl |> Option.value_exn in
+    let targets =
+      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output m)
+    in
+    { source; targets }
+  ;;
+
+  let setup_manifest_rule ~sctx ~dir ~target_dir ~mode mappings =
+    let manifest_path = Path.Build.relative target_dir "melange-manifest.sexp" in
+    Format.eprintf "Creating manifest rule@.";
+    Format.eprintf "  dir: %s@." (Path.Build.to_string dir);
+    Format.eprintf "  target_dir: %s@." (Path.Build.to_string target_dir);
+    Format.eprintf "  mappings count: %d@." (List.length mappings);
+    Format.eprintf "  manifest path: %s@." (Path.Build.to_string manifest_path);
+    let manifest = { mappings } in
+    let manifest_str = to_string manifest in
+    Format.eprintf "  manifest content:@.%s@." manifest_str;
+    let* () =
+      Action_builder.return manifest_str
+      |> Action_builder.write_file_dyn manifest_path
+      |> Super_context.add_rule sctx ~dir:target_dir ~mode
+    in
+    let manifest_dep = Action_builder.path (Path.build manifest_path) in
+    let* () = add_deps_to_aliases ~dir:target_dir manifest_dep in
+    Memo.return ()
+  ;;
+end
 
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
   let* version =
@@ -248,17 +306,6 @@ let build_js
         | None -> command)
     in
     Super_context.add_rule sctx ~dir ~loc ~mode build)
-;;
-
-(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
-
-   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
-   assumed. *)
-let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
-  let alias = Alias.make alias ~dir in
-  let dune_default_alias = Alias.make Alias0.all ~dir in
-  let attach alias = Rules.Produce.Alias.add_deps alias deps in
-  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
 let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
@@ -482,6 +529,16 @@ let setup_entries_js
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
+  in
+  let* () =
+    match mel.emit_manifest with
+    | true ->
+      let mappings =
+        List.map modules_for_js ~f:(fun m ->
+          Manifest.create_mapping ~module_systems ~output m)
+      in
+      Manifest.setup_manifest_rule ~sctx ~dir ~target_dir ~mode mappings
+    | false -> Memo.return ()
   in
   let local_modules_and_obj_dir =
     Some (Modules.With_vlib.modules local_modules, local_obj_dir)

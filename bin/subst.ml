@@ -332,6 +332,10 @@ let subst vcs =
                  |> Memo.return)
        in
        Some (None, None, Path.Source.Set.to_list files))
+  >>| Option.bind ~f:(fun ((_, _, files) as s) ->
+    match files with
+    | [] -> None
+    | _ :: _ -> Some s)
   >>= Memo.Option.iter ~f:(fun (version, commit, files) ->
     let+ (dune_project : Dune_project.t) =
       (* CR-soon rgrinberg: unify this check with the above version check *)

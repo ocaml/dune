@@ -191,11 +191,12 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
       when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
       ->
       User_error.raise
-        [ Pp.text "Your git version doesn't support the '--no-write-fetch-head' flag." ]
-        ~hints:[ Pp.text "Please update your git version." ]
-    | _ ->
-      ();
-      Error { Git_error.dir; args; exit_code; output = [] })
+        [ User_message.command
+            "Your git version doesn't support the '--no-write-fetch-head' flag. The \
+             minimum supported version is Git 2.29."
+        ]
+        ~hints:[ User_message.command "Please update your git version." ]
+    | _ -> Error { Git_error.dir; args; exit_code; output = [] })
 ;;
 
 let run t ~display args =

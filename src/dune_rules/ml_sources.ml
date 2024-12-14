@@ -533,12 +533,13 @@ let modules_of_stanzas =
          | Melange_stanzas.Emit.T mel ->
            let obj_dir = Obj_dir.make_melange_emit ~dir ~name:mel.target in
            let+ sources, modules =
+             let version = Dune_project.dune_version project in
              Modules_field_evaluator.eval
                ~expander
                ~modules
                ~stanza_loc:mel.loc
                ~kind:Modules_field_evaluator.Exe_or_normal_lib
-               ~version:mel.dune_version
+               ~version
                ~private_modules:Ordered_set_lang.Unexpanded.standard
                ~src_dir:dir
                mel.modules

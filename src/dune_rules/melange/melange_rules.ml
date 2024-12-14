@@ -455,7 +455,7 @@ let setup_entries_js
   ~dir
   ~dir_contents
   ~scope
-  ~compile_info
+  ~requires_link
   ~target_dir
   ~mode
   (mel : Melange_stanzas.Emit.t)
@@ -463,16 +463,15 @@ let setup_entries_js
   let* local_modules, modules_for_js, local_obj_dir =
     modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
   in
-  let requires_link = Lib.Compile.requires_link compile_info in
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let module_systems = mel.module_systems in
-  let* requires_link = Memo.Lazy.force requires_link in
   let* includes =
     let+ lib_config =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
       ocaml.lib_config
     in
+    let requires_link = Resolve.return requires_link in
     cmj_includes ~requires_link ~scope lib_config
   in
   let output = `Private_library_or_emit target_dir in
@@ -618,7 +617,6 @@ let setup_js_rules_libraries_and_entries
   ~dir
   ~scope
   ~sctx
-  ~compile_info
   ~requires_link
   ~mode
   ~target_dir
@@ -627,7 +625,7 @@ let setup_js_rules_libraries_and_entries
   let+ () =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
   and+ () =
-    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~compile_info ~target_dir ~mode mel
+    setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
   in
   ()
 ;;
@@ -652,7 +650,6 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
       ~dir
       ~scope
       ~sctx
-      ~compile_info
       ~requires_link
       ~mode
       ~target_dir

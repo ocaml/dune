@@ -12,12 +12,10 @@ let dir_contents (dir : Path.t) =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with
   | `Outside dir ->
-    Fs_memo.dir_contents dir
-    >>| Result.map ~f:(fun contents ->
-      Fs_cache.Dir_contents.to_list contents |> List.map ~f:fst)
+    Fs_memo.dir_contents dir >>| Result.map ~f:Fs_cache.Dir_contents.to_list
   | `Inside _ ->
     let* () = Build_system.build_file dir in
-    Memo.return (Path.readdir_unsorted dir)
+    Memo.return (Path.readdir_unsorted_with_kinds dir)
 ;;
 
 let exists file kind =

@@ -1,27 +1,7 @@
 Tests for directory targets.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > EOF
-
-Directory targets require an extension.
-
-  $ cat > dune <<EOF
-  > (rule
-  >   (targets (dir output))
-  >   (action (bash "true")))
-  > EOF
-
-  $ dune build output/x
-  File "dune", line 2, characters 16-22:
-  2 |   (targets (dir output))
-                      ^^^^^^
-  Error: Directory targets require the 'directory-targets' extension
-  [1]
-
-  $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
 Ensure directory targets are produced.

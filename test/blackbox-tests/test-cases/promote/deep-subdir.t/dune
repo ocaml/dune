@@ -1,0 +1,7 @@
+(rule
+ (deps
+  (source_tree deep))
+ (targets (dir deep_copied))
+ (mode promote)
+ (action
+  (run cp -r deep deep_copied)))

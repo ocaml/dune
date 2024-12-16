@@ -34,29 +34,46 @@ let is_in_dune_project builder =
   |> Result.is_ok
 ;;
 
-let term =
-  let+ builder = Common.Builder.term
-  and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
-  match is_in_dune_project builder with
-  | false ->
-    User_error.raise
-      [ Pp.textf
-          "Unable to run %s as a dev-tool because you don't appear to be inside a dune \
-           project."
-          ocamllsp_exe_name
-      ]
-  | true ->
-    let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () ->
-      let open Fiber.O in
-      let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
-      let+ () = build_ocamllsp common in
-      run_ocamllsp (Common.root common) ~args)
-;;
+module Exec = struct
+  let term =
+    let+ builder = Common.Builder.term
+    and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
+    match is_in_dune_project builder with
+    | false ->
+      User_error.raise
+        [ Pp.textf
+            "Unable to run %s as a dev-tool because you don't appear to be inside a dune \
+             project."
+            ocamllsp_exe_name
+        ]
+    | true ->
+      let common, config = Common.init builder in
+      Scheduler.go ~common ~config (fun () ->
+        let open Fiber.O in
+        let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
+        let+ () = build_ocamllsp common in
+        run_ocamllsp (Common.root common) ~args)
+  ;;
 
-let info =
-  let doc = "Run ocamllsp, installing it as a dev tool if necessary." in
-  Cmd.info "ocamllsp" ~doc
-;;
+  let info =
+    let doc = "Run ocamllsp, installing it as a dev tool if necessary." in
+    Cmd.info "ocamllsp" ~doc
+  ;;
 
-let command = Cmd.v info term
+  let command = Cmd.v info term
+end
+
+module Which = struct
+  let term =
+    let+ builder = Common.Builder.term in
+    let _ : Common.t * Dune_config_file.Dune_config.t = Common.init builder in
+    print_endline (Path.to_string ocamllsp_exe_path)
+  ;;
+
+  let info =
+    let doc = "Prints the path to the ocamllsp binary." in
+    Cmd.info "ocamllsp" ~doc
+  ;;
+
+  let command = Cmd.v info term
+end

@@ -16,6 +16,8 @@ Test that shows what happens when dune.lock is ignored.
   > index b69a69a5a..ea988f6bd 100644
   > --- a/foo.ml
   > +++ b/foo.ml
+  > @@ -0,0 +1 @@
+  > +let () = print_endline "Hello, World!"
   > EOF
 
   $ mkdir src

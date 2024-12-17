@@ -137,11 +137,7 @@ module Make (Context : S.CONTEXT) = struct
     { dep_role = drole; dep_importance = importance }
   ;;
 
-  type role_information =
-    { replacement : Role.t option
-    ; impls : impl list
-    }
-
+  type role_information = { impls : impl list }
   type conflict_class = string
 
   let conflict_class = function
@@ -179,7 +175,7 @@ module Make (Context : S.CONTEXT) = struct
 
   (* Get all the candidates for a role. *)
   let implementations = function
-    | Virtual (_, impls) -> Fiber.return { impls; replacement = None }
+    | Virtual (_, impls) -> Fiber.return { impls }
     | Real role ->
       let context = role.context in
       let+ impls =
@@ -202,7 +198,7 @@ module Make (Context : S.CONTEXT) = struct
             in
             Some (RealImpl { pkg; opam; requires }))
       in
-      { impls; replacement = None }
+      { impls }
   ;;
 
   let restrictions dependency = dependency.restrictions

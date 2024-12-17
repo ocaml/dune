@@ -1,3 +1,18 @@
+3.17.1 (2024-12-17)
+-------------------
+
+### Fixed
+
+- When a library declares `(no_dynlink)`, then the `.cmxs` file for it
+  is no longer built. (#11176, @nojb)
+
+- Fix bug that could result in corrupted file copies by Dune, for example when
+  using the `copy_files#` stanza or the `copy#` action. (@nojb, #11194, fixes
+  #11193)
+
+- Remove useless error message when running `$ dune subst` in empty projects.
+  (@rgrinberg, #11204, fixes #11200)
+
 3.17.0 (2024-11-27)
 -------------------
 

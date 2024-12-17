@@ -237,21 +237,21 @@ module Make (Model : S.SOLVER_INPUT) = struct
     in
     let+ candidates = lookup_impl dep_role in
     let pass, fail = candidates#partition meets_restrictions in
-    if dep_importance = `Essential
-    then
+    match dep_importance with
+    | `Essential ->
       S.implies
         sat
         ~reason:"essential dep"
         user_var
         pass (* Must choose a suitable candidate *)
-    else (
+    | `Restricts ->
       (* If [user_var] is selected, don't select an incompatible version of the optional dependency.
          We don't need to do this explicitly in the [essential] case, because we must select a good
          version and we can't select two. *)
-      try S.at_most_one sat (user_var :: fail) |> ignore with
-      | Invalid_argument reason ->
-        (* Explicitly conflicts with itself! *)
-        S.at_least_one sat [ S.neg user_var ] ~reason)
+      (try S.at_most_one sat (user_var :: fail) |> ignore with
+       | Invalid_argument reason ->
+         (* Explicitly conflicts with itself! *)
+         S.at_least_one sat [ S.neg user_var ] ~reason)
   ;;
 
   (* Add the implementations of an interface to the ImplCache (called the first time we visit it). *)
@@ -380,14 +380,14 @@ module Make (Model : S.SOLVER_INPUT) = struct
             (* We've already selected a candidate for this component. Now check its dependencies. *)
             let check_dep dep =
               let { Model.dep_role; dep_importance } = Model.dep_info dep in
-              if dep_importance = `Restricts
-              then
+              match dep_importance with
+              | `Restricts ->
                 (* Restrictions don't express that we do or don't want the
                    dependency, so skip them here. If someone else needs this,
                    we'll handle it when we get to them.
                    If noone wants it, it will be set to unselected at the end. *)
                 None
-              else find_undecided dep_role
+              | `Essential -> find_undecided dep_role
             in
             List.find_map ~f:check_dep deps)
       in

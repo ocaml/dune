@@ -50,46 +50,63 @@ module Config : sig
   val of_flags : string list -> t
   val to_flags : t -> string list
 end = struct
+  type effects_backend = Cps | Double_translation
+
   type t =
     { js_string : bool option
-    ; effects : bool option
+    ; effects : effects_backend option
     ; toplevel : bool option
     }
 
   let default = { js_string = None; effects = None; toplevel = None }
   let bool_opt = [ None; Some true; Some false ]
+  let effects_opt = [ None; Some Cps; Some Double_translation ]
 
   let all =
     List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map bool_opt ~f:(fun effects ->
+      List.concat_map effects_opt ~f:(fun effects ->
         List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
   ;;
 
-  let get t =
-    List.filter_map
-      [ "use-js-string", t.js_string; "effects", t.effects; "toplevel", t.toplevel ]
-      ~f:(fun (n, v) ->
-        match v with
-        | None -> None
-        | Some v -> Some (n, v))
-  ;;
-
   let set acc name v =
-    match name with
-    | "use-js-string" -> { acc with js_string = Some v }
-    | "effects" -> { acc with effects = Some v }
-    | "toplevel" -> { acc with toplevel = Some v }
+    match name, v with
+    | "use-js-string", `True -> { acc with js_string = Some true }
+    | "use-js-string", `False -> { acc with js_string = Some false }
+    | "effects", `Effects backend -> { acc with effects = Some backend }
+    | "effects", `False ->
+        (* [--disable effects] *)
+        { acc with effects = None }
+    | "effects", `True ->
+        (* [--enable effects], used alone, implies [--effects=cps] *)
+        (match acc.effects with
+        | None -> { acc with effects = Some Cps }
+        | Some _ -> acc)
+    | "toplevel", `True -> { acc with toplevel = Some true }
+    | "toplevel", `False -> { acc with toplevel = Some false }
     | _ -> acc
   ;;
+
+  let string_of_effects = function
+    | Cps -> "cps"
+    | Double_translation -> "double-translation"
 
   let path t =
     if t = default
     then "default"
     else
-      List.map (get t) ~f:(function
-        | x, true -> x
-        | x, false -> "!" ^ x)
+      let of_bool_opt key = Option.map ~f:(function true -> key | false -> "!" ^ key) in
+      List.filter_opt
+        [ of_bool_opt "use-js-string" t.js_string
+        ; Option.map t.effects ~f:string_of_effects
+        ; of_bool_opt "toplevel" t.toplevel
+        ]
       |> String.concat ~sep:"+"
+  ;;
+
+  let effects_of_string = function
+    | "cps" -> Some Cps
+    | "double-translation" -> Some Cps
+    | _ -> None
   ;;
 
   let of_string x =
@@ -97,37 +114,58 @@ end = struct
     | "default" -> default
     | _ ->
       List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
-        match String.drop_prefix ~prefix:"!" name with
-        | Some name -> set acc name false
-        | None -> set acc name true)
+        match ( String.drop_prefix ~prefix:"!" name
+              , String.drop_prefix ~prefix:"effects=" name ) with
+        | Some name, _ -> set acc name `False
+        | None, None -> set acc name `True
+        | None, Some backend ->
+            (match effects_of_string backend with
+            | Some backend -> set acc name (`Effects backend)
+            | None -> acc)
+        )
   ;;
 
   let of_flags l =
     let rec loop acc = function
       | [] -> acc
-      | "--enable" :: name :: rest -> loop (set acc name true) rest
+      | "--enable" :: name :: rest -> loop (set acc name `True) rest
       | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
         (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
-         | Some name -> loop (set acc name true) rest
+         | Some name -> loop (set acc name `True) rest
          | _ -> assert false)
-      | "--disable" :: name :: rest -> loop (set acc name false) rest
+      | "--disable" :: name :: rest -> loop (set acc name `False) rest
       | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
         (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
-         | Some name -> loop (set acc name false) rest
+         | Some name -> loop (set acc name `False) rest
          | _ -> assert false)
-      | "--toplevel" :: rest -> loop (set acc "toplevel" true) rest
+      | "--toplevel" :: rest -> loop (set acc "toplevel" `True) rest
+      | "--effects" :: "cps" :: rest -> loop (set acc "effects" `Cps) rest
+      | "--effects" :: "double-translation" :: rest ->
+          loop (set acc "effects" `Double_translation) rest
+      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+          let backend =
+            Option.bind
+              (String.drop_prefix maybe_effects ~prefix:"--effects=")
+              ~f:effects_of_string
+          in
+          (match backend with
+           | Some backend -> set acc "effects" (`Effects backend)
+           | None -> loop acc rest)
       | _ :: rest -> loop acc rest
     in
     loop default l
   ;;
 
   let to_flags t =
-    List.concat_map (get t) ~f:(function
-      | "toplevel", true -> [ "--toplevel" ]
-      | "toplevel", false -> []
-      | name, true -> [ "--enable"; name ]
-      | name, false -> [ "--disable"; name ])
-  ;;
+    List.filter_opt
+      [ (match t.toplevel with Some true -> Some "--toplevel" | _ -> None)
+      ; (match t.effects with
+         | Some backend -> Some ("--effects=" ^ string_of_effects backend) | None -> None)
+      ; (match t.js_string with
+         | Some true -> Some "--enable=use-js-string"
+         | Some false -> Some "--disable=use-js-string"
+         | None -> None)
+      ]
 end
 
 module Version = struct

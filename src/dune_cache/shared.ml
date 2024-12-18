@@ -121,7 +121,7 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      Targets.Produced.iteri targets_and_digests ~f:(fun path digest ->
+      Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
         Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
     in
     match

@@ -955,6 +955,7 @@ end = struct
     | Build_under_directory_target { directory_target_ancestor = _ } ->
       (* To evaluate a glob in a generated directory, we have no choice but to build the
          whole directory and examine its contents. *)
+      (* But not the subdirectories? *)
       let+ path_map = build_dir dir in
       (match Targets.Produced.find_dir path_map (Path.as_in_build_dir_exn dir) with
        | Some files_and_digests ->

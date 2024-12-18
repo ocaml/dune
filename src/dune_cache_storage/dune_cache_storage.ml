@@ -214,29 +214,47 @@ end
 
 module Artifacts = struct
   module Metadata_entry = struct
+    type kind =
+      | Directory
+      | File of Digest.t
+
     type t =
       { file_path : string
-      ; file_digest : Digest.t
+      ; kind : kind
       }
 
-    let equal x y =
-      Digest.equal x.file_digest y.file_digest && String.equal x.file_path y.file_path
+    let kind_equal k1 k2 =
+      match k1, k2 with
+      | Directory, Directory -> true
+      | File d1, File d2 -> Digest.equal d1 d2
+      | Directory, File _ | File _, Directory -> false
     ;;
 
-    let to_sexp { file_path; file_digest } =
-      Sexp.List [ Atom file_path; Atom (Digest.to_string file_digest) ]
+    let equal x y = String.equal x.file_path y.file_path && kind_equal x.kind y.kind
+
+    let kind_to_sexp = function
+      | Directory -> Sexp.Atom "<dir>"
+      | File digest -> Sexp.Atom (Digest.to_string digest)
     ;;
 
-    let of_sexp = function
-      | Sexp.List [ Atom file_path; Atom file_digest ] ->
-        (match Digest.from_hex file_digest with
-         | Some file_digest -> Ok { file_path; file_digest }
+    let to_sexp { file_path; kind } = Sexp.List [ Atom file_path; kind_to_sexp kind ]
+
+    let kind_of_sexp = function
+      | "<dir>" -> Ok Directory
+      | digest ->
+        (match Digest.from_hex digest with
+         | Some digest -> Ok (File digest)
          | None ->
            Error
              (Failure
-                (sprintf
-                   "Cannot parse file digest %s in cache metadata entry"
-                   file_digest)))
+                (sprintf "Cannot parse file digest %S in cache metadata entry" digest)))
+    ;;
+
+    let of_sexp = function
+      | Sexp.List [ Atom file_path; Atom kind ] ->
+        (match kind_of_sexp kind with
+         | Ok kind -> Ok { file_path; kind }
+         | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata entry")
     ;;
   end

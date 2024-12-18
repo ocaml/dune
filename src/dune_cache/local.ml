@@ -35,6 +35,11 @@ module Target = struct
       Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { executable }
+      (* FIXME: is it wise to also "create" dirs here? *)
+    | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
+      let executable = Path.Permissions.test Path.Permissions.execute st_perm in
+      assert executable;
+      Some { executable }
     | (exception Unix.Unix_error _) | _ -> None
   ;;
 end
@@ -80,8 +85,17 @@ module Artifacts = struct
     =
     let entries =
       Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
+        (if Targets.Produced.debug_out
+         then
+           let open Pp.O in
+           Pp.to_fmt
+             Format.std_formatter
+             (Pp.paragraphf "[StoreMeta %S]" (Path.Local.to_string target) ++ Pp.space));
         let entry : Metadata_entry.t =
-          { file_path = Path.Local.to_string target; file_digest }
+          match file_digest with
+          | Some file_digest ->
+            { file_path = Path.Local.to_string target; kind = File file_digest }
+          | None -> { file_path = Path.Local.to_string target; kind = Directory }
         in
         entry :: entries)
       |> List.rev
@@ -103,12 +117,33 @@ module Artifacts = struct
     Result.try_with (fun () ->
       (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
          simpler to just use file digests instead of file names and no subdirectories. *)
-      Path.Local.Map.iteri targets.dirs ~f:(fun path _ ->
-        Path.mkdir_p (Path.append_local temp_dir path));
-      Targets.Produced.iteri targets ~f:(fun path _ ->
-        let path_in_build_dir = Path.build (Path.Build.append_local targets.root path) in
-        let path_in_temp_dir = Path.append_local temp_dir path in
-        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+      (* The comment above seems outdated wrt. 'no subdirectories'... *)
+      Targets.Produced.iteri
+        targets
+        ~d:(fun dir ->
+          (if Targets.Produced.debug_out
+           then
+             let open Pp.O in
+             Pp.to_fmt
+               Format.std_formatter
+               (Pp.paragraphf "[Store_dir %S]" (Path.Local.to_string dir) ++ Pp.space));
+          Path.mkdir_p (Path.append_local temp_dir dir))
+        ~f:(fun file _ ->
+          let path_in_build_dir =
+            Path.build (Path.Build.append_local targets.root file)
+          in
+          let path_in_temp_dir = Path.append_local temp_dir file in
+          (if Targets.Produced.debug_out
+           then
+             let open Pp.O in
+             Pp.to_fmt
+               Format.std_formatter
+               (Pp.paragraphf
+                  "[Store_file: %S -> %S]"
+                  (Path.to_string path_in_build_dir)
+                  (Path.to_string path_in_temp_dir)
+                ++ Pp.space));
+          portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
   (* Step II of [store_skipping_metadata].
@@ -118,10 +153,18 @@ module Artifacts = struct
     : Digest.t Targets.Produced.t Or_exn.t Fiber.t
     =
     let open Fiber.O in
-    Fiber.collect_errors (fun () ->
-      Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
-        let file = Path.append_local temp_dir path in
-        compute_digest ~executable file))
+    let fff path { Target.executable } =
+      let file = Path.append_local temp_dir path in
+      (if Targets.Produced.debug_out
+       then
+         let open Pp.O in
+         Pp.to_fmt
+           Format.std_formatter
+           (Pp.paragraphf "[CompDigests %S]" (Path.Local.to_string path) ++ Pp.space));
+      compute_digest ~executable file
+    in
+    (* FIXME: nothing special here? *)
+    Fiber.collect_errors (fun () -> Targets.Produced.parallel_map targets ~f:fff)
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
       | [] -> assert false)
@@ -133,85 +176,104 @@ module Artifacts = struct
       artifacts
       ~init:Store_result.empty
       ~f:(fun target digest results ->
-        let path_in_temp_dir = Path.append_local temp_dir target in
-        let path_in_cache = file_path ~file_digest:digest in
-        let store_using_hardlinks () =
-          match
-            Dune_cache_storage.Util.Optimistically.link
-              ~src:path_in_temp_dir
-              ~dst:path_in_cache
-          with
-          | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
-            (* We end up here if the cache already contains an entry for this
-               artifact. We deduplicate by keeping only one copy, in the
-               cache. *)
-            let path_in_build_dir =
-              Path.build (Path.Build.append_local artifacts.root target)
-            in
-            (match
-               Path.unlink_no_err path_in_temp_dir;
-               (* At first, we deduplicate the temporary file. Doing this
-                  intermediate step allows us to keep the original target in case
-                  the below link step fails. This might happen if the trimmer has
-                  just deleted [path_in_cache]. In this rare case, this function
-                  fails with an [Error], and so we might end up with some
-                  duplicates in the workspace. *)
-               link_even_if_there_are_too_many_links_already
-                 ~src:path_in_cache
-                 ~dst:path_in_temp_dir;
-               (* Now we can simply rename the temporary file into the target,
-                  knowing that the original target remains in place if the
-                  renaming fails.
+        (if Targets.Produced.debug_out
+         then
+           let open Pp.O in
+           Pp.to_fmt
+             Format.std_formatter
+             (Pp.paragraphf "[Store_to_cache %S]" (Path.Local.to_string target)
+              ++ Pp.space));
+        match digest with
+        | None ->
+          (*FIXME: sure about that? *)
+          results
+        | Some file_digest ->
+          let path_in_temp_dir = Path.append_local temp_dir target in
+          let path_in_cache = file_path ~file_digest in
+          let store_using_hardlinks () =
+            match
+              Dune_cache_storage.Util.Optimistically.link
+                ~src:path_in_temp_dir
+                ~dst:path_in_cache
+            with
+            | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
+              (* We end up here if the cache already contains an entry for this
+                 artifact. We deduplicate by keeping only one copy, in the
+                 cache. *)
+              let path_in_build_dir =
+                Path.build (Path.Build.append_local artifacts.root target)
+              in
+              (match
+                 Path.unlink_no_err path_in_temp_dir;
+                 (* At first, we deduplicate the temporary file. Doing this
+                    intermediate step allows us to keep the original target in case
+                    the below link step fails. This might happen if the trimmer has
+                    just deleted [path_in_cache]. In this rare case, this function
+                    fails with an [Error], and so we might end up with some
+                    duplicates in the workspace. *)
+                 link_even_if_there_are_too_many_links_already
+                   ~src:path_in_cache
+                   ~dst:path_in_temp_dir;
+                 (* Now we can simply rename the temporary file into the target,
+                    knowing that the original target remains in place if the
+                    renaming fails.
 
-                  One curious case to think about is if the file in the cache
-                  happens to have the same inode as the file in the workspace. In
-                  that case this deduplication should be a no-op, but the
-                  [rename] operation has a quirk where [path_in_temp_dir] can
-                  remain on disk. This is not a problem because we clean the
-                  temporary directory later. *)
-               Path.rename path_in_temp_dir path_in_build_dir
-             with
-             | exception e -> Store_result.Error e
-             | () -> Already_present)
-          | exception e -> Error e
-          | () -> Stored
-        in
-        let store_using_test_and_rename () =
-          (* CR-someday amokhov: There is a race here. If [path_in_cache] is
-             created after [Path.exists] but before [Path.rename], it will be
-             silently overwritten. Find a good way to avoid this race. *)
-          match Path.exists path_in_cache with
-          | true -> Store_result.Already_present
-          | false ->
-            (match
-               Dune_cache_storage.Util.Optimistically.rename
-                 ~src:path_in_temp_dir
-                 ~dst:path_in_cache
-             with
-             | exception e -> Error e
-             | () -> Stored)
-        in
-        let result =
-          match (mode : Dune_cache_storage.Mode.t) with
-          | Hardlink -> store_using_hardlinks ()
-          | Copy -> store_using_test_and_rename ()
-        in
-        Store_result.combine results result)
+                    One curious case to think about is if the file in the cache
+                    happens to have the same inode as the file in the workspace. In
+                    that case this deduplication should be a no-op, but the
+                    [rename] operation has a quirk where [path_in_temp_dir] can
+                    remain on disk. This is not a problem because we clean the
+                    temporary directory later. *)
+                 Path.rename path_in_temp_dir path_in_build_dir
+               with
+               | exception e -> Store_result.Error e
+               | () -> Already_present)
+            | exception e -> Error e
+            | () -> Stored
+          in
+          let store_using_test_and_rename () =
+            (* CR-someday amokhov: There is a race here. If [path_in_cache] is
+               created after [Path.exists] but before [Path.rename], it will be
+               silently overwritten. Find a good way to avoid this race. *)
+            match Path.exists path_in_cache with
+            | true -> Store_result.Already_present
+            | false ->
+              (match
+                 Dune_cache_storage.Util.Optimistically.rename
+                   ~src:path_in_temp_dir
+                   ~dst:path_in_cache
+               with
+               | exception e -> Error e
+               | () -> Stored)
+          in
+          let result =
+            match (mode : Dune_cache_storage.Mode.t) with
+            | Hardlink -> store_using_hardlinks ()
+            | Copy -> store_using_test_and_rename ()
+          in
+          Store_result.combine results result)
   ;;
 
   let store_skipping_metadata ~mode ~targets ~compute_digest
     : Store_artifacts_result.t Fiber.t
     =
     Dune_cache_storage.with_temp_dir ~suffix:"artifacts" (function
-      | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
+      | Error exn ->
+        (* Format.printf "In %s err1, %s@." __FUNCTION__ __LOC__; *)
+        Fiber.return (Store_artifacts_result.Error exn)
       | Ok temp_dir ->
         (match store_targets_to ~temp_dir ~targets ~mode with
-         | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
+         | Error exn ->
+           (* Format.printf "In %s err2, %s@." __FUNCTION__ __LOC__; *)
+           Fiber.return (Store_artifacts_result.Error exn)
          | Ok () ->
            compute_digests_in ~temp_dir ~targets ~compute_digest
            >>| (function
-            | Error exn -> Store_artifacts_result.Error exn
+            | Error exn ->
+              (* Format.printf "In %s err3, %s@." __FUNCTION__ __LOC__; *)
+              Store_artifacts_result.Error exn
             | Ok artifacts ->
+              (* Format.printf "In %s ok!, %s@." __FUNCTION__ __LOC__; *)
               let result = store_to_cache_from ~temp_dir ~mode artifacts in
               Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
@@ -281,10 +343,7 @@ module Artifacts = struct
          | Copy -> copy ~src ~dst);
         Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
       in
-      try
-        Path.Local.Map.iteri artifacts.dirs ~f:(fun dir _ -> mk_dir dir);
-        Targets.Produced.iteri artifacts ~f:mk_file
-      with
+      try Targets.Produced.iteri artifacts ~f:mk_file ~d:mk_dir with
       | exn ->
         Unwind.unwind unwind;
         reraise exn
@@ -296,8 +355,17 @@ module Artifacts = struct
       let artifacts =
         Path.Local.Map.of_list_map_exn
           entries
-          ~f:(fun { Metadata_entry.file_path; file_digest } ->
-            Path.Local.of_string file_path, file_digest)
+          ~f:(fun { Metadata_entry.file_path; kind } ->
+            (if Targets.Produced.debug_out
+             then
+               let open Pp.O in
+               Pp.to_fmt
+                 Format.std_formatter
+                 (Pp.paragraphf "[Restore: %S]" file_path ++ Pp.space));
+            ( Path.Local.of_string file_path
+            , match kind with
+              | Directory -> None
+              | File digest -> Some digest ))
         |> Targets.Produced.of_files target_dir
       in
       try

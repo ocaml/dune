@@ -223,7 +223,7 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | Ok p -> build_prog ~no_rebuild ~prog p)
   | Relative_to_current_dir ->
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
-    Build_system.file_exists path
+    Build_system.path_exists path
     >>= (function
            | true -> Memo.return (Some path)
            | false ->
@@ -231,7 +231,7 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
              then Memo.return None
              else (
                let path = Path.extend_basename path ~suffix:".exe" in
-               Build_system.file_exists path
+               Build_system.path_exists path
                >>| function
                | true -> Some path
                | false -> None))

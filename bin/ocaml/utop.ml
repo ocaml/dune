@@ -33,7 +33,7 @@ let term =
           let utop_target = Filename.concat dir Utop.utop_exe in
           Path.build (Path.Build.relative (Context.build_dir context) utop_target)
         in
-        Build_system.file_exists utop_target
+        Build_system.path_exists utop_target
         >>= function
         | false ->
           User_error.raise

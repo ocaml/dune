@@ -2,8 +2,11 @@
 
 open Import
 
-(** Build a file. *)
+(** Build a target, maybe a file maybe a directory. *)
 val build_file : Path.t -> unit Memo.t
+
+(** Build a directory. *)
+val build_dir : Path.t -> unit Memo.t
 
 (** Build a file and read its contents with [f]. The execution of [f] is not memoized, so
     call sites should be careful to avoid duplicating [f]'s work. *)
@@ -13,7 +16,7 @@ val with_file : Path.t -> f:(Path.t -> 'a) -> 'a Memo.t
 val read_file : Path.t -> string Memo.t
 
 (** Return [true] if a file exists or is buildable *)
-val file_exists : Path.t -> bool Memo.t
+val path_exists : Path.t -> bool Memo.t
 
 (** Build a set of dependencies and return learned facts about them. *)
 val build_deps : Dep.Set.t -> Dep.Facts.t Memo.t
@@ -26,7 +29,7 @@ val record_deps : Dep.Set.t -> unit Action_builder.t
 
     This function does the minimum amount of work necessary to produce the result, and may
     do some building (e.g., if [glob] points inside a directory target). To force building
-    the files you need, use [build_file]. *)
+    the files you need, use [build]. *)
 val eval_pred : File_selector.t -> Filename_set.t Memo.t
 
 (** Same as [eval_pred] with [Predicate.true_] as predicate. *)

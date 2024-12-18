@@ -160,14 +160,12 @@ and Exported : sig
 
   type target_kind =
     | File_target
-    | Dir_target of { targets : Digest.t Targets.Produced.t }
+    | Dir_target of Digest.t Targets.Produced.t
 
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
 
-  val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t
-  [@@warning "-32"]
-
+  val build_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t [@@warning "-32"]
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.Table.t [@@warning "-32"]
   val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 end = struct
@@ -206,6 +204,7 @@ end = struct
       (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
       Dep.Fact.alias a digests
     | File f ->
+      (* Not necessarily a file. Can also be a directory... *)
       let+ digest = build_file f in
       (* Fact: file [f] has digest [digest] *)
       Dep.Fact.file f digest
@@ -820,22 +819,19 @@ end = struct
   type target_kind =
     | File_target
     | Dir_target of
-        { targets :
-            (* All targets of the rule which produced the directory target in question. *)
-            Digest.t Targets.Produced.t
-        }
+        (* All targets of the rule which produced the directory target in question. *)
+        Digest.t Targets.Produced.t
 
   let target_kind_equal a b =
     match a, b with
     | File_target, File_target -> true
-    | Dir_target { targets = a }, Dir_target { targets = b } ->
-      Targets.Produced.equal a b ~equal:Digest.equal
+    | Dir_target t1, Dir_target t2 -> Targets.Produced.equal t1 t2 ~equal:Digest.equal
     | File_target, Dir_target _ | Dir_target _, File_target -> false
   ;;
 
   (* A rule can have multiple targets but calls to [execute_rule] are memoized,
      so the rule will be executed only once. *)
-  let build_file_impl path =
+  let build_impl path =
     Load_rules.get_rule_or_source path
     >>= function
     | Source digest -> Memo.return (digest, File_target)
@@ -856,9 +852,12 @@ end = struct
             rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
             (or should we) ever use [build_file] to build directories? Perhaps this could
             be split in two memo tables, one for files and one for directories. *)
+         (* ElectreAAS: Tentative answer to above comments: a lot of functions are called
+            [build_file] or [create_file] even though they also handle directories.
+            Also yes this digest is used by [Exported.build_dep] defined above. *)
          (match Cached_digest.build_file ~allow_dirs:true path with
-          | Ok digest -> digest, Dir_target { targets }
-          (* Must be a directory target *)
+          (* Must be a directory target. *)
+          | Ok digest -> digest, Dir_target targets
           | Error _ ->
             (* CR-someday amokhov: The most important reason we end up here is
                [No_such_file]. I think some of the outcomes above are impossible
@@ -980,7 +979,7 @@ end = struct
 
   let eval_pred = Memo.exec eval_pred_memo
 
-  let build_file_memo =
+  let build_memo =
     lazy
       (let cutoff =
          match Dune_config.Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
@@ -992,15 +991,15 @@ end = struct
          ~store:(module Path.Table)
          ~input:(module Path)
          ?cutoff
-         build_file_impl)
+         build_impl)
   ;;
 
-  let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
+  let build_file path = Memo.exec (Lazy.force build_memo) path >>| fst
 
   let build_dir path =
-    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
+    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_memo) path in
     match kind with
-    | Dir_target { targets } -> targets
+    | Dir_target targets -> targets
     | File_target ->
       Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
   ;;
@@ -1050,7 +1049,7 @@ include Exported
    when executing the very same [Action_builder.t] with [Action_builder.exec] --
    the results of both [Action_builder.static_deps] and [Action_builder.exec]
    are cached. *)
-let file_exists fn =
+let path_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn)
   >>= function
   | Source { filenames } | External { filenames } ->
@@ -1060,7 +1059,8 @@ let file_exists fn =
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ path_map = build_dir (Path.build directory_target_ancestor) in
-    Targets.Produced.mem path_map (Path.as_in_build_dir_exn fn)
+    let fn_path = Path.as_in_build_dir_exn fn in
+    Targets.Produced.mem_dir path_map fn_path || Targets.Produced.mem path_map fn_path
 ;;
 
 let files_of ~dir =
@@ -1157,7 +1157,12 @@ let run_exn f =
 ;;
 
 let build_file p =
-  let+ (_ : Digest.t) = build_file p in
+  let+ _digest = build_file p in
+  ()
+;;
+
+let build_dir p =
+  let+ _targets = build_dir p in
   ()
 ;;
 

@@ -63,6 +63,14 @@ module Validated = struct
     ; dirs : Filename.Set.t
     }
 
+  let pp { root; files; dirs } =
+    let open Pp.O in
+    Pp.textf "Validated: root=%S, files=" (Path.Build.to_string root)
+    ++ Pp.concat ~sep:(Pp.text "; ") (Filename.Set.to_list_map files ~f:(Pp.textf "%S"))
+    ++ Pp.text ", dirs="
+    ++ Pp.concat ~sep:(Pp.text "; ") (Filename.Set.to_list_map dirs ~f:(Pp.textf "%S"))
+  ;;
+
   let iter { root; files; dirs } ~file ~dir =
     Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative root fn));
     Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative root dn))
@@ -162,10 +170,36 @@ module Produced = struct
   (* CR-someday amokhov: A hierarchical representation of the produced file
      trees may be better. It would allow for hierarchical traversals and reduce
      the number of internal invariants. *)
+
+  (** All filenames and dirnames are relative to the root (['a t]). *)
+  type 'a dir_contents =
+    { files : 'a Filename.Map.t (* mapping filename -> 'a *)
+    ; subdirs : 'a dir_contents Path.Local.Map.t (* mapping dirname -> 'a dir_contents *)
+    }
+
+  let rec pp_dir_conts { files; subdirs } payload_printer =
+    let open Pp.O in
+    Pp.hovbox
+      (Pp.text "Files: ("
+       ++ Pp.hovbox
+            (Pp.concat
+               ~sep:(Pp.text ", ")
+               (Filename.Map.to_list_map files ~f:(fun name payload ->
+                  Pp.textf "%S -> " name ++ payload_printer payload)))
+       ++ Pp.text "), Subdirs: ("
+       ++ Pp.hovbox
+            (Pp.concat
+               ~sep:(Pp.text ", ")
+               (Path.Local.Map.to_list_map subdirs ~f:(fun name sub ->
+                  Pp.textf "%S -> (" (Path.Local.to_string name)
+                  ++ pp_dir_conts sub payload_printer
+                  ++ Pp.text ")"))
+             ++ Pp.text ")"))
+  ;;
+
   type 'a t =
     { root : Path.Build.t
-    ; files : 'a Filename.Map.t
-    ; dirs : 'a Filename.Map.t Path.Local.Map.t
+    ; contents : 'a dir_contents
     }
 
   module Error = struct
@@ -216,183 +250,258 @@ module Produced = struct
   end
 
   let of_validated =
-    (* The call sites ensure that [dir = Path.Build.append_local validated.root local]. *)
+    let open Result.O in
+    (* The call sites ensure that [dir = Path.Build.append_local validated.root local].
+       Or maybe not if I made a mistake. *)
     let rec collect (dir : Path.Build.t) (local : Path.Local.t)
-      : (unit Filename.Map.t Path.Local.Map.t, Error.t) result
+      : (unit dir_contents, Error.t) result
       =
+      Pp.to_fmt
+        Format.std_formatter
+        (Pp.textf
+           "At the start of collect with dir=%S and local=%S\n%!"
+           (Path.Build.to_string dir)
+           (Path.Local.to_string local));
       match Path.readdir_unsorted_with_kinds (Path.build dir) with
       | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
       | Error e -> Error (Unreadable_dir (dir, e))
       | Ok dir_contents ->
-        let open Result.O in
-        let+ filenames, dirs =
-          Result.List.fold_left
-            dir_contents
-            ~init:(Filename.Map.empty, Path.Local.Map.empty)
-            ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
-              (* FIXME: this line fixes one problem, but breaks a lot of other stuff *)
-              let acc_filenames = Filename.Map.add_exn acc_filenames filename () in
-              match (kind : File_kind.t) with
-              (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
-              | S_LNK | S_REG ->
-                (* let acc_filenames = Filename.Map.add_exn acc_filenames name () in *)
-                Ok (acc_filenames, acc_dirs)
-              | S_DIR ->
-                let+ dir =
-                  collect
-                    (Path.Build.relative dir filename)
-                    (Path.Local.relative local filename)
-                in
-                acc_filenames, Path.Local.Map.union_exn acc_dirs dir
-              | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
-        in
-        if not (Filename.Map.is_empty filenames)
-        then Path.Local.Map.add_exn dirs local filenames
-        else dirs
+        Result.List.fold_left
+          dir_contents
+          ~init:{ files = Filename.Map.empty; subdirs = Path.Local.Map.empty }
+          ~f:(fun { files; subdirs } (name, kind) ->
+            match (kind : File_kind.t) with
+            (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
+            | S_LNK | S_REG -> Ok { files = Filename.Map.add_exn files name (); subdirs }
+            | S_DIR ->
+              let+ subdir_contents =
+                collect (Path.Build.relative dir name) (Path.Local.relative local name)
+              in
+              { files
+              ; subdirs =
+                  Path.Local.Map.add_exn
+                    subdirs
+                    (Path.Local.relative local name)
+                    subdir_contents
+              }
+            | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
     in
-    let directory root dirname =
-      let open Result.O in
-      let dir = Path.Build.relative root dirname in
-      let* files = collect dir (Path.Local.of_string dirname) in
-      if Path.Local.Map.is_empty files then Error (Empty_dir dir) else Ok files
+    (* We assume here that [dir_name] is either a child of [root], or that we're ok with having [root/a/b] but not [root/a]. *)
+    let aggregate_dir { root; contents = { files; subdirs } } dir_name =
+      let bdir = Path.Build.relative root dir_name in
+      let ldir = Path.Local.of_string dir_name in
+      let* new_contents = collect bdir ldir in
+      if Filename.Map.is_empty new_contents.files
+         && Path.Local.Map.is_empty new_contents.subdirs
+      then Error (Empty_dir bdir)
+      else (
+        let contents =
+          { files; subdirs = Path.Local.Map.add_exn subdirs ldir new_contents }
+        in
+        Ok { root; contents })
     in
     fun (validated : Validated.t) ->
-      match
-        Filename.Set.to_list validated.dirs
-        |> Result.List.map ~f:(directory validated.root)
-      with
-      | Error _ as error -> error
-      | Ok dirs ->
-        let files =
-          (* CR-someday rleshchinskiy: Check if the files actually exist here. Currently,
-             we check this here for directory targets but for files, the check is done by
-             the cache. *)
-          Filename.Set.to_map validated.files ~f:(fun _ -> ())
-        in
-        (* The [union_exn] below can't raise because each map in [dirs] contains
-           unique keys, which are paths rooted at the corresponding [dir]s. *)
-        let dirs =
-          List.fold_left dirs ~init:Path.Local.Map.empty ~f:Path.Local.Map.union_exn
-        in
-        Ok { root = validated.root; files; dirs }
+      let rooted_files = Filename.Set.to_map validated.files ~f:(Fun.const ()) in
+      Filename.Set.to_list validated.dirs
+      |> Result.List.fold_left
+           ~init:
+             { root = validated.root
+             ; contents = { files = rooted_files; subdirs = Path.Local.Map.empty }
+             }
+           ~f:aggregate_dir
   ;;
 
-  let of_files root files =
-    let f file payload t =
-      let parent = Path.Local.parent_exn file in
-      if Path.Local.is_root parent
-      then
-        { t with
-          files = Filename.Map.add_exn t.files (Path.Local.to_string file) payload
-        }
-      else (
-        let fn = Path.Local.basename file in
-        { t with
-          dirs =
-            Path.Local.Map.update t.dirs parent ~f:(fun files ->
-              let files = Option.value files ~default:Filename.Map.empty in
-              Some (Filename.Map.add_exn files fn payload))
-        })
+  let of_files root file_list =
+    let rec aux payload dir { files; subdirs } = function
+      | [] ->
+        Code_error.raise
+          "I've been hoisted by my own petard! (path.explode)"
+          [ "files", Path.Local.Map.to_dyn Dyn.opaque file_list ]
+      | [ final ] -> { files = Filename.Map.add_exn files final payload; subdirs }
+      | parent :: rest ->
+        let parent = Path.Local.relative dir parent in
+        let subdirs =
+          Path.Local.Map.update subdirs parent ~f:(fun contents_opt ->
+            Some
+              (aux
+                 payload
+                 parent
+                 (Option.value
+                    contents_opt
+                    ~default:
+                      { files = Filename.Map.empty; subdirs = Path.Local.Map.empty })
+                 rest))
+        in
+        { files; subdirs }
     in
-    let init = { root; files = Filename.Map.empty; dirs = Path.Local.Map.empty } in
-    Path.Local.Map.foldi files ~init ~f
+    let init = { files = Filename.Map.empty; subdirs = Path.Local.Map.empty } in
+    let contents =
+      Path.Local.Map.foldi file_list ~init ~f:(fun file payload contents ->
+        let parent = Path.Local.parent_exn file in
+        if Path.Local.is_root parent
+        then
+          { contents with
+            files =
+              Filename.Map.add_exn contents.files (Path.Local.to_string file) payload
+          }
+        else aux payload (Path.Build.local root) contents (Path.Local.explode file))
+    in
+    { root; contents }
   ;;
 
-  let all_files_seq { root = _; files; dirs } =
-    Seq.append
-      (Filename.Map.to_seq files
-       |> Seq.map ~f:(fun (file, payload) -> Path.Local.of_string file, payload))
-      (Seq.concat
-         (Path.Local.Map.to_seq dirs
-          |> Seq.map ~f:(fun (dir, filenames) ->
-            Filename.Map.to_seq filenames
-            |> Seq.map ~f:(fun (filename, payload) ->
-              Path.Local.relative dir filename, payload))))
+  let all_files_seq { root = _; contents } =
+    let rec aux { files; subdirs } =
+      Seq.append
+        (Filename.Map.to_seq files
+         |> Seq.map ~f:(fun (file, payload) -> Path.Local.of_string file, payload))
+        (Seq.concat
+           (Path.Local.Map.to_seq subdirs
+            |> Seq.map ~f:(fun (dirname, subdir_contents) ->
+              aux subdir_contents
+              |> Seq.map ~f:(fun (filename, payload) ->
+                Path.Local.append dirname filename, payload))))
+    in
+    aux contents
   ;;
 
-  let find { root; files; dirs } path =
+  let all_dirs_seq { root; contents } =
+    let rec aux dir_name { files = _; subdirs } =
+      Seq.concat
+        (Path.Local.Map.to_seq subdirs
+         |> Seq.map ~f:(fun (subdir_name, subdir_contents) ->
+           aux (Path.Local.append dir_name subdir_name) subdir_contents))
+    in
+    aux (Path.Build.local root) contents
+  ;;
+
+  let find { root; contents } path =
+    (* FIXME: not quite right... *)
     let open Option.O in
+    let rec find_aux { files; subdirs } path =
+      if Path.Local.is_root path
+      then Filename.Map.find files (Path.Local.to_string path)
+      else
+        let* parent, child = Path.Local.split_first_component path in
+        let parent = Path.Local.of_string parent in
+        let* subdir_contents = Path.Local.Map.find subdirs parent in
+        find_aux subdir_contents child
+    in
     let* path =
       Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local root)
     in
-    let* parent = Path.Local.parent path in
-    if Path.Local.is_root parent
-    then Filename.Map.find files (Path.Local.to_string path)
-    else
-      let* files = Path.Local.Map.find dirs parent in
-      Filename.Map.find files (Path.Local.basename path)
+    find_aux contents path
   ;;
 
   let mem t path = Option.is_some (find t path)
 
-  let find_dir { root; files; dirs } path =
-    match Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local root) with
-    | Some dir when Path.Local.is_root dir -> Some files
-    | Some dir -> Path.Local.Map.find dirs dir
-    | None -> None
+  let find_dir { root; contents } path =
+    (* FIXME: not quite right... *)
+    let open Option.O in
+    let rec find_dir_aux { files; subdirs } path =
+      if Path.Local.is_root path
+      then Some files
+      else
+        let* parent, child = Path.Local.split_first_component path in
+        let* parent_contents =
+          Path.Local.Map.find subdirs (Path.Local.of_string parent)
+        in
+        find_dir_aux parent_contents child
+    in
+    let* path =
+      Path.Local.descendant (Path.Build.local path) ~of_:(Path.Build.local root)
+    in
+    find_dir_aux contents path
   ;;
+
+  let mem_dir t path = Option.is_some (find_dir t path)
 
   let equal
-    { root = root1; files = files1; dirs = dirs1 }
-    { root = root2; files = files2; dirs = dirs2 }
+    { root = root1; contents = contents1 }
+    { root = root2; contents = contents2 }
     ~equal
     =
-    Path.Build.equal root1 root2
-    && Filename.Map.equal files1 files2 ~equal
-    && Path.Local.Map.equal dirs1 dirs2 ~equal:(Filename.Map.equal ~equal)
-  ;;
-
-  let exists { root = _; files; dirs } ~f =
-    Filename.Map.exists files ~f || Path.Local.Map.exists dirs ~f:(String.Map.exists ~f)
-  ;;
-
-  let foldi { root = _; files; dirs } ~init ~f =
-    let acc =
-      Filename.Map.foldi files ~init ~f:(fun file acc ->
-        f (Path.Local.of_string file) acc)
+    let rec eq_aux { files = files1; subdirs = dirs1 } { files = files2; subdirs = dirs2 }
+      =
+      Filename.Map.equal files1 files2 ~equal
+      && Path.Local.Map.equal dirs1 dirs2 ~equal:eq_aux
     in
-    Path.Local.Map.foldi dirs ~init:acc ~f:(fun dir filenames acc ->
-      String.Map.foldi filenames ~init:acc ~f:(fun filename payload acc ->
-        f (Path.Local.relative dir filename) payload acc))
+    Path.Build.equal root1 root2 && eq_aux contents1 contents2
   ;;
 
-  let iteri { root = _; files; dirs } ~f =
-    Filename.Map.iteri files ~f:(fun file acc -> f (Path.Local.of_string file) acc);
-    Path.Local.Map.iteri dirs ~f:(fun dir filenames ->
-      String.Map.iteri filenames ~f:(fun filename payload ->
-        f (Path.Local.relative dir filename) payload))
+  let exists { root = _; contents } ~f =
+    let rec aux { files; subdirs } =
+      Filename.Map.exists files ~f || Path.Local.Map.exists subdirs ~f:aux
+    in
+    aux contents
   ;;
+
+  let foldi { root; contents } ~init ~f =
+    (* DUBIOUS *)
+    let rec aux path { files; subdirs } acc =
+      let acc =
+        Filename.Map.foldi files ~init:acc ~f:(fun file acc ->
+          f
+            (if Path.Local.is_root path
+             then Path.Local.of_string file
+             else Path.Local.relative path file)
+            acc)
+      in
+      Path.Local.Map.foldi subdirs ~init:acc ~f:aux
+    in
+    aux (Path.Build.local root) contents init
+  ;;
+
+  let iteri { root; contents } ~f ~d =
+    let rec aux path { files; subdirs } =
+      Filename.Map.iteri files ~f:(fun file_name payload ->
+        let file = Path.Local.relative path file_name in
+        f file payload);
+      Path.Local.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
+        let dir = Path.Local.append path dir_name in
+        d dir dir_contents;
+        (* Depth-first traversal here. *)
+        aux dir dir_contents)
+    in
+    aux (Path.Build.local root) contents
+  ;;
+
+  let iter_files t ~f = iteri t ~f ~d:(fun _ _ -> ())
+  let iter_dirs t ~f = iteri t ~f:(fun _ _ -> ()) ~d:f
 
   module Path_traversal = Fiber.Make_parallel_map (Path.Local.Map)
   module Filename_traversal = Fiber.Make_parallel_map (String.Map)
 
-  let parallel_map { root; files; dirs } ~f =
+  let parallel_map { root; contents } ~f =
+    (* DUBIOUS *)
     let open Fiber.O in
-    let+ files, dirs =
-      Fiber.fork_and_join
-        (fun () ->
-          Filename_traversal.parallel_map files ~f:(fun file ->
-            f (Path.Local.of_string file)))
-        (fun () ->
-          Path_traversal.parallel_map dirs ~f:(fun dir files ->
-            Filename_traversal.parallel_map files ~f:(fun file payload ->
-              f (Path.Local.relative dir file) payload)))
+    let rec aux path { files; subdirs } =
+      let+ files, subdirs =
+        Fiber.fork_and_join
+          (fun () ->
+            Filename_traversal.parallel_map files ~f:(fun file ->
+              f
+                (let open Path.Local in
+                 if is_root path then of_string file else relative path file)))
+          (fun () -> Path_traversal.parallel_map subdirs ~f:aux)
+      in
+      { files; subdirs }
     in
-    { root; files; dirs }
+    let+ contents = aux (Path.Build.local root) contents in
+    { root; contents }
   ;;
 
-  let digest { root = _; files; dirs } =
-    let all_digests =
-      Filename.Map.values files
-      :: Path.Local.Map.to_list_map dirs ~f:(fun _ -> String.Map.values)
+  let digest { root = _; contents } =
+    let rec all_digests _ { files; subdirs } =
+      let ffiles = Filename.Map.values files in
+      List.concat (ffiles :: Path.Local.Map.to_list_map subdirs ~f:all_digests)
     in
-    Digest.generic (List.concat all_digests)
+    Digest.generic (all_digests Path.Local.root contents)
   ;;
 
   exception Short_circuit
 
   let map_with_errors
-    { root; files; dirs }
+    { root; contents }
     ~all_errors
     ~(f : Path.Build.t -> 'a -> ('b, 'e) result)
     =
@@ -404,32 +513,37 @@ module Produced = struct
         errors := (path, e) :: !errors;
         if all_errors then None else raise_notrace Short_circuit
     in
+    (* DUBIOUS *)
+    let rec aux path { files; subdirs } =
+      let files =
+        Filename.Map.filter_mapi files ~f:(fun file -> f (Path.Build.relative path file))
+      in
+      let subdirs =
+        Path.Local.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
+          let dir = Path.Build.append_local path dir in
+          aux dir subdirs_contents)
+      in
+      { files; subdirs }
+    in
     let result =
-      try
-        let files =
-          Filename.Map.filter_mapi files ~f:(fun file ->
-            f (Path.Build.relative root file))
-        in
-        let dirs =
-          Path.Local.Map.mapi dirs ~f:(fun dir ->
-            let dir = Path.Build.append_local root dir in
-            Filename.Map.filter_mapi ~f:(fun filename ->
-              f (Path.Build.relative dir filename)))
-        in
-        { root; files; dirs }
-      with
-      | Short_circuit -> { root; files = Filename.Map.empty; dirs = Path.Local.Map.empty }
+      try { root; contents = aux root contents } with
+      | Short_circuit ->
+        { root
+        ; contents = { files = Filename.Map.empty; subdirs = Path.Local.Map.empty }
+        }
     in
     match Nonempty_list.of_list !errors with
     | None -> Ok result
     | Some list -> Error list
   ;;
 
-  let to_dyn { root; files; dirs } =
-    Dyn.record
-      [ "root", Path.Build.to_dyn root
-      ; "files", Filename.Map.to_dyn Dyn.opaque files
-      ; "dirs", Path.Local.Map.to_dyn (Filename.Map.to_dyn Dyn.opaque) dirs
-      ]
+  let to_dyn { root; contents } =
+    let rec aux { files; subdirs } =
+      Dyn.record
+        [ "files", Filename.Map.to_dyn Dyn.opaque files
+        ; "dirs", Path.Local.Map.to_dyn aux subdirs
+        ]
+    in
+    Dyn.record [ "root", Path.Build.to_dyn root; "contents", aux contents ]
   ;;
 end

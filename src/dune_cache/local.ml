@@ -103,12 +103,15 @@ module Artifacts = struct
     Result.try_with (fun () ->
       (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
          simpler to just use file digests instead of file names and no subdirectories. *)
-      Path.Local.Map.iteri targets.dirs ~f:(fun path _ ->
-        Path.mkdir_p (Path.append_local temp_dir path));
-      Targets.Produced.iteri targets ~f:(fun path _ ->
-        let path_in_build_dir = Path.build (Path.Build.append_local targets.root path) in
-        let path_in_temp_dir = Path.append_local temp_dir path in
-        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+      Targets.Produced.iteri
+        targets
+        ~d:(fun dir _ -> Path.mkdir_p (Path.append_local temp_dir dir))
+        ~f:(fun file _ ->
+          let path_in_build_dir =
+            Path.build (Path.Build.append_local targets.root file)
+          in
+          let path_in_temp_dir = Path.append_local temp_dir file in
+          portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
   (* Step II of [store_skipping_metadata].
@@ -281,10 +284,7 @@ module Artifacts = struct
          | Copy -> copy ~src ~dst);
         Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
       in
-      try
-        Path.Local.Map.iteri artifacts.dirs ~f:(fun dir _ -> mk_dir dir);
-        Targets.Produced.iteri artifacts ~f:mk_file
-      with
+      try Targets.Produced.iteri artifacts ~f:mk_file ~d:(fun dir _ -> mk_dir dir) with
       | exn ->
         Unwind.unwind unwind;
         reraise exn

@@ -225,10 +225,9 @@ end = struct
         else
           Some "--enable=effects"
     | Some Double_translation ->
-        if recent then
-          Some "--effects=double-translation"
-        else
-          failwith "--effects=double-translation is not supported before version js_of_ocaml 6.0"
+        (* For js_of_ocaml < 6.0, this flag does not exist and will raise an error,
+           which is fine. *)
+        Some "--effects=double-translation"
   ;;
 
   let to_flags ~recent t =

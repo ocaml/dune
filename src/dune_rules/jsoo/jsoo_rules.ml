@@ -41,95 +41,6 @@ let js_env = compute_env ~mode:JS
 let wasm_env = compute_env ~mode:Wasm
 let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode ~js:js_env ~wasm:wasm_env) ~dir
 
-module Config : sig
-  type t
-
-  val all : t list
-  val path : t -> string
-  val of_string : string -> t
-  val of_flags : string list -> t
-  val to_flags : t -> string list
-end = struct
-  type t =
-    { js_string : bool option
-    ; effects : bool option
-    ; toplevel : bool option
-    }
-
-  let default = { js_string = None; effects = None; toplevel = None }
-  let bool_opt = [ None; Some true; Some false ]
-
-  let all =
-    List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map bool_opt ~f:(fun effects ->
-        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
-  ;;
-
-  let get t =
-    List.filter_map
-      [ "use-js-string", t.js_string; "effects", t.effects; "toplevel", t.toplevel ]
-      ~f:(fun (n, v) ->
-        match v with
-        | None -> None
-        | Some v -> Some (n, v))
-  ;;
-
-  let set acc name v =
-    match name with
-    | "use-js-string" -> { acc with js_string = Some v }
-    | "effects" -> { acc with effects = Some v }
-    | "toplevel" -> { acc with toplevel = Some v }
-    | _ -> acc
-  ;;
-
-  let path t =
-    if t = default
-    then "default"
-    else
-      List.map (get t) ~f:(function
-        | x, true -> x
-        | x, false -> "!" ^ x)
-      |> String.concat ~sep:"+"
-  ;;
-
-  let of_string x =
-    match x with
-    | "default" -> default
-    | _ ->
-      List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
-        match String.drop_prefix ~prefix:"!" name with
-        | Some name -> set acc name false
-        | None -> set acc name true)
-  ;;
-
-  let of_flags l =
-    let rec loop acc = function
-      | [] -> acc
-      | "--enable" :: name :: rest -> loop (set acc name true) rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
-        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
-         | Some name -> loop (set acc name true) rest
-         | _ -> assert false)
-      | "--disable" :: name :: rest -> loop (set acc name false) rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
-        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
-         | Some name -> loop (set acc name false) rest
-         | _ -> assert false)
-      | "--toplevel" :: rest -> loop (set acc "toplevel" true) rest
-      | _ :: rest -> loop acc rest
-    in
-    loop default l
-  ;;
-
-  let to_flags t =
-    List.concat_map (get t) ~f:(function
-      | "toplevel", true -> [ "--toplevel" ]
-      | "toplevel", false -> []
-      | name, true -> [ "--enable"; name ]
-      | name, false -> [ "--disable"; name ])
-  ;;
-end
-
 module Version = struct
   type t = int * int
 
@@ -176,6 +87,161 @@ end
 
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
+let jsoo ~dir sctx =
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~loc:None
+    ~where:Original_path
+    ~hint:install_jsoo_hint
+    "js_of_ocaml"
+;;
+
+module Config : sig
+  type t
+
+  val all : t list
+  val path : t -> string
+  val of_string : string -> t
+  val of_flags : string list -> t
+  val to_flags : recent:bool -> t -> string list
+    (** [recent] should be true if jsoo version is 6.0 or higher. *)
+end = struct
+  type effects_backend = Cps | Double_translation
+
+  type t =
+    { js_string : bool option
+    ; effects : effects_backend option
+    ; toplevel : bool option
+    }
+
+  let default = { js_string = None; effects = None; toplevel = None }
+  let bool_opt = [ None; Some true; Some false ]
+  let effects_opt = [ None; Some Cps; Some Double_translation ]
+
+  let all =
+    List.concat_map bool_opt ~f:(fun js_string ->
+      List.concat_map effects_opt ~f:(fun effects ->
+        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
+  ;;
+
+  let set acc name v =
+    match name, v with
+    | "use-js-string", `True -> { acc with js_string = Some true }
+    | "use-js-string", `False -> { acc with js_string = Some false }
+    | "effects", `Effects backend -> { acc with effects = Some backend }
+    | "effects", `False ->
+        (* [--disable effects] *)
+        { acc with effects = None }
+    | "effects", `True ->
+        (* [--enable effects], used alone, implies [--effects=cps] *)
+        (match acc.effects with
+        | None -> { acc with effects = Some Cps }
+        | Some _ -> acc)
+    | "toplevel", `True -> { acc with toplevel = Some true }
+    | "toplevel", `False -> { acc with toplevel = Some false }
+    | _ -> acc
+  ;;
+
+  let string_of_effects = function
+    | Cps -> "cps"
+    | Double_translation -> "double-translation"
+
+  let path t =
+    if t = default
+    then "default"
+    else
+      let of_bool_opt key = Option.map ~f:(function true -> key | false -> "!" ^ key) in
+      List.filter_opt
+        [ of_bool_opt "use-js-string" t.js_string
+        ; Option.map t.effects ~f:string_of_effects
+        ; of_bool_opt "toplevel" t.toplevel
+        ]
+      |> String.concat ~sep:"+"
+  ;;
+
+  let effects_of_string = function
+    | "cps" -> Some Cps
+    | "double-translation" -> Some Cps
+    | _ -> None
+  ;;
+
+  let of_string x =
+    match x with
+    | "default" -> default
+    | _ ->
+      List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
+        match ( String.drop_prefix ~prefix:"!" name
+              , String.drop_prefix ~prefix:"effects=" name ) with
+        | Some name, _ -> set acc name `False
+        | None, None -> set acc name `True
+        | None, Some backend ->
+            (match effects_of_string backend with
+            | Some backend -> set acc name (`Effects backend)
+            | None -> acc)
+        )
+  ;;
+
+  let of_flags l =
+    let rec loop acc = function
+      | [] -> acc
+      | "--enable" :: name :: rest -> loop (set acc name `True) rest
+      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+         | Some name -> loop (set acc name `True) rest
+         | _ -> assert false)
+      | "--disable" :: name :: rest -> loop (set acc name `False) rest
+      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+         | Some name -> loop (set acc name `False) rest
+         | _ -> assert false)
+      | "--toplevel" :: rest -> loop (set acc "toplevel" `True) rest
+      | "--effects" :: "cps" :: rest -> loop (set acc "effects" `Cps) rest
+      | "--effects" :: "double-translation" :: rest ->
+          loop (set acc "effects" `Double_translation) rest
+      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+          let backend =
+            Option.bind
+              (String.drop_prefix maybe_effects ~prefix:"--effects=")
+              ~f:effects_of_string
+          in
+          (match backend with
+           | Some backend -> set acc "effects" (`Effects backend)
+           | None -> loop acc rest)
+      | _ :: rest -> loop acc rest
+    in
+    loop default l
+  ;;
+
+  let backward_compatible_effects ~recent str =
+    match str with
+    | None ->
+        (* For jsoo, this means unsupported effects. For wasmoo, this means effects go
+           through the Javascript Promise API. *)
+        None
+    | Some Cps ->
+        if recent then
+          Some "--effects=cps"
+        else
+          Some "--enable=effects"
+    | Some Double_translation ->
+        if recent then
+          Some "--effects=double-translation"
+        else
+          failwith "--effects=double-translation is not supported before version js_of_ocaml 6.0"
+  ;;
+
+  let to_flags ~recent t =
+    List.filter_opt
+      [ (match t.toplevel with Some true -> Some "--toplevel" | _ -> None)
+      ; backward_compatible_effects ~recent t.effects
+      ; (match t.js_string with
+         | Some true -> Some "--enable=use-js-string"
+         | Some false -> Some "--disable=use-js-string"
+         | None -> None)
+      ]
+end
+
 let in_build_dir (ctx : Build_context.t) ~config args =
   Path.Build.L.relative ctx.build_dir (".js" :: Config.path config :: args)
 ;;
@@ -196,16 +262,6 @@ let in_obj_dir' ~obj_dir ~config args =
     | Some config -> Path.relative (Obj_dir.jsoo_dir obj_dir) (Config.path config)
   in
   Path.L.relative dir args
-;;
-
-let jsoo ~dir sctx =
-  Super_context.resolve_program
-    sctx
-    ~dir
-    ~loc:None
-    ~where:Original_path
-    ~hint:install_jsoo_hint
-    "js_of_ocaml"
 ;;
 
 let wasmoo ~dir sctx =
@@ -275,9 +331,19 @@ let js_of_ocaml_rule
        | None -> S []
        | Some config ->
          Dyn
-           (Action_builder.map config ~f:(fun config ->
-              Command.Args.S
-                (List.map (Config.to_flags config) ~f:(fun x -> Command.Args.A x)))))
+           (let+ config = config
+            and+ jsoo_version =
+              let* jsoo = jsoo in
+              Action_builder.of_memo (Version.jsoo_version jsoo)
+            in
+            let recent =
+              match jsoo_version with
+              | Some v ->
+                  (match Version.compare v (6, 0) with Gt | Eq -> true | Lt -> false)
+              | None -> false
+            in
+            Command.Args.S
+              (List.map (Config.to_flags ~recent config) ~f:(fun x -> Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec

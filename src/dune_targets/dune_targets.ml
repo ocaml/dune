@@ -217,35 +217,54 @@ module Produced = struct
 
   let of_validated =
     (* The call sites ensure that [dir = Path.Build.append_local validated.root local]. *)
-    let rec collect (dir : Path.Build.t) (local : Path.Local.t)
-      : (unit Filename.Map.t Path.Local.Map.t, Error.t) result
-      =
-      match Path.readdir_unsorted_with_kinds (Path.build dir) with
-      | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
-      | Error e -> Error (Unreadable_dir (dir, e))
-      | Ok dir_contents ->
-        let open Result.O in
-        let+ filenames, dirs =
-          Result.List.fold_left
-            dir_contents
-            ~init:(Filename.Map.empty, Path.Local.Map.empty)
-            ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
-              match (kind : File_kind.t) with
-              (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
-              | S_LNK | S_REG ->
-                Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
-              | S_DIR ->
-                let+ dir =
-                  collect
-                    (Path.Build.relative dir filename)
-                    (Path.Local.relative local filename)
-                in
-                acc_filenames, Path.Local.Map.union_exn acc_dirs dir
-              | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
-        in
-        if not (Filename.Map.is_empty filenames)
-        then Path.Local.Map.add_exn dirs local filenames
-        else dirs
+    let collect dir local =
+      let rec collect (dir : Path.Build.t) (local : Path.Local.t)
+        : (unit Filename.Map.t Path.Local.Map.t, Error.t) result
+        =
+        match Path.readdir_unsorted_with_kinds (Path.build dir) with
+        | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
+        | Error e -> Error (Unreadable_dir (dir, e))
+        | Ok dir_contents ->
+          let open Result.O in
+          let+ filenames, dirs =
+            Result.List.fold_left
+              dir_contents
+              ~init:(Filename.Map.empty, Path.Local.Map.empty)
+              ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
+                match (kind : File_kind.t) with
+                (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
+                | S_LNK | S_REG ->
+                  Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
+                | S_DIR ->
+                  let+ dir =
+                    collect
+                      (Path.Build.relative dir filename)
+                      (Path.Local.relative local filename)
+                  in
+                  acc_filenames, Path.Local.Map.union_exn acc_dirs dir
+                | _ -> Error (Unsupported_file (Path.Build.relative dir filename, kind)))
+          in
+          if not (Filename.Map.is_empty filenames)
+          then Path.Local.Map.add_exn dirs local filenames
+          else dirs
+      in
+      let rec parent_dirs path dirs =
+        match Path.Local.parent path with
+        | Some p when Path.Local.is_root p -> dirs
+        | Some parent -> parent_dirs parent @@ Path.Local.Set.add dirs parent
+        | None -> dirs
+      in
+      let open Result.O in
+      let* files = collect dir local in
+      let parent_dirs =
+        Path.Local.Map.foldi files ~init:Path.Local.Set.empty ~f:(fun dir _ dirs ->
+          parent_dirs dir dirs)
+      in
+      Path.Local.Set.fold parent_dirs ~init:files ~f:(fun parent_dir files ->
+        Path.Local.Map.update files parent_dir ~f:(function
+          | Some _ as x -> x
+          | None -> Some Filename.Map.empty))
+      |> Result.ok
     in
     let directory root dirname =
       let open Result.O in

@@ -11,8 +11,5 @@ module Make (C : S.CONTEXT) : sig
     include module type of Zeroinstall_solver.Diagnostics (Solver.Output)
   end
 
-  val version : Input.impl -> OpamPackage.t option
-  val package_name : Input.Role.t -> OpamPackage.Name.t option
-  val formula : Input.restriction -> [ `Ensure | `Prevent ] * OpamFormula.version_formula
   val diagnostics_rolemap : diagnostics -> Diagnostics.t Fiber.t
 end

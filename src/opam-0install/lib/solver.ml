@@ -3,10 +3,6 @@ module Make (Context : S.CONTEXT) = struct
   open Pp.O
   module Input = Model.Make (Context)
 
-  let version = Input.version
-  let package_name = Input.package_name
-  let formula = Input.formula
-
   let requirements ~context pkgs =
     let role =
       match pkgs with

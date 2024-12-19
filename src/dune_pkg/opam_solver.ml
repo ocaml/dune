@@ -49,8 +49,6 @@ module Priority = struct
 end
 
 module Context_for_dune = struct
-  type filter = OpamTypes.filter
-
   type rejection =
     | (* TODO proper error messages for packages skipped via avoid-version *)
       Unavailable
@@ -125,7 +123,8 @@ module Context_for_dune = struct
     | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
   ;;
 
-  let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
+  let eval_to_bool (filter : OpamTypes.filter) : (bool, [> `Not_a_bool of string ]) result
+    =
     try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter) with
     | Invalid_argument msg -> Error (`Not_a_bool msg)
   ;;

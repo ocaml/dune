@@ -230,10 +230,13 @@ module Produced = struct
             dir_contents
             ~init:(Filename.Map.empty, Path.Local.Map.empty)
             ~f:(fun (acc_filenames, acc_dirs) (filename, kind) ->
+              (* FIXME: this line fixes one problem, but breaks a lot of other stuff *)
+              let acc_filenames = Filename.Map.add_exn acc_filenames filename () in
               match (kind : File_kind.t) with
               (* CR-someday rleshchinskiy: Make semantics of symlinks more consistent. *)
               | S_LNK | S_REG ->
-                Ok (Filename.Map.add_exn acc_filenames filename (), acc_dirs)
+                (* let acc_filenames = Filename.Map.add_exn acc_filenames name () in *)
+                Ok (acc_filenames, acc_dirs)
               | S_DIR ->
                 let+ dir =
                   collect

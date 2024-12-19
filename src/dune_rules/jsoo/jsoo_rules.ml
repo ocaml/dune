@@ -104,10 +104,13 @@ module Config : sig
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
+
+  (** [recent] should be true if jsoo version is 6.0 or higher. *)
   val to_flags : recent:bool -> t -> string list
-    (** [recent] should be true if jsoo version is 6.0 or higher. *)
 end = struct
-  type effects_backend = Cps | Double_translation
+  type effects_backend =
+    | Cps
+    | Double_translation
 
   type t =
     { js_string : bool option
@@ -131,13 +134,13 @@ end = struct
     | "use-js-string", `False -> { acc with js_string = Some false }
     | "effects", `Effects backend -> { acc with effects = Some backend }
     | "effects", `False ->
-        (* [--disable effects] *)
-        { acc with effects = None }
+      (* [--disable effects] *)
+      { acc with effects = None }
     | "effects", `True ->
-        (* [--enable effects], used alone, implies [--effects=cps] *)
-        (match acc.effects with
-        | None -> { acc with effects = Some Cps }
-        | Some _ -> acc)
+      (* [--enable effects], used alone, implies [--effects=cps] *)
+      (match acc.effects with
+       | None -> { acc with effects = Some Cps }
+       | Some _ -> acc)
     | "toplevel", `True -> { acc with toplevel = Some true }
     | "toplevel", `False -> { acc with toplevel = Some false }
     | _ -> acc
@@ -146,18 +149,23 @@ end = struct
   let string_of_effects = function
     | Cps -> "cps"
     | Double_translation -> "double-translation"
+  ;;
 
   let path t =
     if t = default
     then "default"
-    else
-      let of_bool_opt key = Option.map ~f:(function true -> key | false -> "!" ^ key) in
+    else (
+      let of_bool_opt key =
+        Option.map ~f:(function
+          | true -> key
+          | false -> "!" ^ key)
+      in
       List.filter_opt
         [ of_bool_opt "use-js-string" t.js_string
         ; Option.map t.effects ~f:string_of_effects
         ; of_bool_opt "toplevel" t.toplevel
         ]
-      |> String.concat ~sep:"+"
+      |> String.concat ~sep:"+")
   ;;
 
   let effects_of_string = function
@@ -171,15 +179,15 @@ end = struct
     | "default" -> default
     | _ ->
       List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
-        match ( String.drop_prefix ~prefix:"!" name
-              , String.drop_prefix ~prefix:"effects=" name ) with
+        match
+          String.drop_prefix ~prefix:"!" name, String.drop_prefix ~prefix:"effects=" name
+        with
         | Some name, _ -> set acc name `False
         | None, None -> set acc name `True
         | None, Some backend ->
-            (match effects_of_string backend with
-            | Some backend -> set acc name (`Effects backend)
-            | None -> acc)
-        )
+          (match effects_of_string backend with
+           | Some backend -> set acc name (`Effects backend)
+           | None -> acc))
   ;;
 
   let of_flags l =
@@ -198,16 +206,16 @@ end = struct
       | "--toplevel" :: rest -> loop (set acc "toplevel" `True) rest
       | "--effects" :: "cps" :: rest -> loop (set acc "effects" `Cps) rest
       | "--effects" :: "double-translation" :: rest ->
-          loop (set acc "effects" `Double_translation) rest
+        loop (set acc "effects" `Double_translation) rest
       | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
-          let backend =
-            Option.bind
-              (String.drop_prefix maybe_effects ~prefix:"--effects=")
-              ~f:effects_of_string
-          in
-          (match backend with
-           | Some backend -> set acc "effects" (`Effects backend)
-           | None -> loop acc rest)
+        let backend =
+          Option.bind
+            (String.drop_prefix maybe_effects ~prefix:"--effects=")
+            ~f:effects_of_string
+        in
+        (match backend with
+         | Some backend -> set acc "effects" (`Effects backend)
+         | None -> loop acc rest)
       | _ :: rest -> loop acc rest
     in
     loop default l
@@ -216,29 +224,28 @@ end = struct
   let backward_compatible_effects ~recent str =
     match str with
     | None ->
-        (* For jsoo, this means unsupported effects. For wasmoo, this means effects go
-           through the Javascript Promise API. *)
-        None
-    | Some Cps ->
-        if recent then
-          Some "--effects=cps"
-        else
-          Some "--enable=effects"
+      (* For jsoo, this means unsupported effects. For wasmoo, this means effects go
+         through the Javascript Promise API. *)
+      None
+    | Some Cps -> if recent then Some "--effects=cps" else Some "--enable=effects"
     | Some Double_translation ->
-        (* For js_of_ocaml < 6.0, this flag does not exist and will raise an error,
-           which is fine. *)
-        Some "--effects=double-translation"
+      (* For js_of_ocaml < 6.0, this flag does not exist and will raise an error,
+         which is fine. *)
+      Some "--effects=double-translation"
   ;;
 
   let to_flags ~recent t =
     List.filter_opt
-      [ (match t.toplevel with Some true -> Some "--toplevel" | _ -> None)
+      [ (match t.toplevel with
+         | Some true -> Some "--toplevel"
+         | _ -> None)
       ; backward_compatible_effects ~recent t.effects
       ; (match t.js_string with
          | Some true -> Some "--enable=use-js-string"
          | Some false -> Some "--disable=use-js-string"
          | None -> None)
       ]
+  ;;
 end
 
 let in_build_dir (ctx : Build_context.t) ~config args =
@@ -338,7 +345,9 @@ let js_of_ocaml_rule
             let recent =
               match jsoo_version with
               | Some v ->
-                  (match Version.compare v (6, 0) with Gt | Eq -> true | Lt -> false)
+                (match Version.compare v (6, 0) with
+                 | Gt | Eq -> true
+                 | Lt -> false)
               | None -> false
             in
             Command.Args.S

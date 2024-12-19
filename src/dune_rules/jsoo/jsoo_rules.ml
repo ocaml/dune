@@ -41,6 +41,62 @@ let js_env = compute_env ~mode:JS
 let wasm_env = compute_env ~mode:Wasm
 let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode ~js:js_env ~wasm:wasm_env) ~dir
 
+module Version = struct
+  type t = int * int
+
+  let of_string s : t option =
+    let s =
+      match
+        String.findi s ~f:(function
+          | '+' | '-' | '~' -> true
+          | _ -> false)
+      with
+      | None -> s
+      | Some i -> String.take s i
+    in
+    try
+      match String.split s ~on:'.' with
+      | [] -> None
+      | [ major ] -> Some (int_of_string major, 0)
+      | major :: minor :: _ -> Some (int_of_string major, int_of_string minor)
+    with
+    | _ -> None
+  ;;
+
+  let compare (ma1, mi1) (ma2, mi2) =
+    match Int.compare ma1 ma2 with
+    | Eq -> Int.compare mi1 mi2
+    | n -> n
+  ;;
+
+  let impl_version bin =
+    let* _ = Build_system.build_file bin in
+    Memo.of_reproducible_fiber
+    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
+    |> Memo.map ~f:of_string
+  ;;
+
+  let version_memo = Memo.create "jsoo-version" ~input:(module Path) impl_version
+
+  let jsoo_version jsoo =
+    match jsoo with
+    | Ok jsoo_path -> Memo.exec version_memo jsoo_path
+    | Error e -> Action.Prog.Not_found.raise e
+  ;;
+end
+
+let install_jsoo_hint = "opam install js_of_ocaml-compiler"
+
+let jsoo ~dir sctx =
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~loc:None
+    ~where:Original_path
+    ~hint:install_jsoo_hint
+    "js_of_ocaml"
+;;
+
 module Config : sig
   type t
 
@@ -48,7 +104,8 @@ module Config : sig
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
-  val to_flags : t -> string list
+  val to_flags : recent:bool -> t -> string list
+    (** [recent] should be true if jsoo version is 6.0 or higher. *)
 end = struct
   type effects_backend = Cps | Double_translation
 
@@ -156,63 +213,34 @@ end = struct
     loop default l
   ;;
 
-  let to_flags t =
+  let backward_compatible_effects ~recent str =
+    match str with
+    | None ->
+        (* For jsoo, this means unsupported effects. For wasmoo, this means effects go
+           through the Javascript Promise API. *)
+        None
+    | Some Cps ->
+        if recent then
+          Some "--effects=cps"
+        else
+          Some "--enable=effects"
+    | Some Double_translation ->
+        if recent then
+          Some "--effects=double-translation"
+        else
+          failwith "--effects=double-translation is not supported before version js_of_ocaml 6.0"
+  ;;
+
+  let to_flags ~recent t =
     List.filter_opt
       [ (match t.toplevel with Some true -> Some "--toplevel" | _ -> None)
-      ; (match t.effects with
-         | Some backend -> Some ("--effects=" ^ string_of_effects backend) | None -> None)
+      ; backward_compatible_effects ~recent t.effects
       ; (match t.js_string with
          | Some true -> Some "--enable=use-js-string"
          | Some false -> Some "--disable=use-js-string"
          | None -> None)
       ]
 end
-
-module Version = struct
-  type t = int * int
-
-  let of_string s : t option =
-    let s =
-      match
-        String.findi s ~f:(function
-          | '+' | '-' | '~' -> true
-          | _ -> false)
-      with
-      | None -> s
-      | Some i -> String.take s i
-    in
-    try
-      match String.split s ~on:'.' with
-      | [] -> None
-      | [ major ] -> Some (int_of_string major, 0)
-      | major :: minor :: _ -> Some (int_of_string major, int_of_string minor)
-    with
-    | _ -> None
-  ;;
-
-  let compare (ma1, mi1) (ma2, mi2) =
-    match Int.compare ma1 ma2 with
-    | Eq -> Int.compare mi1 mi2
-    | n -> n
-  ;;
-
-  let impl_version bin =
-    let* _ = Build_system.build_file bin in
-    Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
-    |> Memo.map ~f:of_string
-  ;;
-
-  let version_memo = Memo.create "jsoo-version" ~input:(module Path) impl_version
-
-  let jsoo_version jsoo =
-    match jsoo with
-    | Ok jsoo_path -> Memo.exec version_memo jsoo_path
-    | Error e -> Action.Prog.Not_found.raise e
-  ;;
-end
-
-let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
 let in_build_dir (ctx : Build_context.t) ~config args =
   Path.Build.L.relative ctx.build_dir (".js" :: Config.path config :: args)
@@ -234,16 +262,6 @@ let in_obj_dir' ~obj_dir ~config args =
     | Some config -> Path.relative (Obj_dir.jsoo_dir obj_dir) (Config.path config)
   in
   Path.L.relative dir args
-;;
-
-let jsoo ~dir sctx =
-  Super_context.resolve_program
-    sctx
-    ~dir
-    ~loc:None
-    ~where:Original_path
-    ~hint:install_jsoo_hint
-    "js_of_ocaml"
 ;;
 
 let wasmoo ~dir sctx =
@@ -313,9 +331,19 @@ let js_of_ocaml_rule
        | None -> S []
        | Some config ->
          Dyn
-           (Action_builder.map config ~f:(fun config ->
-              Command.Args.S
-                (List.map (Config.to_flags config) ~f:(fun x -> Command.Args.A x)))))
+           (let+ config = config
+            and+ jsoo_version =
+              let* jsoo = jsoo in
+              Action_builder.of_memo (Version.jsoo_version jsoo)
+            in
+            let recent =
+              match jsoo_version with
+              | Some v ->
+                  (match Version.compare v (6, 0) with Gt | Eq -> true | Lt -> false)
+              | None -> false
+            in
+            Command.Args.S
+              (List.map (Config.to_flags ~recent config) ~f:(fun x -> Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec

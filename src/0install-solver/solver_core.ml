@@ -181,23 +181,6 @@ module Make (Model : S.SOLVER_INPUT) = struct
     ; diagnostics : diagnostics (** Extra information useful for diagnostics *)
     }
 
-  (* Make each interface conflict with its replacement (if any).
-   * We do this at the end because if we didn't use the replacement feed, there's no need to conflict
-   * (avoids getting it added to feeds_used). *)
-  let add_replaced_by_conflicts sat impl_clauses =
-    List.iter ~f:(fun (clause, replacement) ->
-      ImplCache.get replacement impl_clauses
-      |> Option.iter (fun replacement_candidates ->
-        (* Our replacement was also added to [sat], so conflict with it. *)
-        let our_vars = clause#get_real_vars in
-        let replacements = replacement_candidates#get_real_vars in
-        if our_vars <> [] && replacements <> []
-        then
-          (* Must select one implementation out of all candidates from both interfaces.
-             Dummy implementations don't conflict, though. *)
-          S.at_most_one sat (our_vars @ replacements) |> ignore))
-  ;;
-
   module Conflict_classes = struct
     module Map = Map.Make (struct
         type t = Model.conflict_class
@@ -272,8 +255,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
   ;;
 
   (* Add the implementations of an interface to the ImplCache (called the first time we visit it). *)
-  let make_impl_clause sat ~dummy_impl replacements role =
-    let+ { Model.replacement; impls } = Model.implementations role in
+  let make_impl_clause sat ~dummy_impl role =
+    let+ { impls } = Model.implementations role in
     (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
     let impls =
       match dummy_impl with
@@ -289,10 +272,6 @@ module Make (Model : S.SOLVER_INPUT) = struct
       if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
     in
     let clause = new impl_candidates role impl_clause impls dummy_impl in
-    (* If we have a <replaced-by>, remember to add a conflict with our replacement *)
-    replacement
-    |> Option.iter (fun replacement ->
-      replacements := (clause, replacement) :: !replacements);
     clause, impls
   ;;
 
@@ -302,10 +281,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
     let conflict_classes = Conflict_classes.create sat in
-    (* Handle <replaced-by> conflicts after building the problem. *)
-    let replacements = ref [] in
     let rec add_impls_to_cache role =
-      let+ clause, impls = make_impl_clause sat ~dummy_impl replacements role in
+      let+ clause, impls = make_impl_clause sat ~dummy_impl role in
       ( clause
       , fun () ->
           impls
@@ -325,7 +302,6 @@ module Make (Model : S.SOLVER_INPUT) = struct
     in
     (* All impl_candidates have now been added, so snapshot the cache. *)
     let impl_clauses = ImplCache.snapshot impl_cache in
-    add_replaced_by_conflicts sat impl_clauses !replacements;
     Conflict_classes.seal conflict_classes;
     impl_clauses
   ;;

@@ -65,7 +65,6 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
     type t =
       { role : Model.Role.t
-      ; replacement : Model.Role.t option
       ; diagnostics : Stdune.User_message.Style.t Pp.t Lazy.t
       ; selected_impl : Model.impl option
       ; (* orig_good is all the implementations passed to the SAT solver (these are the
@@ -88,10 +87,9 @@ module Make (Results : S.SOLVER_RESULT) = struct
       (diagnostics : _ Pp.t Lazy.t)
       (selected_impl : Model.impl option)
       =
-      let { Model.impls; Model.replacement } = candidates in
+      let { Model.impls } = candidates in
       let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
       { role
-      ; replacement
       ; orig_good = impls
       ; orig_bad
       ; good = impls
@@ -164,7 +162,6 @@ module Make (Results : S.SOLVER_RESULT) = struct
       t.good <- []
     ;;
 
-    let replacement t = t.replacement
     let selected_impl t = t.selected_impl
 
     (* When something conflicts with itself then our usual trick of selecting
@@ -338,19 +335,6 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
   (* Find all restrictions that are in play and affect this interface *)
   let examine_selection report role component =
-    (* Note any conflicts caused by <replaced-by> elements *)
-    let () =
-      match Component.replacement component with
-      | Some replacement when RoleMap.mem replacement report ->
-        Component.note component (ReplacedByConflict replacement);
-        Component.reject_all component (`ConflictsRole replacement);
-        (match RoleMap.find_opt replacement report with
-         | Some replacement_component ->
-           Component.note replacement_component (ReplacesConflict role);
-           Component.reject_all replacement_component (`ConflictsRole role)
-         | None -> ())
-      | _ -> ()
-    in
     match Component.selected_impl component with
     | Some our_impl ->
       (* For each dependency of our selected impl, explain why it rejected impls in the dependency's interface. *)

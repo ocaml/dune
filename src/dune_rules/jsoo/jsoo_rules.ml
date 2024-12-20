@@ -41,62 +41,6 @@ let js_env = compute_env ~mode:JS
 let wasm_env = compute_env ~mode:Wasm
 let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode ~js:js_env ~wasm:wasm_env) ~dir
 
-module Version = struct
-  type t = int * int
-
-  let of_string s : t option =
-    let s =
-      match
-        String.findi s ~f:(function
-          | '+' | '-' | '~' -> true
-          | _ -> false)
-      with
-      | None -> s
-      | Some i -> String.take s i
-    in
-    try
-      match String.split s ~on:'.' with
-      | [] -> None
-      | [ major ] -> Some (int_of_string major, 0)
-      | major :: minor :: _ -> Some (int_of_string major, int_of_string minor)
-    with
-    | _ -> None
-  ;;
-
-  let compare (ma1, mi1) (ma2, mi2) =
-    match Int.compare ma1 ma2 with
-    | Eq -> Int.compare mi1 mi2
-    | n -> n
-  ;;
-
-  let impl_version bin =
-    let* _ = Build_system.build_file bin in
-    Memo.of_reproducible_fiber
-    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
-    |> Memo.map ~f:of_string
-  ;;
-
-  let version_memo = Memo.create "jsoo-version" ~input:(module Path) impl_version
-
-  let jsoo_version jsoo =
-    match jsoo with
-    | Ok jsoo_path -> Memo.exec version_memo jsoo_path
-    | Error e -> Action.Prog.Not_found.raise e
-  ;;
-end
-
-let install_jsoo_hint = "opam install js_of_ocaml-compiler"
-
-let jsoo ~dir sctx =
-  Super_context.resolve_program
-    sctx
-    ~dir
-    ~loc:None
-    ~where:Original_path
-    ~hint:install_jsoo_hint
-    "js_of_ocaml"
-;;
-
 module Config : sig
   type t
 
@@ -248,6 +192,52 @@ end = struct
   ;;
 end
 
+module Version = struct
+  type t = int * int
+
+  let of_string s : t option =
+    let s =
+      match
+        String.findi s ~f:(function
+          | '+' | '-' | '~' -> true
+          | _ -> false)
+      with
+      | None -> s
+      | Some i -> String.take s i
+    in
+    try
+      match String.split s ~on:'.' with
+      | [] -> None
+      | [ major ] -> Some (int_of_string major, 0)
+      | major :: minor :: _ -> Some (int_of_string major, int_of_string minor)
+    with
+    | _ -> None
+  ;;
+
+  let compare (ma1, mi1) (ma2, mi2) =
+    match Int.compare ma1 ma2 with
+    | Eq -> Int.compare mi1 mi2
+    | n -> n
+  ;;
+
+  let impl_version bin =
+    let* _ = Build_system.build_file bin in
+    Memo.of_reproducible_fiber
+    @@ Process.run_capture_line ~display:Quiet Strict bin [ "--version" ]
+    |> Memo.map ~f:of_string
+  ;;
+
+  let version_memo = Memo.create "jsoo-version" ~input:(module Path) impl_version
+
+  let jsoo_version jsoo =
+    match jsoo with
+    | Ok jsoo_path -> Memo.exec version_memo jsoo_path
+    | Error e -> Action.Prog.Not_found.raise e
+  ;;
+end
+
+let install_jsoo_hint = "opam install js_of_ocaml-compiler"
+
 let in_build_dir (ctx : Build_context.t) ~config args =
   Path.Build.L.relative ctx.build_dir (".js" :: Config.path config :: args)
 ;;
@@ -268,6 +258,16 @@ let in_obj_dir' ~obj_dir ~config args =
     | Some config -> Path.relative (Obj_dir.jsoo_dir obj_dir) (Config.path config)
   in
   Path.L.relative dir args
+;;
+
+let jsoo ~dir sctx =
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~loc:None
+    ~where:Original_path
+    ~hint:install_jsoo_hint
+    "js_of_ocaml"
 ;;
 
 let wasmoo ~dir sctx =

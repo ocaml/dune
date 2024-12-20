@@ -61,14 +61,14 @@ let make_js_name ~js_ext ~output m =
 
 module Manifest = struct
   type mapping =
-    { source : Path.t
+    { source : Module.File.t
     ; targets : Path.Build.t list
     }
 
   type t = { mappings : mapping list }
 
   let sexp_of_mapping { source; targets } =
-    let source_str = Path.to_string source in
+    let source_str = Module.File.original_path source |> Path.to_string in
     let target_strs = List.map targets ~f:Path.Build.to_string in
     `Assoc [ source_str, `List (List.map target_strs ~f:(fun s -> `String s)) ]
   ;;
@@ -77,7 +77,7 @@ module Manifest = struct
   let to_string t = Json.to_string (json_of_t t)
 
   let create_mapping ~module_systems ~output m =
-    let source = Module.file m ~ml_kind:Impl |> Option.value_exn in
+    let source = Module.source m ~ml_kind:Impl |> Option.value_exn in
     let targets =
       List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output m)
     in

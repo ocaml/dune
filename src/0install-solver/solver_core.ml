@@ -340,7 +340,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
 
     type dep_info = Model.dep_info =
       { dep_role : Role.t
-      ; dep_importance : [ `Essential | `Recommended | `Restricts ]
+      ; dep_importance : [ `Essential | `Restricts ]
       }
 
     type requirements = Role.t

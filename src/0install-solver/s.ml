@@ -31,7 +31,7 @@ module type CORE_MODEL = sig
          Otherwise, we just prefer to fill it if possible.
          A [`Restricts] dependency does not cause the solver to try to fill a role, it just
          adds restrictions if it is used for some other reason. *)
-      dep_importance : [ `Essential | `Recommended | `Restricts ]
+      dep_importance : [ `Essential | `Restricts ]
     }
 
   (** Get an implementation's dependencies.

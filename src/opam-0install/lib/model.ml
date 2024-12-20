@@ -23,7 +23,7 @@ module Make (Context : S.CONTEXT) = struct
 
   and dependency =
     { drole : role
-    ; importance : [ `Essential | `Recommended | `Restricts ]
+    ; importance : [ `Essential | `Restricts ]
     ; restrictions : restriction list
     }
 
@@ -96,7 +96,7 @@ module Make (Context : S.CONTEXT) = struct
 
   type dep_info =
     { dep_role : Role.t
-    ; dep_importance : [ `Essential | `Recommended | `Restricts ]
+    ; dep_importance : [ `Essential | `Restricts ]
     }
 
   let dummy_impl = Dummy

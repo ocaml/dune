@@ -723,7 +723,7 @@ reference looks like:
 
   DECLARE PLUGIN "my-coq-plugin.plugin"
 
-  VERNAC COMMAND EXTEND CallToC CLASSIFIED AS QUERY
+  VERNAC COMMAND EXTEND Hello CLASSIFIED AS QUERY
   | [ "Hello" ] -> { Feedback.msg_notice Pp.(str Hello_world.hello_world) }
   END
 

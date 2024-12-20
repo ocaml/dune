@@ -1,5 +1,19 @@
+=====================
 Diffing and Promotion
 =====================
+
+Dune writes its build output to a separate directory from your source code tree 
+(usually ``_build/<profile_name>``). You can use Diffing and Promotion flows 
+to compare your build output with your source tree and/or copy the result of 
+rule output into your source tree to store the changes.
+
+Diffing
+=======
+
+You can use the ``(diff <file1> <file2>)`` directive in a rule to compare
+the output of the rule with a copy in your source tree. It is useful when
+your tests produce a file output and you want to make sure that output has
+not changed.
 
 .. TODO(diataxis)
    - howto: diffing and promotion
@@ -44,7 +58,15 @@ print a diff when the files differ. ``cmp`` is meant to be used with
 binary files.
 
 Promotion
----------
+=========
+
+Promotion relates to copying the output of a Dune rule to your source tree.
+Common uses include updating rule output after a failed diff (e.g., from a
+test) or committing output to source control to cut down on dependencies 
+during packaging.
+
+Promoting Test or Rule Output After Diffing
+-------------------------------------------
 
 Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
 <file2>)`` fails because the two files are different, Dune allows
@@ -76,3 +98,14 @@ repository. You can use the following workflow to update your test:
 You can also use ``dune runtest --auto-promote``, which will
 automatically do the promotion.
 
+Automatically Promoting Rule Output Into the Source Tree
+--------------------------------------------------------
+
+Dune rules support a ``(mode promote)`` directive that will automatically
+copy their output into your source tree. This is more suitable for code or
+documentation generation flows where you want to check in the output to make
+it easier to browse or to remove dependencies on the code generation step for 
+packaging in opam.
+
+More information, including customising when the source is copied, can be found
+in :doc:`../reference/dune/rule`.

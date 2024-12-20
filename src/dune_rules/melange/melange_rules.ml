@@ -76,10 +76,18 @@ module Manifest = struct
   let json_of_t t = `List (List.map t.mappings ~f:sexp_of_mapping)
   let to_string t = Json.to_string (json_of_t t)
 
-  let create_mapping ~module_systems ~output m =
-    let source = Module.source m ~ml_kind:Impl |> Option.value_exn in
+  let create_mapping ~module_systems ~output modules =
+    let source = Module.source modules ~ml_kind:Impl |> Option.value_exn in
     let targets =
-      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output m)
+      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output modules)
+    in
+    { source; targets }
+  ;;
+
+  let create_mapping_lib ~module_systems ~output lib =
+    let source = Module.source lib ~ml_kind:Impl |> Option.value_exn in
+    let targets =
+      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output lib)
     in
     { source; targets }
   ;;
@@ -517,6 +525,51 @@ let setup_entries_js
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let module_systems = mel.module_systems in
+  let* requires_link = Memo.Lazy.force requires_link in
+  (* Format.eprintf "local modules:@.";
+     let* () =
+     Modules.fold_user_written local_modules ~init:(Memo.return ()) ~f:(fun m acc ->
+     let* () = acc in
+     let name = Module.name m in
+     Format.eprintf "  Module: %s@." (Module_name.to_string name);
+     match Module.file m ~ml_kind:Impl with
+     | None ->
+     Format.eprintf "    No implementation file@.";
+     Memo.return ()
+     | Some file ->
+     Format.eprintf "    Path: %s@." (Path.to_string file);
+     Memo.return ())
+     in *)
+
+  (*
+     Format.eprintf "requires_link:@.";
+     List.iter requires_link_resolved ~f:(fun lib ->
+     let name = Lib.name lib in
+     let info = Lib.info lib in
+     let src_dir = Lib_info.src_dir info in
+     Format.eprintf "  library: %s@." (Lib_name.to_string name);
+     Format.eprintf "  path: %s@." (Path.to_string src_dir);
+     Format.eprintf "  src_dir: %s@." (Path.to_string (Lib_info.src_dir info));
+     match Lib_info.modules info with
+     | External _ -> Format.eprintf "    External modules@."
+     | Local -> Format.eprintf "    Local modules in: %s@." (Path.to_string src_dir)); *)
+
+  (* Not sure if read_memo is needed here *)
+  let* requires_link_resolved = Resolve.Memo.read_memo (Memo.return requires_link) in
+  let* () =
+    Memo.parallel_iter requires_link_resolved ~f:(fun lib ->
+      let name = Lib.name lib in
+      Format.eprintf "  Library: %s@." (Lib_name.to_string name);
+      let* _modules_with_vlib, impl_modules =
+        impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+      in
+      Format.eprintf "    Implementation modules:@.";
+      List.iter impl_modules ~f:(fun m ->
+        match Module.file m ~ml_kind:Impl with
+        | None -> Format.eprintf "      No implementation file@."
+        | Some file -> Format.eprintf "      Path: %s@." (Path.to_string file));
+      Memo.return ())
+  in
   let* includes =
     let+ lib_config =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
@@ -526,6 +579,18 @@ let setup_entries_js
     cmj_includes ~requires_link ~scope lib_config
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = `Private_library_or_emit target_dir in
+  let mappings_for_js =
+    List.map modules_for_js ~f:(fun modules ->
+      Manifest.create_mapping ~module_systems ~output modules)
+    (* and mappings_for_requires_link =
+       List.map requires_link_resolved ~f:(fun lib ->
+       let* _modules_with_vlib, impl_modules =
+       impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+       in
+       List.map impl_modules ~f:(fun m ->
+       Manifest.create_mapping ~module_systems ~output m)) *)
+  in
+  let mappings = mappings_for_js in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel

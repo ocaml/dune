@@ -2,8 +2,7 @@ Promotion of directory targets.
 
   $ mkdir test; cd test
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
   $ cat > dune <<EOF
   > (rule
@@ -52,8 +51,7 @@ If a destination file is taken up by a directory, Dune deletes it.
 Promoting a badly specified directory target gives a weird error:
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.2)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat > dune <<EOF

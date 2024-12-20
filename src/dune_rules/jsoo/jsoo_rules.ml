@@ -162,7 +162,7 @@ end = struct
       in
       List.filter_opt
         [ of_bool_opt "use-js-string" t.js_string
-        ; Option.map t.effects ~f:string_of_effects
+        ; Option.map t.effects ~f:(fun e -> "effects=" ^ string_of_effects e)
         ; of_bool_opt "toplevel" t.toplevel
         ]
       |> String.concat ~sep:"+")
@@ -170,7 +170,7 @@ end = struct
 
   let effects_of_string = function
     | "cps" -> Some Cps
-    | "double-translation" -> Some Cps
+    | "double-translation" -> Some Double_translation
     | _ -> None
   ;;
 
@@ -186,7 +186,7 @@ end = struct
         | None, None -> set acc name `True
         | None, Some backend ->
           (match effects_of_string backend with
-           | Some backend -> set acc name (`Effects backend)
+           | Some backend -> set acc "effects" (`Effects backend)
            | None -> acc))
   ;;
 

@@ -279,6 +279,7 @@ module Ext = struct
   let exe ~mode = Mode.select ~mode ~js:".bc.js" ~wasm:".bc.wasm.js"
   let cmo ~mode = Mode.select ~mode ~js:".cmo.js" ~wasm:".wasmo"
   let cma ~mode = Mode.select ~mode ~js:".cma.js" ~wasm:".wasma"
+  let js_shape = ".jsoo-shape"
   let runtime ~mode = Mode.select ~mode ~js:".bc.runtime.js" ~wasm:".bc.runtime.wasma"
   let wasm_dir = ".bc.wasm.assets"
 end

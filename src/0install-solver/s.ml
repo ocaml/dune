@@ -53,10 +53,7 @@ module type SOLVER_INPUT = sig
   include CORE_MODEL
 
   (** Information provided to the solver about a role. *)
-  type role_information =
-    { replacement : Role.t option (** Another role that conflicts with this one. *)
-    ; impls : impl list (** Candidates to fill the role. *)
-    }
+  type role_information = { impls : impl list (** Candidates to fill the role. *) }
 
   (** A restriction limits which implementations can fill a role. *)
   type restriction

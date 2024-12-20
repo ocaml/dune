@@ -12,9 +12,12 @@ module Pps_and_flags = struct
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let pps, more_flags =
       List.partition_map l ~f:(fun s ->
-        match String_with_vars.is_prefix ~prefix:"-" s with
-        | Yes -> Right s
-        | No | Unknown _ ->
+        match
+          ( String_with_vars.is_prefix ~prefix:"-" s
+          , String_with_vars.is_prefix ~prefix:"+" s )
+        with
+        | Yes, _ | _, Yes -> Right s
+        | (No | Unknown _), _ ->
           let loc = String_with_vars.loc s in
           (match String_with_vars.text_only s with
            | None ->

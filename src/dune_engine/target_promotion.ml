@@ -184,8 +184,12 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   in
   (* Here we know that the promotion directory exists but we may need to create
      additional subdirectories for [targets.dirs]. *)
-  Path.Local.Map.iteri targets.dirs ~f:(fun dir (_ : Digest.t Filename.Map.t) ->
-    create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir));
+  Targets.Produced.iteri
+    targets
+    ~d:(fun dir _ ->
+      create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir))
+      (* sure about that? *)
+    ~f:(fun file (_ : Dune_digest.t) -> ignore file);
   let promote_until_clean =
     match promote.lifetime with
     | Until_clean -> true
@@ -209,7 +213,10 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   in
   (* There can be some files or directories left over from earlier builds, so we
      need to remove them from [targets.dirs]. *)
-  let remove_stale_files_and_subdirectories ~dir ~expected_filenames =
+  let remove_stale_files_and_subdirectories
+    ~dir
+    ~(contents : 'a Targets.Produced.dir_contents)
+    =
     (* CR-someday rleshchinskiy: This can probably be made more efficient by relocating
        root once. *)
     let build_dir = Path.Build.append_local targets.root dir in
@@ -225,16 +232,15 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
     | Ok dir_contents ->
       Fs_cache.Dir_contents.iter dir_contents ~f:(function
         | filename, S_REG ->
-          if not (String.Map.mem expected_filenames filename)
+          if not (Filename.Map.mem contents.files filename)
           then Path.unlink_no_err (Path.relative dst_dir filename)
         | dirname, S_DIR ->
           let src_dir = Path.Local.relative dir dirname in
-          if not (Path.Local.Map.mem targets.dirs src_dir)
+          if not (Path.Local.Map.mem contents.subdirs src_dir)
           then Path.rm_rf (Path.relative dst_dir dirname)
         | name, _kind -> Path.unlink_no_err (Path.relative dst_dir name))
   in
   Fiber.sequential_iter_seq
-    (Path.Local.Map.to_seq targets.dirs)
-    ~f:(fun (dir, filenames) ->
-      remove_stale_files_and_subdirectories ~dir ~expected_filenames:filenames)
+    (Targets.Produced.all_dirs_seq targets)
+    ~f:(fun (dir, contents) -> remove_stale_files_and_subdirectories ~dir ~contents)
 ;;

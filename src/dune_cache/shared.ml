@@ -121,8 +121,12 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      Targets.Produced.iteri targets_and_digests ~f:(fun path digest ->
-        Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
+      Targets.Produced.iteri
+        targets_and_digests
+        ~f:(fun path digest ->
+          Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
+          (* Why ignore? *)
+        ~d:(fun dirname _contents -> ignore dirname)
     in
     match
       Targets.Produced.map_with_errors

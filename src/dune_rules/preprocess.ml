@@ -16,7 +16,8 @@ module Pps_and_flags = struct
           ( String_with_vars.is_prefix ~prefix:"-" s
           , String_with_vars.is_prefix ~prefix:"+" s )
         with
-        | Yes, _ | _, Yes -> Right s
+        | Yes, _ -> Right s
+        | _, Yes when syntax_version >= (3, 18) -> Right s
         | (No | Unknown _), _ ->
           let loc = String_with_vars.loc s in
           (match String_with_vars.text_only s with

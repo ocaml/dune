@@ -30,69 +30,70 @@ module Make (Model : S.SOLVER_INPUT) = struct
     | Selected of Model.dependency list
     | Unselected
 
-  class type candidates = object
-    method get_clause : S.at_most_one_clause option
-    method get_vars : S.lit list
-    method get_state : decision_state
-  end
+  module Candidates = struct
+    type t =
+      { role : Model.Role.t
+      ; clause : S.at_most_one_clause option
+      ; vars : (S.lit * Model.impl) list
+      ; dummy_impl : Model.impl option
+      }
 
-  class impl_candidates
-    role
-    (clause : S.at_most_one_clause option)
-    (vars : (S.lit * Model.impl) list)
-    dummy_impl =
-    let is_dummy =
-      match dummy_impl with
+    let is_dummy t =
+      match t.dummy_impl with
       | None -> fun _ -> false
       | Some dummy_impl -> ( == ) dummy_impl
-    in
-    object (_ : #candidates)
-      method get_clause = clause
+    ;;
 
-      (** Get all variables, except dummy_impl (if present) *)
-      method get_real_vars =
-        vars
-        |> List.filter_map ~f:(fun (var, impl) ->
-          if is_dummy impl then None else Some var)
+    let create role clause vars dummy_impl = { role; clause; vars; dummy_impl }
+    let clause t = t.clause
 
-      method get_vars = List.map ~f:(fun (var, _impl) -> var) vars
+    (* Get all variables, except dummy_impl (if present) *)
+    let real_vars t =
+      t.vars
+      |> List.filter_map ~f:(fun (var, impl) ->
+        if is_dummy t impl then None else Some var)
+    ;;
 
-      method get_selected =
-        match clause with
-        | None -> None (* There were never any candidates *)
-        | Some clause ->
-          (match S.get_selected clause with
-           | None -> None
-           | Some lit ->
-             (match S.get_user_data_for_lit lit with
-              | SolverData.ImplElem impl -> Some (lit, impl)
-              | _ -> assert false))
+    let vars t = List.map ~f:(fun (var, _impl) -> var) t.vars
 
-      method get_state =
-        match clause with
-        | None -> Unselected (* There were never any candidates *)
-        | Some clause ->
-          (match S.get_selected clause with
-           | Some lit ->
-             (* We've already chosen which <implementation> to use. Follow dependencies. *)
-             let impl =
-               match S.get_user_data_for_lit lit with
-               | SolverData.ImplElem impl -> impl
-               | _ -> assert false
-             in
-             Selected (Model.requires role impl)
-           | None ->
-             (match S.get_best_undecided clause with
-              | Some lit -> Undecided lit
-              | None -> Unselected (* No remaining candidates, and none was chosen. *)))
+    let selected t =
+      match t.clause with
+      | None -> None (* There were never any candidates *)
+      | Some clause ->
+        (match S.get_selected clause with
+         | None -> None
+         | Some lit ->
+           (match S.get_user_data_for_lit lit with
+            | SolverData.ImplElem impl -> Some (lit, impl)
+            | _ -> assert false))
+    ;;
 
-      (** Apply [test impl] to each implementation, partitioning the vars into two lists.
-          Only defined for [impl_candidates]. *)
-      method partition test =
-        List.partition_map
-          ~f:(fun (var, impl) -> if test impl then Stdune.Either.Left var else Right var)
-          vars
-    end
+    let state t =
+      match t.clause with
+      | None -> Unselected (* There were never any candidates *)
+      | Some clause ->
+        (match S.get_selected clause with
+         | Some lit ->
+           (* We've already chosen which <implementation> to use. Follow dependencies. *)
+           let impl =
+             match S.get_user_data_for_lit lit with
+             | SolverData.ImplElem impl -> impl
+             | _ -> assert false
+           in
+           Selected (Model.requires t.role impl)
+         | None ->
+           (match S.get_best_undecided clause with
+            | Some lit -> Undecided lit
+            | None -> Unselected (* No remaining candidates, and none was chosen. *)))
+    ;;
+
+    (* Apply [test impl] to each implementation, partitioning the vars into two
+       lists. Only defined for [impl_candidates]. *)
+    let partition t test =
+      List.partition_map t.vars ~f:(fun (var, impl) ->
+        if test impl then Stdune.Either.Left var else Right var)
+    ;;
+  end
 
   module ImplCache = Cache.Make (Model.Role)
   module RoleMap = ImplCache.M
@@ -161,7 +162,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
       List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
     in
     let+ candidates = lookup_impl dep_role in
-    let pass, fail = candidates#partition meets_restrictions in
+    let pass, fail = Candidates.partition candidates meets_restrictions in
     match dep_importance with
     | `Essential ->
       S.implies
@@ -196,7 +197,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let impl_clause =
       if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
     in
-    let clause = new impl_candidates role impl_clause impls dummy_impl in
+    let clause = Candidates.create role impl_clause impls dummy_impl in
     clause, impls
   ;;
 
@@ -221,8 +222,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     in
     let+ () =
       (* This recursively builds the whole problem up. *)
-      (let+ impl = lookup_impl root_req in
-       impl#get_vars)
+      lookup_impl root_req
+      >>| Candidates.vars
       >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
     in
     (* All impl_candidates have now been added, so snapshot the cache. *)
@@ -286,7 +287,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
     let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-    let lookup role = (ImplCache.get_exn role impl_clauses :> candidates) in
+    let lookup role = ImplCache.get_exn role impl_clauses in
     (* Run the solve *)
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -298,7 +299,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
         else (
           Hashtbl.add seen req true;
           let candidates = lookup req in
-          match candidates#get_state with
+          match Candidates.state candidates with
           | Unselected -> None
           | Undecided lit -> Some lit
           | Selected deps ->
@@ -325,7 +326,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
       let selections =
         impl_clauses
         |> ImplCache.filter_map (fun _role candidates ->
-          candidates#get_selected
+          Candidates.selected candidates
           |> Option.map (fun (lit, impl) -> { impl; diagnostics = lit }))
       in
       Some { Output.root_req; selections }

@@ -1,17 +1,15 @@
+open Fiber.O
+open Pp.O
+
 module Make (Context : S.CONTEXT) = struct
-  open Fiber.O
-  open Pp.O
   module Input = Model.Make (Context)
 
   let requirements ~context pkgs =
-    let role =
-      match pkgs with
-      | [ pkg ] -> Input.role context pkg
-      | pkgs ->
-        let impl = Input.virtual_impl ~context ~depends:pkgs () in
-        Input.virtual_role [ impl ]
-    in
-    role
+    match pkgs with
+    | [ pkg ] -> Input.role context pkg
+    | pkgs ->
+      let impl = Input.virtual_impl ~context ~depends:pkgs () in
+      Input.virtual_role [ impl ]
   ;;
 
   module Solver = Zeroinstall_solver.Make (Input)
@@ -60,7 +58,8 @@ module Make (Context : S.CONTEXT) = struct
       ++ Pp.cut
       ++ Pp.enumerate bad ~f:pp_bad
     | _ ->
-      (* In case of unknown packages, no need to print the full diagnostic list, the problem is simpler. *)
+      (* In case of unknown packages, no need to print the full diagnostic
+         list, the problem is simpler. *)
       Pp.hovbox
         (Pp.text "The following packages couldn't be found: "
          ++ Pp.concat_map ~sep:Pp.space unknown ~f:pp_unknown)
@@ -78,8 +77,7 @@ module Make (Context : S.CONTEXT) = struct
   ;;
 
   let packages_of_result sels =
-    sels
-    |> Solver.Output.to_map
+    Solver.Output.to_map sels
     |> Solver.Output.RoleMap.to_seq
     |> List.of_seq
     |> List.filter_map (fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))

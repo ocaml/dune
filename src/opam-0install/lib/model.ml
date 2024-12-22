@@ -1,3 +1,5 @@
+open Stdune
+
 module Make (Context : S.CONTEXT) = struct
   (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
      record whether to negate the result here. *)
@@ -62,7 +64,7 @@ module Make (Context : S.CONTEXT) = struct
     let compare a b =
       match a, b with
       | Real a, Real b -> OpamPackage.Name.compare a.name b.name
-      | Virtual (a, _), Virtual (b, _) -> compare a b
+      | Virtual (a, _), Virtual (b, _) -> Ordering.to_int (Poly.compare a b)
       | Real _, Virtual _ -> -1
       | Virtual _, Real _ -> 1
     ;;
@@ -74,8 +76,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let virtual_impl ~context ~depends () =
     let depends =
-      depends
-      |> List.map (fun name ->
+      List.map depends ~f:(fun name ->
         let drole = role context name in
         let importance = `Essential in
         { drole; importance; restrictions = [] })
@@ -85,11 +86,10 @@ module Make (Context : S.CONTEXT) = struct
 
   let virtual_role impls =
     let impls =
-      impls
-      |> List.mapi (fun i ->
-           function
-           | VirtualImpl (_, x) -> VirtualImpl (i, x)
-           | x -> x)
+      List.mapi impls ~f:(fun i ->
+          function
+          | VirtualImpl (_, x) -> VirtualImpl (i, x)
+          | x -> x)
     in
     Virtual (object end, impls)
   ;;
@@ -142,7 +142,7 @@ module Make (Context : S.CONTEXT) = struct
 
   let conflict_class = function
     | RealImpl impl ->
-      OpamFile.OPAM.conflict_class impl.opam |> List.map OpamPackage.Name.to_string
+      OpamFile.OPAM.conflict_class impl.opam |> List.map ~f:OpamPackage.Name.to_string
     | VirtualImpl _ -> []
     | Dummy | Reject _ -> []
   ;;
@@ -180,7 +180,7 @@ module Make (Context : S.CONTEXT) = struct
       let context = role.context in
       let+ impls =
         Context.candidates context role.name
-        >>| List.filter_map (function
+        >>| List.filter_map ~f:(function
           | _, Error _rejection -> None
           | version, Ok opam ->
             let pkg = OpamPackage.create role.name version in
@@ -223,10 +223,9 @@ module Make (Context : S.CONTEXT) = struct
     match role with
     | Virtual _ -> Fiber.return ([], [])
     | Real role ->
-      let context = role.context in
       let+ rejects =
-        Context.candidates context role.name
-        >>| List.filter_map (function
+        Context.candidates role.context role.name
+        >>| List.filter_map ~f:(function
           | _, Ok _ -> None
           | version, Error reason ->
             let pkg = OpamPackage.create role.name version in
@@ -239,10 +238,11 @@ module Make (Context : S.CONTEXT) = struct
   let compare_version a b =
     match a, b with
     | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
-    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> compare (ia : int) ib
+    | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Ordering.to_int (Int.compare ia ib)
     | Reject a, Reject b -> OpamPackage.compare a b
     | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
-      , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) -> compare b a
+      , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) ->
+      Ordering.to_int (Poly.compare b a)
   ;;
 
   let user_restrictions = function

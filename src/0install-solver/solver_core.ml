@@ -185,19 +185,19 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let+ { impls } = Model.implementations role in
     (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
     let impls =
-      match dummy_impl with
-      | None -> impls
-      | Some dummy_impl -> impls @ [ dummy_impl ]
-    in
-    let impls =
-      List.map impls ~f:(fun impl ->
+      (match dummy_impl with
+       | None -> impls
+       | Some dummy_impl -> impls @ [ dummy_impl ])
+      |> List.map ~f:(fun impl ->
         let var = S.add_variable sat (SolverData.ImplElem impl) in
         var, impl)
     in
-    let impl_clause =
-      if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
+    let clause =
+      let impl_clause =
+        if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
+      in
+      Candidates.create role impl_clause impls dummy_impl
     in
-    let clause = Candidates.create role impl_clause impls dummy_impl in
     clause, impls
   ;;
 

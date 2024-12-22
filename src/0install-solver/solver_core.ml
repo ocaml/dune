@@ -94,12 +94,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
           vars
     end
 
-  module ImplCache = Cache.Make (struct
-      include Model.Role
-
-      type value = impl_candidates
-    end)
-
+  module ImplCache = Cache.Make (Model.Role)
   module RoleMap = ImplCache.M
 
   type diagnostics = S.lit

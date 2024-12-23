@@ -13,6 +13,79 @@ let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps
   Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
+let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
+  let* version =
+    let+ ocaml = Context.ocaml (Super_context.context sctx) in
+    ocaml.version
+  and* preprocess =
+    Resolve.Memo.read_memo
+      (Preprocess.Per_module.with_instrumentation
+         preprocess
+         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+  in
+  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
+  Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
+;;
+
+let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
+  match Lib_info.modules (Lib.info lib) with
+  | External None ->
+    User_error.raise
+      [ Pp.textf
+          "The library %s was not compiled with Dune or it was compiled with Dune but \
+           published with a META template. Such libraries are not compatible with \
+           melange support"
+          (Lib.name lib |> Lib_name.to_string)
+      ]
+  | External (Some modules) ->
+    Memo.return
+      ( modules
+      , (Modules.With_vlib.split_by_lib modules).impl
+        |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+  | Local ->
+    let lib = Lib.Local.of_lib_exn lib in
+    let info = Lib.Local.info lib in
+    let+ modules =
+      let* modules = Dir_contents.modules_of_local_lib sctx lib in
+      let preprocess = Lib_info.preprocess info in
+      modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
+    in
+    let () =
+      let modes = Lib_info.modes info in
+      match modes.melange with
+      | false ->
+        let lib_name = Lib_name.to_string (Lib_info.name info) in
+        User_error.raise
+          ~loc:(Lib_info.loc info)
+          [ Pp.textf
+              "The library `%s` was added as a dependency of a `melange.emit` stanza, \
+               but this library is not compatible with Melange. To fix this, add \
+               `melange` to the `modes` field of the library `%s`."
+              lib_name
+              lib_name
+          ]
+      | true -> ()
+    in
+    ( modules
+    , (Modules.With_vlib.split_by_lib modules).impl
+      |> List.filter ~f:(Module.has ~ml_kind:Impl) )
+;;
+
+let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
+  let* modules, obj_dir =
+    Dir_contents.ocaml dir_contents
+    >>= Ml_sources.modules_and_obj_dir
+          ~libs:(Scope.libs scope)
+          ~for_:(Melange { target = mel.target })
+  in
+  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
+  let modules_for_js =
+    Modules.fold modules ~init:[] ~f:(fun x acc ->
+      if Module.has x ~ml_kind:Impl then x :: acc else acc)
+  in
+  modules, modules_for_js, obj_dir
+;;
+
 let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
     `Public_library
@@ -84,24 +157,45 @@ module Manifest = struct
     { source; targets }
   ;;
 
-  let create_mapping_lib ~module_systems ~output lib =
-    let source = Module.source lib ~ml_kind:Impl |> Option.value_exn in
-    let targets =
-      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output lib)
+  let setup_manifest_rule
+    ~sctx
+    ~target_dir
+    ~mode
+    ~module_systems
+    ~output
+    ~dir_contents
+    ~requires_link
+    ~scope
+    mel
+    =
+    let* _local_modules, modules_for_js, _local_obj_dir =
+      modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
     in
-    { source; targets }
-  ;;
-
-  let setup_manifest_rule ~sctx ~dir ~target_dir ~mode mappings =
+    let mappings_for_js =
+      List.map modules_for_js ~f:(fun modules ->
+        create_mapping ~module_systems ~output modules)
+    in
+    (* Get mappings for each required library *)
+    let* mappings_for_libs =
+      Memo.List.concat_map requires_link ~f:(fun lib ->
+        let* _modules_with_vlib, impl_modules =
+          impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+        in
+        let lib_output = output_of_lib ~target_dir lib in
+        Memo.return
+          (List.map impl_modules ~f:(fun m ->
+             create_mapping ~module_systems ~output:lib_output m)))
+    in
+    let mappings = mappings_for_js @ mappings_for_libs in
     let manifest_path = Path.Build.relative target_dir "melange-manifest.sexp" in
-    Format.eprintf "Creating manifest rule@.";
-    Format.eprintf "  dir: %s@." (Path.Build.to_string dir);
-    Format.eprintf "  target_dir: %s@." (Path.Build.to_string target_dir);
-    Format.eprintf "  mappings count: %d@." (List.length mappings);
-    Format.eprintf "  manifest path: %s@." (Path.Build.to_string manifest_path);
+    (* Format.eprintf "Creating manifest rule@."; *)
+    (* Format.eprintf "  dir: %s@." (Path.Build.to_string dir); *)
+    (* Format.eprintf "  target_dir: %s@." (Path.Build.to_string target_dir); *)
+    (* Format.eprintf "  mappings count: %d@." (List.length mappings); *)
+    (* Format.eprintf "  manifest path: %s@." (Path.Build.to_string manifest_path); *)
     let manifest = { mappings } in
     let manifest_str = to_string manifest in
-    Format.eprintf "  manifest content:@.%s@." manifest_str;
+    (* Format.eprintf "  manifest content:@.%s@." manifest_str; *)
     let* () =
       Action_builder.return manifest_str
       |> Action_builder.write_file_dyn manifest_path
@@ -112,64 +206,6 @@ module Manifest = struct
     Memo.return ()
   ;;
 end
-
-let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
-  let* version =
-    let+ ocaml = Context.ocaml (Super_context.context sctx) in
-    ocaml.version
-  and* preprocess =
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation
-         preprocess
-         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
-  in
-  let pped_map = Staged.unstage (Pp_spec.pped_modules_map preprocess version) in
-  Modules.map_user_written modules ~f:(fun m -> Memo.return @@ pped_map m)
-;;
-
-let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
-  match Lib_info.modules (Lib.info lib) with
-  | External None ->
-    User_error.raise
-      [ Pp.textf
-          "The library %s was not compiled with Dune or it was compiled with Dune but \
-           published with a META template. Such libraries are not compatible with \
-           melange support"
-          (Lib.name lib |> Lib_name.to_string)
-      ]
-  | External (Some modules) ->
-    Memo.return
-      ( modules
-      , (Modules.With_vlib.split_by_lib modules).impl
-        |> List.filter ~f:(Module.has ~ml_kind:Impl) )
-  | Local ->
-    let lib = Lib.Local.of_lib_exn lib in
-    let info = Lib.Local.info lib in
-    let+ modules =
-      let* modules = Dir_contents.modules_of_local_lib sctx lib in
-      let preprocess = Lib_info.preprocess info in
-      modules_in_obj_dir ~sctx ~scope ~preprocess modules >>| Modules.With_vlib.modules
-    in
-    let () =
-      let modes = Lib_info.modes info in
-      match modes.melange with
-      | false ->
-        let lib_name = Lib_name.to_string (Lib_info.name info) in
-        User_error.raise
-          ~loc:(Lib_info.loc info)
-          [ Pp.textf
-              "The library `%s` was added as a dependency of a `melange.emit` stanza, \
-               but this library is not compatible with Melange. To fix this, add \
-               `melange` to the `modes` field of the library `%s`."
-              lib_name
-              lib_name
-          ]
-      | true -> ()
-    in
-    ( modules
-    , (Modules.With_vlib.split_by_lib modules).impl
-      |> List.filter ~f:(Module.has ~ml_kind:Impl) )
-;;
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 
@@ -494,21 +530,6 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   ()
 ;;
 
-let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
-  let* modules, obj_dir =
-    Dir_contents.ocaml dir_contents
-    >>= Ml_sources.modules_and_obj_dir
-          ~libs:(Scope.libs scope)
-          ~for_:(Melange { target = mel.target })
-  in
-  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
-  let modules_for_js =
-    Modules.fold modules ~init:[] ~f:(fun x acc ->
-      if Module.has x ~ml_kind:Impl then x :: acc else acc)
-  in
-  modules, modules_for_js, obj_dir
-;;
-
 let setup_entries_js
   ~sctx
   ~dir
@@ -526,50 +547,6 @@ let setup_entries_js
   let loc = mel.loc in
   let module_systems = mel.module_systems in
   let* requires_link = Memo.Lazy.force requires_link in
-  (* Format.eprintf "local modules:@.";
-     let* () =
-     Modules.fold_user_written local_modules ~init:(Memo.return ()) ~f:(fun m acc ->
-     let* () = acc in
-     let name = Module.name m in
-     Format.eprintf "  Module: %s@." (Module_name.to_string name);
-     match Module.file m ~ml_kind:Impl with
-     | None ->
-     Format.eprintf "    No implementation file@.";
-     Memo.return ()
-     | Some file ->
-     Format.eprintf "    Path: %s@." (Path.to_string file);
-     Memo.return ())
-     in *)
-
-  (*
-     Format.eprintf "requires_link:@.";
-     List.iter requires_link_resolved ~f:(fun lib ->
-     let name = Lib.name lib in
-     let info = Lib.info lib in
-     let src_dir = Lib_info.src_dir info in
-     Format.eprintf "  library: %s@." (Lib_name.to_string name);
-     Format.eprintf "  path: %s@." (Path.to_string src_dir);
-     Format.eprintf "  src_dir: %s@." (Path.to_string (Lib_info.src_dir info));
-     match Lib_info.modules info with
-     | External _ -> Format.eprintf "    External modules@."
-     | Local -> Format.eprintf "    Local modules in: %s@." (Path.to_string src_dir)); *)
-
-  (* Not sure if read_memo is needed here *)
-  let* requires_link_resolved = Resolve.Memo.read_memo (Memo.return requires_link) in
-  let* () =
-    Memo.parallel_iter requires_link_resolved ~f:(fun lib ->
-      let name = Lib.name lib in
-      Format.eprintf "  Library: %s@." (Lib_name.to_string name);
-      let* _modules_with_vlib, impl_modules =
-        impl_only_modules_defined_in_this_lib ~sctx ~scope lib
-      in
-      Format.eprintf "    Implementation modules:@.";
-      List.iter impl_modules ~f:(fun m ->
-        match Module.file m ~ml_kind:Impl with
-        | None -> Format.eprintf "      No implementation file@."
-        | Some file -> Format.eprintf "      Path: %s@." (Path.to_string file));
-      Memo.return ())
-  in
   let* includes =
     let+ lib_config =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
@@ -579,31 +556,9 @@ let setup_entries_js
     cmj_includes ~requires_link ~scope lib_config
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = `Private_library_or_emit target_dir in
-  let mappings_for_js =
-    List.map modules_for_js ~f:(fun modules ->
-      Manifest.create_mapping ~module_systems ~output modules)
-    (* and mappings_for_requires_link =
-       List.map requires_link_resolved ~f:(fun lib ->
-       let* _modules_with_vlib, impl_modules =
-       impl_only_modules_defined_in_this_lib ~sctx ~scope lib
-       in
-       List.map impl_modules ~f:(fun m ->
-       Manifest.create_mapping ~module_systems ~output m)) *)
-  in
-  let mappings = mappings_for_js in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
-  in
-  let* () =
-    match mel.emit_manifest with
-    | true ->
-      let mappings =
-        List.map modules_for_js ~f:(fun m ->
-          Manifest.create_mapping ~module_systems ~output m)
-      in
-      Manifest.setup_manifest_rule ~sctx ~dir ~target_dir ~mode mappings
-    | false -> Memo.return ()
   in
   let local_modules_and_obj_dir =
     Some (Modules.With_vlib.modules local_modules, local_obj_dir)
@@ -754,6 +709,20 @@ let setup_js_rules_libraries_and_entries
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
   and+ () =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
+  and+ () =
+    match mel.emit_manifest with
+    | true ->
+      Manifest.setup_manifest_rule
+        ~sctx
+        ~target_dir
+        ~mode
+        ~module_systems:mel.module_systems
+        ~output:(`Private_library_or_emit target_dir)
+        ~dir_contents
+        ~scope
+        ~requires_link
+        mel
+    | false -> Memo.return ()
   in
   ()
 ;;

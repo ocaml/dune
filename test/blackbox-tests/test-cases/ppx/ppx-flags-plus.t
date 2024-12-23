@@ -36,9 +36,9 @@ Create ppx1 and exe:
   File "dune", line 9, characters 30-35:
   9 |  (preprocess (pps ppx --alert ++foo)))
                                     ^^^^^
-  Error: Library "++foo" not found.
-  -> required by _build/default/.merlin-conf/exe-the_exe
-  -> required by _build/default/the_exe.exe
+  Error: PPX args starting with `+' cannot be used before version 3.18 of the
+  dune language
+  Hint: Upgrade your dune-project to `(lang dune 3.18)'
   [1]
 
 Works since Dune 3.18

@@ -17,7 +17,17 @@ module Pps_and_flags = struct
           , String_with_vars.is_prefix ~prefix:"+" s )
         with
         | Yes, _ -> Right s
-        | _, Yes when syntax_version >= (3, 18) -> Right s
+        | _, Yes ->
+          if syntax_version >= (3, 18)
+          then Right s
+          else
+            User_error.raise
+              ~loc:(String_with_vars.loc s)
+              ~hints:[ Pp.text "Upgrade your dune-project to `(lang dune 3.18)'" ]
+              [ Pp.text
+                  "PPX args starting with `+' cannot be used before version 3.18 of the \
+                   dune language"
+              ]
         | (No | Unknown _), _ ->
           let loc = String_with_vars.loc s in
           (match String_with_vars.text_only s with

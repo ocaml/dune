@@ -30,6 +30,14 @@
   Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
+Inline tests also generate an alias
+  $ dune build @foo_simple
+  File "dune", line 9, characters 1-40:
+  9 |  (inline_tests (backend backend_simple)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
+  [1]
+
 The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored.
   $ env -u OCAMLRUNPARAM dune runtest --profile release
 

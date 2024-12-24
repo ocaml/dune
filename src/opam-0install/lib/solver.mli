@@ -10,6 +10,4 @@ module Make (C : S.CONTEXT) : sig
   module Diagnostics : sig
     include module type of Zeroinstall_solver.Diagnostics (Solver.Output)
   end
-
-  val diagnostics_rolemap : diagnostics -> Diagnostics.t Fiber.t
 end

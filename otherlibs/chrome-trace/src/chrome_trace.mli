@@ -11,7 +11,7 @@
     https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview *)
 
 module Json : sig
-  (** Simplifies JSON type *)
+  (** Simplified JSON type *)
   type t =
     [ `Int of int
     | `Float of float

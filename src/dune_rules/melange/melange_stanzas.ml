@@ -9,6 +9,7 @@ module Emit = struct
     ; module_systems : (Melange.Module_system.t * Filename.Extension.t) list
     ; modules : Stanza_common.Modules_settings.t
     ; emit_stdlib : bool
+    ; emit_manifest : bool
     ; libraries : Lib_dep.t list
     ; package : Package.t option
     ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -114,6 +115,7 @@ module Emit = struct
        and+ compile_flags = Ordered_set_lang.Unexpanded.field "compile_flags"
        and+ allow_overlapping_dependencies = field_b "allow_overlapping_dependencies"
        and+ emit_stdlib = field "emit_stdlib" bool ~default:true
+       and+ emit_manifest = field "emit_manifest" bool ~default:false
        and+ modules = Stanza_common.Modules_settings.decode
        and+ enabled_if =
          let open Enabled_if in
@@ -133,6 +135,7 @@ module Emit = struct
        ; module_systems
        ; modules
        ; emit_stdlib
+       ; emit_manifest
        ; libraries
        ; package
        ; preprocess

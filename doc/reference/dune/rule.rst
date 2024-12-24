@@ -130,19 +130,14 @@ Note that in Dune, targets must always be known statically. For instance, this
 Directory targets
 ~~~~~~~~~~~~~~~~~
 
-Note that at this time, Dune officially only supports user rules with targets in
-the current directory. However, starting from Dune 3.0, we provide an
-experimental support for *directory targets*, where an action can produce a
-whole tree of build artifacts. To specify a directory target, you can use the
-``(dir <dirname>)`` syntax. For example, the following stanza describes a rule
-with a file target ``foo`` and a directory target ``bar``.
+Starting from Dune 3.13, we provide an support for *directory targets*, where
+an action can produce a whole tree of build artifacts. To specify a directory
+target, you can use the ``(dir <dirname>)`` syntax. For example, the following
+stanza describes a rule with a file target ``foo`` and a directory target
+``bar``.
 
 .. code:: dune
 
     (rule
      (targets foo (dir bar))
      (action  <action>))
-
-To enable this experimental feature, add ``(using directory-targets 0.1)`` to
-your ``dune-project`` file. However note that currently rules with a directory
-target are always rebuilt. We are working on fixing this performance bug.

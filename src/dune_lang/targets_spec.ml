@@ -43,28 +43,28 @@ type 'a t =
   | Static of 'a Static.t
   | Infer
 
-let decode_target ~allow_directory_targets =
+let decode_target =
   let open Dune_sexp.Decoder in
   let file =
     let+ file = String_with_vars.decode in
     file, Kind.File
   in
   let dir =
-    let+ dir = sum ~force_parens:true [ "dir", String_with_vars.decode ] in
-    if not allow_directory_targets
-    then
-      User_error.raise
-        ~loc:(String_with_vars.loc dir)
-        [ Pp.text "Directory targets require the 'directory-targets' extension" ];
+    let+ dir =
+      sum
+        ~force_parens:true
+        [ "dir", Dune_sexp.Syntax.since Stanza.syntax (3, 13) >>> String_with_vars.decode
+        ]
+    in
     dir, Kind.Directory
   in
   file <|> dir
 ;;
 
-let decode_static ~allow_directory_targets =
+let decode_static =
   let open Dune_sexp.Decoder in
   let+ syntax_version = Dune_sexp.Syntax.get_exn Stanza.syntax
-  and+ targets = repeat (decode_target ~allow_directory_targets) in
+  and+ targets = repeat decode_target in
   if syntax_version < (1, 3)
   then
     List.iter targets ~f:(fun (target, (_ : Kind.t)) ->
@@ -78,18 +78,16 @@ let decode_static ~allow_directory_targets =
   Static { targets; multiplicity = Multiple }
 ;;
 
-let decode_one_static ~allow_directory_targets =
+let decode_one_static =
   let open Dune_sexp.Decoder in
   let+ () = Dune_sexp.Syntax.since Stanza.syntax (1, 11)
-  and+ target = decode_target ~allow_directory_targets in
+  and+ target = decode_target in
   Static { targets = [ target ]; multiplicity = One }
 ;;
 
-let field ~allow_directory_targets =
+let field =
   let open Dune_sexp.Decoder in
   fields_mutually_exclusive
     ~default:Infer
-    [ "target", decode_one_static ~allow_directory_targets
-    ; "targets", decode_static ~allow_directory_targets
-    ]
+    [ "target", decode_one_static; "targets", decode_static ]
 ;;

@@ -163,13 +163,12 @@ module Make (Model : S.SOLVER_INPUT) = struct
           vars
     end
 
-  module RoleEntry = struct
-    include Model.Role
+  module ImplCache = Cache (struct
+      include Model.Role
 
-    type value = impl_candidates
-  end
+      type value = impl_candidates
+    end)
 
-  module ImplCache = Cache (RoleEntry)
   module RoleMap = ImplCache.M
 
   type diagnostics = S.lit

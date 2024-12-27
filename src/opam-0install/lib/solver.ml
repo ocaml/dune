@@ -1,3 +1,4 @@
+open Stdune
 open Fiber.O
 open Pp.O
 
@@ -66,7 +67,7 @@ module Make (Context : S.CONTEXT) = struct
   ;;
 
   let diagnostics_rolemap req =
-    Solver.do_solve req ~closest_match:true >>| Option.get >>= Diagnostics.of_result
+    Solver.do_solve req ~closest_match:true >>| Option.value_exn >>= Diagnostics.of_result
   ;;
 
   let diagnostics ?(verbose = false) req =
@@ -80,6 +81,6 @@ module Make (Context : S.CONTEXT) = struct
     Solver.Output.to_map sels
     |> Solver.Output.RoleMap.to_seq
     |> List.of_seq
-    |> List.filter_map (fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
+    |> List.filter_map ~f:(fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
   ;;
 end

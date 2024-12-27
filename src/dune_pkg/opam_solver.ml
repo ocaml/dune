@@ -449,8 +449,8 @@ module Solver = struct
     let implementations = function
       | Virtual (_, impls) -> Fiber.return { impls }
       | Real role ->
-        let context = role.context in
         let+ impls =
+          let context = role.context in
           Context.candidates context role.name
           >>| List.filter_map ~f:(function
             | _, Error _rejection -> None
@@ -575,21 +575,10 @@ module Solver = struct
     | None -> Error req
   ;;
 
-  let rec partition_three f = function
-    | [] -> [], [], []
-    | first :: rest ->
-      let xs, ys, zs = partition_three f rest in
-      (match f first with
-       | `Left x -> x :: xs, ys, zs
-       | `Middle y -> xs, y :: ys, zs
-       | `Right z -> xs, ys, z :: zs)
-  ;;
-
   let pp_rolemap ~verbose reasons =
     let good, bad, unknown =
-      reasons
-      |> Solver.Output.RoleMap.bindings
-      |> partition_three (fun (role, component) ->
+      Solver.Output.RoleMap.bindings reasons
+      |> List.partition_three ~f:(fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
         | _ ->

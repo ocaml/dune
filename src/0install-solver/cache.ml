@@ -2,15 +2,14 @@ open Fiber.O
 
 module Make (CacheEntry : sig
     type t
-    type value
 
     val compare : t -> t -> int
   end) =
 struct
   module M = Map.Make (CacheEntry)
 
-  type snapshot = CacheEntry.value M.t
-  type t = snapshot ref
+  type 'a snapshot = 'a M.t
+  type 'a t = 'a snapshot ref
 
   let create () = ref M.empty
 

@@ -1,18 +1,17 @@
 module Make (CacheEntry : sig
     type t
-    type value
 
     val compare : t -> t -> int
   end) : sig
   (** The cache is used in [build_problem], while the clauses are still being added. *)
-  type t
+  type 'a t
 
   module M : Map.S with type key = CacheEntry.t
 
   (** Once the problem is built, an immutable snapshot is taken. *)
-  type snapshot = CacheEntry.value M.t
+  type 'a snapshot = 'a M.t
 
-  val create : unit -> t
+  val create : unit -> 'a t
 
   (** [lookup cache make key] will look up [key] in [cache].
       * If not found, create it with [value, process = make key], add [value] to the cache,
@@ -22,13 +21,13 @@ module Make (CacheEntry : sig
       * be done before anyone can use this cache entry, while [process] does
       * setup that can be done afterwards. *)
   val lookup
-    :  t
-    -> (CacheEntry.t -> (CacheEntry.value * (unit -> unit Fiber.t)) Fiber.t)
+    :  'a t
+    -> (CacheEntry.t -> ('a * (unit -> unit Fiber.t)) Fiber.t)
     -> CacheEntry.t
-    -> CacheEntry.value Fiber.t
+    -> 'a Fiber.t
 
-  val snapshot : t -> snapshot
-  val get : CacheEntry.t -> snapshot -> CacheEntry.value option
-  val get_exn : CacheEntry.t -> snapshot -> CacheEntry.value
+  val snapshot : 'a t -> 'a snapshot
+  val get : CacheEntry.t -> 'a snapshot -> 'a option
+  val get_exn : CacheEntry.t -> 'a snapshot -> 'a
   val filter_map : (CacheEntry.t -> 'a -> 'b option) -> 'a M.t -> 'b M.t
 end

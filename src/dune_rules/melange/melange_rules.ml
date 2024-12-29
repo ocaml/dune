@@ -598,6 +598,7 @@ let setup_js_rules_libraries =
             in
             cmj_includes ~requires_link ~scope lib_config
           in
+          let output = output_of_lib ~target_dir vlib in
           parallel_build_source_modules
             ~sctx
             ~scope

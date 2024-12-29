@@ -1,4 +1,4 @@
-Test a case of virtual libraries where the virtual library is transitive
+Test a case of virtual libraries where the virtual library is public
 
   $ mkdir -p vlib js_impl test
   $ cat > dune-project <<EOF

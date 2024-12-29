@@ -46,8 +46,3 @@ Test a case of virtual libraries where the virtual library is transitive
   > EOF
 
   $ dune build @melange
-  Error: No rule found for test/output/node_modules/the_lib/the_lib.js
-  -> required by alias test/melange
-  Error: No rule found for test/output/node_modules/the_lib/the_lib__.js
-  -> required by alias test/melange
-  [1]

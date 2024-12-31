@@ -2,9 +2,8 @@ Allow directories to be installable
 
   $ mkdir a b prefix
   $ cat >a/dune-project <<EOF
-  > (lang dune 3.5)
+  > (lang dune 3.13)
   > (package (name foo))
-  > (using directory-targets 0.1)
   > EOF
   $ touch a/x a/y
   $ cat >a/dune <<EOF

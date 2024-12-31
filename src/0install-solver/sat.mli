@@ -41,7 +41,7 @@ module Make (User : USER) : sig
   (** Indicate that the problem is unsolvable, before even starting. This is a convenience
       feature so that clients don't need a separate code path for problems they discover
       during setup vs problems discovered by the solver. *)
-  val impossible : t -> unit -> unit
+  val impossible : t -> unit
 
   (** Add a clause requiring at least one literal to be [True]. e.g. [A or B or not(C)].
       [reason] is used in debug messages. *)

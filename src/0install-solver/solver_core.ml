@@ -201,15 +201,11 @@ module Make (Model : S.SOLVER_INPUT) = struct
       let+ clause, impls = make_impl_clause sat ~dummy_impl role in
       ( clause
       , fun () ->
-          impls
-          |> Fiber.sequential_iter ~f:(fun (impl_var, impl) ->
+          Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
             Conflict_classes.process conflict_classes impl_var impl;
-            let deps = Model.requires role impl in
-            process_deps impl_var deps) )
-    and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key
-    and process_deps user_var : _ -> unit Fiber.t =
-      Fiber.sequential_iter ~f:(process_dep sat lookup_impl user_var)
-    in
+            Model.requires role impl
+            |> Fiber.sequential_iter ~f:(process_dep sat lookup_impl impl_var)) )
+    and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key in
     let+ () =
       (* This recursively builds the whole problem up. *)
       lookup_impl root_req

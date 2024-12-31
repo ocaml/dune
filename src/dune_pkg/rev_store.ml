@@ -171,17 +171,17 @@ let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   let git = Lazy.force Vcs.git in
   let+ stderr, exit_code =
     Fiber_util.Temp.with_temp_file
-      ~f:(function
-        | Error exn -> raise exn
-        | Ok path ->
-          let stderr_to = Process.Io.file path Out in
-          let+ (), exit_code =
-            Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
-          in
-          Stdune.Io.read_file path, exit_code)
       ~prefix:"dune"
       ~suffix:"run_with_exit_code"
       ~dir:(Path.of_string (Filename.get_temp_dir_name ()))
+      ~f:(function
+        | Error exn -> raise exn
+        | Ok path ->
+          let+ (), exit_code =
+            let stderr_to = Process.Io.file path Out in
+            Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+          in
+          Io.read_file path, exit_code)
   in
   if allow_codes exit_code
   then Ok exit_code

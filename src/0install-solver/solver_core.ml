@@ -38,34 +38,21 @@ module Make (Model : S.SOLVER_INPUT) = struct
       ; dummy_impl : Model.impl option
       }
 
-    let is_dummy t =
+    let is_dummy t impl =
       match t.dummy_impl with
-      | None -> fun _ -> false
-      | Some dummy_impl -> ( == ) dummy_impl
+      | None -> false
+      | Some dummy_impl -> dummy_impl == impl
     ;;
 
     let create role clause vars dummy_impl = { role; clause; vars; dummy_impl }
-    let clause t = t.clause
-
-    (* Get all variables, except dummy_impl (if present) *)
-    let real_vars t =
-      t.vars
-      |> List.filter_map ~f:(fun (var, impl) ->
-        if is_dummy t impl then None else Some var)
-    ;;
-
-    let vars t = List.map ~f:(fun (var, _impl) -> var) t.vars
+    let vars t = List.map ~f:fst t.vars
 
     let selected t =
-      match t.clause with
-      | None -> None (* There were never any candidates *)
-      | Some clause ->
-        (match S.get_selected clause with
-         | None -> None
-         | Some lit ->
-           (match S.get_user_data_for_lit lit with
-            | SolverData.ImplElem impl -> Some (lit, impl)
-            | _ -> assert false))
+      let open Stdune.Option.O in
+      let* lit = t.clause >>= S.get_selected in
+      match S.get_user_data_for_lit lit with
+      | SolverData.ImplElem impl -> Some (lit, impl)
+      | _ -> assert false
     ;;
 
     let state t =
@@ -89,7 +76,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
 
     (* Apply [test impl] to each implementation, partitioning the vars into two
        lists. Only defined for [impl_candidates]. *)
-    let partition t test =
+    let partition t ~f:test =
       List.partition_map t.vars ~f:(fun (var, impl) ->
         if test impl then Stdune.Either.Left var else Right var)
     ;;
@@ -156,13 +143,14 @@ module Make (Model : S.SOLVER_INPUT) = struct
      - ensure that we do pick a compatible version if we select [user_var] (for "essential" dependencies only) *)
   let process_dep sat lookup_impl user_var dep : unit Fiber.t =
     let { Model.dep_role; dep_importance } = Model.dep_info dep in
-    let dep_restrictions = Model.restrictions dep in
-    (* Restrictions on the candidates *)
-    let meets_restrictions impl =
-      List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
+    let+ pass, fail =
+      let meets_restrictions =
+        (* Restrictions on the candidates *)
+        let dep_restrictions = Model.restrictions dep in
+        fun impl -> List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
+      in
+      lookup_impl dep_role >>| Candidates.partition ~f:meets_restrictions
     in
-    let+ candidates = lookup_impl dep_role in
-    let pass, fail = Candidates.partition candidates meets_restrictions in
     match dep_importance with
     | `Essential ->
       S.implies
@@ -185,19 +173,21 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let+ { impls } = Model.implementations role in
     (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
     let impls =
-      match dummy_impl with
-      | None -> impls
-      | Some dummy_impl -> impls @ [ dummy_impl ]
-    in
-    let impls =
-      List.map impls ~f:(fun impl ->
+      (match dummy_impl with
+       | None -> impls
+       | Some dummy_impl -> impls @ [ dummy_impl ])
+      |> List.map ~f:(fun impl ->
         let var = S.add_variable sat (SolverData.ImplElem impl) in
         var, impl)
     in
-    let impl_clause =
-      if impls <> [] then Some (S.at_most_one sat (List.map ~f:fst impls)) else None
+    let clause =
+      let impl_clause =
+        match impls with
+        | [] -> None
+        | _ :: _ -> Some (S.at_most_one sat (List.map ~f:fst impls))
+      in
+      Candidates.create role impl_clause impls dummy_impl
     in
-    let clause = Candidates.create role impl_clause impls dummy_impl in
     clause, impls
   ;;
 

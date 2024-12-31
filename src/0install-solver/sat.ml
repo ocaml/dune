@@ -123,11 +123,7 @@ module Make (User : USER) = struct
 
   let lit_equal (s1, v1) (s2, v2) = s1 == s2 && v1 == v2
 
-  module VarSet = Set.Make (struct
-      type t = var
-
-      let compare a b = VarID.compare a.id b.id
-    end)
+  module VarSet = Set.Make (VarID)
 
   module LitSet = Set.Make (struct
       type t = lit
@@ -706,9 +702,9 @@ module Make (User : USER) = struct
       p_reason
       |> List.iter (fun lit ->
         let var = var_of_lit lit in
-        if not (VarSet.mem var !seen)
+        if not (VarSet.mem var.id !seen)
         then (
-          seen := VarSet.add var !seen;
+          seen := VarSet.add var.id !seen;
           let var_info = var_of_lit lit in
           if var_info.level = get_decision_level problem
           then
@@ -748,7 +744,7 @@ module Make (User : USER) = struct
         let var = var_of_lit lit in
         let reason = var.reason in
         undo_one problem;
-        if not (VarSet.mem var !seen)
+        if not (VarSet.mem var.id !seen)
         then
           (* if debug then log_debug "(irrelevant: %s)" (name_lit lit); *)
           next_interesting ()

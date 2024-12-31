@@ -197,16 +197,16 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
     let conflict_classes = Conflict_classes.create sat in
-    let rec add_impls_to_cache role =
-      let+ clause, impls = make_impl_clause sat ~dummy_impl role in
-      ( clause
-      , fun () ->
-          Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
-            Conflict_classes.process conflict_classes impl_var impl;
-            Model.requires role impl
-            |> Fiber.sequential_iter ~f:(process_dep sat lookup_impl impl_var)) )
-    and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key in
     let+ () =
+      let rec add_impls_to_cache role =
+        let+ clause, impls = make_impl_clause sat ~dummy_impl role in
+        ( clause
+        , fun () ->
+            Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
+              Conflict_classes.process conflict_classes impl_var impl;
+              Model.requires role impl
+              |> Fiber.sequential_iter ~f:(process_dep sat lookup_impl impl_var)) )
+      and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key in
       (* This recursively builds the whole problem up. *)
       lookup_impl root_req
       >>| Candidates.vars

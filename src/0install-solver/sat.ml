@@ -45,22 +45,48 @@ end = struct
   ;;
 end
 
-module Make (User : USER) = struct
-  open Pp.O
-
-  type var_value =
+module Var_value = struct
+  type t =
     | True
     | False
     | Undecided
 
-  let log_debug p =
-    Pp.to_fmt Format.std_formatter (Pp.vbox (Pp.hovbox (Pp.text "sat: " ++ p)) ++ Pp.cut)
+  let to_string = function
+    | True -> "true"
+    | False -> "false"
+    | Undecided -> "undecided"
   ;;
 
-  type sign =
-    | Pos
-    | Neg
+  let invert = function
+    | True -> False
+    | False -> True
+    | Undecided -> Undecided
+  ;;
 
+  let assignment_exn = function
+    | True -> true
+    | False -> false
+    | Undecided -> assert false
+  ;;
+end
+
+type sign =
+  | Pos
+  | Neg
+
+open Pp.O
+
+let log_debug p =
+  Pp.to_fmt Format.std_formatter (Pp.vbox (Pp.hovbox (Pp.text "sat: " ++ p)) ++ Pp.cut)
+;;
+
+let swap arr i j =
+  let first, second = arr.(i), arr.(j) in
+  arr.(i) <- second;
+  arr.(j) <- first
+;;
+
+module Make (User : USER) = struct
   type clause =
     < (* [lit] is now [True]. Add any new deductions.
          @return false if there is a conflict. *)
@@ -81,7 +107,7 @@ module Make (User : USER) = struct
 
   and var =
     { id : VarID.t (* A unique ID, used to test identity *)
-    ; mutable value : var_value (* True/False/Undecided *)
+    ; mutable value : Var_value.t (* True/False/Undecided *)
     ; mutable reason : reason option
         (* The constraint that implied our value, if True or False *)
     ; mutable level : int
@@ -169,18 +195,6 @@ module Make (User : USER) = struct
     find_unique lits
   ;;
 
-  let swap arr i j =
-    let first, second = arr.(i), arr.(j) in
-    arr.(i) <- second;
-    arr.(j) <- first
-  ;;
-
-  let string_of_value = function
-    | True -> "true"
-    | False -> "false"
-    | Undecided -> "undecided"
-  ;;
-
   exception ConflictingClause of clause
   exception SolveDone of solution option
 
@@ -212,18 +226,14 @@ module Make (User : USER) = struct
   let lit_value (sign, var) =
     match sign with
     | Pos -> var.value
-    | Neg ->
-      (match var.value with
-       | Undecided -> Undecided
-       | True -> False
-       | False -> True)
+    | Neg -> Var_value.invert var.value
   ;;
 
   let get_user_data_for_lit lit = (var_of_lit lit).obj
 
   let pp_lit_assignment l =
     let info = var_of_lit l in
-    User.pp info.obj ++ Pp.textf "=%s" (string_of_value info.value)
+    User.pp info.obj ++ Pp.textf "=%s" (Var_value.to_string info.value)
   ;;
 
   let pp_lit_reason lit =
@@ -794,13 +804,6 @@ module Make (User : USER) = struct
     learnt, !btlevel
   ;;
 
-  let get_assignment var =
-    match lit_value var with
-    | True -> true
-    | False -> false
-    | Undecided -> assert false
-  ;;
-
   let run_solver problem decide =
     (* Check whether we detected a trivial problem during setup. *)
     if problem.toplevel_conflict
@@ -825,7 +828,8 @@ module Make (User : USER) = struct
               | Not_found ->
                 (* Everything is assigned without conflicts *)
                 (* if debug then log_debug "SUCCESS!"; *)
-                raise (SolveDone (Some get_assignment))
+                raise
+                  (SolveDone (Some (fun var -> Var_value.assignment_exn (lit_value var))))
             in
             let lit =
               if problem.set_to_false
@@ -851,7 +855,7 @@ module Make (User : USER) = struct
                    "Decider chose already-decided variable: %a was %s"
                    Pp.to_fmt
                    (name_lit lit)
-                   (string_of_value old));
+                   (Var_value.to_string old));
             problem.trail_lim <- List.length problem.trail :: problem.trail_lim;
             let r = enqueue problem lit (External "considering") in
             assert r

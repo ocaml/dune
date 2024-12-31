@@ -10,14 +10,16 @@ module type USER = sig
   val pp : t -> 'tag Pp.t
 end
 
-module Make (User : USER) : sig
-  (** A SAT problem consists of a set of variables and a set of clauses which must be satisfied. *)
-  type t
-
-  type var_value =
+module Var_value : sig
+  type t =
     | True
     | False
     | Undecided
+end
+
+module Make (User : USER) : sig
+  (** A SAT problem consists of a set of variables and a set of clauses which must be satisfied. *)
+  type t
 
   (** A literal is either a variable (e.g. [A]) or a negated variable ([not A]). *)
   type lit
@@ -76,7 +78,7 @@ module Make (User : USER) : sig
     | Clause of clause
     | External of string
 
-  val lit_value : lit -> var_value
+  val lit_value : lit -> Var_value.t
   val get_user_data_for_lit : lit -> User.t
   val explain_reason : lit -> 'tag Pp.t
 end

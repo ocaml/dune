@@ -356,7 +356,7 @@ module Make (User : USER) = struct
     | ConflictingClause c -> Some c
   ;;
 
-  let impossible problem () = problem.toplevel_conflict <- true
+  let impossible problem = problem.toplevel_conflict <- true
 
   (* Call [clause#propagate lit] when lit becomes True *)
   let watch_lit lit clause =

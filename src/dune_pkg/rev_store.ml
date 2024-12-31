@@ -168,14 +168,37 @@ end
 
 let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
-  let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
-  let+ (), exit_code =
-    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+  let+ stderr, exit_code =
+    Fiber_util.Temp.with_temp_file
+      ~prefix:"dune"
+      ~suffix:"run_with_exit_code"
+      ~dir:(Path.of_string (Filename.get_temp_dir_name ()))
+      ~f:(function
+        | Error exn -> raise exn
+        | Ok path ->
+          let+ (), exit_code =
+            let stderr_to = Process.Io.file path Out in
+            Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+          in
+          Io.read_file path, exit_code)
   in
   if allow_codes exit_code
   then Ok exit_code
-  else Error { Git_error.dir; args; exit_code; output = [] }
+  else (
+    match exit_code with
+    | 129
+      when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
+      ->
+      User_error.raise
+        [ User_message.command
+            "Your git version doesn't support the '--no-write-fetch-head' flag. The \
+             minimum supported version is Git 2.29."
+        ]
+        ~hints:[ User_message.command "Please update your git version." ]
+    | _ ->
+      Dune_console.print [ Pp.verbatim stderr ];
+      Error { Git_error.dir; args; exit_code; output = [] })
 ;;
 
 let run t ~display args =

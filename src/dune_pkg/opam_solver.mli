@@ -5,6 +5,7 @@ module Solver_result : sig
     { lock_dir : Lock_dir.t
     ; files : File_entry.t Package_name.Map.Multi.t
     ; pinned_packages : Package_name.Set.t
+    ; num_expanded_packages : int
     }
 end
 

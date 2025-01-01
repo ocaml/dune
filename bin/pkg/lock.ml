@@ -70,6 +70,7 @@ let solve_lock_dir
   workspace
   ~local_packages
   ~project_pins
+  ~print_perf_stats
   version_preference
   solver_env_from_current_system
   lock_dir_path
@@ -94,6 +95,7 @@ let solve_lock_dir
       ~unset_solver_vars_from_context:
         (unset_solver_vars_of_workspace workspace ~lock_dir_path)
   in
+  let time_start = Unix.gettimeofday () in
   let* repos =
     let repo_map = repositories_of_workspace workspace in
     let repo_names =
@@ -105,6 +107,7 @@ let solve_lock_dir
     get_repos repo_map ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
   in
   let* pins = resolve_project_pins project_pins in
+  let time_solve_start = Unix.gettimeofday () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
   Dune_pkg.Opam_solver.solve_lock_dir
     solver_env
@@ -119,19 +122,30 @@ let solve_lock_dir
     ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
   >>= function
   | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
-  | Ok { lock_dir; files; pinned_packages } ->
+  | Ok { lock_dir; files; pinned_packages; num_expanded_packages } ->
+    let time_end = Unix.gettimeofday () in
+    let maybe_perf_stats =
+      if print_perf_stats
+      then
+        [ Pp.nop
+        ; Pp.textf "Expanded packages: %d" num_expanded_packages
+        ; Pp.textf "Updated repos in: %.2fs" (time_solve_start -. time_start)
+        ; Pp.textf "Solved dependencies in: %.2fs" (time_end -. time_solve_start)
+        ]
+      else []
+    in
     let summary_message =
       User_message.make
-        [ Pp.tag
-            User_message.Style.Success
-            (Pp.textf
-               "Solution for %s:"
-               (Path.Source.to_string_maybe_quoted lock_dir_path))
-        ; (match Package_name.Map.values lock_dir.packages with
-           | [] ->
-             Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
-           | packages -> pp_packages packages)
-        ]
+        (Pp.tag
+           User_message.Style.Success
+           (Pp.textf
+              "Solution for %s:"
+              (Path.Source.to_string_maybe_quoted lock_dir_path))
+         :: (match Package_name.Map.values lock_dir.packages with
+             | [] ->
+               Pp.tag User_message.Style.Warning @@ Pp.text "(no dependencies to lock)"
+             | packages -> pp_packages packages)
+         :: maybe_perf_stats)
     in
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
@@ -145,6 +159,7 @@ let solve
   ~solver_env_from_current_system
   ~version_preference
   ~lock_dirs
+  ~print_perf_stats
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -166,6 +181,7 @@ let solve
                workspace
                ~local_packages
                ~project_pins
+               ~print_perf_stats
                version_preference
                solver_env_from_current_system
                lockdir_path
@@ -198,7 +214,7 @@ let project_pins =
     Pin_stanza.DB.combine_exn acc (Dune_project.pins project))
 ;;
 
-let lock ~version_preference ~lock_dirs_arg =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =
   let open Fiber.O in
   let* solver_env_from_current_system =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
@@ -223,15 +239,18 @@ let lock ~version_preference ~lock_dirs_arg =
     ~solver_env_from_current_system
     ~version_preference
     ~lock_dirs
+    ~print_perf_stats
 ;;
 
 let term =
   let+ builder = Common.Builder.term
   and+ version_preference = Version_preference.term
-  and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
+  and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term
+  and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () -> lock ~version_preference ~lock_dirs_arg)
+  Scheduler.go ~common ~config (fun () ->
+    lock ~version_preference ~lock_dirs_arg ~print_perf_stats)
 ;;
 
 let info =

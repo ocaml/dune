@@ -4,7 +4,7 @@
 
 (** Select a compatible set of components to run a program. *)
 
-module List = Stdune.List
+open Stdune
 open Fiber.O
 
 module Make (Model : S.SOLVER_INPUT) = struct
@@ -98,7 +98,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     module Map = Map.Make (struct
         type t = Model.conflict_class
 
-        let compare = compare
+        let compare (x : t) (y : t) = String.compare (x :> string) (y :> string)
+        let to_dyn (x : t) = Dyn.string (x :> string)
       end)
 
     type t =
@@ -109,11 +110,11 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let create sat = { sat; groups = Map.empty }
 
     let var t name =
-      match Map.find_opt name t.groups with
+      match Map.find t.groups name with
       | Some v -> v
       | None ->
         let v = ref [] in
-        t.groups <- Map.add name v t.groups;
+        t.groups <- Map.set t.groups name v;
         v
     ;;
 
@@ -128,11 +129,12 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* Call this at the end to add the final clause with all discovered groups.
        [t] must not be used after this. *)
     let seal t =
-      t.groups
-      |> Map.iter
-         @@ fun _name impls ->
-         let impls = !impls in
-         if List.length impls > 1 then S.at_most_one t.sat impls |> ignore
+      Map.iter t.groups ~f:(fun impls ->
+        let impls = !impls in
+        if List.length impls > 1
+        then (
+          let (_ : S.at_most_one_clause) = S.at_most_one t.sat impls in
+          ()))
     ;;
   end
 
@@ -278,12 +280,22 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
          Then try the most preferred implementation of it that hasn't been ruled out. *)
-      let seen = Hashtbl.create 100 in
+      let seen =
+        let module Requirements = struct
+          type t = Output.requirements
+
+          let equal x y = Int.equal 0 (Output.Role.compare x y)
+          let hash = Poly.hash
+          let to_dyn = Dyn.opaque
+        end
+        in
+        Table.create (module Requirements) 100
+      in
       let rec find_undecided req =
-        if Hashtbl.mem seen req
+        if Table.mem seen req
         then None (* Break cycles *)
         else (
-          Hashtbl.add seen req true;
+          Table.set seen req true;
           let candidates = lookup req in
           match Candidates.state candidates with
           | Unselected -> None
@@ -313,7 +325,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
         impl_clauses
         |> ImplCache.filter_map (fun _role candidates ->
           Candidates.selected candidates
-          |> Option.map (fun (lit, impl) -> { impl; diagnostics = lit }))
+          |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
       in
       Some { Output.root_req; selections }
   ;;

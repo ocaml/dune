@@ -167,6 +167,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
     let conflict_classes = Conflict_classes.create sat in
+    let deferred = ref [] in
+    let expand_deps = ref true in
     let+ () =
       let rec lookup_impl =
         let add_impls_to_cache role =
@@ -175,8 +177,21 @@ module Make (Model : S.SOLVER_INPUT) = struct
           , fun () ->
               Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
                 Conflict_classes.process conflict_classes impl_var impl;
-                Model.requires role impl
-                |> Fiber.sequential_iter ~f:(process_dep impl_var)) )
+                if !expand_deps
+                then
+                  Model.requires role impl
+                  |> Fiber.sequential_iter ~f:(fun dep ->
+                    let f () = process_dep impl_var dep in
+                    let { Model.dep_importance; _ } = Model.dep_info dep in
+                    match dep_importance with
+                    | `Essential -> f ()
+                    | `Restricts ->
+                      (* Defer processing restricting deps until all essential deps have
+                         been processed for the entire problem. Restricting deps will be
+                         processed later without recurring into their dependencies. *)
+                      deferred := f :: !deferred;
+                      Fiber.return ())
+                else Fiber.return ()) )
         in
         fun key -> ImplCache.lookup impl_cache add_impls_to_cache key
       and process_dep user_var dep : unit Fiber.t =
@@ -213,12 +228,21 @@ module Make (Model : S.SOLVER_INPUT) = struct
              (* Explicitly conflicts with itself! *)
              S.at_least_one sat [ S.neg user_var ] ~reason)
       in
-      (* This recursively builds the whole problem up. *)
-      lookup_impl root_req
-      >>| Candidates.vars
-      >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+      let* () =
+        (* This recursively builds the whole problem up. *)
+        lookup_impl root_req
+        >>| Candidates.vars
+        >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+      in
+      (* Now process any restricting deps. Due to the cache, only restricting
+         deps that aren't also an essential dep will be expanded. The solver will
+         not process any transitive dependencies here since the dependencies of
+         restricting dependencies are irrelevant to solving the dependency
+         problem. *)
+      expand_deps := false;
+      Fiber.sequential_iter !deferred ~f:(fun f -> f ())
+      (* All impl_candidates have now been added, so snapshot the cache. *)
     in
-    (* All impl_candidates have now been added, so snapshot the cache. *)
     let impl_clauses = ImplCache.snapshot impl_cache in
     Conflict_classes.seal conflict_classes;
     impl_clauses

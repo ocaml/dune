@@ -2,15 +2,50 @@ open Import
 open Memo.O
 module Json = Dune_stats.Json
 
-(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
+let output_of_lib =
+  let public_lib ~info ~target_dir lib_name =
+    `Public_library
+      ( Lib_info.src_dir info
+      , Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
+      )
+  in
+  fun ~target_dir lib ->
+    let info = Lib.info lib in
+    match Lib_info.status info with
+    | Private (_, None) -> `Private_library_or_emit target_dir
+    | Private (_, Some pkg) ->
+      public_lib
+        ~info
+        ~target_dir
+        (Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn (Lib.name lib)))
+    | Installed | Installed_private | Public _ ->
+      public_lib ~info ~target_dir (Lib_info.name info)
+;;
 
-   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
-   assumed. *)
-let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
-  let alias = Alias.make alias ~dir in
-  let dune_default_alias = Alias.make Alias0.all ~dir in
-  let attach alias = Rules.Produce.Alias.add_deps alias deps in
-  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
+let lib_output_path ~output_dir ~lib_dir src =
+  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
+  | "" -> output_dir
+  | dir -> Path.Build.relative output_dir dir
+;;
+
+let make_js_name ~js_ext ~output m =
+  let basename = Melange.js_basename m ^ js_ext in
+  match output with
+  | `Public_library (lib_dir, output_dir) ->
+    let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
+    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
+    Path.Build.relative output_dir basename
+  | `Private_library_or_emit target_dir ->
+    let dst_dir =
+      Path.Build.append_source
+        target_dir
+        (Module.file m ~ml_kind:Impl
+         |> Option.value_exn
+         |> Path.as_in_build_dir_exn
+         |> Path.Build.parent_exn
+         |> Path.Build.drop_build_context_exn)
+    in
+    Path.Build.relative dst_dir basename
 ;;
 
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
@@ -86,50 +121,15 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
   modules, modules_for_js, obj_dir
 ;;
 
-let output_of_lib =
-  let public_lib ~info ~target_dir lib_name =
-    `Public_library
-      ( Lib_info.src_dir info
-      , Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
-      )
-  in
-  fun ~target_dir lib ->
-    let info = Lib.info lib in
-    match Lib_info.status info with
-    | Private (_, None) -> `Private_library_or_emit target_dir
-    | Private (_, Some pkg) ->
-      public_lib
-        ~info
-        ~target_dir
-        (Lib_name.mangled (Package.name pkg) (Lib_name.to_local_exn (Lib.name lib)))
-    | Installed | Installed_private | Public _ ->
-      public_lib ~info ~target_dir (Lib_info.name info)
-;;
+(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
 
-let lib_output_path ~output_dir ~lib_dir src =
-  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
-  | "" -> output_dir
-  | dir -> Path.Build.relative output_dir dir
-;;
-
-let make_js_name ~js_ext ~output m =
-  let basename = Melange.js_basename m ^ js_ext in
-  match output with
-  | `Public_library (lib_dir, output_dir) ->
-    let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
-    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
-    Path.Build.relative output_dir basename
-  | `Private_library_or_emit target_dir ->
-    let dst_dir =
-      Path.Build.append_source
-        target_dir
-        (Module.file m ~ml_kind:Impl
-         |> Option.value_exn
-         |> Path.as_in_build_dir_exn
-         |> Path.Build.parent_exn
-         |> Path.Build.drop_build_context_exn)
-    in
-    Path.Build.relative dst_dir basename
+   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
+   assumed. *)
+let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
+  let alias = Alias.make alias ~dir in
+  let dune_default_alias = Alias.make Alias0.all ~dir in
+  let attach alias = Rules.Produce.Alias.add_deps alias deps in
+  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
 module Manifest = struct

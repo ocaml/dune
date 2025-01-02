@@ -132,7 +132,7 @@
                     })
                 else pkgs;
 
-              inherit (pkgs') writeScriptBin stdenv lib;
+              inherit (pkgs') writeScriptBin stdenv;
 
               docInputs = with pkgs'.python3.pkgs; [
                 sphinx-autobuild

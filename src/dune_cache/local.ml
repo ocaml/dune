@@ -80,6 +80,12 @@ module Artifacts = struct
     =
     let entries =
       Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
+        (if Targets.Produced.debug_out
+         then
+           let open Pp.O in
+           Pp.to_fmt
+             Format.std_formatter
+             (Pp.paragraphf "[StoreMeta %S]" (Path.Local.to_string target) ++ Pp.space));
         let entry : Metadata_entry.t =
           { file_path = Path.Local.to_string target; file_digest }
         in
@@ -103,12 +109,29 @@ module Artifacts = struct
     Result.try_with (fun () ->
       (* CR-someday rleshchinskiy: We recreate the directory structure here but it might be
          simpler to just use file digests instead of file names and no subdirectories. *)
-      Path.Local.Map.iteri targets.dirs ~f:(fun path _ ->
-        Path.mkdir_p (Path.append_local temp_dir path));
-      Targets.Produced.iteri targets ~f:(fun path _ ->
-        let path_in_build_dir = Path.build (Path.Build.append_local targets.root path) in
-        let path_in_temp_dir = Path.append_local temp_dir path in
-        portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
+      (* The comment above seems outdated wrt. 'no subdirectories'... *)
+      Targets.Produced.iteri
+        targets
+        ~d:(fun dir _ ->
+          (if Targets.Produced.debug_out
+           then
+             let open Pp.O in
+             Pp.to_fmt
+               Format.std_formatter
+               (Pp.paragraphf "[Store_dir %S]" (Path.Local.to_string dir) ++ Pp.space));
+          Path.mkdir_p (Path.append_local temp_dir dir))
+        ~f:(fun file _ ->
+          let path_in_build_dir =
+            Path.build (Path.Build.append_local targets.root file)
+          in
+          let path_in_temp_dir = Path.append_local temp_dir file in
+          (if Targets.Produced.debug_out
+           then
+             let open Pp.O in
+             Pp.to_fmt
+               Format.std_formatter
+               (Pp.paragraphf "[Store_file: %S]" (Path.Local.to_string file) ++ Pp.space));
+          portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
   (* Step II of [store_skipping_metadata].
@@ -121,6 +144,12 @@ module Artifacts = struct
     Fiber.collect_errors (fun () ->
       Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
         let file = Path.append_local temp_dir path in
+        (if Targets.Produced.debug_out
+         then
+           let open Pp.O in
+           Pp.to_fmt
+             Format.std_formatter
+             (Pp.paragraphf "[CompDigests %S]" (Path.Local.to_string path) ++ Pp.space));
         compute_digest ~executable file))
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
@@ -135,6 +164,13 @@ module Artifacts = struct
       ~f:(fun target digest results ->
         let path_in_temp_dir = Path.append_local temp_dir target in
         let path_in_cache = file_path ~file_digest:digest in
+        (if Targets.Produced.debug_out
+         then
+           let open Pp.O in
+           Pp.to_fmt
+             Format.std_formatter
+             (Pp.paragraphf "[Store_to_cache %S]" (Path.Local.to_string target)
+              ++ Pp.space));
         let store_using_hardlinks () =
           match
             Dune_cache_storage.Util.Optimistically.link
@@ -281,10 +317,7 @@ module Artifacts = struct
          | Copy -> copy ~src ~dst);
         Unwind.push unwind (fun () -> Path.Build.unlink_no_err target)
       in
-      try
-        Path.Local.Map.iteri artifacts.dirs ~f:(fun dir _ -> mk_dir dir);
-        Targets.Produced.iteri artifacts ~f:mk_file
-      with
+      try Targets.Produced.iteri artifacts ~f:mk_file ~d:(fun dir _ -> mk_dir dir) with
       | exn ->
         Unwind.unwind unwind;
         reraise exn
@@ -297,6 +330,12 @@ module Artifacts = struct
         Path.Local.Map.of_list_map_exn
           entries
           ~f:(fun { Metadata_entry.file_path; file_digest } ->
+            (if Targets.Produced.debug_out
+             then
+               let open Pp.O in
+               Pp.to_fmt
+                 Format.std_formatter
+                 (Pp.paragraphf "[Restore: %S]" file_path ++ Pp.space));
             Path.Local.of_string file_path, file_digest)
         |> Targets.Produced.of_files target_dir
       in

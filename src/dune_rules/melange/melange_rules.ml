@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Json = Dune_stats.Json
 
 let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
@@ -104,6 +105,107 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
     , (Modules.With_vlib.split_by_lib modules).impl
       |> List.filter ~f:(Module.has ~ml_kind:Impl) )
 ;;
+
+let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
+  let* modules, obj_dir =
+    Dir_contents.ocaml dir_contents
+    >>= Ml_sources.modules_and_obj_dir
+          ~libs:(Scope.libs scope)
+          ~for_:(Melange { target = mel.target })
+  in
+  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
+  let modules_for_js =
+    Modules.fold modules ~init:[] ~f:(fun x acc ->
+      if Module.has x ~ml_kind:Impl then x :: acc else acc)
+  in
+  modules, modules_for_js, obj_dir
+;;
+
+(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
+
+   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
+   assumed. *)
+let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
+  let alias = Alias.make alias ~dir in
+  let dune_default_alias = Alias.make Alias0.all ~dir in
+  let attach alias = Rules.Produce.Alias.add_deps alias deps in
+  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
+;;
+
+module Manifest = struct
+  type mapping =
+    { source : Module.File.t
+    ; targets : Path.Build.t list
+    }
+
+  type t = { mappings : mapping list }
+
+  let sexp_of_mapping { source; targets } =
+    let source_str = Module.File.original_path source |> Path.to_string in
+    let target_strs = List.map targets ~f:Path.Build.to_string in
+    `Assoc [ source_str, `List (List.map target_strs ~f:(fun s -> `String s)) ]
+  ;;
+
+  let json_of_t t = `List (List.map t.mappings ~f:sexp_of_mapping)
+  let to_string t = Json.to_string (json_of_t t)
+
+  let create_mapping ~module_systems ~output modules =
+    let source = Module.source modules ~ml_kind:Impl |> Option.value_exn in
+    let targets =
+      List.map module_systems ~f:(fun (_, js_ext) -> make_js_name ~js_ext ~output modules)
+    in
+    { source; targets }
+  ;;
+
+  let setup_manifest_rule
+    ~sctx
+    ~target_dir
+    ~mode
+    ~module_systems
+    ~output
+    ~dir_contents
+    ~requires_link
+    ~scope
+    mel
+    =
+    let* _local_modules, modules_for_js, _local_obj_dir =
+      modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
+    in
+    let mappings_for_js =
+      List.map modules_for_js ~f:(fun modules ->
+        create_mapping ~module_systems ~output modules)
+    in
+    (* Get mappings for each required library *)
+    let* mappings_for_libs =
+      Memo.List.concat_map requires_link ~f:(fun lib ->
+        let* _modules_with_vlib, impl_modules =
+          impl_only_modules_defined_in_this_lib ~sctx ~scope lib
+        in
+        let lib_output = output_of_lib ~target_dir lib in
+        Memo.return
+          (List.map impl_modules ~f:(fun m ->
+             create_mapping ~module_systems ~output:lib_output m)))
+    in
+    let mappings = mappings_for_js @ mappings_for_libs in
+    let manifest_path = Path.Build.relative target_dir "melange-manifest.sexp" in
+    (* Format.eprintf "Creating manifest rule@."; *)
+    (* Format.eprintf "  dir: %s@." (Path.Build.to_string dir); *)
+    (* Format.eprintf "  target_dir: %s@." (Path.Build.to_string target_dir); *)
+    (* Format.eprintf "  mappings count: %d@." (List.length mappings); *)
+    (* Format.eprintf "  manifest path: %s@." (Path.Build.to_string manifest_path); *)
+    let manifest = { mappings } in
+    let manifest_str = to_string manifest in
+    (* Format.eprintf "  manifest content:@.%s@." manifest_str; *)
+    let* () =
+      Action_builder.return manifest_str
+      |> Action_builder.write_file_dyn manifest_path
+      |> Super_context.add_rule sctx ~dir:target_dir ~mode
+    in
+    let manifest_dep = Action_builder.path (Path.build manifest_path) in
+    let* () = add_deps_to_aliases ~dir:target_dir manifest_dep in
+    Memo.return ()
+  ;;
+end
 
 let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
 
@@ -248,17 +350,6 @@ let build_js
         | None -> command)
     in
     Super_context.add_rule sctx ~dir ~loc ~mode build)
-;;
-
-(* attach [deps] to the specified [alias] AND the (dune default) [all] alias.
-
-   when [alias] is not supplied, {!Melange_stanzas.Emit.implicit_alias} is
-   assumed. *)
-let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps =
-  let alias = Alias.make alias ~dir in
-  let dune_default_alias = Alias.make Alias0.all ~dir in
-  let attach alias = Rules.Produce.Alias.add_deps alias deps in
-  Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
 let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
@@ -439,21 +530,6 @@ let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
   ()
 ;;
 
-let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas.Emit.t) =
-  let* modules, obj_dir =
-    Dir_contents.ocaml dir_contents
-    >>= Ml_sources.modules_and_obj_dir
-          ~libs:(Scope.libs scope)
-          ~for_:(Melange { target = mel.target })
-  in
-  let+ modules = modules_in_obj_dir ~sctx ~scope ~preprocess:mel.preprocess modules in
-  let modules_for_js =
-    Modules.fold modules ~init:[] ~f:(fun x acc ->
-      if Module.has x ~ml_kind:Impl then x :: acc else acc)
-  in
-  modules, modules_for_js, obj_dir
-;;
-
 let setup_entries_js
   ~sctx
   ~dir
@@ -470,6 +546,7 @@ let setup_entries_js
   let pkg_name = Option.map mel.package ~f:Package.name in
   let loc = mel.loc in
   let module_systems = mel.module_systems in
+  let* requires_link = Memo.Lazy.force requires_link in
   let* includes =
     let+ lib_config =
       let+ ocaml = Super_context.context sctx |> Context.ocaml in
@@ -632,6 +709,20 @@ let setup_js_rules_libraries_and_entries
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel
   and+ () =
     setup_entries_js ~sctx ~dir ~dir_contents ~scope ~requires_link ~target_dir ~mode mel
+  and+ () =
+    match mel.emit_manifest with
+    | true ->
+      Manifest.setup_manifest_rule
+        ~sctx
+        ~target_dir
+        ~mode
+        ~module_systems:mel.module_systems
+        ~output:(`Private_library_or_emit target_dir)
+        ~dir_contents
+        ~scope
+        ~requires_link
+        mel
+    | false -> Memo.return ()
   in
   ()
 ;;

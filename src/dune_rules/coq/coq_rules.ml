@@ -159,8 +159,24 @@ let coq_env =
             expander
             (Coq_env.coqdoc_flags config.coq)
             ~standard
+        and+ coqdoc_header =
+          match Coq_env.coqdoc_header config.coq with
+          | None ->
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdoc_header
+          | Some s ->
+            let+ path = Expander.expand_path expander s in
+            Some path
+        and+ coqdoc_footer =
+          match Coq_env.coqdoc_footer config.coq with
+          | None ->
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdoc_footer
+          | Some s ->
+            let+ path = Expander.expand_path expander s in
+            Some path
         in
-        { Coq_flags.coq_flags; coqdep_flags; coqdoc_flags })
+        { Coq_flags.coq_flags; coqdep_flags; coqdoc_flags; coqdoc_header; coqdoc_footer })
   in
   fun ~dir ->
     (let* () = Memo.return () in
@@ -203,6 +219,24 @@ let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander =
       (Action_builder.map
          ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags)
          (coq_env ~dir))
+;;
+
+let coqdoc_header ~dir ~stanza_coqdoc_header ~expander =
+  match stanza_coqdoc_header with
+  | None ->
+    Action_builder.map
+      ~f:(fun { Coq_flags.coqdoc_header; _ } -> coqdoc_header)
+      (coq_env ~dir)
+  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
+;;
+
+let coqdoc_footer ~dir ~stanza_coqdoc_footer ~expander =
+  match stanza_coqdoc_footer with
+  | None ->
+    Action_builder.map
+      ~f:(fun { Coq_flags.coqdoc_footer; _ } -> coqdoc_footer)
+      (coq_env ~dir)
+  | Some s -> Action_builder.map ~f:Option.some (Expander.expand_path expander s)
 ;;
 
 let theory_coqc_flag lib =
@@ -852,8 +886,35 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
              in
              Expander.expand_and_eval_set expander s.coqdoc_flags ~standard
            in
+           let header =
+             let open Action_builder.O in
+             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+             let+ header =
+               coqdoc_header ~dir ~stanza_coqdoc_header:s.coqdoc_header ~expander
+             in
+             match header with
+             | None -> Command.Args.empty
+             | Some path -> Command.Args.S [ A "--with-header"; Dep path ]
+           in
+           let footer =
+             let open Action_builder.O in
+             let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+             let+ footer =
+               coqdoc_footer ~dir ~stanza_coqdoc_footer:s.coqdoc_footer ~expander
+             in
+             match footer with
+             | None -> Command.Args.empty
+             | Some path -> Command.Args.S [ A "--with-footer"; Dep path ]
+           in
+           let when_html dyn =
+             match mode with
+             | `Html -> Command.Args.Dyn dyn
+             | `Latex -> Command.Args.empty
+           in
            [ Command.Args.S file_flags
            ; Command.Args.dyn extra_coqdoc_flags
+           ; when_html header
+           ; when_html footer
            ; A mode_flag
            ; A "-d"
            ; Path (Path.build doc_dir)

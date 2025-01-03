@@ -4,7 +4,7 @@
 
 (** Select a compatible set of components to run a program. *)
 
-module List = Stdune.List
+open Stdune
 open Fiber.O
 
 module Make (Model : S.SOLVER_INPUT) = struct
@@ -98,7 +98,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     module Map = Map.Make (struct
         type t = Model.conflict_class
 
-        let compare = compare
+        let compare (x : t) (y : t) = String.compare (x :> string) (y :> string)
+        let to_dyn (x : t) = Dyn.string (x :> string)
       end)
 
     type t =
@@ -109,11 +110,11 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let create sat = { sat; groups = Map.empty }
 
     let var t name =
-      match Map.find_opt name t.groups with
+      match Map.find t.groups name with
       | Some v -> v
       | None ->
         let v = ref [] in
-        t.groups <- Map.add name v t.groups;
+        t.groups <- Map.set t.groups name v;
         v
     ;;
 
@@ -128,45 +129,14 @@ module Make (Model : S.SOLVER_INPUT) = struct
     (* Call this at the end to add the final clause with all discovered groups.
        [t] must not be used after this. *)
     let seal t =
-      t.groups
-      |> Map.iter
-         @@ fun _name impls ->
-         let impls = !impls in
-         if List.length impls > 1 then S.at_most_one t.sat impls |> ignore
+      Map.iter t.groups ~f:(fun impls ->
+        let impls = !impls in
+        if List.length impls > 1
+        then (
+          let (_ : S.at_most_one_clause) = S.at_most_one t.sat impls in
+          ()))
     ;;
   end
-
-  (* Process a dependency of [user_var]:
-     - find the candidate implementations to satisfy it
-     - take just those that satisfy any restrictions in the dependency
-     - ensure that we don't pick an incompatbile version if we select [user_var]
-     - ensure that we do pick a compatible version if we select [user_var] (for "essential" dependencies only) *)
-  let process_dep sat lookup_impl user_var dep : unit Fiber.t =
-    let { Model.dep_role; dep_importance } = Model.dep_info dep in
-    let+ pass, fail =
-      let meets_restrictions =
-        (* Restrictions on the candidates *)
-        let dep_restrictions = Model.restrictions dep in
-        fun impl -> List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
-      in
-      lookup_impl dep_role >>| Candidates.partition ~f:meets_restrictions
-    in
-    match dep_importance with
-    | `Essential ->
-      S.implies
-        sat
-        ~reason:"essential dep"
-        user_var
-        pass (* Must choose a suitable candidate *)
-    | `Restricts ->
-      (* If [user_var] is selected, don't select an incompatible version of the optional dependency.
-         We don't need to do this explicitly in the [essential] case, because we must select a good
-         version and we can't select two. *)
-      (try S.at_most_one sat (user_var :: fail) |> ignore with
-       | Invalid_argument reason ->
-         (* Explicitly conflicts with itself! *)
-         S.at_least_one sat [ S.neg user_var ] ~reason)
-  ;;
 
   (* Add the implementations of an interface to the ImplCache (called the first time we visit it). *)
   let make_impl_clause sat ~dummy_impl role =
@@ -191,8 +161,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     clause, impls
   ;;
 
-  (** Starting from [root_req], explore all the feeds and implementations we might need, adding
-      * all of them to [sat_problem]. *)
+  (** Starting from [root_req], explore all the feeds and implementations we
+      might need, adding all of them to [sat_problem]. *)
   let build_problem root_req sat ~dummy_impl =
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ImplCache.create () in
@@ -204,9 +174,43 @@ module Make (Model : S.SOLVER_INPUT) = struct
         , fun () ->
             Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
               Conflict_classes.process conflict_classes impl_var impl;
-              Model.requires role impl
-              |> Fiber.sequential_iter ~f:(process_dep sat lookup_impl impl_var)) )
-      and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key in
+              Model.requires role impl |> Fiber.sequential_iter ~f:(process_dep impl_var))
+        )
+      and lookup_impl key = ImplCache.lookup impl_cache add_impls_to_cache key
+      and process_dep user_var dep : unit Fiber.t =
+        (* Process a dependency of [user_var]:
+           - find the candidate implementations to satisfy it
+           - take just those that satisfy any restrictions in the dependency
+           - ensure that we don't pick an incompatbile version if we select
+             [user_var]
+           - ensure that we do pick a compatible version if we select
+             [user_var] (for "essential" dependencies only) *)
+        let { Model.dep_role; dep_importance } = Model.dep_info dep in
+        let+ pass, fail =
+          let meets_restrictions =
+            (* Restrictions on the candidates *)
+            let dep_restrictions = Model.restrictions dep in
+            fun impl -> List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
+          in
+          lookup_impl dep_role >>| Candidates.partition ~f:meets_restrictions
+        in
+        match dep_importance with
+        | `Essential ->
+          S.implies
+            sat
+            ~reason:"essential dep"
+            user_var
+            pass (* Must choose a suitable candidate *)
+        | `Restricts ->
+          (* If [user_var] is selected, don't select an incompatible version of
+             the optional dependency. We don't need to do this explicitly in
+             the [essential] case, because we must select a good version and we can't
+             select two. *)
+          (try S.at_most_one sat (user_var :: fail) |> ignore with
+           | Invalid_argument reason ->
+             (* Explicitly conflicts with itself! *)
+             S.at_least_one sat [ S.neg user_var ] ~reason)
+      in
       (* This recursively builds the whole problem up. *)
       lookup_impl root_req
       >>| Candidates.vars
@@ -278,12 +282,22 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
          Then try the most preferred implementation of it that hasn't been ruled out. *)
-      let seen = Hashtbl.create 100 in
+      let seen =
+        let module Requirements = struct
+          type t = Output.requirements
+
+          let equal x y = Int.equal 0 (Output.Role.compare x y)
+          let hash = Poly.hash
+          let to_dyn = Dyn.opaque
+        end
+        in
+        Table.create (module Requirements) 100
+      in
       let rec find_undecided req =
-        if Hashtbl.mem seen req
+        if Table.mem seen req
         then None (* Break cycles *)
         else (
-          Hashtbl.add seen req true;
+          Table.set seen req true;
           let candidates = lookup req in
           match Candidates.state candidates with
           | Unselected -> None
@@ -313,7 +327,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
         impl_clauses
         |> ImplCache.filter_map (fun _role candidates ->
           Candidates.selected candidates
-          |> Option.map (fun (lit, impl) -> { impl; diagnostics = lit }))
+          |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
       in
       Some { Output.root_req; selections }
   ;;

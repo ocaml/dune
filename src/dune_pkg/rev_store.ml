@@ -525,6 +525,7 @@ module At_rev = struct
     { repo : repo
     ; revision : Object.t
     ; files : File.Set.t
+    ; recursive_directory_entries : File.Set.t Path.Local.Table.t
     }
 
   let equal x y = Object.equal x.revision y.revision
@@ -684,25 +685,46 @@ module At_rev = struct
       >>| List.cons files
       >>| File.Set.union_all
     in
-    { repo; revision; files }
+    let recursive_directory_entries =
+      let recursive_directory_entries =
+        Path.Local.Table.create (File.Set.cardinal files)
+      in
+      (* Build a table mapping each directory path to the set of files under it
+         in the directory hierarchy. *)
+      File.Set.iter files ~f:(fun file ->
+        (* Add [file] to the set of files under each directory which is an
+           ancestor of [file]. *)
+        let rec loop = function
+          | None -> ()
+          | Some parent ->
+            let recursive_directory_entries_of_parent =
+              Path.Local.Table.find_or_add
+                recursive_directory_entries
+                parent
+                ~f:(Fun.const File.Set.empty)
+            in
+            let recursive_directory_entries_of_parent =
+              File.Set.add recursive_directory_entries_of_parent file
+            in
+            Path.Local.Table.set
+              recursive_directory_entries
+              parent
+              recursive_directory_entries_of_parent;
+            loop (Path.Local.parent parent)
+        in
+        loop (File.path file |> Path.Local.parent));
+      recursive_directory_entries
+    in
+    { repo; revision; files; recursive_directory_entries }
   ;;
 
-  let content { repo; revision; files = _ } path = show repo [ `Path (revision, path) ]
+  let content { repo; revision; files = _; recursive_directory_entries = _ } path =
+    show repo [ `Path (revision, path) ]
+  ;;
 
   let directory_entries_recursive t path =
-    (* TODO: there are much better ways of implementing this:
-       1. using libgit or ocamlgit
-       2. possibly using [$ git archive] *)
-    File.Set.to_list t.files
-    |> List.filter_map ~f:(fun (file : File.t) ->
-      let file_path = File.path file in
-      (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
-         "foo" is indeed a descendant of itself. So we filter it manually. *)
-      if (not (Path.Local.equal file_path path))
-         && Path.Local.is_descendant file_path ~of_:path
-      then Some file
-      else None)
-    |> File.Set.of_list
+    Path.Local.Table.find t.recursive_directory_entries path
+    |> Option.value ~default:File.Set.empty
   ;;
 
   let directory_entries_immediate t path =
@@ -721,7 +743,10 @@ module At_rev = struct
       path
   ;;
 
-  let check_out { repo = { dir; _ }; revision = Sha1 rev; files = _ } ~target =
+  let check_out
+    { repo = { dir; _ }; revision = Sha1 rev; files = _; recursive_directory_entries = _ }
+    ~target
+    =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let temp_dir = Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:rev in

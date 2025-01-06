@@ -228,6 +228,7 @@ let opam_fields project (package : Package.t) =
   in
   let list_fields =
     [ "maintainer", Package_info.maintainers info
+    ; "x-maintenance-intent", Package_info.maintenance_intent info
     ; "authors", Package_info.authors info
     ; ( "license"
       , match Package_info.license info with

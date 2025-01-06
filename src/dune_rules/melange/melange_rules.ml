@@ -576,38 +576,53 @@ let setup_js_rules_libraries =
         | None -> Memo.return ()
         | Some vlib ->
           let* vlib = Resolve.Memo.read_memo vlib in
-          let* includes =
-            let+ requires_link =
-              let+ requires_link =
-                Lib.Compile.for_lib
-                  ~allow_overlaps:mel.allow_overlapping_dependencies
-                  (Scope.libs scope)
-                  vlib
-                |> Lib.Compile.requires_link
-                |> Memo.Lazy.force
-              in
-              let open Resolve.O in
-              let+ requires_link = requires_link in
-              (* Whenever a `concrete_lib` implementation contains a field
-                 `(implements virt_lib)`, we also set up the JS targets for the
-                 modules defined in `virt_lib`.
+          let vlib_output = output_of_lib ~target_dir vlib in
+          (match vlib_output, output with
+           | `Public_library _, `Private_library_or_emit _ ->
+             let info = Lib.info lib in
+             User_error.raise
+               ~loc:(Lib_info.loc info)
+               [ Pp.text
+                   "Dune doesn't currently support building private implementations of \
+                    virtual public libaries for `(modes melange)`"
+               ]
+               ~hints:
+                 [ Pp.textf
+                     "Add a `public_name` to the library `%s'."
+                     (Lib_name.to_string (Lib_info.name info))
+                 ]
+           | `Public_library _, `Public_library _ | `Private_library_or_emit _, _ ->
+             let* includes =
+               let+ requires_link =
+                 let+ requires_link =
+                   Lib.Compile.for_lib
+                     ~allow_overlaps:mel.allow_overlapping_dependencies
+                     (Scope.libs scope)
+                     vlib
+                   |> Lib.Compile.requires_link
+                   |> Memo.Lazy.force
+                 in
+                 let open Resolve.O in
+                 let+ requires_link = requires_link in
+                 (* Whenever a `concrete_lib` implementation contains a field
+                    `(implements virt_lib)`, we also set up the JS targets for the
+                    modules defined in `virt_lib`.
 
-                 In the cases where `virt_lib` (concrete) modules depend on any
-                 virtual modules (i.e. programming against the interface), we
-                 need to make sure that the JS rules that dune emits for
-                 `virt_lib` depend on `concrete_lib`, such that Melange can find
-                 the correct `.cmj` file, which is needed to emit the correct
-                 path in `import` / `require`. *)
-              lib :: requires_link
-            in
-            cmj_includes ~requires_link ~scope lib_config
-          in
-          let output = output_of_lib ~target_dir vlib in
-          parallel_build_source_modules
-            ~sctx
-            ~scope
-            vlib
-            ~f:(build_js ~dir ~output ~includes ~compile_flags)
+                    In the cases where `virt_lib` (concrete) modules depend on any
+                    virtual modules (i.e. programming against the interface), we
+                    need to make sure that the JS rules that dune emits for
+                    `virt_lib` depend on `concrete_lib`, such that Melange can find
+                    the correct `.cmj` file, which is needed to emit the correct
+                    path in `import` / `require`. *)
+                 lib :: requires_link
+               in
+               cmj_includes ~requires_link ~scope lib_config
+             in
+             parallel_build_source_modules
+               ~sctx
+               ~scope
+               vlib
+               ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
       and+ () =
         parallel_build_source_modules
           ~sctx

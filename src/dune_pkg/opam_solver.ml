@@ -524,13 +524,9 @@ module Solver = struct
          | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f })
     ;;
 
-    let string_of_op = function
-      | `Eq -> "="
-      | `Geq -> ">="
-      | `Gt -> ">"
-      | `Leq -> "<="
-      | `Lt -> "<"
-      | `Neq -> "<>"
+    let string_of_op =
+      let pos = { OpamParserTypes.FullPos.filename = ""; start = 0, 0; stop = 0, 0 } in
+      fun pelem -> OpamPrinter.FullPos.relop { pelem; pos }
     ;;
 
     let string_of_version_formula =

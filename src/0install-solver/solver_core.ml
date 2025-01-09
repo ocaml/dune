@@ -181,15 +181,14 @@ module Make (Model : S.SOLVER_INPUT) = struct
                 then
                   Model.requires role impl
                   |> Fiber.sequential_iter ~f:(fun dep ->
-                    let f () = process_dep impl_var dep in
                     let { Model.dep_importance; _ } = Model.dep_info dep in
                     match dep_importance with
-                    | `Essential -> f ()
+                    | `Essential -> process_dep impl_var dep
                     | `Restricts ->
                       (* Defer processing restricting deps until all essential deps have
                          been processed for the entire problem. Restricting deps will be
                          processed later without recurring into their dependencies. *)
-                      deferred := f :: !deferred;
+                      deferred := (impl_var, dep) :: !deferred;
                       Fiber.return ())
                 else Fiber.return ()) )
         in
@@ -240,7 +239,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
          restricting dependencies are irrelevant to solving the dependency
          problem. *)
       expand_deps := false;
-      Fiber.sequential_iter !deferred ~f:(fun f -> f ())
+      Fiber.sequential_iter !deferred ~f:(fun (impl_var, dep) -> process_dep impl_var dep)
       (* All impl_candidates have now been added, so snapshot the cache. *)
     in
     let impl_clauses = ImplCache.snapshot impl_cache in

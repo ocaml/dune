@@ -18,6 +18,11 @@ val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 val partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 val rev_partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 
+val partition_three
+  :  'a t
+  -> f:('a -> [ `Left of 'x | `Middle of 'y | `Right of 'z ])
+  -> 'x list * 'y list * 'z list
+
 type ('a, 'b) skip_or_either =
   | Skip
   | Left of 'a

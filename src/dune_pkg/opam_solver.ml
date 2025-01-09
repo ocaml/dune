@@ -48,7 +48,7 @@ module Priority = struct
   ;;
 end
 
-module Context_for_dune = struct
+module Context = struct
   type rejection =
     | (* TODO proper error messages for packages skipped via avoid-version *)
       Unavailable
@@ -257,7 +257,6 @@ module Context_for_dune = struct
 end
 
 module Solver = struct
-  module Context = Context_for_dune
   open Pp.O
 
   (* Copyright (c) 2020 Thomas Leonard <talex5@gmail.com>
@@ -929,7 +928,7 @@ let opam_package_to_lock_file_pkg
   version_by_package_name
   opam_package
   ~pinned_package_names
-  ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
+  ~(candidates_cache : (Package_name.t, Context.candidates) Table.t)
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -1206,7 +1205,7 @@ let solve_lock_dir
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =
-    Context_for_dune.create
+    Context.create
       ~pinned_packages
       ~solver_env
       ~repos

@@ -20,22 +20,16 @@ Check the cache restores empty directories
 Build an empty directory.
 
   $ OCAMLRUNPARAM=b dune build output
-  $ tree -F _build/default
-  _build/default/
-  `-- output/
-      |-- child/
-      `-- file
-  
-  2 directories, 1 file
+  $ find _build/default/output | sort
+  _build/default/output
+  _build/default/output/child
+  _build/default/output/file
 
 Restore it from cache.
 
   $ rm -rf _build
   $ dune build output
-  $ tree -F _build/default
-  _build/default/
-  `-- output/
-      |-- child/
-      `-- file
-  
-  2 directories, 1 file
+  $ find _build/default/output | sort
+  _build/default/output
+  _build/default/output/child
+  _build/default/output/file

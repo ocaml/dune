@@ -1,8 +1,7 @@
 Test creating directory targets by symlinking:
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.3)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat >dune <<EOF

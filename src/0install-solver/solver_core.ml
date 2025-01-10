@@ -238,7 +238,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
          not process any transitive dependencies here since the dependencies of
          restricting dependencies are irrelevant to solving the dependency
          problem. *)
-      Fiber.sequential_iter !conflicts ~f:(fun (impl_var, dep) ->
+      List.rev !conflicts
+      |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
         process_dep `No_expand impl_var dep)
       (* All impl_candidates have now been added, so snapshot the cache. *)
     in

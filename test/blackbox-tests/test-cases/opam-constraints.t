@@ -67,3 +67,4 @@ constraints.
       "@doc" {with-doc}
     ]
   ]
+  x-maintenance-intent: ["(latest)"]

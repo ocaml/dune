@@ -1373,4 +1373,5 @@ opam file listing
       \"@doc\" {with-doc}
     ]
   ]
+  x-maintenance-intent: [\"(latest)\"]
   "))

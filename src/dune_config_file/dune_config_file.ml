@@ -365,7 +365,7 @@ module Dune_config = struct
     ; project_defaults =
         { authors = Some [ "Author Name <author@example.com>" ]
         ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
-        ; maintenance_intent = Some [ "(latest)" ]
+        ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
     ; experimental = []

@@ -169,6 +169,7 @@ Test with an opam like installation
     ]
     ["dune" "install" "-p" name "--create-install-files" name]
   ]
+  x-maintenance-intent: ["(latest)"]
 
   $ dune build -p a --promote-install-files=false @install
 

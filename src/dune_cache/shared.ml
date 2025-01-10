@@ -195,10 +195,7 @@ struct
         ~remove_write_permissions:should_remove_write_permissions_on_generated_files
     in
     match
-      Targets.Produced.map_with_errors
-        ~f:(fun target -> compute_digest target)
-        ~all_errors:true
-        produced_targets
+      Targets.Produced.map_with_errors ~f:compute_digest ~all_errors:true produced_targets
     with
     | Ok result -> result
     | Error errors ->

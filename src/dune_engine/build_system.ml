@@ -160,12 +160,14 @@ and Exported : sig
 
   type target_kind =
     | File_target
-    | Dir_target of Digest.t Targets.Produced.t
+    | Dir_target of { targets : Digest.t Targets.Produced.t }
 
   (* The below two definitions are useless, but if we remove them we get an
      "Undefined_recursive_module" exception. *)
 
-  val build_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t [@@warning "-32"]
+  val build_file_memo : (Path.t, Digest.t * target_kind) Memo.Table.t Lazy.t
+  [@@warning "-32"]
+
   val build_alias_memo : (Alias.t, Dep.Fact.Files.t) Memo.Table.t [@@warning "-32"]
   val dep_on_alias_definition : Rules.Dir_rules.Alias_spec.item -> unit Action_builder.t
 end = struct
@@ -819,19 +821,22 @@ end = struct
   type target_kind =
     | File_target
     | Dir_target of
-        (* All targets of the rule which produced the directory target in question. *)
-        Digest.t Targets.Produced.t
+        { targets :
+            (* All targets of the rule which produced the directory target in question. *)
+            Digest.t Targets.Produced.t
+        }
 
   let target_kind_equal a b =
     match a, b with
     | File_target, File_target -> true
-    | Dir_target t1, Dir_target t2 -> Targets.Produced.equal t1 t2 ~equal:Digest.equal
+    | Dir_target { targets = a }, Dir_target { targets = b } ->
+      Targets.Produced.equal a b ~equal:Digest.equal
     | File_target, Dir_target _ | Dir_target _, File_target -> false
   ;;
 
   (* A rule can have multiple targets but calls to [execute_rule] are memoized,
      so the rule will be executed only once. *)
-  let build_impl path =
+  let build_file_impl path =
     Load_rules.get_rule_or_source path
     >>= function
     | Source digest -> Memo.return (digest, File_target)
@@ -856,8 +861,8 @@ end = struct
             [build_file] or [create_file] even though they also handle directories.
             Also yes this digest is used by [Exported.build_dep] defined above. *)
          (match Cached_digest.build_file ~allow_dirs:true path with
+          | Ok digest -> digest, Dir_target { targets }
           (* Must be a directory target. *)
-          | Ok digest -> digest, Dir_target targets
           | Error _ ->
             (* CR-someday amokhov: The most important reason we end up here is
                [No_such_file]. I think some of the outcomes above are impossible
@@ -979,7 +984,7 @@ end = struct
 
   let eval_pred = Memo.exec eval_pred_memo
 
-  let build_memo =
+  let build_file_memo =
     lazy
       (let cutoff =
          match Dune_config.Config.(get cutoffs_that_reduce_concurrency_in_watch_mode) with
@@ -991,15 +996,15 @@ end = struct
          ~store:(module Path.Table)
          ~input:(module Path)
          ?cutoff
-         build_impl)
+         build_file_impl)
   ;;
 
-  let build_file path = Memo.exec (Lazy.force build_memo) path >>| fst
+  let build_file path = Memo.exec (Lazy.force build_file_memo) path >>| fst
 
   let build_dir path =
-    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_memo) path in
+    let+ (_ : Digest.t), kind = Memo.exec (Lazy.force build_file_memo) path in
     match kind with
-    | Dir_target targets -> targets
+    | Dir_target { targets } -> targets
     | File_target ->
       Code_error.raise "build_dir called on a file target" [ "path", Path.to_dyn path ]
   ;;
@@ -1157,12 +1162,12 @@ let run_exn f =
 ;;
 
 let build_file p =
-  let+ _digest = build_file p in
+  let+ (_ : Digest.t) = build_file p in
   ()
 ;;
 
 let build_dir p =
-  let+ _targets = build_dir p in
+  let+ (_ : Digest.t Targets.Produced.t) = build_dir p in
   ()
 ;;
 

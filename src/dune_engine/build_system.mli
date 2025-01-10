@@ -2,7 +2,7 @@
 
 open Import
 
-(** Build a target, maybe a file maybe a directory. *)
+(** Build a target, which may be a file or a directory. *)
 val build_file : Path.t -> unit Memo.t
 
 (** Build a directory. *)

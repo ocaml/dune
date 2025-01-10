@@ -85,12 +85,6 @@ module Artifacts = struct
     =
     let entries =
       Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
-        (if Targets.Produced.debug_out
-         then
-           let open Pp.O in
-           Pp.to_fmt
-             Format.std_formatter
-             (Pp.paragraphf "[StoreMeta %S]" (Path.Local.to_string target) ++ Pp.space));
         let entry : Metadata_entry.t =
           match file_digest with
           | Some file_digest ->
@@ -120,29 +114,12 @@ module Artifacts = struct
       (* The comment above seems outdated wrt. 'no subdirectories'... *)
       Targets.Produced.iteri
         targets
-        ~d:(fun dir ->
-          (if Targets.Produced.debug_out
-           then
-             let open Pp.O in
-             Pp.to_fmt
-               Format.std_formatter
-               (Pp.paragraphf "[Store_dir %S]" (Path.Local.to_string dir) ++ Pp.space));
-          Path.mkdir_p (Path.append_local temp_dir dir))
+        ~d:(fun dir -> Path.mkdir_p (Path.append_local temp_dir dir))
         ~f:(fun file _ ->
           let path_in_build_dir =
             Path.build (Path.Build.append_local targets.root file)
           in
           let path_in_temp_dir = Path.append_local temp_dir file in
-          (if Targets.Produced.debug_out
-           then
-             let open Pp.O in
-             Pp.to_fmt
-               Format.std_formatter
-               (Pp.paragraphf
-                  "[Store_file: %S -> %S]"
-                  (Path.to_string path_in_build_dir)
-                  (Path.to_string path_in_temp_dir)
-                ++ Pp.space));
           portable_hardlink_or_copy ~src:path_in_build_dir ~dst:path_in_temp_dir))
   ;;
 
@@ -155,15 +132,8 @@ module Artifacts = struct
     let open Fiber.O in
     let fff path { Target.executable } =
       let file = Path.append_local temp_dir path in
-      (if Targets.Produced.debug_out
-       then
-         let open Pp.O in
-         Pp.to_fmt
-           Format.std_formatter
-           (Pp.paragraphf "[CompDigests %S]" (Path.Local.to_string path) ++ Pp.space));
       compute_digest ~executable file
     in
-    (* FIXME: nothing special here? *)
     Fiber.collect_errors (fun () -> Targets.Produced.parallel_map targets ~f:fff)
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
@@ -176,17 +146,8 @@ module Artifacts = struct
       artifacts
       ~init:Store_result.empty
       ~f:(fun target digest results ->
-        (if Targets.Produced.debug_out
-         then
-           let open Pp.O in
-           Pp.to_fmt
-             Format.std_formatter
-             (Pp.paragraphf "[Store_to_cache %S]" (Path.Local.to_string target)
-              ++ Pp.space));
         match digest with
-        | None ->
-          (*FIXME: sure about that? *)
-          results
+        | None -> results
         | Some file_digest ->
           let path_in_temp_dir = Path.append_local temp_dir target in
           let path_in_cache = file_path ~file_digest in
@@ -356,12 +317,6 @@ module Artifacts = struct
         Path.Local.Map.of_list_map_exn
           entries
           ~f:(fun { Metadata_entry.file_path; kind } ->
-            (if Targets.Produced.debug_out
-             then
-               let open Pp.O in
-               Pp.to_fmt
-                 Format.std_formatter
-                 (Pp.paragraphf "[Restore: %S]" file_path ++ Pp.space));
             ( Path.Local.of_string file_path
             , match kind with
               | Directory -> None

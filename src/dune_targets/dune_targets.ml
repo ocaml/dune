@@ -186,43 +186,10 @@ module Produced = struct
     Filename.Map.is_empty files && Filename.Map.is_empty subdirs
   ;;
 
-  let rec pp_dir_conts ?(payload_printer = fun _ -> Pp.char '?') contents =
-    if is_empty_dir_conts contents
-    then Pp.text "<empty dir_contents>"
-    else (
-      let { files; subdirs } = contents in
-      let open Pp.O in
-      Pp.text "{ "
-      ++ Pp.hovbox
-           (Pp.text "Files: ("
-            ++ Pp.box
-                 (Pp.concat
-                    ~sep:(Pp.text ", ")
-                    (Filename.Map.to_list_map files ~f:(fun name payload ->
-                       Pp.textf "%S -> " name ++ payload_printer payload)))
-            ++ Pp.text ");"
-            ++ Pp.space
-            ++ Pp.hovbox
-                 (Pp.text "Subdirs: ("
-                  ++ Pp.concat
-                       ~sep:(Pp.text ", ")
-                       (Filename.Map.to_list_map subdirs ~f:(fun name sub ->
-                          Pp.textf "%S -> " name ++ pp_dir_conts ~payload_printer sub))
-                  ++ Pp.text ")"))
-      ++ Pp.char '}')
-  ;;
-
   type 'a t =
     { root : Path.Build.t
     ; contents : 'a dir_contents
     }
-
-  let pp ?payload_printer { root; contents } =
-    let open Pp.O in
-    Pp.hovbox
-      (Pp.textf "root=%S, contents=" (Path.Build.to_string root)
-       ++ pp_dir_conts ?payload_printer contents)
-  ;;
 
   let equal
     { root = root1; contents = contents1 }
@@ -285,10 +252,6 @@ module Produced = struct
   end
 
   let empty = { files = Filename.Map.empty; subdirs = Filename.Map.empty }
-  let debug_create = false
-  let debug_search = false
-  let debug_consume = false
-  let debug_out = false
 
   let rec merge_contents c1 c2 =
     let files =
@@ -320,34 +283,23 @@ module Produced = struct
     | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
     | Error e -> Error (Unreadable_dir (dir, e))
     | Ok dir_contents ->
-      let+ results =
-        Result.List.fold_left dir_contents ~init ~f:(fun dir_contents (name, kind) ->
-          match (kind : File_kind.t) with
-          | S_LNK | S_REG ->
-            let files =
-              match file_f (Path.Local.relative (Path.Build.local dir) name) with
-              | Some payload -> Filename.Map.add_exn dir_contents.files name payload
-              | None -> dir_contents.files
-            in
-            Ok { dir_contents with files }
-          | S_DIR ->
-            let+ subdirs_contents =
-              contents_of_dir ~file_f (Path.Build.relative dir name)
-            in
-            { dir_contents with
-              subdirs = Filename.Map.add_exn dir_contents.subdirs name subdirs_contents
-            }
-          | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
-      in
-      (if debug_create
-       then
-         let open Pp.O in
-         Pp.to_fmt
-           Format.std_formatter
-           (Pp.paragraphf "In contents_of_dir %S => " (Path.Build.to_string dir)
-            ++ pp_dir_conts results
-            ++ Pp.space));
-      results
+      Result.List.fold_left dir_contents ~init ~f:(fun dir_contents (name, kind) ->
+        match (kind : File_kind.t) with
+        | S_LNK | S_REG ->
+          let files =
+            match file_f (Path.Local.relative (Path.Build.local dir) name) with
+            | Some payload -> Filename.Map.add_exn dir_contents.files name payload
+            | None -> dir_contents.files
+          in
+          Ok { dir_contents with files }
+        | S_DIR ->
+          let+ subdirs_contents =
+            contents_of_dir ~file_f (Path.Build.relative dir name)
+          in
+          { dir_contents with
+            subdirs = Filename.Map.add_exn dir_contents.subdirs name subdirs_contents
+          }
+        | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
   ;;
 
   let of_validated (validated : Validated.t) =
@@ -367,28 +319,13 @@ module Produced = struct
         Ok { root; contents })
     in
     let rooted_files = Filename.Set.to_map validated.files ~f:(Fun.const ()) in
-    let+ result =
-      Filename.Set.to_list validated.dirs
-      |> Result.List.fold_left
-           ~init:
-             { root = validated.root
-             ; contents = { files = rooted_files; subdirs = Filename.Map.empty }
-             }
-           ~f:aggregate_dir
-    in
-    (if debug_create
-     then
-       let open Pp.O in
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.hovbox
-            (Pp.paragraph "In of_validated("
-             ++ Pp.cut
-             ++ Validated.pp validated
-             ++ Pp.text ") => "
-             ++ pp ~payload_printer:(fun () -> Pp.text "()") result)
-          ++ Pp.text "\n\n"));
-    result
+    Filename.Set.to_list validated.dirs
+    |> Result.List.fold_left
+         ~init:
+           { root = validated.root
+           ; contents = { files = rooted_files; subdirs = Filename.Map.empty }
+           }
+         ~f:aggregate_dir
   ;;
 
   let of_files root (file_list : 'a option Path.Local.Map.t) : 'a t =
@@ -428,19 +365,6 @@ module Produced = struct
             })
         else aux mb_payload contents (Path.Local.explode file))
     in
-    (if debug_create
-     then
-       let open Pp.O in
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.text "In of_files ("
-          ++ Pp.hovbox
-               (Pp.concat
-                  ~sep:(Pp.text ", ")
-                  (Path.Local.Map.to_list_map file_list ~f:(fun file_name _payload ->
-                     Pp.textf "%S -> ?" (Path.Local.to_string file_name))))
-          ++ Pp.text ") => "
-          ++ pp { root; contents }));
     { root; contents }
   ;;
 
@@ -450,12 +374,6 @@ module Produced = struct
         (Filename.Map.to_seq files
          |> Seq.map ~f:(fun (file_name, payload) ->
            let file = Path.Local.relative path file_name in
-           (if debug_consume
-            then
-              let open Pp.O in
-              Pp.to_fmt
-                Format.std_formatter
-                (Pp.paragraphf "[FileSeq %S]" (Path.Local.to_string file) ++ Pp.space));
            file, payload))
         (Seq.concat
            (Filename.Map.to_seq subdirs
@@ -471,18 +389,12 @@ module Produced = struct
         (Filename.Map.to_seq subdirs
          |> Seq.map ~f:(fun (subdir_name, subdir_contents) ->
            let subdir = Path.Local.relative path subdir_name in
-           (if debug_consume
-            then
-              let open Pp.O in
-              Pp.to_fmt
-                Format.std_formatter
-                (Pp.paragraphf "[DirSeq %S] " (Path.Local.to_string subdir) ++ Pp.space));
            Seq.cons (subdir, subdir_contents) (aux subdir subdir_contents)))
     in
     aux Path.Local.root contents
   ;;
 
-  let find ({ root; contents } as r) file =
+  let find { root; contents } file =
     let open Option.O in
     let rec find_aux path { files; subdirs } = function
       | [] ->
@@ -497,25 +409,12 @@ module Produced = struct
     in
     let root = Path.Build.local root in
     let* path = Path.Local.descendant (Path.Build.local file) ~of_:root in
-    let result = find_aux root contents (Path.Local.explode path) in
-    (let open Pp.O in
-     if debug_search
-     then
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.paragraphf "In find (%S):" (Path.Build.to_string file)
-          ++ Pp.space
-          ++ pp r
-          ++ Pp.text " => "
-          ++ Pp.paragraph
-               (if Option.is_some result then "found something!" else "found nothing!")
-          ++ Pp.text "\n\n"));
-    result
+    find_aux root contents (Path.Local.explode path)
   ;;
 
   let mem t path = Option.is_some (find t path)
 
-  let find_dir ({ root; contents } as r) dir =
+  let find_dir { root; contents } dir =
     let open Option.O in
     let rec find_dir_aux path { subdirs; files = _ } = function
       | [] ->
@@ -535,19 +434,7 @@ module Produced = struct
     in
     let root = Path.Build.local root in
     let* path = Path.Local.descendant (Path.Build.local dir) ~of_:root in
-    let result = find_dir_aux root contents (Path.Local.explode path) in
-    (let open Pp.O in
-     if debug_search
-     then
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.paragraphf "In find_dir (%S): " (Path.Build.to_string dir)
-          ++ pp r
-          ++ Pp.text " => "
-          ++ Pp.paragraph
-               (if Option.is_some result then "found something!" else "found nothing!")
-          ++ Pp.text "\n\n"));
-    result
+    find_dir_aux root contents (Path.Local.explode path)
   ;;
 
   let mem_dir t path = Option.is_some (find_dir t path)
@@ -564,12 +451,6 @@ module Produced = struct
       let acc =
         Filename.Map.foldi files ~init:acc ~f:(fun file_name payload ->
           let file = Path.Local.relative path file_name in
-          (if debug_consume
-           then
-             let open Pp.O in
-             Pp.to_fmt
-               Format.std_formatter
-               (Pp.paragraphf "[Foldi %S] " (Path.Local.to_string file) ++ Pp.space));
           f file (Some payload))
       in
       Filename.Map.foldi subdirs ~init:acc ~f:(fun dir_name dir_contents acc ->
@@ -584,21 +465,9 @@ module Produced = struct
     let rec aux path { files; subdirs } =
       Filename.Map.iteri files ~f:(fun file_name payload ->
         let file = Path.Local.relative path file_name in
-        (if debug_consume
-         then
-           let open Pp.O in
-           Pp.to_fmt
-             Format.std_formatter
-             (Pp.paragraphf "[Iteri F %S]" (Path.Local.to_string file) ++ Pp.space));
         f file payload);
       Filename.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
         let dir = Path.Local.relative path dir_name in
-        (if debug_consume
-         then
-           let open Pp.O in
-           Pp.to_fmt
-             Format.std_formatter
-             (Pp.paragraphf "[Iteri D %S]" (Path.Local.to_string dir) ++ Pp.space));
         d dir;
         (* Depth-first traversal here. *)
         aux dir dir_contents)
@@ -620,12 +489,6 @@ module Produced = struct
           (fun () ->
             Filename_traversal.parallel_map files ~f:(fun file_name ->
               let file = Path.Local.relative path file_name in
-              (if debug_consume
-               then
-                 let open Pp.O in
-                 Pp.to_fmt
-                   Format.std_formatter
-                   (Pp.paragraphf "[Paramap F %S]" (Path.Local.to_string file) ++ Pp.space));
               f file))
           (fun () ->
             Filename_traversal.parallel_map subdirs ~f:(fun dir_name ->
@@ -644,10 +507,6 @@ module Produced = struct
       let files_and_subdirs =
         List.concat (ffiles :: Filename.Map.to_list_map subdirs ~f:all_digests)
       in
-      (* FIXME: both options below seem to work, but I'm pretty sure the uncommented version is wrong..? *)
-      (* match metadata with
-         | None -> files_and_subdirs
-         | Some meta -> meta :: files_and_subdirs *)
       files_and_subdirs
     in
     Digest.generic (all_digests "ignored" contents)
@@ -674,17 +533,6 @@ module Produced = struct
         Filename.Map.filter_mapi files ~f:(fun file _ ->
           f (Path.Build.relative path file))
       in
-      (if debug_consume
-       then
-         let open Pp.O in
-         Pp.to_fmt
-           Format.std_formatter
-           (Pp.paragraphf
-              "[Map/w/E %S from %d to %d files]"
-              (Path.Build.to_string path)
-              (Filename.Map.cardinal files)
-              (Filename.Map.cardinal files')
-            ++ Pp.space));
       let subdirs =
         Filename.Map.mapi subdirs ~f:(fun dir subdirs_contents ->
           let dir = Path.Build.relative path dir in

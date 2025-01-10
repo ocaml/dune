@@ -185,15 +185,6 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
   (* Here we know that the promotion directory exists but we may need to create
      additional subdirectories for [targets.dirs]. *)
   Targets.Produced.iter_dirs targets ~f:(fun dir ->
-    (if Targets.Produced.debug_out
-     then
-       let open Pp.O in
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.paragraphf
-            "[Promote: %S]"
-            (Path.Build.to_string (Path.Build.append_local targets.root dir))
-          ++ Pp.space));
     create_directory_if_needed ~dir:(Path.Build.append_local targets.root dir));
   let promote_until_clean =
     match promote.lifetime with

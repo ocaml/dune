@@ -141,15 +141,6 @@ struct
         ~all_errors:false
         produced_targets
     in
-    (if Targets.Produced.debug_out
-     then
-       let open Pp.O in
-       Pp.to_fmt
-         Format.std_formatter
-         (Pp.paragraphf
-            "[After Map/w/E %S]"
-            (if Result.is_ok map_res then "OK" else "Error")
-          ++ Pp.space));
     match map_res with
     | Error _ -> Fiber.return None
     | Ok targets ->

@@ -87,8 +87,6 @@ module Produced : sig
         'a dir_contents Filename.Map.t (* mapping directory name -> 'a dir_contents *)
     }
 
-  val pp_dir_conts : ?payload_printer:('a -> 'b Pp.t) -> 'a dir_contents -> 'b Pp.t
-
   type 'a t = private
     { root : Path.Build.t
     ; contents : 'a dir_contents
@@ -96,8 +94,6 @@ module Produced : sig
 
   val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
   val merge : 'a t -> 'a t -> 'a t
-  val pp : ?payload_printer:('a -> 'b Pp.t) -> 'a t -> 'b Pp.t
-  val debug_out : bool
 
   module Error : sig
     type t

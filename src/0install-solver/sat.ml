@@ -84,12 +84,6 @@ let log_debug p =
   Pp.to_fmt Format.std_formatter (Pp.vbox (Pp.hovbox (Pp.text "sat: " ++ p)) ++ Pp.cut)
 ;;
 
-let swap arr i j =
-  let first, second = arr.(i), arr.(j) in
-  arr.(i) <- second;
-  arr.(j) <- first
-;;
-
 module Make (User : USER) = struct
   type clause =
     < (* [lit] is now [True]. Add any new deductions.
@@ -399,7 +393,7 @@ module Make (User : USER) = struct
            - value[lits[0]] = Undecided | True
            - value[lits[1]] = False
              If it's the other way around, just swap them before we start. *)
-        if lit_equal lits.(0) (neg lit) then swap lits 0 1;
+        if lit_equal lits.(0) (neg lit) then Array.swap lits 0 1;
         if lit_value lits.(0) = True
         then (
           (* We're already satisfied. Do nothing. *)
@@ -420,7 +414,7 @@ module Make (User : USER) = struct
               | Undecided | True ->
                 (* If it's True then we've already done our job,
                    so this means we don't get notified unless we backtrack, which is fine. *)
-                swap lits 1 i;
+                Array.swap lits 1 i;
                 watch_lit (neg lits.(1)) (self :> clause);
                 true
               | False -> find_not_false (i + 1))
@@ -570,7 +564,7 @@ module Make (User : USER) = struct
             best_level := level;
             best_i := i)
         done;
-        swap lits 1 !best_i);
+        Array.swap lits 1 !best_i);
       (* Watch the first two literals in the clause (both must be
          undefined at this point). *)
       let watch i = watch_lit (neg lits.(i)) clause in

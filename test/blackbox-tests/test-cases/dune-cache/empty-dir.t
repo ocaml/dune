@@ -19,7 +19,7 @@ Check the cache restores empty directories
 
 Build an empty directory.
 
-  $ OCAMLRUNPARAM=b dune build output
+  $ dune build output
   $ find _build/default/output | sort
   _build/default/output
   _build/default/output/child

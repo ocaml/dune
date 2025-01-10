@@ -141,7 +141,7 @@ module Workspace_local = struct
       (match
          Targets.Produced.map_with_errors
            ~all_errors:false
-           ~f:(fun target -> Cached_digest.build_file ~allow_dirs:true target)
+           ~f:(Cached_digest.build_file ~allow_dirs:true)
            targets
        with
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets

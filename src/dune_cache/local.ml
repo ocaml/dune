@@ -85,9 +85,7 @@ module Artifacts = struct
     =
     let entries =
       Targets.Produced.foldi artifacts ~init:[] ~f:(fun target digest entries ->
-        let entry : Metadata_entry.t =
-          { file_path = Path.Local.to_string target; digest }
-        in
+        let entry : Metadata_entry.t = { path = Path.Local.to_string target; digest } in
         entry :: entries)
       |> List.rev
     in
@@ -302,10 +300,8 @@ module Artifacts = struct
   let restore ~mode ~rule_digest ~target_dir =
     Restore_result.bind (list ~rule_digest) ~f:(fun (entries : Metadata_entry.t list) ->
       let artifacts =
-        Path.Local.Map.of_list_map_exn
-          entries
-          ~f:(fun { Metadata_entry.file_path; digest } ->
-            Path.Local.of_string file_path, digest)
+        Path.Local.Map.of_list_map_exn entries ~f:(fun { Metadata_entry.path; digest } ->
+          Path.Local.of_string path, digest)
         |> Targets.Produced.of_files target_dir
       in
       try

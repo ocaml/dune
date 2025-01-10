@@ -63,18 +63,6 @@ module Validated = struct
     ; dirs : Filename.Set.t
     }
 
-  let pp { root; files; dirs } =
-    let open Pp.O in
-    Pp.hovbox
-      (Pp.textf "Validated: root=%S, files=[" (Path.Build.to_string root)
-       ++ Pp.concat
-            ~sep:(Pp.text "; ")
-            (Filename.Set.to_list_map files ~f:(Pp.textf "%S"))
-       ++ Pp.text "], dirs=["
-       ++ Pp.concat ~sep:(Pp.text "; ") (Filename.Set.to_list_map dirs ~f:(Pp.textf "%S"))
-       ++ Pp.char ']')
-  ;;
-
   let iter { root; files; dirs } ~file ~dir =
     Filename.Set.iter files ~f:(fun fn -> file (Path.Build.relative root fn));
     Filename.Set.iter dirs ~f:(fun dn -> dir (Path.Build.relative root dn))

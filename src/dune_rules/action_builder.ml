@@ -97,7 +97,7 @@ let progn ts =
 ;;
 
 let if_file_exists p ~then_ ~else_ =
-  let* exists = of_memo (Build_system.path_exists p) in
+  let* exists = of_memo (Build_system.file_exists p) in
   if exists then then_ else else_
 ;;
 

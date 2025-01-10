@@ -121,13 +121,10 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      Targets.Produced.iteri
-        targets_and_digests
-        ~f:(fun path digest ->
-          Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
-        ~d:(fun _path -> ())
+      Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
+        Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
     in
-    let map_res =
+    match
       Targets.Produced.map_with_errors
         ~f:(fun target ->
           (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
@@ -140,8 +137,7 @@ struct
           | None -> Error ())
         ~all_errors:false
         produced_targets
-    in
-    match map_res with
+    with
     | Error _ -> Fiber.return None
     | Ok targets ->
       let compute_digest ~executable path =

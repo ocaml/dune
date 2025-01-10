@@ -21,7 +21,7 @@ let dir_contents (dir : Path.t) =
 ;;
 
 let exists path kind =
-  Build_system.path_exists path
+  Build_system.file_exists path
   >>= function
   | false -> Memo.return false
   | true ->
@@ -45,7 +45,7 @@ let dir_exists dir =
   | `Inside _ ->
     (* CR-rgrinberg: unfortunately, [Build_system.file_exists] always returns
        false for directories. *)
-    (* CR-ElectreAAS: sike! [path_exists] now takes both into account! *)
+    (* CR-ElectreAAS: sike! [exists] now takes both into account! *)
     exists dir Unix.S_DIR
 ;;
 

@@ -1049,7 +1049,7 @@ include Exported
    when executing the very same [Action_builder.t] with [Action_builder.exec] --
    the results of both [Action_builder.static_deps] and [Action_builder.exec]
    are cached. *)
-let path_exists fn =
+let file_exists fn =
   Load_rules.load_dir ~dir:(Path.parent_exn fn)
   >>= function
   | Source { filenames } | External { filenames } ->
@@ -1059,6 +1059,7 @@ let path_exists fn =
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ path_map = build_dir (Path.build directory_target_ancestor) in
+    (* Note that in the case of directory targets, we also check if directories exist. *)
     Targets.Produced.mem_any path_map (Path.as_in_build_dir_exn fn)
 ;;
 

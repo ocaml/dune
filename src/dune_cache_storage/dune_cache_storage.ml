@@ -214,36 +214,30 @@ end
 
 module Artifacts = struct
   module Metadata_entry = struct
-    type kind =
-      | Directory
-      | File of Digest.t
-
     type t =
       { file_path : string
-      ; kind : kind
+          (* This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
+      ; digest : Digest.t option
       }
 
-    let kind_equal k1 k2 =
-      match k1, k2 with
-      | Directory, Directory -> true
-      | File d1, File d2 -> Digest.equal d1 d2
-      | Directory, File _ | File _, Directory -> false
+    let equal x y =
+      String.equal x.file_path y.file_path && Option.equal Digest.equal x.digest y.digest
     ;;
 
-    let equal x y = String.equal x.file_path y.file_path && kind_equal x.kind y.kind
-
-    let kind_to_sexp = function
-      | Directory -> Sexp.Atom "<dir>"
-      | File digest -> Sexp.Atom (Digest.to_string digest)
+    let digest_to_sexp = function
+      | None -> Sexp.Atom "<dir>"
+      | Some digest -> Sexp.Atom (Digest.to_string digest)
     ;;
 
-    let to_sexp { file_path; kind } = Sexp.List [ Atom file_path; kind_to_sexp kind ]
+    let to_sexp { file_path; digest } =
+      Sexp.List [ Atom file_path; digest_to_sexp digest ]
+    ;;
 
-    let kind_of_sexp = function
-      | "<dir>" -> Ok Directory
+    let digest_of_sexp = function
+      | "<dir>" -> Ok None
       | digest ->
         (match Digest.from_hex digest with
-         | Some digest -> Ok (File digest)
+         | Some digest -> Ok (Some digest)
          | None ->
            Error
              (Failure
@@ -251,9 +245,9 @@ module Artifacts = struct
     ;;
 
     let of_sexp = function
-      | Sexp.List [ Atom file_path; Atom kind ] ->
-        (match kind_of_sexp kind with
-         | Ok kind -> Ok { file_path; kind }
+      | Sexp.List [ Atom file_path; Atom digest ] ->
+        (match digest_of_sexp digest with
+         | Ok digest -> Ok { file_path; digest }
          | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata entry")
     ;;

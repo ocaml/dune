@@ -35,11 +35,11 @@ module Target = struct
       Path.Build.chmod path ~mode:(Path.Permissions.remove Path.Permissions.write st_perm);
       let executable = Path.Permissions.test Path.Permissions.execute st_perm in
       Some { executable }
-      (* FIXME: is it wise to also "create" dirs here? *)
     | { Unix.st_kind = Unix.S_DIR; st_perm; _ } ->
-      let executable = Path.Permissions.test Path.Permissions.execute st_perm in
-      assert executable;
-      Some { executable }
+      (* Adding "executable" permissions to directories mean we can traverse them. *)
+      Path.Build.chmod path ~mode:(Path.Permissions.add Path.Permissions.execute st_perm);
+      (* the value of [executable] here is ignored, but [Some] is meaningful. *)
+      Some { executable = true }
     | (exception Unix.Unix_error _) | _ -> None
   ;;
 end
@@ -84,12 +84,9 @@ module Artifacts = struct
     (artifacts : Digest.t Targets.Produced.t)
     =
     let entries =
-      Targets.Produced.foldi artifacts ~init:[] ~f:(fun target file_digest entries ->
+      Targets.Produced.foldi artifacts ~init:[] ~f:(fun target digest entries ->
         let entry : Metadata_entry.t =
-          match file_digest with
-          | Some file_digest ->
-            { file_path = Path.Local.to_string target; kind = File file_digest }
-          | None -> { file_path = Path.Local.to_string target; kind = Directory }
+          { file_path = Path.Local.to_string target; digest }
         in
         entry :: entries)
       |> List.rev
@@ -130,11 +127,9 @@ module Artifacts = struct
     : Digest.t Targets.Produced.t Or_exn.t Fiber.t
     =
     let open Fiber.O in
-    let fff path { Target.executable } =
-      let file = Path.append_local temp_dir path in
-      compute_digest ~executable file
-    in
-    Fiber.collect_errors (fun () -> Targets.Produced.parallel_map targets ~f:fff)
+    Fiber.collect_errors (fun () ->
+      Targets.Produced.parallel_map targets ~f:(fun path { Target.executable } ->
+        compute_digest ~executable (Path.append_local temp_dir path)))
     >>| Result.map_error ~f:(function
       | exn :: _ -> exn.Exn_with_backtrace.exn
       | [] -> assert false)
@@ -219,22 +214,15 @@ module Artifacts = struct
     : Store_artifacts_result.t Fiber.t
     =
     Dune_cache_storage.with_temp_dir ~suffix:"artifacts" (function
-      | Error exn ->
-        (* Format.printf "In %s err1, %s@." __FUNCTION__ __LOC__; *)
-        Fiber.return (Store_artifacts_result.Error exn)
+      | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
       | Ok temp_dir ->
         (match store_targets_to ~temp_dir ~targets ~mode with
-         | Error exn ->
-           (* Format.printf "In %s err2, %s@." __FUNCTION__ __LOC__; *)
-           Fiber.return (Store_artifacts_result.Error exn)
+         | Error exn -> Fiber.return (Store_artifacts_result.Error exn)
          | Ok () ->
            compute_digests_in ~temp_dir ~targets ~compute_digest
            >>| (function
-            | Error exn ->
-              (* Format.printf "In %s err3, %s@." __FUNCTION__ __LOC__; *)
-              Store_artifacts_result.Error exn
+            | Error exn -> Store_artifacts_result.Error exn
             | Ok artifacts ->
-              (* Format.printf "In %s ok!, %s@." __FUNCTION__ __LOC__; *)
               let result = store_to_cache_from ~temp_dir ~mode artifacts in
               Store_artifacts_result.of_store_result ~artifacts result)))
   ;;
@@ -316,11 +304,8 @@ module Artifacts = struct
       let artifacts =
         Path.Local.Map.of_list_map_exn
           entries
-          ~f:(fun { Metadata_entry.file_path; kind } ->
-            ( Path.Local.of_string file_path
-            , match kind with
-              | Directory -> None
-              | File digest -> Some digest ))
+          ~f:(fun { Metadata_entry.file_path; digest } ->
+            Path.Local.of_string file_path, digest)
         |> Targets.Produced.of_files target_dir
       in
       try

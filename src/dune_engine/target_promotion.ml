@@ -208,7 +208,7 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
             ~promote_until_clean)
   in
   (* There can be some files or directories left over from earlier builds, so we
-     need to remove them from [targets.dirs]. *)
+     need to remove them from [targets]. *)
   let remove_stale_files_and_subdirectories ~dir =
     (* CR-someday rleshchinskiy: This can probably be made more efficient by relocating
        root once. *)
@@ -233,7 +233,6 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
           then Path.rm_rf (Path.relative dst_dir dir_name)
         | name, _kind -> Path.unlink_no_err (Path.relative dst_dir name))
   in
-  Fiber.sequential_iter_seq
-    (Targets.Produced.all_dirs_seq targets)
-    ~f:(fun (dir, _contents) -> remove_stale_files_and_subdirectories ~dir)
+  Fiber.sequential_iter_seq (Targets.Produced.all_dirs_seq targets) ~f:(fun dir ->
+    remove_stale_files_and_subdirectories ~dir)
 ;;

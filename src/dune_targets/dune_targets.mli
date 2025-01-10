@@ -113,8 +113,9 @@ module Produced : sig
       The resulting [Path.Local.t]s are relative to [t.root]. *)
   val all_files_seq : 'a t -> (Path.Local.t * 'a) Seq.t
 
-  (** Union of all dirs and subdirs in [t] as [Seq.t], in depth-first order. *)
-  val all_dirs_seq : 'a t -> (Path.Local.t * 'a dir_contents) Seq.t
+  (** Passes in depth-first order on all the (sub)directories in the targets.
+      The resulting [Path.Local.t]s are relative to [t.root]. *)
+  val all_dirs_seq : 'a t -> Path.Local.t Seq.t
 
   (** Check if a file is present in the targets. *)
   val mem : 'a t -> Path.Build.t -> bool
@@ -122,19 +123,18 @@ module Produced : sig
   (* Check if a directory is present in the targets. *)
   val mem_dir : 'a t -> Path.Build.t -> bool
 
+  (* Check if a path is present (either as a file or as a directory) in the targets. *)
+  val mem_any : 'a t -> Path.Build.t -> bool
+
+  (* Find the value associated with a file, or all the files of a subdirectory, if any. *)
+  val find_any : 'a t -> Path.Build.t -> ('a, 'a Filename.Map.t) either option
+
   (** Find the value associated with the file, if any. *)
   val find : 'a t -> Path.Build.t -> 'a option
 
   (** Find all files in a directory target or a subdirectory. *)
   val find_dir : 'a t -> Path.Build.t -> 'a Filename.Map.t option
 
-  (* type 'a target_kind =
-     | File_target of 'a
-     | Dir_target of 'a option * 'a t
-
-     val target_kind_equal : Digest.t target_kind -> Digest.t target_kind -> bool *)
-
-  (* val find_any : 'a t -> Path.Build.t -> 'a target_kind option *)
   val exists : 'a t -> f:('a -> bool) -> bool
   val foldi : 'a t -> init:'acc -> f:(Path.Local.t -> 'a option -> 'acc -> 'acc) -> 'acc
   val iter_files : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit

@@ -67,14 +67,10 @@ end
 (** An [Artifacts] entry corresponds to the targets produced by an action. *)
 module Artifacts : sig
   module Metadata_entry : sig
-    (** We need to be able to recreate them just from the metadata so we need to know the type *)
-    type kind =
-      | Directory
-      | File of Digest.t
-
     type t =
       { file_path : string (** Can have more than one component for directory targets *)
-      ; kind : kind
+      ; digest : Digest.t option
+      (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
   end
 

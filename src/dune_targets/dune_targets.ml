@@ -389,55 +389,53 @@ module Produced = struct
         (Filename.Map.to_seq subdirs
          |> Seq.map ~f:(fun (subdir_name, subdir_contents) ->
            let subdir = Path.Local.relative path subdir_name in
-           Seq.cons (subdir, subdir_contents) (aux subdir subdir_contents)))
+           Seq.cons subdir (aux subdir subdir_contents)))
     in
     aux Path.Local.root contents
   ;;
 
-  let find { root; contents } file =
+  let find_any { root; contents } name =
     let open Option.O in
-    let rec find_aux path { files; subdirs } = function
+    let rec aux path { files; subdirs } = function
       | [] ->
         Code_error.raise
           "I've been hoisted by my own petard! (path.explode)"
-          [ "file", Path.Build.to_dyn file ]
-      | [ final ] -> Filename.Map.find files final
-      | parent :: rest ->
-        let path = Path.Local.relative path parent in
-        let* subdir = Filename.Map.find subdirs parent in
-        find_aux path subdir rest
-    in
-    let root = Path.Build.local root in
-    let* path = Path.Local.descendant (Path.Build.local file) ~of_:root in
-    find_aux root contents (Path.Local.explode path)
-  ;;
-
-  let mem t path = Option.is_some (find t path)
-
-  let find_dir { root; contents } dir =
-    let open Option.O in
-    let rec find_dir_aux path { subdirs; files = _ } = function
-      | [] ->
-        Code_error.raise
-          "I've been hoisted by my own petard! (path.explode)"
-          [ "dir", Path.Build.to_dyn dir ]
+          [ "name", Path.Build.to_dyn name ]
       | [ final ] ->
-        let+ subdir =
-          Filename.Map.find subdirs final
-          (* (Path.Local.relative path final) *)
-        in
-        subdir.files
+        (* There's probably a nicer way to put this... *)
+        (match Filename.Map.find files final with
+         | Some payload -> Some (Left payload)
+         | None ->
+           (match Filename.Map.find subdirs final with
+            | Some contents -> Some (Right contents.files)
+            | None -> None))
       | parent :: rest ->
         let path = Path.Local.relative path parent in
         let* subdir = Filename.Map.find subdirs parent in
-        find_dir_aux path subdir rest
+        aux path subdir rest
     in
     let root = Path.Build.local root in
-    let* path = Path.Local.descendant (Path.Build.local dir) ~of_:root in
-    find_dir_aux root contents (Path.Local.explode path)
+    let* path = Path.Local.descendant (Path.Build.local name) ~of_:root in
+    aux root contents (Path.Local.explode path)
   ;;
 
-  let mem_dir t path = Option.is_some (find_dir t path)
+  let mem_any t name = Option.is_some (find_any t name)
+
+  let find t name =
+    match find_any t name with
+    | Some (Left found) -> Some found
+    | Some (Right _) | None -> None
+  ;;
+
+  let mem t name = Option.is_some (find t name)
+
+  let find_dir t name =
+    match find_any t name with
+    | Some (Right found) -> Some found
+    | Some (Left _) | None -> None
+  ;;
+
+  let mem_dir t name = Option.is_some (find_dir t name)
 
   let exists { root = _; contents } ~f =
     let rec aux { files; subdirs } =
@@ -469,7 +467,6 @@ module Produced = struct
       Filename.Map.iteri subdirs ~f:(fun dir_name dir_contents ->
         let dir = Path.Local.relative path dir_name in
         d dir;
-        (* Depth-first traversal here. *)
         aux dir dir_contents)
     in
     aux Path.Local.root contents
@@ -514,6 +511,8 @@ module Produced = struct
 
   exception Short_circuit
 
+  (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
+     is used for a variety of things, not all "map-like". *)
   let map_with_errors
     ?(d : (Path.Build.t -> (unit, 'e) result) option)
     ~(f : Path.Build.t -> ('b, 'e) result)

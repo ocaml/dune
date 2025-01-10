@@ -50,10 +50,10 @@ let trim_broken_metadata_entries ~trimmed_so_far =
                  false
                | Metadata.Artifacts { entries; _ } ->
                  List.exists entries ~f:(function
-                   | { Artifacts.Metadata_entry.kind = File file_digest; _ } ->
+                   | { Artifacts.Metadata_entry.digest = Some file_digest; _ } ->
                      let reference = file_path ~file_digest in
                      not (Path.exists reference)
-                   | { kind = Directory; _ } -> false))
+                   | { digest = None; _ } -> false))
           in
           match should_be_removed with
           | true ->

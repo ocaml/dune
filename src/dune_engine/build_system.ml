@@ -1059,8 +1059,7 @@ let path_exists fn =
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ path_map = build_dir (Path.build directory_target_ancestor) in
-    let fn_path = Path.as_in_build_dir_exn fn in
-    Targets.Produced.mem_dir path_map fn_path || Targets.Produced.mem path_map fn_path
+    Targets.Produced.mem_any path_map (Path.as_in_build_dir_exn fn)
 ;;
 
 let files_of ~dir =

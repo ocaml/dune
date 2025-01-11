@@ -61,6 +61,8 @@ module Var_value = struct
     | Undecided -> "undecided"
   ;;
 
+  let to_dyn t = Dyn.variant (to_string t) []
+
   let invert = function
     | True -> False
     | False -> True
@@ -768,8 +770,9 @@ module Make (User : USER) = struct
         let cause =
           match reason with
           | Some (Clause c) -> c
-          | Some (External msg) -> failwith msg (* Can't happen *)
-          | None -> failwith "No reason!"
+          | Some (External msg) ->
+            Code_error.raise "external" [ "msg", Dyn.string msg ] (* Can't happen *)
+          | None -> Code_error.raise "No reason!" []
         in
         (* Can't happen *)
         let p_reason = cause#calc_reason_for p in
@@ -856,12 +859,11 @@ module Make (User : USER) = struct
             let old = lit_value lit in
             if old <> Undecided
             then
-              failwith
-                (Format.asprintf
-                   "Decider chose already-decided variable: %a was %s"
-                   Pp.to_fmt
-                   (name_lit lit)
-                   (Var_value.to_string old));
+              Code_error.raise
+                "Decider chose already-decided variable"
+                [ "lit", Dyn.string (Format.asprintf "%a@." Pp.to_fmt (name_lit lit))
+                ; "was", Var_value.to_dyn old
+                ];
             problem.trail_lim <- List.length problem.trail :: problem.trail_lim;
             let r = enqueue problem lit (External "considering") in
             assert r
@@ -893,7 +895,7 @@ module Make (User : USER) = struct
                 let e = enqueue problem (List.hd learnt) (Clause c) in
                 assert e)
         done;
-        failwith "not reached"
+        Code_error.raise "not reached" []
       with
       | SolveDone x -> x)
   ;;

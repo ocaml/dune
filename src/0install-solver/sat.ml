@@ -462,7 +462,7 @@ module Make (User : USER) = struct
                   and two versions already selected. *)
                if debug
                then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
-               raise Conflict
+               raise_notrace Conflict
              | Undecided ->
                (* Since one of our lits is already true, all unknown ones
                   can be set to False. *)
@@ -471,7 +471,7 @@ module Make (User : USER) = struct
                  if debug
                  then
                    log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
-                 raise
+                 raise_notrace
                    Conflict (* Can't happen, since we already checked we're Undecided *))
              | _ -> ());
            true
@@ -504,7 +504,7 @@ module Make (User : USER) = struct
             (* No point processing the rest of the queue as
                we'll have to backtrack now. *)
             Queue.clear problem.propQ;
-            raise (ConflictingClause clause))
+            raise_notrace (ConflictingClause clause))
         done
       done;
       None
@@ -812,7 +812,7 @@ module Make (User : USER) = struct
               | None ->
                 (* Everything is assigned without conflicts *)
                 (* if debug then log_debug "SUCCESS!"; *)
-                raise
+                raise_notrace
                   (SolveDone (Some (fun var -> Var_value.assignment_exn (lit_value var))))
             in
             let lit =
@@ -846,7 +846,7 @@ module Make (User : USER) = struct
             if get_decision_level problem = 0
             then (
               if debug then log_debug (Pp.text "FAIL: conflict found at top level");
-              raise (SolveDone None))
+              raise_notrace (SolveDone None))
             else (
               (* Figure out the root cause of this failure. *)
               let learnt, backtrack_level = analyse problem conflicting_clause in

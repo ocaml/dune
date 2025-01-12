@@ -102,7 +102,7 @@ module Make (User : USER) = struct
     | Union of t * lit array
     | At_most_one of at_most_one_clause
 
-  and at_most_one_clause = lit option ref * t * lit list
+  and at_most_one_clause = lit option ref * t * lit array
 
   (** The reason why a literal is set. *)
   and reason =
@@ -265,7 +265,8 @@ module Make (User : USER) = struct
       Pp.text "<some: "
       ++ Pp.concat_map ~sep:(Pp.text ", ") ~f:name_lit (Array.to_list lits)
       ++ Pp.char '>'
-    | At_most_one (_, _, lits) -> Pp.text "<at most one: " ++ pp_lits lits ++ Pp.char '>'
+    | At_most_one (_, _, lits) ->
+      Pp.text "<at most one: " ++ pp_lits (Array.to_list lits) ++ Pp.char '>'
   ;;
 
   let pp_reason = function
@@ -370,15 +371,19 @@ module Make (User : USER) = struct
       | At_most_one (_, _, lits) ->
         (* If we caused a conflict, it's because two of our literals became true. *)
         (* Find two True literals *)
-        let rec find_two found = function
-          | [] -> assert false (* Don't know why! *)
-          | x :: xs when lit_value x <> True -> find_two found xs
-          | x :: xs ->
-            (match found with
-             | None -> find_two (Some x) xs
-             | Some first -> [ first; x ])
+        let rec find_two found lits i =
+          if Int.equal i (Array.length lits)
+          then assert false (* Don't know why! *)
+          else (
+            let x = lits.(i) in
+            if lit_value x <> True
+            then find_two found lits (i + 1)
+            else (
+              match found with
+              | None -> find_two (Some x) lits (i + 1)
+              | Some first -> [ first; x ]))
         in
-        find_two None lits
+        find_two None lits 0
     ;;
 
     (* Which literals caused [lit] to have its current value?
@@ -399,7 +404,9 @@ module Make (User : USER) = struct
         get_cause 0
       | At_most_one (_, _, lits) ->
         (* Find the True literal. Any true literal other than [lit] would do. *)
-        [ List.find_exn lits ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True) ]
+        [ Array.find_opt lits ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
+          |> Option.value_exn
+        ]
     ;;
 
     (* [lit] is now [True]. Add any new deductions. @return false if there is a
@@ -477,7 +484,7 @@ module Make (User : USER) = struct
         var_info.undo <- Undo_at_most_one current :: var_info.undo;
         (try
            (* We set all other literals to False. *)
-           List.iter lits ~f:(fun l ->
+           Array.iter lits ~f:(fun l ->
              match lit_value l with
              | True when not (lit_equal l lit) ->
                (* Due to queuing, we might get called with current = None
@@ -536,7 +543,7 @@ module Make (User : USER) = struct
 
   let get_best_undecided (_, _, lits) =
     (* if debug then log_debug "best_undecided: %s" (string_of_lits lits); *)
-    List.find lits ~f:(fun l -> lit_value l = Undecided)
+    Array.find_opt lits ~f:(fun l -> lit_value l = Undecided)
   ;;
 
   let get_selected (current, _, _) = !current
@@ -632,9 +639,9 @@ module Make (User : USER) = struct
     (* Ignore any literals already known to be False.
        If any are True then they're enqueued and we'll process them
        soon. *)
-    let lits = List.filter lits ~f:(fun l -> lit_value l <> False) in
+    let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
     let clause = ref None, problem, lits in
-    List.iter lits ~f:(fun l -> watch_lit l (At_most_one clause));
+    Array.iter lits ~f:(fun l -> watch_lit l (At_most_one clause));
     clause
   ;;
 

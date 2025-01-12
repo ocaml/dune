@@ -134,7 +134,12 @@ module Make (User : USER) = struct
 
         let compare (s1, v1) (s2, v2) =
           match VarID.compare v1.id v2.id with
-          | Eq -> Poly.compare s1 s2
+          | Eq ->
+            (match s1, s2 with
+             | Pos, Pos -> Eq
+             | Pos, _ -> Gt
+             | _, Pos -> Lt
+             | Neg, Neg -> Eq)
           | x -> x
         ;;
       end)

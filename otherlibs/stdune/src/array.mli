@@ -4,6 +4,7 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val exists : 'a t -> f:('a -> bool) -> bool
 val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
+val swap : 'a t -> int -> int -> unit
 
 module Immutable : sig
   type 'a t

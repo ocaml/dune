@@ -1,3 +1,11 @@
+module Array = Stdlib.Array
+
+let swap arr i j =
+  let first, second = arr.(i), arr.(j) in
+  arr.(i) <- second;
+  arr.(j) <- first
+;;
+
 module T = struct
   include ArrayLabels
 

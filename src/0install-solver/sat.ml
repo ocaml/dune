@@ -104,7 +104,7 @@ module Make (User : USER) = struct
          @return a list of literals which caused the problem by all being True. *)
     calc_reason_for : lit -> lit list
     ; (* For debugging *)
-    pp : Stdune.User_message.Style.t Pp.t >
+    pp : User_message.Style.t Pp.t >
 
   (** The reason why a literal is set. *)
   and reason =
@@ -629,7 +629,7 @@ module Make (User : USER) = struct
     (* Ensure no duplicates *)
     if List.length (remove_duplicates lits) <> List.length lits
     then
-      Stdune.User_error.raise
+      User_error.raise
         [ Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
         ];
     (* Ignore any literals already known to be False.

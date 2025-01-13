@@ -4,7 +4,7 @@
 
 (** Explaining why a solve failed or gave an unexpected answer. *)
 
-module List = Stdune.List
+open Stdune
 
 module Make (Results : S.SOLVER_RESULT) = struct
   open Fiber.O
@@ -15,7 +15,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
   let format_role = Model.Role.pp
 
   let format_restrictions r =
-    String.concat ", " (List.map ~f:Model.string_of_restriction r)
+    String.concat ~sep:", " (List.map ~f:Model.string_of_restriction r)
   ;;
 
   module Note = struct
@@ -56,7 +56,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
       | `DepFailsRestriction of Model.dependency * Model.restriction
       | `ClassConflict of Model.Role.t * Model.conflict_class
       | `ConflictsRole of Model.Role.t
-      | `DiagnosticsFailure of Stdune.User_message.Style.t Pp.t
+      | `DiagnosticsFailure of User_message.Style.t Pp.t
       ]
     (* Why a particular implementation was rejected. This could be because the model rejected it,
        or because it conflicts with something else in the example (partial) solution. *)
@@ -65,7 +65,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
     type t =
       { role : Model.Role.t
-      ; diagnostics : Stdune.User_message.Style.t Pp.t Lazy.t
+      ; diagnostics : User_message.Style.t Pp.t Lazy.t
       ; selected_impl : Model.impl option
       ; (* orig_good is all the implementations passed to the SAT solver (these are the
            ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
@@ -120,8 +120,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
         match get_problem impl with
         | None -> t.good <- impl :: t.good
         | Some problem ->
-          !n
-          |> Option.iter (fun info ->
+          Option.iter !n ~f:(fun info ->
             if affected_selection t impl
             then (
               note t info;
@@ -212,9 +211,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     ;;
 
     let show_rejections ~verbose rejected =
-      let by_version (a, _) (b, _) =
-        Model.compare_version b a |> Stdune.Ordering.of_int
-      in
+      let by_version (a, _) (b, _) = Model.compare_version b a |> Ordering.of_int in
       let rejected = List.sort ~compare:by_version rejected in
       let rec aux i = function
         | [] -> Pp.nop
@@ -284,7 +281,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
     match RoleMap.find_opt role report with
     | Some c -> c
     | None ->
-      Stdune.User_error.raise
+      User_error.raise
         [ Pp.text "Can't find component " ++ format_role role ++ Pp.char '!' ]
   ;;
 
@@ -350,14 +347,15 @@ module Make (Results : S.SOLVER_RESULT) = struct
     report
     |> RoleMap.iter (fun role component ->
       Model.user_restrictions role
-      |> Option.iter (fun restriction ->
+      |> Option.iter ~f:(fun restriction ->
         Component.apply_user_restriction component restriction))
   ;;
 
   module Classes = Map.Make (struct
       type t = Model.conflict_class
 
-      let compare = compare
+      let to_dyn (x : t) = Dyn.string (x :> string)
+      let compare (x : t) (y : t) = String.compare (x :> string) (y :> string)
     end)
 
   (** For each selected implementation with a conflict class, reject all candidates
@@ -370,7 +368,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
           | None -> acc
           | Some impl ->
             Model.conflict_class impl
-            |> List.fold_left ~f:(fun acc x -> Classes.add x role acc) ~init:acc)
+            |> List.fold_left ~init:acc ~f:(fun acc x -> Classes.set acc x role))
         report
         Classes.empty
     in
@@ -382,7 +380,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
        let rec aux = function
          | [] -> None
          | cl :: cls ->
-           (match Classes.find_opt cl classes with
+           (match Classes.find classes cl with
             | Some other_role when Model.Role.compare role other_role <> 0 ->
               Some (`ClassConflict (other_role, cl))
             | _ -> aux cls)

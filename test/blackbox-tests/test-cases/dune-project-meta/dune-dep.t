@@ -191,7 +191,6 @@ the doc dependencies:
     ]
     ["dune" "install" "-p" name "--create-install-files" name]
   ]
-  x-maintenance-intent: ["(latest)"]
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -216,7 +215,6 @@ the doc dependencies:
       "@doc" {with-doc}
     ]
   ]
-  x-maintenance-intent: ["(latest)"]
 
   $ cat > dune-project <<EOF
   > (lang dune 3.0)
@@ -242,4 +240,3 @@ the doc dependencies:
       "@doc" {with-doc}
     ]
   ]
-  x-maintenance-intent: ["(latest)"]

@@ -30,4 +30,3 @@ Reproduction case for #2927
       "@doc" {with-doc}
     ]
   ]
-  x-maintenance-intent: ["(latest)"]

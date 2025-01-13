@@ -29,4 +29,3 @@ Generation of opam files with lang dune >= 1.11
       "@doc" {with-doc}
     ]
   ]
-  x-maintenance-intent: ["(latest)"]

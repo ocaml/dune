@@ -177,7 +177,6 @@ Install as opam does
       "@doc" {with-doc}
     ]
   ]
-  x-maintenance-intent: ["(latest)"]
 
   $ (cd a; "dune" "build" "-p" a "@install")
 

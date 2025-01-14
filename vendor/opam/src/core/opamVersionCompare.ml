@@ -20,12 +20,9 @@ let is_digit = function
 (* [skip_while_from i f w m] yields the index of the leftmost character
  * in the string [s], starting from [i], and ending at [m], that does
  * not satisfy the predicate [f], or [length w] if no such index exists.  *)
-let skip_while_from i f w m =
-  let rec loop i =
-    if i = m then i
-    else if f w.[i] then loop (i + 1) else i
-  in loop i
-;;
+let rec skip_while_from i f w m =
+  if i = m then i
+  else if f w.[i] then skip_while_from (i + 1) f w m else i
 
 (* splits a version into (epoch,rest), without the separating ':'. The
  * epoch is delimited by the leftmost occurrence of ':' in x, and is ""

@@ -249,8 +249,10 @@ module Make (User : USER) = struct
 
   let add_variable problem obj : lit =
     (* if debug then log_debug "add_variable('%s')" obj; *)
-    let i = VarID.issue problem.id_maker in
-    let var = make_var i obj in
+    let var =
+      let i = VarID.issue problem.id_maker in
+      make_var i obj
+    in
     problem.vars <- var :: problem.vars;
     Pos, var
   ;;
@@ -267,8 +269,10 @@ module Make (User : USER) = struct
          ++ Pp.text " ("
          ++ pp_reason reason
          ++ Pp.char ')');
-    let old_value = lit_value lit in
-    match old_value with
+    match
+      let old_value = lit_value lit in
+      old_value
+    with
     | False -> false (* Conflict *)
     | True -> true (* Already set (shouldn't happen) *)
     | Undecided ->
@@ -531,7 +535,6 @@ module Make (User : USER) = struct
       AddedFact (enqueue problem lit reason)
     | lits ->
       let lits = Array.of_list lits in
-      let clause = Union (problem, lits) in
       if learnt
       then (
         (* lits[0] is Undecided because we just backtracked.
@@ -547,6 +550,7 @@ module Make (User : USER) = struct
             best_i := i)
         done;
         Array.swap lits 1 !best_i);
+      let clause = Union (problem, lits) in
       (* Watch the first two literals in the clause (both must be
          undefined at this point). *)
       let watch i = watch_lit (neg lits.(i)) clause in
@@ -729,11 +733,11 @@ module Make (User : USER) = struct
         let var = var_of_lit lit in
         let reason = var.reason in
         undo_one problem;
-        if not (VarSet.mem !seen var.id)
-        then
+        if VarSet.mem !seen var.id
+        then reason, lit
+        else
           (* if debug then log_debug "(irrelevant: %s)" (name_lit lit); *)
           next_interesting ()
-        else reason, lit
       in
       let reason, p = next_interesting () in
       (* [reason] is the reason why [p] is True (i.e. it enqueued it). *)

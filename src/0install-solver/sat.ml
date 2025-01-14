@@ -98,6 +98,10 @@ module Make (User : USER) = struct
     | Clause of clause (* the clause that caused this literal to be true *)
     | External of string (* set externally (input fact or decider choice) *)
 
+  and undo =
+    | Undo_at_most_one of lit option ref
+    | Decided of t
+
   and var =
     { id : VarID.t (* A unique ID, used to test identity *)
     ; mutable value : Var_value.t (* True/False/Undecided *)
@@ -105,7 +109,7 @@ module Make (User : USER) = struct
         (* The constraint that implied our value, if True or False *)
     ; mutable level : int
         (* The decision level at which we got a value (when not Undecided) *)
-    ; mutable undo : (lit -> unit) list
+    ; mutable undo : undo list
         (* Functions to call if we become unbound (by backtracking) *)
     ; watch_queue : clause Queue.t (* Clauses to notify when var becomes True *)
     ; neg_watch_queue : clause Queue.t (* Clauses to notify when var becomes False *)
@@ -217,6 +221,20 @@ module Make (User : USER) = struct
     | Neg -> Pp.text "not(" ++ User.pp var.obj ++ Pp.char ')'
   ;;
 
+  let undo undo lit =
+    match undo with
+    | Decided problem -> problem.set_to_false <- false
+    | Undo_at_most_one current ->
+      if debug
+      then
+        log_debug
+          (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
+      (match !current with
+       | Some l -> assert (lit_equal lit l)
+       | None -> assert false);
+      current := None
+  ;;
+
   let pp_lits lits = Pp.concat_map ~sep:(Pp.text ", ") lits ~f:name_lit
 
   let lit_value (sign, var) =
@@ -299,7 +317,7 @@ module Make (User : USER) = struct
       while var_info.undo <> [] do
         let cb = List.hd var_info.undo in
         var_info.undo <- List.tl var_info.undo;
-        cb lit
+        undo cb lit
       done
   ;;
 
@@ -444,19 +462,9 @@ module Make (User : USER) = struct
            detect below). *)
         assert (!current = None);
         current := Some lit;
-        (* If we later backtrack, unset current *)
-        let undo lit =
-          if debug
-          then
-            log_debug
-              (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
-          (match !current with
-           | Some l -> assert (lit_equal lit l)
-           | None -> assert false);
-          current := None
-        in
         let var_info = var_of_lit lit in
-        var_info.undo <- undo :: var_info.undo;
+        (* If we later backtrack, unset current *)
+        var_info.undo <- Undo_at_most_one current :: var_info.undo;
         (try
            (* We set all other literals to False. *)
            List.iter lits ~f:(fun l ->
@@ -829,8 +837,7 @@ module Make (User : USER) = struct
                 | None ->
                   (* Switch to set_to_false mode (until we backtrack). *)
                   problem.set_to_false <- true;
-                  let undo _ = problem.set_to_false <- false in
-                  undecided.undo <- undo :: undecided.undo;
+                  undecided.undo <- Decided problem :: undecided.undo;
                   (* Printf.printf "%s -> false\n" (name_lit undecided); *)
                   Neg, undecided)
             in

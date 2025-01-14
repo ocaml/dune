@@ -28,26 +28,24 @@ let rec skip_while_from i f w m =
  * epoch is delimited by the leftmost occurrence of ':' in x, and is ""
  * in case there is no ':' in x.  *)
 let extract_epoch x =
-  try
-    let ci = String.index x ':' in
-    let epoch = String.sub x 0 ci
-    and rest = String.sub x (ci + 1) (String.length x - ci - 1)
-    in (epoch,rest)
-  with
-    | Not_found -> ("",x)
+  match String.index_opt x ':' with
+  | None -> ("", x)
+  | Some ci ->
+      let epoch = String.sub x 0 ci
+      and rest = String.sub x (ci + 1) (String.length x - ci - 1)
+      in (epoch,rest)
 ;;
 
 (* splits a version into (prefix,revision). The revision starts on the
  * right-most occurrence of '-', or is empty in case the version does
  * not contain '-'.  *)
 let extract_revision x =
-  try
-    let di = String.rindex x '-' in
+  match String.rindex_opt x '-' with
+  | None -> (x, "")
+  | Some di ->
     let before = String.sub x 0 di in
     let after = String.sub x (di+1) (String.length x - di -1) in
     (before,after)
-  with
-    | Not_found -> (x,"")
 ;;
 
 (* character comparison uses a modified character ordering: '~' first,

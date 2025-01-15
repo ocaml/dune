@@ -46,18 +46,11 @@
             configureFlags = [ "-native-compiler" "yes" ];
           });
         })
+        self.overlays.default
       ];
-      dune-static-overlay = self: super: {
-        ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
-          dune_3 = osuper.dune_3.overrideAttrs (a: {
-            src = ./.;
-            preBuild = "ocaml boot/bootstrap.ml --static";
-          });
-        });
-      };
       pkgs-static = nixpkgs.legacyPackages.${system}.appendOverlays [
         ocaml-overlays.overlays.default
-        dune-static-overlay
+        self.overlays.dune-static
       ];
 
       add-experimental-configure-flags = pkg: pkg.overrideAttrs {
@@ -93,22 +86,9 @@
       formatter = pkgs.nixpkgs-fmt;
 
       packages = {
-        default = with pkgs; stdenv.mkDerivation {
-          pname = "dune";
-          version = "n/a";
-          src = ./.;
-          nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
-          buildInputs = lib.optionals stdenv.isDarwin [
-            darwin.apple_sdk.frameworks.CoreServices
-          ];
-          strictDeps = true;
-          buildFlags = [ "release" ];
-          dontAddPrefix = true;
-          dontAddStaticConfigureFlags = true;
-          configurePlatforms = [ ];
-          installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
-        };
-        dune = self.packages.${system}.default;
+        default = self.packages.${system}.dune;
+
+        dune = pkgs.dune;
         dune-static = pkgs-static.pkgsCross.musl64.ocamlPackages.dune;
         dune-experimental = add-experimental-configure-flags self.packages.${system}.dune;
         dune-static-experimental = add-experimental-configure-flags self.packages.${system}.dune-static;
@@ -278,5 +258,33 @@
               '';
             };
         };
-    });
+    }) // {
+      overlays = {
+        default = self: super: {
+          dune = with self; stdenv.mkDerivation {
+            pname = "dune";
+            version = "n/a";
+            src = ./.;
+            nativeBuildInputs = with ocamlPackages; [ ocaml findlib ];
+            buildInputs = lib.optionals stdenv.isDarwin [
+              darwin.apple_sdk.frameworks.CoreServices
+            ];
+            strictDeps = true;
+            buildFlags = [ "release" ];
+            dontAddPrefix = true;
+            dontAddStaticConfigureFlags = true;
+            configurePlatforms = [ ];
+            installFlags = [ "PREFIX=${placeholder "out"}" "LIBDIR=$(OCAMLFIND_DESTDIR)" ];
+          };
+        };
+        dune-static = self: super: {
+          ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
+            dune_3 = osuper.dune_3.overrideAttrs (a: {
+              src = ./.;
+              preBuild = "ocaml boot/bootstrap.ml --static";
+            });
+          });
+        };
+      };
+    };
 }

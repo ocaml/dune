@@ -9,6 +9,7 @@ type t =
   ; bug_reports : string option
   ; documentation : string option
   ; maintainers : string list option
+  ; maintenance_intent : string list option
   }
 
 let source t = t.source
@@ -29,6 +30,7 @@ let bug_reports t =
 
 let documentation t = t.documentation
 let maintainers t = t.maintainers
+let maintenance_intent t = t.maintenance_intent
 
 let empty =
   { source = None
@@ -38,6 +40,7 @@ let empty =
   ; bug_reports = None
   ; documentation = None
   ; maintainers = None
+  ; maintenance_intent = None
   }
 ;;
 
@@ -54,10 +57,20 @@ let example ~authors ~maintainers ~license =
       (* homepage and bug_reports are inferred from the source *)
   ; homepage = None
   ; bug_reports = None
+  ; maintenance_intent = None
   }
 ;;
 
-let to_dyn { source; license; authors; homepage; bug_reports; documentation; maintainers }
+let to_dyn
+  { source
+  ; license
+  ; authors
+  ; homepage
+  ; bug_reports
+  ; documentation
+  ; maintainers
+  ; maintenance_intent
+  }
   =
   let open Dyn in
   record
@@ -67,18 +80,28 @@ let to_dyn { source; license; authors; homepage; bug_reports; documentation; mai
     ; "documentation", (option string) documentation
     ; "bug_reports", (option string) bug_reports
     ; "maintainers", option (list string) maintainers
+    ; "maintenance_intent", option (list string) maintenance_intent
     ; "authors", option (list string) authors
     ]
 ;;
 
 let encode_fields
-  { source; authors; license; homepage; documentation; bug_reports; maintainers }
+  { source
+  ; authors
+  ; license
+  ; homepage
+  ; documentation
+  ; bug_reports
+  ; maintainers
+  ; maintenance_intent
+  }
   =
   let open Encoder in
   record_fields
     [ field_o "source" Source_kind.encode source
     ; field_l "authors" string (Option.value ~default:[] authors)
     ; field_l "maintainers" string (Option.value ~default:[] maintainers)
+    ; field_l "maintenance_intent" string (Option.value ~default:[] maintenance_intent)
     ; field_l "license" string (Option.value ~default:[] license)
     ; field_o "homepage" string homepage
     ; field_o "documentation" string documentation
@@ -109,8 +132,18 @@ let decode ?since () =
     field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =
     field_o "maintainers" (Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
+  and+ maintenance_intent =
+    field_o "maintenance_intent" (Syntax.since Stanza.syntax (v (3, 18)) >>> repeat string)
   in
-  { source; authors; license; homepage; documentation; bug_reports; maintainers }
+  { source
+  ; authors
+  ; license
+  ; homepage
+  ; documentation
+  ; bug_reports
+  ; maintainers
+  ; maintenance_intent
+  }
 ;;
 
 let superpose t1 t2 =
@@ -126,9 +159,27 @@ let superpose t1 t2 =
   ; documentation = f t1.documentation t2.documentation
   ; bug_reports = f t1.bug_reports t2.bug_reports
   ; maintainers = f t1.maintainers t2.maintainers
+  ; maintenance_intent = f t1.maintenance_intent t2.maintenance_intent
   }
 ;;
 
-let create ~maintainers ~authors ~homepage ~bug_reports ~documentation ~license ~source =
-  { maintainers; authors; homepage; bug_reports; documentation; license; source }
+let create
+  ~maintainers
+  ~maintenance_intent
+  ~authors
+  ~homepage
+  ~bug_reports
+  ~documentation
+  ~license
+  ~source
+  =
+  { maintainers
+  ; authors
+  ; homepage
+  ; bug_reports
+  ; documentation
+  ; license
+  ; source
+  ; maintenance_intent
+  }
 ;;

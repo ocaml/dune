@@ -260,6 +260,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
   let info =
     Dune_lang.Package_info.create
       ~maintainers:(get_many "maintainer")
+      ~maintenance_intent:(get_many "x-maintenance-intent")
       ~authors:(get_many "authors")
       ~homepage:(get_one "homepage")
       ~bug_reports:(get_one "bug-reports")

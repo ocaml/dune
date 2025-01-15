@@ -20,6 +20,7 @@ module Dune_config = struct
     type t =
       { authors : string list option
       ; maintainers : string list option
+      ; maintenance_intent : string list option
       ; license : string list option
       }
 
@@ -27,14 +28,19 @@ module Dune_config = struct
       fields
         (let+ authors = field_o "authors" (repeat string)
          and+ maintainers = field_o "maintainers" (repeat string)
+         and+ maintenance_intent = field_o "maintenance_intent" (repeat string)
          and+ license = field_o "license" (repeat string) in
-         { authors; maintainers; license })
+         { authors; maintainers; maintenance_intent; license })
     ;;
 
     let to_dyn t =
       let f = Dyn.(option (list string)) in
       Dyn.record
-        [ "authors", f t.authors; "maintainers", f t.maintainers; "license", f t.license ]
+        [ "authors", f t.authors
+        ; "maintainers", f t.maintainers
+        ; "maintenance_intent", f t.maintenance_intent
+        ; "license", f t.license
+        ]
     ;;
   end
 
@@ -359,6 +365,7 @@ module Dune_config = struct
     ; project_defaults =
         { authors = Some [ "Author Name <author@example.com>" ]
         ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
         ; license = Some [ "LICENSE" ]
         }
     ; experimental = []

@@ -7,6 +7,7 @@ val homepage : t -> string option
 val bug_reports : t -> string option
 val documentation : t -> string option
 val maintainers : t -> string list option
+val maintenance_intent : t -> string list option
 
 (** example package info (used for project initialization ) *)
 val example
@@ -28,6 +29,7 @@ val superpose : t -> t -> t
 
 val create
   :  maintainers:string list option
+  -> maintenance_intent:string list option
   -> authors:string list option
   -> homepage:string option
   -> bug_reports:string option

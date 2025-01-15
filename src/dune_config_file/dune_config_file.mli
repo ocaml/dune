@@ -8,6 +8,7 @@ module Dune_config : sig
     type t =
       { authors : string list option
       ; maintainers : string list option
+      ; maintenance_intent : string list option
       ; license : string list option
       }
 

@@ -79,11 +79,20 @@ val all : t -> Path.Build.t list
 (** The set of targets produced by an action. Each target may be tagged with a
     payload, for example, the target's digest. *)
 module Produced : sig
-  type 'a t = private
-    { root : Path.Build.t (** [files] and [dirs] are relative to [root] *)
-    ; files : 'a Filename.Map.t
-    ; dirs : 'a Filename.Map.t Path.Local.Map.t
+  (** All file names and directory names are relative to the root (['a t]). *)
+  type 'a dir_contents = private
+    { files : 'a Filename.Map.t (* mapping file name -> 'a *)
+    ; subdirs :
+        'a dir_contents Filename.Map.t (* mapping directory name -> 'a dir_contents *)
     }
+
+  type 'a t = private
+    { root : Path.Build.t
+    ; contents : 'a dir_contents
+    }
+
+  val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
+  val merge : 'a t -> 'a t -> 'a t
 
   module Error : sig
     type t
@@ -97,14 +106,27 @@ module Produced : sig
   val of_validated : Validated.t -> (unit t, Error.t) result
 
   (** Construct from a set of files in the root directory. *)
-  val of_files : Path.Build.t -> 'a Path.Local.Map.t -> 'a t
+  val of_files : Path.Build.t -> 'a option Path.Local.Map.t -> 'a t
 
-  (** Union of [t.files] and all files in [t.dirs] as [Seq.t] for efficient traversal.
+  (** Union of all files in [t] and any [subdirs] as [Seq.t] for efficient traversal.
       The resulting [Path.Local.t]s are relative to [t.root]. *)
   val all_files_seq : 'a t -> (Path.Local.t * 'a) Seq.t
 
+  (** Passes in depth-first order on all the (sub)directories in the targets.
+      The resulting [Path.Local.t]s are relative to [t.root]. *)
+  val all_dirs_seq : 'a t -> Path.Local.t Seq.t
+
   (** Check if a file is present in the targets. *)
   val mem : 'a t -> Path.Build.t -> bool
+
+  (* Check if a directory is present in the targets. *)
+  val mem_dir : 'a t -> Path.Build.t -> bool
+
+  (* Check if a path is present (either as a file or as a directory) in the targets. *)
+  val mem_any : 'a t -> Path.Build.t -> bool
+
+  (* Find the value associated with a file, or all the files of a subdirectory, if any. *)
+  val find_any : 'a t -> Path.Build.t -> ('a, 'a Filename.Map.t) either option
 
   (** Find the value associated with the file, if any. *)
   val find : 'a t -> Path.Build.t -> 'a option
@@ -112,19 +134,26 @@ module Produced : sig
   (** Find all files in a directory target or a subdirectory. *)
   val find_dir : 'a t -> Path.Build.t -> 'a Filename.Map.t option
 
-  val equal : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
   val exists : 'a t -> f:('a -> bool) -> bool
-  val foldi : 'a t -> init:'acc -> f:(Path.Local.t -> 'a -> 'acc -> 'acc) -> 'acc
-  val iteri : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit
+  val foldi : 'a t -> init:'acc -> f:(Path.Local.t -> 'a option -> 'acc -> 'acc) -> 'acc
+  val iter_files : 'a t -> f:(Path.Local.t -> 'a -> unit) -> unit
+  val iter_dirs : 'a t -> f:(Path.Local.t -> unit) -> unit
+
+  (** Iterate on all [f]iles & [d]irs in the targets, in depth-first order.
+      Will hit [dirA/fileA] before [dirA/dirB] before [dirA/dirB/fileB].
+      All [Path.Local.t]s are relative to [t.root]. *)
+  val iteri : 'a t -> f:(Path.Local.t -> 'a -> unit) -> d:(Path.Local.t -> unit) -> unit
+
   val parallel_map : 'a t -> f:(Path.Local.t -> 'a -> 'b Fiber.t) -> 'b t Fiber.t
 
   (** Aggregate all content digests. *)
   val digest : Digest.t t -> Digest.t
 
   val map_with_errors
-    :  'a t
+    :  ?d:(Path.Build.t -> (unit, 'e) result)
+    -> f:(Path.Build.t -> ('b, 'e) result)
     -> all_errors:bool
-    -> f:(Path.Build.t -> 'a -> ('b, 'e) result)
+    -> 'a t
     -> ('b t, (Path.Build.t * 'e) Nonempty_list.t) result
 
   val to_dyn : _ t -> Dyn.t

@@ -37,6 +37,8 @@ module Theory : sig
     ; buildable : Buildable.t
     ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; coqdoc_header : String_with_vars.t option
+    ; coqdoc_footer : String_with_vars.t option
     }
 
   include Stanza.S with type t := t

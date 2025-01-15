@@ -169,17 +169,30 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let conflict_classes = Conflict_classes.create sat in
     let+ () =
       let rec lookup_impl =
-        let add_impls_to_cache role =
+        let add_impls_to_cache expand_deps role =
           let+ clause, impls = make_impl_clause sat ~dummy_impl role in
           ( clause
           , fun () ->
               Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
                 Conflict_classes.process conflict_classes impl_var impl;
-                Model.requires role impl
-                |> Fiber.sequential_iter ~f:(process_dep impl_var)) )
+                match expand_deps with
+                | `No_expand -> Fiber.return ()
+                | `Expand_and_collect_conflicts deferred ->
+                  Model.requires role impl
+                  |> Fiber.sequential_iter ~f:(fun dep ->
+                    let { Model.dep_importance; _ } = Model.dep_info dep in
+                    match dep_importance with
+                    | `Essential -> process_dep expand_deps impl_var dep
+                    | `Restricts ->
+                      (* Defer processing restricting deps until all essential deps have
+                         been processed for the entire problem. Restricting deps will be
+                         processed later without recurring into their dependencies. *)
+                      deferred := (impl_var, dep) :: !deferred;
+                      Fiber.return ())) )
         in
-        fun key -> ImplCache.lookup impl_cache add_impls_to_cache key
-      and process_dep user_var dep : unit Fiber.t =
+        fun expand_deps key ->
+          ImplCache.lookup impl_cache (add_impls_to_cache expand_deps) key
+      and process_dep expand_deps user_var dep : unit Fiber.t =
         (* Process a dependency of [user_var]:
            - find the candidate implementations to satisfy it
            - take just those that satisfy any restrictions in the dependency
@@ -194,7 +207,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
             let dep_restrictions = Model.restrictions dep in
             fun impl -> List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
           in
-          lookup_impl dep_role >>| Candidates.partition ~f:meets_restrictions
+          lookup_impl expand_deps dep_role >>| Candidates.partition ~f:meets_restrictions
         in
         match dep_importance with
         | `Essential ->
@@ -213,12 +226,23 @@ module Make (Model : S.SOLVER_INPUT) = struct
              (* Explicitly conflicts with itself! *)
              S.at_least_one sat [ S.neg user_var ] ~reason)
       in
-      (* This recursively builds the whole problem up. *)
-      lookup_impl root_req
-      >>| Candidates.vars
-      >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+      let conflicts = ref [] in
+      let* () =
+        (* This recursively builds the whole problem up. *)
+        lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
+        >>| Candidates.vars
+        >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+      in
+      (* Now process any restricting deps. Due to the cache, only restricting
+         deps that aren't also an essential dep will be expanded. The solver will
+         not process any transitive dependencies here since the dependencies of
+         restricting dependencies are irrelevant to solving the dependency
+         problem. *)
+      List.rev !conflicts
+      |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
+        process_dep `No_expand impl_var dep)
+      (* All impl_candidates have now been added, so snapshot the cache. *)
     in
-    (* All impl_candidates have now been added, so snapshot the cache. *)
     let impl_clauses = ImplCache.snapshot impl_cache in
     Conflict_classes.seal conflict_classes;
     impl_clauses

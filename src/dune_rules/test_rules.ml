@@ -104,7 +104,14 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
             | None -> t.deps
             | Some _ ->
               Bindings.Unnamed (Dep_conf.File (String_with_vars.make_text loc test_exe))
-              :: t.deps
+              ::
+              (match runtest_mode with
+               | `js Wasm ->
+                 Bindings.Unnamed
+                   (Dep_conf.File
+                      (String_with_vars.make_text loc (s ^ Js_of_ocaml.Ext.wasm_dir)))
+                 :: t.deps
+               | `js JS | `exe | `bc -> t.deps)
           in
           let add_alias ~loc ~action =
             (* CR rgrinberg: why are we going through the stanza api? *)

@@ -2,11 +2,11 @@ Compilation using WasmOO
 
   $ dune build --display short bin/technologic.bc.wasm.js @install  2>&1 | \
   > sed s,^\ *$(ocamlc -config-var c_compiler),\ \ C_COMPILER,g
-  wasm_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.wasma
       ocamldep bin/.technologic.eobjs/dune__exe__Technologic.impl.d
       ocamldep lib/.x.objs/x.impl.d
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
       ocamldep lib/.x.objs/x__Y.impl.d
+  wasm_of_ocaml bin/.technologic.eobjs/jsoo/technologic.bc.runtime.wasma
       ocamldep bin/.technologic.eobjs/dune__exe__Z.impl.d
       ocamlopt lib/.x.objs/native/x__.{cmx,o}
         ocamlc lib/.x.objs/byte/x__Y.{cmi,cmo,cmt}

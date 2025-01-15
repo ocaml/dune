@@ -17,7 +17,10 @@
 (** Versions *)
 module Version: sig
 
-  include OpamStd.ABSTRACT
+  type t
+
+  module Set : OpamStd.SET with type elt = t
+  module Map : OpamStd.MAP with type key = t
 
   (** Compare two versions using the Debian version scheme *)
   val compare: t -> t -> int
@@ -27,6 +30,9 @@ module Version: sig
 
   (** Default version used when no version is given *)
   val default : t
+
+  val to_string : t -> string
+  val of_string : string -> t
 end
 
 (** Names *)

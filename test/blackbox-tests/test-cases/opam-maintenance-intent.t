@@ -60,7 +60,21 @@ numbers, possibly using the special keywords (latest), (any) and (none):
 
 The following are all invalid maintenance intents:
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "")
+  > EOF
+  $ dune build
+  File "dune-project", line 2, characters 20-22:
+  2 | (maintenance_intent "")
+                          ^^
+  Error: empty version
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-29:
   2 | (maintenance_intent "(latest")
@@ -68,10 +82,16 @@ The following are all invalid maintenance intents:
   Error: unclosed parenthesis
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent ").1")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent ").1")
+  > EOF
   $ dune build
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent ".1")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent ".1")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-24:
   2 | (maintenance_intent ".1")
@@ -79,7 +99,10 @@ The following are all invalid maintenance intents:
   Error: unexpected dot
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "1.2.")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "1.2.")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-26:
   2 | (maintenance_intent "1.2.")
@@ -87,7 +110,10 @@ The following are all invalid maintenance intents:
   Error: version ends with a dot
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "1.2(latest).3")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "1.2(latest).3")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-35:
   2 | (maintenance_intent "1.2(latest).3")
@@ -95,23 +121,32 @@ The following are all invalid maintenance intents:
   Error: unexpected parenthesis
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(none-3)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(none-3)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-30:
   2 | (maintenance_intent "(none-3)")
                           ^^^^^^^^^^
-  Error: substraction only allowed for latest, not "none"
+  Error: substraction only allowed for "latest", not "none"
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(any-3)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(any-3)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-29:
   2 | (maintenance_intent "(any-3)")
                           ^^^^^^^^^
-  Error: substraction only allowed for latest, not "any"
+  Error: substraction only allowed for "latest", not "any"
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest)1")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest)1")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-31:
   2 | (maintenance_intent "(latest)1")
@@ -119,7 +154,10 @@ The following are all invalid maintenance intents:
   Error: missing dot after intent
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest-)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest-)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-31:
   2 | (maintenance_intent "(latest-)")
@@ -127,7 +165,10 @@ The following are all invalid maintenance intents:
   Error: invalid substraction
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest-0)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest-0)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-32:
   2 | (maintenance_intent "(latest-0)")
@@ -135,7 +176,10 @@ The following are all invalid maintenance intents:
   Error: invalid substraction
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest-00)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest-00)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-33:
   2 | (maintenance_intent "(latest-00)")
@@ -143,7 +187,10 @@ The following are all invalid maintenance intents:
   Error: invalid substraction
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest--1)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest--1)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-33:
   2 | (maintenance_intent "(latest--1)")
@@ -151,7 +198,10 @@ The following are all invalid maintenance intents:
   Error: invalid substraction
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(latest-a)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest-a)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-32:
   2 | (maintenance_intent "(latest-a)")
@@ -159,15 +209,32 @@ The following are all invalid maintenance intents:
   Error: invalid substraction
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "(lates)")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(latest-1")
+  > EOF
+  $ dune build
+  File "dune-project", line 2, characters 20-31:
+  2 | (maintenance_intent "(latest-1")
+                          ^^^^^^^^^^^
+  Error: unclosed parenthesis
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "(lates)")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 20-29:
   2 | (maintenance_intent "(lates)")
                           ^^^^^^^^^
-  Error: unknown intent "lates", expected any, latest or none
+  Error: unknown intent "lates", expected "any", "latest" or "none"
   [1]
 
-  $ echo '(lang dune 3.18)\n(maintenance_intent "1.2" "(latest)" "err)" "3.4")' >dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (maintenance_intent "1.2" "(latest)" "err)" "3.4")
+  > EOF
   $ dune build
   File "dune-project", line 2, characters 37-43:
   2 | (maintenance_intent "1.2" "(latest)" "err)" "3.4")

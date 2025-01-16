@@ -85,10 +85,8 @@ include Sub_system.Register_end_point (struct
         sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
       in
       let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
-      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:inline_test_name in
-      let name =
-        sprintf "inline_test_runner_%s" (Lib_name.Local.to_string (snd lib.name))
-      in
+      let name = "run" in
+      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name in
       let main_module =
         let name = Module_name.of_string name in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]

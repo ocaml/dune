@@ -28,7 +28,8 @@ module Dune_config = struct
       fields
         (let+ authors = field_o "authors" (repeat string)
          and+ maintainers = field_o "maintainers" (repeat string)
-         and+ maintenance_intent = field_o "maintenance_intent" (repeat string)
+         and+ maintenance_intent =
+           field_o "maintenance_intent" Dune_lang.Package_info.decode_maintenance_intent
          and+ license = field_o "license" (repeat string) in
          { authors; maintainers; maintenance_intent; license })
     ;;

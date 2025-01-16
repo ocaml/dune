@@ -25,6 +25,7 @@ val decode
   -> unit
   -> t Dune_sexp.Decoder.fields_parser
 
+val decode_maintenance_intent : string list Dune_sexp.Decoder.t
 val superpose : t -> t -> t
 
 val create

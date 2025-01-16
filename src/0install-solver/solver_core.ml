@@ -82,7 +82,12 @@ module Make (Model : S.SOLVER_INPUT) = struct
     ;;
   end
 
-  module ImplCache = Cache.Make (Model.Role)
+  module ImplCache = Cache.Make (struct
+      include Model.Role
+
+      let to_dyn = Dyn.opaque
+    end)
+
   module RoleMap = ImplCache.M
 
   type diagnostics = S.lit
@@ -275,13 +280,13 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let requirements t = t.root_req
 
     let explain t role =
-      match RoleMap.find_opt role t.selections with
+      match RoleMap.find t.selections role with
       | Some sel -> explain sel.diagnostics
       | None -> Pp.text "Role not used!"
     ;;
 
     let get_selected role t =
-      match RoleMap.find_opt role t.selections with
+      match RoleMap.find t.selections role with
       | Some selection when selection.impl == Model.dummy_impl -> None
       | x -> x
     ;;
@@ -303,7 +308,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
     let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-    let lookup role = ImplCache.get_exn role impl_clauses in
+    let lookup role = ImplCache.get_exn impl_clauses role in
     (* Run the solve *)
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.

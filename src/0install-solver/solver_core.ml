@@ -312,7 +312,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
         let module Requirements = struct
           type t = Output.requirements
 
-          let equal x y = Int.equal 0 (Output.Role.compare x y)
+          let equal x y = Ordering.is_eq (Output.Role.compare x y)
           let hash = Poly.hash
           let to_dyn = Dyn.opaque
         end

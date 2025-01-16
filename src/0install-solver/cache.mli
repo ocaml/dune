@@ -1,7 +1,7 @@
 module Make (CacheEntry : sig
     type t
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end) : sig
   (** The cache is used in [build_problem], while the clauses are still being added. *)
   type 'a t

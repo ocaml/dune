@@ -336,10 +336,10 @@ module Solver = struct
 
       let compare a b =
         match a, b with
-        | Real a, Real b -> OpamPackage.Name.compare a.name b.name
-        | Virtual (a, _), Virtual (b, _) -> Ordering.to_int (Poly.compare a b)
-        | Real _, Virtual _ -> -1
-        | Virtual _, Real _ -> 1
+        | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a.name b.name)
+        | Virtual (a, _), Virtual (b, _) -> Poly.compare a b
+        | Real _, Virtual _ -> Lt
+        | Virtual _, Real _ -> Gt
       ;;
     end
 

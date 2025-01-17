@@ -567,16 +567,12 @@ module Solver = struct
 
     (* We attach this data to each SAT variable. *)
     module SolverData = struct
-      [@@@ocaml.warning "-37"]
-
       type t =
         (* If the SAT variable is True then we selected this... *)
         | ImplElem of Model.impl
-        | Role of Model.Role.t
 
       let pp = function
         | ImplElem impl -> Model.pp_impl impl
-        | Role role -> Model.Role.pp role
       ;;
     end
 
@@ -594,16 +590,9 @@ module Solver = struct
         { role : Model.Role.t
         ; clause : S.at_most_one_clause option
         ; vars : (S.lit * Model.impl) list
-        ; dummy_impl : Model.impl option
         }
 
-      let[@ocaml.warning "-32"] is_dummy t impl =
-        match t.dummy_impl with
-        | None -> false
-        | Some dummy_impl -> dummy_impl == impl
-      ;;
-
-      let create role clause vars dummy_impl = { role; clause; vars; dummy_impl }
+      let create role clause vars = { role; clause; vars }
       let vars t = List.map ~f:fst t.vars
 
       let selected t =
@@ -611,7 +600,6 @@ module Solver = struct
         let* lit = t.clause >>= S.get_selected in
         match S.get_user_data_for_lit lit with
         | SolverData.ImplElem impl -> Some (lit, impl)
-        | _ -> assert false
       ;;
 
       let state t =
@@ -624,7 +612,6 @@ module Solver = struct
              let impl =
                match S.get_user_data_for_lit lit with
                | SolverData.ImplElem impl -> impl
-               | _ -> assert false
              in
              Selected (Model.requires t.role impl)
            | None ->
@@ -719,7 +706,7 @@ module Solver = struct
           | [] -> None
           | _ :: _ -> Some (S.at_most_one sat (List.map ~f:fst impls))
         in
-        Candidates.create role impl_clause impls dummy_impl
+        Candidates.create role impl_clause impls
       in
       clause, impls
     ;;
@@ -815,43 +802,19 @@ module Solver = struct
     ;;
 
     module Output = struct
-      [@@@ocaml.warning "-32-34-37"]
-
       module Input = Model
       module Role = Input.Role
       module RoleMap = RoleMap
 
-      type impl = selection
-      type dependency = Model.dependency
-
-      type dep_info = Model.dep_info =
-        { dep_role : Role.t
-        ; dep_importance : [ `Essential | `Restricts ]
-        }
-
       type requirements = Role.t
-
-      let dep_info = Model.dep_info
-      let requires role impl = Model.requires role impl.impl
-
-      type t =
-        { root_req : requirements
-        ; selections : selection RoleMap.t
-        }
+      type t = { selections : selection RoleMap.t }
 
       let to_map t = t.selections
-      let requirements t = t.root_req
 
       let explain t role =
         match RoleMap.find t.selections role with
         | Some sel -> explain sel.diagnostics
         | None -> Pp.text "Role not used!"
-      ;;
-
-      let get_selected role t =
-        match RoleMap.find t.selections role with
-        | Some selection when selection.impl == Model.dummy_impl -> None
-        | x -> x
       ;;
 
       let unwrap sel = sel.impl
@@ -931,13 +894,11 @@ module Solver = struct
             Candidates.selected candidates
             |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
         in
-        Some { Output.root_req; selections }
+        Some { Output.selections }
     ;;
   end
 
   module Diagnostics = struct
-    [@@@ocaml.warning "-32-34-37"]
-
     module Results = Solver.Output
     module Model = Results.Input
     module RoleMap = Results.RoleMap
@@ -952,19 +913,11 @@ module Solver = struct
       (** An item of information to display for a component. *)
       type t =
         | UserRequested of Model.restriction
-        | ReplacesConflict of Model.Role.t
-        | ReplacedByConflict of Model.Role.t
         | Restricts of Model.Role.t * Model.impl * Model.restriction list
         | Feed_problem of string
 
       let pp = function
         | UserRequested r -> Pp.paragraphf "User requested %s" (format_restrictions [ r ])
-        | ReplacesConflict old ->
-          Pp.hovbox (Pp.text "Replaces (and therefore conflicts with) " ++ format_role old)
-        | ReplacedByConflict replacement ->
-          Pp.hovbox
-            (Pp.text "Replaced by (and therefore conflicts with) "
-             ++ format_role replacement)
         | Restricts (other_role, impl, r) ->
           Pp.hovbox
             ~indent:2
@@ -1208,16 +1161,6 @@ module Solver = struct
       ;;
     end
 
-    type t = Component.t RoleMap.t
-
-    let[@ocaml.warning "-32"] find_component_ex role report =
-      match RoleMap.find report role with
-      | Some c -> c
-      | None ->
-        User_error.raise
-          [ Pp.text "Can't find component " ++ format_role role ++ Pp.char '!' ]
-    ;;
-
     (* Did any dependency of [impl] prevent it being selected?
      This can only happen if a component conflicts with something more important
      than itself (otherwise, we'd select something in [impl]'s interface and
@@ -1341,19 +1284,6 @@ module Solver = struct
       RoleMap.iteri ~f:(examine_selection report) report;
       RoleMap.iteri ~f:(fun _ c -> Component.finalise c) report;
       report
-    ;;
-
-    let pp_rolemap ~verbose reasons =
-      let pp_item (_, c) = Pp.text "- " ++ Pp.box (Component.pp ~verbose c) in
-      Pp.concat_map ~sep:Pp.cut (RoleMap.to_list reasons) ~f:pp_item
-    ;;
-
-    (** Return a message explaining why the solve failed. *)
-    let get_failure_reason ?(verbose = false) result =
-      let+ reasons = of_result result in
-      Pp.paragraph "Can't find all required implementations:"
-      ++ Pp.cut
-      ++ Pp.vbox (pp_rolemap ~verbose reasons)
     ;;
   end
 

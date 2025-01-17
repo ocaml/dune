@@ -55,16 +55,6 @@ let is_compiler_and_toolchains_enabled name =
   | `Disabled -> false
 ;;
 
-let ocaml context env ~bin_dir =
-  let which prog =
-    let path = Path.Outside_build_dir.relative bin_dir prog in
-    let+ exists = Fs_memo.file_exists path in
-    if exists then Some (Path.outside_build_dir path) else None
-  in
-  let get_ocaml_tool ~dir:_ prog = which prog in
-  Ocaml_toolchain.make context ~which ~env ~get_ocaml_tool
-;;
-
 (* Returns the path to the directory containing the artifacts within the
    temporary install directory. When installing with the DESTDIR variable, the
    absolute path to the final installation directory is concatenated to the

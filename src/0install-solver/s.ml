@@ -113,12 +113,11 @@ module type SELECTIONS = sig
     type key = Role.t
     type 'a t
 
-    val find_opt : key -> 'a t -> 'a option
-    val iter : (key -> 'a -> unit) -> 'a t -> unit
-    val fold : (key -> 'a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
-    val of_seq : (key * 'a) Seq.t -> 'a t
-    val to_seq : 'a t -> (key * 'a) Seq.t
-    val bindings : 'a t -> (key * 'a) list
+    val find : 'a t -> key -> 'a option
+    val iteri : 'a t -> f:(key -> 'a -> unit) -> unit
+    val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
+    val of_list_exn : (key * 'a) list -> 'a t
+    val to_list : 'a t -> (key * 'a) list
   end
 
   type t

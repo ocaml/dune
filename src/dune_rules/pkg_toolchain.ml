@@ -49,6 +49,10 @@ let is_compiler_and_toolchains_enabled name =
       (* TODO don't hardcode these names here *)
       [ Package_name.of_string "ocaml-base-compiler"
       ; Package_name.of_string "ocaml-variants"
+      ; Package_name.of_string "ocaml-compiler"
+        (* The [ocaml-compiler] package is required to include all the
+           packages that might install a compiler, starting from ocaml.5.3.0.
+        *)
       ]
     in
     List.mem compiler_package_names name ~equal:Package_name.equal
@@ -152,16 +156,19 @@ let modify_install_action ~prefix ~suffix action =
   else modify_install_action action ~installation_prefix:prefix ~suffix
 ;;
 
-(* Create an empty config.cache file so other packages see that the
-   compiler package is installed. *)
-let touch_config_cache =
+let touch file =
   Dune_lang.Action.Run
     [ Slang.text "touch"
     ; Slang.concat
-        [ Slang.pform (Pform.Var (Pform.Var.Pkg Pform.Var.Pkg.Build))
-        ; Slang.text "/config.cache"
-        ]
+        [ Slang.pform (Pform.Var (Pform.Var.Pkg Pform.Var.Pkg.Build)); Slang.text file ]
     ]
+;;
+
+(* Create an empty config.cache and config.status files so other packages see
+   that the compiler package is installed.
+   TODO: extract this from the .install *)
+let touch_compiler_install =
+  Dune_lang.Action.Progn [ touch "/config.cache"; touch "/config.status" ]
 ;;
 
 let modify_build_action ~prefix action =
@@ -170,7 +177,7 @@ let modify_build_action ~prefix action =
   then
     (* If the toolchain is already installed, just create config.cache file.
        TODO(steve): Move this check to action execution time *)
-    touch_config_cache
+    touch_compiler_install
   else action
 ;;
 

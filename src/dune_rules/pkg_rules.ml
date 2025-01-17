@@ -2082,14 +2082,23 @@ let ocaml_toolchain context =
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
     let toolchain =
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
       let open Action_builder.O in
-      let* cookie = cookie in
-      (* TODO we should use the closure of [pkg] *)
-      let binaries =
-        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
+      let transitive_deps = pkg :: Pkg.deps_closure pkg in
+      let* env, binaries =
+        Action_builder.List.fold_left
+          ~init:(Global.env (), Path.Set.empty)
+          ~f:(fun (env, binaries) pkg ->
+            let env = Env.extend_env env (Pkg.exported_env pkg) in
+            let+ cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+            let binaries =
+              Section.Map.find cookie.files Bin
+              |> Option.value ~default:[]
+              |> Path.Set.of_list
+              |> Path.Set.union binaries
+            in
+            env, binaries)
+          transitive_deps
       in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in

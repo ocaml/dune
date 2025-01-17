@@ -5,10 +5,10 @@
 (** Explaining why a solve failed or gave an unexpected answer. *)
 
 open Stdune
+open Fiber.O
+open Pp.O
 
 module Make (Results : S.SOLVER_RESULT) = struct
-  open Fiber.O
-  open Pp.O
   module Model = Results.Input
   module RoleMap = Results.RoleMap
 

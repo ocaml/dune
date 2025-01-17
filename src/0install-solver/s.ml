@@ -108,7 +108,18 @@ module type SELECTIONS = sig
   (** Some selections previously produced by a solver. *)
 
   include CORE_MODEL
-  module RoleMap : Map.S with type key = Role.t
+
+  module RoleMap : sig
+    type key = Role.t
+    type 'a t
+
+    val find_opt : key -> 'a t -> 'a option
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val fold : (key -> 'a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
+    val of_seq : (key * 'a) Seq.t -> 'a t
+    val to_seq : 'a t -> (key * 'a) Seq.t
+    val bindings : 'a t -> (key * 'a) list
+  end
 
   type t
 

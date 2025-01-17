@@ -171,9 +171,9 @@ module Make (Results : S.SOLVER_RESULT) = struct
         let deps = Model.requires t.role impl in
         List.find_map deps ~f:(fun dep ->
           let { Model.dep_role; _ } = Model.dep_info dep in
-          if Model.Role.compare dep_role t.role <> 0
-          then None
-          else
+          match Model.Role.compare dep_role t.role with
+          | Lt | Gt -> None
+          | Eq ->
             (* It depends on itself. *)
             Model.restrictions dep
             |> List.find_map ~f:(fun r ->
@@ -381,7 +381,8 @@ module Make (Results : S.SOLVER_RESULT) = struct
          | [] -> None
          | cl :: cls ->
            (match Classes.find classes cl with
-            | Some other_role when Model.Role.compare role other_role <> 0 ->
+            | Some other_role
+              when not (Ordering.is_eq (Model.Role.compare role other_role)) ->
               Some (`ClassConflict (other_role, cl))
             | _ -> aux cls)
        in

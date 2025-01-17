@@ -15,7 +15,7 @@ module type CORE_MODEL = sig
     type t
 
     val pp : t -> 'tag Pp.t
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end
 
   (** An [impl] is something that can fill a [Role.t] (e.g. a particular version of

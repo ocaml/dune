@@ -3,10 +3,14 @@ open Fiber.O
 module Make (CacheEntry : sig
     type t
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end) =
 struct
-  module M = Map.Make (CacheEntry)
+  module M = Map.Make (struct
+      include CacheEntry
+
+      let compare x y = Ordering.to_int (CacheEntry.compare x y)
+    end)
 
   type 'a snapshot = 'a M.t
   type 'a t = 'a snapshot ref

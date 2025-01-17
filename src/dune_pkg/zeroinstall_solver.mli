@@ -97,6 +97,3 @@ module Diagnostics (Result : S.SOLVER_RESULT) : sig
     -> Result.t
     -> Stdune.User_message.Style.t Pp.t Fiber.t
 end
-
-(** The low-level SAT solver. *)
-module Sat = Sat

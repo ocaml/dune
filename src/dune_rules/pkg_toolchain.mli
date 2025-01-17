@@ -30,12 +30,6 @@ val pkg_dir : Dune_pkg.Lock_dir.Pkg.t -> Path.Outside_build_dir.t
     script. *)
 val installation_prefix : pkg_dir:Path.Outside_build_dir.t -> Path.Outside_build_dir.t
 
-val ocaml
-  :  Context_name.t
-  -> Env.t
-  -> bin_dir:Path.Outside_build_dir.t
-  -> Ocaml_toolchain.t Memo.t
-
 (** Rewrite the OCaml compiler install action so that it installs the compiler
     package to the users toolchain directory. If the compiler is found to be
     already installed in the users toolchain directory, the action is instead

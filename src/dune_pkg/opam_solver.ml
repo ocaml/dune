@@ -347,6 +347,12 @@ module Solver = struct
       type t = impl
 
       let pp = pp_impl
+
+      let requires _ = function
+        | Dummy | Reject _ -> []
+        | VirtualImpl (_, deps) -> deps
+        | RealImpl impl -> impl.requires
+      ;;
     end
 
     let role context name = Real { context; name }
@@ -402,12 +408,6 @@ module Solver = struct
           [ VirtualImpl (i, aux expr) ]
       in
       aux deps
-    ;;
-
-    let requires _ = function
-      | Dummy | Reject _ -> []
-      | VirtualImpl (_, deps) -> deps
-      | RealImpl impl -> impl.requires
     ;;
 
     let dep_info { drole; importance; restrictions = _ } =
@@ -598,7 +598,7 @@ module Solver = struct
            | Some lit ->
              (* We've already chosen which <implementation> to use. Follow dependencies. *)
              let impl = S.get_user_data_for_lit lit in
-             Selected (Model.requires t.role impl)
+             Selected (Model.Impl.requires t.role impl)
            | None ->
              (match S.get_best_undecided clause with
               | Some lit -> Undecided lit
@@ -715,7 +715,7 @@ module Solver = struct
                 match expand_deps with
                 | `No_expand -> Fiber.return ()
                 | `Expand_and_collect_conflicts deferred ->
-                  Model.requires role impl
+                  Model.Impl.requires role impl
                   |> Fiber.sequential_iter ~f:(fun dep ->
                     let { Model.dep_importance; _ } = Model.dep_info dep in
                     match dep_importance with
@@ -1036,7 +1036,7 @@ module Solver = struct
          special-case that here. *)
       let reject_self_conflicts t =
         filter_impls t (fun impl ->
-          let deps = Model.requires t.role impl in
+          let deps = Model.Impl.requires t.role impl in
           List.find_map deps ~f:(fun dep ->
             let { Model.dep_role; _ } = Model.dep_info dep in
             match Model.Role.compare dep_role t.role with
@@ -1169,7 +1169,7 @@ module Solver = struct
              in
              List.find_map ~f:check_restriction (Model.restrictions dep))
       in
-      let deps = Model.requires role impl in
+      let deps = Model.Impl.requires role impl in
       List.find_map ~f:check_dep deps
     ;;
 
@@ -1194,11 +1194,13 @@ module Solver = struct
     let examine_selection report role component =
       match Component.selected_impl component with
       | Some our_impl ->
-        (* For each dependency of our selected impl, explain why it rejected impls in the dependency's interface. *)
-        let deps = Model.requires role our_impl in
+        (* For each dependency of our selected impl, explain why it rejected
+           impls in the dependency's interface. *)
+        let deps = Model.Impl.requires role our_impl in
         List.iter ~f:(examine_dep role our_impl report) deps
       | None ->
-        (* For each of our remaining unrejected impls, check whether a dependency prevented its selection. *)
+        (* For each of our remaining unrejected impls, check whether a
+           dependency prevented its selection. *)
         Component.filter_impls component (get_dependency_problem role report)
     ;;
 

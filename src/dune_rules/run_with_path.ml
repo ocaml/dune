@@ -158,18 +158,19 @@ module Spec = struct
              | true, _ | false, Display.Verbose -> eenv.stdout_to
              | _ -> Process.Io.(null Out)
            in
-           Process.run
-             Return
-             prog
-             args
-             ~display
-             ~metadata
-             ~stdout_to
-             ~stderr_to:(Output.io error)
-             ~stdin_from:eenv.stdin_from
-             ~dir:eenv.working_dir
-             ~env
-           >>= fun (_, rc) ->
+           let* _, rc =
+             Process.run
+               Return
+               prog
+               args
+               ~display
+               ~metadata
+               ~stdout_to
+               ~stderr_to:(Output.io error)
+               ~stdin_from:eenv.stdin_from
+               ~dir:eenv.working_dir
+               ~env
+           in
            Output.prerr ~rc error;
            Fiber.return ())
   ;;

@@ -82,13 +82,11 @@ module Make (Model : S.SOLVER_INPUT) = struct
     ;;
   end
 
-  module ImplCache = Cache.Make (struct
+  module RoleMap = Map.Make (struct
       include Model.Role
 
       let to_dyn = Dyn.opaque
     end)
-
-  module RoleMap = ImplCache.M
 
   type diagnostics = S.lit
 
@@ -143,7 +141,8 @@ module Make (Model : S.SOLVER_INPUT) = struct
     ;;
   end
 
-  (* Add the implementations of an interface to the ImplCache (called the first time we visit it). *)
+  (* Add the implementations of an interface to the implementation cache
+     (called the first time we visit it). *)
   let make_impl_clause sat ~dummy_impl role =
     let+ { impls } = Model.implementations role in
     (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
@@ -170,7 +169,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
       might need, adding all of them to [sat_problem]. *)
   let build_problem root_req sat ~dummy_impl =
     (* For each (iface, source) we have a list of implementations. *)
-    let impl_cache = ImplCache.create () in
+    let impl_cache = ref RoleMap.empty in
     let conflict_classes = Conflict_classes.create sat in
     let+ () =
       let rec lookup_impl =
@@ -196,7 +195,13 @@ module Make (Model : S.SOLVER_INPUT) = struct
                       Fiber.return ())) )
         in
         fun expand_deps key ->
-          ImplCache.lookup impl_cache (add_impls_to_cache expand_deps) key
+          match RoleMap.find !impl_cache key with
+          | Some s -> Fiber.return s
+          | None ->
+            let* value, process = add_impls_to_cache expand_deps key in
+            impl_cache := RoleMap.set !impl_cache key value;
+            let+ () = process () in
+            value
       and process_dep expand_deps user_var dep : unit Fiber.t =
         (* Process a dependency of [user_var]:
            - find the candidate implementations to satisfy it
@@ -248,7 +253,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
         process_dep `No_expand impl_var dep)
       (* All impl_candidates have now been added, so snapshot the cache. *)
     in
-    let impl_clauses = ImplCache.snapshot impl_cache in
+    let impl_clauses = !impl_cache in
     Conflict_classes.seal conflict_classes;
     impl_clauses
   ;;
@@ -308,7 +313,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let sat = S.create () in
     let dummy_impl = if closest_match then Some Model.dummy_impl else None in
     let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-    let lookup role = ImplCache.get_exn impl_clauses role in
+    let lookup role = RoleMap.find_exn impl_clauses role in
     (* Run the solve *)
     let decider () =
       (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -355,8 +360,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     | Some _solution ->
       (* Build the results object *)
       let selections =
-        impl_clauses
-        |> ImplCache.filter_map (fun _role candidates ->
+        RoleMap.filter_mapi impl_clauses ~f:(fun _role candidates ->
           Candidates.selected candidates
           |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
       in

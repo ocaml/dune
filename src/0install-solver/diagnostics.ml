@@ -278,7 +278,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
   type t = Component.t RoleMap.t
 
   let find_component_ex role report =
-    match RoleMap.find_opt role report with
+    match RoleMap.find report role with
     | Some c -> c
     | None ->
       User_error.raise
@@ -293,10 +293,10 @@ module Make (Results : S.SOLVER_RESULT) = struct
      e.g. A depends on B and C. B and C both depend on D.
      C1 conflicts with D1. The depth-first priority order means we give priority
      to {A1, B1, D1}. Then we can't choose C1 because we prefer to keep D1. *)
-  let get_dependency_problem role report impl =
+  let get_dependency_problem role (report : Component.t RoleMap.t) impl =
     let check_dep dep =
       let dep_info = Model.dep_info dep in
-      match RoleMap.find_opt dep_info.Model.dep_role report with
+      match RoleMap.find report dep_info.dep_role with
       | None -> None (* Not in the selections => can't be part of a conflict *)
       | Some required_component ->
         (match Component.selected_impl required_component with
@@ -315,9 +315,9 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
   (** A selected component has [dep] as a dependency. Use this to explain why some implementations
       of the required interface were rejected. *)
-  let examine_dep requiring_role requiring_impl report dep =
+  let examine_dep requiring_role requiring_impl (report : Component.t RoleMap.t) dep =
     let { Model.dep_role = other_role; dep_importance = _ } = Model.dep_info dep in
-    match RoleMap.find_opt other_role report with
+    match RoleMap.find report other_role with
     | None -> ()
     | Some required_component ->
       let dep_restrictions = Model.restrictions dep in
@@ -344,8 +344,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
   (* Check for user-supplied restrictions *)
   let examine_extra_restrictions report =
-    report
-    |> RoleMap.iter (fun role component ->
+    RoleMap.iteri report ~f:(fun role component ->
       Model.user_restrictions role
       |> Option.iter ~f:(fun restriction ->
         Component.apply_user_restriction component restriction))
@@ -362,31 +361,25 @@ module Make (Results : S.SOLVER_RESULT) = struct
       with the same class. *)
   let check_conflict_classes report =
     let classes =
-      RoleMap.fold
-        (fun role component acc ->
-          match Component.selected_impl component with
-          | None -> acc
-          | Some impl ->
-            Model.conflict_class impl
-            |> List.fold_left ~init:acc ~f:(fun acc x -> Classes.set acc x role))
-        report
-        Classes.empty
+      RoleMap.foldi report ~init:Classes.empty ~f:(fun role component acc ->
+        match Component.selected_impl component with
+        | None -> acc
+        | Some impl ->
+          Model.conflict_class impl
+          |> List.fold_left ~init:acc ~f:(fun acc x -> Classes.set acc x role))
     in
-    report
-    |> RoleMap.iter
-       @@ fun role component ->
-       Component.filter_impls component
-       @@ fun impl ->
-       let rec aux = function
-         | [] -> None
-         | cl :: cls ->
-           (match Classes.find classes cl with
-            | Some other_role
-              when not (Ordering.is_eq (Model.Role.compare role other_role)) ->
-              Some (`ClassConflict (other_role, cl))
-            | _ -> aux cls)
-       in
-       aux (Model.conflict_class impl)
+    RoleMap.iteri report ~f:(fun role component ->
+      Component.filter_impls component (fun impl ->
+        let rec aux = function
+          | [] -> None
+          | cl :: cls ->
+            (match Classes.find classes cl with
+             | Some other_role
+               when not (Ordering.is_eq (Model.Role.compare role other_role)) ->
+               Some (`ClassConflict (other_role, cl))
+             | _ -> aux cls)
+        in
+        aux (Model.conflict_class impl)))
   ;;
 
   let of_result result =
@@ -400,22 +393,22 @@ module Make (Results : S.SOLVER_RESULT) = struct
         let+ rejects, feed_problems = Model.rejects role in
         Component.create ~role (impl_candidates, rejects, feed_problems) diagnostics impl
       in
-      RoleMap.bindings impls
+      RoleMap.to_list impls
       |> Fiber.parallel_map ~f:(fun (k, v) ->
         let+ v = get_selected k v in
         k, v)
-      |> Fiber.map ~f:(fun s -> RoleMap.of_seq (List.to_seq s))
+      |> Fiber.map ~f:RoleMap.of_list_exn
     in
     examine_extra_restrictions report;
     check_conflict_classes report;
-    RoleMap.iter (examine_selection report) report;
-    RoleMap.iter (fun _ c -> Component.finalise c) report;
+    RoleMap.iteri ~f:(examine_selection report) report;
+    RoleMap.iteri ~f:(fun _ c -> Component.finalise c) report;
     report
   ;;
 
   let pp_rolemap ~verbose reasons =
     let pp_item (_, c) = Pp.text "- " ++ Pp.box (Component.pp ~verbose c) in
-    Pp.concat_map ~sep:Pp.cut (RoleMap.bindings reasons) ~f:pp_item
+    Pp.concat_map ~sep:Pp.cut (RoleMap.to_list reasons) ~f:pp_item
   ;;
 
   (** Return a message explaining why the solve failed. *)

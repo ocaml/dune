@@ -1,6 +1,9 @@
+open Stdune
+
 module Make (CacheEntry : sig
     type t
 
+    val to_dyn : t -> Dyn.t
     val compare : t -> t -> Ordering.t
   end) : sig
   (** The cache is used in [build_problem], while the clauses are still being added. *)
@@ -27,7 +30,7 @@ module Make (CacheEntry : sig
     -> 'a Fiber.t
 
   val snapshot : 'a t -> 'a snapshot
-  val get : CacheEntry.t -> 'a snapshot -> 'a option
-  val get_exn : CacheEntry.t -> 'a snapshot -> 'a
+  val get : 'a snapshot -> CacheEntry.t -> 'a option
+  val get_exn : 'a snapshot -> CacheEntry.t -> 'a
   val filter_map : (CacheEntry.t -> 'a -> 'b option) -> 'a M.t -> 'b M.t
 end

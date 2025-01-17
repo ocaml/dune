@@ -572,7 +572,7 @@ module Solver = struct
 
   let pp_rolemap ~verbose reasons =
     let good, bad, unknown =
-      Solver.Output.RoleMap.bindings reasons
+      Solver.Output.RoleMap.to_list reasons
       |> List.partition_three ~f:(fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
@@ -610,8 +610,7 @@ module Solver = struct
 
   let packages_of_result sels =
     Solver.Output.to_map sels
-    |> Solver.Output.RoleMap.to_seq
-    |> List.of_seq
+    |> Solver.Output.RoleMap.to_list
     |> List.filter_map ~f:(fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
   ;;
 end

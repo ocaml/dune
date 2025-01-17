@@ -343,6 +343,12 @@ module Solver = struct
       ;;
     end
 
+    module Impl = struct
+      type t = impl
+
+      let pp = pp_impl
+    end
+
     let role context name = Real { context; name }
 
     let virtual_impl ~context ~depends () =
@@ -558,19 +564,7 @@ module Solver = struct
      *See the README file for details, or visit http://0install.net.
      *)
     module Model = Input
-
-    (* We attach this data to each SAT variable. *)
-    module SolverData = struct
-      type t =
-        (* If the SAT variable is True then we selected this... *)
-        | ImplElem of Model.impl
-
-      let pp = function
-        | ImplElem impl -> Model.pp_impl impl
-      ;;
-    end
-
-    module S = Sat.Make (SolverData)
+    module S = Sat.Make (Input.Impl)
 
     type decision_state =
       (* The next candidate to try *)
@@ -592,8 +586,8 @@ module Solver = struct
       let selected t =
         let open Option.O in
         let* lit = t.clause >>= S.get_selected in
-        match S.get_user_data_for_lit lit with
-        | SolverData.ImplElem impl -> Some (lit, impl)
+        let impl = S.get_user_data_for_lit lit in
+        Some (lit, impl)
       ;;
 
       let state t =
@@ -603,10 +597,7 @@ module Solver = struct
           (match S.get_selected clause with
            | Some lit ->
              (* We've already chosen which <implementation> to use. Follow dependencies. *)
-             let impl =
-               match S.get_user_data_for_lit lit with
-               | SolverData.ImplElem impl -> impl
-             in
+             let impl = S.get_user_data_for_lit lit in
              Selected (Model.requires t.role impl)
            | None ->
              (match S.get_best_undecided clause with
@@ -691,7 +682,7 @@ module Solver = struct
          | None -> impls
          | Some dummy_impl -> impls @ [ dummy_impl ])
         |> List.map ~f:(fun impl ->
-          let var = S.add_variable sat (SolverData.ImplElem impl) in
+          let var = S.add_variable sat impl in
           var, impl)
       in
       let clause =

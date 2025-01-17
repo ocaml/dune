@@ -109,6 +109,84 @@ let encode_fields
     ]
 ;;
 
+let maintenance_intent_list = [ "any"; "latest"; "none" ]
+
+let rec pp_or_list () = function
+  | [] -> ""
+  | [ x ] -> x
+  | [ x; y ] -> sprintf "%S or %S" x y
+  | x :: xs -> sprintf "%S, %a" x pp_or_list xs
+;;
+
+let valid_maintenance_intent =
+  let open Decoder in
+  map_validate (located string) ~f:(fun (loc, str) ->
+    let rec parse_part i =
+      if i >= String.length str
+      then if i > 0 then Error "version ends with a dot" else Error "empty version"
+      else (
+        match str.[i] with
+        | '(' -> parse_token (i + 1) (i + 1)
+        | '.' -> Error "unexpected dot"
+        | _ -> inside_part (i + 1))
+    and inside_part i =
+      if i >= String.length str
+      then Ok ()
+      else (
+        match str.[i] with
+        | '.' -> parse_part (i + 1)
+        | '(' | ')' -> Error "unexpected parenthesis"
+        | _ -> inside_part (i + 1))
+    and parse_token start i =
+      if i >= String.length str
+      then Error "unclosed parenthesis"
+      else (
+        match str.[i] with
+        | ')' ->
+          let token = String.sub str ~pos:start ~len:(i - start) in
+          if List.mem ~equal:String.equal maintenance_intent_list token
+          then after_token (i + 1)
+          else
+            Error
+              (sprintf
+                 "unknown intent %S, expected %a"
+                 token
+                 pp_or_list
+                 maintenance_intent_list)
+        | '-' ->
+          let token = String.sub str ~pos:start ~len:(i - start) in
+          if String.equal token "latest"
+          then parse_num (i + 1) (i + 1)
+          else Error (sprintf "substraction only allowed for \"latest\", not %S" token)
+        | _ -> parse_token start (i + 1))
+    and parse_num start i =
+      if i >= String.length str
+      then Error "unclosed parenthesis"
+      else (
+        match str.[i] with
+        | ')' when i > start -> after_token (i + 1)
+        | '0' when i > start -> parse_num start (i + 1)
+        | '0' -> parse_num (i + 1) (i + 1)
+        | '1' .. '9' -> parse_num start (i + 1)
+        | _ -> Error "invalid substraction")
+    and after_token i =
+      if i >= String.length str
+      then Ok ()
+      else (
+        match str.[i] with
+        | '.' -> parse_part (i + 1)
+        | _ -> Error "missing dot after intent")
+    in
+    match parse_part 0 with
+    | Ok () -> Ok str
+    | Error msg -> Error (User_error.make ~loc [ Pp.text msg ]))
+;;
+
+let decode_maintenance_intent =
+  let open Decoder in
+  Syntax.since Stanza.syntax (3, 18) >>> repeat valid_maintenance_intent
+;;
+
 let decode ?since () =
   let open Decoder in
   let v default = Option.value since ~default in
@@ -132,9 +210,7 @@ let decode ?since () =
     field_o "bug_reports" (Syntax.since Stanza.syntax (v (1, 10)) >>> string)
   and+ maintainers =
     field_o "maintainers" (Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
-  and+ maintenance_intent =
-    field_o "maintenance_intent" (Syntax.since Stanza.syntax (v (3, 18)) >>> repeat string)
-  in
+  and+ maintenance_intent = field_o "maintenance_intent" decode_maintenance_intent in
   { source
   ; authors
   ; license

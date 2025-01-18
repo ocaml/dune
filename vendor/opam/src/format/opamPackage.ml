@@ -72,7 +72,7 @@ module Version = struct
          in
          match major_opt, minor_opt, patch_opt with
          | Some major, Some minor, Some patch ->
-             let max = 65535 in
+             let max = 2 lsl 15 - 1 in
              if major <= max && minor <= max && patch <= max
              then
                (* If each part of the version number can fit in a 16-bit

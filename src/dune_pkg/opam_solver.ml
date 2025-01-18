@@ -432,11 +432,19 @@ module Solver = struct
       { dep_role = drole; dep_importance = importance }
     ;;
 
-    module Conflict_class = String
+    module Conflict_class = struct
+      type t = OpamPackage.Name.t
+
+      module Map = Map.Make (struct
+          type nonrec t = t
+
+          let compare x y = Ordering.of_int (OpamPackage.Name.compare x y)
+          let to_dyn = Dyn.opaque
+        end)
+    end
 
     let conflict_class = function
-      | RealImpl impl ->
-        OpamFile.OPAM.conflict_class impl.opam |> List.map ~f:OpamPackage.Name.to_string
+      | RealImpl impl -> OpamFile.OPAM.conflict_class impl.opam
       | VirtualImpl _ -> []
       | Dummy | Reject _ -> []
     ;;
@@ -1070,7 +1078,7 @@ module Solver = struct
              ++ Pp.textf " %s" (format_restrictions [ restriction ]))
         | `ClassConflict (other_role, cl) ->
           Pp.hovbox
-            (Pp.textf "In same conflict class (%s) as " (cl :> string)
+            (Pp.textf "In same conflict class (%s) as " (OpamPackage.Name.to_string cl)
              ++ format_role other_role)
         | `ConflictsRole other_role ->
           Pp.hovbox (Pp.text "Conflicts with " ++ format_role other_role)

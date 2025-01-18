@@ -408,7 +408,6 @@ module Solver = struct
       { dep_role = drole; dep_importance = importance }
     ;;
 
-    type role_information = { impls : impl list }
     type conflict_class = string
 
     let conflict_class = function
@@ -446,30 +445,27 @@ module Solver = struct
 
     (* Get all the candidates for a role. *)
     let implementations = function
-      | Virtual (_, impls) -> Fiber.return { impls }
+      | Virtual (_, impls) -> Fiber.return impls
       | Real role ->
-        let+ impls =
-          let context = role.context in
-          Context.candidates context role.name
-          >>| List.filter_map ~f:(function
-            | _, Error _rejection -> None
-            | version, Ok opam ->
-              let pkg = OpamPackage.create role.name version in
-              (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
-              let requires =
-                let rank = ref 0 in
-                let make_deps importance xform get =
-                  get opam
-                  |> Context.filter_deps context pkg
-                  |> xform
-                  |> list_deps ~context ~importance ~rank
-                in
-                make_deps `Essential ensure OpamFile.OPAM.depends
-                @ make_deps `Restricts prevent OpamFile.OPAM.conflicts
+        let context = role.context in
+        Context.candidates context role.name
+        >>| List.filter_map ~f:(function
+          | _, Error _rejection -> None
+          | version, Ok opam ->
+            let pkg = OpamPackage.create role.name version in
+            (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
+            let requires =
+              let rank = ref 0 in
+              let make_deps importance xform get =
+                get opam
+                |> Context.filter_deps context pkg
+                |> xform
+                |> list_deps ~context ~importance ~rank
               in
-              Some (RealImpl { pkg; opam; requires }))
-        in
-        { impls }
+              make_deps `Essential ensure OpamFile.OPAM.depends
+              @ make_deps `Restricts prevent OpamFile.OPAM.conflicts
+            in
+            Some (RealImpl { pkg; opam; requires }))
     ;;
 
     let restrictions dependency = dependency.restrictions
@@ -487,8 +483,6 @@ module Solver = struct
          | `Ensure -> result
          | `Prevent -> not result)
     ;;
-
-    type rejection = Context.rejection
 
     let rejects role =
       match role with
@@ -690,7 +684,7 @@ module Solver = struct
     (* Add the implementations of an interface to the implementation cache
        (called the first time we visit it). *)
     let make_impl_clause sat ~dummy_impl role =
-      let+ { impls } = Model.implementations role in
+      let+ impls = Model.implementations role in
       (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
       let impls =
         (match dummy_impl with
@@ -935,7 +929,7 @@ module Solver = struct
         impl_provider. As we explore the example selections, we further filter the candidates. *)
     module Component = struct
       type rejection_reason =
-        [ `Model_rejection of Model.rejection
+        [ `Model_rejection of Context.rejection
         | `FailsRestriction of Model.restriction
         | `DepFailsRestriction of Model.dependency * Model.restriction
         | `ClassConflict of Model.Role.t * Model.conflict_class
@@ -954,7 +948,7 @@ module Solver = struct
         ; (* orig_good is all the implementations passed to the SAT solver (these are the
              ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
           orig_good : Model.impl list
-        ; orig_bad : (Model.impl * Model.rejection) list
+        ; orig_bad : (Model.impl * Context.rejection) list
         ; mutable good : Model.impl list
         ; mutable bad : (Model.impl * rejection_reason) list
         ; mutable notes : Note.t list
@@ -971,12 +965,11 @@ module Solver = struct
         (diagnostics : _ Pp.t Lazy.t)
         (selected_impl : Model.impl option)
         =
-        let { Model.impls } = candidates in
         let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
         { role
-        ; orig_good = impls
+        ; orig_good = candidates
         ; orig_bad
-        ; good = impls
+        ; good = candidates
         ; bad = List.map ~f:(fun (impl, reason) -> impl, `Model_rejection reason) orig_bad
         ; notes
         ; diagnostics

@@ -165,43 +165,39 @@ module Make (Model : S.SOLVER_INPUT) = struct
     clause, impls
   ;;
 
-  (** Starting from [root_req], explore all the feeds and implementations we
-      might need, adding all of them to [sat_problem]. *)
+  (* Starting from [root_req], explore all the feeds and implementations we
+     might need, adding all of them to [sat_problem]. *)
   let build_problem root_req sat ~dummy_impl =
     (* For each (iface, source) we have a list of implementations. *)
     let impl_cache = ref RoleMap.empty in
     let conflict_classes = Conflict_classes.create sat in
     let+ () =
-      let rec lookup_impl =
-        let add_impls_to_cache expand_deps role =
-          let+ clause, impls = make_impl_clause sat ~dummy_impl role in
-          ( clause
-          , fun () ->
-              Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
-                Conflict_classes.process conflict_classes impl_var impl;
-                match expand_deps with
-                | `No_expand -> Fiber.return ()
-                | `Expand_and_collect_conflicts deferred ->
-                  Model.requires role impl
-                  |> Fiber.sequential_iter ~f:(fun dep ->
-                    let { Model.dep_importance; _ } = Model.dep_info dep in
-                    match dep_importance with
-                    | `Essential -> process_dep expand_deps impl_var dep
-                    | `Restricts ->
-                      (* Defer processing restricting deps until all essential deps have
-                         been processed for the entire problem. Restricting deps will be
-                         processed later without recurring into their dependencies. *)
-                      deferred := (impl_var, dep) :: !deferred;
-                      Fiber.return ())) )
-        in
-        fun expand_deps key ->
-          match RoleMap.find !impl_cache key with
-          | Some s -> Fiber.return s
-          | None ->
-            let* value, process = add_impls_to_cache expand_deps key in
-            impl_cache := RoleMap.set !impl_cache key value;
-            let+ () = process () in
-            value
+      let rec lookup_impl expand_deps role =
+        match RoleMap.find !impl_cache role with
+        | Some s -> Fiber.return s
+        | None ->
+          let* clause, impls = make_impl_clause sat ~dummy_impl role in
+          impl_cache := RoleMap.set !impl_cache role clause;
+          let+ () =
+            Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
+              Conflict_classes.process conflict_classes impl_var impl;
+              match expand_deps with
+              | `No_expand -> Fiber.return ()
+              | `Expand_and_collect_conflicts deferred ->
+                Model.requires role impl
+                |> Fiber.sequential_iter ~f:(fun dep ->
+                  let { Model.dep_importance; _ } = Model.dep_info dep in
+                  match dep_importance with
+                  | `Essential -> process_dep expand_deps impl_var dep
+                  | `Restricts ->
+                    (* Defer processing restricting deps until all essential
+                       deps have been processed for the entire problem.
+                       Restricting deps will be processed later without
+                       recurring into their dependencies. *)
+                    deferred := (impl_var, dep) :: !deferred;
+                    Fiber.return ()))
+          in
+          clause
       and process_dep expand_deps user_var dep : unit Fiber.t =
         (* Process a dependency of [user_var]:
            - find the candidate implementations to satisfy it

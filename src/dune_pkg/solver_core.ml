@@ -50,7 +50,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
     let vars t = List.map ~f:fst t.vars
 
     let selected t =
-      let open Stdune.Option.O in
+      let open Option.O in
       let* lit = t.clause >>= S.get_selected in
       match S.get_user_data_for_lit lit with
       | SolverData.ImplElem impl -> Some (lit, impl)

@@ -361,6 +361,22 @@ module Solver = struct
 
       let pp = pp_role
 
+      let rejects role =
+        match role with
+        | Virtual _ -> Fiber.return ([], [])
+        | Real role ->
+          let+ rejects =
+            Context.candidates role.context role.name
+            >>| List.filter_map ~f:(function
+              | _, Ok _ -> None
+              | version, Error reason ->
+                let pkg = OpamPackage.create role.name version in
+                Some (Reject pkg, reason))
+          in
+          let notes = [] in
+          rejects, notes
+      ;;
+
       module Map = Map.Make (T)
     end
 
@@ -517,22 +533,6 @@ module Solver = struct
         (match kind with
          | `Ensure -> result
          | `Prevent -> not result)
-    ;;
-
-    let rejects role =
-      match role with
-      | Virtual _ -> Fiber.return ([], [])
-      | Real role ->
-        let+ rejects =
-          Context.candidates role.context role.name
-          >>| List.filter_map ~f:(function
-            | _, Ok _ -> None
-            | version, Error reason ->
-              let pkg = OpamPackage.create role.name version in
-              Some (Reject pkg, reason))
-        in
-        let notes = [] in
-        rejects, notes
     ;;
 
     let compare_version a b =
@@ -1229,7 +1229,7 @@ module Solver = struct
           let diagnostics = lazy (explain role) in
           let impl = if impl == Input.dummy_impl then None else Some impl in
           let* impl_candidates = Input.implementations role in
-          let+ rejects, feed_problems = Input.rejects role in
+          let+ rejects, feed_problems = Input.Role.rejects role in
           Component.create
             ~role
             (impl_candidates, rejects, feed_problems)

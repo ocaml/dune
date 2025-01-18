@@ -624,7 +624,7 @@ module Solver = struct
          lists. Only defined for [impl_candidates]. *)
       let partition t ~f:test =
         List.partition_map t.vars ~f:(fun (var, impl) ->
-          if test impl then Stdune.Either.Left var else Right var)
+          if test impl then Either.Left var else Right var)
       ;;
     end
 

@@ -348,6 +348,9 @@ module Solver = struct
 
       include T
 
+      let equal x y = Ordering.is_eq (compare x y)
+      let hash = Poly.hash
+
       let user_restrictions = function
         | Virtual _ -> None
         | Real role ->
@@ -797,7 +800,6 @@ module Solver = struct
       module Input = Model
       module Role = Input.Role
 
-      type requirements = Role.t
       type t = { selections : selection Role.Map.t }
 
       let to_map t = t.selections
@@ -839,17 +841,7 @@ module Solver = struct
       let decider () =
         (* Walk the current solution, depth-first, looking for the first undecided interface.
            Then try the most preferred implementation of it that hasn't been ruled out. *)
-        let seen =
-          let module Requirements = struct
-            type t = Output.requirements
-
-            let equal x y = Ordering.is_eq (Output.Role.compare x y)
-            let hash = Poly.hash
-            let to_dyn = Dyn.opaque
-          end
-          in
-          Table.create (module Requirements) 100
-        in
+        let seen = Table.create (module Model.Role) 100 in
         let rec find_undecided req =
           if Table.mem seen req
           then None (* Break cycles *)

@@ -380,8 +380,8 @@ module Solver = struct
 
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
     let list_deps ~context ~importance ~rank deps =
-      let open OpamTypes in
-      let rec aux = function
+      let rec aux (formula : _ OpamTypes.generic_formula) =
+        match formula with
         | Empty -> []
         | Atom (name, restrictions) ->
           let drole = role context name in

@@ -30,7 +30,7 @@ module Version = struct
   type version_small =
     { int : Int64.t
     ; style : version_style
-    ; has_suffix : bool
+    ; has_suffix : [`None | `Tilde | `Some ]
     }
 
   type version =
@@ -48,7 +48,12 @@ module Version = struct
       |> List.concat_map (String.split_on_char '~')
       |> List.concat_map (String.split_on_char '-')
     in
-    let has_suffix = List.length parts > 1 in
+    let has_suffix =
+      match parts with
+      | [] -> `None
+      | ["~"] -> `Tilde
+      | _ :: _ -> `Some
+    in
     match String.split_on_char '.' (List.nth parts 0) with
     | [] -> None
     | major :: rest ->
@@ -107,10 +112,11 @@ module Version = struct
       if c = 0 then
         (* Only consider the suffix if the numeric part of both versions is the same. *)
         match a.has_suffix, b.has_suffix with
-        | false, false -> Some 0
-        | false, true -> Some (-1)
-        | true, false -> Some 1
-        | true, true ->
+        | `Tilde, `Tilde
+        | `None, `None -> Some 0
+        | `Tilde, `None -> Some (-1)
+        | `None, `Tilde -> Some 1
+        | _ , _ ->
             (* If both versions have suffixes then run the full comparison. *)
             None
       else

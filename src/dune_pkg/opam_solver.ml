@@ -633,11 +633,9 @@ module Solver = struct
       ;;
     end
 
-    type diagnostics = S.lit
-
     type selection =
       { impl : Input.Impl.t (** The implementation chosen to fill the role *)
-      ; diagnostics : diagnostics (** Extra information useful for diagnostics *)
+      ; diagnostics : S.lit (** Extra information useful for diagnostics *)
       }
 
     module Conflict_classes = struct

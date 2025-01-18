@@ -34,6 +34,15 @@ module VarID : sig
   val compare : t -> t -> Ordering.t
   val make_mint : unit -> mint
   val issue : mint -> t
+
+  module Hash_set : sig
+    type id := t
+    type t
+
+    val create : unit -> t
+    val mem : t -> id -> bool
+    val add : t -> id -> unit
+  end
 end = struct
   type t = int
   type mint = int ref
@@ -47,6 +56,8 @@ end = struct
     incr mint;
     i
   ;;
+
+  module Hash_set = Hash_set
 end
 
 module Var_value = struct
@@ -134,27 +145,26 @@ module Make (User : USER) = struct
   let lit_equal (s1, v1) (s2, v2) = s1 == s2 && v1 == v2
 
   module C = Comparable.Make (VarID)
-  module VarSet = C.Set
 
   module LitSet = struct
-    module C = Comparable.Make (struct
-        type t = lit
+    type t =
+      { pos : VarID.Hash_set.t
+      ; neg : VarID.Hash_set.t
+      }
 
-        let to_dyn = Dyn.opaque
+    let create () = { pos = VarID.Hash_set.create (); neg = VarID.Hash_set.create () }
 
-        let compare (s1, v1) (s2, v2) =
-          match VarID.compare v1.id v2.id with
-          | Eq ->
-            (match s1, s2 with
-             | Pos, Pos -> Eq
-             | Pos, _ -> Gt
-             | _, Pos -> Lt
-             | Neg, Neg -> Eq)
-          | x -> x
-        ;;
-      end)
+    let mem { pos; neg } (sign, lit) =
+      match sign with
+      | Pos -> VarID.Hash_set.mem pos lit.id
+      | Neg -> VarID.Hash_set.mem neg lit.id
+    ;;
 
-    include C.Set
+    let add { pos; neg } (sign, lit) =
+      match sign with
+      | Pos -> VarID.Hash_set.add pos lit.id
+      | Neg -> VarID.Hash_set.add neg lit.id
+    ;;
   end
 
   type solution = lit -> bool
@@ -184,12 +194,12 @@ module Make (User : USER) = struct
   ;;
 
   let remove_duplicates lits =
-    let seen = ref LitSet.empty in
+    let seen = LitSet.create () in
     let rec find_unique = function
       | [] -> []
-      | x :: xs when LitSet.mem !seen x -> find_unique xs
+      | x :: xs when LitSet.mem seen x -> find_unique xs
       | x :: xs ->
-        seen := LitSet.add !seen x;
+        LitSet.add seen x;
         x :: find_unique xs
     in
     find_unique lits
@@ -576,15 +586,15 @@ module Make (User : USER) = struct
     then (* Trivially true already if any literal is True. *)
       ()
     else (
-      let seen = ref LitSet.empty in
+      let seen = LitSet.create () in
       let rec simplify unique = function
         | [] -> Some unique
-        | x :: _ when LitSet.mem !seen (neg x) -> None (* X or not(X) is always True *)
-        | x :: xs when LitSet.mem !seen x -> simplify unique xs (* Skip duplicates *)
+        | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
+        | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
         | x :: xs when lit_value x = False ->
           simplify unique xs (* Skip values known to be False *)
         | x :: xs ->
-          seen := LitSet.add !seen x;
+          LitSet.add seen x;
           simplify (x :: unique) xs
       in
       (* At this point, [unique] contains only [Undefined] literals. *)
@@ -674,7 +684,7 @@ module Make (User : USER) = struct
     (* The general rule we're learning *)
     let btlevel = ref 0 in
     (* The deepest decision in learnt *)
-    let seen = ref VarSet.empty in
+    let seen = VarID.Hash_set.create () in
     (* The variables involved in the conflict *)
     let counter = ref 0 in
     (* The number of pending variables to check *)
@@ -699,9 +709,9 @@ module Make (User : USER) = struct
          - otherwise, add it to learnt *)
       List.iter p_reason ~f:(fun lit ->
         let var = var_of_lit lit in
-        if not (VarSet.mem !seen var.id)
+        if not (VarID.Hash_set.mem seen var.id)
         then (
-          seen := VarSet.add !seen var.id;
+          VarID.Hash_set.add seen var.id;
           let var_info = var_of_lit lit in
           if var_info.level = get_decision_level problem
           then
@@ -741,7 +751,7 @@ module Make (User : USER) = struct
         let var = var_of_lit lit in
         let reason = var.reason in
         undo_one problem;
-        if VarSet.mem !seen var.id
+        if VarID.Hash_set.mem seen var.id
         then reason, lit
         else
           (* if debug then log_debug "(irrelevant: %s)" (name_lit lit); *)

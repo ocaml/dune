@@ -1992,14 +1992,14 @@ let solve_lock_dir
                       (Package_name.to_string name)
                       (Package_name.to_string dep_name)
                   ]));
-        let reachable =
-          reject_unreachable_packages
-            solver_env
-            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
-            ~local_packages
-            ~pkgs_by_name
-        in
         let pkgs_by_name =
+          let reachable =
+            reject_unreachable_packages
+              solver_env
+              ~dune_version:(Package_version.of_opam_package_version context.dune_version)
+              ~local_packages
+              ~pkgs_by_name
+          in
           Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
             Package_name.Set.mem reachable name)
         in

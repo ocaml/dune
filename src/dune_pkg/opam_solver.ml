@@ -346,6 +346,14 @@ module Solver = struct
 
       include T
 
+      let user_restrictions = function
+        | Virtual _ -> None
+        | Real role ->
+          (match Context.user_restrictions role.context role.name with
+           | None -> None
+           | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f })
+      ;;
+
       let pp = pp_role
 
       module Map = Map.Make (T)
@@ -522,14 +530,6 @@ module Solver = struct
       | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
         , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) ->
         Ordering.to_int (Poly.compare b a)
-    ;;
-
-    let user_restrictions = function
-      | Virtual _ -> None
-      | Real role ->
-        (match Context.user_restrictions role.context role.name with
-         | None -> None
-         | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f })
     ;;
 
     let string_of_op =
@@ -1203,9 +1203,8 @@ module Solver = struct
     (* Check for user-supplied restrictions *)
     let examine_extra_restrictions report =
       Role.Map.iteri report ~f:(fun role component ->
-        Model.user_restrictions role
-        |> Option.iter ~f:(fun restriction ->
-          Component.apply_user_restriction component restriction))
+        Model.Role.user_restrictions role
+        |> Option.iter ~f:(Component.apply_user_restriction component))
     ;;
 
     (** For each selected implementation with a conflict class, reject all candidates

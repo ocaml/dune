@@ -10,6 +10,8 @@ open Fiber.O
 module Make (Model : S.SOLVER_INPUT) = struct
   (** We attach this data to each SAT variable. *)
   module SolverData = struct
+    [@@@ocaml.warning "-37"]
+
     type t =
       (* If the SAT variable is True then we selected this... *)
       | ImplElem of Model.impl
@@ -38,7 +40,7 @@ module Make (Model : S.SOLVER_INPUT) = struct
       ; dummy_impl : Model.impl option
       }
 
-    let is_dummy t impl =
+    let[@ocaml.warning "-32"] is_dummy t impl =
       match t.dummy_impl with
       | None -> false
       | Some dummy_impl -> dummy_impl == impl

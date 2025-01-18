@@ -277,7 +277,7 @@ module Make (Results : S.SOLVER_RESULT) = struct
 
   type t = Component.t RoleMap.t
 
-  let find_component_ex role report =
+  let[@ocaml.warning "-32"] find_component_ex role report =
     match RoleMap.find report role with
     | Some c -> c
     | None ->

@@ -559,8 +559,8 @@ module Solver = struct
       Input.virtual_role [ impl ]
   ;;
 
-  module Solver = Zeroinstall_solver.Make (Input)
-  module Diagnostics = Zeroinstall_solver.Diagnostics (Solver.Output)
+  module Solver = Solver_core.Make (Input)
+  module Diagnostics = Diagnostics.Make (Solver.Output)
 
   let solve context pkgs =
     let req = requirements ~context pkgs in

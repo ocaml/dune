@@ -281,6 +281,8 @@ module Solver = struct
       ; expr : OpamFormula.version_formula
       }
 
+    module Virtual_id = Id.Make ()
+
     type real_role =
       { context : Context.t
       ; name : OpamPackage.Name.t
@@ -288,7 +290,7 @@ module Solver = struct
 
     type role =
       | Real of real_role (* A role is usually an opam package name *)
-      | Virtual of < > * impl list (* (Object just for sorting) *)
+      | Virtual of Virtual_id.t * impl list
 
     and real_impl =
       { pkg : OpamPackage.t
@@ -336,7 +338,7 @@ module Solver = struct
         let compare a b =
           match a, b with
           | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a.name b.name)
-          | Virtual (a, _), Virtual (b, _) -> Poly.compare a b
+          | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
           | Real _, Virtual _ -> Lt
           | Virtual _, Real _ -> Gt
         ;;
@@ -382,7 +384,7 @@ module Solver = struct
             | VirtualImpl (_, x) -> VirtualImpl (i, x)
             | x -> x)
       in
-      Virtual (object end, impls)
+      Virtual (Virtual_id.gen (), impls)
     ;;
 
     type dep_info =

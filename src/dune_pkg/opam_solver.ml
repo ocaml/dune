@@ -422,7 +422,7 @@ module Solver = struct
       { dep_role = drole; dep_importance = importance }
     ;;
 
-    type conflict_class = string
+    module Conflict_class = String
 
     let conflict_class = function
       | RealImpl impl ->
@@ -625,20 +625,13 @@ module Solver = struct
 
     type diagnostics = S.lit
 
-    let explain = S.explain_reason
-
     type selection =
       { impl : Model.impl (** The implementation chosen to fill the role *)
       ; diagnostics : diagnostics (** Extra information useful for diagnostics *)
       }
 
     module Conflict_classes = struct
-      module Map = Map.Make (struct
-          type t = Model.conflict_class
-
-          let compare (x : t) (y : t) = String.compare (x :> string) (y :> string)
-          let to_dyn (x : t) = Dyn.string (x :> string)
-        end)
+      module Map = Conflict_class.Map
 
       type t =
         { sat : S.t
@@ -801,7 +794,7 @@ module Solver = struct
 
       let explain t role =
         match Role.Map.find t.selections role with
-        | Some sel -> explain sel.diagnostics
+        | Some sel -> S.explain_reason sel.diagnostics
         | None -> Pp.text "Role not used!"
       ;;
 
@@ -926,7 +919,7 @@ module Solver = struct
         [ `Model_rejection of Context.rejection
         | `FailsRestriction of Model.restriction
         | `DepFailsRestriction of Model.dependency * Model.restriction
-        | `ClassConflict of Model.Role.t * Model.conflict_class
+        | `ClassConflict of Model.Role.t * Model.Conflict_class.t
         | `ConflictsRole of Model.Role.t
         | `DiagnosticsFailure of User_message.Style.t Pp.t
         ]
@@ -1215,30 +1208,24 @@ module Solver = struct
           Component.apply_user_restriction component restriction))
     ;;
 
-    module Classes = Map.Make (struct
-        type t = Model.conflict_class
-
-        let to_dyn (x : t) = Dyn.string (x :> string)
-        let compare (x : t) (y : t) = String.compare (x :> string) (y :> string)
-      end)
-
     (** For each selected implementation with a conflict class, reject all candidates
         with the same class. *)
     let check_conflict_classes report =
       let classes =
-        Role.Map.foldi report ~init:Classes.empty ~f:(fun role component acc ->
+        Role.Map.foldi report ~init:Conflict_class.Map.empty ~f:(fun role component acc ->
           match Component.selected_impl component with
           | None -> acc
           | Some impl ->
             Model.conflict_class impl
-            |> List.fold_left ~init:acc ~f:(fun acc x -> Classes.set acc x role))
+            |> List.fold_left ~init:acc ~f:(fun acc x ->
+              Conflict_class.Map.set acc x role))
       in
       Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
           let rec aux = function
             | [] -> None
             | cl :: cls ->
-              (match Classes.find classes cl with
+              (match Conflict_class.Map.find classes cl with
                | Some other_role
                  when not (Ordering.is_eq (Model.Role.compare role other_role)) ->
                  Some (`ClassConflict (other_role, cl))

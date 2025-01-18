@@ -330,17 +330,25 @@ module Solver = struct
     let pp_impl_long = pp_impl
 
     module Role = struct
-      type t = role
+      module T = struct
+        type t = role
+
+        let compare a b =
+          match a, b with
+          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a.name b.name)
+          | Virtual (a, _), Virtual (b, _) -> Poly.compare a b
+          | Real _, Virtual _ -> Lt
+          | Virtual _, Real _ -> Gt
+        ;;
+
+        let to_dyn = Dyn.opaque
+      end
+
+      include T
 
       let pp = pp_role
 
-      let compare a b =
-        match a, b with
-        | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a.name b.name)
-        | Virtual (a, _), Virtual (b, _) -> Poly.compare a b
-        | Real _, Virtual _ -> Lt
-        | Virtual _, Real _ -> Gt
-      ;;
+      module Map = Map.Make (T)
     end
 
     module Impl = struct
@@ -613,11 +621,7 @@ module Solver = struct
       ;;
     end
 
-    module RoleMap = Map.Make (struct
-        include Model.Role
-
-        let to_dyn = Dyn.opaque
-      end)
+    open Model
 
     type diagnostics = S.lit
 
@@ -700,15 +704,15 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = ref RoleMap.empty in
+      let impl_cache = ref Role.Map.empty in
       let conflict_classes = Conflict_classes.create sat in
       let+ () =
         let rec lookup_impl expand_deps role =
-          match RoleMap.find !impl_cache role with
+          match Role.Map.find !impl_cache role with
           | Some s -> Fiber.return s
           | None ->
             let* clause, impls = make_impl_clause sat ~dummy_impl role in
-            impl_cache := RoleMap.set !impl_cache role clause;
+            impl_cache := Role.Map.set !impl_cache role clause;
             let+ () =
               Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
                 Conflict_classes.process conflict_classes impl_var impl;
@@ -789,15 +793,14 @@ module Solver = struct
     module Output = struct
       module Input = Model
       module Role = Input.Role
-      module RoleMap = RoleMap
 
       type requirements = Role.t
-      type t = { selections : selection RoleMap.t }
+      type t = { selections : selection Role.Map.t }
 
       let to_map t = t.selections
 
       let explain t role =
-        match RoleMap.find t.selections role with
+        match Role.Map.find t.selections role with
         | Some sel -> explain sel.diagnostics
         | None -> Pp.text "Role not used!"
       ;;
@@ -828,7 +831,7 @@ module Solver = struct
       let sat = S.create () in
       let dummy_impl = if closest_match then Some Model.dummy_impl else None in
       let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-      let lookup role = RoleMap.find_exn impl_clauses role in
+      let lookup role = Role.Map.find_exn impl_clauses role in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -875,7 +878,7 @@ module Solver = struct
       | Some _solution ->
         (* Build the results object *)
         let selections =
-          RoleMap.filter_mapi impl_clauses ~f:(fun _role candidates ->
+          Role.Map.filter_mapi impl_clauses ~f:(fun _role candidates ->
             Candidates.selected candidates
             |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
         in
@@ -886,7 +889,7 @@ module Solver = struct
   module Diagnostics = struct
     module Results = Solver.Output
     module Model = Results.Input
-    module RoleMap = Results.RoleMap
+    open Model
 
     let format_role = Model.Role.pp
 
@@ -1153,10 +1156,10 @@ module Solver = struct
      e.g. A depends on B and C. B and C both depend on D.
      C1 conflicts with D1. The depth-first priority order means we give priority
      to {A1, B1, D1}. Then we can't choose C1 because we prefer to keep D1. *)
-    let get_dependency_problem role (report : Component.t RoleMap.t) impl =
+    let get_dependency_problem role (report : Component.t Role.Map.t) impl =
       let check_dep dep =
         let dep_info = Model.dep_info dep in
-        match RoleMap.find report dep_info.dep_role with
+        match Role.Map.find report dep_info.dep_role with
         | None -> None (* Not in the selections => can't be part of a conflict *)
         | Some required_component ->
           (match Component.selected_impl required_component with
@@ -1175,9 +1178,9 @@ module Solver = struct
 
     (** A selected component has [dep] as a dependency. Use this to explain why some implementations
         of the required interface were rejected. *)
-    let examine_dep requiring_role requiring_impl (report : Component.t RoleMap.t) dep =
+    let examine_dep requiring_role requiring_impl (report : Component.t Role.Map.t) dep =
       let { Model.dep_role = other_role; dep_importance = _ } = Model.dep_info dep in
-      match RoleMap.find report other_role with
+      match Role.Map.find report other_role with
       | None -> ()
       | Some required_component ->
         let dep_restrictions = Model.restrictions dep in
@@ -1204,7 +1207,7 @@ module Solver = struct
 
     (* Check for user-supplied restrictions *)
     let examine_extra_restrictions report =
-      RoleMap.iteri report ~f:(fun role component ->
+      Role.Map.iteri report ~f:(fun role component ->
         Model.user_restrictions role
         |> Option.iter ~f:(fun restriction ->
           Component.apply_user_restriction component restriction))
@@ -1221,14 +1224,14 @@ module Solver = struct
         with the same class. *)
     let check_conflict_classes report =
       let classes =
-        RoleMap.foldi report ~init:Classes.empty ~f:(fun role component acc ->
+        Role.Map.foldi report ~init:Classes.empty ~f:(fun role component acc ->
           match Component.selected_impl component with
           | None -> acc
           | Some impl ->
             Model.conflict_class impl
             |> List.fold_left ~init:acc ~f:(fun acc x -> Classes.set acc x role))
       in
-      RoleMap.iteri report ~f:(fun role component ->
+      Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
           let rec aux = function
             | [] -> None
@@ -1257,16 +1260,16 @@ module Solver = struct
             diagnostics
             impl
         in
-        RoleMap.to_list impls
+        Role.Map.to_list impls
         |> Fiber.parallel_map ~f:(fun (k, v) ->
           let+ v = get_selected k v in
           k, v)
-        |> Fiber.map ~f:RoleMap.of_list_exn
+        |> Fiber.map ~f:Role.Map.of_list_exn
       in
       examine_extra_restrictions report;
       check_conflict_classes report;
-      RoleMap.iteri ~f:(examine_selection report) report;
-      RoleMap.iteri ~f:(fun _ c -> Component.finalise c) report;
+      Role.Map.iteri ~f:(examine_selection report) report;
+      Role.Map.iteri ~f:(fun _ c -> Component.finalise c) report;
       report
     ;;
   end
@@ -1281,7 +1284,7 @@ module Solver = struct
 
   let pp_rolemap ~verbose reasons =
     let good, bad, unknown =
-      Solver.Output.RoleMap.to_list reasons
+      Solver.Output.Role.Map.to_list reasons
       |> List.partition_three ~f:(fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
@@ -1319,7 +1322,7 @@ module Solver = struct
 
   let packages_of_result sels =
     Solver.Output.to_map sels
-    |> Solver.Output.RoleMap.to_list
+    |> Solver.Output.Role.Map.to_list
     |> List.filter_map ~f:(fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
   ;;
 end

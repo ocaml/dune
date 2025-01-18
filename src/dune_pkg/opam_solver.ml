@@ -374,6 +374,12 @@ module Solver = struct
         | VirtualImpl (_, deps) -> deps
         | RealImpl impl -> impl.requires
       ;;
+
+      let conflict_class = function
+        | RealImpl impl -> OpamFile.OPAM.conflict_class impl.opam
+        | VirtualImpl _ -> []
+        | Dummy | Reject _ -> []
+      ;;
     end
 
     let role context name = Real { context; name }
@@ -445,12 +451,6 @@ module Solver = struct
           let to_dyn = Dyn.opaque
         end)
     end
-
-    let conflict_class = function
-      | RealImpl impl -> OpamFile.OPAM.conflict_class impl.opam
-      | VirtualImpl _ -> []
-      | Dummy | Reject _ -> []
-    ;;
 
     (* Opam uses conflicts, e.g.
        conflicts if X {> 1} OR Y {< 1 OR > 2}
@@ -661,7 +661,7 @@ module Solver = struct
 
       (* Add [impl] to its conflict groups, if any. *)
       let process t impl_var impl =
-        Input.conflict_class impl
+        Input.Impl.conflict_class impl
         |> List.iter ~f:(fun name ->
           let impls = var t name in
           impls := impl_var :: !impls)
@@ -1199,7 +1199,7 @@ module Solver = struct
             match Component.selected_impl component with
             | None -> acc
             | Some impl ->
-              Input.conflict_class impl
+              Input.Impl.conflict_class impl
               |> List.fold_left ~init:acc ~f:(fun acc x ->
                 Input.Conflict_class.Map.set acc x role))
       in
@@ -1214,7 +1214,7 @@ module Solver = struct
                  Some (`ClassConflict (other_role, cl))
                | _ -> aux cls)
           in
-          aux (Input.conflict_class impl)))
+          aux (Input.Impl.conflict_class impl)))
     ;;
 
     let of_result impls =

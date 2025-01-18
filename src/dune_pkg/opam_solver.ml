@@ -519,8 +519,6 @@ module Solver = struct
             Some (RealImpl { pkg; opam; requires }))
     ;;
 
-    let restrictions dependency = dependency.restrictions
-
     let meets_restriction impl { kind; expr } =
       match impl with
       | Dummy -> true
@@ -743,10 +741,8 @@ module Solver = struct
                [user_var] (for "essential" dependencies only) *)
           let { Input.dep_role; dep_importance } = Input.dep_info dep in
           let+ pass, fail =
-            let meets_restrictions =
-              (* Restrictions on the candidates *)
-              let dep_restrictions = Input.restrictions dep in
-              fun impl -> List.for_all ~f:(Input.meets_restriction impl) dep_restrictions
+            let meets_restrictions (* Restrictions on the candidates *) impl =
+              List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
             in
             lookup_impl expand_deps dep_role
             >>| Candidates.partition ~f:meets_restrictions
@@ -1011,8 +1007,7 @@ module Solver = struct
             | Lt | Gt -> None
             | Eq ->
               (* It depends on itself. *)
-              Input.restrictions dep
-              |> List.find_map ~f:(fun r ->
+              List.find_map dep.restrictions ~f:(fun r ->
                 if Input.meets_restriction impl r
                 then None
                 else Some (`DepFailsRestriction (dep, r)))))
@@ -1135,7 +1130,7 @@ module Solver = struct
                then None
                else Some (`DepFailsRestriction (dep, r))
              in
-             List.find_map ~f:check_restriction (Input.restrictions dep))
+             List.find_map ~f:check_restriction dep.restrictions)
       in
       let deps = Input.Impl.requires role impl in
       List.find_map ~f:check_dep deps
@@ -1153,14 +1148,13 @@ module Solver = struct
       match Input.Role.Map.find report other_role with
       | None -> ()
       | Some required_component ->
-        let dep_restrictions = Input.restrictions dep in
-        if dep_restrictions <> []
+        if dep.restrictions <> []
         then
           (* Remove implementations incompatible with the other selections *)
           Component.apply_restrictions
             required_component
-            dep_restrictions
-            ~note:(Restricts (requiring_role, requiring_impl, dep_restrictions))
+            dep.restrictions
+            ~note:(Restricts (requiring_role, requiring_impl, dep.restrictions))
     ;;
 
     (* Find all restrictions that are in play and affect this interface *)

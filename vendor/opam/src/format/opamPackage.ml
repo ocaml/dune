@@ -104,7 +104,7 @@ module Version = struct
   let small_compare a b =
     if version_style_equal a.style b.style then
       let c = Int64.compare a.int b.int in
-      if c == 0 then
+      if c = 0 then
         (* Only consider the suffix if the numeric part of both versions is the same. *)
         match a.has_suffix, b.has_suffix with
         | false, false -> Some 0

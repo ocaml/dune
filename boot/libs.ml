@@ -78,7 +78,7 @@ let local_libraries =
      Some "Build_info",
      false,
      Some "Build_info_data")
-  ; ("src/0install-solver", Some "Zeroinstall_solver", false, None)
+  ; ("src/sat", Some "Sat", false, None)
   ; ("vendor/fmt/src", None, false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)

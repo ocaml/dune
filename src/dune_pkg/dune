@@ -20,7 +20,7 @@
   opam_format
   opam_state
   build_info
-  zeroinstall_solver
+  sat
   fmt
   xdg)
  (instrumentation

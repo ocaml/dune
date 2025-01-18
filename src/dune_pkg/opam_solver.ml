@@ -537,12 +537,11 @@ module Solver = struct
 
     let compare_version a b =
       match a, b with
-      | RealImpl a, RealImpl b -> OpamPackage.compare a.pkg b.pkg
-      | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Ordering.to_int (Int.compare ia ib)
-      | Reject a, Reject b -> OpamPackage.compare a b
+      | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
+      | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+      | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
       | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
-        , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) ->
-        Ordering.to_int (Poly.compare b a)
+        , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) -> Poly.compare b a
     ;;
 
     let string_of_op =
@@ -947,7 +946,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
-        | Some selected when Input.compare_version selected impl > 0 -> false
+        | Some selected when Input.compare_version selected impl = Gt -> false
         | _ -> true
       ;;
 
@@ -1053,7 +1052,7 @@ module Solver = struct
       ;;
 
       let show_rejections ~verbose rejected =
-        let by_version (a, _) (b, _) = Input.compare_version b a |> Ordering.of_int in
+        let by_version (a, _) (b, _) = Input.compare_version b a in
         let rejected = List.sort ~compare:by_version rejected in
         let rec aux i = function
           | [] -> Pp.nop

@@ -603,6 +603,30 @@ module Solver = struct
               | Some lit -> Undecided lit
               | None -> Unselected (* No remaining candidates, and none was chosen. *)))
       ;;
+
+      (* Add the implementations of an interface to the implementation cache
+         (called the first time we visit it). *)
+      let make_impl_clause sat ~dummy_impl role =
+        (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
+        let+ impls =
+          let+ impls = Input.implementations role in
+          (match dummy_impl with
+           | None -> impls
+           | Some dummy_impl -> impls @ [ dummy_impl ])
+          |> List.map ~f:(fun impl ->
+            let var = S.add_variable sat impl in
+            { impl; var })
+        in
+        let clause =
+          let impl_clause =
+            match impls with
+            | [] -> None
+            | _ :: _ -> Some (S.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
+          in
+          { role; clause = impl_clause; vars = impls }
+        in
+        clause, impls
+      ;;
     end
 
     module Conflict_classes = struct
@@ -644,30 +668,6 @@ module Solver = struct
       ;;
     end
 
-    (* Add the implementations of an interface to the implementation cache
-       (called the first time we visit it). *)
-    let make_impl_clause sat ~dummy_impl role =
-      (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
-      let+ impls =
-        let+ impls = Input.implementations role in
-        (match dummy_impl with
-         | None -> impls
-         | Some dummy_impl -> impls @ [ dummy_impl ])
-        |> List.map ~f:(fun impl ->
-          let var = S.add_variable sat impl in
-          { impl; var })
-      in
-      let clause =
-        let impl_clause =
-          match impls with
-          | [] -> None
-          | _ :: _ -> Some (S.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
-        in
-        { Candidates.role; clause = impl_clause; vars = impls }
-      in
-      clause, impls
-    ;;
-
     (* Starting from [root_req], explore all the feeds and implementations we
        might need, adding all of them to [sat_problem]. *)
     let build_problem root_req sat ~dummy_impl =
@@ -679,7 +679,7 @@ module Solver = struct
           match Input.Role.Map.find !impl_cache role with
           | Some s -> Fiber.return s
           | None ->
-            let* clause, impls = make_impl_clause sat ~dummy_impl role in
+            let* clause, impls = Candidates.make_impl_clause sat ~dummy_impl role in
             impl_cache := Input.Role.Map.set !impl_cache role clause;
             let+ () =
               Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->

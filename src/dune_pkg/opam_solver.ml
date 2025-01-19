@@ -425,15 +425,6 @@ module Solver = struct
       ;;
     end
 
-    let virtual_impl ~context ~depends () =
-      let depends =
-        List.map depends ~f:(fun name ->
-          let drole = Real { context; name } in
-          { drole; importance = Ensure; restrictions = [] })
-      in
-      VirtualImpl (-1, depends)
-    ;;
-
     let virtual_role impls =
       let impls =
         List.mapi impls ~f:(fun i ->
@@ -565,14 +556,6 @@ module Solver = struct
 
     let describe_problem _impl = Context.pp_rejection
   end
-
-  let requirements ~context pkgs =
-    match pkgs with
-    | [ pkg ] -> Input.Real { context; name = pkg }
-    | pkgs ->
-      let impl = Input.virtual_impl ~context ~depends:pkgs () in
-      Input.virtual_role [ impl ]
-  ;;
 
   module Solver = struct
     (* Copyright (C) 2013, Thomas Leonard
@@ -1233,7 +1216,20 @@ module Solver = struct
   end
 
   let solve context pkgs =
-    let req = requirements ~context pkgs in
+    let req =
+      match pkgs with
+      | [ pkg ] -> Input.Real { context; name = pkg }
+      | pkgs ->
+        let impl : Input.Impl.t =
+          let depends =
+            List.map pkgs ~f:(fun name ->
+              let drole : Input.Role.t = Real { context; name } in
+              { Input.drole; importance = Ensure; restrictions = [] })
+          in
+          VirtualImpl (-1, depends)
+        in
+        Input.virtual_role [ impl ]
+    in
     Solver.do_solve ~closest_match:false req
     >>| function
     | Some sels -> Ok sels

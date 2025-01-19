@@ -570,20 +570,23 @@ module Solver = struct
       | Selected of Input.dependency list
       | Unselected
 
+    type selection =
+      { impl : Input.Impl.t (** The implementation chosen to fill the role *)
+      ; var : S.lit
+      }
+
     module Candidates = struct
       type t =
         { role : Input.Role.t
         ; clause : S.at_most_one_clause option
-        ; vars : (S.lit * Input.Impl.t) list
+        ; vars : selection list
         }
-
-      let vars t = List.map ~f:fst t.vars
 
       let selected t =
         let open Option.O in
-        let* lit = t.clause >>= S.get_selected in
+        let+ lit = t.clause >>= S.get_selected in
         let impl = S.get_user_data_for_lit lit in
-        Some (lit, impl)
+        { var = lit; impl }
       ;;
 
       let state t =
@@ -601,11 +604,6 @@ module Solver = struct
               | None -> Unselected (* No remaining candidates, and none was chosen. *)))
       ;;
     end
-
-    type selection =
-      { impl : Input.Impl.t (** The implementation chosen to fill the role *)
-      ; diagnostics : S.lit (** Extra information useful for diagnostics *)
-      }
 
     module Conflict_classes = struct
       module Map = Input.Conflict_class.Map
@@ -657,13 +655,13 @@ module Solver = struct
          | Some dummy_impl -> impls @ [ dummy_impl ])
         |> List.map ~f:(fun impl ->
           let var = S.add_variable sat impl in
-          var, impl)
+          { impl; var })
       in
       let clause =
         let impl_clause =
           match impls with
           | [] -> None
-          | _ :: _ -> Some (S.at_most_one sat (List.map ~f:fst impls))
+          | _ :: _ -> Some (S.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
         in
         { Candidates.role; clause = impl_clause; vars = impls }
       in
@@ -684,7 +682,7 @@ module Solver = struct
             let* clause, impls = make_impl_clause sat ~dummy_impl role in
             impl_cache := Input.Role.Map.set !impl_cache role clause;
             let+ () =
-              Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
+              Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
                 Conflict_classes.process conflict_classes impl_var impl;
                 match expand_deps with
                 | `No_expand -> Fiber.return ()
@@ -715,7 +713,7 @@ module Solver = struct
               List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
             in
             let+ candidates = lookup_impl expand_deps dep.drole in
-            List.partition_map candidates.vars ~f:(fun (var, impl) ->
+            List.partition_map candidates.vars ~f:(fun { var; impl } ->
               if meets_restrictions impl then Left var else Right var)
           in
           match dep.importance with
@@ -741,9 +739,11 @@ module Solver = struct
         let conflicts = ref [] in
         let* () =
           (* This recursively builds the whole problem up. *)
-          lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
-          >>| Candidates.vars
-          >>| S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+          let+ candidates =
+            lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
+          in
+          List.map candidates.vars ~f:(fun x -> x.var)
+          |> S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
         in
         (* Now process any restricting deps. Due to the cache, only restricting
            deps that aren't also an essential dep will be expanded. The solver will
@@ -816,12 +816,7 @@ module Solver = struct
       | None -> None
       | Some _solution ->
         (* Build the results object *)
-        let selections =
-          Input.Role.Map.filter_mapi impl_clauses ~f:(fun _role candidates ->
-            Candidates.selected candidates
-            |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
-        in
-        Some selections
+        Some (Input.Role.Map.filter_map impl_clauses ~f:Candidates.selected)
     ;;
   end
 
@@ -1178,7 +1173,7 @@ module Solver = struct
     let of_result impls =
       let explain role =
         match Input.Role.Map.find impls role with
-        | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.diagnostics
+        | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.var
         | None -> Pp.text "Role not used!"
       in
       let+ report =

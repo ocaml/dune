@@ -682,9 +682,9 @@ module Solver = struct
     (* Add the implementations of an interface to the implementation cache
        (called the first time we visit it). *)
     let make_impl_clause sat ~dummy_impl role =
-      let+ impls = Input.implementations role in
       (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
-      let impls =
+      let+ impls =
+        let+ impls = Input.implementations role in
         (match dummy_impl with
          | None -> impls
          | Some dummy_impl -> impls @ [ dummy_impl ])

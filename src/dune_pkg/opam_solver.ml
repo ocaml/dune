@@ -280,10 +280,30 @@ module Solver = struct
   module Input = struct
     (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
        record whether to negate the result here. *)
-    type restriction =
-      { kind : Dep_kind.t
-      ; expr : OpamFormula.version_formula
-      }
+    module Restriction = struct
+      type t =
+        { kind : Dep_kind.t
+        ; expr : OpamFormula.version_formula
+        }
+
+      let string_of_version_formula =
+        let string_of_op =
+          let pos =
+            { OpamParserTypes.FullPos.filename = ""; start = 0, 0; stop = 0, 0 }
+          in
+          fun pelem -> OpamPrinter.FullPos.relop { pelem; pos }
+        in
+        OpamFormula.string_of_formula (fun (rel, v) ->
+          Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v))
+      ;;
+
+      let to_string = function
+        | { kind = Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
+        | { kind = Prevent; expr } ->
+          Format.sprintf "not(%s)" (string_of_version_formula expr)
+        | { kind = Ensure; expr } -> string_of_version_formula expr
+      ;;
+    end
 
     module Virtual_id = Id.Make ()
 
@@ -305,7 +325,7 @@ module Solver = struct
     and dependency =
       { drole : role
       ; importance : Dep_kind.t
-      ; restrictions : restriction list
+      ; restrictions : Restriction.t list
       }
 
     and impl =
@@ -359,7 +379,8 @@ module Solver = struct
         | Virtual _ -> None
         | Real role ->
           Context.user_restrictions role.context role.name
-          |> Option.map ~f:(fun f -> { kind = Ensure; expr = OpamFormula.Atom f })
+          |> Option.map ~f:(fun f ->
+            { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
       ;;
 
       let pp = pp_role
@@ -456,7 +477,7 @@ module Solver = struct
     let prevent f =
       OpamFormula.neg Fun.id f
       |> OpamFormula.map (fun (a, expr) ->
-        OpamFormula.Atom (a, [ { kind = Prevent; expr } ]))
+        OpamFormula.Atom (a, [ { Restriction.kind = Prevent; expr } ]))
     ;;
 
     let ensure =
@@ -464,7 +485,7 @@ module Solver = struct
         let rlist =
           match vexpr with
           | OpamFormula.Empty -> []
-          | r -> [ { kind = Ensure; expr = r } ]
+          | r -> [ { Restriction.kind = Ensure; expr = r } ]
         in
         OpamFormula.Atom (name, rlist))
     ;;
@@ -520,7 +541,7 @@ module Solver = struct
             Some (RealImpl { pkg; opam; requires }))
     ;;
 
-    let meets_restriction impl { kind; expr } =
+    let meets_restriction impl { Restriction.kind; expr } =
       match impl with
       | Dummy -> true
       | VirtualImpl _ -> assert false (* Can't constrain version of a virtual impl! *)
@@ -532,23 +553,6 @@ module Solver = struct
         (match kind with
          | Ensure -> result
          | Prevent -> not result)
-    ;;
-
-    let string_of_op =
-      let pos = { OpamParserTypes.FullPos.filename = ""; start = 0, 0; stop = 0, 0 } in
-      fun pelem -> OpamPrinter.FullPos.relop { pelem; pos }
-    ;;
-
-    let string_of_version_formula =
-      OpamFormula.string_of_formula (fun (rel, v) ->
-        Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v))
-    ;;
-
-    let string_of_restriction = function
-      | { kind = Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
-      | { kind = Prevent; expr } ->
-        Format.sprintf "not(%s)" (string_of_version_formula expr)
-      | { kind = Ensure; expr } -> string_of_version_formula expr
     ;;
   end
 
@@ -819,14 +823,14 @@ module Solver = struct
 
   module Diagnostics = struct
     let format_restrictions r =
-      String.concat ~sep:", " (List.map ~f:Input.string_of_restriction r)
+      String.concat ~sep:", " (List.map ~f:Input.Restriction.to_string r)
     ;;
 
     module Note = struct
       (** An item of information to display for a component. *)
       type t =
-        | UserRequested of Input.restriction
-        | Restricts of Input.Role.t * Input.impl * Input.restriction list
+        | UserRequested of Input.Restriction.t
+        | Restricts of Input.Role.t * Input.Impl.t * Input.Restriction.t list
         | Feed_problem of string
 
       let pp = function
@@ -849,8 +853,8 @@ module Solver = struct
     module Component = struct
       type rejection_reason =
         [ `Model_rejection of Context.rejection
-        | `FailsRestriction of Input.restriction
-        | `DepFailsRestriction of Input.dependency * Input.restriction
+        | `FailsRestriction of Input.Restriction.t
+        | `DepFailsRestriction of Input.dependency * Input.Restriction.t
         | `ClassConflict of Input.Role.t * Input.Conflict_class.t
         | `ConflictsRole of Input.Role.t
         | `DiagnosticsFailure of User_message.Style.t Pp.t
@@ -989,7 +993,7 @@ module Solver = struct
         | `FailsRestriction r ->
           Pp.paragraphf
             "Incompatible with restriction: %s"
-            (Input.string_of_restriction r)
+            (Input.Restriction.to_string r)
         | `DepFailsRestriction (dep, restriction) ->
           Pp.hovbox
             (Pp.text "Requires "

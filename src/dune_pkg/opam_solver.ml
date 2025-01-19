@@ -396,14 +396,28 @@ module Solver = struct
         | VirtualImpl _ -> []
         | Dummy | Reject _ -> []
       ;;
-    end
 
-    let role context name = Real { context; name }
+      let version = function
+        | RealImpl impl -> Some impl.pkg
+        | Reject pkg -> Some pkg
+        | VirtualImpl _ -> None
+        | Dummy -> None
+      ;;
+
+      let compare_version a b =
+        match a, b with
+        | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
+        | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+        | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
+        | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
+          , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) -> Poly.compare b a
+      ;;
+    end
 
     let virtual_impl ~context ~depends () =
       let depends =
         List.map depends ~f:(fun name ->
-          let drole = role context name in
+          let drole = Real { context; name } in
           let importance = `Essential in
           { drole; importance; restrictions = [] })
       in
@@ -433,7 +447,7 @@ module Solver = struct
         match formula with
         | Empty -> []
         | Atom (name, restrictions) ->
-          let drole = role context name in
+          let drole = Real { context; name } in
           [ { drole; restrictions; importance } ]
         | Block x -> aux x
         | And (x, y) -> aux x @ aux y
@@ -533,15 +547,6 @@ module Solver = struct
          | `Prevent -> not result)
     ;;
 
-    let compare_version a b =
-      match a, b with
-      | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
-      | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
-      | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
-      | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
-        , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) -> Poly.compare b a
-    ;;
-
     let string_of_op =
       let pos = { OpamParserTypes.FullPos.filename = ""; start = 0, 0; stop = 0, 0 } in
       fun pelem -> OpamPrinter.FullPos.relop { pelem; pos }
@@ -560,18 +565,11 @@ module Solver = struct
     ;;
 
     let describe_problem _impl = Context.pp_rejection
-
-    let version = function
-      | RealImpl impl -> Some impl.pkg
-      | Reject pkg -> Some pkg
-      | VirtualImpl _ -> None
-      | Dummy -> None
-    ;;
   end
 
   let requirements ~context pkgs =
     match pkgs with
-    | [ pkg ] -> Input.role context pkg
+    | [ pkg ] -> Input.Real { context; name = pkg }
     | pkgs ->
       let impl = Input.virtual_impl ~context ~depends:pkgs () in
       Input.virtual_role [ impl ]
@@ -597,7 +595,6 @@ module Solver = struct
         ; vars : (S.lit * Input.Impl.t) list
         }
 
-      let create role clause vars = { role; clause; vars }
       let vars t = List.map ~f:fst t.vars
 
       let selected t =
@@ -693,7 +690,7 @@ module Solver = struct
           | [] -> None
           | _ :: _ -> Some (S.at_most_one sat (List.map ~f:fst impls))
         in
-        Candidates.create role impl_clause impls
+        { Candidates.role; clause = impl_clause; vars = impls }
       in
       clause, impls
     ;;
@@ -719,8 +716,10 @@ module Solver = struct
                 | `Expand_and_collect_conflicts deferred ->
                   Input.Impl.requires role impl
                   |> Fiber.sequential_iter ~f:(fun dep ->
-                    let { Input.dep_importance; _ } = Input.dep_info dep in
-                    match dep_importance with
+                    match
+                      let { Input.dep_importance; _ } = Input.dep_info dep in
+                      dep_importance
+                    with
                     | `Essential -> process_dep expand_deps impl_var dep
                     | `Restricts ->
                       (* Defer processing restricting deps until all essential
@@ -939,7 +938,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
-        | Some selected when Input.compare_version selected impl = Gt -> false
+        | Some selected when Input.Impl.compare_version selected impl = Gt -> false
         | _ -> true
       ;;
 
@@ -1044,7 +1043,7 @@ module Solver = struct
       ;;
 
       let show_rejections ~verbose rejected =
-        let by_version (a, _) (b, _) = Input.compare_version b a in
+        let by_version (a, _) (b, _) = Input.Impl.compare_version b a in
         let rejected = List.sort ~compare:by_version rejected in
         let rec aux i = function
           | [] -> Pp.nop
@@ -1288,7 +1287,7 @@ module Solver = struct
 
   let packages_of_result sels =
     Input.Role.Map.values sels
-    |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.version sel.impl)
+    |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.Impl.version sel.impl)
   ;;
 end
 

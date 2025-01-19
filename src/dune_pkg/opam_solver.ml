@@ -816,7 +816,6 @@ module Solver = struct
       let sat = S.create () in
       let dummy_impl = if closest_match then Some Input.dummy_impl else None in
       let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-      let lookup role = Input.Role.Map.find_exn impl_clauses role in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first undecided interface.
@@ -827,7 +826,7 @@ module Solver = struct
           then None (* Break cycles *)
           else (
             Table.set seen req true;
-            let candidates = lookup req in
+            let candidates = Input.Role.Map.find_exn impl_clauses req in
             match Candidates.state candidates with
             | Unselected -> None
             | Undecided lit -> Some lit

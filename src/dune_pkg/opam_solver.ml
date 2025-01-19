@@ -704,12 +704,11 @@ module Solver = struct
              - ensure that we do pick a compatible version if we select
                [user_var] (for "essential" dependencies only) *)
           let+ pass, fail =
-            let meets_restrictions (* Restrictions on the candidates *) impl =
-              List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
-            in
             let+ candidates = lookup_impl expand_deps dep.drole in
             List.partition_map candidates.vars ~f:(fun { var; impl } ->
-              if meets_restrictions impl then Left var else Right var)
+              if List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
+              then Left var
+              else Right var)
           in
           match dep.importance with
           | Ensure ->
@@ -795,17 +794,15 @@ module Solver = struct
             | Selected deps ->
               (* We've already selected a candidate for this component. Now
                  check its dependencies. *)
-              let check_dep (dep : Input.dependency) =
+              List.find_map deps ~f:(fun (dep : Input.dependency) ->
                 match dep.importance with
+                | Ensure -> find_undecided dep.drole
                 | Prevent ->
                   (* Restrictions don't express that we do or don't want the
                      dependency, so skip them here. If someone else needs this,
                      we'll handle it when we get to them.
                      If noone wants it, it will be set to unselected at the end. *)
-                  None
-                | Ensure -> find_undecided dep.drole
-              in
-              List.find_map ~f:check_dep deps)
+                  None))
         in
         find_undecided root_req
       in

@@ -42,11 +42,24 @@ module Version = struct
 
   let to_string x = x.raw
 
+  (* CR rgrinberg: get rid of this once we drop 4.08 support *)
+  let rev_concat_map t ~f =
+    let rec aux f acc = function
+      | [] -> acc
+      | x :: l ->
+        let xs = f x in
+        aux f (List.rev_append xs acc) l
+    in
+    aux f [] t
+  ;;
+
+  let concat_map t ~f = List.rev (rev_concat_map t ~f)
+
   let small_of_string s =
     let parts =
       String.split_on_char '+' s
-      |> List.concat_map (String.split_on_char '~')
-      |> List.concat_map (String.split_on_char '-')
+      |> concat_map ~f:(String.split_on_char '~')
+      |> concat_map ~f:(String.split_on_char '-')
     in
     let has_suffix =
       match parts with

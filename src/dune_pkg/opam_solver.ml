@@ -413,10 +413,15 @@ module Solver = struct
       let compare_version a b =
         match a, b with
         | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
+        | RealImpl _, _ -> Gt
+        | _, RealImpl _ -> Lt
         | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+        | VirtualImpl _, _ -> Gt
+        | _, VirtualImpl _ -> Lt
         | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
-        | ( (RealImpl _ | Reject _ | VirtualImpl _ | Dummy)
-          , (RealImpl _ | Reject _ | VirtualImpl _ | Dummy) ) -> Poly.compare b a
+        | Reject _, _ -> Gt
+        | _, Reject _ -> Lt
+        | Dummy, Dummy -> Eq
       ;;
     end
 

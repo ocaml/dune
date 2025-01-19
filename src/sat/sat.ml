@@ -624,10 +624,11 @@ module Make (User : USER) = struct
 
     (* Ensure no duplicates *)
     if List.length (remove_duplicates lits) <> List.length lits
-    then
-      User_error.raise
-        [ Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
-        ];
+    then (
+      let msg =
+        Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
+      in
+      invalid_arg (Format.asprintf "%a." Pp.to_fmt msg));
     (* Ignore any literals already known to be False.
        If any are True then they're enqueued and we'll process them
        soon. *)

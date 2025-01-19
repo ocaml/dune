@@ -444,11 +444,6 @@ module Solver = struct
       Virtual (Virtual_id.gen (), impls)
     ;;
 
-    type dep_info =
-      { dep_role : Role.t
-      ; dep_importance : Dep_kind.t
-      }
-
     let dummy_impl = Dummy
 
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
@@ -475,10 +470,6 @@ module Solver = struct
           [ VirtualImpl (i, aux expr) ]
       in
       aux deps
-    ;;
-
-    let dep_info { drole; importance; restrictions = _ } =
-      { dep_role = drole; dep_importance = importance }
     ;;
 
     module Conflict_class = struct
@@ -725,11 +716,8 @@ module Solver = struct
                 | `No_expand -> Fiber.return ()
                 | `Expand_and_collect_conflicts deferred ->
                   Input.Impl.requires role impl
-                  |> Fiber.sequential_iter ~f:(fun dep ->
-                    match
-                      let { Input.dep_importance; _ } = Input.dep_info dep in
-                      dep_importance
-                    with
+                  |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
+                    match dep.importance with
                     | Ensure -> process_dep expand_deps impl_var dep
                     | Prevent ->
                       (* Defer processing restricting deps until all essential
@@ -740,7 +728,7 @@ module Solver = struct
                       Fiber.return ()))
             in
             clause
-        and process_dep expand_deps user_var dep : unit Fiber.t =
+        and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
           (* Process a dependency of [user_var]:
              - find the candidate implementations to satisfy it
              - take just those that satisfy any restrictions in the dependency
@@ -748,15 +736,14 @@ module Solver = struct
                [user_var]
              - ensure that we do pick a compatible version if we select
                [user_var] (for "essential" dependencies only) *)
-          let { Input.dep_role; dep_importance } = Input.dep_info dep in
           let+ pass, fail =
             let meets_restrictions (* Restrictions on the candidates *) impl =
               List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
             in
-            lookup_impl expand_deps dep_role
+            lookup_impl expand_deps dep.drole
             >>| Candidates.partition ~f:meets_restrictions
           in
-          match dep_importance with
+          match dep.importance with
           | Ensure ->
             S.implies
               sat
@@ -837,16 +824,15 @@ module Solver = struct
             | Undecided lit -> Some lit
             | Selected deps ->
               (* We've already selected a candidate for this component. Now check its dependencies. *)
-              let check_dep dep =
-                let { Input.dep_role; dep_importance } = Input.dep_info dep in
-                match dep_importance with
+              let check_dep (dep : Input.dependency) =
+                match dep.importance with
                 | Prevent ->
                   (* Restrictions don't express that we do or don't want the
                      dependency, so skip them here. If someone else needs this,
                      we'll handle it when we get to them.
                      If noone wants it, it will be set to unselected at the end. *)
                   None
-                | Ensure -> find_undecided dep_role
+                | Ensure -> find_undecided dep.drole
               in
               List.find_map ~f:check_dep deps)
         in
@@ -1013,9 +999,8 @@ module Solver = struct
       let reject_self_conflicts t =
         filter_impls t (fun impl ->
           let deps = Input.Impl.requires t.role impl in
-          List.find_map deps ~f:(fun dep ->
-            let { Input.dep_role; _ } = Input.dep_info dep in
-            match Input.Role.compare dep_role t.role with
+          List.find_map deps ~f:(fun (dep : Input.dependency) ->
+            match Input.Role.compare dep.drole t.role with
             | Lt | Gt -> None
             | Eq ->
               (* It depends on itself. *)
@@ -1040,10 +1025,9 @@ module Solver = struct
             "Incompatible with restriction: %s"
             (Input.string_of_restriction r)
         | `DepFailsRestriction (dep, restriction) ->
-          let dep_info = Input.dep_info dep in
           Pp.hovbox
             (Pp.text "Requires "
-             ++ Input.Role.pp dep_info.dep_role
+             ++ Input.Role.pp dep.drole
              ++ Pp.textf " %s" (format_restrictions [ restriction ]))
         | `ClassConflict (other_role, cl) ->
           Pp.hovbox
@@ -1129,9 +1113,8 @@ module Solver = struct
      C1 conflicts with D1. The depth-first priority order means we give priority
      to {A1, B1, D1}. Then we can't choose C1 because we prefer to keep D1. *)
     let get_dependency_problem role (report : Component.t Input.Role.Map.t) impl =
-      let check_dep dep =
-        let dep_info = Input.dep_info dep in
-        match Input.Role.Map.find report dep_info.dep_role with
+      let check_dep (dep : Input.dependency) =
+        match Input.Role.Map.find report dep.drole with
         | None -> None (* Not in the selections => can't be part of a conflict *)
         | Some required_component ->
           (match Component.selected_impl required_component with
@@ -1154,10 +1137,9 @@ module Solver = struct
       requiring_role
       requiring_impl
       (report : Component.t Input.Role.Map.t)
-      dep
+      (dep : Input.dependency)
       =
-      let { Input.dep_role = other_role; dep_importance = _ } = Input.dep_info dep in
-      match Input.Role.Map.find report other_role with
+      match Input.Role.Map.find report dep.drole with
       | None -> ()
       | Some required_component ->
         if dep.restrictions <> []

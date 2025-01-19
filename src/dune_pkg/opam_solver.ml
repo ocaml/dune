@@ -307,10 +307,7 @@ module Solver = struct
 
     module Virtual_id = Id.Make ()
 
-    type real_role =
-      { context : Context.t
-      ; name : OpamPackage.Name.t
-      }
+    type real_role = { name : OpamPackage.Name.t }
 
     type role =
       | Real of real_role (* A role is usually an opam package name *)
@@ -375,22 +372,23 @@ module Solver = struct
       let equal x y = Ordering.is_eq (compare x y)
       let hash = Poly.hash
 
-      let user_restrictions = function
+      let user_restrictions t context =
+        match t with
         | Virtual _ -> None
         | Real role ->
-          Context.user_restrictions role.context role.name
+          Context.user_restrictions context role.name
           |> Option.map ~f:(fun f ->
             { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
       ;;
 
       let pp = pp_role
 
-      let rejects role =
+      let rejects role context =
         match role with
         | Virtual _ -> Fiber.return ([], [])
         | Real role ->
           let+ rejects =
-            Context.candidates role.context role.name
+            Context.candidates context role.name
             >>| List.filter_map ~f:(function
               | _, Ok _ -> None
               | version, Error reason ->
@@ -491,12 +489,12 @@ module Solver = struct
     ;;
 
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
-    let list_deps ~context ~importance ~rank deps =
+    let list_deps ~importance ~rank deps =
       let rec aux (formula : _ OpamTypes.generic_formula) =
         match formula with
         | Empty -> []
         | Atom (name, restrictions) ->
-          let drole = Real { context; name } in
+          let drole = Real { name } in
           [ { drole; restrictions; importance } ]
         | Block x -> aux x
         | And (x, y) -> aux x @ aux y
@@ -517,10 +515,10 @@ module Solver = struct
     ;;
 
     (* Get all the candidates for a role. *)
-    let implementations = function
+    let implementations role context =
+      match role with
       | Virtual (_, impls) -> Fiber.return impls
       | Real role ->
-        let context = role.context in
         Context.candidates context role.name
         >>| List.filter_map ~f:(function
           | _, Error _rejection -> None
@@ -533,7 +531,7 @@ module Solver = struct
                 get opam
                 |> Context.filter_deps context pkg
                 |> xform
-                |> list_deps ~context ~importance ~rank
+                |> list_deps ~importance ~rank
               in
               make_deps Ensure ensure OpamFile.OPAM.depends
               @ make_deps Prevent prevent OpamFile.OPAM.conflicts
@@ -605,10 +603,10 @@ module Solver = struct
 
       (* Add the implementations of an interface to the implementation cache
          (called the first time we visit it). *)
-      let make_impl_clause sat ~dummy_impl role =
+      let make_impl_clause sat context ~dummy_impl role =
         (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
         let+ impls =
-          let+ impls = Input.implementations role in
+          let+ impls = Input.implementations role context in
           (match dummy_impl with
            | None -> impls
            | Some dummy_impl -> impls @ [ dummy_impl ])
@@ -669,7 +667,7 @@ module Solver = struct
 
     (* Starting from [root_req], explore all the feeds and implementations we
        might need, adding all of them to [sat_problem]. *)
-    let build_problem root_req sat ~dummy_impl =
+    let build_problem context root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = ref Input.Role.Map.empty in
       let conflict_classes = Conflict_classes.create sat in
@@ -678,7 +676,9 @@ module Solver = struct
           match Input.Role.Map.find !impl_cache role with
           | Some s -> Fiber.return s
           | None ->
-            let* clause, impls = Candidates.make_impl_clause sat ~dummy_impl role in
+            let* clause, impls =
+              Candidates.make_impl_clause sat context ~dummy_impl role
+            in
             impl_cache := Input.Role.Map.set !impl_cache role clause;
             let+ () =
               Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
@@ -767,7 +767,7 @@ module Solver = struct
           every interface, so we can always select something. Useful for diagnostics.
           Note: always try without [closest_match] first, or it may miss a valid solution.
         @return None if the solve fails (only happens if [closest_match] is false). *)
-    let do_solve ~closest_match root_req =
+    let do_solve context ~closest_match root_req =
       (* The basic plan is this:
          1. Scan the root interface and all dependencies recursively, building up a SAT problem.
          2. Solve the SAT problem. Whenever there are multiple options, try the most preferred one first.
@@ -780,7 +780,7 @@ module Solver = struct
       *)
       let sat = S.create () in
       let dummy_impl = if closest_match then Some Input.Dummy else None in
-      let+ impl_clauses = build_problem root_req sat ~dummy_impl in
+      let+ impl_clauses = build_problem context root_req sat ~dummy_impl in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first
@@ -1129,9 +1129,9 @@ module Solver = struct
     ;;
 
     (* Check for user-supplied restrictions *)
-    let examine_extra_restrictions report =
+    let examine_extra_restrictions report context =
       Input.Role.Map.iteri report ~f:(fun role component ->
-        Input.Role.user_restrictions role
+        Input.Role.user_restrictions role context
         |> Option.iter ~f:(Component.apply_user_restriction component))
     ;;
 
@@ -1161,7 +1161,7 @@ module Solver = struct
             | _ -> None)))
     ;;
 
-    let of_result impls =
+    let of_result context impls =
       let explain role =
         match Input.Role.Map.find impls role with
         | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.var
@@ -1172,8 +1172,8 @@ module Solver = struct
           let diagnostics = lazy (explain role) in
           let impl = if sel.impl = Input.Dummy then None else Some sel.impl in
           (* CR rgrinberg: Are we recomputing things here? *)
-          let* impl_candidates = Input.implementations role in
-          let+ rejects, feed_problems = Input.Role.rejects role in
+          let* impl_candidates = Input.implementations role context in
+          let+ rejects, feed_problems = Input.Role.rejects role context in
           Component.create
             ~role
             (impl_candidates, rejects, feed_problems)
@@ -1186,7 +1186,7 @@ module Solver = struct
           k, v)
         |> Fiber.map ~f:Input.Role.Map.of_list_exn
       in
-      examine_extra_restrictions report;
+      examine_extra_restrictions report context;
       check_conflict_classes report;
       Input.Role.Map.iteri ~f:(examine_selection report) report;
       Input.Role.Map.iteri ~f:(fun _ c -> Component.finalise c) report;
@@ -1197,19 +1197,19 @@ module Solver = struct
   let solve context pkgs =
     let req =
       match pkgs with
-      | [ pkg ] -> Input.Real { context; name = pkg }
+      | [ pkg ] -> Input.Real { name = pkg }
       | pkgs ->
         let impl : Input.Impl.t =
           let depends =
             List.map pkgs ~f:(fun name ->
-              let drole : Input.Role.t = Real { context; name } in
+              let drole : Input.Role.t = Real { name } in
               { Input.drole; importance = Ensure; restrictions = [] })
           in
           VirtualImpl (-1, depends)
         in
         Input.virtual_role [ impl ]
     in
-    Solver.do_solve ~closest_match:false req
+    Solver.do_solve context ~closest_match:false req
     >>| function
     | Some sels -> Ok sels
     | None -> Error req
@@ -1242,12 +1242,14 @@ module Solver = struct
          ++ Pp.concat_map ~sep:Pp.space unknown ~f:pp_unknown)
   ;;
 
-  let diagnostics_rolemap req =
-    Solver.do_solve req ~closest_match:true >>| Option.value_exn >>= Diagnostics.of_result
+  let diagnostics_rolemap context req =
+    Solver.do_solve context req ~closest_match:true
+    >>| Option.value_exn
+    >>= Diagnostics.of_result context
   ;;
 
-  let diagnostics ?(verbose = false) req =
-    let+ diag = diagnostics_rolemap req in
+  let diagnostics ?(verbose = false) context req =
+    let+ diag = diagnostics_rolemap context req in
     Pp.paragraph "Couldn't solve the package dependency formula."
     ++ Pp.cut
     ++ Pp.vbox (pp_rolemap ~verbose diag)
@@ -1721,7 +1723,7 @@ let solve_package_list packages ~context =
   >>= function
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
-    let+ diagnostics = Solver.diagnostics e in
+    let+ diagnostics = Solver.diagnostics context e in
     Error (`Diagnostic_message diagnostics)
   | Error (`Exn exn) ->
     (match exn with

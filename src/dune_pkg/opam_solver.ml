@@ -793,20 +793,6 @@ module Solver = struct
       impl_clauses
     ;;
 
-    module Output = struct
-      type t = { selections : selection Input.Role.Map.t }
-
-      let to_map t = t.selections
-
-      let explain t role =
-        match Input.Role.Map.find t.selections role with
-        | Some sel -> S.explain_reason sel.diagnostics
-        | None -> Pp.text "Role not used!"
-      ;;
-
-      let unwrap sel = sel.impl
-    end
-
     (** [do_solve model req] finds an implementation matching the given
         requirements, plus any other implementations needed
         to satisfy its dependencies.
@@ -871,14 +857,11 @@ module Solver = struct
             Candidates.selected candidates
             |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
         in
-        Some { Output.selections }
+        Some selections
     ;;
   end
 
   module Diagnostics = struct
-    module Results = Solver.Output
-    open Results
-
     let format_restrictions r =
       String.concat ~sep:", " (List.map ~f:Input.string_of_restriction r)
     ;;
@@ -1234,12 +1217,16 @@ module Solver = struct
           aux (Input.conflict_class impl)))
     ;;
 
-    let of_result result =
-      let impls = Results.to_map result in
+    let of_result impls =
+      let explain role =
+        match Input.Role.Map.find impls role with
+        | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.diagnostics
+        | None -> Pp.text "Role not used!"
+      in
       let+ report =
-        let get_selected role sel =
-          let impl = Results.unwrap sel in
-          let diagnostics = lazy (Results.explain result role) in
+        let get_selected role (sel : Solver.selection) =
+          let impl = sel.impl in
+          let diagnostics = lazy (explain role) in
           let impl = if impl == Input.dummy_impl then None else Some impl in
           let* impl_candidates = Input.implementations role in
           let+ rejects, feed_problems = Input.rejects role in
@@ -1310,9 +1297,8 @@ module Solver = struct
   ;;
 
   let packages_of_result sels =
-    Solver.Output.to_map sels
-    |> Input.Role.Map.to_list
-    |> List.filter_map ~f:(fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
+    Input.Role.Map.values sels
+    |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.version sel.impl)
   ;;
 end
 

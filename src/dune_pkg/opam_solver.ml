@@ -696,17 +696,17 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = ref Input.Role.Map.empty in
+      let impl_cache = Table.create (module Input.Role) 100 in
       let conflict_classes = Conflict_classes.create () in
       let+ () =
         let rec lookup_impl expand_deps role =
-          match Input.Role.Map.find !impl_cache role with
+          match Table.find impl_cache role with
           | Some s -> Fiber.return s
           | None ->
             let* clause, impls =
               Candidates.make_impl_clause sat context ~dummy_impl role
             in
-            impl_cache := Input.Role.Map.set !impl_cache role clause;
+            Table.set impl_cache role clause;
             let+ () =
               Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
                 Conflict_classes.process conflict_classes impl_var impl;
@@ -780,9 +780,8 @@ module Solver = struct
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
-      let impl_clauses = !impl_cache in
       Conflict_classes.seal conflict_classes;
-      impl_clauses
+      impl_cache
     ;;
 
     (** [do_solve model req] finds an implementation matching the given
@@ -819,7 +818,7 @@ module Solver = struct
           then None (* Break cycles *)
           else (
             Table.set seen req true;
-            match Input.Role.Map.find_exn impl_clauses req |> Candidates.state with
+            match Table.find_exn impl_clauses req |> Candidates.state with
             | Unselected -> None
             | Undecided lit -> Some lit
             | Selected deps ->
@@ -841,7 +840,13 @@ module Solver = struct
       | false -> None
       | true ->
         (* Build the results object *)
-        Some (Input.Role.Map.filter_map impl_clauses ~f:Candidates.selected)
+        Some
+          (Table.to_list impl_clauses
+           |> List.filter_map ~f:(fun (key, v) ->
+             match Candidates.selected v with
+             | None -> None
+             | Some v -> Some (key, v))
+           |> Input.Role.Map.of_list_exn)
     ;;
   end
 

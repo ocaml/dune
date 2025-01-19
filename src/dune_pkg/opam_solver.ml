@@ -444,32 +444,6 @@ module Solver = struct
       Virtual (Virtual_id.gen (), impls)
     ;;
 
-    (* Turn an opam dependency formula into a 0install list of dependencies. *)
-    let list_deps ~context ~importance ~rank deps =
-      let rec aux (formula : _ OpamTypes.generic_formula) =
-        match formula with
-        | Empty -> []
-        | Atom (name, restrictions) ->
-          let drole = Real { context; name } in
-          [ { drole; restrictions; importance } ]
-        | Block x -> aux x
-        | And (x, y) -> aux x @ aux y
-        | Or _ as o ->
-          let impls = group_ors o in
-          let drole = virtual_role impls in
-          (* Essential because we must apply a restriction, even if its
-             components are only restrictions. *)
-          [ { drole; restrictions = []; importance = Ensure } ]
-      and group_ors = function
-        | Or (x, y) -> group_ors x @ group_ors y
-        | expr ->
-          let i = !rank in
-          rank := i + 1;
-          [ VirtualImpl (i, aux expr) ]
-      in
-      aux deps
-    ;;
-
     module Conflict_class = struct
       type t = OpamPackage.Name.t
 
@@ -505,6 +479,32 @@ module Solver = struct
           | r -> [ { kind = Ensure; expr = r } ]
         in
         OpamFormula.Atom (name, rlist))
+    ;;
+
+    (* Turn an opam dependency formula into a 0install list of dependencies. *)
+    let list_deps ~context ~importance ~rank deps =
+      let rec aux (formula : _ OpamTypes.generic_formula) =
+        match formula with
+        | Empty -> []
+        | Atom (name, restrictions) ->
+          let drole = Real { context; name } in
+          [ { drole; restrictions; importance } ]
+        | Block x -> aux x
+        | And (x, y) -> aux x @ aux y
+        | Or _ as o ->
+          let impls = group_ors o in
+          let drole = virtual_role impls in
+          (* Essential because we must apply a restriction, even if its
+             components are only restrictions. *)
+          [ { drole; restrictions = []; importance = Ensure } ]
+      and group_ors = function
+        | Or (x, y) -> group_ors x @ group_ors y
+        | expr ->
+          let i = !rank in
+          rank := i + 1;
+          [ VirtualImpl (i, aux expr) ]
+      in
+      aux deps
     ;;
 
     (* Get all the candidates for a role. *)
@@ -616,13 +616,6 @@ module Solver = struct
              (match S.get_best_undecided clause with
               | Some lit -> Undecided lit
               | None -> Unselected (* No remaining candidates, and none was chosen. *)))
-      ;;
-
-      (* Apply [test impl] to each implementation, partitioning the vars into two
-         lists. Only defined for [impl_candidates]. *)
-      let partition t ~f:test =
-        List.partition_map t.vars ~f:(fun (var, impl) ->
-          if test impl then Either.Left var else Right var)
       ;;
     end
 
@@ -738,8 +731,9 @@ module Solver = struct
             let meets_restrictions (* Restrictions on the candidates *) impl =
               List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
             in
-            lookup_impl expand_deps dep.drole
-            >>| Candidates.partition ~f:meets_restrictions
+            let+ candidates = lookup_impl expand_deps dep.drole in
+            List.partition_map candidates.vars ~f:(fun (var, impl) ->
+              if meets_restrictions impl then Left var else Right var)
           in
           match dep.importance with
           | Ensure ->

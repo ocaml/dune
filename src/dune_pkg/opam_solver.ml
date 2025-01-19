@@ -696,36 +696,38 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = Table.create (module Input.Role) 100 in
+      let impl_cache = Fiber_cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
       let+ () =
         let rec lookup_impl expand_deps role =
-          match Table.find impl_cache role with
-          | Some s -> Fiber.return s
-          | None ->
-            let* clause, impls =
-              Candidates.make_impl_clause sat context ~dummy_impl role
-            in
-            Table.set impl_cache role clause;
-            let+ () =
-              Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
-                Conflict_classes.process conflict_classes impl_var impl;
-                match expand_deps with
-                | `No_expand -> Fiber.return ()
-                | `Expand_and_collect_conflicts deferred ->
-                  Input.Impl.requires role impl
-                  |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
-                    match dep.importance with
-                    | Ensure -> process_dep expand_deps impl_var dep
-                    | Prevent ->
-                      (* Defer processing restricting deps until all essential
-                         deps have been processed for the entire problem.
-                         Restricting deps will be processed later without
-                         recurring into their dependencies. *)
-                      deferred := (impl_var, dep) :: !deferred;
-                      Fiber.return ()))
-            in
-            clause
+          let impls = ref [] in
+          let* clause =
+            Fiber_cache.find_or_add impl_cache role ~f:(fun () ->
+              let+ clause, impls' =
+                Candidates.make_impl_clause sat context ~dummy_impl role
+              in
+              impls := impls';
+              clause)
+          in
+          let+ () =
+            Fiber.sequential_iter !impls ~f:(fun { var = impl_var; impl } ->
+              Conflict_classes.process conflict_classes impl_var impl;
+              match expand_deps with
+              | `No_expand -> Fiber.return ()
+              | `Expand_and_collect_conflicts deferred ->
+                Input.Impl.requires role impl
+                |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
+                  match dep.importance with
+                  | Ensure -> process_dep expand_deps impl_var dep
+                  | Prevent ->
+                    (* Defer processing restricting deps until all essential
+                       deps have been processed for the entire problem.
+                       Restricting deps will be processed later without
+                       recurring into their dependencies. *)
+                    deferred := (impl_var, dep) :: !deferred;
+                    Fiber.return ()))
+          in
+          clause
         and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
           (* Process a dependency of [user_var]:
              - find the candidate implementations to satisfy it
@@ -806,7 +808,8 @@ module Solver = struct
       *)
       let sat = Sat.create () in
       let dummy_impl = if closest_match then Some Input.Dummy else None in
-      let+ impl_clauses = build_problem context root_req sat ~dummy_impl in
+      let* impl_clauses = build_problem context root_req sat ~dummy_impl in
+      let+ impl_clauses = Fiber_cache.to_table impl_clauses in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first

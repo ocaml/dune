@@ -70,8 +70,8 @@ module Version = struct
     match String.split_on_char '.' (List.nth parts 0) with
     | [] -> None
     | major :: rest ->
-        let style, major =
-          if String.starts_with major ~prefix:"v"
+         let style, major =
+           if String.length major > 0 && major.[0] = 'v'
            then V_triple, String.sub major 1 (String.length major - 1)
            else Triple, major
          in

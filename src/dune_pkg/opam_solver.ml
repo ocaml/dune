@@ -768,7 +768,10 @@ module Solver = struct
                the optional dependency. We don't need to do this explicitly in
                the [essential] case, because we must select a good version and we can't
                select two. *)
-            (try S.at_most_one sat (user_var :: fail) |> ignore with
+            (try
+               let (_ : S.at_most_one_clause) = S.at_most_one sat (user_var :: fail) in
+               ()
+             with
              | Invalid_argument reason ->
                (* Explicitly conflicts with itself! *)
                S.at_least_one sat [ S.neg user_var ] ~reason)

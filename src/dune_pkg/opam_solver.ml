@@ -444,8 +444,6 @@ module Solver = struct
       Virtual (Virtual_id.gen (), impls)
     ;;
 
-    let dummy_impl = Dummy
-
     (* Turn an opam dependency formula into a 0install list of dependencies. *)
     let list_deps ~context ~importance ~rank deps =
       let rec aux (formula : _ OpamTypes.generic_formula) =
@@ -806,7 +804,7 @@ module Solver = struct
          3) we follow every dependency of every selected implementation
       *)
       let sat = S.create () in
-      let dummy_impl = if closest_match then Some Input.dummy_impl else None in
+      let dummy_impl = if closest_match then Some Input.Dummy else None in
       let+ impl_clauses = build_problem root_req sat ~dummy_impl in
       (* Run the solve *)
       let decider () =
@@ -818,8 +816,7 @@ module Solver = struct
           then None (* Break cycles *)
           else (
             Table.set seen req true;
-            let candidates = Input.Role.Map.find_exn impl_clauses req in
-            match Candidates.state candidates with
+            match Input.Role.Map.find_exn impl_clauses req |> Candidates.state with
             | Unselected -> None
             | Undecided lit -> Some lit
             | Selected deps ->
@@ -1211,7 +1208,8 @@ module Solver = struct
         let get_selected role (sel : Solver.selection) =
           let impl = sel.impl in
           let diagnostics = lazy (explain role) in
-          let impl = if impl == Input.dummy_impl then None else Some impl in
+          let impl = if impl = Input.Dummy then None else Some impl in
+          (* CR rgrinberg: Are we recomputing things here? *)
           let* impl_candidates = Input.implementations role in
           let+ rejects, feed_problems = Input.Role.rejects role in
           Component.create

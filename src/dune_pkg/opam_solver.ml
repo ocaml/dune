@@ -474,7 +474,9 @@ module Solver = struct
 
       let compare_version a b =
         match a, b with
-        | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
+        | RealImpl a, RealImpl b ->
+          (* CR rgrinberg: shouldn't we take our version preference into account here? *)
+          Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
         | RealImpl _, _ -> Gt
         | _, RealImpl _ -> Lt
         | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Rank.compare ia ib
@@ -941,6 +943,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
+        (* CR rgrinberg: take account version preference here? *)
         | Some selected when Input.Impl.compare_version selected impl = Gt -> false
         | _ -> true
       ;;

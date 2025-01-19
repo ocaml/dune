@@ -259,6 +259,12 @@ end
 module Solver = struct
   open Pp.O
 
+  module Dep_kind = struct
+    type t =
+      | Ensure
+      | Prevent
+  end
+
   (* Copyright (c) 2020 Thomas Leonard <talex5@gmail.com>
 
      Permission to use, copy, modify, and distribute this software for any
@@ -277,7 +283,7 @@ module Solver = struct
     (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
        record whether to negate the result here. *)
     type restriction =
-      { kind : [ `Ensure | `Prevent ]
+      { kind : Dep_kind.t
       ; expr : OpamFormula.version_formula
       }
 
@@ -300,7 +306,7 @@ module Solver = struct
 
     and dependency =
       { drole : role
-      ; importance : [ `Essential | `Restricts ]
+      ; importance : Dep_kind.t
       ; restrictions : restriction list
       }
 
@@ -356,7 +362,7 @@ module Solver = struct
         | Real role ->
           (match Context.user_restrictions role.context role.name with
            | None -> None
-           | Some f -> Some { kind = `Ensure; expr = OpamFormula.Atom f })
+           | Some f -> Some { kind = Ensure; expr = OpamFormula.Atom f })
       ;;
 
       let pp = pp_role
@@ -418,8 +424,7 @@ module Solver = struct
       let depends =
         List.map depends ~f:(fun name ->
           let drole = Real { context; name } in
-          let importance = `Essential in
-          { drole; importance; restrictions = [] })
+          { drole; importance = Ensure; restrictions = [] })
       in
       VirtualImpl (-1, depends)
     ;;
@@ -436,7 +441,7 @@ module Solver = struct
 
     type dep_info =
       { dep_role : Role.t
-      ; dep_importance : [ `Essential | `Restricts ]
+      ; dep_importance : Dep_kind.t
       }
 
     let dummy_impl = Dummy
@@ -456,7 +461,7 @@ module Solver = struct
           let drole = virtual_role impls in
           (* Essential because we must apply a restriction, even if its
              components are only restrictions. *)
-          [ { drole; restrictions = []; importance = `Essential } ]
+          [ { drole; restrictions = []; importance = Ensure } ]
       and group_ors = function
         | Or (x, y) -> group_ors x @ group_ors y
         | expr ->
@@ -491,11 +496,11 @@ module Solver = struct
      For empty conflicts this is fine (don't conflict with anything, just like an empty depends
      list). But for the version expressions inside, it's wrong: a conflict with no expression
      conflicts with all versions and should restrict the choice to nothing, not to everything.
-     So, we just tag the formula as [`Prevent] instead of negating it. *)
+     So, we just tag the formula as [Prevent] instead of negating it. *)
     let prevent f =
       OpamFormula.neg Fun.id f
       |> OpamFormula.map (fun (a, expr) ->
-        OpamFormula.Atom (a, [ { kind = `Prevent; expr } ]))
+        OpamFormula.Atom (a, [ { kind = Prevent; expr } ]))
     ;;
 
     let ensure =
@@ -503,7 +508,7 @@ module Solver = struct
         let rlist =
           match vexpr with
           | OpamFormula.Empty -> []
-          | r -> [ { kind = `Ensure; expr = r } ]
+          | r -> [ { kind = Ensure; expr = r } ]
         in
         OpamFormula.Atom (name, rlist))
     ;;
@@ -527,8 +532,8 @@ module Solver = struct
                 |> xform
                 |> list_deps ~context ~importance ~rank
               in
-              make_deps `Essential ensure OpamFile.OPAM.depends
-              @ make_deps `Restricts prevent OpamFile.OPAM.conflicts
+              make_deps Ensure ensure OpamFile.OPAM.depends
+              @ make_deps Prevent prevent OpamFile.OPAM.conflicts
             in
             Some (RealImpl { pkg; opam; requires }))
     ;;
@@ -543,8 +548,8 @@ module Solver = struct
           OpamFormula.check_version_formula expr (OpamPackage.version impl.pkg)
         in
         (match kind with
-         | `Ensure -> result
-         | `Prevent -> not result)
+         | Ensure -> result
+         | Prevent -> not result)
     ;;
 
     let string_of_op =
@@ -558,10 +563,10 @@ module Solver = struct
     ;;
 
     let string_of_restriction = function
-      | { kind = `Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
-      | { kind = `Prevent; expr } ->
+      | { kind = Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
+      | { kind = Prevent; expr } ->
         Format.sprintf "not(%s)" (string_of_version_formula expr)
-      | { kind = `Ensure; expr } -> string_of_version_formula expr
+      | { kind = Ensure; expr } -> string_of_version_formula expr
     ;;
 
     let describe_problem _impl = Context.pp_rejection
@@ -720,8 +725,8 @@ module Solver = struct
                       let { Input.dep_importance; _ } = Input.dep_info dep in
                       dep_importance
                     with
-                    | `Essential -> process_dep expand_deps impl_var dep
-                    | `Restricts ->
+                    | Ensure -> process_dep expand_deps impl_var dep
+                    | Prevent ->
                       (* Defer processing restricting deps until all essential
                          deps have been processed for the entire problem.
                          Restricting deps will be processed later without
@@ -747,13 +752,13 @@ module Solver = struct
             >>| Candidates.partition ~f:meets_restrictions
           in
           match dep_importance with
-          | `Essential ->
+          | Ensure ->
             S.implies
               sat
               ~reason:"essential dep"
               user_var
               pass (* Must choose a suitable candidate *)
-          | `Restricts ->
+          | Prevent ->
             (* If [user_var] is selected, don't select an incompatible version of
                the optional dependency. We don't need to do this explicitly in
                the [essential] case, because we must select a good version and we can't
@@ -827,13 +832,13 @@ module Solver = struct
               let check_dep dep =
                 let { Input.dep_role; dep_importance } = Input.dep_info dep in
                 match dep_importance with
-                | `Restricts ->
+                | Prevent ->
                   (* Restrictions don't express that we do or don't want the
                      dependency, so skip them here. If someone else needs this,
                      we'll handle it when we get to them.
                      If noone wants it, it will be set to unselected at the end. *)
                   None
-                | `Essential -> find_undecided dep_role
+                | Ensure -> find_undecided dep_role
               in
               List.find_map ~f:check_dep deps)
         in

@@ -134,16 +134,14 @@ module Context = struct
     Table.find_or_add t.available_cache package ~f:(fun (_ : OpamPackage.t) ->
       let available = OpamFile.OPAM.available opam in
       match
-        let available_vars_resolved =
-          OpamFilter.partial_eval
-            (add_self_to_filter_env
-               package
-               (Solver_stats.Updater.wrap_env
-                  t.stats_updater
-                  (Solver_env.to_env t.solver_env)))
-            available
-        in
-        eval_to_bool available_vars_resolved
+        OpamFilter.partial_eval
+          (add_self_to_filter_env
+             package
+             (Solver_stats.Updater.wrap_env
+                t.stats_updater
+                (Solver_env.to_env t.solver_env)))
+          available
+        |> eval_to_bool
       with
       | Ok available -> available
       | Error (`Not_a_bool msg) ->
@@ -360,9 +358,8 @@ module Solver = struct
       let user_restrictions = function
         | Virtual _ -> None
         | Real role ->
-          (match Context.user_restrictions role.context role.name with
-           | None -> None
-           | Some f -> Some { kind = Ensure; expr = OpamFormula.Atom f })
+          Context.user_restrictions role.context role.name
+          |> Option.map ~f:(fun f -> { kind = Ensure; expr = OpamFormula.Atom f })
       ;;
 
       let pp = pp_role
@@ -553,8 +550,6 @@ module Solver = struct
         Format.sprintf "not(%s)" (string_of_version_formula expr)
       | { kind = Ensure; expr } -> string_of_version_formula expr
     ;;
-
-    let describe_problem _impl = Context.pp_rejection
   end
 
   module Solver = struct
@@ -785,8 +780,9 @@ module Solver = struct
       let+ impl_clauses = build_problem root_req sat ~dummy_impl in
       (* Run the solve *)
       let decider () =
-        (* Walk the current solution, depth-first, looking for the first undecided interface.
-           Then try the most preferred implementation of it that hasn't been ruled out. *)
+        (* Walk the current solution, depth-first, looking for the first
+           undecided interface. Then try the most preferred implementation of
+           it that hasn't been ruled out. *)
         let seen = Table.create (module Input.Role) 100 in
         let rec find_undecided req =
           if Table.mem seen req
@@ -797,7 +793,8 @@ module Solver = struct
             | Unselected -> None
             | Undecided lit -> Some lit
             | Selected deps ->
-              (* We've already selected a candidate for this component. Now check its dependencies. *)
+              (* We've already selected a candidate for this component. Now
+                 check its dependencies. *)
               let check_dep (dep : Input.dependency) =
                 match dep.importance with
                 | Prevent ->
@@ -986,9 +983,9 @@ module Solver = struct
           reject_all t (`DiagnosticsFailure (Lazy.force t.diagnostics)))
       ;;
 
-      let pp_reject ((impl, reason) : reject) =
+      let pp_reject ((_impl, reason) : reject) =
         match reason with
-        | `Model_rejection r -> Input.describe_problem impl r
+        | `Model_rejection r -> Context.pp_rejection r
         | `FailsRestriction r ->
           Pp.paragraphf
             "Incompatible with restriction: %s"
@@ -1074,30 +1071,26 @@ module Solver = struct
     end
 
     (* Did any dependency of [impl] prevent it being selected?
-     This can only happen if a component conflicts with something more important
-     than itself (otherwise, we'd select something in [impl]'s interface and
-     complain about the dependency instead).
+       This can only happen if a component conflicts with something more
+       important than itself (otherwise, we'd select something in [impl]'s
+       interface and complain about the dependency instead).
 
-     e.g. A depends on B and C. B and C both depend on D.
-     C1 conflicts with D1. The depth-first priority order means we give priority
-     to {A1, B1, D1}. Then we can't choose C1 because we prefer to keep D1. *)
+       e.g. A depends on B and C. B and C both depend on D. C1 conflicts with
+       D1. The depth-first priority order means we give priority to {A1, B1,
+       D1}. Then we can't choose C1 because we prefer to keep D1. *)
     let get_dependency_problem role (report : Component.t Input.Role.Map.t) impl =
-      let check_dep (dep : Input.dependency) =
+      Input.Impl.requires role impl
+      |> List.find_map ~f:(fun (dep : Input.dependency) ->
         match Input.Role.Map.find report dep.drole with
         | None -> None (* Not in the selections => can't be part of a conflict *)
         | Some required_component ->
           (match Component.selected_impl required_component with
            | None -> None (* Dummy selection can't cause a conflict *)
            | Some dep_impl ->
-             let check_restriction r =
+             List.find_map dep.restrictions ~f:(fun r ->
                if Input.meets_restriction dep_impl r
                then None
-               else Some (`DepFailsRestriction (dep, r))
-             in
-             List.find_map ~f:check_restriction dep.restrictions)
-      in
-      let deps = Input.Impl.requires role impl in
-      List.find_map ~f:check_dep deps
+               else Some (`DepFailsRestriction (dep, r)))))
     ;;
 
     (** A selected component has [dep] as a dependency. Use this to explain why some implementations
@@ -1126,12 +1119,12 @@ module Solver = struct
       | Some our_impl ->
         (* For each dependency of our selected impl, explain why it rejected
            impls in the dependency's interface. *)
-        let deps = Input.Impl.requires role our_impl in
-        List.iter ~f:(examine_dep role our_impl report) deps
+        Input.Impl.requires role our_impl
+        |> List.iter ~f:(examine_dep role our_impl report)
       | None ->
         (* For each of our remaining unrejected impls, check whether a
            dependency prevented its selection. *)
-        Component.filter_impls component (get_dependency_problem role report)
+        get_dependency_problem role report |> Component.filter_impls component
     ;;
 
     (* Check for user-supplied restrictions *)
@@ -1158,16 +1151,13 @@ module Solver = struct
       in
       Input.Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
-          let rec aux = function
-            | [] -> None
-            | cl :: cls ->
-              (match Input.Conflict_class.Map.find classes cl with
-               | Some other_role
-                 when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
-                 Some (`ClassConflict (other_role, cl))
-               | _ -> aux cls)
-          in
-          aux (Input.Impl.conflict_class impl)))
+          Input.Impl.conflict_class impl
+          |> List.find_map ~f:(fun cl ->
+            match Input.Conflict_class.Map.find classes cl with
+            | Some other_role
+              when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
+              Some (`ClassConflict (other_role, cl))
+            | _ -> None)))
     ;;
 
     let of_result impls =
@@ -1178,9 +1168,8 @@ module Solver = struct
       in
       let+ report =
         let get_selected role (sel : Solver.selection) =
-          let impl = sel.impl in
           let diagnostics = lazy (explain role) in
-          let impl = if impl = Input.Dummy then None else Some impl in
+          let impl = if sel.impl = Input.Dummy then None else Some sel.impl in
           (* CR rgrinberg: Are we recomputing things here? *)
           let* impl_candidates = Input.implementations role in
           let+ rejects, feed_problems = Input.Role.rejects role in
@@ -1388,8 +1377,9 @@ let opam_string_to_slang ~package ~loc opam_string =
    semantics.
 *)
 let filter_to_blang ~package ~loc filter =
-  let filter_to_slang = function
-    | OpamTypes.FString s -> opam_string_to_slang ~package ~loc s
+  let filter_to_slang (filter : OpamTypes.filter) =
+    match filter with
+    | FString s -> opam_string_to_slang ~package ~loc s
     | FIdent fident -> opam_fident_to_slang ~loc fident
     | other ->
       Code_error.raise
@@ -1400,8 +1390,9 @@ let filter_to_blang ~package ~loc filter =
         ; "non-string filter", Dyn.string (OpamFilter.to_string other)
         ]
   in
-  let rec filter_to_blang = function
-    | OpamTypes.FBool true -> Blang.Ast.true_
+  let rec filter_to_blang (filter : OpamTypes.filter) =
+    match filter with
+    | FBool true -> Blang.Ast.true_
     | FBool false -> Blang.Ast.false_
     | (FString _ | FIdent _) as slangable -> Blang.Expr (filter_to_slang slangable)
     | FOp (lhs, op, rhs) ->
@@ -1464,7 +1455,7 @@ let opam_commands_to_actions
     | `Skip -> None
     | `Filter filter ->
       let terms =
-        List.filter_map args ~f:(fun (simple_arg, filter) ->
+        List.filter_map args ~f:(fun ((simple_arg : OpamTypes.simple_arg), filter) ->
           let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
           match partial_eval_filter filter with
           | `Skip -> None
@@ -1472,7 +1463,7 @@ let opam_commands_to_actions
             let slang =
               let slang =
                 match simple_arg with
-                | OpamTypes.CString s -> opam_string_to_slang ~package ~loc s
+                | CString s -> opam_string_to_slang ~package ~loc s
                 | CIdent ident -> opam_raw_fident_to_slang ~loc ident
               in
               Slang.simplify slang

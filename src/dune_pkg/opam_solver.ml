@@ -584,21 +584,20 @@ module Solver = struct
     (* Copyright (C) 2013, Thomas Leonard
      *See the README file for details, or visit http://0install.net.
      *)
-    module Model = Input
     module S = Sat.Make (Input.Impl)
 
     type decision_state =
       (* The next candidate to try *)
       | Undecided of S.lit
       (* The dependencies to check next *)
-      | Selected of Model.dependency list
+      | Selected of Input.dependency list
       | Unselected
 
     module Candidates = struct
       type t =
-        { role : Model.Role.t
+        { role : Input.Role.t
         ; clause : S.at_most_one_clause option
-        ; vars : (S.lit * Model.impl) list
+        ; vars : (S.lit * Input.Impl.t) list
         }
 
       let create role clause vars = { role; clause; vars }
@@ -619,7 +618,7 @@ module Solver = struct
            | Some lit ->
              (* We've already chosen which <implementation> to use. Follow dependencies. *)
              let impl = S.get_user_data_for_lit lit in
-             Selected (Model.Impl.requires t.role impl)
+             Selected (Input.Impl.requires t.role impl)
            | None ->
              (match S.get_best_undecided clause with
               | Some lit -> Undecided lit
@@ -634,17 +633,15 @@ module Solver = struct
       ;;
     end
 
-    open Model
-
     type diagnostics = S.lit
 
     type selection =
-      { impl : Model.impl (** The implementation chosen to fill the role *)
+      { impl : Input.Impl.t (** The implementation chosen to fill the role *)
       ; diagnostics : diagnostics (** Extra information useful for diagnostics *)
       }
 
     module Conflict_classes = struct
-      module Map = Conflict_class.Map
+      module Map = Input.Conflict_class.Map
 
       type t =
         { sat : S.t
@@ -664,7 +661,7 @@ module Solver = struct
 
       (* Add [impl] to its conflict groups, if any. *)
       let process t impl_var impl =
-        Model.conflict_class impl
+        Input.conflict_class impl
         |> List.iter ~f:(fun name ->
           let impls = var t name in
           impls := impl_var :: !impls)
@@ -685,7 +682,7 @@ module Solver = struct
     (* Add the implementations of an interface to the implementation cache
        (called the first time we visit it). *)
     let make_impl_clause sat ~dummy_impl role =
-      let+ impls = Model.implementations role in
+      let+ impls = Input.implementations role in
       (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
       let impls =
         (match dummy_impl with
@@ -710,24 +707,24 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = ref Role.Map.empty in
+      let impl_cache = ref Input.Role.Map.empty in
       let conflict_classes = Conflict_classes.create sat in
       let+ () =
         let rec lookup_impl expand_deps role =
-          match Role.Map.find !impl_cache role with
+          match Input.Role.Map.find !impl_cache role with
           | Some s -> Fiber.return s
           | None ->
             let* clause, impls = make_impl_clause sat ~dummy_impl role in
-            impl_cache := Role.Map.set !impl_cache role clause;
+            impl_cache := Input.Role.Map.set !impl_cache role clause;
             let+ () =
               Fiber.sequential_iter impls ~f:(fun (impl_var, impl) ->
                 Conflict_classes.process conflict_classes impl_var impl;
                 match expand_deps with
                 | `No_expand -> Fiber.return ()
                 | `Expand_and_collect_conflicts deferred ->
-                  Model.Impl.requires role impl
+                  Input.Impl.requires role impl
                   |> Fiber.sequential_iter ~f:(fun dep ->
-                    let { Model.dep_importance; _ } = Model.dep_info dep in
+                    let { Input.dep_importance; _ } = Input.dep_info dep in
                     match dep_importance with
                     | `Essential -> process_dep expand_deps impl_var dep
                     | `Restricts ->
@@ -747,12 +744,12 @@ module Solver = struct
                [user_var]
              - ensure that we do pick a compatible version if we select
                [user_var] (for "essential" dependencies only) *)
-          let { Model.dep_role; dep_importance } = Model.dep_info dep in
+          let { Input.dep_role; dep_importance } = Input.dep_info dep in
           let+ pass, fail =
             let meets_restrictions =
               (* Restrictions on the candidates *)
-              let dep_restrictions = Model.restrictions dep in
-              fun impl -> List.for_all ~f:(Model.meets_restriction impl) dep_restrictions
+              let dep_restrictions = Input.restrictions dep in
+              fun impl -> List.for_all ~f:(Input.meets_restriction impl) dep_restrictions
             in
             lookup_impl expand_deps dep_role
             >>| Candidates.partition ~f:meets_restrictions
@@ -797,15 +794,12 @@ module Solver = struct
     ;;
 
     module Output = struct
-      module Input = Model
-      module Role = Input.Role
-
-      type t = { selections : selection Role.Map.t }
+      type t = { selections : selection Input.Role.Map.t }
 
       let to_map t = t.selections
 
       let explain t role =
-        match Role.Map.find t.selections role with
+        match Input.Role.Map.find t.selections role with
         | Some sel -> S.explain_reason sel.diagnostics
         | None -> Pp.text "Role not used!"
       ;;
@@ -834,14 +828,14 @@ module Solver = struct
          3) we follow every dependency of every selected implementation
       *)
       let sat = S.create () in
-      let dummy_impl = if closest_match then Some Model.dummy_impl else None in
+      let dummy_impl = if closest_match then Some Input.dummy_impl else None in
       let+ impl_clauses = build_problem root_req sat ~dummy_impl in
-      let lookup role = Role.Map.find_exn impl_clauses role in
+      let lookup role = Input.Role.Map.find_exn impl_clauses role in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first undecided interface.
            Then try the most preferred implementation of it that hasn't been ruled out. *)
-        let seen = Table.create (module Model.Role) 100 in
+        let seen = Table.create (module Input.Role) 100 in
         let rec find_undecided req =
           if Table.mem seen req
           then None (* Break cycles *)
@@ -854,7 +848,7 @@ module Solver = struct
             | Selected deps ->
               (* We've already selected a candidate for this component. Now check its dependencies. *)
               let check_dep dep =
-                let { Model.dep_role; dep_importance } = Model.dep_info dep in
+                let { Input.dep_role; dep_importance } = Input.dep_info dep in
                 match dep_importance with
                 | `Restricts ->
                   (* Restrictions don't express that we do or don't want the
@@ -873,7 +867,7 @@ module Solver = struct
       | Some _solution ->
         (* Build the results object *)
         let selections =
-          Role.Map.filter_mapi impl_clauses ~f:(fun _role candidates ->
+          Input.Role.Map.filter_mapi impl_clauses ~f:(fun _role candidates ->
             Candidates.selected candidates
             |> Option.map ~f:(fun (lit, impl) -> { impl; diagnostics = lit }))
         in
@@ -883,20 +877,17 @@ module Solver = struct
 
   module Diagnostics = struct
     module Results = Solver.Output
-    module Model = Results.Input
-    open Model
-
-    let format_role = Model.Role.pp
+    open Results
 
     let format_restrictions r =
-      String.concat ~sep:", " (List.map ~f:Model.string_of_restriction r)
+      String.concat ~sep:", " (List.map ~f:Input.string_of_restriction r)
     ;;
 
     module Note = struct
       (** An item of information to display for a component. *)
       type t =
-        | UserRequested of Model.restriction
-        | Restricts of Model.Role.t * Model.impl * Model.restriction list
+        | UserRequested of Input.restriction
+        | Restricts of Input.Role.t * Input.impl * Input.restriction list
         | Feed_problem of string
 
       let pp = function
@@ -904,9 +895,9 @@ module Solver = struct
         | Restricts (other_role, impl, r) ->
           Pp.hovbox
             ~indent:2
-            (format_role other_role
+            (Input.Role.pp other_role
              ++ Pp.char ' '
-             ++ Model.pp_version impl
+             ++ Input.pp_version impl
              ++ Pp.text " requires "
              ++ Pp.paragraph (format_restrictions r))
         | Feed_problem msg -> Pp.text msg
@@ -919,27 +910,27 @@ module Solver = struct
     module Component = struct
       type rejection_reason =
         [ `Model_rejection of Context.rejection
-        | `FailsRestriction of Model.restriction
-        | `DepFailsRestriction of Model.dependency * Model.restriction
-        | `ClassConflict of Model.Role.t * Model.Conflict_class.t
-        | `ConflictsRole of Model.Role.t
+        | `FailsRestriction of Input.restriction
+        | `DepFailsRestriction of Input.dependency * Input.restriction
+        | `ClassConflict of Input.Role.t * Input.Conflict_class.t
+        | `ConflictsRole of Input.Role.t
         | `DiagnosticsFailure of User_message.Style.t Pp.t
         ]
       (* Why a particular implementation was rejected. This could be because the model rejected it,
          or because it conflicts with something else in the example (partial) solution. *)
 
-      type reject = Model.impl * rejection_reason
+      type reject = Input.impl * rejection_reason
 
       type t =
-        { role : Model.Role.t
+        { role : Input.Role.t
         ; diagnostics : User_message.Style.t Pp.t Lazy.t
-        ; selected_impl : Model.impl option
+        ; selected_impl : Input.impl option
         ; (* orig_good is all the implementations passed to the SAT solver (these are the
              ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
-          orig_good : Model.impl list
-        ; orig_bad : (Model.impl * Context.rejection) list
-        ; mutable good : Model.impl list
-        ; mutable bad : (Model.impl * rejection_reason) list
+          orig_good : Input.impl list
+        ; orig_bad : (Input.impl * Context.rejection) list
+        ; mutable good : Input.impl list
+        ; mutable bad : (Input.impl * rejection_reason) list
         ; mutable notes : Note.t list
         }
 
@@ -952,7 +943,7 @@ module Solver = struct
         ~role
         (candidates, orig_bad, feed_problems)
         (diagnostics : _ Pp.t Lazy.t)
-        (selected_impl : Model.impl option)
+        (selected_impl : Input.impl option)
         =
         let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
         { role
@@ -973,7 +964,7 @@ module Solver = struct
          If [t] selected a better version anyway then we don't need to report this rejection. *)
       let affected_selection t impl =
         match t.selected_impl with
-        | Some selected when Model.compare_version selected impl > 0 -> false
+        | Some selected when Input.compare_version selected impl > 0 -> false
         | _ -> true
       ;;
 
@@ -1005,19 +996,19 @@ module Solver = struct
         let note = ref (Some note) in
         List.iter restrictions ~f:(fun r ->
           filter_impls_ref ~note t (fun impl ->
-            if Model.meets_restriction impl r then None else Some (`FailsRestriction r)))
+            if Input.meets_restriction impl r then None else Some (`FailsRestriction r)))
       ;;
 
       let apply_user_restriction t r =
         note t (UserRequested r);
         (* User restrictions should be applied before reaching the solver, but just in case: *)
         filter_impls t (fun impl ->
-          if Model.meets_restriction impl r then None else Some (`FailsRestriction r));
+          if Input.meets_restriction impl r then None else Some (`FailsRestriction r));
         (* Completely remove non-matching impls.
            The user will only want to see the version they asked for. *)
         let new_bad =
           List.filter t.bad ~f:(fun (impl, _) ->
-            if Model.meets_restriction impl r then true else false)
+            if Input.meets_restriction impl r then true else false)
         in
         if new_bad <> [] || t.good <> [] then t.bad <- new_bad
       ;;
@@ -1034,16 +1025,16 @@ module Solver = struct
          special-case that here. *)
       let reject_self_conflicts t =
         filter_impls t (fun impl ->
-          let deps = Model.Impl.requires t.role impl in
+          let deps = Input.Impl.requires t.role impl in
           List.find_map deps ~f:(fun dep ->
-            let { Model.dep_role; _ } = Model.dep_info dep in
-            match Model.Role.compare dep_role t.role with
+            let { Input.dep_role; _ } = Input.dep_info dep in
+            match Input.Role.compare dep_role t.role with
             | Lt | Gt -> None
             | Eq ->
               (* It depends on itself. *)
-              Model.restrictions dep
+              Input.restrictions dep
               |> List.find_map ~f:(fun r ->
-                if Model.meets_restriction impl r
+                if Input.meets_restriction impl r
                 then None
                 else Some (`DepFailsRestriction (dep, r)))))
       ;;
@@ -1057,29 +1048,29 @@ module Solver = struct
 
       let pp_reject ((impl, reason) : reject) =
         match reason with
-        | `Model_rejection r -> Model.describe_problem impl r
+        | `Model_rejection r -> Input.describe_problem impl r
         | `FailsRestriction r ->
           Pp.paragraphf
             "Incompatible with restriction: %s"
-            (Model.string_of_restriction r)
+            (Input.string_of_restriction r)
         | `DepFailsRestriction (dep, restriction) ->
-          let dep_info = Model.dep_info dep in
+          let dep_info = Input.dep_info dep in
           Pp.hovbox
             (Pp.text "Requires "
-             ++ format_role dep_info.Model.dep_role
+             ++ Input.Role.pp dep_info.dep_role
              ++ Pp.textf " %s" (format_restrictions [ restriction ]))
         | `ClassConflict (other_role, cl) ->
           Pp.hovbox
             (Pp.textf "In same conflict class (%s) as " (OpamPackage.Name.to_string cl)
-             ++ format_role other_role)
+             ++ Input.Role.pp other_role)
         | `ConflictsRole other_role ->
-          Pp.hovbox (Pp.text "Conflicts with " ++ format_role other_role)
+          Pp.hovbox (Pp.text "Conflicts with " ++ Input.Role.pp other_role)
         | `DiagnosticsFailure msg ->
           Pp.hovbox (Pp.text "Reason for rejection unknown: " ++ msg)
       ;;
 
       let show_rejections ~verbose rejected =
-        let by_version (a, _) (b, _) = Model.compare_version b a |> Ordering.of_int in
+        let by_version (a, _) (b, _) = Input.compare_version b a |> Ordering.of_int in
         let rejected = List.sort ~compare:by_version rejected in
         let rec aux i = function
           | [] -> Pp.nop
@@ -1088,7 +1079,7 @@ module Solver = struct
             Pp.cut
             ++ Pp.hovbox
                  ~indent:2
-                 (Model.pp_impl_long impl ++ Pp.text ": " ++ pp_reject (impl, problem))
+                 (Input.pp_impl_long impl ++ Pp.text ": " ++ pp_reject (impl, problem))
             ++ aux (i + 1) xs
         in
         aux 0 rejected
@@ -1129,7 +1120,7 @@ module Solver = struct
 
       let pp_outcome t =
         match t.selected_impl with
-        | Some sel -> Model.pp_impl_long sel
+        | Some sel -> Input.pp_impl_long sel
         | None -> Pp.text "(problem)"
       ;;
 
@@ -1137,7 +1128,7 @@ module Solver = struct
       let pp ~verbose t =
         Pp.vbox
           ~indent:2
-          (Pp.hovbox (format_role t.role ++ Pp.text " -> " ++ pp_outcome t)
+          (Pp.hovbox (Input.pp_role t.role ++ Pp.text " -> " ++ pp_outcome t)
            ++ pp_notes t
            ++ pp_candidates ~verbose t)
       ;;
@@ -1151,34 +1142,39 @@ module Solver = struct
      e.g. A depends on B and C. B and C both depend on D.
      C1 conflicts with D1. The depth-first priority order means we give priority
      to {A1, B1, D1}. Then we can't choose C1 because we prefer to keep D1. *)
-    let get_dependency_problem role (report : Component.t Role.Map.t) impl =
+    let get_dependency_problem role (report : Component.t Input.Role.Map.t) impl =
       let check_dep dep =
-        let dep_info = Model.dep_info dep in
-        match Role.Map.find report dep_info.dep_role with
+        let dep_info = Input.dep_info dep in
+        match Input.Role.Map.find report dep_info.dep_role with
         | None -> None (* Not in the selections => can't be part of a conflict *)
         | Some required_component ->
           (match Component.selected_impl required_component with
            | None -> None (* Dummy selection can't cause a conflict *)
            | Some dep_impl ->
              let check_restriction r =
-               if Model.meets_restriction dep_impl r
+               if Input.meets_restriction dep_impl r
                then None
                else Some (`DepFailsRestriction (dep, r))
              in
-             List.find_map ~f:check_restriction (Model.restrictions dep))
+             List.find_map ~f:check_restriction (Input.restrictions dep))
       in
-      let deps = Model.Impl.requires role impl in
+      let deps = Input.Impl.requires role impl in
       List.find_map ~f:check_dep deps
     ;;
 
     (** A selected component has [dep] as a dependency. Use this to explain why some implementations
         of the required interface were rejected. *)
-    let examine_dep requiring_role requiring_impl (report : Component.t Role.Map.t) dep =
-      let { Model.dep_role = other_role; dep_importance = _ } = Model.dep_info dep in
-      match Role.Map.find report other_role with
+    let examine_dep
+      requiring_role
+      requiring_impl
+      (report : Component.t Input.Role.Map.t)
+      dep
+      =
+      let { Input.dep_role = other_role; dep_importance = _ } = Input.dep_info dep in
+      match Input.Role.Map.find report other_role with
       | None -> ()
       | Some required_component ->
-        let dep_restrictions = Model.restrictions dep in
+        let dep_restrictions = Input.restrictions dep in
         if dep_restrictions <> []
         then
           (* Remove implementations incompatible with the other selections *)
@@ -1194,7 +1190,7 @@ module Solver = struct
       | Some our_impl ->
         (* For each dependency of our selected impl, explain why it rejected
            impls in the dependency's interface. *)
-        let deps = Model.Impl.requires role our_impl in
+        let deps = Input.Impl.requires role our_impl in
         List.iter ~f:(examine_dep role our_impl report) deps
       | None ->
         (* For each of our remaining unrejected impls, check whether a
@@ -1204,8 +1200,8 @@ module Solver = struct
 
     (* Check for user-supplied restrictions *)
     let examine_extra_restrictions report =
-      Role.Map.iteri report ~f:(fun role component ->
-        Model.Role.user_restrictions role
+      Input.Role.Map.iteri report ~f:(fun role component ->
+        Input.Role.user_restrictions role
         |> Option.iter ~f:(Component.apply_user_restriction component))
     ;;
 
@@ -1213,26 +1209,29 @@ module Solver = struct
         with the same class. *)
     let check_conflict_classes report =
       let classes =
-        Role.Map.foldi report ~init:Conflict_class.Map.empty ~f:(fun role component acc ->
-          match Component.selected_impl component with
-          | None -> acc
-          | Some impl ->
-            Model.conflict_class impl
-            |> List.fold_left ~init:acc ~f:(fun acc x ->
-              Conflict_class.Map.set acc x role))
+        Input.Role.Map.foldi
+          report
+          ~init:Input.Conflict_class.Map.empty
+          ~f:(fun role component acc ->
+            match Component.selected_impl component with
+            | None -> acc
+            | Some impl ->
+              Input.conflict_class impl
+              |> List.fold_left ~init:acc ~f:(fun acc x ->
+                Input.Conflict_class.Map.set acc x role))
       in
-      Role.Map.iteri report ~f:(fun role component ->
+      Input.Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
           let rec aux = function
             | [] -> None
             | cl :: cls ->
-              (match Conflict_class.Map.find classes cl with
+              (match Input.Conflict_class.Map.find classes cl with
                | Some other_role
-                 when not (Ordering.is_eq (Model.Role.compare role other_role)) ->
+                 when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
                  Some (`ClassConflict (other_role, cl))
                | _ -> aux cls)
           in
-          aux (Model.conflict_class impl)))
+          aux (Input.conflict_class impl)))
     ;;
 
     let of_result result =
@@ -1241,25 +1240,25 @@ module Solver = struct
         let get_selected role sel =
           let impl = Results.unwrap sel in
           let diagnostics = lazy (Results.explain result role) in
-          let impl = if impl == Model.dummy_impl then None else Some impl in
-          let* impl_candidates = Model.implementations role in
-          let+ rejects, feed_problems = Model.rejects role in
+          let impl = if impl == Input.dummy_impl then None else Some impl in
+          let* impl_candidates = Input.implementations role in
+          let+ rejects, feed_problems = Input.rejects role in
           Component.create
             ~role
             (impl_candidates, rejects, feed_problems)
             diagnostics
             impl
         in
-        Role.Map.to_list impls
+        Input.Role.Map.to_list impls
         |> Fiber.parallel_map ~f:(fun (k, v) ->
           let+ v = get_selected k v in
           k, v)
-        |> Fiber.map ~f:Role.Map.of_list_exn
+        |> Fiber.map ~f:Input.Role.Map.of_list_exn
       in
       examine_extra_restrictions report;
       check_conflict_classes report;
-      Role.Map.iteri ~f:(examine_selection report) report;
-      Role.Map.iteri ~f:(fun _ c -> Component.finalise c) report;
+      Input.Role.Map.iteri ~f:(examine_selection report) report;
+      Input.Role.Map.iteri ~f:(fun _ c -> Component.finalise c) report;
       report
     ;;
   end
@@ -1274,7 +1273,7 @@ module Solver = struct
 
   let pp_rolemap ~verbose reasons =
     let good, bad, unknown =
-      Solver.Output.Role.Map.to_list reasons
+      Input.Role.Map.to_list reasons
       |> List.partition_three ~f:(fun (role, component) ->
         match Diagnostics.Component.selected_impl component with
         | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
@@ -1284,7 +1283,7 @@ module Solver = struct
            | _, _ -> `Middle component))
     in
     let pp_bad = Diagnostics.Component.pp ~verbose in
-    let pp_unknown role = Pp.box (Solver.Output.Role.pp role) in
+    let pp_unknown role = Pp.box (Input.Role.pp role) in
     match unknown with
     | [] ->
       Pp.paragraph "Selected candidates: "
@@ -1312,7 +1311,7 @@ module Solver = struct
 
   let packages_of_result sels =
     Solver.Output.to_map sels
-    |> Solver.Output.Role.Map.to_list
+    |> Input.Role.Map.to_list
     |> List.filter_map ~f:(fun (_role, sel) -> Input.version (Solver.Output.unwrap sel))
   ;;
 end

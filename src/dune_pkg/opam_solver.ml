@@ -710,13 +710,13 @@ module Solver = struct
               clause)
           in
           let+ () =
-            Fiber.sequential_iter !impls ~f:(fun { var = impl_var; impl } ->
+            Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
               Conflict_classes.process conflict_classes impl_var impl;
               match expand_deps with
               | `No_expand -> Fiber.return ()
               | `Expand_and_collect_conflicts deferred ->
                 Input.Impl.requires role impl
-                |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
+                |> Fiber.parallel_iter ~f:(fun (dep : Input.dependency) ->
                   match dep.importance with
                   | Ensure -> process_dep expand_deps impl_var dep
                   | Prevent ->
@@ -778,7 +778,7 @@ module Solver = struct
            restricting dependencies are irrelevant to solving the dependency
            problem. *)
         List.rev !conflicts
-        |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
+        |> Fiber.parallel_iter ~f:(fun (impl_var, dep) ->
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in

@@ -5,7 +5,7 @@ type extra_files =
   | Git_files of Path.Local.t option * Rev_store.At_rev.t
 
 type nonrec t =
-  { opam_file : OpamFile.OPAM.t
+  { opam_file : OpamFile.OPAM.t Lazy.t
   ; package : OpamPackage.t
   ; extra_files : extra_files
   ; loc : Loc.t
@@ -15,10 +15,14 @@ type nonrec t =
 let dune_build t = t.dune_build
 let loc t = t.loc
 let package t = t.package
-let opam_file t = t.opam_file
+let opam_file t = Lazy.force t.opam_file
 
 let set_url t url =
-  let opam_file = OpamFile.OPAM.with_url (OpamFile.URL.create url) t.opam_file in
+  let opam_file =
+    lazy
+      (let opam_file = Lazy.force t.opam_file in
+       OpamFile.OPAM.with_url (OpamFile.URL.create url) opam_file)
+  in
   { t with opam_file }
 ;;
 
@@ -35,7 +39,7 @@ let read_opam_file package ~opam_file_path ~opam_file_contents =
 
 let git_repo package ~opam_file ~opam_file_contents rev ~files_dir =
   let opam_file_path = Path.of_local opam_file in
-  let opam_file = read_opam_file package ~opam_file_path ~opam_file_contents in
+  let opam_file = lazy (read_opam_file package ~opam_file_path ~opam_file_contents) in
   let loc = Loc.in_file opam_file_path in
   { dune_build = false
   ; loc
@@ -50,7 +54,7 @@ let local_fs package ~dir ~opam_file_path ~files_dir =
   let files_dir = Option.map files_dir ~f:(Path.append_local dir) in
   let opam_file =
     let opam_file_contents = Io.read_file ~binary:true opam_file_path in
-    read_opam_file package ~opam_file_path ~opam_file_contents
+    lazy (read_opam_file package ~opam_file_path ~opam_file_contents)
   in
   let loc = Loc.in_file opam_file_path in
   { dune_build = false
@@ -87,7 +91,12 @@ let scan_files_entries path =
 let dune_package loc opam_file opam_package =
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in
-  { dune_build = true; opam_file; package; loc; extra_files = Inside_files_dir None }
+  { dune_build = true
+  ; opam_file = Lazy.from_val opam_file
+  ; package
+  ; loc
+  ; extra_files = Inside_files_dir None
+  }
 ;;
 
 open Fiber.O

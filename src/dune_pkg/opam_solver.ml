@@ -315,7 +315,7 @@ module Solver = struct
 
     and real_impl =
       { pkg : OpamPackage.t
-      ; opam : OpamFile.OPAM.t
+      ; conflict_class : OpamPackage.Name.t list
       ; requires : dependency list
       }
 
@@ -414,7 +414,7 @@ module Solver = struct
       ;;
 
       let conflict_class = function
-        | RealImpl impl -> OpamFile.OPAM.conflict_class impl.opam
+        | RealImpl impl -> impl.conflict_class
         | VirtualImpl _ -> []
         | Dummy | Reject _ -> []
       ;;
@@ -536,7 +536,8 @@ module Solver = struct
               make_deps Ensure ensure OpamFile.OPAM.depends
               @ make_deps Prevent prevent OpamFile.OPAM.conflicts
             in
-            Some (RealImpl { pkg; opam; requires }))
+            let conflict_class = OpamFile.OPAM.conflict_class opam in
+            Some (RealImpl { pkg; requires; conflict_class }))
     ;;
 
     let meets_restriction impl { Restriction.kind; expr } =

@@ -9,8 +9,6 @@ Testing install actions
   $ build_pkg test
   foobar
 
-  $ export BUILD_PATH_PREFIX_MAP="/PKG_ROOT=test/target:$BUILD_PATH_PREFIX_MAP"
-
   $ show_pkg_targets test
   
   /bin

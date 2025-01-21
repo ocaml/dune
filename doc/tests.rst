@@ -712,9 +712,9 @@ the standard BUILD_PATH_PREFIX_MAP_ environment variable. For example:
 
 .. code:: console
 
-   $ export BUILD_PATH_PREFIX_MAP="HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
+   $ export BUILD_PATH_PREFIX_MAP="/HOME=$HOME:$BUILD_PATH_PREFIX_MAP"
    $ echo $HOME
-   $HOME
+   /HOME
 
 Note: Unlike Dune's version of Cram, the original specification for Cram
 supports regular expression and glob filtering for matching output. We chose

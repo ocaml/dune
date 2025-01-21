@@ -98,6 +98,7 @@ val set_temp_dir_when_running_actions : bool ref
     termination. [stdout_to] [stderr_to] are released *)
 val run
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
@@ -111,6 +112,7 @@ val run
 
 val run_with_times
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
@@ -125,6 +127,7 @@ val run_with_times
 (** Run a command and capture its output *)
 val run_capture
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
@@ -137,6 +140,7 @@ val run_capture
 
 val run_capture_line
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
@@ -149,6 +153,7 @@ val run_capture_line
 
 val run_capture_lines
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
@@ -161,6 +166,7 @@ val run_capture_lines
 
 val run_capture_zero_separated
   :  ?dir:Path.t
+  -> ?temp_dir:Path.t
   -> display:Display.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t

@@ -272,17 +272,31 @@ let line_number =
   seq [ set "123456789"; rep digit ]
 ;;
 
-let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
+let absolute_paths =
+  let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
+  Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
+;;
+
+let known_paths map =
+  List.filter_map
+    ~f:(function
+      | None | Some { Build_path_prefix_map.source = ""; _ } -> None
+      | Some pair -> Some (Re.str pair.source))
+    map
+  |> List.rev
+  (* prefer right-most paths in the list, as required by the build-path-prefix-map spec *)
+  |> Re.alt
+  |> Re.compile
+;;
+
+let rewrite_paths ~version ~build_path_prefix_map ~parent_script ~command_script s =
   match Build_path_prefix_map.decode_map build_path_prefix_map with
   | Error msg ->
     Code_error.raise
       "Cannot decode build prefix map"
       [ "build_path_prefix_map", String build_path_prefix_map; "msg", String msg ]
   | Ok map ->
-    let abs_path_re =
-      let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
-      Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
-    in
+    let known_paths = if version < (3, 22) then absolute_paths else known_paths map in
     let error_msg =
       let open Re in
       let command_script = str (Path.to_absolute_filename command_script) in
@@ -294,7 +308,7 @@ let rewrite_paths ~build_path_prefix_map ~parent_script ~command_script s =
       let b = seq [ command_script; str ": line "; line_number; str ": " ] in
       [ a; b ] |> List.map ~f:(fun re -> seq [ bol; re ]) |> alt |> compile
     in
-    Re.replace abs_path_re s ~f:(fun g ->
+    Re.replace ~all:true known_paths s ~f:(fun g ->
       Build_path_prefix_map.rewrite map (Re.Group.get g 0))
     |> Re.replace_string error_msg ~by:""
 ;;
@@ -314,7 +328,7 @@ let dyn_of_command_out { command; metadata; output } =
     ]
 ;;
 
-let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
+let sanitize ~version ~parent_script cram_to_output : command_out Cram_lexer.block list =
   List.map cram_to_output ~f:(fun (t : full_block_result Cram_lexer.block) ->
     match t with
     | Cram_lexer.Comment t -> Cram_lexer.Comment t
@@ -332,6 +346,7 @@ let sanitize ~parent_script cram_to_output : command_out Cram_lexer.block list =
             output
             ~f:
               (rewrite_paths
+                 ~version
                  ~parent_script
                  ~command_script:block.script
                  ~build_path_prefix_map)
@@ -498,6 +513,7 @@ let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "
 let make_run_env env ~temp_dir ~cwd =
   let env = Env.add env ~var:"LC_ALL" ~value:"C" in
   let temp_dir = Path.relative temp_dir "tmp" in
+  Path.mkdir_p temp_dir;
   let env =
     Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
       env
@@ -506,7 +522,10 @@ let make_run_env env ~temp_dir ~cwd =
       ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
       ]
   in
-  Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
+  let env =
+    Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
+  in
+  temp_dir, env
 ;;
 
 let make_temp_dir ~script =
@@ -528,6 +547,7 @@ let make_temp_dir ~script =
 
 let run_cram_test
       env
+      ~version
       ~src
       ~script
       ~cram_stanzas
@@ -539,7 +559,7 @@ let run_cram_test
   =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir ~setup_scripts shell in
-  let env = make_run_env env ~temp_dir ~cwd in
+  let temp_dir, env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let sh =
     let path = Env_path.path Env.initial in
@@ -569,6 +589,7 @@ let run_cram_test
     ~display:Quiet
     ~metadata
     ~dir:cwd
+    ~temp_dir
     ~env
     (Timeout { timeout = Option.map ~f:snd timeout; failure_mode = Strict })
     sh
@@ -589,7 +610,7 @@ let run_cram_test
            | None -> None
            | Some times -> Some { Dune_trace.Event.Cram.command; times }))
       |> Dune_trace.Event.Cram.test ~test:src);
-    sanitize ~parent_script:script detailed_output
+    sanitize ~version ~parent_script:script detailed_output
   | Error `Timed_out ->
     let timeout_loc, timeout = Option.value_exn timeout in
     let timeout_set_message =
@@ -630,6 +651,7 @@ let run_cram_test
 ;;
 
 let run_produce_correction
+      ~version
       ~conflict_markers
       ~src
       ~env
@@ -642,10 +664,10 @@ let run_produce_correction
   let temp_dir = make_temp_dir ~script in
   let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
   let cwd = Path.parent_exn script in
-  let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   run_cram_test
     env
+    ~version
     ~src
     ~script
     ~cram_stanzas
@@ -667,6 +689,7 @@ module Script = Persistent.Make (struct
   end)
 
 let run_and_produce_output
+      ~version
       ~conflict_markers
       ~src
       ~env
@@ -683,11 +706,11 @@ let run_and_produce_output
   let cram_stanzas = cram_stanzas lexbuf ~conflict_markers |> List.map ~f:snd in
   (* We don't want the ".cram.run.t" dir around when executing the script. *)
   Path.rm_rf (Path.parent_exn script);
-  let env = make_run_env env ~temp_dir ~cwd in
   let open Fiber.O in
   let+ commands =
     run_cram_test
       env
+      ~version
       ~src
       ~script
       ~cram_stanzas
@@ -715,13 +738,15 @@ module Run = struct
       ; timeout : (Loc.t * Time.Span.t) option
       ; setup_scripts : 'path list
       ; shell : Cram_stanza.Shell.t
+      ; version : Dune_lang.Syntax.Version.t
       }
 
     let name = "cram-run"
     let version = 6
 
     let bimap
-          ({ src = _; dir; script; output; timeout; setup_scripts; shell = _ } as t)
+          ({ src = _; dir; script; output; timeout; setup_scripts; shell = _; version } as
+           t)
           f
           g
       =
@@ -731,12 +756,16 @@ module Run = struct
       ; output = g output
       ; timeout
       ; setup_scripts = List.map ~f setup_scripts
+      ; version
       }
     ;;
 
     let is_useful_to ~memoize:_ = true
 
-    let encode { src = _; dir; script; output; timeout; shell; setup_scripts } path target
+    let encode
+          { src = _; dir; script; output; timeout; shell; setup_scripts; version }
+          path
+          target
       : Sexp.t
       =
       List
@@ -748,15 +777,17 @@ module Run = struct
           |> Dune_sexp.to_sexp
         ; List (List.map ~f:path setup_scripts)
         ; Atom (Cram_stanza.Shell.to_string shell)
+        ; Atom (Dune_lang.Syntax.Version.to_string version)
         ]
     ;;
 
     let action
-          { src; dir; script; output; timeout; setup_scripts; shell }
+          { src; dir; script; output; timeout; setup_scripts; shell; version }
           ~ectx:_
           ~(eenv : Action.env)
       =
       run_and_produce_output
+        ~version
         ~conflict_markers:Ignore
         ~src
         ~env:eenv.env
@@ -772,8 +803,8 @@ module Run = struct
   include Action_ext.Make (Spec)
 end
 
-let run ~src ~dir ~script ~output ~timeout ~setup_scripts shell =
-  Run.action { src; dir; script; output; timeout; setup_scripts; shell }
+let run ~version ~src ~dir ~script ~output ~timeout ~setup_scripts shell =
+  Run.action { src; dir; script; output; timeout; setup_scripts; shell; version }
 ;;
 
 module Make_script = struct
@@ -879,19 +910,23 @@ let diff ~src ~output = Diff.action { script = src; out = output }
 
 module Action = struct
   module Spec = struct
-    type ('path, _) t = 'path
+    type ('path, _) t = Dune_lang.Syntax.Version.t * 'path
 
     let name = "cram"
     let version = 2
-    let bimap path f _ = f path
+    let bimap (version, path) f _ = version, f path
     let is_useful_to ~memoize:_ = true
-    let encode script path _ : Sexp.t = List [ path script ]
 
-    let action script ~ectx:_ ~(eenv : Action.env) =
+    let encode (version, script) path _ : Sexp.t =
+      List [ Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp; path script ]
+    ;;
+
+    let action (version, script) ~ectx:_ ~(eenv : Action.env) =
       run_expect_test
         script
         ~f:
           (run_produce_correction
+             ~version
              ~conflict_markers:Ignore
              ~src:script
              ~env:eenv.env
@@ -905,4 +940,4 @@ module Action = struct
   include Action_ext.Make (Spec)
 end
 
-let action = Action.action
+let action ~version path = Action.action (version, path)

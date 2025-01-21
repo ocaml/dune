@@ -38,6 +38,51 @@ let valid_name language ~loc s =
   | _ -> s
 ;;
 
+let multiple_sources_error ~name ~mode ~loc ~paths =
+  let hints =
+    [ Pp.text
+        "You can also avoid the name clash by placing the objects into different foreign \
+         archives and building them in different directories. Foreign archives can be \
+         defined using the (foreign_library ...) stanza."
+    ]
+  in
+  let hints, for_mode =
+    match mode with
+    | Mode.Select.All -> hints, ""
+    | Mode.Select.Only m ->
+      let mode_hint =
+        Pp.text
+          "You may be missing a mode field that would restrict this stub to some \
+           specific mode."
+      in
+      mode_hint :: hints, Printf.sprintf " for mode %s" @@ Mode.to_string m
+  in
+  User_error.raise
+    ~loc
+    [ Pp.textf "Multiple sources map to the same object name %S%s:" name for_mode
+    ; Pp.enumerate (List.sort ~compare:Path.Build.compare paths) ~f:(fun path ->
+        Pp.text
+          (Path.to_string_maybe_quoted
+             (Path.drop_optional_build_context (Path.build path))))
+    ; Pp.textf
+        "This is not allowed; please rename them or remove %S from object names."
+        name
+    ]
+    ~hints
+;;
+
+let find_source sources language (loc, name) =
+  let open Option.O in
+  let* candidates = String.Map.find sources name in
+  match
+    List.filter_map candidates ~f:(fun (l, path) ->
+      Option.some_if (Foreign_language.equal l language) path)
+  with
+  | [ path ] -> Some path
+  | [] -> None
+  | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths
+;;
+
 let eval_foreign_stubs
   foreign_stubs
   (ctypes : Ctypes_field.t option)
@@ -45,57 +90,14 @@ let eval_foreign_stubs
   ~(sources : Foreign.Sources.Unresolved.t)
   : Foreign.Sources.t
   =
-  let multiple_sources_error ~name ~mode ~loc ~paths =
-    let hints =
-      [ Pp.text
-          "You can also avoid the name clash by placing the objects into different \
-           foreign archives and building them in different directories. Foreign archives \
-           can be defined using the (foreign_library ...) stanza."
-      ]
-    in
-    let hints, for_mode =
-      match mode with
-      | Mode.Select.All -> hints, ""
-      | Mode.Select.Only m ->
-        let mode_hint =
-          Pp.text
-            "You may be missing a mode field that would restrict this stub to some \
-             specific mode."
-        in
-        mode_hint :: hints, Printf.sprintf " for mode %s" @@ Mode.to_string m
-    in
-    User_error.raise
-      ~loc
-      [ Pp.textf "Multiple sources map to the same object name %S%s:" name for_mode
-      ; Pp.enumerate (List.sort ~compare:Path.Build.compare paths) ~f:(fun path ->
-          Pp.text
-            (Path.to_string_maybe_quoted
-               (Path.drop_optional_build_context (Path.build path))))
-      ; Pp.textf
-          "This is not allowed; please rename them or remove %S from object names."
-          name
-      ]
-      ~hints
-  in
-  let find_source language (loc, name) =
-    let open Option.O in
-    let* candidates = String.Map.find sources name in
-    match
-      List.filter_map candidates ~f:(fun (l, path) ->
-        Option.some_if (Foreign_language.equal l language) path)
-    with
-    | [ path ] -> Some path
-    | [] -> None
-    | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths
-  in
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
-    let standard : (Loc.t * string) String.Map.t =
-      String.Map.filter_mapi sources ~f:(fun name srcs ->
-        List.find_map srcs ~f:(fun (l, _) ->
-          Option.some_if (Foreign_language.equal l language) (stubs.loc, name)))
-    in
     let names =
+      let standard : (Loc.t * string) String.Map.t =
+        String.Map.filter_mapi sources ~f:(fun name srcs ->
+          List.find_map srcs ~f:(fun (l, _) ->
+            Option.some_if (Foreign_language.equal l language) (stubs.loc, name)))
+      in
       Ordered_set_lang.Unordered_string.eval_loc
         stubs.names
         ~key:Fun.id
@@ -113,7 +115,7 @@ let eval_foreign_stubs
               "Relative part of stub is not necessary and should be removed. To include \
                sources in subdirectories, use the (include_subdirs ...) stanza."
           ];
-      match find_source language (loc, name) with
+      match find_source sources language (loc, name) with
       | Some path ->
         let src = Foreign.Source.make (Stubs stubs) ~path in
         let new_key = Foreign.Source.object_name src in
@@ -140,10 +142,12 @@ let eval_foreign_stubs
           ctypes.function_description
           ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
             let loc = Loc.none (* TODO *) in
-            let fname = Ctypes_field.c_generated_functions_cout_c ctypes fd in
-            let name = Filename.remove_extension fname in
+            let name =
+              Ctypes_field.c_generated_functions_cout_c ctypes fd
+              |> Filename.remove_extension
+            in
             let path =
-              match find_source C (loc, name) with
+              match find_source sources C (loc, name) with
               | Some p -> p
               | None ->
                 (* impossible b/c ctypes fields generates this *)
@@ -298,11 +302,10 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
 ;;
 
 let make stanzas ~dune_version ~dirs =
-  let init = String.Map.empty in
   let sources =
     List.fold_left
       dirs
-      ~init
+      ~init:String.Map.empty
       ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
         let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
         String.Map.Multi.rev_union sources acc)

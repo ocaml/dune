@@ -5,14 +5,14 @@ First, build silently to avoid some noise
 See that `test1/runtest`, which uses `fake_backend_1, only runs one inline test runner
 
   $ dune build --display short @test1/runtest 2>&1 | grep alias
-           run alias test1/runtest
+  inline-test-runner alias test1/runtest
 
 See that `test2/runtest`, which uses `fake_backend_2`, runs one inline test runner per partition
 
   $ dune build --display short @test2/runtest 2>&1 | grep alias
-           run alias test2/runtest
-           run alias test2/runtest
-           run alias test2/runtest
+  inline-test-runner alias test2/runtest
+  inline-test-runner alias test2/runtest
+  inline-test-runner alias test2/runtest
 
 See that we indeed have 3 partitions
 

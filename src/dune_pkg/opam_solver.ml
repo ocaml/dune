@@ -307,10 +307,8 @@ module Solver = struct
 
     module Virtual_id = Id.Make ()
 
-    type real_role = { name : OpamPackage.Name.t }
-
     type role =
-      | Real of real_role (* A role is usually an opam package name *)
+      | Real of OpamPackage.Name.t
       | Virtual of Virtual_id.t * impl list
 
     and real_impl =
@@ -346,7 +344,7 @@ module Solver = struct
       | Dummy -> Pp.text "(no solution found)"
 
     and pp_role = function
-      | Real t -> Pp.text (OpamPackage.Name.to_string t.name)
+      | Real name -> Pp.text (OpamPackage.Name.to_string name)
       | Virtual (_, impls) -> Pp.concat_map ~sep:(Pp.char '|') impls ~f:pp_impl
     ;;
 
@@ -358,7 +356,7 @@ module Solver = struct
 
         let compare a b =
           match a, b with
-          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a.name b.name)
+          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a b)
           | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
           | Real _, Virtual _ -> Lt
           | Virtual _, Real _ -> Gt
@@ -376,7 +374,7 @@ module Solver = struct
         match t with
         | Virtual _ -> None
         | Real role ->
-          Context.user_restrictions context role.name
+          Context.user_restrictions context role
           |> Option.map ~f:(fun f ->
             { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
       ;;
@@ -388,11 +386,11 @@ module Solver = struct
         | Virtual _ -> Fiber.return ([], [])
         | Real role ->
           let+ rejects =
-            Context.candidates context role.name
+            Context.candidates context role
             >>| List.filter_map ~f:(function
               | _, Ok _ -> None
               | version, Error reason ->
-                let pkg = OpamPackage.create role.name version in
+                let pkg = OpamPackage.create role version in
                 Some (Reject pkg, reason))
           in
           let notes = [] in
@@ -493,9 +491,7 @@ module Solver = struct
       let rec aux (formula : _ OpamTypes.generic_formula) =
         match formula with
         | Empty -> []
-        | Atom (name, restrictions) ->
-          let drole = Real { name } in
-          [ { drole; restrictions; importance } ]
+        | Atom (name, restrictions) -> [ { drole = Real name; restrictions; importance } ]
         | Block x -> aux x
         | And (x, y) -> aux x @ aux y
         | Or _ as o ->
@@ -519,11 +515,11 @@ module Solver = struct
       match role with
       | Virtual (_, impls) -> Fiber.return impls
       | Real role ->
-        Context.candidates context role.name
+        Context.candidates context role
         >>| List.filter_map ~f:(function
           | _, Error _rejection -> None
           | version, Ok opam ->
-            let pkg = OpamPackage.create role.name version in
+            let pkg = OpamPackage.create role version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
               let rank = ref 0 in
@@ -1198,13 +1194,12 @@ module Solver = struct
   let solve context pkgs =
     let req =
       match pkgs with
-      | [ pkg ] -> Input.Real { name = pkg }
+      | [ pkg ] -> Input.Real pkg
       | pkgs ->
         let impl : Input.Impl.t =
           let depends =
             List.map pkgs ~f:(fun name ->
-              let drole : Input.Role.t = Real { name } in
-              { Input.drole; importance = Ensure; restrictions = [] })
+              { Input.drole = Real name; importance = Ensure; restrictions = [] })
           in
           VirtualImpl (-1, depends)
         in

@@ -27,7 +27,7 @@
   File "dune", line 9, characters 1-40:
   9 |  (inline_tests (backend backend_simple)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Fatal error: exception File ".foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
+  Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
 The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored.
@@ -41,5 +41,5 @@ The expected behavior for the following three tests is to output nothing: the te
   File "dune", line 9, characters 1-40:
   9 |  (inline_tests (backend backend_simple)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Fatal error: exception File ".foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
+  Fatal error: exception File ".foo_simple.inline-tests/main.ml-gen", line 1, characters 40-46: Assertion failed
   [1]

@@ -1,94 +1,5 @@
 open Import
 
-module Sanitizer : sig
-  [@@@ocaml.warning "-32"]
-
-  module Command : sig
-    type t =
-      { output : string
-      ; build_path_prefix_map : string
-      ; script : Path.t
-      }
-  end
-
-  val impl_sanitizer : (Command.t -> string) -> in_channel -> out_channel -> unit
-
-  val run_sanitizer
-    :  ?temp_dir:Path.t
-    -> prog:Path.t
-    -> argv:string list
-    -> Command.t list
-    -> string list Fiber.t
-end = struct
-  module Command = struct
-    type t =
-      { output : string
-      ; build_path_prefix_map : string
-      ; script : Path.t
-      }
-
-    let of_sexp script (csexp : Sexp.t) : t =
-      match csexp with
-      | List [ Atom build_path_prefix_map; Atom output ] ->
-        { build_path_prefix_map; output; script }
-      | _ -> Code_error.raise "Command.of_csexp: invalid csexp" []
-    ;;
-
-    let to_sexp { output; build_path_prefix_map; script } : Sexp.t =
-      List
-        [ Atom build_path_prefix_map
-        ; Atom output
-        ; Atom (Path.to_absolute_filename script)
-        ]
-    ;;
-  end
-
-  let run_sanitizer ?temp_dir ~prog ~argv commands =
-    let temp_dir =
-      match temp_dir with
-      | Some d -> d
-      | None -> Temp.create Dir ~prefix:"sanitizer" ~suffix:"unspecified"
-    in
-    let fname = Path.relative temp_dir in
-    let stdout_path = fname "sanitizer.stdout" in
-    let stdout_to = Process.Io.file stdout_path Process.Io.Out in
-    let stdin_from =
-      let path = fname "sanitizer.stdin" in
-      let csexp = List.map commands ~f:Command.to_sexp in
-      Io.with_file_out ~binary:true path ~f:(fun oc ->
-        List.iter csexp ~f:(Csexp.to_channel oc));
-      Process.Io.file path Process.Io.In
-    in
-    let open Fiber.O in
-    let+ () = Process.run ~display:Quiet ~stdin_from ~stdout_to Strict prog argv in
-    Io.with_file_in stdout_path ~f:(fun ic ->
-      let rec loop acc =
-        match Csexp.input_opt ic with
-        | Ok None -> List.rev acc
-        | Ok (Some (Sexp.Atom s)) -> loop (s :: acc)
-        | Error error -> Code_error.raise "invalid csexp" [ "error", String error ]
-        | Ok _ -> Code_error.raise "unexpected output" []
-      in
-      loop [])
-  ;;
-
-  let impl_sanitizer f in_ out =
-    set_binary_mode_in in_ true;
-    set_binary_mode_out out true;
-    let rec loop () =
-      match Csexp.input_opt in_ with
-      | Error error -> Code_error.raise "unable to parse csexp" [ "error", String error ]
-      | Ok None -> ()
-      | Ok (Some sexp) ->
-        let command = Command.of_sexp (assert false) sexp in
-        Csexp.to_channel out (Atom (f command));
-        flush out;
-        loop ()
-    in
-    loop ()
-  ;;
-end
-
 (* Translate a path for [sh]. On Windows, [sh] will come from Cygwin so if we
    are a real windows program we need to pass the path through [cygpath] *)
 let translate_path_for_sh =
@@ -266,9 +177,16 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
       "Cannot decode build prefix map"
       [ "build_path_prefix_map", String build_path_prefix_map; "msg", String msg ]
   | Ok map ->
-    let abs_path_re =
-      let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
-      Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
+    let known_paths =
+      List.filter_map
+        ~f:(function
+          | None | Some { Build_path_prefix_map.source = ""; _ } -> None
+          | Some pair -> Some (Re.str pair.source))
+        map
+      |> List.rev
+      (* prefer right-most paths in the list, as required by the build-path-prefix-map spec *)
+      |> Re.alt
+      |> Re.compile
     in
     let error_msg =
       let open Re in
@@ -281,7 +199,7 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
       let b = seq [ command_script; str ": line "; line_number; str ": " ] in
       [ a; b ] |> List.map ~f:(fun re -> seq [ bol; re ]) |> alt |> compile
     in
-    Re.replace abs_path_re s ~f:(fun g ->
+    Re.replace ~all:true known_paths s ~f:(fun g ->
       Build_path_prefix_map.rewrite map (Re.Group.get g 0))
     |> Re.replace_string error_msg ~by:""
 ;;
@@ -406,19 +324,16 @@ let run ~env ~script lexbuf : string Fiber.t =
   let open Fiber.O in
   let* sh_script = create_sh_script cram_stanzas ~temp_dir in
   let cwd = Path.parent_exn script in
+  let temp_dir = Path.relative temp_dir "tmp" in
+  Path.mkdir_p temp_dir;
   let env =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
-    let temp_dir = Path.relative temp_dir "tmp" in
-    let env =
-      Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
-        env
-        `New_rules_have_precedence
-        [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
-        ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
-        ]
-    in
-    Path.mkdir_p temp_dir;
-    Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename temp_dir)
+    Dune_util.Build_path_prefix_map.extend_build_path_prefix_map
+      env
+      `New_rules_have_precedence
+      [ Some { source = Path.to_absolute_filename cwd; target = "$TESTCASE_ROOT" }
+      ; Some { source = Path.to_absolute_filename temp_dir; target = "$TMPDIR" }
+      ]
   in
   let open Fiber.O in
   let+ () =
@@ -442,6 +357,7 @@ let run ~env ~script lexbuf : string Fiber.t =
       ~display:Quiet
       ~metadata
       ~dir:cwd
+      ~temp_dir
       ~env
       Strict
       sh

@@ -92,7 +92,6 @@ module Config : sig
   val path : t -> string
   val of_string : string -> t
   val of_flags : string list -> t
-
   val to_flags : jsoo_version:Version.t option -> t -> string list
 end = struct
   type effects_backend =
@@ -217,15 +216,15 @@ end = struct
          through the Javascript Promise API. *)
       None
     | Some Cps ->
-        let v6_or_higher =
-          match jsoo_version with
-          | Some v ->
-            (match Version.compare v (6, 0) with
-             | Gt | Eq -> true
-             | Lt -> false)
-          | None -> false
-        in
-        if v6_or_higher then Some "--effects=cps" else Some "--enable=effects"
+      let v6_or_higher =
+        match jsoo_version with
+        | Some v ->
+          (match Version.compare v (6, 0) with
+           | Gt | Eq -> true
+           | Lt -> false)
+        | None -> false
+      in
+      if v6_or_higher then Some "--effects=cps" else Some "--enable=effects"
     | Some Double_translation ->
       (* For js_of_ocaml < 6.0, this flag does not exist and will raise an error,
          which is fine. *)
@@ -353,9 +352,8 @@ let js_of_ocaml_rule
               Action_builder.of_memo (Version.jsoo_version jsoo)
             in
             Command.Args.S
-              (List.map
-                (Config.to_flags ~jsoo_version config)
-                ~f:(fun x -> Command.Args.A x))))
+              (List.map (Config.to_flags ~jsoo_version config) ~f:(fun x ->
+                 Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec

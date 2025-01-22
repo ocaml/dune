@@ -673,11 +673,11 @@ module Solver = struct
          [t] must not be used after this. *)
       let seal t =
         Map.iter t.groups ~f:(fun impls ->
-          let impls = !impls in
-          if List.length impls > 1
-          then (
-            let (_ : S.at_most_one_clause) = S.at_most_one t.sat impls in
-            ()))
+          match !impls with
+          | _ :: _ :: _ ->
+            let (_ : S.at_most_one_clause) = S.at_most_one t.sat !impls in
+            ()
+          | _ -> ())
       ;;
     end
 

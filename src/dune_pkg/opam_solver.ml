@@ -78,6 +78,9 @@ module Context = struct
          packages for which we've printed a warning. *)
       available_cache : (OpamPackage.t, bool) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; (* Number of versions of each package whose opam files were read from
+         disk while solving. Used to report performance statistics. *)
+      expanded_packages : (Package_name.t, int) Table.t
     }
 
   let create
@@ -105,6 +108,15 @@ module Context = struct
         end)
         1
     in
+    let expanded_packages =
+      Table.create
+        (module struct
+          include Package_name
+
+          let to_dyn = Package_name.to_dyn
+        end)
+        1
+    in
     { repos
     ; version_preference
     ; local_packages
@@ -115,6 +127,7 @@ module Context = struct
     ; candidates_cache
     ; available_cache
     ; constraints
+    ; expanded_packages
     }
   ;;
 
@@ -180,6 +193,10 @@ module Context = struct
 
   let repo_candidate t name =
     let+ resolved = Opam_repo.load_all_versions t.repos name in
+    Table.add_exn
+      t.expanded_packages
+      (Package_name.of_opam_package_name name)
+      (OpamPackage.Version.Map.cardinal resolved);
     let available =
       OpamPackage.Version.Map.values resolved
       |> List.map ~f:(fun p -> p, Priority.make (Resolved_package.opam_file p))
@@ -252,6 +269,8 @@ module Context = struct
       ~with_test:package_is_local
       filtered_formula
   ;;
+
+  let count_expanded_packages t = Table.fold t.expanded_packages ~init:0 ~f:( + )
 end
 
 module Solver = struct
@@ -1738,6 +1757,7 @@ module Solver_result = struct
     { lock_dir : Lock_dir.t
     ; files : File_entry.t Package_name.Map.Multi.t
     ; pinned_packages : Package_name.Set.t
+    ; num_expanded_packages : int
     }
 end
 
@@ -1965,5 +1985,10 @@ let solve_lock_dir
       >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
       >>| Package_name.Map.of_list_exn
     in
-    Ok { Solver_result.lock_dir; files; pinned_packages = pinned_package_names }
+    Ok
+      { Solver_result.lock_dir
+      ; files
+      ; pinned_packages = pinned_package_names
+      ; num_expanded_packages = Context.count_expanded_packages context
+      }
 ;;

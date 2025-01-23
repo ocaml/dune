@@ -194,6 +194,7 @@ let build_js
   ~obj_dir
   ~sctx
   ~includes
+  ~(compile_flags : Ocaml_flags.t)
   ~local_modules_and_obj_dir
   m
   =
@@ -218,6 +219,7 @@ let build_js
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes
+          ; Command.Args.dyn (Ocaml_flags.get compile_flags Melange)
           ; As melange_package_args
           ; A "-o"
           ; Target output
@@ -259,6 +261,13 @@ let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps
   Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
+let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
+  let specific = Lib_mode.Map.make_all mel.compile_flags in
+  Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
+  |> Ocaml_flags_db.ocaml_flags sctx ~dir
+  >>| Ocaml_flags.allow_only_melange
+;;
+
 let setup_emit_cmj_rules
   ~sctx
   ~dir
@@ -297,12 +306,7 @@ let setup_emit_cmj_rules
       Modules.With_vlib.modules modules, pp
     in
     let requires_link = Lib.Compile.requires_link compile_info in
-    let* flags =
-      let specific = Lib_mode.Map.make_all mel.compile_flags in
-      Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
-      |> Ocaml_flags_db.ocaml_flags sctx ~dir
-      >>| Ocaml_flags.allow_only_melange
-    in
+    let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create
@@ -474,7 +478,7 @@ let setup_entries_js
       ocaml.lib_config
     in
     cmj_includes ~requires_link ~scope lib_config
-  in
+  and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
@@ -494,6 +498,7 @@ let setup_entries_js
       ~obj_dir
       ~sctx
       ~includes
+      ~compile_flags
       ~local_modules_and_obj_dir
       m)
 ;;
@@ -557,7 +562,7 @@ let setup_js_rules_libraries =
           |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
         in
         cmj_includes ~requires_link ~scope lib_config
-      in
+      and* compile_flags = melange_compile_flags ~sctx ~dir mel in
       let+ () =
         setup_runtime_assets_rules
           sctx
@@ -603,13 +608,13 @@ let setup_js_rules_libraries =
             ~sctx
             ~scope
             vlib
-            ~f:(build_js ~dir ~output ~includes)
+            ~f:(build_js ~dir ~output ~includes ~compile_flags)
       and+ () =
         parallel_build_source_modules
           ~sctx
           ~scope
           lib
-          ~f:(build_js ~dir ~output ~includes)
+          ~f:(build_js ~dir ~output ~includes ~compile_flags)
       in
       ())
 ;;

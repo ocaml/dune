@@ -354,44 +354,46 @@ let build_o_files
     in
     ocaml.lib_config.ext_obj
   in
-  String.Map.to_list_map foreign_sources ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
-    let+ build_file =
-      let include_flags =
-        let extra_deps =
-          let extra_deps, sandbox =
-            match src.kind with
-            | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
-            | Ctypes _ -> Action_builder.return (), Sandbox_config.default
+  Foreign.Sources.to_list_map
+    foreign_sources
+    ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
+      let+ build_file =
+        let include_flags =
+          let extra_deps =
+            let extra_deps, sandbox =
+              match src.kind with
+              | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
+              | Ctypes _ -> Action_builder.return (), Sandbox_config.default
+            in
+            (* We don't sandbox the C compiler, see comment in [build_file] about
+               this. *)
+            ignore sandbox;
+            Action_builder.map extra_deps ~f:(fun () -> Command.Args.empty)
           in
-          (* We don't sandbox the C compiler, see comment in [build_file] about
-             this. *)
-          ignore sandbox;
-          Action_builder.map extra_deps ~f:(fun () -> Command.Args.empty)
+          let extra_flags =
+            include_dir_flags
+              ~expander
+              ~dir
+              ~include_dirs:
+                (match src.kind with
+                 | Stubs stubs -> stubs.include_dirs
+                 | Ctypes _ -> [])
+          in
+          Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
         in
-        let extra_flags =
-          include_dir_flags
-            ~expander
+        let dst = Path.Build.relative dir (obj ^ ext_obj) in
+        let+ () =
+          build_c
+            ~kind:(Foreign.Source.language src)
+            ~sctx
             ~dir
-            ~include_dirs:
-              (match src.kind with
-               | Stubs stubs -> stubs.include_dirs
-               | Ctypes _ -> [])
+            ~expander
+            ~include_flags
+            (loc, src, dst)
         in
-        Command.Args.S [ includes; extra_flags; Dyn extra_deps ]
+        dst
       in
-      let dst = Path.Build.relative dir (obj ^ ext_obj) in
-      let+ () =
-        build_c
-          ~kind:(Foreign.Source.language src)
-          ~sctx
-          ~dir
-          ~expander
-          ~include_flags
-          (loc, src, dst)
-      in
-      dst
-    in
-    Foreign.Source.mode src, Path.build build_file)
+      Foreign.Source.mode src, Path.build build_file)
   |> Memo.all_concurrently
   >>| List.fold_left ~init:Mode.Map.empty ~f:(fun tbl (for_mode, file) ->
     Mode.Map.Multi.cons tbl for_mode file)

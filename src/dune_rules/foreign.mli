@@ -1,11 +1,5 @@
 open Import
 
-val possible_sources
-  :  language:Foreign_language.t
-  -> string
-  -> dune_version:Dune_lang.Syntax.Version.t
-  -> string list
-
 (* CR-soon cwong: I'd really prefer to keep the convention that these functions
    are spelled [Foreign_language.encode] and [Foreign_language.decode], but due
    to some organizational reasons (see the rant at the top of
@@ -150,7 +144,10 @@ end
 
 (** A map from object names to the corresponding sources. *)
 module Sources : sig
-  type t = (Loc.t * Source.t) String.Map.t
+  type t
+
+  val to_list_map : t -> f:(string -> Loc.t * Source.t -> 'b) -> 'b list
+  val make : (Loc.t * Source.t) String.Map.t -> t
 
   val object_files
     :  t
@@ -159,21 +156,6 @@ module Sources : sig
     -> Path.Build.t list
 
   val has_cxx_sources : t -> bool
-
-  (** A map from object names to lists of possible language/path combinations. *)
-  module Unresolved : sig
-    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
-
-    val to_dyn : t -> Dyn.t
-
-    (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
-        the object name. *)
-    val load
-      :  dune_version:Dune_lang.Syntax.Version.t
-      -> dir:Path.Build.t
-      -> files:Filename.Set.t
-      -> t
-  end
 end
 
 (** For the [(foreign_objects ...)] field.*)

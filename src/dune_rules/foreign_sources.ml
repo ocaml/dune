@@ -1,13 +1,5 @@
 open Import
 
-(* TODO: This is a strange module; it seems to add unnecessary indirection for
-   accessing foreign sources. It's worth checking if it can be simplified away.
-
-   Before this module is removed, there should be a good way to handle new types
-   of source files without shoving everything into [Dir_contents].
-
-   Furthermore, this module is also responsible for details such as handling file
-   extensions and validating filenames. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
   ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t
@@ -29,16 +21,7 @@ let empty =
   }
 ;;
 
-let valid_name language ~loc s =
-  match s with
-  | "" | "." | ".." ->
-    User_error.raise
-      ~loc
-      [ Pp.textf "%S is not a valid %s name." s (Foreign_language.proper_name language) ]
-  | _ -> s
-;;
-
-let multiple_sources_error ~name ~mode ~loc ~paths =
+let multiple_sources_error ~name ~(mode : Mode.Select.t) ~loc ~paths =
   let hints =
     [ Pp.text
         "You can also avoid the name clash by placing the objects into different foreign \
@@ -48,8 +31,8 @@ let multiple_sources_error ~name ~mode ~loc ~paths =
   in
   let hints, for_mode =
     match mode with
-    | Mode.Select.All -> hints, ""
-    | Mode.Select.Only m ->
+    | All -> hints, ""
+    | Only m ->
       let mode_hint =
         Pp.text
           "You may be missing a mode field that would restrict this stub to some \
@@ -71,23 +54,77 @@ let multiple_sources_error ~name ~mode ~loc ~paths =
     ~hints
 ;;
 
-let find_source sources language (loc, name) =
-  let open Option.O in
-  let* candidates = String.Map.find sources name in
-  match
-    List.filter_map candidates ~f:(fun (l, path) ->
-      Option.some_if (Foreign_language.equal l language) path)
-  with
-  | [ path ] -> Some path
-  | [] -> None
-  | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths
+module Unresolved = struct
+  type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
+
+  let _to_dyn t =
+    let entry_to_dyn (language, path) =
+      Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ]
+    in
+    String.Map.to_dyn (Dyn.list entry_to_dyn) t
+  ;;
+
+  let drop_source_extension fn ~dune_version =
+    let open Option.O in
+    let* obj, ext = String.rsplit2 fn ~on:'.' in
+    let* language, version = String.Map.find Foreign_language.source_extensions ext in
+    Option.some_if (dune_version >= version) (obj, language)
+  ;;
+
+  let load ~dune_version ~dir ~files =
+    let init = String.Map.empty in
+    String.Set.fold files ~init ~f:(fun fn acc ->
+      match drop_source_extension fn ~dune_version with
+      | None -> acc
+      | Some (obj, language) ->
+        let path = Path.Build.relative dir fn in
+        String.Map.add_multi acc obj (language, path))
+  ;;
+
+  let find_source sources language (loc, name) =
+    let open Option.O in
+    let* candidates = String.Map.find sources name in
+    match
+      List.filter_map candidates ~f:(fun (l, path) ->
+        Option.some_if (Foreign_language.equal l language) path)
+    with
+    | [ path ] -> Some path
+    | [] -> None
+    | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths
+  ;;
+
+  let load_dirs ~dune_version dirs =
+    List.fold_left
+      dirs
+      ~init:String.Map.empty
+      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
+        let sources = load ~dir ~dune_version ~files in
+        String.Map.Multi.rev_union sources acc)
+  ;;
+end
+
+let possible_sources ~language obj ~dune_version =
+  String.Map.to_list Foreign_language.source_extensions
+  |> List.filter_map ~f:(fun (ext, (lang, version)) ->
+    Option.some_if
+      (Foreign_language.equal lang language && dune_version >= version)
+      (obj ^ "." ^ ext))
+;;
+
+let valid_name language ~loc s =
+  match s with
+  | "" | "." | ".." ->
+    User_error.raise
+      ~loc
+      [ Pp.textf "%S is not a valid %s name." s (Foreign_language.proper_name language) ]
+  | _ -> s
 ;;
 
 let eval_foreign_stubs
   foreign_stubs
   (ctypes : Ctypes_field.t option)
   ~dune_version
-  ~(sources : Foreign.Sources.Unresolved.t)
+  ~(sources : Unresolved.t)
   : Foreign.Sources.t
   =
   let eval (stubs : Foreign.Stubs.t) =
@@ -115,7 +152,7 @@ let eval_foreign_stubs
               "Relative part of stub is not necessary and should be removed. To include \
                sources in subdirectories, use the (include_subdirs ...) stanza."
           ];
-      match find_source sources language (loc, name) with
+      match Unresolved.find_source sources language (loc, name) with
       | Some path ->
         let src = Foreign.Source.make (Stubs stubs) ~path in
         let new_key = Foreign.Source.object_name src in
@@ -127,7 +164,7 @@ let eval_foreign_stubs
               "Object %S has no source; %s must be present."
               name
               (String.enumerate_one_of
-                 (Foreign.possible_sources ~language name ~dune_version
+                 (possible_sources ~language name ~dune_version
                   |> List.map ~f:(fun s -> sprintf "%S" s)))
           ])
   in
@@ -147,7 +184,7 @@ let eval_foreign_stubs
               |> Filename.remove_extension
             in
             let path =
-              match find_source sources C (loc, name) with
+              match Unresolved.find_source sources C (loc, name) with
               | Some p -> p
               | None ->
                 (* impossible b/c ctypes fields generates this *)
@@ -167,9 +204,10 @@ let eval_foreign_stubs
         ~loc
         ~mode
         ~paths:Foreign.Source.[ path src1; path src2 ]))
+  |> Foreign.Sources.make
 ;;
 
-let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
+let make stanzas ~(sources : Unresolved.t) ~dune_version =
   let libs, foreign_libs, exes =
     let libs, foreign_libs, exes =
       List.fold_left
@@ -212,7 +250,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
         ; List.map exes ~f:snd
         ]
       |> List.concat_map ~f:(fun sources ->
-        String.Map.to_list_map sources ~f:(fun _ (loc, source) ->
+        Foreign.Sources.to_list_map sources ~f:(fun _ (loc, source) ->
           Foreign.Source.object_name source, loc))
     in
     match String.Map.of_list objects with
@@ -302,13 +340,6 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
 ;;
 
 let make stanzas ~dune_version ~dirs =
-  let sources =
-    List.fold_left
-      dirs
-      ~init:String.Map.empty
-      ~f:(fun acc { Source_file_dir.dir; path_to_root = _; files } ->
-        let sources = Foreign.Sources.Unresolved.load ~dir ~dune_version ~files in
-        String.Map.Multi.rev_union sources acc)
-  in
+  let sources = Unresolved.load_dirs ~dune_version dirs in
   make stanzas ~dune_version ~sources
 ;;

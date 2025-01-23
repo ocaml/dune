@@ -19,7 +19,7 @@ conflicts: [
   "ocaml-lsp-server" {< "1.15.0"}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
-x-maintenance-intent: ["(latest)"]
+x-maintenance-intent: ["none"]
 build: [
   ["dune" "subst"] {dev}
   ["rm" "-rf" "vendor/csexp"]

@@ -64,6 +64,12 @@ module DB = struct
     && String.equal t.ext_lib ext_lib
   ;;
 
+  let equal a b =
+    (* Since the DB is cached per context, physical equality will
+       shortcut almost all equality tests. *)
+    phys_equal a b || equal a b
+  ;;
+
   let hash { stdlib_dir; paths; builtins; ext_lib } =
     Poly.hash
       ( Path.hash stdlib_dir

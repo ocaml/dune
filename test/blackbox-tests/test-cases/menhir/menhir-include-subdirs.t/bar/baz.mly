@@ -4,4 +4,4 @@
 %%
 
 unit:
-| EOF { () }
+| EOF { Unit.unit }

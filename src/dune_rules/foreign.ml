@@ -1,22 +1,5 @@
 open Import
 
-let encode_lang = function
-  | Foreign_language.C -> "c"
-  | Cxx -> "cxx"
-;;
-
-let decode_lang =
-  let open Foreign_language in
-  Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
-;;
-
-let drop_source_extension fn ~dune_version =
-  let open Option.O in
-  let* obj, ext = String.rsplit2 fn ~on:'.' in
-  let* language, version = String.Map.find Foreign_language.source_extensions ext in
-  Option.some_if (dune_version >= version) (obj, language)
-;;
-
 let possible_sources ~language obj ~dune_version =
   String.Map.to_list Foreign_language.source_extensions
   |> List.filter_map ~f:(fun (ext, (lang, version)) ->
@@ -163,6 +146,15 @@ module Stubs = struct
 
   let () = Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
 
+  let decode_lang =
+    let encode_lang = function
+      | Foreign_language.C -> "c"
+      | Cxx -> "cxx"
+    in
+    let open Foreign_language in
+    Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
+  ;;
+
   let decode_stubs ~for_library =
     let open Dune_lang.Decoder in
     let* loc = loc in
@@ -303,6 +295,13 @@ module Sources = struct
         Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ]
       in
       String.Map.to_dyn (Dyn.list entry_to_dyn) t
+    ;;
+
+    let drop_source_extension fn ~dune_version =
+      let open Option.O in
+      let* obj, ext = String.rsplit2 fn ~on:'.' in
+      let* language, version = String.Map.find Foreign_language.source_extensions ext in
+      Option.some_if (dune_version >= version) (obj, language)
     ;;
 
     let load ~dune_version ~dir ~files =

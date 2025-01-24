@@ -182,7 +182,7 @@ let make stanzas ~(sources : Foreign.Sources.Unresolved.t) ~dune_version =
                 ~sources
             in
             (lib, all) :: libs, foreign_libs, exes
-          | Foreign.Library.T library ->
+          | Foreign_library.T library ->
             let all = eval_foreign_stubs ~dune_version [ library.stubs ] ~sources None in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all)) :: foreign_libs

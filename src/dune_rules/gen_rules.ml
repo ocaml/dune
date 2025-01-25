@@ -136,7 +136,8 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.concat_map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
+              (Nonempty_list.to_list exes.names
+               |> List.concat_map ~f:(fun (_, exe) ->
                  List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
                    Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
         })
@@ -150,15 +151,15 @@ end = struct
     | Copy_files.T { files = glob; _ } ->
       let+ source_dirs =
         let+ src_glob = Expander.No_deps.expand_str expander glob in
-        if Filename.is_relative src_glob
-        then (
-          match
-            let error_loc = String_with_vars.loc glob in
-            Path.relative (Path.source src_dir) src_glob ~error_loc
-          with
-          | In_source_tree s -> Some (Path.Source.parent_exn s)
-          | In_build_dir _ | External _ -> None)
-        else None
+        match Filename.is_relative src_glob with
+        | false -> None
+        | true ->
+          (match
+             let error_loc = String_with_vars.loc glob in
+             Path.relative (Path.source src_dir) src_glob ~error_loc
+           with
+           | In_source_tree s -> Some (Path.Source.parent_exn s)
+           | In_build_dir _ | External _ -> None)
       in
       { empty_none with source_dirs }
     | Install_conf.T i ->

@@ -1,10 +1,5 @@
 open Import
 
-val drop_source_extension
-  :  string
-  -> dune_version:Dune_lang.Syntax.Version.t
-  -> (string * Foreign_language.t) option
-
 val possible_sources
   :  language:Foreign_language.t
   -> string
@@ -16,11 +11,6 @@ val possible_sources
    to some organizational reasons (see the rant at the top of
    [foreign_language.mli]), these need to be here instead, as they cannot reside
    in the backend. *)
-
-(** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
-val encode_lang : Foreign_language.t -> string
-
-val decode_lang : Foreign_language.t Dune_lang.Decoder.t
 
 (** Foreign archives appear in the [(foreign_archives ...)] field of libraries
     and executables, for example [(foreign_archives some/dir/lib)]. When parsing

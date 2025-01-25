@@ -484,6 +484,7 @@ module Make (User : USER) = struct
         (* If we later backtrack, unset current *)
         var_info.undo <- Undo_at_most_one current :: var_info.undo;
         (try
+           let clause = Clause t in
            (* We set all other literals to False. *)
            Array.iter lits ~f:(fun l ->
              match lit_value l with
@@ -496,7 +497,7 @@ module Make (User : USER) = struct
              | Undecided ->
                (* Since one of our lits is already true, all unknown ones
                   can be set to False. *)
-               if not (enqueue problem (neg l) (Clause t))
+               if not (enqueue problem (neg l) clause)
                then (
                  if debug
                  then
@@ -642,7 +643,8 @@ module Make (User : USER) = struct
        soon. *)
     let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
     let clause = ref None, problem, lits in
-    Array.iter lits ~f:(fun l -> watch_lit l (At_most_one clause));
+    (let clause = At_most_one clause in
+     Array.iter lits ~f:(fun l -> watch_lit l clause));
     clause
   ;;
 

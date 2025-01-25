@@ -1,0 +1,4 @@
+(coq.theory
+ (name B)
+ (package Simple)
+ (theories A))

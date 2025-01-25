@@ -1,13 +1,5 @@
 open Import
 
-let possible_sources ~language obj ~dune_version =
-  String.Map.to_list Foreign_language.source_extensions
-  |> List.filter_map ~f:(fun (ext, (lang, version)) ->
-    Option.some_if
-      (Foreign_language.equal lang language && dune_version >= version)
-      (obj ^ "." ^ ext))
-;;
-
 let add_mode_suffix mode s =
   match mode with
   | Mode.Select.All -> s
@@ -277,6 +269,9 @@ end
 module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
+  let to_list_map t ~f = String.Map.to_list_map t ~f
+  let make t = t
+
   let object_files t ~dir ~ext_obj =
     String.Map.to_list_map t ~f:(fun c _ -> Path.Build.relative dir (c ^ ext_obj))
   ;;
@@ -286,32 +281,4 @@ module Sources = struct
       let language = Source.language source in
       Foreign_language.(equal Cxx language))
   ;;
-
-  module Unresolved = struct
-    type t = (Foreign_language.t * Path.Build.t) String.Map.Multi.t
-
-    let to_dyn t =
-      let entry_to_dyn (language, path) =
-        Dyn.Tuple [ Foreign_language.to_dyn language; Path.Build.to_dyn path ]
-      in
-      String.Map.to_dyn (Dyn.list entry_to_dyn) t
-    ;;
-
-    let drop_source_extension fn ~dune_version =
-      let open Option.O in
-      let* obj, ext = String.rsplit2 fn ~on:'.' in
-      let* language, version = String.Map.find Foreign_language.source_extensions ext in
-      Option.some_if (dune_version >= version) (obj, language)
-    ;;
-
-    let load ~dune_version ~dir ~files =
-      let init = String.Map.empty in
-      String.Set.fold files ~init ~f:(fun fn acc ->
-        match drop_source_extension fn ~dune_version with
-        | None -> acc
-        | Some (obj, language) ->
-          let path = Path.Build.relative dir fn in
-          String.Map.add_multi acc obj (language, path))
-    ;;
-  end
 end

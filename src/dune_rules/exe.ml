@@ -175,14 +175,15 @@ let link_exe
   let dir = Compilation_context.dir cctx in
   let mode = Link_mode.mode linkage_mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
-  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
-  let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   let* action_with_targets =
     let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml mode) in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode |> Action_builder.dyn_paths_unit
     in
-    let+ fdo_linker_script_flags = Fdo.Linker_script.flags fdo_linker_script in
+    let+ fdo_linker_script_flags =
+      let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
+      Fdo.Linker_script.flags fdo_linker_script
+    in
     let open Action_builder.With_targets.O in
     (* NB. Below we take care to pass [link_args] last on the command-line for
        the following reason: [link_args] contains the list of foreign libraries
@@ -225,7 +226,9 @@ let link_exe
                      ~mode:linkage_mode
                  ])
           ; Deps o_files
-          ; Dyn (Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+          ; Dyn
+              (let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
+               Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ; fdo_linker_script_flags
           ; Dyn link_args
           ]

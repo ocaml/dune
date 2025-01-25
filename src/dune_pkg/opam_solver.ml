@@ -1512,17 +1512,8 @@ let opam_commands_to_actions
         Some action))
 ;;
 
-let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)
-  : String_with_vars.t Action.Env_update.t
-  =
-  { Action.Env_update.op =
-      (match (env_op : OpamParserTypes.env_update_op) with
-       | Eq -> Eq
-       | PlusEq -> PlusEq
-       | EqPlus -> EqPlus
-       | ColonEq -> ColonEq
-       | EqColon -> EqColon
-       | EqPlusEq -> EqPlusEq)
+let opam_env_update_to_env_update (var, env_op, value_string, _) : _ Action.Env_update.t =
+  { Action.Env_update.op = env_op
   ; var
   ; value = String_with_vars.make_text Loc.none value_string
   }

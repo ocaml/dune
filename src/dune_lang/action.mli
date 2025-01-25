@@ -66,7 +66,7 @@ end
 
 module Env_update : sig
   module Op : sig
-    type t =
+    type t = OpamParserTypes.env_update_op =
       | Eq
       | PlusEq
       | EqPlus

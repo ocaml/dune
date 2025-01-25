@@ -70,7 +70,7 @@ end
 
 module Env_update = struct
   module Op = struct
-    type t =
+    type t = OpamParserTypes.env_update_op =
       | Eq
       | PlusEq
       | EqPlus

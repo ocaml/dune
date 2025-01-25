@@ -1,7 +1,7 @@
 open Import
 
 val foreign_rules
-  :  Foreign.Library.t
+  :  Foreign_library.t
   -> sctx:Super_context.t
   -> expander:Expander.t
   -> dir:Path.Build.t

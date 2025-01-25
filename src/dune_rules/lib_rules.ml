@@ -238,7 +238,7 @@ let ocamlmklib
 (* Build a static and a dynamic archive for a foreign library. Note that the
    dynamic archive can't be built on some platforms, in which case the rule that
    produces it will fail. *)
-let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir ~dir_contents =
+let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_contents =
   let archive_name = library.archive_name in
   let* foreign_sources =
     Dir_contents.foreign_sources dir_contents

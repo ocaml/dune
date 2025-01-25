@@ -120,7 +120,7 @@ end = struct
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
         enabled_if
-    | Foreign.Library.T lib ->
+    | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->
         let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in

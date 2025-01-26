@@ -167,7 +167,7 @@ module Make (User : USER) = struct
     ;;
   end
 
-  type solution = lit -> bool
+  type solution = unit
 
   let make_var id obj =
     { id
@@ -206,7 +206,7 @@ module Make (User : USER) = struct
   ;;
 
   exception ConflictingClause of clause
-  exception SolveDone of solution option
+  exception SolveDone of bool
 
   type added_result =
     | AddedFact of bool (* Result of enqueing the new fact *)
@@ -253,6 +253,7 @@ module Make (User : USER) = struct
     | Neg -> Var_value.invert var.value
   ;;
 
+  let value () lit = Var_value.assignment_exn (lit_value lit)
   let get_user_data_for_lit lit = (var_of_lit lit).obj
 
   let pp_lit_assignment l =
@@ -832,11 +833,7 @@ module Make (User : USER) = struct
             let undecided =
               match List.find problem.vars ~f:(fun info -> info.value = Undecided) with
               | Some s -> s
-              | None ->
-                (* Everything is assigned without conflicts *)
-                (* if debug then log_debug "SUCCESS!"; *)
-                raise_notrace
-                  (SolveDone (Some (fun var -> Var_value.assignment_exn (lit_value var))))
+              | None -> raise_notrace (SolveDone true)
             in
             let lit =
               if problem.set_to_false
@@ -868,7 +865,7 @@ module Make (User : USER) = struct
             if get_decision_level problem = 0
             then (
               if debug then log_debug (Pp.text "FAIL: conflict found at top level");
-              raise_notrace (SolveDone None))
+              raise_notrace (SolveDone false))
             else (
               (* Figure out the root cause of this failure. *)
               let learnt, backtrack_level = analyse problem conflicting_clause in
@@ -894,7 +891,8 @@ module Make (User : USER) = struct
         done;
         Code_error.raise "not reached" []
       with
-      | SolveDone x -> x)
+      | SolveDone true -> Some ()
+      | SolveDone false -> None)
   ;;
 
   let pp_lit_reason lit =

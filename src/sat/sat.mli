@@ -36,7 +36,9 @@ module Make (User : USER) : sig
   val create : unit -> t
 
   (** Get the assignment for this literal in the discovered solution. *)
-  type solution = lit -> bool
+  type solution
+
+  val value : solution -> lit -> bool
 
   (** Indicate that the problem is unsolvable, before even starting. This is a convenience
       feature so that clients don't need a separate code path for problems they discover

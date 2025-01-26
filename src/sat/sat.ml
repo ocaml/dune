@@ -42,6 +42,7 @@ module VarID : sig
     val create : unit -> t
     val mem : t -> id -> bool
     val add : t -> id -> unit
+    val clear : t -> unit
   end
 end = struct
   type t = int
@@ -153,6 +154,12 @@ module Make (User : USER) = struct
       }
 
     let create () = { pos = VarID.Hash_set.create (); neg = VarID.Hash_set.create () }
+    let temp = create ()
+
+    let clear () =
+      VarID.Hash_set.clear temp.pos;
+      VarID.Hash_set.clear temp.neg
+    ;;
 
     let mem { pos; neg } (sign, lit) =
       match sign with
@@ -194,7 +201,8 @@ module Make (User : USER) = struct
   ;;
 
   let remove_duplicates lits =
-    let seen = LitSet.create () in
+    LitSet.clear ();
+    let seen = LitSet.temp in
     let rec find_unique = function
       | [] -> []
       | x :: xs when LitSet.mem seen x -> find_unique xs
@@ -454,13 +462,13 @@ module Make (User : USER) = struct
               enqueue problem lits.(0) (Clause t))
             else (
               match lit_value lits.(i) with
+              | False -> find_not_false (i + 1)
               | Undecided | True ->
                 (* If it's True then we've already done our job,
                    so this means we don't get notified unless we backtrack, which is fine. *)
                 Array.swap lits 1 i;
                 watch_lit (neg lits.(1)) t;
-                true
-              | False -> find_not_false (i + 1))
+                true)
           in
           find_not_false 2)
       | At_most_one (current, problem, lits) ->
@@ -594,7 +602,10 @@ module Make (User : USER) = struct
     then (* Trivially true already if any literal is True. *)
       ()
     else (
-      let seen = LitSet.create () in
+      let seen =
+        LitSet.clear ();
+        LitSet.temp
+      in
       let rec simplify unique = function
         | [] -> Some unique
         | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)

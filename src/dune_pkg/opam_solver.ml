@@ -360,7 +360,7 @@ module Solver = struct
     and real_impl =
       { pkg : OpamPackage.t
       ; conflict_class : OpamPackage.Name.t list
-      ; requires : dependency list
+      ; requires : dependency list Lazy.t
       }
 
     and dependency =
@@ -454,7 +454,7 @@ module Solver = struct
       let requires _ = function
         | Dummy | Reject _ -> []
         | VirtualImpl (_, deps) -> deps
-        | RealImpl impl -> impl.requires
+        | RealImpl impl -> Lazy.force impl.requires
       ;;
 
       let conflict_class = function
@@ -565,15 +565,16 @@ module Solver = struct
             let pkg = OpamPackage.create role version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
-              let rank = Rank.assign () in
-              let make_deps importance xform get =
-                get opam
-                |> Context.filter_deps context pkg
-                |> xform
-                |> list_deps ~importance ~rank
-              in
-              make_deps Ensure ensure OpamFile.OPAM.depends
-              @ make_deps Prevent prevent OpamFile.OPAM.conflicts
+              lazy
+                (let rank = Rank.assign () in
+                 let make_deps importance xform get =
+                   get opam
+                   |> Context.filter_deps context pkg
+                   |> xform
+                   |> list_deps ~importance ~rank
+                 in
+                 make_deps Ensure ensure OpamFile.OPAM.depends
+                 @ make_deps Prevent prevent OpamFile.OPAM.conflicts)
             in
             let conflict_class = OpamFile.OPAM.conflict_class opam in
             Some (RealImpl { pkg; requires; conflict_class }))

@@ -5,7 +5,7 @@ include struct
 
   [@@@ocaml.warning "-32"]
 
-  let find_opt t ~f =
+  let find_opt ~f t =
     try
       for i = 0 to Array.length t do
         if f t.(i) then raise_notrace (Found i)

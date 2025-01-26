@@ -495,17 +495,6 @@ module Solver = struct
       Virtual (Virtual_id.gen (), impls)
     ;;
 
-    module Conflict_class = struct
-      type t = OpamPackage.Name.t
-
-      module Map = Map.Make (struct
-          type nonrec t = t
-
-          let compare x y = Ordering.of_int (OpamPackage.Name.compare x y)
-          let to_dyn = Dyn.opaque
-        end)
-    end
-
     (* Opam uses conflicts, e.g.
        conflicts if X {> 1} OR Y {< 1 OR > 2}
      whereas 0install uses restricts, e.g.
@@ -668,18 +657,16 @@ module Solver = struct
     end
 
     module Conflict_classes = struct
-      module Map = Input.Conflict_class.Map
+      type t = { mutable groups : S.lit list ref OpamPackage.Name.Map.t }
 
-      type t = { mutable groups : S.lit list ref Map.t }
-
-      let create () = { groups = Map.empty }
+      let create () = { groups = OpamPackage.Name.Map.empty }
 
       let var t name =
-        match Map.find t.groups name with
+        match OpamPackage.Name.Map.find_opt name t.groups with
         | Some v -> v
         | None ->
           let v = ref [] in
-          t.groups <- Map.set t.groups name v;
+          t.groups <- OpamPackage.Name.Map.add name v t.groups;
           v
       ;;
 
@@ -694,12 +681,14 @@ module Solver = struct
       (* Call this at the end to add the final clause with all discovered groups.
          [t] must not be used after this. *)
       let seal t =
-        Map.iter t.groups ~f:(fun impls ->
-          match !impls with
-          | _ :: _ :: _ ->
-            let (_ : S.at_most_one_clause) = S.at_most_one !impls in
-            ()
-          | _ -> ())
+        OpamPackage.Name.Map.iter
+          (fun _ impls ->
+            match !impls with
+            | _ :: _ :: _ ->
+              let (_ : S.at_most_one_clause) = S.at_most_one !impls in
+              ()
+            | _ -> ())
+          t.groups
       ;;
     end
 
@@ -890,7 +879,7 @@ module Solver = struct
         [ `Model_rejection of Context.rejection
         | `FailsRestriction of Input.Restriction.t
         | `DepFailsRestriction of Input.dependency * Input.Restriction.t
-        | `ClassConflict of Input.Role.t * Input.Conflict_class.t
+        | `ClassConflict of Input.Role.t * OpamPackage.Name.t
         | `ConflictsRole of Input.Role.t
         | `DiagnosticsFailure of User_message.Style.t Pp.t
         ]
@@ -1179,20 +1168,20 @@ module Solver = struct
       let classes =
         Input.Role.Map.foldi
           report
-          ~init:Input.Conflict_class.Map.empty
+          ~init:OpamPackage.Name.Map.empty
           ~f:(fun role component acc ->
             match Component.selected_impl component with
             | None -> acc
             | Some impl ->
               Input.Impl.conflict_class impl
               |> List.fold_left ~init:acc ~f:(fun acc x ->
-                Input.Conflict_class.Map.set acc x role))
+                OpamPackage.Name.Map.add x role acc))
       in
       Input.Role.Map.iteri report ~f:(fun role component ->
         Component.filter_impls component (fun impl ->
           Input.Impl.conflict_class impl
           |> List.find_map ~f:(fun cl ->
-            match Input.Conflict_class.Map.find classes cl with
+            match OpamPackage.Name.Map.find_opt cl classes with
             | Some other_role
               when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
               Some (`ClassConflict (other_role, cl))

@@ -326,6 +326,33 @@ module Solver = struct
 
     module Virtual_id = Id.Make ()
 
+    module Rank : sig
+      type t
+      type assign
+
+      val compare : t -> t -> Ordering.t
+      val bottom : t
+      val of_int : int -> t
+      val next : assign -> t
+      val assign : unit -> assign
+    end = struct
+      type t = int
+
+      let bottom = -1
+      let of_int x = x
+      let compare = Int.compare
+
+      type assign = int ref
+
+      let assign () = ref 0
+
+      let next t =
+        let res = !t in
+        incr t;
+        res
+      ;;
+    end
+
     type role =
       | Real of OpamPackage.Name.t
       | Virtual of Virtual_id.t * impl list
@@ -344,7 +371,7 @@ module Solver = struct
 
     and impl =
       | RealImpl of real_impl (* An implementation is usually an opam package *)
-      | VirtualImpl of int * dependency list (* (int just for sorting) *)
+      | VirtualImpl of Rank.t * dependency list (* (rank just for sorting) *)
       | Reject of OpamPackage.t
       | Dummy (* Used for diagnostics *)
 
@@ -448,7 +475,7 @@ module Solver = struct
         | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
         | RealImpl _, _ -> Gt
         | _, RealImpl _ -> Lt
-        | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Int.compare ia ib
+        | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Rank.compare ia ib
         | VirtualImpl _, _ -> Gt
         | _, VirtualImpl _ -> Lt
         | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
@@ -462,7 +489,7 @@ module Solver = struct
       let impls =
         List.mapi impls ~f:(fun i ->
             function
-            | VirtualImpl (_, x) -> VirtualImpl (i, x)
+            | VirtualImpl (_, x) -> VirtualImpl (Rank.of_int i, x)
             | x -> x)
       in
       Virtual (Virtual_id.gen (), impls)
@@ -521,10 +548,7 @@ module Solver = struct
           [ { drole; restrictions = []; importance = Ensure } ]
       and group_ors = function
         | Or (x, y) -> group_ors x @ group_ors y
-        | expr ->
-          let i = !rank in
-          rank := i + 1;
-          [ VirtualImpl (i, aux expr) ]
+        | expr -> [ VirtualImpl (Rank.next rank, aux expr) ]
       in
       aux deps
     ;;
@@ -541,7 +565,7 @@ module Solver = struct
             let pkg = OpamPackage.create role version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
-              let rank = ref 0 in
+              let rank = Rank.assign () in
               let make_deps importance xform get =
                 get opam
                 |> Context.filter_deps context pkg
@@ -1220,7 +1244,7 @@ module Solver = struct
             List.map pkgs ~f:(fun name ->
               { Input.drole = Real name; importance = Ensure; restrictions = [] })
           in
-          VirtualImpl (-1, depends)
+          VirtualImpl (Input.Rank.bottom, depends)
         in
         Input.virtual_role [ impl ]
     in

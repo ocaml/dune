@@ -32,6 +32,7 @@ module Component : sig
     module Common : sig
       type t =
         { name : Dune_lang.Atom.t
+        ; public : Public_name.t option
         ; libraries : Dune_lang.Atom.t list
         ; pps : Dune_lang.Atom.t list
         }
@@ -39,15 +40,13 @@ module Component : sig
 
     (** Options for executable components *)
     module Executable : sig
-      type t = { public : Public_name.t option }
+      (** NOTE: no options supported yet *)
+      type t = unit
     end
 
     (** Options for library components *)
     module Library : sig
-      type t =
-        { public : Public_name.t option
-        ; inline_tests : bool
-        }
+      type t = { inline_tests : bool }
     end
 
     (** Options for test components *)

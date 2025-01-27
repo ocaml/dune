@@ -5,6 +5,19 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
+3.17.2 (2025-01-23)
+-------------------
+
+### Fixed
+
+- Fix a crash in the Melange rules that would prevent compiling public library
+implementations of virtual libraries. (@amonteiro, #11248)
+- Pass `melange.emit`'s `compile_flags` to the JS emission phase. (@amonteiro,
+#11252)
+- Disallow private implementations of public virtual libs in melange mode.
+  (@amonteiro, #11253)
+- Wasm_of_ocaml: fix the execution of tests in a sandbox.  (#11304, @vouillon)
+
 3.17.1 (2024-12-17)
 -------------------
 

@@ -11,11 +11,11 @@ changelog properly.
 ### Fixed
 
 - Fix a crash in the Melange rules that would prevent compiling public library
-implementations of virtual libraries. (@amonteiro, #11248)
-- Pass `melange.emit`'s `compile_flags` to the JS emission phase. (@amonteiro,
-#11252)
+implementations of virtual libraries. (@anmonteiro, #11248)
+- Pass `melange.emit`'s `compile_flags` to the JS emission phase. (@anmonteiro,
+  #11252)
 - Disallow private implementations of public virtual libs in melange mode.
-  (@amonteiro, #11253)
+  (@anmonteiro, #11253)
 - Wasm_of_ocaml: fix the execution of tests in a sandbox.  (#11304, @vouillon)
 
 3.17.1 (2024-12-17)

@@ -601,6 +601,24 @@ module Make (User : USER) = struct
       AddedClause clause
   ;;
 
+  let simplify lits =
+    let seen =
+      LitSet.clear ();
+      LitSet.temp
+    in
+    let rec simplify unique = function
+      | [] -> Some unique
+      | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
+      | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
+      | x :: xs when lit_value x = False ->
+        simplify unique xs (* Skip values known to be False *)
+      | x :: xs ->
+        LitSet.add seen x;
+        simplify (x :: unique) xs
+    in
+    simplify [] lits
+  ;;
+
   (** Public interface. Only used before the solve starts. *)
   let at_least_one problem ?(reason = "input fact") lits =
     if List.is_empty lits
@@ -610,22 +628,8 @@ module Make (User : USER) = struct
     then (* Trivially true already if any literal is True. *)
       ()
     else (
-      let seen =
-        LitSet.clear ();
-        LitSet.temp
-      in
-      let rec simplify unique = function
-        | [] -> Some unique
-        | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
-        | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
-        | x :: xs when lit_value x = False ->
-          simplify unique xs (* Skip values known to be False *)
-        | x :: xs ->
-          LitSet.add seen x;
-          simplify (x :: unique) xs
-      in
       (* At this point, [unique] contains only [Undefined] literals. *)
-      match simplify [] lits with
+      match simplify lits with
       | None -> ()
       | Some [] ->
         problem.toplevel_conflict <- true (* Everything in the list was False *)

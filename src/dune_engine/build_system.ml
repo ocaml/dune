@@ -206,6 +206,7 @@ end = struct
       (* Fact: alias [a] expands to the set of file-digest pairs [digests] *)
       Dep.Fact.alias a digests
     | File f ->
+      (* Not necessarily a file, can also be a directory. *)
       let+ digest = build_file f in
       (* Fact: file [f] has digest [digest] *)
       Dep.Fact.file f digest
@@ -856,9 +857,12 @@ end = struct
             rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
             (or should we) ever use [build_file] to build directories? Perhaps this could
             be split in two memo tables, one for files and one for directories. *)
+         (* ElectreAAS: Tentative answer to above comments: a lot of functions are called
+            [build_file] or [create_file] even though they also handle directories.
+            Also yes this digest is used by [Exported.build_dep] defined above. *)
          (match Cached_digest.build_file ~allow_dirs:true path with
           | Ok digest -> digest, Dir_target { targets }
-          (* Must be a directory target *)
+          (* Must be a directory target. *)
           | Error _ ->
             (* CR-someday amokhov: The most important reason we end up here is
                [No_such_file]. I think some of the outcomes above are impossible
@@ -1060,7 +1064,8 @@ let file_exists fn =
       (Path.Build.Map.mem rules_here.by_file_targets (Path.as_in_build_dir_exn fn))
   | Build_under_directory_target { directory_target_ancestor } ->
     let+ path_map = build_dir (Path.build directory_target_ancestor) in
-    Targets.Produced.mem path_map (Path.as_in_build_dir_exn fn)
+    (* Note that in the case of directory targets, we also check if directories exist. *)
+    Targets.Produced.mem_any path_map (Path.as_in_build_dir_exn fn)
 ;;
 
 let files_of ~dir =
@@ -1158,6 +1163,11 @@ let run_exn f =
 
 let build_file p =
   let+ (_ : Digest.t) = build_file p in
+  ()
+;;
+
+let build_dir p =
+  let+ (_ : Digest.t Targets.Produced.t) = build_dir p in
   ()
 ;;
 

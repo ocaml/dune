@@ -2,16 +2,15 @@
 Diffing and Promotion
 =====================
 
-Dune writes its build output to a separate directory from your source code tree 
-(usually ``_build/<profile_name>``). You can use Diffing and Promotion flows 
-to compare your build output with your source tree and/or copy the result of 
-rule output into your source tree to store the changes.
+You can use Diffing and Promotion flows to compare your build output with 
+your source tree and/or copy the result of rule output into your source 
+tree to store the changes.
 
 Diffing
 =======
 
 You can use the ``(diff <file1> <file2>)`` directive in a rule to compare
-the output of the rule with a copy in your source tree. It is useful when
+its output with the version in your source tree. It is useful when
 your tests produce a file output and you want to make sure that output has
 not changed.
 
@@ -102,10 +101,10 @@ Automatically Promoting Rule Output Into the Source Tree
 --------------------------------------------------------
 
 Dune rules support a ``(mode promote)`` directive that will automatically
-copy their output into your source tree. This is more suitable for code or
-documentation generation flows where you want to check in the output to make
-it easier to browse or to remove dependencies on the code generation step for 
-packaging in opam.
+copy their output into your source tree. This approach suits code
+documentation generation flows where output needs to be committed to source
+code control to enable easier browsing, or eliminate dependencies on a code 
+generation step during opam package installation.
 
 More information, including customising when the source is copied, can be found
 in :doc:`../reference/dune/rule`.

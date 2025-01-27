@@ -85,6 +85,12 @@ module Constraint = struct
               (Value.to_opam_filter lhs, Op.to_relop_pelem op, Value.to_opam_filter rhs)))
     | And conjunction -> OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
     | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
+    | Not constraint_ ->
+      OpamFormula.neg
+        (function
+          | OpamTypes.Constraint (op, v) -> Constraint (OpamFormula.neg_relop op, v)
+          | Filter f -> Filter (FNot f))
+        (to_opam_condition constraint_)
   ;;
 
   let rec of_opam_filter (filter : OpamTypes.filter) =
@@ -104,6 +110,9 @@ module Constraint = struct
       let+ lhs = of_opam_filter lhs
       and+ rhs = of_opam_filter rhs in
       Or [ lhs; rhs ]
+    | FNot constraint_ ->
+      let+ constraint_ = of_opam_filter constraint_ in
+      Not constraint_
     | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_condition filter)
   ;;
 
@@ -138,6 +147,7 @@ type context =
   | Root
   | Ctx_and
   | Ctx_or
+  | Ctx_not
 
 (* The printer in opam-file-format does not insert parentheses on its own,
    but it is possible to use the [Group] constructor with a singleton to
@@ -165,15 +175,27 @@ let opam_constraint t : OpamParserTypes.FullPos.value =
            ( nopos @@ Constraint.Op.to_opam op
            , Constraint.Value.to_opam x
            , Constraint.Value.to_opam y ))
-    | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
+    | And cs ->
+      let group_needed =
+        match context with
+        | Root -> false
+        | Ctx_and -> false
+        | Ctx_or -> false
+        | Ctx_not -> true
+      in
+      logical_op `And cs ~inner_ctx:Ctx_and ~group_needed
     | Or cs ->
       let group_needed =
         match context with
         | Root -> false
         | Ctx_and -> true
         | Ctx_or -> false
+        | Ctx_not -> true
       in
       logical_op `Or cs ~inner_ctx:Ctx_or ~group_needed
+    | Not c ->
+      let _c = opam_constraint Ctx_not c in
+      nopos (Pfxop (nopos `Not, _c))
   and logical_op op cs ~inner_ctx ~group_needed =
     List.map cs ~f:(opam_constraint inner_ctx) |> op_list op |> group_if group_needed
   in

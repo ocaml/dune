@@ -179,6 +179,7 @@ let rec already_requires_odoc : Package_constraint.t -> bool = function
   | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
+  | Not t -> not (already_requires_odoc t)
 ;;
 
 let insert_odoc_dep depends =

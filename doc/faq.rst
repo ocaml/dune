@@ -8,7 +8,7 @@ FAQ
 
    Some of these are mini how-to guides, or sections of existing guides.
 
-Why Do Many Dune Projects Contain a ``Makefile``?
+Why do many Dune projects contain a ``Makefile``?
 =================================================
 
 Many Dune projects contain a root ``Makefile``. It's often only there for
@@ -23,8 +23,8 @@ convenience for the following reasons:
 
 3. ``make`` is shorter to type than ``dune build @install``
 
-How to Add a Configure Step to a Dune Project
-=============================================
+How to add a configure step to a Dune project?
+==============================================
 
 The with-configure-step_ example shows one way to add a configure step that
 preserves composability; i.e., it doesn't require manually running the
@@ -32,7 +32,7 @@ preserves composability; i.e., it doesn't require manually running the
 
 .. _with-configure-step: https://github.com/ocaml/dune/tree/master/example/with-configure-step.t
 
-Can I Use ``topkg`` with Dune?
+Can I use ``topkg`` with Dune?
 ==============================
 
 While it's possible to use the topkg-jbuilder_, it's not recommended.
@@ -40,14 +40,14 @@ dune-release_ subsumes ``topkg-jbuilder`` and is specifically tailored to Dune
 projects.
 
 
-How Do I Publish My Packages with Dune?
+How do I publish my packages with Dune?
 =======================================
 
 Dune is just a build system and considers publishing outside of its scope.
 However, the dune-release_ project is specifically designed for releasing Dune
 projects to opam. We recommend using this tool for publishing Dune packages.
 
-Where Can I Find Some Examples of Projects Using Dune?
+Where can I find some examples of projects using Dune?
 ======================================================
 
 The dune-universe_ repository contains a snapshot of the latest versions of all
@@ -68,8 +68,8 @@ Jane Street as well.
 .. _dune-release: https://github.com/samoht/dune-release
 .. _jenga: https://github.com/janestreet/jenga
 
-How to Make Warnings Non-Fatal
-==============================
+How to make warnings non-fatal?
+===============================
 
 `jbuilder` formerly displayed warnings, but most of them wouldn't stop the
 build. However, Dune makes all warnings fatal by default. This can be a
@@ -92,8 +92,8 @@ non-fatal:
     (dev
       (flags (:standard -warn-error -A))))
 
-How to Turn Specific Errors into Warnings
-=========================================
+How to turn specific errors into warnings?
+==========================================
 
 Dune is strict about warnings by default in that all warnings are treated as
 fatal errors. To change certain errors into warnings for a project, you can add
@@ -106,8 +106,8 @@ the following to ``dune-workspace``:
 In this example, the warnings 27 (unused-var-strict) and 32
 (unused-value-declaration) are treated as warnings rather than errors.
 
-How to Display the Output of Commands as They Run
-=================================================
+How to display the output of commands as they run?
+==================================================
 
 When Dune runs external commands, it redirects and saves their output, then
 displays it when complete. This ensures that there's no interleaving when
@@ -120,8 +120,8 @@ In that case, one can pass ``-j1 --no-buffer`` so the commands are directly
 printed on the console (and the parallelism is disabled so the output stays
 readable).
 
-How Can I Generate an ``mli`` File From an ``ml`` File
-======================================================
+How can I generate an ``mli`` file from an ``ml`` file?
+=======================================================
 
 When a module starts as just an implementation (``.ml`` file), it can be
 tedious to define the corresponding interface (``.mli`` file).
@@ -143,7 +143,7 @@ file:
 The ``ocaml-print-intf`` program has special support for Dune, so it will
 automatically understand external dependencies.
 
-How Can I Build a Single Library?
+How can I build a single library?
 =================================
 
 You might want to do this when you don't have all the dependencies installed to
@@ -171,8 +171,8 @@ directory - not the project root. If the library defines a ``name`` distinct fro
 its ``public_name`` then that can be used interchangeably with the ``public_name``
 in this command.
 
-Files and Directories Whose Names Begin with "." (Period) are Ignored by ``source_tree``
-========================================================================================
+Why does ``source_tree`` ignore files and directories when they begin with a "." (period)?
+==========================================================================================
 
 Dune's default behaviour is to ignore files and directories starting with "."
 when copying directories with ``source_tree``. This is to avoid accidentally
@@ -224,8 +224,8 @@ In this case you can update it to look like this:
     (dirs :standard .cargo \ target)
     (data_only_dirs vendor)
 
-How Can I Write Inline Tests in a Package Without my Users Needing to Install ``ppx_inline_test``?
-==================================================================================================
+Why can't I write inline tests in a package without users needing to install ``ppx_inline_test``?
+=================================================================================================
 
 If you came to OCaml from Rust and noticed that Dune has a feature for running
 inline tests you might be wondering how to do the OCaml equivalent of:

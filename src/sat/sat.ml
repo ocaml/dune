@@ -531,7 +531,7 @@ module Make (User : USER) = struct
         Queue.transfer watches old_watches;
         (* if debug then log_debug "%s -> True : watches: %d" (name_lit lit) (Queue.length old_watches); *)
 
-        (* Notifiy all watchers *)
+        (* Notify all watchers *)
         while not (Queue.is_empty old_watches) do
           let clause = Queue.pop_exn old_watches in
           if not (Clause.propagate clause lit)

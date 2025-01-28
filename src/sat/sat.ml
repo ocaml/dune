@@ -203,19 +203,6 @@ module Make (User : USER) = struct
     | Neg, var -> var.neg_watch_queue
   ;;
 
-  let remove_duplicates lits =
-    LitSet.clear ();
-    let seen = LitSet.temp in
-    let rec find_unique = function
-      | [] -> []
-      | x :: xs when LitSet.mem seen x -> find_unique xs
-      | x :: xs ->
-        LitSet.add seen x;
-        x :: find_unique xs
-    in
-    find_unique lits
-  ;;
-
   exception ConflictingClause of clause
   exception SolveDone of bool
 
@@ -640,8 +627,19 @@ module Make (User : USER) = struct
 
   let implies problem ?reason first rest = at_least_one problem ?reason (neg first :: rest)
 
+  let has_duplicates lits =
+    LitSet.clear ();
+    let seen = LitSet.temp in
+    try
+      List.iter lits ~f:(fun lit ->
+        if LitSet.mem seen lit then raise_notrace Exit else LitSet.add seen lit);
+      false
+    with
+    | Exit -> true
+  ;;
+
   let at_most_one lits : at_most_one_clause =
-    assert (List.length lits > 0);
+    assert (not (List.is_empty lits));
     (* if debug then log_debug "at_most_one(%s)" (string_of_lits lits); *)
 
     (* If we have zero or one literals then we're trivially true
@@ -653,7 +651,7 @@ module Make (User : USER) = struct
     (*	return True	# Trivially true *)
 
     (* Ensure no duplicates *)
-    if List.length (remove_duplicates lits) <> List.length lits
+    if has_duplicates lits
     then (
       let msg =
         Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"

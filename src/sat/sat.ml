@@ -137,7 +137,9 @@ module Make (User : USER) = struct
     ; propQ : lit Queue.t (* propagation queue *)
     ; (* Assignments *)
       mutable trail : lit list (* order of assignments, most recent first *)
+    ; mutable trail_len : int
     ; mutable trail_lim : int list (* decision levels (len(trail) at each decision) *)
+    ; mutable trail_lim_len : int
     ; mutable toplevel_conflict : bool
     ; mutable set_to_false : bool
     (* we are finishing up by setting everything else to False *)
@@ -226,7 +228,9 @@ module Make (User : USER) = struct
     ; vars = []
     ; propQ = Queue.create ()
     ; trail = []
+    ; trail_len = 0
     ; trail_lim = []
+    ; trail_lim_len = 0
     ; toplevel_conflict = false
     ; set_to_false = false
     }
@@ -283,7 +287,7 @@ module Make (User : USER) = struct
     | External msg -> Pp.text msg
   ;;
 
-  let get_decision_level problem = List.length problem.trail_lim
+  let get_decision_level problem = problem.trail_lim_len
 
   let add_variable problem obj : lit =
     (* if debug then log_debug "add_variable('%s')" obj; *)
@@ -319,6 +323,7 @@ module Make (User : USER) = struct
       var_info.level <- get_decision_level problem;
       var_info.reason <- Some reason;
       problem.trail <- lit :: problem.trail;
+      problem.trail_len <- problem.trail_len + 1;
       Queue.push problem.propQ lit;
       true
   ;;
@@ -334,6 +339,7 @@ module Make (User : USER) = struct
       var_info.reason <- None;
       var_info.level <- -1;
       problem.trail <- rest;
+      problem.trail_len <- problem.trail_len - 1;
       while var_info.undo <> [] do
         let cb = List.hd var_info.undo in
         var_info.undo <- List.tl var_info.undo;
@@ -342,7 +348,7 @@ module Make (User : USER) = struct
   ;;
 
   let cancel problem =
-    let n_this_level = List.length problem.trail - List.hd problem.trail_lim in
+    let n_this_level = problem.trail_len - List.hd problem.trail_lim in
     if debug
     then
       log_debug
@@ -353,7 +359,8 @@ module Make (User : USER) = struct
     for _i = 1 to n_this_level do
       undo_one problem
     done;
-    problem.trail_lim <- List.tl problem.trail_lim
+    problem.trail_lim <- List.tl problem.trail_lim;
+    problem.trail_lim_len <- problem.trail_lim_len - 1
   ;;
 
   let cancel_until problem level =
@@ -878,7 +885,8 @@ module Make (User : USER) = struct
                 [ "lit", Dyn.string (Format.asprintf "%a@." Pp.to_fmt (name_lit lit))
                 ; "was", Var_value.to_dyn old
                 ];
-            problem.trail_lim <- List.length problem.trail :: problem.trail_lim;
+            problem.trail_lim <- problem.trail_len :: problem.trail_lim;
+            problem.trail_lim_len <- problem.trail_lim_len + 1;
             let r = enqueue problem lit (External "considering") in
             assert r
           | Some conflicting_clause ->

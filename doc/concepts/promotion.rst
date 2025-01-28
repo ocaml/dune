@@ -100,7 +100,7 @@ Automatically Promoting Rule Output Into the Source Tree
 --------------------------------------------------------
 
 Dune rules support a ``(mode promote)`` directive that will automatically
-copy their output into your source tree. This approach suits code
+copy their output into your source tree. This approach suits, for example, code
 documentation generation flows where output needs to be committed to source
 code control to enable easier browsing, or eliminate dependencies on a code 
 generation step during opam package installation.

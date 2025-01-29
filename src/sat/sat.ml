@@ -596,7 +596,7 @@ module Make (User : USER) = struct
 
   (** Public interface. Only used before the solve starts. *)
   let at_least_one problem ?(reason = "input fact") lits =
-    if List.length lits = 0
+    if List.is_empty lits
     then problem.toplevel_conflict <- true
     else if (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
             List.exists lits ~f:(fun l -> lit_value l = True)

@@ -737,9 +737,9 @@ module Make (User : USER) = struct
           let var_info = var_of_lit lit in
           if var_info.level = get_decision_level problem
           then
-            (* We deduced this var since the last decision.
-               It must be in [trail], so we'll get to it
-               soon. Remember not to stop until we've processed it. *)
+            (* We deduced this var since the last decision. It must be in
+               [trail], so we'll get to it soon. Remember not to stop until
+               we've processed it. *)
             (* if debug then log_debug "(will look at %s soon)" (name_lit lit); *)
             incr counter
           else if var_info.level > 0
@@ -783,8 +783,13 @@ module Make (User : USER) = struct
       (* [reason] is the reason why [p] is True (i.e. it enqueued it). *)
       (* [p] is the literal we want to expand now. *)
       decr counter;
-      if !counter > 0
-      then (
+      if !counter <= 0
+      then
+        (* If counter = 0 then we still have one more literal (p) at the
+           current level that we could expand. However, apparently it's best to
+           leave this unprocessed (says the minisat paper). *)
+        p
+      else (
         let cause =
           match reason with
           | Some (Clause c) -> c
@@ -804,13 +809,6 @@ module Make (User : USER) = struct
              ++ outcome
              ++ Pp.char '?');
         follow_causes p_reason outcome)
-      else
-        (* If counter = 0 then we still have one more
-           literal (p) at the current level that we
-           could expand. However, apparently it's best
-           to leave this unprocessed (says the minisat
-           paper). *)
-        p
     in
     (* Start with all the literals involved in the conflict. *)
     if debug

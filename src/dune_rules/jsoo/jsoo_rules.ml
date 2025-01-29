@@ -93,6 +93,7 @@ module Config : sig
   val of_string : string -> t
   val of_flags : string list -> t
   val to_flags : jsoo_version:Version.t option -> t -> string list
+  val remove_effect_flags : string list -> string list
 end = struct
   type effects_backend =
     | Cps
@@ -243,6 +244,21 @@ end = struct
          | None -> None)
       ]
   ;;
+
+  let remove_effect_flags flags =
+    let rec loop acc = function
+      | [] -> acc
+      | "--enable" :: "effects" :: rest -> loop acc rest
+      | "--enable=effects" :: rest -> loop acc rest
+      | "--disable" :: "effects" :: rest -> loop acc rest
+      | "--disable=effects" :: rest -> loop acc rest
+      | "--effects" :: _backend :: rest -> loop acc rest
+      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+          loop acc rest
+      | other :: rest -> loop (other :: acc) rest
+    in
+    loop [] flags |> List.rev
+  ;;
 end
 
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
@@ -324,6 +340,13 @@ let js_of_ocaml_rule
     | Compile -> flags.compile
     | Link -> flags.link
     | Build_runtime -> flags.build_runtime
+  in
+  let flags =
+    (* Avoid duplicating effect-related flags *)
+    Action_builder.map flags ~f:(fun flags ->
+      match config with
+      | None -> flags
+      | Some _ -> Config.remove_effect_flags flags)
   in
   Command.run_dyn_prog
     ~dir:(Path.build dir)

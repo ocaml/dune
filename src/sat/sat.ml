@@ -112,7 +112,7 @@ module Make (User : USER) = struct
 
   and undo =
     | Undo_at_most_one of lit option ref
-    | Decided of t
+    | Decided
 
   and var =
     { id : VarID.t (* A unique ID, used to test identity *)
@@ -130,7 +130,7 @@ module Make (User : USER) = struct
 
   and lit = sign * var
 
-  and t =
+  type t =
     { id_maker : VarID.mint
     ; (* Propagation *)
       mutable vars : var list
@@ -232,9 +232,9 @@ module Make (User : USER) = struct
     | Neg -> Pp.text "not(" ++ User.pp var.obj ++ Pp.char ')'
   ;;
 
-  let undo undo lit =
+  let undo problem undo lit =
     match undo with
-    | Decided problem -> problem.set_to_false <- false
+    | Decided -> problem.set_to_false <- false
     | Undo_at_most_one current ->
       if debug
       then
@@ -329,7 +329,7 @@ module Make (User : USER) = struct
       while var_info.undo <> [] do
         let cb = List.hd var_info.undo in
         var_info.undo <- List.tl var_info.undo;
-        undo cb lit
+        undo problem cb lit
       done
   ;;
 
@@ -874,7 +874,7 @@ module Make (User : USER) = struct
                 | None ->
                   (* Switch to set_to_false mode (until we backtrack). *)
                   problem.set_to_false <- true;
-                  undecided.undo <- Decided problem :: undecided.undo;
+                  undecided.undo <- Decided :: undecided.undo;
                   (* Printf.printf "%s -> false\n" (name_lit undecided); *)
                   Neg, undecided)
             in

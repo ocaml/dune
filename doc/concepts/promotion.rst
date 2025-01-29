@@ -1,9 +1,9 @@
 Diffing and Promotion
 =====================
 
-You can use Diffing and Promotion flows to compare your build output with 
-your source tree and/or copy the result of rule output into your source 
-tree to store the changes.
+You can use Diffing and Promotion flows to compare the outputs of your build in
+the build directory with the source tree and/or copy the result of the rules
+into your source tree to store the changes.
 
 Diffing
 =======

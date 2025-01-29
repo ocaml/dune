@@ -254,7 +254,7 @@ end = struct
       | "--disable=effects" :: rest -> loop acc rest
       | "--effects" :: _backend :: rest -> loop acc rest
       | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
-          loop acc rest
+        loop acc rest
       | other :: rest -> loop (other :: acc) rest
     in
     loop [] flags |> List.rev

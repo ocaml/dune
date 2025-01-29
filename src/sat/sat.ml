@@ -497,9 +497,9 @@ module Make (User : USER) = struct
            detect below). *)
         assert (!current = None);
         current := Some lit;
-        let var_info = var_of_lit lit in
-        (* If we later backtrack, unset current *)
-        var_info.undo <- Undo_at_most_one current :: var_info.undo;
+        (let var_info = var_of_lit lit in
+         (* If we later backtrack, unset current *)
+         var_info.undo <- Undo_at_most_one current :: var_info.undo);
         (try
            let clause = Clause t in
            (* We set all other literals to False. *)
@@ -521,7 +521,7 @@ module Make (User : USER) = struct
                    log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
                  raise_notrace
                    Conflict (* Can't happen, since we already checked we're Undecided *))
-             | _ -> ());
+             | True | False -> ());
            true
          with
          | Conflict -> false)

@@ -142,6 +142,7 @@ module Make (User : USER) = struct
     ; mutable trail_lim_len : int
     ; mutable toplevel_conflict : bool
     ; mutable set_to_false : bool
+    ; conflict_vars : VarID.Hash_set.t
     (* we are finishing up by setting everything else to False *)
     }
 
@@ -233,6 +234,7 @@ module Make (User : USER) = struct
     ; trail_lim_len = 0
     ; toplevel_conflict = false
     ; set_to_false = false
+    ; conflict_vars = VarID.Hash_set.create ()
     }
   ;;
 
@@ -713,7 +715,10 @@ module Make (User : USER) = struct
     (* The general rule we're learning *)
     let btlevel = ref 0 in
     (* The deepest decision in learnt *)
-    let seen = VarID.Hash_set.create () in
+    let seen =
+      VarID.Hash_set.clear problem.conflict_vars;
+      problem.conflict_vars
+    in
     (* The variables involved in the conflict *)
     let counter = ref 0 in
     (* The number of pending variables to check *)

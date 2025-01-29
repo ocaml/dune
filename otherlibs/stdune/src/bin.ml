@@ -12,9 +12,11 @@ let encode_strings paths = String.concat ~sep:(String.make 1 path_sep) paths
 
 let cons_path ?(path_sep = path_sep) p ~_PATH =
   let p = Path.to_absolute_filename p in
+  let p_sep = p ^ String.make 1 path_sep in
   match _PATH with
   | None -> p
-  | Some s -> Printf.sprintf "%s%c%s" p path_sep s
+  | Some s when String.is_prefix s ~prefix:p_sep -> s
+  | Some s -> p_sep ^ s
 ;;
 
 let exe = if Sys.win32 then ".exe" else ""

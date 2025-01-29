@@ -14,3 +14,6 @@ val package_install_path : t -> Path.Build.t
 
 (** The path to the executable for running the given dev tool *)
 val exe_path : t -> Path.Build.t
+
+(** The path to the shell executables for running a dev tool with dune *)
+val bin_path : unit -> Path.Build.t

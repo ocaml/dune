@@ -313,10 +313,7 @@ module Make (User : USER) = struct
          ++ Pp.text " ("
          ++ pp_reason reason
          ++ Pp.char ')');
-    match
-      let old_value = lit_value lit in
-      old_value
-    with
+    match lit_value lit with
     | False -> false (* Conflict *)
     | True -> true (* Already set (shouldn't happen) *)
     | Undecided ->

@@ -27,6 +27,7 @@ Additionally, they can contains the following stanzas.
   name
   opam_file_location
   package
+  pin
   subst
   use_standard_c_and_cxx_flags
   using

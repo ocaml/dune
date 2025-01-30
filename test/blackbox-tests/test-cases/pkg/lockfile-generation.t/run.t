@@ -28,14 +28,7 @@ Generate a `dune-project` file.
   >     "bar" {>= "0.2"}
   > ]
   > EOF
-  > cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
 Run the solver and generate a lock directory.
 
@@ -147,8 +140,8 @@ Run the solver again. This time it will fail.
   $ dune pkg lock
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
-  Can't find all required versions.
-  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
       foo 0.0.1 requires >= 0.2
       lockfile_generation_test dev requires >= 0.6

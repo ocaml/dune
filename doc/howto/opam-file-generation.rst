@@ -81,6 +81,7 @@ For example, if your opam file looks like:
      "conduit-async" { >= "1.0.3" }
      "async" { >= "v0.10.0" }
    ]
+   x-maintenance-intent: [ "(latest)" ]
 
 You can express this as::
 
@@ -88,6 +89,7 @@ You can express this as::
    (license ISC)
    (authors "Anil Madhavapeddy" "Rudi Grinberg")
    (maintainers "team@mirage.org")
+   (maintenance_intent "(latest)")
 
    (package
     (name cohttp-async)

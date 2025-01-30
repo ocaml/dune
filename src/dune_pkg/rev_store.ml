@@ -32,7 +32,7 @@ module Remote = struct
   type nonrec t =
     { url : string
     ; default_branch : Object.resolved option Fiber.t
-    ; branches_and_tags : Object.resolved String.Map.t Fiber.t
+    ; refs : Object.resolved String.Map.t Fiber.t
     }
 
   let default_branch t = t.default_branch
@@ -168,14 +168,37 @@ end
 
 let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
-  let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
-  let+ (), exit_code =
-    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+  let+ stderr, exit_code =
+    Fiber_util.Temp.with_temp_file
+      ~prefix:"dune"
+      ~suffix:"run_with_exit_code"
+      ~dir:(Path.of_string (Filename.get_temp_dir_name ()))
+      ~f:(function
+        | Error exn -> raise exn
+        | Ok path ->
+          let+ (), exit_code =
+            let stderr_to = Process.Io.file path Out in
+            Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+          in
+          Io.read_file path, exit_code)
   in
   if allow_codes exit_code
   then Ok exit_code
-  else Error { Git_error.dir; args; exit_code; output = [] }
+  else (
+    match exit_code with
+    | 129
+      when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
+      ->
+      User_error.raise
+        [ User_message.command
+            "Your git version doesn't support the '--no-write-fetch-head' flag. The \
+             minimum supported version is Git 2.29."
+        ]
+        ~hints:[ User_message.command "Please update your git version." ]
+    | _ ->
+      Dune_console.print [ Pp.verbatim stderr ];
+      Error { Git_error.dir; args; exit_code; output = [] })
 ;;
 
 let run t ~display args =
@@ -502,6 +525,7 @@ module At_rev = struct
     { repo : repo
     ; revision : Object.t
     ; files : File.Set.t
+    ; recursive_directory_entries : File.Set.t Path.Local.Table.t
     }
 
   let equal x y = Object.equal x.revision y.revision
@@ -661,25 +685,46 @@ module At_rev = struct
       >>| List.cons files
       >>| File.Set.union_all
     in
-    { repo; revision; files }
+    let recursive_directory_entries =
+      let recursive_directory_entries =
+        Path.Local.Table.create (File.Set.cardinal files)
+      in
+      (* Build a table mapping each directory path to the set of files under it
+         in the directory hierarchy. *)
+      File.Set.iter files ~f:(fun file ->
+        (* Add [file] to the set of files under each directory which is an
+           ancestor of [file]. *)
+        let rec loop = function
+          | None -> ()
+          | Some parent ->
+            let recursive_directory_entries_of_parent =
+              Path.Local.Table.find_or_add
+                recursive_directory_entries
+                parent
+                ~f:(Fun.const File.Set.empty)
+            in
+            let recursive_directory_entries_of_parent =
+              File.Set.add recursive_directory_entries_of_parent file
+            in
+            Path.Local.Table.set
+              recursive_directory_entries
+              parent
+              recursive_directory_entries_of_parent;
+            loop (Path.Local.parent parent)
+        in
+        loop (File.path file |> Path.Local.parent));
+      recursive_directory_entries
+    in
+    { repo; revision; files; recursive_directory_entries }
   ;;
 
-  let content { repo; revision; files = _ } path = show repo [ `Path (revision, path) ]
+  let content { repo; revision; files = _; recursive_directory_entries = _ } path =
+    show repo [ `Path (revision, path) ]
+  ;;
 
   let directory_entries_recursive t path =
-    (* TODO: there are much better ways of implementing this:
-       1. using libgit or ocamlgit
-       2. possibly using [$ git archive] *)
-    File.Set.to_list t.files
-    |> List.filter_map ~f:(fun (file : File.t) ->
-      let file_path = File.path file in
-      (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
-         "foo" is indeed a descendant of itself. So we filter it manually. *)
-      if (not (Path.Local.equal file_path path))
-         && Path.Local.is_descendant file_path ~of_:path
-      then Some file
-      else None)
-    |> File.Set.of_list
+    Path.Local.Table.find t.recursive_directory_entries path
+    |> Option.value ~default:File.Set.empty
   ;;
 
   let directory_entries_immediate t path =
@@ -698,7 +743,10 @@ module At_rev = struct
       path
   ;;
 
-  let check_out { repo = { dir; _ }; revision = Sha1 rev; files = _ } ~target =
+  let check_out
+    { repo = { dir; _ }; revision = Sha1 rev; files = _; recursive_directory_entries = _ }
+    ~target
+    =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let temp_dir = Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:rev in
@@ -732,24 +780,8 @@ end
 let remote =
   let hash = Re.(rep1 alnum) in
   let head_mark, head = Re.mark (Re.str "HEAD") in
-  let re =
-    Re.(
-      compile
-      @@ seq
-           [ bol
-           ; group hash
-           ; rep1 space
-           ; alt
-               [ head
-               ; seq
-                   [ str "refs/"
-                   ; alt [ str "heads"; str "tags" ]
-                   ; str "/"
-                   ; group (rep1 any)
-                   ]
-               ]
-           ])
-  in
+  let ref = Re.(group (seq [ str "refs/"; rep1 any ])) in
+  let re = Re.(compile @@ seq [ bol; group hash; rep1 space; alt [ head; ref ] ]) in
   fun t ~url:(url_loc, url) ->
     let f url =
       let command = [ "ls-remote"; url ] in
@@ -775,26 +807,24 @@ let remote =
                    ]
                | _ -> Git_error.raise_code_error git_error)
           in
-          let default_branch, branches_and_tags =
-            List.fold_left
-              hits
-              ~init:(None, [])
-              ~f:(fun (default_branch, branches_and_tags) line ->
-                match Re.exec_opt re line with
-                | None -> default_branch, branches_and_tags
-                | Some group ->
-                  let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
-                  if Re.Mark.test group head_mark
-                  then Some hash, branches_and_tags
-                  else (
-                    let name = Re.Group.get group 2 in
-                    default_branch, (name, hash) :: branches_and_tags))
+          let default_branch, refs =
+            List.fold_left hits ~init:(None, []) ~f:(fun (default_branch, refs) line ->
+              match Re.exec_opt re line with
+              | None -> default_branch, refs
+              | Some group ->
+                let hash = Re.Group.get group 1 |> Object.of_sha1 |> Option.value_exn in
+                if Re.Mark.test group head_mark
+                then Some hash, refs
+                else (
+                  let name = Re.Group.get group 2 in
+                  let entry = name, hash in
+                  default_branch, entry :: refs))
           in
-          default_branch, String.Map.of_list_exn branches_and_tags)
+          default_branch, String.Map.of_list_exn refs)
       in
       { Remote.url
       ; default_branch = Fiber_lazy.force refs >>| fst
-      ; branches_and_tags = Fiber_lazy.force refs >>| snd
+      ; refs = Fiber_lazy.force refs >>| snd
       }
     in
     Table.find_or_add t.remotes ~f url
@@ -806,8 +836,33 @@ let fetch_resolved t (remote : Remote.t) revision =
 ;;
 
 let resolve_revision t (remote : Remote.t) ~revision =
-  let* branches_and_tags = remote.branches_and_tags in
-  match String.Map.find branches_and_tags revision with
+  let* refs = remote.refs in
+  let obj =
+    match String.Map.find refs revision with
+    | Some _ as obj -> obj
+    | None ->
+      (* revision was not found as-is, try formatting as branch/tag *)
+      let lookup_in format = String.Map.find refs (sprintf format revision) in
+      let as_branch = lookup_in "refs/heads/%s" in
+      let as_tag = lookup_in "refs/tags/%s" in
+      (match as_branch, as_tag with
+       | (Some _ as obj), None -> obj
+       | None, (Some _ as obj) -> obj
+       | None, None -> None
+       | Some branch_obj, Some tag_obj ->
+         (match Object.equal branch_obj tag_obj with
+          | true -> Some branch_obj
+          | false ->
+            let hints =
+              [ Pp.textf "If you want to specify a tag use refs/tags/%s" revision
+              ; Pp.textf "If you want to specify a branch use refs/branches/%s" revision
+              ]
+            in
+            User_error.raise
+              ~hints
+              [ Pp.textf "Reference %S in remote %S is ambiguous" revision remote.url ]))
+  in
+  match obj with
   | Some obj as s ->
     let+ () = fetch t ~url:remote.url obj in
     s

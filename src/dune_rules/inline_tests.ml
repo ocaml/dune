@@ -191,7 +191,9 @@ include Sub_system.Register_end_point (struct
             | Jsoo JS -> Exe.Linkage.js
             | Jsoo Wasm -> Exe.Linkage.wasm)
         in
-        let+ jsoo_is_whole_program = Jsoo_rules.jsoo_is_whole_program sctx ~dir in
+        let+ jsoo_is_whole_program =
+          Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
+        in
         if List.exists modes ~f:(fun mode ->
              match (mode : Mode_conf.t) with
              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
@@ -294,7 +296,15 @@ include Sub_system.Register_end_point (struct
              | Error _ -> Action_builder.return action
              | Ok p -> Action_builder.path p >>> Action_builder.return action)
         and+ () = deps
-        and+ () = Action_builder.path exe in
+        and+ () = Action_builder.path exe
+        and+ () =
+          match mode with
+          | Native | Best | Byte | Jsoo JS -> Action_builder.return ()
+          | Jsoo Wasm ->
+            Action_builder.path
+              (Path.build
+                 (Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)))
+        in
         Action.chdir (Path.build dir) action
       in
       let flags partition : string list Action_builder.t =

@@ -37,9 +37,77 @@ fix the name of the branch eariler):
 
   $ git -C _repo tag duplicated
 
-This should work but it fails at the moment:
+This should work without issue, as we never reference the ambiguous reference:
 
-  $ dune pkg lock 2>&1 | head -n 3
-  Internal error, please report upstream including the contents of _build/log.
-  Description:
-    ("Map.of_list_exn", { key = "duplicated" })
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev
+
+If we use the duplicate reference in the config
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > (pin
+  >  (url "git+file://$PWD/_repo#duplicated")
+  >  (package (name foo)))
+  > (package
+  >  (name main)
+  >  (depends foo))
+  > EOF
+
+This will work as both references point at the same revision, thus aren't
+ambiguous:
+
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev
+
+If we then change the reference of the branch to point to a different revision
+than the tag is pointing to (still the initial commit):
+
+  $ git -C _repo commit --quiet --allow-empty --message "New ref"
+
+In this case Dune can't determine which reference to use and will error out:
+
+  $ dune pkg lock 2>&1 | sed "s|$PWD|\$PWD|"
+  Error: Reference "duplicated" in remote
+  "file://$PWD/_repo"
+  is ambiguous
+  Hint: If you want to specify a tag use refs/tags/duplicated
+  Hint: If you want to specify a branch use refs/branches/duplicated
+
+Git also has unambibuous namespaces tags and branches, for tags it is `refs/tags/`.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > (pin
+  >  (url "git+file://$PWD/_repo#refs/tags/duplicated")
+  >  (package (name foo)))
+  > (package
+  >  (name main)
+  >  (depends foo))
+  > EOF
+
+Locking should work, as there are no ambiguous references.
+
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev
+
+For branches the namespace is `refs/heads/`:
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.13)
+  > (pin
+  >  (url "git+file://$PWD/_repo#refs/heads/duplicated")
+  >  (package (name foo)))
+  > (package
+  >  (name main)
+  >  (depends foo))
+  > EOF
+
+Likewise locking a branch this way should work as well:
+
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.dev

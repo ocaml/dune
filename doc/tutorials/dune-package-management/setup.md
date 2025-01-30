@@ -100,6 +100,17 @@ $ dune exec ./test.exe
 Hello, OCaml, Rust!
 ```
 
+:::{note}
+If you want to only build and fetch the project dependencies, you can use
+the `@pkg-install` alias like so
+
+```shell
+$ dune build @pkg-install
+```
+
+See {doc}`/reference/aliases/pkg-install` for more information.
+:::
+
 ## Conclusion
 
 In this section we learned how to set up a Dune project that picks a compiler

@@ -120,7 +120,7 @@ end = struct
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
         enabled_if
-    | Foreign.Library.T lib ->
+    | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->
         let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
@@ -136,7 +136,8 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.concat_map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
+              (Nonempty_list.to_list exes.names
+               |> List.concat_map ~f:(fun (_, exe) ->
                  List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
                    Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
         })
@@ -150,15 +151,15 @@ end = struct
     | Copy_files.T { files = glob; _ } ->
       let+ source_dirs =
         let+ src_glob = Expander.No_deps.expand_str expander glob in
-        if Filename.is_relative src_glob
-        then (
-          match
-            let error_loc = String_with_vars.loc glob in
-            Path.relative (Path.source src_dir) src_glob ~error_loc
-          with
-          | In_source_tree s -> Some (Path.Source.parent_exn s)
-          | In_build_dir _ | External _ -> None)
-        else None
+        match Filename.is_relative src_glob with
+        | false -> None
+        | true ->
+          (match
+             let error_loc = String_with_vars.loc glob in
+             Path.relative (Path.source src_dir) src_glob ~error_loc
+           with
+           | In_source_tree s -> Some (Path.Source.parent_exn s)
+           | In_build_dir _ | External _ -> None)
       in
       { empty_none with source_dirs }
     | Install_conf.T i ->
@@ -442,9 +443,10 @@ module Automatic_subdir = struct
 
   let gen_rules ~sctx ~dir kind =
     match kind with
-    | Utop -> Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
+    | Utop -> sctx >>= Utop.setup ~dir:(Path.Build.parent_exn dir)
     | Formatted -> Format_rules.gen_rules sctx ~output_dir:dir
     | Bin ->
+      let* sctx = sctx in
       Super_context.env_node sctx ~dir:(Path.Build.parent_exn dir)
       >>= Env_node.local_binaries
       >>= Memo.parallel_iter ~f:(fun t ->
@@ -501,13 +503,10 @@ let gen_automatic_subdir_rules sctx ~dir ~nearest_src_dir ~src_dir =
     | Some _ -> Automatic_subdir.of_src_dir src_dir
   with
   | None -> Memo.return Rules.empty
-  | Some kind ->
-    Rules.collect_unit (fun () ->
-      let* sctx = sctx in
-      Automatic_subdir.gen_rules ~sctx ~dir kind)
+  | Some kind -> Rules.collect_unit (fun () -> Automatic_subdir.gen_rules ~sctx ~dir kind)
 ;;
 
-let gen_rules_regular_directory sctx ~src_dir ~components ~dir =
+let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~components ~dir =
   Dir_status.DB.get ~dir
   >>= function
   | Lock_dir -> Memo.return Gen_rules.no_rules
@@ -721,5 +720,7 @@ let gen_rules ctx ~dir components =
   then Fetch_rules.gen_rules ~dir ~components
   else
     let* () = raise_on_lock_dir_out_of_sync ctx in
-    gen_rules ctx (Super_context.find_exn ctx) ~dir components
+    let gen_pkg_alias_rule = Pkg_rules.setup_pkg_install_alias ~dir ctx in
+    let+ sctx_rules = gen_rules ctx (Super_context.find_exn ctx) ~dir components in
+    Gen_rules.combine sctx_rules gen_pkg_alias_rule
 ;;

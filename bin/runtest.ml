@@ -51,6 +51,37 @@ let find_cram_test path ~parent_dir =
     Path.Source.equal path src)
 ;;
 
+let explain_unsuccessful_search path ~parent_dir =
+  let open Memo.O in
+  (* If the user misspelled the test name, we give them a hint. *)
+  let+ hints =
+    (* We search for all files and directories in the parent directory and
+       suggest them as possible candidates. *)
+    let+ candidates =
+      let+ file_candidates =
+        let+ files = Source_tree.files_of parent_dir in
+        Path.Source.Set.to_list_map files ~f:Path.Source.to_string
+      and+ dir_candidates =
+        let* parent_source_dir = Source_tree.find_dir parent_dir in
+        match parent_source_dir with
+        | None -> Memo.return []
+        | Some parent_source_dir ->
+          let dirs = Source_tree.Dir.sub_dirs parent_source_dir in
+          String.Map.to_list dirs
+          |> Memo.List.map ~f:(fun (_candidate, candidate_path) ->
+            Source_tree.Dir.sub_dir_as_t candidate_path
+            >>| Source_tree.Dir.path
+            >>| Path.Source.to_string)
+      in
+      List.concat [ file_candidates; dir_candidates ]
+    in
+    User_message.did_you_mean (Path.Source.to_string path) ~candidates
+  in
+  User_error.raise
+    ~hints
+    [ Pp.textf "%S does not match any known test." (Path.Source.to_string path) ]
+;;
+
 (* [disambiguate_test_name path] is a function that takes in a
    directory [path] and classifies it as either a cram test or a directory to
    run tests in. *)
@@ -71,18 +102,7 @@ let disambiguate_test_name path =
        >>= (function
         (* We need to make sure that this directory or file exists. *)
         | Some _ -> Memo.return (`Runtest (Path.source path))
-        | None ->
-          (* If the user misspelled the test name, we give them a hint. *)
-          let+ hints =
-            let+ candidates =
-              let+ files = Source_tree.files_of parent_dir in
-              Path.Source.Set.to_list_map files ~f:Path.Source.basename
-            in
-            User_message.did_you_mean (Path.Source.basename path) ~candidates
-          in
-          User_error.raise
-            ~hints
-            [ Pp.textf "%S was not found." (Path.Source.to_string path) ]))
+        | None -> explain_unsuccessful_search path ~parent_dir))
 ;;
 
 let runtest_term =
@@ -96,10 +116,9 @@ let runtest_term =
       let open Action_builder.O in
       let* alias_kind =
         match Path.as_in_source_tree dir with
+        (* If the path is in the source tree, we disambiguate it. *)
         | Some path -> Action_builder.of_memo (disambiguate_test_name path)
-        | None ->
-          (* If the path is in the source tree, we disambiguate it. *)
-          Action_builder.return (`Runtest dir)
+        | None -> Action_builder.return (`Runtest dir)
       in
       Alias.request
       @@

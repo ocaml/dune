@@ -17,8 +17,9 @@ To pin a package, a new `pin` has to be declared in the `dune-project` file.
 :emphasize-lines: 4-6,12
 :::
 
-This will create a pin on the `fmt` package and use the specified Git repository
-URL to retrieve the sources.
+This will create a pin on the `fmt` package and use the specified Git
+repository URL to retrieve the sources. For more information refer to {doc}`the
+pin stanza reference </reference/dune-project/pin>`.
 
 Don't forget to remove the version constraints from `fmt` in the list of
 dependencies.

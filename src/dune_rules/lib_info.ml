@@ -378,6 +378,7 @@ let orig_src_dir t = t.orig_src_dir
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 let set_version t version = { t with version }
 let entry_modules t = t.entry_modules
+let dynlink_supported t = Mode.Dict.get t.plugins Native <> []
 
 let eval_native_archives_exn (type path) (t : path t) ~modules =
   match t.native_archives, modules with

@@ -66,7 +66,7 @@ end
 
 module Env_update : sig
   module Op : sig
-    type t =
+    type t = OpamParserTypes.env_update_op =
       | Eq
       | PlusEq
       | EqPlus
@@ -119,6 +119,7 @@ type t =
   | Substitute of String_with_vars.t * String_with_vars.t
   | Withenv of String_with_vars.t Env_update.t list * t
   | When of Slang.blang * t
+  | Format_dune_file of String_with_vars.t * String_with_vars.t
 
 val encode : t Encoder.t
 val decode_dune_file : t Decoder.t

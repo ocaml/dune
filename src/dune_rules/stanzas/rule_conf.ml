@@ -62,6 +62,7 @@ let atom_table =
     ; "aliases", Field
     ; "alias", Field
     ; "enabled_if", Field
+    ; "format-dune-file", Since ((3, 18), Action)
     ; "package", Since ((3, 8), Field)
     ]
 ;;

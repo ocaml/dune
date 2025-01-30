@@ -42,7 +42,7 @@ type t =
   ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
-  ; sources : Dune_pkg.Pin_stanza.DB.t
+  ; pins : Dune_pkg.Pin_stanza.DB.t
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
@@ -70,7 +70,7 @@ let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
-let sources t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.sources t.packages
+let pins t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.pins t.packages
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -103,7 +103,7 @@ let to_dyn
   ; subst_config
   ; strict_package_deps
   ; allow_approximate_merlin
-  ; sources = _
+  ; pins
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
@@ -135,6 +135,7 @@ let to_dyn
     ; "format_config", option Format_config.to_dyn format_config
     ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
+    ; "pins", Dune_pkg.Pin_stanza.DB.to_dyn pins
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
     ; "expand_aliases_in_sandbox", bool expand_aliases_in_sandbox
@@ -427,7 +428,7 @@ let infer ~dir info packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
-  ; sources = Dune_pkg.Pin_stanza.DB.empty
+  ; pins = Dune_pkg.Pin_stanza.DB.empty
   ; packages
   ; root
   ; info
@@ -463,7 +464,7 @@ let anonymous ~dir info packages = infer ~dir info packages
 let encode : t -> Dune_lang.t list =
   fun { name
       ; allow_approximate_merlin = _
-      ; sources
+      ; pins
       ; version
       ; dune_version
       ; info
@@ -575,7 +576,7 @@ let encode : t -> Dune_lang.t list =
   let version =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
-  let sources = Dune_pkg.Pin_stanza.DB.encode sources in
+  let pins = Dune_pkg.Pin_stanza.DB.encode pins in
   List.concat
     [ [ lang_stanza; name ]
     ; flags
@@ -585,7 +586,7 @@ let encode : t -> Dune_lang.t list =
     ; dialects
     ; packages
     ; subst_config
-    ; sources
+    ; pins
     ]
 ;;
 
@@ -771,7 +772,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ sources = Dune_pkg.Pin_stanza.DB.decode ~dir
+     and+ pins = Dune_pkg.Pin_stanza.DB.decode ~dir
      and+ explicit_extensions =
        multi_field
          "using"
@@ -951,7 +952,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; subst_config
        ; strict_package_deps
        ; allow_approximate_merlin
-       ; sources
+       ; pins
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location

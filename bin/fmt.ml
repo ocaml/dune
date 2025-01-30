@@ -13,6 +13,36 @@ let man =
   ]
 ;;
 
+let lock_ocamlformat () =
+  if Lazy.force Lock_dev_tool.is_enabled
+  then
+    (* Note that generating the ocamlformat lockdir here means
+       that it will be created when a user runs `dune fmt` but not
+       when a user runs `dune build @fmt`. It's important that
+       this logic remain outside of `dune build`, as `dune
+       build` is intended to only build targets, and generating
+       a lockdir is not building a target. *)
+    Lock_dev_tool.lock_ocamlformat () |> Memo.run
+  else Fiber.return ()
+;;
+
+let run_fmt_command ~(common : Common.t) ~config =
+  let open Fiber.O in
+  let once () =
+    let* () = lock_ocamlformat () in
+    let request (setup : Import.Main.build_system) =
+      let dir = Path.(relative root) (Common.prefix_target common ".") in
+      Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
+      |> Alias.request
+    in
+    Build_cmd.run_build_system ~common ~request
+    >>| function
+    | Ok () -> ()
+    | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
+  in
+  Scheduler.go ~common ~config once
+;;
+
 let command =
   let term =
     let+ builder = Common.Builder.term
@@ -31,25 +61,7 @@ let command =
       Common.Builder.set_promote builder (if no_promote then Never else Automatically)
     in
     let common, config = Common.init builder in
-    let request (setup : Import.Main.build_system) =
-      let open Action_builder.O in
-      let* () =
-        if Lazy.force Lock_dev_tool.is_enabled
-        then
-          (* Note that generating the ocamlformat lockdir here means
-             that it will be created when a user runs `dune fmt` but not
-             when a user runs `dune build @fmt`. It's important that
-             this logic remain outside of `dune build`, as `dune
-             build` is intended to only build targets, and generating
-             a lockdir is not building a target. *)
-          Action_builder.of_memo (Lock_dev_tool.lock_ocamlformat ())
-        else Action_builder.return ()
-      in
-      let dir = Path.(relative root) (Common.prefix_target common ".") in
-      Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
-      |> Alias.request
-    in
-    Build_cmd.run_build_command ~common ~config ~request
+    run_fmt_command ~common ~config
   in
   Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

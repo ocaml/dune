@@ -33,7 +33,7 @@ jobs:
           - 5.1.x
         include:
           # OCaml trunk:
-          - ocaml-compiler: ocaml-variants.5.3.0+trunk
+          - ocaml-compiler: ocaml-variants.5.4.0+trunk
             os: ubuntu-latest
             skip_test: true
           # OCaml 4:
@@ -136,41 +136,6 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#fmt -c make fmt
 
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        ocaml-compiler:
-          - 5.1.x
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3
-        with:
-          ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          opam-depext: false
-
-      - name: Set git user
-        run: |
-          git config --global user.name github-actions[bot]
-          git config --global user.email github-actions[bot]@users.noreply.github.com
-
-      # Install ocamlfind-secondary and ocaml-secondary-compiler, if needed
-      - run: opam install ./dune.opam --deps-only --with-test
-
-      - name: Install deps on Unix
-        run: |
-          opam install . --deps-only
-          opam exec -- make dev-deps
-          opam exec -- make coverage-deps
-      - run: opam exec -- make test-coverage
-        continue-on-error: true
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PULL_REQUEST_NUMBER: ${{ github.event.number }}
-
   doc:
     name: Documentation
     runs-on: ubuntu-latest
@@ -254,8 +219,7 @@ jobs:
       - name: Checkout Wasm_of_ocaml
         uses: actions/checkout@v4
         with:
-          repository: ocaml-wasm/wasm_of_ocaml
-          ref: wasm-dune
+          repository: ocsigen/js_of_ocaml
           path: wasm_of_ocaml
 
       - name: Install Wasm_of_ocaml

@@ -61,14 +61,14 @@ This should fail as there is no version matching 0.24.1:
   $ DUNE_CONFIG__LOCK_DEV_TOOL=enabled dune fmt
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dev-tools.locks/ocamlformat:
-  Can't find all required versions.
-  Selected: ocamlformat_dev_tool_wrapper.dev
+  Couldn't solve the package dependency formula.
+  Selected candidates: ocamlformat_dev_tool_wrapper.dev
   - ocamlformat -> (problem)
-      ocamlformat_dev_tool_wrapper dev requires >= 0.24.1 & <=
-  0.24.1___MAX_VERSION
+      ocamlformat_dev_tool_wrapper dev requires
+        >= 0.24.1 & <= 0.24.1___MAX_VERSION
       Rejected candidates:
-        ocamlformat.0.25+bar: Incompatible with restriction: >= 0.24.1 & <=
-  0.24.1___MAX_VERSION
-        ocamlformat.0.24+foo: Incompatible with restriction: >= 0.24.1 & <=
-  0.24.1___MAX_VERSION
+        ocamlformat.0.25+bar:
+          Incompatible with restriction: >= 0.24.1 & <= 0.24.1___MAX_VERSION
+        ocamlformat.0.24+foo:
+          Incompatible with restriction: >= 0.24.1 & <= 0.24.1___MAX_VERSION
   [1]

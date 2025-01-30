@@ -14,18 +14,7 @@ To start with we create a repository in with a `foo` package.
 
 We set this repository as sole source for opam repositories.
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (context
-  >  (default
-  >   (name default)
-  >   (lock_dir dune.lock)))
-  > EOF
+  $ add_mock_repo_if_needed
 
 We set the project up to depend on `foo`
 

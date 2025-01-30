@@ -63,7 +63,7 @@ Make a custom solver env:
   >   (lock_dir dune.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Run the solver using the new env:

@@ -77,10 +77,11 @@ let solve ~dev_tool ~local_packages =
   @@ Lock.solve
        (Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages)
        ~local_packages
-       ~project_sources:Dune_pkg.Pin_stanza.DB.empty
+       ~project_pins:Dune_pkg.Pin_stanza.DB.empty
        ~solver_env_from_current_system
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
+       ~print_perf_stats:false
 ;;
 
 let compiler_package_name = Package_name.of_string "ocaml"

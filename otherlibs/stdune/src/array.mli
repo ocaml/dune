@@ -1,9 +1,11 @@
 include module type of Stdlib.ArrayLabels with type 'a t = 'a array
 
+val find_opt : f:('a -> bool) -> 'a t -> 'a option
 val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 val map : 'a t -> f:('a -> 'b) -> 'b t
 val exists : 'a t -> f:('a -> bool) -> bool
 val fold_right : 'a t -> f:('a -> 'acc -> 'acc) -> init:'acc -> 'acc
+val swap : 'a t -> int -> int -> unit
 
 module Immutable : sig
   type 'a t

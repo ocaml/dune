@@ -5,7 +5,7 @@ open Import
     built.
 
     This must be called from inside the [formatted_dir_basename] sub-directory. *)
-val gen_rules : Super_context.t -> output_dir:Path.Build.t -> unit Memo.t
+val gen_rules : Super_context.t Memo.t -> output_dir:Path.Build.t -> unit Memo.t
 
 (** This must be called from the main directory, i.e. the ones containing the
     source files and the [formatted_dir_basename] sub-directory. *)

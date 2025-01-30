@@ -67,15 +67,25 @@ let input_zero_separated =
 
 let copy_channels =
   let buf_len = 65536 in
-  let buf = Bytes.create buf_len in
-  let rec loop ic oc =
+  let global_buf = Bytes.create buf_len in
+  let rec loop buf ic oc =
     match input ic buf 0 buf_len with
     | 0 -> ()
     | n ->
       output oc buf 0 n;
-      loop ic oc
+      loop buf ic oc
   in
-  loop
+  let busy = ref false in
+  fun ic oc ->
+    if !busy
+    then loop (Bytes.create buf_len) ic oc
+    else (
+      busy := true;
+      match loop global_buf ic oc with
+      | () -> busy := false
+      | exception exn ->
+        busy := false;
+        Exn.reraise exn)
 ;;
 
 let setup_copy ?(chmod = Fun.id) ~src ~dst () =

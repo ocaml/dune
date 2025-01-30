@@ -1,3 +1,27 @@
+module Array = Stdlib.Array
+
+include struct
+  exception Found of int
+
+  [@@@ocaml.warning "-32"]
+
+  let find_opt ~f t =
+    try
+      for i = 0 to Array.length t do
+        if f t.(i) then raise_notrace (Found i)
+      done;
+      None
+    with
+    | Found i -> Some t.(i)
+  ;;
+end
+
+let swap arr i j =
+  let first, second = arr.(i), arr.(j) in
+  arr.(i) <- second;
+  arr.(j) <- first
+;;
+
 module T = struct
   include ArrayLabels
 

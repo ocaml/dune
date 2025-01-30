@@ -196,6 +196,15 @@ let insert_odoc_dep depends =
   loop [] depends
 ;;
 
+let maintenance_intent dune_version info =
+  if dune_version < (3, 18)
+  then None
+  else (
+    match Package_info.maintenance_intent info with
+    | None -> Some [ "(latest)" ]
+    | x -> x)
+;;
+
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
   let package_name = Package.name package in
@@ -228,6 +237,7 @@ let opam_fields project (package : Package.t) =
   in
   let list_fields =
     [ "maintainer", Package_info.maintainers info
+    ; "x-maintenance-intent", maintenance_intent dune_version info
     ; "authors", Package_info.authors info
     ; ( "license"
       , match Package_info.license info with

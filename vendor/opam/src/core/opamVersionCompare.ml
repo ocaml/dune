@@ -20,37 +20,32 @@ let is_digit = function
 (* [skip_while_from i f w m] yields the index of the leftmost character
  * in the string [s], starting from [i], and ending at [m], that does
  * not satisfy the predicate [f], or [length w] if no such index exists.  *)
-let skip_while_from i f w m =
-  let rec loop i =
-    if i = m then i
-    else if f w.[i] then loop (i + 1) else i
-  in loop i
-;;
+let rec skip_while_from i f w m =
+  if i = m then i
+  else if f w.[i] then skip_while_from (i + 1) f w m else i
 
 (* splits a version into (epoch,rest), without the separating ':'. The
  * epoch is delimited by the leftmost occurrence of ':' in x, and is ""
  * in case there is no ':' in x.  *)
 let extract_epoch x =
-  try
-    let ci = String.index x ':' in
-    let epoch = String.sub x 0 ci
-    and rest = String.sub x (ci + 1) (String.length x - ci - 1)
-    in (epoch,rest)
-  with
-    | Not_found -> ("",x)
+  match String.index_opt x ':' with
+  | None -> ("", x)
+  | Some ci ->
+      let epoch = String.sub x 0 ci
+      and rest = String.sub x (ci + 1) (String.length x - ci - 1)
+      in (epoch,rest)
 ;;
 
 (* splits a version into (prefix,revision). The revision starts on the
  * right-most occurrence of '-', or is empty in case the version does
  * not contain '-'.  *)
 let extract_revision x =
-  try
-    let di = String.rindex x '-' in
+  match String.rindex_opt x '-' with
+  | None -> (x, "")
+  | Some di ->
     let before = String.sub x 0 di in
     let after = String.sub x (di+1) (String.length x - di -1) in
     (before,after)
-  with
-    | Not_found -> (x,"")
 ;;
 
 (* character comparison uses a modified character ordering: '~' first,

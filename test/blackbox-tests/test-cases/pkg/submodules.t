@@ -58,14 +58,7 @@ In our mock repository, we make sure to add the package submodule as
 
 We'll use the mock repository as source and depend on `bar`:
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (lock_dir
-  >  (repositories mock))
-  > EOF
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
   $ cat > dune-project <<EOF
   > (lang dune 3.10)
   > (package

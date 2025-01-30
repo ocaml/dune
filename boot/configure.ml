@@ -35,6 +35,7 @@ let toggle =
 
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
+  let prefix = ref None in
   let library_path = ref [] in
   let library_destdir = ref None in
   let mandir = ref None in
@@ -58,7 +59,8 @@ let () =
     v := Some dir
   in
   let args =
-    [ ( "--libdir"
+    [ "--prefix", Arg.String (set_dir prefix), "DIR where files are copied"
+    ; ( "--libdir"
       , Arg.String set_libdir
       , "DIR where public libraries are looked up in the default build context. Can be \
          specified multiple times new one taking precedence. The last is used as default \
@@ -120,6 +122,7 @@ let () =
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }";
   pr "";
+  pr "let prefix : string option = %s" (option string !prefix);
   List.iter !toggles ~f:(fun (name, value) ->
     pr
       "let %s = `%s"

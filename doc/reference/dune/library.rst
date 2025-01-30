@@ -169,7 +169,8 @@ order to declare a multi-directory library, you need to use the
 
 .. describe:: (no_dynlink)
 
-   Disables dynamic linking of the library.
+   Disables (native) dynamic linking of the library. This means that the
+   ``.cmxs`` archive of the library will neither be built nor installed.
 
    This is for advanced use only. By default, you shouldn't set this option.
 

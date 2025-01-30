@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-let add_diff sctx loc alias ~input ~output =
+let add_diff loc alias ~input ~output =
   let open Action_builder.O in
   let dir = Alias.dir alias in
   let action =
@@ -10,7 +10,7 @@ let add_diff sctx loc alias ~input ~output =
   in
   Action_builder.paths [ input; Path.build output ]
   >>> Action_builder.return (Action.Full.make action)
-  |> Super_context.add_alias_action sctx alias ~dir ~loc
+  |> Rules.Produce.Alias.add_action alias ~loc
 ;;
 
 let rec subdirs_until_root dir =
@@ -26,33 +26,6 @@ let depend_on_files ~named dir =
 ;;
 
 let formatted_dir_basename = ".formatted"
-
-let action =
-  let module Spec = struct
-    type ('path, 'target) t = Dune_lang.Syntax.Version.t * 'path * 'target
-
-    let name = "format-dune-file"
-    let version = 1
-    let bimap (ver, src, dst) f g = ver, f src, g dst
-    let is_useful_to ~memoize = memoize
-
-    let encode (version, src, dst) path target : Sexp.t =
-      List
-        [ Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp
-        ; path src
-        ; target dst
-        ]
-    ;;
-
-    let action (version, src, dst) ~ectx:_ ~eenv:_ =
-      Dune_lang.Format.format_action ~version ~src ~dst;
-      Fiber.return ()
-    ;;
-  end
-  in
-  let module A = Action_ext.Make (Spec) in
-  fun ~version (src : Path.t) (dst : Path.Build.t) -> A.action (version, src, dst)
-;;
 
 module Alias = struct
   let fmt ~dir = Alias.make Alias0.fmt ~dir
@@ -120,11 +93,10 @@ module Ocamlformat = struct
   ;;
 end
 
-let format_action format ~input ~output ~expander kind =
-  let+ ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+let format_action format ~ocamlformat_is_locked ~input ~output ~expander kind =
   match (format : Dialect.Format.t) with
   | Ocamlformat when ocamlformat_is_locked ->
-    Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind
+    Memo.return (Ocamlformat.action_when_ocamlformat_is_locked ~input ~output kind)
   | _ ->
     assert (not ocamlformat_is_locked);
     let loc, (action, extra_deps) =
@@ -133,6 +105,7 @@ let format_action format ~input ~output ~expander kind =
         Loc.none, Ocamlformat.action_when_ocamlformat_isn't_locked ~input kind
       | Action (loc, action) -> loc, (action, With_targets.return ())
     in
+    let+ expander = expander in
     let open Action_builder.With_targets.O in
     extra_deps
     >>> Pp_spec_rules.action_for_pp_with_target
@@ -156,11 +129,12 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
+  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
   let setup_formatting file =
-    let input_basename = Path.Source.basename file in
-    let input = Path.Build.relative dir input_basename in
-    let output = Path.Build.relative output_dir input_basename in
-    (let open Option.O in
+    (let input_basename = Path.Source.basename file in
+     let input = Path.Build.relative dir input_basename in
+     let output = Path.Build.relative output_dir input_basename in
+     let open Option.O in
      let* dialect, kind =
        Path.Source.extension file |> Dialect.DB.find_by_extension dialects
      in
@@ -175,9 +149,23 @@ let gen_rules_output
           | None -> Dialect.format Dialect.ocaml kind
           | Some _ -> None)
      in
-     format_action format ~input ~output ~expander kind
-     |> Memo.bind ~f:(Super_context.add_rule sctx ~mode:Standard ~loc ~dir)
-     >>> add_diff sctx loc alias_formatted ~input:(Path.build input) ~output)
+     format_action format ~ocamlformat_is_locked ~input ~output ~expander kind
+     |> Memo.bind ~f:(fun rule ->
+       if ocamlformat_is_locked
+       then (
+         let { Action_builder.With_targets.build; targets } = rule in
+         let build =
+           let open Action_builder.O in
+           let+ build = build
+           and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
+           Action.Full.add_env env build
+         in
+         Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
+       else
+         let open Memo.O in
+         let* sctx = sctx in
+         Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
+     >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
     |> Memo.Option.iter ~f:Fun.id
   in
   let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
@@ -199,12 +187,14 @@ let gen_rules_output
             let input_basename = Path.Source.basename path in
             let input = Path.build (Path.Build.relative dir input_basename) in
             let output = Path.Build.relative output_dir input_basename in
-            (let open Action_builder.O in
-             let+ () = Action_builder.path input in
-             Action.Full.make (action ~version input output))
-            |> Action_builder.with_file_targets ~file_targets:[ output ]
-            |> Super_context.add_rule sctx ~mode:Standard ~loc ~dir
-            >>> add_diff sctx loc alias_formatted ~input ~output)))
+            let { Action_builder.With_targets.build; targets } =
+              (let open Action_builder.O in
+               let+ () = Action_builder.path input in
+               Action.Full.make (Format_dune_file.action ~version input output))
+              |> Action_builder.with_file_targets ~file_targets:[ output ]
+            in
+            let rule = Rule.make ~mode:Standard ~targets build in
+            Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;
@@ -236,7 +226,7 @@ let with_config ~dir f =
 let gen_rules sctx ~output_dir =
   let dir = Path.Build.parent_exn output_dir in
   with_config ~dir (fun config ->
-    let* expander = Super_context.expander sctx ~dir in
+    let expander = sctx >>= Super_context.expander ~dir in
     let* project = Dune_load.find_project ~dir in
     let dialects = Dune_project.dialects project in
     let version = Dune_project.dune_version project in

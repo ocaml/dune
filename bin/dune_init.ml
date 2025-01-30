@@ -245,20 +245,27 @@ module Component = struct
     module Common = struct
       type t =
         { name : Dune_lang.Atom.t
+        ; public : Public_name.t option
         ; libraries : Dune_lang.Atom.t list
         ; pps : Dune_lang.Atom.t list
         }
+
+      let package_name common =
+        let name =
+          match common.public with
+          | None -> Dune_lang.Atom.to_string common.name
+          | Some public -> Public_name.to_string public
+        in
+        Package.Name.of_string name
+      ;;
     end
 
     module Executable = struct
-      type t = { public : Public_name.t option }
+      type t = unit
     end
 
     module Library = struct
-      type t =
-        { public : Public_name.t option
-        ; inline_tests : bool
-        }
+      type t = { inline_tests : bool }
     end
 
     module Project = struct
@@ -355,11 +362,11 @@ module Component = struct
 
     let public_name_field = Encoder.field_o "public_name" Public_name.encode
 
-    let executable (common : Options.Common.t) (options : Options.Executable.t) =
-      make "executable" common [ public_name_field options.public ]
+    let executable (common : Options.Common.t) (() : Options.Executable.t) =
+      make "executable" common [ public_name_field common.public ]
     ;;
 
-    let library (common : Options.Common.t) { Options.Library.inline_tests; public } =
+    let library (common : Options.Common.t) { Options.Library.inline_tests } =
       check_module_name common.name;
       let common =
         if inline_tests
@@ -370,7 +377,10 @@ module Component = struct
           { common with pps })
         else common
       in
-      make "library" common [ public_name_field public; Field.inline_tests inline_tests ]
+      make
+        "library"
+        common
+        [ public_name_field common.public; Field.inline_tests inline_tests ]
     ;;
 
     let test common (() : Options.Test.t) = make "test" common []
@@ -385,7 +395,7 @@ module Component = struct
       let cst =
         let package =
           Package.create
-            ~name:(Package.Name.of_string (Atom.to_string common.name))
+            ~name:(Options.Common.package_name common)
             ~loc:Loc.none
             ~version:None
             ~conflicts:[]
@@ -404,7 +414,6 @@ module Component = struct
               [ { Package_dependency.name = Package.Name.of_string "ocaml"
                 ; constraint_ = None
                 }
-              ; { name = Package.Name.of_string "dune"; constraint_ = None }
               ]
         in
         let packages = Package.Name.Map.singleton (Package.name package) package in
@@ -500,8 +509,8 @@ module Component = struct
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
-          ; options = { public = None; inline_tests = options.inline_tests }
-          ; common
+          ; options = { inline_tests = options.inline_tests }
+          ; common = { common with public = None }
           }
       in
       let test_target =
@@ -517,7 +526,7 @@ module Component = struct
         let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
         bin
           { context = { context with dir = Path.relative dir "bin" }
-          ; options = { public = Some (Public_name.of_name_exn common.name) }
+          ; options = ()
           ; common = { common with libraries; name = Dune_lang.Atom.of_string "main" }
           }
       in
@@ -528,10 +537,7 @@ module Component = struct
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
-          ; options =
-              { public = Some (Public_name.of_name_exn common.name)
-              ; inline_tests = options.inline_tests
-              }
+          ; options = { inline_tests = options.inline_tests }
           ; common
           }
       in
@@ -549,13 +555,11 @@ module Component = struct
     let proj ({ common; options; _ } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
       let dir = Path.Source.root in
-      let name =
-        Package.Name.parse_string_exn (Loc.none, Dune_lang.Atom.to_string common.name)
-      in
       let proj_target =
         let package_files =
           match (pkg : Options.Project.Pkg.t) with
           | Opam ->
+            let name = Options.Common.package_name common in
             let opam_file = Path.source @@ Package_name.file name ~dir in
             [ File.make_text (Path.parent_exn opam_file) (Path.basename opam_file) "" ]
           | Esy -> [ File.make_text (Path.source dir) "package.json" "" ]

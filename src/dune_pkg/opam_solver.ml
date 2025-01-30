@@ -1,25 +1,6 @@
 open Import
 open Fiber.O
 
-module Monad : Opam_0install.S.Monad with type 'a t = 'a Fiber.t = struct
-  type 'a t = 'a Fiber.t
-
-  module O = Fiber.O
-
-  let return a = Fiber.return a
-
-  module Seq = struct
-    let parallel_map f t =
-      Fiber.parallel_map (List.of_seq t) ~f |> Fiber.map ~f:List.to_seq
-    ;;
-  end
-
-  module List = struct
-    let iter f x = Fiber.sequential_iter x ~f
-    let iter2 f x y = Fiber.sequential_iter (List.combine x y) ~f:(fun (x, y) -> f x y)
-  end
-end
-
 let add_self_to_filter_env package env variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> env variable
@@ -67,10 +48,7 @@ module Priority = struct
   ;;
 end
 
-module Context_for_dune = struct
-  type 'a monad = 'a Monad.t
-  type filter = OpamTypes.filter
-
+module Context = struct
   type rejection =
     | (* TODO proper error messages for packages skipped via avoid-version *)
       Unavailable
@@ -100,6 +78,9 @@ module Context_for_dune = struct
          packages for which we've printed a warning. *)
       available_cache : (OpamPackage.t, bool) Table.t
     ; constraints : OpamTypes.filtered_formula Package_name.Map.t
+    ; (* Number of versions of each package whose opam files were read from
+         disk while solving. Used to report performance statistics. *)
+      expanded_packages : (Package_name.t, int) Table.t
     }
 
   let create
@@ -127,6 +108,15 @@ module Context_for_dune = struct
         end)
         1
     in
+    let expanded_packages =
+      Table.create
+        (module struct
+          include Package_name
+
+          let to_dyn = Package_name.to_dyn
+        end)
+        1
+    in
     { repos
     ; version_preference
     ; local_packages
@@ -137,15 +127,17 @@ module Context_for_dune = struct
     ; candidates_cache
     ; available_cache
     ; constraints
+    ; expanded_packages
     }
   ;;
 
-  let pp_rejection f = function
-    | Unavailable -> Format.pp_print_string f "Availability condition not satisfied"
-    | Avoid_version -> Format.pp_print_string f "Package is excluded by avoid-version"
+  let pp_rejection = function
+    | Unavailable -> Pp.paragraph "Availability condition not satisfied"
+    | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
   ;;
 
-  let eval_to_bool (filter : filter) : (bool, [> `Not_a_bool of string ]) result =
+  let eval_to_bool (filter : OpamTypes.filter) : (bool, [> `Not_a_bool of string ]) result
+    =
     try Ok (OpamFilter.eval_to_bool ~default:false (Fun.const None) filter) with
     | Invalid_argument msg -> Error (`Not_a_bool msg)
   ;;
@@ -155,16 +147,14 @@ module Context_for_dune = struct
     Table.find_or_add t.available_cache package ~f:(fun (_ : OpamPackage.t) ->
       let available = OpamFile.OPAM.available opam in
       match
-        let available_vars_resolved =
-          OpamFilter.partial_eval
-            (add_self_to_filter_env
-               package
-               (Solver_stats.Updater.wrap_env
-                  t.stats_updater
-                  (Solver_env.to_env t.solver_env)))
-            available
-        in
-        eval_to_bool available_vars_resolved
+        OpamFilter.partial_eval
+          (add_self_to_filter_env
+             package
+             (Solver_stats.Updater.wrap_env
+                t.stats_updater
+                (Solver_env.to_env t.solver_env)))
+          available
+        |> eval_to_bool
       with
       | Ok available -> available
       | Error (`Not_a_bool msg) ->
@@ -203,6 +193,10 @@ module Context_for_dune = struct
 
   let repo_candidate t name =
     let+ resolved = Opam_repo.load_all_versions t.repos name in
+    Table.add_exn
+      t.expanded_packages
+      (Package_name.of_opam_package_name name)
+      (OpamPackage.Version.Map.cardinal resolved);
     let available =
       OpamPackage.Version.Map.values resolved
       |> List.map ~f:(fun p -> p, Priority.make (Resolved_package.opam_file p))
@@ -275,9 +269,1037 @@ module Context_for_dune = struct
       ~with_test:package_is_local
       filtered_formula
   ;;
+
+  let count_expanded_packages t = Table.fold t.expanded_packages ~init:0 ~f:( + )
 end
 
-module Solver = Opam_0install.Solver.Make (Monad) (Context_for_dune)
+module Solver = struct
+  open Pp.O
+
+  module Dep_kind = struct
+    type t =
+      | Ensure
+      | Prevent
+  end
+
+  (* Copyright (c) 2020 Thomas Leonard <talex5@gmail.com>
+
+     Permission to use, copy, modify, and distribute this software for any
+     purpose with or without fee is hereby granted, provided that the above
+     copyright notice and this permission notice appear in all copies.
+
+     THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+     WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+     MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+     ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+     WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+     ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  *)
+  module Input = struct
+    (* Note: [OpamFormula.neg] doesn't work in the [Empty] case, so we just
+       record whether to negate the result here. *)
+    module Restriction = struct
+      type t =
+        { kind : Dep_kind.t
+        ; expr : OpamFormula.version_formula
+        }
+
+      let string_of_version_formula =
+        let string_of_op =
+          let pos =
+            { OpamParserTypes.FullPos.filename = ""; start = 0, 0; stop = 0, 0 }
+          in
+          fun pelem -> OpamPrinter.FullPos.relop { pelem; pos }
+        in
+        OpamFormula.string_of_formula (fun (rel, v) ->
+          Printf.sprintf "%s %s" (string_of_op rel) (OpamPackage.Version.to_string v))
+      ;;
+
+      let to_string = function
+        | { kind = Prevent; expr = OpamFormula.Empty } -> "conflict with all versions"
+        | { kind = Prevent; expr } ->
+          Format.sprintf "not(%s)" (string_of_version_formula expr)
+        | { kind = Ensure; expr } -> string_of_version_formula expr
+      ;;
+    end
+
+    module Virtual_id = Id.Make ()
+
+    module Rank : sig
+      type t
+      type assign
+
+      val compare : t -> t -> Ordering.t
+      val bottom : t
+      val of_int : int -> t
+      val next : assign -> t
+      val assign : unit -> assign
+    end = struct
+      type t = int
+
+      let bottom = -1
+      let of_int x = x
+      let compare = Int.compare
+
+      type assign = int ref
+
+      let assign () = ref 0
+
+      let next t =
+        let res = !t in
+        incr t;
+        res
+      ;;
+    end
+
+    type role =
+      | Real of OpamPackage.Name.t
+      | Virtual of Virtual_id.t * impl list
+
+    and real_impl =
+      { pkg : OpamPackage.t
+      ; conflict_class : OpamPackage.Name.t list
+      ; requires : dependency list Lazy.t
+      }
+
+    and dependency =
+      { drole : role
+      ; importance : Dep_kind.t
+      ; restrictions : Restriction.t list
+      }
+
+    and impl =
+      | RealImpl of real_impl (* An implementation is usually an opam package *)
+      | VirtualImpl of Rank.t * dependency list (* (rank just for sorting) *)
+      | Reject of OpamPackage.t
+      | Dummy (* Used for diagnostics *)
+
+    let rec pp_version = function
+      | RealImpl impl ->
+        Pp.text (OpamPackage.Version.to_string (OpamPackage.version impl.pkg))
+      | Reject pkg -> Pp.text (OpamPackage.version_to_string pkg)
+      | VirtualImpl (_i, deps) ->
+        Pp.concat_map ~sep:(Pp.char '&') deps ~f:(fun d -> pp_role d.drole)
+      | Dummy -> Pp.text "(no version)"
+
+    and pp_impl = function
+      | RealImpl impl -> Pp.text (OpamPackage.to_string impl.pkg)
+      | Reject pkg -> Pp.text (OpamPackage.to_string pkg)
+      | VirtualImpl _ as x -> pp_version x
+      | Dummy -> Pp.text "(no solution found)"
+
+    and pp_role = function
+      | Real name -> Pp.text (OpamPackage.Name.to_string name)
+      | Virtual (_, impls) -> Pp.concat_map ~sep:(Pp.char '|') impls ~f:pp_impl
+    ;;
+
+    let pp_impl_long = pp_impl
+
+    module Role = struct
+      module T = struct
+        type t = role
+
+        let compare a b =
+          match a, b with
+          | Real a, Real b -> Ordering.of_int (OpamPackage.Name.compare a b)
+          | Virtual (a, _), Virtual (b, _) -> Virtual_id.compare a b
+          | Real _, Virtual _ -> Lt
+          | Virtual _, Real _ -> Gt
+        ;;
+
+        let to_dyn = Dyn.opaque
+      end
+
+      include T
+
+      let equal x y = Ordering.is_eq (compare x y)
+      let hash = Poly.hash
+
+      let user_restrictions t context =
+        match t with
+        | Virtual _ -> None
+        | Real role ->
+          Context.user_restrictions context role
+          |> Option.map ~f:(fun f ->
+            { Restriction.kind = Ensure; expr = OpamFormula.Atom f })
+      ;;
+
+      let pp = pp_role
+
+      let rejects role context =
+        match role with
+        | Virtual _ -> Fiber.return ([], [])
+        | Real role ->
+          let+ rejects =
+            Context.candidates context role
+            >>| List.filter_map ~f:(function
+              | _, Ok _ -> None
+              | version, Error reason ->
+                let pkg = OpamPackage.create role version in
+                Some (Reject pkg, reason))
+          in
+          let notes = [] in
+          rejects, notes
+      ;;
+
+      module Map = Map.Make (T)
+    end
+
+    module Impl = struct
+      type t = impl
+
+      let pp = pp_impl
+
+      let requires _ = function
+        | Dummy | Reject _ -> []
+        | VirtualImpl (_, deps) -> deps
+        | RealImpl impl -> Lazy.force impl.requires
+      ;;
+
+      let conflict_class = function
+        | RealImpl impl -> impl.conflict_class
+        | VirtualImpl _ -> []
+        | Dummy | Reject _ -> []
+      ;;
+
+      let version = function
+        | RealImpl impl -> Some impl.pkg
+        | Reject pkg -> Some pkg
+        | VirtualImpl _ -> None
+        | Dummy -> None
+      ;;
+
+      let compare_version a b =
+        match a, b with
+        | RealImpl a, RealImpl b -> Ordering.of_int (OpamPackage.compare a.pkg b.pkg)
+        | RealImpl _, _ -> Gt
+        | _, RealImpl _ -> Lt
+        | VirtualImpl (ia, _), VirtualImpl (ib, _) -> Rank.compare ia ib
+        | VirtualImpl _, _ -> Gt
+        | _, VirtualImpl _ -> Lt
+        | Reject a, Reject b -> Ordering.of_int (OpamPackage.compare a b)
+        | Reject _, _ -> Gt
+        | _, Reject _ -> Lt
+        | Dummy, Dummy -> Eq
+      ;;
+    end
+
+    let virtual_role impls =
+      let impls =
+        List.mapi impls ~f:(fun i ->
+            function
+            | VirtualImpl (_, x) -> VirtualImpl (Rank.of_int i, x)
+            | x -> x)
+      in
+      Virtual (Virtual_id.gen (), impls)
+    ;;
+
+    module Conflict_class = struct
+      type t = OpamPackage.Name.t
+
+      module Map = Map.Make (struct
+          type nonrec t = t
+
+          let compare x y = Ordering.of_int (OpamPackage.Name.compare x y)
+          let to_dyn = Dyn.opaque
+        end)
+    end
+
+    (* Opam uses conflicts, e.g.
+       conflicts if X {> 1} OR Y {< 1 OR > 2}
+     whereas 0install uses restricts, e.g.
+       restrict to X {<= 1} AND Y {>= 1 AND <= 2}
+
+     Warning: [OpamFormula.neg _ Empty = Empty], so does NOT reverse the result in this case.
+     For empty conflicts this is fine (don't conflict with anything, just like an empty depends
+     list). But for the version expressions inside, it's wrong: a conflict with no expression
+     conflicts with all versions and should restrict the choice to nothing, not to everything.
+     So, we just tag the formula as [Prevent] instead of negating it. *)
+    let prevent f =
+      OpamFormula.neg Fun.id f
+      |> OpamFormula.map (fun (a, expr) ->
+        OpamFormula.Atom (a, [ { Restriction.kind = Prevent; expr } ]))
+    ;;
+
+    let ensure =
+      OpamFormula.map (fun (name, vexpr) ->
+        let rlist =
+          match vexpr with
+          | OpamFormula.Empty -> []
+          | r -> [ { Restriction.kind = Ensure; expr = r } ]
+        in
+        OpamFormula.Atom (name, rlist))
+    ;;
+
+    (* Turn an opam dependency formula into a 0install list of dependencies. *)
+    let list_deps ~importance ~rank deps =
+      let rec aux (formula : _ OpamTypes.generic_formula) =
+        match formula with
+        | Empty -> []
+        | Atom (name, restrictions) -> [ { drole = Real name; restrictions; importance } ]
+        | Block x -> aux x
+        | And (x, y) -> aux x @ aux y
+        | Or _ as o ->
+          let impls = group_ors o in
+          let drole = virtual_role impls in
+          (* Essential because we must apply a restriction, even if its
+             components are only restrictions. *)
+          [ { drole; restrictions = []; importance = Ensure } ]
+      and group_ors = function
+        | Or (x, y) -> group_ors x @ group_ors y
+        | expr -> [ VirtualImpl (Rank.next rank, aux expr) ]
+      in
+      aux deps
+    ;;
+
+    (* Get all the candidates for a role. *)
+    let implementations role context =
+      match role with
+      | Virtual (_, impls) -> Fiber.return impls
+      | Real role ->
+        Context.candidates context role
+        >>| List.filter_map ~f:(function
+          | _, Error _rejection -> None
+          | version, Ok opam ->
+            let pkg = OpamPackage.create role version in
+            (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
+            let requires =
+              lazy
+                (let rank = Rank.assign () in
+                 let make_deps importance xform get =
+                   get opam
+                   |> Context.filter_deps context pkg
+                   |> xform
+                   |> list_deps ~importance ~rank
+                 in
+                 make_deps Ensure ensure OpamFile.OPAM.depends
+                 @ make_deps Prevent prevent OpamFile.OPAM.conflicts)
+            in
+            let conflict_class = OpamFile.OPAM.conflict_class opam in
+            Some (RealImpl { pkg; requires; conflict_class }))
+    ;;
+
+    let meets_restriction impl { Restriction.kind; expr } =
+      match impl with
+      | Dummy -> true
+      | VirtualImpl _ -> assert false (* Can't constrain version of a virtual impl! *)
+      | Reject _ -> false
+      | RealImpl impl ->
+        let result =
+          OpamFormula.check_version_formula expr (OpamPackage.version impl.pkg)
+        in
+        (match kind with
+         | Ensure -> result
+         | Prevent -> not result)
+    ;;
+  end
+
+  module Solver = struct
+    (* Copyright (C) 2013, Thomas Leonard
+     *See the README file for details, or visit http://0install.net.
+     *)
+    module S = Sat.Make (Input.Impl)
+
+    type decision_state =
+      (* The next candidate to try *)
+      | Undecided of S.lit
+      (* The dependencies to check next *)
+      | Selected of Input.dependency list
+      | Unselected
+
+    type selection =
+      { impl : Input.Impl.t (** The implementation chosen to fill the role *)
+      ; var : S.lit
+      }
+
+    module Candidates = struct
+      type t =
+        { role : Input.Role.t
+        ; clause : S.at_most_one_clause option
+        ; vars : selection list
+        }
+
+      let selected t =
+        let open Option.O in
+        let+ lit = t.clause >>= S.get_selected in
+        let impl = S.get_user_data_for_lit lit in
+        { var = lit; impl }
+      ;;
+
+      let state t =
+        match t.clause with
+        | None -> Unselected (* There were never any candidates *)
+        | Some clause ->
+          (match S.get_selected clause with
+           | Some lit ->
+             (* We've already chosen which <implementation> to use. Follow dependencies. *)
+             let impl = S.get_user_data_for_lit lit in
+             Selected (Input.Impl.requires t.role impl)
+           | None ->
+             (match S.get_best_undecided clause with
+              | Some lit -> Undecided lit
+              | None -> Unselected (* No remaining candidates, and none was chosen. *)))
+      ;;
+
+      (* Add the implementations of an interface to the implementation cache
+         (called the first time we visit it). *)
+      let make_impl_clause sat context ~dummy_impl role =
+        (* Insert dummy_impl (last) if we're trying to diagnose a problem. *)
+        let+ impls =
+          let+ impls = Input.implementations role context in
+          (match dummy_impl with
+           | None -> impls
+           | Some dummy_impl -> impls @ [ dummy_impl ])
+          |> List.map ~f:(fun impl ->
+            let var = S.add_variable sat impl in
+            { impl; var })
+        in
+        let clause =
+          let impl_clause =
+            match impls with
+            | [] -> None
+            | _ :: _ -> Some (S.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
+          in
+          { role; clause = impl_clause; vars = impls }
+        in
+        clause, impls
+      ;;
+    end
+
+    module Conflict_classes = struct
+      module Map = Input.Conflict_class.Map
+
+      type t =
+        { sat : S.t
+        ; mutable groups : S.lit list ref Map.t
+        }
+
+      let create sat = { sat; groups = Map.empty }
+
+      let var t name =
+        match Map.find t.groups name with
+        | Some v -> v
+        | None ->
+          let v = ref [] in
+          t.groups <- Map.set t.groups name v;
+          v
+      ;;
+
+      (* Add [impl] to its conflict groups, if any. *)
+      let process t impl_var impl =
+        Input.Impl.conflict_class impl
+        |> List.iter ~f:(fun name ->
+          let impls = var t name in
+          impls := impl_var :: !impls)
+      ;;
+
+      (* Call this at the end to add the final clause with all discovered groups.
+         [t] must not be used after this. *)
+      let seal t =
+        Map.iter t.groups ~f:(fun impls ->
+          match !impls with
+          | _ :: _ :: _ ->
+            let (_ : S.at_most_one_clause) = S.at_most_one t.sat !impls in
+            ()
+          | _ -> ())
+      ;;
+    end
+
+    (* Starting from [root_req], explore all the feeds and implementations we
+       might need, adding all of them to [sat_problem]. *)
+    let build_problem context root_req sat ~dummy_impl =
+      (* For each (iface, source) we have a list of implementations. *)
+      let impl_cache = ref Input.Role.Map.empty in
+      let conflict_classes = Conflict_classes.create sat in
+      let+ () =
+        let rec lookup_impl expand_deps role =
+          match Input.Role.Map.find !impl_cache role with
+          | Some s -> Fiber.return s
+          | None ->
+            let* clause, impls =
+              Candidates.make_impl_clause sat context ~dummy_impl role
+            in
+            impl_cache := Input.Role.Map.set !impl_cache role clause;
+            let+ () =
+              Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
+                Conflict_classes.process conflict_classes impl_var impl;
+                match expand_deps with
+                | `No_expand -> Fiber.return ()
+                | `Expand_and_collect_conflicts deferred ->
+                  Input.Impl.requires role impl
+                  |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
+                    match dep.importance with
+                    | Ensure -> process_dep expand_deps impl_var dep
+                    | Prevent ->
+                      (* Defer processing restricting deps until all essential
+                         deps have been processed for the entire problem.
+                         Restricting deps will be processed later without
+                         recurring into their dependencies. *)
+                      deferred := (impl_var, dep) :: !deferred;
+                      Fiber.return ()))
+            in
+            clause
+        and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
+          (* Process a dependency of [user_var]:
+             - find the candidate implementations to satisfy it
+             - take just those that satisfy any restrictions in the dependency
+             - ensure that we don't pick an incompatbile version if we select
+               [user_var]
+             - ensure that we do pick a compatible version if we select
+               [user_var] (for "essential" dependencies only) *)
+          let+ pass, fail =
+            let+ candidates = lookup_impl expand_deps dep.drole in
+            List.partition_map candidates.vars ~f:(fun { var; impl } ->
+              if List.for_all ~f:(Input.meets_restriction impl) dep.restrictions
+              then Left var
+              else Right var)
+          in
+          match dep.importance with
+          | Ensure ->
+            S.implies
+              sat
+              ~reason:"essential dep"
+              user_var
+              pass (* Must choose a suitable candidate *)
+          | Prevent ->
+            (* If [user_var] is selected, don't select an incompatible version of
+               the optional dependency. We don't need to do this explicitly in
+               the [essential] case, because we must select a good version and we can't
+               select two. *)
+            (try
+               let (_ : S.at_most_one_clause) = S.at_most_one sat (user_var :: fail) in
+               ()
+             with
+             | Invalid_argument reason ->
+               (* Explicitly conflicts with itself! *)
+               S.at_least_one sat [ S.neg user_var ] ~reason)
+        in
+        let conflicts = ref [] in
+        let* () =
+          (* This recursively builds the whole problem up. *)
+          let+ candidates =
+            lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
+          in
+          List.map candidates.vars ~f:(fun x -> x.var)
+          |> S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+        in
+        (* Now process any restricting deps. Due to the cache, only restricting
+           deps that aren't also an essential dep will be expanded. The solver will
+           not process any transitive dependencies here since the dependencies of
+           restricting dependencies are irrelevant to solving the dependency
+           problem. *)
+        List.rev !conflicts
+        |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
+          process_dep `No_expand impl_var dep)
+        (* All impl_candidates have now been added, so snapshot the cache. *)
+      in
+      let impl_clauses = !impl_cache in
+      Conflict_classes.seal conflict_classes;
+      impl_clauses
+    ;;
+
+    (** [do_solve model req] finds an implementation matching the given
+        requirements, plus any other implementations needed
+        to satisfy its dependencies.
+
+        @param closest_match
+          adds a lowest-ranked (but valid) implementation ([Input.dummy_impl]) to
+          every interface, so we can always select something. Useful for diagnostics.
+          Note: always try without [closest_match] first, or it may miss a valid solution.
+        @return None if the solve fails (only happens if [closest_match] is false). *)
+    let do_solve context ~closest_match root_req =
+      (* The basic plan is this:
+         1. Scan the root interface and all dependencies recursively, building up a SAT problem.
+         2. Solve the SAT problem. Whenever there are multiple options, try the most preferred one first.
+         3. Create the selections XML from the results.
+
+         All three involve recursively walking the tree in a similar way:
+         1) we follow every dependency of every implementation (order not important)
+         2) we follow every dependency of every selected implementation (better versions first)
+         3) we follow every dependency of every selected implementation
+      *)
+      let sat = S.create () in
+      let dummy_impl = if closest_match then Some Input.Dummy else None in
+      let+ impl_clauses = build_problem context root_req sat ~dummy_impl in
+      (* Run the solve *)
+      let decider () =
+        (* Walk the current solution, depth-first, looking for the first
+           undecided interface. Then try the most preferred implementation of
+           it that hasn't been ruled out. *)
+        let seen = Table.create (module Input.Role) 100 in
+        let rec find_undecided req =
+          if Table.mem seen req
+          then None (* Break cycles *)
+          else (
+            Table.set seen req true;
+            match Input.Role.Map.find_exn impl_clauses req |> Candidates.state with
+            | Unselected -> None
+            | Undecided lit -> Some lit
+            | Selected deps ->
+              (* We've already selected a candidate for this component. Now
+                 check its dependencies. *)
+              List.find_map deps ~f:(fun (dep : Input.dependency) ->
+                match dep.importance with
+                | Ensure -> find_undecided dep.drole
+                | Prevent ->
+                  (* Restrictions don't express that we do or don't want the
+                     dependency, so skip them here. If someone else needs this,
+                     we'll handle it when we get to them.
+                     If noone wants it, it will be set to unselected at the end. *)
+                  None))
+        in
+        find_undecided root_req
+      in
+      match S.run_solver sat decider with
+      | None -> None
+      | Some _solution ->
+        (* Build the results object *)
+        Some (Input.Role.Map.filter_map impl_clauses ~f:Candidates.selected)
+    ;;
+  end
+
+  module Diagnostics = struct
+    let format_restrictions r =
+      String.concat ~sep:", " (List.map ~f:Input.Restriction.to_string r)
+    ;;
+
+    module Note = struct
+      (** An item of information to display for a component. *)
+      type t =
+        | UserRequested of Input.Restriction.t
+        | Restricts of Input.Role.t * Input.Impl.t * Input.Restriction.t list
+        | Feed_problem of string
+
+      let pp = function
+        | UserRequested r -> Pp.paragraphf "User requested %s" (format_restrictions [ r ])
+        | Restricts (other_role, impl, r) ->
+          Pp.hovbox
+            ~indent:2
+            (Input.Role.pp other_role
+             ++ Pp.char ' '
+             ++ Input.pp_version impl
+             ++ Pp.text " requires "
+             ++ Pp.paragraph (format_restrictions r))
+        | Feed_problem msg -> Pp.text msg
+      ;;
+    end
+
+    (** Represents a single interface in the example (failed) selections produced by the solver.
+        It partitions the implementations into good and bad based (initially) on the split from the
+        impl_provider. As we explore the example selections, we further filter the candidates. *)
+    module Component = struct
+      type rejection_reason =
+        [ `Model_rejection of Context.rejection
+        | `FailsRestriction of Input.Restriction.t
+        | `DepFailsRestriction of Input.dependency * Input.Restriction.t
+        | `ClassConflict of Input.Role.t * Input.Conflict_class.t
+        | `ConflictsRole of Input.Role.t
+        | `DiagnosticsFailure of User_message.Style.t Pp.t
+        ]
+      (* Why a particular implementation was rejected. This could be because the model rejected it,
+         or because it conflicts with something else in the example (partial) solution. *)
+
+      type reject = Input.impl * rejection_reason
+
+      type t =
+        { role : Input.Role.t
+        ; diagnostics : User_message.Style.t Pp.t Lazy.t
+        ; selected_impl : Input.impl option
+        ; (* orig_good is all the implementations passed to the SAT solver (these are the
+             ones with a compatible OS, CPU, etc). They are sorted most desirable first. *)
+          orig_good : Input.impl list
+        ; orig_bad : (Input.impl * Context.rejection) list
+        ; mutable good : Input.impl list
+        ; mutable bad : (Input.impl * rejection_reason) list
+        ; mutable notes : Note.t list
+        }
+
+      (* Initialise a new component.
+         @param candidates is the result from the impl_provider.
+         @param selected_impl
+           is the selected implementation, or [None] if we chose [dummy_impl].
+         @param diagnostics can be used to produce diagnostics as a last resort. *)
+      let create
+        ~role
+        (candidates, orig_bad, feed_problems)
+        (diagnostics : _ Pp.t Lazy.t)
+        (selected_impl : Input.impl option)
+        =
+        let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
+        { role
+        ; orig_good = candidates
+        ; orig_bad
+        ; good = candidates
+        ; bad = List.map ~f:(fun (impl, reason) -> impl, `Model_rejection reason) orig_bad
+        ; notes
+        ; diagnostics
+        ; selected_impl
+        }
+      ;;
+
+      let note t note = t.notes <- note :: t.notes
+      let notes t = List.rev t.notes
+
+      (* Did rejecting [impl] make any difference?
+         If [t] selected a better version anyway then we don't need to report this rejection. *)
+      let affected_selection t impl =
+        match t.selected_impl with
+        | Some selected when Input.Impl.compare_version selected impl = Gt -> false
+        | _ -> true
+      ;;
+
+      (* Call [get_problem impl] on each good impl. If a problem is returned, move [impl] to [bad_impls].
+         If anything changes and [!note] is not None, report it and clear the pending note. *)
+      let filter_impls_ref ~note:n t get_problem =
+        let old_good = List.rev t.good in
+        t.good <- [];
+        List.iter old_good ~f:(fun impl ->
+          match get_problem impl with
+          | None -> t.good <- impl :: t.good
+          | Some problem ->
+            Option.iter !n ~f:(fun info ->
+              if affected_selection t impl
+              then (
+                note t info;
+                n := None));
+            t.bad <- (impl, problem) :: t.bad)
+      ;;
+
+      let filter_impls ?note t get_problem =
+        let note = ref note in
+        filter_impls_ref ~note t get_problem
+      ;;
+
+      (* Remove from [good_impls] anything that fails to meet these restrictions.
+         Add removed items to [bad_impls], along with the cause. *)
+      let apply_restrictions ~note t restrictions =
+        let note = ref (Some note) in
+        List.iter restrictions ~f:(fun r ->
+          filter_impls_ref ~note t (fun impl ->
+            if Input.meets_restriction impl r then None else Some (`FailsRestriction r)))
+      ;;
+
+      let apply_user_restriction t r =
+        note t (UserRequested r);
+        (* User restrictions should be applied before reaching the solver, but just in case: *)
+        filter_impls t (fun impl ->
+          if Input.meets_restriction impl r then None else Some (`FailsRestriction r));
+        (* Completely remove non-matching impls.
+           The user will only want to see the version they asked for. *)
+        let new_bad =
+          List.filter t.bad ~f:(fun (impl, _) ->
+            if Input.meets_restriction impl r then true else false)
+        in
+        if new_bad <> [] || t.good <> [] then t.bad <- new_bad
+      ;;
+
+      let reject_all t reason =
+        t.bad <- List.map ~f:(fun impl -> impl, reason) t.good @ t.bad;
+        t.good <- []
+      ;;
+
+      let selected_impl t = t.selected_impl
+
+      (* When something conflicts with itself then our usual trick of selecting
+         the main implementation and failing the dependency doesn't work, so
+         special-case that here. *)
+      let reject_self_conflicts t =
+        filter_impls t (fun impl ->
+          let deps = Input.Impl.requires t.role impl in
+          List.find_map deps ~f:(fun (dep : Input.dependency) ->
+            match Input.Role.compare dep.drole t.role with
+            | Lt | Gt -> None
+            | Eq ->
+              (* It depends on itself. *)
+              List.find_map dep.restrictions ~f:(fun r ->
+                if Input.meets_restriction impl r
+                then None
+                else Some (`DepFailsRestriction (dep, r)))))
+      ;;
+
+      let finalise t =
+        if t.selected_impl = None
+        then (
+          reject_self_conflicts t;
+          reject_all t (`DiagnosticsFailure (Lazy.force t.diagnostics)))
+      ;;
+
+      let pp_reject ((_impl, reason) : reject) =
+        match reason with
+        | `Model_rejection r -> Context.pp_rejection r
+        | `FailsRestriction r ->
+          Pp.paragraphf
+            "Incompatible with restriction: %s"
+            (Input.Restriction.to_string r)
+        | `DepFailsRestriction (dep, restriction) ->
+          Pp.hovbox
+            (Pp.text "Requires "
+             ++ Input.Role.pp dep.drole
+             ++ Pp.textf " %s" (format_restrictions [ restriction ]))
+        | `ClassConflict (other_role, cl) ->
+          Pp.hovbox
+            (Pp.textf "In same conflict class (%s) as " (OpamPackage.Name.to_string cl)
+             ++ Input.Role.pp other_role)
+        | `ConflictsRole other_role ->
+          Pp.hovbox (Pp.text "Conflicts with " ++ Input.Role.pp other_role)
+        | `DiagnosticsFailure msg ->
+          Pp.hovbox (Pp.text "Reason for rejection unknown: " ++ msg)
+      ;;
+
+      let show_rejections ~verbose rejected =
+        let by_version (a, _) (b, _) = Input.Impl.compare_version b a in
+        let rejected = List.sort ~compare:by_version rejected in
+        let rec aux i = function
+          | [] -> Pp.nop
+          | _ when i = 5 && not verbose -> Pp.cut ++ Pp.text "..."
+          | (impl, problem) :: xs ->
+            Pp.cut
+            ++ Pp.hovbox
+                 ~indent:2
+                 (Input.pp_impl_long impl ++ Pp.text ": " ++ pp_reject (impl, problem))
+            ++ aux (i + 1) xs
+        in
+        aux 0 rejected
+      ;;
+
+      let rejects t =
+        let summary =
+          if t.orig_good = []
+          then if t.orig_bad = [] then `No_candidates else `All_unusable
+          else `Conflicts
+        in
+        t.bad, summary
+      ;;
+
+      let pp_candidates ~verbose t =
+        if t.selected_impl = None
+        then
+          Pp.cut
+          ++
+          match rejects t with
+          | _, `No_candidates -> Pp.paragraph "No known implementations at all"
+          | bad, `All_unusable ->
+            Pp.vbox
+              ~indent:2
+              (Pp.paragraph "No usable implementations:" ++ show_rejections ~verbose bad)
+          | bad, `Conflicts ->
+            Pp.vbox
+              ~indent:2
+              (Pp.paragraph "Rejected candidates:" ++ show_rejections ~verbose bad)
+        else Pp.nop
+      ;;
+
+      let pp_notes t =
+        match notes t with
+        | [] -> Pp.nop
+        | notes -> Pp.cut ++ Pp.concat_map ~sep:Pp.cut notes ~f:Note.pp
+      ;;
+
+      let pp_outcome t =
+        match t.selected_impl with
+        | Some sel -> Input.pp_impl_long sel
+        | None -> Pp.text "(problem)"
+      ;;
+
+      (* Format a textual description of this component's report. *)
+      let pp ~verbose t =
+        Pp.vbox
+          ~indent:2
+          (Pp.hovbox (Input.pp_role t.role ++ Pp.text " -> " ++ pp_outcome t)
+           ++ pp_notes t
+           ++ pp_candidates ~verbose t)
+      ;;
+    end
+
+    (* Did any dependency of [impl] prevent it being selected?
+       This can only happen if a component conflicts with something more
+       important than itself (otherwise, we'd select something in [impl]'s
+       interface and complain about the dependency instead).
+
+       e.g. A depends on B and C. B and C both depend on D. C1 conflicts with
+       D1. The depth-first priority order means we give priority to {A1, B1,
+       D1}. Then we can't choose C1 because we prefer to keep D1. *)
+    let get_dependency_problem role (report : Component.t Input.Role.Map.t) impl =
+      Input.Impl.requires role impl
+      |> List.find_map ~f:(fun (dep : Input.dependency) ->
+        match Input.Role.Map.find report dep.drole with
+        | None -> None (* Not in the selections => can't be part of a conflict *)
+        | Some required_component ->
+          (match Component.selected_impl required_component with
+           | None -> None (* Dummy selection can't cause a conflict *)
+           | Some dep_impl ->
+             List.find_map dep.restrictions ~f:(fun r ->
+               if Input.meets_restriction dep_impl r
+               then None
+               else Some (`DepFailsRestriction (dep, r)))))
+    ;;
+
+    (** A selected component has [dep] as a dependency. Use this to explain why some implementations
+        of the required interface were rejected. *)
+    let examine_dep
+      requiring_role
+      requiring_impl
+      (report : Component.t Input.Role.Map.t)
+      (dep : Input.dependency)
+      =
+      match Input.Role.Map.find report dep.drole with
+      | None -> ()
+      | Some required_component ->
+        if dep.restrictions <> []
+        then
+          (* Remove implementations incompatible with the other selections *)
+          Component.apply_restrictions
+            required_component
+            dep.restrictions
+            ~note:(Restricts (requiring_role, requiring_impl, dep.restrictions))
+    ;;
+
+    (* Find all restrictions that are in play and affect this interface *)
+    let examine_selection report role component =
+      match Component.selected_impl component with
+      | Some our_impl ->
+        (* For each dependency of our selected impl, explain why it rejected
+           impls in the dependency's interface. *)
+        Input.Impl.requires role our_impl
+        |> List.iter ~f:(examine_dep role our_impl report)
+      | None ->
+        (* For each of our remaining unrejected impls, check whether a
+           dependency prevented its selection. *)
+        get_dependency_problem role report |> Component.filter_impls component
+    ;;
+
+    (* Check for user-supplied restrictions *)
+    let examine_extra_restrictions report context =
+      Input.Role.Map.iteri report ~f:(fun role component ->
+        Input.Role.user_restrictions role context
+        |> Option.iter ~f:(Component.apply_user_restriction component))
+    ;;
+
+    (** For each selected implementation with a conflict class, reject all candidates
+        with the same class. *)
+    let check_conflict_classes report =
+      let classes =
+        Input.Role.Map.foldi
+          report
+          ~init:Input.Conflict_class.Map.empty
+          ~f:(fun role component acc ->
+            match Component.selected_impl component with
+            | None -> acc
+            | Some impl ->
+              Input.Impl.conflict_class impl
+              |> List.fold_left ~init:acc ~f:(fun acc x ->
+                Input.Conflict_class.Map.set acc x role))
+      in
+      Input.Role.Map.iteri report ~f:(fun role component ->
+        Component.filter_impls component (fun impl ->
+          Input.Impl.conflict_class impl
+          |> List.find_map ~f:(fun cl ->
+            match Input.Conflict_class.Map.find classes cl with
+            | Some other_role
+              when not (Ordering.is_eq (Input.Role.compare role other_role)) ->
+              Some (`ClassConflict (other_role, cl))
+            | _ -> None)))
+    ;;
+
+    let of_result context impls =
+      let explain role =
+        match Input.Role.Map.find impls role with
+        | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.var
+        | None -> Pp.text "Role not used!"
+      in
+      let+ report =
+        let get_selected role (sel : Solver.selection) =
+          let diagnostics = lazy (explain role) in
+          let impl = if sel.impl = Input.Dummy then None else Some sel.impl in
+          (* CR rgrinberg: Are we recomputing things here? *)
+          let* impl_candidates = Input.implementations role context in
+          let+ rejects, feed_problems = Input.Role.rejects role context in
+          Component.create
+            ~role
+            (impl_candidates, rejects, feed_problems)
+            diagnostics
+            impl
+        in
+        Input.Role.Map.to_list impls
+        |> Fiber.parallel_map ~f:(fun (k, v) ->
+          let+ v = get_selected k v in
+          k, v)
+        |> Fiber.map ~f:Input.Role.Map.of_list_exn
+      in
+      examine_extra_restrictions report context;
+      check_conflict_classes report;
+      Input.Role.Map.iteri ~f:(examine_selection report) report;
+      Input.Role.Map.iteri ~f:(fun _ c -> Component.finalise c) report;
+      report
+    ;;
+  end
+
+  let solve context pkgs =
+    let req =
+      match pkgs with
+      | [ pkg ] -> Input.Real pkg
+      | pkgs ->
+        let impl : Input.Impl.t =
+          let depends =
+            List.map pkgs ~f:(fun name ->
+              { Input.drole = Real name; importance = Ensure; restrictions = [] })
+          in
+          VirtualImpl (Input.Rank.bottom, depends)
+        in
+        Input.virtual_role [ impl ]
+    in
+    Solver.do_solve context ~closest_match:false req
+    >>| function
+    | Some sels -> Ok sels
+    | None -> Error req
+  ;;
+
+  let pp_rolemap ~verbose reasons =
+    let good, bad, unknown =
+      Input.Role.Map.to_list reasons
+      |> List.partition_three ~f:(fun (role, component) ->
+        match Diagnostics.Component.selected_impl component with
+        | Some impl when Diagnostics.Component.notes component = [] -> `Left impl
+        | _ ->
+          (match Diagnostics.Component.rejects component with
+           | _, `No_candidates -> `Right role
+           | _, _ -> `Middle component))
+    in
+    let pp_bad = Diagnostics.Component.pp ~verbose in
+    let pp_unknown role = Pp.box (Input.Role.pp role) in
+    match unknown with
+    | [] ->
+      Pp.paragraph "Selected candidates: "
+      ++ Pp.hovbox (Pp.concat_map ~sep:Pp.space good ~f:Input.pp_impl)
+      ++ Pp.cut
+      ++ Pp.enumerate bad ~f:pp_bad
+    | _ ->
+      (* In case of unknown packages, no need to print the full diagnostic
+         list, the problem is simpler. *)
+      Pp.hovbox
+        (Pp.text "The following packages couldn't be found: "
+         ++ Pp.concat_map ~sep:Pp.space unknown ~f:pp_unknown)
+  ;;
+
+  let diagnostics_rolemap context req =
+    Solver.do_solve context req ~closest_match:true
+    >>| Option.value_exn
+    >>= Diagnostics.of_result context
+  ;;
+
+  let diagnostics ?(verbose = false) context req =
+    let+ diag = diagnostics_rolemap context req in
+    Pp.paragraph "Couldn't solve the package dependency formula."
+    ++ Pp.cut
+    ++ Pp.vbox (pp_rolemap ~verbose diag)
+  ;;
+
+  let packages_of_result sels =
+    Input.Role.Map.values sels
+    |> List.filter_map ~f:(fun (sel : Solver.selection) -> Input.Impl.version sel.impl)
+  ;;
+end
 
 let is_valid_global_variable_name = function
   | "root" -> false
@@ -398,8 +1420,9 @@ let opam_string_to_slang ~package ~loc opam_string =
    semantics.
 *)
 let filter_to_blang ~package ~loc filter =
-  let filter_to_slang = function
-    | OpamTypes.FString s -> opam_string_to_slang ~package ~loc s
+  let filter_to_slang (filter : OpamTypes.filter) =
+    match filter with
+    | FString s -> opam_string_to_slang ~package ~loc s
     | FIdent fident -> opam_fident_to_slang ~loc fident
     | other ->
       Code_error.raise
@@ -410,8 +1433,9 @@ let filter_to_blang ~package ~loc filter =
         ; "non-string filter", Dyn.string (OpamFilter.to_string other)
         ]
   in
-  let rec filter_to_blang = function
-    | OpamTypes.FBool true -> Blang.Ast.true_
+  let rec filter_to_blang (filter : OpamTypes.filter) =
+    match filter with
+    | FBool true -> Blang.Ast.true_
     | FBool false -> Blang.Ast.false_
     | (FString _ | FIdent _) as slangable -> Blang.Expr (filter_to_slang slangable)
     | FOp (lhs, op, rhs) ->
@@ -474,7 +1498,7 @@ let opam_commands_to_actions
     | `Skip -> None
     | `Filter filter ->
       let terms =
-        List.filter_map args ~f:(fun (simple_arg, filter) ->
+        List.filter_map args ~f:(fun ((simple_arg : OpamTypes.simple_arg), filter) ->
           let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
           match partial_eval_filter filter with
           | `Skip -> None
@@ -482,7 +1506,7 @@ let opam_commands_to_actions
             let slang =
               let slang =
                 match simple_arg with
-                | OpamTypes.CString s -> opam_string_to_slang ~package ~loc s
+                | CString s -> opam_string_to_slang ~package ~loc s
                 | CIdent ident -> opam_raw_fident_to_slang ~loc ident
               in
               Slang.simplify slang
@@ -513,17 +1537,8 @@ let opam_commands_to_actions
         Some action))
 ;;
 
-let opam_env_update_to_env_update ((var, env_op, value_string, _) : OpamTypes.env_update)
-  : String_with_vars.t Action.Env_update.t
-  =
-  { Action.Env_update.op =
-      (match (env_op : OpamParserTypes.env_update_op) with
-       | Eq -> Eq
-       | PlusEq -> PlusEq
-       | EqPlus -> EqPlus
-       | ColonEq -> ColonEq
-       | EqColon -> EqColon
-       | EqPlusEq -> EqPlusEq)
+let opam_env_update_to_env_update (var, env_op, value_string, _) : _ Action.Env_update.t =
+  { Action.Env_update.op = env_op
   ; var
   ; value = String_with_vars.make_text Loc.none value_string
   }
@@ -576,7 +1591,7 @@ let opam_package_to_lock_file_pkg
   version_by_package_name
   opam_package
   ~pinned_package_names
-  ~(candidates_cache : (Package_name.t, Context_for_dune.candidates) Table.t)
+  ~(candidates_cache : (Package_name.t, Context.candidates) Table.t)
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -739,8 +1754,8 @@ let solve_package_list packages ~context =
   >>= function
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
-    let+ diagnostics = Solver.diagnostics e in
-    Error (`Diagnostic_message (Pp.text diagnostics))
+    let+ diagnostics = Solver.diagnostics context e in
+    Error (`Diagnostic_message diagnostics)
   | Error (`Exn exn) ->
     (match exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
@@ -758,6 +1773,7 @@ module Solver_result = struct
     { lock_dir : Lock_dir.t
     ; files : File_entry.t Package_name.Map.Multi.t
     ; pinned_packages : Package_name.Set.t
+    ; num_expanded_packages : int
     }
 end
 
@@ -853,7 +1869,7 @@ let solve_lock_dir
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =
-    Context_for_dune.create
+    Context.create
       ~pinned_packages
       ~solver_env
       ~repos
@@ -944,14 +1960,14 @@ let solve_lock_dir
                       (Package_name.to_string name)
                       (Package_name.to_string dep_name)
                   ]));
-        let reachable =
-          reject_unreachable_packages
-            solver_env
-            ~dune_version:(Package_version.of_opam_package_version context.dune_version)
-            ~local_packages
-            ~pkgs_by_name
-        in
         let pkgs_by_name =
+          let reachable =
+            reject_unreachable_packages
+              solver_env
+              ~dune_version:(Package_version.of_opam_package_version context.dune_version)
+              ~local_packages
+              ~pkgs_by_name
+          in
           Package_name.Map.filteri pkgs_by_name ~f:(fun name _ ->
             Package_name.Set.mem reachable name)
         in
@@ -985,5 +2001,10 @@ let solve_lock_dir
       >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
       >>| Package_name.Map.of_list_exn
     in
-    Ok { Solver_result.lock_dir; files; pinned_packages = pinned_package_names }
+    Ok
+      { Solver_result.lock_dir
+      ; files
+      ; pinned_packages = pinned_package_names
+      ; num_expanded_packages = Context.count_expanded_packages context
+      }
 ;;

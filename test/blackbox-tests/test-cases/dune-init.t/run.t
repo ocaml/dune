@@ -357,7 +357,7 @@ In particular, the `dune-project` file has the expected content:
    (name new_exec_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
     ("add topics" "to describe" your project)))
   
@@ -384,8 +384,8 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
+    $dune {>= "3.18"}
     "ocaml"
-    $dune {>= "3.17"}
     "odoc" {with-doc}
   ]
   build: [
@@ -403,6 +403,7 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 We can build and run the resulting executable:
 
@@ -467,7 +468,7 @@ In particular, the `dune-project` file has the expected content:
    (name new_lib_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
     ("add topics" "to describe" your project)))
   
@@ -494,8 +495,8 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
+    "dune" {>= "3.18"}
     "ocaml"
-    "dune" {>= "3.17"}
     "odoc" {with-doc}
   ]
   build: [
@@ -513,6 +514,7 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 And we we can run the tests:
 

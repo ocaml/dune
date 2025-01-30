@@ -206,6 +206,8 @@ consists of two steps:
 * Running ``$ make opam-release`` to create the release tarball. Then publish it
   to GitHub and submit it to opam.
 
+.. _dune-release: https://github.com/tarides/dune-release
+
 Major & Feature Releases
 ------------------------
 
@@ -284,7 +286,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: dune
 
-   (lang dune 3.17)
+   (lang dune 3.18)
    (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass
@@ -342,7 +344,7 @@ Documentation
 User documentation lives in the ``./doc`` directory.
 
 In order to build the user documentation, you must install python-sphinx_,
-sphinx_rtd_theme_ and sphinx-copybutton_.
+sphinx-design_, sphinx-copybutton_, myst-parser_, and furo_.
 
 Build the documentation with
 
@@ -356,11 +358,15 @@ For automatically updated builds, you can install sphinx-autobuild_, and run
 
    $ make livedoc
 
+.. seealso::
+    ``doc/requirements.txt`` for an always up-to-date list of packages to install
+
 .. _python-sphinx: http://www.sphinx-doc.org/en/master/usage/installation.html
-.. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/stable/
-.. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _sphinx-design: https://sphinx-design.readthedocs.io/en/latest/index.html
 .. _sphinx-copybutton: https://sphinx-copybutton.readthedocs.io/en/latest/index.html
-.. _dune-release: https://github.com/ocamllabs/dune-release
+.. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _myst-parser: https://myst-parser.readthedocs.io/en/latest/
+.. _furo: https://sphinx-themes.org/sample-sites/furo/
 
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.

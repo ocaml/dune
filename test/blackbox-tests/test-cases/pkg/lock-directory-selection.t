@@ -40,7 +40,7 @@ Test that dune can dynamically select a lockdir with a cond statement
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > (context
   >  (default
   >   (lock_dir (cond
@@ -121,7 +121,7 @@ Test that cond statements can have a default value:
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > (context
   >  (default
   >   (lock_dir (cond

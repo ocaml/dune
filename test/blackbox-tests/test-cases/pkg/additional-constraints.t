@@ -9,7 +9,7 @@ It's possible to include additional packages or constraints in workspace files:
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ mkrepo

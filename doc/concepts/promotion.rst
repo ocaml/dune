@@ -1,6 +1,18 @@
 Diffing and Promotion
 =====================
 
+You can use Diffing and Promotion flows to compare the outputs of your build in
+the build directory with the source tree and/or copy the result of the rules
+into your source tree to store the changes.
+
+Diffing
+=======
+
+You can use the ``(diff <file1> <file2>)`` directive in a rule to compare
+its output with the version in your source tree. It is useful when
+your tests produce a file output and you want to make sure that output has
+not changed.
+
 .. TODO(diataxis)
    - howto: diffing and promotion
    - reference: diffing
@@ -44,7 +56,15 @@ print a diff when the files differ. ``cmp`` is meant to be used with
 binary files.
 
 Promotion
----------
+=========
+
+Promotion relates to copying the output of a Dune rule to your source tree.
+Common uses include updating rule output after a failed diff (e.g., from a
+test) or committing output to source control to cut down on dependencies 
+during packaging.
+
+Promoting Test or Rule Output After Diffing
+-------------------------------------------
 
 Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
 <file2>)`` fails because the two files are different, Dune allows
@@ -76,3 +96,14 @@ repository. You can use the following workflow to update your test:
 You can also use ``dune runtest --auto-promote``, which will
 automatically do the promotion.
 
+Automatically Promoting Rule Output Into the Source Tree
+--------------------------------------------------------
+
+Dune rules support a ``(mode promote)`` directive that will automatically
+copy their output into your source tree. This approach suits, for example, code
+documentation generation flows where output needs to be committed to source
+code control to enable easier browsing, or eliminate dependencies on a code 
+generation step during opam package installation.
+
+More information, including customising when the source is copied, can be found
+in :doc:`../reference/dune/rule`.

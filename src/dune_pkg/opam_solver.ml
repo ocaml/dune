@@ -1750,22 +1750,22 @@ let solve_package_list packages ~context =
          | Error [] -> assert false
          | Error (exn :: _) ->
            (* CR-rgrinberg: this needs to be handled right *)
-           Error (`Exn exn.exn))
+           Error (`Exn exn))
   >>= function
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
     let+ diagnostics = Solver.diagnostics context e in
     Error (`Diagnostic_message diagnostics)
   | Error (`Exn exn) ->
-    (match exn with
+    (match exn.exn with
      | OpamPp.(Bad_format _ | Bad_format_list _ | Bad_version _) as bad_format ->
        (* CR-rgrinberg: needs to include locations *)
        User_error.raise [ Pp.text (OpamPp.string_of_bad_format bad_format) ]
-     | User_error.E _ -> reraise exn
-     | unexpected_exn ->
+     | User_error.E _ -> reraise exn.exn
+     | _ ->
        Code_error.raise
          "Unexpected exception raised while solving dependencies"
-         [ "exception", Exn.to_dyn unexpected_exn ])
+         [ "exception", Exn_with_backtrace.to_dyn exn ])
 ;;
 
 module Solver_result = struct

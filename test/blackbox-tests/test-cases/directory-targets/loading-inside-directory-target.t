@@ -2,8 +2,7 @@ This test tries to load the rules in a directory that is a target of another
 rule.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.4)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat >dune <<EOF

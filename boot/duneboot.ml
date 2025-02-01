@@ -1616,6 +1616,8 @@ module Library = struct
         ; "-DBLAKE3_NO_AVX2"
         ; "-DBLAKE3_NO_AVX512"
         ]
+      else if String.equal "lmdb_stubs.c" fn
+      then [ "-I ." ]
       else []
     in
     { Source.flags = extra_flags @ c.flags; name = fn }

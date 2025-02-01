@@ -116,3 +116,8 @@ val fetch_object : t -> Remote.t -> Object.t -> At_rev.t option Fiber.t
 (** Fetch the file contents of the repository at the given revision into the
     store and return the repository view. *)
 val fetch_resolved : t -> Remote.t -> Object.resolved -> At_rev.t Fiber.t
+
+module Debug : sig
+  val files_and_submodules_cache : bool ref
+  val content_of_files_cache : bool ref
+end

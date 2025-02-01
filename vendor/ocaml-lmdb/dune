@@ -1,0 +1,8 @@
+(library
+ (name lmdb)
+ (synopsis "Bindings for LMDB, a fast in-file database with ACID transactions")
+ (libraries unix bigstringaf)
+ (foreign_stubs
+  (language c)
+  (flags :standard -I .)
+  (names lmdb_stubs mdb midl)))

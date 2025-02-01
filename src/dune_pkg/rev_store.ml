@@ -13,6 +13,7 @@ module Object : sig
   val compare : t -> t -> Ordering.t
   val hash : t -> int
   val to_hex : t -> string
+  val of_sha1_unsafe : string -> t
 
   type resolved = t
 
@@ -25,6 +26,7 @@ end = struct
   let equal (Sha1 x) (Sha1 y) = String.equal x y
   let to_dyn (Sha1 s) = Dyn.variant "Sha1" [ Dyn.string s ]
   let hash (Sha1 s) = String.hash s
+  let of_sha1_unsafe s = Sha1 s
 
   type resolved = t
 
@@ -125,6 +127,185 @@ module File = struct
 
   module C = Comparable.Make (T)
   module Set = C.Set
+end
+
+module Cache = struct
+  let rev_store_cache =
+    (* We only enable the cache on 64 bit platforms in order to have a sensible cache size. *)
+    let default = if Int.equal Sys.word_size 64 then `Enabled else `Disabled in
+    Dune_config.Config.make_toggle ~name:"rev_store_cache" ~default
+  ;;
+
+  let cache_dir =
+    lazy
+      (let path =
+         Path.L.relative
+           (Lazy.force Dune_util.xdg
+            |> Xdg.cache_dir
+            |> Path.Outside_build_dir.of_string
+            |> Path.outside_build_dir)
+           [ "dune"; "rev_store" ]
+       in
+       match Dune_config.Config.get rev_store_cache, Path.mkdir_p path with
+       | `Enabled, () -> Ok path
+       | `Disabled, () -> Error ()
+       | exception _ -> Error ())
+  ;;
+
+  (* Some operations on the cache may end up filling up the map. This helper
+     function allows us to give a more helpful error message in those cases. *)
+  let protect_map_full f =
+    match f () with
+    | x -> x
+    | exception Lmdb.Mdb.Map_full ->
+      let dir =
+        match Lazy.force cache_dir with
+        | Ok dir -> dir
+        | Error () ->
+          Code_error.raise "Map_full raised even though cache doesn't exist" []
+      in
+      User_error.raise
+        [ Pp.text "Revision store cache is full."; Pp.text "Please delete:"; Path.pp dir ]
+  ;;
+
+  let db =
+    lazy
+      (protect_map_full
+       @@ fun () ->
+       Lazy.force cache_dir
+       |> Result.map ~f:(fun path ->
+         Lmdb.Env.create
+           ~map_size:(Int64.to_int 5_000_000_000L) (* 5 GB *)
+           ~max_maps:2
+           ~flags:Lmdb.Env.Flags.(no_meta_sync)
+           Rw
+           (Path.to_string path)))
+  ;;
+
+  let () =
+    at_exit (fun () ->
+      if Lazy.is_val db
+      then (
+        match Lazy.force db with
+        | Error () -> ()
+        | Ok db -> Lmdb.Env.close db))
+  ;;
+
+  module Key = struct
+    module T = struct
+      type t = Object.t
+
+      let compare = Object.compare
+      let to_dyn = Object.to_dyn
+    end
+
+    include T
+    module C = Comparable.Make (T)
+    module Map = C.Map
+    module Set = C.Set
+
+    let conv =
+      Lmdb.Conv.make
+        ~serialise:(fun alloc obj ->
+          Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
+        ~deserialise:(fun bs ->
+          Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
+        ()
+    ;;
+  end
+
+  let map =
+    lazy
+      (protect_map_full
+       @@ fun () ->
+       Lazy.force db
+       |> Result.map ~f:(fun env ->
+         Lmdb.Map.create Nodup ~key:Key.conv ~value:Lmdb.Conv.string ~name:"objects" env)
+      )
+  ;;
+
+  module Files_and_submodules = struct
+    module Key = struct
+      module T = struct
+        type t = Object.t
+
+        let compare = Object.compare
+        let to_dyn = Object.to_dyn
+      end
+
+      include T
+      module C = Comparable.Make (T)
+
+      let conv =
+        Lmdb.Conv.make
+          ~serialise:(fun alloc obj ->
+            Object.to_hex obj |> Lmdb.Conv.(serialise string alloc))
+          ~deserialise:(fun bs ->
+            Lmdb.Conv.(deserialise string bs) |> Object.of_sha1_unsafe)
+          ()
+      ;;
+    end
+
+    module Value = struct
+      let conv : (File.Set.t * Commit.Set.t) Lmdb.Conv.t =
+        Lmdb.Conv.make
+          ~serialise:(fun alloc v ->
+            Marshal.to_string v [] |> Lmdb.Conv.(serialise string alloc))
+          ~deserialise:(fun bs -> Marshal.from_string Lmdb.Conv.(deserialise string bs) 0)
+          ()
+      ;;
+    end
+
+    let map =
+      lazy
+        (protect_map_full
+         @@ fun () ->
+         Lazy.force db
+         |> Result.map ~f:(fun env ->
+           Lmdb.Map.create Nodup ~key:Key.conv ~value:Value.conv ~name:"ls-tree" env))
+    ;;
+
+    let get key =
+      let open Option.O in
+      let* m = Lazy.force map |> Result.to_option in
+      match Lmdb.Map.get m key with
+      | exception Not_found -> None
+      | v -> Some v
+    ;;
+
+    let set key value =
+      match Lazy.force map with
+      | Error () -> ()
+      | Ok map -> protect_map_full @@ fun () -> Lmdb.Map.set map key value
+    ;;
+  end
+
+  let get keys =
+    match Lazy.force map with
+    | Error () -> Key.Map.empty
+    | Ok m ->
+      Key.Set.fold keys ~init:Key.Map.empty ~f:(fun key acc ->
+        match Lmdb.Map.get m key with
+        | exception Not_found -> acc
+        | v -> Key.Map.add_exn acc key v)
+  ;;
+
+  let set keys =
+    match Lazy.force map with
+    | Error () -> ()
+    | Ok map ->
+      (match Lazy.force db with
+       | Error () -> ()
+       | Ok env ->
+         protect_map_full
+         @@ fun () ->
+         (match
+            Lmdb.Txn.go Rw env (fun txn ->
+              Key.Map.iteri keys ~f:(fun key value -> Lmdb.Map.set ~txn map key value))
+          with
+          | Some () -> ()
+          | None -> ()))
+  ;;
 end
 
 module Remote = struct
@@ -665,18 +846,26 @@ module At_rev = struct
     ;;
   end
 
-  let files_and_submodules repo rev =
-    run_capture_zero_separated_lines
-      repo
-      [ "ls-tree"; "-z"; "--long"; "-r"; Object.to_hex rev ]
-    >>| Git_error.result_get_or_code_error
-    >>| List.fold_left
-          ~init:(File.Set.empty, Commit.Set.empty)
-          ~f:(fun (files, commits) line ->
-            match Entry.parse line with
-            | None -> files, commits
-            | Some (File file) -> File.Set.add files file, commits
-            | Some (Commit commit) -> files, Commit.Set.add commits commit)
+  let files_and_submodules repo key =
+    let cached = Cache.Files_and_submodules.get key in
+    match cached with
+    | Some v -> Fiber.return v
+    | None ->
+      let+ value =
+        run_capture_zero_separated_lines
+          repo
+          [ "ls-tree"; "-z"; "--long"; "-r"; Object.to_hex key ]
+        >>| Git_error.result_get_or_code_error
+        >>| List.fold_left
+              ~init:(File.Set.empty, Commit.Set.empty)
+              ~f:(fun (files, commits) line ->
+                match Entry.parse line with
+                | None -> files, commits
+                | Some (File file) -> File.Set.add files file, commits
+                | Some (Commit commit) -> files, Commit.Set.add commits commit)
+      in
+      Cache.Files_and_submodules.set key value;
+      value
   ;;
 
   let path_commit_map submodules =
@@ -965,6 +1154,28 @@ let content_of_files t files =
         loop acc (pos + size) files
     in
     List.rev (loop [] 0 files)
+;;
+
+let content_of_files t files =
+  let keys = List.map files ~f:(fun file -> File.hash file, file) in
+  let cached = Cache.get (Cache.Key.Set.of_list_map keys ~f:fst) in
+  let uncached =
+    List.filter_map keys ~f:(fun (key, file) ->
+      if Cache.Key.Map.mem cached key then None else Some (key, file))
+  in
+  content_of_files t (List.map ~f:snd uncached)
+  >>| function
+  | [] -> List.map keys ~f:(fun (key, _) -> Cache.Key.Map.find_exn cached key)
+  | to_write ->
+    let to_write =
+      List.combine (List.map ~f:fst uncached) to_write
+      |> Cache.Key.Map.of_list_reduce ~f:(fun x _y -> x)
+    in
+    Cache.set to_write;
+    List.map keys ~f:(fun (key, _) ->
+      match Cache.Key.Map.find cached key with
+      | Some s -> s
+      | None -> Cache.Key.Map.find_exn to_write key)
 ;;
 
 let get =

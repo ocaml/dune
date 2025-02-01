@@ -71,6 +71,8 @@ let local_libraries =
      None)
   ; ("src/fs", Some "Fs", false, None)
   ; ("src/dune_findlib", Some "Dune_findlib", false, None)
+  ; ("vendor/bigstringaf", Some "Bigstringaf", false, None)
+  ; ("vendor/ocaml-lmdb", Some "Lmdb", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
   ; ("vendor/opam/src/repository", None, false, None)
   ; ("vendor/opam/src/state", None, false, None)

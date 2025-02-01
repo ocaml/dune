@@ -299,6 +299,16 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "vendor/bigstringaf"
+    ; main_module_name = Some "Bigstringaf"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
+  ; { path = "vendor/ocaml-lmdb"
+    ; main_module_name = Some "Lmdb"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "src/dune_vcs"
     ; main_module_name = Some "Dune_vcs"
     ; include_subdirs_unqualified = false

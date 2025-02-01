@@ -100,10 +100,10 @@ let log_debug p =
 
 module Make (User : USER) = struct
   type clause =
-    | Union of t * lit array
+    | Union of lit array
     | At_most_one of at_most_one_clause
 
-  and at_most_one_clause = lit option ref * t * lit array
+  and at_most_one_clause = lit option ref * lit array
 
   (** The reason why a literal is set. *)
   and reason =
@@ -276,11 +276,11 @@ module Make (User : USER) = struct
   ;;
 
   let pp_clause = function
-    | Union (_, lits) ->
+    | Union lits ->
       Pp.text "<some: "
       ++ Pp.concat_map ~sep:(Pp.text ", ") ~f:name_lit (Array.to_list lits)
       ++ Pp.char '>'
-    | At_most_one (_, _, lits) ->
+    | At_most_one (_, lits) ->
       Pp.text "<at most one: " ++ pp_lits (Array.to_list lits) ++ Pp.char '>'
   ;;
 
@@ -382,8 +382,8 @@ module Make (User : USER) = struct
     (* Why are we causing a conflict?
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason = function
-      | Union (_, lits) -> List.map ~f:neg (Array.to_list lits)
-      | At_most_one (_, _, lits) ->
+      | Union lits -> List.map ~f:neg (Array.to_list lits)
+      | At_most_one (_, lits) ->
         (* If we caused a conflict, it's because two of our literals became true. *)
         (* Find two True literals *)
         let rec find_two found lits i =
@@ -405,7 +405,7 @@ module Make (User : USER) = struct
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason_for t lit =
       match t with
-      | Union (_, lits) ->
+      | Union lits ->
         (* Which literals caused [lit] to have its current value? *)
         assert (lit_equal lit lits.(0));
         (* The cause is everything except lit. *)
@@ -417,7 +417,7 @@ module Make (User : USER) = struct
             if lit_equal l lit then get_cause (i + 1) else neg l :: get_cause (i + 1))
         in
         get_cause 0
-      | At_most_one (_, _, lits) ->
+      | At_most_one (_, lits) ->
         (* Find the True literal. Any true literal other than [lit] would do. *)
         [ Array.find_opt lits ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
           |> Option.value_exn
@@ -426,9 +426,9 @@ module Make (User : USER) = struct
 
     (* [lit] is now [True]. Add any new deductions. @return false if there is a
        conflict. *)
-    let propagate t lit =
+    let propagate problem t lit =
       match t with
-      | Union (problem, lits) ->
+      | Union lits ->
         (* Try to infer new facts.
            We can do this only when all of our literals are False except one,
            which is undecided. That is,
@@ -477,7 +477,7 @@ module Make (User : USER) = struct
                 true)
           in
           find_not_false 2)
-      | At_most_one (current, problem, lits) ->
+      | At_most_one (current, lits) ->
         (* Re-add ourselves to the watch list.
            (we we won't get any more notifications unless we backtrack,
            in which case we'd need to get back on the list anyway) *)
@@ -540,7 +540,7 @@ module Make (User : USER) = struct
         (* Notify all watchers *)
         while not (Queue.is_empty old_watches) do
           let clause = Queue.pop_exn old_watches in
-          if not (Clause.propagate clause lit)
+          if not (Clause.propagate problem clause lit)
           then (
             (* Conflict *)
 
@@ -557,12 +557,12 @@ module Make (User : USER) = struct
     | ConflictingClause c -> Some c
   ;;
 
-  let get_best_undecided (_, _, lits) =
+  let get_best_undecided (_, lits) =
     (* if debug then log_debug "best_undecided: %s" (string_of_lits lits); *)
     Array.find_opt lits ~f:(fun l -> lit_value l = Undecided)
   ;;
 
-  let get_selected (current, _, _) = !current
+  let get_selected (current, _) = !current
 
   (* Returns the new clause if one was added, [AddedFact true] if none was added
      because this clause is trivially True, or [AddedFact false] if the clause
@@ -591,7 +591,7 @@ module Make (User : USER) = struct
             best_i := i)
         done;
         Array.swap lits 1 !best_i);
-      let clause = Union (problem, lits) in
+      let clause = Union lits in
       (* Watch the first two literals in the clause (both must be
          undefined at this point). *)
       let watch i = watch_lit (neg lits.(i)) clause in
@@ -640,7 +640,7 @@ module Make (User : USER) = struct
 
   let implies problem ?reason first rest = at_least_one problem ?reason (neg first :: rest)
 
-  let at_most_one problem lits =
+  let at_most_one lits : at_most_one_clause =
     assert (List.length lits > 0);
     (* if debug then log_debug "at_most_one(%s)" (string_of_lits lits); *)
 
@@ -663,7 +663,7 @@ module Make (User : USER) = struct
        If any are True then they're enqueued and we'll process them
        soon. *)
     let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
-    let clause = ref None, problem, lits in
+    let clause = ref None, lits in
     (let clause = At_most_one clause in
      Array.iter lits ~f:(fun l -> watch_lit l clause));
     clause

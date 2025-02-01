@@ -51,7 +51,7 @@ module Make (User : USER) : sig
 
   (** Add a clause preventing more than one literal in the list from being [True].
       @raise Invalid_argument if the list contains duplicates. *)
-  val at_most_one : t -> lit list -> at_most_one_clause
+  val at_most_one : lit list -> at_most_one_clause
 
   (** [run_solver decider] tries to solve the SAT problem. It simplifies it as much as possible first. When it
       has two paths which both appear possible, it calls [decider ()] to choose which to explore first. If this

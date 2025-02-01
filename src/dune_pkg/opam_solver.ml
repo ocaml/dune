@@ -659,7 +659,7 @@ module Solver = struct
           let impl_clause =
             match impls with
             | [] -> None
-            | _ :: _ -> Some (S.at_most_one sat (List.map impls ~f:(fun s -> s.var)))
+            | _ :: _ -> Some (S.at_most_one (List.map impls ~f:(fun s -> s.var)))
           in
           { role; clause = impl_clause; vars = impls }
         in
@@ -670,12 +670,9 @@ module Solver = struct
     module Conflict_classes = struct
       module Map = Input.Conflict_class.Map
 
-      type t =
-        { sat : S.t
-        ; mutable groups : S.lit list ref Map.t
-        }
+      type t = { mutable groups : S.lit list ref Map.t }
 
-      let create sat = { sat; groups = Map.empty }
+      let create () = { groups = Map.empty }
 
       let var t name =
         match Map.find t.groups name with
@@ -700,7 +697,7 @@ module Solver = struct
         Map.iter t.groups ~f:(fun impls ->
           match !impls with
           | _ :: _ :: _ ->
-            let (_ : S.at_most_one_clause) = S.at_most_one t.sat !impls in
+            let (_ : S.at_most_one_clause) = S.at_most_one !impls in
             ()
           | _ -> ())
       ;;
@@ -711,7 +708,7 @@ module Solver = struct
     let build_problem context root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = ref Input.Role.Map.empty in
-      let conflict_classes = Conflict_classes.create sat in
+      let conflict_classes = Conflict_classes.create () in
       let+ () =
         let rec lookup_impl expand_deps role =
           match Input.Role.Map.find !impl_cache role with
@@ -768,7 +765,7 @@ module Solver = struct
                the [essential] case, because we must select a good version and we can't
                select two. *)
             (try
-               let (_ : S.at_most_one_clause) = S.at_most_one sat (user_var :: fail) in
+               let (_ : S.at_most_one_clause) = S.at_most_one (user_var :: fail) in
                ()
              with
              | Invalid_argument reason ->

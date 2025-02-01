@@ -3,6 +3,7 @@
  (synopsis "[Internal] Dune's packaging support")
  (libraries
   stdune
+  lmdb
   fiber
   fiber_util
   chrome_trace

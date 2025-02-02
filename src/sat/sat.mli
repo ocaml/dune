@@ -28,11 +28,6 @@ module Make (User : USER) : sig
   (** Create a problem. *)
   val create : unit -> t
 
-  (** Get the assignment for this literal in the discovered solution. *)
-  type solution
-
-  val value : solution -> lit -> bool
-
   (** Indicate that the problem is unsolvable, before even starting. This is a convenience
       feature so that clients don't need a separate code path for problems they discover
       during setup vs problems discovered by the solver. *)
@@ -58,7 +53,7 @@ module Make (User : USER) : sig
       leads to a solution, it will be used. If not, the other path will be tried. If [decider] returns [None],
       we try setting the remaining variables to [False] ([decider] will not be called again unless we backtrack).
       Use this to tidy up at the end, when you no longer care about the order. *)
-  val run_solver : t -> (unit -> lit option) -> solution option
+  val run_solver : t -> (unit -> lit option) -> bool
 
   (** Return the first literal in the list whose value is [Undecided], or [None] if they're all decided.
       The decider function may find this useful. *)

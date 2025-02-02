@@ -838,8 +838,8 @@ module Solver = struct
         find_undecided root_req
       in
       match Sat.run_solver sat decider with
-      | None -> None
-      | Some _solution ->
+      | false -> None
+      | true ->
         (* Build the results object *)
         Some (Input.Role.Map.filter_map impl_clauses ~f:Candidates.selected)
     ;;

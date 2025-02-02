@@ -80,12 +80,6 @@ module Var_value = struct
     | False -> True
     | Undecided -> Undecided
   ;;
-
-  let assignment_exn = function
-    | True -> true
-    | False -> false
-    | Undecided -> assert false
-  ;;
 end
 
 type sign =
@@ -177,8 +171,6 @@ module Make (User : USER) = struct
     ;;
   end
 
-  type solution = unit
-
   let make_var id obj =
     { id
     ; value = Undecided
@@ -254,7 +246,6 @@ module Make (User : USER) = struct
     | Neg -> Var_value.invert var.value
   ;;
 
-  let value () lit = Var_value.assignment_exn (lit_value lit)
   let get_user_data_for_lit lit = (var_of_lit lit).obj
 
   let pp_lit_assignment l =
@@ -845,7 +836,7 @@ module Make (User : USER) = struct
     if problem.toplevel_conflict
     then (
       if debug then log_debug (Pp.text "FAIL: toplevel_conflict before starting solve!");
-      None)
+      false)
     else (
       try
         while true do
@@ -921,8 +912,7 @@ module Make (User : USER) = struct
         done;
         Code_error.raise "not reached" []
       with
-      | SolveDone true -> Some ()
-      | SolveDone false -> None)
+      | SolveDone t -> t)
   ;;
 
   let pp_lit_reason lit =

@@ -25,10 +25,11 @@ let loc_of_opam_pos
 ;;
 
 let read_from_string_exn ~contents path =
+  let filename = Path.to_absolute_filename path |> OpamFilename.raw in
+  let pos = OpamTypesBase.pos_file filename in
   try
-    OpamFile.OPAM.read_from_string
-      contents
-      ~filename:(Path.to_absolute_filename path |> OpamFilename.raw |> OpamFile.make)
+    let syntax = OpamFile.Syntax.of_string (OpamFile.make filename) contents in
+    OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
   with
   | OpamPp.Bad_version (_, message) ->
     User_error.raise

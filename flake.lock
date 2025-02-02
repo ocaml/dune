@@ -70,40 +70,6 @@
         "type": "github"
       }
     },
-    "merlin4_14": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1708603952,
-        "narHash": "sha256-UV/0OLSKJnUixytdn2yxsUvnAy6Q+1UnTRKBWKg3OLU=",
-        "owner": "ocaml",
-        "repo": "merlin",
-        "rev": "7017cc271403487756e412349f3718a8ba2e6a36",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ocaml",
-        "ref": "v4.14-414",
-        "repo": "merlin",
-        "type": "github"
-      }
-    },
-    "merlin5_1": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1708603966,
-        "narHash": "sha256-rXN+r5xDlF9uty0YPZO0pNy2E3T1yPCM2h82xZFGylw=",
-        "owner": "ocaml",
-        "repo": "merlin",
-        "rev": "7d7f525180f5979516e10c05d0cd49823edb5ef1",
-        "type": "github"
-      },
-      "original": {
-        "owner": "ocaml",
-        "ref": "v4.14-501",
-        "repo": "merlin",
-        "type": "github"
-      }
-    },
     "nix-filter": {
       "locked": {
         "lastModified": 1710156097,
@@ -158,40 +124,12 @@
         "type": "github"
       }
     },
-    "ocamllsp": {
-      "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
-        "merlin4_14": "merlin4_14",
-        "merlin5_1": "merlin5_1",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1715989198,
-        "narHash": "sha256-QGBm2M3X/AdRWNOXxUaEE7DnsgfNJKwdlxvp2Xgsx6k=",
-        "ref": "refs/heads/master",
-        "rev": "70574f6c302000e15756c8e2fb8f9fc9e1e6696b",
-        "revCount": 2101,
-        "submodules": true,
-        "type": "git",
-        "url": "https://github.com/ocaml/ocaml-lsp"
-      },
-      "original": {
-        "submodules": true,
-        "type": "git",
-        "url": "https://github.com/ocaml/ocaml-lsp"
-      }
-    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
         "melange": "melange",
         "nixpkgs": "nixpkgs",
-        "ocaml-overlays": "ocaml-overlays",
-        "ocamllsp": "ocamllsp"
+        "ocaml-overlays": "ocaml-overlays"
       }
     },
     "systems": {

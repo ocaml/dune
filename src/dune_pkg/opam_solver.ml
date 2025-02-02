@@ -588,31 +588,31 @@ module Solver = struct
     (* Copyright (C) 2013, Thomas Leonard
      *See the README file for details, or visit http://0install.net.
      *)
-    module S = Sat.Make (Input.Impl)
+    module Sat = Sat.Make (Input.Impl)
 
     type decision_state =
       (* The next candidate to try *)
-      | Undecided of S.lit
+      | Undecided of Sat.lit
       (* The dependencies to check next *)
       | Selected of Input.dependency list
       | Unselected
 
     type selection =
       { impl : Input.Impl.t (** The implementation chosen to fill the role *)
-      ; var : S.lit
+      ; var : Sat.lit
       }
 
     module Candidates = struct
       type t =
         { role : Input.Role.t
-        ; clause : S.at_most_one_clause option
+        ; clause : Sat.at_most_one_clause option
         ; vars : selection list
         }
 
       let selected t =
         let open Option.O in
-        let+ lit = t.clause >>= S.get_selected in
-        let impl = S.get_user_data_for_lit lit in
+        let+ lit = t.clause >>= Sat.get_selected in
+        let impl = Sat.get_user_data_for_lit lit in
         { var = lit; impl }
       ;;
 
@@ -620,13 +620,13 @@ module Solver = struct
         match t.clause with
         | None -> Unselected (* There were never any candidates *)
         | Some clause ->
-          (match S.get_selected clause with
+          (match Sat.get_selected clause with
            | Some lit ->
              (* We've already chosen which <implementation> to use. Follow dependencies. *)
-             let impl = S.get_user_data_for_lit lit in
+             let impl = Sat.get_user_data_for_lit lit in
              Selected (Input.Impl.requires t.role impl)
            | None ->
-             (match S.get_best_undecided clause with
+             (match Sat.get_best_undecided clause with
               | Some lit -> Undecided lit
               | None -> Unselected (* No remaining candidates, and none was chosen. *)))
       ;;
@@ -641,14 +641,14 @@ module Solver = struct
            | None -> impls
            | Some dummy_impl -> impls @ [ dummy_impl ])
           |> List.map ~f:(fun impl ->
-            let var = S.add_variable sat impl in
+            let var = Sat.add_variable sat impl in
             { impl; var })
         in
         let clause =
           let impl_clause =
             match impls with
             | [] -> None
-            | _ :: _ -> Some (S.at_most_one (List.map impls ~f:(fun s -> s.var)))
+            | _ :: _ -> Some (Sat.at_most_one (List.map impls ~f:(fun s -> s.var)))
           in
           { role; clause = impl_clause; vars = impls }
         in
@@ -657,7 +657,7 @@ module Solver = struct
     end
 
     module Conflict_classes = struct
-      type t = { mutable groups : S.lit list ref OpamPackage.Name.Map.t }
+      type t = { mutable groups : Sat.lit list ref OpamPackage.Name.Map.t }
 
       let create () = { groups = OpamPackage.Name.Map.empty }
 
@@ -685,7 +685,7 @@ module Solver = struct
           (fun _ impls ->
             match !impls with
             | _ :: _ :: _ ->
-              let (_ : S.at_most_one_clause) = S.at_most_one !impls in
+              let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
               ()
             | _ -> ())
           t.groups
@@ -743,7 +743,7 @@ module Solver = struct
           in
           match dep.importance with
           | Ensure ->
-            S.implies
+            Sat.implies
               sat
               ~reason:"essential dep"
               user_var
@@ -754,12 +754,12 @@ module Solver = struct
                the [essential] case, because we must select a good version and we can't
                select two. *)
             (try
-               let (_ : S.at_most_one_clause) = S.at_most_one (user_var :: fail) in
+               let (_ : Sat.at_most_one_clause) = Sat.at_most_one (user_var :: fail) in
                ()
              with
              | Invalid_argument reason ->
                (* Explicitly conflicts with itself! *)
-               S.at_least_one sat [ S.neg user_var ] ~reason)
+               Sat.at_least_one sat [ Sat.neg user_var ] ~reason)
         in
         let conflicts = ref [] in
         let* () =
@@ -768,7 +768,7 @@ module Solver = struct
             lookup_impl (`Expand_and_collect_conflicts conflicts) root_req
           in
           List.map candidates.vars ~f:(fun x -> x.var)
-          |> S.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
+          |> Sat.at_least_one sat ~reason:"need root" (* Must get what we came for! *)
         in
         (* Now process any restricting deps. Due to the cache, only restricting
            deps that aren't also an essential dep will be expanded. The solver will
@@ -805,7 +805,7 @@ module Solver = struct
          2) we follow every dependency of every selected implementation (better versions first)
          3) we follow every dependency of every selected implementation
       *)
-      let sat = S.create () in
+      let sat = Sat.create () in
       let dummy_impl = if closest_match then Some Input.Dummy else None in
       let+ impl_clauses = build_problem context root_req sat ~dummy_impl in
       (* Run the solve *)
@@ -837,7 +837,7 @@ module Solver = struct
         in
         find_undecided root_req
       in
-      match S.run_solver sat decider with
+      match Sat.run_solver sat decider with
       | None -> None
       | Some _solution ->
         (* Build the results object *)
@@ -1191,7 +1191,7 @@ module Solver = struct
     let of_result context impls =
       let explain role =
         match Input.Role.Map.find impls role with
-        | Some (sel : Solver.selection) -> Solver.S.explain_reason sel.var
+        | Some (sel : Solver.selection) -> Solver.Sat.explain_reason sel.var
         | None -> Pp.text "Role not used!"
       in
       let+ report =

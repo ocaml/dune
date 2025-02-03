@@ -121,17 +121,22 @@ struct
         ]
     in
     let update_cached_digests ~targets_and_digests =
-      Targets.Produced.iteri targets_and_digests ~f:(fun path digest ->
+      Targets.Produced.iter_files targets_and_digests ~f:(fun path digest ->
         Cached_digest.set (Path.Build.append_local targets_and_digests.root path) digest)
     in
     match
       Targets.Produced.map_with_errors
-        produced_targets
-        ~all_errors:false
-        ~f:(fun target () ->
+        ~f:(fun target ->
+          (* All of this monad boilerplate seems unnecessary since we don't care about errors... *)
           match Local.Target.create target with
           | Some t -> Ok t
           | None -> Error ())
+        ~d:(fun target ->
+          match Local.Target.create target with
+          | Some _ -> Ok ()
+          | None -> Error ())
+        ~all_errors:false
+        produced_targets
     with
     | Error _ -> Fiber.return None
     | Ok targets ->
@@ -190,10 +195,7 @@ struct
         ~remove_write_permissions:should_remove_write_permissions_on_generated_files
     in
     match
-      Targets.Produced.map_with_errors
-        produced_targets
-        ~all_errors:true
-        ~f:(fun target () -> compute_digest target)
+      Targets.Produced.map_with_errors ~f:compute_digest ~all_errors:true produced_targets
     with
     | Ok result -> result
     | Error errors ->

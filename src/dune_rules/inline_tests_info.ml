@@ -183,3 +183,9 @@ module Tests = struct
      purposes *)
   let encode _t = assert false
 end
+
+let inline_test_dirname lib_name =
+  sprintf ".%s.inline-tests" (Lib_name.Local.to_string lib_name)
+;;
+
+let inline_test_runner = "inline-test-runner"

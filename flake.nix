@@ -2,11 +2,6 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    ocamllsp = {
-      url = "git+https://github.com/ocaml/ocaml-lsp?submodules=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
     melange = {
       url = "github:melange-re/melange/refs/tags/4.0.0-51";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -22,7 +17,6 @@
     { self
     , flake-utils
     , nixpkgs
-    , ocamllsp
     , melange
     , ocaml-overlays
     }:
@@ -40,7 +34,6 @@
           });
         })
         melange.overlays.default
-        ocamllsp.overlays.default
         (self: super: {
           coq_8_16_native = super.coq_8_16.overrideAttrs (a: {
             configureFlags = [ "-native-compiler" "yes" ];

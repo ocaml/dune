@@ -4,7 +4,7 @@
    (DUNE_SANDBOX symlink))))
 
 (cram
- (deps %{bin:node} %{bin:melc})
+ (deps %{bin:node} %{bin:melc} %{bin:refmt})
  (alias runtest-melange))
 
 (cram

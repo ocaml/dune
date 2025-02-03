@@ -696,36 +696,38 @@ module Solver = struct
        might need, adding all of them to [sat_problem]. *)
     let build_problem context root_req sat ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
-      let impl_cache = ref Input.Role.Map.empty in
+      let impl_cache = Fiber_cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
       let+ () =
         let rec lookup_impl expand_deps role =
-          match Input.Role.Map.find !impl_cache role with
-          | Some s -> Fiber.return s
-          | None ->
-            let* clause, impls =
-              Candidates.make_impl_clause sat context ~dummy_impl role
-            in
-            impl_cache := Input.Role.Map.set !impl_cache role clause;
-            let+ () =
-              Fiber.sequential_iter impls ~f:(fun { var = impl_var; impl } ->
-                Conflict_classes.process conflict_classes impl_var impl;
-                match expand_deps with
-                | `No_expand -> Fiber.return ()
-                | `Expand_and_collect_conflicts deferred ->
-                  Input.Impl.requires role impl
-                  |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
-                    match dep.importance with
-                    | Ensure -> process_dep expand_deps impl_var dep
-                    | Prevent ->
-                      (* Defer processing restricting deps until all essential
-                         deps have been processed for the entire problem.
-                         Restricting deps will be processed later without
-                         recurring into their dependencies. *)
-                      deferred := (impl_var, dep) :: !deferred;
-                      Fiber.return ()))
-            in
-            clause
+          let impls = ref [] in
+          let* clause =
+            Fiber_cache.find_or_add impl_cache role ~f:(fun () ->
+              let+ clause, impls' =
+                Candidates.make_impl_clause sat context ~dummy_impl role
+              in
+              impls := impls';
+              clause)
+          in
+          let+ () =
+            Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
+              Conflict_classes.process conflict_classes impl_var impl;
+              match expand_deps with
+              | `No_expand -> Fiber.return ()
+              | `Expand_and_collect_conflicts deferred ->
+                Input.Impl.requires role impl
+                |> Fiber.parallel_iter ~f:(fun (dep : Input.dependency) ->
+                  match dep.importance with
+                  | Ensure -> process_dep expand_deps impl_var dep
+                  | Prevent ->
+                    (* Defer processing restricting deps until all essential
+                       deps have been processed for the entire problem.
+                       Restricting deps will be processed later without
+                       recurring into their dependencies. *)
+                    deferred := (impl_var, dep) :: !deferred;
+                    Fiber.return ()))
+          in
+          clause
         and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
           (* Process a dependency of [user_var]:
              - find the candidate implementations to satisfy it
@@ -776,13 +778,12 @@ module Solver = struct
            restricting dependencies are irrelevant to solving the dependency
            problem. *)
         List.rev !conflicts
-        |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
+        |> Fiber.parallel_iter ~f:(fun (impl_var, dep) ->
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
-      let impl_clauses = !impl_cache in
       Conflict_classes.seal conflict_classes;
-      impl_clauses
+      impl_cache
     ;;
 
     (** [do_solve model req] finds an implementation matching the given
@@ -807,7 +808,8 @@ module Solver = struct
       *)
       let sat = Sat.create () in
       let dummy_impl = if closest_match then Some Input.Dummy else None in
-      let+ impl_clauses = build_problem context root_req sat ~dummy_impl in
+      let* impl_clauses = build_problem context root_req sat ~dummy_impl in
+      let+ impl_clauses = Fiber_cache.to_table impl_clauses in
       (* Run the solve *)
       let decider () =
         (* Walk the current solution, depth-first, looking for the first
@@ -819,7 +821,7 @@ module Solver = struct
           then None (* Break cycles *)
           else (
             Table.set seen req true;
-            match Input.Role.Map.find_exn impl_clauses req |> Candidates.state with
+            match Table.find_exn impl_clauses req |> Candidates.state with
             | Unselected -> None
             | Undecided lit -> Some lit
             | Selected deps ->
@@ -841,7 +843,13 @@ module Solver = struct
       | false -> None
       | true ->
         (* Build the results object *)
-        Some (Input.Role.Map.filter_map impl_clauses ~f:Candidates.selected)
+        Some
+          (Table.to_list impl_clauses
+           |> List.filter_map ~f:(fun (key, v) ->
+             match Candidates.selected v with
+             | None -> None
+             | Some v -> Some (key, v))
+           |> Input.Role.Map.of_list_exn)
     ;;
   end
 

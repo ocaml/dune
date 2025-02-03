@@ -1,0 +1,5 @@
+(library
+ (name bigstringaf)
+ (foreign_stubs
+  (language c)
+  (names bigstringaf_stubs)))

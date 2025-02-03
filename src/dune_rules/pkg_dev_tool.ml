@@ -28,3 +28,5 @@ let exe_path t =
     (package_install_path t)
     ("target" :: exe_path_components_within_package t)
 ;;
+
+let bin_path () = Path.Build.relative (Lazy.force install_path_base) "bin"

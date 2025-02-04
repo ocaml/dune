@@ -30,6 +30,11 @@ Fields supported in ``<settings>`` are:
   variables to the environment where the build commands are executed and are
   used by ``dune exec``.
 
+- ``(env_vars (<var1> <val1>) .. (<varN> <valN>))`` is an alias for ``env-vars``.
+  It was introduced to stick to the underscore naming convention.
+
+  .. versionadded:: 3.18
+
 - ``(menhir_flags <flags>))`` specifies flags for Menhir stanzas. This flag was
   replaced by the ``(menhir)`` field (see below) starting in version 3.0 of the
   Menhir extension.

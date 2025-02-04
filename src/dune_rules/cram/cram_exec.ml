@@ -170,24 +170,31 @@ let line_number =
   seq [ set "123456789"; rep digit ]
 ;;
 
-let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
+let absolute_paths =
+  let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
+  Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
+;;
+
+let known_paths map =
+  List.filter_map
+    ~f:(function
+      | None | Some { Build_path_prefix_map.source = ""; _ } -> None
+      | Some pair -> Some (Re.str pair.source))
+    map
+  |> List.rev
+  (* prefer right-most paths in the list, as required by the build-path-prefix-map spec *)
+  |> Re.alt
+  |> Re.compile
+;;
+
+let rewrite_paths ~version ~build_path_prefix_map ~parent_script ~command_script s =
   match Build_path_prefix_map.decode_map build_path_prefix_map with
   | Error msg ->
     Code_error.raise
       "Cannot decode build prefix map"
       [ "build_path_prefix_map", String build_path_prefix_map; "msg", String msg ]
   | Ok map ->
-    let known_paths =
-      List.filter_map
-        ~f:(function
-          | None | Some { Build_path_prefix_map.source = ""; _ } -> None
-          | Some pair -> Some (Re.str pair.source))
-        map
-      |> List.rev
-      (* prefer right-most paths in the list, as required by the build-path-prefix-map spec *)
-      |> Re.alt
-      |> Re.compile
-    in
+    let known_paths = if version < (3, 18) then absolute_paths else known_paths map in
     let error_msg =
       let open Re in
       let command_script = str (Path.to_absolute_filename command_script) in
@@ -204,7 +211,7 @@ let rewrite_paths build_path_prefix_map ~parent_script ~command_script s =
     |> Re.replace_string error_msg ~by:""
 ;;
 
-let sanitize ~parent_script cram_to_output
+let sanitize ~version ~parent_script cram_to_output
   : (block_result * metadata_result * string) Cram_lexer.block list
   =
   List.map cram_to_output ~f:(fun (t : (block_result * _) Cram_lexer.block) ->
@@ -218,9 +225,10 @@ let sanitize ~parent_script cram_to_output
           Io.read_file ~binary:false block_result.output_file
           |> Ansi_color.strip
           |> rewrite_paths
+               ~version
                ~parent_script
                ~command_script:block_result.script
-               build_path_prefix_map
+               ~build_path_prefix_map
       in
       Command (block_result, metadata, output))
 ;;
@@ -307,7 +315,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script Fiber.t =
 
 let _display_with_bars s = List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
-let run ~env ~script lexbuf : string Fiber.t =
+let run ~version ~env ~script lexbuf : string Fiber.t =
   let temp_dir =
     let suffix =
       let basename = Path.basename script in
@@ -364,23 +372,31 @@ let run ~env ~script lexbuf : string Fiber.t =
       [ Path.to_string sh_script.script ]
   in
   let raw = read_and_attach_exit_codes sh_script in
-  let sanitized = sanitize ~parent_script:sh_script.script raw in
+  let sanitized = sanitize ~version ~parent_script:sh_script.script raw in
   compose_cram_output sanitized
 ;;
 
-let run ~env ~script = run_expect_test script ~f:(fun lexbuf -> run ~env ~script lexbuf)
+let run ~version ~env ~script =
+  run_expect_test script ~f:(fun lexbuf -> run ~version ~env ~script lexbuf)
+;;
 
 module Spec = struct
-  type ('path, _) t = 'path
+  type ('path, _) t = Dune_lang.Syntax.Version.t * 'path
 
   let name = "cram"
   let version = 2
-  let bimap path f _ = f path
+  let bimap (version, path) f _ = version, f path
   let is_useful_to ~memoize:_ = true
-  let encode script path _ : Sexp.t = List [ path script ]
-  let action script ~ectx:_ ~(eenv : Action.env) = run ~env:eenv.env ~script
+
+  let encode (version, script) path _ : Sexp.t =
+    List [ Dune_lang.Syntax.Version.encode version |> Dune_sexp.to_sexp; path script ]
+  ;;
+
+  let action (version, script) ~ectx:_ ~(eenv : Action.env) =
+    run ~version ~env:eenv.env ~script
+  ;;
 end
 
 module Action = Action_ext.Make (Spec)
 
-let action = Action.action
+let action ~version path = Action.action (version, path)

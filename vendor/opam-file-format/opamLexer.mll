@@ -150,6 +150,7 @@ rule token = parse
 
 and string b = parse
 | '\"'    { () }
+| [^ '\\' '"' '\r' '\n']+ as s { Buffer.add_string b s; string b lexbuf }
 | eol     { newline lexbuf ;
             Buffer.add_char b '\n'            ; string b lexbuf }
 | '\\'    { (match escape lexbuf with
@@ -161,6 +162,7 @@ and string b = parse
 
 and string_triple b = parse
 | "\"\"\""    { () }
+| [^ '\\' '"' '\r' '\n']+ as s { Buffer.add_string b s; string_triple b lexbuf }
 | eol     { newline lexbuf ;
             Buffer.add_char b '\n'            ; string_triple b lexbuf }
 | '\\'    { (match escape lexbuf with

@@ -30,7 +30,7 @@ assignees: ''
 ## Specifications
 
 - Version of `dune` (output of `dune --version`):
-- Version of `ocaml` (output of `ocamlc --version`)
+- Version of `ocaml` (output of `ocamlc --version`):
 - Operating system (distribution and version):
 
 <!-- remove the following if not used -->

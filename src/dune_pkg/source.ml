@@ -45,12 +45,14 @@ let fetch_and_hash_archive_cached (url_loc, url) =
   | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
   | Error message_opt ->
     let message =
-      match message_opt with
-      | Some message -> message
-      | None ->
-        User_message.make
-          [ Pp.textf "Failed to retrieve source archive from: %s" (OpamUrl.to_string url)
-          ]
+      Option.value
+        ~default:
+          (User_message.make
+             [ Pp.textf
+                 "Failed to retrieve source archive from: %s"
+                 (OpamUrl.to_string url)
+             ])
+        message_opt
     in
     User_warning.emit_message message;
     None

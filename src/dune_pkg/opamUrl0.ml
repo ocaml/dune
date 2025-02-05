@@ -31,8 +31,10 @@ let is_version_control t =
 let is_local t = String.equal t.transport "file"
 
 let is_tarball t =
-  let supported_compress_format = [ "tar.gz"; "tgz"; "tar.bz2"; "tbz" ] in
-  List.exists ~f:(fun suffix -> String.is_suffix ~suffix t.path) supported_compress_format
+  let supported_compress_format = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] in
+  List.exists
+    ~f:(fun suffix -> Filename.check_suffix t.path suffix)
+    supported_compress_format
 ;;
 
 let local_or_git_or_tar_only url loc =

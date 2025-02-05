@@ -179,12 +179,12 @@ Pin to an HTTP archive work
 
   $ mkdir _source/
   $ cat > _source/bar.opam << EOF
-  > opam-version: "2-0"
+  > opam-version: "2.0"
   > EOF
-  $ tar -czf tarball.tgz -C _source bar.opam
-  $ echo tarball.tgz > fake-curls
+  $ tar cf tarball.tar -C _source bar.opam
+  $ echo tarball.tar > fake-curls
   $ PORT=1
-  $ runtest "http://0.0.0.0:$PORT/tarball.tgz"
+  $ runtest "http://0.0.0.0:$PORT/tarball.tar"
   Solution for dune.lock:
   - bar.1.0.0
   (version 1.0.0)

@@ -29,14 +29,14 @@ let of_opam_url loc url =
     >>= (function
      | Error message_opt ->
        let message =
-         match message_opt with
-         | Some message -> message
-         | None ->
-           User_message.make
-             [ Pp.textf
-                 "Failed to retrieve source archive from: %s"
-                 (OpamUrl.to_string url)
-             ]
+         Option.value
+           ~default:
+             (User_message.make
+                [ Pp.textf
+                    "Failed to retrieve source archive from: %s"
+                    (OpamUrl.to_string url)
+                ])
+           message_opt
        in
        raise (User_error.E message)
      | Ok output ->

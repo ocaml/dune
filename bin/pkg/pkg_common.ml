@@ -94,7 +94,7 @@ let get_repos repos ~repositories =
        | `Tar ->
          User_error.raise
            ~loc
-           [ Pp.textf "Repositories store in tarball(%s) are currently unsupported"
+           [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"
              @@ OpamUrl.to_string opam_url
            ]))
 ;;

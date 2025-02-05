@@ -185,7 +185,8 @@ Pin to an HTTP archive work
   $ echo tarball.tgz > fake-curls
   $ PORT=1
   $ runtest "http://0.0.0.0:$PORT/tarball.tgz"
-  File "foo.opam", line 1, characters 0-0:
-  Error: Could not determine location of repository http://0.0.0.0/tarball.tgz
-  Hint: Specify either a file path or git repo via SSH/HTTPS
-  [1]
+  Solution for dune.lock:
+  - bar.1.0.0
+  (version 1.0.0)
+  (dev)
+  (source (fetch (url http://0.0.0.0:1/tarball.tgz) (checksum md5=ecfb12cd56789e48aaa4eef289c85c40))) (dev) 

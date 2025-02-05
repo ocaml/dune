@@ -22,8 +22,7 @@ The solver should say no solution rather than just ignoring the conflict.
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 x.dev
   - foo -> (problem)
-      x dev requires conflict with all versions
-      Rejected candidates:
-        foo.0.0.1: Incompatible with restriction: conflict with all versions
+      No usable implementations:
+        foo.0.0.1: Package does not satisfy constraints of local package x
   [1]
 

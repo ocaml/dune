@@ -7,8 +7,4 @@ run the executable that tests the library through the cstubs.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./example.exe
-  File "dune", line 7, characters 8-24:
-  7 |   (deps (:foo_h "foo.h") (:bar_h bar.h) baz.h)
-              ^^^^^^^^^^^^^^^^
-  Error: Unexpected list
-  [1]
+  4

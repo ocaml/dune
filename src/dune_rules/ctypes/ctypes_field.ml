@@ -167,7 +167,7 @@ let decode =
      and+ headers = field_o "headers" Headers.decode
      and+ generated_types = field_o "generated_types" Module_name.decode
      and+ generated_entry_point = field "generated_entry_point" Module_name.decode
-     and+ deps = field_o "deps" (repeat Dep_conf.decode)
+     and+ deps = field_o "deps" (Bindings.decode Dep_conf.decode)
      and+ version = Syntax.get_exn syntax in
      let external_library_name = External_lib_name.of_string external_library_name in
      (match
@@ -193,7 +193,7 @@ let decode =
      ; generated_types =
          Option.value generated_types ~default:(Module_name.of_string "Types_generated")
      ; generated_entry_point
-     ; deps = Option.value ~default:[] deps
+     ; deps = Option.value ~default:[] (Option.map ~f:Bindings.to_list deps)
      ; version
      })
 ;;

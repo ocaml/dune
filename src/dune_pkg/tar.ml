@@ -46,3 +46,14 @@ let extract ~archive ~target =
     Path.rename target_in_temp target;
     Ok ()
 ;;
+
+let load_or_untar ~target ~archive =
+  match Path.exists target with
+  | true -> Fiber.return @@ target
+  | false ->
+    extract ~archive ~target
+    >>| (function
+     | Error () ->
+       User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]
+     | Ok () -> target)
+;;

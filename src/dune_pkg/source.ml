@@ -31,27 +31,29 @@ let to_dyn { url = _loc, url; checksum } =
     ]
 ;;
 
-let fetch_and_hash_archive_cached =
+let fetch_archive_cached =
   let cache = Single_run_file_cache.create () in
   fun (url_loc, url) ->
-    let open Fiber.O in
     Single_run_file_cache.with_ cache ~key:(OpamUrl.to_string url) ~f:(fun target ->
       Fetch.fetch_without_checksum ~unpack:false ~target ~url:(url_loc, url))
-    >>| function
-    | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
-    | Error message_opt ->
-      let message =
-        match message_opt with
-        | Some message -> message
-        | None ->
-          User_message.make
-            [ Pp.textf
-                "Failed to retrieve source archive from: %s"
-                (OpamUrl.to_string url)
-            ]
-      in
-      User_warning.emit_message message;
-      None
+;;
+
+let fetch_and_hash_archive_cached (url_loc, url) =
+  let open Fiber.O in
+  fetch_archive_cached (url_loc, url)
+  >>| function
+  | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
+  | Error message_opt ->
+    let message =
+      match message_opt with
+      | Some message -> message
+      | None ->
+        User_message.make
+          [ Pp.textf "Failed to retrieve source archive from: %s" (OpamUrl.to_string url)
+          ]
+    in
+    User_warning.emit_message message;
+    None
 ;;
 
 let compute_missing_checksum

@@ -11,7 +11,7 @@ let backend t = t
 
 let of_opam_url loc url =
   let* () = Fiber.return () in
-  match OpamUrl.local_or_git_only url loc with
+  match OpamUrl.local_or_git_or_tar_only url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
     let+ rev =
@@ -23,6 +23,29 @@ let of_opam_url loc url =
       >>| User_error.ok_exn
     in
     Git rev
+  | `Tar ->
+    let dir = Path.Build.(L.relative root [ "_fetch"; "url" ]) |> Path.build in
+    Source.fetch_archive_cached (loc, url)
+    >>= (function
+     | Error message_opt ->
+       let message =
+         match message_opt with
+         | Some message -> message
+         | None ->
+           User_message.make
+             [ Pp.textf
+                 "Failed to retrieve source archive from: %s"
+                 (OpamUrl.to_string url)
+             ]
+       in
+       raise (User_error.E message)
+     | Ok output ->
+       let target =
+         let file_digest = Digest.file (Path.to_string output) |> Digest.to_hex in
+         Path.relative dir file_digest
+       in
+       let+ path = Tar.load_or_untar ~target ~archive:output in
+       Path path)
 ;;
 
 let read t file =

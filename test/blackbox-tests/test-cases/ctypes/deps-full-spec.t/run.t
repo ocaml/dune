@@ -7,4 +7,8 @@ run the executable that tests the library through the cstubs.
 
   $ LIBEX=$(realpath "$PWD/../libexample")
   $ DYLD_LIBRARY_PATH="$LIBEX" LD_LIBRARY_PATH="$LIBEX" PKG_CONFIG_PATH="$LIBEX/pkgconfig" PKG_CONFIG_ARGN="--define-prefix" dune exec ./example.exe
-  4
+  File "dune", line 14, characters 38-46:
+  14 |     "#include <example.h>\n#include \"%{foo_h}\"\n#include \"%{bar_h}\"\n#include \"baz.h\""))
+                                             ^^^^^^^^
+  Error: Unknown variable %{foo_h}
+  [1]

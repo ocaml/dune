@@ -1,11 +1,17 @@
 (executable
  (name example)
- (flags (:standard -w -9-27))
+ (flags
+  (:standard -w -9-27))
  (ctypes
   (external_library_name libexample)
   (build_flags_resolver pkg_config)
-  (deps (:foo_h "foo.h") (:bar_h bar.h) baz.h)
-  (headers (include "example.h"))
+  (deps
+   (:foo_h "foo.h")
+   (:bar_h bar.h)
+   baz.h)
+  (headers
+   (preamble
+    "#include <example.h>\n#include \"%{foo_h}\"\n#include \"%{bar_h}\"\n#include \"baz.h\""))
   (type_description
    (instance Types)
    (functor Type_description))

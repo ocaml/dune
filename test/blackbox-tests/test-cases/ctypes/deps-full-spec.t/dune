@@ -11,7 +11,7 @@
    baz.h)
   (headers
    (preamble
-    "#include <example.h>\n#include \"%{foo_h}\"\n#include \"%{bar_h}\"\n#include \"baz.h\""))
+    "#include <example.h>\n#include \"%{foo_h}\"\n#include \"%{bar_h}\"\n#include \"baz.h\"\n#include \"%{dep:qux.h}\""))
   (type_description
    (instance Types)
    (functor Type_description))

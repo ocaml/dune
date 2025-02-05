@@ -48,14 +48,12 @@ let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
 let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   match
-    Local_package.(
-      for_solver local_package
-      |> (fun x -> x.dependencies)
-      |> Dependency_formula.to_filtered_formula)
+    (Local_package.for_solver local_package).dependencies
+    |> Dependency_formula.to_filtered_formula
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
-         (Solver_env.to_env t.solver_env)
-         t.version_by_package_name
+         ~env:(Solver_env.to_env t.solver_env)
+         ~packages:t.version_by_package_name
   with
   | Ok { regular; post = _ } -> regular
   | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->

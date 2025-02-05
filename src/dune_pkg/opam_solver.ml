@@ -148,11 +148,9 @@ module Context = struct
       let available = OpamFile.OPAM.available opam in
       match
         OpamFilter.partial_eval
-          (add_self_to_filter_env
-             package
-             (Solver_stats.Updater.wrap_env
-                t.stats_updater
-                (Solver_env.to_env t.solver_env)))
+          (Solver_env.to_env t.solver_env
+           |> Solver_stats.Updater.wrap_env t.stats_updater
+           |> add_self_to_filter_env package)
           available
         |> eval_to_bool
       with
@@ -244,7 +242,6 @@ module Context = struct
   ;;
 
   let filter_deps t package filtered_formula =
-    let name = OpamPackage.name package |> Package_name.of_opam_package_name in
     (* Add additional constraints to the formula. This works in two steps.
        First identify all the additional constraints applied to packages which
        appear in the current package's dependency formula. Then each additional
@@ -252,8 +249,9 @@ module Context = struct
     let filtered_formula =
       OpamFormula.fold_left
         (fun additional_formulae (pkg, _) ->
-          let name = Package_name.of_opam_package_name pkg in
-          match Package_name.Map.find t.constraints name with
+          match
+            Package_name.of_opam_package_name pkg |> Package_name.Map.find t.constraints
+          with
           | None -> additional_formulae
           | Some additional -> additional :: additional_formulae)
         []
@@ -261,13 +259,17 @@ module Context = struct
       |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
         OpamFormula.And (acc, additional))
     in
-    let package_is_local = Package_name.Map.mem t.local_packages name in
-    Resolve_opam_formula.apply_filter
-      (add_self_to_filter_env
-         package
-         (Solver_stats.Updater.wrap_env t.stats_updater (Solver_env.to_env t.solver_env)))
-      ~with_test:package_is_local
-      filtered_formula
+    let package_is_local =
+      OpamPackage.name package
+      |> Package_name.of_opam_package_name
+      |> Package_name.Map.mem t.local_packages
+    in
+    Solver_env.to_env t.solver_env
+    |> Solver_stats.Updater.wrap_env t.stats_updater
+    |> add_self_to_filter_env package
+    |> Resolve_opam_formula.apply_filter
+         ~with_test:package_is_local
+         ~formula:filtered_formula
   ;;
 
   let count_expanded_packages t = Table.fold t.expanded_packages ~init:0 ~f:( + )
@@ -701,13 +703,13 @@ module Solver = struct
       let+ () =
         let rec lookup_impl expand_deps role =
           let impls = ref [] in
-          let* clause =
+          let* candidates =
             Fiber_cache.find_or_add impl_cache role ~f:(fun () ->
-              let+ clause, impls' =
+              let+ candidates, impls' =
                 Candidates.make_impl_clause sat context ~dummy_impl role
               in
               impls := impls';
-              clause)
+              candidates)
           in
           let+ () =
             Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
@@ -727,7 +729,7 @@ module Solver = struct
                     deferred := (impl_var, dep) :: !deferred;
                     Fiber.return ()))
           in
-          clause
+          candidates
         and process_dep expand_deps user_var (dep : Input.dependency) : unit Fiber.t =
           (* Process a dependency of [user_var]:
              - find the candidate implementations to satisfy it
@@ -807,8 +809,10 @@ module Solver = struct
          3) we follow every dependency of every selected implementation
       *)
       let sat = Sat.create () in
-      let dummy_impl = if closest_match then Some Input.Dummy else None in
-      let* impl_clauses = build_problem context root_req sat ~dummy_impl in
+      let* impl_clauses =
+        let dummy_impl = if closest_match then Some Input.Dummy else None in
+        build_problem context root_req sat ~dummy_impl
+      in
       let+ impl_clauses = Fiber_cache.to_table impl_clauses in
       (* Run the solve *)
       let decider () =
@@ -846,9 +850,7 @@ module Solver = struct
         Some
           (Table.to_list impl_clauses
            |> List.filter_map ~f:(fun (key, v) ->
-             match Candidates.selected v with
-             | None -> None
-             | Some v -> Some (key, v))
+             Candidates.selected v |> Option.map ~f:(fun v -> key, v))
            |> Input.Role.Map.of_list_exn)
     ;;
   end
@@ -1634,8 +1636,8 @@ let opam_package_to_lock_file_pkg
     let resolve what =
       Resolve_opam_formula.filtered_formula_to_package_names
         ~with_test:false
-        (add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
-        version_by_package_name
+        ~packages:version_by_package_name
+        ~env:(add_self_to_filter_env opam_package (Solver_env.to_env solver_env))
         what
     in
     let depends =
@@ -1802,9 +1804,7 @@ let reject_unreachable_packages =
             "package is both local and returned by solver"
             [ "name", Package_name.to_dyn name ]
         | Some (lock_dir_pkg : Lock_dir.Pkg.t), None -> Some lock_dir_pkg.info.version
-        | None, Some _pkg ->
-          let version = Package_version.of_string "dev" in
-          Some version)
+        | None, Some _pkg -> Some Package_version.dev)
     in
     let pkgs_by_name =
       Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
@@ -1816,21 +1816,24 @@ let reject_unreachable_packages =
             [ "name", Package_name.to_dyn name ]
         | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
         | None, Some (pkg : Local_package.For_solver.t) ->
-          let formula = Dependency_formula.to_filtered_formula pkg.dependencies in
-          (* Use `dev` because at this point we don't have any version *)
-          let opam_package =
-            OpamPackage.of_string (sprintf "%s.dev" (Package_name.to_string pkg.name))
-          in
-          let env = add_self_to_filter_env opam_package (Solver_env.to_env solver_env) in
-          let resolved =
-            Resolve_opam_formula.filtered_formula_to_package_names
-              env
-              ~with_test:true
-              (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
-              formula
-          in
           let deps =
-            match resolved with
+            match
+              let env =
+                let opam_package =
+                  OpamPackage.create
+                    (Package_name.to_opam_package_name pkg.name)
+                    (* Use [dev] because at this point we don't have any version *)
+                    (Package_version.to_opam_package_version Package_version.dev)
+                in
+                Solver_env.to_env solver_env |> add_self_to_filter_env opam_package
+              in
+              Dependency_formula.to_filtered_formula pkg.dependencies
+              |> Resolve_opam_formula.filtered_formula_to_package_names
+                   ~env
+                   ~with_test:true
+                   ~packages:
+                     (Package_name.Map.set pkgs_by_version Dune_dep.name dune_version)
+            with
             | Ok { regular; post = _ (* discard post deps *) } ->
               (* remove Dune from the formula as we remove it from solutions *)
               List.filter regular ~f:(fun pkg ->

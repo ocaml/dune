@@ -1,17 +1,18 @@
 open! Import
 module Relop = Dune_lang.Relop
 
-let apply_filter env ~with_test (opam_filtered_formula : OpamTypes.filtered_formula)
+let apply_filter env ~with_test ~(formula : OpamTypes.filtered_formula)
   : OpamTypes.formula
   =
   OpamFilter.gen_filter_formula
-    (OpamFormula.partial_eval (function
-      | OpamTypes.Filter flt ->
-        `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
-      | Constraint (relop, filter) ->
-        let filter = OpamFilter.partial_eval env filter in
-        `Formula (Atom (Constraint (relop, filter)))))
-    opam_filtered_formula
+    (OpamFormula.partial_eval (fun (form : _ OpamTypes.filter_or_constraint) ->
+       match form with
+       | Filter flt ->
+         `Formula (Atom (OpamTypes.Filter (OpamFilter.partial_eval env flt)))
+       | Constraint (relop, filter) ->
+         let filter = OpamFilter.partial_eval env filter in
+         `Formula (Atom (Constraint (relop, filter)))))
+    formula
   |> OpamFilter.filter_deps
        ~build:true
        ~post:false
@@ -204,17 +205,17 @@ type deps =
   ; regular : Package_name.t list
   }
 
-let filtered_formula_to_package_names env ~with_test version_by_package_name formula =
+let filtered_formula_to_package_names ~env ~with_test ~packages formula =
   let open Result.O in
-  let+ all =
-    formula_to_package_names version_by_package_name (apply_filter ~with_test env formula)
+  let+ all = apply_filter ~with_test env ~formula |> formula_to_package_names packages in
+  let regular, post =
+    let regular_set =
+      override_post (Some false) env
+      |> apply_filter ~with_test ~formula
+      |> formula_to_package_names_allow_missing packages
+      |> Package_name.Set.of_list
+    in
+    List.partition all ~f:(Package_name.Set.mem regular_set)
   in
-  let regular_set =
-    formula_to_package_names_allow_missing
-      version_by_package_name
-      (apply_filter ~with_test (override_post (Some false) env) formula)
-    |> Package_name.Set.of_list
-  in
-  let regular, post = List.partition all ~f:(Package_name.Set.mem regular_set) in
   { regular; post }
 ;;

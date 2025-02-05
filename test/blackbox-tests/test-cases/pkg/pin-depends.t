@@ -182,11 +182,35 @@ Pin to an HTTP archive work
   > opam-version: "2.0"
   > EOF
   $ tar cf tarball.tar -C _source bar.opam
+  $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
   $ echo tarball.tar > fake-curls
   $ PORT=1
-  $ runtest "http://0.0.0.0:$PORT/tarball.tar"
+  $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
   Solution for dune.lock:
   - bar.1.0.0
-  (version 1.0.0)
-  (dev)
-  (source (fetch (url http://0.0.0.0:1/tarball.tgz) (checksum md5=ecfb12cd56789e48aaa4eef289c85c40))) (dev) 
+  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null
+
+Pin to an HTTP archive detects wrong hash
+
+  $ sed -i.tmp "s/$MD5_CHECKSUM/aaaaaaaaaaaaaaaaaaaaaaaaaaaaa/g" dune.lock/bar.pkg
+  $ dune build
+  File "dune.lock/bar.pkg", line 6, characters 12-45:
+  6 |   (checksum md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: "md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is an invalid Cryptographic hash
+  of a package.
+  [1]
+
+Pin to an HTTP archive needs `dune pkg lock` to download and compute the hash
+of the target again
+
+  $ rm tarball.tar already-served
+  $ echo "update checksum" > _source/random_file
+  $ tar cf tarball.tar -C _source bar.opam random_file
+  $ MD5_CHECKSUM=$(md5sum tarball.tar  | cut -f1 -d' ')
+  $ echo tarball.tar > fake-curls
+  $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
+  Solution for dune.lock:
+  - bar.1.0.0
+  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null
+

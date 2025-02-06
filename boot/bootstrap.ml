@@ -2,7 +2,7 @@ open StdLabels
 open Printf
 
 (* This program performs version checking of the compiler and switches to the
-   secondary compiler if necessary. The script should execute in OCaml 4.02! *)
+   secondary compiler if necessary. The script should execute in OCaml 4.08! *)
 
 let min_supported_natively = 4, 08, 0
 

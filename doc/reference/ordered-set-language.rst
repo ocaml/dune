@@ -25,7 +25,7 @@ future so that one may write:
 
 .. code::
 
-   (flags (if (>= %{ocaml_version} 4.06) ...))
+   (flags (if (>= %{ocaml_version} 4.08) ...))
 
 This restriction will allow you to add this feature without introducing
 breaking changes. If you want to write a list where the first element

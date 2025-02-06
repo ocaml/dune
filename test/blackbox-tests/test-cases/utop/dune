@@ -2,4 +2,4 @@
  (deps
   (package utop))
  (enabled_if
-  (>= %{ocaml_version} 4.05.0)))
+  (>= %{ocaml_version} 4.08.0)))

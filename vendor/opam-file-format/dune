@@ -1,6 +1,7 @@
 (library
  (name opam_file_format)
- (wrapped false))
+ (wrapped false)
+ (flags :standard -thread))
 
 (ocamllex opamLexer)
 (ocamlyacc opamBaseParser)

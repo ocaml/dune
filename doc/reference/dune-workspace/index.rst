@@ -21,9 +21,9 @@ The ``dune-workspace`` file uses the S-expression syntax. This is what a typical
 .. code:: dune
 
     (lang dune 3.14)
-    (context (opam (switch 4.07.1)))
     (context (opam (switch 4.08.1)))
     (context (opam (switch 4.11.1)))
+    (context (opam (switch 4.14.2)))
 
 The rest of this section describe the stanzas available.
 

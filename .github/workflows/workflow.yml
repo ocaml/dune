@@ -56,13 +56,6 @@ jobs:
           - ocaml-compiler: 4.08.x
             os: ubuntu-latest
             skip_test: true
-          - ocaml-compiler: 4.04.x
-            os: ubuntu-latest
-            skip_test: true
-            configurator: true
-          - ocaml-compiler: 4.02.x
-            os: ubuntu-latest
-            skip_test: true
 
     runs-on: ${{ matrix.os }}
 

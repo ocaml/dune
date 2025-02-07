@@ -38,6 +38,8 @@ module Version = struct
     ; small : version_small option
     }
 
+  let empty = { raw = "" ; small = None }
+
   type t = version
 
   let to_string x = x.raw
@@ -386,8 +388,8 @@ let names_of_packages nvset =
 
 let package_of_name_aux empty split filter nv n =
   if n = "" then empty else
-  let inf = {name = String.sub n 0 (String.length n - 1); version= Version.of_string ""} in
-  let sup = {name = n^"\000"; version = Version.of_string ""} in
+  let inf = {name = String.sub n 0 (String.length n - 1); version= Version.empty} in
+  let sup = {name = n^"\000"; version = Version.empty} in
   let _, _, nv = split inf nv in
   let nv, _, _ = split sup nv in
   filter nv

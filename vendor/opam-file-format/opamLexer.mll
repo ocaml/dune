@@ -87,23 +87,15 @@ module HS =
 let hm = HS.create 317
 
 let buf = Buffer.create 64
-let m = Mutex.create ()
 
 let buffer_rule r lb =
   let pos = lb.Lexing.lex_start_p in
-  Mutex.lock m;
   Buffer.clear buf;
-  try
-    r buf lb ;
-    (* buffer start position, instead of last lexem position *)
-    lb.Lexing.lex_start_p <- pos;
-    let contents = Buffer.contents buf in
-    Mutex.unlock m;
-    HS.merge hm contents
-  with
-  e ->
-    Mutex.unlock m;
-    raise e
+  r buf lb;
+  (* buffer start position, instead of last lexem position *)
+  lb.Lexing.lex_start_p <- pos;
+  let contents = Buffer.contents buf in
+  HS.merge hm contents
 }
 
 let eol = '\r'? '\n'

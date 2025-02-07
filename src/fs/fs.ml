@@ -42,11 +42,7 @@ let dir_exists dir =
   let* () = Memo.return () in
   match Path.destruct_build_dir dir with
   | `Outside dir -> Fs_memo.dir_exists dir
-  | `Inside _ ->
-    (* CR-rgrinberg: unfortunately, [Build_system.file_exists] always returns
-       false for directories. *)
-    (* CR-ElectreAAS: sike! [exists] now takes both into account! *)
-    exists dir Unix.S_DIR
+  | `Inside _ -> exists dir Unix.S_DIR
 ;;
 
 let with_lexbuf_from_file file ~f =

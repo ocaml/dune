@@ -856,9 +856,10 @@ end = struct
 
             rleshchinskiy: Is this digest ever used? [build_dir] discards it and do we
             (or should we) ever use [build_file] to build directories? Perhaps this could
-            be split in two memo tables, one for files and one for directories. *)
-         (* ElectreAAS: Tentative answer to above comments: a lot of functions are called
-            [build_file] or [create_file] even though they also handle directories.
+            be split in two memo tables, one for files and one for directories.
+
+            ElectreAAS: a lot of functions are called [build_file] or [create_file]
+            even though they also handle directories, this is expected.
             Also yes this digest is used by [Exported.build_dep] defined above. *)
          (match Cached_digest.build_file ~allow_dirs:true path with
           | Ok digest -> digest, Dir_target { targets }

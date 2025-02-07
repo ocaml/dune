@@ -159,10 +159,6 @@ let validate { files; dirs } =
 ;;
 
 module Produced = struct
-  (* CR-someday amokhov: A hierarchical representation of the produced file
-     trees may be better. It would allow for hierarchical traversals and reduce
-     the number of internal invariants. *)
-
   (** All file and directory names are relative to the root (['a t]). *)
   type 'a dir_contents =
     { files : 'a Filename.Map.t (* mapping file name -> 'a *)
@@ -296,13 +292,13 @@ module Produced = struct
          ~f:aggregate_dir
   ;;
 
-  let of_files root (file_list : 'a option Path.Local.Map.t) : 'a t =
+  let of_files root (files : 'a option Path.Local.Map.t) : 'a t =
     let rec aux mb_payload contents path =
       match path, mb_payload with
       | [], _ ->
         Code_error.raise
-          "I've been hoisted by my own petard! (path.explode)"
-          [ "file_list", Path.Local.Map.to_dyn Dyn.opaque file_list ]
+          "Targets.Produced.of_files: path explosion failed on root"
+          [ "files", Path.Local.Map.to_dyn Dyn.opaque files ]
       | [ final ], Some payload ->
         { contents with files = Filename.Map.add_exn contents.files final payload }
       | [ final ], None ->
@@ -316,21 +312,16 @@ module Produced = struct
     in
     let init = empty in
     let contents =
-      Path.Local.Map.foldi file_list ~init ~f:(fun file mb_payload contents ->
+      Path.Local.Map.foldi files ~init ~f:(fun file mb_payload contents ->
         let parent = Path.Local.parent_exn file in
         if Path.Local.is_root parent
         then (
+          let file = Path.Local.to_string file in
           match mb_payload with
           | Some payload ->
-            { contents with
-              files =
-                Filename.Map.add_exn contents.files (Path.Local.to_string file) payload
-            }
+            { contents with files = Filename.Map.add_exn contents.files file payload }
           | None ->
-            { contents with
-              subdirs =
-                Filename.Map.add_exn contents.subdirs (Path.Local.to_string file) empty
-            })
+            { contents with subdirs = Filename.Map.add_exn contents.subdirs file empty })
         else aux mb_payload contents (Path.Local.explode file))
     in
     { root; contents }
@@ -341,18 +332,16 @@ module Produced = struct
     let rec aux path { files; subdirs } = function
       | [] ->
         Code_error.raise
-          "I've been hoisted by my own petard! (path.explode)"
+          "Targets.Produced.find_any: path explosion failed on root"
           [ "name", Path.Build.to_dyn name ]
       | [ final ] ->
-        (* There's probably a nicer way to put this... *)
         (match Filename.Map.find files final with
          | Some payload -> Some (Left payload)
          | None ->
            (* The order shouldn't matter, it's not possible to have both a file
               and a directory with the exact same path and name. *)
-           (match Filename.Map.find subdirs final with
-            | Some contents -> Some (Right contents.files)
-            | None -> None))
+           let+ contents = Filename.Map.find subdirs final in
+           Right contents.files)
       | parent :: rest ->
         let path = Path.Local.relative path parent in
         let* subdir = Filename.Map.find subdirs parent in

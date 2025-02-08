@@ -69,6 +69,7 @@ jobs:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
         env:
           OPAMVERBOSE: 3
+          XXXXXXXXXXX: 1
 
       # git user needs to be configured for the following tests:
       # otherlibs/build-info/test/run.t

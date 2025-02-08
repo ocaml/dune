@@ -82,8 +82,13 @@ let char_for_hexadecimal_code lexbuf i =
   Char.chr (val1 * 16 + val2)
 
 (* Some hash-consing for strings *)
-module HS =
-  Weak.Make(struct include String let hash = Hashtbl.hash let equal = (=) end)
+module HS = Weak.Make(struct
+  include struct
+    [@@@ocaml.warning "-32"]
+    let hash = Hashtbl.hash
+  end
+  include String
+end)
 let hm = HS.create 317
 
 let buf = Buffer.create 64

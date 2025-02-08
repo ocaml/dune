@@ -178,8 +178,8 @@ let directory_targets_of_library
              | false -> Path.Build.Map.empty
              | true ->
                let dir_target =
-                 let lib_name = snd name in
                  let inline_test_dir =
+                   let lib_name = snd name in
                    Path.Build.relative
                      dir
                      (Inline_tests_info.inline_test_dirname lib_name)

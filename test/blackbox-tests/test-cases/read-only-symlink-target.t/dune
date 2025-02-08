@@ -1,2 +1,2 @@
 (executable
- (name ocamlformat))
+ (public_name ocamlformat))

@@ -178,13 +178,15 @@ let directory_targets_of_library
              | false -> Path.Build.Map.empty
              | true ->
                let dir_target =
-                 let lib_name = Lib_name.Local.to_string (snd name) in
-                 let name = sprintf "inline_test_runner_%s" lib_name in
                  let inline_test_dir =
-                   let inline_test_name = sprintf "%s.inline-tests" lib_name in
-                   Path.Build.relative dir ("." ^ inline_test_name)
+                   let lib_name = snd name in
+                   Path.Build.relative
+                     dir
+                     (Inline_tests_info.inline_test_dirname lib_name)
                  in
-                 Path.Build.relative inline_test_dir (name ^ Js_of_ocaml.Ext.wasm_dir)
+                 Path.Build.relative
+                   inline_test_dir
+                   (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
                in
                Path.Build.Map.singleton dir_target loc)
       >>= when_enabled ~dir ~enabled_if

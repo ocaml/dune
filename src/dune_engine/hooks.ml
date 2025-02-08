@@ -26,9 +26,13 @@ module Make () = struct
     match !exns with
     | [] -> ()
     | exns ->
-      let exns = List.rev exns in
-      let open Dyn in
-      Code_error.raise "hooks failed" [ "exns", (list Exn_with_backtrace.to_dyn) exns ]
+      (match exns with
+       | [ { exn = User_error.E _ as e; backtrace = _ } ] -> raise e
+       | _ ->
+         let exns = List.rev exns in
+         Code_error.raise
+           "hooks failed"
+           [ "exns", (Dyn.list Exn_with_backtrace.to_dyn) exns ])
   ;;
 end
 

@@ -8,7 +8,13 @@ Nix can leave a symlink to a store path in the tree, often called 'result'.
 
 This command should succeed:
 
-  $ dune fmt 2>/dev/null
+  $ dune fmt
+  File "result/foo.ml", line 1, characters 0-0:
+  Error: Files _build/default/result/foo.ml and
+  _build/default/result/.formatted/foo.ml differ.
+  Promoting _build/default/result/.formatted/foo.ml to result/foo.ml.
+  Error: failed to promote result/foo.ml
+  Permission denied
   [1]
 
 Allow Dune to remove temporary files (calling Dune crashes without this):

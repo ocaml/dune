@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Use OCaml ${{ matrix.ocaml-compiler }}
-        uses: ocaml/setup-ocaml@v3
+        uses: kit-ty-kate/setup-ocaml@test-macos
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
         env:

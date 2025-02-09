@@ -139,8 +139,10 @@ module Workspace_local = struct
     | Error error -> Miss (Error_while_collecting_directory_targets error)
     | Ok targets ->
       (match
-         Targets.Produced.map_with_errors targets ~all_errors:false ~f:(fun target () ->
-           Cached_digest.build_file ~allow_dirs:true target)
+         Targets.Produced.map_with_errors
+           ~all_errors:false
+           ~f:(Cached_digest.build_file ~allow_dirs:true)
+           targets
        with
        | Ok produced_targets -> Dune_cache.Hit_or_miss.Hit produced_targets
        | Error _ -> Miss Targets_missing)

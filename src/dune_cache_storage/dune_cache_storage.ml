@@ -215,28 +215,38 @@ end
 module Artifacts = struct
   module Metadata_entry = struct
     type t =
-      { file_path : string
-      ; file_digest : Digest.t
+      { path : string (** Can have more than one component for directory targets *)
+      ; digest : Digest.t option
+      (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
 
     let equal x y =
-      Digest.equal x.file_digest y.file_digest && String.equal x.file_path y.file_path
+      String.equal x.path y.path && Option.equal Digest.equal x.digest y.digest
     ;;
 
-    let to_sexp { file_path; file_digest } =
-      Sexp.List [ Atom file_path; Atom (Digest.to_string file_digest) ]
+    let digest_to_sexp = function
+      | None -> Sexp.Atom "<dir>"
+      | Some digest -> Sexp.Atom (Digest.to_string digest)
     ;;
 
-    let of_sexp = function
-      | Sexp.List [ Atom file_path; Atom file_digest ] ->
-        (match Digest.from_hex file_digest with
-         | Some file_digest -> Ok { file_path; file_digest }
+    let to_sexp { path; digest } = Sexp.List [ Atom path; digest_to_sexp digest ]
+
+    let digest_of_sexp = function
+      | "<dir>" -> Ok None
+      | digest ->
+        (match Digest.from_hex digest with
+         | Some digest -> Ok (Some digest)
          | None ->
            Error
              (Failure
-                (sprintf
-                   "Cannot parse file digest %s in cache metadata entry"
-                   file_digest)))
+                (sprintf "Cannot parse file digest %S in cache metadata entry" digest)))
+    ;;
+
+    let of_sexp = function
+      | Sexp.List [ Atom path; Atom digest ] ->
+        (match digest_of_sexp digest with
+         | Ok digest -> Ok { path; digest }
+         | Error e -> Error e)
       | _ -> Error (Failure "Cannot parse cache metadata entry")
     ;;
   end

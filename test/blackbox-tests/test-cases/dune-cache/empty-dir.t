@@ -31,4 +31,5 @@ Restore it from cache.
   $ dune build output
   $ find _build/default/output | sort
   _build/default/output
+  _build/default/output/child
   _build/default/output/file

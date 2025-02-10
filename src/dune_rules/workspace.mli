@@ -59,7 +59,7 @@ module Context : sig
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-      (** By default Dune builds and installs dynamically linked foreign
+        (** By default Dune builds and installs dynamically linked foreign
           archives (usually named [dll*.so]). It is possible to disable
           this by setting [disable_dynamically_linked_foreign_archives] to
           [true] in the workspace file, in which case bytecode executables
@@ -74,7 +74,7 @@ module Context : sig
   module Opam : sig
     type t =
       { base : Common.t
-      (** Either a switch name or a path to a local switch. This argument
+        (** Either a switch name or a path to a local switch. This argument
           is left opaque as we leave to opam to interpret it. *)
       ; switch : Opam_switch.t
       }

@@ -179,9 +179,9 @@ struct
   ;;
 
   let compute_target_digests_or_raise_error
-    ~should_remove_write_permissions_on_generated_files
-    ~loc
-    ~produced_targets
+        ~should_remove_write_permissions_on_generated_files
+        ~loc
+        ~produced_targets
     : Digest.t Targets.Produced.t
     =
     let compute_digest =
@@ -270,12 +270,12 @@ struct
   ;;
 
   let examine_targets_and_store
-    ~can_go_in_shared_cache
-    ~loc
-    ~rule_digest
-    ~should_remove_write_permissions_on_generated_files
-    ~action
-    ~(produced_targets : unit Targets.Produced.t)
+        ~can_go_in_shared_cache
+        ~loc
+        ~rule_digest
+        ~should_remove_write_permissions_on_generated_files
+        ~action
+        ~(produced_targets : unit Targets.Produced.t)
     : Digest.t Targets.Produced.t Fiber.t
     =
     match config with

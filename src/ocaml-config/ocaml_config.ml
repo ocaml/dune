@@ -188,59 +188,59 @@ let supports_shared_libraries t = t.supports_shared_libraries
 let windows_unicode t = t.windows_unicode
 
 let to_list
-  { version = _
-  ; version_string
-  ; standard_library_default
-  ; standard_library
-  ; standard_runtime
-  ; ccomp_type
-  ; c_compiler
-  ; ocamlc_cflags
-  ; ocamlc_cppflags
-  ; ocamlopt_cflags
-  ; ocamlopt_cppflags
-  ; bytecomp_c_compiler
-  ; bytecomp_c_libraries
-  ; native_c_compiler
-  ; native_c_libraries
-  ; native_pack_linker
-  ; cc_profile
-  ; architecture
-  ; model
-  ; int_size
-  ; word_size
-  ; system
-  ; asm
-  ; asm_cfi_supported
-  ; with_frame_pointers
-  ; ext_exe
-  ; ext_obj
-  ; ext_asm
-  ; ext_lib
-  ; ext_dll
-  ; os_type
-  ; default_executable_name
-  ; systhread_supported
-  ; host
-  ; target
-  ; profiling
-  ; flambda
-  ; spacetime
-  ; safe_string
-  ; exec_magic_number
-  ; cmi_magic_number
-  ; cmo_magic_number
-  ; cma_magic_number
-  ; cmx_magic_number
-  ; cmxa_magic_number
-  ; ast_impl_magic_number
-  ; ast_intf_magic_number
-  ; cmxs_magic_number
-  ; cmt_magic_number
-  ; natdynlink_supported
-  ; supports_shared_libraries
-  ; windows_unicode
-  }
+      { version = _
+      ; version_string
+      ; standard_library_default
+      ; standard_library
+      ; standard_runtime
+      ; ccomp_type
+      ; c_compiler
+      ; ocamlc_cflags
+      ; ocamlc_cppflags
+      ; ocamlopt_cflags
+      ; ocamlopt_cppflags
+      ; bytecomp_c_compiler
+      ; bytecomp_c_libraries
+      ; native_c_compiler
+      ; native_c_libraries
+      ; native_pack_linker
+      ; cc_profile
+      ; architecture
+      ; model
+      ; int_size
+      ; word_size
+      ; system
+      ; asm
+      ; asm_cfi_supported
+      ; with_frame_pointers
+      ; ext_exe
+      ; ext_obj
+      ; ext_asm
+      ; ext_lib
+      ; ext_dll
+      ; os_type
+      ; default_executable_name
+      ; systhread_supported
+      ; host
+      ; target
+      ; profiling
+      ; flambda
+      ; spacetime
+      ; safe_string
+      ; exec_magic_number
+      ; cmi_magic_number
+      ; cmo_magic_number
+      ; cma_magic_number
+      ; cmx_magic_number
+      ; cmxa_magic_number
+      ; ast_impl_magic_number
+      ; ast_intf_magic_number
+      ; cmxs_magic_number
+      ; cmt_magic_number
+      ; natdynlink_supported
+      ; supports_shared_libraries
+      ; windows_unicode
+      }
   : (string * Value.t) list
   =
   [ "version", String version_string
@@ -301,60 +301,60 @@ let to_list
    functions are the same as the ones used in the below function. *)
 
 let by_name
-  { version = _
-  ; version_string
-  ; standard_library_default
-  ; standard_library
-  ; standard_runtime
-  ; ccomp_type
-  ; c_compiler
-  ; ocamlc_cflags
-  ; ocamlc_cppflags
-  ; ocamlopt_cflags
-  ; ocamlopt_cppflags
-  ; bytecomp_c_compiler
-  ; bytecomp_c_libraries
-  ; native_c_compiler
-  ; native_c_libraries
-  ; native_pack_linker
-  ; cc_profile
-  ; architecture
-  ; model
-  ; int_size
-  ; word_size
-  ; system
-  ; asm
-  ; asm_cfi_supported
-  ; with_frame_pointers
-  ; ext_exe
-  ; ext_obj
-  ; ext_asm
-  ; ext_lib
-  ; ext_dll
-  ; os_type
-  ; default_executable_name
-  ; systhread_supported
-  ; host
-  ; target
-  ; profiling
-  ; flambda
-  ; spacetime
-  ; safe_string
-  ; exec_magic_number
-  ; cmi_magic_number
-  ; cmo_magic_number
-  ; cma_magic_number
-  ; cmx_magic_number
-  ; cmxa_magic_number
-  ; ast_impl_magic_number
-  ; ast_intf_magic_number
-  ; cmxs_magic_number
-  ; cmt_magic_number
-  ; natdynlink_supported
-  ; supports_shared_libraries
-  ; windows_unicode
-  }
-  name
+      { version = _
+      ; version_string
+      ; standard_library_default
+      ; standard_library
+      ; standard_runtime
+      ; ccomp_type
+      ; c_compiler
+      ; ocamlc_cflags
+      ; ocamlc_cppflags
+      ; ocamlopt_cflags
+      ; ocamlopt_cppflags
+      ; bytecomp_c_compiler
+      ; bytecomp_c_libraries
+      ; native_c_compiler
+      ; native_c_libraries
+      ; native_pack_linker
+      ; cc_profile
+      ; architecture
+      ; model
+      ; int_size
+      ; word_size
+      ; system
+      ; asm
+      ; asm_cfi_supported
+      ; with_frame_pointers
+      ; ext_exe
+      ; ext_obj
+      ; ext_asm
+      ; ext_lib
+      ; ext_dll
+      ; os_type
+      ; default_executable_name
+      ; systhread_supported
+      ; host
+      ; target
+      ; profiling
+      ; flambda
+      ; spacetime
+      ; safe_string
+      ; exec_magic_number
+      ; cmi_magic_number
+      ; cmo_magic_number
+      ; cma_magic_number
+      ; cmx_magic_number
+      ; cmxa_magic_number
+      ; ast_impl_magic_number
+      ; ast_intf_magic_number
+      ; cmxs_magic_number
+      ; cmt_magic_number
+      ; natdynlink_supported
+      ; supports_shared_libraries
+      ; windows_unicode
+      }
+      name
   : Value.t option
   =
   match name with

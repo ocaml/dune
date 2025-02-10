@@ -230,16 +230,16 @@ let js_of_ocaml_flags t ~dir ~mode (spec : Js_of_ocaml.Flags.Spec.t) =
 ;;
 
 let js_of_ocaml_rule
-  sctx
-  ~(mode : Js_of_ocaml.Mode.t)
-  ~sub_command
-  ~dir
-  ~(flags : _ Js_of_ocaml.Flags.t)
-  ~config
-  ~spec
-  ~target
-  ~sourcemap
-  ~directory_targets
+      sctx
+      ~(mode : Js_of_ocaml.Mode.t)
+      ~sub_command
+      ~dir
+      ~(flags : _ Js_of_ocaml.Flags.t)
+      ~config
+      ~spec
+      ~target
+      ~sourcemap
+      ~directory_targets
   =
   let open Action_builder.O in
   let jsoo =
@@ -326,15 +326,15 @@ let standalone_runtime_rule ~mode cc ~runtime_files ~target ~flags ~sourcemap =
 ;;
 
 let exe_rule
-  ~mode
-  cc
-  ~linkall
-  ~runtime_files
-  ~src
-  ~target
-  ~directory_targets
-  ~flags
-  ~sourcemap
+      ~mode
+      cc
+      ~linkall
+      ~runtime_files
+      ~src
+      ~target
+      ~directory_targets
+      ~flags
+      ~sourcemap
   =
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in
@@ -408,17 +408,17 @@ let jsoo_archives ~mode ctx config lib =
 ;;
 
 let link_rule
-  ~mode
-  cc
-  ~runtime
-  ~target
-  ~directory_targets
-  ~obj_dir
-  cm
-  ~flags
-  ~linkall
-  ~link_time_code_gen
-  ~sourcemap
+      ~mode
+      cc
+      ~runtime
+      ~target
+      ~directory_targets
+      ~obj_dir
+      cm
+      ~flags
+      ~linkall
+      ~link_time_code_gen
+      ~sourcemap
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
@@ -597,10 +597,10 @@ let js_of_ocaml_sourcemap t ~dir ~mode =
 ;;
 
 let jsoo_enabled
-  ~eval
-  ~dir
-  ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
-  ~mode
+      ~eval
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
+      ~mode
   =
   match (Js_of_ocaml.Mode.Pair.select ~mode in_context).enabled_if with
   | Some enabled_if -> eval enabled_if
@@ -619,10 +619,10 @@ let jsoo_enabled_modes ~expander ~dir ~in_context =
 ;;
 
 let jsoo_compilation_mode
-  t
-  ~dir
-  ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
-  ~mode
+      t
+      ~dir
+      ~(in_context : Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t)
+      ~mode
   =
   match (Js_of_ocaml.Mode.Pair.select ~mode in_context).compilation_mode with
   | None -> js_of_ocaml_compilation_mode t ~dir ~mode
@@ -641,16 +641,16 @@ let jsoo_is_whole_program t ~dir ~in_context =
 ;;
 
 let build_exe
-  cc
-  ~loc
-  ~in_context
-  ~src
-  ~(obj_dir : Path.Build.t Obj_dir.t)
-  ~(top_sorted_modules : Module.t list Action_builder.t)
-  ~promote
-  ~linkall
-  ~link_time_code_gen
-  ~jsoo_mode:mode
+      cc
+      ~loc
+      ~in_context
+      ~src
+      ~(obj_dir : Path.Build.t Obj_dir.t)
+      ~(top_sorted_modules : Module.t list Action_builder.t)
+      ~promote
+      ~linkall
+      ~link_time_code_gen
+      ~jsoo_mode:mode
   =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in

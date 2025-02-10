@@ -5,10 +5,10 @@ module Link_params = struct
   type t =
     { include_dirs : Path.t list
     ; deps : Path.t list
-        (* List of files that will be read by the compiler at link time and
+      (* List of files that will be read by the compiler at link time and
            appear directly on the command line *)
     ; hidden_deps : Path.t list
-    (* List of files that will be read by the compiler at link time but do
+      (* List of files that will be read by the compiler at link time but do
        not appear on the command line *)
     }
 
@@ -249,36 +249,36 @@ module Lib_and_module = struct
         (let+ l =
            Action_builder.all
              (List.map ts ~f:(function
-               | Lib t ->
-                 let+ p =
-                   Action_builder.of_memo (Link_params.get sctx t mode lib_config)
-                 in
-                 Command.Args.S
-                   (Deps p.deps
-                    :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
-                    :: List.map p.include_dirs ~f:(fun dir ->
-                      Command.Args.S [ A "-I"; Path dir ]))
-               | Module (obj_dir, m) ->
-                 Action_builder.return
-                   (Command.Args.S
-                      (Dep
-                         (Obj_dir.Module.cm_file_exn
-                            obj_dir
-                            m
-                            ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
-                       ::
-                       (match mode with
-                        | Native ->
-                          [ Command.Args.Hidden_deps
-                              (Dep.Set.of_files
-                                 [ Obj_dir.Module.o_file_exn
-                                     obj_dir
-                                     m
-                                     ~ext_obj:lib_config.ext_obj
-                                 ])
-                          ]
-                        | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
-                          [])))))
+                | Lib t ->
+                  let+ p =
+                    Action_builder.of_memo (Link_params.get sctx t mode lib_config)
+                  in
+                  Command.Args.S
+                    (Deps p.deps
+                     :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
+                     :: List.map p.include_dirs ~f:(fun dir ->
+                       Command.Args.S [ A "-I"; Path dir ]))
+                | Module (obj_dir, m) ->
+                  Action_builder.return
+                    (Command.Args.S
+                       (Dep
+                          (Obj_dir.Module.cm_file_exn
+                             obj_dir
+                             m
+                             ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
+                        ::
+                        (match mode with
+                         | Native ->
+                           [ Command.Args.Hidden_deps
+                               (Dep.Set.of_files
+                                  [ Obj_dir.Module.o_file_exn
+                                      obj_dir
+                                      m
+                                      ~ext_obj:lib_config.ext_obj
+                                  ])
+                           ]
+                         | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
+                           [])))))
          in
          Command.Args.S l)
     ;;

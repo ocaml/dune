@@ -59,7 +59,8 @@ let%expect_test "adding remotes" =
       >>| (function
        | Error _ -> print_endline "Unable to fetch revision"
        | Ok _ -> print_endline "successfully fetched revision"));
-  [%expect {|
+  [%expect
+    {|
     Successfully found remote
     successfully fetched revision
      |}]

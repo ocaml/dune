@@ -15,7 +15,8 @@ let%expect_test _ =
     read_file ~path:(Path.of_string "some_dir/some_file") |> map ~f:print_endline
   in
   Private.do_run action;
-  [%expect {|
+  [%expect
+    {|
     Hello from foo!
   |}]
 ;;
@@ -26,7 +27,8 @@ let%expect_test _ =
     |> map ~f:(fun data -> String.concat "," data |> print_endline)
   in
   Private.do_run action;
-  [%expect {|
+  [%expect
+    {|
     some_file
   |}]
 ;;
@@ -50,7 +52,8 @@ let%expect_test _ =
     read_file ~path:(Path.of_string "file_that_does_not_exist") |> map ~f:ignore
   in
   run_action_expect_throws action;
-  [%expect {|
+  [%expect
+    {|
     read_file: file_that_does_not_exist: No such file or directory
   |}]
 ;;

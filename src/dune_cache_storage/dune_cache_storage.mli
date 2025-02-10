@@ -70,7 +70,7 @@ module Artifacts : sig
     type t =
       { path : string (** Can have more than one component for directory targets *)
       ; digest : Digest.t option
-      (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
+        (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
   end
 

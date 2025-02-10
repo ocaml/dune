@@ -138,44 +138,46 @@ module Module = struct
           Memo.fork_and_join
             (fun () -> files_to_load_of_requires sctx requires)
             (fun () ->
-              let cmis () =
-                let glob =
-                  Dune_engine.File_selector.of_glob
-                    ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
-                    (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
-                in
-                let* files = Build_system.eval_pred glob in
-                Memo.parallel_iter (Filename_set.to_list files) ~f:Build_system.build_file
-              in
-              let cmos () =
-                let obj_dir = Compilation_context.obj_dir cctx in
-                let dep_graph = (Compilation_context.dep_graphs cctx).impl in
-                let* modules =
-                  let graph =
-                    Dune_rules.Dep_graph.top_closed_implementations dep_graph [ module_ ]
-                  in
-                  let+ modules, _ = Action_builder.evaluate_and_collect_facts graph in
-                  modules
-                in
-                let cmos =
-                  let module Module = Dune_rules.Module in
-                  let module Module_name = Dune_rules.Module_name in
-                  let module_obj_name = Module.obj_name module_ in
-                  List.filter_map modules ~f:(fun m ->
-                    let obj_dir =
-                      if Module_name.Unique.equal module_obj_name (Module.obj_name m)
-                      then private_obj_dir
-                      else obj_dir
-                    in
-                    Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo)
-                    |> Option.map ~f:Path.build)
-                in
-                let+ (_ : Dep.Facts.t) =
-                  Build_system.build_deps (Dep.Set.of_files cmos)
-                in
-                cmos
-              in
-              Memo.fork_and_join_unit cmis cmos)
+               let cmis () =
+                 let glob =
+                   Dune_engine.File_selector.of_glob
+                     ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
+                     (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
+                 in
+                 let* files = Build_system.eval_pred glob in
+                 Memo.parallel_iter
+                   (Filename_set.to_list files)
+                   ~f:Build_system.build_file
+               in
+               let cmos () =
+                 let obj_dir = Compilation_context.obj_dir cctx in
+                 let dep_graph = (Compilation_context.dep_graphs cctx).impl in
+                 let* modules =
+                   let graph =
+                     Dune_rules.Dep_graph.top_closed_implementations dep_graph [ module_ ]
+                   in
+                   let+ modules, _ = Action_builder.evaluate_and_collect_facts graph in
+                   modules
+                 in
+                 let cmos =
+                   let module Module = Dune_rules.Module in
+                   let module Module_name = Dune_rules.Module_name in
+                   let module_obj_name = Module.obj_name module_ in
+                   List.filter_map modules ~f:(fun m ->
+                     let obj_dir =
+                       if Module_name.Unique.equal module_obj_name (Module.obj_name m)
+                       then private_obj_dir
+                       else obj_dir
+                     in
+                     Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo)
+                     |> Option.map ~f:Path.build)
+                 in
+                 let+ (_ : Dep.Facts.t) =
+                   Build_system.build_deps (Dep.Set.of_files cmos)
+                 in
+                 cmos
+               in
+               Memo.fork_and_join_unit cmis cmos)
         in
         libs @ modules
       in

@@ -28,10 +28,10 @@ let%expect_test _ =
         events_buffer := [];
         Some
           (List.filter_map list ~f:(function
-            | Dune_file_watcher.Event.Sync _ -> None
-            | Queue_overflow -> assert false
-            | Fs_memo_event e -> Some e
-            | Watcher_terminated -> assert false)))
+             | Dune_file_watcher.Event.Sync _ -> None
+             | Queue_overflow -> assert false
+             | Fs_memo_event e -> Some e
+             | Watcher_terminated -> assert false)))
   in
   let print_events n = print_events ~try_to_get_events ~expected:n in
   Dune_file_watcher.wait_for_initial_watches_established_blocking watcher;

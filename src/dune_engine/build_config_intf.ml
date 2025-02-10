@@ -15,11 +15,11 @@ type rules = Rules.t
 module Rules = struct
   type t =
     { build_dir_only_sub_dirs : Build_only_sub_dirs.t
-    (** Sub-directories that don't exist in the source tree but exists in
+      (** Sub-directories that don't exist in the source tree but exists in
         the build directory. This is for internal directories such as
         [.dune] or [.ppx]. *)
     ; directory_targets : Loc.t Path.Build.Map.t
-    (** Directories that are target of a rule. For each directory target,
+      (** Directories that are target of a rule. For each directory target,
         give the location of the rule that generates it. The keys in this
         map must correspond exactly to the set of directory targets that
         will be produces by [rules]. The values should be the locations of

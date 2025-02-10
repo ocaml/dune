@@ -83,13 +83,13 @@ let%expect_test "cancel task" =
    let* task = Async_io.ready r `Read ~f:ignore in
    Fiber.fork_and_join_unit
      (fun () ->
-       Async_io.Task.await task
-       >>= function
-       | Ok () | Error (`Exn _) -> assert false
-       | Error `Cancelled ->
-         Unix.close w;
-         let+ () = Async_io.close r in
-         print_endline "successfully cancelled")
+        Async_io.Task.await task
+        >>= function
+        | Ok () | Error (`Exn _) -> assert false
+        | Error `Cancelled ->
+          Unix.close w;
+          let+ () = Async_io.close r in
+          print_endline "successfully cancelled")
      (fun () -> Async_io.Task.cancel task));
   [%expect {| successfully cancelled |}]
 ;;

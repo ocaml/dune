@@ -116,8 +116,8 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
       let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
       Dune_filesystem_stubs.Unix_error.Detailed.catch
         (fun path ->
-          let contents = Unix.readlink (Path.to_string path) in
-          path_with_executable_bit ~executable ~content_digest:contents)
+           let contents = Unix.readlink (Path.to_string path) in
+           path_with_executable_bit ~executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->

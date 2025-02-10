@@ -18,8 +18,8 @@ let of_opam_url loc url =
       let* rev_store = Rev_store.get in
       OpamUrl.resolve url ~loc rev_store
       >>= (function
-             | Error _ as e -> Fiber.return e
-             | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
+       | Error _ as e -> Fiber.return e
+       | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
       >>| User_error.ok_exn
     in
     Git rev
@@ -58,9 +58,10 @@ let stat t path =
         | Some parent ->
           let files = Rev_store.At_rev.directory_entries ~recursive:false rev parent in
           let basename = Path.Local.basename path in
-          if Rev_store.File.Set.exists files ~f:(fun file ->
-               let path = Rev_store.File.path file in
-               String.equal basename (Path.Local.basename path))
+          if
+            Rev_store.File.Set.exists files ~f:(fun file ->
+              let path = Rev_store.File.path file in
+              String.equal basename (Path.Local.basename path))
           then `File
           else `Absent_or_unrecognized))
 ;;

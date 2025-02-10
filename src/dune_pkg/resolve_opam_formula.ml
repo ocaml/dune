@@ -170,8 +170,8 @@ let override_post post_value env var =
 (* Check that a package version satisfies the version constraint
    associated with a package dependency in an opam file. *)
 let package_version_satisfies_opam_version_constraint_opt
-  package_version
-  opam_version_constraint_opt
+      package_version
+      opam_version_constraint_opt
   =
   match opam_version_constraint_opt with
   | None -> true
@@ -193,9 +193,10 @@ let formula_to_package_names_allow_missing version_by_package_name opam_formula 
       let package_name = Package_name.of_opam_package_name opam_package_name in
       Package_name.Map.find version_by_package_name package_name
       |> Option.bind ~f:(fun version_in_solution ->
-        if package_version_satisfies_opam_version_constraint_opt
-             version_in_solution
-             version_constraint_opt
+        if
+          package_version_satisfies_opam_version_constraint_opt
+            version_in_solution
+            version_constraint_opt
         then Some package_name
         else None)))
 ;;

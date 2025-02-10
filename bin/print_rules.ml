@@ -47,8 +47,8 @@ let print_rule_makefile ppf (rule : Dune_engine.Reflection.Rule.t) =
        Format.pp_print_string ppf (Path.to_string p)))
     targets
     (fun ppf ->
-      Path.Set.iter rule.expanded_deps ~f:(fun dep ->
-        Format.fprintf ppf "@ %s" (Path.to_string dep)))
+       Path.Set.iter rule.expanded_deps ~f:(fun dep ->
+         Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.to_fmt
     (Action_to_sh.pp action)
 ;;
@@ -155,9 +155,9 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
   let paths ps =
     Dune_sexp.Encoder.list
       (fun p ->
-        Path.Build.relative rule.targets.root p
-        |> Path.Build.to_string
-        |> Dune_sexp.atom_or_quoted_string)
+         Path.Build.relative rule.targets.root p
+         |> Path.Build.to_string
+         |> Dune_sexp.atom_or_quoted_string)
       (Filename.Set.to_list ps)
   in
   let sexp =

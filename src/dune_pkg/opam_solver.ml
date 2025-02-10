@@ -94,13 +94,13 @@ module Context = struct
     }
 
   let create
-    ~pinned_packages
-    ~solver_env
-    ~repos
-    ~local_packages
-    ~version_preference
-    ~stats_updater
-    ~constraints
+        ~pinned_packages
+        ~solver_env
+        ~repos
+        ~local_packages
+        ~version_preference
+        ~stats_updater
+        ~constraints
     =
     let candidates_cache = Fiber_cache.create (module Package_name) in
     let constraints =
@@ -211,11 +211,11 @@ module Context = struct
     let filtered_formula =
       OpamFormula.fold_left
         (fun additional_formulae (pkg, _) ->
-          match
-            Package_name.of_opam_package_name pkg |> Package_name.Map.find t.constraints
-          with
-          | None -> additional_formulae
-          | Some additional -> additional :: additional_formulae)
+           match
+             Package_name.of_opam_package_name pkg |> Package_name.Map.find t.constraints
+           with
+           | None -> additional_formulae
+           | Some additional -> additional :: additional_formulae)
         []
         filtered_formula
       |> List.fold_left ~init:filtered_formula ~f:(fun additional acc ->
@@ -273,10 +273,10 @@ module Context = struct
     let rejected, available =
       OpamPackage.Version.Map.fold
         (fun version (repo, key) (rejected, available) ->
-          let pkg = Opam_repo.Key.opam_package key in
-          match try_refute t pkg with
-          | Some p -> (version, p) :: rejected, available
-          | None -> rejected, OpamPackage.Version.Map.add version (repo, key) available)
+           let pkg = Opam_repo.Key.opam_package key in
+           match try_refute t pkg with
+           | Some p -> (version, p) :: rejected, available
+           | None -> rejected, OpamPackage.Version.Map.add version (repo, key) available)
         versions
         ([], OpamPackage.Version.Map.empty)
     in
@@ -560,10 +560,9 @@ module Solver = struct
 
     let virtual_role impls =
       let impls =
-        List.mapi impls ~f:(fun i ->
-            function
-            | VirtualImpl (_, x) -> VirtualImpl (Rank.of_int i, x)
-            | x -> x)
+        List.mapi impls ~f:(fun i -> function
+          | VirtualImpl (_, x) -> VirtualImpl (Rank.of_int i, x)
+          | x -> x)
       in
       Virtual (Virtual_id.gen (), impls)
     ;;
@@ -660,7 +659,7 @@ module Solver = struct
   module Solver = struct
     (* Copyright (C) 2013, Thomas Leonard
      *See the README file for details, or visit http://0install.net.
-     *)
+    *)
     module Sat = Sat.Make (Input.Impl)
 
     type decision_state =
@@ -756,11 +755,11 @@ module Solver = struct
       let seal t =
         OpamPackage.Name.Map.iter
           (fun _ impls ->
-            match !impls with
-            | _ :: _ :: _ ->
-              let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
-              ()
-            | _ -> ())
+             match !impls with
+             | _ :: _ :: _ ->
+               let (_ : Sat.at_most_one_clause) = Sat.at_most_one !impls in
+               ()
+             | _ -> ())
           t.groups
       ;;
     end
@@ -988,10 +987,10 @@ module Solver = struct
            is the selected implementation, or [None] if we chose [dummy_impl].
          @param diagnostics can be used to produce diagnostics as a last resort. *)
       let create
-        ~role
-        (candidates, orig_bad, feed_problems)
-        (diagnostics : _ Pp.t Lazy.t)
-        (selected_impl : Input.impl option)
+            ~role
+            (candidates, orig_bad, feed_problems)
+            (diagnostics : _ Pp.t Lazy.t)
+            (selected_impl : Input.impl option)
         =
         let notes = List.map ~f:(fun x -> Note.Feed_problem x) feed_problems in
         { role
@@ -1206,10 +1205,10 @@ module Solver = struct
     (** A selected component has [dep] as a dependency. Use this to explain why some implementations
         of the required interface were rejected. *)
     let examine_dep
-      requiring_role
-      requiring_impl
-      (report : Component.t Input.Role.Map.t)
-      (dep : Input.dependency)
+          requiring_role
+          requiring_impl
+          (report : Component.t Input.Role.Map.t)
+          (dep : Input.dependency)
       =
       match Input.Role.Map.find report dep.drole with
       | None -> ()
@@ -1555,10 +1554,10 @@ let partial_eval_filter = function
 ;;
 
 let opam_commands_to_actions
-  get_solver_var
-  loc
-  package
-  (commands : OpamTypes.command list)
+      get_solver_var
+      loc
+      package
+      (commands : OpamTypes.command list)
   =
   List.filter_map commands ~f:(fun (args, filter) ->
     let filter = Option.map filter ~f:(simplify_filter get_solver_var) in
@@ -1654,12 +1653,12 @@ let resolve_depopts ~resolve depopts =
 ;;
 
 let opam_package_to_lock_file_pkg
-  solver_env
-  stats_updater
-  version_by_package_name
-  opam_package
-  ~pinned_package_names
-  ~(candidates_cache : (Package_name.t, Context.candidates) Table.t)
+      solver_env
+      stats_updater
+      version_by_package_name
+      opam_package
+      ~pinned_package_names
+      ~(candidates_cache : (Package_name.t, Context.candidates) Table.t)
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
@@ -1813,12 +1812,12 @@ let solve_package_list packages ~context =
        instead. *)
     Solver.solve context packages)
   >>| (function
-         | Ok (Ok res) -> Ok res
-         | Ok (Error e) -> Error (`Diagnostics e)
-         | Error [] -> assert false
-         | Error (exn :: _) ->
-           (* CR-rgrinberg: this needs to be handled right *)
-           Error (`Exn exn))
+   | Ok (Ok res) -> Ok res
+   | Ok (Error e) -> Error (`Diagnostics e)
+   | Error [] -> assert false
+   | Error (exn :: _) ->
+     (* CR-rgrinberg: this needs to be handled right *)
+     Error (`Exn exn))
   >>= function
   | Ok packages -> Fiber.return @@ Ok (Solver.packages_of_result packages)
   | Error (`Diagnostics e) ->
@@ -1928,12 +1927,12 @@ let reject_unreachable_packages =
 ;;
 
 let solve_lock_dir
-  solver_env
-  version_preference
-  repos
-  ~local_packages
-  ~pins:pinned_packages
-  ~constraints
+      solver_env
+      version_preference
+      repos
+      ~local_packages
+      ~pins:pinned_packages
+      ~constraints
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in

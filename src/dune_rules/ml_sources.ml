@@ -345,14 +345,14 @@ let virtual_modules ~lookup_vlib ~libs vlib =
 ;;
 
 let make_lib_modules
-  ~expander
-  ~dir
-  ~libs
-  ~lookup_vlib
-  ~(lib : Library.t)
-  ~modules
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
-  ~version
+      ~expander
+      ~dir
+      ~libs
+      ~lookup_vlib
+      ~(lib : Library.t)
+      ~modules
+      ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
+      ~version
   =
   let open Resolve.Memo.O in
   let* kind, main_module_name, wrapped =
@@ -556,16 +556,16 @@ let modules_of_stanzas =
 ;;
 
 let make
-  dune_file
-  ~expander
-  ~dir
-  ~libs
-  ~project
-  ~lib_config
-  ~loc
-  ~lookup_vlib
-  ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
-  ~dirs
+      dune_file
+      ~expander
+      ~dir
+      ~libs
+      ~project
+      ~lib_config
+      ~loc
+      ~lookup_vlib
+      ~include_subdirs:(loc_include_subdirs, (include_subdirs : Include_subdirs.t))
+      ~dirs
   =
   let+ modules_of_stanzas =
     let modules =

@@ -60,32 +60,32 @@ let%expect_test "csexp server life cycle" =
     let client = Csexp_rpc.Server.listening_address server |> List.hd |> client in
     Fiber.fork_and_join_unit
       (fun () ->
-        let log fmt = Logger.log client_log fmt in
-        let* client = Client.connect_exn client in
-        let* () = Session.write client [ List [ Atom "from client" ] ] >>| ok_exn in
-        log "written";
-        let* response = Session.read client in
-        (match response with
-         | None -> log "no response"
-         | Some sexp -> log "received %s" (Csexp.to_string sexp));
-        let* () = Session.close client in
-        log "closed";
-        Server.stop server)
+         let log fmt = Logger.log client_log fmt in
+         let* client = Client.connect_exn client in
+         let* () = Session.write client [ List [ Atom "from client" ] ] >>| ok_exn in
+         log "written";
+         let* response = Session.read client in
+         (match response with
+          | None -> log "no response"
+          | Some sexp -> log "received %s" (Csexp.to_string sexp));
+         let* () = Session.close client in
+         log "closed";
+         Server.stop server)
       (fun () ->
-        let log fmt = Logger.log server_log fmt in
-        let+ () =
-          Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
-            log "received session";
-            let* res = Csexp_rpc.Session.read session in
-            match res with
-            | None ->
-              log "session terminated";
-              Fiber.return ()
-            | Some csexp ->
-              log "received %s" (Csexp.to_string csexp);
-              Session.write session [ List [ Atom "from server" ] ] >>| ok_exn)
-        in
-        log "sessions finished")
+         let log fmt = Logger.log server_log fmt in
+         let+ () =
+           Fiber.Stream.In.parallel_iter sessions ~f:(fun session ->
+             log "received session";
+             let* res = Csexp_rpc.Session.read session in
+             match res with
+             | None ->
+               log "session terminated";
+               Fiber.return ()
+             | Some csexp ->
+               log "received %s" (Csexp.to_string csexp);
+               Session.write session [ List [ Atom "from server" ] ] >>| ok_exn)
+         in
+         log "sessions finished")
   in
   Dune_engine.Clflags.display := Quiet;
   let config =

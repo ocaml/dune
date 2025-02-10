@@ -117,16 +117,16 @@ module Spec = struct
       Array.Immutable.to_list_map args ~f:(fun x ->
         Sexp.List
           (Array.Immutable.to_list_map x ~f:(function
-            | String s -> Sexp.Atom s
-            | Path p -> path p)))
+             | String s -> Sexp.Atom s
+             | Path p -> path p)))
     in
     List [ List ([ prog ] @ args); path ocamlfind_destdir ]
   ;;
 
   let action
-    { prog; args; ocamlfind_destdir; pkg; depexts }
-    ~(ectx : Action.context)
-    ~(eenv : Action.env)
+        { prog; args; ocamlfind_destdir; pkg; depexts }
+        ~(ectx : Action.context)
+        ~(eenv : Action.env)
     =
     let open Fiber.O in
     let display = !Clflags.display in

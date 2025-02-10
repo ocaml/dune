@@ -21,10 +21,10 @@ let write_subset base_dir library_index subset =
             List.flatten
               (List.map
                  (fun k ->
-                   List.map
-                     (fun j ->
-                       sprintf "M_%d_%d_%d_%d.f()" (library_index - 1) j mod_rows k)
-                     (count subsets_per_library))
+                    List.map
+                      (fun j ->
+                         sprintf "M_%d_%d_%d_%d.f()" (library_index - 1) j mod_rows k)
+                      (count subsets_per_library))
                  (count mod_cols))
         else
           List.map
@@ -68,17 +68,21 @@ let write_lib ~base_dir ~lib ~dune =
 
 let write base_dir =
   let () = Unix.mkdir base_dir 0o777 in
-  let dune = {|
+  let dune =
+    {|
 (library
  (name leaf)
  (libraries internal))
-|} in
+|}
+  in
   write_lib ~base_dir ~lib:Leaf ~dune;
-  let dune = {|
+  let dune =
+    {|
 (library
  (name internal)
  (wrapped false))
-|} in
+|}
+  in
   write_lib ~base_dir ~lib:Internal ~dune
 ;;
 

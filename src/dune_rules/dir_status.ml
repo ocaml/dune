@@ -144,9 +144,9 @@ let jsoo_wasm_enabled ~jsoo_enabled ~dir ~(buildable : Buildable.t) =
 ;;
 
 let directory_targets_of_executables
-  ~jsoo_enabled
-  ~dir
-  { Executables.names; modes; enabled_if; buildable; _ }
+      ~jsoo_enabled
+      ~dir
+      { Executables.names; modes; enabled_if; buildable; _ }
   =
   let* directory_targets =
     match Executables.Link_mode.(Map.mem modes wasm) with
@@ -165,9 +165,9 @@ let directory_targets_of_executables
 ;;
 
 let directory_targets_of_library
-  ~jsoo_enabled
-  ~dir
-  { Library.sub_systems; name; enabled_if; buildable; _ }
+      ~jsoo_enabled
+      ~dir
+      { Library.sub_systems; name; enabled_if; buildable; _ }
   =
   let* directory_targets =
     match Sub_system_name.Map.find sub_systems Inline_tests_info.Tests.name with
@@ -175,20 +175,18 @@ let directory_targets_of_library
       when Inline_tests_info.Mode_conf.Set.mem modes (Jsoo Wasm) ->
       jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
       >>| (function
-             | false -> Path.Build.Map.empty
-             | true ->
-               let dir_target =
-                 let inline_test_dir =
-                   let lib_name = snd name in
-                   Path.Build.relative
-                     dir
-                     (Inline_tests_info.inline_test_dirname lib_name)
-                 in
-                 Path.Build.relative
-                   inline_test_dir
-                   (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
-               in
-               Path.Build.Map.singleton dir_target loc)
+       | false -> Path.Build.Map.empty
+       | true ->
+         let dir_target =
+           let inline_test_dir =
+             let lib_name = snd name in
+             Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
+           in
+           Path.Build.relative
+             inline_test_dir
+             (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
+         in
+         Path.Build.Map.singleton dir_target loc)
       >>= when_enabled ~dir ~enabled_if
     | _ -> Memo.return Path.Build.Map.empty
   in
@@ -322,8 +320,8 @@ end = struct
       let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string ctx)
       >>| (function
-             | None -> false
-             | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
+       | None -> false
+       | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
       >>= (function
        | true -> Memo.return Lock_dir
        | false ->

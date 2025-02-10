@@ -163,7 +163,7 @@ module Produced = struct
   type 'a dir_contents =
     { files : 'a Filename.Map.t (* mapping file name -> 'a *)
     ; subdirs : 'a dir_contents Filename.Map.t
-    (* mapping directory name -> 'a dir_contents *)
+      (* mapping directory name -> 'a dir_contents *)
     }
 
   let is_empty_dir_conts { files; subdirs } =
@@ -176,9 +176,9 @@ module Produced = struct
     }
 
   let equal
-    { root = root1; contents = contents1 }
-    { root = root2; contents = contents2 }
-    ~equal
+        { root = root1; contents = contents1 }
+        { root = root2; contents = contents2 }
+        ~equal
     =
     let rec eq_aux { files = files1; subdirs = dirs1 } { files = files2; subdirs = dirs2 }
       =
@@ -479,13 +479,13 @@ module Produced = struct
       let+ files, subdirs =
         Fiber.fork_and_join
           (fun () ->
-            Filename_traversal.parallel_map files ~f:(fun file_name ->
-              let file = Path.Local.relative path file_name in
-              f file))
+             Filename_traversal.parallel_map files ~f:(fun file_name ->
+               let file = Path.Local.relative path file_name in
+               f file))
           (fun () ->
-            Filename_traversal.parallel_map subdirs ~f:(fun dir_name ->
-              let dir = Path.Local.relative path dir_name in
-              aux dir))
+             Filename_traversal.parallel_map subdirs ~f:(fun dir_name ->
+               let dir = Path.Local.relative path dir_name in
+               aux dir))
       in
       { files; subdirs }
     in
@@ -506,10 +506,10 @@ module Produced = struct
   (* The odd type of [d] and [f] is due to the fact that [map_with_errors]
      is used for a variety of things, not all "map-like". *)
   let map_with_errors
-    ?(d : (Path.Build.t -> (unit, 'e) result) option)
-    ~(f : Path.Build.t -> ('b, 'e) result)
-    ~all_errors
-    { root; contents }
+        ?(d : (Path.Build.t -> (unit, 'e) result) option)
+        ~(f : Path.Build.t -> ('b, 'e) result)
+        ~all_errors
+        { root; contents }
     =
     let errors = ref [] in
     let f path =

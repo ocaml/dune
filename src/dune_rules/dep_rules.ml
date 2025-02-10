@@ -10,11 +10,11 @@ let transitive_deps_contents modules =
 ;;
 
 let ooi_deps
-  { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
-  ~dune_version
-  ~vlib_obj_map
-  ~(ml_kind : Ml_kind.t)
-  (sourced_module : Modules.Sourced_module.t)
+      { vimpl; sctx; dir; obj_dir; modules = _; stdlib = _; sandbox = _ }
+      ~dune_version
+      ~vlib_obj_map
+      ~(ml_kind : Ml_kind.t)
+      (sourced_module : Modules.Sourced_module.t)
   =
   let m = Modules.Sourced_module.to_module sourced_module in
   let cm_kind =

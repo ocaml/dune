@@ -204,12 +204,12 @@ let include_dir_flags ~expander ~dir ~include_dirs =
 ;;
 
 let build_c
-  ~(kind : Foreign_language.t)
-  ~sctx
-  ~dir
-  ~expander
-  ~include_flags
-  (loc, (src : Foreign.Source.t), dst)
+      ~(kind : Foreign_language.t)
+      ~sctx
+      ~dir
+      ~expander
+      ~include_flags
+      (loc, (src : Foreign.Source.t), dst)
   =
   let ctx = Super_context.context sctx in
   let* project = Dune_load.find_project ~dir in
@@ -262,10 +262,11 @@ let build_c
         | Some src_dir -> Source_tree.is_vendored src_dir
         | None -> Memo.return false
       in
-      if Dune_project.dune_version project >= (2, 8)
-         && Option.is_none use_standard_flags
-         && (not is_vendored)
-         && not has_standard
+      if
+        Dune_project.dune_version project >= (2, 8)
+        && Option.is_none use_standard_flags
+        && (not is_vendored)
+        && not has_standard
       then
         User_warning.emit
           ~loc
@@ -319,12 +320,12 @@ let build_c
 (* TODO: [requires] is a confusing name, probably because it's too general: it
    looks like it's a list of libraries we depend on. *)
 let build_o_files
-  ~sctx
-  ~foreign_sources
-  ~(dir : Path.Build.t)
-  ~expander
-  ~requires
-  ~dir_contents
+      ~sctx
+      ~foreign_sources
+      ~(dir : Path.Build.t)
+      ~expander
+      ~requires
+      ~dir_contents
   =
   let includes =
     let h_files =

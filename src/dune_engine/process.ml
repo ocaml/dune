@@ -846,6 +846,14 @@ let report_process_finished
 
 let set_temp_dir_when_running_actions = ref true
 
+let set_temp_dir ~temp_dir env =
+  match temp_dir, !set_temp_dir_when_running_actions with
+  | Some path, _ ->
+    Env.add env ~var:Env.Var.temp_dir ~value:(Path.to_absolute_filename path)
+  | None, true -> Dtemp.add_to_env env
+  | None, false -> env
+;;
+
 let await { response_file; pid; _ } =
   let+ process_info, termination_reason =
     Scheduler.wait_for_build_process pid ~is_process_group_leader:true
@@ -856,6 +864,7 @@ let await { response_file; pid; _ } =
 
 let spawn
   ?dir
+  ?temp_dir
   ?(env = Env.initial)
   ~(stdout : _ Io.t)
   ~(stderr : _ Io.t)
@@ -924,14 +933,7 @@ let spawn
     Unix.gettimeofday ()
   in
   let pid =
-    let env =
-      let env =
-        match !set_temp_dir_when_running_actions with
-        | true -> Dtemp.add_to_env env
-        | false -> env
-      in
-      Env.to_unix env |> Spawn.Env.of_list
-    in
+    let env = set_temp_dir ~temp_dir env |> Env.to_unix |> Spawn.Env.of_list in
     let stdout = Io.fd stdout in
     let stderr = Io.fd stderr in
     let stdin = Io.fd stdin in
@@ -967,6 +969,7 @@ let spawn
 
 let run_internal
   ?dir
+  ?temp_dir
   ~(display : Display.t)
   ?(stdout_to = Io.stdout)
   ?(stderr_to = Io.stderr)
@@ -1006,7 +1009,16 @@ let run_internal
       | _ -> Pp.nop
     in
     let t =
-      spawn ?dir ?env ~stdout:stdout_to ~stderr:stderr_to ~stdin:stdin_from ~prog ~args ()
+      spawn
+        ?dir
+        ?temp_dir
+        ?env
+        ~stdout:stdout_to
+        ~stderr:stderr_to
+        ~stdin:stdin_from
+        ~prog
+        ~args
+        ()
     in
     let* () =
       let description =
@@ -1083,11 +1095,23 @@ let run_internal
       res, times)
 ;;
 
-let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode prog args
+let run
+  ?dir
+  ?temp_dir
+  ~display
+  ?stdout_to
+  ?stderr_to
+  ?stdin_from
+  ?env
+  ?metadata
+  fail_mode
+  prog
+  args
   =
   let+ run =
     run_internal
       ?dir
+      ?temp_dir
       ~display
       ?stdout_to
       ?stderr_to
@@ -1104,6 +1128,7 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
 
 let run_with_times
   ?dir
+  ?temp_dir
   ~display
   ?stdout_to
   ?stderr_to
@@ -1117,6 +1142,7 @@ let run_with_times
   let+ code, times =
     run_internal
       ?dir
+      ?temp_dir
       ~display
       ?stdout_to
       ?stderr_to
@@ -1132,6 +1158,7 @@ let run_with_times
 
 let run_capture_gen
   ?dir
+  ?temp_dir
   ~display
   ?stderr_to
   ?stdin_from
@@ -1146,6 +1173,7 @@ let run_capture_gen
   let+ run =
     run_internal
       ?dir
+      ?temp_dir
       ~display
       ~stdout_to:(Io.file fn Io.Out)
       ?stderr_to
@@ -1169,6 +1197,7 @@ let run_capture_zero_separated = run_capture_gen ~f:Stdune.Io.zero_strings_of_fi
 
 let run_capture_line
   ?dir
+  ?temp_dir
   ~display
   ?stderr_to
   ?stdin_from
@@ -1180,6 +1209,7 @@ let run_capture_line
   =
   run_capture_gen
     ?dir
+    ?temp_dir
     ~display
     ?stderr_to
     ?stdin_from

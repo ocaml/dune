@@ -12,14 +12,14 @@ let remove_locs { url = _loc, url; checksum } =
 ;;
 
 let equal
-  { url = loc, url; checksum }
-  { url = other_loc, other_url; checksum = other_checksum }
+      { url = loc, url; checksum }
+      { url = other_loc, other_url; checksum = other_checksum }
   =
   Loc.equal loc other_loc
   && OpamUrl.equal url other_url
   && Option.equal
        (fun (loc, checksum) (other_loc, other_checksum) ->
-         Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
+          Loc.equal loc other_loc && Checksum.equal checksum other_checksum)
        checksum
        other_checksum
 ;;
@@ -55,17 +55,18 @@ let fetch_and_hash_archive_cached =
 ;;
 
 let compute_missing_checksum
-  ({ url = url_loc, url; checksum } as fetch)
-  package_name
-  ~pinned
+      ({ url = url_loc, url; checksum } as fetch)
+      package_name
+      ~pinned
   =
   let open Fiber.O in
   match checksum with
   | Some _ -> Fiber.return fetch
   | None when OpamUrl.is_local url || OpamUrl.is_version_control url -> Fiber.return fetch
   | None ->
-    if not pinned
-       (* No point in warning this about pinned packages. The user explicitly
+    if
+      not pinned
+      (* No point in warning this about pinned packages. The user explicitly
           asked for the pins *)
     then
       User_message.print

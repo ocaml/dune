@@ -297,14 +297,14 @@ module DB = struct
   module Path_source_map_traversals = Memo.Make_parallel_map (Path.Source.Map)
 
   let scopes_by_dir
-    ~build_dir
-    ~lib_config
-    ~projects_by_root
-    ~public_libs
-    ~instrument_with
-    context
-    stanzas
-    coq_stanzas
+        ~build_dir
+        ~lib_config
+        ~projects_by_root
+        ~public_libs
+        ~instrument_with
+        context
+        stanzas
+        coq_stanzas
     =
     let stanzas_by_project_dir =
       List.map stanzas ~f:(fun (dir, stanza) ->

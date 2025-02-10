@@ -3,8 +3,7 @@ let is_root =
   then fun x -> x = "/" || x = "."
   else
     (* CR-someday rgrinberg: can we do better on windows? *)
-    fun s ->
-    Filename.dirname s = s
+    fun s -> Filename.dirname s = s
 ;;
 
 let initial_cwd = Stdlib.Sys.getcwd ()

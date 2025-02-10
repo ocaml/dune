@@ -71,9 +71,9 @@ let error (type a) { current_file = (file : a); include_stack; path } =
 ;;
 
 let load_sexps
-  (type a)
-  ~context:({ current_file; include_stack; path } as context)
-  (loc, fn)
+      (type a)
+      ~context:({ current_file; include_stack; path } as context)
+      (loc, fn)
   =
   let module Path = (val path : Path with type t = a) in
   let include_stack = (loc, current_file) :: include_stack in

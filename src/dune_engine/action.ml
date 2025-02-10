@@ -14,12 +14,13 @@ module Make
     (Target : T)
     (String : T)
     (Extension : T)
-    (Ast : Action_intf.Ast
-           with type program := Program.t
-           with type path := Path.t
-           with type target := Target.t
-           with type string := String.t
-            and type ext := Extension.t) =
+    (Ast :
+       Action_intf.Ast
+       with type program := Program.t
+       with type path := Path.t
+       with type target := Target.t
+       with type string := String.t
+        and type ext := Extension.t) =
 struct
   include Ast
 
@@ -334,11 +335,11 @@ module Full = struct
   include Monoid.Make (T)
 
   let make
-    ?(env = Env.empty)
-    ?(locks = [])
-    ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
-    ?(sandbox = Sandbox_config.default)
-    action
+        ?(env = Env.empty)
+        ?(locks = [])
+        ?(can_go_in_shared_cache = !Clflags.can_go_in_shared_cache_default)
+        ?(sandbox = Sandbox_config.default)
+        action
     =
     { action; env; locks; can_go_in_shared_cache; sandbox }
   ;;

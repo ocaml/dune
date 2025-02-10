@@ -51,11 +51,11 @@ end
 let files_in_source_tree_to_delete () = To_delete.get_db ()
 
 let promote_target_if_not_up_to_date
-  ~src
-  ~src_digest
-  ~dst
-  ~promote_source
-  ~promote_until_clean
+      ~src
+      ~src_digest
+      ~dst
+      ~promote_source
+      ~promote_until_clean
   =
   let open Fiber.O in
   (* It is OK to use [Fs_cache.Untracked.file_digest] here because below we use
@@ -175,8 +175,8 @@ let promote ~(targets : _ Targets.Produced.t) ~(promote : Rule.Promote.t) ~promo
       (match
          Unix_error.Detailed.catch
            (fun () ->
-             Path.unlink_no_err dst_dir;
-             Path.mkdir_p dst_dir)
+              Path.unlink_no_err dst_dir;
+              Path.mkdir_p dst_dir)
            ()
        with
        | Ok () -> ()

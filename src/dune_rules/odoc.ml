@@ -304,13 +304,13 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 ;;
 
 let compile_module
-  sctx
-  ~obj_dir
-  (m : Module.t)
-  ~includes:(file_deps, iflags)
-  ~dep_graphs
-  ~pkg_or_lnu
-  ~mode
+      sctx
+      ~obj_dir
+      (m : Module.t)
+      ~includes:(file_deps, iflags)
+      ~dep_graphs
+      ~pkg_or_lnu
+      ~mode
   =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let+ () =
@@ -920,21 +920,21 @@ let package_mlds =
       "package-mlds"
       ~input:(module Super_context.As_memo_key.And_package_name)
       (fun (sctx, pkg) ->
-        Rules.collect (fun () ->
-          let* mlds = Packages.mlds sctx pkg in
-          let mlds = check_mlds_no_dupes ~pkg ~mlds in
-          let ctx = Super_context.context sctx in
-          if Filename.Map.mem mlds "index"
-          then Memo.return mlds
-          else (
-            let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
-            let* entry_modules = entry_modules sctx ~pkg in
-            let+ () =
-              add_rule
-                sctx
-                (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
-            in
-            Filename.Map.set mlds "index" gen_mld)))
+         Rules.collect (fun () ->
+           let* mlds = Packages.mlds sctx pkg in
+           let mlds = check_mlds_no_dupes ~pkg ~mlds in
+           let ctx = Super_context.context sctx in
+           if Filename.Map.mem mlds "index"
+           then Memo.return mlds
+           else (
+             let gen_mld = Paths.gen_mld_dir ctx pkg ++ "index.mld" in
+             let* entry_modules = entry_modules sctx ~pkg in
+             let+ () =
+               add_rule
+                 sctx
+                 (Action_builder.write_file gen_mld (default_index ~pkg entry_modules))
+             in
+             Filename.Map.set mlds "index" gen_mld)))
   in
   fun sctx ~pkg -> Memo.exec memo (sctx, pkg)
 ;;

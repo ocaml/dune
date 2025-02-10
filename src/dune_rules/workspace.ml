@@ -16,14 +16,14 @@ module Lock_dir = struct
     }
 
   let to_dyn
-    { path
-    ; version_preference
-    ; solver_env
-    ; unset_solver_vars
-    ; repositories
-    ; constraints
-    ; pins
-    }
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
     =
     Dyn.record
       [ "path", Path.Source.to_dyn path
@@ -41,14 +41,14 @@ module Lock_dir = struct
   ;;
 
   let hash
-    { path
-    ; version_preference
-    ; solver_env
-    ; unset_solver_vars
-    ; repositories
-    ; constraints
-    ; pins
-    }
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
     =
     Poly.hash
       ( path
@@ -61,15 +61,15 @@ module Lock_dir = struct
   ;;
 
   let equal
-    { path
-    ; version_preference
-    ; solver_env
-    ; unset_solver_vars
-    ; repositories
-    ; constraints
-    ; pins
-    }
-    t
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
+        t
     =
     Path.Source.equal path t.path
     && Option.equal
@@ -313,20 +313,20 @@ module Context = struct
     ;;
 
     let equal
-      { loc = _
-      ; profile
-      ; targets
-      ; env
-      ; toolchain
-      ; name
-      ; host_context
-      ; paths
-      ; fdo_target_exe
-      ; dynamically_linked_foreign_archives
-      ; instrument_with
-      ; merlin
-      }
-      t
+          { loc = _
+          ; profile
+          ; targets
+          ; env
+          ; toolchain
+          ; name
+          ; host_context
+          ; paths
+          ; fdo_target_exe
+          ; dynamically_linked_foreign_archives
+          ; instrument_with
+          ; merlin
+          }
+          t
       =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -701,13 +701,13 @@ module Clflags = struct
     }
 
   let to_dyn
-    { x
-    ; profile
-    ; instrument_with
-    ; workspace_file
-    ; config_from_command_line
-    ; config_from_config_file
-    }
+        { x
+        ; profile
+        ; instrument_with
+        ; workspace_file
+        ; config_from_command_line
+        ; config_from_config_file
+        }
     =
     let open Dyn in
     record
@@ -773,9 +773,9 @@ let top_sort contexts =
 ;;
 
 let create_final_config
-  ~config_from_config_file
-  ~config_from_command_line
-  ~config_from_workspace_file
+      ~config_from_config_file
+      ~config_from_command_line
+      ~config_from_workspace_file
   =
   let ( ++ ) = Dune_config.superpose in
   Dune_config.default
@@ -905,9 +905,10 @@ let step1 clflags =
          match merlin_context with
          | Some _ -> merlin_context
          | None ->
-           if List.exists contexts ~f:(function
-                | Context.Default _ -> true
-                | _ -> false)
+           if
+             List.exists contexts ~f:(function
+               | Context.Default _ -> true
+               | _ -> false)
            then Some Context_name.default
            else None
        in

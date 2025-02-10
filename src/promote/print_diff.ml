@@ -96,11 +96,11 @@ let prepare ~skip_trailing_cr annots path1 path2 =
   in
   let loc = Loc.in_file file1 in
   let run
-    ?(dir = dir)
-    ?(metadata = Process.create_metadata ~purpose:Internal_job ~loc ~annots ())
-    prog
-    args
-    ~fallback
+        ?(dir = dir)
+        ?(metadata = Process.create_metadata ~purpose:Internal_job ~loc ~annots ())
+        prog
+        args
+        ~fallback
     =
     With_fallback.run { dir; prog; args; metadata } ~fallback
   in
@@ -202,8 +202,10 @@ let prepare ~skip_trailing_cr annots path1 path2 =
                     User_message.Annots.has_embedded_location
                     ())
                ())
-          ~fallback:((* Use "diff" if "patdiff" reported no differences *)
-                     normal_diff ()))
+          ~fallback:
+            ((* Use "diff" if "patdiff" reported no differences *)
+             normal_diff
+               ()))
 ;;
 
 let print ?(skip_trailing_cr = Sys.win32) annots path1 path2 =

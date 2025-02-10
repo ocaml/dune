@@ -199,12 +199,12 @@ let default_metadata =
 ;;
 
 let create_metadata
-  ?loc
-  ?(annots = default_metadata.annots)
-  ?name
-  ?(categories = default_metadata.categories)
-  ?(purpose = Internal_job)
-  ()
+      ?loc
+      ?(annots = default_metadata.annots)
+      ?name
+      ?(categories = default_metadata.categories)
+      ?(purpose = Internal_job)
+      ()
   =
   { loc; annots; name; categories; purpose }
 ;;
@@ -217,10 +217,10 @@ let io_to_redirection_path (kind : Io.kind) =
 ;;
 
 let command_line_enclosers
-  ~dir
-  ~(stdout_to : Io.output Io.t)
-  ~(stderr_to : Io.output Io.t)
-  ~(stdin_from : Io.input Io.t)
+      ~dir
+      ~(stdout_to : Io.output Io.t)
+      ~(stderr_to : Io.output Io.t)
+      ~(stdin_from : Io.input Io.t)
   =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
@@ -433,11 +433,11 @@ end = struct
   let pp_ok = progname_and_purpose ~tag:Ok
 
   let pp_error
-    ~prog
-    ~purpose
-    ~has_unexpected_stdout
-    ~has_unexpected_stderr
-    ~(error : Exit_status.error)
+        ~prog
+        ~purpose
+        ~has_unexpected_stdout
+        ~has_unexpected_stderr
+        ~(error : Exit_status.error)
     =
     let open Pp.O in
     let msg =
@@ -591,20 +591,21 @@ end = struct
   ;;
 
   let non_verbose
-    t
-    ~(verbosity : Display.t)
-    ~metadata
-    ~output
-    ~prog
-    ~command_line
-    ~dir
-    ~has_unexpected_stdout
-    ~has_unexpected_stderr
+        t
+        ~(verbosity : Display.t)
+        ~metadata
+        ~output
+        ~prog
+        ~command_line
+        ~dir
+        ~has_unexpected_stdout
+        ~has_unexpected_stderr
     =
     let output = parse_output output in
     let show_command =
       !Clflags.always_show_command_line
-      || (* We want to show command lines in the CI, but not when running inside
+      ||
+      (* We want to show command lines in the CI, but not when running inside
             dune. Otherwise tests would yield different result whether they are
             executed locally or in the CI. *)
       (Execution_env.inside_ci && not Execution_env.inside_dune)
@@ -746,17 +747,17 @@ module Result = struct
   ;;
 
   let make
-    ({ stdout_on_success
-     ; stderr_on_success
-     ; stdout_limit
-     ; stderr_limit
-     ; stdout
-     ; stderr
-     ; _
-     } :
-      process)
-    (process_info : Proc.Process_info.t)
-    fail_mode
+        ({ stdout_on_success
+         ; stderr_on_success
+         ; stdout_limit
+         ; stderr_limit
+         ; stdout
+         ; stderr
+         ; _
+         } :
+          process)
+        (process_info : Proc.Process_info.t)
+        fail_mode
     =
     let stdout = Out.make stdout ~on_success:stdout_on_success ~limit:stdout_limit in
     let stderr = Out.make stderr ~on_success:stderr_on_success ~limit:stderr_limit in
@@ -777,17 +778,17 @@ module Result = struct
 end
 
 let report_process_finished
-  stats
-  ~metadata
-  ~dir
-  ~prog
-  ~pid
-  ~args
-  ~started_at
-  ~exit_status
-  ~stdout
-  ~stderr
-  (times : Proc.Times.t)
+      stats
+      ~metadata
+      ~dir
+      ~prog
+      ~pid
+      ~args
+      ~started_at
+      ~exit_status
+      ~stdout
+      ~stderr
+      (times : Proc.Times.t)
   =
   let common =
     let name =
@@ -855,14 +856,14 @@ let await { response_file; pid; _ } =
 ;;
 
 let spawn
-  ?dir
-  ?(env = Env.initial)
-  ~(stdout : _ Io.t)
-  ~(stderr : _ Io.t)
-  ~(stdin : _ Io.t)
-  ~prog
-  ~args
-  ()
+      ?dir
+      ?(env = Env.initial)
+      ~(stdout : _ Io.t)
+      ~(stderr : _ Io.t)
+      ~(stdin : _ Io.t)
+      ~prog
+      ~args
+      ()
   =
   let stdout_on_success = Io.output_on_success stdout
   and stderr_on_success = Io.output_on_success stderr in
@@ -966,16 +967,16 @@ let spawn
 ;;
 
 let run_internal
-  ?dir
-  ~(display : Display.t)
-  ?(stdout_to = Io.stdout)
-  ?(stderr_to = Io.stderr)
-  ?(stdin_from = Io.null In)
-  ?env
-  ?(metadata = default_metadata)
-  fail_mode
-  prog
-  args
+      ?dir
+      ~(display : Display.t)
+      ?(stdout_to = Io.stdout)
+      ?(stderr_to = Io.stderr)
+      ?(stdin_from = Io.null In)
+      ?env
+      ?(metadata = default_metadata)
+      fail_mode
+      prog
+      args
   =
   Scheduler.with_job_slot (fun _cancel (config : Scheduler.Config.t) ->
     let dir =
@@ -1103,16 +1104,16 @@ let run ?dir ~display ?stdout_to ?stderr_to ?stdin_from ?env ?metadata fail_mode
 ;;
 
 let run_with_times
-  ?dir
-  ~display
-  ?stdout_to
-  ?stderr_to
-  ?stdin_from
-  ?env
-  ?metadata
-  fail_mode
-  prog
-  args
+      ?dir
+      ~display
+      ?stdout_to
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
   =
   let+ code, times =
     run_internal
@@ -1131,16 +1132,16 @@ let run_with_times
 ;;
 
 let run_capture_gen
-  ?dir
-  ~display
-  ?stderr_to
-  ?stdin_from
-  ?env
-  ?metadata
-  fail_mode
-  prog
-  args
-  ~f
+      ?dir
+      ~display
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
+      ~f
   =
   let fn = Temp.create File ~prefix:"dune" ~suffix:"output" in
   let+ run =
@@ -1168,15 +1169,15 @@ let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 let run_capture_zero_separated = run_capture_gen ~f:Stdune.Io.zero_strings_of_file
 
 let run_capture_line
-  ?dir
-  ~display
-  ?stderr_to
-  ?stdin_from
-  ?env
-  ?metadata
-  fail_mode
-  prog
-  args
+      ?dir
+      ~display
+      ?stderr_to
+      ?stdin_from
+      ?env
+      ?metadata
+      fail_mode
+      prog
+      args
   =
   run_capture_gen
     ?dir

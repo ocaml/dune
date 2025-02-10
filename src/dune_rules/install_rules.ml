@@ -169,12 +169,12 @@ end = struct
   ;;
 
   let lib_install_files
-    sctx
-    ~scope
-    ~dir_contents
-    ~dir
-    ~sub_dir:lib_subdir
-    (lib : Library.t)
+        sctx
+        ~scope
+        ~dir_contents
+        ~dir
+        ~sub_dir:lib_subdir
+        (lib : Library.t)
     =
     let loc = lib.buildable.loc in
     let ctx = Super_context.context sctx in
@@ -945,9 +945,9 @@ let symlink_source_dir ~dir ~dst =
 ;;
 
 let symlink_installed_artifacts_to_build_install
-  (ctx : Build_context.t)
-  (entries : Install.Entry.Sourced.t list)
-  ~install_paths
+      (ctx : Build_context.t)
+      (entries : Install.Entry.Sourced.t list)
+      ~install_paths
   =
   let install_dir = Install.Context.dir ~context:ctx.name in
   Memo.parallel_map entries ~f:(fun (s : Install.Entry.Sourced.t) ->
@@ -1094,7 +1094,8 @@ let package_deps (pkg : Package.t) files =
           rules_seen
           (Dep.Facts.paths ~expand_aliases:true res.facts
            |> Path.Set.to_list
-           |> (* if this file isn't in the build dir, it doesn't belong to any
+           |>
+           (* if this file isn't in the build dir, it doesn't belong to any
                  package and it doesn't have dependencies that do *)
            List.filter_map ~f:Path.as_in_build_dir))
   and loop_files rules_seen files =
@@ -1286,10 +1287,11 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       in
       if not (Package.allow_empty package)
       then
-        if List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
-             match e.source with
-             | Dune -> true
-             | User _ -> false)
+        if
+          List.for_all entries ~f:(fun (e : Install.Entry.Sourced.t) ->
+            match e.source with
+            | Dune -> true
+            | User _ -> false)
         then (
           let is_error = Dune_project.dune_version dune_project >= (3, 0) in
           User_warning.emit
@@ -1330,16 +1332,16 @@ let memo =
         (Package.Name.to_string pkg))
     "install-rules-and-pkg-entries"
     (fun (sctx, pkg) ->
-      Memo.return
-        (Scheme.Approximation
-           ( (let ctx = Super_context.context sctx in
-              Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx)))
-           , Thunk
-               (fun () ->
-                 let+ rules =
-                   symlinked_entries sctx pkg >>| snd >>| Rules.of_rules >>| Rules.to_map
-                 in
-                 Scheme.Finite rules) )))
+       Memo.return
+         (Scheme.Approximation
+            ( (let ctx = Super_context.context sctx in
+               Dir_set.subtree (Install.Context.dir ~context:(Context.name ctx)))
+            , Thunk
+                (fun () ->
+                  let+ rules =
+                    symlinked_entries sctx pkg >>| snd >>| Rules.of_rules >>| Rules.to_map
+                  in
+                  Scheme.Finite rules) )))
 ;;
 
 let scheme sctx pkg = Memo.exec memo (sctx, pkg)
@@ -1349,11 +1351,11 @@ let scheme_per_ctx_memo =
     ~input:(module Super_context.As_memo_key)
     "install-rule-scheme"
     (fun sctx ->
-      Dune_load.packages ()
-      >>| Package.Name.Map.values
-      >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
-      >>| Scheme.all
-      >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
+       Dune_load.packages ()
+       >>| Package.Name.Map.values
+       >>= Memo.parallel_map ~f:(fun pkg -> scheme sctx (Package.name pkg))
+       >>| Scheme.all
+       >>= Scheme.evaluate ~union:Rules.Dir_rules.union)
 ;;
 
 let symlink_rules sctx ~dir =

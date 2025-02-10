@@ -58,15 +58,15 @@ type t =
   }
 
 let equal
-  { action_stdout_on_success
-  ; action_stderr_on_success
-  ; action_stdout_limit
-  ; action_stderr_limit
-  ; expand_aliases_in_sandbox
-  ; workspace_root_to_build_path_prefix_map
-  ; should_remove_write_permissions_on_generated_files
-  }
-  t
+      { action_stdout_on_success
+      ; action_stderr_on_success
+      ; action_stdout_limit
+      ; action_stderr_limit
+      ; expand_aliases_in_sandbox
+      ; workspace_root_to_build_path_prefix_map
+      ; should_remove_write_permissions_on_generated_files
+      }
+      t
   =
   Action_output_on_success.equal action_stdout_on_success t.action_stdout_on_success
   && Action_output_on_success.equal action_stderr_on_success t.action_stderr_on_success
@@ -82,14 +82,14 @@ let equal
 ;;
 
 let hash
-  { action_stdout_on_success
-  ; action_stderr_on_success
-  ; action_stdout_limit
-  ; action_stderr_limit
-  ; expand_aliases_in_sandbox
-  ; workspace_root_to_build_path_prefix_map
-  ; should_remove_write_permissions_on_generated_files
-  }
+      { action_stdout_on_success
+      ; action_stderr_on_success
+      ; action_stdout_limit
+      ; action_stderr_limit
+      ; expand_aliases_in_sandbox
+      ; workspace_root_to_build_path_prefix_map
+      ; should_remove_write_permissions_on_generated_files
+      }
   =
   Poly.hash
     ( Action_output_on_success.hash action_stdout_on_success
@@ -102,14 +102,14 @@ let hash
 ;;
 
 let to_dyn
-  { action_stdout_on_success
-  ; action_stderr_on_success
-  ; action_stdout_limit
-  ; action_stderr_limit
-  ; expand_aliases_in_sandbox
-  ; workspace_root_to_build_path_prefix_map
-  ; should_remove_write_permissions_on_generated_files
-  }
+      { action_stdout_on_success
+      ; action_stderr_on_success
+      ; action_stdout_limit
+      ; action_stderr_limit
+      ; expand_aliases_in_sandbox
+      ; workspace_root_to_build_path_prefix_map
+      ; should_remove_write_permissions_on_generated_files
+      }
   =
   Dyn.Record
     [ "action_stdout_on_success", Action_output_on_success.to_dyn action_stdout_on_success

@@ -194,10 +194,10 @@ module Dir = struct
   type t = File_binding.Unexpanded.t Recursive_include.t
 
   let to_file_bindings_expanded
-    ts
-    ~expand
-    ~(dir : Path.Build.t)
-    ~relative_dst_path_starts_with_parent_error_when
+        ts
+        ~expand
+        ~(dir : Path.Build.t)
+        ~relative_dst_path_starts_with_parent_error_when
     =
     let* file_bindings_expanded =
       Memo.List.concat_map

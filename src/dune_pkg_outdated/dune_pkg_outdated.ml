@@ -82,9 +82,9 @@ let explain_results_to_user results ~transitive ~lock_dir_path =
 ;;
 
 let better_candidate
-  ~repos
-  ~(local_packages : Dune_pkg.Local_package.t Package_name.Map.t)
-  (pkg : Lock_dir.Pkg.t)
+      ~repos
+      ~(local_packages : Dune_pkg.Local_package.t Package_name.Map.t)
+      (pkg : Lock_dir.Pkg.t)
   =
   let open Fiber.O in
   let pkg_name = pkg.info.name |> Package_name.to_string |> OpamPackage.Name.of_string in
@@ -182,10 +182,10 @@ module For_tests = struct
   let package_is_best_candidate = Package_is_best_candidate
 
   let better_candidate
-    ~is_immediate_dep_of_local_package
-    ~name
-    ~newer_version
-    ~outdated_version
+        ~is_immediate_dep_of_local_package
+        ~name
+        ~newer_version
+        ~outdated_version
     =
     Better_candidate
       { is_immediate_dep_of_local_package

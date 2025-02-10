@@ -8,7 +8,7 @@ open Coq_stanza
 type t =
   { libraries : Coq_module.t list Coq_lib_name.Map.t
   ; directories : Path.Build.t list Coq_lib_name.Map.t
-      (* [directories] is used to compute the include paths for Coq's native
+    (* [directories] is used to compute the include paths for Coq's native
          mode *)
   ; extract : Coq_module.t Loc.Map.t
   ; rev_map : [ `Theory of Theory.t | `Extraction of Extraction.t ] Coq_module.Map.t

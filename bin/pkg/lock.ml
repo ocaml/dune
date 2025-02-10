@@ -67,14 +67,14 @@ let resolve_project_pins project_pins =
 ;;
 
 let solve_lock_dir
-  workspace
-  ~local_packages
-  ~project_pins
-  ~print_perf_stats
-  version_preference
-  solver_env_from_current_system
-  lock_dir_path
-  progress_state
+      workspace
+      ~local_packages
+      ~project_pins
+      ~print_perf_stats
+      version_preference
+      solver_env_from_current_system
+      lock_dir_path
+      progress_state
   =
   let open Fiber.O in
   let lock_dir = Workspace.find_lock_dir workspace lock_dir_path in
@@ -153,13 +153,13 @@ let solve_lock_dir
 ;;
 
 let solve
-  workspace
-  ~local_packages
-  ~project_pins
-  ~solver_env_from_current_system
-  ~version_preference
-  ~lock_dirs
-  ~print_perf_stats
+      workspace
+      ~local_packages
+      ~project_pins
+      ~solver_env_from_current_system
+      ~version_preference
+      ~lock_dirs
+      ~print_perf_stats
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -176,16 +176,16 @@ let solve
            Console.Status_line.remove_overlay overlay;
            Fiber.return ())
          (fun () ->
-           Fiber.parallel_map progress_indicator ~f:(fun { lockdir_path; state } ->
-             solve_lock_dir
-               workspace
-               ~local_packages
-               ~project_pins
-               ~print_perf_stats
-               version_preference
-               solver_env_from_current_system
-               lockdir_path
-               state))
+            Fiber.parallel_map progress_indicator ~f:(fun { lockdir_path; state } ->
+              solve_lock_dir
+                workspace
+                ~local_packages
+                ~project_pins
+                ~print_perf_stats
+                version_preference
+                solver_env_from_current_system
+                lockdir_path
+                state))
      in
      List.partition_map result ~f:Result.to_either
    in

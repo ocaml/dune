@@ -612,13 +612,13 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
 ;;
 
 let expand
-  t
-  ~loc
-  ~chdir
-  ~deps:deps_written_by_user
-  ~targets_dir
-  ~targets:targets_written_by_user
-  ~expander
+      t
+      ~loc
+      ~chdir
+      ~deps:deps_written_by_user
+      ~targets_dir
+      ~targets:targets_written_by_user
+      ~expander
   =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =

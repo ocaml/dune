@@ -19,10 +19,11 @@ module Object = struct
   type resolved = t
 
   let of_sha1 s =
-    if String.length s = 40
-       && String.for_all s ~f:(function
-         | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
-         | _ -> false)
+    if
+      String.length s = 40
+      && String.for_all s ~f:(function
+        | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
+        | _ -> false)
     then Some (Sha1 (String.lowercase_ascii s))
     else None
   ;;
@@ -92,40 +93,40 @@ let with_flock lock_path ~f =
       let+ () = Fiber.return () in
       Unix.close fd)
     (fun () ->
-      attempt_to_lock flock Flock.Exclusive ~max_retries
-      >>= function
-      | Ok `Success ->
-        Fiber.finalize
-          (fun () ->
-            Dune_util.Global_lock.write_pid fd;
-            f ())
-          ~finally:(fun () ->
-            let+ () = Fiber.return () in
-            Path.unlink_no_err lock_path;
-            match Flock.unlock flock with
-            | Ok () -> ()
-            | Error ue ->
-              Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
-              |> Unix_error.Detailed.raise)
-      | Ok `Failure ->
-        let pid = Io.read_file lock_path in
-        User_error.raise
-          ~hints:
-            [ Pp.textf
-                "Another dune instance (pid %s) has locked the revision store. If this \
-                 is happening in error, make sure to terminate that instance and re-run \
-                 the command."
-                pid
-            ]
-          [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
-          ]
-      | Error error ->
-        User_error.raise
-          [ Pp.textf
-              "Failed to get a lock for the revision store at %s: %s"
-              (Path.to_string_maybe_quoted lock_path)
-              (Unix.error_message error)
-          ])
+       attempt_to_lock flock Flock.Exclusive ~max_retries
+       >>= function
+       | Ok `Success ->
+         Fiber.finalize
+           (fun () ->
+              Dune_util.Global_lock.write_pid fd;
+              f ())
+           ~finally:(fun () ->
+             let+ () = Fiber.return () in
+             Path.unlink_no_err lock_path;
+             match Flock.unlock flock with
+             | Ok () -> ()
+             | Error ue ->
+               Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
+               |> Unix_error.Detailed.raise)
+       | Ok `Failure ->
+         let pid = Io.read_file lock_path in
+         User_error.raise
+           ~hints:
+             [ Pp.textf
+                 "Another dune instance (pid %s) has locked the revision store. If this \
+                  is happening in error, make sure to terminate that instance and re-run \
+                  the command."
+                 pid
+             ]
+           [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
+           ]
+       | Error error ->
+         User_error.raise
+           [ Pp.textf
+               "Failed to get a lock for the revision store at %s: %s"
+               (Path.to_string_maybe_quoted lock_path)
+               (Unix.error_message error)
+           ])
 ;;
 
 let failure_mode = Process.Failure_mode.Return
@@ -744,8 +745,12 @@ module At_rev = struct
   ;;
 
   let check_out
-    { repo = { dir; _ }; revision = Sha1 rev; files = _; recursive_directory_entries = _ }
-    ~target
+        { repo = { dir; _ }
+        ; revision = Sha1 rev
+        ; files = _
+        ; recursive_directory_entries = _
+        }
+        ~target
     =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in

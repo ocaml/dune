@@ -187,9 +187,9 @@ let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
 ;;
 
 let remove_old_artifacts
-  ~dir
-  ~(rules_here : Loaded.rules_here)
-  ~(subdirs_to_keep : Subdir_set.t)
+      ~dir
+      ~(rules_here : Loaded.rules_here)
+      ~(subdirs_to_keep : Subdir_set.t)
   =
   match Path.Untracked.readdir_unsorted_with_kinds (Path.build dir) with
   | Error _ -> ()
@@ -538,8 +538,8 @@ end = struct
     ;;
 
     let make_rules_gen_result
-      ~of_
-      { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
+          ~of_
+          { Gen_rules.Rules.build_dir_only_sub_dirs; directory_targets; rules }
       =
       check_all_directory_targets_are_descendant ~of_ directory_targets;
       check_all_sub_dirs_rule_dirs_are_descendant ~of_ build_dir_only_sub_dirs;
@@ -570,7 +570,8 @@ end = struct
     ;;
 
     let call_rules_generator
-      ({ Dir_triage.Build_directory.dir; context_name; context_type = _; sub_dir } as d)
+          ({ Dir_triage.Build_directory.dir; context_name; context_type = _; sub_dir } as
+           d)
       =
       let (module RG : Rule_generator) = (Build_config.get ()).rule_generator in
       let sub_dir_components = Path.Source.explode sub_dir in
@@ -703,10 +704,10 @@ end = struct
   ;;
 
   let descendants_to_keep
-    { Dir_triage.Build_directory.dir; context_name = _; context_type; sub_dir }
-    (build_dir_only_sub_dirs : Subdir_set.t)
-    ~source_dirs
-    rules_produced
+        { Dir_triage.Build_directory.dir; context_name = _; context_type; sub_dir }
+        (build_dir_only_sub_dirs : Subdir_set.t)
+        ~source_dirs
+        rules_produced
     =
     let* allowed_by_parent =
       match context_type, Path.Source.to_string sub_dir with
@@ -762,12 +763,13 @@ end = struct
   ;;
 
   let validate_directory_targets ~dir ~real_directory_targets ~directory_targets =
-    if not
-         (Path.Build.Map.equal real_directory_targets directory_targets ~equal:(fun _ _ ->
-            (* The locations should match if the declaration knows which
+    if
+      not
+        (Path.Build.Map.equal real_directory_targets directory_targets ~equal:(fun _ _ ->
+           (* The locations should match if the declaration knows which
                rule will generate the directory, but it's not necessary
                as the rule's actual location has higher priority. *)
-            true))
+           true))
     then (
       let mismatched_directories =
         let error message loc =
@@ -791,7 +793,8 @@ end = struct
   ;;
 
   let load_build_directory_exn
-    ({ Dir_triage.Build_directory.dir; context_name; context_type; sub_dir } as build_dir)
+        ({ Dir_triage.Build_directory.dir; context_name; context_type; sub_dir } as
+         build_dir)
     =
     (* Load all the rules *)
     Gen_rules.gen_rules build_dir
@@ -804,8 +807,9 @@ end = struct
       in
       Path.Build.Map.iteri directory_targets ~f:(fun dir_target loc ->
         let name = Path.Build.basename dir_target in
-        if Path.Build.equal (Path.Build.parent_exn dir_target) dir
-           && Subdir_set.mem build_dir_only_sub_dirs name
+        if
+          Path.Build.equal (Path.Build.parent_exn dir_target) dir
+          && Subdir_set.mem build_dir_only_sub_dirs name
         then report_rule_internal_dir_conflict name loc);
       let* rules_produced = Memo.Lazy.force rules in
       let rules =

@@ -115,9 +115,9 @@ module Env_update = struct
   let map t ~f = { t with value = f t.value }
 
   let equal
-    value_equal
-    { op; var; value }
-    { op = other_op; var = other_var; value = other_value }
+        value_equal
+        { op; var; value }
+        { op = other_op; var = other_var; value = other_value }
     =
     Op.equal op other_op
     && Ordering.is_eq (Env.Var.compare var other_var)

@@ -6,14 +6,16 @@ let extension s = print (Pp.text (Filename.extension s))
 
 let%expect_test _ =
   extension "toto.titi";
-  [%expect {|
+  [%expect
+    {|
 .titi
 |}]
 ;;
 
 let%expect_test _ =
   extension "toto.";
-  [%expect {|
+  [%expect
+    {|
 .
 |}]
 ;;
@@ -35,21 +37,24 @@ let%expect_test _ =
 
 let%expect_test _ =
   extension "a.";
-  [%expect {|
+  [%expect
+    {|
 .
 |}]
 ;;
 
 let%expect_test _ =
   extension "a.a";
-  [%expect {|
+  [%expect
+    {|
 .a
 |}]
 ;;
 
 let%expect_test _ =
   extension "truc/a.a";
-  [%expect {|
+  [%expect
+    {|
 .a
 |}]
 ;;
@@ -61,7 +66,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   extension "truc/a.";
-  [%expect {|
+  [%expect
+    {|
 .
 |}]
 ;;

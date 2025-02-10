@@ -31,7 +31,8 @@ let%expect_test "copy file chmod" =
   Io.copy_file ~chmod:(fun _ -> 428) ~src ~dst ();
   print_endline (Io.read_file dst);
   Printf.printf "permissions: %d\n" (Path.stat_exn dst).st_perm;
-  [%expect {|
+  [%expect
+    {|
     foobarbaz
     permissions: 428 |}]
 ;;

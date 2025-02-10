@@ -12,8 +12,9 @@ let remove_packages (v : OpamTypes.filtered_formula) pkgs =
   OpamFormula.map_up_formula
     (function
       | Atom (name, _condition) as a ->
-        if let name = Package_name.of_opam_package_name name in
-           Package_name.Set.mem pkgs name
+        if
+          let name = Package_name.of_opam_package_name name in
+          Package_name.Set.mem pkgs name
         then Empty
         else a
       | x -> x)
@@ -26,8 +27,8 @@ let any_package_name (v : OpamTypes.filtered_formula) =
   try
     OpamFormula.iter
       (fun (name, _condition) ->
-        let name = Package_name.of_opam_package_name name in
-        raise_notrace (Found name))
+         let name = Package_name.of_opam_package_name name in
+         raise_notrace (Found name))
       v;
     None
   with

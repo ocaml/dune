@@ -220,12 +220,12 @@ module Shared = struct
   ;;
 
   let examine_targets_and_store
-    ~can_go_in_shared_cache
-    ~loc
-    ~rule_digest
-    ~should_remove_write_permissions_on_generated_files
-    ~action
-    ~produced_targets
+        ~can_go_in_shared_cache
+        ~loc
+        ~rule_digest
+        ~should_remove_write_permissions_on_generated_files
+        ~action
+        ~produced_targets
     =
     let config = Build_config.get () in
     let module Shared_cache = (val config.shared_cache) in

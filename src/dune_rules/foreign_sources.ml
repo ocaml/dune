@@ -121,10 +121,10 @@ let valid_name language ~loc s =
 ;;
 
 let eval_foreign_stubs
-  foreign_stubs
-  (ctypes : Ctypes_field.t option)
-  ~dune_version
-  ~(sources : Unresolved.t)
+      foreign_stubs
+      (ctypes : Ctypes_field.t option)
+      ~dune_version
+      ~(sources : Unresolved.t)
   : Foreign.Sources.t
   =
   let eval (stubs : Foreign.Stubs.t) =
@@ -178,7 +178,10 @@ let eval_foreign_stubs
           ~init:String.Map.empty
           ctypes.function_description
           ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
-            let loc = Loc.none (* TODO *) in
+            let loc =
+              Loc.none
+              (* TODO *)
+            in
             let name =
               Ctypes_field.c_generated_functions_cout_c ctypes fd
               |> Filename.remove_extension

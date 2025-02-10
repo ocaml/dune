@@ -82,10 +82,11 @@ let gen_rules sctx t ~dir ~scope =
     Source_tree.files_of (Path.Build.drop_build_context_exn dir)
     >>| Path.Source.Set.to_list
     >>| List.filter_map ~f:(fun p ->
-      if Predicate_lang.Glob.test
-           t.files
-           (Path.Source.basename p)
-           ~standard:Predicate_lang.true_
+      if
+        Predicate_lang.Glob.test
+          t.files
+          (Path.Source.basename p)
+          ~standard:Predicate_lang.true_
       then
         Some
           (Path.Build.append_source (Super_context.context sctx |> Context.build_dir) p)

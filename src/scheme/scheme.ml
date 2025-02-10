@@ -124,8 +124,9 @@ let evaluate ~union_rules =
       and+ y = loop ~env y in
       Evaluated.union ~union_rules x y
     | Approximation (paths, rules) ->
-      if (not (Dir_set.is_subset paths ~of_:env))
-         && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
+      if
+        (not (Dir_set.is_subset paths ~of_:env))
+        && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
       then
         Code_error.raise
           "inner [Approximate] specifies a set such that neither it, nor its negation, \

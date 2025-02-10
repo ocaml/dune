@@ -13,7 +13,8 @@ let%expect_test "Temp.clear_dir works" =
   print ();
   Temp.clear_dir path;
   print ();
-  [%expect {|
+  [%expect
+    {|
     Ok [ "foo" ]
     Ok []
   |}]

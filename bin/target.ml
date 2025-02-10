@@ -222,10 +222,10 @@ let resolve_target root ~setup target =
 ;;
 
 let resolve_targets
-  root
-  (config : Dune_config.t)
-  (setup : Dune_rules.Main.build_system)
-  user_targets
+      root
+      (config : Dune_config.t)
+      (setup : Dune_rules.Main.build_system)
+      user_targets
   =
   match user_targets with
   | [] -> Action_builder.return []
@@ -237,8 +237,8 @@ let resolve_targets
          [ Pp.text "Actual targets:"
          ; Pp.enumerate
              (List.concat_map targets ~f:(function
-               | Ok targets -> targets
-               | Error _ -> []))
+                | Ok targets -> targets
+                | Error _ -> []))
              ~f:(function
                | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
                | Alias a -> Alias.pp a)

@@ -83,7 +83,15 @@ module For_solver = struct
 end
 
 let for_solver
-  { name; version = _; dependencies; conflicts; conflict_class; loc = _; depopts; pins }
+      { name
+      ; version = _
+      ; dependencies
+      ; conflicts
+      ; conflict_class
+      ; loc = _
+      ; depopts
+      ; pins
+      }
   =
   { For_solver.name; dependencies; conflicts; conflict_class; depopts; pins }
 ;;

@@ -221,13 +221,13 @@ end = struct
   end
 
   let contents
-    readdir
-    ~vcs
-    ~path
-    ~parent_dune_file
-    ~dirs_visited
-    ~project
-    ~(dir_status : Source_dir_status.t)
+        readdir
+        ~vcs
+        ~path
+        ~parent_dune_file
+        ~dirs_visited
+        ~project
+        ~(dir_status : Source_dir_status.t)
     =
     let files = Readdir.files readdir in
     let+ dune_file =
@@ -274,12 +274,9 @@ end = struct
           ~files:(Readdir.files readdir)
           ~infer_from_opam_files:true
         >>| (function
-               | Some p -> p
-               | None ->
-                 Dune_project.anonymous
-                   ~dir:path
-                   Package_info.empty
-                   Package.Name.Map.empty)
+         | Some p -> p
+         | None ->
+           Dune_project.anonymous ~dir:path Package_info.empty Package.Name.Map.empty)
         >>| Only_packages.filter_packages_in_project ~vendored:(dir_status = Vendored)
       in
       let vcs = Dir0.Vcs.get_vcs ~default:Dir0.Vcs.Ancestor_vcs ~readdir ~path in

@@ -4,7 +4,8 @@ let doc = "Execute a command in a similar environment as if installation was per
 
 let man =
   [ `S "DESCRIPTION"
-  ; `P {|$(b,dune exec -- COMMAND) should behave in the same way as if you
+  ; `P
+      {|$(b,dune exec -- COMMAND) should behave in the same way as if you
           do:|}
   ; `Pre "  \\$ dune install\n  \\$ COMMAND"
   ; `P
@@ -95,9 +96,9 @@ module Command_to_exec = struct
   (* Run the command, first (re)building the program which the command is
      invoking *)
   let build_and_run_in_child_process
-    ~root
-    ~config
-    { get_env_and_build_if_necessary; prog; args }
+        ~root
+        ~config
+        { get_env_and_build_if_necessary; prog; args }
     =
     get_env_and_build_if_necessary prog
     |> Fiber.map
@@ -225,16 +226,16 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
     let path = Path.relative_to_source_in_build_or_external ~dir prog in
     Build_system.file_exists path
     >>= (function
-           | true -> Memo.return (Some path)
-           | false ->
-             if not (Filename.check_suffix prog ".exe")
-             then Memo.return None
-             else (
-               let path = Path.extend_basename path ~suffix:".exe" in
-               Build_system.file_exists path
-               >>| function
-               | true -> Some path
-               | false -> None))
+     | true -> Memo.return (Some path)
+     | false ->
+       if not (Filename.check_suffix prog ".exe")
+       then Memo.return None
+       else (
+         let path = Path.extend_basename path ~suffix:".exe" in
+         Build_system.file_exists path
+         >>| function
+         | true -> Some path
+         | false -> None))
     >>= (function
      | Some path -> build_prog ~no_rebuild ~prog path
      | None -> not_found ~dir ~prog)

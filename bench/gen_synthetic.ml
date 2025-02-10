@@ -8,10 +8,12 @@ let write_modules basedir num_modules =
   done
 ;;
 
-let dune = {|
+let dune =
+  {|
 (library
  (name test))
 |}
+;;
 
 let write basedir =
   let () = Unix.mkdir basedir 0o777 in

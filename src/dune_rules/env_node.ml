@@ -20,13 +20,13 @@ let expand_str_lazy expander sw =
 ;;
 
 let make
-  ~dir
-  ~inherit_from
-  ~config_stanza
-  ~profile
-  ~expander
-  ~default_env
-  ~default_artifacts
+      ~dir
+      ~inherit_from
+      ~config_stanza
+      ~profile
+      ~expander
+      ~default_env
+      ~default_artifacts
   =
   let open Memo.O in
   let config = Dune_env.find config_stanza ~profile in

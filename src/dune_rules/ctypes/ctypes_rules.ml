@@ -68,10 +68,10 @@ let write_c_types_includer_module ~type_description_functor ~c_generated_types_m
 ;;
 
 let write_entry_point_module
-  ~ctypes
-  ~type_description_instance
-  ~function_description
-  ~c_types_includer_module
+      ~ctypes
+      ~type_description_instance
+      ~function_description
+      ~c_types_includer_module
   =
   let contents =
     Pp.concat
@@ -123,11 +123,11 @@ let type_gen_gen ~expander ~headers ~type_description_functor =
 ;;
 
 let function_gen_gen
-  ~expander
-  ~(concurrency : Ctypes_field.Concurrency_policy.t)
-  ~(errno_policy : Ctypes_field.Errno_policy.t)
-  ~headers
-  ~function_description_functor
+      ~expander
+      ~(concurrency : Ctypes_field.Concurrency_policy.t)
+      ~(errno_policy : Ctypes_field.Errno_policy.t)
+      ~headers
+      ~function_description_functor
   =
   let open Action_builder.O in
   let module_name = Module_name.to_string function_description_functor in
@@ -167,14 +167,14 @@ let function_gen_gen
 ;;
 
 let build_c_program
-  ~foreign_archives_deps
-  ~sctx
-  ~dir
-  ~source_files
-  ~scope
-  ~cflags
-  ~output
-  ~deps
+      ~foreign_archives_deps
+      ~sctx
+      ~dir
+      ~source_files
+      ~scope
+      ~cflags
+      ~output
+      ~deps
   =
   let ctx = Super_context.context sctx in
   let ocaml = Context.ocaml ctx in

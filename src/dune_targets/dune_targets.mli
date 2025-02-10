@@ -83,7 +83,7 @@ module Produced : sig
   type 'a dir_contents = private
     { files : 'a Filename.Map.t (* mapping file name -> 'a *)
     ; subdirs : 'a dir_contents Filename.Map.t
-    (* mapping directory name -> 'a dir_contents *)
+      (* mapping directory name -> 'a dir_contents *)
     }
 
   type 'a t = private

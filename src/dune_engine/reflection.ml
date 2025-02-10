@@ -24,18 +24,18 @@ end = struct
         "expand-alias"
         ~input:(module Alias)
         (fun alias ->
-          let* l =
-            Load_rules.get_alias_definition alias
-            >>= Memo.parallel_map ~f:(fun (loc, definition) ->
-              Memo.push_stack_frame
-                (fun () ->
-                  Action_builder.evaluate_and_collect_deps
-                    (Build_system.dep_on_alias_definition definition)
-                  >>| snd)
-                ~human_readable_description:(fun () -> Alias.describe alias ~loc))
-          in
-          let deps = List.fold_left l ~init:Dep.Set.empty ~f:Dep.Set.union in
-          Expand.deps deps)
+           let* l =
+             Load_rules.get_alias_definition alias
+             >>= Memo.parallel_map ~f:(fun (loc, definition) ->
+               Memo.push_stack_frame
+                 (fun () ->
+                    Action_builder.evaluate_and_collect_deps
+                      (Build_system.dep_on_alias_definition definition)
+                    >>| snd)
+                 ~human_readable_description:(fun () -> Alias.describe alias ~loc))
+           in
+           let deps = List.fold_left l ~init:Dep.Set.empty ~f:Dep.Set.union in
+           Expand.deps deps)
     in
     Memo.exec memo
   ;;
@@ -61,15 +61,15 @@ let evaluate_rule =
       "evaluate-rule"
       ~input:(module Non_evaluated_rule)
       (fun rule ->
-        let* action, deps = Action_builder.evaluate_and_collect_deps rule.action in
-        let* expanded_deps = Expand.deps deps in
-        Memo.return
-          { Rule.id = rule.id
-          ; deps
-          ; expanded_deps
-          ; targets = rule.targets
-          ; action = action.action
-          })
+         let* action, deps = Action_builder.evaluate_and_collect_deps rule.action in
+         let* expanded_deps = Expand.deps deps in
+         Memo.return
+           { Rule.id = rule.id
+           ; deps
+           ; expanded_deps
+           ; targets = rule.targets
+           ; action = action.action
+           })
   in
   Memo.exec memo
 ;;

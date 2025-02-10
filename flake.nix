@@ -3,7 +3,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     melange = {
-      url = "github:melange-re/melange/refs/tags/4.0.0-51";
+      url = "github:melange-re/melange/refs/tags/4.0.1-52";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };

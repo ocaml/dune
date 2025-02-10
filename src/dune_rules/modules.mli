@@ -107,7 +107,6 @@ module With_vlib : sig
 
   val version_installed : t -> src_root:Path.t -> install_dir:Path.t -> t
   val alias_for : t -> Module.t -> Module.t list
-  val group_interfaces : t -> Module.t -> Module.t list
   val local_open : t -> Module.t -> Module_name.t list
   val is_stdlib_alias : t -> Module.t -> bool
   val exit_module : t -> Module.t option

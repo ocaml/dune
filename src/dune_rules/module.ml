@@ -24,7 +24,6 @@ module File = struct
 
   let dialect t = t.dialect
   let path t = t.path
-  let original_path t = t.original_path
 
   let version_installed t ~src_root ~install_dir =
     let path =
@@ -444,10 +443,6 @@ module Name_map = struct
 
   let encode t ~src_dir =
     Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode ~src_dir x))
-  ;;
-
-  let of_list_exn modules =
-    List.rev_map modules ~f:(fun m -> name m, m) |> Module_name.Map.of_list_exn
   ;;
 
   let add t module_ = Module_name.Map.set t (name module_) module_

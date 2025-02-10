@@ -438,8 +438,6 @@ module Group = struct
     ;;
   end
 
-  let group_interfaces (t : t) m = parents t m |> List.map ~f:lib_interface
-
   let make_alias_for t m ~parents =
     match Module.kind m with
     | Alias _ | Wrapped_compat -> []
@@ -719,7 +717,6 @@ module Wrapped = struct
 
   let find t name = Group.find t.group name
   let find_dep t ~of_ name = Group.find_dep t.group ~of_ name
-  let group_interfaces (t : t) m = Group.group_interfaces t.group m
   let alias_for t m = Group.alias_for t.group m
 end
 
@@ -1275,19 +1272,6 @@ module With_vlib = struct
         (match t with
          | Modules t -> alias_for t m
          | Impl { impl; vlib = _; _ } -> alias_for impl m)
-  ;;
-
-  let group_interfaces =
-    let group_interfaces t m =
-      match t.modules with
-      | Wrapped w -> Wrapped.group_interfaces w m
-      | Singleton w -> [ w ]
-      | _ -> []
-    in
-    fun t m ->
-      match t with
-      | Modules t -> group_interfaces t m
-      | Impl { impl; vlib; _ } -> group_interfaces impl m @ group_interfaces vlib m
   ;;
 
   let local_open t m =

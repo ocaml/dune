@@ -46,6 +46,8 @@ module Priority = struct
     let version = OpamFile.OPAM.package package |> OpamPackage.version in
     { version; avoid }
   ;;
+
+  let rejected version = { avoid = true; version }
 end
 
 module Context = struct
@@ -53,6 +55,7 @@ module Context = struct
     | (* TODO proper error messages for packages skipped via avoid-version *)
       Unavailable
     | Avoid_version
+    | Refuted_by of Package_name.t
 
   let local_package_default_version =
     Package_version.to_opam_package_version Lock_dir.Pkg_info.default_version
@@ -63,11 +66,18 @@ module Context = struct
     ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
     }
 
+  type local_package =
+    { opam_file : OpamFile.OPAM.t
+    ; version : OpamPackage.Version.t (* ; opam_package : OpamPackage.t *)
+    ; depends : OpamTypes.formula Lazy.t
+    ; conflicts : OpamTypes.formula Lazy.t
+    }
+
   type t =
     { repos : Opam_repo.t list
     ; version_preference : Version_preference.t
     ; pinned_packages : Resolved_package.t Package_name.Map.t
-    ; local_packages : OpamFile.OPAM.t Package_name.Map.t
+    ; local_packages : local_package Package_name.Map.t Lazy.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
@@ -134,6 +144,10 @@ module Context = struct
   let pp_rejection = function
     | Unavailable -> Pp.paragraph "Availability condition not satisfied"
     | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
+    | Refuted_by pkg ->
+      Pp.paragraphf
+        "Package does not satisfy constraints of local package %s"
+        (Package_name.to_string pkg)
   ;;
 
   let eval_to_bool (filter : OpamTypes.filter) : (bool, [> `Not_a_bool of string ]) result
@@ -189,58 +203,6 @@ module Context = struct
     { available; resolved }
   ;;
 
-  let repo_candidate t name =
-    let+ resolved = Opam_repo.load_all_versions t.repos name in
-    Table.add_exn
-      t.expanded_packages
-      (Package_name.of_opam_package_name name)
-      (OpamPackage.Version.Map.cardinal resolved);
-    let available =
-      OpamPackage.Version.Map.values resolved
-      |> List.map ~f:(fun p -> p, Priority.make (Resolved_package.opam_file p))
-      (* Note that although the packages are taken from a map,
-         explicitly sorting them is still necessary. This sort applies
-         the configured version preference and also allows the solver to
-         prefer versions without the avoid-version flag set. *)
-      |> List.sort ~compare:(fun (_, x) (_, y) ->
-        Priority.compare t.version_preference x y)
-      |> List.map ~f:(fun (resolved_package, (priority : Priority.t)) ->
-        let opam_file = Resolved_package.opam_file resolved_package in
-        let opam_file_result =
-          if priority.avoid then Error Avoid_version else available_or_error t opam_file
-        in
-        OpamFile.OPAM.version opam_file, opam_file_result)
-    in
-    { available; resolved }
-  ;;
-
-  let candidates t name =
-    let* () = Fiber.return () in
-    let key = Package_name.of_opam_package_name name in
-    match Package_name.Map.find t.local_packages key with
-    | Some local_package ->
-      let version =
-        Option.value local_package.version ~default:local_package_default_version
-      in
-      Fiber.return [ version, Ok local_package ]
-    | None ->
-      let+ res =
-        Fiber_cache.find_or_add t.candidates_cache key ~f:(fun () ->
-          match Package_name.Map.find t.pinned_packages key with
-          | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
-          | None -> repo_candidate t name)
-      in
-      res.available
-  ;;
-
-  let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
-    =
-    fun t pkg ->
-    if Package_name.equal Dune_dep.name (Package_name.of_opam_package_name pkg)
-    then Some (`Eq, t.dune_version)
-    else None
-  ;;
-
   let filter_deps t package filtered_formula =
     (* Add additional constraints to the formula. This works in two steps.
        First identify all the additional constraints applied to packages which
@@ -262,7 +224,7 @@ module Context = struct
     let package_is_local =
       OpamPackage.name package
       |> Package_name.of_opam_package_name
-      |> Package_name.Map.mem t.local_packages
+      |> Package_name.Map.mem (Lazy.force t.local_packages)
     in
     Solver_env.to_env t.solver_env
     |> Solver_stats.Updater.wrap_env t.stats_updater
@@ -270,6 +232,113 @@ module Context = struct
     |> Resolve_opam_formula.apply_filter
          ~with_test:package_is_local
          ~formula:filtered_formula
+  ;;
+
+  exception Found of Package_name.t
+
+  let try_refute t package =
+    let version = OpamPackage.version package in
+    try
+      Package_name.Map.iteri (Lazy.force t.local_packages) ~f:(fun name pkg ->
+        match
+          match
+            Lazy.force pkg.depends
+            |> OpamFormula.partial_eval (fun (name', f) ->
+              if OpamPackage.Name.equal name' (OpamPackage.name package)
+              then if OpamFormula.check_version_formula f version then `True else `False
+              else `Formula (Atom (name', f)))
+          with
+          | `False -> `Reject
+          | `Formula _ | `True ->
+            (match
+               Lazy.force pkg.conflicts
+               |> OpamFormula.partial_eval (fun (name', f) ->
+                 if OpamPackage.Name.equal name' (OpamPackage.name package)
+                 then
+                   if OpamFormula.check_version_formula f version then `True else `False
+                 else `Formula (Atom (name', f)))
+             with
+             | `True -> `Reject
+             | `Formula _ | `False -> `Continue)
+        with
+        | `Continue -> ()
+        | `Reject -> raise_notrace (Found name));
+      None
+    with
+    | Found p -> Some p
+  ;;
+
+  let repo_candidate t name =
+    let versions = Opam_repo.all_packages_versions_map t.repos name in
+    let rejected, available =
+      OpamPackage.Version.Map.fold
+        (fun version (repo, key) (rejected, available) ->
+          let pkg = Opam_repo.Key.opam_package key in
+          match try_refute t pkg with
+          | Some p -> (version, p) :: rejected, available
+          | None -> rejected, OpamPackage.Version.Map.add version (repo, key) available)
+        versions
+        ([], OpamPackage.Version.Map.empty)
+    in
+    let+ resolved = Opam_repo.load_all_versions_by_keys available in
+    Table.add_exn
+      t.expanded_packages
+      (Package_name.of_opam_package_name name)
+      (OpamPackage.Version.Map.cardinal resolved);
+    let available =
+      OpamPackage.Version.Map.values resolved
+      |> List.map ~f:(fun resolved_package ->
+        let opam_file = Resolved_package.opam_file resolved_package in
+        let priority = Priority.make opam_file in
+        let version =
+          let package = Resolved_package.package resolved_package in
+          OpamPackage.version package
+        in
+        let result =
+          let opam_file_result =
+            if priority.avoid then Error Avoid_version else available_or_error t opam_file
+          in
+          opam_file_result
+        in
+        priority, version, result)
+    in
+    let rejected =
+      List.map rejected ~f:(fun (version, rejected_by) ->
+        let priority = Priority.rejected version in
+        priority, version, Error (Refuted_by rejected_by))
+    in
+    let available =
+      rejected @ available
+      |> List.sort ~compare:(fun (x, _, _) (y, _, _) ->
+        Priority.compare t.version_preference x y)
+      |> List.map ~f:(fun (_, v, p) -> v, p)
+    in
+    { available; resolved }
+  ;;
+
+  let candidates t name =
+    let* () = Fiber.return () in
+    let key = Package_name.of_opam_package_name name in
+    match Package_name.Map.find (Lazy.force t.local_packages) key with
+    | Some local_package ->
+      let version = local_package.version in
+      Fiber.return [ version, Ok local_package.opam_file ]
+    | None ->
+      let+ res =
+        Fiber_cache.find_or_add t.candidates_cache key ~f:(fun () ->
+          match Package_name.Map.find t.pinned_packages key with
+          | Some resolved_package -> Fiber.return (pinned_candidate t resolved_package)
+          | None -> repo_candidate t name)
+      in
+      res.available
+  ;;
+
+  let user_restrictions : t -> OpamPackage.Name.t -> OpamFormula.version_constraint option
+    =
+    fun t pkg ->
+    if Package_name.equal Dune_dep.name (Package_name.of_opam_package_name pkg)
+    then Some (`Eq, t.dune_version)
+    else None
   ;;
 
   let count_expanded_packages t = Table.fold t.expanded_packages ~init:0 ~f:( + )
@@ -1869,15 +1938,35 @@ let solve_lock_dir
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
   let context =
-    Context.create
-      ~pinned_packages
-      ~solver_env
-      ~repos
-      ~version_preference
-      ~local_packages:
-        (Package_name.Map.map local_packages ~f:Local_package.For_solver.to_opam_file)
-      ~stats_updater
-      ~constraints
+    let rec context =
+      lazy
+        (Context.create
+           ~pinned_packages
+           ~solver_env
+           ~repos
+           ~version_preference
+           ~local_packages:local_packages'
+           ~stats_updater
+           ~constraints)
+    and local_packages' =
+      lazy
+        (Package_name.Map.map local_packages ~f:(fun local ->
+           let opam_file = Local_package.For_solver.to_opam_file local in
+           let version =
+             Option.value opam_file.version ~default:Context.local_package_default_version
+           in
+           let deps =
+             lazy
+               (let opam_package =
+                  OpamPackage.create (OpamFile.OPAM.name opam_file) version
+                in
+                Context.filter_deps (Lazy.force context) opam_package)
+           in
+           let depends = lazy (Lazy.force deps (OpamFile.OPAM.depends opam_file)) in
+           let conflicts = lazy (Lazy.force deps (OpamFile.OPAM.conflicts opam_file)) in
+           { Context.opam_file; version; depends; conflicts }))
+    in
+    Lazy.force context
   in
   Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
     Package_name.to_opam_package_name name)

@@ -19,14 +19,38 @@ module Build_command : sig
   type t =
     | Action of Action.t
     | Dune (** pinned dune packages do not need to define a command *)
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Depend : sig
+  type t =
+    { loc : Loc.t
+    ; name : Package_name.t
+    }
+
+  val to_dyn : t -> Dyn.t
+end
+
+module Conditional_choice : sig
+  (** A sequence of values, each conditional on an environment. *)
+  type 'a t
+
+  val empty : 'a t
+  val singleton : Solver_env.t -> 'a -> 'a t
+  val singleton_all_platforms : 'a -> 'a t
+
+  (** Returns the first value whose associated environment is a subset of the
+      specified environment. *)
+  val find : 'a t -> Solver_env.t -> 'a option
 end
 
 module Pkg : sig
   type t =
-    { build_command : Build_command.t option
-    ; install_command : Action.t option
-    ; depends : (Loc.t * Package_name.t) list
-    ; depexts : string list
+    { build_command : Build_command.t Conditional_choice.t
+    ; install_command : Action.t Conditional_choice.t
+    ; depends : Depend.t list Conditional_choice.t
+    ; depexts : string list Conditional_choice.t
     ; info : Pkg_info.t
     ; exported_env : String_with_vars.t Action.Env_update.t list
     }
@@ -92,7 +116,8 @@ module Write_disk : sig
   type t
 
   val prepare
-    :  lock_dir_path:Path.Source.t
+    :  portable:bool
+    -> lock_dir_path:Path.Source.t
     -> files:File_entry.t Package_name.Map.Multi.t
     -> lock_dir
     -> t
@@ -122,9 +147,16 @@ end
     not present in the lockdir. *)
 val transitive_dependency_closure
   :  t
+  -> Solver_env.t
   -> Package_name.Set.t
   -> (Package_name.Set.t, [ `Missing_packages of Package_name.Set.t ]) result
 
 (** Attempt to download and compute checksums for packages that have source
     archive urls but no checksum. *)
 val compute_missing_checksums : t -> pinned_packages:Package_name.Set.t -> t Fiber.t
+
+(** Combine the platform-specific parts of a pair of lockdirs, throwing a code
+    error if the lockdirs differ in a non-platform-specific way. *)
+val merge_conditionals : t -> t -> t
+
+val packages_under_condition : t -> Solver_env.t -> Pkg.t Package_name.Map.t

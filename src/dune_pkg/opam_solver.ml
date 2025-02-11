@@ -1736,9 +1736,18 @@ let opam_package_to_lock_file_pkg
     | [] -> action
     | env_update -> Action.Withenv (env_update, action)
   in
-  let get_solver_var variable_name =
-    Solver_stats.Updater.expand_variable stats_updater variable_name;
-    Solver_env.get solver_env variable_name
+  let get_solver_var =
+    (* Remove platform-specific variables from the solver env so that the
+       generated commands are portable rather than specialized to the computer
+       performing the solve. *)
+    let portable_solver_env =
+      Solver_env.unset_multi solver_env Package_variable_name.platform_specific
+    in
+    fun variable_name ->
+      let value = Solver_env.get portable_solver_env variable_name in
+      if Option.is_some value
+      then Solver_stats.Updater.expand_variable stats_updater variable_name;
+      value
   in
   let build_command =
     if Resolved_package.dune_build resolved_package

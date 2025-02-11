@@ -53,6 +53,10 @@ let post = of_string "post"
 let one_of t xs = List.mem xs ~equal t
 let dev = of_string "dev"
 
+let platform_specific =
+  Set.of_list [ arch; os; os_version; os_distribution; os_family; sys_ocaml_version ]
+;;
+
 module Project = struct
   let encode name = Dune_sexp.Encoder.string (":" ^ to_string name)
 

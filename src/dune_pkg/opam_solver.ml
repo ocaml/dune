@@ -68,7 +68,8 @@ module Context = struct
 
   type local_package =
     { opam_file : OpamFile.OPAM.t
-    ; version : OpamPackage.Version.t (* ; opam_package : OpamPackage.t *)
+    ; name : Package_name.t
+    ; version : OpamPackage.Version.t
     ; depends : OpamTypes.formula Lazy.t
     ; conflicts : OpamTypes.formula Lazy.t
     }
@@ -78,6 +79,7 @@ module Context = struct
     ; version_preference : Version_preference.t
     ; pinned_packages : Resolved_package.t Package_name.Map.t
     ; local_packages : local_package Package_name.Map.t Lazy.t
+    ; local_constraints : (Package_name.t, local_package list) Table.t Lazy.t
     ; solver_env : Solver_env.t
     ; dune_version : OpamPackage.Version.t
     ; stats_updater : Solver_stats.Updater.t
@@ -127,6 +129,22 @@ module Context = struct
         end)
         1
     in
+    let local_constraints =
+      lazy
+        (let acc = Table.create (module Package_name) 20 in
+         let packages pkg (formula : OpamTypes.formula) =
+           OpamFormula.iter
+             (fun (name, _) ->
+               let name = Package_name.of_opam_package_name name in
+               Table.Multi.cons acc name pkg)
+             formula
+         in
+         Lazy.force local_packages
+         |> Package_name.Map.iter ~f:(fun pkg ->
+           packages pkg (Lazy.force pkg.depends);
+           packages pkg (Lazy.force pkg.conflicts));
+         acc)
+    in
     { repos
     ; version_preference
     ; local_packages
@@ -138,6 +156,7 @@ module Context = struct
     ; available_cache
     ; constraints
     ; expanded_packages
+    ; local_constraints
     }
   ;;
 
@@ -238,34 +257,43 @@ module Context = struct
 
   let try_refute t package =
     let version = OpamPackage.version package in
-    try
-      Package_name.Map.iteri (Lazy.force t.local_packages) ~f:(fun name pkg ->
-        match
-          match
-            Lazy.force pkg.depends
-            |> OpamFormula.partial_eval (fun (name', f) ->
-              if OpamPackage.Name.equal name' (OpamPackage.name package)
-              then if OpamFormula.check_version_formula f version then `True else `False
-              else `Formula (Atom (name', f)))
-          with
-          | `False -> `Reject
-          | `Formula _ | `True ->
-            (match
-               Lazy.force pkg.conflicts
+    match
+      let name = Package_name.of_opam_package_name (OpamPackage.name package) in
+      Table.find (Lazy.force t.local_constraints) name
+    with
+    | None -> None
+    | Some local_packages ->
+      (try
+         List.iter local_packages ~f:(fun pkg ->
+           match
+             match
+               Lazy.force pkg.depends
                |> OpamFormula.partial_eval (fun (name', f) ->
                  if OpamPackage.Name.equal name' (OpamPackage.name package)
                  then
                    if OpamFormula.check_version_formula f version then `True else `False
                  else `Formula (Atom (name', f)))
              with
-             | `True -> `Reject
-             | `Formula _ | `False -> `Continue)
-        with
-        | `Continue -> ()
-        | `Reject -> raise_notrace (Found name));
-      None
-    with
-    | Found p -> Some p
+             | `False -> `Reject
+             | `Formula _ | `True ->
+               (match
+                  Lazy.force pkg.conflicts
+                  |> OpamFormula.partial_eval (fun (name', f) ->
+                    if OpamPackage.Name.equal name' (OpamPackage.name package)
+                    then
+                      if OpamFormula.check_version_formula f version
+                      then `True
+                      else `False
+                    else `Formula (Atom (name', f)))
+                with
+                | `True -> `Reject
+                | `Formula _ | `False -> `Continue)
+           with
+           | `Continue -> ()
+           | `Reject -> raise_notrace (Found pkg.name));
+         None
+       with
+       | Found p -> Some p)
   ;;
 
   let repo_candidate t name =
@@ -1963,7 +1991,7 @@ let solve_lock_dir
            in
            let depends = lazy (Lazy.force deps (OpamFile.OPAM.depends opam_file)) in
            let conflicts = lazy (Lazy.force deps (OpamFile.OPAM.conflicts opam_file)) in
-           { Context.opam_file; version; depends; conflicts }))
+           { Context.opam_file; version; depends; conflicts; name = local.name }))
     in
     Lazy.force context
   in

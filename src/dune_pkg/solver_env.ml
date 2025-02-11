@@ -1,11 +1,19 @@
 open Import
 
-type t = Variable_value.t Package_variable_name.Map.t
+module T = struct
+  type t = Variable_value.t Package_variable_name.Map.t
+
+  let to_dyn = Package_variable_name.Map.to_dyn Variable_value.to_dyn
+  let equal = Package_variable_name.Map.equal ~equal:Variable_value.equal
+  let compare = Package_variable_name.Map.compare ~compare:Variable_value.compare
+end
+
+include T
+include Comparable.Make (T)
 
 let empty = Package_variable_name.Map.empty
-let equal = Package_variable_name.Map.equal ~equal:Variable_value.equal
-let to_dyn = Package_variable_name.Map.to_dyn Variable_value.to_dyn
 let is_empty = Package_variable_name.Map.is_empty
+let fold = Package_variable_name.Map.foldi
 
 let validate t ~loc =
   if Package_variable_name.Map.mem t Package_variable_name.with_test
@@ -18,6 +26,12 @@ let validate t ~loc =
           Package_variable_name.(to_string with_test)
           Package_variable_name.(to_string with_test)
       ]
+;;
+
+let encode t =
+  let open Encoder in
+  Package_variable_name.Map.to_list t
+  |> list (pair Package_variable_name.encode Variable_value.encode)
 ;;
 
 let decode =
@@ -77,6 +91,13 @@ let unset_multi t variable_names =
     unset t variable_name)
 ;;
 
+let retain t variable_names =
+  fold t ~init:t ~f:(fun variable_name _value acc ->
+    if Package_variable_name.Set.mem variable_names variable_name
+    then acc
+    else unset acc variable_name)
+;;
+
 let to_env t variable =
   match OpamVariable.Full.scope variable with
   | Self | Package _ -> None
@@ -85,4 +106,33 @@ let to_env t variable =
       OpamVariable.Full.variable variable |> Package_variable_name.of_opam
     in
     get t variable_name |> Option.map ~f:Variable_value.to_opam_variable_contents
+;;
+
+let popular_platform_envs =
+  let make ~os ~arch ~os_distribution =
+    let env = empty in
+    let env = set env Package_variable_name.os (Variable_value.string os) in
+    let env = set env Package_variable_name.arch (Variable_value.string arch) in
+    let env =
+      match os_distribution with
+      | Some os_distribution ->
+        set
+          env
+          Package_variable_name.os_distribution
+          (Variable_value.string os_distribution)
+      | None -> env
+    in
+    env
+  in
+  List.concat_map
+    (* Include distros with special cases in popular packages (such as the ocaml compiler). *)
+    [ "linux", [ "alpine" ]; "macos", []; "win32", [ "cygwin" ] ]
+    ~f:(fun (os, distros) ->
+      List.concat_map [ "x86_64"; "arm64" ] ~f:(fun arch ->
+        let distros =
+          (* Put the [None] case at the end of the list so that cases with
+             distros are tried first. *)
+          List.map distros ~f:Option.some @ [ None ]
+        in
+        List.map distros ~f:(fun os_distribution -> make ~os ~arch ~os_distribution)))
 ;;

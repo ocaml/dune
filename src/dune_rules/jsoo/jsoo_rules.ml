@@ -93,7 +93,7 @@ module Config : sig
   val of_string : string -> t
   val of_flags : string list -> t
   val to_flags : jsoo_version:Version.t option -> t -> string list
-  val remove_effect_flags : string list -> string list
+  val remove_config_flags : string list -> string list
 end = struct
   type effects_backend =
     | Cps
@@ -245,16 +245,25 @@ end = struct
       ]
   ;;
 
-  let remove_effect_flags flags =
+  let remove_config_flags flags =
     let rec loop acc = function
       | [] -> acc
-      | "--enable" :: "effects" :: rest -> loop acc rest
-      | "--enable=effects" :: rest -> loop acc rest
-      | "--disable" :: "effects" :: rest -> loop acc rest
-      | "--disable=effects" :: rest -> loop acc rest
+      | "--enable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
+      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+          (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+          | Some ("effects" | "use-js-string") -> loop acc rest
+          | Some _ -> loop (maybe_enable :: acc) rest
+          | None -> assert false)
+      | "--disable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
+      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+          (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+          | Some ("effects" | "use-js-string") -> loop acc rest
+          | Some _ -> loop (maybe_disable :: acc) rest
+          | None -> assert false)
       | "--effects" :: _backend :: rest -> loop acc rest
       | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
         loop acc rest
+      | "--toplevel" :: rest -> loop acc rest
       | other :: rest -> loop (other :: acc) rest
     in
     loop [] flags |> List.rev
@@ -342,11 +351,11 @@ let js_of_ocaml_rule
     | Build_runtime -> flags.build_runtime
   in
   let flags =
-    (* Avoid duplicating effect-related flags *)
+    (* Avoid duplicating flags that are covered by the config *)
     Action_builder.map flags ~f:(fun flags ->
       match config with
       | None -> flags
-      | Some _ -> Config.remove_effect_flags flags)
+      | Some _ -> Config.remove_config_flags flags)
   in
   Command.run_dyn_prog
     ~dir:(Path.build dir)

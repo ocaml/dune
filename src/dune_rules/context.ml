@@ -485,7 +485,7 @@ let create (builder : Builder.t) ~(kind : Kind.t) =
               | None -> toolchain `Lock
               | Some toolchain ->
                 let+ toolchain, _ = Action_builder.evaluate_and_collect_facts toolchain in
-                toolchain, `Default)
+                toolchain, `Lock)
          in
          Ocaml_toolchain.register_response_file_support ocaml;
          if Option.is_some builder.fdo_target_exe

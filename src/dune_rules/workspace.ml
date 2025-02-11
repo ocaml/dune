@@ -1,19 +1,70 @@
 open Import
 open Dune_lang.Decoder
 module Repository = Dune_pkg.Pkg_workspace.Repository
+module Solver_env = Dune_pkg.Solver_env
 
 let default_repositories = [ Repository.overlay; Repository.upstream ]
+
+module Solve_for_platforms = struct
+  type t =
+    { with_defaults : bool
+    ; extra : Solver_env.t list
+    }
+
+  let default = { with_defaults = true; extra = [] }
+
+  let to_dyn { with_defaults; extra } =
+    Dyn.record
+      [ "with_defaults", Dyn.bool with_defaults
+      ; "extra", Dyn.list Solver_env.to_dyn extra
+      ]
+  ;;
+
+  let equal { with_defaults; extra } t =
+    Bool.equal with_defaults t.with_defaults && List.equal Solver_env.equal extra t.extra
+  ;;
+
+  let decode =
+    let decode_fields =
+      let+ with_defaults = field_b "with_defaults"
+      and+ extra = field "extra" ~default:[] (repeat @@ enter Solver_env.decode) in
+      { with_defaults; extra }
+    in
+    let+ loc, t = located @@ fields decode_fields in
+    if (not t.with_defaults) && List.is_empty t.extra
+    then
+      User_error.raise
+        ~loc
+        [ Pp.text "No platforms were specified for solving dependencies." ]
+        ~hints:
+          [ Pp.text
+              "Either set \"(with_defaults)\" or specify at least one platform in \
+               \"(extra ...)\"."
+          ];
+    t
+  ;;
+
+  let platforms { with_defaults; extra } =
+    let non_deduped =
+      (if with_defaults then Solver_env.popular_platform_envs else []) @ extra
+    in
+    (* Deduplicate the platforms so it doesn't matter if a user specifies
+       platforms that are already included in the default list of platforms. *)
+    Solver_env.Set.of_list non_deduped |> Solver_env.Set.to_list
+  ;;
+end
 
 module Lock_dir = struct
   type t =
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
-    ; solver_env : Dune_pkg.Solver_env.t option
+    ; solver_env : Solver_env.t option
     ; unset_solver_vars : Package_variable_name.Set.t option
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
     ; depopts : (Loc.t * Package.Name.t) list
+    ; solve_for_platforms : Solve_for_platforms.t
     }
 
   let to_dyn
@@ -25,13 +76,14 @@ module Lock_dir = struct
         ; constraints
         ; pins
         ; depopts
+        ; solve_for_platforms
         }
     =
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
-      ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
+      ; "solver_env", Dyn.option Solver_env.to_dyn solver_env
       ; "unset_solver_vars", Dyn.option Package_variable_name.Set.to_dyn unset_solver_vars
       ; ( "repositories"
         , Dyn.list
@@ -40,6 +92,7 @@ module Lock_dir = struct
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
       ; "pins", (Dyn.list Dyn.string) (List.map pins ~f:snd)
       ; "depopts", (Dyn.list Package.Name.to_dyn) (List.map ~f:snd depopts)
+      ; "solve_for_platforms", Solve_for_platforms.to_dyn solve_for_platforms
       ]
   ;;
 
@@ -52,6 +105,7 @@ module Lock_dir = struct
         ; constraints
         ; pins
         ; depopts
+        ; solve_for_platforms
         }
     =
     Poly.hash
@@ -62,7 +116,8 @@ module Lock_dir = struct
       , repositories
       , constraints
       , pins
-      , depopts )
+      , depopts
+      , solve_for_platforms )
   ;;
 
   let equal
@@ -74,6 +129,7 @@ module Lock_dir = struct
         ; constraints
         ; pins
         ; depopts
+        ; solve_for_platforms
         }
         t
     =
@@ -82,7 +138,7 @@ module Lock_dir = struct
          Dune_pkg.Version_preference.equal
          version_preference
          t.version_preference
-    && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
+    && Option.equal Solver_env.equal solver_env t.solver_env
     && Option.equal Package_variable_name.Set.equal unset_solver_vars t.unset_solver_vars
     && List.equal
          (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
@@ -91,6 +147,7 @@ module Lock_dir = struct
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
     && List.equal (Tuple.T2.equal Loc.equal String.equal) pins t.pins
     && List.equal (Tuple.T2.equal Loc.equal Package.Name.equal) depopts t.depopts
+    && Solve_for_platforms.equal solve_for_platforms t.solve_for_platforms
   ;;
 
   let decode ~dir =
@@ -107,7 +164,7 @@ module Lock_dir = struct
       let+ path =
         let+ path = field ~default:"dune.lock" "path" string in
         Path.Source.relative dir path
-      and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
+      and+ solver_env = field_o "solver_env" Solver_env.decode
       and+ unset_solver_vars =
         field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
@@ -116,13 +173,19 @@ module Lock_dir = struct
       and+ constraints =
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
       and+ depopts = field ~default:[] "depopts" (repeat (located Package.Name.decode))
-      and+ pins = field ~default:[] "pins" (repeat (located string)) in
+      and+ pins = field ~default:[] "pins" (repeat (located string))
+      and+ solve_for_platforms =
+        field
+          ~default:Solve_for_platforms.default
+          "solve_for_platforms"
+          Solve_for_platforms.decode
+      in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
           unset_solver_vars
           ~f:
             (List.iter ~f:(fun (loc, variable) ->
-               if Option.is_some (Dune_pkg.Solver_env.get solver_env variable)
+               if Option.is_some (Solver_env.get solver_env variable)
                then
                  User_error.raise
                    ~loc
@@ -143,6 +206,7 @@ module Lock_dir = struct
       ; constraints
       ; pins
       ; depopts
+      ; solve_for_platforms
       }
     in
     fields decode

@@ -1062,8 +1062,10 @@ module DB = struct
 
   let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    let+ all = Package_universe.lock_dir package_universe in
-    { all = all.packages; system_provided = dune }
+    let+ lock_dir = Package_universe.lock_dir package_universe
+    and+ solver_env = Lock_dir.Sys_vars.solver_env () in
+    let all = Dune_pkg.Lock_dir.packages_on_platform lock_dir ~platform:solver_env in
+    { all; system_provided = dune }
   ;;
 end
 
@@ -1106,11 +1108,19 @@ end = struct
          ; info
          ; exported_env
          ; depexts
+         ; enabled_on_platforms = _
          } as pkg) ->
       assert (Package.Name.equal name info.name);
+      let* solver_env = Lock_dir.Sys_vars.solver_env () in
+      let choose_for_current_platform field =
+        Dune_pkg.Lock_dir.Conditional_choice.choose_for_platform
+          field
+          ~platform:solver_env
+      in
+      let depends = choose_for_current_platform depends |> Option.value ~default:[] in
       let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db name package_universe
+        Memo.parallel_map depends ~f:(fun dependency ->
+          resolve db (dependency.loc, dependency.name) package_universe
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
           | `System_provided -> None)
@@ -1125,6 +1135,8 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
+      let install_command = choose_for_current_platform install_command in
+      let build_command = choose_for_current_platform build_command in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -1169,6 +1181,7 @@ end = struct
           , build_command
           , install_command )
       in
+      let depexts = choose_for_current_platform depexts |> Option.value ~default:[] in
       let t =
         { Pkg.id
         ; build_command

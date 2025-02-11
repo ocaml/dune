@@ -7,6 +7,8 @@ module Solver_result : sig
     ; pinned_packages : Package_name.Set.t
     ; num_expanded_packages : int
     }
+
+  val merge : t -> t -> t
 end
 
 val solve_lock_dir

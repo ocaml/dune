@@ -135,8 +135,8 @@ module Context = struct
          let packages pkg (formula : OpamTypes.formula) =
            OpamFormula.iter
              (fun (name, _) ->
-               let name = Package_name.of_opam_package_name name in
-               Table.Multi.cons acc name pkg)
+                let name = Package_name.of_opam_package_name name in
+                Table.Multi.cons acc name pkg)
              formula
          in
          Lazy.force local_packages

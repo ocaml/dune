@@ -41,7 +41,7 @@ let of_opam_url loc url =
        raise (User_error.E message)
      | Ok output ->
        let target =
-         let file_digest = Digest.file (Path.to_string output) |> Digest.to_hex in
+         let file_digest = Path.to_string output |> Digest.file |> Digest.to_hex in
          Path.relative dir file_digest
        in
        let+ path = Tar.load_or_untar ~target ~archive:output in

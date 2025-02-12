@@ -137,7 +137,7 @@ jobs:
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#doc -c make doc
         env:
-          LC_ALL: C.UTF-8
+          LOCALE_ARCHIVE: /usr/lib/locale/locale-archive
 
   coq:
     name: Coq 8.16.1

@@ -188,18 +188,22 @@ Pin to an HTTP archive work
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
   Solution for dune.lock:
   - bar.1.0.0
-  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null
+  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
+  Checksum matches
 
 Pin to an HTTP archive detects wrong hash
 
-  $ sed -i.tmp "s/$MD5_CHECKSUM/aaaaaaaaaaaaaaaaaaaaaaaaaaaaa/g" dune.lock/bar.pkg
-  $ dune build
-  File "dune.lock/bar.pkg", line 6, characters 12-45:
-  6 |   (checksum md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaa)))
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: "md5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is an invalid Cryptographic hash
-  of a package.
-  [1]
+  $ cat << EOF > dune
+  > (library
+  >  (name foo)
+  >  (libraries bar))
+  > EOF
+  $ sed -i.tmp "s/$MD5_CHECKSUM/92449184682b45b5f07e811fdd61d35f/g" dune.lock/bar.pkg
+  $ rm -rf already-served
+  $ dune build 2>&1 | grep -v "md5"
+  File "dune.lock/bar.pkg", line 6, characters 12-48:
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Invalid checksum, got
 
 Pin to an HTTP archive needs `dune pkg lock` to download and compute the hash
 of the target again
@@ -212,5 +216,6 @@ of the target again
   $ runtest "http://0.0.0.0:$PORT/tarball.tar" > output
   Solution for dune.lock:
   - bar.1.0.0
-  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null
+  $ grep "md5=$MD5_CHECKSUM" output 2>&1 > /dev/null && echo "Checksum matches"
+  Checksum matches
 

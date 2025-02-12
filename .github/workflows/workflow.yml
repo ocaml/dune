@@ -135,6 +135,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v18
+      - run: env
       - run: nix develop .#doc -c make doc
 
   coq:

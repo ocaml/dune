@@ -171,10 +171,10 @@
                 [
                   sphinx
                   sphinx-autobuild
-                  sphinx-copybutton
-                  furo
-                  sphinx-design
-                  myst-parser
+                  python3Packages.sphinx-copybutton
+                  python3Packages.furo
+                  python3Packages.sphinx-design
+                  python3Packages.myst-parser
                 ]
               );
               meta.description = ''

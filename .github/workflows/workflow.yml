@@ -139,7 +139,7 @@ jobs:
       - run: exit 1
       - run: nix develop .#doc -c make doc
         env:
-          LOCALE_ARCHIVE: /usr/lib/locale/locale-archive
+          LC_ALL: C
 
   coq:
     name: Coq 8.16.1

@@ -1,0 +1,4 @@
+(library
+  (name library1)
+  (js_of_ocaml
+    (flags (:standard --effects=double-translation))))

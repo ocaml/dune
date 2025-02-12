@@ -135,6 +135,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v18
+      - run: locale -a
+      - run: exit 1
       - run: nix develop .#doc -c make doc
         env:
           LOCALE_ARCHIVE: /usr/lib/locale/locale-archive

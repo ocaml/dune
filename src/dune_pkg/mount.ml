@@ -24,7 +24,12 @@ let of_opam_url loc url =
     in
     Git rev
   | `Tar ->
-    let dir = Path.Build.(L.relative root [ "_fetch"; "url" ]) |> Path.build in
+    (* To prevent cache dir from growing too much, `/tmp/` stores the archive
+       when running `dune pkg lock`. We download and extract the archive
+       everytime the command runs.
+       CR-someday maiste: downloading and extracting should be cached to be
+       reused by the `dune build` command. *)
+    let dir = Temp.(create Dir ~prefix:"dune" ~suffix:"fetch-pinning") in
     Source.fetch_archive_cached (loc, url)
     >>= (function
      | Error message_opt ->
@@ -39,12 +44,18 @@ let of_opam_url loc url =
            message_opt
        in
        raise (User_error.E message)
-     | Ok output ->
+     | Ok archive ->
        let target =
-         let file_digest = Path.to_string output |> Digest.file |> Digest.to_hex in
+         let file_digest = Path.to_string archive |> Digest.file |> Digest.to_hex in
          Path.relative dir file_digest
        in
-       let+ path = Tar.load_or_untar ~target ~archive:output in
+       let+ path =
+         Tar.extract ~archive ~target
+         >>| function
+         | Error () ->
+           User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]
+         | Ok () -> target
+       in
        Path path)
 ;;
 

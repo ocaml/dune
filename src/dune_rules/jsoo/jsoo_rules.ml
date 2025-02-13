@@ -250,16 +250,16 @@ end = struct
       | [] -> acc
       | "--enable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
       | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
-          (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
-          | Some ("effects" | "use-js-string") -> loop acc rest
-          | Some _ -> loop (maybe_enable :: acc) rest
-          | None -> assert false)
+        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+         | Some ("effects" | "use-js-string") -> loop acc rest
+         | Some _ -> loop (maybe_enable :: acc) rest
+         | None -> assert false)
       | "--disable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
       | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
-          (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
-          | Some ("effects" | "use-js-string") -> loop acc rest
-          | Some _ -> loop (maybe_disable :: acc) rest
-          | None -> assert false)
+        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+         | Some ("effects" | "use-js-string") -> loop acc rest
+         | Some _ -> loop (maybe_disable :: acc) rest
+         | None -> assert false)
       | "--effects" :: _backend :: rest -> loop acc rest
       | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
         loop acc rest

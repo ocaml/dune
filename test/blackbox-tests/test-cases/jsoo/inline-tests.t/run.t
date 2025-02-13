@@ -9,14 +9,14 @@ Run inline tests using node js
   $ dune runtest
   inline tests (Byte)
   inline tests (Byte)
-  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--enable=effects'
+  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (Native)
   inline tests (Native)
   inline tests (JS)
   inline tests (JS)
 
   $ dune runtest --profile release
-  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--enable=effects'
+  Warning: your program contains effect handlers; you should probably run js_of_ocaml with option '--effects=cps'
   inline tests (JS)
   inline tests (JS)
   inline tests (Native)

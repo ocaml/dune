@@ -136,6 +136,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v18
       - run: nix develop .#doc -c make doc
+        env:
+          LC_ALL: C
 
   coq:
     name: Coq 8.16.1

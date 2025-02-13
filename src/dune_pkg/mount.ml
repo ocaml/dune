@@ -11,7 +11,7 @@ let backend t = t
 
 let of_opam_url loc url =
   let* () = Fiber.return () in
-  match OpamUrl.local_or_git_only url loc with
+  match OpamUrl.local_or_git_or_tar_only url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
     let+ rev =
@@ -23,6 +23,40 @@ let of_opam_url loc url =
       >>| User_error.ok_exn
     in
     Git rev
+  | `Tar ->
+    (* To prevent cache dir from growing too much, `/tmp/` stores the archive
+       when running `dune pkg lock`. We download and extract the archive
+       everytime the command runs.
+       CR-someday maiste: downloading and extracting should be cached to be
+       reused by the `dune build` command. *)
+    let dir = Temp.(create Dir ~prefix:"dune" ~suffix:"fetch-pinning") in
+    Source.fetch_archive_cached (loc, url)
+    >>= (function
+     | Error message_opt ->
+       let message =
+         Option.value
+           ~default:
+             (User_message.make
+                [ Pp.textf
+                    "Failed to retrieve source archive from: %s"
+                    (OpamUrl.to_string url)
+                ])
+           message_opt
+       in
+       raise (User_error.E message)
+     | Ok archive ->
+       let target =
+         let file_digest = Path.to_string archive |> Digest.file |> Digest.to_hex in
+         Path.relative dir file_digest
+       in
+       let+ path =
+         Tar.extract ~archive ~target
+         >>| function
+         | Error () ->
+           User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]
+         | Ok () -> target
+       in
+       Path path)
 ;;
 
 let read t file =

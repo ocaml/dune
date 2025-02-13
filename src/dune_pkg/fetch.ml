@@ -201,9 +201,10 @@ let fetch_local ~checksum ~target (url, url_loc) =
   if not (OpamUrl.is_local url)
   then Code_error.raise "fetch_local: url should be file://" [ "url", OpamUrl.to_dyn url ];
   let path =
-    match OpamUrl.local_or_git_only url url_loc with
+    match OpamUrl.local_or_git_or_tar_only url url_loc with
     | `Path p -> p
-    | `Git -> Code_error.raise "fetch_local: not a path" [ "url", OpamUrl.to_dyn url ]
+    | `Git | `Tar ->
+      Code_error.raise "fetch_local: not a path" [ "url", OpamUrl.to_dyn url ]
   in
   match check_checksum checksum path with
   | Error _ as e -> Fiber.return e

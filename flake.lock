@@ -20,67 +20,45 @@
     },
     "melange": {
       "inputs": {
-        "flake-utils": [
-          "flake-utils"
-        ],
         "melange-compiler-libs": "melange-compiler-libs",
-        "nix-filter": "nix-filter",
         "nixpkgs": [
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1717824621,
-        "narHash": "sha256-8aWXkm1PgJm+ALi/kDmx9X0cwNUr3LWEp+HU/uKFugk=",
+        "lastModified": 1739155595,
+        "narHash": "sha256-bOm4f7HKuB5odaiH7IWB4pLyMm44uRE1HyTJX5KKXyU=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "5aa952ce811d750d9295d8b6b2d092d7d5392140",
+        "rev": "e09eeff6112d8c5daf2d24f37be1f9ccb69e523e",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
-        "ref": "refs/tags/4.0.1-52",
+        "ref": "refs/tags/5.0.0-52",
         "repo": "melange",
         "type": "github"
       }
     },
     "melange-compiler-libs": {
       "inputs": {
-        "flake-utils": [
-          "melange",
-          "flake-utils"
-        ],
         "nixpkgs": [
           "melange",
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1715648563,
-        "narHash": "sha256-hRBg2XQ6KePIAV8m/lLLhrrgqJS/Sv4OOP/nWwYq30c=",
+        "lastModified": 1737850230,
+        "narHash": "sha256-9gBHHAd6uZWqL1xsS0NbY+OE8KBDQPLgHM1SXKg2HUY=",
         "owner": "melange-re",
         "repo": "melange-compiler-libs",
-        "rev": "5d286734b8f6c75913ed98bb8f20ac0a55d4293e",
+        "rev": "327008ba17b54bfe912407c61eb9aca969e5e7b0",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
+        "ref": "5.2",
         "repo": "melange-compiler-libs",
-        "type": "github"
-      }
-    },
-    "nix-filter": {
-      "locked": {
-        "lastModified": 1710156097,
-        "narHash": "sha256-1Wvk8UP7PXdf8bCCaEoMnOT1qe5/Duqgj+rL8sRQsSM=",
-        "owner": "numtide",
-        "repo": "nix-filter",
-        "rev": "3342559a24e85fc164b295c3444e8a139924675b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "nix-filter",
         "type": "github"
       }
     },

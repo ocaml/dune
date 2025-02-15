@@ -39,6 +39,7 @@ module T = struct
     | Bop of Relop.t * Value.t * Value.t
     | And of t list
     | Or of t list
+    | Not of t
 
   let rec to_dyn =
     let open Dyn in
@@ -48,6 +49,7 @@ module T = struct
     | Bop (b, x, y) -> variant "Bop" [ Relop.to_dyn b; Value.to_dyn x; Value.to_dyn y ]
     | And t -> variant "And" (List.map ~f:to_dyn t)
     | Or t -> variant "Or" (List.map ~f:to_dyn t)
+    | Not t -> variant "Not" [ to_dyn t ]
   ;;
 
   let rec compare a b =
@@ -71,6 +73,9 @@ module T = struct
     | And _, _ -> Lt
     | _, And _ -> Gt
     | Or a, Or b -> List.compare a b ~compare
+    | Or _, _ -> Lt
+    | _, Or _ -> Gt
+    | Not a, Not b -> compare a b
   ;;
 end
 
@@ -85,6 +90,7 @@ let rec encode c =
   | Bop (op, x, y) -> triple Relop.encode Value.encode Value.encode (op, x, y)
   | And conjuncts -> list sexp (string "and" :: List.map ~f:encode conjuncts)
   | Or disjuncts -> list sexp (string "or" :: List.map ~f:encode disjuncts)
+  | Not x -> list sexp [ string "not"; encode x ]
 ;;
 
 let logical_op t =
@@ -138,6 +144,13 @@ let decode =
       ; ( "or"
         , let+ x = logical_op t in
           Or x )
+      ; ( "not"
+        , let+ x = t
+          and+ loc = loc
+          and+ version = Dune_sexp.Syntax.get_exn Stanza.syntax in
+          if version < (3, 18)
+          then Dune_sexp.Syntax.Error.since loc Stanza.syntax (3, 18) ~what:"Not operator";
+          Not x )
       ]
     in
     peek_exn

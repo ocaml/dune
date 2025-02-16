@@ -27,5 +27,4 @@ specified the opposite in flags
   
   
   console.log("hello");
-  
   /*  Not a pure module */

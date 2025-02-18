@@ -54,6 +54,17 @@ which is completely omitted from the solution).
   - a2.0.0.2
   - b.0.0.2
 
+Same solution if a1 only known version is excluded:
+
+  $ mkpkg b 0.0.2 <<EOF
+  > depends: [ "a1" {!= "0.0.1" } | "a2" {= "0.0.2" } ]
+  > EOF
+
+  $ solve b
+  Solution for dune.lock:
+  - a2.0.0.2
+  - b.0.0.2
+
 Update a2.0.0.2 marking it as avoid-version which should tell the
 solver to try to find a solution which doesn't include it.
 
@@ -65,3 +76,4 @@ $ mkpkg a2 0.0.2 <<EOF
   Solution for dune.lock:
   - a2.0.0.2
   - b.0.0.2
+

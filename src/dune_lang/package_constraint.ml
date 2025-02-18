@@ -146,10 +146,7 @@ let decode =
           Or x )
       ; ( "not"
         , let+ x = t
-          and+ loc = loc
-          and+ version = Dune_sexp.Syntax.get_exn Stanza.syntax in
-          if version < (3, 18)
-          then Dune_sexp.Syntax.Error.since loc Stanza.syntax (3, 18) ~what:"Not operator";
+          and+ () = Dune_sexp.Syntax.since Stanza.syntax (3, 18) ~what:"Not operator" in
           Not x )
       ]
     in

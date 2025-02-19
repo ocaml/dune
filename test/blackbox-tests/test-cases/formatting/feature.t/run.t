@@ -3,6 +3,10 @@ Note about versioning:
 - in (lang dune 1.x), no formatting rules are set up by default.
 - (lang dune 2.0) behaves as if (using fmt 1.2) is set.
 
+Turn every symlinks into writable files belonging to the sandbox as formatting
+rules are not generated for read-only files:
+  $ find . -type l | while read f; do (rm "$f"; cat > $f) < $f; done
+
 Formatting can be checked using the @fmt target:
 
   $ touch .ocamlformat

@@ -1436,6 +1436,7 @@ module Source = struct
 
   let is_in_build_dir s = is_in_build_dir (path_of_local s)
   let to_local t = t
+  let is_rw t = Fpath.is_rw (to_string t)
 end
 
 let set_of_source_paths set = Source.Set.to_list set |> Set.of_list_map ~f:source

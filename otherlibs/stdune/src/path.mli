@@ -109,6 +109,9 @@ module Source : sig
   val descendant : t -> of_:t -> t option
   val to_local : t -> Local.t
 
+  (** Whether the file at the given path is readable and writable. *)
+  val is_rw : t -> bool
+
   module Table : Hashtbl.S with type key = t
 end
 

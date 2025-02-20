@@ -1,6 +1,7 @@
 open Stdune
 module Checksum = Dune_pkg.Checksum
 module Lock_dir = Dune_pkg.Lock_dir
+module Depend = Dune_pkg.Lock_dir.Depend
 module Opam_repo = Dune_pkg.Opam_repo
 module Expanded_variable_bindings = Dune_pkg.Solver_stats.Expanded_variable_bindings
 module Package_variable_name = Dune_lang.Package_variable_name
@@ -66,7 +67,8 @@ end
 let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
   let lock_dir_path = Path.Source.of_string lock_dir_path in
   Lock_dir.Write_disk.(
-    prepare ~lock_dir_path ~files:Package_name.Map.empty lock_dir |> commit);
+    prepare ~portable:false ~lock_dir_path ~files:Package_name.Map.empty lock_dir
+    |> commit);
   let lock_dir_round_tripped =
     try Lock_dir.read_disk_exn lock_dir_path with
     | User_error.E _ as exn ->
@@ -123,14 +125,15 @@ let%expect_test "encode/decode round trip test for lockdir with no deps" =
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
         { variable_values = []; unset_variables = [] }
-    } |}]
+    }
+    |}]
 ;;
 
 let empty_package name ~version =
-  { Lock_dir.Pkg.build_command = None
-  ; install_command = None
-  ; depends = []
-  ; depexts = []
+  { Lock_dir.Pkg.build_command = Lock_dir.Conditional_choice.empty
+  ; install_command = Lock_dir.Conditional_choice.empty
+  ; depends = Lock_dir.Conditional_choice.singleton_all_platforms []
+  ; depexts = Lock_dir.Conditional_choice.singleton_all_platforms []
   ; info =
       { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
   ; exported_env = []
@@ -167,9 +170,9 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
     ; packages =
         map
           { "bar" :
-              { build_command = None
-              ; install_command = None
-              ; depends = []
+              { build_command = []
+              ; install_command = []
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "bar"
@@ -181,9 +184,9 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
               ; exported_env = []
               }
           ; "foo" :
-              { build_command = None
-              ; install_command = None
-              ; depends = []
+              { build_command = []
+              ; install_command = []
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "foo"
@@ -208,6 +211,9 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
 let%expect_test "encode/decode round trip test for lockdir with complex deps" =
   let module Action = Dune_lang.Action in
   let module String_with_vars = Dune_lang.String_with_vars in
+  let make_conditional value =
+    Lock_dir.Conditional_choice.singleton Dune_pkg.Solver_env.empty value
+  in
   let lock_dir =
     let pkg_a =
       let name = Package_name.of_string "a" in
@@ -218,11 +224,11 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       , let pkg = empty_package name ~version:(Package_version.of_string "0.1.0") in
         { pkg with
           build_command =
-            Some
-              (Action
+            make_conditional
+              (Lock_dir.Build_command.Action
                  Action.(Progn [ Echo [ String_with_vars.make_text Loc.none "hello" ] ]))
         ; install_command =
-            Some
+            make_conditional
               (Action.System
                  (* String_with_vars.t doesn't round trip so we have to set
                     [quoted] if the string would be quoted *)
@@ -252,8 +258,8 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "dev") in
         { pkg with
-          install_command = None
-        ; depends = [ Loc.none, fst pkg_a ]
+          install_command = Lock_dir.Conditional_choice.empty
+        ; depends = make_conditional [ { Depend.loc = Loc.none; name = fst pkg_a } ]
         ; info =
             { pkg.info with
               dev = true
@@ -275,7 +281,11 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
       ( name
       , let pkg = empty_package name ~version:(Package_version.of_string "0.2") in
         { pkg with
-          depends = [ Loc.none, fst pkg_a; Loc.none, fst pkg_b ]
+          depends =
+            make_conditional
+              [ { Depend.loc = Loc.none; name = fst pkg_a }
+              ; { Depend.loc = Loc.none; name = fst pkg_b }
+              ]
         ; info =
             { pkg.info with
               dev = false
@@ -307,9 +317,15 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
     ; packages =
         map
           { "a" :
-              { build_command = Some (Action [ "progn"; [ "echo"; "hello" ] ])
-              ; install_command = Some [ "system"; "echo 'world'" ]
-              ; depends = []
+              { build_command =
+                  [ { condition = map {}
+                    ; value = Action [ "progn"; [ "echo"; "hello" ] ]
+                    }
+                  ]
+              ; install_command =
+                  [ { condition = map {}; value = [ "system"; "echo 'world'" ] }
+                  ]
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "a"
@@ -324,9 +340,14 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = [ { op = "="; var = "foo"; value = "bar" } ]
               }
           ; "b" :
-              { build_command = None
-              ; install_command = None
-              ; depends = [ ("complex_lock_dir/b.pkg:3", "a") ]
+              { build_command = []
+              ; install_command = []
+              ; depends =
+                  [ { condition = map {}
+                    ; value =
+                        [ { loc = "complex_lock_dir/b.pkg:3"; name = "a" } ]
+                    }
+                  ]
               ; depexts = []
               ; info =
                   { name = "b"
@@ -344,11 +365,15 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
               ; exported_env = []
               }
           ; "c" :
-              { build_command = None
-              ; install_command = None
+              { build_command = []
+              ; install_command = []
               ; depends =
-                  [ ("complex_lock_dir/c.pkg:3", "a")
-                  ; ("complex_lock_dir/c.pkg:3", "b")
+                  [ { condition = map {}
+                    ; value =
+                        [ { loc = "complex_lock_dir/c.pkg:3"; name = "a" }
+                        ; { loc = "complex_lock_dir/c.pkg:3"; name = "b" }
+                        ]
+                    }
                   ]
               ; depexts = []
               ; info =
@@ -418,9 +443,9 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
     ; packages =
         map
           { "a" :
-              { build_command = None
-              ; install_command = None
-              ; depends = []
+              { build_command = []
+              ; install_command = []
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "a"
@@ -432,9 +457,9 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               ; exported_env = []
               }
           ; "b" :
-              { build_command = None
-              ; install_command = None
-              ; depends = []
+              { build_command = []
+              ; install_command = []
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "b"
@@ -446,9 +471,9 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
               ; exported_env = []
               }
           ; "c" :
-              { build_command = None
-              ; install_command = None
-              ; depends = []
+              { build_command = []
+              ; install_command = []
+              ; depends = [ { condition = map {}; value = [] } ]
               ; depexts = []
               ; info =
                   { name = "c"

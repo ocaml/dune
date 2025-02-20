@@ -810,13 +810,13 @@ module Solver = struct
               candidates)
           in
           let+ () =
-            Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
+            Fiber.sequential_iter !impls ~f:(fun { var = impl_var; impl } ->
               Conflict_classes.process conflict_classes impl_var impl;
               match expand_deps with
               | `No_expand -> Fiber.return ()
               | `Expand_and_collect_conflicts deferred ->
                 Input.Impl.requires role impl
-                |> Fiber.parallel_iter ~f:(fun (dep : Input.dependency) ->
+                |> Fiber.sequential_iter ~f:(fun (dep : Input.dependency) ->
                   match dep.importance with
                   | Ensure -> process_dep expand_deps impl_var dep
                   | Prevent ->
@@ -878,7 +878,7 @@ module Solver = struct
            restricting dependencies are irrelevant to solving the dependency
            problem. *)
         List.rev !conflicts
-        |> Fiber.parallel_iter ~f:(fun (impl_var, dep) ->
+        |> Fiber.sequential_iter ~f:(fun (impl_var, dep) ->
           process_dep `No_expand impl_var dep)
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
@@ -1317,7 +1317,7 @@ module Solver = struct
             impl
         in
         Input.Role.Map.to_list impls
-        |> Fiber.parallel_map ~f:(fun (k, v) ->
+        |> Fiber.sequential_map ~f:(fun (k, v) ->
           let+ v = get_selected k v in
           k, v)
         |> Fiber.map ~f:Input.Role.Map.of_list_exn
@@ -1450,8 +1450,33 @@ let opam_variable_to_slang ~loc packages variable =
             Blang.Expr (convert_with_package_name package_name))))
 ;;
 
+(* Handles the special case for packages whose names contain '+' characters
+   where a special form of string interpolation is used. From the opam manual:
+   Warning: if the package name contains a + character (e.g. conf-g++), their
+   variables may only be accessed using opam 2.2 via string interpolation,
+   with the following syntax:
+
+     "%{?conf-g++:your-variable:}%"
+*)
+let desugar_special_string_interpolation_syntax
+      ((packages, variable, string_converter) as fident)
+  =
+  match string_converter with
+  | Some (package_and_variable, "")
+    when List.is_empty packages && OpamVariable.to_string variable |> String.is_empty ->
+    (match String.lsplit2 package_and_variable ~on:':' with
+     | Some (package, variable) ->
+       ( [ Some (OpamPackage.Name.of_string package) ]
+       , OpamVariable.of_string variable
+       , None )
+     | None -> fident)
+  | _ -> fident
+;;
+
 let opam_fident_to_slang ~loc fident =
-  let packages, variable, string_converter = OpamFilter.desugar_fident fident in
+  let packages, variable, string_converter =
+    OpamFilter.desugar_fident fident |> desugar_special_string_interpolation_syntax
+  in
   let slang = opam_variable_to_slang ~loc packages variable in
   match string_converter with
   | None -> slang
@@ -1754,7 +1779,8 @@ let opam_package_to_lock_file_pkg
       |> List.filter ~f:(fun package_name ->
         not (List.mem depends package_name ~equal:Package_name.equal))
     in
-    depends @ depopts |> List.map ~f:(fun package_name -> Loc.none, package_name)
+    depends @ depopts
+    |> List.map ~f:(fun name -> { Lock_dir.Depend.loc = Loc.none; name })
   in
   let build_env action =
     let env_update =
@@ -1807,6 +1833,10 @@ let opam_package_to_lock_file_pkg
       |> Option.map ~f:build_env
       |> Option.map ~f:(fun action -> Lock_dir.Build_command.Action action))
   in
+  let build_command =
+    Option.map build_command ~f:(Lock_dir.Conditional_choice.singleton solver_env)
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
+  in
   let depexts =
     OpamFile.OPAM.depexts opam_file
     |> List.concat_map ~f:(fun (sys_pkgs, filter) ->
@@ -1815,16 +1845,24 @@ let opam_package_to_lock_file_pkg
       then OpamSysPkg.Set.to_list_map OpamSysPkg.to_string sys_pkgs
       else [])
   in
+  let depexts =
+    if List.is_empty depexts
+    then Lock_dir.Conditional_choice.empty
+    else Lock_dir.Conditional_choice.singleton solver_env depexts
+  in
   let install_command =
     OpamFile.OPAM.install opam_file
     |> opam_commands_to_actions get_solver_var loc opam_package
     |> make_action
-    |> Option.map ~f:build_env
+    |> Option.map ~f:(fun action ->
+      Lock_dir.Conditional_choice.singleton solver_env (build_env action))
+    |> Option.value ~default:Lock_dir.Conditional_choice.empty
   in
   let exported_env =
     OpamFile.OPAM.env opam_file |> List.map ~f:opam_env_update_to_env_update
   in
   let kind = if opam_file_is_compiler opam_file then `Compiler else `Non_compiler in
+  let depends = Lock_dir.Conditional_choice.singleton solver_env depends in
   ( kind
   , { Lock_dir.Pkg.build_command; install_command; depends; depexts; info; exported_env }
   )
@@ -1870,6 +1908,30 @@ module Solver_result = struct
     ; pinned_packages : Package_name.Set.t
     ; num_expanded_packages : int
     }
+
+  let merge a b =
+    let lock_dir = Lock_dir.merge_conditionals a.lock_dir b.lock_dir in
+    let files =
+      Package_name.Map.merge a.files b.files ~f:(fun _ a b ->
+        match a, b with
+        | Some a, Some b ->
+          (* The package is present in both solutions. Make sure its associated
+             files are the same in both instances. *)
+          if not (List.equal File_entry.equal a b)
+          then
+            Code_error.raise
+              "Package files differ between merged solver results"
+              [ "files_1", Dyn.list File_entry.to_dyn a
+              ; "files_2", Dyn.list File_entry.to_dyn b
+              ];
+          Some a
+        | Some x, None | None, Some x -> Some x
+        | None, None -> None)
+    in
+    let pinned_packages = Package_name.Set.union a.pinned_packages b.pinned_packages in
+    let num_expanded_packages = a.num_expanded_packages + b.num_expanded_packages in
+    { lock_dir; files; pinned_packages; num_expanded_packages }
+  ;;
 end
 
 let reject_unreachable_packages =
@@ -1913,7 +1975,11 @@ let reject_unreachable_packages =
           Code_error.raise
             "package is both local and returned by solver"
             [ "name", Package_name.to_dyn name ]
-        | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
+        | Some (pkg : Lock_dir.Pkg.t), None ->
+          Some
+            (Lock_dir.Conditional_choice.find pkg.depends solver_env
+             |> Option.value ~default:[]
+             |> List.map ~f:(fun (depend : Lock_dir.Depend.t) -> depend.name))
         | None, Some (pkg : Local_package.For_solver.t) ->
           let deps =
             match
@@ -2064,18 +2130,22 @@ let solve_lock_dir
         Package_name.Map.iter
           pkgs_by_name
           ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-            List.iter depends ~f:(fun (loc, dep_name) ->
-              if Package_name.Map.mem local_packages dep_name
-              then
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "Dune does not support packages outside the workspace depending on \
-                       packages in the workspace. The package %S is not in the workspace \
-                       but it depends on the package %S which is in the workspace."
-                      (Package_name.to_string name)
-                      (Package_name.to_string dep_name)
-                  ]));
+            Option.iter
+              (Lock_dir.Conditional_choice.find depends solver_env)
+              ~f:
+                (List.iter ~f:(fun (depend : Lock_dir.Depend.t) ->
+                   if Package_name.Map.mem local_packages depend.name
+                   then
+                     User_error.raise
+                       ~loc:depend.loc
+                       [ Pp.textf
+                           "Dune does not support packages outside the workspace \
+                            depending on packages in the workspace. The package %S is \
+                            not in the workspace but it depends on the package %S which \
+                            is in the workspace."
+                           (Package_name.to_string name)
+                           (Package_name.to_string depend.name)
+                       ])));
         let pkgs_by_name =
           let reachable =
             reject_unreachable_packages

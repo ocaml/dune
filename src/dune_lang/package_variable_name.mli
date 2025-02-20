@@ -32,6 +32,10 @@ val build : t
 val dev : t
 val one_of : t -> t list -> bool
 
+(** The set of variable names whose values are expected to differ depending on
+    the current platform. *)
+val platform_specific : Set.t
+
 module Project : sig
   val encode : t Dune_sexp.Encoder.t
   val decode : t Dune_sexp.Decoder.t

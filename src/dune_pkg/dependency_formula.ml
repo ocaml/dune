@@ -2,7 +2,10 @@ open Import
 
 type t = OpamTypes.filtered_formula
 
-let of_dependencies deps = Package_dependency.list_to_opam_filtered_formula deps
+let of_dependencies deps =
+  List.map deps ~f:Package_dependency.to_opam_filtered_formula |> OpamFormula.ands
+;;
+
 let to_filtered_formula v = v
 let of_filtered_formula v = v
 let to_dyn = Opam_dyn.filtered_formula

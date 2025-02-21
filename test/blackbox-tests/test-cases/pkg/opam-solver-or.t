@@ -68,12 +68,90 @@ Same solution if a1 only known version is excluded:
 Update a2.0.0.2 marking it as avoid-version which should tell the
 solver to try to find a solution which doesn't include it.
 
-For now, all avoid-version packages are excluded.
-
-$ mkpkg a2 0.0.2 <<EOF
+  $ mkpkg a2 0.0.2 <<EOF
+  > conflicts: [ "a1" ]
+  > flags: [avoid-version]
+  > EOF
 
   $ solve b
   Solution for dune.lock:
-  - a2.0.0.2
+  - a1.0.0.1
+  - b.0.0.1
+
+Update a1.0.0.1 to also be flagged as avoid-version:
+
+  $ mkpkg a1 0.0.1 <<EOF
+  > flags: [avoid-version]
+  > EOF
+
+  $ solve b
+  Solution for dune.lock:
+  - a2.0.0.1
+  - b.0.0.1
+
+Then there are no "good" solution remaining once a2.0.0.1 is also flagged
+avoid-version:
+
+  $ mkpkg a2 0.0.1 <<EOF
+  > flags: [avoid-version]
+  > EOF
+
+  $ solve b
+  Solution for dune.lock:
+  - a2.0.0.2 (this version should be avoided)
   - b.0.0.2
 
+In general, the solver should select the minimal number of avoid-version possible:
+
+  $ mkpkg a 0.2 <<EOF
+  > depends: [ "c" ]
+  > EOF
+
+  $ mkpkg a 0.1 <<EOF
+  > depends: [ "d" ]
+  > EOF
+
+  $ mkpkg c 0.2 <<EOF
+  > flags: [avoid-version]
+  > depends: [ "d" ]
+  > EOF
+
+  $ mkpkg c 0.1 <<EOF
+  > flags: [avoid-version]
+  > depends: [ "e" ]
+  > EOF
+
+  $ mkpkg d 0.2 <<EOF
+  > flags: [avoid-version]
+  > depends: [ "e" ]
+  > EOF
+
+  $ mkpkg d 0.1 <<EOF
+  > flags: [avoid-version]
+  > depends: [ "f" ]
+  > EOF
+
+  $ mkpkg e 0.1 <<EOF
+  > flags: [avoid-version]
+  > depends: [ "f" ]
+  > EOF
+
+  $ mkpkg f 0.1 <<EOF
+  > flags: [avoid-version]
+  > EOF
+
+In this example, the solver will first find a solution by DFS (always selecting
+the largest possible version of each package), which will result in 4
+avoid-version for packages c, d, e, f:
+
+a.0.2 => c.0.2 => d.0.2 => e.0.1 => f.0.1
+
+But after minimizing this upperbound, the solver will find that ignoring the
+latest versions of packages a and d allow it to reduce the solution to 2
+avoid-version:
+
+  $ solve a
+  Solution for dune.lock:
+  - a.0.1
+  - d.0.1 (this version should be avoided)
+  - f.0.1 (this version should be avoided)

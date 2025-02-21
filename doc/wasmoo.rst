@@ -8,9 +8,10 @@ Wasm Compilation With Wasm_of_ocaml
 
    This is an how-to guide.
 
-Wasm_of_ocaml_ is a compiler from OCaml to WebAssembly (Wasm for
-short). The compiler works by translating OCaml bytecode to Wasm code.
-The compiler can currently be installed from [its Github repository](https://github.com/ocaml-wasm/wasm_of_ocaml).
+Wasm_of_ocaml is a compiler from OCaml to WebAssembly (Wasm for short). The
+compiler works by translating OCaml bytecode to Wasm code. The compiler is
+available in the `js_of_ocaml Github repository
+<https://github.com/ocsigen/js_of_ocaml>`_.
 
 Compiling to Wasm
 =================
@@ -100,5 +101,3 @@ Wasm_of_ocaml can generate sourcemaps for the generated Wasm code.
 By default, they are generated when using the ``dev`` build profile and are not generated otherwise.
 The behavior can explicitly be specified in an ``env`` stanza (see :doc:`/reference/dune/env`)
 or per executable inside ``(wasm_of_ocaml (sourcemap ...))`` (see :doc:`/reference/dune/executable`)
-
-.. _wasm_of_ocaml: https://github.com/ocaml-wasm/wasm_of_ocaml

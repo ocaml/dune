@@ -219,9 +219,7 @@ let traverse_files ~dir ~init ~f =
 ;;
 
 let is_rw p =
-  try
-    Unix.access p Unix.[ R_OK; W_OK ];
-    true
-  with
-  | Unix.Unix_error _ -> false
+  match Unix.access p Unix.[ R_OK; W_OK ] with
+  | () -> true
+  | exception Unix.Unix_error _ -> false
 ;;

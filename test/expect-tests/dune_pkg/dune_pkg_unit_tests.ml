@@ -132,7 +132,13 @@ let empty_package name ~version =
   ; depends = []
   ; depexts = []
   ; info =
-      { Lock_dir.Pkg_info.name; version; dev = false; source = None; extra_sources = [] }
+      { Lock_dir.Pkg_info.name
+      ; version
+      ; dev = false
+      ; avoid = false
+      ; source = None
+      ; extra_sources = []
+      }
   ; exported_env = []
   }
 ;;
@@ -175,6 +181,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                   { name = "bar"
                   ; version = "0.2.0"
                   ; dev = false
+                  ; avoid = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -189,6 +196,7 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                   { name = "foo"
                   ; version = "0.1.0"
                   ; dev = false
+                  ; avoid = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -315,6 +323,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "a"
                   ; version = "0.1.0"
                   ; dev = false
+                  ; avoid = false
                   ; source = Some { url = "file:///tmp/a"; checksum = None }
                   ; extra_sources =
                       [ ("one", { url = "file:///tmp/a"; checksum = None })
@@ -332,6 +341,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "b"
                   ; version = "dev"
                   ; dev = true
+                  ; avoid = false
                   ; source =
                       Some
                         { url = "https://github.com/foo/b"
@@ -355,6 +365,7 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                   { name = "c"
                   ; version = "0.2"
                   ; dev = false
+                  ; avoid = false
                   ; source =
                       Some { url = "https://github.com/foo/c"; checksum = None }
                   ; extra_sources = []
@@ -426,6 +437,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                   { name = "a"
                   ; version = "0.1.0"
                   ; dev = false
+                  ; avoid = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -440,6 +452,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                   { name = "b"
                   ; version = "dev"
                   ; dev = false
+                  ; avoid = false
                   ; source = None
                   ; extra_sources = []
                   }
@@ -454,6 +467,7 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                   { name = "c"
                   ; version = "0.2"
                   ; dev = false
+                  ; avoid = false
                   ; source = None
                   ; extra_sources = []
                   }

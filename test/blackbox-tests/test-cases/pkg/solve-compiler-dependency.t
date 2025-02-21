@@ -70,3 +70,24 @@ unstable.
   Solution for dune.lock:
   - ocaml.5.2.0
   - ocaml-base-compiler.5.2.0
+
+A package can still force an unstable version of the compiler by leaving no
+other choices:
+
+  $ mkpkg edgy 1.0 << EOF
+  > depends: [ "ocaml" {> "$CURRENT" } ]
+  > EOF
+  $ solve edgy
+  Solution for dune.lock:
+  - edgy.1.0
+  - ocaml.5.3.0
+  - ocaml-variants.5.3.0+trunk (this version should be avoided)
+
+  $ mkpkg edgy 1.0 << EOF
+  > depends: [ "ocaml" "ocaml-base-compiler" {> "$CURRENT" } ]
+  > EOF
+  $ solve edgy
+  Solution for dune.lock:
+  - edgy.1.0
+  - ocaml.5.2.0
+  - ocaml-base-compiler.5.2.0+alpha1 (this version should be avoided)

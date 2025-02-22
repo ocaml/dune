@@ -545,7 +545,7 @@ module Make (User : USER) = struct
   (* Returns the new clause if one was added, [AddedFact true] if none was added
      because this clause is trivially True, or [AddedFact false] if the clause
      caused a conflict. *)
-  let internal_at_most_one problem lits ~learnt ~reason =
+  let internal_at_least_one problem lits ~learnt ~reason =
     match lits with
     | [] -> assert false
     | [ lit ] ->
@@ -613,7 +613,7 @@ module Make (User : USER) = struct
         problem.toplevel_conflict <- true (* Everything in the list was False *)
       | Some unique ->
         if
-          internal_at_most_one problem unique ~learnt:false ~reason:(External reason)
+          internal_at_least_one problem unique ~learnt:false ~reason:(External reason)
           = AddedFact false
         then problem.toplevel_conflict <- true)
   ;;
@@ -894,7 +894,7 @@ module Make (User : USER) = struct
               (* We have learnt that something in [learnt] must be True or we get a conflict. *)
               cancel_until problem backtrack_level;
               match
-                internal_at_most_one
+                internal_at_least_one
                   problem
                   learnt
                   ~learnt:true

@@ -65,11 +65,13 @@ module For_solver = struct
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
     |> OpamFile.OPAM.with_depends (Dependency_formula.to_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
-         (Package_dependency.list_to_opam_filtered_formula conflicts)
+         (List.map conflicts ~f:Package_dependency.to_opam_filtered_formula
+          |> OpamFormula.ors)
     |> OpamFile.OPAM.with_conflict_class
          (List.map conflict_class ~f:Package_name.to_opam_package_name)
     |> OpamFile.OPAM.with_depopts
-         (Package_dependency.list_to_opam_filtered_formula depopts)
+         (List.map depopts ~f:Package_dependency.to_opam_filtered_formula
+          |> OpamFormula.ands)
   ;;
 
   let non_local_dependencies local_deps =

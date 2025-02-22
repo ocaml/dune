@@ -210,16 +210,14 @@ let opam_depend { name; constraint_ } =
   | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
 ;;
 
-let list_to_opam_filtered_formula ts =
-  List.map ts ~f:(fun { name; constraint_ } ->
-    let opam_package_name = Package_name.to_opam_package_name name in
-    let condition =
-      match constraint_ with
-      | None -> OpamTypes.Empty
-      | Some constraint_ -> Constraint.to_opam_condition constraint_
-    in
-    OpamFormula.Atom (opam_package_name, condition))
-  |> OpamFormula.ands
+let to_opam_filtered_formula { name; constraint_ } =
+  let opam_package_name = Package_name.to_opam_package_name name in
+  let condition =
+    match constraint_ with
+    | None -> OpamTypes.Empty
+    | Some constraint_ -> Constraint.to_opam_condition constraint_
+  in
+  OpamFormula.Atom (opam_package_name, condition)
 ;;
 
 let list_of_opam_filtered_formula loc kind filtered_formula =

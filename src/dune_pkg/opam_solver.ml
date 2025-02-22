@@ -109,7 +109,9 @@ module Context = struct
       List.map constraints ~f:(fun (constraint_ : Package_dependency.t) ->
         constraint_.name, constraint_)
       |> Package_name.Map.of_list_multi
-      |> Package_name.Map.map ~f:Package_dependency.list_to_opam_filtered_formula
+      |> Package_name.Map.map ~f:(fun formulae ->
+        List.map formulae ~f:Package_dependency.to_opam_filtered_formula
+        |> OpamFormula.ands)
     in
     let available_cache =
       Table.create

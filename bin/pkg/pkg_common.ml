@@ -105,13 +105,19 @@ let find_local_packages =
   >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
-let pp_packages packages =
-  Pp.enumerate
-    packages
-    ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-      Pp.verbatim
-        (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
+let pp_package { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; avoid; _ }; _ } =
+  let warn =
+    if avoid
+    then Pp.tag User_message.Style.Warning (Pp.text " (this version should be avoided)")
+    else Pp.nop
+  in
+  let open Pp.O in
+  Pp.verbatim
+    (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version)
+  ++ warn
 ;;
+
+let pp_packages packages = Pp.enumerate packages ~f:pp_package
 
 module Lock_dirs_arg = struct
   type t =

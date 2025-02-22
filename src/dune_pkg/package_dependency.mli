@@ -25,7 +25,7 @@ type t = Dune_lang.Package_dependency.t =
 include module type of Dune_lang.Package_dependency with type t := t
 
 val opam_depend : t -> OpamParserTypes.FullPos.value
-val list_to_opam_filtered_formula : t list -> OpamTypes.filtered_formula
+val to_opam_filtered_formula : t -> OpamTypes.filtered_formula
 
 (** Attempt to interpret a [OpamTypes.filtered_formula] as a list of [t]s by
     treating the formula as a conjunction of packages with constraints. *)

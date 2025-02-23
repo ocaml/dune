@@ -172,6 +172,8 @@ module Theory = struct
     ; buildable : Buildable.t
     ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
+    ; coqdoc_header : String_with_vars.t option
+    ; coqdoc_footer : String_with_vars.t option
     }
 
   let coq_public_decode =
@@ -259,6 +261,14 @@ module Theory = struct
          Ordered_set_lang.Unexpanded.field
            "coqdoc_flags"
            ~check:(Dune_lang.Syntax.since coq_syntax (0, 8))
+       and+ coqdoc_header =
+         field_o
+           "coqdoc_header"
+           (Dune_lang.Syntax.since coq_syntax (0, 10) >>> String_with_vars.decode)
+       and+ coqdoc_footer =
+         field_o
+           "coqdoc_footer"
+           (Dune_lang.Syntax.since coq_syntax (0, 10) >>> String_with_vars.decode)
        in
        (* boot libraries cannot depend on other theories *)
        check_boot_has_no_deps boot buildable;
@@ -274,6 +284,8 @@ module Theory = struct
        ; enabled_if
        ; coqdep_flags
        ; coqdoc_flags
+       ; coqdoc_header
+       ; coqdoc_footer
        })
   ;;
 

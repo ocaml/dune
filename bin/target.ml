@@ -184,9 +184,10 @@ let expand_path_from_root (root : Workspace_root.t) sctx sv =
   root.reach_from_root_prefix ^ s
 ;;
 
-let expand_path root sctx sv =
+let expand_path root sctx context_name sv =
   let+ s = expand_path_from_root root sctx sv in
-  Path.relative Path.root s
+  let build_dir = Context_name.build_dir context_name in
+  Path.Build.relative build_dir s |> Path.build
 ;;
 
 let resolve_alias root ~recursive sv ~(setup : Dune_rules.Main.build_system) =
@@ -210,10 +211,11 @@ let resolve_target root ~setup target =
          (resolve_alias root ~recursive:true sv ~setup))
   | File sv as dep ->
     let f ctx =
+      let context_name = Context.name ctx in
       let sctx =
-        Dune_engine.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+        Dune_engine.Context_name.Map.find_exn setup.scontexts context_name
       in
-      let* path = expand_path root sctx sv in
+      let* path = expand_path root sctx context_name sv in
       Action_builder.of_memo (resolve_path path ~setup)
       >>| Result.map_error ~f:(fun hints -> dep, hints)
     in

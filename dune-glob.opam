@@ -14,8 +14,8 @@ depends: [
   "stdune" {= version}
   "dyn"
   "ordering"
+  "odoc" {>= "2.3.0" & with-doc}
   "dune-private-libs" {= version}
-  "odoc" {with-doc}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [

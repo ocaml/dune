@@ -54,8 +54,8 @@ up a project with instrumentation and testing checking the merlin config.
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
    (S $TESTCASE_ROOT/ppx)
-   (FLG (-open Bar))
    (FLG (-w -40 -g))
+   (FLG (-open Bar))
    (UNIT_NAME bar__File))
   File: _build/default/lib/subdir/file.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -71,8 +71,8 @@ up a project with instrumentation and testing checking the merlin config.
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
    (S $TESTCASE_ROOT/ppx)
-   (FLG (-open Bar))
    (FLG (-w -40 -g))
+   (FLG (-open Bar))
    (UNIT_NAME bar__File))
   Foo: _build/default/lib/foo
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -120,8 +120,8 @@ up a project with instrumentation and testing checking the merlin config.
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
    (S $TESTCASE_ROOT/ppx)
-   (FLG (-open Foo))
    (FLG (-w -40 -g))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Privmod))
   Privmod: _build/default/lib/privmod.ml
   ((INDEX $TESTCASE_ROOT/_build/default/exe/.x.eobjs/cctx.ocaml-index)
@@ -137,6 +137,6 @@ up a project with instrumentation and testing checking the merlin config.
    (S $TESTCASE_ROOT/lib)
    (S $TESTCASE_ROOT/lib/subdir)
    (S $TESTCASE_ROOT/ppx)
-   (FLG (-open Foo))
    (FLG (-w -40 -g))
+   (FLG (-open Foo))
    (UNIT_NAME foo__Privmod))

@@ -18,9 +18,7 @@ module Priority = struct
      fed to the solver. Any change to package selection should be reflected in
      this priority rather than implemented in an ad-hoc manner *)
   type t =
-    { (* We don't really need this field, since we filter avoid-version
-         packages. If this changes, we still prefer packages
-         with [avoid-version: false] *)
+    { (* We prefer packages with [avoid-version: false] *)
       avoid : bool
     ; version : OpamPackage.Version.t
     }
@@ -47,14 +45,13 @@ module Priority = struct
     { version; avoid }
   ;;
 
+  let allowed version = { avoid = false; version }
   let rejected version = { avoid = true; version }
 end
 
 module Context = struct
   type rejection =
-    | (* TODO proper error messages for packages skipped via avoid-version *)
-      Unavailable
-    | Avoid_version
+    | Unavailable
     | Refuted_by of Package_name.t
 
   let local_package_default_version =
@@ -63,7 +60,7 @@ module Context = struct
 
   type candidates =
     { resolved : Resolved_package.t OpamPackage.Version.Map.t
-    ; available : (OpamTypes.version * (OpamFile.OPAM.t, rejection) result) list
+    ; available : (Priority.t * (OpamFile.OPAM.t, rejection) result) list
     }
 
   type local_package =
@@ -164,7 +161,6 @@ module Context = struct
 
   let pp_rejection = function
     | Unavailable -> Pp.paragraph "Availability condition not satisfied"
-    | Avoid_version -> Pp.paragraph "Package is excluded by avoid-version"
     | Refuted_by pkg ->
       Pp.paragraphf
         "Package does not satisfy constraints of local package %s"
@@ -218,7 +214,9 @@ module Context = struct
     let available =
       (* We don't respect avoid-version for pinned packages. This is
          intentional. *)
-      [ version, Resolved_package.opam_file resolved_package |> available_or_error t ]
+      [ ( Priority.allowed version
+        , Resolved_package.opam_file resolved_package |> available_or_error t )
+      ]
     in
     let resolved = OpamPackage.Version.Map.singleton version resolved_package in
     { available; resolved }
@@ -320,28 +318,18 @@ module Context = struct
       |> List.map ~f:(fun resolved_package ->
         let opam_file = Resolved_package.opam_file resolved_package in
         let priority = Priority.make opam_file in
-        let version =
-          let package = Resolved_package.package resolved_package in
-          OpamPackage.version package
-        in
-        let result =
-          let opam_file_result =
-            if priority.avoid then Error Avoid_version else available_or_error t opam_file
-          in
-          opam_file_result
-        in
-        priority, version, result)
+        let result = available_or_error t opam_file in
+        priority, result)
     in
     let rejected =
       List.map rejected ~f:(fun (version, rejected_by) ->
         let priority = Priority.rejected version in
-        priority, version, Error (Refuted_by rejected_by))
+        priority, Error (Refuted_by rejected_by))
     in
     let available =
       rejected @ available
-      |> List.sort ~compare:(fun (x, _, _) (y, _, _) ->
+      |> List.sort ~compare:(fun (x, _) (y, _) ->
         Priority.compare t.version_preference x y)
-      |> List.map ~f:(fun (_, v, p) -> v, p)
     in
     { available; resolved }
   ;;
@@ -351,7 +339,7 @@ module Context = struct
     let key = Package_name.of_opam_package_name name in
     match Package_name.Map.find (Lazy.force t.local_packages) key with
     | Some local_package ->
-      let version = local_package.version in
+      let version = Priority.allowed local_package.version in
       Fiber.return [ version, Ok local_package.opam_file ]
     | None ->
       let+ res =
@@ -462,6 +450,7 @@ module Solver = struct
       { pkg : OpamPackage.t
       ; conflict_class : OpamPackage.Name.t list
       ; requires : dependency list Lazy.t
+      ; avoid : bool
       }
 
     and dependency =
@@ -536,7 +525,7 @@ module Solver = struct
             Context.candidates context role
             >>| List.filter_map ~f:(function
               | _, Ok _ -> None
-              | version, Error reason ->
+              | { Priority.version; _ }, Error reason ->
                 let pkg = OpamPackage.create role version in
                 Some (Reject pkg, reason))
           in
@@ -569,6 +558,11 @@ module Solver = struct
         | Reject pkg -> Some pkg
         | VirtualImpl _ -> None
         | Dummy -> None
+      ;;
+
+      let avoid = function
+        | RealImpl { avoid; _ } -> avoid
+        | Reject _ | VirtualImpl _ | Dummy -> false
       ;;
 
       let compare_version a b =
@@ -652,7 +646,7 @@ module Solver = struct
         Context.candidates context role
         >>| List.filter_map ~f:(function
           | _, Error _rejection -> None
-          | version, Ok opam ->
+          | { Priority.version; avoid }, Ok opam ->
             let pkg = OpamPackage.create role version in
             (* Note: we ignore depopts here: see opam/doc/design/depopts-and-features *)
             let requires =
@@ -668,7 +662,7 @@ module Solver = struct
                  @ make_deps Prevent prevent OpamFile.OPAM.conflicts)
             in
             let conflict_class = OpamFile.OPAM.conflict_class opam in
-            Some (RealImpl { pkg; requires; conflict_class }))
+            Some (RealImpl { pkg; avoid; requires; conflict_class }))
     ;;
 
     let meets_restriction impl { Restriction.kind; expr } =
@@ -796,10 +790,11 @@ module Solver = struct
 
     (* Starting from [root_req], explore all the feeds and implementations we
        might need, adding all of them to [sat_problem]. *)
-    let build_problem context root_req sat ~dummy_impl =
+    let build_problem context root_req sat ~max_avoids ~dummy_impl =
       (* For each (iface, source) we have a list of implementations. *)
       let impl_cache = Fiber_cache.create (module Input.Role) in
       let conflict_classes = Conflict_classes.create () in
+      let avoids = ref [] in
       let+ () =
         let rec lookup_impl expand_deps role =
           let impls = ref [] in
@@ -814,6 +809,7 @@ module Solver = struct
           let+ () =
             Fiber.parallel_iter !impls ~f:(fun { var = impl_var; impl } ->
               Conflict_classes.process conflict_classes impl_var impl;
+              if Input.Impl.avoid impl then avoids := impl_var :: !avoids;
               match expand_deps with
               | `No_expand -> Fiber.return ()
               | `Expand_and_collect_conflicts deferred ->
@@ -885,6 +881,11 @@ module Solver = struct
         (* All impl_candidates have now been added, so snapshot the cache. *)
       in
       Conflict_classes.seal conflict_classes;
+      (match max_avoids, !avoids with
+       | None, _ | _, [] -> ()
+       | Some max_avoids, avoids ->
+         let _ : Sat.at_most_clause = Sat.at_most max_avoids avoids in
+         ());
       impl_cache
     ;;
 
@@ -896,8 +897,12 @@ module Solver = struct
           adds a lowest-ranked (but valid) implementation ([Input.dummy_impl]) to
           every interface, so we can always select something. Useful for diagnostics.
           Note: always try without [closest_match] first, or it may miss a valid solution.
+        @param max_avoids
+          if set, restricts the number of packages with the flag [avoid-version]. Used
+          to minimize the number of those bad packages, but still find a solution when
+          they are unavoidable.
         @return None if the solve fails (only happens if [closest_match] is false). *)
-    let do_solve context ~closest_match root_req =
+    let do_solve context ~closest_match ~max_avoids root_req =
       (* The basic plan is this:
          1. Scan the root interface and all dependencies recursively, building up a SAT problem.
          2. Solve the SAT problem. Whenever there are multiple options, try the most preferred one first.
@@ -911,7 +916,7 @@ module Solver = struct
       let sat = Sat.create () in
       let* impl_clauses =
         let dummy_impl = if closest_match then Some Input.Dummy else None in
-        build_problem context root_req sat ~dummy_impl
+        build_problem context root_req sat ~max_avoids ~dummy_impl
       in
       let+ impl_clauses = Fiber_cache.to_table impl_clauses in
       (* Run the solve *)
@@ -952,6 +957,46 @@ module Solver = struct
            |> List.filter_map ~f:(fun (key, v) ->
              Candidates.selected v |> Option.map ~f:(fun v -> key, v))
            |> Input.Role.Map.of_list_exn)
+    ;;
+
+    let do_solve context ~closest_match root_req =
+      do_solve context ~closest_match ~max_avoids:(Some 0) root_req
+      >>= function
+      | Some sels ->
+        (* Found a good solution, using no packages flagged as [avoid-version] *)
+        Fiber.return (Some sels)
+      | None ->
+        do_solve context ~closest_match ~max_avoids:None root_req
+        >>= (function
+         | None ->
+           (* No solution even when allowing [avoid-version] *)
+           Fiber.return None
+         | Some sels ->
+           let nb_avoids sels =
+             Input.Role.Map.fold
+               ~init:0
+               ~f:(fun sel count ->
+                 if Input.Impl.avoid sel.impl then count + 1 else count)
+               sels
+           in
+           let upper = nb_avoids sels in
+           (* There exists a solution, using at least 1 and at most [upper]
+              packages with the flag [avoid-version]. Attempt to minimize
+              their amount by dichotomy between the two bounds. *)
+           let rec search lower upper best_sel =
+             if lower = upper
+             then Fiber.return (Some best_sel)
+             else (
+               let mid = (lower + upper) / 2 in
+               do_solve context ~closest_match ~max_avoids:(Some mid) root_req
+               >>= function
+               | None -> search (mid + 1) upper best_sel
+               | Some sels ->
+                 let upper = nb_avoids sels in
+                 assert (upper <= mid);
+                 search lower upper sels)
+           in
+           search 1 upper sels)
     ;;
   end
 
@@ -1731,7 +1776,8 @@ let opam_package_to_lock_file_pkg
       | None -> false
       | Some url -> List.is_empty (OpamFile.URL.checksum url)
     in
-    { Lock_dir.Pkg_info.name; version; dev; source; extra_sources }
+    let avoid = List.mem opam_file.flags Pkgflag_AvoidVersion ~equal:Poly.equal in
+    { Lock_dir.Pkg_info.name; version; dev; avoid; source; extra_sources }
   in
   let depends =
     let resolve what =

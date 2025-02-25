@@ -7,6 +7,7 @@ module Pkg_info : sig
     { name : Package_name.t
     ; version : Package_version.t
     ; dev : bool
+    ; avoid : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }

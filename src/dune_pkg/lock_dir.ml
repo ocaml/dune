@@ -5,14 +5,16 @@ module Pkg_info = struct
     { name : Package_name.t
     ; version : Package_version.t
     ; dev : bool
+    ; avoid : bool
     ; source : Source.t option
     ; extra_sources : (Path.Local.t * Source.t) list
     }
 
-  let equal { name; version; dev; source; extra_sources } t =
+  let equal { name; version; dev; avoid; source; extra_sources } t =
     Package_name.equal name t.name
     && Package_version.equal version t.version
     && Bool.equal dev t.dev
+    && Bool.equal avoid t.avoid
     && Option.equal Source.equal source t.source
     && List.equal
          (Tuple.T2.equal Path.Local.equal Source.equal)
@@ -29,11 +31,12 @@ module Pkg_info = struct
     }
   ;;
 
-  let to_dyn { name; version; dev; source; extra_sources } =
+  let to_dyn { name; version; dev; avoid; source; extra_sources } =
     Dyn.record
       [ "name", Package_name.to_dyn name
       ; "version", Package_version.to_dyn version
       ; "dev", Dyn.bool dev
+      ; "avoid", Dyn.bool avoid
       ; "source", Dyn.option Source.to_dyn source
       ; "extra_sources", Dyn.list (Dyn.pair Path.Local.to_dyn Source.to_dyn) extra_sources
       ]
@@ -165,6 +168,7 @@ module Pkg = struct
     let depexts = "depexts"
     let source = "source"
     let dev = "dev"
+    let avoid = "avoid"
     let exported_env = "exported_env"
     let extra_sources = "extra_sources"
   end
@@ -181,6 +185,7 @@ module Pkg = struct
        and+ depexts = field ~default:[] Fields.depexts (repeat string)
        and+ source = field_o Fields.source Source.decode
        and+ dev = field_b Fields.dev
+       and+ avoid = field_b Fields.avoid
        and+ exported_env =
          field Fields.exported_env ~default:[] (repeat Action.Env_update.decode)
        and+ extra_sources =
@@ -201,7 +206,7 @@ module Pkg = struct
            let extra_sources =
              List.map extra_sources ~f:(fun (path, source) -> path, make_source source)
            in
-           { Pkg_info.name; version; dev; source; extra_sources }
+           { Pkg_info.name; version; dev; avoid; source; extra_sources }
          in
          { build_command; depends; depexts; install_command; info; exported_env }
   ;;
@@ -218,7 +223,7 @@ module Pkg = struct
         ; install_command
         ; depends
         ; depexts
-        ; info = { Pkg_info.name = _; extra_sources; version; dev; source }
+        ; info = { Pkg_info.name = _; extra_sources; version; dev; avoid; source }
         ; exported_env
         }
     =
@@ -231,6 +236,7 @@ module Pkg = struct
       ; field_l Fields.depexts string depexts
       ; field_o Fields.source Source.encode source
       ; field_b Fields.dev dev
+      ; field_b Fields.avoid avoid
       ; field_l Fields.exported_env Action.Env_update.encode exported_env
       ; field_l Fields.extra_sources encode_extra_source extra_sources
       ]

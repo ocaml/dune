@@ -13,7 +13,7 @@
     - We care about which solution we find (not just "satisfiable" or "not").
     - We take care to be deterministic (always select the same versions given
       the same input). We do not do random restarts, etc.
-    - We add an at_most_one_clause (the paper suggests this in the Excercises, and
+    - We add an at_most_clause (the paper suggests this in the Excercises, and
       it's very useful for our purposes). *)
 
 open Stdune
@@ -95,9 +95,14 @@ let log_debug p =
 module Make (User : USER) = struct
   type clause =
     | Union of lit array
-    | At_most_one of at_most_one_clause
+    | At_most of at_most_clause
 
-  and at_most_one_clause = lit option ref * lit array
+  and at_most_clause = int * lit list ref * lit array
+  (* max number [nb] of literals that can be True,
+     list of the currently selected True literals (of length less than [nb]),
+     array of all watched literals *)
+
+  and at_most_one_clause = at_most_clause (* special case with [nb] enforced to be 1 *)
 
   (** The reason why a literal is set. *)
   and reason =
@@ -105,7 +110,7 @@ module Make (User : USER) = struct
     | External of string (* set externally (input fact or decider choice) *)
 
   and undo =
-    | Undo_at_most_one of lit option ref
+    | Undo_at_most of lit list ref
     | Decided
 
   and var =
@@ -227,15 +232,16 @@ module Make (User : USER) = struct
   let undo problem undo lit =
     match undo with
     | Decided -> problem.set_to_false <- false
-    | Undo_at_most_one current ->
+    | Undo_at_most current ->
       if debug
       then
         log_debug
           (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
       (match !current with
-       | Some l -> assert (lit_equal lit l)
-       | None -> assert false);
-      current := None
+       | l :: lst ->
+         assert (lit_equal lit l);
+         current := lst
+       | [] -> assert false)
   ;;
 
   let pp_lits lits = Pp.concat_map ~sep:(Pp.text ", ") lits ~f:name_lit
@@ -258,8 +264,8 @@ module Make (User : USER) = struct
       Pp.text "<some: "
       ++ Pp.concat_map ~sep:(Pp.text ", ") ~f:name_lit (Array.to_list lits)
       ++ Pp.char '>'
-    | At_most_one (_, lits) ->
-      Pp.text "<at most one: " ++ pp_lits (Array.to_list lits) ++ Pp.char '>'
+    | At_most (nb, _, lits) ->
+      Pp.textf "<at most %i: " nb ++ pp_lits (Array.to_list lits) ++ Pp.char '>'
   ;;
 
   let pp_reason = function
@@ -361,22 +367,21 @@ module Make (User : USER) = struct
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason = function
       | Union lits -> List.map ~f:neg (Array.to_list lits)
-      | At_most_one (_, lits) ->
-        (* If we caused a conflict, it's because two of our literals became true. *)
-        (* Find two True literals *)
-        let rec find_two found lits i =
+      | At_most (nb, _, lits) ->
+        (* If we caused a conflict, it's because nb+1 of our literals became true. *)
+        (* Find the nb+1 True literals *)
+        let rec find nb_founds founds lits i =
           if Int.equal i (Array.length lits)
           then assert false (* Don't know why! *)
           else (
             let x = lits.(i) in
             if lit_value x <> True
-            then find_two found lits (i + 1)
-            else (
-              match found with
-              | None -> find_two (Some x) lits (i + 1)
-              | Some first -> [ first; x ]))
+            then find nb_founds founds lits (i + 1)
+            else if nb_founds >= nb
+            then x :: founds
+            else find (nb_founds + 1) (x :: founds) lits (i + 1))
         in
-        find_two None lits 0
+        find 0 [] lits 0
     ;;
 
     (* Which literals caused [lit] to have its current value?
@@ -395,11 +400,10 @@ module Make (User : USER) = struct
             if lit_equal l lit then get_cause (i + 1) else neg l :: get_cause (i + 1))
         in
         get_cause 0
-      | At_most_one (_, lits) ->
-        (* Find the True literal. Any true literal other than [lit] would do. *)
-        [ Array.find_opt lits ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
-          |> Option.value_exn
-        ]
+      | At_most (_, _, lits) ->
+        (* Find the True literals. All true literal other than [lit] would do. *)
+        Array.to_list lits
+        |> List.filter ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
     ;;
 
     (* [lit] is now [True]. Add any new deductions. @return false if there is a
@@ -455,7 +459,7 @@ module Make (User : USER) = struct
                 true)
           in
           find_not_false 2)
-      | At_most_one (current, lits) ->
+      | At_most (nb, current, lits) ->
         (* Re-add ourselves to the watch list.
            (we we won't get any more notifications unless we backtrack,
            in which case we'd need to get back on the list anyway) *)
@@ -464,42 +468,55 @@ module Make (User : USER) = struct
         assert (lit_value lit = True);
         (* if debug then log_debug("%s: noticed %s has become True" % (self, self.solver.name_lit(lit))) *)
 
-        (* If we already propagated successfully when the first
+        (* If we already propagated successfully when the [nb]
            one was set then we set all the others to false and
            anyone trying to set one true will get rejected. And
            if we didn't propagate yet, current will still be
-           None, even if we now have a conflict (which we'll
-           detect below). *)
-        assert (!current = None);
-        current := Some lit;
+           incomplete, even if we now have a conflict (which we'll
+           detect below). When [nb = 0], the constraint will fail
+           immediately. *)
+        assert (List.length !current < nb || nb = 0);
+        current := lit :: !current;
         (let var_info = var_of_lit lit in
          (* If we later backtrack, unset current *)
-         var_info.undo <- Undo_at_most_one current :: var_info.undo);
-        (try
-           let clause = Clause t in
-           (* We set all other literals to False. *)
-           Array.iter lits ~f:(fun l ->
-             match lit_value l with
-             | True when not (lit_equal l lit) ->
-               (* Due to queuing, we might get called with current = None
-                  and two versions already selected. *)
-               if debug
-               then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
-               raise_notrace Conflict
-             | Undecided ->
-               (* Since one of our lits is already true, all unknown ones
-                  can be set to False. *)
-               if not (enqueue problem (neg l) clause)
-               then (
-                 if debug
-                 then
-                   log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
-                 raise_notrace
-                   Conflict (* Can't happen, since we already checked we're Undecided *))
-             | True | False -> ());
-           true
-         with
-         | Conflict -> false)
+         var_info.undo <- Undo_at_most current :: var_info.undo);
+        let nb_true = List.length !current in
+        if nb_true < nb
+        then true
+        else if nb_true > nb
+        then (
+          assert (nb = 0);
+          false)
+        else (
+          try
+            let clause = Clause t in
+            (* We set all other literals to False. *)
+            let nb_true = ref 0 in
+            Array.iter lits ~f:(fun l ->
+              match lit_value l with
+              | True ->
+                incr nb_true;
+                (* Due to queuing, more literals could have been selected
+                   before we got called. *)
+                if !nb_true > nb
+                then (
+                  if debug
+                  then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
+                  raise_notrace Conflict)
+              | Undecided ->
+                (* Since we have the right number of lits selected,
+                   all unknown ones can be set to False. *)
+                if not (enqueue problem (neg l) clause)
+                then (
+                  if debug
+                  then
+                    log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
+                  raise_notrace
+                    Conflict (* Can't happen, since we already checked we're Undecided *))
+              | False -> ());
+            true
+          with
+          | Conflict -> false)
     ;;
   end
 
@@ -535,12 +552,19 @@ module Make (User : USER) = struct
     | ConflictingClause c -> Some c
   ;;
 
-  let get_best_undecided (_, lits) =
+  let get_best_undecided (_, _, lits) =
     (* if debug then log_debug "best_undecided: %s" (string_of_lits lits); *)
     Array.find_opt lits ~f:(fun l -> lit_value l = Undecided)
   ;;
 
-  let get_selected (current, _) = !current
+  let get_selected (_, current, _) =
+    match !current with
+    | [] -> None
+    | [ single ] -> Some single
+    | _ ->
+      (* Impossible given the types in the mli *)
+      failwith "Sat.get_selected: too many for an at_most_one_clause"
+  ;;
 
   (* Returns the new clause if one was added, [AddedFact true] if none was added
      because this clause is trivially True, or [AddedFact false] if the clause
@@ -631,16 +655,15 @@ module Make (User : USER) = struct
     | Exit -> true
   ;;
 
-  let at_most_one lits : at_most_one_clause =
+  let at_most nb lits : at_most_clause =
     assert (not (List.is_empty lits));
-    (* if debug then log_debug "at_most_one(%s)" (string_of_lits lits); *)
-
-    (* If we have zero or one literals then we're trivially true
+    (* if debug then log_debug (Pp.textf "at_most_%i(%s)" nb (string_of_lits lits)); *)
+    (* If there are not enough literals then we're trivially true
        and not really needed for the solve. However, Zero Install
        monitors these objects to find out what was selected, so
        keep even trivial ones around for that.
     *)
-    (*if len(lits) < 2: *)
+    (*if len(lits) <= nb: *)
     (*	return True	# Trivially true *)
 
     (* Ensure no duplicates *)
@@ -654,11 +677,13 @@ module Make (User : USER) = struct
        If any are True then they're enqueued and we'll process them
        soon. *)
     let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
-    let clause = ref None, lits in
-    (let clause = At_most_one clause in
+    let clause = nb, ref [], lits in
+    (let clause = At_most clause in
      Array.iter lits ~f:(fun l -> watch_lit l clause));
     clause
   ;;
+
+  let at_most_one lits = at_most 1 lits
 
   let analyse problem (original_cause : clause) =
     (* After trying some assignments, we've discovered a conflict.

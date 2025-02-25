@@ -3,10 +3,9 @@ file outside of the directories associated with the package. This behaviour was
 deprecated in 3.11.
 
   $ cat >dune-project <<EOF
-  > (lang dune 3.11)
+  > (lang dune 3.13)
   > (package
   >  (name foo))
-  > (using directory-targets 0.1)
   > EOF
 
 Create a file to install
@@ -176,10 +175,9 @@ Test that we get a warning if the ".." comes from the prefix of a glob:
 
 Test that on older versions of dune we don't get warnings in this case:
   $ cat >dune-project <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.13)
   > (package
   >  (name foo))
-  > (using directory-targets 0.1)
   > EOF
 
   $ cat >dune <<EOF
@@ -200,6 +198,33 @@ Test that on older versions of dune we don't get warnings in this case:
   >  (dirs (bar as ..)))
   > EOF
   $ dune build foo.install && cat _build/default/foo.install
+  File "dune", line 15, characters 15-17:
+  15 |  (dirs (bar as ..)))
+                      ^^
+  Warning: The destination path .. begins with .. which will become an error in
+  a future version of Dune. Destinations of files in install stanzas beginning
+  with .. will be disallowed to prevent a package's installed files from
+  escaping that package's install directories.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (escaping_paths_in_install_stanza disabled))
+  File "dune", line 11, characters 15-21:
+  11 |  (dirs (bar as ../baz)))
+                      ^^^^^^
+  Warning: The destination path ../baz begins with .. which will become an
+  error in a future version of Dune. Destinations of files in install stanzas
+  beginning with .. will be disallowed to prevent a package's installed files
+  from escaping that package's install directories.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (escaping_paths_in_install_stanza disabled))
+  File "dune", line 3, characters 20-24:
+  3 |  (files (a/b.txt as ../b)))
+                          ^^^^
+  Warning: The destination path ../b begins with .. which will become an error
+  in a future version of Dune. Destinations of files in install stanzas
+  beginning with .. will be disallowed to prevent a package's installed files
+  from escaping that package's install directories.
+  Hint: To disable this warning, add the following to your dune-project file:
+  (warnings (escaping_paths_in_install_stanza disabled))
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"

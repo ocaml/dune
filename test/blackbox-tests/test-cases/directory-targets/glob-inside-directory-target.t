@@ -2,8 +2,7 @@ This test makes sure that whenever we evaluate a glob inside a directory target
 that matches nothing, we still copy the directory and make it empty.
 
   $ cat > dune-project <<EOF
-  > (lang dune 3.0)
-  > (using directory-targets 0.1)
+  > (lang dune 3.13)
   > EOF
 
   $ cat > dune <<EOF

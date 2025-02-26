@@ -217,3 +217,9 @@ let traverse =
 let traverse_files ~dir ~init ~f =
   traverse ~dir ~init ~on_dir:(fun ~dir:_ _fname acc -> acc) ~on_file:f
 ;;
+
+let is_rw p =
+  match Unix.access p Unix.[ R_OK; W_OK ] with
+  | () -> true
+  | exception Unix.Unix_error _ -> false
+;;

@@ -652,7 +652,15 @@ end = struct
                (* If the command has no output, we need to say something.
                   Otherwise it's not clear what's going on. *)
                (match error with
-                | Failed n -> [ Pp.textf "Command exited with code %d." n ]
+                | Failed exitcode ->
+                  (* When debugging segfaults, 0xc0000005 is a slightly easier
+                     random number to pattern match and 🤦 than -1073741819! *)
+                  let exitcode =
+                    if Sys.win32 && exitcode < 0
+                    then Printf.sprintf "0x%08lx" (Int32.of_int exitcode)
+                    else string_of_int exitcode
+                  in
+                  [ Pp.textf "Command exited with code %s." exitcode ]
                 | Signaled signame ->
                   [ Pp.textf "Command got signal %s." (Signal.name signame) ]))
       in

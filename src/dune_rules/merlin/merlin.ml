@@ -240,7 +240,7 @@ module Processed = struct
           in
           Some (make_directive "FLG" (Sexp.List open_flags))
       in
-      List.filter_map ~f:Fun.id [ base_flags; pp_flags; open_flags ]
+      List.filter_opt [ base_flags; pp_flags; open_flags ]
     in
     let unit_name = [ make_directive "UNIT_NAME" (Sexp.Atom unit_name) ] in
     let suffixes =

@@ -214,26 +214,33 @@ module Processed = struct
       Path.Set.to_list_map hidden_src_dirs ~f:(make_directive_of_path "SH")
     in
     let flags =
-      let flags =
+      (* Order matters here. The flags should be communicated to Merlin in the
+         same order that they are passed to the compiler: user flags, pp flags
+         and then opens *)
+      let base_flags =
         match flags with
-        | [] -> []
+        | [] -> None
         | flags ->
-          [ make_directive "FLG" (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags)) ]
+          Some
+            (make_directive "FLG" (Sexp.List (List.map ~f:(fun s -> Sexp.Atom s) flags)))
       in
-      let flags =
+      let pp_flags =
         match pp with
-        | None -> flags
+        | None -> None
         | Some { flag; args } ->
-          make_directive "FLG" (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ])
-          :: flags
+          Some
+            (make_directive "FLG" (Sexp.List [ Atom (Pp_kind.to_flag flag); Atom args ]))
       in
-      match opens with
-      | [] -> flags
-      | opens ->
-        make_directive
-          "FLG"
-          (Sexp.List (Ocaml_flags.open_flags opens |> List.map ~f:(fun x -> Sexp.Atom x)))
-        :: flags
+      let open_flags =
+        match opens with
+        | [] -> None
+        | opens ->
+          let open_flags =
+            Ocaml_flags.open_flags opens |> List.map ~f:(fun x -> Sexp.Atom x)
+          in
+          Some (make_directive "FLG" (Sexp.List open_flags))
+      in
+      List.filter_opt [ base_flags; pp_flags; open_flags ]
     in
     let unit_name = [ make_directive "UNIT_NAME" (Sexp.Atom unit_name) ] in
     let suffixes =

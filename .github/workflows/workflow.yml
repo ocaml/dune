@@ -211,16 +211,8 @@ jobs:
         working-directory: ./dune
         run: opam pin add -n dune . --with-version 3.17.0
 
-      - name: Checkout Wasm_of_ocaml
-        uses: actions/checkout@v4
-        with:
-          repository: ocsigen/js_of_ocaml
-          path: wasm_of_ocaml
-
       - name: Install Wasm_of_ocaml
-        working-directory: ./wasm_of_ocaml
         run: |
-           opam pin add -n . --with-version `< VERSION`
            opam install wasm_of_ocaml-compiler
 
       - name: Set Git User

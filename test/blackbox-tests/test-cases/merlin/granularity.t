@@ -123,9 +123,9 @@ Is it expected that the suffix for implementation and interface is the same ?
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
-  (?:FLG(?:-pp?:$TESTCASE_ROOT/_build/default/pp.sh)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-pp?:$TESTCASE_ROOT/_build/default/pp.sh)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Pped
   (?:SUFFIX?:.mlx .mlx))
 
@@ -141,8 +141,8 @@ As expected, the reader is not communicated for the standard mli
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Mel
   (?:SUFFIX?:.mlx .mlx))
 
@@ -173,8 +173,8 @@ found, then it'll make a guess that the file was preprocessed into a file with
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Cppomod
   (?:SUFFIX?:.mlx .mlx))
 
@@ -195,8 +195,8 @@ We could expect dune to get the wrongext module configuration
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Wrongext
   (?:SUFFIX?:.mlx .mlx))
 
@@ -213,8 +213,8 @@ It should be possible to get its merlin configuration as well:
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Generated
   (?:SUFFIX?:.mlx .mlx))
   $ ./merlin_conf.sh generatedx.mlx
@@ -224,8 +224,8 @@ It should be possible to get its merlin configuration as well:
   (?:EXCLUDE_QUERY_DIR
   (?:B?:$TESTCASE_ROOT/_build/default/.test.eobjs/byte
   (?:S?:$TESTCASE_ROOT
-  (?:FLG(?:-open?:Dune__exe)
   (?:FLG(?:-w?:@1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-?:-strict-sequence?:-strict-formats?:-short-paths?:-keep-locs?:-no-strict-formats?:-g)
+  (?:FLG(?:-open?:Dune__exe)
   (?:UNIT_NAME?:dune__exe__Generatedx
   (?:SUFFIX?:.mlx .mlx
   (?:READER(?:mlx)))

@@ -164,9 +164,6 @@ jobs:
         with:
           token: ${{ github.token }}
 
-      - name: Install Ninja
-        run: sudo apt-get install ninja-build
-
       - name: Checkout Code
         uses: actions/checkout@v4
         with:

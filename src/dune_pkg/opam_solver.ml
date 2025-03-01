@@ -1497,8 +1497,33 @@ let opam_variable_to_slang ~loc packages variable =
             Blang.Expr (convert_with_package_name package_name))))
 ;;
 
+(* Handles the special case for packages whose names contain '+' characters
+   where a special form of string interpolation is used. From the opam manual:
+   Warning: if the package name contains a + character (e.g. conf-g++), their
+   variables may only be accessed using opam 2.2 via string interpolation,
+   with the following syntax:
+
+     "%{?conf-g++:your-variable:}%"
+*)
+let desugar_special_string_interpolation_syntax
+      ((packages, variable, string_converter) as fident)
+  =
+  match string_converter with
+  | Some (package_and_variable, "")
+    when List.is_empty packages && String.is_empty (OpamVariable.to_string variable) ->
+    (match String.lsplit2 package_and_variable ~on:':' with
+     | Some (package, variable) ->
+       ( [ Some (OpamPackage.Name.of_string package) ]
+       , OpamVariable.of_string variable
+       , None )
+     | None -> fident)
+  | _ -> fident
+;;
+
 let opam_fident_to_slang ~loc fident =
-  let packages, variable, string_converter = OpamFilter.desugar_fident fident in
+  let packages, variable, string_converter =
+    OpamFilter.desugar_fident fident |> desugar_special_string_interpolation_syntax
+  in
   let slang = opam_variable_to_slang ~loc packages variable in
   match string_converter with
   | None -> slang

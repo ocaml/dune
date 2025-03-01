@@ -242,7 +242,6 @@ module Options_implied_by_dash_p = struct
       ; "--always-show-command-line"
       ; "--promote-install-files"
       ; "--require-dune-project-file"
-      ; "--ignore-lock-dir"
       ; "--default-target"
       ; "@install"
       ]

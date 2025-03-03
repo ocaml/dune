@@ -64,3 +64,6 @@ val traverse_files
   -> init:'acc
   -> f:(dir:string -> Filename.t -> 'acc -> 'acc)
   -> 'acc
+
+(** Is readable and writable. *)
+val is_rw : string -> bool

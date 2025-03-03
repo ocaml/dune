@@ -98,7 +98,7 @@ let os ~path =
 let maybe_read_lines p =
   match Io.String_path.lines_of_file p with
   | s -> Some s
-  | exception Unix.Unix_error (Unix.ENOENT, _, _) -> None
+  | exception Sys_error _ -> None
 ;;
 
 let os_release_fields () =

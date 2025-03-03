@@ -96,7 +96,10 @@ site using the :doc:`generate_sites_module stanza
     (sites mygui))
 
 The generated module `mysites` depends on the library `dune-site` provided by
-Dune.
+Dune. If :doc:`implicit_transitive_deps
+</reference/dune-project/implicit_transitive_deps>` is set to false in your
+`dune-project` file, `dune-site` must be explicitly declared in the `depends`
+stanza of your package.
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 

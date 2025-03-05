@@ -248,9 +248,13 @@ Test that if opam filter translation is disabled the output doesn't contain any 
    (run
     echo
     a
-    (when %{pkg-self:foo} b)
     (when
-     (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+     (catch_undefined_var %{pkg-self:foo} false)
+     b)
+    (when
+     (catch_undefined_var
+      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+      false)
      c)))
 
   $ solve filter-error-bool-where-string-expected

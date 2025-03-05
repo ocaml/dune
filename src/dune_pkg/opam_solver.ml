@@ -1686,7 +1686,18 @@ let opam_commands_to_actions
                     let filter_blang =
                       filter_to_blang ~package ~loc filter |> Slang.simplify_blang
                     in
-                    Slang.when_ filter_blang slang)))
+                    let filter_blang_handling_undefined =
+                      (* Wrap the blang filter so that if any undefined
+                         variables are expanded while evaluating the filter,
+                         the filter will return false. *)
+                      let slang =
+                        Slang.catch_undefined_var
+                          (Slang.blang filter_blang)
+                          ~fallback:(Slang.bool false)
+                      in
+                      Blang.Expr slang
+                    in
+                    Slang.when_ filter_blang_handling_undefined slang)))
       in
       if List.is_empty terms
       then None

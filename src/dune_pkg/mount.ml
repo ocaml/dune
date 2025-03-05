@@ -11,7 +11,7 @@ let backend t = t
 
 let of_opam_url loc url =
   let* () = Fiber.return () in
-  match OpamUrl.local_or_git_or_tar_only url loc with
+  match OpamUrl.classify url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
     let+ rev =
@@ -23,7 +23,7 @@ let of_opam_url loc url =
       >>| User_error.ok_exn
     in
     Git rev
-  | `Tar ->
+  | `Archive ->
     (* To prevent cache dir from growing too much, `/tmp/` stores the archive
        when running `dune pkg lock`. We download and extract the archive
        everytime the command runs.
@@ -45,12 +45,16 @@ let of_opam_url loc url =
        in
        raise (User_error.E message)
      | Ok archive ->
+       let achive_path_string = Path.to_string archive in
        let target =
-         let file_digest = Path.to_string archive |> Digest.file |> Digest.to_hex in
+         let file_digest = Digest.file achive_path_string |> Digest.to_hex in
          Path.relative dir file_digest
        in
+       let archive_driver =
+         Archive_driver.choose_for_filename_default_to_tar achive_path_string
+       in
        let+ path =
-         Tar.extract ~archive ~target
+         Archive_driver.extract archive_driver ~archive ~target
          >>| function
          | Error () ->
            User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]

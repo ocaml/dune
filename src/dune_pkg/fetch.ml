@@ -123,8 +123,17 @@ type failure =
 
 let label = "dune-fetch"
 
-let unpack_tarball ~target ~archive =
-  Tar.extract ~archive ~target
+let archive_type_of_opam_url opam_url =
+  let url_string = OpamUrl.to_string opam_url in
+  match Archive_type.choose_for_filename url_string with
+  | Some archive_type -> archive_type
+  | None ->
+    (* Assume that an archive is a tarball if the extension is omitted. *)
+    Archive_type.tar
+;;
+
+let unpack_archive ~archive_type ~target ~archive =
+  Archive_type.extract archive_type ~archive ~target
   >>| Result.map_error ~f:(fun () ->
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
@@ -169,7 +178,7 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->
-      unpack_tarball ~target ~archive:output
+      unpack_archive ~archive_type:(archive_type_of_opam_url url) ~target ~archive:output
       >>| (function
        | Ok () -> Ok ()
        | Error msg ->
@@ -209,7 +218,9 @@ let fetch_local ~checksum ~target (url, url_loc) =
   match check_checksum checksum path with
   | Error _ as e -> Fiber.return e
   | Ok () ->
-    let+ unpack_result = unpack_tarball ~target ~archive:path in
+    let+ unpack_result =
+      unpack_archive ~archive_type:(archive_type_of_opam_url url) ~target ~archive:path
+    in
     Result.map_error unpack_result ~f:(fun pp ->
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;

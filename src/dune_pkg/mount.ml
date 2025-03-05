@@ -50,7 +50,7 @@ let of_opam_url loc url =
          Path.relative dir file_digest
        in
        let+ path =
-         Tar.extract ~archive ~target
+         Archive_type.extract Archive_type.tar ~archive ~target
          >>| function
          | Error () ->
            User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]

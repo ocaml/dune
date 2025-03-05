@@ -43,7 +43,9 @@ Solve the package using the default solver env:
      -j
      %{jobs}
      (when
-      (= %{pkg-self:foo} bar)
+      (catch_undefined_var
+       (= %{pkg-self:foo} bar)
+       false)
       --foobar)
      @install)))
 

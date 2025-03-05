@@ -19,7 +19,10 @@ val is_local : t -> bool
    local file system or [`Git] if it's a git repository (remote or otherwise)
    or [`Tar] if it's an http server with a tar resource. If it's neither of
    those cases, it will error out. *)
-val local_or_git_or_tar_only : t -> Loc.t -> [ `Path of Path.t | `Git | `Tar ]
+val local_or_git_or_archive_only
+  :  t
+  -> Loc.t
+  -> [ `Path of Path.t | `Git | `Http_archive ]
 
 module Map : Map.S with type key = t
 module Set : Set.S with type elt = t and type 'a map = 'a Map.t

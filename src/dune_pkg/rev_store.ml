@@ -773,7 +773,7 @@ module At_rev = struct
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)
     let target_in_temp_dir = Path.relative temp_dir "dir" in
-    Tar.extract ~archive ~target:target_in_temp_dir
+    Archive_driver.extract Archive_driver.tar ~archive ~target:target_in_temp_dir
     >>| function
     | Error () -> User_error.raise [ Pp.text "failed to untar archive created by git" ]
     | Ok () ->

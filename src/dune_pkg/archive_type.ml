@@ -2,18 +2,45 @@ open Stdune
 module Process = Dune_engine.Process
 open Fiber.O
 
-let bin =
-  lazy
-    (match Bin.which ~path:(Env_path.path Env.initial) "tar" with
-     | Some x -> x
-     | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
+type t =
+  { bin : Path.t Lazy.t
+  ; suffixes : string list
+    (* Identify a file by its suffix rather than by its extension, since
+       ".tar.gz" files only have an extension of ".gz". *)
+  ; build_args : archive:Path.t -> target_in_temp:Path.t -> string list
+  }
+
+let make ~bin_name ~suffixes ~build_args =
+  let bin =
+    lazy
+      (match Bin.which ~path:(Env_path.path Env.initial) bin_name with
+       | Some x -> x
+       | None -> Dune_engine.Utils.program_not_found bin_name ~loc:None)
+  in
+  { bin; suffixes; build_args }
 ;;
 
-let output_limit = 1_000_000
+let tar =
+  make
+    ~bin_name:"tar"
+    ~suffixes:[ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ]
+    ~build_args:(fun ~archive ~target_in_temp ->
+      [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ])
+;;
 
-let extract ~archive ~target =
+let zip =
+  make ~bin_name:"unzip" ~suffixes:[ ".zip" ] ~build_args:(fun ~archive ~target_in_temp ->
+    [ Path.to_string archive; "-d"; Path.to_string target_in_temp ])
+;;
+
+let all = [ tar; zip ]
+let output_limit = 1_000_000
+let check_suffix t filename = List.exists t.suffixes ~f:(Filename.check_suffix filename)
+let choose_for_filename filename = List.find all ~f:(fun t -> check_suffix t filename)
+
+let extract t ~archive ~target =
   let* () = Fiber.return () in
-  let tar = Lazy.force bin in
+  let tar = Lazy.force t.bin in
   let target_in_temp =
     let prefix = Path.basename target in
     let suffix = Path.basename archive in
@@ -26,7 +53,7 @@ let extract ~archive ~target =
   Path.mkdir_p target_in_temp;
   let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
   let stderr_to = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit in
-  let args = [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ] in
+  let args = t.build_args ~archive ~target_in_temp in
   let+ (), exit_code = Process.run ~display:Quiet ~stdout_to ~stderr_to Return tar args in
   match exit_code = 0 with
   | false -> Error ()

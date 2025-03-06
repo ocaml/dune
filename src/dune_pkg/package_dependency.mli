@@ -28,9 +28,5 @@ val opam_depend : t -> OpamParserTypes.FullPos.value
 val to_opam_filtered_formula : t -> OpamTypes.filtered_formula
 
 (** Attempt to interpret a [OpamTypes.filtered_formula] as a list of [t]s by
-    treating the formula as a conjunction of packages with constraints. *)
-val list_of_opam_filtered_formula
-  :  Loc.t
-  -> [ `Or | `And ]
-  -> OpamTypes.filtered_formula
-  -> t list
+    treating the formula as a disjunction of packages with constraints. *)
+val list_of_opam_disjunction : Loc.t -> OpamTypes.filtered_formula -> t list

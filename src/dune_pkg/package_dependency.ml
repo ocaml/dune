@@ -220,13 +220,10 @@ let to_opam_filtered_formula { name; constraint_ } =
   OpamFormula.Atom (opam_package_name, condition)
 ;;
 
-let list_of_opam_filtered_formula loc kind filtered_formula =
+let list_of_opam_disjunction loc filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    (match kind with
-     | `And -> OpamFormula.ands_to_list
-     | `Or -> OpamFormula.ors_to_list)
-      filtered_formula
+    OpamFormula.ors_to_list filtered_formula
     |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
       match filtered_formula with
       | Atom (name, condition) ->
@@ -254,10 +251,8 @@ let list_of_opam_filtered_formula loc kind filtered_formula =
       | Filtered_formula_is_not_the_correct_kind { non_atom } ->
         let formula_string = OpamFilter.string_of_filtered_formula non_atom in
         sprintf
-          "Expected formula to be a %s of atoms but encountered non-atom term '%s'"
-          (match kind with
-           | `And -> "conjunction"
-           | `Or -> "disjunction")
+          "Expected formula to be a disjunction of atoms but encountered non-atom term \
+           '%s'"
           formula_string
     in
     User_error.raise ~loc [ Pp.text message ]

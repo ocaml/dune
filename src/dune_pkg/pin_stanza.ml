@@ -361,8 +361,8 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (Package_name.to_opam_package_name package.name)
             (Package_version.to_opam_package_version package.version)
         in
-        Resolved_package.dune_package
-          ~dune_build:local_package.dune_build
+        Resolved_package.local_package
+          ~command_source:local_package.command_source
           package.loc
           opam_file
           opam_package

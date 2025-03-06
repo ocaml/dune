@@ -12,6 +12,13 @@ type pin =
 
 type pins = pin Package_name.Map.t
 
+type command_source =
+  | Dune
+  | Other of
+      { build : OpamTypes.command list
+      ; install : OpamTypes.command list
+      }
+
 type t =
   { name : Package_name.t
   ; version : Package_version.t option
@@ -21,9 +28,7 @@ type t =
   ; depopts : Package_dependency.t list
   ; pins : pins
   ; loc : Loc.t
-  ; build : OpamTypes.command list
-  ; install : OpamTypes.command list
-  ; dune_build : bool
+  ; command_source : command_source
   }
 
 module Dependency_hash = struct
@@ -110,11 +115,14 @@ let for_solver
       ; loc = _
       ; depopts
       ; pins
-      ; build
-      ; install
-      ; dune_build = _
+      ; command_source
       }
   =
+  let build, install =
+    match command_source with
+    | Dune -> [], []
+    | Other { build; install } -> build, install
+  in
   { For_solver.name
   ; dependencies
   ; conflicts
@@ -142,16 +150,18 @@ let of_package (t : Dune_lang.Package.t) =
     ; loc
     ; conflict_class = []
     ; pins = Package_name.Map.empty
-    ; build = []
-    ; install = []
-    ; dune_build = true
+    ; command_source = Dune
     }
   | Some { file; contents = opam_file_string } ->
     let opam_file =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
-    let build = opam_file |> OpamFile.OPAM.build in
-    let install = opam_file |> OpamFile.OPAM.install in
+    let command_source =
+      Other
+        { build = opam_file |> OpamFile.OPAM.build
+        ; install = opam_file |> OpamFile.OPAM.install
+        }
+    in
     let dependencies =
       opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
     in
@@ -191,8 +201,6 @@ let of_package (t : Dune_lang.Package.t) =
     ; loc
     ; conflict_class
     ; pins
-    ; build
-    ; install
-    ; dune_build = false
+    ; command_source
     }
 ;;

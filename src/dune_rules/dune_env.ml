@@ -196,16 +196,25 @@ let inline_tests_field =
 ;;
 
 let env_vars_field =
-  field
-    "env-vars"
-    ~default:Env.empty
-    (Dune_lang.Syntax.since Stanza.syntax (1, 5)
-     >>> located (repeat (pair string string))
-     >>| fun (loc, pairs) ->
-     match Env.Map.of_list pairs with
-     | Ok vars -> Env.extend Env.empty ~vars
-     | Error (k, _, _) ->
-       User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ])
+  let env_decoder =
+    located (repeat (pair string string))
+    >>| fun (loc, pairs) ->
+    match Env.Map.of_list pairs with
+    | Ok vars -> Env.extend Env.empty ~vars
+    | Error (k, _, _) ->
+      User_error.raise ~loc [ Pp.textf "Variable %s is specified several times" k ]
+  in
+  let+ env_vars_legacy =
+    field_o "env-vars" (Dune_lang.Syntax.since Stanza.syntax (1, 5) >>> env_decoder)
+  and+ env_vars =
+    field_o "env_vars" (Dune_lang.Syntax.since Stanza.syntax (3, 18) >>> env_decoder)
+  in
+  match env_vars_legacy, env_vars with
+  | None, None -> Env.empty
+  | Some env, None -> env
+  | None, Some env -> env
+  | Some _, Some _ ->
+    Code_error.raise "(env_vars) and (env-vars) are aliases and cannot both be present" []
 ;;
 
 let odoc_field =

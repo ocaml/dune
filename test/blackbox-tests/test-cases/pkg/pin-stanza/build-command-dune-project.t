@@ -51,11 +51,11 @@ Demonstrate the build command we construct for different types of projects:
   - mixed.dev
   - template.dev
   $ build_command() {
-  > grep "(dune)" dune.lock/$1.pkg
+  > grep "$1" dune.lock/$2.pkg
   > }
-  $ build_command dune-only
+  $ build_command "(dune)" dune-only
   (dune)
-  $ build_command mixed
+  $ build_command "(dune)" template
   (dune)
-  $ build_command template
-  (dune)
+  $ build_command "(build" mixed
+  (build

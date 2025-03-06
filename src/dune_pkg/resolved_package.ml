@@ -84,10 +84,10 @@ let scan_files_entries path =
          ])
 ;;
 
-let dune_package loc opam_file opam_package =
+let dune_package ~dune_build loc opam_file opam_package =
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in
-  { dune_build = true; opam_file; package; loc; extra_files = Inside_files_dir None }
+  { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }
 ;;
 
 open Fiber.O

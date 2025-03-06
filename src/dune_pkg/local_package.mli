@@ -26,6 +26,9 @@ type t =
   ; depopts : Package_dependency.t list
   ; pins : pins
   ; loc : Loc.t
+  ; build : OpamTypes.command list
+  ; install : OpamTypes.command list
+  ; dune_build : bool
   }
 
 module Dependency_hash : sig
@@ -48,6 +51,8 @@ module For_solver : sig
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     ; pins : pins
+    ; build : OpamTypes.command list
+    ; install : OpamTypes.command list
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

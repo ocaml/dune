@@ -61,9 +61,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   ; pins = Package_name.Map.empty
   ; conflict_class = []
   ; loc = Loc.none
-  ; build = []
-  ; install = []
-  ; dune_build = false
+  ; command_source = Other { build = []; install = [] }
   }
 ;;
 

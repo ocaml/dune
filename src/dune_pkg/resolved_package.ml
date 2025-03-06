@@ -84,7 +84,12 @@ let scan_files_entries path =
          ])
 ;;
 
-let dune_package ~dune_build loc opam_file opam_package =
+let local_package ~command_source loc opam_file opam_package =
+  let dune_build =
+    match (command_source : Local_package.command_source) with
+    | Dune -> true
+    | Other _ -> false
+  in
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in
   { dune_build; opam_file; package; loc; extra_files = Inside_files_dir None }

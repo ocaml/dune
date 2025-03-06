@@ -26,7 +26,7 @@ The solver should say no solution rather than just ignoring the conflict.
         foo.0.0.1: Package does not satisfy constraints of local package x
   [1]
 
-There could be more than one conflict and they can have versions constraints:
+There could be more than one conflict and they can have version constraints:
 
   $ mkpkg foo2 0.0.1
   $ mkpkg bar2 << EOF
@@ -58,7 +58,7 @@ When conflicts are obtained from an opam file instead of a dune-project,
 the behaviour should be the same:
 
   $ dune build x.opam
-  $ cat x.opam | sed -n '/conflicts/,/]/p'
+  $ sed -n '/conflicts/,/]/p' x.opam
   conflicts: [
     "foo" {< "0.2"}
     "foo2" {< "0.2"}
@@ -102,7 +102,7 @@ Adding a new version of `foo` only resolves one conflict:
         foo2.0.0.1: Package does not satisfy constraints of local package x
   [1]
 
-And of `foo2` to solve the last remaining conflict:
+Addition of `foo2` to solve the last remaining conflict:
 
   $ mkpkg foo2 0.2
   $ solve_project <<EOF
@@ -115,7 +115,7 @@ And of `foo2` to solve the last remaining conflict:
   - foo2.0.2
 
 Same but checking that the latest versions of `foo` and `foo2` are not selected
-due to the versions constraints conflicts:
+due to the version constraints conflicts:
 
   $ solve_project << EOF
   > (lang dune 3.11)

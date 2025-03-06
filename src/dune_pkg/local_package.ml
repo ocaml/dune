@@ -123,7 +123,7 @@ let of_package (t : Dune_lang.Package.t) =
     let dependencies =
       opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
     in
-    let conflicts = convert_filtered_formula `And (OpamFile.OPAM.conflicts opam_file) in
+    let conflicts = convert_filtered_formula `Or (OpamFile.OPAM.conflicts opam_file) in
     let depopts = convert_filtered_formula `Or (OpamFile.OPAM.depopts opam_file) in
     let conflict_class =
       OpamFile.OPAM.conflict_class opam_file

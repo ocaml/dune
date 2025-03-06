@@ -71,9 +71,18 @@ disjunction, either package is problematic:
   $ solve_project <<EOF
   > (lang dune 3.11)
   > EOF
-  File "x.opam", line 1, characters 0-0:
-  Error: Expected formula to be a conjunction of atoms but encountered non-atom
-  term 'foo < "0.2" | foo2 < "0.2"'
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
+  - dune -> dune.3.11
+      User requested = 3.18
+  - foo -> (problem)
+      No usable implementations:
+        foo.0.0.1: Package does not satisfy constraints of local package x
+  - foo2 -> (problem)
+      No usable implementations:
+        foo2.0.0.1: Package does not satisfy constraints of local package x
   [1]
 
 Adding a new version of `foo` only resolves one conflict:
@@ -82,9 +91,15 @@ Adding a new version of `foo` only resolves one conflict:
   $ solve_project <<EOF
   > (lang dune 3.11)
   > EOF
-  File "x.opam", line 1, characters 0-0:
-  Error: Expected formula to be a conjunction of atoms but encountered non-atom
-  term 'foo < "0.2" | foo2 < "0.2"'
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 x.dev
+  - dune -> dune.3.11
+      User requested = 3.18
+  - foo2 -> (problem)
+      No usable implementations:
+        foo2.0.0.1: Package does not satisfy constraints of local package x
   [1]
 
 And of `foo2` to solve the last remaining conflict:
@@ -93,10 +108,11 @@ And of `foo2` to solve the last remaining conflict:
   $ solve_project <<EOF
   > (lang dune 3.11)
   > EOF
-  File "x.opam", line 1, characters 0-0:
-  Error: Expected formula to be a conjunction of atoms but encountered non-atom
-  term 'foo < "0.2" | foo2 < "0.2"'
-  [1]
+  Solution for dune.lock:
+  - bar.0.0.1
+  - bar2.0.0.1
+  - foo.0.2
+  - foo2.0.2
 
 Same but checking that the latest versions of `foo` and `foo2` are not selected
 due to the versions constraints conflicts:

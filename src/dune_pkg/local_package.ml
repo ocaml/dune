@@ -21,6 +21,9 @@ type t =
   ; depopts : Package_dependency.t list
   ; pins : pins
   ; loc : Loc.t
+  ; build : OpamTypes.command list
+  ; install : OpamTypes.command list
+  ; dune_build : bool
   }
 
 module Dependency_hash = struct
@@ -56,9 +59,21 @@ module For_solver = struct
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     ; pins : pins
+    ; build : OpamTypes.command list
+    ; install : OpamTypes.command list
     }
 
-  let to_opam_file { name; dependencies; conflicts; conflict_class; depopts; pins = _ } =
+  let to_opam_file
+        { name
+        ; dependencies
+        ; conflicts
+        ; conflict_class
+        ; depopts
+        ; pins = _
+        ; build
+        ; install
+        }
+    =
     (* CR-rgrinberg: it's OK to ignore pins here since the solver doesn't touch
        them *)
     OpamFile.OPAM.empty
@@ -72,6 +87,8 @@ module For_solver = struct
     |> OpamFile.OPAM.with_depopts
          (List.map depopts ~f:Package_dependency.to_opam_filtered_formula
           |> OpamFormula.ands)
+    |> OpamFile.OPAM.with_install install
+    |> OpamFile.OPAM.with_build build
   ;;
 
   let non_local_dependencies local_deps =
@@ -93,9 +110,20 @@ let for_solver
       ; loc = _
       ; depopts
       ; pins
+      ; build
+      ; install
+      ; dune_build = _
       }
   =
-  { For_solver.name; dependencies; conflicts; conflict_class; depopts; pins }
+  { For_solver.name
+  ; dependencies
+  ; conflicts
+  ; conflict_class
+  ; depopts
+  ; pins
+  ; build
+  ; install
+  }
 ;;
 
 let of_package (t : Dune_lang.Package.t) =
@@ -114,11 +142,16 @@ let of_package (t : Dune_lang.Package.t) =
     ; loc
     ; conflict_class = []
     ; pins = Package_name.Map.empty
+    ; build = []
+    ; install = []
+    ; dune_build = true
     }
   | Some { file; contents = opam_file_string } ->
     let opam_file =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
+    let build = opam_file |> OpamFile.OPAM.build in
+    let install = opam_file |> OpamFile.OPAM.install in
     let dependencies =
       opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
     in
@@ -150,5 +183,16 @@ let of_package (t : Dune_lang.Package.t) =
           ~loc:pkg.loc
           [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ]
     in
-    { name; version; dependencies; conflicts; depopts; loc; conflict_class; pins }
+    { name
+    ; version
+    ; dependencies
+    ; conflicts
+    ; depopts
+    ; loc
+    ; conflict_class
+    ; pins
+    ; build
+    ; install
+    ; dune_build = false
+    }
 ;;

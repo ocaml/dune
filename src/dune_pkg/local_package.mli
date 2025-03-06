@@ -10,6 +10,13 @@ type pin =
 
 type pins = pin Package_name.Map.t
 
+type command_source =
+  | Dune
+  | Other of
+      { build : OpamTypes.command list
+      ; install : OpamTypes.command list
+      }
+
 (** Information about a local package that's relevant for package management.
     This is intended to represent local packages defined in a dune-project file
     (rather than packages in a lockdir). This is distinct from a
@@ -26,6 +33,7 @@ type t =
   ; depopts : Package_dependency.t list
   ; pins : pins
   ; loc : Loc.t
+  ; command_source : command_source
   }
 
 module Dependency_hash : sig
@@ -48,6 +56,8 @@ module For_solver : sig
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     ; pins : pins
+    ; build : OpamTypes.command list
+    ; install : OpamTypes.command list
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

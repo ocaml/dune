@@ -42,7 +42,7 @@ module Pkg_info = struct
       ]
   ;;
 
-  let default_version = Package_version.of_string "dev"
+  let default_version = Package_version.dev
 
   let variables t =
     let module Variable = OpamVariable in

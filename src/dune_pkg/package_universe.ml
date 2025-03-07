@@ -21,7 +21,7 @@ let lockdir_regenerate_hints =
 let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
-      Option.value local_package.version ~default:Lock_dir.Pkg_info.default_version)
+      local_package.version)
   in
   let from_lock_dir =
     Package_name.Map.map lock_dir.packages ~f:(fun pkg -> pkg.info.version)

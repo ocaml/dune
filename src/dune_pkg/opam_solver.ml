@@ -1987,7 +1987,7 @@ let reject_unreachable_packages =
             "package is both local and returned by solver"
             [ "name", Package_name.to_dyn name ]
         | Some (lock_dir_pkg : Lock_dir.Pkg.t), None -> Some lock_dir_pkg.info.version
-        | None, Some _pkg -> Some Package_version.dev)
+        | None, Some (pkg : Local_package.For_solver.t) -> Some pkg.version)
     in
     let pkgs_by_name =
       Package_name.Map.merge pkgs_by_name local_packages ~f:(fun name lhs rhs ->
@@ -2005,8 +2005,7 @@ let reject_unreachable_packages =
                 let opam_package =
                   OpamPackage.create
                     (Package_name.to_opam_package_name pkg.name)
-                    (* Use [dev] because at this point we don't have any version *)
-                    (Package_version.to_opam_package_version Package_version.dev)
+                    (Package_version.to_opam_package_version pkg.version)
                 in
                 Solver_env.to_env solver_env |> add_self_to_filter_env opam_package
               in

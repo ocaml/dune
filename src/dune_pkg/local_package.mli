@@ -19,7 +19,7 @@ type pins = pin Package_name.Map.t
     it can use to represent local packages. *)
 type t =
   { name : Package_name.t
-  ; version : Package_version.t option
+  ; version : Package_version.t
   ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
@@ -43,6 +43,7 @@ module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
     { name : Package_name.t
+    ; version : Package_version.t
     ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list

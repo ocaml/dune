@@ -61,7 +61,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   ; pins = Package_name.Map.empty
   ; conflict_class = []
   ; loc = Loc.none
-  ; command_source = Other { build = []; install = [] }
+  ; command_source = Opam_file { build = []; install = [] }
   }
 ;;
 

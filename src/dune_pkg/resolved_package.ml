@@ -87,8 +87,8 @@ let scan_files_entries path =
 let local_package ~command_source loc opam_file opam_package =
   let dune_build =
     match (command_source : Local_package.command_source) with
-    | Dune -> true
-    | Other _ -> false
+    | Assume_defaults -> true
+    | Opam_file _ -> false
   in
   let opam_file = add_opam_package_to_opam_file opam_package opam_file in
   let package = OpamFile.OPAM.package opam_file in

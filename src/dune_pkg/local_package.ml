@@ -13,8 +13,8 @@ type pin =
 type pins = pin Package_name.Map.t
 
 type command_source =
-  | Dune
-  | Other of
+  | Assume_defaults
+  | Opam_file of
       { build : OpamTypes.command list
       ; install : OpamTypes.command list
       }
@@ -120,8 +120,8 @@ let for_solver
   =
   let build, install =
     match command_source with
-    | Dune -> [], []
-    | Other { build; install } -> build, install
+    | Assume_defaults -> [], []
+    | Opam_file { build; install } -> build, install
   in
   { For_solver.name
   ; dependencies
@@ -150,14 +150,14 @@ let of_package (t : Dune_lang.Package.t) =
     ; loc
     ; conflict_class = []
     ; pins = Package_name.Map.empty
-    ; command_source = Dune
+    ; command_source = Assume_defaults
     }
   | Some { file; contents = opam_file_string } ->
     let opam_file =
       Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
     in
     let command_source =
-      Other
+      Opam_file
         { build = opam_file |> OpamFile.OPAM.build
         ; install = opam_file |> OpamFile.OPAM.install
         }

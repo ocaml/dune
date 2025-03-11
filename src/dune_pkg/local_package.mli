@@ -10,14 +10,14 @@ type pin =
 
 type pins = pin Package_name.Map.t
 
-(** Describe the commands to execute from the source. [Dune] means that no opam
-    file is available and dune will use [dune] to build the package.
-    [Other { build ; install }]  describe where there is an opam file from
-    which we extract the build and the install command. Note that both of them
-    can be empty. *)
+(** Describe the commands to execute from the source. [Assume_defaults] means
+    that no opam file is available and dune will use [dune] to build the
+    package. [Opam_file { build ; install }]  describe where there is an opam
+    file from which we extract the build and the install command. Note that
+    both of them can be empty. *)
 type command_source =
-  | Dune
-  | Other of
+  | Assume_defaults
+  | Opam_file of
       { build : OpamTypes.command list
       ; install : OpamTypes.command list
       }

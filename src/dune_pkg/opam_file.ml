@@ -285,7 +285,6 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
     ~info
     ~synopsis:(get_one "synopsis")
     ~description:(get_one "description")
-    ~has_opam_file:(Exists true)
     ~tags:(Option.value (get_many "tags") ~default:[])
     ~deprecated_package_names:Package_name.Map.empty
     ~sites:Dune_lang.Site.Map.empty

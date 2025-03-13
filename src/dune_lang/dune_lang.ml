@@ -19,6 +19,7 @@ module Package_version = Package_version
 module Package_variable_name = Package_variable_name
 module Lib_kind = Lib_kind
 module Lib_dep = Lib_dep
+module Loaded_package = Loaded_package
 module Pkg = Pkg
 module Ordered_set_lang = Ordered_set_lang
 module Format_config = Format_config

@@ -9,10 +9,11 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
 ;;
 
 module Package_paths = struct
-  let opam_file (ctx : Build_context.t) (pkg : Package.t) =
+  let opam_file (ctx : Build_context.t) (lpkg : Dune_lang.Loaded_package.t) =
+    let pkg = Dune_lang.Loaded_package.package lpkg in
     let opam_file = Package.opam_file pkg in
     let exists =
-      match Package.has_opam_file pkg with
+      match Dune_lang.Loaded_package.has_opam_file lpkg with
       | Exists b -> b
       | Generated -> true
     in
@@ -507,10 +508,11 @@ end = struct
   let stanzas_to_entries sctx =
     let ctx = Context.build_context (Super_context.context sctx) in
     let* stanzas = Dune_load.dune_files ctx.name in
-    let* packages = Dune_load.packages () in
+    let* loaded_packages = Dune_load.loaded_packages () in
     let+ init =
-      Package_map_traversals.parallel_map packages ~f:(fun _name (pkg : Package.t) ->
+      Package_map_traversals.parallel_map loaded_packages ~f:(fun _name (pkg : Dune_lang.Loaded_package.t) ->
         let opam_file = Package_paths.opam_file ctx pkg in
+        let pkg = Dune_lang.Loaded_package.package pkg in
         let init =
           let file section local_file dst =
             Install.Entry.make section local_file ~kind:`File ~dst

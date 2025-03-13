@@ -404,7 +404,6 @@ module Component = struct
             ~sites:Site.Map.empty
             ~allow_empty:false
             ~deprecated_package_names:Package.Name.Map.empty
-            ~has_opam_file:(Exists false)
             ~original_opam_file:None
             ~dir
             ~synopsis:(Some "A short synopsis")

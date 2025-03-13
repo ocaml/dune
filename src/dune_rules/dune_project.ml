@@ -643,7 +643,7 @@ let including_hidden_packages t = t.including_hidden_packages
 let make_packages
       ~opam_packages
       ~dir
-      ~generate_opam_files
+      ~generate_opam_files:_
       ~opam_file_location
       packages
       name
@@ -699,9 +699,10 @@ let make_packages
       ]
   | Ok packages ->
     let generated_opam_file =
-      if generate_opam_files
-      then fun p -> Package.set_has_opam_file p Package.Generated
-      else Fun.id
+      (* if generate_opam_files *)
+      (* then fun p -> Package.set_has_opam_file p Package.Generated *)
+      (* else *)
+        Fun.id
     in
     (match opam_file_location with
      | `Inside_opam_directory ->
@@ -715,7 +716,7 @@ let make_packages
          | None, None -> assert false
          | Some p, None -> Some (generated_opam_file p)
          | Some p, Some _ ->
-           let p = Package.set_has_opam_file p (Exists true) in
+           (* let p = Package.set_has_opam_file p (Exists true) in *)
            Some (generated_opam_file p)
          | None, Some (loc, _) ->
            User_error.raise
@@ -968,16 +969,22 @@ let load_dune_project ~read ~dir opam_packages : t Memo.t =
     let+ contents = read file in
     Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
   in
-  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
+  parse_contents lexbuf ~f:(fun lang ->
+    Printf.eprintf "Parsing again with lang\n";
+    parse ~dir ~lang ~file) opam_packages
 ;;
 
 let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
+      Printf.eprintf "Folding over %s\n" fn;
       match Package.Name.of_opam_file_basename fn with
-      | None -> acc
+      | None ->
+          Printf.eprintf "No, it wasn't loaded\n";
+          acc
       | Some name ->
+        Printf.eprintf "loaded %s\n" (Dune_lang.Package_name.to_string name);
         let opam_file = Path.Source.relative dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =

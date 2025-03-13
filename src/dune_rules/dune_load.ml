@@ -18,6 +18,7 @@ end
 type t =
   { dune_files : Dune_file.t list Per_context.t
   ; packages : Package.t Package.Name.Map.t
+  ; loaded_packages : Dune_lang.Loaded_package.t Package.Name.Map.t
   ; projects : Dune_project.t list
   ; projects_by_root : Dune_project.t Path.Source.Map.t
   ; dune_file_by_dir : Dune_file_db.t Per_context.t
@@ -69,32 +70,45 @@ let load () =
       ~f
   in
   let projects = Appendable_list.to_list_rev projects in
-  let packages, vendored_packages =
+  let loaded_packages, vendored_packages =
     List.fold_left
       projects
       ~init:(Package.Name.Map.empty, Package.Name.Set.empty)
       ~f:(fun (acc_packages, vendored) (status, (project : Dune_project.t)) ->
         let packages = Dune_project.including_hidden_packages project in
+        let loaded_packages = Dune_lang.Package_name.Map.map packages ~f:(fun package ->
+          let has_opam_file = match Dune_project.generate_opam_files project with
+          (* TODO fix up this shit by checking for opam files *)
+          | true -> Dune_lang.Loaded_package.Generated
+          | false -> Dune_lang.Loaded_package.Exists false
+          in
+          Dune_lang.Loaded_package.create ~package ~has_opam_file
+        )
+        in
         let vendored =
           match status with
           | `Regular -> vendored
           | `Vendored ->
-            Package.Name.Set.of_keys packages |> Package.Name.Set.union vendored
+            Package.Name.Set.of_keys loaded_packages |> Package.Name.Set.union vendored
         in
         let acc_packages =
-          Package.Name.Map.union acc_packages packages ~f:(fun name a b ->
+          Package.Name.Map.union acc_packages loaded_packages ~f:(fun name a b ->
             User_error.raise
               [ Pp.textf
                   "The package %S is defined more than once:"
                   (Package.Name.to_string name)
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc a))
-              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc b))
+              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc (Dune_lang.Loaded_package.package a)))
+              ; Pp.textf "- %s" (Loc.to_file_colon_line (Package.loc (Dune_lang.Loaded_package.package b)))
               ])
         in
         acc_packages, vendored)
   in
+  let packages = Dune_lang.Package_name.Map.map loaded_packages ~f:Dune_lang.Loaded_package.package in
   let mask = Only_packages.mask packages ~vendored:vendored_packages in
-  let packages = Only_packages.filter_packages mask packages in
+  let selected_packages = Only_packages.filter_packages mask packages in
+  let loaded_packages = Dune_lang.Package_name.Map.filteri loaded_packages ~f:(fun name _lpkg ->
+    Dune_lang.Package_name.Map.mem selected_packages name)
+  in
   let projects = List.rev_map projects ~f:snd in
   let dune_files =
     let without_ctx =
@@ -112,6 +126,7 @@ let load () =
   ; mask
   ; dune_file_by_dir
   ; packages
+  ; loaded_packages
   ; projects
   ; projects_by_root =
       Path.Source.Map.of_list_map_exn projects ~f:(fun project ->
@@ -150,6 +165,11 @@ let mask () =
 let packages () =
   let+ { packages; _ } = load () in
   packages
+;;
+
+let loaded_packages () =
+  let+ { loaded_packages; _ } = load () in
+  loaded_packages
 ;;
 
 let dune_files context =

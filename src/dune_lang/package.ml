@@ -52,13 +52,15 @@ type t =
   ; depopts : Package_dependency.t list
   ; info : Package_info.t
   ; version : Package_version.t option
-  ; has_opam_file : opam_file
+  (* ; has_opam_file : opam_file *)
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t
   ; allow_empty : bool
   ; original_opam_file : original_opam_file option
   }
+
+
 
 (* Package name are globally unique, so we can reasonably expect that there will
    always be only a single value of type [t] with a given name in memory. That's
@@ -68,7 +70,7 @@ let name t = t.id.name
 let dir t = t.id.dir
 let loc t = t.loc
 let deprecated_package_names t = t.deprecated_package_names
-let set_has_opam_file t has_opam_file = { t with has_opam_file }
+(* let set_has_opam_file t has_opam_file = { t with has_opam_file } *)
 let version t = t.version
 let depends t = t.depends
 let conflicts t = t.conflicts
@@ -86,7 +88,7 @@ let encode
       (name : Name.t)
       { id = _
       ; loc = _
-      ; has_opam_file = _
+      (* ; has_opam_file = _ *)
       ; synopsis
       ; description
       ; depends
@@ -179,6 +181,7 @@ let decode =
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let id = { Id.name; dir } in
        let opam_file = Name.file id.name ~dir:id.dir in
+       Printf.eprintf "Sets to Exists false\n";
        { id
        ; loc
        ; synopsis
@@ -188,7 +191,7 @@ let decode =
        ; depopts
        ; info
        ; version
-       ; has_opam_file = Exists false
+       (* ; has_opam_file = Exists false *)
        ; tags
        ; deprecated_package_names
        ; sites
@@ -198,12 +201,12 @@ let decode =
        }
 ;;
 
-let dyn_of_opam_file =
-  let open Dyn in
-  function
-  | Exists b -> variant "Exists" [ bool b ]
-  | Generated -> variant "Generated" []
-;;
+(* let dyn_of_opam_file = *)
+(*   let open Dyn in *)
+(*   function *)
+(*   | Exists b -> variant "Exists" [ bool b ] *)
+(*   | Generated -> variant "Generated" [] *)
+(* ;; *)
 
 let to_dyn
       { id
@@ -214,7 +217,7 @@ let to_dyn
       ; conflicts
       ; depopts
       ; info
-      ; has_opam_file
+      (* ; has_opam_file *)
       ; tags
       ; loc = _
       ; deprecated_package_names
@@ -233,7 +236,7 @@ let to_dyn
     ; "conflicts", list Package_dependency.to_dyn conflicts
     ; "depopts", list Package_dependency.to_dyn depopts
     ; "info", Package_info.to_dyn info
-    ; "has_opam_file", dyn_of_opam_file has_opam_file
+    (* ; "has_opam_file", dyn_of_opam_file has_opam_file *)
     ; "tags", list string tags
     ; "version", option Package_version.to_dyn version
     ; "deprecated_package_names", Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names
@@ -244,7 +247,7 @@ let to_dyn
 
 let opam_file t = t.opam_file
 let sites t = t.sites
-let has_opam_file t = t.has_opam_file
+(* let has_opam_file t = t.has_opam_file *)
 let allow_empty t = t.allow_empty
 let map_depends t ~f = { t with depends = f t.depends }
 
@@ -256,7 +259,7 @@ let create
       ~depends
       ~depopts
       ~info
-      ~has_opam_file
+      (* ~has_opam_file *)
       ~dir
       ~sites
       ~allow_empty
@@ -276,7 +279,7 @@ let create
   ; conflicts
   ; info
   ; depopts
-  ; has_opam_file
+  (* ; has_opam_file *)
   ; tags
   ; deprecated_package_names
   ; sites

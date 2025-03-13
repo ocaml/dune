@@ -33,7 +33,7 @@ val decode : dir:Path.Source.t -> t Dune_sexp.Decoder.t
 val opam_file : t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 val hash : t -> int
-val set_has_opam_file : t -> opam_file -> t
+(* val set_has_opam_file : t -> opam_file -> t *)
 val version : t -> Package_version.t option
 val depends : t -> Package_dependency.t list
 val conflicts : t -> Package_dependency.t list
@@ -50,7 +50,7 @@ val set_version_and_info
   -> info:Package_info.t
   -> t
 
-val has_opam_file : t -> opam_file
+(* val has_opam_file : t -> opam_file *)
 val allow_empty : t -> bool
 val map_depends : t -> f:(Package_dependency.t list -> Package_dependency.t list) -> t
 
@@ -67,7 +67,7 @@ val create
   -> depends:Package_dependency.t list
   -> depopts:Package_dependency.t list
   -> info:Package_info.t
-  -> has_opam_file:opam_file
+  (* -> has_opam_file:opam_file *)
   -> dir:Path.Source.t
   -> sites:Section.t Site.Map.t
   -> allow_empty:bool

@@ -175,6 +175,7 @@ module Version = struct
 end
 
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
+let install_wasmoo_hint = "opam install wasm_of_ocaml-compiler"
 
 let in_build_dir (ctx : Build_context.t) ~config args =
   Path.Build.L.relative ctx.build_dir (".js" :: Config.path config :: args)
@@ -209,8 +210,12 @@ let jsoo ~dir sctx =
 ;;
 
 let wasmoo ~dir sctx =
-  (* TODO add a hint when wasm_of_ocaml released on opam *)
-  Super_context.resolve_program sctx ~dir ~loc:None "wasm_of_ocaml"
+  Super_context.resolve_program
+    sctx
+    ~dir
+    ~loc:None
+    ~hint:install_wasmoo_hint
+    "wasm_of_ocaml"
 ;;
 
 type sub_command =

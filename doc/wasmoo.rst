@@ -9,9 +9,12 @@ Wasm Compilation With Wasm_of_ocaml
    This is an how-to guide.
 
 Wasm_of_ocaml is a compiler from OCaml to WebAssembly (Wasm for short). The
-compiler works by translating OCaml bytecode to Wasm code. The compiler is
-available in the `js_of_ocaml Github repository
-<https://github.com/ocsigen/js_of_ocaml>`_.
+compiler works by translating OCaml bytecode to Wasm code. The compiler can
+be installed with opam:
+
+.. code:: console
+
+   $ opam install wasm_of_ocaml-compiler
 
 Compiling to Wasm
 =================

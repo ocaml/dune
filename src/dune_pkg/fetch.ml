@@ -123,8 +123,21 @@ type failure =
 
 let label = "dune-fetch"
 
-let unpack_tarball ~target ~archive =
-  Tar.extract ~archive ~target
+(* Select an archive driver apppropriate for extracting an archive at a given
+   url based on the url's suffix. This function defaults to choosing tar if the
+   appropriate driver is not obvious given a url as tar (possibly compressed
+   with gzip) is by far the most common format for opam source archives. *)
+let archive_driver_of_opam_url opam_url =
+  let url_string = OpamUrl.to_string opam_url in
+  match Archive_driver.choose_for_filename url_string with
+  | Some archive_driver -> archive_driver
+  | None ->
+    (* Assume that an archive is a tarball if the format is not clear *)
+    Archive_driver.tar
+;;
+
+let unpack_archive ~archive_driver ~target ~archive =
+  Archive_driver.extract archive_driver ~archive ~target
   >>| Result.map_error ~f:(fun () ->
     Pp.textf "unable to extract %S" (Path.to_string archive))
 ;;
@@ -169,7 +182,10 @@ let fetch_curl ~unpack:unpack_flag ~checksum ~target (url : OpamUrl.t) =
       Path.rename output target;
       Fiber.return @@ Ok ()
     | true ->
-      unpack_tarball ~target ~archive:output
+      unpack_archive
+        ~archive_driver:(archive_driver_of_opam_url url)
+        ~target
+        ~archive:output
       >>| (function
        | Ok () -> Ok ()
        | Error msg ->
@@ -201,15 +217,20 @@ let fetch_local ~checksum ~target (url, url_loc) =
   if not (OpamUrl.is_local url)
   then Code_error.raise "fetch_local: url should be file://" [ "url", OpamUrl.to_dyn url ];
   let path =
-    match OpamUrl.local_or_git_or_tar_only url url_loc with
+    match OpamUrl.local_or_git_or_archive_only url url_loc with
     | `Path p -> p
-    | `Git | `Tar ->
+    | `Git | `Http_archive ->
       Code_error.raise "fetch_local: not a path" [ "url", OpamUrl.to_dyn url ]
   in
   match check_checksum checksum path with
   | Error _ as e -> Fiber.return e
   | Ok () ->
-    let+ unpack_result = unpack_tarball ~target ~archive:path in
+    let+ unpack_result =
+      unpack_archive
+        ~archive_driver:(archive_driver_of_opam_url url)
+        ~target
+        ~archive:path
+    in
     Result.map_error unpack_result ~f:(fun pp ->
       Unavailable (Some (User_message.make [ Pp.text "Could not unpack:"; pp ])))
 ;;

@@ -2,9 +2,10 @@ include
 -------
 
 The ``include`` stanza allows including the contents of another file in the
-current ``dune`` file. Currently, the included file cannot be generated and must
-be present in the source tree. This feature is intended for use in conjunction
-with promotion, when parts of a ``dune`` file are to be generated.
+current ``dune`` file. The included file cannot be generated and must
+be present in the source tree. To include generated files, 
+use the :ref:`dynamic_include` stanza instead. This feature is intended 
+for use in conjunction with promotion, when parts of a ``dune`` file are to be generated.
 
 For instance:
 

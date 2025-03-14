@@ -138,6 +138,9 @@ let gen_rules_output
      let* dialect, kind =
        Path.Source.extension file |> Dialect.DB.find_by_extension dialects
      in
+     (* Avoid setting up rules that will fail during promotion due to the
+        source file not being writable. *)
+     let* () = Option.some_if (Path.Source.is_rw file) () in
      let* () =
        Option.some_if (Format_config.includes config (Dialect (Dialect.name dialect))) ()
      in

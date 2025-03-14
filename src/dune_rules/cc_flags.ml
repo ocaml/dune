@@ -50,8 +50,8 @@ let check_warn = function
   | Other s ->
     User_warning.emit
       [ Pp.textf
-          "Dune was not able to automatically infer the C compiler in use: \"%s\". \
-           Please open an issue on github to help us improve this feature."
+          "Dune was not able to automatically infer the C/C++ compiler in use: \"%s\". \
+           Please open an issue on GitHub to help us improve this feature."
           s
       ]
   | _ -> ()

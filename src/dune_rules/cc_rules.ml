@@ -33,7 +33,7 @@ let rules ~sctx ~dir =
        let open Command.Args in
        S
          [ (match Ocaml_config.ccomp_type ocfg with
-            | Msvc -> A "/EP"
+            | Msvc -> As [ "/nologo"; "/EP" ]
             | Cc | Other _ -> As [ "-E"; "-P" ])
          ; Path (Path.build header_file)
          ])

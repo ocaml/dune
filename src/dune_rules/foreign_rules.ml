@@ -18,7 +18,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
       let fdiagnostics_color =
-        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
+        Cxx_flags.cc_vendor ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
       in
       let open Action_builder.O in
       let c =
@@ -285,7 +285,7 @@ let build_c
   let output_param =
     match ocaml.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
-    | Other _ -> [ A "-o"; Target dst ]
+    | Cc | Other _ -> [ A "-o"; Target dst ]
   in
   Super_context.add_rule
     sctx

@@ -36,7 +36,7 @@ let rules ~sctx ~dir =
        S
          [ (match Ocaml_config.ccomp_type ocfg with
             | Msvc -> A "/EP"
-            | Other _ -> As [ "-E"; "-P" ])
+            | Cc | Other _ -> As [ "-E"; "-P" ])
          ; Path (Path.build header_file)
          ])
   in

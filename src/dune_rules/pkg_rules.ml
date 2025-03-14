@@ -1062,8 +1062,12 @@ module DB = struct
 
   let get package_universe =
     let dune = Package.Name.Set.singleton (Package.Name.of_string "dune") in
-    let+ all = Package_universe.lock_dir package_universe in
-    { all = all.packages; system_provided = dune }
+    let+ all = Package_universe.lock_dir package_universe
+    and+ solver_env = Lock_dir.Sys_vars.solver_env () in
+    let all_available_packages =
+      Dune_pkg.Lock_dir.packages_under_condition all solver_env
+    in
+    { all = all_available_packages; system_provided = dune }
   ;;
 end
 
@@ -1108,9 +1112,21 @@ end = struct
          ; depexts
          } as pkg) ->
       assert (Package.Name.equal name info.name);
+      let* solver_env = Lock_dir.Sys_vars.solver_env () in
+      let depends =
+        match Dune_pkg.Lock_dir.Conditional_choice.find depends solver_env with
+        | Some depends -> depends
+        | None ->
+          User_error.raise
+            [ Pp.textf
+                "Lockfile does not contain dependencies for %s under the condition"
+                (Dune_pkg.Package_name.to_string pkg.info.name)
+            ; Dune_pkg.Solver_env.pp solver_env
+            ]
+      in
       let* depends =
-        Memo.parallel_map depends ~f:(fun name ->
-          resolve db name package_universe
+        Memo.parallel_map depends ~f:(fun depend ->
+          resolve db (depend.loc, depend.name) package_universe
           >>| function
           | `Inside_lock_dir pkg -> Some pkg
           | `System_provided -> None)
@@ -1125,6 +1141,12 @@ end = struct
       in
       let id = Pkg.Id.gen () in
       let write_paths = Paths.make package_universe name ~relative:Path.Build.relative in
+      let install_command =
+        Dune_pkg.Lock_dir.Conditional_choice.find install_command solver_env
+      in
+      let build_command =
+        Dune_pkg.Lock_dir.Conditional_choice.find build_command solver_env
+      in
       let* paths, build_command, install_command =
         let paths = Paths.map_path write_paths ~f:Path.build in
         match Pkg_toolchain.is_compiler_and_toolchains_enabled info.name with
@@ -1168,6 +1190,10 @@ end = struct
             }
           , build_command
           , install_command )
+      in
+      let depexts =
+        Dune_pkg.Lock_dir.Conditional_choice.find depexts solver_env
+        |> Option.value ~default:[]
       in
       let t =
         { Pkg.id

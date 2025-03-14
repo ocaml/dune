@@ -394,7 +394,7 @@ module Component = struct
       =
       let cst =
         let package =
-          Package.create
+          Dune_lang.Dune_package.create
             ~name:(Options.Common.package_name common)
             ~loc:Loc.none
             ~version:None
@@ -404,7 +404,7 @@ module Component = struct
             ~sites:Site.Map.empty
             ~allow_empty:false
             ~deprecated_package_names:Package.Name.Map.empty
-            ~original_opam_file:None
+              (* ~original_opam_file:None *)
             ~dir
             ~synopsis:(Some "A short synopsis")
             ~description:(Some "A longer description")
@@ -415,6 +415,7 @@ module Component = struct
                 }
               ]
         in
+        let package = Dune_lang.Package.of_dune_package package in
         let packages = Package.Name.Map.singleton (Package.name package) package in
         let info =
           Package_info.example

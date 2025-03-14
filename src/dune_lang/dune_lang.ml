@@ -8,6 +8,7 @@ module String_with_vars = String_with_vars
 module Pform = Pform
 module Action = Action
 module Dune_file_script = Dune_file_script
+module Dune_package = Dune_package
 module Path = Path
 module Value = Value
 module Blang = Blang

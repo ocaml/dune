@@ -566,8 +566,10 @@ let encode : t -> Dune_lang.t list =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
   in
   let packages =
-    Package.Name.Map.to_list_map packages ~f:(fun name package ->
-      Package.encode name package)
+    packages
+    |> Package.Name.Map.filter_map ~f:Dune_lang.Package.dune_package
+    |> Package.Name.Map.to_list_map ~f:(fun name package ->
+      Dune_lang.Dune_package.encode name package)
   in
   let subst_config =
     Option.map subst_config ~f:(fun (_loc, x) -> constr "subst" Subst_config.encode x)
@@ -702,7 +704,7 @@ let make_packages
       (* if generate_opam_files *)
       (* then fun p -> Package.set_has_opam_file p Package.Generated *)
       (* else *)
-        Fun.id
+      Fun.id
     in
     (match opam_file_location with
      | `Inside_opam_directory ->
@@ -969,9 +971,12 @@ let load_dune_project ~read ~dir opam_packages : t Memo.t =
     let+ contents = read file in
     Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
   in
-  parse_contents lexbuf ~f:(fun lang ->
-    Printf.eprintf "Parsing again with lang\n";
-    parse ~dir ~lang ~file) opam_packages
+  parse_contents
+    lexbuf
+    ~f:(fun lang ->
+      Printf.eprintf "Parsing again with lang\n";
+      parse ~dir ~lang ~file)
+    opam_packages
 ;;
 
 let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
@@ -981,8 +986,8 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
       Printf.eprintf "Folding over %s\n" fn;
       match Package.Name.of_opam_file_basename fn with
       | None ->
-          Printf.eprintf "No, it wasn't loaded\n";
-          acc
+        Printf.eprintf "No, it wasn't loaded\n";
+        acc
       | Some name ->
         Printf.eprintf "loaded %s\n" (Dune_lang.Package_name.to_string name);
         let opam_file = Path.Source.relative dir fn in

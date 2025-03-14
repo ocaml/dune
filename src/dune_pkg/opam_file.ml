@@ -271,7 +271,9 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
         (let+ url = get_one "dev-repo" in
          Dune_lang.Source_kind.Url url)
   in
-  Dune_lang.Package.create
+  let opam_file = read_from_string_exn ~contents:opam_file_string (Path.source file) in
+  let depends = opam_file |> OpamFile.OPAM.depends in
+  Dune_lang.Package.Opam_package.create
     ~name
     ~dir
     ~loc
@@ -280,14 +282,11 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
        |> Option.map ~f:Package_version.of_string_user_error
        >>| User_error.ok_exn)
     ~conflicts:[]
-    ~depends:[]
+    ~depends
     ~depopts:[]
     ~info
     ~synopsis:(get_one "synopsis")
     ~description:(get_one "description")
     ~tags:(Option.value (get_many "tags") ~default:[])
-    ~deprecated_package_names:Package_name.Map.empty
-    ~sites:Dune_lang.Site.Map.empty
-    ~allow_empty:true
-    ~original_opam_file:(Some { file; contents = opam_file_string })
+  |> Dune_lang.Package.of_opam_package
 ;;

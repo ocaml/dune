@@ -510,52 +510,55 @@ end = struct
     let* stanzas = Dune_load.dune_files ctx.name in
     let* loaded_packages = Dune_load.loaded_packages () in
     let+ init =
-      Package_map_traversals.parallel_map loaded_packages ~f:(fun _name (pkg : Dune_lang.Loaded_package.t) ->
-        let opam_file = Package_paths.opam_file ctx pkg in
-        let pkg = Dune_lang.Loaded_package.package pkg in
-        let init =
-          let file section local_file dst =
-            Install.Entry.make section local_file ~kind:`File ~dst
-            |> Install.Entry.Sourced.create
+      Package_map_traversals.parallel_map
+        loaded_packages
+        ~f:(fun _name (pkg : Dune_lang.Loaded_package.t) ->
+          let opam_file = Package_paths.opam_file ctx pkg in
+          let pkg = Dune_lang.Loaded_package.package pkg in
+          let init =
+            let file section local_file dst =
+              Install.Entry.make section local_file ~kind:`File ~dst
+              |> Install.Entry.Sourced.create
+            in
+            let deprecated_meta_and_dune_files =
+              Package.deprecated_package_names pkg
+              |> Package.Name.Map.to_list
+              |> List.rev_concat_map ~f:(fun (name, _) ->
+                let meta_file = Package_paths.deprecated_meta_file ctx pkg name in
+                let dune_package_file =
+                  Package_paths.deprecated_dune_package_file ctx pkg name
+                in
+                let file local_file install_fn =
+                  file Lib_root local_file (Package.Name.to_string name ^ "/" ^ install_fn)
+                in
+                [ file meta_file Dune_findlib.Package.meta_fn
+                ; file dune_package_file Dune_package.fn
+                ])
+            in
+            let meta_file = Package_paths.meta_file ctx pkg in
+            let dune_package_file = Package_paths.dune_package_file ctx pkg in
+            file Lib meta_file Dune_findlib.Package.meta_fn
+            :: file Lib dune_package_file Dune_package.fn
+            ::
+            (match opam_file with
+             | None -> deprecated_meta_and_dune_files
+             | Some opam_file ->
+               file Lib opam_file "opam" :: deprecated_meta_and_dune_files)
           in
-          let deprecated_meta_and_dune_files =
-            Package.deprecated_package_names pkg
-            |> Package.Name.Map.to_list
-            |> List.rev_concat_map ~f:(fun (name, _) ->
-              let meta_file = Package_paths.deprecated_meta_file ctx pkg name in
-              let dune_package_file =
-                Package_paths.deprecated_dune_package_file ctx pkg name
-              in
-              let file local_file install_fn =
-                file Lib_root local_file (Package.Name.to_string name ^ "/" ^ install_fn)
-              in
-              [ file meta_file Dune_findlib.Package.meta_fn
-              ; file dune_package_file Dune_package.fn
-              ])
-          in
-          let meta_file = Package_paths.meta_file ctx pkg in
-          let dune_package_file = Package_paths.dune_package_file ctx pkg in
-          file Lib meta_file Dune_findlib.Package.meta_fn
-          :: file Lib dune_package_file Dune_package.fn
-          ::
-          (match opam_file with
-           | None -> deprecated_meta_and_dune_files
-           | Some opam_file -> file Lib opam_file "opam" :: deprecated_meta_and_dune_files)
-        in
-        let pkg_dir = Package.dir pkg in
-        Source_tree.find_dir pkg_dir
-        >>| function
-        | None -> init
-        | Some dir ->
-          let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
-          Source_tree.Dir.filenames dir
-          |> Filename.Set.fold ~init ~f:(fun fn acc ->
-            if is_odig_doc_file fn
-            then (
-              let odig_file = Path.Build.relative pkg_dir fn in
-              let entry = Install.Entry.make Doc ~kind:`File odig_file in
-              Install.Entry.Sourced.create entry :: acc)
-            else acc))
+          let pkg_dir = Package.dir pkg in
+          Source_tree.find_dir pkg_dir
+          >>| function
+          | None -> init
+          | Some dir ->
+            let pkg_dir = Path.Build.append_source ctx.build_dir pkg_dir in
+            Source_tree.Dir.filenames dir
+            |> Filename.Set.fold ~init ~f:(fun fn acc ->
+              if is_odig_doc_file fn
+              then (
+                let odig_file = Path.Build.relative pkg_dir fn in
+                let entry = Install.Entry.make Doc ~kind:`File odig_file in
+                Install.Entry.Sourced.create entry :: acc)
+              else acc))
     and+ entries =
       let* package_db = Package_db.create ctx.name in
       Dune_file.fold_static_stanzas stanzas ~init:[] ~f:(fun dune_file stanza acc ->

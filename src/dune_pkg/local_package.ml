@@ -145,6 +145,14 @@ let of_package (t : Dune_lang.Package.t) =
   (* | Exists false -> "Doesnot exist" *)
   (* in *)
   Printf.eprintf "Attempting to load of_package: %s\n" (Package.Name.to_string name);
+  (* match Package.depends t with *)
+  (* | [] -> *)
+  (*     match Loaded_package.has_opam_file with *)
+  (*     | Missing -> [] *)
+  (*     | Generated -> [] *)
+  (*     | Exists path -> (1* load & parse *1) *)
+  (* | _ -> *)
+  (*   (1* depends are in dune project *1) *)
   match Package.original_opam_file t with
   | None ->
     Printf.eprintf "No original opam file\n";

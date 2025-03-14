@@ -31,6 +31,12 @@ let fdiagnostics_color = function
   | _ -> []
 ;;
 
+let warnings = function
+  | Gcc | Clang -> [ "-Wall" ]
+  | Msvc -> [ "-W2" ]
+  | _ -> []
+;;
+
 let preprocessed_filename = "cc_vendor"
 
 let cc_vendor build_dir =

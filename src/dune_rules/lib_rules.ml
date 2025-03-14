@@ -50,7 +50,7 @@ let build_lib
       (* https://github.com/ocaml/dune/issues/119 *)
       match ocaml.lib_config.ccomp_type with
       | Msvc -> msvc_hack_cclibs
-      | Other _ -> Fun.id
+      | Cc | Other _ -> Fun.id
     in
     let obj_deps =
       Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
@@ -173,7 +173,7 @@ let ocamlmklib
         let cclibs =
           match ocaml.lib_config.ccomp_type with
           | Msvc -> msvc_hack_cclibs cclibs
-          | Other _ -> cclibs
+          | Cc | Other _ -> cclibs
         in
         Command.quote_args "-ldopt" cclibs)
     in

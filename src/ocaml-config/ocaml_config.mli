@@ -50,6 +50,7 @@ end
 module Ccomp_type : sig
   type t =
     | Msvc
+    | Cc
     | Other of string
 
   val to_dyn : t -> Dyn.t

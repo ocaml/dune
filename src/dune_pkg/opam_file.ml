@@ -288,5 +288,4 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
     ~synopsis:(get_one "synopsis")
     ~description:(get_one "description")
     ~tags:(Option.value (get_many "tags") ~default:[])
-  |> Dune_lang.Package.of_opam_package
 ;;

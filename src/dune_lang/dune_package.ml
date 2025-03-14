@@ -51,7 +51,7 @@ type t =
   ; conflicts : Package_dependency.t list
   ; depopts : Package_dependency.t list
   ; info : Package_info.t
-  ; version : Package_version.t option (* ; has_opam_file : opam_file *)
+  ; version : Package_version.t option
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   ; sites : Section.t Site.Map.t

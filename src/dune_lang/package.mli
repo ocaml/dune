@@ -41,3 +41,4 @@ val synopsis : t -> string option
 val description : t -> string option
 val dune_package : t -> Dune_package.t option
 val to_dyn : t -> Dyn.t
+val set_version_and_info : t -> version:Package_version.t option -> info:Package_info.t -> t

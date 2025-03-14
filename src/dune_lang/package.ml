@@ -121,3 +121,8 @@ let to_dyn = function
   | Dune_package t -> Dune_package.to_dyn t
   | Opam_package t -> Opam_package.to_dyn t
 ;;
+
+let set_version_and_info t ~version ~info =
+  match t with
+  | Dune_package t -> Dune_package (Dune_package.set_version_and_info t ~version ~info)
+  | Opam_package t -> Opam_package { t with version; info }

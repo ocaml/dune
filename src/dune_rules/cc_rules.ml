@@ -3,17 +3,15 @@ open Memo.O
 
 let header_file_content =
   {|
-#if defined( __clang__ )
-  #define CCOMP clang
-#elif defined( _MSC_VER )
-  #define CCOMP msvc
+#if defined( _MSC_VER )
+msvc
+#elif defined( __clang__ )
+clang
 #elif defined( __GNUC__ )
-  #define CCOMP gcc
+gcc
 #else
-  #define CCOMP other
+other
 #endif
-
-CCOMP
 |}
 ;;
 

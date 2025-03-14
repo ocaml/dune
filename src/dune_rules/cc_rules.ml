@@ -18,7 +18,7 @@ CCOMP
 ;;
 
 let rules ~sctx ~dir =
-  let file = Path.Build.relative dir Cxx_flags.preprocessed_filename in
+  let file = Path.Build.relative dir Cc_flags.preprocessed_filename in
   let ocfg =
     Action_builder.of_memo
     @@

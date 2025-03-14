@@ -18,7 +18,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
       let fdiagnostics_color =
-        Cxx_flags.cc_vendor ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
+        Cc_flags.cc_vendor ctx |> Action_builder.map ~f:Cc_flags.fdiagnostics_color
       in
       let open Action_builder.O in
       let c =
@@ -29,7 +29,7 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
       let cxx =
         let+ fdiagnostics_color = fdiagnostics_color
         and+ db_flags =
-          Cxx_flags.get_flags
+          Cc_flags.get_flags
             ~for_:(Compile (Ocaml.Version.make (Ocaml_config.version ocaml_config)))
             ctx
         in

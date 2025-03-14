@@ -581,7 +581,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
     has_rules ~dir Subdir_set.empty (fun () ->
       (* Add rules for C compiler detection *)
       let* sctx = sctx in
-      Cxx_rules.rules ~sctx ~dir)
+      Cc_rules.rules ~sctx ~dir)
   | ".js" :: rest ->
     has_rules
       ~dir

@@ -28,3 +28,7 @@ val get_flags : for_:phase -> Build_context.t -> string list Action_builder.t
 (** [fdiagnostics_color cc] returns the flags activating color diagnostics for
     the C/C++ compiler, if supported. *)
 val fdiagnostics_color : cc_vendor -> string list
+
+(** [warnings cc] returns the flags activating the default set of warnings for
+    the C/C++ compiler, if supported. *)
+val warnings : cc_vendor -> string list

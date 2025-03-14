@@ -47,7 +47,7 @@ let link_env =
       ~name:"link-env"
       ~root:(fun ctx _ ->
         let default_cxx_link_flags =
-          Cxx_flags.get_flags ~for_:Link (Build_context.create ~name:ctx)
+          Cc_flags.get_flags ~for_:Link (Build_context.create ~name:ctx)
         in
         Link_flags.default ~default_cxx_link_flags |> Memo.return)
       ~f:(fun ~parent expander (env : Dune_env.config) ->

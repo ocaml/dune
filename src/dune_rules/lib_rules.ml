@@ -17,7 +17,7 @@ let standard_cxx_flags ~dir ~has_cxx sctx =
   match Dune_project.use_standard_c_and_cxx_flags project with
   | Some true when has_cxx () ->
     let ctx = Super_context.context sctx in
-    Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
+    Cc_flags.get_flags ~for_:Link (Context.build_context ctx)
   | _ -> Action_builder.return []
 ;;
 

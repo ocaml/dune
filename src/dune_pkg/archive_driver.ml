@@ -2,35 +2,64 @@ open Stdune
 module Process = Dune_engine.Process
 open Fiber.O
 
+module Command = struct
+  type t =
+    { bin : Path.t
+    ; make_args : archive:Path.t -> target_in_temp:Path.t -> string list
+    }
+end
+
 type t =
-  { bin : Path.t Lazy.t
+  { command : Command.t Lazy.t
   ; suffixes : string list
-    (* Identify a file by its suffix rather than by its extension, since
-       ".tar.gz" files only have an extension of ".gz". *)
-  ; build_args : archive:Path.t -> target_in_temp:Path.t -> string list
   }
 
-let make ~bin_name ~suffixes ~build_args =
-  let bin =
-    lazy
-      (match Bin.which ~path:(Env_path.path Env.initial) bin_name with
-       | Some x -> x
-       | None -> Dune_engine.Utils.program_not_found bin_name ~loc:None)
-  in
-  { bin; suffixes; build_args }
+let which bin_name = Bin.which ~path:(Env_path.path Env.initial) bin_name
+
+let make_tar_args ~archive ~target_in_temp =
+  [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ]
+;;
+
+let make_zip_args ~archive ~target_in_temp =
+  [ Path.to_string archive; "-d"; Path.to_string target_in_temp ]
 ;;
 
 let tar =
-  make
-    ~bin_name:"tar"
-    ~suffixes:[ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ]
-    ~build_args:(fun ~archive ~target_in_temp ->
-      [ "xf"; Path.to_string archive; "-C"; Path.to_string target_in_temp ])
+  let command =
+    lazy
+      (match
+         (* Test for tar before bsdtar as tar is more likely to be installed
+            and both work equally well for tarballs. *)
+         List.find_map [ "tar"; "bsdtar" ] ~f:which
+       with
+       | Some bin -> { Command.bin; make_args = make_tar_args }
+       | None -> Dune_engine.Utils.program_not_found "tar" ~loc:None)
+  in
+  { command; suffixes = [ ".tar"; ".tar.gz"; ".tgz"; ".tar.bz2"; ".tbz" ] }
 ;;
 
 let zip =
-  make ~bin_name:"unzip" ~suffixes:[ ".zip" ] ~build_args:(fun ~archive ~target_in_temp ->
-    [ Path.to_string archive; "-d"; Path.to_string target_in_temp ])
+  let command =
+    lazy
+      (match which "unzip" with
+       | Some bin -> { Command.bin; make_args = make_zip_args }
+       | None ->
+         (* Fall back to using tar to extract zip archives, which is possible in some cases. *)
+         (match
+            (* Test for bsdtar before tar, as if bsdtar is installed then it's
+               likely that the tar binary is GNU tar which can't extract zip
+               archives, whereas bsdtar can. If bsdtar is absent, try using the
+               tar command anyway, as on MacOS, Windows, and some BSD systems,
+               the tar command can extract zip archives. *)
+            List.find_map [ "bsdtar"; "tar" ] ~f:which
+          with
+          | Some bin -> { Command.bin; make_args = make_tar_args }
+          | None ->
+            (* Still reference unzip in the error message, as installing it
+               is the simplest way to fix the problem. *)
+            Dune_engine.Utils.program_not_found "unzip" ~loc:None))
+  in
+  { command; suffixes = [ ".zip" ] }
 ;;
 
 let all = [ tar; zip ]
@@ -44,7 +73,7 @@ let choose_for_filename_default_to_tar filename =
 
 let extract t ~archive ~target =
   let* () = Fiber.return () in
-  let bin = Lazy.force t.bin in
+  let command = Lazy.force t.command in
   let target_in_temp =
     let prefix = Path.basename target in
     let suffix = Path.basename archive in
@@ -57,8 +86,10 @@ let extract t ~archive ~target =
   Path.mkdir_p target_in_temp;
   let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
   let stderr_to = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit in
-  let args = t.build_args ~archive ~target_in_temp in
-  let+ (), exit_code = Process.run ~display:Quiet ~stdout_to ~stderr_to Return bin args in
+  let args = command.make_args ~archive ~target_in_temp in
+  let+ (), exit_code =
+    Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args
+  in
   match exit_code = 0 with
   | false -> Error ()
   | true ->

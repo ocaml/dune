@@ -577,11 +577,11 @@ let gen_rules_regular_directory (sctx : Super_context.t Memo.t) ~src_dir ~compon
 let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   let src_dir = Path.Build.drop_build_context_exn dir in
   match components with
-  | [ ".dune"; "ccomp" ] ->
+  | [ ".dune"; "cc_vendor" ] ->
     has_rules ~dir Subdir_set.empty (fun () ->
       (* Add rules for C compiler detection *)
       let* sctx = sctx in
-      Cxx_rules.rules ~sctx ~dir)
+      Cc_rules.rules ~sctx ~dir)
   | ".js" :: rest ->
     has_rules
       ~dir
@@ -622,7 +622,7 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
   | [ ".dune" ] ->
     has_rules
       ~dir
-      (Subdir_set.of_set (Filename.Set.of_list [ "ccomp" ]))
+      (Subdir_set.of_set (Filename.Set.of_list [ "cc_vendor" ]))
       (fun () -> Configurator_rules.gen_rules ctx)
   | _ -> gen_rules_regular_directory sctx ~src_dir ~components ~dir
 ;;

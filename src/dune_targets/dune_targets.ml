@@ -237,8 +237,6 @@ module Produced = struct
 
   let empty = { files = Filename.Map.empty; subdirs = Filename.Map.empty }
 
-  (** The call sites ensure that [dir = Path.Build.append_local validated.root local].
-      No need for [local] actually... *)
   let rec contents_of_dir ~file_f (dir : Path.Build.t) : ('a dir_contents, Error.t) result
     =
     let open Result.O in
@@ -247,9 +245,15 @@ module Produced = struct
     | Error (Unix.ENOENT, _, _) -> Error (Missing_dir dir)
     | Error e -> Error (Unreadable_dir (dir, e))
     | Ok dir_contents ->
-      Result.List.fold_left dir_contents ~init ~f:(fun dir_contents (name, kind) ->
+      let rec fold_f dir_contents (name, kind) =
         match (kind : File_kind.t) with
-        | S_LNK | S_REG ->
+        | S_LNK ->
+          (match Path.follow_symlink (Path.relative (Path.build dir) name) with
+           | Ok (In_build_dir _ as p) ->
+             let stats = Path.stat_exn p in
+             fold_f dir_contents (name, stats.st_kind)
+           | _ -> failwith "WIP error message here")
+        | S_REG ->
           let files =
             match file_f (Path.Local.relative (Path.Build.local dir) name) with
             | Some payload -> Filename.Map.add_exn dir_contents.files name payload
@@ -263,7 +267,9 @@ module Produced = struct
           { dir_contents with
             subdirs = Filename.Map.add_exn dir_contents.subdirs name subdirs_contents
           }
-        | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind)))
+        | _ -> Error (Unsupported_file (Path.Build.relative dir name, kind))
+      in
+      Result.List.fold_left dir_contents ~init ~f:fold_f
   ;;
 
   let of_validated (validated : Validated.t) =

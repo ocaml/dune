@@ -1,3 +1,4 @@
+open Dune_config
 open Import
 open Pkg_common
 module Package_version = Dune_pkg.Package_version
@@ -66,11 +67,75 @@ let resolve_project_pins project_pins =
   Pin_stanza.resolve project_pins ~scan_project
 ;;
 
+let solve_multiple_envs
+      base_solver_env
+      version_preference
+      repos
+      ~pins
+      ~local_packages
+      ~constraints
+  =
+  let open Fiber.O in
+  let solve_for_env env =
+    Dune_pkg.Opam_solver.solve_lock_dir
+      env
+      version_preference
+      repos
+      ~pins
+      ~local_packages
+      ~constraints
+  in
+  let portable_solver_env =
+    (* TODO: make sure nothing system-specific sneaks into the environment here *)
+    Dune_pkg.Solver_env.unset_multi
+      base_solver_env
+      Dune_lang.Package_variable_name.platform_specific
+  in
+  let+ results =
+    Fiber.parallel_map Dune_pkg.Solver_env.popular_platform_envs ~f:(fun platform_env ->
+      let solver_env = Dune_pkg.Solver_env.extend portable_solver_env platform_env in
+      solve_for_env solver_env)
+  in
+  let results, errors =
+    List.partition_map results ~f:(function
+      | Ok result -> Left result
+      | Error (`Diagnostic_message message) -> Right message)
+  in
+  match results with
+  | [] -> Error errors
+  | x :: xs ->
+    Ok (List.fold_left xs ~init:x ~f:Dune_pkg.Opam_solver.Solver_result.merge, errors)
+;;
+
+let solve_single_env
+      solver_env
+      version_preference
+      repos
+      ~pins
+      ~local_packages
+      ~constraints
+  =
+  let open Fiber.O in
+  let+ result =
+    Dune_pkg.Opam_solver.solve_lock_dir
+      solver_env
+      version_preference
+      repos
+      ~pins
+      ~local_packages
+      ~constraints
+  in
+  match result with
+  | Ok result -> Ok (result, [])
+  | Error (`Diagnostic_message message) -> Error [ message ]
+;;
+
 let solve_lock_dir
       workspace
       ~local_packages
       ~project_pins
       ~print_perf_stats
+      ~portable_lock_dir
       version_preference
       solver_env_from_current_system
       lock_dir_path
@@ -109,7 +174,8 @@ let solve_lock_dir
   let* pins = resolve_project_pins project_pins in
   let time_solve_start = Unix.gettimeofday () in
   progress_state := Some Progress_indicator.Per_lockdir.State.Solving;
-  Dune_pkg.Opam_solver.solve_lock_dir
+  let solve = if portable_lock_dir then solve_multiple_envs else solve_single_env in
+  solve
     solver_env
     (Pkg_common.Version_preference.choose
        ~from_arg:version_preference
@@ -121,8 +187,11 @@ let solve_lock_dir
       (Package_name.Map.map local_packages ~f:Dune_pkg.Local_package.for_solver)
     ~constraints:(constraints_of_workspace workspace ~lock_dir_path)
   >>= function
-  | Error (`Diagnostic_message message) -> Fiber.return (Error (lock_dir_path, message))
-  | Ok { lock_dir; files; pinned_packages; num_expanded_packages } ->
+  | Error messages -> Fiber.return (Error (lock_dir_path, messages))
+  | Ok ({ lock_dir; files; pinned_packages; num_expanded_packages }, _errors) ->
+    (* TODO: Users might want to know if no solution was found on certain
+       platforms. Give the option to print the solver errors, even if a
+       solution was found on some platforms. *)
     let time_end = Unix.gettimeofday () in
     let maybe_perf_stats =
       if print_perf_stats
@@ -149,7 +218,13 @@ let solve_lock_dir
     in
     progress_state := None;
     let+ lock_dir = Lock_dir.compute_missing_checksums ~pinned_packages lock_dir in
-    Ok (Lock_dir.Write_disk.prepare ~lock_dir_path ~files lock_dir, summary_message)
+    Ok
+      ( Lock_dir.Write_disk.prepare
+          ~portable:portable_lock_dir
+          ~lock_dir_path
+          ~files
+          lock_dir
+      , summary_message )
 ;;
 
 let solve
@@ -160,6 +235,7 @@ let solve
       ~version_preference
       ~lock_dirs
       ~print_perf_stats
+      ~portable_lock_dir
   =
   let open Fiber.O in
   (* a list of thunks that will perform all the file IO side
@@ -182,6 +258,7 @@ let solve
                 ~local_packages
                 ~project_pins
                 ~print_perf_stats
+                ~portable_lock_dir
                 version_preference
                 solver_env_from_current_system
                 lockdir_path
@@ -196,9 +273,9 @@ let solve
   | Error errors ->
     User_error.raise
       ([ Pp.text "Unable to solve dependencies for the following lock directories:" ]
-       @ List.concat_map errors ~f:(fun (path, message) ->
+       @ List.concat_map errors ~f:(fun (path, messages) ->
          [ Pp.textf "Lock directory %s:" (Path.Source.to_string_maybe_quoted path)
-         ; Pp.hovbox message
+         ; Pp.hovbox (Pp.concat ~sep:Pp.newline messages)
          ]))
   | Ok write_disks_with_summaries ->
     let write_disk_list, summary_messages = List.split write_disks_with_summaries in
@@ -214,7 +291,7 @@ let project_pins =
     Pin_stanza.DB.combine_exn acc (Dune_project.pins project))
 ;;
 
-let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =
+let lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir =
   let open Fiber.O in
   let* solver_env_from_current_system =
     Dune_pkg.Sys_poll.make ~path:(Env_path.path Stdune.Env.initial)
@@ -240,6 +317,7 @@ let lock ~version_preference ~lock_dirs_arg ~print_perf_stats =
     ~version_preference
     ~lock_dirs
     ~print_perf_stats
+    ~portable_lock_dir
 ;;
 
 let term =
@@ -250,7 +328,12 @@ let term =
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
   Scheduler.go ~common ~config (fun () ->
-    lock ~version_preference ~lock_dirs_arg ~print_perf_stats)
+    let portable_lock_dir =
+      match Config.get Dune_rules.Compile_time.portable_lock_dir with
+      | `Enabled -> true
+      | `Disabled -> false
+    in
+    lock ~version_preference ~lock_dirs_arg ~print_perf_stats ~portable_lock_dir)
 ;;
 
 let info =

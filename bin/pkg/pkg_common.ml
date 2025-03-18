@@ -88,10 +88,10 @@ let get_repos repos ~repositories =
     | Some repo ->
       let loc, opam_url = Repository.opam_url repo in
       let module Opam_repo = Dune_pkg.Opam_repo in
-      (match Dune_pkg.OpamUrl.local_or_git_or_tar_only opam_url loc with
+      (match Dune_pkg.OpamUrl.classify opam_url loc with
        | `Git -> Opam_repo.of_git_repo loc opam_url
        | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
-       | `Tar ->
+       | `Archive ->
          User_error.raise
            ~loc
            [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"

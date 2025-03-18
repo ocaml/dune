@@ -125,8 +125,10 @@ let label = "dune-fetch"
 
 let unpack_tarball ~target ~archive =
   Tar.extract ~archive ~target
-  >>| Result.map_error ~f:(fun () ->
-    Pp.textf "unable to extract %S" (Path.to_string archive))
+  >>| Result.map_error ~f:(fun err ->
+    let stderr_output = Format.asprintf "%a" Error.pp err in
+    Pp.textf "unable to extract %S\nDetails: %s" (Path.to_string archive) stderr_output
+  )
 ;;
 
 let check_checksum checksum path =

@@ -91,11 +91,13 @@ let file_with_executable_bit ~executable path =
 module Stats_for_digest = struct
   type t =
     { st_kind : Unix.file_kind
-    ; st_perm : Unix.file_perm
+    ; executable : bool
     }
 
   let of_unix_stats (stats : Unix.stats) =
-    { st_kind = stats.st_kind; st_perm = stats.st_perm }
+    (* Check if any of the +x bits are set, ignore read and write *)
+    let executable = 0o111 land stats.st_perm <> 0 in
+    { st_kind = stats.st_kind; executable }
   ;;
 end
 
@@ -113,17 +115,15 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   let rec loop path (stats : Stats_for_digest.t) =
     match stats.st_kind with
     | S_LNK ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
       Dune_filesystem_stubs.Unix_error.Detailed.catch
         (fun path ->
            let contents = Unix.readlink (Path.to_string path) in
-           path_with_executable_bit ~executable ~content_digest:contents)
+           path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_REG ->
-      let executable = Path.Permissions.test Path.Permissions.execute stats.st_perm in
       Dune_filesystem_stubs.Unix_error.Detailed.catch
-        (file_with_executable_bit ~executable)
+        (file_with_executable_bit ~executable:stats.executable)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)
     | S_DIR when allow_dirs ->
@@ -150,7 +150,8 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
             |> List.sort ~compare:(fun (x, _) (y, _) -> String.compare x y)
           with
           | exception E e -> Error e
-          | contents -> Ok (generic (directory_digest_version, contents, stats.st_perm))))
+          | contents ->
+            Ok (generic (directory_digest_version, contents, stats.executable))))
     | S_DIR | S_BLK | S_CHR | S_FIFO | S_SOCK -> Error Unexpected_kind
   in
   match stats.st_kind with

@@ -21,7 +21,7 @@ type command_source =
 
 type t =
   { name : Package_name.t
-  ; version : Package_version.t option
+  ; version : Package_version.t
   ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
@@ -59,6 +59,7 @@ end
 module For_solver = struct
   type t =
     { name : Package_name.t
+    ; version : Package_version.t
     ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
@@ -70,6 +71,7 @@ module For_solver = struct
 
   let to_opam_file
         { name
+        ; version
         ; dependencies
         ; conflicts
         ; conflict_class
@@ -83,6 +85,7 @@ module For_solver = struct
        them *)
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
+    |> OpamFile.OPAM.with_version (Package_version.to_opam_package_version version)
     |> OpamFile.OPAM.with_depends (Dependency_formula.to_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
          (List.map conflicts ~f:Package_dependency.to_opam_filtered_formula
@@ -108,7 +111,7 @@ end
 
 let for_solver
       { name
-      ; version = _
+      ; version
       ; dependencies
       ; conflicts
       ; conflict_class
@@ -124,6 +127,7 @@ let for_solver
     | Opam_file { build; install } -> build, install
   in
   { For_solver.name
+  ; version
   ; dependencies
   ; conflicts
   ; conflict_class
@@ -137,7 +141,7 @@ let for_solver
 let of_package (t : Dune_lang.Package.t) =
   let module Package = Dune_lang.Package in
   let loc = Package.loc t in
-  let version = Package.version t in
+  let version = Package.version t |> Option.value ~default:Package_version.dev in
   let name = Package.name t in
   match Package.original_opam_file t with
   | None ->

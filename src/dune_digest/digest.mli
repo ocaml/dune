@@ -24,7 +24,7 @@ val generic : 'a -> t
 module Stats_for_digest : sig
   type t =
     { st_kind : Unix.file_kind
-    ; st_perm : Unix.file_perm
+    ; executable : bool
     }
 
   val of_unix_stats : Unix.stats -> t

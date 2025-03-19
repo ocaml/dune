@@ -6,8 +6,11 @@ setup_ocamllsp_workspace() {
 (lock_dir
  (path "dev-tools.locks/ocaml-lsp-server")
  (repositories mock))
- (lock_dir
-  (repositories mock))
+(lock_dir
+ (path "dev-tools.locks/ocamlformat")
+ (repositories mock))
+(lock_dir
+ (repositories mock))
 (repository
  (name mock)
  (url "file://$(pwd)/mock-opam-repository"))

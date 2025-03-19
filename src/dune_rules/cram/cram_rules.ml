@@ -4,7 +4,8 @@ open Memo.O
 module Spec = struct
   type t =
     { loc : Loc.t
-    ; alias : Alias.Name.Set.t
+    ; test_name_alias : Alias.Name.t
+    ; extra_aliases : Alias.Name.Set.t
     ; deps : unit Action_builder.t list
     ; sandbox : Sandbox_config.t
     ; enabled_if : (Expander.t * Blang.t) list
@@ -12,9 +13,10 @@ module Spec = struct
     ; packages : Package.Name.Set.t
     }
 
-  let empty =
+  let make_empty ~test_name_alias =
     { loc = Loc.none
-    ; alias = Alias.Name.Set.empty
+    ; test_name_alias
+    ; extra_aliases = Alias.Name.Set.empty
     ; enabled_if = []
     ; locks = Action_builder.return Path.Set.empty
     ; deps = []
@@ -49,16 +51,34 @@ let missing_run_t (error : Cram_test.t) =
 let test_rule
       ~sctx
       ~dir
-      ({ alias; loc; enabled_if; deps; locks; sandbox; packages = _ } : Spec.t)
+      ({ test_name_alias
+       ; extra_aliases
+       ; loc
+       ; enabled_if
+       ; deps
+       ; locks
+       ; sandbox
+       ; packages = _
+       } :
+        Spec.t)
       (test : (Cram_test.t, error) result)
   =
   let module Alias_rules = Simple_rules.Alias_rules in
-  let aliases = Alias.Name.Set.to_list_map alias ~f:(Alias.make ~dir) in
+  let extra_aliases =
+    Alias.Name.Set.remove extra_aliases test_name_alias
+    |> Alias.Name.Set.to_list_map ~f:(Alias.make ~dir)
+  in
+  let alias = Alias.make ~dir test_name_alias in
+  (* Here we get all other aliases to depend on the main alias which is the same as the
+     name of the cram test. *)
+  let* () =
+    Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
+      Rules.Produce.Alias.add_deps ~loc extra_alias (Action_builder.dep (Dep.alias alias)))
+  in
   match test with
   | Error (Missing_run_t test) ->
     (* We error out on invalid tests even if they are disabled. *)
-    Memo.parallel_iter aliases ~f:(fun alias ->
-      Alias_rules.add sctx ~alias ~loc (missing_run_t test))
+    Alias_rules.add sctx ~alias ~loc (missing_run_t test)
   | Ok test ->
     (* Morally, this is equivalent to evaluating them all concurrently and
        taking the conjunction, but we do it this way to avoid evaluating things
@@ -66,36 +86,34 @@ let test_rule
     Memo.List.for_all enabled_if ~f:(fun (expander, blang) ->
       Expander.eval_blang expander blang)
     >>= (function
-     | false ->
-       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add_empty sctx ~alias ~loc)
+     | false -> Alias_rules.add_empty sctx ~alias ~loc
      | true ->
-       let cram =
-         let open Action_builder.O in
-         let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
-         let script = Path.Build.append_source prefix_with (Cram_test.script test) in
-         let+ () = Action_builder.path (Path.build script)
-         and+ () = Action_builder.all_unit deps
-         and+ () =
-           match test with
-           | File _ -> Action_builder.return ()
-           | Dir { dir; file = _ } ->
-             let deps =
-               Path.Build.append_source prefix_with dir |> Path.build |> Source_deps.files
-             in
-             let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
-             ()
-         and+ locks = locks >>| Path.Set.to_list in
-         Action.progn
-           [ Cram_exec.action (Path.build script)
-           ; Promote.Diff_action.diff
-               ~optional:true
-               ~mode:Text
-               (Path.build script)
-               (Path.Build.extend_basename script ~suffix:".corrected")
-           ]
-         |> Action.Full.make ~locks ~sandbox
-       in
-       Memo.parallel_iter aliases ~f:(fun alias -> Alias_rules.add sctx ~alias ~loc cram))
+       Alias_rules.add sctx ~alias ~loc
+       @@
+       let open Action_builder.O in
+       let prefix_with, _ = Path.Build.extract_build_context_dir_exn dir in
+       let script = Path.Build.append_source prefix_with (Cram_test.script test) in
+       let+ () = Action_builder.path (Path.build script)
+       and+ () = Action_builder.all_unit deps
+       and+ () =
+         match test with
+         | File _ -> Action_builder.return ()
+         | Dir { dir; file = _ } ->
+           let deps =
+             Path.Build.append_source prefix_with dir |> Path.build |> Source_deps.files
+           in
+           let+ (_ : Path.Set.t) = Action_builder.dyn_memo_deps deps in
+           ()
+       and+ locks = locks >>| Path.Set.to_list in
+       Action.progn
+         [ Cram_exec.action (Path.build script)
+         ; Promote.Diff_action.diff
+             ~optional:true
+             ~mode:Text
+             (Path.build script)
+             (Path.Build.extend_basename script ~suffix:".corrected")
+         ]
+       |> Action.Full.make ~locks ~sandbox)
 ;;
 
 let collect_stanzas =
@@ -146,11 +164,8 @@ let rules ~sctx ~dir tests =
         | Ok test -> Cram_test.name test
         | Error (Missing_run_t test) -> Cram_test.name test
       in
-      let init =
-        ( None
-        , let alias = Alias.Name.of_string name |> Alias.Name.Set.add Spec.empty.alias in
-          { Spec.empty with alias } )
-      in
+      let test_name_alias = Alias.Name.of_string name in
+      let init = None, Spec.make_empty ~test_name_alias in
       let+ runtest_alias, acc =
         Memo.List.fold_left
           stanzas
@@ -213,10 +228,10 @@ let rules ~sctx ~dir tests =
                           ]))
               in
               let enabled_if = (expander, stanza.enabled_if) :: acc.enabled_if in
-              let alias =
+              let extra_aliases =
                 match stanza.alias with
-                | None -> acc.alias
-                | Some a -> Alias.Name.Set.add acc.alias a
+                | None -> acc.extra_aliases
+                | Some a -> Alias.Name.Set.add acc.extra_aliases a
               in
               let packages =
                 match stanza.package with
@@ -225,17 +240,25 @@ let rules ~sctx ~dir tests =
                   Package.Name.Set.add acc.packages (Package.name p)
               in
               ( runtest_alias
-              , { acc with enabled_if; locks; deps; alias; packages; sandbox } ))
+              , { acc with
+                  enabled_if
+                ; locks
+                ; deps
+                ; test_name_alias
+                ; extra_aliases
+                ; packages
+                ; sandbox
+                } ))
       in
-      let alias =
+      let extra_aliases =
         let to_add =
           match runtest_alias with
           | None | Some (_, true) -> Alias.Name.Set.singleton Alias0.runtest
           | Some (_, false) -> Alias.Name.Set.empty
         in
-        Alias.Name.Set.union to_add acc.alias
+        Alias.Name.Set.union to_add acc.extra_aliases
       in
-      { acc with alias }
+      { acc with extra_aliases }
     in
     with_package_mask spec.packages (fun () -> test_rule ~sctx ~dir spec test))
 ;;

@@ -13,6 +13,7 @@ module Path = Path
 module Value = Value
 module Blang = Blang
 module Binary_kind = Binary_kind
+module Package_id = Package_id
 module Package_constraint = Package_constraint
 module Package_name = Package_name
 module Package_dependency = Package_dependency

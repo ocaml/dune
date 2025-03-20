@@ -3,8 +3,7 @@ module Name = Package_name
 
 module Opam_package = struct
   type t =
-    { name : Package_name.t
-    ; dir : Path.Source.t
+    { id : Package_id.t
     ; opam_file : Path.Source.t
     ; loc : Loc.t
     ; synopsis : string option
@@ -31,9 +30,9 @@ module Opam_package = struct
         ~tags
     =
     (* TODO fix *)
+    let id = Package_id.create ~name ~dir in
     let opam_file = dir in
-    { name
-    ; dir
+    { id
     ; opam_file
     ; loc
     ; synopsis
@@ -48,6 +47,10 @@ module Opam_package = struct
   ;;
 
   let to_dyn _t = Dyn.string "TODO"
+
+  let depends t = t.depends
+  let depopts t = t.depopts
+  let conflicts t = t.conflicts
 end
 
 type t =
@@ -59,7 +62,7 @@ let of_opam_package pkg = Opam_package pkg
 
 let name = function
   | Dune_package t -> Dune_package.name t
-  | Opam_package t -> t.name
+  | Opam_package t -> Package_id.name t.id
 ;;
 
 let info = function
@@ -99,7 +102,7 @@ let loc = function
 
 let dir = function
   | Dune_package t -> Dune_package.dir t
-  | Opam_package t -> t.dir
+  | Opam_package t -> Package_id.dir t.id
 ;;
 
 let synopsis = function
@@ -126,3 +129,20 @@ let set_version_and_info t ~version ~info =
   match t with
   | Dune_package t -> Dune_package (Dune_package.set_version_and_info t ~version ~info)
   | Opam_package t -> Opam_package { t with version; info }
+;;
+
+let id = function
+  | Dune_package t -> Dune_package.id t
+  | Opam_package t -> t.id
+;;
+
+let allow_empty = function
+  | Dune_package t -> Dune_package.allow_empty t
+  | Opam_package _ -> false
+;;
+
+let opam_package = function
+  | Dune_package _ -> None
+  | Opam_package t -> Some t
+
+(* let depends v *) 

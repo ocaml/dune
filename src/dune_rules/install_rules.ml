@@ -1027,14 +1027,14 @@ let packages =
         >>| List.map ~f:(fun (e : Install.Entry.Sourced.t) -> e.entry.src, Package.id pkg))
     in
     List.rev_concat l
-    |> Path.Build.Map.of_list_fold ~init:Package.Id.Set.empty ~f:Package.Id.Set.add
+    |> Path.Build.Map.of_list_fold ~init:Package_id.Set.empty ~f:Package_id.Set.add
   in
   let memo =
     Memo.create
       "package-map"
       f
       ~input:(module Super_context.As_memo_key)
-      ~cutoff:(Path.Build.Map.equal ~equal:Package.Id.Set.equal)
+      ~cutoff:(Path.Build.Map.equal ~equal:Package_id.Set.equal)
   in
   fun sctx -> Memo.exec memo sctx
 ;;
@@ -1046,11 +1046,11 @@ let packages_file_is_part_of path =
      Context_name.of_string_opt ctx_name)
     ~f:Super_context.find
   >>= function
-  | None -> Memo.return Package.Id.Set.empty
+  | None -> Memo.return Package_id.Set.empty
   | Some sctx ->
     let open Memo.O in
     let+ map = packages sctx in
-    Option.value (Path.Build.Map.find map path) ~default:Package.Id.Set.empty
+    Option.value (Path.Build.Map.find map path) ~default:Package_id.Set.empty
 ;;
 
 let symlinked_entries sctx package =
@@ -1082,16 +1082,16 @@ let symlinked_entries =
 let package_deps (pkg : Package.t) files =
   let rec loop rules_seen (fn : Path.Build.t) =
     let* pkgs = packages_file_is_part_of fn in
-    if Package.Id.Set.is_empty pkgs || Package.Id.Set.mem pkgs (Package.id pkg)
+    if Package_id.Set.is_empty pkgs || Package_id.Set.mem pkgs (Package.id pkg)
     then loop_deps rules_seen fn
     else Memo.return (pkgs, rules_seen)
   and loop_deps rules_seen fn =
     Load_rules.get_rule (Path.build fn)
     >>= function
-    | None -> Memo.return (Package.Id.Set.empty, rules_seen)
+    | None -> Memo.return (Package_id.Set.empty, rules_seen)
     | Some rule ->
       if Rule.Set.mem rules_seen rule
-      then Memo.return (Package.Id.Set.empty, rules_seen)
+      then Memo.return (Package_id.Set.empty, rules_seen)
       else (
         let rules_seen = Rule.Set.add rules_seen rule in
         let* res = Dune_engine.Build_system.execute_rule rule in
@@ -1105,11 +1105,11 @@ let package_deps (pkg : Package.t) files =
            List.filter_map ~f:Path.as_in_build_dir))
   and loop_files rules_seen files =
     Memo.List.fold_left
-      ~init:(Package.Id.Set.empty, rules_seen)
+      ~init:(Package_id.Set.empty, rules_seen)
       files
       ~f:(fun (sets, rules_seen) file ->
         let+ set, rules_seen = loop rules_seen file in
-        Package.Id.Set.union set sets, rules_seen)
+        Package_id.Set.union set sets, rules_seen)
   in
   let+ packages, _rules_seen = loop_files Rule.Set.empty files in
   packages
@@ -1215,13 +1215,16 @@ let gen_package_install_file_rules sctx (package : Package.t) =
      | true ->
        let missing_deps =
          let effective_deps =
-           Package.Id.Set.to_list packages
-           |> Package.Name.Set.of_list_map ~f:Package.Id.name
+           Package_id.Set.to_list packages
+           |> Package.Name.Set.of_list_map ~f:Package_id.name
          in
          let specified_deps =
-           Package.depends package
-           |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) ->
-             dep.name)
+           match Package.dune_package package with
+           | Some package ->
+             Dune_lang.Dune_package.depends package
+             |> Package.Name.Set.of_list_map ~f:(fun (dep : Package_dependency.t) ->
+               dep.name)
+           | None -> effective_deps
          in
          Package.Name.Set.diff effective_deps specified_deps
        in
@@ -1253,10 +1256,10 @@ let gen_package_install_file_rules sctx (package : Package.t) =
          (let+ packages = packages
           and+ () = install_file_deps in
           ( ()
-          , Package.Id.Set.to_list packages
-            |> Dep.Set.of_list_map ~f:(fun (pkg : Package.Id.t) ->
+          , Package_id.Set.to_list packages
+            |> Dep.Set.of_list_map ~f:(fun (pkg : Package_id.t) ->
               let pkg =
-                let name = Package.Id.name pkg in
+                let name = Package_id.name pkg in
                 Package.Name.Map.find_exn all_packages name
               in
               Dep_conf_eval.package_install ~context:build_context ~pkg |> Dep.alias) )))
@@ -1273,7 +1276,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
       let+ () = install_file_deps
       and+ () =
         if strict_package_deps
-        then Action_builder.map packages ~f:(fun (_ : Package.Id.Set.t) -> ())
+        then Action_builder.map packages ~f:(fun (_ : Package_id.Set.t) -> ())
         else Action_builder.return ()
       and+ entries =
         let+ entries = entries in

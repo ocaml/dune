@@ -24,6 +24,10 @@ module Opam_package : sig
     -> description:string option
     -> tags:string list
     -> t
+
+  val depends : t -> OpamTypes.filtered_formula
+  val depopts : t -> Package_dependency.t list
+  val conflicts : t -> Package_dependency.t list
 end
 
 val of_dune_package : Dune_package.t -> t
@@ -40,5 +44,14 @@ val dir : t -> Path.Source.t
 val synopsis : t -> string option
 val description : t -> string option
 val dune_package : t -> Dune_package.t option
+val opam_package : t -> Opam_package.t option
 val to_dyn : t -> Dyn.t
-val set_version_and_info : t -> version:Package_version.t option -> info:Package_info.t -> t
+
+val set_version_and_info
+  :  t
+  -> version:Package_version.t option
+  -> info:Package_info.t
+  -> t
+
+val id : t -> Package_id.t
+val allow_empty : t -> bool

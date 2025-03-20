@@ -8,14 +8,6 @@ module Name : sig
   include module type of Package_name with type t := t
 end
 
-module Id : sig
-  type t
-
-  val name : t -> Name.t
-
-  include Comparable_intf.S with type key := t
-end
-
 type opam_file =
   | Exists of bool
   | Generated
@@ -43,7 +35,7 @@ val tags : t -> string list
 val synopsis : t -> string option
 val info : t -> Package_info.t
 val description : t -> string option
-val id : t -> Id.t
+val id : t -> Package_id.t
 
 val set_version_and_info
   :  t

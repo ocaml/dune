@@ -643,7 +643,7 @@ let filter_packages t ~f =
 let including_hidden_packages t = t.including_hidden_packages
 
 let make_packages
-      ~opam_packages
+      ~(opam_packages : (Loc.t * Package.Opam_package.t Memo.t) Package.Name.Set.map)
       ~dir
       ~generate_opam_files:_
       ~opam_file_location
@@ -686,18 +686,25 @@ let make_packages
    in
    let deprecated_package_names =
      List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
-       let deprecated_package_names = Dune_lang.Dune_package.deprecated_package_names package in
+       let deprecated_package_names =
+         Dune_lang.Dune_package.deprecated_package_names package
+       in
        Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
    in
    List.iter packages ~f:(fun p ->
      let name = Dune_lang.Dune_package.name p in
      Package.Name.Map.find deprecated_package_names name
-     |> Option.iter ~f:(fun loc -> package_defined_twice name loc (Dune_lang.Dune_package.loc p))));
-  match Package.Name.Map.of_list_map packages ~f:(fun p -> Dune_lang.Dune_package.name p, p) with
+     |> Option.iter ~f:(fun loc ->
+       package_defined_twice name loc (Dune_lang.Dune_package.loc p))));
+  match
+    Package.Name.Map.of_list_map packages ~f:(fun p -> Dune_lang.Dune_package.name p, p)
+  with
   | Error (_, _, p) ->
     User_error.raise
       ~loc:(Dune_lang.Dune_package.loc p)
-      [ Pp.textf "package %s is already defined" (Dune_lang.Dune_package.name p |> Package.Name.to_string)
+      [ Pp.textf
+          "package %s is already defined"
+          (Dune_lang.Dune_package.name p |> Package.Name.to_string)
       ]
   | Ok packages ->
     let generated_opam_file =
@@ -709,11 +716,11 @@ let make_packages
     (match opam_file_location with
      | `Inside_opam_directory ->
        Package.Name.Map.map packages ~f:(fun p ->
-           let dir = Path.Source.relative dir "opam" in
-           (* TODO move `dir` out out Dune_package, it doesn't make much sense there *)
-           let p = Dune_lang.Dune_package.set_inside_opam_dir p ~dir in
-           let p = Dune_lang.Package.of_dune_package p in
-           generated_opam_file p)
+         let dir = Path.Source.relative dir "opam" in
+         (* TODO move `dir` out out Dune_package, it doesn't make much sense there *)
+         let p = Dune_lang.Dune_package.set_inside_opam_dir p ~dir in
+         let p = Dune_lang.Package.of_dune_package p in
+         generated_opam_file p)
      | `Relative_to_project ->
        Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
          match dune, opam with
@@ -741,7 +748,7 @@ let parse_packages
       (packages : Dune_lang.Dune_package.t list)
       opam_file_location
       ~generate_opam_files
-      opam_packages
+      (opam_packages : (Loc.t * Package.Opam_package.t Memo.t) Package.Name.Set.map)
   =
   forbid_opam_files_relative_to_project opam_file_location opam_packages;
   let open Memo.O in
@@ -750,7 +757,7 @@ let parse_packages
      Package.Name.Map.to_list opam_packages
      |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
        let+ pkg = pkg in
-       name, pkg)
+       name, Package.of_opam_package pkg)
      |> Memo.map ~f:Package.Name.Map.of_list_exn
    else
      Memo.return
@@ -1007,7 +1014,9 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   then
     let+ opam_packages =
       let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
-      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
+      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) ->
+        let+ pkg = pkg in
+        Package.of_opam_package pkg)
     in
     Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None

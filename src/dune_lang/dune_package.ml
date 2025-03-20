@@ -2,34 +2,6 @@ open Stdune
 open Dune_sexp
 module Name = Package_name
 
-module Id = struct
-  module T = struct
-    type t =
-      { name : Name.t
-      ; dir : Path.Source.t
-      }
-
-    let compare { name; dir } pkg =
-      match Name.compare name pkg.name with
-      | Eq -> Path.Source.compare dir pkg.dir
-      | e -> e
-    ;;
-
-    let to_dyn { dir; name } =
-      Dyn.record [ "name", Name.to_dyn name; "dir", Path.Source.to_dyn dir ]
-    ;;
-  end
-
-  include T
-
-  let hash { name; dir } = Tuple.T2.hash Name.hash Path.Source.hash (name, dir)
-  let name t = t.name
-
-  module C = Comparable.Make (T)
-  module Set = C.Set
-  module Map = C.Map
-end
-
 type opam_file =
   | Exists of bool
   | Generated
@@ -42,7 +14,7 @@ type original_opam_file =
   }
 
 type t =
-  { id : Id.t
+  { id : Package_id.t
   ; opam_file : Path.Source.t
   ; loc : Loc.t
   ; synopsis : string option
@@ -61,13 +33,11 @@ type t =
 (* Package name are globally unique, so we can reasonably expect that there will
    always be only a single value of type [t] with a given name in memory. That's
    why we only hash the name. *)
-let hash t = Id.hash t.id
-let name t = t.id.name
-let dir t = t.id.dir
+let hash t = Package_id.hash t.id
+let name t = Package_id.name t.id
+let dir t = Package_id.dir t.id
 let loc t = t.loc
 let deprecated_package_names t = t.deprecated_package_names
-
-(* let set_has_opam_file t has_opam_file = { t with has_opam_file } *)
 let version t = t.version
 let depends t = t.depends
 let conflicts t = t.conflicts
@@ -77,7 +47,11 @@ let synopsis t = t.synopsis
 let info t = t.info
 let description t = t.description
 let id t = t.id
-let set_inside_opam_dir t ~dir = { t with opam_file = Name.file t.id.name ~dir }
+
+let set_inside_opam_dir t ~dir =
+  { t with opam_file = Name.file (Package_id.name t.id) ~dir }
+;;
+
 let set_version_and_info t ~version ~info = { t with version; info }
 
 let encode
@@ -173,8 +147,8 @@ let decode =
        and+ allow_empty = field_b "allow_empty" ~check:(Syntax.since Stanza.syntax (3, 0))
        and+ lang_version = Syntax.get_exn Stanza.syntax in
        let allow_empty = lang_version < (3, 0) || allow_empty in
-       let id = { Id.name; dir } in
-       let opam_file = Name.file id.name ~dir:id.dir in
+       let id = Package_id.create ~name ~dir in
+       let opam_file = Name.file (Package_id.name id) ~dir:(Package_id.dir id) in
        Printf.eprintf "Sets to Exists false\n";
        { id
        ; loc
@@ -193,13 +167,6 @@ let decode =
        }
 ;;
 
-(* let dyn_of_opam_file = *)
-(*   let open Dyn in *)
-(*   function *)
-(*   | Exists b -> variant "Exists" [ bool b ] *)
-(*   | Generated -> variant "Generated" [] *)
-(* ;; *)
-
 let to_dyn
       { id
       ; version
@@ -208,18 +175,18 @@ let to_dyn
       ; depends
       ; conflicts
       ; depopts
-      ; info (* ; has_opam_file *)
+      ; info
       ; tags
       ; loc = _
       ; deprecated_package_names
       ; sites
       ; allow_empty
-      ; opam_file = _ (* ; original_opam_file = _ *)
+      ; opam_file = _
       }
   =
   let open Dyn in
   record
-    [ "id", Id.to_dyn id
+    [ "id", Package_id.to_dyn id
     ; "synopsis", option string synopsis
     ; "description", option string description
     ; "depends", list Package_dependency.to_dyn depends
@@ -260,7 +227,7 @@ let create
       (* ~original_opam_file *)
       ~deprecated_package_names
   =
-  let id = { Id.name; dir } in
+  let id = Package_id.create ~name ~dir in
   { id
   ; loc
   ; version
@@ -269,11 +236,11 @@ let create
   ; depends
   ; conflicts
   ; info
-  ; depopts (* ; has_opam_file *)
+  ; depopts
   ; tags
   ; deprecated_package_names
   ; sites
   ; allow_empty
-  ; opam_file = Name.file name ~dir (* ; original_opam_file *)
+  ; opam_file = Name.file name ~dir
   }
 ;;

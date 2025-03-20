@@ -127,8 +127,8 @@ module Function_description = struct
 end
 
 let c_generated_functions_cout_c_of_lib
-  ~external_library_name
-  (fd : Function_description.t)
+      ~external_library_name
+      (fd : Function_description.t)
   =
   sprintf
     "%s__c_cout_generated_functions__%s__%s.c"

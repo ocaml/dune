@@ -68,10 +68,9 @@ module Mode : sig
     (** Expansion must produce a single value *)
     | Many : (Value.Deferred_concat.t list, Value.t list) t
     (** Expansion may produce any number of values *)
-    | At_least_one
-        : ( Value.Deferred_concat.t * Value.Deferred_concat.t list
-            , Value.t * Value.t list )
-            t (** Expansion may produce 1 or more values *)
+    | At_least_one :
+        (Value.Deferred_concat.t * Value.Deferred_concat.t list, Value.t * Value.t list) t
+    (** Expansion may produce 1 or more values *)
 end
 
 type yes_no_unknown =

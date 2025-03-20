@@ -65,8 +65,10 @@ let to_dyn { config; ocamlpath = _; toolchain; which = _ } =
 ;;
 
 let ocamlpath_sep =
-  if Sys.cygwin then (* because that's what ocamlfind expects *)
-                  ';' else Bin.path_sep
+  if Sys.cygwin
+  then (* because that's what ocamlfind expects *)
+    ';'
+  else Bin.path_sep
 ;;
 
 let ocamlpath_var = "OCAMLPATH"

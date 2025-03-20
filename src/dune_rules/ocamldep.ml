@@ -28,10 +28,10 @@ module Merge_files_into = struct
     ;;
 
     let encode
-      (type src dst)
-      ((sources, extras, target) : (src, dst) t)
-      (input : src -> Sexp.t)
-      (output : dst -> Sexp.t)
+          (type src dst)
+          ((sources, extras, target) : (src, dst) t)
+          (input : src -> Sexp.t)
+          (output : dst -> Sexp.t)
       : Sexp.t
       =
       List
@@ -125,9 +125,9 @@ let transitive_deps =
 ;;
 
 let deps_of
-  ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
-  ~ml_kind
-  unit
+      ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
+      ~ml_kind
+      unit
   =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
   let dep = Obj_dir.Module.dep obj_dir in

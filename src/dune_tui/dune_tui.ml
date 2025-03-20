@@ -295,10 +295,11 @@ module Console_backend = struct
            Ordering.is_eq (Pp.compare ~compare:User_message.Style.compare x y)))
         status_line
         state.status_line;
-      if let l = Lwd.peek messages in
-         not
-           (List.length l = Queue.length state.messages
-            && List.equal User_message.equal l (Queue.to_list state.messages))
+      if
+        let l = Lwd.peek messages in
+        not
+          (List.length l = Queue.length state.messages
+           && List.equal User_message.equal l (Queue.to_list state.messages))
       then Lwd.set messages (Queue.to_list state.messages)
   ;;
 

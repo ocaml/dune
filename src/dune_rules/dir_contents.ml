@@ -304,9 +304,9 @@ end = struct
   ;;
 
   let make_group_root
-    sctx
-    ~dir
-    { Dir_status.Group_root.qualification; dune_file; source_dir; components }
+        sctx
+        ~dir
+        { Dir_status.Group_root.qualification; dune_file; source_dir; components }
     =
     let include_subdirs =
       let loc, qualif_mode = qualification in
@@ -318,89 +318,89 @@ end = struct
       Memo.lazy_
         ~human_readable_description:(fun () -> human_readable_description dir)
         (fun () ->
-          let ctx = Super_context.context sctx in
-          let stanzas = Dune_file.stanzas dune_file in
-          let project = Dune_file.project dune_file in
-          let+ (files, subdirs), rules =
-            Rules.collect (fun () ->
-              Memo.fork_and_join
-                (fun () ->
-                  stanzas
-                  >>= load_text_files
-                        sctx
-                        source_dir
-                        ~src_dir:(Dune_file.dir dune_file)
-                        ~dir)
-                (fun () ->
-                  Memo.parallel_map
-                    components
-                    ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
-                      let+ files =
-                        load_text_files
+           let ctx = Super_context.context sctx in
+           let stanzas = Dune_file.stanzas dune_file in
+           let project = Dune_file.project dune_file in
+           let+ (files, subdirs), rules =
+             Rules.collect (fun () ->
+               Memo.fork_and_join
+                 (fun () ->
+                    stanzas
+                    >>= load_text_files
                           sctx
                           source_dir
-                          stanzas
-                          ~src_dir:(Source_tree.Dir.path source_dir)
-                          ~dir
-                      in
-                      { Source_file_dir.dir; path_to_root = path_to_group_root; files })))
-          in
-          let dirs = { Source_file_dir.dir; path_to_root = []; files } :: subdirs in
-          let lib_config =
-            let+ ocaml = Context.ocaml ctx in
-            ocaml.lib_config
-          in
-          let ml =
-            Memo.lazy_ (fun () ->
-              let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
-              let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
-              let* expander = Super_context.expander sctx ~dir in
-              stanzas
-              >>= Ml_sources.make
-                    ~expander
-                    ~dir
-                    ~project
-                    ~libs
-                    ~lib_config
-                    ~loc
-                    ~lookup_vlib
-                    ~include_subdirs
-                    ~dirs)
-          in
-          let foreign_sources =
-            Memo.lazy_ (fun () ->
-              let dune_version = Dune_project.dune_version project in
-              stanzas >>| Foreign_sources.make ~dune_version ~dirs)
-          in
-          let coq =
-            Memo.lazy_ (fun () ->
-              stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
-          in
-          let subdirs =
-            List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
-              { kind = Group_part
-              ; dir
-              ; text_files = files
-              ; ml
-              ; foreign_sources
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
-              ; coq
-              })
-          in
-          let root =
-            { kind = Group_root subdirs
-            ; dir
-            ; text_files = files
-            ; ml
-            ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
-            ; coq
-            }
-          in
-          { Standalone_or_root.root
-          ; rules
-          ; subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
-          })
+                          ~src_dir:(Dune_file.dir dune_file)
+                          ~dir)
+                 (fun () ->
+                    Memo.parallel_map
+                      components
+                      ~f:(fun { dir; path_to_group_root; source_dir; stanzas } ->
+                        let+ files =
+                          load_text_files
+                            sctx
+                            source_dir
+                            stanzas
+                            ~src_dir:(Source_tree.Dir.path source_dir)
+                            ~dir
+                        in
+                        { Source_file_dir.dir; path_to_root = path_to_group_root; files })))
+           in
+           let dirs = { Source_file_dir.dir; path_to_root = []; files } :: subdirs in
+           let lib_config =
+             let+ ocaml = Context.ocaml ctx in
+             ocaml.lib_config
+           in
+           let ml =
+             Memo.lazy_ (fun () ->
+               let lookup_vlib = lookup_vlib sctx ~current_dir:dir in
+               let libs = Scope.DB.find_by_dir dir >>| Scope.libs in
+               let* expander = Super_context.expander sctx ~dir in
+               stanzas
+               >>= Ml_sources.make
+                     ~expander
+                     ~dir
+                     ~project
+                     ~libs
+                     ~lib_config
+                     ~loc
+                     ~lookup_vlib
+                     ~include_subdirs
+                     ~dirs)
+           in
+           let foreign_sources =
+             Memo.lazy_ (fun () ->
+               let dune_version = Dune_project.dune_version project in
+               stanzas >>| Foreign_sources.make ~dune_version ~dirs)
+           in
+           let coq =
+             Memo.lazy_ (fun () ->
+               stanzas >>| Coq_sources.of_dir ~dir ~dirs ~include_subdirs)
+           in
+           let subdirs =
+             List.map subdirs ~f:(fun { Source_file_dir.dir; path_to_root = _; files } ->
+               { kind = Group_part
+               ; dir
+               ; text_files = files
+               ; ml
+               ; foreign_sources
+               ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
+               ; coq
+               })
+           in
+           let root =
+             { kind = Group_root subdirs
+             ; dir
+             ; text_files = files
+             ; ml
+             ; foreign_sources
+             ; mlds = Memo.lazy_ (fun () -> build_mlds_map dune_file ~dir ~files)
+             ; coq
+             }
+           in
+           { Standalone_or_root.root
+           ; rules
+           ; subdirs = Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> x.dir, x)
+           })
     in
     { Standalone_or_root.contents }
   ;;

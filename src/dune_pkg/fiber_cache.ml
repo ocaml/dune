@@ -4,7 +4,7 @@ type ('k, 'v) t =
   { (* The cache stores results so that if an exception was raised while
        computing a value, concurrent accesses to the cache can find out. *)
     table : ('k, ('v, Exn_with_backtrace.t list) result Fiber.Ivar.t) Table.t
-      (* This module is stored so it can be reused to create a table from the cache. *)
+    (* This module is stored so it can be reused to create a table from the cache. *)
   ; key_module : (module Table.Key with type t = 'k)
   }
 

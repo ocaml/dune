@@ -1,6 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
  * See the README file for details, or visit http://0install.net.
- *)
+*)
 
 (** A general purpose SAT solver. *)
 
@@ -8,13 +8,6 @@ module type USER = sig
   type t
 
   val pp : t -> 'tag Pp.t
-end
-
-module Var_value : sig
-  type t =
-    | True
-    | False
-    | Undecided
 end
 
 module Make (User : USER) : sig
@@ -35,9 +28,6 @@ module Make (User : USER) : sig
   (** Create a problem. *)
   val create : unit -> t
 
-  (** Get the assignment for this literal in the discovered solution. *)
-  type solution = lit -> bool
-
   (** Indicate that the problem is unsolvable, before even starting. This is a convenience
       feature so that clients don't need a separate code path for problems they discover
       during setup vs problems discovered by the solver. *)
@@ -56,14 +46,20 @@ module Make (User : USER) : sig
 
   (** Add a clause preventing more than one literal in the list from being [True].
       @raise Invalid_argument if the list contains duplicates. *)
-  val at_most_one : t -> lit list -> at_most_one_clause
+  val at_most_one : lit list -> at_most_one_clause
+
+  type at_most_clause
+
+  (** Add a clause preventing more than [n] literals in the list from being [True].
+      @raise Invalid_argument if the list contains duplicates. *)
+  val at_most : int -> lit list -> at_most_clause
 
   (** [run_solver decider] tries to solve the SAT problem. It simplifies it as much as possible first. When it
       has two paths which both appear possible, it calls [decider ()] to choose which to explore first. If this
       leads to a solution, it will be used. If not, the other path will be tried. If [decider] returns [None],
       we try setting the remaining variables to [False] ([decider] will not be called again unless we backtrack).
       Use this to tidy up at the end, when you no longer care about the order. *)
-  val run_solver : t -> (unit -> lit option) -> solution option
+  val run_solver : t -> (unit -> lit option) -> bool
 
   (** Return the first literal in the list whose value is [Undecided], or [None] if they're all decided.
       The decider function may find this useful. *)
@@ -78,7 +74,6 @@ module Make (User : USER) : sig
     | Clause of clause
     | External of string
 
-  val lit_value : lit -> Var_value.t
   val get_user_data_for_lit : lit -> User.t
   val explain_reason : lit -> 'tag Pp.t
 end

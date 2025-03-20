@@ -106,11 +106,11 @@ module V1 = struct
           Lwt.try_bind
             (fun () -> Lwt_unix.stat s)
             (fun stat ->
-              Lwt.return
-                (match stat.st_kind with
-                 | Unix.S_SOCK -> Ok `Unix_socket
-                 | S_REG -> Ok `Normal_file
-                 | _ -> Ok `Other))
+               Lwt.return
+                 (match stat.st_kind with
+                  | Unix.S_SOCK -> Ok `Unix_socket
+                  | S_REG -> Ok `Normal_file
+                  | _ -> Ok `Other))
             (fun e -> Lwt.return (Error e))
         ;;
       end)

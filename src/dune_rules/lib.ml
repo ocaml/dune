@@ -1471,11 +1471,11 @@ end = struct
   ;;
 
   let add_pp_runtime_deps
-    db
-    { Resolved.resolved; selects; re_exports }
-    ~private_deps
-    ~pps
-    ~dune_version
+        db
+        { Resolved.resolved; selects; re_exports }
+        ~private_deps
+        ~pps
+        ~dune_version
     : Resolved.t Memo.t
     =
     let { runtime_deps; pps } = pp_deps db pps ~dune_version ~private_deps in
@@ -2032,13 +2032,13 @@ module DB = struct
   ;;
 
   let resolve_user_written_deps
-    t
-    targets
-    ~allow_overlaps
-    ~forbidden_libraries
-    deps
-    ~pps
-    ~dune_version
+        t
+        targets
+        ~allow_overlaps
+        ~forbidden_libraries
+        deps
+        ~pps
+        ~dune_version
     =
     let resolved =
       Memo.lazy_ (fun () ->
@@ -2072,10 +2072,10 @@ module DB = struct
         in
         Resolve.Memo.push_stack_frame
           (fun () ->
-            Resolve_names.linking_closure_with_overlap_checks
-              (Option.some_if (not allow_overlaps) t)
-              ~forbidden_libraries
-              res)
+             Resolve_names.linking_closure_with_overlap_checks
+               (Option.some_if (not allow_overlaps) t)
+               ~forbidden_libraries
+               res)
           ~human_readable_description:(fun () ->
             match targets with
             | `Melange_emit name -> Pp.textf "melange target %s" name
@@ -2137,12 +2137,12 @@ module DB = struct
 end
 
 let to_dune_lib
-  ({ info; _ } as lib)
-  ~modules
-  ~foreign_objects
-  ~melange_runtime_deps
-  ~public_headers
-  ~dir
+      ({ info; _ } as lib)
+      ~modules
+      ~foreign_objects
+      ~melange_runtime_deps
+      ~public_headers
+      ~dir
   : Dune_package.Lib.t Resolve.Memo.t
   =
   let loc = Lib_info.loc info in

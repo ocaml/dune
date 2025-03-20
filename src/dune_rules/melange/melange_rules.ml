@@ -185,18 +185,18 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
 ;;
 
 let build_js
-  ~loc
-  ~dir
-  ~pkg_name
-  ~mode
-  ~module_systems
-  ~output
-  ~obj_dir
-  ~sctx
-  ~includes
-  ~(compile_flags : Ocaml_flags.t)
-  ~local_modules_and_obj_dir
-  m
+      ~loc
+      ~dir
+      ~pkg_name
+      ~mode
+      ~module_systems
+      ~output
+      ~obj_dir
+      ~sctx
+      ~includes
+      ~(compile_flags : Ocaml_flags.t)
+      ~local_modules_and_obj_dir
+      m
   =
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
@@ -269,12 +269,12 @@ let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
 ;;
 
 let setup_emit_cmj_rules
-  ~sctx
-  ~dir
-  ~scope
-  ~expander
-  ~dir_contents
-  (mel : Melange_stanzas.Emit.t)
+      ~sctx
+      ~dir
+      ~scope
+      ~expander
+      ~dir_contents
+      (mel : Melange_stanzas.Emit.t)
   =
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
@@ -455,14 +455,14 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
 ;;
 
 let setup_entries_js
-  ~sctx
-  ~dir
-  ~dir_contents
-  ~scope
-  ~requires_link
-  ~target_dir
-  ~mode
-  (mel : Melange_stanzas.Emit.t)
+      ~sctx
+      ~dir
+      ~dir_contents
+      ~scope
+      ~requires_link
+      ~target_dir
+      ~mode
+      (mel : Melange_stanzas.Emit.t)
   =
   let* local_modules, modules_for_js, local_obj_dir =
     modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
@@ -634,14 +634,14 @@ let setup_js_rules_libraries =
 ;;
 
 let setup_js_rules_libraries_and_entries
-  ~dir_contents
-  ~dir
-  ~scope
-  ~sctx
-  ~requires_link
-  ~mode
-  ~target_dir
-  mel
+      ~dir_contents
+      ~dir
+      ~scope
+      ~sctx
+      ~requires_link
+      ~mode
+      ~target_dir
+      mel
   =
   let+ () =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel

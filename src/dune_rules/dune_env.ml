@@ -94,23 +94,23 @@ let dyn_of_config { bin_annot; _ } =
 ;;
 
 let equal_config
-  { flags
-  ; foreign_flags
-  ; link_flags
-  ; env_vars
-  ; binaries
-  ; inline_tests
-  ; menhir
-  ; odoc
-  ; js_of_ocaml
-  ; wasm_of_ocaml
-  ; coq
-  ; format_config
-  ; error_on_use
-  ; warn_on_load
-  ; bin_annot
-  }
-  t
+      { flags
+      ; foreign_flags
+      ; link_flags
+      ; env_vars
+      ; binaries
+      ; inline_tests
+      ; menhir
+      ; odoc
+      ; js_of_ocaml
+      ; wasm_of_ocaml
+      ; coq
+      ; format_config
+      ; error_on_use
+      ; warn_on_load
+      ; bin_annot
+      }
+      t
   =
   Ocaml_flags.Spec.equal flags t.flags
   && Foreign_language.Dict.equal

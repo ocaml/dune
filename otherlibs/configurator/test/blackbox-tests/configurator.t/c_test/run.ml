@@ -5,7 +5,7 @@ let () =
     let c_result =
       Configurator.c_test t {c|
 #include <stdio.h>
-int main()
+int main(void)
 {
    printf("Hello, World!");
    return 0;

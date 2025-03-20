@@ -15,7 +15,8 @@ let%expect_test "singleton" =
 
 let%expect_test "cons" =
   print (List.fold_right [ "a"; "b"; "c"; "d" ] ~init:Al.empty ~f:Al.cons);
-  [%expect {|
+  [%expect
+    {|
     a
     b
     c
@@ -25,14 +26,16 @@ let%expect_test "cons" =
 let%expect_test "append" =
   print
     Al.(singleton "a" @ (singleton "b" @ singleton "c") @ singleton "d" @ singleton "e");
-  [%expect {|
+  [%expect
+    {|
     a
     b
     c
     d
     e |}];
   print Al.(cons "a" (cons "b" (cons "c" empty)) @ cons "d" (cons "e" (cons "f" empty)));
-  [%expect {|
+  [%expect
+    {|
     a
     b
     c
@@ -43,7 +46,8 @@ let%expect_test "append" =
 
 let%expect_test "concat" =
   print (Al.concat (List.init 10 ~f:(fun i -> Al.singleton (Int.to_string i))));
-  [%expect {|
+  [%expect
+    {|
     0
     1
     2

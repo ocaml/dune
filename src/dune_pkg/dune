@@ -16,12 +16,9 @@
   dune_vcs
   dune_config
   opam_core
-  opam_repository
   opam_format
-  opam_state
   build_info
   sat
-  fmt
   xdg)
  (instrumentation
   (backend bisect_ppx)))

@@ -188,22 +188,22 @@ let test_with_multiple_fsevents ~setup ~test:f =
     let (t : Thread.t) =
       Thread.create
         (fun () ->
-          let rec await ~emit ~continue = function
-            | [] -> ()
-            | xs ->
-              List.iter xs ~f:emit;
-              Unix.sleepf 0.2;
-              await ~emit ~continue (List.filter xs ~f:continue)
-          in
-          await
-            ~emit:(fun sync -> sync#emit_start)
-            ~continue:(fun sync -> not sync#started)
-            syncs;
-          f ();
-          await
-            ~emit:(fun sync -> sync#emit_stop)
-            ~continue:(fun sync -> not sync#stopped)
-            syncs)
+           let rec await ~emit ~continue = function
+             | [] -> ()
+             | xs ->
+               List.iter xs ~f:emit;
+               Unix.sleepf 0.2;
+               await ~emit ~continue (List.filter xs ~f:continue)
+           in
+           await
+             ~emit:(fun sync -> sync#emit_start)
+             ~continue:(fun sync -> not sync#started)
+             syncs;
+           f ();
+           await
+             ~emit:(fun sync -> sync#emit_stop)
+             ~continue:(fun sync -> not sync#stopped)
+             syncs)
         ()
     in
     (match Fsevents.Dispatch_queue.wait_until_stopped dispatch_queue with
@@ -230,7 +230,8 @@ let test_with_operations ?on_event ?exclusion_paths f =
 
 let%expect_test "file create event" =
   test_with_operations (fun () -> Io.String_path.write_file "./file" "foobar");
-  [%expect {|
+  [%expect
+    {|
     > { action = "Create"; kind = "File"; path = "$TESTCASE_ROOT/file" } |}]
 ;;
 
@@ -257,12 +258,13 @@ let%expect_test "raise inside callback" =
       Logger.printfn logger "exiting.";
       raise Exit)
     (fun () ->
-      Io.String_path.write_file "old" "foobar";
-      Io.String_path.write_file "old" "foobar";
-      (* Delay to allow the event handler callback to catch the exception
+       Io.String_path.write_file "old" "foobar";
+       Io.String_path.write_file "old" "foobar";
+       (* Delay to allow the event handler callback to catch the exception
          before stopping the watcher. *)
-      Unix.sleepf 1.0);
-  [%expect {|
+       Unix.sleepf 1.0);
+  [%expect
+    {|
     [EXIT]
     exiting. |}]
 ;;
@@ -273,8 +275,8 @@ let%expect_test "set exclusion paths" =
     test_with_operations
       ~exclusion_paths:(fun cwd -> [ paths cwd ignored ])
       (fun () ->
-        let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ignored in
-        Io.String_path.write_file (Filename.concat ignored "old") "foobar")
+         let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p ignored in
+         Io.String_path.write_file (Filename.concat ignored "old") "foobar")
   in
   (* absolute paths work *)
   run Filename.concat;

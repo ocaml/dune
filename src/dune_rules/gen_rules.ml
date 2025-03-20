@@ -120,7 +120,7 @@ end = struct
         ~loc:lib.buildable.loc
         (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
         enabled_if
-    | Foreign.Library.T lib ->
+    | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
       >>= if_available (fun () ->
         let+ () = Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander in
@@ -136,7 +136,8 @@ end = struct
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
-              (List.concat_map (Nonempty_list.to_list exes.names) ~f:(fun (_, exe) ->
+              (Nonempty_list.to_list exes.names
+               |> List.concat_map ~f:(fun (_, exe) ->
                  List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
                    Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
         })
@@ -150,15 +151,15 @@ end = struct
     | Copy_files.T { files = glob; _ } ->
       let+ source_dirs =
         let+ src_glob = Expander.No_deps.expand_str expander glob in
-        if Filename.is_relative src_glob
-        then (
-          match
-            let error_loc = String_with_vars.loc glob in
-            Path.relative (Path.source src_dir) src_glob ~error_loc
-          with
-          | In_source_tree s -> Some (Path.Source.parent_exn s)
-          | In_build_dir _ | External _ -> None)
-        else None
+        match Filename.is_relative src_glob with
+        | false -> None
+        | true ->
+          (match
+             let error_loc = String_with_vars.loc glob in
+             Path.relative (Path.source src_dir) src_glob ~error_loc
+           with
+           | In_source_tree s -> Some (Path.Source.parent_exn s)
+           | In_build_dir _ | External _ -> None)
       in
       { empty_none with source_dirs }
     | Install_conf.T i ->
@@ -376,8 +377,9 @@ let gen_project_rules =
       | Some _ -> Memo.return ()
       | None ->
         (match
-           if Dune_project.dune_version project >= (2, 8)
-              && Dune_project.generate_opam_files project
+           if
+             Dune_project.dune_version project >= (2, 8)
+             && Dune_project.generate_opam_files project
            then Dune_project.file project
            else None
          with
@@ -587,12 +589,12 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        (* XXX the use of the super context is dubious here. We're using it to
+         (* XXX the use of the super context is dubious here. We're using it to
            take into account the env stanza. But really, these are internal
            libraries that are being compiled and user settings should be
            ignored. *)
-        let* sctx = sctx in
-        Jsoo_rules.setup_separate_compilation_rules sctx rest)
+         let* sctx = sctx in
+         Jsoo_rules.setup_separate_compilation_rules sctx rest)
   | "_doc" :: rest ->
     let* sctx = sctx in
     Odoc.gen_rules sctx rest ~dir
@@ -606,8 +608,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        let* sctx = sctx in
-        Top_module.gen_rules sctx ~dir ~comps)
+         let* sctx = sctx in
+         Top_module.gen_rules sctx ~dir ~comps)
   | ".ppx" :: rest ->
     has_rules
       ~dir
@@ -615,8 +617,8 @@ let gen_rules ctx sctx ~dir components : Gen_rules.result Memo.t =
        | [] -> Subdir_set.all
        | _ -> Subdir_set.empty)
       (fun () ->
-        let* sctx = sctx in
-        Pp_spec_rules.gen_rules sctx rest)
+         let* sctx = sctx in
+         Pp_spec_rules.gen_rules sctx rest)
   | [ ".dune" ] ->
     has_rules
       ~dir

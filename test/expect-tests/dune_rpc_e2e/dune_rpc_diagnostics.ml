@@ -16,7 +16,8 @@ let%expect_test "turn on and shutdown" =
         printfn "shutting down"))
   in
   run test;
-  [%expect {|
+  [%expect
+    {|
     Building .
     Build . succeeded
     shutting down |}]
@@ -122,7 +123,8 @@ let diagnostic_with_build setup target =
 
 let%expect_test "error in dune file" =
   diagnostic_with_build [ "dune", "(library (name foo))" ] "foo.cma";
-  [%expect {|
+  [%expect
+    {|
     Building foo.cma
     Build foo.cma succeeded
     <no diagnostics> |}]
@@ -485,10 +487,12 @@ let%expect_test "create and fix error" =
     files [ "dune", "(executable (name foo))"; "foo.ml", "let () = print_endline 123" ];
     let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
     let* () = print_diagnostics poll in
-    [%expect {|
+    [%expect
+      {|
         <no diagnostics> |}];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe failed |}];
     let* () = print_diagnostics poll in
@@ -529,7 +533,8 @@ let%expect_test "create and fix error" =
         ] |}];
     files [ "foo.ml", "let () = print_endline \"foo\"" ];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe succeeded |}];
     let+ () = print_diagnostics poll in
@@ -639,7 +644,8 @@ let%expect_test "promoting dune files" =
               promoted )
         ];
       let* () = dune_build client "(alias foo)" in
-      [%expect {|
+      [%expect
+        {|
           Building (alias foo)
           Build (alias foo) failed |}];
       print_endline "attempting to promote";
@@ -684,10 +690,12 @@ let g = A.f
     files [ "dune", "(executable (name foo))"; "foo.ml", source ];
     let* poll = poll_exn client Dune_rpc.Public.Sub.diagnostic in
     let* () = print_diagnostics poll in
-    [%expect {|
+    [%expect
+      {|
         <no diagnostics> |}];
     let* () = dune_build client "./foo.exe" in
-    [%expect {|
+    [%expect
+      {|
         Building ./foo.exe
         Build ./foo.exe failed |}];
     let+ () = print_diagnostics poll in

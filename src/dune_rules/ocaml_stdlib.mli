@@ -8,12 +8,12 @@ open Import
 
 type t = private
   { modules_before_stdlib : Module_name.Set.t
-  (** Modules that the Stdlib module depend on. *)
+    (** Modules that the Stdlib module depend on. *)
   ; exit_module : Module_name.t option
-  (** Modules that are implicitly added by the compiler at the end when
+    (** Modules that are implicitly added by the compiler at the end when
       linking an executable *)
   ; internal_modules : Predicate_lang.Glob.t
-  (** Module names that are hardcoded in the compiler and so cannot be
+    (** Module names that are hardcoded in the compiler and so cannot be
       wrapped *)
   ; loc : Loc.t
   }

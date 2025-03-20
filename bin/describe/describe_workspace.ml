@@ -5,7 +5,7 @@ module Options = struct
   type t =
     { with_deps : bool (* whether to compute direct dependencies between modules *)
     ; with_pps : bool
-    (* whether to include the dependencies to ppx-rewriters (that are
+      (* whether to include the dependencies to ppx-rewriters (that are
        used at compile time) *)
     }
 
@@ -72,9 +72,9 @@ module Descr = struct
   module Mod_deps = struct
     type t =
       { for_intf : Dune_rules.Module_name.t list
-          (* direct module dependencies for the interface *)
+        (* direct module dependencies for the interface *)
       ; for_impl : Dune_rules.Module_name.t list
-      (* direct module dependencies for the implementation *)
+        (* direct module dependencies for the implementation *)
       }
 
     (* Conversion to the [Dyn.t] type *)
@@ -129,7 +129,7 @@ module Descr = struct
     type t =
       { names : string list (* names of the executable *)
       ; requires : Digest.t list
-          (* list of direct dependencies to libraries, identified by their
+        (* list of direct dependencies to libraries, identified by their
              digests *)
       ; modules : Mod.t list (* list of the modules the executable is composed of *)
       ; include_dirs : Path.t list (* list of include directories *)
@@ -157,10 +157,10 @@ module Descr = struct
       ; uid : Digest.t (* digest of the library *)
       ; local : bool (* whether this library is local *)
       ; requires : Digest.t list
-          (* list of direct dependendies to libraries, identified by their
+        (* list of direct dependendies to libraries, identified by their
              digests *)
       ; source_dir : Path.t
-          (* path to the directory that contains the sources of this library *)
+        (* path to the directory that contains the sources of this library *)
       ; modules : Mod.t list (* list of the modules the executable is composed of *)
       ; include_dirs : Path.t list (* list of include directories *)
       }
@@ -348,10 +348,10 @@ module Crawl = struct
 
   (* Builds the description of a module from a module and its object directory *)
   let module_
-    ~obj_dir
-    ~(deps_for_intf : Module.t list)
-    ~(deps_for_impl : Module.t list)
-    (m : Module.t)
+        ~obj_dir
+        ~(deps_for_intf : Module.t list)
+        ~(deps_for_impl : Module.t list)
+        (m : Module.t)
     : Descr.Mod.t
     =
     let source ml_kind = Option.map (Module.source m ~ml_kind) ~f:Module.File.path in
@@ -542,10 +542,10 @@ module Crawl = struct
 
   (* Builds a workspace description for the provided dune setup and context *)
   let workspace
-    options
-    ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
-    (context : Context.t)
-    dirs
+        options
+        ({ Dune_rules.Main.contexts = _; scontexts } : Dune_rules.Main.build_system)
+        (context : Context.t)
+        dirs
     : Descr.Workspace.t Memo.t
     =
     let context_name = Context.name context in

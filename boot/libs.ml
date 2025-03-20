@@ -72,14 +72,11 @@ let local_libraries =
   ; ("src/fs", Some "Fs", false, None)
   ; ("src/dune_findlib", Some "Dune_findlib", false, None)
   ; ("src/dune_vcs", Some "Dune_vcs", false, None)
-  ; ("vendor/opam/src/repository", None, false, None)
-  ; ("vendor/opam/src/state", None, false, None)
   ; ("otherlibs/dune-build-info/src",
      Some "Build_info",
      false,
      Some "Build_info_data")
   ; ("src/sat", Some "Sat", false, None)
-  ; ("vendor/fmt/src", None, false, None)
   ; ("src/dune_pkg", Some "Dune_pkg", false, None)
   ; ("src/install", Some "Install", false, None)
   ; ("otherlibs/dune-site/src/private", Some "Dune_site_private", false, None)

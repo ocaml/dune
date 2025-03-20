@@ -2,7 +2,7 @@ open StdLabels
 open Printf
 
 (* This program performs version checking of the compiler and switches to the
-   secondary compiler if necessary. The script should execute in OCaml 4.02! *)
+   secondary compiler if necessary. The script should execute in OCaml 4.08! *)
 
 let min_supported_natively = 4, 08, 0
 
@@ -38,8 +38,9 @@ let () =
   then
     at_exit (fun () ->
       Array.iter (Sys.readdir ".") ~f:(fun fn ->
-        if String.length fn >= String.length duneboot
-           && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
+        if
+          String.length fn >= String.length duneboot
+          && String.sub fn ~pos:0 ~len:(String.length duneboot) = duneboot
         then (
           try Sys.remove fn with
           | Sys_error _ -> ())))
@@ -48,8 +49,8 @@ let () =
 let runf fmt =
   ksprintf
     (fun cmd ->
-      prerr_endline cmd;
-      Sys.command cmd)
+       prerr_endline cmd;
+       Sys.command cmd)
     fmt
 ;;
 

@@ -145,12 +145,13 @@ module Ast = struct
           ]
         in
         User_error.raise ~loc ~hints msg)
-      else if match dn with
-              | "" | "." ->
-                let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
-                User_error.raise ~loc ~hints msg
-              | ".." -> true
-              | _ -> false
+      else if
+        match dn with
+        | "" | "." ->
+          let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
+          User_error.raise ~loc ~hints msg
+        | ".." -> true
+        | _ -> false
       then User_error.raise ~loc msg
       else loc, dn)
   ;;
@@ -293,12 +294,12 @@ let statically_evaluated_stanzas = Ast.statically_evaluated_stanzas
 type decoder = { decode : 'a. Dune_lang.Ast.t list -> 'a Dune_lang.Decoder.t -> 'a }
 
 let rec evaluate_includes
-  ~(decoder : decoder)
-  ~context
-  ~inside_subdir
-  ~inside_include
-  (prefix : string)
-  (stanzas : Ast.t list)
+          ~(decoder : decoder)
+          ~context
+          ~inside_subdir
+          ~inside_include
+          (prefix : string)
+          (stanzas : Ast.t list)
   =
   Memo.parallel_map stanzas ~f:(function
     | Include { loc; file } ->
@@ -540,8 +541,9 @@ let load ~dir (status : Source_dir_status.t) project ~files ~parent =
   let file =
     if status = Data_only
     then None
-    else if Dune_project.accept_alternative_dune_file_name project
-            && Filename.Set.mem files alternative_fname
+    else if
+      Dune_project.accept_alternative_dune_file_name project
+      && Filename.Set.mem files alternative_fname
     then Some alternative_fname
     else if Filename.Set.mem files fname
     then Some fname

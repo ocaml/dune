@@ -17,7 +17,8 @@ let print_or_fail l =
 let%expect_test "parsing simple section" =
   let config = "foo.bar=baz" in
   print_or_fail config;
-  [%expect {|
+  [%expect
+    {|
   ("foo", None, "bar", "baz")
   |}]
 ;;
@@ -25,7 +26,8 @@ let%expect_test "parsing simple section" =
 let%expect_test "parsing with arguments" =
   let config = "foo.bar.baz=qux" in
   print_or_fail config;
-  [%expect {|
+  [%expect
+    {|
   ("foo", Some "bar", "baz", "qux")
   |}]
 ;;
@@ -33,7 +35,8 @@ let%expect_test "parsing with arguments" =
 let%expect_test "parsing with dots in name" =
   let config = "branch.compat-5.0-dune-2.9.remote=origin" in
   print_or_fail config;
-  [%expect {|
+  [%expect
+    {|
   ("branch", Some "compat-5.0-dune-2.9", "remote", "origin")
   |}]
 ;;

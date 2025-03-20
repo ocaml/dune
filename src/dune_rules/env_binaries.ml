@@ -22,9 +22,9 @@ let impl dir =
         let* profile = Per_context.profile ctx in
         Dune_file.find_stanzas stanzas Dune_env.key
         >>| (function
-               | [ config ] -> Some config
-               | [] -> None
-               | _ :: _ :: _ -> assert false)
+         | [ config ] -> Some config
+         | [] -> None
+         | _ :: _ :: _ -> assert false)
         >>| (function
          | None -> []
          | Some stanza ->

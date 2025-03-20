@@ -169,8 +169,8 @@ end = struct
   let print_merlin_conf ~selected_context file =
     to_local ~selected_context file
     >>| (function
-           | Error s -> Merlin_conf.make_error s
-           | Ok file -> load_merlin_file file)
+     | Error s -> Merlin_conf.make_error s
+     | Ok file -> load_merlin_file file)
     >>| Merlin_conf.to_stdout
   ;;
 

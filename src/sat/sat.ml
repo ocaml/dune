@@ -1,6 +1,6 @@
 (* Copyright (C) 2013, Thomas Leonard
  * See the README file for details, or visit http://0install.net.
- *)
+*)
 
 (** A general purpose SAT solver. *)
 
@@ -13,7 +13,7 @@
     - We care about which solution we find (not just "satisfiable" or "not").
     - We take care to be deterministic (always select the same versions given
       the same input). We do not do random restarts, etc.
-    - We add an at_most_one_clause (the paper suggests this in the Excercises, and
+    - We add an at_most_clause (the paper suggests this in the Excercises, and
       it's very useful for our purposes). *)
 
 open Stdune
@@ -42,6 +42,7 @@ module VarID : sig
     val create : unit -> t
     val mem : t -> id -> bool
     val add : t -> id -> unit
+    val clear : t -> unit
   end
 end = struct
   type t = int
@@ -79,12 +80,6 @@ module Var_value = struct
     | False -> True
     | Undecided -> Undecided
   ;;
-
-  let assignment_exn = function
-    | True -> true
-    | False -> false
-    | Undecided -> assert false
-  ;;
 end
 
 type sign =
@@ -99,10 +94,15 @@ let log_debug p =
 
 module Make (User : USER) = struct
   type clause =
-    | Union of t * lit array
-    | At_most_one of at_most_one_clause
+    | Union of lit array
+    | At_most of at_most_clause
 
-  and at_most_one_clause = lit option ref * t * lit list
+  and at_most_clause = int * lit list ref * lit array
+  (* max number [nb] of literals that can be True,
+     list of the currently selected True literals (of length less than [nb]),
+     array of all watched literals *)
+
+  and at_most_one_clause = at_most_clause (* special case with [nb] enforced to be 1 *)
 
   (** The reason why a literal is set. *)
   and reason =
@@ -110,18 +110,18 @@ module Make (User : USER) = struct
     | External of string (* set externally (input fact or decider choice) *)
 
   and undo =
-    | Undo_at_most_one of lit option ref
-    | Decided of t
+    | Undo_at_most of lit list ref
+    | Decided
 
   and var =
     { id : VarID.t (* A unique ID, used to test identity *)
     ; mutable value : Var_value.t (* True/False/Undecided *)
     ; mutable reason : reason option
-        (* The constraint that implied our value, if True or False *)
+      (* The constraint that implied our value, if True or False *)
     ; mutable level : int
-        (* The decision level at which we got a value (when not Undecided) *)
+      (* The decision level at which we got a value (when not Undecided) *)
     ; mutable undo : undo list
-        (* Functions to call if we become unbound (by backtracking) *)
+      (* Functions to call if we become unbound (by backtracking) *)
     ; watch_queue : clause Queue.t (* Clauses to notify when var becomes True *)
     ; neg_watch_queue : clause Queue.t (* Clauses to notify when var becomes False *)
     ; obj : User.t (* The object this corresponds to (for our caller and for debugging) *)
@@ -129,17 +129,20 @@ module Make (User : USER) = struct
 
   and lit = sign * var
 
-  and t =
+  type t =
     { id_maker : VarID.mint
     ; (* Propagation *)
       mutable vars : var list
     ; propQ : lit Queue.t (* propagation queue *)
     ; (* Assignments *)
       mutable trail : lit list (* order of assignments, most recent first *)
+    ; mutable trail_len : int
     ; mutable trail_lim : int list (* decision levels (len(trail) at each decision) *)
+    ; mutable trail_lim_len : int
     ; mutable toplevel_conflict : bool
     ; mutable set_to_false : bool
-    (* we are finishing up by setting everything else to False *)
+    ; conflict_vars : VarID.Hash_set.t
+      (* we are finishing up by setting everything else to False *)
     }
 
   let lit_equal (s1, v1) (s2, v2) = s1 == s2 && v1 == v2
@@ -153,6 +156,12 @@ module Make (User : USER) = struct
       }
 
     let create () = { pos = VarID.Hash_set.create (); neg = VarID.Hash_set.create () }
+    let temp = create ()
+
+    let clear () =
+      VarID.Hash_set.clear temp.pos;
+      VarID.Hash_set.clear temp.neg
+    ;;
 
     let mem { pos; neg } (sign, lit) =
       match sign with
@@ -166,8 +175,6 @@ module Make (User : USER) = struct
       | Neg -> VarID.Hash_set.add neg lit.id
     ;;
   end
-
-  type solution = lit -> bool
 
   let make_var id obj =
     { id
@@ -193,20 +200,8 @@ module Make (User : USER) = struct
     | Neg, var -> var.neg_watch_queue
   ;;
 
-  let remove_duplicates lits =
-    let seen = LitSet.create () in
-    let rec find_unique = function
-      | [] -> []
-      | x :: xs when LitSet.mem seen x -> find_unique xs
-      | x :: xs ->
-        LitSet.add seen x;
-        x :: find_unique xs
-    in
-    find_unique lits
-  ;;
-
   exception ConflictingClause of clause
-  exception SolveDone of solution option
+  exception SolveDone of bool
 
   type added_result =
     | AddedFact of bool (* Result of enqueing the new fact *)
@@ -218,9 +213,12 @@ module Make (User : USER) = struct
     ; vars = []
     ; propQ = Queue.create ()
     ; trail = []
+    ; trail_len = 0
     ; trail_lim = []
+    ; trail_lim_len = 0
     ; toplevel_conflict = false
     ; set_to_false = false
+    ; conflict_vars = VarID.Hash_set.create ()
     }
   ;;
 
@@ -231,18 +229,19 @@ module Make (User : USER) = struct
     | Neg -> Pp.text "not(" ++ User.pp var.obj ++ Pp.char ')'
   ;;
 
-  let undo undo lit =
+  let undo problem undo lit =
     match undo with
-    | Decided problem -> problem.set_to_false <- false
-    | Undo_at_most_one current ->
+    | Decided -> problem.set_to_false <- false
+    | Undo_at_most current ->
       if debug
       then
         log_debug
           (Pp.text "(backtracking: no longer selected " ++ name_lit lit ++ Pp.char ')');
       (match !current with
-       | Some l -> assert (lit_equal lit l)
-       | None -> assert false);
-      current := None
+       | l :: lst ->
+         assert (lit_equal lit l);
+         current := lst
+       | [] -> assert false)
   ;;
 
   let pp_lits lits = Pp.concat_map ~sep:(Pp.text ", ") lits ~f:name_lit
@@ -261,11 +260,12 @@ module Make (User : USER) = struct
   ;;
 
   let pp_clause = function
-    | Union (_, lits) ->
+    | Union lits ->
       Pp.text "<some: "
       ++ Pp.concat_map ~sep:(Pp.text ", ") ~f:name_lit (Array.to_list lits)
       ++ Pp.char '>'
-    | At_most_one (_, _, lits) -> Pp.text "<at most one: " ++ pp_lits lits ++ Pp.char '>'
+    | At_most (nb, _, lits) ->
+      Pp.textf "<at most %i: " nb ++ pp_lits (Array.to_list lits) ++ Pp.char '>'
   ;;
 
   let pp_reason = function
@@ -273,7 +273,7 @@ module Make (User : USER) = struct
     | External msg -> Pp.text msg
   ;;
 
-  let get_decision_level problem = List.length problem.trail_lim
+  let get_decision_level problem = problem.trail_lim_len
 
   let add_variable problem obj : lit =
     (* if debug then log_debug "add_variable('%s')" obj; *)
@@ -297,10 +297,7 @@ module Make (User : USER) = struct
          ++ Pp.text " ("
          ++ pp_reason reason
          ++ Pp.char ')');
-    match
-      let old_value = lit_value lit in
-      old_value
-    with
+    match lit_value lit with
     | False -> false (* Conflict *)
     | True -> true (* Already set (shouldn't happen) *)
     | Undecided ->
@@ -309,6 +306,7 @@ module Make (User : USER) = struct
       var_info.level <- get_decision_level problem;
       var_info.reason <- Some reason;
       problem.trail <- lit :: problem.trail;
+      problem.trail_len <- problem.trail_len + 1;
       Queue.push problem.propQ lit;
       true
   ;;
@@ -324,15 +322,16 @@ module Make (User : USER) = struct
       var_info.reason <- None;
       var_info.level <- -1;
       problem.trail <- rest;
+      problem.trail_len <- problem.trail_len - 1;
       while var_info.undo <> [] do
         let cb = List.hd var_info.undo in
         var_info.undo <- List.tl var_info.undo;
-        undo cb lit
+        undo problem cb lit
       done
   ;;
 
   let cancel problem =
-    let n_this_level = List.length problem.trail - List.hd problem.trail_lim in
+    let n_this_level = problem.trail_len - List.hd problem.trail_lim in
     if debug
     then
       log_debug
@@ -343,7 +342,8 @@ module Make (User : USER) = struct
     for _i = 1 to n_this_level do
       undo_one problem
     done;
-    problem.trail_lim <- List.tl problem.trail_lim
+    problem.trail_lim <- List.tl problem.trail_lim;
+    problem.trail_lim_len <- problem.trail_lim_len - 1
   ;;
 
   let cancel_until problem level =
@@ -366,26 +366,29 @@ module Make (User : USER) = struct
     (* Why are we causing a conflict?
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason = function
-      | Union (_, lits) -> List.map ~f:neg (Array.to_list lits)
-      | At_most_one (_, _, lits) ->
-        (* If we caused a conflict, it's because two of our literals became true. *)
-        (* Find two True literals *)
-        let rec find_two found = function
-          | [] -> assert false (* Don't know why! *)
-          | x :: xs when lit_value x <> True -> find_two found xs
-          | x :: xs ->
-            (match found with
-             | None -> find_two (Some x) xs
-             | Some first -> [ first; x ])
+      | Union lits -> List.map ~f:neg (Array.to_list lits)
+      | At_most (nb, _, lits) ->
+        (* If we caused a conflict, it's because nb+1 of our literals became true. *)
+        (* Find the nb+1 True literals *)
+        let rec find nb_founds founds lits i =
+          if Int.equal i (Array.length lits)
+          then assert false (* Don't know why! *)
+          else (
+            let x = lits.(i) in
+            if lit_value x <> True
+            then find nb_founds founds lits (i + 1)
+            else if nb_founds >= nb
+            then x :: founds
+            else find (nb_founds + 1) (x :: founds) lits (i + 1))
         in
-        find_two None lits
+        find 0 [] lits 0
     ;;
 
     (* Which literals caused [lit] to have its current value?
        @return a list of literals which caused the problem by all being True. *)
     let calc_reason_for t lit =
       match t with
-      | Union (_, lits) ->
+      | Union lits ->
         (* Which literals caused [lit] to have its current value? *)
         assert (lit_equal lit lits.(0));
         (* The cause is everything except lit. *)
@@ -397,16 +400,17 @@ module Make (User : USER) = struct
             if lit_equal l lit then get_cause (i + 1) else neg l :: get_cause (i + 1))
         in
         get_cause 0
-      | At_most_one (_, _, lits) ->
-        (* Find the True literal. Any true literal other than [lit] would do. *)
-        [ List.find_exn lits ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True) ]
+      | At_most (_, _, lits) ->
+        (* Find the True literals. All true literal other than [lit] would do. *)
+        Array.to_list lits
+        |> List.filter ~f:(fun l -> (not (lit_equal l lit)) && lit_value l = True)
     ;;
 
     (* [lit] is now [True]. Add any new deductions. @return false if there is a
        conflict. *)
-    let propagate t lit =
+    let propagate problem t lit =
       match t with
-      | Union (problem, lits) ->
+      | Union lits ->
         (* Try to infer new facts.
            We can do this only when all of our literals are False except one,
            which is undecided. That is,
@@ -446,16 +450,16 @@ module Make (User : USER) = struct
               enqueue problem lits.(0) (Clause t))
             else (
               match lit_value lits.(i) with
+              | False -> find_not_false (i + 1)
               | Undecided | True ->
                 (* If it's True then we've already done our job,
                    so this means we don't get notified unless we backtrack, which is fine. *)
                 Array.swap lits 1 i;
                 watch_lit (neg lits.(1)) t;
-                true
-              | False -> find_not_false (i + 1))
+                true)
           in
           find_not_false 2)
-      | At_most_one (current, problem, lits) ->
+      | At_most (nb, current, lits) ->
         (* Re-add ourselves to the watch list.
            (we we won't get any more notifications unless we backtrack,
            in which case we'd need to get back on the list anyway) *)
@@ -464,41 +468,55 @@ module Make (User : USER) = struct
         assert (lit_value lit = True);
         (* if debug then log_debug("%s: noticed %s has become True" % (self, self.solver.name_lit(lit))) *)
 
-        (* If we already propagated successfully when the first
+        (* If we already propagated successfully when the [nb]
            one was set then we set all the others to false and
            anyone trying to set one true will get rejected. And
            if we didn't propagate yet, current will still be
-           None, even if we now have a conflict (which we'll
-           detect below). *)
-        assert (!current = None);
-        current := Some lit;
-        let var_info = var_of_lit lit in
-        (* If we later backtrack, unset current *)
-        var_info.undo <- Undo_at_most_one current :: var_info.undo;
-        (try
-           (* We set all other literals to False. *)
-           List.iter lits ~f:(fun l ->
-             match lit_value l with
-             | True when not (lit_equal l lit) ->
-               (* Due to queuing, we might get called with current = None
-                  and two versions already selected. *)
-               if debug
-               then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
-               raise_notrace Conflict
-             | Undecided ->
-               (* Since one of our lits is already true, all unknown ones
-                  can be set to False. *)
-               if not (enqueue problem (neg l) (Clause t))
-               then (
-                 if debug
-                 then
-                   log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
-                 raise_notrace
-                   Conflict (* Can't happen, since we already checked we're Undecided *))
-             | _ -> ());
-           true
-         with
-         | Conflict -> false)
+           incomplete, even if we now have a conflict (which we'll
+           detect below). When [nb = 0], the constraint will fail
+           immediately. *)
+        assert (List.length !current < nb || nb = 0);
+        current := lit :: !current;
+        (let var_info = var_of_lit lit in
+         (* If we later backtrack, unset current *)
+         var_info.undo <- Undo_at_most current :: var_info.undo);
+        let nb_true = List.length !current in
+        if nb_true < nb
+        then true
+        else if nb_true > nb
+        then (
+          assert (nb = 0);
+          false)
+        else (
+          try
+            let clause = Clause t in
+            (* We set all other literals to False. *)
+            let nb_true = ref 0 in
+            Array.iter lits ~f:(fun l ->
+              match lit_value l with
+              | True ->
+                incr nb_true;
+                (* Due to queuing, more literals could have been selected
+                   before we got called. *)
+                if !nb_true > nb
+                then (
+                  if debug
+                  then log_debug (Pp.text "CONFLICT: already selected " ++ name_lit l);
+                  raise_notrace Conflict)
+              | Undecided ->
+                (* Since we have the right number of lits selected,
+                   all unknown ones can be set to False. *)
+                if not (enqueue problem (neg l) clause)
+                then (
+                  if debug
+                  then
+                    log_debug (Pp.text "CONFLICT: enqueue failed for " ++ name_lit (neg l));
+                  raise_notrace
+                    Conflict (* Can't happen, since we already checked we're Undecided *))
+              | False -> ());
+            true
+          with
+          | Conflict -> false)
     ;;
   end
 
@@ -514,10 +532,10 @@ module Make (User : USER) = struct
         Queue.transfer watches old_watches;
         (* if debug then log_debug "%s -> True : watches: %d" (name_lit lit) (Queue.length old_watches); *)
 
-        (* Notifiy all watchers *)
+        (* Notify all watchers *)
         while not (Queue.is_empty old_watches) do
           let clause = Queue.pop_exn old_watches in
-          if not (Clause.propagate clause lit)
+          if not (Clause.propagate problem clause lit)
           then (
             (* Conflict *)
 
@@ -536,15 +554,22 @@ module Make (User : USER) = struct
 
   let get_best_undecided (_, _, lits) =
     (* if debug then log_debug "best_undecided: %s" (string_of_lits lits); *)
-    List.find lits ~f:(fun l -> lit_value l = Undecided)
+    Array.find_opt lits ~f:(fun l -> lit_value l = Undecided)
   ;;
 
-  let get_selected (current, _, _) = !current
+  let get_selected (_, current, _) =
+    match !current with
+    | [] -> None
+    | [ single ] -> Some single
+    | _ ->
+      (* Impossible given the types in the mli *)
+      failwith "Sat.get_selected: too many for an at_most_one_clause"
+  ;;
 
   (* Returns the new clause if one was added, [AddedFact true] if none was added
      because this clause is trivially True, or [AddedFact false] if the clause
      caused a conflict. *)
-  let internal_at_most_one problem lits ~learnt ~reason =
+  let internal_at_least_one problem lits ~learnt ~reason =
     match lits with
     | [] -> assert false
     | [ lit ] ->
@@ -568,7 +593,7 @@ module Make (User : USER) = struct
             best_i := i)
         done;
         Array.swap lits 1 !best_i);
-      let clause = Union (problem, lits) in
+      let clause = Union lits in
       (* Watch the first two literals in the clause (both must be
          undefined at this point). *)
       let watch i = watch_lit (neg lits.(i)) clause in
@@ -577,53 +602,72 @@ module Make (User : USER) = struct
       AddedClause clause
   ;;
 
+  let simplify lits =
+    let seen =
+      LitSet.clear ();
+      LitSet.temp
+    in
+    let rec simplify unique = function
+      | [] -> Some unique
+      | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
+      | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
+      | x :: xs when lit_value x = False ->
+        simplify unique xs (* Skip values known to be False *)
+      | x :: xs ->
+        LitSet.add seen x;
+        simplify (x :: unique) xs
+    in
+    simplify [] lits
+  ;;
+
   (** Public interface. Only used before the solve starts. *)
   let at_least_one problem ?(reason = "input fact") lits =
-    if List.length lits = 0
+    if List.is_empty lits
     then problem.toplevel_conflict <- true
-    else if (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
-            List.exists lits ~f:(fun l -> lit_value l = True)
+    else if
+      (* if debug then log_debug "at_least_one(%s)" (string_of_lits lits); *)
+      List.exists lits ~f:(fun l -> lit_value l = True)
     then (* Trivially true already if any literal is True. *)
       ()
     else (
-      let seen = LitSet.create () in
-      let rec simplify unique = function
-        | [] -> Some unique
-        | x :: _ when LitSet.mem seen (neg x) -> None (* X or not(X) is always True *)
-        | x :: xs when LitSet.mem seen x -> simplify unique xs (* Skip duplicates *)
-        | x :: xs when lit_value x = False ->
-          simplify unique xs (* Skip values known to be False *)
-        | x :: xs ->
-          LitSet.add seen x;
-          simplify (x :: unique) xs
-      in
       (* At this point, [unique] contains only [Undefined] literals. *)
-      match simplify [] lits with
+      match simplify lits with
       | None -> ()
       | Some [] ->
         problem.toplevel_conflict <- true (* Everything in the list was False *)
       | Some unique ->
-        if internal_at_most_one problem unique ~learnt:false ~reason:(External reason)
-           = AddedFact false
+        if
+          internal_at_least_one problem unique ~learnt:false ~reason:(External reason)
+          = AddedFact false
         then problem.toplevel_conflict <- true)
   ;;
 
   let implies problem ?reason first rest = at_least_one problem ?reason (neg first :: rest)
 
-  let at_most_one problem lits =
-    assert (List.length lits > 0);
-    (* if debug then log_debug "at_most_one(%s)" (string_of_lits lits); *)
+  let has_duplicates lits =
+    LitSet.clear ();
+    let seen = LitSet.temp in
+    try
+      List.iter lits ~f:(fun lit ->
+        if LitSet.mem seen lit then raise_notrace Exit else LitSet.add seen lit);
+      false
+    with
+    | Exit -> true
+  ;;
 
-    (* If we have zero or one literals then we're trivially true
+  let at_most nb lits : at_most_clause =
+    assert (not (List.is_empty lits));
+    (* if debug then log_debug (Pp.textf "at_most_%i(%s)" nb (string_of_lits lits)); *)
+    (* If there are not enough literals then we're trivially true
        and not really needed for the solve. However, Zero Install
        monitors these objects to find out what was selected, so
        keep even trivial ones around for that.
     *)
-    (*if len(lits) < 2: *)
+    (*if len(lits) <= nb: *)
     (*	return True	# Trivially true *)
 
     (* Ensure no duplicates *)
-    if List.length (remove_duplicates lits) <> List.length lits
+    if has_duplicates lits
     then (
       let msg =
         Pp.text "at_most_one(" ++ pp_lits lits ++ Pp.paragraph "): duplicates in list!"
@@ -632,11 +676,14 @@ module Make (User : USER) = struct
     (* Ignore any literals already known to be False.
        If any are True then they're enqueued and we'll process them
        soon. *)
-    let lits = List.filter lits ~f:(fun l -> lit_value l <> False) in
-    let clause = ref None, problem, lits in
-    List.iter lits ~f:(fun l -> watch_lit l (At_most_one clause));
+    let lits = List.filter lits ~f:(fun l -> lit_value l <> False) |> Array.of_list in
+    let clause = nb, ref [], lits in
+    (let clause = At_most clause in
+     Array.iter lits ~f:(fun l -> watch_lit l clause));
     clause
   ;;
+
+  let at_most_one lits = at_most 1 lits
 
   let analyse problem (original_cause : clause) =
     (* After trying some assignments, we've discovered a conflict.
@@ -685,11 +732,13 @@ module Make (User : USER) = struct
     (* The general rule we're learning *)
     let btlevel = ref 0 in
     (* The deepest decision in learnt *)
-    let seen = VarID.Hash_set.create () in
+    let seen =
+      VarID.Hash_set.clear problem.conflict_vars;
+      problem.conflict_vars
+    in
     (* The variables involved in the conflict *)
     let counter = ref 0 in
     (* The number of pending variables to check *)
-
     (* [outcome] was caused by the literals [p_reason] all being True. Follow the
        causes back, adding anything decided before this level to [learnt]. When
        we get bored, return the literal we were processing at the time. *)
@@ -716,9 +765,9 @@ module Make (User : USER) = struct
           let var_info = var_of_lit lit in
           if var_info.level = get_decision_level problem
           then
-            (* We deduced this var since the last decision.
-               It must be in [trail], so we'll get to it
-               soon. Remember not to stop until we've processed it. *)
+            (* We deduced this var since the last decision. It must be in
+               [trail], so we'll get to it soon. Remember not to stop until
+               we've processed it. *)
             (* if debug then log_debug "(will look at %s soon)" (name_lit lit); *)
             incr counter
           else if var_info.level > 0
@@ -762,8 +811,13 @@ module Make (User : USER) = struct
       (* [reason] is the reason why [p] is True (i.e. it enqueued it). *)
       (* [p] is the literal we want to expand now. *)
       decr counter;
-      if !counter > 0
-      then (
+      if !counter <= 0
+      then
+        (* If counter = 0 then we still have one more literal (p) at the
+           current level that we could expand. However, apparently it's best to
+           leave this unprocessed (says the minisat paper). *)
+        p
+      else (
         let cause =
           match reason with
           | Some (Clause c) -> c
@@ -783,13 +837,6 @@ module Make (User : USER) = struct
              ++ outcome
              ++ Pp.char '?');
         follow_causes p_reason outcome)
-      else
-        (* If counter = 0 then we still have one more
-           literal (p) at the current level that we
-           could expand. However, apparently it's best
-           to leave this unprocessed (says the minisat
-           paper). *)
-        p
     in
     (* Start with all the literals involved in the conflict. *)
     if debug
@@ -815,7 +862,7 @@ module Make (User : USER) = struct
     if problem.toplevel_conflict
     then (
       if debug then log_debug (Pp.text "FAIL: toplevel_conflict before starting solve!");
-      None)
+      false)
     else (
       try
         while true do
@@ -832,11 +879,7 @@ module Make (User : USER) = struct
             let undecided =
               match List.find problem.vars ~f:(fun info -> info.value = Undecided) with
               | Some s -> s
-              | None ->
-                (* Everything is assigned without conflicts *)
-                (* if debug then log_debug "SUCCESS!"; *)
-                raise_notrace
-                  (SolveDone (Some (fun var -> Var_value.assignment_exn (lit_value var))))
+              | None -> raise_notrace (SolveDone true)
             in
             let lit =
               if problem.set_to_false
@@ -848,7 +891,7 @@ module Make (User : USER) = struct
                 | None ->
                   (* Switch to set_to_false mode (until we backtrack). *)
                   problem.set_to_false <- true;
-                  undecided.undo <- Decided problem :: undecided.undo;
+                  undecided.undo <- Decided :: undecided.undo;
                   (* Printf.printf "%s -> false\n" (name_lit undecided); *)
                   Neg, undecided)
             in
@@ -861,21 +904,22 @@ module Make (User : USER) = struct
                 [ "lit", Dyn.string (Format.asprintf "%a@." Pp.to_fmt (name_lit lit))
                 ; "was", Var_value.to_dyn old
                 ];
-            problem.trail_lim <- List.length problem.trail :: problem.trail_lim;
+            problem.trail_lim <- problem.trail_len :: problem.trail_lim;
+            problem.trail_lim_len <- problem.trail_lim_len + 1;
             let r = enqueue problem lit (External "considering") in
             assert r
           | Some conflicting_clause ->
             if get_decision_level problem = 0
             then (
               if debug then log_debug (Pp.text "FAIL: conflict found at top level");
-              raise_notrace (SolveDone None))
+              raise_notrace (SolveDone false))
             else (
               (* Figure out the root cause of this failure. *)
               let learnt, backtrack_level = analyse problem conflicting_clause in
               (* We have learnt that something in [learnt] must be True or we get a conflict. *)
               cancel_until problem backtrack_level;
               match
-                internal_at_most_one
+                internal_at_least_one
                   problem
                   learnt
                   ~learnt:true
@@ -894,7 +938,7 @@ module Make (User : USER) = struct
         done;
         Code_error.raise "not reached" []
       with
-      | SolveDone x -> x)
+      | SolveDone t -> t)
   ;;
 
   let pp_lit_reason lit =

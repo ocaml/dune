@@ -22,7 +22,7 @@ let rec eval_rec (t : Slang.t) ~dir ~(f : expander)
   | Literal sw ->
     f sw
     >>| Result.map_error ~f:(function `Undefined_pkg_var variable_name ->
-      Undefined_pkg_var { literal = sw; variable_name })
+        Undefined_pkg_var { literal = sw; variable_name })
   | Form (_loc, form) ->
     (match form with
      | Concat xs ->

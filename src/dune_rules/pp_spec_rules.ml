@@ -206,15 +206,15 @@ let lint_module sctx ~sandbox ~dir ~expander ~lint ~lib_name ~scope =
 ;;
 
 let pp_one_module
-  sctx
-  ~lib_name
-  ~scope
-  ~preprocessor_deps
-  ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
-  ~sandbox
-  ~dir
-  ~expander
-  (pp : _ Preprocess.Without_future_syntax.t)
+      sctx
+      ~lib_name
+      ~scope
+      ~preprocessor_deps
+      ~(lint_module : source:_ -> ast:_ -> unit Memo.t)
+      ~sandbox
+      ~dir
+      ~expander
+      (pp : _ Preprocess.Without_future_syntax.t)
   =
   let open Action_builder.O in
   match pp with
@@ -365,15 +365,15 @@ let pp_one_module
 ;;
 
 let make
-  sctx
-  ~dir
-  ~expander
-  ~lint
-  ~preprocess
-  ~preprocessor_deps
-  ~instrumentation_deps
-  ~lib_name
-  ~scope
+      sctx
+      ~dir
+      ~expander
+      ~lint
+      ~preprocess
+      ~preprocessor_deps
+      ~instrumentation_deps
+      ~lib_name
+      ~scope
   =
   let preprocessor_deps = preprocessor_deps @ instrumentation_deps in
   let+ ocaml = Context.ocaml (Super_context.context sctx) in

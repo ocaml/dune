@@ -73,9 +73,9 @@ let decode elem =
 let encode encode bindings =
   Dune_sexp.List
     (List.map bindings ~f:(function
-      | Unnamed a -> encode a
-      | Named (name, bindings) ->
-        Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
+       | Unnamed a -> encode a
+       | Named (name, bindings) ->
+         Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
 ;;
 
 let var_names t =
@@ -87,6 +87,6 @@ let var_names t =
 let to_pform_map t =
   Pform.Map.of_list_exn
     (List.filter_map t ~f:(function
-      | Unnamed _ -> None
-      | Named (name, l) -> Some (Pform.Var (User_var name), l)))
+       | Unnamed _ -> None
+       | Named (name, l) -> Some (Pform.Var (User_var name), l)))
 ;;

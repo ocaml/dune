@@ -242,9 +242,9 @@ type nonrec expansion_result =
 let static v = Direct (Without v)
 
 let[@inline never] invalid_use_of_target_variable
-  t
-  ~(source : Dune_lang.Template.Pform.t)
-  ~var_multiplicity
+                     t
+                     ~(source : Dune_lang.Template.Pform.t)
+                     ~var_multiplicity
   =
   match t.expanding_what with
   | Nothing_special | Deps_like_field -> isn't_allowed_in_this_position ~source
@@ -604,10 +604,10 @@ let env_macro t source macro_invocation =
 ;;
 
 let expand_pform_macro
-  (context : Context.t)
-  ~dir
-  ~source
-  (macro_invocation : Pform.Macro_invocation.t)
+      (context : Context.t)
+      ~dir
+      ~source
+      (macro_invocation : Pform.Macro_invocation.t)
   =
   let s = Pform.Macro_invocation.Args.whole macro_invocation in
   match macro_invocation.macro with
@@ -737,20 +737,20 @@ let describe_source ~source =
 let expand_pform t ~source pform =
   Action_builder.push_stack_frame
     (fun () ->
-      match
-        match
-          expand_pform_gen
-            ~context:t.context
-            ~bindings:t.bindings
-            ~dir:t.dir
-            ~source
-            pform
-        with
-        | Direct v -> v
-        | Need_full_expander f -> f t
-      with
-      | With x -> x
-      | Without x -> Action_builder.of_memo x)
+       match
+         match
+           expand_pform_gen
+             ~context:t.context
+             ~bindings:t.bindings
+             ~dir:t.dir
+             ~source
+             pform
+         with
+         | Direct v -> v
+         | Need_full_expander f -> f t
+       with
+       | With x -> x
+       | Without x -> Action_builder.of_memo x)
     ~human_readable_description:(fun () -> describe_source ~source)
 ;;
 
@@ -770,14 +770,14 @@ let expand_str_partial t template =
 ;;
 
 let make_root
-  ~project
-  ~scope
-  ~scope_host
-  ~(context : Context.t)
-  ~env
-  ~public_libs
-  ~public_libs_host
-  ~artifacts_host
+      ~project
+      ~scope
+      ~scope_host
+      ~(context : Context.t)
+      ~env
+      ~public_libs
+      ~public_libs_host
+      ~artifacts_host
   =
   { dir = Context.build_dir context
   ; env
@@ -817,20 +817,20 @@ module No_deps = struct
   let expand_pform_no_deps t ~source pform =
     Memo.push_stack_frame
       (fun () ->
-        match
-          match
-            expand_pform_gen
-              ~context:t.context
-              ~bindings:t.bindings
-              ~dir:t.dir
-              ~source
-              pform
-          with
-          | Direct v -> v
-          | Need_full_expander f -> f t
-        with
-        | With _ -> isn't_allowed_in_this_position ~source
-        | Without x -> x)
+         match
+           match
+             expand_pform_gen
+               ~context:t.context
+               ~bindings:t.bindings
+               ~dir:t.dir
+               ~source
+               pform
+           with
+           | Direct v -> v
+           | Need_full_expander f -> f t
+         with
+         | With _ -> isn't_allowed_in_this_position ~source
+         | Without x -> x)
       ~human_readable_description:(fun () -> describe_source ~source)
   ;;
 

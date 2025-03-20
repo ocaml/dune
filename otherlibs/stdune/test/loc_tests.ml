@@ -3,7 +3,9 @@ open Stdune
 let%expect_test "#7905 - inverted char offsets" =
   let dir = Temp.create Dir ~prefix:"" ~suffix:"loc" in
   let file = Path.relative dir "file.ml" in
-  Io.write_file file {|
+  Io.write_file
+    file
+    {|
 type t = A | B
 
 let f () () = function
@@ -19,7 +21,8 @@ let f () () = function
   in
   Temp.destroy Dir file;
   print_endline output;
-  [%expect {|
+  [%expect
+    {|
     4 | let f () () = function
     5 |   | A -> () |}]
 ;;

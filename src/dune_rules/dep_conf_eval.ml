@@ -268,8 +268,8 @@ and named_paths_builder ~expander l =
         (match
            Option.List.all
              (List.map x ~f:(function
-               | Simple x -> Some x
-               | Other _ -> None))
+                | Simple x -> Some x
+                | Other _ -> None))
          with
          | Some x ->
            let open Memo.O in

@@ -12,8 +12,9 @@ module Old_name = struct
     let+ public = Public_lib.decode ~allow_deprecated_names:true in
     let deprecation =
       let deprecated_package = Lib_name.package_name (Public_lib.name public) in
-      if let name = Package.name (Public_lib.package public) in
-         Package.Name.equal deprecated_package name
+      if
+        let name = Package.name (Public_lib.package public) in
+        Package.Name.equal deprecated_package name
       then Not_deprecated
       else Deprecated { deprecated_package }
     in

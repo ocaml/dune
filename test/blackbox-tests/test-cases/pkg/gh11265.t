@@ -18,12 +18,11 @@ A package which depends on a single package and also conflicts with the same pac
   Couldn't solve the package dependency formula.
   Selected candidates: foo.dev
   - bar -> (problem)
-      foo dev requires conflict with all versions
-      Rejected candidates:
-        bar.0.0.1: Incompatible with restriction: conflict with all versions
+      No usable implementations:
+        bar.0.0.1: Package does not satisfy constraints of local package foo
   [1]
 
-Now add an additional conflict on a non-existant package "baz". Dune will choose the package "bar" despite it being a conflict:
+Now add an additional conflict on a non-existant package "baz". Dune should continue to fail to find a solution due to the conflict with "bar".
   $ solve_project << EOF
   > (lang dune 3.11)
   > (package
@@ -32,6 +31,12 @@ Now add an additional conflict on a non-existant package "baz". Dune will choose
   >  (depends bar)
   >  (conflicts bar baz))
   > EOF
-  Solution for dune.lock:
-  - bar.0.0.1
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: foo.dev
+  - bar -> (problem)
+      No usable implementations:
+        bar.0.0.1: Package does not satisfy constraints of local package foo
+  [1]
 

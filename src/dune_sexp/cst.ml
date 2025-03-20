@@ -18,11 +18,11 @@ let rec to_dyn =
 ;;
 
 let loc
-  ( Atom (loc, _)
-  | Quoted_string (loc, _)
-  | List (loc, _)
-  | Template { loc; _ }
-  | Comment (loc, _) )
+      ( Atom (loc, _)
+      | Quoted_string (loc, _)
+      | List (loc, _)
+      | Template { loc; _ }
+      | Comment (loc, _) )
   =
   loc
 ;;

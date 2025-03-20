@@ -22,7 +22,7 @@ type t =
   { name : Name.t
   ; since : Syntax.Version.t (* The version where this warning was introduced. *)
   ; default : Syntax.Version.t -> Config.Toggle.t
-  (* Decide the version where this warning should be enabled. This is
+    (* Decide the version where this warning should be enabled. This is
      needed because some warnings were introduced before this module
      existed *)
   }

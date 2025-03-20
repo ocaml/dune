@@ -95,8 +95,18 @@ site using the :doc:`generate_sites_module stanza
     (module mysites)
     (sites mygui))
 
-The generated module `mysites` depends on the library `dune-site` provided by
-Dune.
+The generated module ``mysites`` depends on the library ``dune-site`` provided
+by Dune. As such, the the dependency on ``dune-site`` must be specified
+explicitely.
+
+.. note::
+
+   The dependency on ``dune-site`` also needs to be added to the ``depends``
+   field of your project. If left out it might be accidentally captured via
+   transitive dependencies, however this will not work if
+   :doc:`implicit_transitive_deps </reference/dune-project/implicit_transitive_deps>`
+   is set to ``false`` in the ``dune-project`` file. It is always recommended
+   to specify ``dune-site`` as a dependency explicitely.
 
 Then inside ``mygui.ml`` module the locations can be recovered and used:
 

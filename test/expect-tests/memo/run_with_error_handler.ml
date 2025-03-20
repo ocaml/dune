@@ -42,9 +42,9 @@ let%expect_test "Memo.run_with_error_handler" =
            log "late";
            Fiber.return ())
          (fun () ->
-           Memo.run_with_error_handler m ~handle_error_no_raise:(fun _exn ->
-             log "early";
-             Fiber.return ())))
+            Memo.run_with_error_handler m ~handle_error_no_raise:(fun _exn ->
+              log "early";
+              Fiber.return ())))
       ~f:(fun _result -> !trace)
   in
   let trace1, trace2 =
@@ -58,7 +58,8 @@ let%expect_test "Memo.run_with_error_handler" =
   in
   print_trace trace1;
   print_trace trace2;
-  [%expect {|
+  [%expect
+    {|
 early@0
 late@10
 early@10

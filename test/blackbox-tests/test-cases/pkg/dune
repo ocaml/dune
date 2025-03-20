@@ -46,6 +46,7 @@
   ocamlformat-dev-tool
   source-caching
   tarball
+  pin-depends
   extra-sources))
 
 (cram
@@ -58,7 +59,7 @@
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball extra-sources))
+ (applies_to source-caching tarball pin-depends extra-sources))
 
 (cram
  (deps %{bin:ocaml_index})

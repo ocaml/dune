@@ -34,9 +34,10 @@ module Node = struct
   let rec by_dir dir =
     let parent =
       let* project = Dune_load.find_project ~dir in
-      if Path.Source.equal
-           (Path.Build.drop_build_context_exn dir)
-           (Dune_project.root project)
+      if
+        Path.Source.equal
+          (Path.Build.drop_build_context_exn dir)
+          (Dune_project.root project)
       then by_context dir
       else (
         match Path.Build.parent dir with
@@ -110,11 +111,11 @@ let inline_tests ~dir =
 
 module Inherit = struct
   let for_context
-    (type a)
-    ~name
-    ~(root : Context_name.t -> Dune_project.t -> a Memo.t)
-    (context : Context_name.t)
-    ~(f : parent:a Memo.t -> dir:Path.Build.t -> Dune_env.config -> a Memo.t)
+        (type a)
+        ~name
+        ~(root : Context_name.t -> Dune_project.t -> a Memo.t)
+        (context : Context_name.t)
+        ~(f : parent:a Memo.t -> dir:Path.Build.t -> Dune_env.config -> a Memo.t)
     =
     let for_context =
       Memo.Lazy.create (fun () ->
@@ -129,12 +130,12 @@ module Inherit = struct
         (sprintf "%s-root" name)
         ~input:(module Path.Source)
         (fun dir ->
-          let* projects_by_root = Dune_load.projects_by_root ()
-          and* envs = Memo.Lazy.force for_context in
-          let project = Path.Source.Map.find_exn projects_by_root dir in
-          let root = root context project in
-          let dir = Path.Build.append_source (Context_name.build_dir context) dir in
-          List.fold_left envs ~init:root ~f:(fun acc env -> f ~parent:acc ~dir env))
+           let* projects_by_root = Dune_load.projects_by_root ()
+           and* envs = Memo.Lazy.force for_context in
+           let project = Path.Source.Map.find_exn projects_by_root dir in
+           let root = root context project in
+           let dir = Path.Build.append_source (Context_name.build_dir context) dir in
+           List.fold_left envs ~init:root ~f:(fun acc env -> f ~parent:acc ~dir env))
       |> Memo.exec
     in
     let module Non_rec = struct

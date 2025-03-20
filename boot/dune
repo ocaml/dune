@@ -7,6 +7,10 @@
  (name runtest)
  (deps libs.ml))
 
+(alias
+ (name check)
+ (deps libs.ml))
+
 (executable
  (name duneboot)
  (modules :standard \ configure bootstrap)

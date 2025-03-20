@@ -179,6 +179,7 @@ let rec already_requires_odoc : Package_constraint.t -> bool = function
   | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
+  | Not t -> not (already_requires_odoc t)
 ;;
 
 let insert_odoc_dep depends =
@@ -187,8 +188,9 @@ let insert_odoc_dep depends =
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)
     | (dep : Package_dependency.t) :: rest ->
-      if Package.Name.equal dep.name odoc_name
-         && Option.forall ~f:already_requires_odoc dep.constraint_
+      if
+        Package.Name.equal dep.name odoc_name
+        && Option.forall ~f:already_requires_odoc dep.constraint_
       then (* Stop now as odoc will be required anyway *)
         List.rev_append (dep :: acc) rest
       else loop (dep :: acc) rest

@@ -75,6 +75,8 @@ struct
        |> List.sort ~compare:(fun (k, _) (k', _) -> Dyn.compare k k'))
   ;;
 
+  let to_list t = foldi t ~init:[] ~f:(fun key v acc -> (key, v) :: acc)
+
   let filteri_inplace t ~f =
     filter_map_inplace t ~f:(fun ~key ~data ->
       match f ~key ~data with

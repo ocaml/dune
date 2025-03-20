@@ -243,18 +243,18 @@ module Dune_config = struct
     open To_dyn
 
     let to_dyn
-      { M.display
-      ; concurrency
-      ; terminal_persistence
-      ; sandboxing_preference
-      ; cache_enabled
-      ; cache_reproducibility_check
-      ; cache_storage_mode
-      ; action_stdout_on_success
-      ; action_stderr_on_success
-      ; project_defaults
-      ; experimental
-      }
+          { M.display
+          ; concurrency
+          ; terminal_persistence
+          ; sandboxing_preference
+          ; cache_enabled
+          ; cache_reproducibility_check
+          ; cache_storage_mode
+          ; action_stdout_on_success
+          ; action_stderr_on_success
+          ; project_defaults
+          ; experimental
+          }
       =
       Dyn.record
         [ "display", field Display.to_dyn display

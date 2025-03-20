@@ -169,14 +169,16 @@ let check path =
 let%expect_test "patching a file" =
   test [ "foo.ml", "This is wrong\n" ] ("foo.patch", basic);
   check "foo.ml";
-  [%expect {|
+  [%expect
+    {|
     This is right |}]
 ;;
 
 let%expect_test "patching a file in a subdirectory" =
   test [ "dir/foo.ml", "This is wrong\n" ] ("foo.patch", subdirectory);
   check "dir/foo.ml";
-  [%expect {|
+  [%expect
+    {|
     This is right |}]
 ;;
 
@@ -185,14 +187,16 @@ let%expect_test "patching two files with a single patch" =
     [ "foo.ml", "This is wrong\n"; "dir/foo.ml", "This is wrong\n" ]
     ("foo.patch", combined);
   check "foo.ml";
-  [%expect {|
+  [%expect
+    {|
     This is right |}]
 ;;
 
 let%expect_test "patching a new file" =
   test [] ("foo.patch", new_file);
   check "foo.ml";
-  [%expect {|
+  [%expect
+    {|
     This is right |}]
 ;;
 
@@ -239,7 +243,8 @@ let normalize_error_path s =
 let%expect_test "Using a patch from 'diff' with a timestamp" =
   test [ "foo.ml", "This is wrong\n" ] ("foo.patch", unified);
   check "foo.ml";
-  [%expect {|
+  [%expect
+    {|
     This is right |}]
 ;;
 

@@ -38,32 +38,32 @@ let exec ~rule_loc ({ Diff.optional; file1; file2; mode } as diff) =
     in
     Fiber.finalize
       (fun () ->
-        let annots =
-          User_message.Annots.singleton
-            Dune_engine.Diff_promotion.Annot.annot
-            { Dune_engine.Diff_promotion.Annot.in_source = source_file
-            ; in_build =
-                (if optional && in_source_or_target
-                 then Diff_promotion.File.in_staging_area source_file
-                 else file2)
-            }
-        in
-        if mode = Binary
-        then
-          User_error.raise
-            ~annots
-            ~loc:rule_loc
-            [ Pp.textf
-                "Files %s and %s differ."
-                (Path.to_string_maybe_quoted file1)
-                (Path.to_string_maybe_quoted (Path.build file2))
-            ]
-        else
-          Print_diff.print
-            annots
-            file1
-            (Path.build file2)
-            ~skip_trailing_cr:(mode = Text && Sys.win32))
+         let annots =
+           User_message.Annots.singleton
+             Dune_engine.Diff_promotion.Annot.annot
+             { Dune_engine.Diff_promotion.Annot.in_source = source_file
+             ; in_build =
+                 (if optional && in_source_or_target
+                  then Diff_promotion.File.in_staging_area source_file
+                  else file2)
+             }
+         in
+         if mode = Binary
+         then
+           User_error.raise
+             ~annots
+             ~loc:rule_loc
+             [ Pp.textf
+                 "Files %s and %s differ."
+                 (Path.to_string_maybe_quoted file1)
+                 (Path.to_string_maybe_quoted (Path.build file2))
+             ]
+         else
+           Print_diff.print
+             annots
+             file1
+             (Path.build file2)
+             ~skip_trailing_cr:(mode = Text && Sys.win32))
       ~finally:(fun () ->
         (match optional with
          | false ->

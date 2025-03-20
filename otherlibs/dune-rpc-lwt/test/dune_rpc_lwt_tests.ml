@@ -65,17 +65,17 @@ let build_watch ~root_dir =
 let run_with_timeout f =
   Lwt.catch
     (fun () ->
-      let+ () =
-        Lwt_unix.with_timeout 3.0 (fun () ->
-          let+ _ = f () in
-          ())
-      in
-      print_endline "success")
+       let+ () =
+         Lwt_unix.with_timeout 3.0 (fun () ->
+           let+ _ = f () in
+           ())
+       in
+       print_endline "success")
     (fun exn ->
-      (match exn with
-       | Lwt_unix.Timeout -> print_endline "timeout"
-       | _ -> ());
-      Lwt.return_unit)
+       (match exn with
+        | Lwt_unix.Timeout -> print_endline "timeout"
+        | _ -> ());
+       Lwt.return_unit)
 ;;
 
 let initial_cwd = Sys.getcwd ()
@@ -125,8 +125,8 @@ let%expect_test "run and connect" =
      Lwt.finalize
        (fun () -> run_with_timeout (fun () -> Lwt.all [ run_client; run_build ]))
        (fun () ->
-         build#terminate;
-         Lwt.return_unit));
+          build#terminate;
+          Lwt.return_unit));
   [%expect
     {|
     started session

@@ -52,6 +52,8 @@ Melange public library depends on private library
   
   const x = "public lib uses " + Priv.x;
   
-  exports.x = x;
+  module.exports = {
+    x,
+  }
   /* No side effect */
 

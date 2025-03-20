@@ -62,15 +62,15 @@ let example ~authors ~maintainers ~license =
 ;;
 
 let to_dyn
-  { source
-  ; license
-  ; authors
-  ; homepage
-  ; bug_reports
-  ; documentation
-  ; maintainers
-  ; maintenance_intent
-  }
+      { source
+      ; license
+      ; authors
+      ; homepage
+      ; bug_reports
+      ; documentation
+      ; maintainers
+      ; maintenance_intent
+      }
   =
   let open Dyn in
   record
@@ -86,15 +86,15 @@ let to_dyn
 ;;
 
 let encode_fields
-  { source
-  ; authors
-  ; license
-  ; homepage
-  ; documentation
-  ; bug_reports
-  ; maintainers
-  ; maintenance_intent
-  }
+      { source
+      ; authors
+      ; license
+      ; homepage
+      ; documentation
+      ; bug_reports
+      ; maintainers
+      ; maintenance_intent
+      }
   =
   let open Encoder in
   record_fields
@@ -240,14 +240,14 @@ let superpose t1 t2 =
 ;;
 
 let create
-  ~maintainers
-  ~maintenance_intent
-  ~authors
-  ~homepage
-  ~bug_reports
-  ~documentation
-  ~license
-  ~source
+      ~maintainers
+      ~maintenance_intent
+      ~authors
+      ~homepage
+      ~bug_reports
+      ~documentation
+      ~license
+      ~source
   =
   { maintainers
   ; authors

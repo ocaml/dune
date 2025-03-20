@@ -52,3 +52,6 @@ module Tests : sig
 
   include Sub_system_info.S with type t := t
 end
+
+val inline_test_dirname : Lib_name.Local.t -> string
+val inline_test_runner : string

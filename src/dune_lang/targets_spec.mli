@@ -31,6 +31,4 @@ type 'a t =
   | Infer
 
 (** [target] or [targets] field with the correct multiplicity. *)
-val field
-  :  allow_directory_targets:bool
-  -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
+val field : String_with_vars.t t Dune_sexp.Decoder.fields_parser

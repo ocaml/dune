@@ -2020,10 +2020,39 @@ let reject_unreachable_packages =
               (* remove Dune from the formula as we remove it from solutions *)
               List.filter regular ~f:(fun pkg ->
                 not (Package_name.equal Dune_dep.name pkg))
-            | Error _ ->
-              Code_error.raise
-                "can't find a valid solution for the dependencies"
-                [ "name", Package_name.to_dyn pkg.name ]
+            | Error (`Formula_could_not_be_satisfied hints) ->
+              (match hints with
+               | [ (Unsatisfied_version_constraint { package_name; _ } as hint) ]
+                 when Package_name.equal package_name Dune_dep.name ->
+                 (* The current version of dune was injected into the set of
+                    available packages right before the dependencies were
+                    computed, so there's a possibility that it will violate
+                    the project's dependency constraints. A user can trigger
+                    this error case by placing version constraints on their
+                    project's dependency on the "dune" package which are not
+                    satisfied by the current version of Dune. *)
+                 User_error.raise
+                   [ Pp.text
+                       "The current version of Dune does not satisfy the version \
+                        constraints for Dune in this project's dependencies."
+                   ; Pp.text "Details:"
+                   ; Resolve_opam_formula.Unsatisfied_formula_hint.pp hint
+                   ]
+               | _ ->
+                 (* This case is a code error because the set of packages
+                    being searched has already been produced by the solver.
+                    It should be guaranteed that all packages in the set are
+                    mutually compatible and that the set is closed under
+                    dependency relationships (with the possible exception of
+                    the Dune package itself, which is handled by a separate
+                    case). *)
+                 Code_error.raise
+                   "can't find a valid solution for the dependencies"
+                   [ "name", Package_name.to_dyn pkg.name
+                   ; ( "hints"
+                     , Dyn.list Resolve_opam_formula.Unsatisfied_formula_hint.to_dyn hints
+                     )
+                   ])
           in
           let depopts =
             List.filter_map pkg.depopts ~f:(fun (d : Package_dependency.t) ->

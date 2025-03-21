@@ -139,12 +139,12 @@ let of_package (t : Dune_lang.Package.t) =
   let loc = Package.loc t in
   let version = Package.version t in
   let name = Package.name t in
-  Printf.eprintf "Attempting to load of_package: %s\n" (Package.Name.to_string name);
+  (* Printf.eprintf "Attempting to load of_package: %s\n" (Package.Name.to_string name); *)
   match (Package.dune_package t, Package.opam_package t) with
   | None, None -> assert false
   | Some _, Some _ -> assert false
   | Some t, None ->
-    Printf.eprintf "No original opam file\n";
+    (* Printf.eprintf "No original opam file\n"; *)
     let dependencies = t |> Dune_lang.Dune_package.depends |> Dependency_formula.of_dependencies in
     { name
     ; version
@@ -157,7 +157,7 @@ let of_package (t : Dune_lang.Package.t) =
     ; command_source = Assume_defaults
     }
   | None, Some o ->
-    Printf.eprintf "Yes original opam file\n";
+    (* Printf.eprintf "Yes original opam file\n"; *)
     let command_source =
       (* Opam_file *)
       (*   { build = opam_file |> OpamFile.OPAM.build *)

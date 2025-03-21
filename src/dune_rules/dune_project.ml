@@ -983,7 +983,7 @@ let load_dune_project ~read ~dir opam_packages : t Memo.t =
   parse_contents
     lexbuf
     ~f:(fun lang ->
-      Printf.eprintf "Parsing again with lang\n";
+      (* Printf.eprintf "Parsing again with lang\n"; *)
       parse ~dir ~lang ~file)
     opam_packages
 ;;
@@ -992,13 +992,13 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
-      Printf.eprintf "Folding over %s\n" fn;
+      (* Printf.eprintf "Folding over %s\n" fn; *)
       match Package.Name.of_opam_file_basename fn with
       | None ->
-        Printf.eprintf "No, it wasn't loaded\n";
+        (* Printf.eprintf "No, it wasn't loaded\n"; *)
         acc
       | Some name ->
-        Printf.eprintf "loaded %s\n" (Dune_lang.Package_name.to_string name);
+        (* Printf.eprintf "loaded %s\n" (Dune_lang.Package_name.to_string name); *)
         let opam_file = Path.Source.relative dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =

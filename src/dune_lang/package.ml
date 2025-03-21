@@ -29,7 +29,6 @@ module Opam_package = struct
         ~description
         ~tags
     =
-    (* TODO fix *)
     let id = Package_id.create ~name ~dir in
     let opam_file = dir in
     { id

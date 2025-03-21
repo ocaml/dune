@@ -149,7 +149,6 @@ let decode =
        let allow_empty = lang_version < (3, 0) || allow_empty in
        let id = Package_id.create ~name ~dir in
        let opam_file = Name.file (Package_id.name id) ~dir:(Package_id.dir id) in
-       Printf.eprintf "Sets to Exists false\n";
        { id
        ; loc
        ; synopsis

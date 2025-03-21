@@ -566,8 +566,10 @@ let encode : t -> Dune_lang.t list =
     Option.bind format_config ~f:Format_config.encode_opt |> Option.to_list
   in
   let packages =
-    Package.Name.Map.to_list_map packages ~f:(fun name package ->
-      Package.encode name package)
+    packages
+    |> Package.Name.Map.filter_map ~f:Dune_lang.Package.dune_package
+    |> Package.Name.Map.to_list_map ~f:(fun name package ->
+      Dune_lang.Dune_package.encode name package)
   in
   let subst_config =
     Option.map subst_config ~f:(fun (_loc, x) -> constr "subst" Subst_config.encode x)
@@ -641,19 +643,19 @@ let filter_packages t ~f =
 let including_hidden_packages t = t.including_hidden_packages
 
 let make_packages
-      ~opam_packages
+      ~(opam_packages : (Loc.t * Package.Opam_package.t Memo.t) Package.Name.Set.map)
       ~dir
-      ~generate_opam_files
+      ~generate_opam_files:_
       ~opam_file_location
-      packages
+      (packages : Dune_lang.Dune_package.t list)
       name
   =
   (match packages, Option.bind ~f:Dune_project_name.name name with
    | [ p ], Some name ->
-     if Package.Name.to_string (Package.name p) <> name
+     if Package.Name.to_string (Dune_lang.Dune_package.name p) <> name
      then
        User_error.raise
-         ~loc:(Package.loc p)
+         ~loc:(Dune_lang.Dune_package.loc p)
          [ Pp.textf
              "when a single package is defined, it must have the same name as the \
               project name: %s"
@@ -684,39 +686,49 @@ let make_packages
    in
    let deprecated_package_names =
      List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
-       let deprecated_package_names = Package.deprecated_package_names package in
+       let deprecated_package_names =
+         Dune_lang.Dune_package.deprecated_package_names package
+       in
        Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
    in
    List.iter packages ~f:(fun p ->
-     let name = Package.name p in
+     let name = Dune_lang.Dune_package.name p in
      Package.Name.Map.find deprecated_package_names name
-     |> Option.iter ~f:(fun loc -> package_defined_twice name loc (Package.loc p))));
-  match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
+     |> Option.iter ~f:(fun loc ->
+       package_defined_twice name loc (Dune_lang.Dune_package.loc p))));
+  match
+    Package.Name.Map.of_list_map packages ~f:(fun p -> Dune_lang.Dune_package.name p, p)
+  with
   | Error (_, _, p) ->
     User_error.raise
-      ~loc:(Package.loc p)
-      [ Pp.textf "package %s is already defined" (Package.name p |> Package.Name.to_string)
+      ~loc:(Dune_lang.Dune_package.loc p)
+      [ Pp.textf
+          "package %s is already defined"
+          (Dune_lang.Dune_package.name p |> Package.Name.to_string)
       ]
   | Ok packages ->
     let generated_opam_file =
-      if generate_opam_files
-      then fun p -> Package.set_has_opam_file p Package.Generated
-      else Fun.id
+      (* if generate_opam_files *)
+      (* then fun p -> Package.set_has_opam_file p Package.Generated *)
+      (* else *)
+      Fun.id
     in
     (match opam_file_location with
      | `Inside_opam_directory ->
        Package.Name.Map.map packages ~f:(fun p ->
          let dir = Path.Source.relative dir "opam" in
-         let p = Package.set_inside_opam_dir p ~dir in
+         (* TODO move `dir` out out Dune_package, it doesn't make much sense there *)
+         let p = Dune_lang.Dune_package.set_inside_opam_dir p ~dir in
+         let p = Dune_lang.Package.of_dune_package p in
          generated_opam_file p)
      | `Relative_to_project ->
        Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
          match dune, opam with
          | None, None -> assert false
-         | Some p, None -> Some (generated_opam_file p)
+         | Some p, None -> Some (Package.of_dune_package (generated_opam_file p))
          | Some p, Some _ ->
-           let p = Package.set_has_opam_file p (Exists true) in
-           Some (generated_opam_file p)
+           (* let p = Package.set_has_opam_file p (Exists true) in *)
+           Some (Package.of_dune_package (generated_opam_file p))
          | None, Some (loc, _) ->
            User_error.raise
              ~loc
@@ -733,10 +745,10 @@ let parse_packages
       ~info
       ~dir
       ~version
-      packages
+      (packages : Dune_lang.Dune_package.t list)
       opam_file_location
       ~generate_opam_files
-      opam_packages
+      (opam_packages : (Loc.t * Package.Opam_package.t Memo.t) Package.Name.Set.map)
   =
   forbid_opam_files_relative_to_project opam_file_location opam_packages;
   let open Memo.O in
@@ -745,7 +757,7 @@ let parse_packages
      Package.Name.Map.to_list opam_packages
      |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
        let+ pkg = pkg in
-       name, pkg)
+       name, Package.of_opam_package pkg)
      |> Memo.map ~f:Package.Name.Map.of_list_exn
    else
      Memo.return
@@ -772,7 +784,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
   @@ let+ name = field_o "name" Dune_project_name.decode
      and+ version = field_o "version" Package_version.decode
      and+ info = Package_info.decode ()
-     and+ packages = multi_field "package" (Package.decode ~dir)
+     and+ packages = multi_field "package" (Dune_lang.Dune_package.decode ~dir)
      and+ pins = Dune_pkg.Pin_stanza.DB.decode ~dir
      and+ explicit_extensions =
        multi_field
@@ -851,7 +863,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
          ~default:Warning.Settings.empty
          (Dune_lang.Syntax.since Stanza.syntax (3, 11) >>> Warning.Settings.decode)
      in
-     fun (opam_packages : (Loc.t * Package.t Memo.t) Package.Name.Map.t) ->
+     fun (opam_packages : (Loc.t * Package.Opam_package.t Memo.t) Package.Name.Map.t) ->
        let opam_file_location =
          Option.value opam_file_location ~default:(opam_file_location_default ~lang)
        in
@@ -968,16 +980,25 @@ let load_dune_project ~read ~dir opam_packages : t Memo.t =
     let+ contents = read file in
     Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
   in
-  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
+  parse_contents
+    lexbuf
+    ~f:(fun lang ->
+      (* Printf.eprintf "Parsing again with lang\n"; *)
+      parse ~dir ~lang ~file)
+    opam_packages
 ;;
 
 let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
+      (* Printf.eprintf "Folding over %s\n" fn; *)
       match Package.Name.of_opam_file_basename fn with
-      | None -> acc
+      | None ->
+        (* Printf.eprintf "No, it wasn't loaded\n"; *)
+        acc
       | Some name ->
+        (* Printf.eprintf "loaded %s\n" (Dune_lang.Package_name.to_string name); *)
         let opam_file = Path.Source.relative dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
         let pkg =
@@ -993,7 +1014,9 @@ let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   then
     let+ opam_packages =
       let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
-      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
+      Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) ->
+        let+ pkg = pkg in
+        Package.of_opam_package pkg)
     in
     Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None

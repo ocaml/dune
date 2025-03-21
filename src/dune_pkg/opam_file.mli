@@ -37,4 +37,4 @@ val load_opam_file_with_contents
   :  contents:string
   -> Path.Source.t
   -> Package_name.t
-  -> Dune_lang.Package.t
+  -> Dune_lang.Package.Opam_package.t

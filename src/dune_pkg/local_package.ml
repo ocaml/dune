@@ -143,59 +143,66 @@ let of_package (t : Dune_lang.Package.t) =
   let loc = Package.loc t in
   let version = Package.version t |> Option.value ~default:Package_version.dev in
   let name = Package.name t in
-  match Package.original_opam_file t with
-  | None ->
-    let dependencies = t |> Package.depends |> Dependency_formula.of_dependencies in
+  (* Printf.eprintf "Attempting to load of_package: %s\n" (Package.Name.to_string name); *)
+  match (Package.dune_package t, Package.opam_package t) with
+  | None, None -> assert false
+  | Some _, Some _ -> assert false
+  | Some t, None ->
+    (* Printf.eprintf "No original opam file\n"; *)
+    let dependencies = t |> Dune_lang.Dune_package.depends |> Dependency_formula.of_dependencies in
     { name
     ; version
     ; dependencies
-    ; conflicts = Package.conflicts t
-    ; depopts = Package.depopts t
+    ; conflicts = Dune_lang.Dune_package.conflicts t
+    ; depopts = Dune_lang.Dune_package.depopts t
     ; loc
     ; conflict_class = []
     ; pins = Package_name.Map.empty
     ; command_source = Assume_defaults
     }
-  | Some { file; contents = opam_file_string } ->
-    let opam_file =
-      Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
-    in
+  | None, Some o ->
+    (* Printf.eprintf "Yes original opam file\n"; *)
     let command_source =
-      Opam_file
-        { build = opam_file |> OpamFile.OPAM.build
-        ; install = opam_file |> OpamFile.OPAM.install
-        }
+      (* Opam_file *)
+      (*   { build = opam_file |> OpamFile.OPAM.build *)
+      (*   ; install = opam_file |> OpamFile.OPAM.install *)
+      (*   } *)
+      Assume_defaults
     in
     let dependencies =
-      opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
+      o |> Dune_lang.Package.Opam_package.depends |> Dependency_formula.of_filtered_formula
     in
     let conflicts =
-      OpamFile.OPAM.conflicts opam_file |> Package_dependency.list_of_opam_disjunction loc
+      (* OpamFile.OPAM.conflicts opam_file |> Package_dependency.list_of_opam_disjunction loc *)
+      []
     in
     let depopts =
-      OpamFile.OPAM.depopts opam_file |> Package_dependency.list_of_opam_disjunction loc
+      (* OpamFile.OPAM.depopts opam_file |> Package_dependency.list_of_opam_disjunction loc *)
+      []
     in
     let conflict_class =
-      OpamFile.OPAM.conflict_class opam_file
-      |> List.map ~f:Package_name.of_opam_package_name
+      (* OpamFile.OPAM.conflict_class opam_file *)
+      (* |> List.map ~f:Package_name.of_opam_package_name *)
+      []
     in
     let pins =
-      match
-        OpamFile.OPAM.pin_depends opam_file
-        |> List.map ~f:(fun (pkg, url) ->
-          let name = Package_name.of_opam_package_name (OpamPackage.name pkg) in
-          let version =
-            Package_version.of_opam_package_version (OpamPackage.version pkg)
-          in
-          let loc = Loc.in_file (Path.source file) in
-          name, { loc; version; url = loc, url; name; origin = `Opam })
-        |> Package_name.Map.of_list
-      with
-      | Ok x -> x
-      | Error (_, pkg, _) ->
-        User_error.raise
-          ~loc:pkg.loc
-          [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ]
+      (* match *)
+      (*   OpamFile.OPAM.pin_depends opam_file *)
+      (*   |> List.map ~f:(fun (pkg, url) -> *)
+      (*     let name = Package_name.of_opam_package_name (OpamPackage.name pkg) in *)
+      (*     let version = *)
+      (*       Package_version.of_opam_package_version (OpamPackage.version pkg) *)
+      (*     in *)
+      (*     let loc = Loc.in_file (Path.source file) in *)
+      (*     name, { loc; version; url = loc, url; name; origin = `Opam }) *)
+      (*   |> Package_name.Map.of_list *)
+      (* with *)
+      (* | Ok x -> x *)
+      (* | Error (_, pkg, _) -> *)
+      (*   User_error.raise *)
+      (*     ~loc:pkg.loc *)
+      (*     [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ] *)
+      Package_name.Map.empty
     in
     { name
     ; version

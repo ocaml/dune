@@ -132,9 +132,19 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
      | Aliases_only aliases ->
        let+ () =
          let action = interpret_and_add_locks ~expander rule.locks action.build in
-         Memo.parallel_iter aliases ~f:(fun alias ->
-           let alias = Alias.make ~dir alias in
-           Alias_rules.add sctx ~alias ~loc:rule.loc action)
+         match List.map ~f:(Alias.make ~dir) aliases with
+         | alias :: extra_aliases ->
+           let loc = rule.loc in
+           let* () =
+             Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
+               Super_context.add_alias_action sctx extra_alias ~dir ~loc
+               @@
+               let open Action_builder.O in
+               let+ () = Action_builder.dep (Dep.alias alias) in
+               Action.Full.empty)
+           in
+           Alias_rules.add sctx ~alias ~loc action
+         | [] -> Code_error.raise "empty list of aliases" []
        in
        None)
 ;;

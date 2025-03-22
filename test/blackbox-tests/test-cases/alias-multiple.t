@@ -64,7 +64,6 @@ Updating the dune-project file to use dune 3.5 allows the build to succeed:
   $ dune build @a
   I have run
   $ dune build @b
-  I have run
 
 Also note having both the alias and aliases fields in the same rule stanza is
 not allowed
@@ -101,3 +100,14 @@ Even if the aliases list is empty
   4 |  (action (echo "I have run")))
   Error: fields "alias" and "aliases" are mutually exclusive.
   [1]
+
+Building both aliases at the same time should only run the action once
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a b)
+  >  (action (echo "I have run\n")))
+  > EOF
+
+  $ dune clean
+  $ dune build @a @b
+  I have run

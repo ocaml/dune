@@ -4,6 +4,7 @@ module Name = struct
   include Dune_util.Alias_name
 
   let default = of_string "default"
+  let empty = of_string "empty"
 
   let parse_local_path (loc, p) =
     match Path.Local.parent p with

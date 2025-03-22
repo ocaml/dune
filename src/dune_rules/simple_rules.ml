@@ -3,8 +3,14 @@ open Memo.O
 
 module Alias_rules = struct
   let add sctx ~alias ~loc build =
-    let dir = Alias.dir alias in
-    Super_context.add_alias_action sctx alias ~dir ~loc build
+    match Alias.Name.compare (Alias.name alias) Alias.Name.empty with
+    | Eq ->
+      User_error.raise
+        ~loc
+        [ Pp.text "User-defined rules cannot be added to the 'empty' alias" ]
+    | Lt | Gt ->
+      let dir = Alias.dir alias in
+      Super_context.add_alias_action sctx alias ~dir ~loc build
   ;;
 
   let add_empty sctx ~loc ~alias =

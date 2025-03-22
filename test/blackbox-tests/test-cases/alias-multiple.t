@@ -101,3 +101,30 @@ Even if the aliases list is empty
   4 |  (action (echo "I have run")))
   Error: fields "alias" and "aliases" are mutually exclusive.
   [1]
+
+Building both aliases at the same time should only run the action once
+  $ cat > dune << EOF
+  > (rule
+  >  (aliases a b)
+  >  (action (echo "I have run\n")))
+  > EOF
+
+  $ dune clean
+  $ dune build @a @b
+  I have run
+  I have run
+
+A similar test with a rule that produces a target
+  $ cat > dune << EOF
+  > (rule
+  >  (targets a)
+  >  (aliases b c)
+  >  (action
+  >   (progn
+  >    (echo "I have run\n")
+  >    (with-stdout-to a (echo "foo")))))
+  > EOF
+
+  $ dune clean
+  $ dune build @b @c
+  I have run

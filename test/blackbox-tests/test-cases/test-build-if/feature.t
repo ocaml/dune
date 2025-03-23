@@ -26,7 +26,7 @@ We test the various combinations:
   >   else
   >     echo '  build was done: NO'
   >   fi
-  >   if echo $output|grep -q "alias runtest" ; then
+  >   if echo $output|grep -q "alias t" ; then
   >     echo '  test did run:   YES'
   >   else
   >     echo '  test did run:   NO'

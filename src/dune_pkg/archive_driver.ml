@@ -77,12 +77,13 @@ let extract t ~archive ~target =
   let prefix = Path.basename target in
   let suffix = Path.basename archive in
   let target_in_temp = Temp_dir.dir_for_target ~target ~prefix ~suffix in
+  let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;
+    Temp.destroy File temp_stderr_path;
     Fiber.return ())
   @@ fun () ->
   Path.mkdir_p target_in_temp;
-  let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
   let stderr_to = Process.Io.file temp_stderr_path Out in
   let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
   let args = command.make_args ~archive ~target_in_temp in

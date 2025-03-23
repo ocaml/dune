@@ -74,25 +74,24 @@ let choose_for_filename_default_to_tar filename =
 let extract t ~archive ~target =
   let* () = Fiber.return () in
   let command = Lazy.force t.command in
-  let target_in_temp =
-    let prefix = Path.basename target in
-    let suffix = Path.basename archive in
-    Temp_dir.dir_for_target ~target ~prefix ~suffix
-  in
+  let prefix = Path.basename target in
+  let suffix = Path.basename archive in
+  let target_in_temp = Temp_dir.dir_for_target ~target ~prefix ~suffix in
   Fiber.finalize ~finally:(fun () ->
     Temp.destroy Dir target_in_temp;
     Fiber.return ())
   @@ fun () ->
   Path.mkdir_p target_in_temp;
-
+  let temp_stderr_path = Temp.create File ~prefix ~suffix:"stderr" in
+  let stderr_to = Process.Io.file temp_stderr_path Out in
   let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
-  let temp_path = Temp.create File ~prefix:"dune" ~suffix:"extract_out" in
-  let stderr_to = Process.Io.file temp_path Out in
-
   let args = command.make_args ~archive ~target_in_temp in
-  let+ (), exit_code = Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args in
-
-  if exit_code = 0 then ( (* process success *)
+  let+ (), exit_code =
+    Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args
+  in
+  if exit_code = 0
+  then (
+    (* extract process sucess *)
     let target_in_temp =
       match Path.readdir_unsorted_with_kinds target_in_temp with
       | Error e ->
@@ -106,13 +105,17 @@ let extract t ~archive ~target =
     in
     Path.mkdir_p (Path.parent_exn target);
     Path.rename target_in_temp target;
-    Ok ()
-  ) else (
-    let t = In_channel.open_text (Path.to_absolute_filename temp_path) in
+    Ok ())
+  else
+    In_channel.with_open_text (Path.to_absolute_filename temp_stderr_path)
+    @@ fun err_channel ->
+    let stderr_lines = In_channel.input_lines err_channel in
     User_error.raise
       [ Pp.textf "failed to extract '%s'" (Path.basename archive)
-      ; Pp.textf "Reason: %s failed with non-zero exit code '%d' and output:" (Path.basename command.bin) exit_code
-      ; Pp.enumerate (In_channel.input_lines t) ~f:(Pp.text)
+      ; Pp.textf
+          "Reason: %s failed with non-zero exit code '%d' and output:"
+          (Path.basename command.bin)
+          exit_code
+      ; Pp.enumerate stderr_lines ~f:Pp.text
       ]
-  )
 ;;

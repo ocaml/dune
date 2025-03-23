@@ -108,15 +108,14 @@ let extract t ~archive ~target =
     Path.rename target_in_temp target;
     Ok ())
   else
-    In_channel.with_open_text (Path.to_absolute_filename temp_stderr_path)
-    @@ fun err_channel ->
-    let stderr_lines = In_channel.input_lines err_channel in
-    User_error.raise
-      [ Pp.textf "failed to extract '%s'" (Path.basename archive)
-      ; Pp.textf
-          "Reason: %s failed with non-zero exit code '%d' and output:"
-          (Path.basename command.bin)
-          exit_code
-      ; Pp.enumerate stderr_lines ~f:Pp.text
-      ]
+    Io.with_file_in temp_stderr_path ~f:(fun err_channel ->
+      let stderr_lines = Io.input_lines err_channel in
+      User_error.raise
+        [ Pp.textf "failed to extract '%s'" (Path.basename archive)
+        ; Pp.textf
+            "Reason: %s failed with non-zero exit code '%d' and output:"
+            (Path.basename command.bin)
+            exit_code
+        ; Pp.enumerate stderr_lines ~f:Pp.text
+        ])
 ;;

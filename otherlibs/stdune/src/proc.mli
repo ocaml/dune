@@ -1,3 +1,7 @@
+(** [Proc.restore_cwd_and_execve prog args ~env] runs [prog] with [args] in [env].
+
+  Note that [args] is not like [argv] in that [(Array.to_list args).(0)] is the first
+  argument rather than the conventional program name in [Unix.execve]. *)
 val restore_cwd_and_execve : string -> string list -> env:Env.t -> _
 
 module Resource_usage : sig

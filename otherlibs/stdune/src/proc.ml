@@ -7,7 +7,15 @@ external sys_exit : int -> 'a = "caml_sys_exit"
 
 let restore_cwd_and_execve prog argv ~env =
   let env = Env.to_unix env |> Array.of_list in
-  let argv = Array.of_list argv in
+  (* We don't trust that the callers have given the correct argv.(0) so we
+     update the value with what is actually being executed. *)
+  let argv =
+    Array.of_list
+    @@
+    match argv with
+    | _ :: argv -> prog :: argv
+    | [] -> [ prog ]
+  in
   (* run at_exit before changing the working directory *)
   Stdlib.do_at_exit ();
   Sys.chdir (Path.External.to_string Path.External.initial_cwd);

@@ -84,15 +84,15 @@ let extract t ~archive ~target =
     Fiber.return ())
   @@ fun () ->
   Path.mkdir_p target_in_temp;
+
   let stdout_to = Process.Io.make_stdout ~output_on_success:Swallow ~output_limit in
-  let stderr_to = Process.Io.make_stderr ~output_on_success:Swallow ~output_limit in
+  let temp_path = Temp.create File ~prefix:"dune" ~suffix:"extract_out" in
+  let stderr_to = Process.Io.file temp_path Out in
+
   let args = command.make_args ~archive ~target_in_temp in
-  let+ (), exit_code =
-    Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args
-  in
-  match exit_code = 0 with
-  | false -> Error ()
-  | true ->
+  let+ (), exit_code = Process.run ~display:Quiet ~stdout_to ~stderr_to Return command.bin args in
+
+  if exit_code = 0 then ( (* process success *)
     let target_in_temp =
       match Path.readdir_unsorted_with_kinds target_in_temp with
       | Error e ->
@@ -107,4 +107,12 @@ let extract t ~archive ~target =
     Path.mkdir_p (Path.parent_exn target);
     Path.rename target_in_temp target;
     Ok ()
+  ) else (
+    let t = In_channel.open_text (Path.to_absolute_filename temp_path) in
+    User_error.raise
+      [ Pp.textf "failed to extract '%s'" (Path.basename archive)
+      ; Pp.textf "Reason: %s failed with non-zero exit code '%d' and output:" (Path.basename command.bin) exit_code
+      ; Pp.enumerate (In_channel.input_lines t) ~f:(Pp.text)
+      ]
+  )
 ;;

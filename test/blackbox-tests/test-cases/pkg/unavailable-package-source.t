@@ -36,9 +36,9 @@ Git
 
 HTTP
 
-  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed -e 's/".*"/"<PATH>"/'
-  Error:
-  failed to unpack archive downloaded from https://0.0.0.0:35000
-  reason:
-  unable to extract "<PATH>"
-  
+  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed "s#\.temp/[^/]*/download#.temp/TMP/download#g"
+  Error: failed to extract 'download'
+  Reason: tar failed with non-zero exit code '2' and output:
+  - /usr/bin/tar: _build/.temp/TMP/download: Cannot
+    open: No such file or directory
+  - /usr/bin/tar: Error is not recoverable: exiting now

@@ -14,10 +14,7 @@ build this package and check for sufficient error handling
   $ solve foo
   Solution for dune.lock:
   - foo.0.0.1
-
-  $ build_pkg foo 2>&1 | sed "s#\^##g; s#$(pwd)#PWD#; s#, characters.*##" | awk 'NF'
-  File "dune.lock/foo.pkg", line 6
-  6 |    file://PWD/corrupted.tar)))
+  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' 
   Error: failed to extract 'corrupted.tar'
   Reason: tar failed with non-zero exit code '2' and output:
   - /usr/bin/tar: This does not look like a tar archive
@@ -38,9 +35,7 @@ captured
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 | sed "s#\^##g; s#$(pwd)#PWD#; s#, characters.*##" | awk 'NF'
-  File "dune.lock/foo.pkg", line 6
-  6 |    file://PWD/corrupted.tar.gz)))
+  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' 
   Error: failed to extract 'corrupted.tar.gz'
   Reason: tar failed with non-zero exit code '2' and output:
   - /usr/bin/tar: This does not look like a tar archive
@@ -66,9 +61,7 @@ unzip error message a bit less clear
   Solution for dune.lock:
   - foo.0.0.1
 
-  $ build_pkg foo 2>&1 | sed "s#\^##g; s#$(pwd)#PWD#; s#, characters.*##" | awk 'NF'
-  File "dune.lock/foo.pkg", line 6
-  6 |    file://PWD/corrupted.zip)))
+  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' 
   Error: failed to extract 'corrupted.zip'
   Reason: unzip failed with non-zero exit code '9' and output:
   -   End-of-central-directory signature not found.  Either this file is not
@@ -76,10 +69,10 @@ unzip error message a bit less clear
   -   latter case the central directory and zipfile comment will be found on
   -   the last disk(s) of this archive.
   - unzip:  cannot find zipfile directory in one of
-    PWD/corrupted.zip
+    $TESTCASE_ROOT/corrupted.zip
     or
   -        
-    PWD/corrupted.zip.zip,
+    $TESTCASE_ROOT/corrupted.zip.zip,
     and cannot find
-    PWD/corrupted.zip.ZIP,
+    $TESTCASE_ROOT/corrupted.zip.ZIP,
     period.

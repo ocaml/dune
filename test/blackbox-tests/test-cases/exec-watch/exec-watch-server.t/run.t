@@ -49,3 +49,13 @@ Change the program so that it no longer terminates immediately.
 
 Prevent the test from leaking the dune process.
   $ kill $PID
+
+Checking for the child process
+  $ pgrep -c "foo.exe" || true
+  1
+
+Killing the child process manually
+  $ kill $(pidof ./_build/default/foo.exe)
+
+  $ pgrep -c "foo.exe" || true
+  0

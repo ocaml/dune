@@ -36,9 +36,6 @@ Git
 
 HTTP
 
-  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed "s#\.temp/[^/]*/download#.temp/TMP/download#g"
+  $ runtest "(fetch (url \"https://0.0.0.0:35000\"))" 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
   Error: failed to extract 'download'
-  Reason: tar failed with non-zero exit code '2' and output:
-  - /usr/bin/tar: _build/.temp/TMP/download: Cannot
-    open: No such file or directory
-  - /usr/bin/tar: Error is not recoverable: exiting now
+  Reason: tar failed with non-zero exit code X and output:

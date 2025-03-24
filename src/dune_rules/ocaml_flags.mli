@@ -36,3 +36,8 @@ val with_vendored_alerts : t -> t
 val dump : t -> Dune_lang.t list Action_builder.t
 val with_vendored_flags : t -> ocaml_version:Version.t -> t
 val open_flags : Module_name.t list -> string list
+
+module Ocamldep_flags : sig
+  (** Returns a [string list Action_builder.t] with no flags. *)
+  val none : string list Action_builder.t
+end

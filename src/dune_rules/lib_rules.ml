@@ -497,6 +497,8 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_info =
   let* flags = Buildable_rules.ocaml_flags sctx ~dir lib.buildable.flags
+  and* ocamldep_flags =
+    Buildable_rules.ocamldep_flags sctx ~dir lib.buildable.ocamldep_flags
   and* vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let obj_dir = Library.obj_dir ~dir lib in
   let* modules, pp =
@@ -539,6 +541,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope ~compile_
     ~obj_dir
     ~modules
     ~flags
+    ~ocamldep_flags
     ~requires_compile
     ~requires_link
     ~preprocessing:pp

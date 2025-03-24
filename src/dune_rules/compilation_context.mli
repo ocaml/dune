@@ -25,6 +25,7 @@ val create
   -> obj_dir:Path.Build.t Obj_dir.t
   -> modules:Modules.With_vlib.t
   -> flags:Ocaml_flags.t
+  -> ocamldep_flags:string list Action_builder.t
   -> requires_compile:Lib.t list Resolve.Memo.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> ?preprocessing:Pp_spec.t

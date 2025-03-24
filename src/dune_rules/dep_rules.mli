@@ -4,6 +4,7 @@ open Import
 
 val for_module
   :  Ocamldep.Modules_data.t
+  -> ocamldep_flags:string list Action_builder.t
   -> Module.t
   -> Module.t list Action_builder.t Ml_kind.Dict.t Memo.t
 
@@ -14,4 +15,7 @@ val immediate_deps_of
   -> ml_kind:Ml_kind.t
   -> Module.t list Action_builder.t
 
-val rules : Ocamldep.Modules_data.t -> Dep_graph.t Ml_kind.Dict.t Memo.t
+val rules
+  :  Ocamldep.Modules_data.t
+  -> ocamldep_flags:string list Action_builder.t
+  -> Dep_graph.t Ml_kind.Dict.t Memo.t

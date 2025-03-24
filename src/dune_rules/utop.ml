@@ -174,6 +174,7 @@ let setup sctx ~dir =
     let profile = Super_context.context sctx |> Context.profile in
     Ocaml_flags.append_common (Ocaml_flags.default ~dune_version ~profile) [ "-w"; "-24" ]
   in
+  let ocamldep_flags = Ocaml_flags.Ocamldep_flags.none in
   let* cctx =
     let requires_link = Memo.lazy_ (fun () -> requires) in
     Compilation_context.create
@@ -186,6 +187,7 @@ let setup sctx ~dir =
       ~requires_link
       ~requires_compile:requires
       ~flags
+      ~ocamldep_flags
       ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
       ~melange_package_name:None
       ~package:None

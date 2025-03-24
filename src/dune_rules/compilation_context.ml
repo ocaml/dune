@@ -134,6 +134,7 @@ let create
       ~obj_dir
       ~modules
       ~flags
+      ~ocamldep_flags
       ~requires_compile
       ~requires_link
       ?(preprocessing = Pp_spec.dummy)
@@ -192,7 +193,7 @@ let create
     ; stdlib
     }
   in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data ~ocamldep_flags
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b

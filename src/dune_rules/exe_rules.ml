@@ -176,6 +176,9 @@ let executables_rules
       ~jsoo_is_whole_program
   in
   let* flags = Buildable_rules.ocaml_flags sctx ~dir exes.buildable.flags in
+  let* ocamldep_flags =
+    Buildable_rules.ocamldep_flags sctx ~dir exes.buildable.ocamldep_flags
+  in
   let* modules, pp =
     let+ modules, pp =
       Buildable_rules.modules_rules
@@ -208,6 +211,7 @@ let executables_rules
       ~obj_dir
       ~modules
       ~flags
+      ~ocamldep_flags
       ~requires_link
       ~requires_compile
       ~preprocessing:pp

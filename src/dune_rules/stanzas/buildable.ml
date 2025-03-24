@@ -17,6 +17,7 @@ type t =
   ; preprocessor_deps : Dep_conf.t list
   ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; flags : Ocaml_flags.Spec.t
+  ; ocamldep_flags : Ordered_set_lang.Unexpanded.t
   ; js_of_ocaml : Js_of_ocaml.In_buildable.t Js_of_ocaml.Mode.Pair.t
   ; allow_overlapping_dependencies : bool
   ; ctypes : Ctypes_field.t option
@@ -87,6 +88,10 @@ let decode (for_ : for_) =
   and+ libraries =
     field "libraries" (Lib_dep.L.decode ~allow_re_export:in_library) ~default:[]
   and+ flags = Ocaml_flags.Spec.decode
+  and+ ocamldep_flags_opt =
+    field_o
+      "ocamldep_flags"
+      (Dune_lang.Syntax.since Stanza.syntax (3, 18) >>> Ordered_set_lang.Unexpanded.decode)
   and+ js_of_ocaml =
     field
       "js_of_ocaml"
@@ -109,6 +114,9 @@ let decode (for_ : for_) =
     field_b
       "empty_module_interface_if_absent"
       ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 0))
+  in
+  let ocamldep_flags =
+    Option.value ~default:Ordered_set_lang.Unexpanded.standard ocamldep_flags_opt
   in
   let preprocess =
     let init =
@@ -169,6 +177,7 @@ let decode (for_ : for_) =
   ; extra_objects
   ; libraries
   ; flags
+  ; ocamldep_flags
   ; js_of_ocaml = { js = js_of_ocaml; wasm = wasm_of_ocaml }
   ; allow_overlapping_dependencies
   ; ctypes

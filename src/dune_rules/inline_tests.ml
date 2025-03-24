@@ -153,6 +153,7 @@ include Sub_system.Register_end_point (struct
           Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
         in
         let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
+        let ocamldep_flags = Ocaml_flags.Ocamldep_flags.none in
         Compilation_context.create
           ()
           ~super_context:sctx
@@ -163,6 +164,7 @@ include Sub_system.Register_end_point (struct
           ~requires_compile:runner_libs
           ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
           ~flags
+          ~ocamldep_flags
           ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
           ~melange_package_name:None
           ~package

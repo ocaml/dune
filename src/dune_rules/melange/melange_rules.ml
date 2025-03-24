@@ -307,6 +307,7 @@ let setup_emit_cmj_rules
     in
     let requires_link = Lib.Compile.requires_link compile_info in
     let* flags = melange_compile_flags ~sctx ~dir mel in
+    let ocamldep_flags = Ocaml_flags.Ocamldep_flags.none in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create
@@ -317,6 +318,7 @@ let setup_emit_cmj_rules
         ~obj_dir
         ~modules
         ~flags
+        ~ocamldep_flags
         ~requires_link
         ~requires_compile:direct_requires
         ~preprocessing:pp

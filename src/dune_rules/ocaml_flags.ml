@@ -193,3 +193,7 @@ let allow_only_melange t =
 let open_flags modules =
   List.concat_map modules ~f:(fun name -> [ "-open"; Module_name.to_string name ])
 ;;
+
+module Ocamldep_flags = struct
+  let none = Action_builder.return []
+end

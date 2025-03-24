@@ -46,3 +46,11 @@ val ocaml_flags
   -> dir:Path.Build.t
   -> Ocaml_flags.Spec.t
   -> Ocaml_flags.t Memo.t
+
+(** Compute the ocamldep flags based on the directory environment and a buildable
+    stanza *)
+val ocamldep_flags
+  :  Super_context.t
+  -> dir:Path.Build.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> string list Action_builder.t Memo.t

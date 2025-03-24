@@ -127,6 +127,7 @@ let transitive_deps =
 let deps_of
       ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
       ~ml_kind
+      ~ocamldep_flags
       unit
   =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
@@ -151,7 +152,8 @@ let deps_of
          ocamldep
          ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
-         [ A "-modules"
+         [ Command.Args.dyn ocamldep_flags
+         ; A "-modules"
          ; Command.Args.dyn flags
          ; Command.Ml_kind.flag ml_kind
          ; Dep (Module.File.path source)

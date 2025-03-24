@@ -21,6 +21,14 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
     Ocaml_flags.with_vendored_flags ~ocaml_version flags
 ;;
 
+let ocamldep_flags t ~dir spec =
+  let* expander = Super_context.expander t ~dir in
+  let expanded_flags =
+    Expander.expand_and_eval_set expander spec ~standard:(Action_builder.return [])
+  in
+  Memo.return expanded_flags
+;;
+
 let gen_select_rules sctx ~dir compile_info =
   Lib.Compile.resolved_selects compile_info
   |> Resolve.Memo.read_memo

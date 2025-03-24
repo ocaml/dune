@@ -222,6 +222,7 @@ module Stanza = struct
         (Ocaml_flags.default ~dune_version ~profile)
         [ "-w"; "-24" ]
     in
+    let ocamldep_flags = Ocaml_flags.Ocamldep_flags.none in
     let* modules = Source.modules source preprocessing in
     let* cctx =
       Compilation_context.create
@@ -234,6 +235,7 @@ module Stanza = struct
         ~requires_compile
         ~requires_link
         ~flags
+        ~ocamldep_flags
         ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.make None)
         ~melange_package_name:None
         ~package:None

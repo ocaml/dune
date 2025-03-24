@@ -313,6 +313,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
     let requires_compile = Resolve.map driver_and_libs ~f:snd in
     let requires_link = Memo.lazy_ (fun () -> Memo.return requires_compile) in
     let flags = Ocaml_flags.of_list [ "-g"; "-w"; "-24" ] in
+    let ocamldep_flags = Ocaml_flags.Ocamldep_flags.none in
     let opaque = Compilation_context.Explicit false in
     let modules = Modules.With_vlib.singleton_exe module_ in
     Compilation_context.create
@@ -321,6 +322,7 @@ let build_ppx_driver sctx ~scope ~target ~pps ~pp_names =
       ~obj_dir
       ~modules
       ~flags
+      ~ocamldep_flags
       ~requires_compile:(Memo.return requires_compile)
       ~requires_link
       ~opaque

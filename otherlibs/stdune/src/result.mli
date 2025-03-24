@@ -39,6 +39,8 @@ val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t
 
+val to_either : ('a, 'b) t -> ('b, 'a) Either.t
+
 module List : sig
   val map : 'a list -> f:('a -> ('b, 'e) t) -> ('b list, 'e) t
   val all : ('a, 'error) t list -> ('a list, 'error) t

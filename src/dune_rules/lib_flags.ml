@@ -1,18 +1,18 @@
 open Import
+open Memo.O
 
 module Link_params = struct
   type t =
     { include_dirs : Path.t list
     ; deps : Path.t list
-        (* List of files that will be read by the compiler at link time and
+      (* List of files that will be read by the compiler at link time and
            appear directly on the command line *)
     ; hidden_deps : Path.t list
-    (* List of files that will be read by the compiler at link time but do
+      (* List of files that will be read by the compiler at link time but do
        not appear on the command line *)
     }
 
-  let get sctx (t : Lib.t) (mode : Link_mode.t) =
-    let open Memo.O in
+  let get sctx (t : Lib.t) (mode : Link_mode.t) (lib_config : Lib_config.t) =
     let info = Lib.info t in
     let lib_files = Lib_info.foreign_archives info
     and dll_files = Lib_info.foreign_dll_files info in
@@ -69,49 +69,61 @@ module Link_params = struct
            Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
          | Native ->
            Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-           :: Path.extend_basename obj_name ~suffix:(Lib.lib_config t).ext_obj
+           :: Path.extend_basename obj_name ~suffix:lib_config.ext_obj
            :: hidden_deps)
     in
     { deps; hidden_deps; include_dirs }
   ;;
 end
 
-let link_deps sctx t mode =
-  let open Memo.O in
-  let+ x = Link_params.get sctx t mode in
+let link_deps sctx t mode lib_config =
+  let+ x = Link_params.get sctx t mode lib_config in
   List.rev_append x.hidden_deps x.deps
 ;;
 
 module L = struct
   type nonrec t = Lib.t list
 
-  let to_iflags dirs =
+  let to_flags flag dirs =
     Command.Args.S
       (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
-         Command.Args.Path dir :: A "-I" :: acc)
+         Command.Args.Path dir :: A flag :: acc)
        |> List.rev)
   ;;
 
-  let remove_stdlib dirs libs =
-    match libs with
-    | [] -> dirs
-    | lib :: _ -> Path.Set.remove dirs (Lib.lib_config lib).stdlib_dir
+  let to_iflags dir = to_flags "-I" dir
+  let to_hflags dir = to_flags "-H" dir
+
+  let remove_stdlib dirs (lib_config : Lib_config.t) =
+    Path.Set.remove dirs lib_config.stdlib_dir
   ;;
+
+  type mode =
+    { lib_mode : Lib_mode.t
+    ; melange_emit : bool
+    }
 
   let include_paths =
     let add_public_dir ~visible_cmi obj_dir acc mode =
       match visible_cmi with
       | false -> acc
       | true ->
-        let public_cmi_dir =
-          (match mode with
-           | `Byte -> Obj_dir.public_cmi_ocaml_dir
-           | `Melange -> Obj_dir.public_cmi_melange_dir)
-            obj_dir
+        let public_cmi_dirs =
+          List.map
+            ~f:(fun f -> f obj_dir)
+            (match mode with
+             | { lib_mode = Ocaml _; _ } -> [ Obj_dir.public_cmi_ocaml_dir ]
+             | { lib_mode = Melange; melange_emit = false } ->
+               [ Obj_dir.public_cmi_melange_dir ]
+             | { lib_mode = Melange; melange_emit = true } ->
+               (* Add the dir where `.cmj` files exist, even for installed
+                  private libraries. Melange needs to query `.cmj` files for
+                  `import` information *)
+               [ Obj_dir.melange_dir; Obj_dir.public_cmi_melange_dir ])
         in
-        Path.Set.add acc public_cmi_dir
+        List.fold_left public_cmi_dirs ~init:acc ~f:Path.Set.add
     in
-    fun ?project ts mode ->
+    fun ?project ts mode lib_config ->
       let visible_cmi =
         match project with
         | None -> fun _ -> true
@@ -130,32 +142,48 @@ module L = struct
         List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir (Lib.info t) in
           let visible_cmi = visible_cmi t in
-          match mode with
-          | Lib_mode.Melange -> add_public_dir ~visible_cmi obj_dir acc `Melange
-          | Ocaml mode ->
-            let acc = add_public_dir ~visible_cmi obj_dir acc `Byte in
-            (match mode with
+          match mode.lib_mode with
+          | Melange -> add_public_dir ~visible_cmi obj_dir acc mode
+          | Ocaml ocaml_mode ->
+            let acc = add_public_dir ~visible_cmi obj_dir acc mode in
+            (match ocaml_mode with
              | Byte -> acc
              | Native ->
                let native_dir = Obj_dir.native_dir obj_dir in
                Path.Set.add acc native_dir))
       in
-      remove_stdlib dirs ts
+      remove_stdlib dirs lib_config
   ;;
 
-  let include_flags ?project ts mode = to_iflags (include_paths ?project ts mode)
+  let include_flags ?project ~direct_libs ~hidden_libs mode lib_config =
+    let include_paths ts =
+      include_paths ?project ts { lib_mode = mode; melange_emit = false }
+    in
+    let hidden_includes = to_hflags (include_paths hidden_libs lib_config) in
+    let direct_includes = to_iflags (include_paths direct_libs lib_config) in
+    Command.Args.S [ direct_includes; hidden_includes ]
+  ;;
 
-  let c_include_paths ts =
+  let melange_emission_include_flags ?project ts lib_config =
+    to_iflags
+      (include_paths ?project ts { lib_mode = Melange; melange_emit = true } lib_config)
+  ;;
+
+  let include_paths ?project ts mode =
+    include_paths ?project ts { lib_mode = mode; melange_emit = false }
+  ;;
+
+  let c_include_paths ts lib_config =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         let src_dir = Lib_info.src_dir (Lib.info t) in
         Path.Set.add acc src_dir)
     in
-    remove_stdlib dirs ts
+    (* I don't remember why this is being done anymore. Anyone else has a clue? *)
+    remove_stdlib dirs lib_config
   ;;
 
   let c_include_flags ts sctx =
-    let open Memo.O in
     let local, external_ =
       List.fold_left ts ~init:([], Dep.Set.empty) ~f:(fun (local, external_) lib ->
         let info = Lib.info lib in
@@ -177,7 +205,17 @@ module L = struct
       let+ () = Action_builder.all_unit bindings in
       Command.Args.empty
     in
-    Command.Args.S [ Dyn local; Hidden_deps external_; to_iflags (c_include_paths ts) ]
+    let include_flags =
+      let open Action_builder.O in
+      let+ lib_config =
+        Action_builder.of_memo
+          Memo.O.(
+            let+ ocaml = Super_context.context sctx |> Context.ocaml in
+            ocaml.lib_config)
+      in
+      to_iflags (c_include_paths ts lib_config)
+    in
+    Command.Args.S [ Dyn local; Hidden_deps external_; Dyn include_flags ]
   ;;
 
   let toplevel_ld_paths ts =
@@ -190,8 +228,10 @@ module L = struct
     c_include_paths with_dlls
   ;;
 
-  let toplevel_include_paths ts =
-    Path.Set.union (include_paths ts (Lib_mode.Ocaml Byte)) (toplevel_ld_paths ts)
+  let toplevel_include_paths ts lib_config =
+    Path.Set.union
+      (include_paths ts (Lib_mode.Ocaml Byte) lib_config)
+      (toplevel_ld_paths ts lib_config)
   ;;
 end
 
@@ -209,34 +249,36 @@ module Lib_and_module = struct
         (let+ l =
            Action_builder.all
              (List.map ts ~f:(function
-               | Lib t ->
-                 let+ p = Action_builder.of_memo (Link_params.get sctx t mode) in
-                 Command.Args.S
-                   (Deps p.deps
-                    :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
-                    :: List.map p.include_dirs ~f:(fun dir ->
-                      Command.Args.S [ A "-I"; Path dir ]))
-               | Module (obj_dir, m) ->
-                 Action_builder.return
-                   (Command.Args.S
-                      (Dep
-                         (Obj_dir.Module.cm_file_exn
-                            obj_dir
-                            m
-                            ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
-                       ::
-                       (match mode with
-                        | Native ->
-                          [ Command.Args.Hidden_deps
-                              (Dep.Set.of_files
-                                 [ Obj_dir.Module.o_file_exn
-                                     obj_dir
-                                     m
-                                     ~ext_obj:lib_config.ext_obj
-                                 ])
-                          ]
-                        | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
-                          [])))))
+                | Lib t ->
+                  let+ p =
+                    Action_builder.of_memo (Link_params.get sctx t mode lib_config)
+                  in
+                  Command.Args.S
+                    (Deps p.deps
+                     :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
+                     :: List.map p.include_dirs ~f:(fun dir ->
+                       Command.Args.S [ A "-I"; Path dir ]))
+                | Module (obj_dir, m) ->
+                  Action_builder.return
+                    (Command.Args.S
+                       (Dep
+                          (Obj_dir.Module.cm_file_exn
+                             obj_dir
+                             m
+                             ~kind:(Ocaml (Mode.cm_kind (Link_mode.mode mode))))
+                        ::
+                        (match mode with
+                         | Native ->
+                           [ Command.Args.Hidden_deps
+                               (Dep.Set.of_files
+                                  [ Obj_dir.Module.o_file_exn
+                                      obj_dir
+                                      m
+                                      ~ext_obj:lib_config.ext_obj
+                                  ])
+                           ]
+                         | Byte | Byte_for_jsoo | Byte_with_stubs_statically_linked_in ->
+                           [])))))
          in
          Command.Args.S l)
     ;;

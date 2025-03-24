@@ -105,9 +105,11 @@ let copy_recursively =
   loop
 ;;
 
-let create_dirs t ~deps ~rule_dir =
-  Path.Build.Set.add (Dep.Facts.necessary_dirs_for_sandboxing deps) rule_dir
-  |> Path.Build.Set.iter ~f:(fun path -> Path.mkdir_p (Path.build (map_path t path)))
+let create_dir t dir = Path.mkdir_p (Path.build (map_path t dir))
+
+let create_dirs t ~dirs ~rule_dir =
+  create_dir t rule_dir;
+  Path.Build.Set.iter dirs ~f:(fun dir -> create_dir t dir)
 ;;
 
 let link_function ~(mode : Sandbox_mode.some) =
@@ -145,7 +147,7 @@ let link_function ~(mode : Sandbox_mode.some) =
 
 let link_deps t ~mode ~deps =
   let link = Staged.unstage (link_function ~mode) in
-  Path.Map.iteri deps ~f:(fun path (_ : Digest.t) ->
+  Path.Set.iter deps ~f:(fun path ->
     match Path.as_in_build_dir path with
     | None ->
       (* This can actually raise if we try to sandbox the "copy from source
@@ -178,7 +180,7 @@ let snapshot t =
   walk (Path.build t.dir) Path.Map.empty
 ;;
 
-let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_aliases =
+let create ~mode ~dune_stats ~rule_loc ~dirs ~deps ~rule_dir ~rule_digest =
   let event =
     Dune_stats.start dune_stats (fun () ->
       let cat = Some [ "create-sandbox" ] in
@@ -196,14 +198,9 @@ let create ~mode ~dune_stats ~rule_loc ~deps ~rule_dir ~rule_digest ~expand_alia
   let+ () =
     maybe_async (fun () ->
       Path.rm_rf (Path.build sandbox_dir);
-      create_dirs t ~deps ~rule_dir;
+      create_dirs t ~dirs ~rule_dir;
       (* CR-someday amokhov: Note that this doesn't link dynamic dependencies, so
          targets produced dynamically will be unavailable. *)
-      let deps =
-        if expand_aliases
-        then Dep.Facts.paths deps
-        else Dep.Facts.paths_without_expanding_aliases deps
-      in
       link_deps t ~mode ~deps)
   in
   Dune_stats.finish event;

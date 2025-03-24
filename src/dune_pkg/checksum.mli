@@ -18,3 +18,5 @@ val of_dune_digest : Dune_digest.t -> t
 
 val pp : t -> 'a Pp.t
 val equal : t -> t -> bool
+
+module Map : Map.S with type key = t

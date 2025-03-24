@@ -225,6 +225,7 @@ Formatting can also be set in the (env ...) stanza
   > EOF
   $ touch using-env/.ocamlformat
   $ (cd using-env && dune build @fmt)
+  fake ocamlformat is running: "--impl" "subdir/foo.ml"
   File "subdir/foo.ml", line 1, characters 0-0:
   Error: Files _build/default/subdir/foo.ml and
   _build/default/subdir/.formatted/foo.ml differ.

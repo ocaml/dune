@@ -17,20 +17,6 @@
   false)
  (libraries dune_bench core_bench.inline_benchmarks))
 
-(library
- (name fiber_bench)
- (modules fiber_bench)
- (library_flags -linkall)
- (preprocess
-  (pps ppx_bench))
- (libraries fiber stdune core_bench.inline_benchmarks))
-
-(executable
- (name fiber_bench_main)
- (allow_overlapping_dependencies)
- (modules fiber_bench_main)
- (libraries fiber_bench core_bench.inline_benchmarks))
-
 (executable
  (name memo_bench_main)
  (allow_overlapping_dependencies)
@@ -43,7 +29,7 @@
  (library_flags -linkall)
  (preprocess
   (pps ppx_bench))
- (libraries dune_thread_pool threads.posix core_bench.inline_benchmarks))
+ (libraries dune_thread_pool unix threads.posix core_bench.inline_benchmarks))
 
 (executable
  (name thread_pool_bench_main)
@@ -64,3 +50,17 @@
  (allow_overlapping_dependencies)
  (modules digest_bench_main)
  (libraries digest_bench core_bench.inline_benchmarks))
+
+(library
+ (name path_bench)
+ (modules path_bench)
+ (library_flags -linkall)
+ (preprocess
+  (pps ppx_bench))
+ (libraries base stdune core_bench.inline_benchmarks))
+
+(executable
+ (name path_bench_main)
+ (allow_overlapping_dependencies)
+ (modules path_bench_main)
+ (libraries path_bench core_bench.inline_benchmarks))

@@ -1,3 +1,7 @@
 (cram
  (deps helpers.sh)
  (applies_to :whole_subtree))
+
+(cram
+ (applies_to remove-write-permissions)
+ (deps %{bin:bash}))

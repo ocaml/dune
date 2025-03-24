@@ -1,5 +1,4 @@
 (library
  (name vlib)
- (wrapped false)
  (modes :standard melange)
  (virtual_modules virt))

@@ -2,6 +2,8 @@
 
 open Stdune
 
+val read_from_string_exn : contents:string -> Path.t -> OpamFile.OPAM.t
+
 type value := OpamParserTypes.FullPos.value
 
 (** Type of opam files *)
@@ -29,3 +31,10 @@ module Create : sig
   val normalise_field_order : (string * value) list -> (string * value) list
   val of_bindings : (string * value) list -> file:Path.t -> t
 end
+
+(** Construct a package description from an opam file and its contents *)
+val load_opam_file_with_contents
+  :  contents:string
+  -> Path.Source.t
+  -> Package_name.t
+  -> Dune_lang.Package.t

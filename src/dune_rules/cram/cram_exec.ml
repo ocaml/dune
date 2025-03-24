@@ -96,18 +96,18 @@ let translate_path_for_sh =
   then fun fn -> Fiber.return (Path.to_absolute_filename fn)
   else
     fun fn ->
-    let cygpath =
-      let path = Env_path.path Env.initial in
-      Bin.which ~path "cygpath"
-    in
-    match cygpath with
-    | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
-    | Some cygpath ->
-      Process.run_capture_line
-        ~display:Quiet
-        Strict
-        cygpath
-        [ Path.to_absolute_filename fn ]
+      let cygpath =
+        let path = Env_path.path Env.initial in
+        Bin.which ~path "cygpath"
+      in
+      match cygpath with
+      | None -> User_error.raise [ Pp.text "Unable to find cygpath in PATH" ]
+      | Some cygpath ->
+        Process.run_capture_line
+          ~display:Quiet
+          Strict
+          cygpath
+          [ Path.to_absolute_filename fn ]
 ;;
 
 (* Quote a filename for sh, independently of whether we are on Windows or Unix.
@@ -424,7 +424,10 @@ let run ~env ~script lexbuf : string Fiber.t =
   let+ () =
     let sh =
       let path = Env_path.path Env.initial in
-      Option.value_exn (Bin.which ~path "sh")
+      match Bin.which ~path "sh" with
+      | Some sh -> sh
+      | None ->
+        User_error.raise [ Pp.text "CRAM test aborted, \"sh\" can not be found in PATH" ]
     in
     let metadata =
       let name =
@@ -455,26 +458,13 @@ module Spec = struct
   type ('path, _) t = 'path
 
   let name = "cram"
-  let version = 1
+  let version = 2
   let bimap path f _ = f path
   let is_useful_to ~memoize:_ = true
-
-  let encode script path _ : Dune_lang.t =
-    List [ Dune_lang.atom_or_quoted_string "cram"; path script ]
-  ;;
-
-  let action script ~ectx:_ ~(eenv : Action.Ext.env) = run ~env:eenv.env ~script
+  let encode script path _ : Sexp.t = List [ path script ]
+  let action script ~ectx:_ ~(eenv : Action.env) = run ~env:eenv.env ~script
 end
 
-let action script =
-  let module M = struct
-    type path = Path.t
-    type target = Path.Build.t
+module Action = Action_ext.Make (Spec)
 
-    module Spec = Spec
-
-    let v = script
-  end
-  in
-  Action.Extension (module M)
-;;
+let action = Action.action

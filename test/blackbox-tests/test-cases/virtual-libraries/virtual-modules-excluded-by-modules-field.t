@@ -40,7 +40,7 @@ X is warned about:
   1 | module type F = X
                       ^
   Error: Unbound module type X
-  File "src/impl/dune", line 1, characters 0-40:
+  File "src/impl/dune", lines 1-3, characters 0-40:
   1 | (library
   2 |  (name impl)
   3 |  (implements foo))

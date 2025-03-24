@@ -2,14 +2,33 @@ open! Import
 module Package_constraint = Dune_lang.Package_constraint
 module Digest = Dune_digest
 
+type pin =
+  { loc : Loc.t
+  ; version : Package_version.t
+  ; url : Loc.t * OpamUrl.t
+  ; name : Package_name.t
+  ; origin : [ `Dune | `Opam ]
+  }
+
+type pins = pin Package_name.Map.t
+
+type command_source =
+  | Assume_defaults
+  | Opam_file of
+      { build : OpamTypes.command list
+      ; install : OpamTypes.command list
+      }
+
 type t =
   { name : Package_name.t
-  ; version : Package_version.t option
-  ; dependencies : Package_dependency.t list
+  ; version : Package_version.t
+  ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
+  ; pins : pins
   ; loc : Loc.t
+  ; command_source : command_source
   }
 
 module Dependency_hash = struct
@@ -27,88 +46,165 @@ module Dependency_hash = struct
         ~loc
         [ Pp.textf "Dependency hash is not a valid md5 hash: %s" hash ]
   ;;
-end
 
-module Dependency_set = struct
-  type t = Package_constraint.Set.t Package_name.Map.t
-
-  let empty = Package_name.Map.empty
-
-  let of_list =
-    List.fold_left ~init:empty ~f:(fun acc { Package_dependency.name; constraint_ } ->
-      Package_name.Map.update acc name ~f:(fun existing ->
-        match existing, constraint_ with
-        | None, None -> Some Package_constraint.Set.empty
-        | None, Some constraint_ -> Some (Package_constraint.Set.singleton constraint_)
-        | Some existing, None -> Some existing
-        | Some existing, Some constraint_ ->
-          Some (Package_constraint.Set.add existing constraint_)))
-  ;;
-
-  let union =
-    Package_name.Map.union ~f:(fun _name a b -> Some (Package_constraint.Set.union a b))
-  ;;
-
-  let union_all = List.fold_left ~init:empty ~f:union
-
-  let package_dependencies =
-    Package_name.Map.to_list_map ~f:(fun name constraints ->
-      let constraint_ =
-        if Package_constraint.Set.is_empty constraints
-        then None
-        else Some (Package_constraint.And (Package_constraint.Set.to_list constraints))
-      in
-      { Package_dependency.name; constraint_ })
-  ;;
-
-  let encode_for_hash t =
-    package_dependencies t |> Dune_lang.Encoder.list Package_dependency.encode
-  ;;
-
-  let hash t =
-    if Package_name.Map.is_empty t
-    then None
-    else Some (encode_for_hash t |> Dune_sexp.to_string |> Dune_digest.string)
+  let of_dependency_formula formula =
+    match Dependency_formula.has_entries formula with
+    | false -> None
+    | true ->
+      let hashable = formula |> Dependency_formula.to_dyn |> Dyn.to_string in
+      Some (string hashable)
   ;;
 end
 
 module For_solver = struct
   type t =
     { name : Package_name.t
-    ; dependencies : Package_dependency.t list
+    ; version : Package_version.t
+    ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
+    ; pins : pins
+    ; build : OpamTypes.command list
+    ; install : OpamTypes.command list
     }
 
-  let to_opam_file { name; dependencies; conflicts; conflict_class; depopts } =
+  let to_opam_file
+        { name
+        ; version
+        ; dependencies
+        ; conflicts
+        ; conflict_class
+        ; depopts
+        ; pins = _
+        ; build
+        ; install
+        }
+    =
+    (* CR-rgrinberg: it's OK to ignore pins here since the solver doesn't touch
+       them *)
     OpamFile.OPAM.empty
     |> OpamFile.OPAM.with_name (Package_name.to_opam_package_name name)
-    |> OpamFile.OPAM.with_depends
-         (Package_dependency.list_to_opam_filtered_formula dependencies)
+    |> OpamFile.OPAM.with_version (Package_version.to_opam_package_version version)
+    |> OpamFile.OPAM.with_depends (Dependency_formula.to_filtered_formula dependencies)
     |> OpamFile.OPAM.with_conflicts
-         (Package_dependency.list_to_opam_filtered_formula conflicts)
+         (List.map conflicts ~f:Package_dependency.to_opam_filtered_formula
+          |> OpamFormula.ors)
     |> OpamFile.OPAM.with_conflict_class
          (List.map conflict_class ~f:Package_name.to_opam_package_name)
     |> OpamFile.OPAM.with_depopts
-         (Package_dependency.list_to_opam_filtered_formula depopts)
+         (List.map depopts ~f:Package_dependency.to_opam_filtered_formula
+          |> OpamFormula.ands)
+    |> OpamFile.OPAM.with_install install
+    |> OpamFile.OPAM.with_build build
   ;;
 
-  let opam_filtered_dependency_formula { dependencies; _ } =
-    Package_dependency.list_to_opam_filtered_formula dependencies
-  ;;
-
-  let dependency_set { dependencies; _ } = Dependency_set.of_list dependencies
-  let list_dependency_set ts = List.map ts ~f:dependency_set |> Dependency_set.union_all
-
-  let list_non_local_dependency_set ts =
-    List.fold_left ts ~init:(list_dependency_set ts) ~f:(fun acc { name; _ } ->
-      Package_name.Map.remove acc name)
+  let non_local_dependencies local_deps =
+    let local_deps_names = Package_name.Set.of_list_map ~f:(fun d -> d.name) local_deps in
+    let formula =
+      List.map ~f:(fun { dependencies; _ } -> dependencies) local_deps
+      |> Dependency_formula.ands
+    in
+    Dependency_formula.remove_packages formula local_deps_names
   ;;
 end
 
 let for_solver
-  { name; version = _; dependencies; conflicts; conflict_class; loc = _; depopts }
+      { name
+      ; version
+      ; dependencies
+      ; conflicts
+      ; conflict_class
+      ; loc = _
+      ; depopts
+      ; pins
+      ; command_source
+      }
   =
-  { For_solver.name; dependencies; conflicts; conflict_class; depopts }
+  let build, install =
+    match command_source with
+    | Assume_defaults -> [], []
+    | Opam_file { build; install } -> build, install
+  in
+  { For_solver.name
+  ; version
+  ; dependencies
+  ; conflicts
+  ; conflict_class
+  ; depopts
+  ; pins
+  ; build
+  ; install
+  }
+;;
+
+let of_package (t : Dune_lang.Package.t) =
+  let module Package = Dune_lang.Package in
+  let loc = Package.loc t in
+  let version = Package.version t |> Option.value ~default:Package_version.dev in
+  let name = Package.name t in
+  match Package.original_opam_file t with
+  | None ->
+    let dependencies = t |> Package.depends |> Dependency_formula.of_dependencies in
+    { name
+    ; version
+    ; dependencies
+    ; conflicts = Package.conflicts t
+    ; depopts = Package.depopts t
+    ; loc
+    ; conflict_class = []
+    ; pins = Package_name.Map.empty
+    ; command_source = Assume_defaults
+    }
+  | Some { file; contents = opam_file_string } ->
+    let opam_file =
+      Opam_file.read_from_string_exn ~contents:opam_file_string (Path.source file)
+    in
+    let command_source =
+      Opam_file
+        { build = opam_file |> OpamFile.OPAM.build
+        ; install = opam_file |> OpamFile.OPAM.install
+        }
+    in
+    let dependencies =
+      opam_file |> OpamFile.OPAM.depends |> Dependency_formula.of_filtered_formula
+    in
+    let conflicts =
+      OpamFile.OPAM.conflicts opam_file |> Package_dependency.list_of_opam_disjunction loc
+    in
+    let depopts =
+      OpamFile.OPAM.depopts opam_file |> Package_dependency.list_of_opam_disjunction loc
+    in
+    let conflict_class =
+      OpamFile.OPAM.conflict_class opam_file
+      |> List.map ~f:Package_name.of_opam_package_name
+    in
+    let pins =
+      match
+        OpamFile.OPAM.pin_depends opam_file
+        |> List.map ~f:(fun (pkg, url) ->
+          let name = Package_name.of_opam_package_name (OpamPackage.name pkg) in
+          let version =
+            Package_version.of_opam_package_version (OpamPackage.version pkg)
+          in
+          let loc = Loc.in_file (Path.source file) in
+          name, { loc; version; url = loc, url; name; origin = `Opam })
+        |> Package_name.Map.of_list
+      with
+      | Ok x -> x
+      | Error (_, pkg, _) ->
+        User_error.raise
+          ~loc:pkg.loc
+          [ Pp.textf "package %s is already pinned" (Package_name.to_string pkg.name) ]
+    in
+    { name
+    ; version
+    ; dependencies
+    ; conflicts
+    ; depopts
+    ; loc
+    ; conflict_class
+    ; pins
+    ; command_source
+    }
 ;;

@@ -1,3 +1,5 @@
+open! Stdune
+
 (** Finding the root of the workspace *)
 
 module Kind : sig
@@ -12,8 +14,13 @@ type t =
   { dir : string
   ; to_cwd : string list (** How to reach the cwd from the root *)
   ; reach_from_root_prefix : string
-  (** Prefix filenames with this to reach them from the root *)
+    (** Prefix filenames with this to reach them from the root *)
   ; kind : Kind.t
   }
 
-val create : default_is_cwd:bool -> specified_by_user:string option -> t
+val create
+  :  default_is_cwd:bool
+  -> specified_by_user:string option
+  -> (t, User_message.t) result
+
+val create_exn : default_is_cwd:bool -> specified_by_user:string option -> t

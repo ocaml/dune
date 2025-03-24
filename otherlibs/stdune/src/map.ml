@@ -28,8 +28,8 @@ module Make (Key : Key) : S with type key = Key.t = struct
     try
       Result.Ok
         (update t key ~f:(function
-          | None -> Some v
-          | Some e -> raise_notrace (M.Found e)))
+           | None -> Some v
+           | Some e -> raise_notrace (M.Found e)))
     with
     | M.Found e -> Error e
   ;;
@@ -43,6 +43,12 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let merge a b ~f = merge a b ~f
   let union a b ~f = union a b ~f
+
+  let union_all maps ~f =
+    match maps with
+    | [] -> empty
+    | init :: maps -> List.fold_left maps ~init ~f:(fun acc map -> union acc map ~f)
+  ;;
 
   let union_exn a b =
     union a b ~f:(fun key _ _ ->
@@ -282,6 +288,6 @@ module Make (Key : Key) : S with type key = Key.t = struct
         t'
     ;;
 
-    let to_dyn a_to_dyn t = to_dyn (fun l -> Dyn.List (List.map ~f:a_to_dyn l)) t
+    let to_dyn a_to_dyn t = to_dyn (Dyn.list a_to_dyn) t
   end
 end

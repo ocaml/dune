@@ -8,7 +8,7 @@ open Import
 (** Generate the rules to handle the stanza *)
 val gen_rules
   :  Super_context.t
-  -> Dune_file.Executables.t
+  -> Executables.t
   -> dir:Path.Build.t
   -> requires_link:Lib.t list Resolve.t Memo.Lazy.t
   -> unit Memo.t

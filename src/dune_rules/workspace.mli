@@ -7,13 +7,26 @@ module Lock_dir : sig
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
-    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    ; unset_solver_vars : Dune_lang.Package_variable_name.Set.t option
+    ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
+    ; pins : (Loc.t * string) list
     }
 
   val equal : t -> t -> bool
   val to_dyn : t -> Dyn.t
+end
+
+module Lock_dir_selection : sig
+  (** A dsl for selecting a lockdir either by literally naming it or using a
+      cond expression to select a lockdir based on blangs *)
+  type t
+
+  val eval
+    :  t
+    -> dir:Path.Source.t
+    -> f:Value.t list Memo.t String_with_vars.expander
+    -> Path.Source.t Memo.t
 end
 
 module Context : sig
@@ -23,6 +36,16 @@ module Context : sig
       | Named of Context_name.t
 
     val equal : t -> t -> bool
+  end
+
+  module Merlin : sig
+    type t =
+      | Selected
+      | Rules_only
+      | Not_selected
+
+    val equal : t -> t -> bool
+    val to_dyn : t -> Dyn.t
   end
 
   module Common : sig
@@ -36,7 +59,7 @@ module Context : sig
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-      (** By default Dune builds and installs dynamically linked foreign
+        (** By default Dune builds and installs dynamically linked foreign
           archives (usually named [dll*.so]). It is possible to disable
           this by setting [disable_dynamically_linked_foreign_archives] to
           [true] in the workspace file, in which case bytecode executables
@@ -44,14 +67,14 @@ module Context : sig
           the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
-      ; merlin : bool
+      ; merlin : Merlin.t
       }
   end
 
   module Opam : sig
     type t =
       { base : Common.t
-      (** Either a switch name or a path to a local switch. This argument
+        (** Either a switch name or a path to a local switch. This argument
           is left opaque as we leave to opam to interpret it. *)
       ; switch : Opam_switch.t
       }
@@ -60,7 +83,7 @@ module Context : sig
   module Default : sig
     type t =
       { base : Common.t
-      ; lock_dir : Path.Source.t option
+      ; lock_dir : Lock_dir_selection.t option
       }
   end
 
@@ -93,12 +116,15 @@ type t = private
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
+  ; dir : Path.Source.t
+  ; pins : Dune_pkg.Pin_stanza.DB.Workspace.t
   }
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val hash : t -> int
 val find_lock_dir : t -> Path.Source.t -> Lock_dir.t option
+val add_repo : t -> Dune_pkg.Pkg_workspace.Repository.t -> t
 val default_repositories : Dune_pkg.Pkg_workspace.Repository.t list
 
 module Clflags : sig

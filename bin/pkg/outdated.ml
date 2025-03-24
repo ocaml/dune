@@ -14,9 +14,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
         get_repos
           (repositories_of_workspace workspace)
           ~repositories:(repositories_of_lock_dir workspace ~lock_dir_path)
-          ~update_opam_repositories:true
-      and+ local_packages = find_local_packages in
-      let lock_dir = Lock_dir.read_disk lock_dir_path in
+      and+ local_packages = Memo.run find_local_packages in
+      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
       let+ results = Dune_pkg_outdated.find ~repos ~local_packages lock_dir.packages in
       ( Dune_pkg_outdated.pp ~transitive ~lock_dir_path results
       , ( Dune_pkg_outdated.packages_that_were_not_found results
@@ -45,6 +44,8 @@ let find_outdated_packages ~transitive ~lock_dirs_arg () =
                   Dune_lang.Package_name.to_string name |> Pp.verbatim)
               ; Pp.text "were not found in the following opam repositories:" |> Pp.hovbox
               ; Pp.enumerate repos ~f:(fun repo ->
+                  (* CR-rgrinberg: why are we outputting [Dyn.t] in error
+                     messages? *)
                   Opam_repo.serializable repo
                   |> Dyn.option Opam_repo.Serializable.to_dyn
                   |> Dyn.pp)

@@ -7,18 +7,18 @@ type t
 
 val make
   :  vlib:Lib.t
-  -> impl:Dune_file.Library.t
+  -> impl:Library.t
   -> vlib_modules:Modules.t
   -> vlib_foreign_objects:Path.t list
   -> t
 
-val impl : t -> Dune_file.Library.t
+val impl : t -> Library.t
 
 (** Return the library module information for the virtual library. Required for
     setting up the copying rules *)
 val vlib_modules : t -> Modules.t
 
-val impl_modules : t option -> Modules.t -> Modules.t
+val impl_modules : t option -> Modules.t -> Modules.With_vlib.t
 val vlib : t -> Lib.t
 
 (** Return the combined list of .o files for stubs consisting of .o files from

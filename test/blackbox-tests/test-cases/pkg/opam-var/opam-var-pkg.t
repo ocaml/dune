@@ -109,7 +109,7 @@ corresponding Dune version.
     (run echo 41 %{pkg-self:with-dev-setup})
     (run echo 42 %{pkg:foo:with-dev-setup})))
   
-  (deps foo)
+  (depends foo)
 
 The values here are not important, but Dune should be able to interpret the variables.
 

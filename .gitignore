@@ -26,7 +26,3 @@ result
 
 .DS_Store
 nix/profiles/
-
-# dkml desktop CI
-/msys64
-/.ci

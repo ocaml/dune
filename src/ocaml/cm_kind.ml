@@ -5,7 +5,17 @@ type t =
   | Cmo
   | Cmx
 
-let compare = Poly.compare
+let compare x y : Ordering.t =
+  match x, y with
+  | Cmi, Cmi -> Eq
+  | Cmi, _ -> Lt
+  | _, Cmi -> Gt
+  | Cmo, Cmo -> Eq
+  | Cmo, _ -> Lt
+  | _, Cmo -> Gt
+  | Cmx, Cmx -> Eq
+;;
+
 let all = [ Cmi; Cmo; Cmx ]
 
 let choose cmi cmo cmx = function

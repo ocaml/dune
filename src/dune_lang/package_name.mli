@@ -26,3 +26,7 @@ module Opam_compatible : sig
   with type package_name := t
 
 val is_opam_compatible : t -> bool
+val file : t -> dir:Path.Source.t -> Path.Source.t
+val decode_opam_compatible : t Dune_sexp.Decoder.t
+val opam_fn : t -> Filename.t
+val of_opam_file_basename : Filename.t -> t option

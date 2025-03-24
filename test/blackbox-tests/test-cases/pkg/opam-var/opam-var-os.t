@@ -52,5 +52,6 @@ separately here:
   Solution for dune.lock:
   - testpkg.0.0.1
 
-  $ build_pkg testpkg
-  4.14.1
+  $ ocaml_version="$(ocaml -vnum)"
+  $ build_pkg testpkg 2>&1 | sed "s/$ocaml_version/OCAML_VERSION/g"
+  OCAML_VERSION

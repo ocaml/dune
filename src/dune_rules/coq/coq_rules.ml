@@ -95,6 +95,7 @@ let coqc ~loc ~dir ~sctx =
   Super_context.resolve_program_memo
     sctx
     "coqc"
+    ~where:Original_path
     ~dir
     ~loc:(Some loc)
     ~hint:"opam install coq"
@@ -105,8 +106,9 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
   | Some x ->
     Memo.return
     @@
-    if buildable.coq_lang_version < (0, 7)
-       && Super_context.context sctx |> Context.profile |> Profile.is_dev
+    if
+      buildable.coq_lang_version < (0, 7)
+      && Super_context.context sctx |> Context.profile |> Profile.is_dev
     then Coq_mode.VoOnly
     else x
   | None ->
@@ -125,28 +127,83 @@ let select_native_mode ~sctx ~dir (buildable : Coq_stanza.Buildable.t) =
           | _ -> Coq_mode.VoOnly))
 ;;
 
-let coq_flags ~dir ~stanza_flags ~expander ~sctx =
-  let standard =
-    let open Memo.O in
-    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
+let coq_env =
+  let f =
+    Env_stanza_db_flags.flags
+      ~name:"coq-env"
+      ~root:(fun _ _ -> Memo.return (Action_builder.return Coq_flags.default))
+      ~f:(fun ~parent expander (config : Dune_env.config) ->
+        Memo.return
+        @@
+        let open Action_builder.O in
+        let+ coq_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coq_flags
+          in
+          Expander.expand_and_eval_set expander (Coq_env.flags config.coq) ~standard
+        and+ coqdep_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdep_flags
+          in
+          Expander.expand_and_eval_set
+            expander
+            (Coq_env.coqdep_flags config.coq)
+            ~standard
+        and+ coqdoc_flags =
+          let standard =
+            let+ x = Action_builder.of_memo_join parent in
+            x.coqdoc_flags
+          in
+          Expander.expand_and_eval_set
+            expander
+            (Coq_env.coqdoc_flags config.coq)
+            ~standard
+        in
+        { Coq_flags.coq_flags; coqdep_flags; coqdoc_flags })
   in
-  Expander.expand_and_eval_set
-    expander
-    stanza_flags
-    ~standard:
-      (Action_builder.map ~f:(fun { Coq_flags.coq_flags; _ } -> coq_flags) standard)
+  fun ~dir ->
+    (let* () = Memo.return () in
+     (Staged.unstage f) dir)
+    |> Action_builder.of_memo_join
 ;;
 
-let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander ~sctx =
-  let standard =
-    let open Memo.O in
-    Super_context.env_node ~dir sctx >>= Env_node.coq_flags |> Action_builder.of_memo_join
+let coq_flags ~dir ~stanza_flags ~per_file_flags ~expander =
+  let standard, flags_to_expand =
+    match per_file_flags with
+    | None ->
+      ( Action_builder.map ~f:(fun { Coq_flags.coq_flags; _ } -> coq_flags) (coq_env ~dir)
+      , stanza_flags )
+    | Some per_file_flags ->
+      ( Action_builder.bind
+          ~f:(fun { Coq_flags.coq_flags; _ } ->
+            let standard = Action_builder.return coq_flags in
+            Expander.expand_and_eval_set expander stanza_flags ~standard)
+          (coq_env ~dir)
+      , per_file_flags )
   in
+  Expander.expand_and_eval_set expander flags_to_expand ~standard
+;;
+
+let coqdep_flags ~dir ~stanza_coqdep_flags ~expander =
+  Expander.expand_and_eval_set
+    expander
+    stanza_coqdep_flags
+    ~standard:
+      (Action_builder.map
+         ~f:(fun { Coq_flags.coqdep_flags; _ } -> coqdep_flags)
+         (coq_env ~dir))
+;;
+
+let coqdoc_flags ~dir ~stanza_coqdoc_flags ~expander =
   Expander.expand_and_eval_set
     expander
     stanza_coqdoc_flags
     ~standard:
-      (Action_builder.map ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags) standard)
+      (Action_builder.map
+         ~f:(fun { Coq_flags.coqdoc_flags; _ } -> coqdoc_flags)
+         (coq_env ~dir))
 ;;
 
 let theory_coqc_flag lib =
@@ -169,18 +226,19 @@ module Bootstrap : sig
     | No_stdlib
     (** We are in >= 0.8, however the user set stdlib = no
         , or we are compiling the prelude *)
-    | Stdlib of Coq_lib.t (** Regular case in >= 0.8 (or in < 0.8
+    | Stdlib of Coq_lib.t
+    (** Regular case in >= 0.8 (or in < 0.8
                               (boot) was used *)
 
-  val empty : t Memo.t
+  val empty : t
 
   val make
-    :  dir:Path.Build.t
+    :  scope:Scope.t
     -> use_stdlib:bool
     -> wrapper_name:string
     -> coq_lang_version:Syntax.Version.t
     -> Coq_module.t
-    -> t Memo.t
+    -> t Resolve.Memo.t
 
   val flags : t -> 'a Command.Args.t
 end = struct
@@ -189,12 +247,13 @@ end = struct
     | No_stdlib
     (** We are in >= 0.8, however the user set stdlib = no
         , or we are compiling the prelude *)
-    | Stdlib of Coq_lib.t (** Regular case in >= 0.8 (or in < 0.8
+    | Stdlib of Coq_lib.t
+    (** Regular case in >= 0.8 (or in < 0.8
                               (boot) was used *)
 
   (* For empty set of modules, we return Prelude which is kinda
      conservative. *)
-  let empty = Memo.return No_stdlib
+  let empty = No_stdlib
 
   (* Hack to know if a module is a prelude module *)
   let check_init_module bootlib wrapper_name coq_module =
@@ -205,14 +264,14 @@ end = struct
          (Some "Init")
   ;;
 
-  (* [Boostrap.t] determines, for a concrete Coq module, how the Coq
+  (* [Bootstrap.t] determines, for a concrete Coq module, how the Coq
      "standard library" is being handled. See the main modes above. *)
-  let make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
-    let* scope = Scope.DB.find_by_dir dir in
-    let+ boot_lib =
+  let make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version coq_module =
+    let open Resolve.Memo.O in
+    let* boot_lib =
       Scope.coq_libs scope
+      |> Resolve.Memo.lift_memo
       >>= Coq_lib.DB.resolve_boot ~coq_lang_version
-      |> Resolve.Memo.read_memo
     in
     if use_stdlib
     then (
@@ -220,12 +279,16 @@ end = struct
       | None ->
         if coq_lang_version >= (0, 8)
         then
-          User_error.raise
-            [ Pp.text
-                "Couldn't find Coq standard library, and theory is not using (stdlib no)"
-            ]
-        else Implicit
+          Resolve.Memo.fail
+            (User_message.make
+               [ Pp.text
+                   "Couldn't find Coq standard library, and theory is not using (stdlib \
+                    no)"
+               ])
+        else Resolve.Memo.return Implicit
       | Some (_loc, boot_lib) ->
+        Resolve.Memo.return
+        @@
         (* TODO: replace with per_file flags *)
         let init = check_init_module boot_lib wrapper_name coq_module in
         if init
@@ -239,7 +302,7 @@ end = struct
           match boot_lib with
           | Legacy _ -> Implicit
           | Dune _ -> Stdlib boot_lib))
-    else No_stdlib
+    else Resolve.Memo.return No_stdlib
   ;;
 
   let flags t : _ Command.Args.t =
@@ -250,9 +313,7 @@ end = struct
   ;;
 end
 
-let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
-  : _ Command.Args.t list
-  =
+let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~ml_flags : _ Command.Args.t list =
   let file_flags : _ Command.Args.t list =
     [ Dyn (Resolve.Memo.read ml_flags)
     ; theories_flags ~theories_deps
@@ -261,7 +322,7 @@ let coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
     ; A wrapper_name
     ]
   in
-  [ Bootstrap.flags boot_type; S file_flags ]
+  [ S file_flags ]
 ;;
 
 let native_includes ~dir =
@@ -290,7 +351,7 @@ let directories_of_lib ~sctx lib =
        EJGA: We need to understand how this interacts with globally
        installed stuff, that's more tricky than it looks actually!
 
-       This fuction is used in order to determine the -nI flags that
+       This function is used in order to determine the -nI flags that
        Coq native compiler will pass to OCaml so it can find the .cmxs
        files. For things in user-contrib we don't need to pass these
        flags but only because Coq has a very large hack adding this
@@ -397,10 +458,10 @@ let ml_pack_and_meta_rule ~context ~all_libs (buildable : Coq_stanza.Buildable.t
 ;;
 
 let ml_flags_and_ml_pack_rule
-  ~context
-  ~lib_db
-  ~theories_deps
-  (buildable : Coq_stanza.Buildable.t)
+      ~context
+      ~lib_db
+      ~theories_deps
+      (buildable : Coq_stanza.Buildable.t)
   =
   let res =
     let open Resolve.Memo.O in
@@ -426,34 +487,34 @@ let dep_theory_file ~dir ~wrapper_name =
 ;;
 
 let setup_coqdep_for_theory_rule
-  ~sctx
-  ~dir
-  ~loc
-  ~theories_deps
-  ~wrapper_name
-  ~use_stdlib
-  ~source_rule
-  ~ml_flags
-  ~mlpack_rule
-  ~coq_lang_version
-  coq_modules
+      ~sctx
+      ~dir
+      ~loc
+      ~theories_deps
+      ~wrapper_name
+      ~source_rule
+      ~ml_flags
+      ~mlpack_rule
+      ~boot_flags
+      ~stanza_coqdep_flags
+      coq_modules
   =
-  let* boot_type =
-    (* If coq_modules are empty it doesn't really matter, so we take
-       the more conservative path and pass -boot, we don't care here
-       about -noinit as coqdep ignores it *)
-    match coq_modules with
-    | [] -> Bootstrap.empty
-    | m :: _ -> Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version m
-  in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let sources = List.rev_map ~f:Coq_module.source coq_modules in
   let file_flags =
-    [ Command.Args.S
-        (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags)
+    [ Command.Args.S (coqc_file_flags ~dir ~theories_deps ~wrapper_name ~ml_flags)
     ; As [ "-dyndep"; "opt"; "-vos" ]
     ; Deps sources
     ]
+  in
+  let extra_coqdep_flags =
+    (* Standard flags for coqdep *)
+    let open Action_builder.O in
+    let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
+    coqdep_flags ~dir ~stanza_coqdep_flags ~expander
+  in
+  let coqdep_flags =
+    Command.Args.Dyn boot_flags :: Command.Args.dyn extra_coqdep_flags :: file_flags
   in
   let stdout_to = dep_theory_file ~dir ~wrapper_name in
   let* coqdep =
@@ -461,6 +522,7 @@ let setup_coqdep_for_theory_rule
       sctx
       "coqdep"
       ~dir
+      ~where:Original_path
       ~loc:(Some loc)
       ~hint:"opam install coq"
   in
@@ -472,7 +534,7 @@ let setup_coqdep_for_theory_rule
     (let open Action_builder.With_targets.O in
      Action_builder.with_no_targets mlpack_rule
      >>> Action_builder.(with_no_targets (goal source_rule))
-     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep file_flags)
+     >>> Command.run ~dir:(Path.build dir) ~stdout_to coqdep coqdep_flags)
 ;;
 
 module Dep_map = Stdune.Map.Make (Path)
@@ -490,7 +552,8 @@ let coqdep_invalid phase line =
    Note that coqdep escapes a few more things, including spaces, $, #,
    [], ?, %, homedir... How to handle that seems tricky.
 *)
-let unescape_coqdep string = Re.replace_string (Re.compile (Re.str "\\:")) ~by:":" string
+let escaped_colon = Re.compile (Re.str "\\:")
+let unescape_coqdep string = Re.replace_string escaped_colon ~by:":" string
 
 let parse_line ~dir line =
   match String.lsplit2 line ~on:':' with
@@ -534,6 +597,26 @@ let get_dep_map ~dir ~wrapper_name : Path.t list Dep_map.t Action_builder.t =
       ]
 ;;
 
+(* EJGA: Would be nice to have a functor in [Stdune.Tuple] to do this *)
+module DWInput : Memo.Input with type t = Path.Build.t * string = struct
+  type t = Path.Build.t * string
+
+  let hash = Tuple.T2.hash Path.Build.hash String.hash
+  let equal = Tuple.T2.equal Path.Build.equal String.equal
+  let to_dyn = Tuple.T2.to_dyn Path.Build.to_dyn String.to_dyn
+end
+
+(* EJGA: with this code, we have a combined memo node that will be
+   re-executed iff [dir], [wrapper_name], or the deps of the original
+   action builder (the [.v.d] file from [dep_theory_file ~dir
+   ~wrapper_name]) change *)
+let memo_get_dep_map =
+  Action_builder.create_memo
+    "coq_dep_map"
+    ~input:(module DWInput)
+    (fun (dir, wrapper_name) -> get_dep_map ~dir ~wrapper_name)
+;;
+
 let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
   let open Action_builder.O in
   let vo_target =
@@ -544,7 +627,8 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
     in
     Path.set_extension ~ext (Coq_module.source coq_module)
   in
-  let* dep_map = get_dep_map ~dir ~wrapper_name in
+  let* dep_map = Action_builder.exec_memo memo_get_dep_map (dir, wrapper_name) in
+  let* boot_type = Resolve.Memo.read boot_type in
   match Dep_map.find dep_map vo_target with
   | None ->
     Code_error.raise
@@ -564,22 +648,23 @@ let deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module =
 ;;
 
 let generic_coq_args
-  ~sctx
-  ~dir
-  ~wrapper_name
-  ~boot_type
-  ~mode
-  ~coq_prog
-  ~stanza_flags
-  ~ml_flags
-  ~theories_deps
-  ~theory_dirs
-  coq_module
+      ~sctx
+      ~dir
+      ~wrapper_name
+      ~boot_flags
+      ~per_file_flags
+      ~mode
+      ~coq_prog
+      ~stanza_flags
+      ~ml_flags
+      ~theories_deps
+      ~theory_dirs
+      coq_module
   =
   let+ coq_stanza_flags =
     let+ expander = Super_context.expander sctx ~dir in
     let coq_flags =
-      let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~sctx in
+      let coq_flags = coq_flags ~expander ~dir ~stanza_flags ~per_file_flags in
       (* By default we have the -q flag. We don't want to pass this to coqtop to
          allow users to load their .coqrc files for interactive development.
          Therefore we manually scrub the -q setting when passing arguments to
@@ -606,39 +691,52 @@ let generic_coq_args
     in
     coqc_native_flags ~sctx ~dir ~theories_deps ~theory_dirs ~mode
   in
-  let file_flags =
-    coqc_file_flags ~dir ~theories_deps ~wrapper_name ~boot_type ~ml_flags
-  in
+  let file_flags = coqc_file_flags ~dir ~theories_deps ~wrapper_name ~ml_flags in
   match coq_prog with
   | `Coqc ->
     [ coq_stanza_flags
     ; coq_native_flags
+    ; Dyn boot_flags
     ; S file_flags
     ; Dep (Coq_module.source coq_module)
     ]
-  | `Coqtop -> [ coq_stanza_flags; coq_native_flags; S file_flags ]
+  | `Coqtop -> [ coq_stanza_flags; coq_native_flags; Dyn boot_flags; S file_flags ]
 ;;
 
+module Per_file = struct
+  let match_ map coq_module =
+    let open Option.O in
+    let* map = map in
+    let coq_lib_name = Coq_module.name coq_module in
+    Coq_module.Name.Map.find map coq_lib_name
+  ;;
+end
+
 let setup_coqc_rule
-  ~loc
-  ~dir
-  ~sctx
-  ~coqc_dir
-  ~file_targets
-  ~stanza_flags
-  ~theories_deps
-  ~mode
-  ~wrapper_name
-  ~use_stdlib
-  ~ml_flags
-  ~theory_dirs
-  ~coq_lang_version
-  coq_module
+      ~scope
+      ~loc
+      ~dir
+      ~sctx
+      ~coqc_dir
+      ~file_targets
+      ~stanza_flags
+      ~modules_flags
+      ~theories_deps
+      ~mode
+      ~wrapper_name
+      ~use_stdlib
+      ~ml_flags
+      ~theory_dirs
+      ~coq_lang_version
+      coq_module
   =
   (* Process coqdep and generate rules *)
-  let* boot_type =
-    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+  let boot_type =
+    Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  (* TODO: merge with boot_type *)
+  let per_file_flags = Per_file.match_ modules_flags coq_module in
   let* coqc = coqc ~loc ~dir ~sctx in
   let obj_files =
     Coq_module.obj_files
@@ -655,7 +753,8 @@ let setup_coqc_rule
       ~sctx
       ~dir
       ~wrapper_name
-      ~boot_type
+      ~boot_flags
+      ~per_file_flags
       ~stanza_flags
       ~ml_flags
       ~theories_deps
@@ -719,6 +818,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
             sctx
             "coqdoc"
             ~dir
+            ~where:Original_path
             ~loc:(Some loc)
             ~hint:"opam install coq"
         in
@@ -751,7 +851,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
              let open Action_builder.O in
              let* expander = Action_builder.of_memo @@ Super_context.expander sctx ~dir in
              let standard =
-               coqdoc_flags ~dir ~stanza_coqdoc_flags:s.coqdoc_flags ~expander ~sctx
+               coqdoc_flags ~dir ~stanza_coqdoc_flags:s.coqdoc_flags ~expander
              in
              Expander.expand_and_eval_set expander s.coqdoc_flags ~standard
            in
@@ -813,10 +913,10 @@ let theory_context ~context ~scope ~coq_lang_version ~name buildable =
 
 (* Common context for extraction, almost the same than above *)
 let extraction_context
-  ~context
-  ~scope
-  ~coq_lang_version
-  (buildable : Coq_stanza.Buildable.t)
+      ~context
+      ~scope
+      ~coq_lang_version
+      (buildable : Coq_stanza.Buildable.t)
   =
   let coq_lib_db = Scope.coq_libs scope in
   let theories_deps =
@@ -826,7 +926,7 @@ let extraction_context
       ~f:(Coq_lib.DB.resolve coq_lib_db ~coq_lang_version)
   in
   (* Extraction requires a boot library so we do this unconditionally
-     for now. We must do this because it can happne that
+     for now. We must do this because it can happen that
      s.buildable.theories is empty *)
   let boot =
     let* coq_lib_db = coq_lib_db in
@@ -860,6 +960,7 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let name = snd s.name in
   let loc = s.buildable.loc in
   let stanza_flags = s.buildable.flags in
+  let modules_flags = Option.map s.modules_flags ~f:Coq_module.Name.Map.of_list_exn in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
@@ -879,27 +980,38 @@ let setup_theory_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) =
   let coqc_dir = Super_context.context sctx |> Context.build_dir in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   (* First we setup the rule calling coqdep *)
+  let boot_type =
+    (* If coq_modules are empty it doesn't really matter, so we take
+       the more conservative path and pass -boot, we don't care here
+       about -noinit as coqdep ignores it *)
+    match coq_modules with
+    | [] -> Resolve.Memo.return Bootstrap.empty
+    | m :: _ -> Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version m
+  in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
   setup_coqdep_for_theory_rule
     ~sctx
     ~dir
     ~loc
     ~theories_deps
     ~wrapper_name
-    ~use_stdlib
     ~source_rule
     ~ml_flags
     ~mlpack_rule
-    ~coq_lang_version
+    ~boot_flags
+    ~stanza_coqdep_flags:s.coqdep_flags
     coq_modules
   >>> Memo.parallel_iter
         coq_modules
         ~f:
           (setup_coqc_rule
+             ~scope
              ~loc
              ~dir
              ~sctx
              ~file_targets:[]
              ~stanza_flags
+             ~modules_flags
              ~coqc_dir
              ~theories_deps
              ~mode
@@ -924,18 +1036,21 @@ let coqtop_args_theory ~sctx ~dir ~dir_contents (s : Coq_stanza.Theory.t) coq_mo
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   let name = snd s.name in
   let use_stdlib = s.buildable.use_stdlib in
-  let* boot_type =
-    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+  let boot_type =
+    Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
   let* coq_dir_contents = Dir_contents.coq dir_contents in
   let theory_dirs =
     Coq_sources.directories coq_dir_contents ~name |> Path.Build.Set.of_list
   in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let per_file_flags = None in
   generic_coq_args
     ~sctx
     ~dir
     ~wrapper_name
-    ~boot_type
+    ~boot_flags
+    ~per_file_flags
     ~mode
     ~coq_prog:`Coqtop
     ~stanza_flags:s.buildable.flags
@@ -961,8 +1076,9 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Coq_stanza.Theory.t)
   let rules_for_lib lib =
     let info = Lib.info lib in
     (* Don't install libraries that don't belong to this package *)
-    if let name = Package.name package in
-       Option.equal Package.Name.equal (Lib_info.package info) (Some name)
+    if
+      let name = Package.name package in
+      Option.equal Package.Name.equal (Lib_info.package info) (Some name)
     then (
       let loc = Lib_info.loc info in
       let plugins = Lib_info.plugins info in
@@ -1048,6 +1164,7 @@ let setup_coqpp_rules ~sctx ~dir ({ loc; modules } : Coq_stanza.Coqpp.t) =
     Super_context.resolve_program_memo
       sctx
       "coqpp"
+      ~where:Original_path
       ~dir
       ~loc:(Some loc)
       ~hint:"opam install coq"
@@ -1085,21 +1202,33 @@ let setup_extraction_rules ~sctx ~dir ~dir_contents (s : Coq_stanza.Extraction.t
     source_rule ~sctx theories_deps >>> Action_builder.path (Coq_module.source coq_module)
   in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
+  let boot_type =
+    (* If coq_modules are empty it doesn't really matter, so we take
+       the more conservative path and pass -boot, we don't care here
+       about -noinit as coqdep ignores it *)
+    match [ coq_module ] with
+    | [] -> Resolve.Memo.return Bootstrap.empty
+    | m :: _ -> Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version m
+  in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let modules_flags = None in
   setup_coqdep_for_theory_rule
     ~sctx
     ~dir
     ~loc
     ~theories_deps
     ~wrapper_name
-    ~use_stdlib
     ~source_rule
     ~ml_flags
     ~mlpack_rule
-    ~coq_lang_version
+    ~boot_flags
+    ~stanza_coqdep_flags:Ordered_set_lang.Unexpanded.standard
     [ coq_module ]
   >>> setup_coqc_rule
+        ~scope
         ~file_targets
         ~stanza_flags:s.buildable.flags
+        ~modules_flags
         ~sctx
         ~loc
         ~coqc_dir:dir
@@ -1123,15 +1252,18 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
     extraction_context ~context ~scope ~coq_lang_version s.buildable
   in
   let wrapper_name = "DuneExtraction" in
-  let* boot_type =
-    Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
+  let boot_type =
+    Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
+  let boot_flags = Resolve.Memo.read boot_type |> Action_builder.map ~f:Bootstrap.flags in
+  let per_file_flags = None in
   let* mode = select_native_mode ~sctx ~dir s.buildable in
   generic_coq_args
     ~sctx
     ~dir
     ~wrapper_name
-    ~boot_type
+    ~boot_flags
+    ~per_file_flags
     ~mode
     ~coq_prog:`Coqtop
     ~stanza_flags:s.buildable.flags
@@ -1143,10 +1275,10 @@ let coqtop_args_extraction ~sctx ~dir (s : Coq_stanza.Extraction.t) coq_module =
 
 (* Version for export *)
 let deps_of ~dir ~use_stdlib ~wrapper_name ~mode ~coq_lang_version coq_module =
-  let open Action_builder.O in
-  let* boot_type =
-    Action_builder.of_memo
-      (Bootstrap.make ~dir ~use_stdlib ~wrapper_name ~coq_lang_version coq_module)
+  let boot_type =
+    let open Memo.O in
+    let* scope = Scope.DB.find_by_dir dir in
+    Bootstrap.make ~scope ~use_stdlib ~wrapper_name ~coq_lang_version coq_module
   in
   deps_of ~dir ~boot_type ~wrapper_name ~mode coq_module
 ;;

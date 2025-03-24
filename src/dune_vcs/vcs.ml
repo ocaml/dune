@@ -183,7 +183,7 @@ let files =
   let f run args t =
     let open Fiber.O in
     let+ l = run t args in
-    List.map l ~f:Path.in_source
+    List.map l ~f:Path.Source.of_string
   in
   Staged.unstage
   @@ make_fun

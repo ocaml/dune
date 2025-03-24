@@ -1,32 +1,28 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, _keep_generated_files, debug, secondary, force_byte_compilation =
+let concurrency, verbose, debug, secondary, force_byte_compilation, static =
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
-  let keep_generated_files = ref false in
   let prog = Filename.basename Sys.argv.(0) in
   let debug = ref false in
   let secondary = ref false in
   let force_byte_compilation = ref false in
+  let static = ref false in
   Arg.parse
     [ "-j", Int (fun n -> concurrency := Some n), "JOBS Concurrency"
     ; "--verbose", Set verbose, " Set the display mode"
-    ; "--keep-generated-files", Set keep_generated_files, " Keep generated files"
+    ; "--keep-generated-files", Unit ignore, " Keep generated files"
     ; "--debug", Set debug, " Enable various debugging options"
     ; "--secondary", Set secondary, " Use the secondary compiler installation"
     ; ( "--force-byte-compilation"
       , Set force_byte_compilation
       , " Force bytecode compilation even if ocamlopt is available" )
+    ; "--static", Set static, " Build a static binary"
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
-  ( !concurrency
-  , !verbose
-  , !keep_generated_files
-  , !debug
-  , !secondary
-  , !force_byte_compilation )
+  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static
 ;;
 
 (** {2 General configuration} *)
@@ -71,8 +67,8 @@ let ( ^/ ) = Filename.concat
 let fatal fmt =
   ksprintf
     (fun s ->
-      prerr_endline s;
-      exit 2)
+       prerr_endline s;
+       exit 2)
     fmt
 ;;
 
@@ -102,12 +98,12 @@ module Status_line = struct
   let () = at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
 end
 
-(* Return list of entries in [path] as [path/entry] *)
+(* Return a sorted list of entries in [path] as [path/entry] *)
 let readdir path =
-  Array.fold_right
-    ~f:(fun entry dir -> (path ^/ entry) :: dir)
-    ~init:[]
-    (Sys.readdir path)
+  Sys.readdir path
+  |> Array.to_list
+  |> List.map ~f:(fun entry -> path ^/ entry)
+  |> List.sort ~cmp:String.compare
 ;;
 
 let open_out file =
@@ -820,8 +816,8 @@ module Library = struct
         let oc = open_out (build_dir ^/ fn) in
         StringSet.iter
           (fun m ->
-            if m <> t.toplevel_module
-            then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
+             if m <> t.toplevel_module
+             then fprintf oc "module %s = %s__%s\n" m t.toplevel_module m)
           modules;
         close_out oc;
         Some fn
@@ -869,29 +865,29 @@ module Library = struct
     let header = Wrapper.header wrapper in
     Fiber.fork_and_join
       (fun () ->
-        Fiber.parallel_map files ~f:(fun (fn, kind) ->
-          let mangled = Wrapper.mangle_filename wrapper fn kind in
-          let dst = build_dir ^/ mangled in
-          match kind with
-          | Header | C ->
-            copy "line" fn dst;
-            Fiber.return [ mangled ]
-          | Ml | Mli ->
-            copy "" fn dst ~header;
-            Fiber.return [ mangled ]
-          | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-          | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))
+         Fiber.parallel_map files ~f:(fun (fn, kind) ->
+           let mangled = Wrapper.mangle_filename wrapper fn kind in
+           let dst = build_dir ^/ mangled in
+           match kind with
+           | Header | C ->
+             copy "line" fn dst;
+             Fiber.return [ mangled ]
+           | Ml | Mli ->
+             copy "" fn dst ~header;
+             Fiber.return [ mangled ]
+           | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+           | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))
       (fun () ->
-        match build_info_module with
-        | None -> Fiber.return None
-        | Some m ->
-          let fn = String.uncapitalize_ascii m ^ ".ml" in
-          let mangled = Wrapper.mangle_filename wrapper fn Ml in
-          let oc = open_out (build_dir ^/ mangled) in
-          Build_info.gen_data_module oc
-          >>| fun () ->
-          close_out oc;
-          Some mangled)
+         match build_info_module with
+         | None -> Fiber.return None
+         | Some m ->
+           let fn = String.uncapitalize_ascii m ^ ".ml" in
+           let mangled = Wrapper.mangle_filename wrapper fn Ml in
+           let oc = open_out (build_dir ^/ mangled) in
+           Build_info.gen_data_module oc
+           >>| fun () ->
+           close_out oc;
+           Some mangled)
     >>| fun (files, build_info_file) ->
     let files = List.concat files in
     let files =
@@ -986,7 +982,9 @@ let get_dependencies libraries =
   let deps =
     List.rev_append
       ((* Alias files have no dependencies *)
-       List.rev_map alias_files ~f:(fun fn -> fn, []))
+       List.rev_map
+         alias_files
+         ~f:(fun fn -> fn, []))
       (List.rev_map dependencies ~f:(convert_dependencies ~all_source_files))
   in
   if debug
@@ -1064,11 +1062,12 @@ let common_build_args name ~external_includes ~external_libraries =
 let allow_unstable_sources = [ "-alert"; "-unstable" ]
 
 let build
-  ~ocaml_config
-  ~dependencies
-  ~c_files
-  ~link_flags
-  { target = name, main; external_libraries; _ }
+      ~ocaml_config
+      ~dependencies
+      ~c_files
+      ~build_flags
+      ~link_flags
+      { target = name, main; external_libraries; _ }
   =
   let ext_obj =
     try StringMap.find "ext_obj" ocaml_config with
@@ -1110,12 +1109,12 @@ let build
   Fiber.fork_and_join_unit
     (fun () -> build (Filename.basename main))
     (fun () ->
-      Fiber.parallel_map c_files ~f:(fun file ->
-        Process.run
-          ~cwd:build_dir
-          Config.compiler
-          (List.concat [ [ "-c"; "-g" ]; external_includes; [ file ] ])
-        >>| fun () -> Filename.chop_extension file ^ ext_obj))
+       Fiber.parallel_map c_files ~f:(fun file ->
+         Process.run
+           ~cwd:build_dir
+           Config.compiler
+           (List.concat [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ] ])
+         >>| fun () -> Filename.chop_extension file ^ ext_obj))
   >>= fun obj_files ->
   let compiled_ml_ext =
     match Config.mode with
@@ -1128,6 +1127,7 @@ let build
       | ".ml" -> Some (Filename.remove_extension fn ^ compiled_ml_ext)
       | _ -> None)
   in
+  let static_flags = if static then [ "-ccopt"; "-static" ] else [] in
   write_args "compiled_ml_files" compiled_ml_files;
   Process.run
     ~cwd:build_dir
@@ -1137,27 +1137,7 @@ let build
        ; obj_files
        ; [ "-args"; "compiled_ml_files" ]
        ; link_flags
-       ; allow_unstable_sources
-       ])
-;;
-
-let build_with_single_command
-  ~ocaml_config:_
-  ~dependencies
-  ~c_files
-  ~link_flags
-  { target = name, main; external_libraries; _ }
-  =
-  let external_libraries, external_includes = resolve_externals external_libraries in
-  write_args "mods_list" (sort_files dependencies ~main);
-  Process.run
-    ~cwd:build_dir
-    Config.compiler
-    (List.concat
-       [ common_build_args name ~external_includes ~external_libraries
-       ; [ "-no-alias-deps"; "-w"; "-49-6" ]
-       ; c_files
-       ; [ "-args"; "mods_list" ] @ link_flags
+       ; static_flags
        ; allow_unstable_sources
        ])
 ;;
@@ -1172,6 +1152,11 @@ let rec rm_rf fn =
 
 and clear dir = List.iter (readdir dir) ~f:rm_rf
 
+let rec get_flags system = function
+  | (set, f) :: r -> if List.mem system ~set then f else get_flags system r
+  | [] -> []
+;;
+
 (** {2 Bootstrap process} *)
 let main () =
   (try clear build_dir with
@@ -1185,16 +1170,14 @@ let main () =
   let c_files = List.map ~f:(fun (_, _, c_files) -> c_files) libraries |> List.concat in
   get_dependencies libraries
   >>= fun dependencies ->
-  let link_flags =
+  let ocaml_system =
     match StringMap.find_opt "system" ocaml_config with
     | None -> assert false
-    | Some platform ->
-      (match List.assoc_opt platform Libs.link_flags with
-       | None -> []
-       | Some flags -> flags)
+    | Some s -> s
   in
-  let build = if concurrency = 1 || Sys.win32 then build_with_single_command else build in
-  build ~ocaml_config ~dependencies ~c_files ~link_flags task
+  let build_flags = get_flags ocaml_system Libs.build_flags in
+  let link_flags = get_flags ocaml_system Libs.link_flags in
+  build ~ocaml_config ~dependencies ~c_files ~build_flags ~link_flags task
 ;;
 
 let () = Fiber.run (main ())

@@ -11,7 +11,7 @@ module Show_lock = struct
     in
     Console.print
     @@ List.map lock_dir_paths ~f:(fun lock_dir_path ->
-      let lock_dir = Lock_dir.read_disk lock_dir_path in
+      let lock_dir = Lock_dir.read_disk_exn lock_dir_path in
       Pp.concat
         ~sep:Pp.space
         [ Pp.hovbox
@@ -42,13 +42,15 @@ module Dependency_hash = struct
     let open Fiber.O in
     let+ local_packages =
       Pkg_common.find_local_packages
+      |> Memo.run
       >>| Package_name.Map.values
       >>| List.map ~f:Local_package.for_solver
     in
-    match
-      Local_package.(
-        For_solver.list_non_local_dependency_set local_packages |> Dependency_set.hash)
-    with
+    let hash =
+      Local_package.For_solver.non_local_dependencies local_packages
+      |> Local_package.Dependency_hash.of_dependency_formula
+    in
+    match hash with
     | None -> User_error.raise [ Pp.text "No non-local dependencies" ]
     | Some dependency_hash ->
       print_endline (Local_package.Dependency_hash.to_string dependency_hash)
@@ -114,14 +116,12 @@ module List_locked_dependencies = struct
     |> Pp.vbox
   ;;
 
-  let enumerate_lock_dirs_by_path ~lock_dirs =
-    let open Fiber.O in
-    let+ workspace = Memo.run (Workspace.workspace ()) in
+  let enumerate_lock_dirs_by_path workspace ~lock_dirs =
     let lock_dirs = Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs workspace in
     List.filter_map lock_dirs ~f:(fun lock_dir_path ->
       if Path.exists (Path.source lock_dir_path)
       then (
-        try Some (lock_dir_path, Lock_dir.read_disk lock_dir_path) with
+        try Some (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path) with
         | User_error.E e ->
           User_warning.emit
             [ Pp.textf
@@ -135,27 +135,32 @@ module List_locked_dependencies = struct
 
   let list_locked_dependencies ~transitive ~lock_dirs () =
     let open Fiber.O in
-    let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs
-    and+ local_packages = Pkg_common.find_local_packages in
+    let+ lock_dirs_by_path, local_packages =
+      let open Memo.O in
+      Memo.both
+        (Workspace.workspace () >>| enumerate_lock_dirs_by_path ~lock_dirs)
+        Pkg_common.find_local_packages
+      |> Memo.run
+    in
     let pp =
       Pp.concat
         ~sep:Pp.cut
         (List.map lock_dirs_by_path ~f:(fun (lock_dir_path, lock_dir) ->
-           match Package_universe.create local_packages lock_dir with
-           | Error e -> raise (User_error.E e)
-           | Ok package_universe ->
-             Pp.vbox
-               (Pp.concat
-                  ~sep:Pp.cut
-                  [ Pp.hbox
-                      (Pp.textf
-                         "Dependencies of local packages locked in %s"
-                         (Path.Source.to_string_maybe_quoted lock_dir_path))
-                  ; Pp.enumerate
-                      (Package_name.Map.keys local_packages)
-                      ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
-                    |> Pp.box
-                  ])))
+           let package_universe =
+             Package_universe.create local_packages lock_dir |> User_error.ok_exn
+           in
+           Pp.vbox
+             (Pp.concat
+                ~sep:Pp.cut
+                [ Pp.hbox
+                    (Pp.textf
+                       "Dependencies of local packages locked in %s"
+                       (Path.Source.to_string_maybe_quoted lock_dir_path))
+                ; Pp.enumerate
+                    (Package_name.Map.keys local_packages)
+                    ~f:(package_deps_in_lock_dir_pp package_universe ~transitive)
+                  |> Pp.box
+                ])))
       |> Pp.vbox
     in
     Console.print [ pp ]

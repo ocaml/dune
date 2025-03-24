@@ -33,7 +33,7 @@ Now we set up a lock file with this package and then attempt to use it:
   $ cat >dune.lock/mypkg.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/external_sources))
-  > (build (run dune build --promote-install-file=true . @install))
+  > (build (run dune build --release --promote-install-file=true . @install))
   > EOF
 
   $ cat >dune <<EOF

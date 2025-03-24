@@ -17,7 +17,7 @@ val find
     explaining the outdated packages. It begins with a summary detailing the number of
     affected packages and then lists all the packages requested.
 
-    - [transitive] indiciates whether to hint that transitive dependencies are not being
+    - [transitive] indicates whether to hint that transitive dependencies are not being
       shown and therefore the user should pass [--transitive] to the [dune pkg outdated]
       command to see them.
 

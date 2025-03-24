@@ -4,7 +4,7 @@ displayed. This can happen for:
 - (install)
 
   $ dune build
-  File "dune", line 1, characters 0-43:
+  File "dune", lines 1-3, characters 0-43:
   1 | (install
   2 |  (section etc)
   3 |  (files file.conf))

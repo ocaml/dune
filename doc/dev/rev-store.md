@@ -8,7 +8,7 @@ The Concepts
 ------------
 
 The revision store uses Git in the way of its original slogan, as a
-content-adressable file system. A lot of data (code) and meta-data (opam files)
+content-addressable file system. A lot of data (code) and meta-data (opam files)
 is stored in Git repositories that are often forked from each other, hence to
 save space Dune has a Git object cache.
 
@@ -47,7 +47,7 @@ background. The store should always work like a cache that can be discarded
 safely without causing data loss.
 
 The revision store should always give out the most recent version of data,
-unless explicitely instructed otherwise. This means that :
+unless explicitly instructed otherwise. This means that :
 
   * If only a Git source is specified, then the revision store will
     automatically get the newest revision
@@ -68,7 +68,7 @@ Support for other kinds of VCSes is a possible extension by replicating similar
 concepts with other version control systems, provided they allow for similar
 flexibility as the Git way of storing revisions. However at the moment most
 users have settled on using Git, hence this version should be able to
-accomodate the needs for most users.
+accommodate the needs for most users.
 
 Another compromise is that old repositories with long histories and large sizes
 have to be cloned before use, thus increasing the size of the initial download
@@ -97,7 +97,7 @@ one particular revision would be a waste of disk space as the Git tooling can
 be used to construct any revisions out of the bare repository anyway.
 
 Thus every source that is added to the revision store as a remote that tracks
-the default branch (or, if a branch is specified explicitely, then that
+the default branch (or, if a branch is specified explicitly, then that
 branch) and fetched, thus storing the required revisions in the revision store.
 
 The implementation of these features is a mix of calling the `git` binary and

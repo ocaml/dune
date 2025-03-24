@@ -36,6 +36,19 @@ let and_ = function
   | _ :: _ :: _ as xs -> And xs
 ;;
 
+let map t ~f =
+  let rec loop = function
+    | True -> True
+    | False -> False
+    | Element a -> Element (f a)
+    | Not a -> Not (loop a)
+    | Standard -> Standard
+    | Or xs -> Or (List.map ~f:loop xs)
+    | And xs -> And (List.map ~f:loop xs)
+  in
+  loop t
+;;
+
 let rec decode_one =
   let not_or a = not (Or a) in
   fun f ->
@@ -163,6 +176,13 @@ module Glob = struct
       | Glob g -> Dyn.variant "Glob" [ Glob.to_dyn g ]
     ;;
 
+    (* CR-someday amokhov: The [_exn] suffix is here because [Glob.to_string] can actually
+       raise. We should clean this all up, at least use the [_exn] suffix consistently. *)
+    let digest_exn = function
+      | Literal s -> Dune_digest.generic (0, s)
+      | Glob g -> Dune_digest.generic (1, Glob.to_string g)
+    ;;
+
     let encode t =
       Dune_sexp.atom_or_quoted_string
       @@
@@ -208,4 +228,5 @@ module Glob = struct
   let hash t = Poly.hash t
   let decode = decode Element.decode
   let encode t = encode Element.encode t
+  let digest_exn t = map t ~f:Element.digest_exn |> Dune_digest.generic
 end

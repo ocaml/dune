@@ -1,0 +1,12 @@
+(lang dune 3.17)
+(name test)
+
+(pin
+ (url "git+https://github.com/dbuenzli/fmt.git")
+ (package (name fmt)))
+
+(package
+ (name test)
+ (depends
+  (ocaml (>= 4.14))
+  fmt))

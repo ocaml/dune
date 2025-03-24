@@ -63,7 +63,7 @@ let dep_on_alias_rec alias ~loc =
     >>| (function
      | Defined -> ()
      | Not_defined ->
-       if not (Alias.is_standard name)
+       if not (Alias0.is_standard name)
        then
          User_error.raise
            ~loc
@@ -234,7 +234,7 @@ let rec dep expander : Dep_conf.t -> _ = function
     Other
       (let+ () =
          let* pkg = Expander.expand_str expander p in
-         let context = Context.build_context (Expander.context expander) in
+         let context = Build_context.create ~name:(Expander.context expander) in
          let loc = String_with_vars.loc p in
          let* dune_version =
            Action_builder.of_memo
@@ -268,8 +268,8 @@ and named_paths_builder ~expander l =
         (match
            Option.List.all
              (List.map x ~f:(function
-               | Simple x -> Some x
-               | Other _ -> None))
+                | Simple x -> Some x
+                | Other _ -> None))
          with
          | Some x ->
            let open Memo.O in

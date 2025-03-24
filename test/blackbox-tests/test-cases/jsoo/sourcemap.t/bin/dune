@@ -1,0 +1,6 @@
+(executable
+ (name main)
+ (libraries mylib)
+ (modes js)
+ (js_of_ocaml
+  (sourcemap file)))

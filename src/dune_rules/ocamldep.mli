@@ -13,7 +13,7 @@ module Modules_data : sig
     ; obj_dir : Path.Build.t Obj_dir.t
     ; sctx : Super_context.t
     ; vimpl : Vimpl.t option
-    ; modules : Modules.t
+    ; modules : Modules.With_vlib.t
     ; stdlib : Ocaml_stdlib.t option
     ; sandbox : Sandbox_config.t
     }
@@ -27,7 +27,7 @@ val deps_of
 
 val read_deps_of
   :  obj_dir:Path.Build.t Obj_dir.t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t
@@ -38,7 +38,7 @@ val read_deps_of
     [ml_kind], then an empty list of dependencies is returned. *)
 val read_immediate_deps_of
   :  obj_dir:Path.Build.t Obj_dir.t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> ml_kind:Ml_kind.t
   -> Module.t
   -> Module.t list Action_builder.t

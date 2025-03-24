@@ -26,7 +26,7 @@ Now we make a package depending on file-depends.
 
   $ cat > dune.lock/dep.pkg <<EOF
   > (version 0.0.1)
-  > (deps file-depends)
+  > (depends file-depends)
   > (build
   >  (system "echo Building dep"))
   > EOF

@@ -116,12 +116,8 @@ module Untracked = struct
      module and [cached_digest.ml]. In particular, digests are stored twice, in
      two separate tables. We should find a way to merge the tables into one. *)
   let file_digest =
-    let sample p =
-      Cached_digest.Untracked.source_or_external_file (Path.outside_build_dir p)
-    in
-    let update_hook p =
-      Cached_digest.Untracked.invalidate_cached_timestamp (Path.outside_build_dir p)
-    in
+    let sample p = Cached_digest.Untracked.source_or_external_file p in
+    let update_hook p = Cached_digest.Untracked.invalidate_cached_timestamp p in
     create "file_digest" ~sample ~update_hook ~equal:Cached_digest.Digest_result.equal
   ;;
 

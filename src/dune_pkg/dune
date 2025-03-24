@@ -4,6 +4,7 @@
  (libraries
   stdune
   fiber
+  fiber_util
   chrome_trace
   dune_engine
   dune_digest
@@ -13,14 +14,11 @@
   dune_console
   dune_re
   dune_vcs
+  dune_config
   opam_core
-  opam_repository
   opam_format
-  opam_state
-  opam_0install
   build_info
-  zeroinstall_solver
-  fmt
+  sat
   xdg)
  (instrumentation
   (backend bisect_ppx)))

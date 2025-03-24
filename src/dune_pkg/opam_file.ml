@@ -3,6 +3,47 @@ open OpamParserTypes.FullPos
 
 type t = opamfile
 
+let loc_of_opam_pos
+      ({ filename; start = start_line, start_column; stop = stop_line, stop_column } :
+        OpamParserTypes.FullPos.pos)
+  =
+  let start =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = start_line
+    ; pos_bol = 0
+    ; pos_cnum = start_column
+    }
+  in
+  let stop =
+    { Lexing.pos_fname = filename
+    ; pos_lnum = stop_line
+    ; pos_bol = 0
+    ; pos_cnum = stop_column
+    }
+  in
+  Loc.create ~start ~stop
+;;
+
+let read_from_string_exn ~contents path =
+  let filename = Path.to_absolute_filename path |> OpamFilename.raw in
+  let pos = OpamTypesBase.pos_file filename in
+  try
+    let syntax = OpamFile.Syntax.of_string (OpamFile.make filename) contents in
+    OpamPp.parse OpamFile.OPAM.pp_raw_fields ~pos syntax.file_contents
+  with
+  | OpamPp.Bad_version (_, message) ->
+    User_error.raise
+      ~loc:(Loc.in_file path)
+      [ Pp.text "unexpected version"; Pp.text message ]
+  | OpamPp.Bad_format (pos, message) ->
+    let loc =
+      match pos with
+      | None -> Loc.in_file path
+      | Some pos -> loc_of_opam_pos pos
+    in
+    User_error.raise ~loc [ Pp.text "unable to parse opam file"; Pp.text message ]
+;;
+
 let parse_gen entry (lb : Lexing.lexbuf) =
   try entry OpamLexer.token lb with
   | OpamLexer.Error msg -> User_error.raise ~loc:(Loc.of_lexbuf lb) [ Pp.text msg ]
@@ -17,12 +58,14 @@ let parse =
 
 let parse_value = parse_gen OpamBaseParser.value
 
-let get_field t name =
+let get_field_with_pos t name =
   List.find_map t.file_contents ~f:(fun value ->
     match value.pelem with
-    | Variable (var, value) when var.pelem = name -> Some value
+    | Variable (var, value) when var.pelem = name -> Some (value, var.pos)
     | _ -> None)
 ;;
+
+let get_field t name = get_field_with_pos t name |> Option.map ~f:fst
 
 let absolutify_positions ~file_contents t =
   let bols = ref [ 0 ] in
@@ -160,3 +203,92 @@ module Create = struct
     { file_contents; file_name }
   ;;
 end
+
+let load_opam_file_with_contents ~contents:opam_file_string file name =
+  let loc = Loc.in_file (Path.source file) in
+  let opam =
+    let opam =
+      let lexbuf =
+        Lexbuf.from_string opam_file_string ~fname:(Path.Source.to_string file)
+      in
+      try Ok (parse lexbuf) with
+      | User_error.E _ as exn -> Error exn
+    in
+    match opam with
+    | Ok s -> Some s
+    | Error exn ->
+      (* CR-rgrinberg: make it possible to disable this warning *)
+      User_warning.emit
+        ~loc
+        [ Pp.text
+            "Unable to read opam file. Some information about this package such as its \
+             version will be ignored."
+        ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+        ];
+      None
+  in
+  let open Option.O in
+  let get_one_with_loc name =
+    let* value, pos =
+      let* opam = opam in
+      get_field_with_pos opam name
+    in
+    match value.pelem with
+    | String s -> Some (loc_of_opam_pos pos, s)
+    | _ -> None
+  in
+  let get_one name = get_one_with_loc name >>| snd in
+  let get_many name =
+    let* value =
+      let* opam = opam in
+      get_field opam name
+    in
+    match value.pelem with
+    | String s -> Some [ s ]
+    | List l ->
+      List.fold_left
+        l.pelem
+        ~init:(Some [])
+        ~f:(fun acc (v : OpamParserTypes.FullPos.value) ->
+          let* acc = acc in
+          match v.pelem with
+          | String s -> Some (s :: acc)
+          | _ -> None)
+      >>| List.rev
+    | _ -> None
+  in
+  let dir = Path.Source.parent_exn file in
+  let info =
+    Dune_lang.Package_info.create
+      ~maintainers:(get_many "maintainer")
+      ~maintenance_intent:(get_many "x-maintenance-intent")
+      ~authors:(get_many "authors")
+      ~homepage:(get_one "homepage")
+      ~bug_reports:(get_one "bug-reports")
+      ~documentation:(get_one "doc")
+      ~license:(get_many "license")
+      ~source:
+        (let+ url = get_one "dev-repo" in
+         Dune_lang.Source_kind.Url url)
+  in
+  Dune_lang.Package.create
+    ~name
+    ~dir
+    ~loc
+    ~version:
+      (get_one_with_loc "version"
+       |> Option.map ~f:Package_version.of_string_user_error
+       >>| User_error.ok_exn)
+    ~conflicts:[]
+    ~depends:[]
+    ~depopts:[]
+    ~info
+    ~synopsis:(get_one "synopsis")
+    ~description:(get_one "description")
+    ~has_opam_file:(Exists true)
+    ~tags:(Option.value (get_many "tags") ~default:[])
+    ~deprecated_package_names:Package_name.Map.empty
+    ~sites:Dune_lang.Site.Map.empty
+    ~allow_empty:true
+    ~original_opam_file:(Some { file; contents = opam_file_string })
+;;

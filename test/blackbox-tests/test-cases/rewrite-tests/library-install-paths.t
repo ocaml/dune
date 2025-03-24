@@ -33,17 +33,8 @@ It currently gives /workspace_root/lib/run.mm and so does not match the regular
 expression. The grep count should be 1 rather than 0, and the exit code from
 the grep 0.
 
-  $ dune build --display short @all 2>&2 | dune_cmd sanitize
-        ocamlc lib/.minlib.objs/byte/minlib.{cmi,cmo,cmt}
-      ocamldep lib/.minlib.objs/minlib__Run.impl.d
-            sh lib/x
+  $ dune build @all 2>&2 | dune_cmd sanitize
   0
-      ocamlopt lib/.minlib.objs/native/minlib.{cmx,o}
-        ocamlc lib/.minlib.objs/byte/minlib__Run.{cmi,cmo,cmt}
-      ocamlopt lib/.minlib.objs/native/minlib__Run.{cmx,o}
-        ocamlc lib/minlib.cma
-      ocamlopt lib/minlib.{a,cmxa}
-      ocamlopt lib/minlib.cmxs
   $ dune install --dry-run --prefix _install --display short
   Removing (if it exists) _install/lib/minlib/META
   Installing _install/lib/minlib/META

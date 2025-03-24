@@ -28,11 +28,14 @@ module Args0 = struct
   let dyn args = Dyn (Action_builder.map args ~f:(fun x -> As x))
   let empty = S []
 
-  let rec as_any : without_targets t -> any t = function
+  let as_any : without_targets t -> any t = function
     | A _ as x -> (x :> any t)
     | As _ as x -> (x :> any t)
-    | S l -> S (List.map l ~f:as_any)
-    | Concat (sep, l) -> Concat (sep, List.map l ~f:as_any)
+    (* We can't convince the type checker to do a cast, so we force it.
+       See the discussion in https://github.com/ocaml/dune/pull/10278 to see why
+       the pattern match is optimized away. *)
+    | S _ as x -> Obj.magic x
+    | Concat _ as x -> Obj.magic x
     | Dep _ as x -> (x :> any t)
     | Deps _ as x -> (x :> any t)
     | Path _ as x -> (x :> any t)

@@ -13,3 +13,6 @@ val link_flags
   -> dir:Path.Build.t
   -> Link_flags.Spec.t
   -> Link_flags.t Memo.t
+
+val link_env : dir:Path.Build.t -> Link_flags.t Memo.t
+val ocaml_flags_env : dir:Path.Build.t -> Ocaml_flags.t Memo.t

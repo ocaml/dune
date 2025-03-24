@@ -7,7 +7,7 @@ module Scope : sig
 end
 
 type t =
-  { name : Variable_name.t
+  { name : Package_variable_name.t
   ; scope : Scope.t
   }
 

@@ -18,7 +18,7 @@ let man =
 let info = Cmd.info "top" ~doc ~man
 
 let term =
-  let+ builder = Common.Builder.term
+  let+ default_builder = Common.Builder.term
   and+ context =
     let doc = "Run the Coq toplevel in this build context." in
     Common.context_arg ~doc
@@ -34,7 +34,12 @@ let term =
       & flag
       & info [ "no-build" ] ~doc:"Don't rebuild dependencies before executing.")
   in
-  let common, config = Common.init builder in
+  let common, config =
+    let builder =
+      if no_rebuild then Common.Builder.forbid_builds default_builder else default_builder
+    in
+    Common.init builder
+  in
   let coq_file_arg = Common.prefix_target common coq_file_arg |> Path.Local.of_string in
   let coqtop, argv, env =
     Scheduler.go ~common ~config
@@ -53,8 +58,8 @@ let term =
        | Some dir -> dir)
       |> Path.Build.append_local (Context.build_dir context)
     in
-    let* coqtop, args =
-      Build_system.run_exn
+    let* coqtop, args, env =
+      build_exn
       @@ fun () ->
       let open Memo.O in
       let* (tr : Dune_rules.Dir_contents.triage) =
@@ -138,17 +143,17 @@ let term =
       in
       let* prog = Super_context.resolve_program_memo sctx ~dir ~loc:None coqtop in
       let prog = Action.Prog.ok_exn prog in
-      let+ () = Build_system.build_file prog in
-      Path.to_string prog, args
+      let* () = Build_system.build_file prog in
+      let+ env = Super_context.context_env sctx in
+      Path.to_string prog, args, env
     in
     let argv =
       let topfile = Path.to_absolute_filename (Path.build coq_file_build) in
       (coqtop :: "-topfile" :: topfile :: args) @ extra_args
     in
-    let env = Super_context.context_env sctx in
     Fiber.return (coqtop, argv, env)
   in
-  restore_cwd_and_execve common coqtop argv env
+  restore_cwd_and_execve (Common.root common) coqtop argv env
 ;;
 
 let command = Cmd.v info term

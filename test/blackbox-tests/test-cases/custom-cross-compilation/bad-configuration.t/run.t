@@ -1,5 +1,5 @@
   $ dune build file @install
-  File "dune-workspace", line 5, characters 9-50:
+  File "dune-workspace", lines 5-7, characters 9-50:
   5 | (context (default
   6 |  (name cross-1)
   7 |  (host default)))

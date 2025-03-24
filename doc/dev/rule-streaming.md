@@ -77,6 +77,6 @@ suspension.
 ### Difficulties
 
 Interpreting a `library` stanza requires knowing the set of `.ml`
-files in the current directrory. Knowing this requires interpreting
+files in the current directory. Knowing this requires interpreting
 `copy_files` in the current directory. So the interpretation of
 `library` stanzas will need to go under a `narrow` as well.

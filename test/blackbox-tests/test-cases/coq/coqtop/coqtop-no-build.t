@@ -1,4 +1,4 @@
-Testing the -no-build opion of dune coq top:
+Testing the -no-build option of dune coq top:
 
   $ mkdir dir
   $ cat >dir/bar.v <<EOF

@@ -2,6 +2,14 @@
 Overview
 ********
 
+.. TODO(diataxis)
+
+   Split into:
+
+   - info on the index page
+   - :doc:`glossary`
+   - a history page that could also explain the various actors
+
 Introduction
 ============
 
@@ -91,11 +99,12 @@ Terminology
      See :doc:`concepts/scopes` for more details.
 
    build context
-     A specific configuration written in a :ref:`dune-workspace` file, which
-     has a corresponding subdirectory in the ``<root>/_build`` directory. It
-     contains all the workspace's build artifacts. Without this specific
-     configuration from the user, there is always a ``default`` build context
-     that corresponds to the executed Dune environment.
+     A specific configuration written in a
+     :doc:`/reference/dune-workspace/index` file, which has a
+     corresponding subdirectory in the ``<root>/_build`` directory. It contains
+     all the workspace's build artifacts. Without this specific configuration
+     from the user, there is always a ``default`` build context that
+     corresponds to the executed Dune environment.
 
    build context root
      The root of a build context named ``foo`` is ``<root>/_build/<foo>``.
@@ -115,7 +124,8 @@ Terminology
      compilation flags. In Dune, each directory has an environment attached to
      it. Inside a scope, each directory inherits the environment from its
      parent. At the root of every scope, a default environment is used. At any
-     point, the environment can be altered using an :ref:`dune-env` stanza.
+     point, the environment can be altered using an
+     :doc:`/reference/dune/env` stanza.
 
    build profile
      A global setting that influences various defaults. It can be set from the
@@ -138,6 +148,13 @@ Terminology
      are replaced by concrete values such as ``1.2.3``. It is performed by
      :ref:`dune-subst` for development versions and dune-release_ for
      releases.
+
+   stanza
+     A fragment of a file interpreted by Dune, that will appear as a
+     s-expression at the top-level of a file. For example, the
+     :doc:`/reference/dune/library` stanza describes a library. This can be
+     either a generic term ("the library stanza") or it can refer to a
+     particular instance in a file ("the executable stanza in ``bin/dune``").
 
 Project Layout
 ==============

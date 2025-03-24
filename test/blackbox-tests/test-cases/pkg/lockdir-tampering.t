@@ -25,14 +25,7 @@ Define some local packages.
   > (package (name foo) (depends a (b (>= 0.0.2))))
   > (package (name bar) (depends foo c))
   > EOF
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.11)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
 Without a lockdir this command prints a hint but exits successfully.
   $ dune pkg validate-lockdir
@@ -91,8 +84,8 @@ This results in an invalid lockdir due to the missing package.
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
-  The dependencies of local package "foo" could not be satisfied from the
-  lockdir:
+  Error: The dependencies of local package "foo" could not be satisfied from
+  the lockdir:
   Package "a" is missing
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
@@ -121,8 +114,8 @@ Now the lockdir is invalid as it doesn't contain the right version of "b".
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
-  The dependencies of local package "foo" could not be satisfied from the
-  lockdir:
+  Error: The dependencies of local package "foo" could not be satisfied from
+  the lockdir:
   Found version "0.0.1" of package "b" which doesn't satisfy the required
   version constraint ">= 0.0.2"
   Hint: The lockdir no longer contains a solution for the local packages in
@@ -150,7 +143,8 @@ The lockdir is invalid as the package "b" is now defined both locally and in the
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
   File "dune-project", line 2, characters 0-47:
-  A package named "foo" is defined locally but is also present in the lockdir
+  Error: A package named "foo" is defined locally but is also present in the
+  lockdir
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'
   Error: Some lockdirs do not contain solutions for local packages:
@@ -175,8 +169,8 @@ Add a package to the lockdir which isn't part of the local package dependency hi
 The lockdir is invalid as it contains unnecessary packages.
   $ dune pkg validate-lockdir
   Lockdir dune.lock does not contain a solution for local packages:
-  The lockdir contains packages which are not among the transitive dependencies
-  of any local package:
+  Error: The lockdir contains packages which are not among the transitive
+  dependencies of any local package:
   - f.0.0.1
   Hint: The lockdir no longer contains a solution for the local packages in
   this project. Regenerate the lockdir by running: 'dune pkg lock'

@@ -34,6 +34,7 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
 
@@ -52,6 +53,7 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/B/dune-package
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
   Deleting empty directory $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native
@@ -63,6 +65,7 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/B/dune-package
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/B/b.vo
 
@@ -111,6 +114,7 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/B/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/.coq-native/NB_b.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/B/b.vo
 

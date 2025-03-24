@@ -1,7 +1,7 @@
 We should not be able to produce a directory in a rule that already exists
 
   $ dune build
-  File "dune", line 5, characters 0-51:
+  File "dune", lines 5-7, characters 0-51:
   5 | (rule
   6 |  (targets dir)
   7 |  (action (run ./foo.exe dir)))

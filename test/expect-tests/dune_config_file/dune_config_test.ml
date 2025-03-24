@@ -22,14 +22,20 @@ let%expect_test "cache-check-probability 0.1" =
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = Disabled
+    ; cache_enabled = Enabled_except_user_rules
     ; cache_reproducibility_check = Check_with_probability 0.1
-    ; cache_storage_mode = None
+    ; cache_storage_mode = Some Hardlink
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
+        ; license = Some [ "LICENSE" ]
+        }
     ; experimental = []
     }
- |}]
+    |}]
 ;;
 
 let%expect_test "cache-storage-mode copy" =
@@ -40,14 +46,20 @@ let%expect_test "cache-storage-mode copy" =
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = Disabled
+    ; cache_enabled = Enabled_except_user_rules
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Copy
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
+        ; license = Some [ "LICENSE" ]
+        }
     ; experimental = []
     }
- |}]
+    |}]
 ;;
 
 let%expect_test "cache-storage-mode hardlink" =
@@ -58,12 +70,18 @@ let%expect_test "cache-storage-mode hardlink" =
     ; concurrency = Fixed 1
     ; terminal_persistence = Clear_on_rebuild
     ; sandboxing_preference = []
-    ; cache_enabled = Disabled
+    ; cache_enabled = Enabled_except_user_rules
     ; cache_reproducibility_check = Skip
     ; cache_storage_mode = Some Hardlink
     ; action_stdout_on_success = Print
     ; action_stderr_on_success = Print
+    ; project_defaults =
+        { authors = Some [ "Author Name <author@example.com>" ]
+        ; maintainers = Some [ "Maintainer Name <maintainer@example.com>" ]
+        ; maintenance_intent = None
+        ; license = Some [ "LICENSE" ]
+        }
     ; experimental = []
     }
- |}]
+    |}]
 ;;

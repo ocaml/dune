@@ -101,7 +101,9 @@
        ;; + for env
        "binaries"
        ;; + for "install"
-       "section" "files")
+       "section" "files"
+       ;; Coq fields
+       "theories" "modules_flags" "plugins")
      'symbols))
   "Field names allowed in dune files.")
 

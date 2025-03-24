@@ -1,0 +1,6 @@
+(library
+ (name inline_tests_wasm)
+ (wasm_of_ocaml (wasm_files wasm.wat))
+ (inline_tests
+  (modes wasm)
+  (backend fake_backend)))

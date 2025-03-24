@@ -11,6 +11,9 @@ type t = string
 
 module Extension : sig
   type nonrec t = t
+
+  module Set = String.Set
+  module Map = String.Map
 end
 
 val split_extension : t -> string * Extension.t
@@ -24,6 +27,7 @@ type program_name_kind =
 val analyze_program_name : t -> program_name_kind
 val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
+val chop_extension : [ `Use_remove_extension ]
 
 module Set = String.Set
 module Map = String.Map

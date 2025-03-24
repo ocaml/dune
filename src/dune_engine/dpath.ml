@@ -108,17 +108,3 @@ let analyse_dir (fn : Path.t) =
 ;;
 
 type t = Path.t
-
-let encode p =
-  (* CR rgrinberg: only reason this lives here is to implement
-     [$ dune rules]. Seems like it should just live there along with all the
-     other encoders in the engine. *)
-  let make constr arg =
-    Dune_sexp.List [ Dune_sexp.atom constr; Dune_sexp.atom_or_quoted_string arg ]
-  in
-  let open Path in
-  match p with
-  | In_build_dir p -> make "In_build_dir" (Path.Build.to_string p)
-  | In_source_tree p -> make "In_source_tree" (Path.Source.to_string p)
-  | External p -> make "External" (Path.External.to_string p)
-;;

@@ -2,14 +2,14 @@ open Import
 
 module Module_system = struct
   type t =
-    | Es6
-    | CommonJs
+    | ESM
+    | CommonJS
 
-  let default = CommonJs, ".js"
+  let default = CommonJS, ".js"
 
   let to_string = function
-    | Es6 -> "es6"
-    | CommonJs -> "commonjs"
+    | ESM -> "es6"
+    | CommonJS -> "commonjs"
   ;;
 end
 

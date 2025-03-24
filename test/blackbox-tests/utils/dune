@@ -6,7 +6,8 @@
   dune-private-libs.dune_re
   dune-configurator
   build_path_prefix_map
-  str))
+  str
+  unix))
 
 (ocamllex dunepp)
 
@@ -17,8 +18,22 @@
 (executable
  (modules melc_stdlib_prefix)
  (name melc_stdlib_prefix)
- (libraries stdune))
+ (libraries stdune unix))
 
 (executable
  (name refmt)
  (modules refmt))
+
+(executable
+ (name sherlodoc)
+ (modules sherlodoc)
+ (libraries stdune))
+
+(executable
+ (modules ocaml_index)
+ (name ocaml_index)
+ (libraries cmdliner))
+
+(executable
+ (modules ocamlformat)
+ (name ocamlformat))

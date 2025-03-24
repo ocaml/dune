@@ -6,3 +6,4 @@ let of_opam_package_version opam_version =
 ;;
 
 let to_opam_package_version t = to_string t |> OpamPackage.Version.of_string
+let dev = of_string "dev"

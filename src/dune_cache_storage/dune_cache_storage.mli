@@ -68,8 +68,9 @@ end
 module Artifacts : sig
   module Metadata_entry : sig
     type t =
-      { file_path : string (** Can have more than one component for directory targets *)
-      ; file_digest : Digest.t
+      { path : string (** Can have more than one component for directory targets *)
+      ; digest : Digest.t option
+        (** This digest is always present in case [file_path] points to a file, and absent when it's a directory. *)
       }
   end
 
@@ -138,3 +139,5 @@ module Raw_value : sig
     -> content_digest:Digest.t
     -> Util.Write_result.t
 end
+
+val clear : unit -> unit

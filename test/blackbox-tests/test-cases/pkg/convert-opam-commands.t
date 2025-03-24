@@ -248,14 +248,20 @@ Test that if opam filter translation is disabled the output doesn't contain any 
    (run
     echo
     a
-    (when %{pkg-self:foo} b)
     (when
-     (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+     (catch_undefined_var %{pkg-self:foo} false)
+     b)
+    (when
+     (catch_undefined_var
+      (and_absorb_undefined_var %{pkg-self:bar} %{pkg-self:baz})
+      false)
      c)))
 
   $ solve filter-error-bool-where-string-expected
-  Error: At
-  $TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam:3:33-3:34::
+  File "$TESTCASE_ROOT/mock-opam-repository/packages/filter-error-bool-where-string-expected/filter-error-bool-where-string-expected.0.0.1/opam", line 3, characters 33-34:
+  3 |   [ "echo" "a" ] { foo:version < (foo = bar) }
+                                       ^
+  Error: unable to parse opam file
   Parse error
   [1]
 
@@ -282,7 +288,7 @@ Package with package conjunction and string selections inside variable interpola
   > EOF
   Solution for dune.lock:
   - package-conjunction-and-string-selection.0.0.1
-Note that "enable" is not a true opam variable. Opam desugars occurances of
+Note that "enable" is not a true opam variable. Opam desugars occurrences of
 "pkg:enable" into "pkg:enable?enable:disable" but if the explicit package scope
 is omitted then it's treated like a regular variable. That explains why the
 opam syntax `"--%{enable}%-feature"` is converted to

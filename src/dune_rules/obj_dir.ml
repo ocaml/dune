@@ -21,7 +21,11 @@ module Paths = struct
     Path.Build.relative dir ("." ^ name ^ ".eobjs")
   ;;
 
-  let melange_object_directory ~dir name = Path.Build.relative dir ("." ^ name ^ ".mobjs")
+  let melange_object_directory ~dir name =
+    (* Use "mobjs" rather than "objs" to avoid a potential conflict with a
+       library / executable of the same name *)
+    Path.Build.relative dir ("." ^ name ^ ".mobjs")
+  ;;
 end
 
 module External = struct
@@ -61,7 +65,12 @@ module External = struct
   ;;
 
   let to_dyn
-    { public_dir; private_dir; public_cmi_ocaml_dir; melange_dir; public_cmi_melange_dir }
+        { public_dir
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; melange_dir
+        ; public_cmi_melange_dir
+        }
     =
     let open Dyn in
     record
@@ -85,12 +94,12 @@ module External = struct
   ;;
 
   let encode
-    { public_dir
-    ; private_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir
-    ; melange_dir = _
-    }
+        { public_dir
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir
+        ; melange_dir = _
+        }
     =
     let open Dune_lang.Encoder in
     let extract d =
@@ -138,12 +147,12 @@ module External = struct
   let all_obj_dirs t ~mode:_ = [ t.public_dir ]
 
   let all_cmis
-    { public_dir
-    ; melange_dir = _
-    ; private_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir = _
-    }
+        { public_dir
+        ; melange_dir = _
+        ; private_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir = _
+        }
     =
     List.filter_opt
       [ Some public_dir
@@ -179,16 +188,16 @@ module Local = struct
   let equal : t -> t -> bool = Poly.equal
 
   let to_dyn
-    { dir
-    ; obj_dir
-    ; native_dir
-    ; byte_dir
-    ; jsoo_dir
-    ; melange_dir
-    ; public_cmi_ocaml_dir
-    ; public_cmi_melange_dir
-    ; private_lib
-    }
+        { dir
+        ; obj_dir
+        ; native_dir
+        ; byte_dir
+        ; jsoo_dir
+        ; melange_dir
+        ; public_cmi_ocaml_dir
+        ; public_cmi_melange_dir
+        ; private_lib
+        }
     =
     let open Dyn in
     record
@@ -205,15 +214,15 @@ module Local = struct
   ;;
 
   let make
-    ~dir
-    ~obj_dir
-    ~native_dir
-    ~byte_dir
-    ~jsoo_dir
-    ~melange_dir
-    ~public_cmi_ocaml_dir
-    ~public_cmi_melange_dir
-    ~private_lib
+        ~dir
+        ~obj_dir
+        ~native_dir
+        ~byte_dir
+        ~jsoo_dir
+        ~melange_dir
+        ~public_cmi_ocaml_dir
+        ~public_cmi_melange_dir
+        ~private_lib
     =
     { dir
     ; obj_dir
@@ -452,7 +461,8 @@ let as_local_exn (t : Path.t t) =
   match t with
   | Local _ -> assert false
   | Local_as_path e -> Local e
-  | External _ -> Code_error.raise "Obj_dir.as_local_exn: external dir" []
+  | External e ->
+    Code_error.raise "Obj_dir.as_local_exn: external dir" [ "t", External.to_dyn e ]
 ;;
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)

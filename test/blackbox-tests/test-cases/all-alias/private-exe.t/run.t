@@ -1,9 +1,4 @@
 @all builds private exe's
 
-  $ dune build @all --display short
-      ocamldep .foo.eobjs/foo.impl.d
-        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
-      ocamlopt .foo.eobjs/native/foo.{cmx,o}
-        ocamlc foo.bc
-        ocamlc foo.bc-for-jsoo
+  $ dune build @all --display short 2>&1 | grep -i exe
       ocamlopt foo.exe

@@ -7,8 +7,7 @@ let go =
     Clflags.display := Short;
     { Scheduler.Config.concurrency = 1
     ; stats = None
-    ; insignificant_changes = `React
-    ; signal_watcher = `Yes
+    ; print_ctrl_c_warning = true
     ; watch_exclusions = []
     }
   in

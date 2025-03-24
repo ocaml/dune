@@ -1,4 +1,4 @@
-Headers of libraries are accidentally visibile
+Headers of libraries are accidentally visible
 
   $ cat >dune-project <<EOF
   > (lang dune 3.8)

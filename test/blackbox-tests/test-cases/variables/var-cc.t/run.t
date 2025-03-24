@@ -51,7 +51,7 @@ No env
   >   (action (echo %{cc})))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF},OK,"
+  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF} -fdiagnostics-color=always,OK,"
   OK
 
 With added env flags
@@ -59,7 +59,7 @@ With added env flags
   > (env (_ (c_flags :standard -fPIC)))
   > EOF
 
-  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF} -fPIC,OK,"
+  $ dune build @cc28 | sed "s,${O_CC} ${O_CCF} ${O_CCPPF} -fdiagnostics-color=always -fPIC,OK,"
   OK
 
 With redefining env flags

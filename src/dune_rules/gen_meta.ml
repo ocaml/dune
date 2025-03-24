@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 open Meta
 
 module Pub_name = struct
@@ -36,6 +37,7 @@ end
 let string_of_deps deps = Lib_name.Set.to_string_list deps |> String.concat ~sep:" "
 let rule var predicates action value = Rule { var; predicates; action; value }
 let requires ?(preds = []) pkgs = rule "requires" preds Set (string_of_deps pkgs)
+let exports pkgs = rule "exports" [] Set (string_of_deps pkgs)
 
 let ppx_runtime_deps ?(preds = []) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
@@ -59,7 +61,6 @@ let archives ?(preds = []) lib =
 ;;
 
 let gen_lib pub_name lib ~version =
-  let open Memo.O in
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
   let kind = Lib_info.kind info in
@@ -87,6 +88,7 @@ let gen_lib pub_name lib ~version =
   in
   let to_names = Lib_name.Set.of_list_map ~f:name in
   let* lib_deps = Resolve.Memo.read_memo (Lib.requires lib) >>| to_names in
+  let* lib_re_exports = Resolve.Memo.read_memo (Lib.re_exports lib) >>| to_names in
   let* ppx_rt_deps =
     Lib.ppx_runtime_deps lib |> Memo.bind ~f:Resolve.read_memo |> Memo.map ~f:to_names
   in
@@ -109,6 +111,13 @@ let gen_lib pub_name lib ~version =
   List.concat
     [ version
     ; [ description desc; requires ~preds lib_deps ]
+    ; (if
+         (match Lib.project lib with
+          | None -> true
+          | Some project -> Dune_project.dune_version project < (3, 17))
+         || Lib_name.Set.is_empty lib_re_exports
+       then []
+       else [ exports lib_re_exports ])
     ; archives ~preds lib
     ; (if Lib_name.Set.is_empty ppx_rt_deps
        then []
@@ -150,6 +159,11 @@ let gen_lib pub_name lib ~version =
        | l ->
          let l = List.map l ~f:Path.basename in
          [ rule "jsoo_runtime" [] Set (String.concat l ~sep:" ") ])
+    ; (match Lib_info.wasmoo_runtime info with
+       | [] -> []
+       | l ->
+         let l = List.map l ~f:Path.basename in
+         [ rule "wasmoo_runtime" [] Set (String.concat l ~sep:" ") ])
     ]
 ;;
 
@@ -195,9 +209,10 @@ let gen ~(package : Package.t) ~add_directory_entry entries =
            pub_name, entries)
       | Deprecated_library_name
           { old_name = old_public_name, _; new_public_name = _, new_public_name; _ } ->
+        let deps = Lib_name.Set.singleton new_public_name in
         Memo.return
-          ( Pub_name.of_lib_name (Dune_file.Public_lib.name old_public_name)
-          , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
+          ( Pub_name.of_lib_name (Public_lib.name old_public_name)
+          , version @ [ requires deps; exports deps ] ))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

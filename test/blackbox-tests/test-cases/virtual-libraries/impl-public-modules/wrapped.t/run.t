@@ -1,6 +1,6 @@
 Implementations cannot introduce new modules to the library's interface
   $ dune build
-  File "impl/dune", line 1, characters 0-44:
+  File "impl/dune", lines 1-3, characters 0-44:
   1 | (library
   2 |  (name foo_impl)
   3 |  (implements foo))

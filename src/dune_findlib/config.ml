@@ -54,23 +54,21 @@ end
 
 type t =
   { config : File.t
-  ; ocamlpath : Path.t list
+  ; ocamlpath : Path.t list Memo.t
   ; which : string -> Path.t option Memo.t
   ; toolchain : string option
   }
 
-let to_dyn { config; ocamlpath; toolchain; which = _ } =
+let to_dyn { config; ocamlpath = _; toolchain; which = _ } =
   let open Dyn in
-  record
-    [ "config", File.to_dyn config
-    ; "ocamlpath", Dyn.list Path.to_dyn ocamlpath
-    ; "toolchain", option string toolchain
-    ]
+  record [ "config", File.to_dyn config; "toolchain", option string toolchain ]
 ;;
 
 let ocamlpath_sep =
-  if Sys.cygwin then (* because that's what ocamlfind expects *)
-                  ';' else Bin.path_sep
+  if Sys.cygwin
+  then (* because that's what ocamlfind expects *)
+    ';'
+  else Bin.path_sep
 ;;
 
 let ocamlpath_var = "OCAMLPATH"
@@ -89,9 +87,10 @@ let set_toolchain t ~toolchain =
 ;;
 
 let ocamlpath t =
+  let+ ocamlpath = t.ocamlpath in
   match File.get t.config "path" with
-  | None -> t.ocamlpath
-  | Some p -> t.ocamlpath @ path_var p
+  | None -> ocamlpath
+  | Some p -> ocamlpath @ path_var p
 ;;
 
 let tool t ~prog =

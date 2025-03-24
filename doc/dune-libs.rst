@@ -2,6 +2,8 @@
 Dune Libraries
 **************
 
+.. TODO(diataxis) Move into :doc:`reference/dune-libs`
+
 .. _configurator:
 
 Configurator
@@ -22,7 +24,7 @@ Configurator allows you to query for the following features:
 
 * Extract compile time information such as ``#define`` variables.
 
-Configurator is designed to be cross-compilation friendly and avoids _running_
+Configurator is designed to be cross-compilation friendly and avoids *running*
 any compiled code to extract any of the information above.
 
 Configurator started as an `independent library
@@ -47,7 +49,7 @@ example:
   let clock_gettime_code = {|
   #include <time.h>
 
-  int main()
+  int main(void)
   {
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -178,5 +180,5 @@ your own risk.*
 
 ``Dune-action-plugin`` provides a monadic interface to express program
 dependencies directly inside the source code. Programs using this feature
-should be declared using :dune:ref:`action-dynamic-run` construction instead of
-usual :dune:ref:`action-run`.
+should be declared using :doc:`/reference/actions/dynamic-run` instead of usual
+:doc:`/reference/actions/run`.

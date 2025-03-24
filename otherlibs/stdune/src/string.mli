@@ -52,7 +52,21 @@ val extract_blank_separated_words : t -> t list
 val lsplit2 : t -> on:char -> (t * t) option
 val lsplit2_exn : t -> on:char -> t * t
 val rsplit2 : t -> on:char -> (t * t) option
+
+(** [split t ~on] returns the list of non-overlapping substrings of
+    [t] between each occurence of [on]. If [t] begins or ends with [on]
+    then an empty string will be present on the "far" side of [on] in the
+    output. If [on] does not appear in [t] then the result is a list
+    containing [t] (even if [t] is the empty string).
+
+    Note that [split "" ~on] returns [[""]] (ie. a list containing a single
+    empty string).
+
+    This function is roughly the inverse of [concat].
+    Ie. [concat ~sep:(String.make 1 c) (split ~on:c s)] will return
+    the original string [s]. *)
 val split : t -> on:char -> t list
+
 val split_lines : t -> t list
 
 (** Escape ONLY one character. {!escape} also escapes '\n',... and transforms
@@ -64,8 +78,8 @@ val longest : string list -> int
 
 val longest_map : 'a list -> f:('a -> string) -> int
 val longest_prefix : t list -> t
-val exists : t -> f:(char -> bool) -> bool
-val for_all : t -> f:(char -> bool) -> bool
+val exists : f:(char -> bool) -> t -> bool
+val for_all : f:(char -> bool) -> t -> bool
 
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
     lexing conventions and [sprintf "%S" s] otherwise.
@@ -102,8 +116,8 @@ val need_quoting : string -> bool
     [true] *)
 val quote_for_shell : string -> string
 
-(** [quote_list_for_shell l] is
-    [List.map l ~f:quote_for_shell |> concat ~sep:" "] *)
+(** [quote_list_for_shell l] quotes a command-line so that it can be passed to
+    the system shell (eg by using [Sys.command]). *)
 val quote_list_for_shell : string list -> string
 
 val filter_map : string -> f:(char -> char option) -> string

@@ -72,10 +72,12 @@ module Pform = struct
   ;;
 
   let compare { name; payload; loc } t =
-    let open Ordering.O in
-    let= () = String.compare name t.name in
-    let= () = Option.compare Payload.compare payload t.payload in
-    Loc.compare loc t.loc
+    match String.compare name t.name with
+    | (Lt | Gt) as x -> x
+    | Eq ->
+      (match Option.compare Payload.compare payload t.payload with
+       | (Lt | Gt) as x -> x
+       | Eq -> Loc.compare loc t.loc)
   ;;
 
   let full_name t =
@@ -147,10 +149,12 @@ let compare_no_loc { quoted; parts; loc = _ } t =
 ;;
 
 let compare { quoted; parts; loc } t =
-  let open Ordering.O in
-  let= () = List.compare ~compare:compare_part parts t.parts in
-  let= () = Bool.compare quoted t.quoted in
-  Loc.compare loc t.loc
+  match Bool.compare t.quoted quoted with
+  | (Lt | Gt) as x -> x
+  | Eq ->
+    (match List.compare ~compare:compare_part parts t.parts with
+     | (Lt | Gt) as x -> x
+     | Eq -> Loc.compare loc t.loc)
 ;;
 
 module Pp : sig
@@ -205,10 +209,11 @@ let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
 let pp_split_strings ppf (t : t) =
-  if t.quoted
-     || List.exists t.parts ~f:(function
-       | Text s -> String.contains s '\n'
-       | Pform _ -> false)
+  if
+    t.quoted
+    || List.exists t.parts ~f:(function
+      | Text s -> String.contains s '\n'
+      | Pform _ -> false)
   then (
     List.iter t.parts ~f:(function
       | Pform s -> Format.pp_print_string ppf (Pform.to_string s)

@@ -46,8 +46,8 @@ module Version = struct
   ;;
 
   let can_read
-    ~parser_version:(parser_major, parser_minor)
-    ~data_version:(data_major, data_minor)
+        ~parser_version:(parser_major, parser_minor)
+        ~data_version:(data_major, data_minor)
     =
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
@@ -69,7 +69,7 @@ module Supported_versions : sig
     -> dune_lang_ver:Version.t
     -> Version.t option
 
-  val minimum_versions : t -> Version.t * Version.t
+  val minimum_versions : t -> (Version.t * Version.t) option
 
   val status
     :  t
@@ -115,7 +115,7 @@ end = struct
      {[ (Version.t Int.Map.t) Int.Map.t ]} which is a list of major versions
      paired with lists of minor versions paires with a dune_lang version. *)
   let make
-    (versions : (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list)
+        (versions : (Version.t * [ `Since of Version.t | `Deleted_in of Version.t ]) list)
     : t
     =
     let version_map, deleted_in =
@@ -188,8 +188,9 @@ end = struct
   ;;
 
   let minimum_versions t =
-    let major, major_map = Option.value_exn (Int.Map.min_binding t.version_map) in
-    let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
+    let open Option.O in
+    let* major, major_map = Int.Map.min_binding t.version_map in
+    let+ minor, lang = Int.Map.min_binding major_map in
     (major, minor), lang
   ;;
 
@@ -249,18 +250,22 @@ module Key = struct
 end
 
 module Error_msg = struct
-  let since t ver ~what =
-    let lang_or_using = if t.name = "dune" then "lang" else "using" in
+  let fmt_error_msg t ver ~what ~file =
+    let lang_or_using name = if name = "dune" then "lang" else "using" in
     Printf.sprintf
-      "%s is only available since version %s of %s. Please update your dune-project file \
-       to have (%s %s %s)."
+      "%s is only available since version %s of %s. Please update your %s file to have \
+       (%s %s %s)."
       what
       (Version.to_string ver)
       t.desc
-      lang_or_using
+      file
+      (lang_or_using t.name)
       t.name
       (Version.to_string ver)
   ;;
+
+  let since t ver ~what = fmt_error_msg t ver ~what ~file:"dune-project"
+  let since_config t ver ~what = fmt_error_msg t ver ~what ~file:"dune config"
 end
 
 module Error = struct
@@ -323,19 +328,23 @@ module Error = struct
          ]
        else (
          match greatest_supported_version with
+         | Some _ -> []
          | None ->
-           let min_lang_version, min_dune_version =
-             Supported_versions.minimum_versions t.supported_versions
+           let first_version_message =
+             match Supported_versions.minimum_versions t.supported_versions with
+             | None -> ""
+             | Some (min_lang_version, min_dune_version) ->
+               sprintf
+                 " The first version of this plugin is %s and was introduced in dune %s."
+                 (Version.to_string min_lang_version)
+                 (Version.to_string min_dune_version)
            in
            [ Pp.textf
                "Note however that the currently selected version of dune (%s) does not \
-                support this plugin. The first version of this plugin is %s and was \
-                introduced in dune %s."
+                support this plugin.%s"
                (Version.to_string dune_lang_ver)
-               (Version.to_string min_lang_version)
-               (Version.to_string min_dune_version)
-           ]
-         | Some _ -> []))
+               first_version_message
+           ]))
   ;;
 end
 
@@ -372,28 +381,40 @@ let check_supported ~dune_lang_ver t (loc, ver) =
   | `Supported -> ()
   | `Deleted_in deleted_in ->
     let min_ext_ver, min_dune_lang_ver =
-      Supported_versions.minimum_versions t.supported_versions
+      match Supported_versions.minimum_versions t.supported_versions with
+      | None -> None, None
+      | Some (x, y) -> Some x, Some y
+    in
+    let please_port_message =
+      match min_ext_ver with
+      | None -> ""
+      | Some min_ext_ver ->
+        sprintf
+          " Please port this project to a newer version of the extension, such as %s."
+          (Version.to_string min_ext_ver)
     in
     let hints =
-      if dune_lang_ver >= min_dune_lang_ver
-      then []
-      else
-        [ Pp.textf
-            "You will also need to upgrade to (lang dune %s)."
-            (Version.to_string min_dune_lang_ver)
-        ]
+      match min_dune_lang_ver with
+      | None -> []
+      | Some min_dune_lang_ver ->
+        if dune_lang_ver >= min_dune_lang_ver
+        then []
+        else
+          [ Pp.textf
+              "You will also need to upgrade to (lang dune %s)."
+              (Version.to_string min_dune_lang_ver)
+          ]
     in
     User_error.raise
       ~loc
+      ~hints
       [ Pp.textf
-          "Version %s of the %s extension has been deleted in Dune %s. Please port this \
-           project to a newer version of the extension, such as %s."
+          "Version %s of the %s extension has been deleted in Dune %s.%s"
           (Version.to_string ver)
           t.name
           (Version.to_string deleted_in)
-          (Version.to_string min_ext_ver)
+          please_port_message
       ]
-      ~hints
   | `Unsupported_in_project (supported_ranges, min_lang_ver) ->
     let dune_ver_text v =
       Printf.sprintf "version %s of the dune language" (Version.to_string v)
@@ -428,7 +449,16 @@ let check_supported ~dune_lang_ver t (loc, ver) =
 ;;
 
 let greatest_supported_version t =
-  Option.value_exn (Supported_versions.greatest_supported_version t.supported_versions)
+  Supported_versions.greatest_supported_version t.supported_versions
+;;
+
+let greatest_supported_version_exn t =
+  match greatest_supported_version t with
+  | Some s -> s
+  | None ->
+    Code_error.raise
+      "no supported versions for extension"
+      [ "supported_versions", Supported_versions.to_dyn t.supported_versions ]
 ;;
 
 let key t = t.key
@@ -494,16 +524,20 @@ let renamed_in t ver ~to_ =
     Error.renamed_in loc t ver ~what ~to_
 ;;
 
-let since ?what ?(fatal = true) t ver =
+let since_fmt ?(fatal = true) ~fmt t ver loc =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver >= ver
   then return ()
-  else
-    let* loc, what_ctx = desc () in
-    let what = Option.value what ~default:what_ctx in
+  else (
     if fatal
-    then Error.since loc t ver ~what
-    else User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
-    return ()
+    then User_error.raise ~loc [ Pp.text (fmt t ver) ]
+    else User_warning.emit ~loc [ Pp.text (fmt t ver) ];
+    return ())
+;;
+
+let since ?what ?(fatal = true) t ver =
+  let* loc, what_ctx = desc () in
+  let what = Option.value what ~default:what_ctx in
+  since_fmt ~fatal ~fmt:(Error_msg.since ~what) t ver loc
 ;;

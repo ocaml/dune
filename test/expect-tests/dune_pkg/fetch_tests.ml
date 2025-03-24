@@ -3,6 +3,7 @@ module Scheduler = Dune_engine.Scheduler
 module Checksum = Dune_pkg.Checksum
 module Fetch = Dune_pkg.Fetch
 
+let plaintext_md = "tar-inputs/plaintext.md"
 let () = Dune_tests_common.init ()
 
 let url ~port ~filename =
@@ -16,6 +17,8 @@ let wrong_checksum =
   OpamHash.compute_from_string "random content" |> Checksum.of_opam_hash
 ;;
 
+let archive = "tarball.tar.gz"
+
 let subdir destination =
   let ext = Path.External.of_filename_relative_to_initial_cwd destination in
   Path.external_ ext
@@ -24,32 +27,17 @@ let subdir destination =
 let serve_once ~filename =
   let host = Unix.inet_addr_loopback in
   let addr = Unix.ADDR_INET (host, 0) in
-  let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
-  Unix.setsockopt sock Unix.SO_REUSEADDR true;
-  Unix.bind sock addr;
-  Unix.listen sock 5;
-  let port =
-    match Unix.getsockname sock with
-    | Unix.ADDR_INET (_, port) -> port
-    | ADDR_UNIX _ -> assert false
-  in
+  let server = Http.Server.make addr in
+  Http.Server.start server;
+  let port = Http.Server.port server in
   let thread =
     Thread.create
-      (fun sock ->
-        let descr, _sockaddr = Unix.accept sock in
-        let content = Io.String_path.read_file filename in
-        let content_length = String.length content in
-        let write_end = Unix.out_channel_of_descr descr in
-        Printf.fprintf
-          write_end
-          {|HTTP/1.1 200 Ok
-Content-Length: %d
-
-%s|}
-          content_length
-          content;
-        close_out write_end)
-      sock
+      (fun server ->
+         Http.Server.accept server ~f:(fun session ->
+           let () = Http.Server.accept_request session in
+           Http.Server.respond_file session ~file:filename);
+         Http.Server.stop server)
+      server
   in
   port, thread
 ;;
@@ -57,7 +45,7 @@ Content-Length: %d
 let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum () =
   let open Fiber.O in
   let url = url ~port ~filename in
-  let* res = Fetch.fetch ~unpack ~checksum ~target url in
+  let* res = Fetch.fetch ~unpack ~checksum ~target ~url:(Loc.none, url) in
   match res with
   | Error (Unavailable None) ->
     let errs = [ Pp.text "Failure while downloading" ] in
@@ -83,25 +71,20 @@ let download ?(reproducible = true) ~unpack ~port ~filename ~target ?checksum ()
 let run thunk =
   let on_event _config _event = () in
   let config : Scheduler.Config.t =
-    { concurrency = 1
-    ; stats = None
-    ; insignificant_changes = `Ignore
-    ; signal_watcher = `No
-    ; watch_exclusions = []
-    }
+    { concurrency = 1; stats = None; print_ctrl_c_warning = false; watch_exclusions = [] }
   in
   Scheduler.Run.go config ~on_event thunk
 ;;
 
 let%expect_test "downloading simple file" =
-  let filename = "plaintext.md" in
+  let filename = plaintext_md in
   let port, server = serve_once ~filename in
   let destination = "destination.md" in
   run
     (download
        ~unpack:false
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination)
        ~checksum:(calculate_checksum ~filename));
   Thread.join server;
@@ -133,14 +116,13 @@ let%expect_test "downloading simple file" =
 ;;
 
 let%expect_test "downloading but the checksums don't match" =
-  let filename = "plaintext.md" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:plaintext_md in
   let destination = "destination.md" in
   run
     (download
        ~unpack:false
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination)
        ~checksum:wrong_checksum);
   Thread.join server;
@@ -158,20 +140,19 @@ let%expect_test "downloading but the checksums don't match" =
 ;;
 
 let%expect_test "downloading, without any checksum" =
-  let filename = "plaintext.md" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:plaintext_md in
   let destination = "destination.md" in
-  run (download ~unpack:false ~port ~filename ~target:(subdir destination));
+  run (download ~unpack:false ~port ~filename:"" ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
-  [%expect {|
+  [%expect
+    {|
     Done downloading
     Finished successfully, no checksum verification |}]
 ;;
 
 let%expect_test "downloading, tarball" =
-  let filename = "tarball.tar.gz" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:archive in
   let destination = "tarball" in
   run
     (download
@@ -181,7 +162,7 @@ let%expect_test "downloading, tarball" =
        ~unpack:true
        ~checksum:wrong_checksum
        ~port
-       ~filename
+       ~filename:""
        ~target:(subdir destination));
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
@@ -200,10 +181,9 @@ let%expect_test "downloading, tarball" =
 let%expect_test "downloading, tarball with no checksum match" =
   (* This test ensures that the contents of the extracted tarball are in the
      correct location. *)
-  let filename = "tarball.tar.gz" in
-  let port, server = serve_once ~filename in
+  let port, server = serve_once ~filename:archive in
   let target = subdir "tarball" in
-  run (download ~reproducible:false ~unpack:true ~port ~filename ~target);
+  run (download ~reproducible:false ~unpack:true ~port ~filename:"" ~target);
   Thread.join server;
   print_endline "Finished successfully, no checksum verification";
   (* print all the files in the target directory *)
@@ -211,6 +191,7 @@ let%expect_test "downloading, tarball with no checksum match" =
     print_endline "------\nfiles in target dir:";
     Dune_engine.No_io.Path.Untracked.readdir_unsorted target
     |> Result.value ~default:[]
+    |> List.sort ~compare:String.compare
     |> List.iter ~f:print_endline
   in
   [%expect
@@ -219,13 +200,14 @@ let%expect_test "downloading, tarball with no checksum match" =
     Finished successfully, no checksum verification
     ------
     files in target dir:
+    file2.md
     plaintext.md |}]
 ;;
 
 let download_git rev_store url ~target =
   let open Fiber.O in
-  let+ res = Fetch.fetch_git rev_store ~target url in
-  match res with
+  Fetch.fetch_git rev_store ~target ~url:(Loc.none, url)
+  >>| function
   | Error _ ->
     let errs = [ Pp.text "Failure while downloading" ] in
     User_error.raise ~loc:Loc.none errs
@@ -244,8 +226,36 @@ let%expect_test "downloading via git" =
     let open Fiber.O in
     let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
     let* (_commit : string) = Rev_store_tests.create_repo_at source in
-    let* source = Dune_pkg.Opam_repo.Source.Private.of_opam_url rev_store url in
-    let+ () = download_git rev_store source ~target in
+    let+ () = download_git rev_store url ~target in
     print_endline (Io.read_file entry));
   [%expect {| just some content |}]
+;;
+
+let%expect_test "attempting to download an invalid git url" =
+  let source = subdir "source" in
+  let url = OpamUrl.parse "git+file://foo/bar" in
+  let rev_store_dir = subdir "rev-store-dir" in
+  let target = subdir "target" in
+  let entry = Path.relative target "e" in
+  run (fun () ->
+    let open Fiber.O in
+    let* rev_store = Dune_pkg.Rev_store.load_or_create ~dir:rev_store_dir in
+    let* (_commit : string) = Rev_store_tests.create_repo_at source in
+    let+ () = download_git rev_store url ~target in
+    print_endline (Io.read_file entry));
+  [%expect.unreachable]
+[@@expect.uncaught_exn
+  {|
+  (Dune_util__Report_error.Already_reported)
+  Trailing output
+  ---------------
+  fatal: '/bar' does not appear to be a git repository
+  fatal: Could not read from remote repository.
+
+  Please make sure you have the correct access rights
+  and the repository exists.
+  Error: Failed to run external command:
+  'git ls-remote "file://foo/bar"'
+  Hint: Check that this Git URL in the project configuration is correct:
+  "file://foo/bar" |}]
 ;;

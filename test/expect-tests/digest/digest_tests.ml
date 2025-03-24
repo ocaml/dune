@@ -19,7 +19,8 @@ let%expect_test "directory digest version" =
        printfn
          "[FAIL] new digest value. please update the version and this test.\n%s"
          digest
-   | Unexpected_kind | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
+   | Error (Unexpected_kind | Unix_error _) ->
+     print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
 ;;
 
@@ -32,7 +33,7 @@ let%expect_test "directories with symlinks" =
   Unix.symlink "bar" (Path.to_string (Path.relative sub "foo"));
   (match Digest.path_with_stats ~allow_dirs:true dir stats with
    | Ok _ -> print_endline "[PASS]"
-   | Unexpected_kind -> print_endline "[FAIL] unexpected kind"
-   | Unix_error _ -> print_endline "[FAIL] unable to calculate digest");
+   | Error Unexpected_kind -> print_endline "[FAIL] unexpected kind"
+   | Error (Unix_error _) -> print_endline "[FAIL] unable to calculate digest");
   [%expect {| [PASS] |}]
 ;;

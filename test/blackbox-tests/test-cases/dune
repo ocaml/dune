@@ -7,7 +7,10 @@
    ../utils/dune_cmd.exe
    ../utils/dunepp.exe
    ../utils/melc_stdlib_prefix.exe
-   ../utils/refmt.exe)))
+   ../utils/refmt.exe
+   ../utils/curl
+   ../utils/sherlodoc.exe
+   ../utils/ocaml_index.exe)))
 
 (cram
  (applies_to pp-cwd)
@@ -26,7 +29,7 @@
   (alias runtest-js)))
 
 (cram
- (applies_to windows-diff)
+ (applies_to windows-diff github6644)
  (alias runtest-windows))
 
 ; DISABLED TESTS
@@ -39,6 +42,14 @@
 
 (cram
  (applies_to fdo)
+ (enabled_if false))
+
+; This test copies a large file, which is too slow to be enabled all the time.
+; The source file is actually sparse, but sendfile seems to do a full copy
+; nevertheless.
+
+(cram
+ (applies_to sendfile-large-file)
  (enabled_if false))
 
 ; This test is flaky
@@ -81,12 +92,6 @@
    (<> %{ocaml-config:system} macosx)
    (<> %{ocaml-config:system} win))))
 
-(cram
- (applies_to ppx-rewriter)
- (deps
-  (package ppxlib)
-  %{bin:ocamlfind}))
-
 (subdir
  cram
  ;  mac has a different sh error message
@@ -104,7 +109,7 @@
 (subdir
  github3766.t
  (executable
-  (libraries stdune spawn)
+  (libraries stdune spawn unix)
   (name test)))
 
 (subdir
@@ -119,13 +124,22 @@
   (<> %{system} macosx)))
 
 (cram
- (applies_to link-time-transitive-deps)
+ (applies_to link-time-transitive-deps dune-build-info-subdir)
  (deps
   (package dune-build-info)))
 
 (cram
  (applies_to version-corruption)
- (deps %{bin:od} %{bin:git} %{bin:cmp} %{bin:sed} %{bin:chmod}))
+ (deps %{bin:git} %{bin:chmod})
+ (enabled_if
+  ; code signing moves placeholders in the binary
+  (or
+   (<> %{system} macosx)
+   (<> %{architecture} arm64))))
+
+(cram
+ (applies_to corrupt-persistent)
+ (deps %{bin:truncate}))
 
 (cram
  (applies_to github8041)
@@ -136,3 +150,27 @@
 (cram
  (applies_to reason)
  (deps %{bin:refmt}))
+
+(cram
+ (applies_to github4194)
+ (enabled_if
+  (not %{arch_sixtyfour}))
+ (deps %{bin:ocaml}))
+
+(cram
+ (applies_to interfere-sandbox-deletion)
+ (deps %{bin:bash}))
+
+(cram
+ (applies_to sandboxing-stale-directory-target)
+ (deps %{bin:bash}))
+
+(cram
+ (applies_to hidden-deps-supported)
+ (enabled_if
+  (>= %{ocaml_version} 5.2.0)))
+
+(cram
+ (applies_to hidden-deps-unsupported)
+ (enabled_if
+  (< %{ocaml_version} 5.2.0)))

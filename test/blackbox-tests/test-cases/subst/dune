@@ -1,0 +1,8 @@
+(cram
+ (applies_to 32bit)
+ (enabled_if
+  (not %{arch_sixtyfour})))
+
+(cram
+ (applies_to :whole_subtree)
+ (deps %{bin:git}))

@@ -24,7 +24,7 @@ val to_dyn : t -> Dyn.t
 val context : t -> Context.t
 
 (** Context env with additional variables computed from packages *)
-val context_env : t -> Env.t
+val context_env : t -> Env.t Memo.t
 
 val env_node : t -> dir:Path.Build.t -> Env_node.t Memo.t
 
@@ -69,6 +69,7 @@ val add_alias_action
 val resolve_program
   :  t
   -> dir:Path.Build.t
+  -> ?where:Artifacts.where
   -> ?hint:string
   -> loc:Loc.t option
   -> string
@@ -78,6 +79,7 @@ val resolve_program
 val resolve_program_memo
   :  t
   -> dir:Path.Build.t
+  -> ?where:Artifacts.where
   -> ?hint:string
   -> loc:Loc.t option
   -> string
@@ -87,5 +89,5 @@ val expander : t -> dir:Path.Build.t -> Expander.t Memo.t
 
 module As_memo_key : sig
   include Memo.Input with type t = t
-  module And_package : Memo.Input with type t = t * Package.t
+  module And_package_name : Memo.Input with type t = t * Package.Name.t
 end

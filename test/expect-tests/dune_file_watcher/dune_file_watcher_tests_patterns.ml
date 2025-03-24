@@ -23,6 +23,7 @@ let%expect_test _ =
   test "dir/#file#";
   test "dir/#subdir#/file";
   test ".#file";
+  test ".#foobar.ml";
   test "dir/.#file";
   test "dir/.#subdir/file";
   [%expect
@@ -40,6 +41,7 @@ let%expect_test _ =
     should_exclude(dir/#file#) = true
     should_exclude(dir/#subdir#/file) = false
     should_exclude(.#file) = true
+    should_exclude(.#foobar.ml) = true
     should_exclude(dir/.#file) = true
     should_exclude(dir/.#subdir/file) = true
   |}]

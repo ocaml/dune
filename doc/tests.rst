@@ -4,6 +4,18 @@
 Writing and Running Tests
 *************************
 
+.. TODO(diataxis)
+
+   This is mostly a guide, or rather several of them. There is also some
+   reference in it.
+
+   Something we can do is split this into:
+
+   - one how-to guide per test technique
+   - a "choosing a test technique" how-to guide
+   - reference for ``inline_tests.backend``
+   - reference for cram tests
+
 Dune tries to streamline the testing story as much as possible, so
 you can focus on the tests themselves and not bother with setting
 up various test frameworks.
@@ -51,16 +63,13 @@ exec`` to run the test executable (for the sake of this example,
 
   $ dune exec project/tests/myTest.exe
 
-To run :ref:`cram-tests`, you can use the alias that is created for the test.
-The name of the alias corresponds to the name of the test without the ``.t``
-extension. For directory tests, this is the name of the directory without the
-``.t`` extension. Assuming a ``cram-test.t`` or ``cram-test.t/run.t`` file
-exists, it can be run with:
+To run :ref:`cram-tests` you can pass their paths to the ``dune test``  command.
 
 .. code:: console
 
-   $ dune build @cram-test
+   $ dune test tests/myCramTest.t
 
+This works both for directory and file cram tests.
 
 Running Tests in a Directory
 ----------------------------
@@ -249,6 +258,7 @@ field. Available modes are:
 - ``best`` for running tests in native mode with fallback to byte code,
   if native compilation is not available
 - ``js`` for running tests in JavaScript using Node.js
+- ``wasm`` for running tests in Wasm using Node.js
 
 For instance:
 
@@ -256,7 +266,7 @@ For instance:
 
    (library
     (name foo)
-    (inline_tests (modes byte best js))
+    (inline_tests (modes byte best js wasm))
     (preprocess (pps ppx_expect)))
 
 
@@ -383,11 +393,11 @@ These four parameters can be specified inside the
 
 For instance:
 
-``<action>`` follows the :doc:`reference/actions` specification. It describes an
-action that should be executed in the library's directory using this backend
-for their tests. It's expected that the action will produce some OCaml code on
-its standard output. This code will constitute the test runner. The action can
-use the following additional variables:
+``<action>`` follows the :doc:`reference/actions/index` specification. It
+describes an action that should be executed in the library's directory using
+this backend for their tests. It's expected that the action will produce some
+OCaml code on its standard output. This code will constitute the test runner.
+The action can use the following additional variables:
 
 - ``%{library-name}`` --- the name of the library being tested
 - ``%{impl-files}`` --- the list of implementation files in the
@@ -550,12 +560,8 @@ To define a standalone test, we create a ``.t`` file. For example, ``foo.t``:
    Simplest possible Cram test
      $ echo "testing"
 
-This simple example demonstrates two components of Cram tests:
-
-* Comments - Anything that doesn't start with a 2 space indentation is a comment
-* Commands - A command starts with 2 spaces followed by a ``$``. It's executed
-  in the shell and the output is diffed against the output below. In this
-  example, there's no output yet.
+This simple example demonstrates two components of Cram tests: comments and
+commands. See :doc:`reference/cram` for a description of the syntax.
 
 To run the test and promote the results:
 
@@ -628,7 +634,7 @@ access their contents in the test script ``run.t``:
      $ wc -l $(ls bar) | awk '{ print $1 }'
      1231
 
-.. seealso:: :ref:`(cram) stanza reference <cram-stanza>`
+.. seealso:: :doc:`(cram) stanza reference </reference/dune/cram>`
 
 Testing an OCaml Program
 ------------------------

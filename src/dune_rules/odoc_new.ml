@@ -227,7 +227,7 @@ let add_rule sctx =
 *)
 let libs_maps_def =
   let f (ctx, libs) =
-    let* db = Scope.DB.public_libs ctx
+    let* db = Scope.DB.public_libs (Context.name ctx)
     and* all_packages_entries =
       let* findlib = Findlib.create (Context.name ctx) in
       Memo.parallel_map ~f:(Findlib.find findlib) libs
@@ -266,7 +266,7 @@ let libs_maps_def =
            let info = Dune_package.Lib.info l in
            let name = Lib_info.name info in
            let pkg = Lib_info.package info in
-           Lib.DB.find db name
+           Lib.DB.find_lib_id db (Lib_info.lib_id info)
            >>| (function
             | None -> maps
             | Some lib ->
@@ -399,7 +399,7 @@ module Valid = struct
     let run (ctx, all, projects) =
       let* libs_and_pkgs =
         let* mask =
-          let+ mask = Only_packages.get_mask () in
+          let+ mask = Dune_load.mask () in
           Option.map ~f:Package.Name.Map.keys mask
         in
         Scope.DB.with_all ctx ~f:(fun find ->
@@ -442,7 +442,7 @@ module Valid = struct
       let+ libs_list =
         let+ libs_list =
           let+ libs_list =
-            let* stdlib = stdlib_lib ctx in
+            let* stdlib = stdlib_lib (Context.name ctx) in
             Memo.parallel_map libs ~f:(fun (_, _lib_db, libs) ->
               Lib.Set.fold ~init:(Memo.return []) libs ~f:(fun lib acc ->
                 let* acc = acc in
@@ -485,7 +485,7 @@ module Valid = struct
   ;;
 
   let get ctx ~all =
-    let* { projects; _ } = Dune_load.load () in
+    let* projects = Dune_load.projects () in
     Memo.exec valid_libs_and_packages (ctx, all, projects)
   ;;
 
@@ -718,11 +718,11 @@ end = struct
   let reference v =
     match v.ty with
     | Mld ->
-      let basename = Path.basename v.source |> Filename.chop_extension in
+      let basename = Path.basename v.source |> Filename.remove_extension in
       sprintf "page-\"%s\"" basename
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.chop_extension |> Stdune.String.capitalize
+        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
       sprintf "module-%s" basename
   ;;
@@ -731,18 +731,18 @@ end = struct
     match v.ty with
     | Module _ ->
       let basename =
-        Path.basename v.source |> Filename.chop_extension |> Stdune.String.capitalize
+        Path.basename v.source |> Filename.remove_extension |> Stdune.String.capitalize
       in
       Some (Module_name.of_string_allow_invalid (Loc.none, basename))
     | _ -> None
   ;;
 
-  let name v = Path.basename v.source |> Filename.chop_extension
+  let name v = Path.basename v.source |> Filename.remove_extension
   let v ~source ~odoc ~html_dir ~html_file ~ty = { source; odoc; html_dir; html_file; ty }
 
   let make_module ctx ~all index source ~visible =
     let basename =
-      Path.basename source |> Filename.chop_extension |> Stdune.String.uncapitalize
+      Path.basename source |> Filename.remove_extension |> Stdune.String.uncapitalize
     in
     let odoc = Index.odoc_dir ctx ~all index ++ (basename ^ ".odoc") in
     let html_dir = Index.html_dir ctx ~all index ++ Stdune.String.capitalize basename in
@@ -756,7 +756,7 @@ end = struct
   ;;
 
   let int_make_mld ctx ~all index source ~is_index =
-    let basename = Path.basename source |> Filename.chop_extension in
+    let basename = Path.basename source |> Filename.remove_extension in
     let odoc =
       (if is_index then Index.obj_dir ctx ~all index else Index.odoc_dir ctx ~all index)
       ++ ("page-" ^ basename ^ ".odoc")
@@ -847,15 +847,15 @@ let index_dep index =
 ;;
 
 let compile_module
-  sctx
-  all
-  ~artifact:a
-  ~quiet
-  ~requires
-  ~package
-  ~module_deps
-  ~parent_opt
-  ~indices
+      sctx
+      all
+      ~artifact:a
+      ~quiet
+      ~requires
+      ~package
+      ~module_deps
+      ~parent_opt
+      ~indices
   =
   let odoc_file = Artifact.odoc_file a in
   let ctx = Super_context.context sctx in
@@ -907,7 +907,7 @@ let compile_module
    require all of the odoc files for all dependency libraries to be
    created rather than doing any fine-grained dependency management. *)
 let compile_requires stdlib_opt libs =
-  Memo.List.map ~f:Lib.requires libs
+  Memo.List.map ~f:(fun l -> Lib.closure ~linking:false [ l ]) libs
   >>| Resolve.all
   >>| Resolve.map ~f:(fun requires ->
     let requires = List.flatten requires in
@@ -973,7 +973,7 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
   let ctx = Super_context.context sctx in
   let* maps = Valid.libs_maps ctx ~all in
   let* requires =
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     link_requires stdlib_opt libs
   in
   let* deps =
@@ -1009,12 +1009,15 @@ let link_odoc_rules sctx ~all (artifacts : Artifact.t list) ~quiet ~package ~lib
 ;;
 
 (* Output the actual html *)
-let html_generate sctx all (a : Artifact.t) =
+let html_generate sctx all ~search_db (a : Artifact.t) =
   let ctx = Super_context.context sctx in
   let html_output = Paths.html_root ctx ~all in
   let support_relative =
     let odoc_support_path = Paths.odoc_support ctx ~all in
     Path.reach (Path.build odoc_support_path) ~from:(Path.build html_output)
+  in
+  let search_args =
+    Sherlodoc.odoc_args sctx ~search_db ~dir_sherlodoc_dot_js:(Index.html_dir ctx ~all [])
   in
   let run_odoc =
     Odoc.run_odoc
@@ -1025,6 +1028,7 @@ let html_generate sctx all (a : Artifact.t) =
       ~flags_for:None
       [ Command.Args.A "-o"
       ; Path (Path.build html_output)
+      ; search_args
       ; A "--support-uri"
       ; A support_relative
       ; A "--theme-uri"
@@ -1086,7 +1090,7 @@ let parse_odoc_deps =
 let compile_odocs sctx ~all ~quiet artifacts parent libs =
   let* requires =
     let ctx = Super_context.context sctx in
-    let* stdlib_opt = stdlib_lib ctx in
+    let* stdlib_opt = stdlib_lib (Context.name ctx) in
     let requires = compile_requires stdlib_opt libs in
     Resolve.Memo.bind requires ~f:(fun libs ->
       let+ libs = Valid.filter_libs ctx ~all libs in
@@ -1154,7 +1158,7 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
     let list = Fs_cache.Dir_contents.to_list dc in
     List.filter_map list ~f:(fun (x, ty) ->
       match ty, List.assoc extensions (Filename.extension x) with
-      | Unix.S_REG, Some _ -> Some (Filename.chop_extension x)
+      | Unix.S_REG, Some _ -> Some (Filename.remove_extension x)
       | _, _ -> None)
     |> List.sort_uniq ~compare:String.compare
     |> List.map ~f:(fun m ->
@@ -1169,9 +1173,9 @@ let modules_of_dir d : (Module_name.t * (Path.t * [ `Cmti | `Cmt | `Cmi ])) list
    to be documented - packages, fallback dirs, libraries (both private and those
    in packages) *)
 let fallback_artifacts
-  ctx
-  (location : Dune_package.External_location.t)
-  (libs : Lib.t Lib_name.Map.t)
+      ctx
+      (location : Dune_package.External_location.t)
+      (libs : Lib.t Lib_name.Map.t)
   =
   let* maps = Valid.libs_maps ctx ~all:true in
   match Index.of_external_loc maps location with
@@ -1207,8 +1211,10 @@ let lib_artifacts ctx all index lib modules =
     | Melange -> Melange Cmi
   in
   let obj_dir = Lib_info.obj_dir info in
-  let entry_modules = Modules.entry_modules modules in
-  Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
+  let entry_modules = Modules.With_vlib.entry_modules modules in
+  modules
+  |> Modules.With_vlib.drop_vlib
+  |> Modules.fold ~init:[] ~f:(fun m acc ->
     let visible =
       let visible =
         List.mem entry_modules m ~equal:(fun m1 m2 ->
@@ -1236,18 +1242,18 @@ let ext_package_mlds (ctx : Context.t) (pkg : Package.Name.t) =
         let doc_path = Section.Map.find_exn dpkg.sections Doc in
         Some
           (List.filter_map fs ~f:(function
-            | `File, dst ->
-              let str = Install.Entry.Dst.to_string dst in
-              if Filename.check_suffix str ".mld"
-              then Some (Path.relative doc_path str)
-              else None
-            | _ -> None))
+             | `File, dst ->
+               let str = Install.Entry.Dst.to_string dst in
+               if Filename.check_suffix str ".mld"
+               then Some (Path.relative doc_path str)
+               else None
+             | _ -> None))
       | _ -> None)
     |> List.concat
 ;;
 
 let pkg_mlds sctx pkg =
-  let* pkgs = Only_packages.get () in
+  let* pkgs = Dune_load.packages () in
   if Package.Name.Map.mem pkgs pkg
   then Packages.mlds sctx pkg >>| List.map ~f:Path.build
   else (
@@ -1257,7 +1263,7 @@ let pkg_mlds sctx pkg =
 
 let check_mlds_no_dupes ~pkg ~mlds =
   match
-    List.rev_map mlds ~f:(fun mld -> Filename.chop_extension (Path.basename mld), mld)
+    List.rev_map mlds ~f:(fun mld -> Filename.remove_extension (Path.basename mld), mld)
     |> Filename.Map.of_list
   with
   | Ok m -> m
@@ -1608,28 +1614,31 @@ let index_info_of_external_fallback sctx location fallback =
    2. External findlib directories
    3. Private libraries
 
-   We actually use the same function for private libaries as for
+   We actually use the same function for private libraries as for
    dune packages.
 *)
 let standard_index_contents b entry_modules =
   entry_modules
   |> List.sort ~compare:(fun (x, _) (y, _) -> Lib_name.compare x y)
   |> List.iter ~f:(fun (lib, modules) ->
-    Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
-    Buffer.add_string
-      b
-      (match modules with
-       | [ x ] ->
-         sprintf
-           "The entry point of this library is the module:\n{!%s}.\n"
-           (Artifact.reference x)
-       | _ ->
-         sprintf
-           "This library exposes the following toplevel modules:\n{!modules:%s}\n"
-           (modules
-            |> List.map ~f:Artifact.name
-            |> List.sort ~compare:String.compare
-            |> String.concat ~sep:" ")))
+    match modules with
+    | [] -> () (* No library here! *)
+    | _ ->
+      Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string lib);
+      Buffer.add_string
+        b
+        (match modules with
+         | [ x ] ->
+           sprintf
+             "The entry point of this library is the module:\n{!%s}.\n"
+             (Artifact.reference x)
+         | _ ->
+           sprintf
+             "This library exposes the following toplevel modules:\n{!modules:%s}\n"
+             (modules
+              |> List.map ~f:Artifact.name
+              |> List.sort ~compare:String.compare
+              |> String.concat ~sep:" ")))
 ;;
 
 let fallback_index_contents b entry_modules artifacts =
@@ -1712,19 +1721,19 @@ let toplevel_index_contents t =
   output_indices
     "Local Packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir Local_packages ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir Local_packages ] -> Some x
+       | _ -> None));
   output_indices
     "Switch-installed packages"
     (List.filter_map sorted ~f:(function
-      | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
-      | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
-      | _ -> None));
+       | [ x; Index.Top_dir (Relative_to_findlib _) ] -> Some x
+       | [ (Index.Top_dir Relative_to_stdlib as x) ] -> Some x
+       | _ -> None));
   output_indices
     "Private libraries"
     (List.filter_map sorted ~f:(function
-      | [ (Index.Private_lib _ as x) ] -> Some x
-      | _ -> None));
+       | [ (Index.Private_lib _ as x) ] -> Some x
+       | _ -> None));
   Buffer.contents b
 ;;
 
@@ -1833,7 +1842,7 @@ let hierarchical_index_rules sctx ~all (tree : Index_tree.info Index_tree.t) =
   inner [] tree
 ;;
 
-let hierarchical_html_rules sctx all tree =
+let hierarchical_html_rules sctx all tree ~search_db =
   let ctx = Super_context.context sctx in
   Index_tree.fold ~init:(Memo.return []) tree ~f:(fun index (ii : Index_tree.info) dirs ->
     let* dirs = dirs in
@@ -1843,7 +1852,7 @@ let hierarchical_html_rules sctx all tree =
       List.filter ~f:Artifact.is_visible (index_artifact :: all_artifacts)
     in
     let* new_dirs =
-      Memo.List.filter_map artifacts ~f:(fun a -> html_generate sctx true a)
+      Memo.List.filter_map artifacts ~f:(fun a -> html_generate ~search_db sctx true a)
     in
     let+ () =
       let html_files =
@@ -1924,6 +1933,24 @@ let static_html_rule ctx ~all =
 let setup_all_html_rules sctx ~all =
   let ctx = Super_context.context sctx in
   let* tree = full_tree sctx ~all in
+  let* search_db =
+    let dir = Index.html_dir ctx ~all [] in
+    let external_odocls, odocls =
+      Index_tree.fold tree ~init:([], []) ~f:(fun index ii acc ->
+        let externals, odocls = acc in
+        let is_external = Index.is_external index in
+        let index_artifact = Artifact.index ctx ~all:true index in
+        let new_artifacts =
+          index_artifact :: Index_tree.all_artifacts ii
+          |> List.filter_map ~f:(fun a ->
+            if Artifact.is_visible a then Some (Artifact.odocl_file a) else None)
+        in
+        if is_external
+        then new_artifacts @ externals, odocls
+        else externals, new_artifacts @ odocls)
+    in
+    Sherlodoc.search_db sctx ~dir ~external_odocls odocls
+  in
   let+ () =
     let html =
       let artifact = Artifact.index ctx ~all [] in
@@ -1943,8 +1970,12 @@ let setup_all_html_rules sctx ~all =
     Rules.Produce.Alias.add_deps
       (Dep.html_alias (Index.html_dir ctx ~all []))
       (Action_builder.deps deps)
-  and+ dirs = hierarchical_html_rules sctx all tree
-  and+ () = setup_css_rule sctx ~all in
+  and+ dirs = hierarchical_html_rules sctx all tree ~search_db
+  and+ () = setup_css_rule sctx ~all
+  and+ () =
+    let dir = Index.html_dir ctx ~all [] in
+    Sherlodoc.sherlodoc_dot_js sctx ~dir
+  in
   Paths.odoc_support ctx ~all :: dirs
 ;;
 
@@ -1952,8 +1983,9 @@ let setup_all_html_rules sctx ~all =
 
 let gen_project_rules sctx project =
   let ctx = Super_context.context sctx in
-  Only_packages.packages_of_project project
-  >>= Package.Name.Map_traversals.parallel_iter ~f:(fun _ (pkg : Package.t) ->
+  Dune_project.packages project
+  |> Dune_lang.Package_name.Map.to_seq
+  |> Memo.parallel_iter_seq ~f:(fun (_, (pkg : Package.t)) ->
     let dir =
       let pkg_dir = Package.dir pkg in
       Path.Build.append_source (Context.build_dir ctx) pkg_dir

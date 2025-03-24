@@ -11,6 +11,7 @@ let equal t { dir; filenames } =
 let dir { dir; filenames = _ } = dir
 let filenames { dir = _; filenames } = filenames
 let empty ~dir = { dir; filenames = String.Set.empty }
+let is_empty { dir = _; filenames } = Filename.Set.is_empty filenames
 
 let create ?filter ~dir filenames =
   match filter with

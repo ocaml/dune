@@ -67,15 +67,25 @@ let input_zero_separated =
 
 let copy_channels =
   let buf_len = 65536 in
-  let buf = Bytes.create buf_len in
-  let rec loop ic oc =
+  let global_buf = Bytes.create buf_len in
+  let rec loop buf ic oc =
     match input ic buf 0 buf_len with
     | 0 -> ()
     | n ->
       output oc buf 0 n;
-      loop ic oc
+      loop buf ic oc
   in
-  loop
+  let busy = ref false in
+  fun ic oc ->
+    if !busy
+    then loop (Bytes.create buf_len) ic oc
+    else (
+      busy := true;
+      match loop global_buf ic oc with
+      | () -> busy := false
+      | exception exn ->
+        busy := false;
+        Exn.reraise exn)
 ;;
 
 let setup_copy ?(chmod = Fun.id) ~src ~dst () =
@@ -114,7 +124,7 @@ module Copyfile = struct
 
   let sendfile_with_fallback =
     let setup_copy ?(chmod = Fun.id) ~src ~dst () =
-      match Unix.openfile src [ O_RDONLY ] 0 with
+      match Unix.openfile src [ O_RDONLY; O_CLOEXEC ] 0 with
       | exception Unix.Unix_error (Unix.ENOENT, _, _) -> Error `Src_missing
       | fd_src ->
         (match Unix.fstat fd_src with
@@ -129,7 +139,7 @@ module Copyfile = struct
               let+ fd_dst, src_size =
                 match
                   let dst_perm = chmod src_stat.st_perm in
-                  Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC ] dst_perm
+                  Unix.openfile dst [ O_WRONLY; O_CREAT; O_TRUNC; O_CLOEXEC ] dst_perm
                 with
                 | fd_dst -> Ok (fd_dst, src_stat.st_size)
                 | exception exn ->
@@ -275,7 +285,7 @@ struct
     if r = len then Bytes.unsafe_to_string buf else Bytes.sub_string buf ~pos:0 ~len:r
   ;;
 
-  let read_all =
+  let read_all_unless_large =
     (* We use 65536 because that is the size of OCaml's IO buffers. *)
     let chunk_size = 65536 in
     (* Generic function for channels such that seeking is unsupported or
@@ -286,7 +296,7 @@ struct
         loop ()
       in
       try loop () with
-      | End_of_file -> Buffer.contents buffer
+      | End_of_file -> Ok (Buffer.contents buffer)
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we
@@ -295,6 +305,7 @@ struct
          regular files so this optimizations seems worth it. *)
       match in_channel_length t with
       | exception Sys_error _ -> read_all_generic t (Buffer.create chunk_size)
+      | n when n > Sys.max_string_length -> Error ()
       | n ->
         (* For some files [in_channel_length] returns an invalid value. For
            instance for files in /proc it returns [0] and on Windows the
@@ -307,7 +318,7 @@ struct
            end of the file *)
         let s = eagerly_input_string t n in
         (match input_char t with
-         | exception End_of_file -> s
+         | exception End_of_file -> Ok s
          | c ->
            (* The [+ chunk_size] is to make sure there is at least [chunk_size]
               free space so that the first [Buffer.add_channel buffer t
@@ -318,7 +329,17 @@ struct
            read_all_generic t buffer)
   ;;
 
-  let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
+  let path_to_dyn path = String.to_dyn (Path.to_string path)
+
+  let read_file ?binary fn =
+    match with_file_in fn ~f:read_all_unless_large ?binary with
+    | Ok x -> x
+    | Error () ->
+      Code_error.raise
+        "read_file: file is larger than Sys.max_string_length"
+        [ "fn", path_to_dyn fn ]
+  ;;
+
   let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
   let zero_strings_of_file fn = with_file_in fn ~f:input_zero_separated ~binary:true
 
@@ -489,7 +510,7 @@ let portable_hardlink ~src ~dst =
           destination (we also do this in the symlink case above). Perhaps, the
           list of dependencies may have duplicates? If yes, it may be better to
           filter out the duplicates first. *)
-       Path.unlink dst;
+       Path.unlink_exn dst;
        Path.link src dst
      | Unix.Unix_error (Unix.EMLINK, _, _) ->
        (* If we can't make a new hard link because we reached the limit on the

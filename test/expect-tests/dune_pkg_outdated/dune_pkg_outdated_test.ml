@@ -5,10 +5,10 @@ module Console = Dune_console
     [c]/[d] transitive dependencies. The total number of dependencies will be [b] + [d]
     of which [a] + [b] will be outdated. *)
 let dummy_results
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   List.init (total_number_of_immediate - number_of_immediate) ~f:(fun _ ->
     Dune_pkg_outdated.For_tests.package_is_best_candidate)
@@ -51,11 +51,11 @@ let show_styles_of_line line =
    outdated. Depending on the value of [transitive] it may output a helper message. It
    will also prefix the lines with the style that has been applied. *)
 let test_message
-  ~transitive
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      ~transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   let results =
     dummy_results
@@ -90,7 +90,7 @@ let test_message
    will no longer be displayed.
 
    We will begin with the 4th property and then test different combinations of transitive
-   and immediate deps to assertain the satsifaction of properties 1-3.
+   and immediate deps to assertain the satisfaction of properties 1-3.
 *)
 
 (* When --transitive is not passed, we include a helper message to inform the user that
@@ -117,10 +117,10 @@ let%expect_test "transitive helper message" =
    that [transitive] is true which means we will not output a helper message. It will also
    prefix the lines with the style that has been applied. *)
 let test
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   test_message
     ~transitive:true
@@ -272,11 +272,11 @@ let%expect_test "some larger examples" =
 (* [test_entire_output a b c d] prints the message from before and also all the outdated
    packages the command will output. Unlike before we do not print style information. *)
 let test_entire_output
-  ~transitive
-  number_of_immediate
-  total_number_of_immediate
-  number_of_transitive
-  total_number_of_transitive
+      ~transitive
+      number_of_immediate
+      total_number_of_immediate
+      number_of_transitive
+      total_number_of_transitive
   =
   let results =
     dummy_results

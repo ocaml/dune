@@ -16,18 +16,18 @@ let dir_contents (dir : Path.t) =
     >>| Result.map ~f:(fun contents ->
       Fs_cache.Dir_contents.to_list contents |> List.map ~f:fst)
   | `Inside _ ->
-    let* () = Build_system.build_file dir in
+    let* () = Build_system.build_dir dir in
     Memo.return (Path.readdir_unsorted dir)
 ;;
 
-let exists file kind =
-  Build_system.file_exists file
+let exists path kind =
+  Build_system.file_exists path
   >>= function
   | false -> Memo.return false
   | true ->
-    let+ () = Build_system.build_file file in
-    (match Path.stat file with
-     | Ok { st_kind; _ } when kind = st_kind -> true
+    let+ () = Build_system.build_file path in
+    (match Path.stat path with
+     | Ok { st_kind; _ } -> kind = st_kind
      | _ -> false)
 ;;
 

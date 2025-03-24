@@ -22,9 +22,11 @@ Set up two build contexts: a default one for linux and another for macos.
   >   (lock_dir dune.macos.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
+
 Helper shell function to generate a dune-project file and generate lockdir for both contexts:
+
   $ solve_project() {
   >   cat >dune-project
   >   dune pkg lock dune.lock
@@ -81,9 +83,10 @@ available on linux.
   $ solve linux-only
   Solution for dune.lock:
   - linux-only.0.0.2
-  Error: Unable to solve dependencies for dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.macos.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - linux-only -> (problem)
       No usable implementations:
         linux-only.0.0.2: Availability condition not satisfied
@@ -104,9 +107,10 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
   $ solve undefined-var
   Solution for dune.lock:
   - undefined-var.0.0.2
-  Error: Unable to solve dependencies for dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.macos.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - undefined-var -> (problem)
       No usable implementations:
         undefined-var.0.0.2: Availability condition not satisfied
@@ -116,16 +120,18 @@ variable in its `available` filter. The undefined-var.0.0.2 package has a valid
 Warnings will be printed and no solution will be found as the availability
 filter resolves to a string instead of to a boolean.
   $ solve availability-string
-  Error: Unable to solve dependencies for dune.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied
         availability-string.0.0.1: Availability condition not satisfied
-  Error: Unable to solve dependencies for dune.macos.lock:
-  Can't find all required versions.
-  Selected: x.dev
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.macos.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: x.dev
   - availability-string -> (problem)
       No usable implementations:
         availability-string.0.0.2: Availability condition not satisfied

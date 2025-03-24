@@ -1,11 +1,11 @@
 (executable
- (name pkg_config)
- (modules pkg_config))
+ (name pkgconf)
+ (modules pkgconf))
 
 (env
  (_
   (binaries
-   (./pkg_config.exe as pkg-config))))
+   (./pkgconf.exe as pkgconf))))
 
 (executable
  (name config_test)
@@ -14,6 +14,6 @@
 
 (rule
  (alias default)
- (deps %{bin:pkg-config})
+ (deps %{bin:pkgconf})
  (action
   (run ./config_test.exe -verbose)))

@@ -32,51 +32,52 @@ let with_metrics ~common f =
 
 let run_build_system ~common ~request =
   let run ~(toplevel : unit Memo.Lazy.t) =
-    with_metrics ~common (fun () -> Build_system.run (fun () -> Memo.Lazy.force toplevel))
+    with_metrics ~common (fun () -> build (fun () -> Memo.Lazy.force toplevel))
   in
   let open Fiber.O in
   Fiber.finalize
     (fun () ->
-      (* CR-someday amokhov: Currently we invalidate cached timestamps on every
+       (* CR-someday amokhov: Currently we invalidate cached timestamps on every
          incremental rebuild. This conservative approach helps us to work around
          some [mtime] resolution problems (e.g. on Mac OS). It would be nice to
          find a way to avoid doing this. In fact, this may be unnecessary even
          for the initial build if we assume that the user does not modify files
          in the [_build] directory. For now, it's unclear if optimising this is
          worth the effort. *)
-      Cached_digest.invalidate_cached_timestamps ();
-      let* setup = Import.Main.setup () in
-      let request =
-        Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup -> request setup)
-      in
-      (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
+       Cached_digest.invalidate_cached_timestamps ();
+       let* setup = Import.Main.setup () in
+       let request =
+         Action_builder.bind (Action_builder.of_memo setup) ~f:(fun setup ->
+           request setup)
+       in
+       (* CR-someday cmoseley: Can we avoid creating a new lazy memo node every
          time the build system is rerun? *)
-      (* This top-level node is used for traversing the whole Memo graph. *)
-      let toplevel_cell, toplevel =
-        Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
-          let open Memo.O in
-          let+ (), (_ : Dep.Fact.t Dep.Map.t) =
-            Action_builder.evaluate_and_collect_facts request
-          in
-          ())
-      in
-      let* res = run ~toplevel in
-      let+ () =
-        match Common.dump_memo_graph_file common with
-        | None -> Fiber.return ()
-        | Some file ->
-          let path = Path.external_ file in
-          let+ graph =
-            Memo.dump_cached_graph
-              ~time_nodes:(Common.dump_memo_graph_with_timing common)
-              toplevel_cell
-          in
-          Graph.serialize graph ~path ~format:(Common.dump_memo_graph_format common)
-        (* CR-someday cmoseley: It would be nice to use Persistent to dump a
+       (* This top-level node is used for traversing the whole Memo graph. *)
+       let toplevel_cell, toplevel =
+         Memo.Lazy.Expert.create ~name:"toplevel" (fun () ->
+           let open Memo.O in
+           let+ (), (_ : Dep.Fact.t Dep.Map.t) =
+             Action_builder.evaluate_and_collect_facts request
+           in
+           ())
+       in
+       let* res = run ~toplevel in
+       let+ () =
+         match Common.dump_memo_graph_file common with
+         | None -> Fiber.return ()
+         | Some file ->
+           let path = Path.external_ file in
+           let+ graph =
+             Memo.dump_cached_graph
+               ~time_nodes:(Common.dump_memo_graph_with_timing common)
+               toplevel_cell
+           in
+           Graph.serialize graph ~path ~format:(Common.dump_memo_graph_format common)
+         (* CR-someday cmoseley: It would be nice to use Persistent to dump a
            copy of the graph's internal representation here, so it could be used
            without needing to re-run the build*)
-      in
-      res)
+       in
+       res)
     ~finally:(fun () ->
       Hooks.End_of_build.run ();
       Fiber.return ())
@@ -127,46 +128,6 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~request
 ;;
 
-let runtest_info =
-  let doc = "Run tests." in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P {|This is a short-hand for calling:|}
-    ; `Pre {|  dune build @runtest|}
-    ; `Blocks Common.help_secs
-    ; Common.examples
-        [ ( "Run all tests in the current source tree (including those that passed on \
-             the last run)"
-          , "dune runtest --force" )
-        ; ( "Run tests sequentially without output buffering"
-          , "dune runtest --no-buffer -j 1" )
-        ]
-    ]
-  in
-  Cmd.info "runtest" ~doc ~man ~envs:Common.envs
-;;
-
-let runtest_term =
-  let name_ = Arg.info [] ~docv:"DIR" in
-  let+ builder = Common.Builder.term
-  and+ dirs = Arg.(value & pos_all string [ "." ] name_) in
-  let common, config = Common.init builder in
-  let request (setup : Import.Main.build_system) =
-    Action_builder.all_unit
-      (List.map dirs ~f:(fun dir ->
-         let dir = Path.(relative root) (Common.prefix_target common dir) in
-         Alias.in_dir
-           ~name:Dune_rules.Alias.runtest
-           ~recursive:true
-           ~contexts:setup.contexts
-           dir
-         |> Alias.request))
-  in
-  run_build_command ~common ~config ~request
-;;
-
-let runtest = Cmd.v runtest_info runtest_term
-
 let build =
   let doc = "Build the given targets, or the default ones if none are given." in
   let man =
@@ -199,43 +160,4 @@ let build =
     run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
-;;
-
-let fmt =
-  let doc = "Format source code." in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P
-        {|$(b,dune fmt) runs the formatter on the source code. The formatter is
-        automatically selected. ocamlformat is used to format OCaml source code
-        (*.ml and *.mli files) and refmt is used to format Reason source code
-        (*.re and *.rei files).|}
-    ; `Blocks Common.help_secs
-    ]
-  in
-  let term =
-    let+ builder = Common.Builder.term
-    and+ no_promote =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "preview" ]
-            ~doc:
-              "Just print the changes that would be made without actually applying them. \
-               This takes precedence over auto-promote as that flag is assumed for this \
-               command.")
-    in
-    let builder =
-      Common.Builder.set_promote builder (if no_promote then Never else Automatically)
-    in
-    let common, config = Common.init builder in
-    let request (setup : Import.Main.build_system) =
-      let dir = Path.(relative root) (Common.prefix_target common ".") in
-      Alias.in_dir ~name:Dune_rules.Alias.fmt ~recursive:true ~contexts:setup.contexts dir
-      |> Alias.request
-    in
-    run_build_command ~common ~config ~request
-  in
-  Cmd.v (Cmd.info "fmt" ~doc ~man ~envs:Common.envs) term
 ;;

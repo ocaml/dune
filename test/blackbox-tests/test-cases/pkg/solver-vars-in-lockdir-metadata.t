@@ -63,7 +63,7 @@ Make a workspace file which sets some of the variables.
   >   (name default)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Solve the packages again, this time with the variables set.
@@ -74,7 +74,7 @@ Solve the packages again, this time with the variables set.
   - static-deps.1.0
   (lang package 0.1)
   
-  (dependency_hash aea7daa72b636fa3a44973ec5e29d225)
+  (dependency_hash 3f813eed4e2e65a0b1d17fee9b738899)
   
   (repositories
    (complete false)
@@ -85,7 +85,7 @@ Solve the packages again, this time with the variables set.
   - no-deps-b.1.0
   (lang package 0.1)
   
-  (dependency_hash 6957fba0128609ffc98fac2561c329cb)
+  (dependency_hash 2b84dc8b1f93a9cb3c8c060235c014a2)
   
   (repositories
    (complete false)
@@ -101,7 +101,7 @@ Solve the packages again, this time with the variables set.
   - no-deps-b.1.0
   (lang package 0.1)
   
-  (dependency_hash 9675a3014e7e2db0f946b3ad2a95c037)
+  (dependency_hash dcccc0b378d9035f0f00a871c2d29359)
   
   (repositories
    (complete false)
@@ -113,3 +113,50 @@ Solve the packages again, this time with the variables set.
     (os-family dunefamily)
     (os linux)
     (arch arm)))
+
+Test that variables referred to in filters on build and install commands are
+stored in the lockdir metadata:
+  $ mkpkg filtered-commands <<EOF
+  > build: [
+  >  [ "echo" "foo" ] { os = "linux" }
+  >  [ "echo" "bar" ] { os = "macos" }
+  >  [ "echo" "baz" ] { ! (? x) }
+  > ]
+  > install: [
+  >  [ "echo" "qux" ] { arch = "arm" }
+  > ]
+  > EOF
+
+  $ solve_project <<EOF
+  > (lang dune 3.12)
+  > (package
+  >  (name foo)
+  >  (depends filtered-commands))
+  > EOF
+  Solution for dune.lock:
+  - filtered-commands.0.0.1
+
+  $ cat dune.lock/filtered-commands.pkg
+  (version 0.0.1)
+  
+  (install
+   (run echo qux))
+  
+  (build
+   (progn
+    (run echo foo)
+    (run echo baz)))
+  $ cat dune.lock/lock.dune
+  (lang package 0.1)
+  
+  (dependency_hash e99c6a04197fafe2e8b7153de21bba97)
+  
+  (repositories
+   (complete false)
+   (used))
+  
+  (expanded_solver_variable_bindings
+   (variable_values
+    (os linux)
+    (arch arm))
+   (unset_variables x))

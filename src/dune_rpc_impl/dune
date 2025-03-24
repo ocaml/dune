@@ -2,6 +2,7 @@
  (name dune_rpc_impl)
  (libraries
   stdune
+  promote
   unix
   fiber
   csexp_rpc

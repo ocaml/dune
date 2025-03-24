@@ -31,6 +31,16 @@ let explode_path =
       | xs -> xs)
 ;;
 
+let append_with_slash x y =
+  let len_x = String.length x in
+  let len_y = String.length y in
+  let dst = Bytes.create (len_x + 1 + len_y) in
+  Bytes.blit_string ~src:x ~src_pos:0 ~dst ~dst_pos:0 ~len:len_x;
+  Bytes.set dst len_x '/';
+  Bytes.blit_string ~src:y ~src_pos:0 ~dst ~dst_pos:(len_x + 1) ~len:len_y;
+  Bytes.unsafe_to_string dst
+;;
+
 module Unspecified = Path_intf.Unspecified
 
 module Local_gen : sig
@@ -57,25 +67,9 @@ end = struct
   let to_string t = t
   let hash = String.hash
   let compare = String.compare
+  let equal = String.equal
   let root = "."
   let is_root t = Ordering.is_eq (compare t root)
-
-  let to_list =
-    let rec loop t acc i j =
-      if i = 0
-      then String.take t j :: acc
-      else (
-        match t.[i - 1] with
-        | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
-        | _ -> loop t acc (i - 1) j)
-    in
-    fun t ->
-      if is_root t
-      then []
-      else (
-        let len = String.length t in
-        loop t [] len len)
-  ;;
 
   let parent t =
     if is_root t
@@ -110,7 +104,8 @@ end = struct
           (match parent t with
            | None -> Result.Error `Outside_the_workspace
            | Some parent -> loop parent rest)
-        | fn :: rest -> if is_root t then loop fn rest else loop (t ^ "/" ^ fn) rest
+        | fn :: rest ->
+          if is_root t then loop fn rest else loop (append_with_slash t fn) rest
       in
       loop t components
     ;;
@@ -201,7 +196,7 @@ end = struct
     match is_root a, is_root b with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> a ^ "/" ^ b
+    | _, _ -> append_with_slash a b
   ;;
 
   let descendant t ~of_ =
@@ -226,18 +221,124 @@ end = struct
     t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_
   ;;
 
-  let reach t ~from =
-    let rec loop t from =
-      match t, from with
-      | a :: t, b :: from when a = b -> loop t from
-      | _ ->
-        (match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
-         | [] -> "."
-         | l -> String.concat l ~sep:"/")
-    in
-    loop (to_list t) (to_list from)
-  ;;
+  module Reach = struct
+    (* count the number of times we need to do ".." *)
+    let parent_remaining_components pos from =
+      let len = String.length from in
+      if pos >= len
+      then 0
+      else (
+        let count = ref 1 in
+        let pos = if Char.equal from.[pos] '/' then pos + 1 else pos in
+        for i = pos to len - 1 do
+          if Char.equal from.[i] '/' then incr count
+        done;
+        !count)
+    ;;
 
+    (* generate a sequence of ".." separated by "/" [times] in [buf] *)
+    let gen_blit_go_up buf ~times =
+      if times > 0
+      then (
+        String_builder.add_string buf "..";
+        for _ = 1 to times - 1 do
+          String_builder.add_string buf "/.."
+        done)
+    ;;
+
+    (* because the ".." above are so common, we precompute the first 20 cases *)
+    let blit_go_up_table =
+      Array.init 20 ~f:(fun i ->
+        List.init (i + 1) ~f:(fun _ -> "..") |> String.concat ~sep:"/")
+    ;;
+
+    let blit_go_up buf ~times =
+      if times > 0
+      then
+        if times > Array.length blit_go_up_table
+        then (* doing the work in a single blit is fastest *)
+          gen_blit_go_up buf ~times
+        else (
+          let src = blit_go_up_table.(times - 1) in
+          String_builder.add_string buf src)
+    ;;
+
+    (* the size of the "../.." string we need to generate *)
+    let go_up_components_buffer_size times = (times * 2) + max 0 (times - 1)
+
+    let reach_root ~from pos =
+      let go_up_this_many_times = parent_remaining_components pos from in
+      if go_up_this_many_times = 0
+      then "."
+      else if go_up_this_many_times <= Array.length blit_go_up_table
+      then blit_go_up_table.(go_up_this_many_times - 1)
+      else (
+        let size = go_up_components_buffer_size go_up_this_many_times in
+        let buf = String_builder.create size in
+        blit_go_up buf ~times:go_up_this_many_times;
+        String_builder.build_exact_exn buf [@nontail])
+    ;;
+
+    (* if we have "a/b" and "a", we need to skip over the "a", even if the last
+       component position is [0] *)
+    let extend_to_comp ~smaller ~bigger ~pos ~comp =
+      if pos = String.length smaller && bigger.[pos] = '/' then pos else comp
+    ;;
+
+    let make_from_common_prefix ~to_ ~from to_pos =
+      let to_len = String.length to_ in
+      let to_pos = if to_pos < to_len && to_.[to_pos] = '/' then to_pos + 1 else to_pos in
+      let to_len = to_len - to_pos in
+      let go_up_this_many_times = parent_remaining_components to_pos from in
+      if to_len = 0
+      then reach_root ~from to_pos
+      else (
+        let size = go_up_components_buffer_size go_up_this_many_times in
+        let add_extra_slash = size > 0 && to_len > 0 in
+        (* the final length of the buffer we need to compute *)
+        let size = to_len + size + if add_extra_slash then 1 else 0 in
+        (* our position inside the buffer *)
+        let buf = String_builder.create size in
+        blit_go_up buf ~times:go_up_this_many_times;
+        if add_extra_slash then String_builder.add_char buf '/';
+        String_builder.add_substring buf to_ ~pos:to_pos ~len:to_len;
+        String_builder.build_exact_exn buf [@nontail])
+    ;;
+
+    let rec common_prefix ~to_ ~from ~pos ~comp =
+      if Int.equal pos (String.length to_)
+      then (
+        (* the case where we exhausted [to_] first. *)
+        let pos = extend_to_comp ~smaller:to_ ~bigger:from ~pos ~comp in
+        make_from_common_prefix ~to_ ~from pos)
+      else if Int.equal pos (String.length from)
+      then (
+        (* we exhausted [from] first *)
+        let pos = extend_to_comp ~smaller:from ~bigger:to_ ~pos ~comp in
+        make_from_common_prefix ~to_ ~from pos)
+      else if Char.equal to_.[pos] from.[pos]
+      then (
+        (* eat another common character. *)
+        let comp =
+          (* if we find '/', then we advance the last common component position *)
+          if to_.[pos] = '/' then pos else comp
+        in
+        common_prefix ~to_ ~from ~pos:(pos + 1) ~comp)
+      else make_from_common_prefix ~to_ ~from comp
+    ;;
+
+    let reach to_ ~from =
+      if is_root from
+      then to_
+      else if is_root to_
+      then reach_root ~from 0
+      else if equal to_ from
+      then "."
+      else common_prefix ~to_ ~from ~pos:0 ~comp:0
+    ;;
+  end
+
+  let reach = Reach.reach
   let extend_basename t ~suffix = t ^ suffix
   let extension t = Filename.extension t
 
@@ -387,6 +488,7 @@ module External : sig
   include Path_intf.S
   module Table : Hashtbl.S with type key = t
 
+  val root : t
   val relative : t -> string -> t
   val mkdir_p : ?perms:int -> t -> unit
   val initial_cwd : t
@@ -394,21 +496,10 @@ module External : sig
   val as_local : t -> string
   val append_local : t -> Local.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
-  val drop_prefix : t -> prefix:t -> Local.t option
 end = struct
   module Table = String.Table
 
   type t = string
-
-  let drop_prefix path ~prefix =
-    if prefix = path
-    then Some Local.root
-    else (
-      let prefix = prefix ^ "/" in
-      let open Option.O in
-      let+ suffix = String.drop_prefix path ~prefix in
-      Local.of_string suffix)
-  ;;
 
   let to_string t = t
   let equal = String.equal
@@ -513,6 +604,7 @@ module Source0 = struct
   include Local
 
   let to_dyn s = Dyn.variant "In_source_tree" [ to_dyn s ]
+  let append_local = Local.append
 end
 
 let abs_root, set_root =
@@ -733,6 +825,7 @@ module Build = struct
   let of_local t = t
   let chmod t ~mode = Unix.chmod (to_string t) mode
   let lstat t = Unix.lstat (to_string t)
+  let unlink t = Fpath.unlink (to_string t)
   let unlink_no_err t = Fpath.unlink_no_err (to_string t)
   let to_dyn s = Dyn.variant "In_build_dir" [ to_dyn s ]
 end
@@ -971,6 +1064,12 @@ let as_in_source_tree_exn t =
       [ "t", to_dyn t ]
 ;;
 
+let as_outside_build_dir : t -> Outside_build_dir.t option = function
+  | In_source_tree s -> Some (In_source_dir s)
+  | External s -> Some (External s)
+  | In_build_dir _ -> None
+;;
+
 let as_outside_build_dir_exn : t -> Outside_build_dir.t = function
   | In_source_tree s -> In_source_dir s
   | External s -> External s
@@ -1133,7 +1232,7 @@ let is_directory t =
 ;;
 
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Fpath.unlink (to_string t)
+let unlink_exn t = Fpath.unlink_exn (to_string t)
 
 let link src dst =
   match Unix.link (to_string src) (to_string dst) with
@@ -1354,7 +1453,10 @@ let drop_prefix path ~prefix =
   if prefix = path
   then Some Local.root
   else (
-    let prefix = to_string prefix ^ "/" in
+    let prefix_s = to_string prefix in
+    let prefix =
+      if String.is_suffix ~suffix:"/" prefix_s then prefix_s else prefix_s ^ "/"
+    in
     let open Option.O in
     let+ suffix = String.drop_prefix (to_string path) ~prefix in
     Local.of_string suffix)

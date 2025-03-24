@@ -2,7 +2,7 @@ open Import
 
 module Variable : sig
   type t =
-    | Global of Variable_name.t
+    | Global of Package_variable_name.t
     | Package of Package_variable.t
 end
 

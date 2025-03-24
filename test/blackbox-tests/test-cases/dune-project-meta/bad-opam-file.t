@@ -3,7 +3,6 @@ Fatal error with opam file that is not listed in the dune-project file:
   $ cat >dune-project <<EOF
   > (lang dune 1.10)
   > (version 1.0.0)
-  > (generate_opam_files true)
   > (package (name bar))
   > EOF
 

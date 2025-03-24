@@ -1,1 +1,0 @@
-- Fix version check in `runtest_alias` for `cram` stanza (#9454, @emillon)

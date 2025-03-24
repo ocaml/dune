@@ -3,7 +3,7 @@
 Preprocessing Specification
 ===========================
 
-Some stanzas including ``(library)`` accept a ``(preprocessing)`` field. The
+Some stanzas including ``(library)`` accept a ``(preprocess)`` field. The
 possible values for its argument are:
 
 .. productionlist::
@@ -28,7 +28,7 @@ Preprocessing With Actions
 --------------------------
 
 In ``(action <action>)``, ``<action>`` uses the same DSL as described in
-:doc:`actions`, and for the same reason given in that section, it will be
+:doc:`actions/index`, and for the same reason given in that section, it will be
 executed from the root of the current build context. It's expected to be an
 action that reads the file given as a dependency named ``input-file`` and
 outputs the preprocessed file on its standard output.

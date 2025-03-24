@@ -1,4 +1,4 @@
-Test the %{pkg:intsalled}% form inside file substitution:
+Test the %{pkg:installed}% form inside file substitution:
 
   $ . ./helpers.sh
 

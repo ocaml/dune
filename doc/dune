@@ -32,3 +32,5 @@
 
 (documentation
  (package dune))
+
+(data_only_dirs tutorials)

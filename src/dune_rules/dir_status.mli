@@ -19,7 +19,7 @@ end
 module Group_root : sig
   type t =
     { source_dir : Source_tree.Dir.t
-    ; qualification : Loc.t * Dune_file.Include_subdirs.qualification
+    ; qualification : Loc.t * Include_subdirs.qualification
     ; dune_file : Dune_file.t
     ; components : Group_component.t list Memo.t
     }
@@ -42,4 +42,13 @@ module DB : sig
   val get : dir:Path.Build.t -> t Memo.t
 end
 
-val directory_targets : t -> dir:Path.Build.t -> Loc.t Path.Build.Map.t Memo.t
+val directory_targets
+  :  t
+  -> jsoo_enabled:
+       (eval:(Blang.t -> bool Memo.t)
+        -> dir:Path.Build.t
+        -> in_context:Js_of_ocaml.In_context.t Js_of_ocaml.Mode.Pair.t
+        -> mode:Js_of_ocaml.Mode.t
+        -> bool Memo.t)
+  -> dir:Path.Build.t
+  -> Loc.t Path.Build.Map.t Memo.t

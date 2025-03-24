@@ -255,10 +255,7 @@ But will fail when we release it, as it will need to run with -p:
   Error: Library "lib1" not found.
   -> required by %{lib-private:lib1:lib1.ml} at lib2/dune:5
   -> required by _build/default/lib2/lib2.ml
-  -> required by _build/default/lib2/.lib2.objs/byte/lib2.cmi
-  -> required by _build/default/lib2/.lib2.objs/native/lib2.cmx
-  -> required by _build/default/lib2/lib2.a
-  -> required by _build/install/default/lib/public_lib2/lib2.a
+  -> required by _build/install/default/lib/public_lib2/lib2.ml
   -> required by _build/default/public_lib2.install
   -> required by alias install
   [1]

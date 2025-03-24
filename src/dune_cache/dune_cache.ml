@@ -1,3 +1,4 @@
+module Hit_or_miss = Hit_or_miss
 module Config = Config
-module Local = Local
 module Trimmer = Trimmer
+module Shared = Shared

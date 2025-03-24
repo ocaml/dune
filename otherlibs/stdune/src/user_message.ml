@@ -159,9 +159,9 @@ module Print_config = struct
     | Kwd -> [ `Bold; `Fg_blue ]
     | Id -> [ `Bold; `Fg_yellow ]
     | Prompt -> [ `Bold; `Fg_green ]
-    | Hint -> [ `Italic; `Fg_white ]
-    | Details -> [ `Dim; `Fg_white ]
-    | Ok -> [ `Dim; `Fg_green ]
+    | Hint -> [ `Italic ]
+    | Details -> [ `Dim ]
+    | Ok -> [ `Fg_green ]
     | Debug -> [ `Underline; `Fg_bright_cyan ]
     | Success -> [ `Bold; `Fg_green ]
     | Ansi_styles l -> l
@@ -173,9 +173,11 @@ type t =
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; context : string option
+  ; dir : string option
   }
 
-let compare { loc; paragraphs; hints; annots } t =
+let compare { loc; paragraphs; hints; annots; context = _; dir = _ } t =
   let open Ordering.O in
   let= () = Option.compare Loc0.compare loc t.loc in
   let= () = List.compare paragraphs t.paragraphs ~compare:Poly.compare in
@@ -185,17 +187,17 @@ let compare { loc; paragraphs; hints; annots } t =
 
 let equal a b = Ordering.is_eq (compare a b)
 
-let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) paragraphs =
+let make ?loc ?prefix ?(hints = []) ?(annots = Annots.empty) ?context ?dir paragraphs =
   let paragraphs =
     match prefix, paragraphs with
     | None, l -> l
     | Some p, [] -> [ p ]
     | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
-  { loc; hints; paragraphs; annots }
+  { loc; hints; paragraphs; annots; context; dir }
 ;;
 
-let pp { loc; paragraphs; hints; annots = _ } =
+let pp { loc; paragraphs; hints; annots = _; context; dir = _ } =
   let open Pp.O in
   let paragraphs =
     match hints with
@@ -215,16 +217,22 @@ let pp { loc; paragraphs; hints; annots = _ } =
       let stop = Loc0.stop loc in
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
+      let lnum =
+        if start.pos_lnum = stop.pos_lnum
+        then Printf.sprintf "line %d" start.pos_lnum
+        else Printf.sprintf "lines %d-%d" start.pos_lnum stop.pos_lnum
+      in
       Pp.box
         (Pp.tag
            Style.Loc
-           (Pp.textf
-              "File %S, line %d, characters %d-%d:"
-              start.pos_fname
-              start.pos_lnum
-              start_c
-              stop_c))
+           (Pp.textf "File %S, %s, characters %d-%d:" start.pos_fname lnum start_c stop_c))
       :: paragraphs
+  in
+  let paragraphs =
+    match context with
+    | None | Some "default" | Some ".sandbox" -> paragraphs
+    | Some context ->
+      Pp.box (Pp.tag Style.Loc (Pp.textf "Context: %s" context)) :: paragraphs
   in
   Pp.vbox (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))
 ;;
@@ -270,7 +278,9 @@ let levenshtein_distance s t =
 
 let did_you_mean s ~candidates =
   let candidates =
-    List.filter candidates ~f:(fun candidate -> levenshtein_distance s candidate < 3)
+    List.filter candidates ~f:(fun candidate ->
+      let distance = levenshtein_distance s candidate in
+      0 < distance && distance < 3)
   in
   match candidates with
   | [] -> []
@@ -302,4 +312,10 @@ let command cmd =
     ; Pp.tag (Style.Ansi_styles [ `Underline ]) @@ Pp.verbatim cmd
     ; Pp.verbatim "'"
     ]
+;;
+
+let aligned_message ~left:(left_tag, left_string) ~right =
+  let open Pp.O in
+  let left_padded = Printf.sprintf "%12s" left_string in
+  Pp.tag left_tag (Pp.verbatim left_padded) ++ Pp.char ' ' ++ right
 ;;

@@ -27,7 +27,7 @@
   > EOF
 
   $ dune build a
-  File "dune", line 1, characters 0-65:
+  File "dune", lines 1-3, characters 0-65:
   1 | (rule
   2 |   (targets a b)
   3 |   (action (bash "echo hola > %{targets}")))
@@ -63,7 +63,7 @@ to get a better error message:
   > EOF
 
   $ dune build a
-  File "dune", line 1, characters 0-75:
+  File "dune", lines 1-4, characters 0-75:
   1 | (rule
   2 |   (targets a)
   3 |   (target a)

@@ -1,0 +1,20 @@
+(executable
+  (name bin1)
+  (modules bin1)
+  (modes wasm)
+  (libraries library1)
+)
+
+(executable
+  (name bin2)
+  (modules bin2)
+  (modes wasm)
+  (libraries library1)
+)
+
+(executable
+  (name bin3)
+  (modules bin3)
+  (modes wasm)
+  (libraries library1)
+)

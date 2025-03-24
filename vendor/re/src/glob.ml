@@ -34,10 +34,11 @@ type piece =
   | Any_but of enclosed list
   | One
   | Many
+  | ManyMany
 
 type t = piece list
 
-let of_string s : t =
+let of_string ~double_asterisk s : t =
   let i = ref 0 in
   let l = String.length s in
   let eos () = !i = l in
@@ -45,6 +46,26 @@ let of_string s : t =
     let r = not (eos ()) && s.[!i] = c in
     if r then incr i;
     r
+  in
+
+  (**
+   [read_ahead pattern] will attempt to read [pattern] and will return [true] if it was successful.
+   If it fails, it will return [false] and not increment the read index.
+  *)
+  let read_ahead pattern =
+    let pattern_len = String.length pattern in
+    (* if the pattern we are looking for exeeds the remaining length of s, return false immediately *)
+    if !i + pattern_len >= l then
+      false
+    else
+      try
+        for j = 0 to pattern_len - 1 do
+          let found = not (eos ()) && s.[!i + j] = pattern.[j] in
+          if not found then raise_notrace Exit;
+        done;
+        i := !i + pattern_len;
+        true
+      with | Exit  -> false
   in
 
   let char () =
@@ -74,8 +95,12 @@ let of_string s : t =
   in
 
   let piece () =
-    if read '*'
-    then Many
+    if double_asterisk && read_ahead "/**" && not (eos ())
+    then ManyMany
+    else if read '*'
+    then if double_asterisk && read '*'
+      then ManyMany
+      else Many
     else if read '?'
     then One
     else if not (read '[')
@@ -127,15 +152,17 @@ module State = struct
     am_at_start_of_component : bool;       (* true at start of pattern or immediately
                                               after '/' *)
     pathname                 : bool;
+    match_backslashes        : bool;
     period                   : bool;
   }
 
-  let create ~period ~pathname remaining =
+  let create ~period ~pathname ~match_backslashes remaining =
     {
       re_pieces = [];
       am_at_start_of_pattern = true;
       am_at_start_of_component = true;
       pathname;
+      match_backslashes;
       period;
       remaining;
     }
@@ -147,6 +174,9 @@ module State = struct
     )
 
   let explicit_slash t = t.pathname
+
+  let slashes t =
+    if t.match_backslashes then ['/'; '\\'] else ['/']
 
   let append ?(am_at_start_of_component=false) t piece =
     { t with
@@ -163,10 +193,10 @@ module State = struct
     | piece :: remaining -> Some (piece, { t with remaining })
 end
 
-let one ~explicit_slash ~explicit_period =
+let one ~explicit_slash ~slashes ~explicit_period =
   Re.compl (
     List.concat [
-      if explicit_slash  then [Re.char '/'] else [];
+      if explicit_slash  then List.map Re.char slashes else [];
       if explicit_period then [Re.char '.'] else [];
     ]
   )
@@ -176,39 +206,66 @@ let enclosed enclosed =
   | Char c -> Re.char c
   | Range (low, high) -> Re.rg low high
 
-let enclosed_set ~explicit_slash ~explicit_period kind set =
+let enclosed_set ~explicit_slash ~slashes ~explicit_period kind set =
   let set = List.map enclosed set in
   let enclosure =
     match kind with
     | `Any_of -> Re.alt set
     | `Any_but -> Re.compl set
   in
-  Re.inter [enclosure; one ~explicit_slash ~explicit_period]
+  Re.inter [enclosure; one ~explicit_slash ~slashes ~explicit_period]
 
 let exactly state c =
-  State.append state (Re.char c) ~am_at_start_of_component:(c = '/')
+  let slashes = State.slashes state in
+  let am_at_start_of_component = List.mem c slashes in
+  let chars = if am_at_start_of_component then slashes else [c] in
+  State.append state (Re.alt (List.map Re.char chars)) ~am_at_start_of_component
+
+let many_many state =
+  let explicit_period = state.State.period && state.State.pathname in
+  let first_explicit_period = State.explicit_period state in
+  let slashes = State.slashes state in
+  let match_component ~explicit_period =
+    Re.seq [
+      one         ~explicit_slash:true ~slashes ~explicit_period;
+      Re.rep (one ~explicit_slash:true ~slashes ~explicit_period:false);
+    ]
+  in
+  (* We must match components individually when [period] flag is set,
+     making sure to not match ["foo/.bar"]. *)
+  State.append state (
+    Re.seq [
+      Re.opt (match_component ~explicit_period:first_explicit_period);
+      Re.rep (
+        Re.seq [
+          Re.alt (List.map Re.char slashes);
+          Re.opt (match_component ~explicit_period);
+        ]
+      );
+    ])
 
 let many (state : State.t) =
   let explicit_slash = State.explicit_slash state in
   let explicit_period = State.explicit_period state in
+  let slashes = State.slashes state in
   (* Whether we must explicitly match period depends on the surrounding characters, but
      slashes are easy to explicit match. This conditional splits out some simple cases.
   *)
   if not explicit_period then begin
-    State.append state (Re.rep (one ~explicit_slash ~explicit_period))
+    State.append state (Re.rep (one ~explicit_slash ~slashes ~explicit_period))
   end else if not explicit_slash then begin
     (* In this state, we explicitly match periods only at the very beginning *)
     State.append state (Re.opt (
       Re.seq [
-        one         ~explicit_slash:false ~explicit_period;
-        Re.rep (one ~explicit_slash:false ~explicit_period:false);
+        one         ~explicit_slash:false ~slashes ~explicit_period;
+        Re.rep (one ~explicit_slash:false ~slashes ~explicit_period:false);
       ]
     ))
   end else begin
     let not_empty =
       Re.seq [
-        one         ~explicit_slash:true ~explicit_period:true;
-        Re.rep (one ~explicit_slash:true ~explicit_period:false);
+        one         ~explicit_slash:true ~slashes ~explicit_period:true;
+        Re.rep (one ~explicit_slash:true ~slashes ~explicit_period:false);
       ]
     in
     (* [maybe_empty] is the default translation of Many, except in some special cases.
@@ -216,11 +273,11 @@ let many (state : State.t) =
     let maybe_empty = Re.opt not_empty in
     let enclosed_set state kind set =
       State.append state (Re.alt [
-        enclosed_set kind set ~explicit_slash:true ~explicit_period:true;
+        enclosed_set kind set ~explicit_slash:true ~slashes ~explicit_period:true;
         Re.seq [
           not_empty;
           (* Since [not_empty] matched, subsequent dots are not leading. *)
-          enclosed_set kind set ~explicit_slash:true ~explicit_period:false;
+          enclosed_set kind set ~explicit_slash:true ~slashes ~explicit_period:false;
         ];
       ])
     in
@@ -241,6 +298,8 @@ let many (state : State.t) =
       | Some (One, state) -> State.append state not_empty
       | Some (Any_of enclosed, state) -> enclosed_set state `Any_of enclosed
       | Some (Any_but enclosed, state) -> enclosed_set state `Any_but enclosed
+      (* * then ** === ** *)
+      | Some (ManyMany, state) -> many_many state
     in
     lookahead state
   end
@@ -248,32 +307,36 @@ let many (state : State.t) =
 let piece state piece =
   let explicit_slash = State.explicit_slash state in
   let explicit_period = State.explicit_period state in
+  let slashes = State.slashes state in
   match piece with
-  | One -> State.append state (one ~explicit_slash ~explicit_period)
+  | One -> State.append state (one ~explicit_slash ~slashes ~explicit_period)
   | Many -> many state
   | Any_of enclosed ->
-    State.append state (enclosed_set `Any_of ~explicit_slash ~explicit_period enclosed)
+    State.append state (enclosed_set `Any_of ~explicit_slash ~slashes ~explicit_period enclosed)
   | Any_but enclosed ->
-    State.append state (enclosed_set `Any_but ~explicit_slash ~explicit_period enclosed)
+    State.append state (enclosed_set `Any_but ~explicit_slash ~slashes ~explicit_period enclosed)
   | Exactly c -> exactly state c
+  | ManyMany -> many_many state
 
-let glob ~pathname ~period glob =
+let glob ~pathname ~match_backslashes ~period glob =
   let rec loop state =
     match State.next state with
     | None -> State.to_re state
     | Some (p, state) -> loop (piece state p)
   in
-  loop (State.create ~pathname ~period glob)
+  loop (State.create ~pathname ~match_backslashes ~period glob)
 
 let glob
       ?(anchored = false)
       ?(pathname = true)
+      ?(match_backslashes = false)
       ?(period = true)
       ?(expand_braces = false)
+      ?(double_asterisk = true)
       s
   =
   let to_re s =
-    let re = glob ~pathname ~period (of_string s) in
+    let re = glob ~pathname ~match_backslashes ~period (of_string ~double_asterisk s) in
     if anchored
     then Re.whole_string re
     else re

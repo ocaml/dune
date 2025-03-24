@@ -3,10 +3,10 @@ The ocaml compiler needs to be marked inside the lock dir:
   $ . ./helpers.sh
   $ mkrepo
 
-To mark it, we use flags: compiler:
+To mark it, we use `conflict-class: "ocaml-core-compiler"`
 
   $ mkpkg foocaml <<EOF
-  > flags: compiler
+  > conflict-class: "ocaml-core-compiler"
   > EOF
 
   $ solve foocaml

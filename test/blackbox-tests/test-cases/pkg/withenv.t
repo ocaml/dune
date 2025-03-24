@@ -13,10 +13,17 @@ Setting environment variables in actions
   >    (= BAR xxx)
   >    (+= BAR yyy)
   >    (:= BAR "")
-  >    (+= BAR ""))
-  >   (system "echo XYZ=$XYZ; echo FOO=$FOO; echo BAR=$BAR")))
+  >    (+= BAR "")
+  >    (:= BAZ baz)
+  >    (=: QUX qux))
+  >   (system "echo XYZ=$XYZ; echo FOO=$FOO; echo BAR=$BAR; echo BAZ=$BAZ; echo QUX=$QUX")))
   > EOF
   $ build_pkg test
   XYZ=111:000
   FOO=myfoo
   BAR=yyy:xxx
+  BAZ=baz
+  QUX=qux
+
+Note that the value so of BAZ and QUX above should be "baz:" and ":qux" respectively.
+See https://github.com/ocaml/dune/issues/10440

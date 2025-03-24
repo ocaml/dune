@@ -118,6 +118,7 @@ module Macro : sig
         }
     | Lib_available
     | Bin_available
+    | File_available
     | Version
     | Read
     | Read_strings

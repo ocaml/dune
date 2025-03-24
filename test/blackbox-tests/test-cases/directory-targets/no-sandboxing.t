@@ -22,7 +22,7 @@ Build directory target from the command line without sandboxing
 We ask to build a file that doesn't exist inside the directory:
 
   $ dune build output/fake
-  File "dune", line 1, characters 0-102:
+  File "dune", lines 1-3, characters 0-102:
   1 | (rule
   2 |  (targets (dir output))
   3 |  (action (system "mkdir output; echo x > output/x; echo y > output/y")))
@@ -39,7 +39,7 @@ When we fail to create the directory, dune complains:
   > EOF
 
   $ dune build output/
-  File "dune", line 1, characters 0-56:
+  File "dune", lines 1-3, characters 0-56:
   1 | (rule
   2 |  (targets (dir output))
   3 |  (action (system "true")))
@@ -78,7 +78,7 @@ Directory target whose name conflicts with an internal directory used by Dune.
   > EOF
 
   $ dune build .dune/hello
-  File "dune", line 1, characters 0-88:
+  File "dune", lines 1-3, characters 0-88:
   1 | (rule
   2 |   (targets (dir .dune))
   3 |   (action (bash "mkdir .dune; echo hello > .dune/hello")))

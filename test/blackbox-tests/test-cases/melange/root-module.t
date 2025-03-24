@@ -60,6 +60,7 @@ The same for melange.emit:
   >  (alias mel)
   >  (target output)
   >  (libraries lib1)
+  >  (emit_stdlib false)
   >  (root_module root))
   > EOF
   $ cat > lib1.ml <<EOF

@@ -7,7 +7,7 @@ module Expanded : sig
   val matches : t -> string list
 
   (** The component of the glob before the final "/". This is guaranteed to be
-      a common prefix of all matches patchs. *)
+      a common prefix of all matches patches. *)
   val prefix : t -> string
 end
 

@@ -68,12 +68,14 @@ let pp_sequence start stop x ~f =
     let sep = ";" ^ String.make (String.length start) ' ' in
     Pp.hvbox
       (Pp.concat_mapi ~sep:Pp.cut x ~f:(fun i x ->
-         Pp.box ((if i = 0 then Pp.verbatim (start ^ " ") else Pp.verbatim sep) ++ f x))
+         Pp.box
+           ~indent:2
+           ((if i = 0 then Pp.verbatim (start ^ " ") else Pp.verbatim sep) ++ f x))
        ++ Pp.space
        ++ Pp.verbatim stop)
 ;;
 
-let rec pp =
+let rec pp ?(in_arg = false) =
   let open Pp.O in
   function
   | Opaque -> Pp.verbatim "<opaque>"
@@ -87,8 +89,8 @@ let rec pp =
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
   | Char c -> Pp.char c
   | Float f -> Pp.verbatim (string_of_float f)
-  | Option None -> pp (Variant ("None", []))
-  | Option (Some x) -> pp (Variant ("Some", [ x ]))
+  | Option None -> pp ~in_arg (Variant ("None", []))
+  | Option (Some x) -> pp ~in_arg (Variant ("Some", [ x ]))
   | List xs -> pp_sequence "[" "]" xs ~f:pp
   | Array xs -> pp_sequence "[|" "|]" (Array.to_list xs) ~f:pp
   | Set xs ->
@@ -100,25 +102,25 @@ let rec pp =
        ++ Pp.space
        ++ pp_sequence "{" "}" xs ~f:(fun (k, v) ->
          Pp.box ~indent:2 (pp k ++ Pp.space ++ Pp.char ':' ++ Pp.space ++ pp v)))
-  | Tuple x ->
-    Pp.box
-      (Pp.char '('
-       ++ Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) x ~f:pp
-       ++ Pp.char ')')
+  | Tuple xs ->
+    Pp.char '('
+    ++ Pp.hvbox (Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) xs ~f:pp)
+    ++ Pp.char ')'
   | Record fields ->
     pp_sequence "{" "}" fields ~f:(fun (f, v) ->
       Pp.box ~indent:2 (Pp.verbatim f ++ Pp.space ++ Pp.char '=' ++ Pp.space ++ pp v))
   | Variant (v, []) -> Pp.verbatim v
-  | Variant (v, xs) ->
-    Pp.hvbox
-      ~indent:2
-      (Pp.concat
-         [ Pp.verbatim v
-         ; Pp.space
-         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) xs ~f:pp
-         ])
+  | Variant (v, (_ :: _ as xs)) ->
+    let arg =
+      match xs with
+      | [ x ] -> x
+      | _ -> Tuple xs
+    in
+    let app = Pp.hvbox ~indent:2 (Pp.verbatim v ++ Pp.space ++ pp ~in_arg:true arg) in
+    if in_arg then Pp.char '(' ++ app ++ Pp.char ')' else app
 ;;
 
+let pp t = pp t
 let to_string t = Format.asprintf "%a" Pp.to_fmt (pp t)
 
 type 'a builder = 'a -> t

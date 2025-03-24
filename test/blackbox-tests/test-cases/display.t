@@ -43,7 +43,7 @@ Errors without location embed in their output
   > EOF
 
   $ dune clean; dune build
-  File "dune", line 1, characters 0-66:
+  File "dune", lines 1-3, characters 0-66:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
@@ -51,7 +51,7 @@ Errors without location embed in their output
   [1]
 
   $ dune clean; dune build --always-show-command-line
-  File "dune", line 1, characters 0-66:
+  File "dune", lines 1-3, characters 0-66:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
@@ -60,7 +60,7 @@ Errors without location embed in their output
   [1]
 
   $ dune clean; dune build --display short
-  File "dune", line 1, characters 0-66:
+  File "dune", lines 1-3, characters 0-66:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
@@ -69,7 +69,7 @@ Errors without location embed in their output
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
-  File "dune", line 1, characters 0-66:
+  File "dune", lines 1-3, characters 0-66:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo failure; exit 42")))
@@ -88,7 +88,7 @@ Errors with no output
   > EOF
 
   $ dune clean; dune build
-  File "dune", line 1, characters 0-52:
+  File "dune", lines 1-3, characters 0-52:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
@@ -96,7 +96,7 @@ Errors with no output
   [1]
 
   $ dune clean; dune build --always-show-command-line
-  File "dune", line 1, characters 0-52:
+  File "dune", lines 1-3, characters 0-52:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
@@ -105,7 +105,7 @@ Errors with no output
   [1]
 
   $ dune clean; dune build --display short
-  File "dune", line 1, characters 0-52:
+  File "dune", lines 1-3, characters 0-52:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
@@ -113,7 +113,7 @@ Errors with no output
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
-  File "dune", line 1, characters 0-52:
+  File "dune", lines 1-3, characters 0-52:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "exit 42")))
@@ -156,7 +156,7 @@ Errors with-stdout-to
   > EOF
 
   $ dune clean; dune build
-  File "dune", line 1, characters 0-108:
+  File "dune", lines 1-3, characters 0-108:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-stdout-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -164,7 +164,7 @@ Errors with-stdout-to
   [1]
 
   $ dune clean; dune build --always-show-command-line
-  File "dune", line 1, characters 0-108:
+  File "dune", lines 1-3, characters 0-108:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-stdout-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -173,7 +173,7 @@ Errors with-stdout-to
   [1]
 
   $ dune clean; dune build --display short
-  File "dune", line 1, characters 0-108:
+  File "dune", lines 1-3, characters 0-108:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-stdout-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -181,7 +181,7 @@ Errors with-stdout-to
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
-  File "dune", line 1, characters 0-108:
+  File "dune", lines 1-3, characters 0-108:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-stdout-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -228,7 +228,7 @@ Errors with-outputs-to
   > EOF
 
   $ dune clean; dune build
-  File "dune", line 1, characters 0-109:
+  File "dune", lines 1-3, characters 0-109:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -236,7 +236,7 @@ Errors with-outputs-to
   [1]
 
   $ dune clean; dune build --always-show-command-line
-  File "dune", line 1, characters 0-109:
+  File "dune", lines 1-3, characters 0-109:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -245,7 +245,7 @@ Errors with-outputs-to
   [1]
 
   $ dune clean; dune build --display short
-  File "dune", line 1, characters 0-109:
+  File "dune", lines 1-3, characters 0-109:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))
@@ -253,7 +253,7 @@ Errors with-outputs-to
   [1]
 
   $ dune clean; dune build --display short --always-show-command-line
-  File "dune", line 1, characters 0-109:
+  File "dune", lines 1-3, characters 0-109:
   1 | (rule
   2 |  (alias default)
   3 |  (action (with-outputs-to bar (system "echo 'File \"foo\", line 1: blah'; exit 42"))))

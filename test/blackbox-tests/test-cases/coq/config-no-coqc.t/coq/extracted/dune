@@ -1,0 +1,7 @@
+(coq.extraction
+ (mode vo)
+ (prelude Extract)
+ (extracted_modules Foo CRelationClasses Datatypes)
+ (theories Common)
+ (flags -w -extraction-opaque-accessed))
+

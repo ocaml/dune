@@ -33,7 +33,7 @@ val dep : Dep.t conv
 val graph_format : Dune_graph.Graph.File_format.t conv
 val path : Path.t conv
 val external_path : Path.External.t conv
-val package_name : Dune_rules.Package.Name.t conv
+val package_name : Dune_lang.Package.Name.t conv
 val profile : Dune_lang.Profile.t conv
 val lib_name : Dune_lang.Lib_name.t conv
 val version : Dune_lang.Syntax.Version.t conv

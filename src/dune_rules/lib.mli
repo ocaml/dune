@@ -11,10 +11,9 @@ val to_dyn : t -> Dyn.t
     or the [name] if not. *)
 val name : t -> Lib_name.t
 
-val lib_config : t -> Lib_config.t
 val implements : t -> t Resolve.Memo.t option
 
-(** Same as [Path.is_managed (obj_dir t)] *)
+(** [is_local t] returns [true] whenever [t] is defined in the local workspace *)
 val is_local : t -> bool
 
 val info : t -> Path.t Lib_info.t
@@ -24,6 +23,7 @@ val wrapped : t -> Wrapped.t option Resolve.Memo.t
 (** Direct library dependencies of this library *)
 val requires : t -> t list Resolve.Memo.t
 
+val re_exports : t -> t list Resolve.Memo.t
 val ppx_runtime_deps : t -> t list Resolve.Memo.t
 val pps : t -> t list Resolve.Memo.t
 
@@ -76,8 +76,6 @@ module Compile : sig
   (** Transitive closure of all used ppx rewriters *)
   val pps : t -> lib list Resolve.Memo.t
 
-  val merlin_ident : t -> Merlin_ident.t
-
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list Memo.t
 end
@@ -91,8 +89,6 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t = db
 
-  val equal : t -> t -> bool
-  val hash : t -> int
   val installed : Context.t -> t Memo.t
 
   module Resolve_result : sig
@@ -102,7 +98,9 @@ module DB : sig
     val not_found : t
     val found : Lib_info.external_ -> t
     val to_dyn : t Dyn.builder
-    val redirect : db option -> Loc.t * Lib_name.t -> t
+    val redirect_by_name : db -> Loc.t * Lib_name.t -> t
+    val redirect_by_id : db -> Lib_id.t -> t
+    val redirect_in_the_same_db : Loc.t * Lib_name.t -> t
   end
 
   (** Create a new library database. [resolve] is used to resolve library names
@@ -114,24 +112,23 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create
     :  parent:t option
-    -> resolve:(Lib_name.t -> Resolve_result.t Memo.t)
+    -> resolve:(Lib_name.t -> Resolve_result.t list Memo.t)
+    -> resolve_lib_id:(Lib_id.t -> Resolve_result.t Memo.t)
     -> all:(unit -> Lib_name.t list Memo.t)
-    -> lib_config:Lib_config.t
     -> instrument_with:Lib_name.t list
     -> unit
     -> t
 
   val find : t -> Lib_name.t -> lib option Memo.t
   val find_even_when_hidden : t -> Lib_name.t -> lib option Memo.t
+  val find_lib_id : t -> Lib_id.t -> lib option Memo.t
+  val find_lib_id_even_when_hidden : t -> Lib_id.t -> lib option Memo.t
   val available : t -> Lib_name.t -> bool Memo.t
+  val available_by_lib_id : t -> Lib_id.t -> bool Memo.t
 
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
-  val get_compile_info
-    :  t
-    -> allow_overlaps:bool
-    -> Lib_name.t
-    -> (lib * Compile.t) Memo.t
+  val get_compile_info : t -> allow_overlaps:bool -> Lib_id.t -> (lib * Compile.t) Memo.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Resolve.Memo.t
 
@@ -146,13 +143,12 @@ module DB : sig
       This function is for executables or melange.emit stanzas. *)
   val resolve_user_written_deps
     :  t
-    -> [ `Exe of (Import.Loc.t * string) list | `Melange_emit of string ]
+    -> [ `Exe of (Loc.t * string) Nonempty_list.t | `Melange_emit of string ]
     -> allow_overlaps:bool
     -> forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
-    -> merlin_ident:Merlin_ident.t
     -> Compile.t
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> lib list Resolve.Memo.t
@@ -212,7 +208,7 @@ end
 
 val to_dune_lib
   :  t
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> foreign_objects:Path.t list
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list

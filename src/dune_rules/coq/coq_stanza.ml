@@ -13,6 +13,8 @@ let coq_syntax =
     ; (0, 6), `Since (3, 5)
     ; (0, 7), `Since (3, 7)
     ; (0, 8), `Since (3, 8)
+    ; (0, 9), `Since (3, 16)
+    ; (0, 10), `Since (3, 17)
     ]
 ;;
 
@@ -164,9 +166,11 @@ module Theory = struct
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
+    ; modules_flags : (Coq_module.Name.t * Ordered_set_lang.Unexpanded.t) list option
     ; boot : bool
     ; enabled_if : Blang.t
     ; buildable : Buildable.t
+    ; coqdep_flags : Ordered_set_lang.Unexpanded.t
     ; coqdoc_flags : Ordered_set_lang.Unexpanded.t
     }
 
@@ -222,6 +226,16 @@ module Theory = struct
       | (loc, _) :: _ -> boot_has_deps loc)
   ;;
 
+  module Per_file = struct
+    let decode_pair =
+      let+ mod_ = Coq_module.Name.decode
+      and+ flags = Ordered_set_lang.Unexpanded.decode in
+      mod_, flags
+    ;;
+
+    let decode = enter (repeat decode_pair)
+  end
+
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
@@ -231,8 +245,16 @@ module Theory = struct
        and+ synopsis = field_o "synopsis" string
        and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = Ordered_set_lang.field "modules"
+       and+ modules_flags =
+         field_o
+           "modules_flags"
+           (Dune_lang.Syntax.since coq_syntax (0, 9) >>> Per_file.decode)
        and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:None ()
        and+ buildable = Buildable.decode
+       and+ coqdep_flags =
+         Ordered_set_lang.Unexpanded.field
+           "coqdep_flags"
+           ~check:(Dune_lang.Syntax.since coq_syntax (0, 10))
        and+ coqdoc_flags =
          Ordered_set_lang.Unexpanded.field
            "coqdoc_flags"
@@ -246,9 +268,11 @@ module Theory = struct
        ; project
        ; synopsis
        ; modules
+       ; modules_flags
        ; boot
        ; buildable
        ; enabled_if
+       ; coqdep_flags
        ; coqdoc_flags
        })
   ;;

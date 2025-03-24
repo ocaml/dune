@@ -113,8 +113,8 @@ end = struct
       "fs_memo_for_watching_directly"
       ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
-        watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
-        Memo.return ())
+         watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
+         Memo.return ())
   ;;
 
   let memo_for_watching_via_parent =
@@ -122,13 +122,13 @@ end = struct
       "fs_memo_for_watching_via_parent"
       ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
-        let path_to_watch =
-          Option.value
-            (Path.Outside_build_dir.parent accessed_path)
-            ~default:accessed_path
-        in
-        watch_or_record_path ~accessed_path ~path_to_watch;
-        Memo.return ())
+         let path_to_watch =
+           Option.value
+             (Path.Outside_build_dir.parent accessed_path)
+             ~default:accessed_path
+         in
+         watch_or_record_path ~accessed_path ~path_to_watch;
+         Memo.return ())
   ;;
 
   let watch ~try_to_watch_via_parent path =
@@ -224,7 +224,7 @@ end
 let path_stat path =
   let* () = Watcher.watch ~try_to_watch_via_parent:true path in
   match Fs_cache.read Fs_cache.Untracked.path_stat path with
-  | Ok { st_dev = _; st_ino = _; st_kind } as result when st_kind = S_DIR ->
+  | Ok { st_dev = _; st_ino = _; st_kind = S_DIR } as result ->
     (* If [path] is a directory, we conservatively watch it directly too,
        because its stats may change in a way that doesn't trigger an event in
        the parent. We probably don't care about such changes for now because
@@ -296,7 +296,7 @@ let dir_exists path =
 let file_digest ?(force_update = false) path =
   if force_update
   then (
-    Cached_digest.Untracked.invalidate_cached_timestamp (Path.outside_build_dir path);
+    Cached_digest.Untracked.invalidate_cached_timestamp path;
     Fs_cache.evict Fs_cache.Untracked.file_digest path);
   let+ () = Watcher.watch ~try_to_watch_via_parent:true path in
   Fs_cache.read Fs_cache.Untracked.file_digest path

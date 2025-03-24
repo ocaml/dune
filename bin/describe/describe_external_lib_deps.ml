@@ -130,56 +130,54 @@ let resolve_libs db dir libraries preprocess names package kind extensions =
 ;;
 
 let exes_extensions (lib_config : Dune_rules.Lib_config.t) modes =
-  Dune_rules.Dune_file.Executables.Link_mode.Map.to_list modes
+  Dune_rules.Executables.Link_mode.Map.to_list modes
   |> List.map ~f:(fun (m, loc) ->
-    Dune_rules.Dune_file.Executables.Link_mode.extension
+    Dune_rules.Executables.Link_mode.extension
       m
       ~loc
       ~ext_obj:lib_config.ext_obj
       ~ext_dll:lib_config.ext_dll)
 ;;
 
-let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) =
-  let { Dune_rules.Main.conf; contexts = _; _ } = build_system in
+let libs db (context : Context.t) =
   let open Memo.O in
-  let* dune_files =
-    Dune_rules.Dune_load.Dune_files.eval conf.dune_files ~context:(Context.name context)
-  in
+  let* dune_files = Context.name context |> Dune_rules.Dune_load.dune_files in
   Memo.parallel_map dune_files ~f:(fun (dune_file : Dune_rules.Dune_file.t) ->
-    Memo.parallel_map dune_file.stanzas ~f:(fun stanza ->
-      let dir = dune_file.dir in
+    Dune_file.stanzas dune_file
+    >>= Memo.parallel_map ~f:(fun stanza ->
+      let dir = Dune_file.dir dune_file in
       match Stanza.repr stanza with
-      | Dune_rules.Dune_file.Executables.T exes ->
+      | Dune_rules.Executables.T exes ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db
           dir
           exes.buildable.libraries
           exes.buildable.preprocess
-          (List.map exes.names ~f:snd)
+          (List.map (Nonempty_list.to_list exes.names) ~f:snd)
           exes.package
           Item.Kind.Executables
           (exes_extensions ocaml.lib_config exes.modes)
         >>| List.singleton
-      | Dune_rules.Dune_file.Library.T lib ->
+      | Dune_rules.Library.T lib ->
         resolve_libs
           db
           dir
           lib.buildable.libraries
           lib.buildable.preprocess
-          [ Dune_rules.Dune_file.Library.best_name lib |> Lib_name.to_string ]
-          (Dune_rules.Dune_file.Library.package lib)
+          [ Dune_rules.Library.best_name lib |> Lib_name.to_string ]
+          (Dune_rules.Library.package lib)
           Item.Kind.Library
           []
         >>| List.singleton
-      | Dune_rules.Dune_file.Tests.T tests ->
+      | Dune_rules.Tests.T tests ->
         let* ocaml = Context.ocaml context in
         resolve_libs
           db
           dir
           tests.exes.buildable.libraries
           tests.exes.buildable.preprocess
-          (List.map tests.exes.names ~f:snd)
+          (List.map (Nonempty_list.to_list tests.exes.names) ~f:snd)
           (if Option.is_none tests.package then tests.exes.package else tests.package)
           Item.Kind.Tests
           (exes_extensions ocaml.lib_config tests.exes.modes)
@@ -189,11 +187,11 @@ let libs db (context : Context.t) (build_system : Dune_rules.Main.build_system) 
   >>| List.concat
 ;;
 
-let external_resolved_libs setup (context : Context.t) =
+let external_resolved_libs (context : Context.t) =
   let open Memo.O in
   let* scope = Dune_rules.Scope.DB.find_by_dir (Context.build_dir context) in
   let db = Dune_rules.Scope.libs scope in
-  libs db context setup
+  libs db context
   >>| List.filter ~f:(fun (x : Item.t) ->
     not (List.is_empty x.external_deps && List.is_empty x.internal_deps))
 ;;
@@ -215,7 +213,7 @@ let term =
   let* setup = Import.Main.setup () in
   let* setup = Memo.run setup in
   let super_context = Import.Main.find_scontext_exn setup ~name:context_name in
-  Build_system.run_exn
+  build_exn
   @@ fun () ->
   let open Memo.O in
   let context_name =
@@ -223,7 +221,7 @@ let term =
     |> Context.name
     |> Dune_engine.Context_name.to_string
   in
-  external_resolved_libs setup (Super_context.context super_context)
+  external_resolved_libs (Super_context.context super_context)
   >>| to_dyn context_name
   >>| Describe_format.print_dyn format
 ;;

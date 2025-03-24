@@ -27,6 +27,7 @@
 
 (cram
  (applies_to
+  bytecode-stubs-external-lib
   lib-pkg_config
   lib-pkg_config-multiple-fd
   lib-external-name-need-mangling

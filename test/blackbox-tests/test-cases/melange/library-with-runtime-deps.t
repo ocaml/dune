@@ -21,11 +21,12 @@ Test `melange.runtime_deps` in a private library
   > (library
   >  (name foo)
   >  (modes melange)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./index.txt"
   > let read_asset () = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > EOF
@@ -36,7 +37,7 @@ Test `melange.runtime_deps` in a private library
   > EOF
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

@@ -4,7 +4,7 @@
 open Import
 
 type phase =
-  | Compile
+  | Compile of Ocaml.Version.t
   | Link
 
 (** The detected compiler *)

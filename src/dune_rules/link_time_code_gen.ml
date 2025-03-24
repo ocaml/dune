@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t = Link_time_code_gen_type.t =
   { to_link : Lib_flags.Lib_and_module.L.t
@@ -8,7 +9,6 @@ type t = Link_time_code_gen_type.t =
 let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code ~requires
   =
   let sctx = Compilation_context.super_context cctx in
-  let open Memo.O in
   let* module_ =
     let+ modules = Dir_contents.modules_of_lib sctx lib in
     let obj_name =
@@ -16,7 +16,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~obj_name ~name ~lib ~code
       | Some _ -> obj_name
       | None ->
         Option.map modules ~f:(fun modules ->
-          Modules.find modules name |> Option.value_exn |> Module.obj_name)
+          Modules.With_vlib.find modules name |> Option.value_exn |> Module.obj_name)
     in
     let src_dir =
       let obj_dir = Compilation_context.obj_dir cctx in
@@ -235,10 +235,7 @@ let findlib_dynload cctx lib loc =
     let open Memo.O in
     (* This shouldn't fail since findlib.dynload depends on dynlink and
        findlib. That's why it's ok to use a dummy location. *)
-    let* db =
-      let ctx = Compilation_context.context cctx in
-      Scope.DB.public_libs ctx
-    in
+    let* db = Compilation_context.context cctx |> Context.name |> Scope.DB.public_libs in
     let open Resolve.Memo.O in
     let+ dynlink = Lib.DB.resolve db (loc, Lib_name.of_string "dynlink")
     and+ findlib = Lib.DB.resolve db (loc, Lib_name.of_string "findlib") in

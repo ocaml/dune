@@ -62,33 +62,12 @@ let simplify act =
     | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
     | Symlink (x, y) -> Run ("ln", [ "-s"; x; y ]) :: Run ("rm", [ "-f"; y ]) :: acc
     | Hardlink (x, y) -> Run ("ln", [ x; y ]) :: Run ("rm", [ "-f"; y ]) :: acc
-    | System x -> Sh x :: acc
     | Bash x -> Run ("bash", [ "-e"; "-u"; "-o"; "pipefail"; "-c"; x ]) :: acc
     | Write_file (x, perm, y) ->
       interpret_perm perm x (Redirect_out (echo y, Stdout, File x) :: acc)
     | Rename (x, y) -> Run ("mv", [ x; y ]) :: acc
     | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
     | Mkdir x -> mkdir x :: acc
-    | Diff { optional; file1; file2; mode = Binary } ->
-      assert (not optional);
-      Run ("cmp", [ file1; file2 ]) :: acc
-    | Diff { optional = true; file1; file2; mode = _ } ->
-      Sh
-        (Printf.sprintf
-           "test ! -e file1 -o ! -e file2 || diff %s %s"
-           (String.quote_for_shell file1)
-           (String.quote_for_shell file2))
-      :: acc
-    | Diff { optional = false; file1; file2; mode = _ } ->
-      Run ("diff", [ file1; file2 ]) :: acc
-    | Merge_files_into (srcs, extras, target) ->
-      Sh
-        (Printf.sprintf
-           "{ echo -ne %s; cat %s; } | sort -u > %s"
-           (Filename.quote (List.map extras ~f:(sprintf "%s\n") |> String.concat ~sep:""))
-           (String.quote_list_for_shell srcs)
-           (String.quote_for_shell target))
-      :: acc
     | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Extension _ -> Sh "# extensions are not supported" :: acc
   and block act =

@@ -1,5 +1,6 @@
 type t =
   { coq_flags : string list
+  ; coqdep_flags : string list
   ; coqdoc_flags : string list
   }
 

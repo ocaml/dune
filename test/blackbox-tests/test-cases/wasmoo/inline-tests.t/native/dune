@@ -1,0 +1,3 @@
+(library
+ (name inline_tests_native)
+ (inline_tests (modes native) (backend fake_backend)))

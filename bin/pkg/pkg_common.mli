@@ -9,7 +9,7 @@ open Import
 val solver_env
   :  solver_env_from_current_system:Dune_pkg.Solver_env.t option
   -> solver_env_from_context:Dune_pkg.Solver_env.t option
-  -> unset_solver_vars_from_context:Dune_pkg.Variable_name.Set.t option
+  -> unset_solver_vars_from_context:Dune_lang.Package_variable_name.Set.t option
   -> Dune_pkg.Solver_env.t
 
 module Version_preference : sig
@@ -22,7 +22,7 @@ end
 val unset_solver_vars_of_workspace
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
-  -> Dune_pkg.Variable_name.Set.t option
+  -> Dune_lang.Package_variable_name.Set.t option
 
 val repositories_of_workspace
   :  Workspace.t
@@ -31,7 +31,7 @@ val repositories_of_workspace
 val repositories_of_lock_dir
   :  Workspace.t
   -> lock_dir_path:Path.Source.t
-  -> Dune_pkg.Pkg_workspace.Repository.Name.t list
+  -> (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
 
 val constraints_of_workspace
   :  Workspace.t
@@ -40,11 +40,10 @@ val constraints_of_workspace
 
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
-  -> repositories:Dune_pkg.Pkg_workspace.Repository.Name.t list
-  -> update_opam_repositories:bool
+  -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
   -> Dune_pkg.Opam_repo.t list Fiber.t
 
-val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Fiber.t
+val find_local_packages : Dune_pkg.Local_package.t Package_name.Map.t Memo.t
 
 module Lock_dirs_arg : sig
   (** [Lock_dirs_arg.t] is the type of lock directory arguments. This can be
@@ -57,7 +56,7 @@ module Lock_dirs_arg : sig
       [Lock_dirs_arg.lock_dirs_of_workspace].
 
       There are two mutually exclusive cases:
-      - The user passed a list of lick directories as positonal
+      - The user passed a list of lick directories as positional
         arguments.contents
       - The user passed the ["--all"] flag, in which case all lock directories
         of the workspace are considered. *)
@@ -74,6 +73,6 @@ module Lock_dirs_arg : sig
   val lock_dirs_of_workspace : t -> Workspace.t -> Path.Source.t list
 end
 
-(** [pp_packages lock_dir] returns a list of pretty-printed packages occuring in
+(** [pp_packages lock_dir] returns a list of pretty-printed packages occurring in
     [lock_dir]. *)
-val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> 'a Pp.t
+val pp_packages : Dune_pkg.Lock_dir.Pkg.t list -> User_message.Style.t Pp.t

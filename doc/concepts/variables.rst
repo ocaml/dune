@@ -1,6 +1,10 @@
 Variables
 =========
 
+.. TODO(diataxis)
+   - reference: variables
+   - explanation: rule loading
+
 Some fields can contains variables that are expanded by Dune.
 The syntax of variables is as follows:
 
@@ -26,8 +30,8 @@ Dune supports the following variables:
   the value of ``workspace_root`` isn't constant and depends on
   whether your project is vendored or not.
 -  ``cc`` is the C compiler command line (list made of the compiler
-   name followed by its flags) that will be used to compile foreign code.
-   For more details about its content, please see :ref:`this section <flags-flow>`.
+   name followed by its flags) that will be used to compile foreign code. For
+   more details about its content, please see :doc:`/reference/foreign-flags`.
 -  ``cxx`` is the C++ compiler command line being used in the
    current build context.
 -  ``ocaml_bin`` is the path where ``ocamlc`` lives.
@@ -62,7 +66,7 @@ Dune supports the following variables:
   the same as ``ocaml-config:model``.
 - ``system`` is the name of the OS the build is targeting. This is the same as
   ``ocaml-config:system``.
-- ``ignoring_promoted_rule`` is ``true`` if
+- ``ignoring_promoted_rules`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise.
 - ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
@@ -84,14 +88,16 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context.
 - ``bin:<program>`` expands ``<path>`` to ``program``. If ``program``
-  is installed by a workspace package (see :ref:`install` stanzas),
-  the locally built binary will be used, otherwise it will be searched
-  in the ``<path>`` of the current build context. Note that ``(run
-  %{bin:program} ...)`` and ``(run program ...)`` behave in the same
-  way. ``%{bin:...}`` is only necessary when you are using ``(bash
-  ...)`` or ``(system ...)``.
+  is installed by a workspace package (see :doc:`/reference/dune/install`
+  stanzas), the locally built binary will be used, otherwise it will be
+  searched in the ``<path>`` of the current build context. Note that ``(run
+  %{bin:program} ...)`` and ``(run program ...)`` behave in the same way.
+  ``%{bin:...}`` is only necessary when you are using ``(bash ...)`` or
+  ``(system ...)``.
 - ``bin-available:<program>`` expands to ``true`` or ``false``, depending
   on whether ``<program>`` is available or not.
+- ``file-available:<path>`` expands to ``true`` or ``false``, depending on
+  whether the file at ``<path>`` is available in the current workspace.
 - ``lib:<public-library-name>:<file>`` expands to the file's installation path
   ``<file>`` in the library ``<public-library-name>``. If
   ``<public-library-name>`` is available in the current workspace, the local
@@ -168,8 +174,8 @@ creates a cycle.
 Some cycles might be more complex. In any case, when you see such an
 error, the easiest thing to do is move the file that's being read
 to a different directory, preferably a standalone one. You can use the
-:ref:`subdir` stanza to keep the logic self-contained in the same
-``dune`` file:
+:doc:`/reference/dune/subdir` stanza to keep the logic self-contained in
+the same ``dune`` file:
 
 .. code:: dune
 

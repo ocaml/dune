@@ -20,7 +20,7 @@ Test that we can set variables
 
   $ cat >dune.lock/usetest.pkg <<EOF
   > (version 0.0.1)
-  > (deps test)
+  > (depends test)
   > (build
   >  (progn
   >   (system "\| echo abool: %{pkg:test:abool}
@@ -67,5 +67,4 @@ Now we demonstrate we get a proper error from invalid .config files:
            ^^
   Error parsing test.config
   Reason: Parse error
-  -> required by _build/_private/default/.pkg/test/target/cookie
-  -> required by - package usetest
+  -> required by _build/_private/default/.pkg/test/target

@@ -2,15 +2,13 @@
 Working on the Dune Codebase
 ****************************
 
+.. TODO(diataxis)
+   This can be folded either in a meta section or as an how-to guide.
+
 This section gives guidelines for working on Dune itself. Many of these are
 general guidelines specific to Dune. However, given that Dune is a large project
 developed by many different people, it's important to follow these guidelines in
 order to keep the project in a good state and pleasant to work on for everybody.
-
-.. contents:: Table of Contents
-   :depth: 1
-   :local:
-   :backlinks: none
 
 Dependencies
 ============
@@ -21,25 +19,18 @@ To create a directory-local opam switch with the dependencies necessary to build
 
   $ make dev-switch
 
+This can also be used to keep the switch updated when dependencies change.
+
+The ``Makefile`` also has a ``make dev-deps`` which will install just the
+dependencies used by tests. These are marked ``{ with-dev-setup }`` in Dune's
+opam file.
+
 Bootstrapping
 =============
 
-In order to build itself, Dune uses a micro dune written as a single
-``boot/duneboot.ml`` file. This micro build system cannot read ``dune`` files
-and instead has the configuration hard-coded in ``boot/libs.ml``. This latter
-file is automatically updated during development when we modify the ``dune``
-files in the repository. ``boot/duneboot.ml`` itself is built with a single
-invocation of ``ocamlopt`` or ``ocamlc`` via the ``bootstrap.ml`` OCaml script.
-
-``boot/duneboot.ml`` builds a ``dune.exe`` binary in the ``_boot`` directory
-and uses this binary to build everything else. As a convenience, ``dune.exe``
-at the root of the source tree executes this binary.
-
-Running:
-```
-make dev
-```
-bootstraps (if necessary) and runs ``./dune.exe build @install``.
+Dune uses Dune as its build system, which requires some specific commands to
+work. Running ``make dev`` bootstraps (if necessary) and runs ``./dune.exe
+build @install``.
 
 If you want to just run the bootstrapping step itself, build the ``bootstrap``
 phony target with
@@ -62,12 +53,15 @@ Here are the most common commands you'll be running:
    # run a particular cram foo.t:
    $ ./dune.exe build @foo
 
-Note that tests are currently written for version 4.14.1 of the OCaml compiler.
+
+Note that tests are currently written for version 5.1.1 of the OCaml compiler.
 Some tests depend on the specific wording of compilation errors which can change
 between compiler versions, so to reliably run the tests make sure that
-`ocaml.4.14.1` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
+``ocaml.5.1.1`` is installed. The ``TEST_OCAMLVERSION`` in the ``Makefile`` at
 the root of the Dune repo contains the current compiler version for which tests
 are written.
+
+.. seealso:: :doc:`explanation/bootstrap`
 
 Writing Tests
 =============
@@ -114,7 +108,15 @@ For integration tests, we use a system similar to `Cram tests
 
 .. _ppx_expect:      https://github.com/janestreet/ppx_expect
 
-When running dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
+.. seealso::
+
+   `actions_to_sh tests <https://github.com/ocaml/dune/blob/3.12.2/test/expect-tests/dune_engine/action_to_sh_tests.ml>`_
+     An example of expect-tests.
+
+   `mdx-stanza/locks.t <https://github.com/ocaml/dune/blob/3.12.2/test/blackbox-tests/test-cases/mdx-stanza/locks.t>`_
+     An example of Cram test.
+
+When running Dune inside tests, the ``INSIDE_DUNE`` environment variable is set.
 This has the following effects:
 
 * Change the default root detection behaviour to use the current directory
@@ -204,6 +206,8 @@ consists of two steps:
 * Running ``$ make opam-release`` to create the release tarball. Then publish it
   to GitHub and submit it to opam.
 
+.. _dune-release: https://github.com/tarides/dune-release
+
 Major & Feature Releases
 ------------------------
 
@@ -282,7 +286,7 @@ Such languages must be enabled in the ``dune`` project file separately:
 
 .. code:: dune
 
-   (lang dune 3.13)
+   (lang dune 3.18)
    (using coq 0.8)
 
 If such extensions are experimental, it's recommended that they pass
@@ -340,7 +344,7 @@ Documentation
 User documentation lives in the ``./doc`` directory.
 
 In order to build the user documentation, you must install python-sphinx_,
-sphinx_rtd_theme_ and sphinx-copybutton_.
+sphinx-design_, sphinx-copybutton_, myst-parser_, and furo_.
 
 Build the documentation with
 
@@ -354,11 +358,15 @@ For automatically updated builds, you can install sphinx-autobuild_, and run
 
    $ make livedoc
 
+.. seealso::
+    ``doc/requirements.txt`` for an always up-to-date list of packages to install
+
 .. _python-sphinx: http://www.sphinx-doc.org/en/master/usage/installation.html
-.. _sphinx_rtd_theme: https://sphinx-rtd-theme.readthedocs.io/en/stable/
-.. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _sphinx-design: https://sphinx-design.readthedocs.io/en/latest/index.html
 .. _sphinx-copybutton: https://sphinx-copybutton.readthedocs.io/en/latest/index.html
-.. _dune-release: https://github.com/ocamllabs/dune-release
+.. _sphinx-autobuild: https://pypi.org/project/sphinx-autobuild/
+.. _myst-parser: https://myst-parser.readthedocs.io/en/latest/
+.. _furo: https://sphinx-themes.org/sample-sites/furo/
 
 Nix users may drop into a development shell with the necessary dependencies for
 building docs ``nix develop .#doc``.
@@ -396,7 +404,7 @@ For links, prefer references that use ``:doc:`` (link to a whole document) or
 ``:term:`` (link to a definition in the glossary) to ``:ref:``.
 
 Use the right lexers:
-- ``dune`` for dune and related files
+- ``dune`` for ``dune`` and related files
 - ``opam`` for opam files
 - ``console`` for shell sessions and commands (start with ``$``)
 - ``cram`` for cram tests
@@ -433,20 +441,20 @@ Vendoring
 =========
 
 Dune vendors some code that it uses internally. This is done to make installing
-dune easy as it requires nothing but an OCaml compiler as well as to prevent
+Dune easy as it requires nothing but an OCaml compiler as well as to prevent
 circular dependencies. Before vendoring, make sure that the license of the code
-allows it to be included in dune.
+allows it to be included in Dune.
 
 The vendored code lives in the ``vendor/`` subdirectory. To vendor new code,
 create a shell script ``update-<library>.sh``, that will be launched from the
 ``vendor/`` folder to download and unpack the source and copy the necessary
 source files into the ``vendor/<library>`` folder. Try to keep the amount of
-source code imported minimal, e.g. leave out ``dune-project`` files, For the
-most part it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
+source code imported minimal, e.g., leave out ``dune-project`` files. For the
+most part, it should be enough to copy ``.ml`` and ``.mli`` files. Make sure to
 also include the license if there is such a file in the code to be vendored to
 stay compliant.
 
-As these sources get vendored not as sub-projects but parts of dune, you need
+As these sources get vendored not as subprojects but parts of Dune, you need
 to deal with ``public_name``. The preferred way is to remove the
 ``public_name`` and only use the private name. If that is not possible, the
 library can be renamed into ``dune-private-libs.<library>``.
@@ -457,12 +465,12 @@ you can commit the modified files to ``dune`` and make the
 file.
 
 For larger modifications, it is better to fork the upstream project in the
-ocaml-dune_ organisation and then vendor the forked copy in dune. This makes
+ocaml-dune_ organisation and then vendor the forked copy in Dune. This makes
 the changes better visible and easier to update from upstream in the long run
 while keeping our custom patches in sync. The changes to the ``dune`` files are
 to be kept in the Dune repository.
 
-It is preferable to cut out as many dependencies as possible, e.g. ones that
+It is preferable to cut out as many dependencies as possible, e.g., ones that
 are only necessary on older OCaml versions or build-time dependencies.
 
 .. _ocaml-dune: https://github.com/ocaml-dune/
@@ -506,7 +514,7 @@ Good:
 - Every module should have toplevel documentation that describes the module
   briefly. This is a good place to discuss its purpose, invariants, etc.
 
-- Keep interfaces short & sweet. The less functions, types, etc. there are, the
+- Keep interfaces short & sweet. The less functions, types, etc., there are, the
   easier it is for users to understand, use, and ultimately modify the
   interface correctly. Instead of creating elaborate interfaces with the hope
   of future-proofing every use case, embrace change and make it easier to throw
@@ -636,7 +644,7 @@ Good:
 - When ignoring the value of a let binding ``let _ = ...``,  we add type
   annotations to the ignored value ``let (_ : t) = ...``. We do this convention
   because:
-  
+
  * We need to make sure we never ignore ``Fiber.t`` accidentally. Functions that
    return ``Fiber.t`` are always free of side effects so we need to bind on the
    result to force the side effect.
@@ -686,7 +694,7 @@ to keep the code consistent.
 
 - Introduce bindings that will allow opportunities for record or label punning.
 
-- Do not write inverted if-else expressions. 
+- Do not write inverted if-else expressions.
 
 Bad:
 
@@ -705,7 +713,7 @@ Good:
   module types.
 
 - Avoid qualifying constructors and record fields. Instead, add type
-  annotations to the type being matched on or being constructed. E.g.
+  annotations to the type being matched on or being constructed, e.g.,
 
 Bad:
 
@@ -734,16 +742,16 @@ a "clean build". Afterwards, the build will be run 5 more times and are termed
 the "Null builds".
 
 In each run of the CI, there will be an ``ocaml-benchmarks`` status in the
-sumamry. Clicking ``Details`` will show a bench report.
+summary. Clicking ``Details`` will show a bench report.
 
 The report contains the following information:
 
-- The build times for Clean and Null builds.
-- The size of the ``dune.exe`` binary.
-- User CPU times for the Clean and Null builds.
-- System CPU times for the Clean and Null builds.
+- The build times for Clean and Null builds
+- The size of the ``dune.exe`` binary
+- User CPU times for the Clean and Null builds
+- System CPU times for the Clean and Null builds
 - All the garbage collection stats apart from "forced collections" for Clean and
-  Null builds.
+  Null builds
 
 Pull requests that add new libraries are likely to increase the size of the dune
 binary.
@@ -766,7 +774,7 @@ Build-Time Benchmarks
 
 We benchmark the build time of Dune in every PR. The times can be found here:
 
-https://autumn.ocamllabs.io/ocaml/dune?worker=autumn&image=bench.Dockerfile
+https://bench.ci.dev/ocaml/dune?worker=autumn&image=bench.Dockerfile
 
 
 Melange Bench
@@ -779,46 +787,12 @@ https://ocaml.github.io/dune/dev/bench/
 Monorepo Benchmark
 ------------------
 
-The file bench/monorepo/bench.Dockerfile sets up a Docker container for
-benchmarking Dune building a large monorepo constructed with
-`opam-monorepo <https://github.com/tarides/opam-monorepo>`_. The monorepo is
-constructed according to the files in
-https://github.com/ocaml-dune/ocaml-monorepo-benchmark/tree/main/benchmark.
-Build the Docker image from the root directory of this repo.
+We benchmark the performance of Dune in building a large monorepo in every
+PR. The benchmark results can be found here:
 
-E.g., run
+https://bench.ci.dev/ocaml/dune/branch/main?worker=fermat&image=bench%2Fmonorepo%2Fbench.Dockerfile
 
-.. code:: console
-
-   $ docker build . -f bench/monorepo/bench.Dockerfile --tag=dune-monorepo-benchmark
-
-The monorepo benchmark Docker image requires ``duniverse`` directory to be mounted
-as a volume. Generate this directory with a script from the
-`ocaml-monorepo-benchmark <https://github.com/ocaml-dune/ocaml-monorepo-benchmark>`_
-repository:
-
-.. code:: console
-
-   $ git clone https://github.com/ocaml-dune/ocaml-monorepo-benchmark.git
-   $ cd ocaml-monorepo-benchmark
-   $ ./generate-duniverse.sh /tmp
-
-This will create a directory ``/tmp/duniverse``. Then to run the benchmark, run
-the Docker image in a container mounting ``/tmp/duniverse`` as a volume at
-``/home/opam/bench-dir/current-bench-data/duniverse`` (that specific path is a
-requirement of `current-bench <https://github.com/ocurrent/current-bench>`_).
-From within the container the benchmarks can be started by running `make bench`.
-Do all this in a single command with:
-
-.. code:: console
-
-   $ docker run -it --volume=/tmp/duniverse:/home/opam/bench-dir/current-bench-data/duniverse dune-monorepo-benchmark bash --login -c 'make bench'
-
-The benchmark will print out a JSON string in the format accepted by
-`current-bench <https://github.com/ocurrent/current-bench>`_.
-
-Read more at
-https://github.com/ocaml/dune/blob/main/bench/monorepo/README.md.
+You can find more information about these benchmarks `here <./dev/monorepo-bench.md>`_.
 
 Formatting
 ==========

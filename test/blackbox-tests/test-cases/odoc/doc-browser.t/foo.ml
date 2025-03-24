@@ -1,1 +1,1 @@
-print_endline "Hello Caml"
+let a = 123

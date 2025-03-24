@@ -36,7 +36,7 @@ The [example][example] directory contains examples of projects using Dune.
 
 [manual]: https://dune.readthedocs.io/en/latest/
 [quick-start]: https://dune.readthedocs.io/en/latest/quick-start.html
-[example]: https://github.com/ocaml/dune/tree/master/example
+[example]: https://github.com/ocaml/dune/tree/main/example
 [merlin]: https://github.com/ocaml/merlin
 [opam]: https://opam.ocaml.org
 [issues]: https://github.com/ocaml/dune/issues

@@ -4,15 +4,13 @@ open Import
 module Action_output_on_success := Execution_parameters.Action_output_on_success
 module Action_output_limit := Execution_parameters.Action_output_limit
 
-val with_directory_annot : Path.t User_message.Annots.Key.t
-
 module Failure_mode : sig
   (** How to handle sub-process failures *)
   type ('a, 'b) t =
     | Strict : ('a, 'a) t (** Fail if the process exits with anything else than [0] *)
     | Accept : int Predicate.t -> ('a, ('a, int) result) t
     (** Accept the following non-zero exit codes, and return [Error code] if
-        the process exists with one of these codes. *)
+        the process exits with one of these codes. *)
     | Return : ('a, 'a * int) t (** Accept any error code and return it. *)
 end
 
@@ -70,7 +68,7 @@ type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
   ; name : string option
-  (** name when emitting stats. defaults to the basename of the executable *)
+    (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
   }

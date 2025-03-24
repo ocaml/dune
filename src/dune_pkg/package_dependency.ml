@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 include Dune_lang.Package_dependency
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
@@ -7,7 +7,7 @@ module Convert_from_opam_error = struct
   type t =
     | Can't_convert_opam_filter_to_value of OpamTypes.filter
     | Can't_convert_opam_filter_to_condition of OpamTypes.filter
-    | Filtered_formula_is_not_a_conjunction_of_atoms of
+    | Filtered_formula_is_not_the_correct_kind of
         { non_atom : OpamTypes.filtered_formula }
 end
 
@@ -42,10 +42,10 @@ module Constraint = struct
   end
 
   module Variable = struct
-    include Variable
+    include Package_variable_name
 
-    let to_opam { name } = nopos (OpamParserTypes.FullPos.Ident name)
-    let to_opam_filter { name } = OpamTypes.FIdent ([], OpamVariable.of_string name, None)
+    let to_opam_filter (t : t) = OpamTypes.FIdent ([], to_opam t, None)
+    let to_opam t = nopos (OpamParserTypes.FullPos.Ident (to_string t))
   end
 
   module Value = struct
@@ -67,8 +67,7 @@ module Constraint = struct
       | FString string -> Ok (Value.String_literal string)
       | FBool true -> Ok (Value.String_literal "true")
       | FBool false -> Ok (Value.String_literal "false")
-      | FIdent ([], name, None) ->
-        Ok (Value.Variable { name = OpamVariable.to_string name })
+      | FIdent ([], name, None) -> Ok (Value.Variable (Variable.of_opam name))
       | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_value filter)
     ;;
   end
@@ -86,12 +85,18 @@ module Constraint = struct
               (Value.to_opam_filter lhs, Op.to_relop_pelem op, Value.to_opam_filter rhs)))
     | And conjunction -> OpamFormula.ands (List.map conjunction ~f:to_opam_condition)
     | Or disjunction -> OpamFormula.ors (List.map disjunction ~f:to_opam_condition)
+    | Not constraint_ ->
+      OpamFormula.neg
+        (function
+          | OpamTypes.Constraint (op, v) -> Constraint (OpamFormula.neg_relop op, v)
+          | Filter f -> Filter (FNot f))
+        (to_opam_condition constraint_)
   ;;
 
   let rec of_opam_filter (filter : OpamTypes.filter) =
     let open Result.O in
     match filter with
-    | FIdent ([], name, None) -> Ok (Bvar { name = OpamVariable.to_string name })
+    | FIdent ([], name, None) -> Ok (Bvar (Variable.of_opam name))
     | FOp (lhs, relop, rhs) ->
       let op = Op.of_opam relop in
       let+ lhs = Value.of_opam_filter lhs
@@ -105,6 +110,9 @@ module Constraint = struct
       let+ lhs = of_opam_filter lhs
       and+ rhs = of_opam_filter rhs in
       Or [ lhs; rhs ]
+    | FNot constraint_ ->
+      let+ constraint_ = of_opam_filter constraint_ in
+      Not constraint_
     | _ -> Error (Convert_from_opam_error.Can't_convert_opam_filter_to_condition filter)
   ;;
 
@@ -139,6 +147,7 @@ type context =
   | Root
   | Ctx_and
   | Ctx_or
+  | Ctx_not
 
 (* The printer in opam-file-format does not insert parentheses on its own,
    but it is possible to use the [Group] constructor with a singleton to
@@ -166,15 +175,27 @@ let opam_constraint t : OpamParserTypes.FullPos.value =
            ( nopos @@ Constraint.Op.to_opam op
            , Constraint.Value.to_opam x
            , Constraint.Value.to_opam y ))
-    | And cs -> logical_op `And cs ~inner_ctx:Ctx_and ~group_needed:false
+    | And cs ->
+      let group_needed =
+        match context with
+        | Root -> false
+        | Ctx_and -> false
+        | Ctx_or -> false
+        | Ctx_not -> true
+      in
+      logical_op `And cs ~inner_ctx:Ctx_and ~group_needed
     | Or cs ->
       let group_needed =
         match context with
         | Root -> false
         | Ctx_and -> true
         | Ctx_or -> false
+        | Ctx_not -> true
       in
       logical_op `Or cs ~inner_ctx:Ctx_or ~group_needed
+    | Not c ->
+      let _c = opam_constraint Ctx_not c in
+      nopos (Pfxop (nopos `Not, _c))
   and logical_op op cs ~inner_ctx ~group_needed =
     List.map cs ~f:(opam_constraint inner_ctx) |> op_list op |> group_if group_needed
   in
@@ -189,22 +210,20 @@ let opam_depend { name; constraint_ } =
   | Some c -> nopos (OpamParserTypes.FullPos.Option (pkg, nopos [ c ]))
 ;;
 
-let list_to_opam_filtered_formula ts =
-  List.map ts ~f:(fun { name; constraint_ } ->
-    let opam_package_name = Package_name.to_opam_package_name name in
-    let condition =
-      match constraint_ with
-      | None -> OpamTypes.Empty
-      | Some constraint_ -> Constraint.to_opam_condition constraint_
-    in
-    OpamFormula.Atom (opam_package_name, condition))
-  |> OpamFormula.ands
+let to_opam_filtered_formula { name; constraint_ } =
+  let opam_package_name = Package_name.to_opam_package_name name in
+  let condition =
+    match constraint_ with
+    | None -> OpamTypes.Empty
+    | Some constraint_ -> Constraint.to_opam_condition constraint_
+  in
+  OpamFormula.Atom (opam_package_name, condition)
 ;;
 
-let list_of_opam_filtered_formula loc filtered_formula =
+let list_of_opam_disjunction loc filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    OpamFormula.ands_to_list filtered_formula
+    OpamFormula.ors_to_list filtered_formula
     |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
       match filtered_formula with
       | Atom (name, condition) ->
@@ -212,8 +231,7 @@ let list_of_opam_filtered_formula loc filtered_formula =
         (match Constraint.opt_of_opam_condition condition with
          | Ok constraint_ -> { name; constraint_ }
          | Error error -> raise (E error))
-      | non_atom ->
-        raise (E (Filtered_formula_is_not_a_conjunction_of_atoms { non_atom })))
+      | non_atom -> raise (E (Filtered_formula_is_not_the_correct_kind { non_atom })))
   with
   | E e ->
     let message =
@@ -230,10 +248,10 @@ let list_of_opam_filtered_formula loc filtered_formula =
           "Can't convert opam filter '%s' into dune condition. Only global variables may \
            appear in this position."
           filter_string
-      | Filtered_formula_is_not_a_conjunction_of_atoms { non_atom } ->
+      | Filtered_formula_is_not_the_correct_kind { non_atom } ->
         let formula_string = OpamFilter.string_of_filtered_formula non_atom in
         sprintf
-          "Expected formula to be a conjunction of atoms but encountered non-atom term \
+          "Expected formula to be a disjunction of atoms but encountered non-atom term \
            '%s'"
           formula_string
     in

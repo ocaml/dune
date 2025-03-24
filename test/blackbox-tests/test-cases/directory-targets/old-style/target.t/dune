@@ -19,5 +19,4 @@
 (alias
  (name cat_dir)
  (deps dir)
- (action (run ./cat_dir.exe dir))
- )
+ (action (run ./cat_dir.exe dir)))

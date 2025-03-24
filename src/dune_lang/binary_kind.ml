@@ -6,7 +6,6 @@ type t =
   | Object
   | Shared_object
   | Plugin
-  | Js
 
 let compare x y =
   match x, y with
@@ -23,9 +22,6 @@ let compare x y =
   | Shared_object, _ -> Lt
   | _, Shared_object -> Gt
   | Plugin, Plugin -> Eq
-  | Plugin, _ -> Lt
-  | _, Plugin -> Gt
-  | Js, Js -> Eq
 ;;
 
 let decode =
@@ -37,7 +33,6 @@ let decode =
     ; "object", return Object
     ; "shared_object", return Shared_object
     ; "plugin", Syntax.since Stanza.syntax (2, 4) >>> return Plugin
-    ; "js", Syntax.since Stanza.syntax (1, 11) >>> return Js
     ]
 ;;
 
@@ -47,9 +42,8 @@ let to_string = function
   | Object -> "object"
   | Shared_object -> "shared_object"
   | Plugin -> "plugin"
-  | Js -> "js"
 ;;
 
 let to_dyn t = Dyn.variant (to_string t) []
 let encode t = Dune_sexp.atom (to_string t)
-let all = [ C; Exe; Object; Shared_object; Plugin; Js ]
+let all = [ C; Exe; Object; Shared_object; Plugin ]

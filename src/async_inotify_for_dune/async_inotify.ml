@@ -87,8 +87,9 @@ let process_raw_events t events =
   let watch_table = t.watch_table in
   let ev_kinds =
     List.concat_map events ~f:(fun (watch, ev_kinds, trans_id, fn) ->
-      if Inotify.int_of_watch watch = -1
-         (* queue overflow event is always reported on watch -1 *)
+      if
+        Inotify.int_of_watch watch = -1
+        (* queue overflow event is always reported on watch -1 *)
       then
         List.filter_map ev_kinds ~f:(fun ev ->
           match ev with
@@ -160,10 +161,10 @@ let pump_events t ~spawn_thread =
 ;;
 
 let create
-  ~spawn_thread
-  ~modify_event_selector
-  ~log_error
-  ~send_emit_events_job_to_scheduler
+      ~spawn_thread
+      ~modify_event_selector
+      ~log_error
+      ~send_emit_events_job_to_scheduler
   =
   let fd = Inotify.create () in
   let watch_table = Table.create (module Inotify_watch) 10 in

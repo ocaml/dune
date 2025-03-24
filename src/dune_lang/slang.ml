@@ -215,8 +215,8 @@ let rec simplify = function
            (* only quote strings when not quoting them would be an error *)
            not
              (List.for_all parts ~f:(function
-               | `Pform _ -> true
-               | `Text s -> Atom.is_valid s))
+                | `Pform _ -> true
+                | `Text s -> Atom.is_valid s))
          in
          let combined_sw = String_with_vars.make ~quoted loc parts in
          Literal combined_sw)

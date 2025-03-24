@@ -1,21 +1,21 @@
+This test checks whether a custom lock dir can be created, without having to
+specify it in the context.
+
   $ . ./helpers.sh
-
   $ mkrepo
-
   $ mkpkg a <<EOF
   > EOF
-
   $ mkpkg b <<EOF
   > EOF
 
-  $  cat > dune-workspace <<EOF
+  $ cat > dune-workspace <<EOF
   > (lang dune 3.12)
   > (lock_dir
   >  (path foo.lock)
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
   $ cat > dune-project <<EOF
@@ -24,6 +24,8 @@
   >  (name foo)
   >  (depends a b))
   > EOF
+
+Specifying the directory to the lock command should work:
 
   $ dune pkg lock foo.lock
   Solution for foo.lock:

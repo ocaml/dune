@@ -1,7 +1,7 @@
 File targets overlapping with directories
 
   $ dune build @all
-  File "dune", line 1, characters 0-57:
+  File "dune", lines 1-3, characters 0-57:
   1 | (rule
   2 |  (targets dir)
   3 |  (action (bash "mkdir %{targets}")))

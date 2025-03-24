@@ -10,6 +10,7 @@ Test error message for modules belonging to melange.emit and another stanza
   >  (name lib)
   >  (modes melange))
   > (melange.emit
+  >  (emit_stdlib false)
   >  (target output))
   > EOF
 

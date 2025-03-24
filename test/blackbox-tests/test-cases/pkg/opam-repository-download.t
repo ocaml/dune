@@ -16,8 +16,6 @@ Make a mock repo tarball that will get used by dune to download the package
   $ git commit -m "Initial commit" --quiet
   $ REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
-  $ mkdir fake-xdg-cache
-  $ export XDG_CACHE_HOME=$(pwd)/fake-xdg-cache
 
   $ cat > dune-project <<EOF
   > (lang dune 3.10)
@@ -27,51 +25,33 @@ Make a mock repo tarball that will get used by dune to download the package
   >   (name baz)
   >   (depends bar))
   > EOF
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
 
   $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
 
-Our custom cache folder should be populated with the unpacked tarball
-containing the repository:
+Our cache folder should be populated with a revision store:
 
-  $ find fake-xdg-cache | grep HEAD | sort
-  fake-xdg-cache/dune/git-repo/FETCH_HEAD
-  fake-xdg-cache/dune/git-repo/HEAD
+  $ find $XDG_CACHE_HOME | grep HEAD | sort
+  $TESTCASE_ROOT/.cache/dune/git-repo/HEAD
 
-Automatically download the repo and make sure lock.dune contains the repo hash
-(exit code 0 from grep, we don't care about the output as it is not
-reproducible)
+Make sure lock.dune contains the repo hash:
 
-  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
+  $ grep "mock-opam-repository#$REPO_HASH" dune.lock/lock.dune > /dev/null
 
 Now try it with an a path. Given it is not a git URL, it can't be reproduced on
 other systems and thus shouldn't be included.
 
-  $ rm -r dune.lock
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ rm -r dune.lock dune-workspace
+  $ add_mock_repo_if_needed "file://$(pwd)/mock-opam-repository"
   $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
 
-  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null || echo "not found"
+  $ grep "mock-opam-repository#$REPO_HASH" dune.lock/lock.dune > /dev/null || echo "not found"
   not found
 
 We also test that it is possible to specify a specific commit when locking a
@@ -86,37 +66,24 @@ in the repo and make sure it locks the older version.
   $ NEW_REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
 
-  $ rm -r dune.lock
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"))
-  > EOF
+  $ rm -r dune.lock dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${REPO_HASH}"
   $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.0.1
-  $ grep "git_hash $REPO_HASH" dune.lock/lock.dune > /dev/null
+  $ grep "mock-opam-repository#$REPO_HASH" dune.lock/lock.dune > /dev/null
 
 If we specify no branch however, it should be using the latest commit in the
 repository and thus the new foo package.
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name foo)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (lock_dir
-  >  (repositories foo))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
   $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
-  $ grep "git_hash $NEW_REPO_HASH" dune.lock/lock.dune > /dev/null
+  $ grep "mock-opam-repository#$NEW_REPO_HASH" dune.lock/lock.dune > /dev/null
 
 A new package is released in the repo:
 
@@ -126,19 +93,14 @@ A new package is released in the repo:
   $ cd mock-opam-repository
   $ git add -A
   $ git commit -m "bar.1.0.0" --quiet
+  $ NEWEST_REPO_HASH=$(git rev-parse HEAD)
   $ cd ..
 
 Since we have a working cached copy we get the old version of `bar` if we opt
 out of the auto update.
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (lock_dir
-  >  (repositories mock))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${NEW_REPO_HASH}"
 
 To be safe it doesn't access the repo, we make sure to move the mock-repo away
 
@@ -147,7 +109,7 @@ To be safe it doesn't access the repo, we make sure to move the mock-repo away
 So now the test should work as it can't access the repo:
 
   $ rm -r dune.lock
-  $ dune pkg lock --skip-update
+  $ dune pkg lock
   Solution for dune.lock:
   - bar.0.0.1
   - foo.0.1.0
@@ -155,6 +117,8 @@ So now the test should work as it can't access the repo:
 But it will also get the new version of bar if we attempt to lock again (having
 restored the repo to where it was before)
 
+  $ rm -r dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#${NEWEST_REPO_HASH}"
   $ mv elsewhere mock-opam-repository
   $ rm -r dune.lock
   $ dune pkg lock
@@ -176,14 +140,8 @@ sure that the default branch differs from `bar-2`).
   $ git switch --quiet -
   $ cd ..
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#bar-2"))
-  > (lock_dir
-  >  (repositories mock))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#bar-2"
 
 Locking that branch should work and pick `bar.2.0.0`:
 
@@ -208,14 +166,8 @@ of the main branch.
 
 The repo should be using the `1.0` tag, as we don't want `bar.3.0.0`.
 
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository#1.0"))
-  > (lock_dir
-  >  (repositories mock))
-  > EOF
+  $ rm dune-workspace
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository#1.0"
 
 So we should get `bar.1.0.0` when locking.
 
@@ -224,61 +176,3 @@ So we should get `bar.1.0.0` when locking.
   Solution for dune.lock:
   - bar.1.0.0
   - foo.0.1.0
-
-We want to make sure locking works even with submodules:
-
-  $ rm -r mock-opam-repository
-  $ mkrepo
-  $ mkpkg foo <<EOF
-  > EOF
-  $ mkpkg bar <<EOF
-  > depends: [ "foo" ]
-  > EOF
-
-We move `packages` into a different folder
-
-  $ mkdir remote-submodule
-  $ mv mock-opam-repository/packages/* remote-submodule
-  $ rm -r mock-opam-repository/packages
-
-And create it as a separate repo, this time with the packages in the root:
-
-  $ cd remote-submodule
-  $ git init --quiet
-  $ git add -A
-  $ git commit -m "Initial subrepo commit" --quiet
-  $ cd ..
-
-In our mock repository, we make sure to add the submodule as `packages`:
-
-  $ cd mock-opam-repository
-  $ git init --quiet
-  $ GIT_ALLOW_PROTOCOL=file git submodule add ../remote-submodule packages
-  Cloning into '$TESTCASE_ROOT/mock-opam-repository/packages'...
-  done.
-  $ git commit -m "Initial opam-repo commit" --quiet
-  $ git submodule init
-  $ cd ..
-
-We'll use the mock repository as source:
-
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (lock_dir
-  >  (repositories mock))
-  > EOF
-
-We should be able to successfully solve the project with `foo` and `bar`,
-however due to some issues this currently fails:
-
-  $ rm -r dune.lock
-  $ dune pkg lock
-  Error: Unable to solve dependencies for dune.lock:
-  Can't find all required versions.
-  Selected: baz.dev
-  - bar -> (problem)
-      No known implementations at all
-  [1]

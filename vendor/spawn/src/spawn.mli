@@ -6,10 +6,10 @@
 
 module Working_dir : sig
   type t =
-    | Path of string  (** Path in the filesystem *)
+    | Path of string (** Path in the filesystem *)
     | Fd of Unix.file_descr
         (** File descriptor pointing to a directory. Not supported on Windows. *)
-    | Inherit  (** Inherit the working directory of the current process *)
+    | Inherit (** Inherit the working directory of the current process *)
 end
 
 module Unix_backend : sig
@@ -110,8 +110,8 @@ end
     [unix_backend] describes what backend to use on Unix. If set to [Default],
     [vfork] is used unless the environment variable [SPAWN_USE_FORK] is set. On
     Windows, [CreateProcess] is used. *)
-val spawn :
-     ?env:Env.t
+val spawn
+  :  ?env:Env.t
   -> ?cwd:Working_dir.t (* default: [Inherit] *)
   -> prog:string
   -> argv:string list

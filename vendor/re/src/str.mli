@@ -52,10 +52,11 @@ val quote: string -> string
     [s] and nothing else. *)
 
 val regexp_string: string -> regexp
-val regexp_string_case_fold: string -> regexp
 (** [Str.regexp_string s] returns a regular expression
-    that matches exactly [s] and nothing else.
-    [Str.regexp_string_case_fold] is similar, but the regexp
+    that matches exactly [s] and nothing else. *)
+
+val regexp_string_case_fold: string -> regexp
+(** [Str.regexp_string_case_fold] is similar to [Str.regexp_string], but the regexp
     matches in a case-insensitive way. *)
 
 (** {2 String matching and searching} *)
@@ -88,12 +89,14 @@ val matched_string: string -> string
            that was passed to the matching or searching function. *)
 
 val match_beginning: unit -> int
-val match_end: unit -> int
 (** [match_beginning ()] returns the position of the first character
     of the substring that was matched by [string_match],
-    [search_forward] or [search_backward]. [match_end ()] returns
-    the position of the character following the last character of
-    the matched substring.  *)
+    [search_forward] or [search_backward]. *)
+
+val match_end: unit -> int
+(** [match_end ()] returns the position of the character following the
+    last character of the substring that was matched by [string_match],
+    [search_forward] or [search_backward]. *)
 
 val matched_group: int -> string -> string
 (** [matched_group n s] returns the substring of [s] that was matched
@@ -109,14 +112,14 @@ val matched_group: int -> string -> string
     because the first group itself was not matched. *)
 
 val group_beginning: int -> int
-val group_end: int -> int
 (** [group_beginning n] returns the position of the first character
-    of the substring that was matched by the [n]th group of
-    the regular expression. [group_end n] returns
-    the position of the character following the last character of
-    the matched substring.  Both functions raise [Not_found]
-    if the [n]th group of the regular expression
-    was not matched. *)
+    of the substring that was matched by the [n]th group of the regular expression.
+    Raises [Not_found] if the [n]th group of the regular expression was not matched. *)
+
+val group_end: int -> int
+(** [group_end n] returns the position of the character following
+    the last character of the matched substring.
+    Raises [Not_found] if the [n]th group of the regular expression was not matched. *)
 
 (** {2 Replacement} *)
 
@@ -164,23 +167,35 @@ val bounded_split: regexp -> string -> int -> string list
     where [n] is the extra integer parameter. *)
 
 val split_delim: regexp -> string -> string list
+(** Same as [split], but occurrences of the delimiter at the beginning
+    and at the end of the string are recognized and returned as empty strings
+    in the result.
+    For instance, [split_delim (regexp " ") " abc "] returns [[""; "abc"; ""]],
+    while [split] with the same arguments returns [["abc"]]. *)
+
 val bounded_split_delim: regexp -> string -> int -> string list
-(** Same as [split] and [bounded_split], but occurrences of the
-    delimiter at the beginning and at the end of the string are
-    recognized and returned as empty strings in the result.
-    For instance, [split_delim (regexp " ") " abc "]
-    returns [[""; "abc"; ""]], while [split] with the same
-    arguments returns [["abc"]]. *)
+(** Same as [bounded_split] and [split_delim], but occurrences of
+    the delimiter at the beginning and at the end of the string are recognized
+    and returned as empty strings in the result.
+    For instance, [split_delim (regexp " ") " abc "] returns [[""; "abc"; ""]],
+    while [split] with the same arguments returns [["abc"]]. *)
 
 type split_result = Text of string | Delim of string
 
 val full_split: regexp -> string -> split_result list
+(** Same as [split_delim], but returns the delimiters
+    as well as the substrings contained between delimiters.
+    The former are tagged [Delim] in the result list;
+    the latter are tagged [Text].
+    For instance, [full_split (regexp "[{}]") "{ab}"] returns
+    [[Delim "{"; Text "ab"; Delim "}"]]. *)
+
 val bounded_full_split: regexp -> string -> int -> split_result list
 (** Same as [split_delim] and [bounded_split_delim], but returns
-    the delimiters as well as the substrings contained between
-    delimiters.  The former are tagged [Delim] in the result list;
-    the latter are tagged [Text].  For instance,
-    [full_split (regexp "[{}]") "{ab}"] returns
+    the delimiters as well as the substrings contained between delimiters.
+    The former are tagged [Delim] in the result list;
+    the latter are tagged [Text].
+    For instance, [full_split (regexp "[{}]") "{ab}"] returns
     [[Delim "{"; Text "ab"; Delim "}"]]. *)
 
 (** {2 Extracting substrings} *)

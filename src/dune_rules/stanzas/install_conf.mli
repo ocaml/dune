@@ -1,7 +1,7 @@
 open Import
 
 type t =
-  { section : Section_with_site.t
+  { section : Loc.t * Section_with_site.t
   ; files : Install_entry.File.t list
   ; dirs : Install_entry.Dir.t list
   ; source_trees : Install_entry.Dir.t list

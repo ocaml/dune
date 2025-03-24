@@ -42,4 +42,4 @@ of "a" that "c" could depend on is "a.0.0.1" which isn't part of the solution.
   $ cat dune.lock/c.pkg
   (version 0.0.1)
   
-  (deps b)
+  (depends b)

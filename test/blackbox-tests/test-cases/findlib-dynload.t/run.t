@@ -70,7 +70,6 @@
   Findlib.record_package Findlib.Record_core "findlib.internal";;
   Findlib.record_package Findlib.Record_core "mytool";;
   Findlib.record_package Findlib.Record_core "threads";;
-  Findlib.record_package Findlib.Record_core "threads.posix";;
   Findlib.record_package Findlib.Record_core "unix";;
   let preds =
     [ "mt"

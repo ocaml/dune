@@ -1,0 +1,13 @@
+(library
+ (name calc)
+ (libraries cmdliner)
+ (foreign_stubs
+  (language c)
+  (names calc_stubs))
+ (preprocess
+  (pps ppx_deriving.show)))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))

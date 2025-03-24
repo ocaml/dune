@@ -6,34 +6,13 @@ DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./_boot/dune.exe
 
-# Dependencies used for testing dune, when developed locally and
-# when tested in CI
-TEST_DEPS := \
-lwt \
-cinaps \
-core_bench \
-"csexp>=1.3.0" \
-js_of_ocaml \
-js_of_ocaml-compiler \
-"mdx>=2.3.0" \
-menhir \
-ocamlfind \
-ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat) \
-"odoc>=2.0.1" \
-"ppx_expect>=v0.16.0" \
-ppx_inline_test \
-ppxlib \
-ctypes \
-"utop>=2.6.0" \
-"melange>=1.0.0" \
-"rescript-syntax"
 # Dependencies recommended for developing dune locally,
 # but not wanted in CI
 DEV_DEPS := \
-"dkml-workflows>=1.2.0" \
+core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 4.14.1
+TEST_OCAMLVERSION := 5.1.1
 
 -include Makefile.dev
 
@@ -55,6 +34,9 @@ $(BIN):
 dev: $(BIN)
 	$(BIN) build @install
 
+watch: $(BIN)
+	$(BIN) build @install --watch
+
 all: $(BIN)
 	$(BIN) build
 
@@ -69,27 +51,33 @@ uninstall:
 .PHONY: reinstall
 reinstall: uninstall install
 
+.PHONY: install-ocamlformat
 install-ocamlformat:
 	opam install -y ocamlformat.$$(awk -F = '$$1 == "version" {print $$2}' .ocamlformat)
 
-dev-depext:
-	opam depext -y $(TEST_DEPS)
-
 .PHONY: dev-deps
 dev-deps:
-	opam install -y $(TEST_DEPS)
+	opam install -y . --deps-only --with-dev-setup
 
 .PHONY: coverage-deps
 coverage-deps:
 	opam install -y bisect_ppx
 
+.PHONY: dev-deps-sans-melange
+dev-deps-sans-melange: dev-deps
+
 .PHONY: dev-switch
 dev-switch:
 	opam update
 # Ensuring that either a dev switch already exists or a new one is created
-	test "$(shell opam switch show)" = "$(shell pwd)" || \
-		opam switch create -y . $(TEST_OCAMLVERSION) --deps-only --with-test
-	opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION) $(TEST_DEPS) $(DEV_DEPS)
+	if test -d _opam ; then \
+		opam install -y --update-invariant ocaml.$(TEST_OCAMLVERSION); \
+	else \
+		opam switch create -y . $(TEST_OCAMLVERSION) --no-install ; \
+	fi
+	opam install -y . --deps-only --with-test --with-dev-setup
+	$(MAKE) install-ocamlformat
+	opam install -y $(DEV_DEPS)
 
 .PHONY: test
 test: $(BIN)
@@ -101,6 +89,9 @@ test-windows: $(BIN)
 test-js: $(BIN)
 	$(BIN) build @runtest-js
 
+test-wasm: $(BIN)
+	DUNE_WASM_TEST=enable $(BIN) build @runtest-wasm
+
 test-coq: $(BIN)
 	DUNE_COQ_TEST=enable $(BIN) build @runtest-coq
 
@@ -109,6 +100,9 @@ test-melange: $(BIN)
 
 test-all: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq @runtest-melange
+
+test-all-sans-melange: $(BIN)
+	$(BIN) build @runtest @runtest-js @runtest-coq
 
 test-coverage: $(BIN)
 	- $(BIN) build --instrument-with bisect_ppx --force @runtest
@@ -129,9 +123,6 @@ promote: $(BIN)
 .PHONY: accept-corrections
 accept-corrections: promote
 
-all-supported-ocaml-versions: $(BIN)
-	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
-
 .PHONY: clean
 clean:
 	rm -rf _boot _build
@@ -149,39 +140,6 @@ livedoc:
 
 update-jbuilds: $(BIN)
 	$(BIN) build @doc/runtest --auto-promote
-
-# you will need to use a dev-switch or do opam install dkml-workflows.
-# we run --auto-promote twice since first may fail (ex. missing files with Unable to resolve symlink)
-update-dkml: $(BIN)
-	opam exec -- generate-setup-dkml-scaffold
-	$(BIN) build @gen-dkml --auto-promote || $(BIN) build @gen-dkml --auto-promote
-	rm -rf ci/setup-dkml/gh-darwin ci/setup-dkml/gh-linux ci/setup-dkml/gl
-	rm -rf ci/setup-dkml/pc/setup-dkml-darwin_*.sh ci/setup-dkml/pc/setup-dkml-linux_*.sh
-	$(BIN) build @ci/fmt --auto-promote || $(BIN) build @ci/fmt --auto-promote
-
-# assumes MSYS2 or Cygwin, and Visual Studio. Do not use 'with-dkml make ...'
-desktop-ci-windows_x86:
-	if command -v pwsh; then \
-	  pwsh ./ci/setup-dkml/pc/setup-dkml-windows_x86.ps1; \
-	else \
-	  powershell ./ci/setup-dkml/pc/setup-dkml-windows_x86.ps1; \
-	fi
-	/usr/bin/env PATH=/usr/bin \
-	  dkml_host_abi=windows_x86 abi_pattern=win32-windows_x86_64; \
-	  opam_root=.ci/o exe_ext=.exe \
-	  /bin/sh ci/build-test.sh
-
-# assumes MSYS2 or Cygwin, and Visual Studio. Do not use 'with-dkml make ...'
-desktop-ci-windows_x86_64:
-	if command -v pwsh; then \
-	  pwsh ./ci/setup-dkml/pc/setup-dkml-windows_x86_64.ps1; \
-	else \
-	  powershell ./ci/setup-dkml/pc/setup-dkml-windows_x86_64.ps1; \
-	fi
-	/usr/bin/env PATH=/usr/bin \
-	  dkml_host_abi=windows_x86 abi_pattern=win32-windows_x86_64 \
-	  opam_root=.ci/o exe_ext=.exe \
-	  /bin/sh ci/build-test.sh
 
 # If the first argument is "run"...
 ifeq (dune,$(firstword $(MAKECMDGOALS)))

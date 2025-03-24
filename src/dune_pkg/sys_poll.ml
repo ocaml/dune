@@ -1,12 +1,24 @@
 open Import
 open Fiber.O
 
+type t =
+  { arch : string option Fiber.t
+  ; os : string option Fiber.t
+  ; os_version : string option Fiber.t
+  ; os_distribution : string option Fiber.t
+  ; os_family : string option Fiber.t
+  ; sys_ocaml_version : string option Fiber.t
+  }
+
+let apply_or_skip_empty f = function
+  | None | Some "" -> None
+  | Some s -> Some (f s)
+;;
+
 let norm = function
   | "" -> None
   | s -> Some (String.lowercase s)
 ;;
-
-let path_of_string s = s |> Path.External.of_string |> Path.external_
 
 let normalise_arch raw =
   match String.lowercase_ascii raw with
@@ -31,200 +43,215 @@ let normalise_os raw =
 ;;
 
 let run_capture_line ~path ~prog ~args =
-  let prog = Bin.which ~path prog in
-  match prog with
+  match Bin.which ~path prog with
   | None -> Fiber.return None
-  | Some prog ->
-    let+ res = Process.run_capture_line ~display:Quiet Strict prog args in
-    norm res
+  | Some prog -> Process.run_capture_line ~display:Quiet Strict prog args >>| norm
 ;;
 
+module Config_override_variables = struct
+  let string_option_config name =
+    let config =
+      Dune_config.Config.make ~name ~of_string:(fun s -> Ok (Some s)) ~default:None
+    in
+    fun () -> Dune_config.Config.get config
+  ;;
+
+  let os = string_option_config "os"
+  let arch = string_option_config "arch"
+end
+
+(* CR-rgrinberg: do we need to call [uname] for every single option? Can't we
+   call [uname -a] and extract everything from there *)
 let uname ~path args = run_capture_line ~path ~prog:"uname" ~args
 let lsb_release ~path args = run_capture_line ~path ~prog:"lsb_release" ~args
 
 let arch ~path =
-  let+ raw =
-    match Sys.os_type with
-    | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
-    | "Win32" ->
-      Fiber.return
-      @@
-        (match OpamStubs.getArchitecture () with
-        | OpamStubs.AMD64 -> Some "x86_64"
-        | ARM -> Some "arm32"
-        | ARM64 -> Some "arm64"
-        | IA64 -> Some "ia64"
-        | Intel -> Some "x86_32"
-        | Unknown -> None)
-    | _ -> Fiber.return None
-  in
-  match raw with
-  | None | Some "" -> None
-  | Some a -> Some (normalise_arch a)
+  match Config_override_variables.arch () with
+  | Some arch -> Fiber.return (Some arch)
+  | None ->
+    (match Sys.os_type with
+     | "Unix" | "Cygwin" -> uname ~path [ "-m" ]
+     | "Win32" ->
+       Fiber.return
+       @@
+         (match OpamStubs.getArchitecture () with
+         | OpamStubs.AMD64 -> Some "x86_64"
+         | ARM -> Some "arm32"
+         | ARM64 -> Some "arm64"
+         | IA64 -> Some "ia64"
+         | Intel -> Some "x86_32"
+         | Unknown -> None)
+     | _ -> Fiber.return None)
+    >>| apply_or_skip_empty normalise_arch
 ;;
 
 let os ~path =
-  let+ raw =
-    match Sys.os_type with
-    | "Unix" -> uname ~path [ "-s" ]
-    | s -> Fiber.return (norm s)
-  in
-  match raw with
-  | None | Some "" -> None
-  | Some s -> Some (normalise_os s)
+  match Config_override_variables.os () with
+  | Some os -> Fiber.return (Some os)
+  | None ->
+    (match Sys.os_type with
+     | "Unix" -> uname ~path [ "-s" ]
+     | s -> Fiber.return (norm s))
+    >>| apply_or_skip_empty normalise_os
 ;;
 
-let android_release ~path =
-  run_capture_line ~path ~prog:"getprop" ~args:[ "ro.build.version.release" ]
+let maybe_read_lines p =
+  match Io.String_path.lines_of_file p with
+  | s -> Some s
+  | exception Sys_error _ -> None
 ;;
 
-let is_android ~path =
-  let+ prop = android_release ~path in
-  prop <> None
+let os_release_fields () =
+  match
+    List.find_map [ "/etc/os-release"; "/usr/lib/os-release" ] ~f:maybe_read_lines
+  with
+  | None -> []
+  | Some release_lines ->
+    List.filter_map release_lines ~f:(fun line ->
+      match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
+      | Error _ -> None
+      | Ok (key, v) ->
+        Some
+          ( key
+          , match Scanf.sscanf v "\"%s@\"" Fun.id with
+            | Error _ -> v
+            | Ok contents -> contents ))
 ;;
 
-let os_release_field field =
-  let candidates =
-    [ "/etc/os-release"; "/usr/lib/os-release" ] |> List.map ~f:path_of_string
-  in
-  match List.find ~f:Path.exists candidates with
-  | None -> Fiber.return None
-  | Some release_file ->
-    let lines = Io.lines_of_file release_file in
-    let mappings =
-      List.filter_map lines ~f:(fun line ->
-        match Scanf.sscanf line "%s@= %s" (fun k v -> k, v) with
-        | Error _ -> None
-        | Ok (key, v) ->
-          (match Scanf.sscanf v "\"%s@\"" Fun.id with
-           | Error _ -> Some (key, v)
-           | Ok contents -> Some (key, contents)))
-    in
-    Fiber.return @@ List.assoc mappings field
-;;
-
-let os_version ~path =
-  let* os = os ~path in
-  match os with
+let os_version ~android_release ~os ~os_release_fields ~path =
+  os
+  >>= function
   | Some "linux" ->
-    let* prop = android_release ~path in
-    (match prop with
+    android_release
+    >>= (function
      | Some android -> Fiber.return @@ norm android
      | None ->
-       let* release = lsb_release ~path [ "-s"; "-r" ] in
-       (match release with
-        | Some lsb -> Fiber.return @@ norm lsb
+       lsb_release ~path [ "-s"; "-r" ]
+       >>| (function
+        | Some lsb -> norm lsb
         | None ->
-          let+ version_id = os_release_field "VERSION_ID" in
-          Option.bind version_id ~f:norm))
+          List.assoc (Lazy.force os_release_fields) "VERSION_ID" |> Option.bind ~f:norm))
   | Some "macos" ->
-    let+ sw_vers = run_capture_line ~path ~prog:"sw_vers" ~args:[ "-productVersion" ] in
-    Option.bind sw_vers ~f:norm
+    run_capture_line ~path ~prog:"sw_vers" ~args:[ "-productVersion" ]
+    >>| Option.bind ~f:norm
   | Some "win32" ->
     let major, minor, build, _ = OpamStubs.getWindowsVersion () in
-    OpamStd.Option.some @@ Printf.sprintf "%d.%d.%d" major minor build |> Fiber.return
+    Some (Printf.sprintf "%d.%d.%d" major minor build) |> Fiber.return
   | Some "cygwin" ->
-    let+ cmd = run_capture_line ~path ~prog:"cmd" ~args:[ "/C"; "ver" ] in
-    Option.bind cmd ~f:(fun s ->
+    run_capture_line ~path ~prog:"cmd" ~args:[ "/C"; "ver" ]
+    >>| Option.bind ~f:(fun s ->
       match Scanf.sscanf s "%_s@[ Version %s@]" Fun.id with
       | Ok s -> norm s
       | Error _ -> None)
-  | Some "freebsd" ->
-    let+ uname = uname ~path [ "-U" ] in
-    Option.bind uname ~f:norm
-  | _ ->
-    let+ uname = uname ~path [ "-r" ] in
-    Option.bind uname ~f:norm
+  | Some "freebsd" -> uname ~path [ "-U" ] >>| Option.bind ~f:norm
+  | _ -> uname ~path [ "-r" ] >>| Option.bind ~f:norm
 ;;
 
-let os_distribution ~path =
-  let* os = os ~path in
-  match os with
+let os_distribution ~os ~android_release ~os_release_fields ~path =
+  os
+  >>= function
   | Some "macos" as macos ->
+    Fiber.return
+    @@
     if Bin.which ~path "brew" <> None
-    then Fiber.return @@ Some "homebrew"
+    then Some "homebrew"
     else if Bin.which ~path "port" <> None
-    then Fiber.return @@ Some "macports"
-    else Fiber.return macos
+    then Some "macports"
+    else macos
   | Some "linux" as linux ->
-    let* is_android = is_android ~path in
-    (match is_android with
-     | true -> Fiber.return @@ Some "android"
-     | false ->
-       let* id = os_release_field "ID" in
-       (match id with
+    android_release
+    >>= (function
+     | Some _ -> Fiber.return @@ Some "android"
+     | None ->
+       (match List.assoc (Lazy.force os_release_fields) "ID" with
         | Some os_release_field -> Fiber.return @@ norm os_release_field
         | None ->
-          let+ lsb_release = lsb_release ~path [ "-i"; "-s" ] in
-          (match lsb_release with
+          lsb_release ~path [ "-i"; "-s" ]
+          >>| (function
            | Some lsb_release -> norm lsb_release
            | None ->
-             let candidates =
-               [ "/etc/redhat-release"
-               ; "/etc/centos-release"
-               ; "/etc/gentoo-release"
-               ; "/etc/issue"
-               ]
-               |> List.map ~f:path_of_string
-             in
-             (match List.find ~f:Path.exists candidates with
-              | None -> linux
-              | Some release_file ->
-                (match Io.lines_of_file release_file with
-                 | [] -> linux
-                 | s :: _ ->
-                   (match Scanf.sscanf s " %s " Fun.id with
-                    | Error _ -> linux
-                    | Ok s -> norm s))))))
+             (match
+                List.find_map
+                  ~f:maybe_read_lines
+                  [ "/etc/redhat-release"
+                  ; "/etc/centos-release"
+                  ; "/etc/gentoo-release"
+                  ; "/etc/issue"
+                  ]
+              with
+              | None | Some [] -> linux
+              | Some (s :: _) ->
+                (match Scanf.sscanf s " %s " Fun.id with
+                 | Error _ -> linux
+                 | Ok s -> norm s)))))
   | os -> Fiber.return os
 ;;
 
-let os_family ~path =
-  let* os = os ~path in
-  match os with
+let os_family ~os_distribution ~os_release_fields ~os =
+  os
+  >>= function
+  | Some ("freebsd" | "openbsd" | "netbsd" | "dragonfly") -> Fiber.return @@ Some "bsd"
+  | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
   | Some "linux" ->
-    let* id_like = os_release_field "ID_LIKE" in
-    (match id_like with
-     | None -> os_distribution ~path
+    (match List.assoc (Lazy.force os_release_fields) "ID_LIKE" with
+     | None -> os_distribution
      | Some s ->
        (* first word *)
        (match Scanf.sscanf s " %s" Fun.id with
-        | Error _ -> os_distribution ~path
+        | Error _ -> os_distribution
         | Ok s -> Fiber.return @@ norm s))
-  | Some ("freebsd" | "openbsd" | "netbsd" | "dragonfly") -> Fiber.return @@ Some "bsd"
-  | Some ("win32" | "cygwin") -> Fiber.return @@ Some "windows"
-  | _ -> os_distribution ~path
+  | _ -> os_distribution
 ;;
 
-let sys_ocaml_version ~path =
-  match Bin.which "ocamlc" ~path with
-  | None -> Fiber.return None
-  | Some ocamlc ->
-    Process.run_capture_line ~display:Quiet Strict ocamlc [ "-vnum" ] >>| Option.some
+let make_lazy f = Fiber_lazy.create f |> Fiber_lazy.force
+
+let make ~path =
+  let arch = make_lazy (fun () -> arch ~path) in
+  let os = make_lazy (fun () -> os ~path) in
+  let os_release_fields = lazy (os_release_fields ()) in
+  let android_release =
+    make_lazy (fun () ->
+      run_capture_line ~path ~prog:"getprop" ~args:[ "ro.build.version.release" ])
+  in
+  let os_version =
+    make_lazy (fun () -> os_version ~android_release ~os_release_fields ~os ~path)
+  in
+  let os_distribution =
+    make_lazy (fun () -> os_distribution ~android_release ~os_release_fields ~os ~path)
+  in
+  let os_family =
+    make_lazy (fun () -> os_family ~os_release_fields ~os_distribution ~os)
+  in
+  let sys_ocaml_version =
+    make_lazy (fun () -> run_capture_line ~path ~prog:"ocamlc" ~args:[ "-vnum" ])
+  in
+  { arch; os; os_version; os_distribution; os_family; sys_ocaml_version }
 ;;
 
-let solver_env_from_current_system ~path =
+let arch t = t.arch
+let os t = t.os
+let os_version t = t.os_version
+let os_distribution t = t.os_distribution
+let os_family t = t.os_family
+let sys_ocaml_version t = t.sys_ocaml_version
+
+let solver_env_from_current_system t =
   let entry k f =
-    let+ v = f ~path in
+    let+ v = f t in
     k, Option.map v ~f:Variable_value.string
   in
   (* TODO this will rerun `uname` multiple times with the same arguments
      unless it is memoized *)
-  let+ mappings =
-    Fiber.all
-      [ entry Variable_name.arch arch
-      ; entry Variable_name.os os
-      ; entry Variable_name.os_version os_version
-      ; entry Variable_name.os_distribution os_distribution
-      ; entry Variable_name.os_family os_family
-      ; entry Variable_name.sys_ocaml_version sys_ocaml_version
-      ]
-  in
-  List.fold_left
-    ~init:Solver_env.empty
-    ~f:(fun solver_env (var, data) ->
-      match data with
-      | Some value -> Solver_env.set solver_env var value
-      | None -> solver_env)
-    mappings
+  Fiber.all
+    [ entry Package_variable_name.arch arch
+    ; entry Package_variable_name.os os
+    ; entry Package_variable_name.os_version os_version
+    ; entry Package_variable_name.os_distribution os_distribution
+    ; entry Package_variable_name.os_family os_family
+    ; entry Package_variable_name.sys_ocaml_version sys_ocaml_version
+    ]
+  >>| List.fold_left ~init:Solver_env.empty ~f:(fun solver_env (var, data) ->
+    match data with
+    | Some value -> Solver_env.set solver_env var value
+    | None -> solver_env)
 ;;

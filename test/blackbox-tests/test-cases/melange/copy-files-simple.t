@@ -9,6 +9,7 @@ Test simple interactions between melange.emit and copy_files
   > (melange.emit
   >  (target output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (alias mel))
   > 
@@ -23,7 +24,7 @@ Test simple interactions between melange.emit and copy_files
   > EOF
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "../assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content
@@ -41,6 +42,7 @@ Copy the file into the output folder, so we can use same path as in-source
   > (melange.emit
   >  (target output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (alias mel))
   > 
@@ -50,7 +52,7 @@ Copy the file into the output folder, so we can use same path as in-source
   > EOF
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

@@ -45,22 +45,12 @@ module Lib = struct
     ; external_location : External_location.t option
     }
 
-  let make ~info ~main_module_name ~external_location =
-    let obj_dir = Lib_info.obj_dir info in
-    let dir = Obj_dir.dir obj_dir in
-    let map_path p =
-      if Path.is_managed p then Path.relative dir (Path.basename p) else p
-    in
-    let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; external_location }
-  ;;
-
   let of_dune_lib ~info ~main_module_name =
-    make ~info ~main_module_name ~external_location:None
+    { info; main_module_name; external_location = None }
   ;;
 
   let of_findlib info external_location =
-    make ~info ~main_module_name:None ~external_location:(Some external_location)
+    { info; main_module_name = None; external_location = Some external_location }
   ;;
 
   let dir_of_name name =
@@ -87,7 +77,10 @@ module Lib = struct
       | Local _ -> assert false
       | External paths ->
         let lib_dir = Obj_dir.dir obj_dir in
-        List.map paths ~f:(fun p -> Path.append_local lib_dir (Path.local_part p))
+        List.map paths ~f:(fun p ->
+          if Path.is_in_build_dir p
+          then p
+          else Path.append_local lib_dir (Path.local_part p))
     in
     let orig_src_dir = Lib_info.orig_src_dir info in
     let implements = Lib_info.implements info in
@@ -111,6 +104,7 @@ module Lib = struct
     in
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
+    let wasmoo_runtime = Lib_info.wasmoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
@@ -144,6 +138,7 @@ module Lib = struct
        ; paths "foreign_dll_files" foreign_dll_files
        ; paths "native_archives" native_archives
        ; paths "jsoo_runtime" jsoo_runtime
+       ; paths "wasmoo_runtime" wasmoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
@@ -151,7 +146,7 @@ module Lib = struct
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Lib_mode.Map.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
-       ; field_o "modules" (Modules.encode ~src_dir:package_root) modules
+       ; field_o "modules" (Modules.With_vlib.encode ~src_dir:package_root) modules
        ; paths "melange_runtime_deps" melange_runtime_deps
        ; field_o
            "special_builtin_support"
@@ -219,6 +214,7 @@ module Lib = struct
        and+ foreign_dll_files = paths "foreign_dll_files"
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
+       and+ wasmoo_runtime = paths "wasmoo_runtime"
        and+ melange_runtime_deps = paths "melange_runtime_deps"
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
@@ -235,10 +231,10 @@ module Lib = struct
          field_o "instrumentation.backend" (located Lib_name.decode)
        in
        let modes = Lib_mode.Map.Set.of_list modes in
-       let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
        let info : Path.t Lib_info.t =
          let src_dir = Obj_dir.dir obj_dir in
-         let enabled = Lib_info.Enabled_status.Normal in
+         let lib_id = Lib_id.External (loc, name) in
+         let enabled = Memo.return Lib_info.Enabled_status.Normal in
          let status =
            match Lib_name.analyze name with
            | Private (_, _) -> Lib_info.Status.Installed_private
@@ -254,7 +250,13 @@ module Lib = struct
          let virtual_ =
            if virtual_ then Some (Lib_info.Source.External modules) else None
          in
-         let wrapped = Some (Lib_info.Inherited.This (Modules.wrapped modules)) in
+         let modules = Modules.With_vlib.modules modules in
+         let entry_modules =
+           Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name
+         in
+         let wrapped =
+           Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
+         in
          let entry_modules = Lib_info.Source.External (Ok entry_modules) in
          let modules = Lib_info.Source.External (Some modules) in
          let melange_runtime_deps = Lib_info.File_deps.External melange_runtime_deps in
@@ -262,6 +264,7 @@ module Lib = struct
            ~path_kind:External
            ~loc
            ~name
+           ~lib_id
            ~kind
            ~status
            ~src_dir
@@ -281,6 +284,7 @@ module Lib = struct
            ~native_archives:(Files native_archives)
            ~foreign_dll_files
            ~jsoo_runtime
+           ~wasmoo_runtime
            ~preprocess
            ~enabled
            ~virtual_deps
@@ -314,7 +318,7 @@ module Lib = struct
 
   let wrapped t =
     match Lib_info.modules t.info with
-    | External modules -> Option.map modules ~f:Modules.wrapped
+    | External modules -> Option.map modules ~f:Modules.With_vlib.wrapped
     | Local -> None
   ;;
 
@@ -504,7 +508,20 @@ let prepend_version ~dune_version sexps =
   @ sexps
 ;;
 
-let encode ~dune_version { entries; name; version; dir; sections; sites; files } =
+type replace_info = { stublibs_original : Path.t option }
+
+type encoding =
+  | Absolute of replace_info
+  | Relative
+
+let encode_dir ~encoding ~dir path =
+  match encoding with
+  | Absolute _ -> Dune_lang.Encoder.string (Path.to_absolute_filename path)
+  | Relative -> Dune_lang.Path.Local.encode ~dir path
+;;
+
+let encode ~encoding ~dune_version { entries; name; version; dir; sections; sites; files }
+  =
   let open Dune_lang.Encoder in
   let sites = Site.Map.to_list sites in
   let sexp =
@@ -513,7 +530,7 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
       ; field_o "version" Package_version.encode version
       ; field_l
           "sections"
-          (pair Section.encode (Dune_lang.Path.Local.encode ~dir))
+          (pair Section.encode (encode_dir ~encoding ~dir))
           (Section.Map.to_list sections)
       ; field_l "sites" (pair Site.encode Section.encode) sites
       ; field_l "files" (pair Section.encode (list encode_path)) files
@@ -521,7 +538,11 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
   in
   let list s = Dune_lang.List s in
   let entries =
-    let stublibs = Section.Map.find sections Stublibs in
+    let stublibs =
+      match encoding with
+      | Absolute { stublibs_original } -> stublibs_original
+      | Relative -> Section.Map.find sections Stublibs
+    in
     Lib_name.Map.to_list_map entries ~f:(fun _name e ->
       match e with
       | Entry.Library lib ->
@@ -534,6 +555,14 @@ let encode ~dune_version { entries; name; version; dir; sections; sites; files }
           [ "lib", Lib.to_dyn lib ])
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
+;;
+
+let replace_site_sections t ~get_location =
+  let stublibs_original = Section.Map.find t.sections Stublibs in
+  let sections =
+    Section.Map.mapi t.sections ~f:(fun section _ -> get_location section t.name)
+  in
+  { t with sections }, { stublibs_original }
 ;;
 
 let to_dyn { entries; name; version; dir; sections; sites; files } =
@@ -554,9 +583,13 @@ module Or_meta = struct
     | Use_meta
     | Dune_package of t
 
-  let encode ~dune_version = function
-    | Use_meta -> prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
-    | Dune_package p -> encode ~dune_version p
+  let encode_use_meta ~dune_version =
+    prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
+  ;;
+
+  let encode ~encoding ~dune_version = function
+    | Use_meta -> encode_use_meta ~dune_version
+    | Dune_package p -> encode ~encoding ~dune_version p
   ;;
 
   let decode ~lang ~dir =
@@ -570,34 +603,34 @@ module Or_meta = struct
          Dune_package package)
   ;;
 
-  let load file =
+  let parse file lexbuf =
     let dir = Path.parent_exn file in
-    Fs.with_lexbuf_from_file file ~f:(fun lexbuf ->
-      match
-        Vfile.parse_contents lexbuf ~f:(fun lang ->
-          String_with_vars.set_decoding_env
-            (Pform.Env.initial lang.version)
-            (decode ~lang ~dir))
-      with
-      | contents -> Ok contents
-      | exception User_error.E message -> Error message
-      | exception Sys_error msg ->
-        Error
-          (User_message.make
-             [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
-             ; Pp.text msg
-             ])
-      | exception End_of_file ->
-        Error
-          (User_message.make
-             [ Pp.textf
-                 "Unexpected end of file when reading %s."
-                 (Path.to_string_maybe_quoted file)
-             ]))
+    match
+      Vfile.parse_contents lexbuf ~f:(fun lang ->
+        String_with_vars.set_decoding_env
+          (Pform.Env.initial lang.version)
+          (decode ~lang ~dir))
+    with
+    | contents -> Ok contents
+    | exception User_error.E message -> Error message
+    | exception Sys_error msg ->
+      Error
+        (User_message.make
+           [ Pp.textf "Failed to read %s:" (Path.to_string_maybe_quoted file)
+           ; Pp.text msg
+           ])
+    | exception End_of_file ->
+      Error
+        (User_message.make
+           [ Pp.textf
+               "Unexpected end of file when reading %s."
+               (Path.to_string_maybe_quoted file)
+           ])
   ;;
 
-  let pp ~dune_version ppf t =
-    let t = encode ~dune_version t in
+  let load file = Fs.with_lexbuf_from_file file ~f:(parse file)
+
+  let pp_encoded ppf t =
     Format.fprintf
       ppf
       "%a@."
@@ -605,6 +638,12 @@ module Or_meta = struct
          Dune_lang.pp lang |> Pp.to_fmt fmt))
       t
   ;;
+
+  let pp ~encoding ~dune_version ppf t =
+    t |> encode ~encoding ~dune_version |> pp_encoded ppf
+  ;;
+
+  let pp_use_meta ~dune_version ppf = encode_use_meta ~dune_version |> pp_encoded ppf
 
   let to_dyn x =
     let open Dyn in

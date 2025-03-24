@@ -27,7 +27,7 @@ First we setup a repo.
   >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Here is the output of solving for multiple contexts:

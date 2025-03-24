@@ -30,7 +30,7 @@ let break = -3
 type match_info =
   | Match of Group.t
   | Failed
-  | Running
+  | Running of { no_match_starts_before : int }
 
 type state =
   { idx : int;
@@ -59,9 +59,9 @@ type re =
     (* The whole regular expression *)
     mutable initial_states : (Category.t * state) list;
     (* Initial states, indexed by initial category *)
-    colors : Bytes.t;
+    colors : string;
     (* Color table *)
-    color_repr : Bytes.t;
+    color_repr : string;
     (* Table from colors to one character of this color *)
     ncolor : int;
     (* Number of colors. *)
@@ -72,6 +72,8 @@ type re =
        when computing a new state *)
     states : state Automata.State.Table.t;
     (* States of the deterministic automata *)
+    group_names : (string * int) list;
+    (* Named groups in the regular expression *)
     group_count : int
     (* Number of groups in the regular expression *) }
 
@@ -79,11 +81,15 @@ let pp_re ch re = Automata.pp ch re.initial
 
 let print_re = pp_re
 
+let group_count re = re.group_count
+
+let group_names re = re.group_names
+
 (* Information used during matching *)
 type info =
   { re : re;
     (* The automata *)
-    colors : Bytes.t;
+    colors : string;
     (* Color table ([x.colors = x.re.colors])
        Shortcut used for performance reasons *)
     mutable positions : int array;
@@ -104,7 +110,7 @@ let category re ~color =
   else if color = re.lnl then
     Category.(lastnewline ++ newline ++ not_letter)
   else
-    Category.from_char (Bytes.get re.color_repr color)
+    Category.from_char (re.color_repr.[color])
 
 (****)
 
@@ -149,64 +155,32 @@ let delta info cat ~color st =
   desc
 
 let validate info (s:string) ~pos st =
-  let color = Char.code (Bytes.get info.colors (Char.code s.[pos])) in
+  let color = Char.code (info.colors.[Char.code s.[pos]]) in
   let cat = category info.re ~color in
   let desc' = delta info cat ~color st in
   let st' = find_state info.re desc' in
   st.next.(color) <- st'
 
-(*
-let rec loop info s pos st =
+let rec loop info s ~pos st =
   if pos < info.last then
-    let st' = st.next.(Char.code info.cols.[Char.code s.[pos]]) in
+    let st' = st.next.(Char.code info.colors.[Char.code s.[pos]]) in
     let idx = st'.idx in
     if idx >= 0 then begin
       info.positions.(idx) <- pos;
-      loop info s (pos + 1) st'
+      loop info s ~pos:(pos + 1) st'
     end else if idx = break then begin
       info.positions.(st'.real_idx) <- pos;
       st'
     end else begin (* Unknown *)
-      validate info s pos st;
-      loop info s pos st
+      validate info s ~pos st;
+      loop info s ~pos st
     end
   else
     st
-*)
-
-let rec loop info (s:string) ~pos st =
-  if pos < info.last then
-    let st' = st.next.(Char.code (Bytes.get info.colors (Char.code s.[pos]))) in
-    loop2 info s ~pos st st'
-  else
-    st
-
-and loop2 info s ~pos st st' =
-  if st'.idx >= 0 then begin
-    let pos = pos + 1 in
-    if pos < info.last then begin
-      (* It is important to place these reads before the write *)
-      (* But then, we don't have enough registers left to store the
-         right position.  So, we store the position plus one. *)
-      let st'' =
-        st'.next.(Char.code (Bytes.get info.colors (Char.code s.[pos]))) in
-      info.positions.(st'.idx) <- pos;
-      loop2 info s ~pos st' st''
-    end else begin
-      info.positions.(st'.idx) <- pos;
-      st'
-    end
-  end else if st'.idx = break then begin
-    info.positions.(st'.real_idx) <- pos + 1;
-    st'
-  end else begin (* Unknown *)
-    validate info s ~pos st;
-    loop info s ~pos st
-  end
 
 let rec loop_no_mark info s ~pos ~last st =
   if pos < last then
-    let st' = st.next.(Char.code (Bytes.get info.colors (Char.code s.[pos]))) in
+    let st' = st.next.(Char.code info.colors.[Char.code s.[pos]]) in
     if st'.idx >= 0 then
       loop_no_mark info s ~pos:(pos + 1) ~last st'
     else if st'.idx = break then
@@ -246,19 +220,19 @@ let get_color re (s:string) pos =
       (* Special case for the last newline *)
       re.lnl
     else
-      Char.code (Bytes.get re.colors (Char.code s.[pos]))
+      Char.code re.colors.[Char.code s.[pos]]
 
 let rec handle_last_newline info ~pos st ~groups =
   let st' = st.next.(info.re.lnl) in
   if st'.idx >= 0 then begin
-    if groups then info.positions.(st'.idx) <- pos + 1;
+    if groups then info.positions.(st'.idx) <- pos;
     st'
   end else if st'.idx = break then begin
-    if groups then info.positions.(st'.real_idx) <- pos + 1;
+    if groups then info.positions.(st'.real_idx) <- pos;
     st'
   end else begin (* Unknown *)
     let color = info.re.lnl in
-    let real_c = Char.code (Bytes.get info.colors (Char.code '\n')) in
+    let real_c = Char.code info.colors.[Char.code '\n'] in
     let cat = category info.re ~color in
     let desc' = delta info cat ~color:real_c st in
     let st' = find_state info.re desc' in
@@ -285,6 +259,25 @@ let rec scan_str info (s:string) initial_state ~groups =
   else
     loop_no_mark info s ~pos ~last initial_state
 
+(* This function adds a final boundary check on the input.
+   This is useful to indicate that the output failed because
+   of insufficient input, or to verify that the output actually
+   matches for regex that have boundary conditions with respect
+   to the input string.
+ *)
+let final_boundary_check ~last ~slen re s ~info ~st ~groups =
+  let final_cat =
+    if last = slen then
+      Category.(search_boundary ++ inexistant)
+    else
+      Category.(search_boundary ++ category re ~color:(get_color re s last))
+  in
+  let (idx, res) = final info st final_cat in
+  (match groups, res with
+  | true, Match _ -> info.positions.(idx) <- last
+  | _ -> ());
+  res
+
 let match_str ~groups ~partial re s ~pos ~len =
   let slen = String.length s in
   let last = if len = -1 then slen else pos + len in
@@ -310,26 +303,32 @@ let match_str ~groups ~partial re s ~pos ~len =
   let initial_state = find_initial_state re initial_cat in
   let st = scan_str info s initial_state ~groups in
   let res =
-    if st.idx = break || partial then
+    if st.idx = break || (partial && not groups) then
       Automata.status st.desc
-    else
-      let final_cat =
-        if last = slen then
-          Category.(search_boundary ++ inexistant)
-        else
-          Category.(search_boundary ++ category re ~color:(get_color re s last))
-      in
-      let (idx, res) = final info st final_cat in
-      if groups then info.positions.(idx) <- last + 1;
-      res
+    else if partial && groups then
+      match Automata.status st.desc with
+      | Match _ | Failed as status -> status
+      | Running ->
+        (* This could be because it's still not fully matched, or it
+           could be that because we need to run special end of input
+           checks. *)
+        (match final_boundary_check ~last ~slen re s ~info ~st ~groups with
+         | Match _ as status -> status
+         | Failed | Running ->
+           (* A failure here just means that we need more data, i.e.
+              it's a partial match. *)
+           Running)
+    else final_boundary_check ~last ~slen re s ~info ~st ~groups
   in
   match res with
     Automata.Match (marks, pmarks) ->
     Match { s ; marks; pmarks ; gpos = info.positions; gcount = re.group_count}
   | Automata.Failed -> Failed
-  | Automata.Running -> Running
+  | Automata.Running ->
+    let no_match_starts_before = if groups then info.positions.(0) else 0 in
+    Running { no_match_starts_before }
 
-let mk_re ~initial ~colors ~color_repr ~ncolor ~lnl ~group_count =
+let mk_re ~initial ~colors ~color_repr ~ncolor ~lnl ~group_names ~group_count =
   { initial ;
     initial_states = [];
     colors;
@@ -338,6 +337,7 @@ let mk_re ~initial ~colors ~color_repr ~ncolor ~lnl ~group_count =
     lnl;
     tbl = Automata.create_working_area ();
     states = Automata.State.Table.create 97;
+    group_names;
     group_count }
 
 (**** Character sets ****)
@@ -347,7 +347,7 @@ let cadd c s = Cset.add (Char.code c) s
 
 let trans_set cache cm s =
   match Cset.one_char s with
-  | Some i -> Cset.csingle (Bytes.get cm i)
+  | Some i -> Cset.csingle cm.[i]
   | None ->
     let v = (Cset.hash_rec s, s) in
     try
@@ -356,8 +356,7 @@ let trans_set cache cm s =
       let l =
         Cset.fold_right
           s
-          ~f:(fun (i, j) l -> Cset.union (cseq (Bytes.get cm i)
-                                            (Bytes.get cm j)) l)
+          ~f:(fun (i, j) l -> Cset.union (cseq cm.[i] cm.[j]) l)
           ~init:Cset.empty
       in
       cache := Cset.CSetMap.add v l !cache;
@@ -376,7 +375,7 @@ type regexp =
   | Last_end_of_line | Start | Stop
   | Sem of Automata.sem * regexp
   | Sem_greedy of Automata.rep_kind * regexp
-  | Group of regexp | No_group of regexp | Nest of regexp
+  | Group of string option * regexp | No_group of regexp | Nest of regexp
   | Case of regexp | No_case of regexp
   | Intersection of regexp list
   | Complement of regexp list
@@ -395,7 +394,7 @@ module View = struct
     | Last_end_of_line | Start | Stop
     | Sem of Automata.sem * regexp
     | Sem_greedy of Automata.rep_kind * regexp
-    | Group of regexp | No_group of regexp | Nest of regexp
+    | Group of string option * regexp | No_group of regexp | Nest of regexp
     | Case of regexp | No_case of regexp
     | Intersection of regexp list
     | Complement of regexp list
@@ -430,7 +429,8 @@ let rec pp fmt t =
     sexp fmt "Sem" (pair Automata.pp_sem pp) (sem, re)
   | Sem_greedy (k, re) ->
     sexp fmt "Sem_greedy" (pair Automata.pp_rep_kind pp) (k, re)
-  | Group c        -> var "Group" c
+  | Group (None, c)   -> var "Group" c
+  | Group (Some n, c) -> sexp fmt "Named_group" (pair str pp) (n, c)
   | No_group c     -> var "No_group" c
   | Nest c         -> var "Nest" c
   | Case c         -> var "Case" c
@@ -485,7 +485,7 @@ let colorize c regexp =
     | Last_end_of_line          -> lnl := true
     | Sem (_, r)
     | Sem_greedy (_, r)
-    | Group r | No_group r
+    | Group (_, r) | No_group r
     | Nest r | Pmark (_,r)     -> colorize r
     | Case _ | No_case _
     | Intersection _
@@ -580,16 +580,16 @@ let enforce_kind ids kind kind' cr =
   |  _               -> cr
 
 (* XXX should probably compute a category mask *)
-let rec translate ids kind ign_group ign_case greedy pos cache c = function
+let rec translate ids kind ign_group ign_case greedy pos names cache c = function
   | Set s ->
     (A.cst ids (trans_set cache c s), kind)
   | Sequence l ->
-    (trans_seq ids kind ign_group ign_case greedy pos cache c l, kind)
+    (trans_seq ids kind ign_group ign_case greedy pos names cache c l, kind)
   | Alternative l ->
     begin match merge_sequences l with
         [r'] ->
         let (cr, kind') =
-          translate ids kind ign_group ign_case greedy pos cache c r' in
+          translate ids kind ign_group ign_case greedy pos names cache c r' in
         (enforce_kind ids kind kind' cr, kind)
       | merged_sequences ->
         (A.alt ids
@@ -597,14 +597,14 @@ let rec translate ids kind ign_group ign_case greedy pos cache c = function
               (fun r' ->
                  let (cr, kind') =
                    translate ids kind ign_group ign_case greedy
-                     pos cache c r' in
+                     pos names cache c r' in
                  enforce_kind ids kind kind' cr)
               merged_sequences),
          kind)
     end
   | Repeat (r', i, j) ->
     let (cr, kind') =
-      translate ids kind ign_group ign_case greedy pos cache c r' in
+      translate ids kind ign_group ign_case greedy pos names cache c r' in
     let rem =
       match j with
         None ->
@@ -631,11 +631,11 @@ let rec translate ids kind ign_group ign_case greedy pos cache c = function
   | Beg_of_word ->
     (A.seq ids `First
        (A.after ids Category.(inexistant ++ not_letter))
-       (A.before ids Category.(inexistant ++ letter)),
+       (A.before ids Category.letter),
      kind)
   | End_of_word ->
     (A.seq ids `First
-       (A.after ids Category.(inexistant ++ letter))
+       (A.after ids Category.letter)
        (A.before ids Category.(inexistant ++ not_letter)),
      kind)
   | Not_bound ->
@@ -643,8 +643,8 @@ let rec translate ids kind ign_group ign_case greedy pos cache c = function
                   (A.after ids Category.letter)
                   (A.before ids Category.letter);
                 A.seq ids `First
-                  (A.after ids Category.letter)
-                  (A.before ids Category.letter)],
+                  (A.after ids Category.(inexistant ++ not_letter))
+                  (A.before ids Category.(inexistant ++ not_letter))],
      kind)
   | Beg_of_str ->
     (A.after ids Category.inexistant, kind)
@@ -658,28 +658,33 @@ let rec translate ids kind ign_group ign_case greedy pos cache c = function
     (A.before ids Category.search_boundary, kind)
   | Sem (kind', r') ->
     let (cr, kind'') =
-      translate ids kind' ign_group ign_case greedy pos cache c r' in
+      translate ids kind' ign_group ign_case greedy pos names cache c r' in
     (enforce_kind ids kind' kind'' cr,
      kind')
   | Sem_greedy (greedy', r') ->
-    translate ids kind ign_group ign_case greedy' pos cache c r'
-  | Group r' ->
+    translate ids kind ign_group ign_case greedy' pos names cache c r'
+  | Group (n, r') ->
     if ign_group then
-      translate ids kind ign_group ign_case greedy pos cache c r'
+      translate ids kind ign_group ign_case greedy pos names cache c r'
     else
       let p = !pos in
+      let () =
+        match n with
+        | Some name -> names := (name, p / 2) :: !names
+        | None -> ()
+      in
       pos := !pos + 2;
       let (cr, kind') =
-        translate ids kind ign_group ign_case greedy pos cache c r' in
+        translate ids kind ign_group ign_case greedy pos names cache c r' in
       (A.seq ids `First (A.mark ids p) (
           A.seq ids `First cr (A.mark ids (p + 1))),
        kind')
   | No_group r' ->
-    translate ids kind true ign_case greedy pos cache c r'
+    translate ids kind true ign_case greedy pos names cache c r'
   | Nest r' ->
     let b = !pos in
     let (cr, kind') =
-      translate ids kind ign_group ign_case greedy pos cache c r'
+      translate ids kind ign_group ign_case greedy pos names cache c r'
     in
     let e = !pos - 1 in
     if e < b then
@@ -690,21 +695,21 @@ let rec translate ids kind ign_group ign_case greedy pos cache c = function
     assert false
   | Pmark (i, r') ->
     let (cr, kind') =
-      translate ids kind ign_group ign_case greedy pos cache c r' in
+      translate ids kind ign_group ign_case greedy pos names cache c r' in
     (A.seq ids `First (A.pmark ids i) cr, kind')
 
-and trans_seq ids kind ign_group ign_case greedy pos cache c = function
+and trans_seq ids kind ign_group ign_case greedy pos names cache c = function
   | [] ->
     A.eps ids
   | [r] ->
     let (cr', kind') =
-      translate ids kind ign_group ign_case greedy pos cache c r in
+      translate ids kind ign_group ign_case greedy pos names cache c r in
     enforce_kind ids kind kind' cr'
   | r :: rem ->
     let (cr', kind') =
-      translate ids kind ign_group ign_case greedy pos cache c r in
+      translate ids kind ign_group ign_case greedy pos names cache c r in
     let cr'' =
-      trans_seq ids kind ign_group ign_case greedy pos cache c rem in
+      trans_seq ids kind ign_group ign_case greedy pos names cache c rem in
     if A.is_eps cr'' then
       cr'
     else if A.is_eps cr' then
@@ -747,8 +752,8 @@ let rec handle_case ign_case = function
   | Sem_greedy (k, r) ->
     let r' = handle_case ign_case r in
     if is_charset r' then r' else Sem_greedy (k, r')
-  | Group r ->
-    Group (handle_case ign_case r)
+  | Group (n, r) ->
+    Group (n, handle_case ign_case r)
   | No_group r ->
     let r' = handle_case ign_case r in
     if is_charset r' then r' else No_group r'
@@ -783,12 +788,13 @@ let compile_1 regexp =
   let ncolor = if need_lnl then ncolor + 1 else ncolor in
   let ids = A.create_ids () in
   let pos = ref 0 in
+  let names = ref [] in
   let (r, kind) =
     translate ids
-      `First false false `Greedy pos (ref Cset.CSetMap.empty) colors regexp in
+      `First false false `Greedy pos names (ref Cset.CSetMap.empty) colors regexp in
   let r = enforce_kind ids `First kind r in
   (*Format.eprintf "<%d %d>@." !ids ncol;*)
-  mk_re ~initial:r ~colors ~color_repr ~ncolor ~lnl ~group_count:(!pos / 2)
+  mk_re ~initial:r ~colors ~color_repr ~ncolor ~lnl ~group_names:(List.rev !names) ~group_count:(!pos / 2)
 
 (****)
 
@@ -805,7 +811,7 @@ let rec anchored = function
     false
   | Beg_of_str | Start ->
     true
-  | Sem (_, r) | Sem_greedy (_, r) | Group r | No_group r | Nest r
+  | Sem (_, r) | Sem_greedy (_, r) | Group (_, r) | No_group r | Nest r
   | Case r | No_case r | Pmark (_, r) ->
     anchored r
 
@@ -857,7 +863,7 @@ let shortest r = Sem (`Shortest, r)
 let first r = Sem (`First, r)
 let greedy r = Sem_greedy (`Greedy, r)
 let non_greedy r = Sem_greedy (`Non_greedy, r)
-let group r = Group r
+let group ?name r = Group (name, r)
 let no_group r = No_group r
 let nest r = Nest r
 let mark r = let i = Pmark.gen () in (i,Pmark (i,r))
@@ -951,7 +957,14 @@ let exec_partial ?pos ?len re s =
   match exec_internal ~groups:false ~partial:true "Re.exec_partial"
           ?pos ?len re s with
     Match _ -> `Full
-  | Running -> `Partial
+  | Running _ -> `Partial
+  | Failed  -> `Mismatch
+
+let exec_partial_detailed ?pos ?len re s =
+  match exec_internal ~groups:true ~partial:true "Re.exec_partial_detailed"
+          ?pos ?len re s with
+    Match group -> `Full group
+  | Running { no_match_starts_before } -> `Partial no_match_starts_before
   | Failed  -> `Mismatch
 
 module Mark = struct
@@ -999,7 +1012,7 @@ module Rseq = struct
           let p1, p2 = Group.offset substr 0 in
           let pos = if p1=p2 then p2+1 else p2 in
           Seq.Cons (substr, aux pos)
-        | Running
+        | Running _
         | Failed -> Seq.Nil
     in
     aux pos
@@ -1040,7 +1053,7 @@ module Rseq = struct
             let state = `Yield (`Delim substr) in
             Seq.Cons (`Text text, aux state i pos)
           ) else Seq.Cons (`Delim substr, aux state i pos)
-        | Running -> Seq.Nil
+        | Running _ -> Seq.Nil
         | Failed ->
           if i < limit
           then (
@@ -1131,7 +1144,7 @@ let replace ?(pos=0) ?len ?(all=true) re ~f s =
               p2)
         else
           Buffer.add_substring buf s p2 (limit-p2)
-      | Running -> ()
+      | Running _ -> ()
       | Failed ->
         Buffer.add_substring buf s pos (limit-pos)
   in
@@ -1158,7 +1171,7 @@ let witness t =
     | Intersection _
     | Complement _
     | Difference (_, _) -> assert false
-    | Group r
+    | Group (_, r)
     | No_group r
     | Nest r
     | Sem (_, r)
@@ -1177,23 +1190,22 @@ let witness t =
     | End_of_str -> "" in
   witness (handle_case false t)
 
-type 'a seq = 'a Seq.t
 module Seq = Rseq
 module List = Rlist
 module Group = Group
 
 (** {2 Deprecated functions} *)
 
+let split_full_seq = Seq.split_full
+let split_seq = Seq.split
+let matches_seq = Seq.matches
+let all_seq = Seq.all
+
 type 'a gen        = 'a Gen.gen
 let all_gen        = Gen.all
 let matches_gen    = Gen.matches
 let split_gen      = Gen.split
 let split_full_gen = Gen.split_full
-
-let all_seq        = Seq.all
-let matches_seq    = Seq.matches
-let split_seq      = Seq.split
-let split_full_seq = Seq.split_full
 
 
 type substrings = Group.t

@@ -35,8 +35,8 @@ end = struct
     match path with
     | [] -> Memo.return None
     | dir :: path ->
-      let* res = best_in_dir ~dir program in
-      (match res with
+      best_in_dir ~dir program
+      >>= (function
        | None -> which ~path program
        | Some prog -> Memo.return (Some prog))
   ;;

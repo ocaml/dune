@@ -1,0 +1,9 @@
+(tests
+ (names a b)
+ (modes wasm))
+
+(env
+ (_
+  (wasm_of_ocaml
+   (runtest_alias runtest-js)
+   (compilation_mode whole_program))))

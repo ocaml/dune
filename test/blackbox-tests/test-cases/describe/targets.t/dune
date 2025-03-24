@@ -2,8 +2,7 @@
  (name simple))
 
 (rule
- (targets
-  (dir d))
+ (targets (dir d))
  (action
   (progn
    (run mkdir d)

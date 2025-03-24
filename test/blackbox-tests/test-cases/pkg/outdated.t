@@ -25,7 +25,7 @@
   >   (lock_dir dune.workspace.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
   $ solve_project --all <<EOF
   > (lang dune 3.11)

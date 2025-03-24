@@ -64,38 +64,5 @@ let mode_decoders =
   ]
 ;;
 
-module Extended = struct
-  type t =
-    | Normal of Rule.Mode.t
-    | Patch_back_source_tree
-
-  let patch_back_from_source_tree_syntax =
-    Dune_lang.Syntax.create
-      ~experimental:true
-      ~name:"patch-back-source-tree"
-      ~desc:"experimental support for (mode patch-back-source-tree)"
-      [ (0, 1), `Since (3, 0) ]
-  ;;
-
-  let () =
-    Dune_project.Extension.register_simple
-      patch_back_from_source_tree_syntax
-      (Dune_lang.Decoder.return [])
-  ;;
-
-  let decode =
-    sum
-      (( "patch-back-source-tree"
-       , let+ () = Dune_lang.Syntax.since patch_back_from_source_tree_syntax (0, 1) in
-         Patch_back_source_tree )
-       :: List.map mode_decoders ~f:(fun (name, dec) ->
-         ( name
-         , let+ x = dec in
-           Normal x )))
-  ;;
-
-  let field = field "mode" decode ~default:(Normal Standard)
-end
-
 let decode = sum mode_decoders
 let field = field "mode" decode ~default:Rule.Mode.Standard

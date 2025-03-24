@@ -1,6 +1,9 @@
+exception Parse_error
+exception Not_supported
+
 type regexp = Core.re
 
-type flag = [ `CASELESS | `MULTILINE | `ANCHORED ]
+type flag = [ `CASELESS | `MULTILINE | `ANCHORED | `DOTALL ]
 
 type groups = Core.Group.t
 
@@ -25,6 +28,12 @@ val exec : rex:regexp -> ?pos:int -> string -> groups
 
 val get_substring : groups -> int -> string
 (** Equivalent to {!Core.Group.get}. *)
+
+val names : regexp -> string array
+(** Return the names of named groups. *)
+
+val get_named_substring : regexp -> string -> groups -> string
+(** Return the first matched named group, or raise [Not_found]. *)
 
 val get_substring_ofs : groups -> int -> int * int
 (** Equivalent to {!Core.Group.offset}. *)

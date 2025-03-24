@@ -10,15 +10,16 @@ Using flags field in melange.emit stanzas is not supported
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (flags -w -14-26))
   > EOF
 
   $ dune build @mel
-  File "dune", line 4, characters 2-7:
-  4 |  (flags -w -14-26))
+  File "dune", line 5, characters 2-7:
+  5 |  (flags -w -14-26))
         ^^^^^
-  Error: Unknown field flags
+  Error: Unknown field "flags"
   [1]
 
 Adds a module that contains unused var (warning 26) and illegal backlash (warning 14)
@@ -31,6 +32,7 @@ Adds a module that contains unused var (warning 26) and illegal backlash (warnin
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (alias mel))
   > EOF
@@ -42,6 +44,9 @@ Trying to build triggers both warnings
   1 | let t = "\e\n" in
                ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
+  Hint: Single backslashes \ are reserved for escape sequences
+  (\n, \r, ...). Did you check the list of OCaml escape sequences?
+  To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^
@@ -54,6 +59,7 @@ Let's ignore them using compile_flags
   > (melange.emit
   >  (target output)
   >  (modules main)
+  >  (emit_stdlib false)
   >  (alias mel)
   >  (compile_flags -w -14-26))
   > EOF
@@ -67,6 +73,7 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main)
   >  (alias mel))
   > EOF
@@ -76,6 +83,9 @@ Can also pass flags from the env stanza. Let's go back to failing state:
   1 | let t = "\e\n" in
                ^^
   Error (warning 14 [illegal-backslash]): illegal backslash escape in string.
+  Hint: Single backslashes \ are reserved for escape sequences
+  (\n, \r, ...). Did you check the list of OCaml escape sequences?
+  To get a backslash character, escape it with a second backslash: \\.
   File "main.ml", line 1, characters 4-5:
   1 | let t = "\e\n" in
           ^
@@ -91,6 +101,7 @@ Adding env stanza with both warnings silenced allows the build to pass successfu
   > (melange.emit
   >  (alias mel)
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main))
   > EOF
 
@@ -122,6 +133,7 @@ But it is disabled by default
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (modules main))
   > EOF
 

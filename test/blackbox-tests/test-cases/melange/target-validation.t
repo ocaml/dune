@@ -14,6 +14,7 @@ Target should not be empty
   >  (modes melange))
   > (melange.emit
   >  (target "")
+  >  (emit_stdlib false)
   >  (libraries $foo)
   >  (module_system es6))
   > EOF
@@ -33,6 +34,7 @@ Target should not try to descend into subdirectories
   >  (modes melange))
   > (melange.emit
   >  (target foo/bar)
+  >  (emit_stdlib false)
   >  (libraries $foo)
   >  (module_system es6))
   > EOF
@@ -63,6 +65,7 @@ Target should not try to escape into parent directories
   >  (modes melange))
   > (melange.emit
   >  (target ../bar)
+  >  (emit_stdlib false)
   >  (libraries $foo)
   >  (module_system es6))
   > EOF

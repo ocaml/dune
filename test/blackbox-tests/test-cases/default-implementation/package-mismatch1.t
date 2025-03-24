@@ -25,8 +25,8 @@ A default implementation of a library must belong to the same package
                                ^^^^^
   Error: default implementation belongs to package dummyfoo2 while virtual
   library belongs to package dummyfoo1. This is impossible.
-  -> required by _build/default/vlib/.vlib.objs/byte/vlib.cmi
-  -> required by _build/install/default/lib/dummyfoo1/bar/vlib.cmi
+  -> required by _build/default/dummyfoo1.dune-package
+  -> required by _build/install/default/lib/dummyfoo1/dune-package
   -> required by _build/default/dummyfoo1.install
   -> required by alias install
   [1]

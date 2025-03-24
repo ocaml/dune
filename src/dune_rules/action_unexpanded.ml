@@ -397,7 +397,21 @@ end = struct
                Action_builder.return (Ok (Path.relative dir s))
              | In_path ->
                Action_builder.of_memo
-                 (Artifacts.binary ~loc:(Some loc) (Expander.artifacts env.expander) s))
+               @@
+               let open Memo.O in
+               let* where =
+                 let+ project = Dune_load.find_project ~dir:env.dir in
+                 if Dune_project.dune_version project >= (3, 14)
+                 then Artifacts.Original_path
+                 else Install_dir
+               and* artifacts = Expander.artifacts env.expander in
+               let hint =
+                 match s with
+                 | "refmt" -> Some "opam install reason"
+                 | "rescript_syntax" -> Some "opam install rescript-syntax"
+                 | _ -> None
+               in
+               Artifacts.binary ?hint ~loc:(Some loc) ~where artifacts s)
         in
         let prog = Result.map prog ~f:(Expander.map_exe env.expander) in
         let args = Value.L.to_strings ~dir args in
@@ -500,15 +514,15 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
     O.Symlink (x, y)
   | Copy_and_add_line_directive (x, y) ->
     A.with_expander (fun expander ->
-      Memo.return
-      @@
-      let context = Expander.context expander in
-      let+ x = E.dep x
-      and+ y = E.target y in
-      Copy_line_directive.action context ~src:x ~dst:y)
+      Expander.context expander
+      |> Context.DB.get
+      |> Memo.map ~f:(fun context ->
+        let+ x = E.dep x
+        and+ y = E.target y in
+        Copy_line_directive.action context ~src:x ~dst:y))
   | System x ->
     let+ x = E.string x in
-    O.System x
+    System.action x
   | Bash x ->
     let+ x = E.string x in
     O.Bash x
@@ -544,7 +558,7 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
         let+ p = E.dep file2 in
         Expander0.as_in_build_dir p ~loc:(String_with_vars.loc file2) ~what:"File"
     in
-    O.Diff { optional; file1; file2; mode }
+    Promote.Diff_action.diff ~optional ~mode file1 file2
   | No_infer t -> A.no_infer (expand t)
   | Pipe (outputs, l) ->
     let+ l = A.all (List.map l ~f:expand) in
@@ -552,6 +566,17 @@ let rec expand (t : Dune_lang.Action.t) : Action.t Action_expander.t =
   | Cram script ->
     let+ script = E.dep script in
     Cram_exec.action script
+  | Format_dune_file (src, dst) ->
+    A.with_expander (fun expander ->
+      let open Memo.O in
+      let+ version =
+        let dir = Expander.dir expander in
+        Dune_load.find_project ~dir >>| Dune_project.dune_version
+      in
+      let open Action_expander.O in
+      let+ src = E.dep src
+      and+ dst = E.target dst in
+      Format_dune_file.action ~version src dst)
   | Withenv _ | Substitute _ | Patch _ | When _ ->
     (* these can only be provided by the package language which isn't expanded here *)
     assert false
@@ -587,13 +612,13 @@ let expand_no_targets t ~loc ~chdir ~deps:deps_written_by_user ~expander ~what =
 ;;
 
 let expand
-  t
-  ~loc
-  ~chdir
-  ~deps:deps_written_by_user
-  ~targets_dir
-  ~targets:targets_written_by_user
-  ~expander
+      t
+      ~loc
+      ~chdir
+      ~deps:deps_written_by_user
+      ~targets_dir
+      ~targets:targets_written_by_user
+      ~expander
   =
   let open Action_builder.O in
   let deps_builder, expander, sandbox =

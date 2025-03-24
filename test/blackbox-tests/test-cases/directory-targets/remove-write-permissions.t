@@ -1,5 +1,7 @@
 Write permissions on directory targets.
 
+  $ umask 022
+
   $ cat >dune-project <<EOF
   > (lang dune 3.4)
   > (using directory-targets 0.1)
@@ -7,7 +9,7 @@ Write permissions on directory targets.
 
   $ cat >dune <<EOF
   > (rule
-  >  (action (system "mkdir -p foo/foo2 && touch foo/foo2/bar"))
+  >  (action (bash "mkdir -p foo/foo2 && touch foo/foo2/bar"))
   >  (targets (dir foo)))
   > EOF
 

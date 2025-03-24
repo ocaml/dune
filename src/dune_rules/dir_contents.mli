@@ -23,18 +23,15 @@ val foreign_sources : t -> Foreign_sources.t Memo.t
 
 val ocaml : t -> Ml_sources.t Memo.t
 
-(** Artifacts defined in this directory *)
-val artifacts : t -> Ml_sources.Artifacts.t Memo.t
-
 (** All mld files attached to this documentation stanza *)
-val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list Memo.t
+val mlds : t -> stanza:Documentation.t -> Path.Build.t list Memo.t
 
 val coq : t -> Coq_sources.t Memo.t
 
 (** Get the directory contents of the given directory. *)
 val get : Super_context.t -> dir:Path.Build.t -> t Memo.t
 
-val modules_of_lib : Super_context.t -> Lib.t -> Modules.t option Memo.t
+val modules_of_lib : Super_context.t -> Lib.t -> Modules.With_vlib.t option Memo.t
 val modules_of_local_lib : Super_context.t -> Lib.Local.t -> Modules.t Memo.t
 
 (** All directories in this group if [t] is a group root or just [t] if it is
@@ -65,9 +62,3 @@ type triage =
     However, if the directory is part of a group, this function simply returns
     the root of the group. *)
 val triage : Super_context.t -> dir:Path.Build.t -> triage Memo.t
-
-(** Add expansion that depend on OCaml artifacts/sources.
-
-    This function live in super_context.ml or expander.ml because it would
-    introduce a dependency cycle. *)
-val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t

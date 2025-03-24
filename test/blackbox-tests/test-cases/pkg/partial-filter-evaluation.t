@@ -43,7 +43,9 @@ Solve the package using the default solver env:
      -j
      %{jobs}
      (when
-      (= %{pkg-self:foo} bar)
+      (catch_undefined_var
+       (= %{pkg-self:foo} bar)
+       false)
       --foobar)
      @install)))
 
@@ -63,7 +65,7 @@ Make a custom solver env:
   >   (lock_dir dune.lock)))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
 
 Run the solver using the new env:

@@ -11,6 +11,9 @@ val default : t
 (** Flags for Coq binaries. *)
 val flags : t -> Ordered_set_lang.Unexpanded.t
 
+(** Flags for coqdep *)
+val coqdep_flags : t -> Ordered_set_lang.Unexpanded.t
+
 (** Flags for coqdoc *)
 val coqdoc_flags : t -> Ordered_set_lang.Unexpanded.t
 

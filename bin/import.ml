@@ -16,11 +16,11 @@ include struct
   module Dpath = Dpath
   module Findlib = Dune_rules.Findlib
   module Diff_promotion = Diff_promotion
-  module Cached_digest = Cached_digest
   module Targets = Targets
   module Context_name = Context_name
 end
 
+module Cached_digest = Dune_digest.Cached_digest
 module Execution_env = Dune_util.Execution_env
 
 include struct
@@ -28,14 +28,16 @@ include struct
   module Super_context = Super_context
   module Context = Context
   module Workspace = Workspace
-  module Package = Package
-  module Section = Install.Section
   module Dune_project = Dune_project
   module Dune_package = Dune_package
   module Resolve = Resolve
-  module Sub_dirs = Sub_dirs
+  module Source_dir_status = Source_dir_status
   module Source_tree = Source_tree
   module Dune_file = Dune_file
+  module Library = Library
+  module Melange = Melange
+  module Melange_stanzas = Melange_stanzas
+  module Executables = Executables
 end
 
 include struct
@@ -64,7 +66,12 @@ include struct
   module Profile = Profile
   module Lib_name = Lib_name
   module Package_name = Package_name
+  module Package = Package
   module Package_version = Package_version
+  module Source_kind = Source_kind
+  module Package_info = Package_info
+  module Section = Section
+  module Dune_project_name = Dune_project_name
 end
 
 module Log = Dune_util.Log
@@ -182,16 +189,14 @@ module Scheduler = struct
   let go ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
-      let insignificant_changes = Common.insignificant_changes common in
-      let signal_watcher = Common.signal_watcher common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes
-        ~signal_watcher
+        ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
+    Dune_rules.Clflags.concurrency := config.concurrency;
     let f =
       match Common.rpc common with
       | `Allow server -> fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
@@ -201,9 +206,9 @@ module Scheduler = struct
   ;;
 
   let go_with_rpc_server_and_console_status_reporting
-    ~(common : Common.t)
-    ~config:dune_config
-    run
+        ~(common : Common.t)
+        ~config:dune_config
+        run
     =
     let server =
       match Common.rpc common with
@@ -212,16 +217,14 @@ module Scheduler = struct
     in
     let stats = Common.stats common in
     let config =
-      let signal_watcher = Common.signal_watcher common in
-      let insignificant_changes = Common.insignificant_changes common in
       let watch_exclusions = Common.watch_exclusions common in
       Dune_config.for_scheduler
         dune_config
         stats
-        ~insignificant_changes
-        ~signal_watcher
+        ~print_ctrl_c_warning:true
         ~watch_exclusions
     in
+    Dune_rules.Clflags.concurrency := config.concurrency;
     let file_watcher = Common.file_watcher common in
     let run () =
       let open Fiber.O in
@@ -234,14 +237,12 @@ module Scheduler = struct
   ;;
 end
 
-let restore_cwd_and_execve (common : Common.t) prog argv env =
-  let prog =
-    if Filename.is_relative prog
-    then (
-      let root = Common.root common in
-      Filename.concat root.dir prog)
-    else prog
-  in
+let string_path_relative_to_specified_root (root : Workspace_root.t) path =
+  if Filename.is_relative path then Filename.concat root.dir path else path
+;;
+
+let restore_cwd_and_execve root prog argv env =
+  let prog = string_path_relative_to_specified_root root prog in
   Proc.restore_cwd_and_execve prog argv ~env
 ;;
 
@@ -262,4 +263,14 @@ let command_alias ?orig_name cmd term name =
     ]
   in
   Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
+;;
+
+let build f =
+  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Build_system.run f
+;;
+
+let build_exn f =
+  Hooks.End_of_build.once Promote.Diff_promotion.finalize;
+  Build_system.run_exn f
 ;;

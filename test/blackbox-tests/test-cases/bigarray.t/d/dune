@@ -1,0 +1,9 @@
+(executable
+ (name d)
+ (libraries
+  (select
+   d.ml
+   from
+   (bigarray -> d.bigarray.ml)
+   (!bigarray -> d.nobigarray.ml)
+   (-> d.dummy.ml))))

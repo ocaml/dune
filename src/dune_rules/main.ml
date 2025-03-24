@@ -3,8 +3,7 @@ open Import
 let () = Inline_tests.linkme
 
 type build_system =
-  { conf : Dune_load.conf
-  ; contexts : Context.t list
+  { contexts : Context.t list
   ; scontexts : Super_context.t Context_name.Map.t
   }
 
@@ -47,13 +46,11 @@ let execution_parameters =
 ;;
 
 let init
-  ?(action_runner = fun _ -> None)
-  ?(action_runners = fun _ -> [])
-  ~stats
-  ~sandboxing_preference
-  ~cache_config
-  ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
-  ()
+      ~stats
+      ~sandboxing_preference
+      ~cache_config
+      ~(cache_debug_flags : Dune_engine.Cache_debug_flags.t)
+      ()
   : unit
   =
   let promote_source ~chmod ~delete_dst_if_it_is_a_directory ~src ~dst =
@@ -71,7 +68,7 @@ let init
       ()
   in
   let module Shared_cache =
-    Dune_shared_cache.Make (struct
+    Dune_cache.Shared.Make (struct
       let debug_shared_cache = cache_debug_flags.shared_cache
       let config = cache_config
       let upload ~rule_digest:_ = Fiber.return ()
@@ -89,6 +86,7 @@ let init
          let open Dune_engine.Build_config.Gen_rules.Context_type in
          (Private_context.t, Empty)
          :: (Install.Context.install_context, Empty)
+         :: (Fetch_rules.context, Empty)
          :: List.map contexts ~f:(fun ctx -> ctx, With_sources)))
     ~cache_config
     ~cache_debug_flags
@@ -97,18 +95,15 @@ let init
     ~execution_parameters
     ~source_tree:(module Source_tree)
     ~shared_cache:(module Shared_cache)
-    ~action_runner
-    ~action_runners
     ~write_error_summary:(fun _ -> Fiber.return ())
 ;;
 
 let get () =
   let open Memo.O in
-  let* conf = Dune_load.load () in
   let* contexts = Context.DB.all () in
   let* scontexts = Memo.Lazy.force Super_context.all in
   let* () = Super_context.all_init_deferred () in
-  Memo.return { conf; contexts; scontexts }
+  Memo.return { contexts; scontexts }
 ;;
 
 let find_context_exn t ~name =

@@ -4,7 +4,7 @@ open Memo.O
 let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
   let* expander = Super_context.expander t ~dir in
   let* flags =
-    let+ ocaml_flags = Super_context.env_node t ~dir >>= Env_node.ocaml_flags in
+    let+ ocaml_flags = Ocaml_flags_db.ocaml_flags_env ~dir in
     Ocaml_flags.make
       ~spec
       ~default:ocaml_flags
@@ -22,7 +22,6 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
 ;;
 
 let gen_select_rules sctx ~dir compile_info =
-  let open Memo.O in
   Lib.Compile.resolved_selects compile_info
   |> Resolve.Memo.read_memo
   >>= Memo.parallel_iter ~f:(fun { Lib.Compile.Resolved_select.dst_fn; src_fn } ->
@@ -40,12 +39,11 @@ let gen_select_rules sctx ~dir compile_info =
           Action.Full.make (Copy_line_directive.action context ~src ~dst))))
 ;;
 
-let with_lib_deps (t : Context.t) compile_info ~dir ~f =
+let with_lib_deps (t : Context.t) merlin_ident ~dir ~f =
   let prefix =
     if Context.merlin t
     then
-      Lib.Compile.merlin_ident compile_info
-      |> Merlin_ident.merlin_file_path dir
+      Merlin_ident.merlin_file_path dir merlin_ident
       |> Path.build
       |> Action_builder.path
       |> Action_builder.goal
@@ -55,8 +53,8 @@ let with_lib_deps (t : Context.t) compile_info ~dir ~f =
 ;;
 
 type kind =
-  | Executables of Dune_file.Buildable.t * (Loc.t * string) list
-  | Library of Dune_file.Buildable.t * Lib_name.Local.t
+  | Executables of Buildable.t * (Loc.t * string) list
+  | Library of Buildable.t * Lib_name.Local.t
   | Melange of
       { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
       ; preprocessor_deps : Dep_conf.t list
@@ -65,17 +63,17 @@ type kind =
       }
 
 let modules_rules
-  ~preprocess
-  ~preprocessor_deps
-  ~lint
-  ~empty_module_interface_if_absent
-  sctx
-  expander
-  ~dir
-  scope
-  modules
-  ~lib_name
-  ~empty_intf_modules
+      ~preprocess
+      ~preprocessor_deps
+      ~lint
+      ~empty_module_interface_if_absent
+      sctx
+      expander
+      ~dir
+      scope
+      modules
+      ~lib_name
+      ~empty_intf_modules
   =
   let* pp =
     let instrumentation_backend = Lib.DB.instrumentation_backend (Scope.libs scope) in
@@ -89,7 +87,7 @@ let modules_rules
       Resolve.Memo.read_memo
         (Preprocess.Per_module.instrumentation_deps preprocess ~instrumentation_backend)
     in
-    Preprocessing.make
+    Pp_spec_rules.make
       sctx
       ~dir
       ~scope

@@ -9,7 +9,7 @@ module New () = Dune_console
 
 module type New_console = module type of Dune_console
 
-(* In order to keep tests accross different backends consistent, we create some
+(* In order to keep tests across different backends consistent, we create some
    generic test scripts here that take the created [Console]. We then test these
    for each backend.
 
@@ -85,7 +85,8 @@ let%expect_test "Status line clearing." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line
   |}]
 ;;
@@ -107,7 +108,8 @@ let%expect_test "Multi-line status line clearing." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_clearing_multiline (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Some
 multiline
 status
@@ -120,7 +122,8 @@ let%expect_test "Status line overwriting." =
   Console.Backend.set Console.Backend.dumb;
   test_status_line_overwrite (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line
 Here is another status line
   |}]
@@ -146,7 +149,8 @@ let%expect_test "Status line clearing." =
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Here is a status line\r                     \r
  |}]
 ;;
@@ -170,7 +174,8 @@ let%expect_test "Multi-line status line clearing." =
   Console.Backend.set Console.Backend.progress;
   test_status_line_clearing_multiline (module Console);
   escape [%expect.output];
-  [%expect {|
+  [%expect
+    {|
 Some
 multiline
 status

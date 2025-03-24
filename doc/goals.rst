@@ -2,6 +2,10 @@
 Goal of Dune
 ************
 
+.. TODO(diataxis)
+   This is an important page and should go in a sort of meta section together
+   with the history of the project and the glossary for example.
+
 The Dune project strives to provide the best possible build tool for the entire
 OCaml community, including individual developers contributing to open source
 projects in their free time, larger companies (such as Jane Street), and

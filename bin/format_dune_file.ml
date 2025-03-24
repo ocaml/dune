@@ -45,7 +45,9 @@ let term =
   and+ version =
     let docv = "VERSION" in
     let doc = "Which version of Dune language to use." in
-    let default = Dune_lang.Syntax.greatest_supported_version Dune_lang.Stanza.syntax in
+    let default =
+      Dune_lang.Syntax.greatest_supported_version_exn Dune_lang.Stanza.syntax
+    in
     Arg.(value & opt version default & info [ "dune-version" ] ~docv ~doc)
   in
   let input = Option.map ~f:Arg.Path.path path_opt in

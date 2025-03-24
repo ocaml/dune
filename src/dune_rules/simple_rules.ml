@@ -53,18 +53,18 @@ let rule_kind ~(rule : Rule_conf.t) ~(action : _ Action_builder.With_targets.t) 
 
 let interpret_and_add_locks ~expander locks action =
   let open Action_builder.O in
-  Expander.expand_locks expander ~base:`Of_expander locks
+  Expander.expand_locks expander locks
   >>= function
   | [] -> action
   | locks -> Action_builder.map action ~f:(Action.Full.add_locks locks)
 ;;
 
 let add_user_rule
-  sctx
-  ~dir
-  ~(rule : Rule_conf.t)
-  ~(action : _ Action_builder.With_targets.t)
-  ~expander
+      sctx
+      ~dir
+      ~(rule : Rule_conf.t)
+      ~(action : Action.Full.t Action_builder.With_targets.t)
+      ~expander
   =
   let action =
     let build = interpret_and_add_locks ~expander rule.locks action.build in
@@ -106,31 +106,15 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
       | Some bindings -> Expander.add_bindings expander ~bindings
     in
     let* action =
-      let+ (action : _ Action_builder.With_targets.t) =
-        let chdir = Expander.dir expander in
-        Action_unexpanded.expand
-          (snd rule.action)
-          ~loc:(fst rule.action)
-          ~chdir
-          ~expander
-          ~deps:rule.deps
-          ~targets
-          ~targets_dir:dir
-      in
-      if rule.patch_back_source_tree
-      then
-        Action_builder.With_targets.map action ~f:(fun action ->
-          (* Here we expect that [action.sandbox] is [Sandbox_config.default]
-             because the parsing of [rule] stanzas forbids having both a
-             sandboxing setting in [deps] and a [patch_back_source_tree] field
-             at the same time.
-
-             If we didn't have this restriction and [action.sandbox] was
-             something that didn't permit [Some Patch_back_source_tree], Dune
-             would crash in a way that would be difficult for the user to
-             understand. *)
-          Action.Full.add_sandbox Sandbox_mode.Set.patch_back_source_tree_only action)
-      else action
+      let chdir = Expander.dir expander in
+      Action_unexpanded.expand
+        (snd rule.action)
+        ~loc:(fst rule.action)
+        ~chdir
+        ~expander
+        ~deps:rule.deps
+        ~targets
+        ~targets_dir:dir
     in
     (match rule_kind ~rule ~action with
      | No_alias ->
@@ -173,8 +157,9 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.external_ (Path.External.of_string src_glob))
   in
   let since = 1, 3 in
-  if def.syntax_version < since
-     && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
+  if
+    def.syntax_version < since
+    && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
   then
     Dune_lang.Syntax.Error.since
       loc
@@ -218,14 +203,23 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            not the current directory."
       ];
   (* add rules *)
-  let* files = Build_system.eval_pred (File_selector.of_glob ~dir:src_in_build glob) in
+  let* only_sources = Expander.eval_blang expander def.only_sources in
+  let* files =
+    let dir =
+      match only_sources with
+      | true -> src_in_src
+      | false -> src_in_build
+    in
+    Build_system.eval_pred (File_selector.of_glob ~dir glob)
+  in
+  if def.syntax_version >= (3, 17) && Filename_set.is_empty files
+  then User_error.raise ~loc [ Pp.textf "Does not match any files" ];
   (* CR-someday amokhov: We currently traverse the set [files] twice: first, to
      add the corresponding rules, and then to convert the files to [targets]. To
      do only one traversal we need [Memo.parallel_map_set]. *)
   let* () =
-    Memo.parallel_iter_set
-      (module Filename.Set)
-      (Filename_set.filenames files)
+    Memo.parallel_iter_seq
+      (Filename.Set.to_seq (Filename_set.filenames files))
       ~f:(fun basename ->
         let file_src = Path.relative src_in_build basename in
         let file_dst = Path.Build.relative dir basename in

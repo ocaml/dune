@@ -22,35 +22,51 @@ module Repository = struct
 
   type t =
     { name : Name.t
-    ; source : string
+    ; url : Loc.t * OpamUrl.t
     }
 
   let name { name; _ } = name
 
-  let to_dyn { name; source } =
+  let to_dyn { name; url = _, url } =
     let open Dyn in
-    variant "repository" [ Name.to_dyn name; string source ]
+    variant "repository" [ Name.to_dyn name; string (OpamUrl.to_string url) ]
   ;;
 
-  let equal { name; source } t = Name.equal name t.name && String.equal source t.source
-  let hash { name; source } = Tuple.T2.hash Name.hash String.hash (name, source)
+  let equal { name; url } t =
+    Name.equal name t.name && Tuple.T2.equal Loc.equal OpamUrl.equal url t.url
+  ;;
+
+  let hash { name; url } = Tuple.T2.hash Name.hash Poly.hash (name, url)
 
   let upstream =
-    { name = "upstream"; source = "git+https://github.com/ocaml/opam-repository.git" }
+    { name = "upstream"
+    ; url = Loc.none, OpamUrl.of_string "git+https://github.com/ocaml/opam-repository.git"
+    }
   ;;
 
   let overlay =
-    { name = "overlay"; source = "git+https://github.com/ocaml-dune/opam-overlays.git" }
+    { name = "overlay"
+    ; url =
+        Loc.none, OpamUrl.of_string "git+https://github.com/ocaml-dune/opam-overlays.git"
+    }
+  ;;
+
+  let binary_packages =
+    { name = "binary-packages"
+    ; url =
+        ( Loc.none
+        , OpamUrl.of_string "git+https://github.com/ocaml-dune/ocaml-binary-packages.git"
+        )
+    }
   ;;
 
   let decode =
     let open Decoder in
     fields
       (let+ name = field "name" Name.decode
-       and+ source = field "source" string in
-       { name; source })
+       and+ url = field "url" OpamUrl.decode_loc in
+       { name; url })
   ;;
 
-  let create ~name ~source = { name; source }
-  let opam_url { source; _ } = OpamUrl.of_string source
+  let opam_url { name = _; url } = url
 end

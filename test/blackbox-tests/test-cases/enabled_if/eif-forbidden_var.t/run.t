@@ -5,6 +5,5 @@ This one uses forbidden variables
                       ^^^^^^^^^^^^^^^
   Error: Only context_name, profile, architecture, system, model, os_type,
   ccomp_type and ocaml_version variables are allowed in this 'enabled_if'
-  field. If you think that project_root should also be allowed, please file an
-  issue about it.
+  field. Please upgrade your dune language to at least 3.15.
   [1]

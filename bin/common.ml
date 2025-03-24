@@ -1,5 +1,4 @@
 open Stdune
-open Dune_config
 open Dune_config_file
 module Console = Dune_console
 module Graph = Dune_graph.Graph
@@ -14,7 +13,6 @@ end
 
 open struct
   open Dune_rules
-  module Package = Package
   module Colors = Colors
   module Only_packages = Only_packages
 end
@@ -25,6 +23,8 @@ open struct
   module Term = Term
   module Manpage = Manpage
 end
+
+module Package = Dune_lang.Package
 
 module Let_syntax = struct
   let ( let+ ) t f = Term.(const f $ t)
@@ -411,12 +411,12 @@ let shared_with_config_file =
     let doc =
       Printf.sprintf
         "Enable or disable Dune cache (%s). Default is `%s'."
-        (Arg.doc_alts_enum Config.Toggle.all)
-        (Config.Toggle.to_string Dune_config.default.cache_enabled)
+        (Arg.doc_alts_enum Dune_config.Cache.Toggle.all)
+        (Dune_config.Cache.Toggle.to_string Dune_config.default.cache_enabled)
     in
     Arg.(
       value
-      & opt (some (enum Config.Toggle.all)) None
+      & opt (some (enum Dune_config.Cache.Toggle.all)) None
       & info [ "cache" ] ~docs ~env:(Cmd.Env.info ~doc "DUNE_CACHE") ~doc)
   and+ cache_storage_mode =
     let doc =
@@ -487,6 +487,7 @@ let shared_with_config_file =
   ; cache_storage_mode
   ; action_stdout_on_success
   ; action_stderr_on_success
+  ; project_defaults = None
   ; experimental = None
   }
 ;;
@@ -552,14 +553,6 @@ let cache_debug_flags_term : Cache_debug_flags.t Term.t =
   value initial
 ;;
 
-module Action_runner = struct
-  type t =
-    | No
-    | Yes of
-        (Dune_lang.Dep_conf.t Dune_rpc_impl.Server.t
-         -> (Dune_engine.Action_exec.input -> Dune_engine.Action_runner.t option) Staged.t)
-end
-
 module Builder = struct
   type t =
     { debug_dep_path : bool
@@ -567,6 +560,7 @@ module Builder = struct
     ; debug_artifact_substitution : bool
     ; debug_load_dir : bool
     ; debug_digests : bool
+    ; debug_package_logs : bool
     ; wait_for_filesystem_clock : bool
     ; only_packages : Only_packages.Clflags.t
     ; capture_outputs : bool
@@ -593,23 +587,21 @@ module Builder = struct
     ; separate_error_messages : bool
     ; stop_on_first_error : bool
     ; require_dune_project_file : bool
-    ; insignificant_changes : [ `React | `Ignore ]
     ; watch_exclusions : string list
     ; build_dir : string
-    ; store_digest_preimage : bool
     ; root : string option
     ; stats_trace_file : string option
     ; stats_trace_extended : bool
     ; allow_builds : bool
     ; default_root_is_cwd : bool
-    ; action_runner : Action_runner.t
     ; log_file : Dune_util.Log.File.t
     }
 
+  let root t = t.root
   let set_root t root = { t with root = Some root }
   let forbid_builds t = { t with allow_builds = false; no_print_directory = true }
+  let default_root_is_cwd t = t.default_root_is_cwd
   let set_default_root_is_cwd t x = { t with default_root_is_cwd = x }
-  let set_action_runner t x = { t with action_runner = x }
   let set_log_file t x = { t with log_file = x }
   let disable_log_file t = { t with log_file = No_log_file }
   let set_promote t v = { t with promote = Some v }
@@ -668,19 +660,16 @@ module Builder = struct
             [ "debug-digests" ]
             ~docs
             ~doc:"Explain why Dune decides to re-digest some files")
-    and+ store_digest_preimage =
+    and+ debug_package_logs =
+      let doc = "Always print the standard logs when building packages" in
       Arg.(
         value
         & flag
         & info
-            [ "debug-store-digest-preimage" ]
+            [ "debug-package-logs" ]
             ~docs
-            ~doc:
-              "Store digest preimage for all computed digests, so that it's possible to \
-               reverse them later, for debugging. The digests are stored in the shared \
-               cache (see --cache flag) as values, even if cache is otherwise disabled. \
-               This should be used only for debugging, since it's slow and it litters \
-               the shared cache.")
+            ~doc
+            ~env:(Cmd.Env.info ~doc "DUNE_DEBUG_PACKAGE_LOGS"))
     and+ no_buffer =
       let doc =
         "Do not buffer the output of commands executed by dune. By default dune buffers \
@@ -963,15 +952,6 @@ module Builder = struct
                of the build in a deterministic order. $(b,twice) reports each error \
                twice: once as soon as the error is discovered and then again at the end \
                of the build, in a deterministic order.")
-    and+ react_to_insignificant_changes =
-      Arg.(
-        value
-        & flag
-        & info
-            [ "react-to-insignificant-changes" ]
-            ~doc:
-              "React to insignificant file system changes; this is only useful for \
-               benchmarking dune.")
     and+ separate_error_messages =
       Arg.(
         value
@@ -994,6 +974,7 @@ module Builder = struct
     ; debug_artifact_substitution
     ; debug_load_dir
     ; debug_digests
+    ; debug_package_logs
     ; wait_for_filesystem_clock
     ; only_packages
     ; capture_outputs = not no_buffer
@@ -1033,16 +1014,13 @@ module Builder = struct
     ; separate_error_messages
     ; stop_on_first_error
     ; require_dune_project_file
-    ; insignificant_changes = (if react_to_insignificant_changes then `React else `Ignore)
     ; watch_exclusions
     ; build_dir = Option.value ~default:default_build_dir build_dir
-    ; store_digest_preimage
     ; root
     ; stats_trace_file
     ; stats_trace_extended
     ; allow_builds = true
     ; default_root_is_cwd = false
-    ; action_runner = No
     ; log_file = Default
     }
   ;;
@@ -1073,17 +1051,8 @@ let rpc t =
   | `Allow rpc -> `Allow (Lazy.force rpc)
 ;;
 
-let signal_watcher t =
-  match t.rpc with
-  | `Allow _ -> `Yes
-  | `Forbid_builds ->
-    (* if we aren't building anything, then we don't mind interrupting dune immediately *)
-    `No
-;;
-
 let watch_exclusions t = t.builder.watch_exclusions
 let stats t = t.stats
-let insignificant_changes t = t.builder.insignificant_changes
 
 (* To avoid needless recompilations under Windows, where the case of
    [Sys.getcwd] can vary between different invocations of [dune], normalize to
@@ -1153,7 +1122,7 @@ let print_entering_message c =
    we should probably refactor that at some point. *)
 let build (builder : Builder.t) =
   let root =
-    Workspace_root.create
+    Workspace_root.create_exn
       ~default_is_cwd:builder.default_root_is_cwd
       ~specified_by_user:builder.root
   in
@@ -1182,7 +1151,6 @@ let build (builder : Builder.t) =
              | Yes Passive -> Some 1.0
              | _ -> None
            in
-           let action_runner = Dune_engine.Action_runner.Rpc_server.create () in
            Dune_rpc_impl.Server.create
              ~lock_timeout
              ~registry
@@ -1190,13 +1158,28 @@ let build (builder : Builder.t) =
              ~handle:Dune_rules_rpc.register
              ~watch_mode_config:builder.watch
              ~parse_build:Dune_rules_rpc.parse_build
-             stats
-             action_runner))
+             stats))
     else `Forbid_builds
   in
-  if builder.store_digest_preimage then Dune_engine.Reversible_digest.enable ();
   if builder.print_metrics then Dune_metrics.enable ();
   { builder; root; rpc; stats }
+;;
+
+let maybe_init_cache (cache_config : Dune_cache.Config.t) =
+  match cache_config with
+  | Disabled -> cache_config
+  | Enabled _ ->
+    (match Dune_cache_storage.Layout.create_cache_directories () with
+     | Ok () -> cache_config
+     | Error (path, exn) ->
+       User_warning.emit
+         ~hints:
+           [ Pp.textf "Make sure the directory %s can be created" (Path.to_string path) ]
+         [ Pp.textf
+             "Cache directories could not be created: %s; disabling cache"
+             (Unix.error_message exn)
+         ];
+       Disabled)
 ;;
 
 let init (builder : Builder.t) =
@@ -1236,32 +1219,27 @@ let init (builder : Builder.t) =
   Dune_rules.Global.init ~capture_outputs:c.builder.capture_outputs;
   let cache_config =
     match config.cache_enabled with
-    | `Disabled -> Dune_cache.Config.Disabled
-    | `Enabled ->
+    | Disabled -> Dune_cache.Config.Disabled
+    | Enabled_except_user_rules | Enabled ->
       Enabled
         { storage_mode = Option.value config.cache_storage_mode ~default:Hardlink
         ; reproducibility_check = config.cache_reproducibility_check
         }
   in
-  Log.info [ Pp.textf "Shared cache: %s" (Config.Toggle.to_string config.cache_enabled) ];
+  Log.info
+    [ Pp.textf
+        "Shared cache: %s"
+        (Dune_config.Cache.Toggle.to_string config.cache_enabled)
+    ];
   Log.info
     [ Pp.textf
         "Shared cache location: %s"
         (Path.to_string Dune_cache_storage.Layout.root_dir)
     ];
-  let action_runner =
-    match builder.action_runner with
-    | No -> None
-    | Yes f ->
-      (match rpc c with
-       | `Forbid_builds -> Code_error.raise "action runners require building" []
-       | `Allow server -> Some (Staged.unstage @@ f server))
-  in
   Dune_rules.Main.init
-    ?action_runner
     ~stats:c.stats
     ~sandboxing_preference:config.sandboxing_preference
-    ~cache_config
+    ~cache_config:(maybe_init_cache cache_config)
     ~cache_debug_flags:c.builder.cache_debug_flags
     ();
   Only_packages.Clflags.set c.builder.only_packages;
@@ -1270,11 +1248,12 @@ let init (builder : Builder.t) =
   Dune_engine.Clflags.debug_backtraces c.builder.debug_backtraces;
   Dune_rules.Clflags.debug_artifact_substitution := c.builder.debug_artifact_substitution;
   Dune_engine.Clflags.debug_load_dir := c.builder.debug_load_dir;
-  Dune_engine.Clflags.debug_digests := c.builder.debug_digests;
   Dune_engine.Clflags.debug_fs_cache := c.builder.cache_debug_flags.fs_cache;
-  Dune_engine.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
+  Dune_digest.Clflags.debug_digests := c.builder.debug_digests;
+  Dune_rules.Clflags.debug_package_logs := c.builder.debug_package_logs;
+  Dune_digest.Clflags.wait_for_filesystem_clock := c.builder.wait_for_filesystem_clock;
   Dune_engine.Clflags.capture_outputs := c.builder.capture_outputs;
-  Dune_engine.Clflags.diff_command := c.builder.diff_command;
+  Promote.Clflags.diff_command := c.builder.diff_command;
   Dune_engine.Clflags.promote := c.builder.promote;
   Dune_engine.Clflags.force := c.builder.force;
   Dune_engine.Clflags.stop_on_first_error := c.builder.stop_on_first_error;
@@ -1285,6 +1264,10 @@ let init (builder : Builder.t) =
   Dune_rules.Clflags.ignore_lock_dir := c.builder.ignore_lock_dir;
   Dune_rules.Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
+  (Dune_engine.Clflags.can_go_in_shared_cache_default
+   := match config.cache_enabled with
+      | Disabled | Enabled_except_user_rules -> false
+      | Enabled -> true);
   Log.info
     [ Pp.textf
         "Workspace root: %s"

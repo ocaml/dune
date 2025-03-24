@@ -11,6 +11,20 @@ type 'a t =
   ; man : 'a
   }
 
+let to_dyn f { lib_root; libexec_root; bin; sbin; share_root; etc_root; doc_root; man } =
+  let open Dyn in
+  record
+    [ "lib_root", f lib_root
+    ; "libexec_root", f libexec_root
+    ; "bin", f bin
+    ; "sbin", f sbin
+    ; "share_root", f share_root
+    ; "etc_root", f etc_root
+    ; "doc_root", f doc_root
+    ; "man", f man
+    ]
+;;
+
 let make prefix ~relative =
   let lib_root = relative prefix "lib" in
   { lib_root
@@ -36,7 +50,7 @@ let make_all a =
   }
 ;;
 
-let opam_from_prefix prefix = make prefix ~relative:Path.relative
+let opam_from_prefix prefix ~relative = make prefix ~relative
 
 let complete x =
   match x.libexec_root with
@@ -80,10 +94,10 @@ open Dune_findlib
 let ocamlpath = Findlib.Config.ocamlpath_var
 let ocamlfind_ignore_dups_in = Findlib.Config.ocamlfind_ignore_dups_in
 
-let to_env_without_path t =
-  [ Ocaml.Env.caml_ld_library_path, Path.Build.relative t.lib_root "stublibs"
+let to_env_without_path t ~relative =
+  [ Ocaml.Env.caml_ld_library_path, relative t.lib_root "stublibs"
   ; ocamlpath, t.lib_root
-  ; "OCAMLTOP_INCLUDE_PATH", Path.Build.relative t.lib_root "toplevel"
+  ; "OCAMLTOP_INCLUDE_PATH", relative t.lib_root "toplevel"
   ; ocamlfind_ignore_dups_in, t.lib_root
   ; "MANPATH", t.man
   ]
@@ -96,7 +110,7 @@ let sep var =
 ;;
 
 let add_to_env t env =
-  to_env_without_path t
+  to_env_without_path t ~relative:Path.Build.relative
   |> List.fold_left ~init:env ~f:(fun env (var, path) ->
     Env.update env ~var ~f:(fun _PATH ->
       let path_sep = sep var in

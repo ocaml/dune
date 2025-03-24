@@ -9,7 +9,7 @@
   > EOF
 
   $ dune build b
-  File "dune", line 1, characters 0-84:
+  File "dune", lines 1-3, characters 0-84:
   1 | (rule
   2 |   (targets a b)
   3 |   (action (bash "echo content > a; chmod -r a; ln -s foo b")))

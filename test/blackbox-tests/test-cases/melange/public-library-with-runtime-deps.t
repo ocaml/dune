@@ -14,11 +14,12 @@ Test `melange.runtime_deps` in a public library in the workspace
   > (library
   >  (public_name foo)
   >  (modes melange)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps index.txt nested/hello.txt))
   > EOF
   $ cat > lib/foo.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let () = Js.log2 "dirname:" dirname
   > let file_path = "./index.txt"
   > let read_asset () = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
@@ -46,14 +47,14 @@ Test `melange.runtime_deps` in a public library in the workspace
   > (melange.emit
   >  (alias mel)
   >  (target output)
-  >  (libraries foo)
+  >  (libraries foo melange.node)
   >  (preprocess (pps melange.ppx))
   >  (emit_stdlib false)
   >  (runtime_deps assets/file.txt))
   > EOF
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./assets/file.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

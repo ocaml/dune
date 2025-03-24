@@ -131,23 +131,7 @@ Testsuite for (toplevel that loads plugins).
   >   print_endline "Done with registration of Plugin2";
   > EOF
 
-  $ dune build --display short @all 2>&1 | dune_cmd sanitize
-      ocamldep .top_with_plugins.eobjs/top_with_plugins.impl.d
-        ocamlc .registration.objs/byte/registration.{cmi,cmo,cmt}
-        ocamlc .top_with_plugins.eobjs/byte/dune_site__Dune_site_data.{cmo,cmt}
-        ocamlc .top_with_plugins.eobjs/byte/dune_site_plugins__Dune_site_plugins_data.{cmo,cmt}
-      ocamldep .top_with_plugins.eobjs/sites.impl.d
-        ocamlc registration.cma
-        ocamlc plugin1/.plugin1_impl.objs/byte/plugin1_impl.{cmi,cmo,cmt}
-        ocamlc plugin2/.plugin2_impl.objs/byte/plugin2_impl.{cmi,cmo,cmt}
-        ocamlc .top_with_plugins.eobjs/byte/sites.{cmi,cmo,cmt}
-      ocamldep .top_with_plugins.eobjs/top_with_plugins.intf.d
-        ocamlc plugin1/plugin1_impl.cma
-        ocamlc plugin2/plugin2_impl.cma
-        ocamlc .top_with_plugins.eobjs/byte/top_with_plugins.{cmi,cmti}
-        ocamlc .top_with_plugins.eobjs/byte/top_with_plugins.{cmo,cmt}
-        ocamlc top_with_plugins.bc
-        ocamlc top_with_plugins.exe
+  $ dune build @all 2>&1 | dune_cmd sanitize
   $ dune install --prefix _install --display short
   Installing _install/lib/top-plugin1/META
   Installing _install/lib/top-plugin1/dune-package

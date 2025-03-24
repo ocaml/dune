@@ -89,6 +89,7 @@ end
 type 'path t
 
 val name : _ t -> Lib_name.t
+val lib_id : _ t -> Lib_id.t
 val loc : _ t -> Loc.t
 
 (** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
@@ -114,7 +115,7 @@ val native_archives : 'path t -> 'path native_archives
 
 (** [eval_native_archives] is like [native_archives] but it knows how to
     evaluate [Needs_module_info] into the list of archives *)
-val eval_native_archives_exn : 'path t -> modules:Modules.t option -> 'path list
+val eval_native_archives_exn : 'path t -> modules:Modules.With_vlib.t option -> 'path list
 
 (** [dll*.so] files for stubs. These are read when linking a bytecode executable
     and are loaded dynamically at runtime by bytecode executables. *)
@@ -135,6 +136,7 @@ val default_implementation : _ t -> (Loc.t * Lib_name.t) option
 val kind : _ t -> Lib_kind.t
 val synopsis : _ t -> string option
 val jsoo_runtime : 'path t -> 'path list
+val wasmoo_runtime : 'path t -> 'path list
 val melange_runtime_deps : 'path t -> 'path File_deps.t
 val obj_dir : 'path t -> 'path Obj_dir.t
 val virtual_ : _ t -> Modules.t Source.t option
@@ -143,16 +145,17 @@ val main_module_name : _ t -> Main_module_name.t
 val wrapped : _ t -> Wrapped.t Inherited.t option
 val special_builtin_support : _ t -> (Loc.t * Special_builtin_support.t) option
 val modes : _ t -> Lib_mode.Map.Set.t
-val modules : _ t -> Modules.t option Source.t
+val modules : _ t -> Modules.With_vlib.t option Source.t
 val implements : _ t -> (Loc.t * Lib_name.t) option
 val requires : _ t -> Lib_dep.t list
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
 val preprocess : _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
-val enabled : _ t -> Enabled_status.t
+val enabled : _ t -> Enabled_status.t Memo.t
 val orig_src_dir : 'path t -> 'path option
 val version : _ t -> Package_version.t option
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
+val dynlink_supported : _ t -> bool
 
 (** Directory where the source files for the library are located. Returns the
     original src dir when it exists *)
@@ -178,7 +181,7 @@ val for_dune_package
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> melange_runtime_deps:Path.t list
   -> public_headers:Path.t list
-  -> modules:Modules.t
+  -> modules:Modules.With_vlib.t
   -> Path.t t
 
 val map_path : Path.t t -> f:(Path.t -> Path.t) -> Path.t t
@@ -191,6 +194,7 @@ val create
   :  loc:Loc.t
   -> path_kind:'a path
   -> name:Lib_name.t
+  -> lib_id:Lib_id.t
   -> kind:Lib_kind.t
   -> status:Status.t
   -> src_dir:'a
@@ -210,8 +214,9 @@ val create
   -> native_archives:'a native_archives
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
+  -> wasmoo_runtime:'a list
   -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
-  -> enabled:Enabled_status.t
+  -> enabled:Enabled_status.t Memo.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option
@@ -219,7 +224,7 @@ val create
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Lib_mode.Map.Set.t
-  -> modules:Modules.t option Source.t
+  -> modules:Modules.With_vlib.t option Source.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:(Loc.t * Special_builtin_support.t) option
   -> exit_module:Module_name.t option
@@ -229,4 +234,3 @@ val create
 
 val package : _ t -> Package.Name.t option
 val to_dyn : 'path Dyn.builder -> 'path t Dyn.builder
-val equal : 'a t -> 'a t -> bool

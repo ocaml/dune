@@ -1,0 +1,8 @@
+(lang dune 3.17)
+
+(lock_dir
+ (repositories overlay specific-upstream))
+
+(repository
+ (name specific-upstream)
+ (url "git+https://github.com/ocaml/opam-repository.git#00ac3727bc4ac0eabd3c89e69c1660d6b63a3d48"))

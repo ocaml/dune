@@ -116,7 +116,7 @@ It is also possible to use variables of your dependencies:
   $ cat >dune.lock/test.pkg <<EOF
   > (version 0.0.1)
   > (source (copy $PWD/test-source))
-  > (deps dependency)
+  > (depends dependency)
   > (build
   >  (progn
   >   (substitute dependencies.ml.in dependencies.ml)

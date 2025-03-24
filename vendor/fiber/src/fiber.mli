@@ -20,7 +20,6 @@ val return : 'a -> 'a t
 
 (** Convert a thunk to a fiber, making sure the thunk runs in the context of the fiber
     rather than in the current context.
-
     [of_thunk f] is equivalent to [return () >>= f] but is more explicit. *)
 val of_thunk : (unit -> 'a t) -> 'a t
 
@@ -101,20 +100,21 @@ val all_concurrently_unit : unit t list -> unit t
 (** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
-val parallel_iter_set
-  :  (module Set.S with type elt = 'a and type t = 's)
-  -> 's
-  -> f:('a -> unit t)
-  -> unit t
-
+val parallel_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 val sequential_iter_seq : 'a Seq.t -> f:('a -> unit t) -> unit t
 
-(** Provide efficient parallel iter/map functions for maps. *)
-module Make_map_traversals (Map : Map.S) : sig
-  val parallel_iter : 'a Map.t -> f:(Map.key -> 'a -> unit t) -> unit t
-  val parallel_map : 'a Map.t -> f:(Map.key -> 'a -> 'b t) -> 'b Map.t t
+(** Provide an efficient parallel map function for maps. *)
+module Make_parallel_map (S : sig
+    type 'a t
+    type key
+
+    val empty : _ t
+    val is_empty : _ t -> bool
+    val to_list : 'a t -> (key * 'a) list
+    val mapi : 'a t -> f:(key -> 'a -> 'b) -> 'b t
+  end) : sig
+  val parallel_map : 'a S.t -> f:(S.key -> 'a -> 'b t) -> 'b S.t t
 end
-[@@inline always]
 
 (** {1 Local storage} *)
 
@@ -392,7 +392,7 @@ type fill = Fill : 'a Ivar.t * 'a -> fill
 (** [run t ~iter] runs a fiber until it terminates. [iter] is used to implement
     the scheduler, it should block waiting for an event and return at least one
     ivar to fill. *)
-val run : 'a t -> iter:(unit -> fill Nonempty_list.t) -> 'a
+val run : 'a t -> iter:(unit -> fill list) -> 'a
 
 (** Advanced fiber execution *)
 module Scheduler : sig
@@ -410,7 +410,7 @@ module Scheduler : sig
 
   (** Advance a stalled fiber as much as possible by filling a list of ivars.
       Once must call [advance] on a given [stalled] value only once. *)
-  val advance : 'a stalled -> fill Nonempty_list.t -> 'a step
+  val advance : 'a stalled -> fill list -> 'a step
 end
 
 (** {1 Fiber cancellation} *)

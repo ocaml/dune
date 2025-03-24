@@ -26,6 +26,7 @@ exception Parse_error
 exception Not_supported
 
 let posix_class_of_string = function
+  | "alpha"  -> Re.alpha
   | "alnum"  -> Re.alnum
   | "ascii"  -> Re.ascii
   | "blank"  -> Re.blank
@@ -42,11 +43,11 @@ let posix_class_of_string = function
   | class_   -> invalid_arg ("Invalid pcre class: " ^ class_)
 
 let posix_class_strings =
-  [ "alnum" ; "ascii" ; "blank"
-  ; "cntrl" ; "digit" ; "lower"
-  ; "print" ; "space" ; "upper"
-  ; "word"  ; "punct" ; "graph"
-  ; "xdigit" ]
+  [ "alpha" ; "alnum" ; "ascii"
+  ; "blank" ; "cntrl" ; "digit"
+  ; "lower" ; "print" ; "space"
+  ; "upper" ; "word"  ; "punct"
+  ; "graph" ; "xdigit" ]
 
 let parse multiline dollar_endonly dotall ungreedy s =
   let i = ref 0 in
@@ -107,6 +108,11 @@ let parse multiline dollar_endonly dotall ungreedy s =
           r
         end else if accept '#' then begin
           comment ()
+        end else if accept '<' then begin
+          let name = name () in
+          let r = regexp () in
+          if not (accept ')') then raise Parse_error;
+          Re.group ~name r
         end else
           raise Parse_error
       end else begin
@@ -127,7 +133,7 @@ let parse multiline dollar_endonly dotall ungreedy s =
     end else if accept '\\' then begin
 (* XXX
    - Back-references
-   - \cx (control-x), \e, \f, \n, \r, \t, \xhh, \ddd
+   - \cx (control-x), \ddd
 *)
       if eos () then raise Parse_error;
       match get () with
@@ -155,6 +161,21 @@ let parse multiline dollar_endonly dotall ungreedy s =
           Re.eos
       | 'G' ->
           Re.start
+      | 'e' ->
+          Re.char '\x1b'
+      | 'f' ->
+          Re.char '\x0c'
+      | 'n' ->
+          Re.char '\n'
+      | 'r' ->
+          Re.char '\r'
+      | 't' ->
+          Re.char '\t'
+      | 'x' ->
+          let c1 = hexdigit () in
+          let c2 = hexdigit () in
+          let code = c1 * 16 + c2 in
+          Re.char (char_of_int code)
       | 'a'..'z' | 'A'..'Z' ->
           raise Parse_error
       | '0'..'9' ->
@@ -167,6 +188,13 @@ let parse multiline dollar_endonly dotall ungreedy s =
         '*' | '+' | '?' | '{' | '\\' -> raise Parse_error
       |                 c            -> Re.char c
     end
+  and hexdigit () =
+    if eos () then raise Parse_error;
+    match get () with
+      '0'..'9' as d -> Char.code d - Char.code '0'
+    | 'a'..'f' as d -> Char.code d - Char.code 'a' + 10
+    | 'A'..'F' as d -> Char.code d - Char.code 'A' + 10
+    | _ -> raise Parse_error
   and integer () =
     if eos () then None else
     match get () with
@@ -181,6 +209,22 @@ let parse multiline dollar_endonly dotall ungreedy s =
         integer' i'
     | _ ->
         unget (); Some i
+  and name () =
+    if eos () then raise Parse_error else
+    match get () with
+      ('_' | 'a'..'z' | 'A'..'Z') as c ->
+      let b = Buffer.create 32 in
+      Buffer.add_char b c;
+      name' b
+    | _ -> raise Parse_error
+  and name' b =
+    if eos () then raise Parse_error else
+    match get () with
+      ('_' | 'a'..'z' | 'A'..'Z' | '0'..'9') as c ->
+      Buffer.add_char b c;
+      name' b
+    | '>' -> Buffer.contents b
+    | _ -> raise Parse_error
   and bracket s =
     if s <> [] && accept ']' then s else begin
       match char () with

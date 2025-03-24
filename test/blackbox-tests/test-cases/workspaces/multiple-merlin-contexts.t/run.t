@@ -1,7 +1,7 @@
 Only a single context may be marked for merlin
 
   $ dune build
-  File "dune-workspace", line 8, characters 1-82:
+  File "dune-workspace", lines 8-12, characters 1-82:
    8 |  (opam
    9 |   (switch foo-switch)
   10 |   (name foo-name)

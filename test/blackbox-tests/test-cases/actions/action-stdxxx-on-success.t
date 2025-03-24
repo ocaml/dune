@@ -43,7 +43,7 @@ printing the output of the action that had a non-empty output.
   $ dune clean
   $ dune build --action-stdout-on-success=must-be-empty
   Something went wrong!
-  File "dune", line 1, characters 0-65:
+  File "dune", lines 1-3, characters 0-65:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'")))
@@ -53,7 +53,7 @@ printing the output of the action that had a non-empty output.
   $ dune clean
   $ dune build --action-stderr-on-success=must-be-empty
   Hello, world!
-  File "dune", line 5, characters 0-77:
+  File "dune", lines 5-7, characters 0-77:
   5 | (rule
   6 |  (alias default)
   7 |  (action (system "echo 'Something went wrong!' >&2")))
@@ -66,7 +66,7 @@ Same but with output on both stdout and stderr:
   $ dune build @both-stdout-and-stderr-output \
   >    --action-stdout-on-success=must-be-empty \
   >    --action-stderr-on-success=must-be-empty
-  File "dune", line 9, characters 0-95:
+  File "dune", lines 9-11, characters 0-95:
    9 | (rule
   10 |  (alias both-stdout-and-stderr-output)
   11 |  (action (system "echo stdout; echo stderr >&2")))
@@ -140,7 +140,7 @@ In case of errors, we print everything no matter what.
   > EOF
 
   $ dune build
-  File "dune", line 1, characters 0-73:
+  File "dune", lines 1-3, characters 0-73:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
@@ -149,7 +149,7 @@ In case of errors, we print everything no matter what.
 
   $ dune clean
   $ dune build --action-stdout=swallow
-  File "dune", line 1, characters 0-73:
+  File "dune", lines 1-3, characters 0-73:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
@@ -158,7 +158,7 @@ In case of errors, we print everything no matter what.
 
   $ dune clean
   $ dune build --action-stdout=must-be-empty
-  File "dune", line 1, characters 0-73:
+  File "dune", lines 1-3, characters 0-73:
   1 | (rule
   2 |  (alias default)
   3 |  (action (system "echo 'Hello, world!'; exit 1")))
@@ -181,7 +181,7 @@ first command but not the second:
   > EOF
 
   $ dune build --action-stdout-on-success=swallow
-  File "dune", line 1, characters 0-93:
+  File "dune", lines 1-6, characters 0-93:
   1 | (rule
   2 |  (alias default)
   3 |  (action
@@ -205,7 +205,7 @@ better if we stop at the end of the whole action.
   > EOF
 
   $ dune build --action-stdout-on-success=must-be-empty
-  File "dune", line 1, characters 0-85:
+  File "dune", lines 1-6, characters 0-85:
   1 | (rule
   2 |  (alias default)
   3 |  (action

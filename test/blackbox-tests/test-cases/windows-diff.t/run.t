@@ -14,7 +14,7 @@
   Hello, world!
 
   $ dune build @cmp
-  File "dune", line 12, characters 0-41:
+  File "dune", lines 12-14, characters 0-41:
   12 | (alias
   13 |  (name   cmp)
   14 |  (action (cmp a b)))

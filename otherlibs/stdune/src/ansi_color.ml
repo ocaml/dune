@@ -494,6 +494,13 @@ let rec tag_handler buf current_styles ppf (styles : Style.t list) pp =
     (Style.escape_sequence_buf buf (current_styles :> Style.t list))
 ;;
 
+let skip_line_break =
+  lazy
+    (match Sys.getenv_opt "DUNE_CONFIG__SKIP_LINE_BREAK" with
+     | Some "enabled" -> true
+     | _ -> false)
+;;
+
 let make_printer supports_color ppf =
   let f =
     lazy
@@ -504,6 +511,7 @@ let make_printer supports_color ppf =
        else Pp.to_fmt ppf)
   in
   Staged.stage (fun pp ->
+    if Lazy.force skip_line_break then Format.pp_set_margin ppf Format.pp_infinity;
     Lazy.force f pp;
     Format.pp_print_flush ppf ())
 ;;

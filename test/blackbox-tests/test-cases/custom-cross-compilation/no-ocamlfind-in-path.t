@@ -19,7 +19,7 @@ isn't set
   > (library
   >  (name repro)
   >  (public_name repro)
-  >  (modules foo))
+  >  (modules))
   > EOF
 
   $ mkdir ocaml-bin

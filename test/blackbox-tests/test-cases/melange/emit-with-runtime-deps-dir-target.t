@@ -15,12 +15,13 @@ Test simple interactions between melange.emit and copy_files
   >  (alias mel)
   >  (target output)
   >  (emit_stdlib false)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (runtime_deps ./some_dir))
   > EOF
 
   $ cat > main.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let file_path = "./some_dir/inside-dir-target.txt"
   > let file_content = Node.Fs.readFileSync (dirname ^ "/" ^ file_path) \`utf8
   > let () = Js.log file_content

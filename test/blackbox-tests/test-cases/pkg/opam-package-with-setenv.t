@@ -52,10 +52,18 @@ The exported env from the first package should be in the lock dir.
     (run sh -c "echo $append_without_leading_sep")
     (run sh -c "echo $append_with_leading_sep")))
   
-  (deps with-setenv)
+  (depends with-setenv)
 
 When building the second package the exported env vars from the first package should be
 available and all the env updates should be applied correctly.
+
+The output of opam when building the equivalent package is:
+
+Hello from the other package!
+Prepended without trailing sep
+Prepended with trailing sep:
+Appended without leading sep
+:Appended with leading sep
 
   $ EXPORTED_ENV_VAR="I have not been exported yet." \
   > prepend_without_trailing_sep="foo:bar" \
@@ -100,8 +108,17 @@ difference between a propagated export_env versus the initial env.
 We can now observe how the environment updates are applied a second time.
 
 We currently have the following issues:
-- The leading and traling seperators are missing.
-- The initial enviornment is missing.
+- The leading and trailing separators are missing.
+- The initial environment is missing.
+- The order of applying environment updates is different from opam's.
+
+The output of opam when building the equivalent package is:
+
+Hello from the other package!
+Prepended without trailing sep:Prepended 2nd time without trailing sep
+Prepended with trailing sep:Prepended 2nd time with sep:
+Appended 2nd time without leading sep:Appended without leading sep
+:Appended 2nd time with leading sep:Appended with leading sep
 
   $ EXPORTED_ENV_VAR="I have not been exported yet." \
   > prepend_without_trailing_sep="foo:bar" \

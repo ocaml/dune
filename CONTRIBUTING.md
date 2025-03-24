@@ -1,6 +1,6 @@
 Dune is an community orientated open source project. It was originally
 developed at [Jane Street][js] and is now maintained by Jane Street,
-[OCamlLabs][ocl] as well as several developers from the OCaml
+[Tarides][tarides] as well as several developers from the OCaml
 community.
 
 Contributions to Dune are welcome and should be submitted via GitHub
@@ -79,7 +79,7 @@ you have the rights to submit this work under the same open source license.
 
 [dco]: http://developercertificate.org/
 [js]: https://www.janestreet.com/
-[ocl]: http://ocamllabs.io/
+[tarides]: https://tarides.com/
 [hack]: ./doc/hacking.rst
 
 Coding style

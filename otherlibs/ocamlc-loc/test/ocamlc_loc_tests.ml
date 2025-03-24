@@ -3,8 +3,8 @@ open Stdune
 let cmd fmt =
   Printf.ksprintf
     (fun s ->
-      let (_ : int) = Sys.command s in
-      ())
+       let (_ : int) = Sys.command s in
+       ())
     fmt
 ;;
 
@@ -64,7 +64,7 @@ Error (warning 32 [unused-value-declaration]): unused value foo.
     { loc = { path = "test.ml"; line = Single 1; chars = Some (4, 7) }
     ; message = "unused value foo."
     ; related = []
-    ; severity = Error Some { code = 32; name = "unused-value-declaration" }
+    ; severity = Error (Some { code = 32; name = "unused-value-declaration" })
     } |}]
 ;;
 
@@ -98,9 +98,9 @@ Error: The implementation test.ml does not match the interface test.cmi:
          The type bool is not compatible with the type int"
     ; related =
         [ ({ path = "test.mli"; line = Single 1; chars = Some (0, 11) },
-          "Expected declaration")
+           "Expected declaration")
         ; ({ path = "test.ml"; line = Single 1; chars = Some (4, 5) },
-          "Actual declaration")
+           "Actual declaration")
         ]
     ; severity = Error None
     } |}]
@@ -169,7 +169,7 @@ Error: Signature mismatch:
   [%expect
     {|
     >> error 0
-    { loc = { path = "test.ml"; line = Range 3, 5; chars = Some (6, 3) }
+    { loc = { path = "test.ml"; line = Range (3, 5); chars = Some (6, 3) }
     ; message =
         "Signature mismatch:\n\
          Modules do not match:\n\
@@ -184,9 +184,9 @@ Error: Signature mismatch:
          Type float is not compatible with type int"
     ; related =
         [ ({ path = "test.ml"; line = Single 2; chars = Some (2, 20) },
-          "Expected declaration")
+           "Expected declaration")
         ; ({ path = "test.ml"; line = Single 4; chars = Some (6, 7) },
-          "Actual declaration")
+           "Actual declaration")
         ]
     ; severity = Error None
     } |}]
@@ -242,12 +242,12 @@ Error: The implementation src/dune_rules/artifacts.ml
            ; line = Single 20
            ; chars = Some (4, 33)
            },
-          "Expected declaration")
+           "Expected declaration")
         ; ({ path = "src/dune_rules/artifacts.ml"
            ; line = Single 50
            ; chars = Some (8, 13)
            },
-          "Actual declaration")
+           "Actual declaration")
         ]
     ; severity = Error None
     } |}]
@@ -280,7 +280,7 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
         "module Bar\n\
          Will be removed past 2020-20-20. Use Mylib.Bar instead."
     ; related = []
-    ; severity = Error Some "deprecated"
+    ; severity = Error (Some "deprecated")
     }
     >> error 1
     { loc = { path = "fooexe.ml"; line = Single 4; chars = Some (0, 7) }
@@ -288,7 +288,7 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
         "module Foo\n\
          Will be removed past 2020-20-20. Use Mylib.Foo instead."
     ; related = []
-    ; severity = Error Some "deprecated"
+    ; severity = Error (Some "deprecated")
     }
     >> error 2
     { loc = { path = "fooexe.ml"; line = Single 7; chars = Some (11, 22) }
@@ -296,7 +296,7 @@ Will be removed past 2020-20-20. Use Mylib.Intf_only instead.
         "module Intf_only\n\
          Will be removed past 2020-20-20. Use Mylib.Intf_only instead."
     ; related = []
-    ; severity = Error Some "deprecated"
+    ; severity = Error (Some "deprecated")
     } |}]
 ;;
 
@@ -307,7 +307,6 @@ File "test/expect-tests/timer_tests.ml", lines 6-10, characters 2-3:
  6 | ..{ Scheduler.Config.concurrency = 1
  7 |   ; display = { verbosity = Short; status_line = false }
  8 |   ; stats = None
- 9 |   ; insignificant_changes = `React
 10 |   }
 Error: Some record fields are undefined: signal_watcher
 |};
@@ -316,7 +315,7 @@ Error: Some record fields are undefined: signal_watcher
     >> error 0
     { loc =
         { path = "test/expect-tests/timer_tests.ml"
-        ; line = Range 6, 10
+        ; line = Range (6, 10)
         ; chars = Some (2, 3)
         }
     ; message = "Some record fields are undefined: signal_watcher"
@@ -326,10 +325,12 @@ Error: Some record fields are undefined: signal_watcher
 ;;
 
 let%expect_test "undefined fields" =
-  test_error_raw {|
+  test_error_raw
+    {|
 Error: Some record fields are undefined: signal_watcher
 |};
-  [%expect {|
+  [%expect
+    {|
     [ "Error: Some record fields are undefined: signal_watcher" ] |}]
 ;;
 
@@ -388,7 +389,7 @@ Error: The implementation src/dune_engine/build_system.ml
            ; line = Single 8
            ; chars = Some (0, 40)
            },
-          "Expected declaration")
+           "Expected declaration")
         ]
     ; severity = Error None
     } |}]
@@ -504,7 +505,7 @@ testing
     ; message = "A.f\n\
                  testing"
     ; related = []
-    ; severity = Error Some "foobar"
+    ; severity = Error (Some "foobar")
     } |}]
 ;;
 
@@ -573,7 +574,7 @@ Case
     >> error 0
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 34, 96
+        ; line = Range (34, 96)
         ; chars = Some (4, 64)
         }
     ; message =
@@ -581,12 +582,12 @@ Case
          Here is an example of a case that is not matched:\n\
          Case"
     ; related = []
-    ; severity = Error Some { code = 8; name = "partial-match" }
+    ; severity = Error (Some { code = 8; name = "partial-match" })
     }
     >> error 1
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 291, 315
+        ; line = Range (291, 315)
         ; chars = Some (2, 22)
         }
     ; message =
@@ -594,12 +595,12 @@ Case
          Here is an example of a case that is not matched:\n\
          Case"
     ; related = []
-    ; severity = Error Some { code = 8; name = "partial-match" }
+    ; severity = Error (Some { code = 8; name = "partial-match" })
     }
     >> error 2
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 339, 363
+        ; line = Range (339, 363)
         ; chars = Some (21, 24)
         }
     ; message =
@@ -607,12 +608,12 @@ Case
          Here is an example of a case that is not matched:\n\
          Case"
     ; related = []
-    ; severity = Error Some { code = 8; name = "partial-match" }
+    ; severity = Error (Some { code = 8; name = "partial-match" })
     }
     >> error 3
     { loc =
         { path = "src/dune_engine/action.ml"
-        ; line = Range 391, 414
+        ; line = Range (391, 414)
         ; chars = Some (4, 70)
         }
     ; message =
@@ -620,7 +621,7 @@ Case
          Here is an example of a case that is not matched:\n\
          Case"
     ; related = []
-    ; severity = Error Some { code = 8; name = "partial-match" }
+    ; severity = Error (Some { code = 8; name = "partial-match" })
     } |}]
 ;;
 

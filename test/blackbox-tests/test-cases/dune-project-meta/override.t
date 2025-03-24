@@ -1,13 +1,14 @@
 Package information fields can be overridden per-package:
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.5)
+  > (lang dune 3.18)
   > (name foo)
   > (version 1.0.0)
   > (source (github mirage/ocaml-cohttp))
   > (license ISC)
   > (authors "Anil Madhavapeddy" "Rudi Grinberg")
   > (homepage https://my.home.page)
+  > (maintenance_intent "(none)")
   > ;
   > (generate_opam_files true)
   > ;
@@ -16,7 +17,9 @@ Package information fields can be overridden per-package:
   >  (version 1.0.1)
   >  (source (github mirage/foo))
   >  (license MIT)
-  >  (authors "Foo" "Bar"))
+  >  (authors "Foo" "Bar")
+  >  (maintenance_intent "0.9" "1.0.1")
+  >  (allow_empty))
   > EOF
 
   $ dune build @install
@@ -30,10 +33,11 @@ Package information fields can be overridden per-package:
   homepage: "https://my.home.page"
   bug-reports: "https://github.com/mirage/foo/issues"
   depends: [
-    "dune" {>= "2.5"}
+    "dune" {>= "3.18"}
+    "odoc" {with-doc}
   ]
   build: [
-    ["dune" "subst"] {pinned}
+    ["dune" "subst"] {dev}
     [
       "dune"
       "build"
@@ -47,3 +51,4 @@ Package information fields can be overridden per-package:
     ]
   ]
   dev-repo: "git+https://github.com/mirage/foo.git"
+  x-maintenance-intent: ["0.9" "1.0.1"]

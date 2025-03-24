@@ -6,7 +6,6 @@ type t =
   | Object
   | Shared_object
   | Plugin
-  | Js
 
 val compare : t -> t -> Ordering.t
 

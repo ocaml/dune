@@ -31,12 +31,12 @@ let empty = []
 let singleton x = [ Unnamed x ]
 
 let to_dyn dyn_of_a bindings =
-  let open Dyn in
-  Dyn.List
-    (List.map bindings ~f:(function
-      | Unnamed a -> dyn_of_a a
-      | Named (name, bindings) ->
-        Dyn.List (string (":" ^ name) :: List.map ~f:dyn_of_a bindings)))
+  let binding_to_dyn = function
+    | Unnamed a -> dyn_of_a a
+    | Named (name, bindings) ->
+      Dyn.List (Dyn.string (":" ^ name) :: List.map ~f:dyn_of_a bindings)
+  in
+  Dyn.list binding_to_dyn bindings
 ;;
 
 let decode elem =
@@ -73,9 +73,9 @@ let decode elem =
 let encode encode bindings =
   Dune_sexp.List
     (List.map bindings ~f:(function
-      | Unnamed a -> encode a
-      | Named (name, bindings) ->
-        Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
+       | Unnamed a -> encode a
+       | Named (name, bindings) ->
+         Dune_sexp.List (Dune_sexp.atom (":" ^ name) :: List.map ~f:encode bindings)))
 ;;
 
 let var_names t =
@@ -87,6 +87,6 @@ let var_names t =
 let to_pform_map t =
   Pform.Map.of_list_exn
     (List.filter_map t ~f:(function
-      | Unnamed _ -> None
-      | Named (name, l) -> Some (Pform.Var (User_var name), l)))
+       | Unnamed _ -> None
+       | Named (name, l) -> Some (Pform.Var (User_var name), l)))
 ;;

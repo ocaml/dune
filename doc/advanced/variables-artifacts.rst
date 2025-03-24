@@ -3,14 +3,16 @@
 Variables for Artifacts
 -----------------------
 
+.. TODO(diataxis) move to :doc:`../concepts/variables`
+
 For specific situations where one needs to refer to individual compilation
 artifacts, special variables (see :doc:`../concepts/variables`) are provided,
 so the user doesn't need to be aware of the particular naming conventions or
 directory layout implemented by Dune.
 
 These variables can appear wherever a :doc:`../concepts/dependency-spec` is
-expected and also inside :doc:`../reference/actions`. When used inside
-:doc:`../reference/actions`, they implicitly declare a dependency on the
+expected and also inside :doc:`../reference/actions/index`. When used inside
+:doc:`../reference/actions/index`, they implicitly declare a dependency on the
 corresponding artifact.
 
 The variables have the form ``%{<ext>:<path>}``, where ``<path>`` is

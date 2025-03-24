@@ -2,116 +2,6 @@ open Import
 module Stanza = Dune_lang.Stanza
 open Dune_lang.Decoder
 
-module Name : sig
-  type t = private
-    | Named of string
-    | Anonymous of Path.Source.t
-
-  val to_dyn : t -> Dyn.t
-  val equal : t -> t -> bool
-  val compare : t -> t -> Ordering.t
-  val to_string_hum : t -> string
-  val encode : t Dune_lang.Encoder.t
-  val decode : t Dune_lang.Decoder.t
-  val to_encoded_string : t -> string
-  val of_encoded_string : string -> t
-  val anonymous : Path.Source.t -> t
-  val named : string -> t option
-
-  module Infix : Comparator.OPS with type t = t
-  module Map : Map.S with type key = t
-end = struct
-  module T = struct
-    type t =
-      | Named of string
-      | Anonymous of Path.Source.t
-
-    let compare a b =
-      match a, b with
-      | Named x, Named y -> String.compare x y
-      | Anonymous x, Anonymous y -> Path.Source.compare x y
-      | Named _, Anonymous _ -> Lt
-      | Anonymous _, Named _ -> Gt
-    ;;
-
-    let equal a b = Ordering.is_eq (compare a b)
-
-    let to_dyn =
-      let open Dyn in
-      function
-      | Named n -> variant "Named" [ string n ]
-      | Anonymous p -> variant "Anonymous" [ Path.Source.to_dyn p ]
-    ;;
-  end
-
-  include T
-  module Map = Map.Make (T)
-  module Infix = Comparator.Operators (T)
-
-  let anonymous_root = Anonymous Path.Source.root
-
-  let to_string_hum = function
-    | Named s -> s
-    | Anonymous p -> sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
-  ;;
-
-  let validate name =
-    let len = String.length name in
-    len > 0
-    && String.for_all name ~f:(function
-      | '.' | '/' -> false
-      | _ -> true)
-  ;;
-
-  let named name = if validate name then Some (Named name) else None
-  let anonymous path = Anonymous path
-
-  let decode =
-    Dune_lang.Decoder.plain_string (fun ~loc s ->
-      if validate s
-      then Named s
-      else User_error.raise ~loc [ Pp.text "Invalid project name" ])
-  ;;
-
-  let to_encoded_string = function
-    | Named s -> s
-    | Anonymous p ->
-      if Path.Source.is_root p
-      then "."
-      else
-        "."
-        ^ String.map (Path.Source.to_string p) ~f:(function
-          | '/' -> '.'
-          | c -> c)
-  ;;
-
-  let encode n = Dune_lang.Encoder.string (to_string_hum n)
-
-  let of_encoded_string =
-    let invalid s =
-      (* Users would see this error if they did "dune build
-         _build/default/.ppx/..." *)
-      User_error.raise [ Pp.textf "Invalid encoded project name: %S" s ]
-    in
-    fun s ->
-      match s with
-      | "" -> invalid s
-      | "." -> anonymous_root
-      | _ when s.[0] = '.' ->
-        (match
-           String.split s ~on:'.'
-           |> List.tl
-           |> String.concat ~sep:"/"
-           |> Path.of_string
-           |> Path.as_in_source_tree
-         with
-         | Some p -> Anonymous p
-         | None -> invalid s)
-      | _ when validate s -> Named s
-      | _ -> invalid s
-  ;;
-end
-
 module File_key = struct
   type t = string
 
@@ -127,14 +17,14 @@ module File_key = struct
 end
 
 type t =
-  { name : Name.t
+  { name : Dune_project_name.t
   ; root : Path.Source.t
   ; version : Package_version.t option
   ; dune_version : Dune_lang.Syntax.Version.t
-  ; info : Package.Info.t
+  ; info : Package_info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
-  ; project_file : Path.Source.t
+  ; project_file : Path.Source.t option
   ; extension_args : Univ_map.t
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
@@ -149,25 +39,38 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
-  ; subst_config : Subst_config.t option
+  ; subst_config : (Loc.t * Subst_config.t) option
   ; strict_package_deps : bool
   ; allow_approximate_merlin : Loc.t option
+  ; pins : Dune_pkg.Pin_stanza.DB.t
   ; cram : bool
   ; expand_aliases_in_sandbox : bool
   ; opam_file_location : [ `Relative_to_project | `Inside_opam_directory ]
+  ; including_hidden_packages : Package.t Package.Name.Map.t
   }
+
+let key = Univ_map.Key.create ~name:"dune-project" Dyn.opaque
+let get () = Dune_lang.Decoder.get key
+
+let get_exn () =
+  get ()
+  >>| function
+  | Some t -> t
+  | None -> Code_error.raise "Current project is unset" []
+;;
 
 let equal : t -> t -> bool = phys_equal
 let hash = Poly.hash
 let packages t = t.packages
 let name t = t.name
 let root t = t.root
-let stanza_parser t = t.stanza_parser
+let stanza_parser t = Dune_lang.Decoder.set key t t.stanza_parser
 let file t = t.project_file
 let file_key t = t.file_key
 let implicit_transitive_deps t = t.implicit_transitive_deps
 let generate_opam_files t = t.generate_opam_files
 let warnings t = t.warnings
+let pins t = Dune_pkg.Pin_stanza.DB.add_opam_pins t.pins t.packages
 let set_generate_opam_files generate_opam_files t = { t with generate_opam_files }
 let use_standard_c_and_cxx_flags t = t.use_standard_c_and_cxx_flags
 let dialects t = t.dialects
@@ -175,44 +78,46 @@ let explicit_js_mode t = t.explicit_js_mode
 let dune_version t = t.dune_version
 
 let to_dyn
-  { name
-  ; root
-  ; version
-  ; dune_version
-  ; info
-  ; project_file
-  ; parsing_context = _
-  ; extension_args = _
-  ; stanza_parser = _
-  ; packages
-  ; implicit_transitive_deps
-  ; wrapped_executables
-  ; map_workspace_root
-  ; executables_implicit_empty_intf
-  ; accept_alternative_dune_file_name
-  ; generate_opam_files
-  ; warnings
-  ; use_standard_c_and_cxx_flags
-  ; file_key
-  ; dialects
-  ; explicit_js_mode
-  ; format_config
-  ; subst_config
-  ; strict_package_deps
-  ; allow_approximate_merlin
-  ; cram
-  ; expand_aliases_in_sandbox
-  ; opam_file_location
-  }
+      { name
+      ; root
+      ; version
+      ; dune_version
+      ; info
+      ; project_file
+      ; parsing_context = _
+      ; extension_args = _
+      ; stanza_parser = _
+      ; packages
+      ; implicit_transitive_deps
+      ; wrapped_executables
+      ; map_workspace_root
+      ; executables_implicit_empty_intf
+      ; accept_alternative_dune_file_name
+      ; generate_opam_files
+      ; warnings
+      ; use_standard_c_and_cxx_flags
+      ; file_key
+      ; dialects
+      ; explicit_js_mode
+      ; format_config
+      ; subst_config
+      ; strict_package_deps
+      ; allow_approximate_merlin
+      ; pins
+      ; cram
+      ; expand_aliases_in_sandbox
+      ; opam_file_location
+      ; including_hidden_packages = _
+      }
   =
   let open Dyn in
   record
-    [ "name", Name.to_dyn name
+    [ "name", Dune_project_name.to_dyn name
     ; "root", Path.Source.to_dyn root
     ; "version", (option Package_version.to_dyn) version
     ; "dune_version", Dune_lang.Syntax.Version.to_dyn dune_version
-    ; "info", Package.Info.to_dyn info
-    ; "project_file", Path.Source.to_dyn project_file
+    ; "info", Package_info.to_dyn info
+    ; "project_file", Dyn.option Path.Source.to_dyn project_file
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
           (Package.Name.Map.to_list packages) )
@@ -228,8 +133,9 @@ let to_dyn
     ; "dialects", Dialect.DB.to_dyn dialects
     ; "explicit_js_mode", bool explicit_js_mode
     ; "format_config", option Format_config.to_dyn format_config
-    ; "subst_config", option Subst_config.to_dyn subst_config
+    ; "subst_config", option Toggle.to_dyn (Option.map ~f:snd subst_config)
     ; "strict_package_deps", bool strict_package_deps
+    ; "pins", Dune_pkg.Pin_stanza.DB.to_dyn pins
     ; "cram", bool cram
     ; "allow_approximate_merlin", opaque allow_approximate_merlin
     ; "expand_aliases_in_sandbox", bool expand_aliases_in_sandbox
@@ -248,7 +154,7 @@ include Dune_lang.Versioned_file.Make (struct
   end)
 
 let default_dune_language_version =
-  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
+  ref (Dune_lang.Syntax.greatest_supported_version_exn Stanza.syntax)
 ;;
 
 let get_dune_lang () =
@@ -404,17 +310,21 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
         | Not_selected (Packed e) ->
           let stanzas =
             let open Dune_lang.Decoder in
-            let _arg, stanzas =
-              let parsing_context =
-                (* Temporarily mark the extension as active so that we can
-                   call the parser and extract the list of stanza names this
-                   extension registers *)
-                Univ_map.set
-                  parsing_context
-                  (Dune_lang.Syntax.key e.syntax)
-                  (Active (Dune_lang.Syntax.greatest_supported_version e.syntax))
-              in
-              parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+            let stanzas =
+              match Dune_lang.Syntax.greatest_supported_version e.syntax with
+              | None -> []
+              | Some greatest_supported_version ->
+                let parsing_context =
+                  (* Temporarily mark the extension as active so that we can
+                     call the parser and extract the list of stanza names this
+                     extension registers *)
+                  Univ_map.set
+                    parsing_context
+                    (Dune_lang.Syntax.key e.syntax)
+                    (Active greatest_supported_version)
+                in
+                parse (enter e.stanzas) parsing_context (List (Loc.of_pos __POS__, []))
+                |> snd
             in
             List.map stanzas ~f:(fun (name, _) ->
               ( name
@@ -438,17 +348,6 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
   let stanzas = List.concat (lang.data :: extension_stanzas) in
   let stanza_parser = Dune_lang.Decoder.(set_many parsing_context (sum stanzas)) in
   parsing_context, stanza_parser, extension_args
-;;
-
-let key = Univ_map.Key.create ~name:"dune-project" to_dyn
-let set t = Dune_lang.Decoder.set key t
-let get () = Dune_lang.Decoder.get key
-
-let get_exn () =
-  get ()
-  >>| function
-  | Some t -> t
-  | None -> Code_error.raise "Current project is unset" []
 ;;
 
 let filename = "dune-project"
@@ -486,28 +385,33 @@ let format_config t =
   Format_config.of_config ~ext ~dune_lang ~version
 ;;
 
-let subst_config t = Subst_config.of_config t.subst_config
-
-let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
-  match Package.Name.Map.min_binding packages with
-  | None -> Name.anonymous dir
-  | Some (name, pkg) ->
-    let name = Package.Name.to_string name in
-    (match Name.named name with
-     | Some x -> x
-     | None ->
-       (* TODO: This is a strange error: [name] comes from a package but is
-          rejected as a valid Dune project name. It would be better to make the
-          set of allowed package names and the set of project names coincide. *)
-       User_error.raise
-         ~loc:(Package.loc pkg)
-         [ Pp.textf "%S is not a valid Dune project name." name ])
+let subst_config t =
+  let loc, subst_config =
+    match t.subst_config with
+    | None -> Loc.none, None
+    | Some (loc, config) -> loc, Some config
+  in
+  loc, Subst_config.of_config subst_config
 ;;
 
-let infer ~dir ?(info = Package.Info.empty) packages =
+let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
+  match
+    (* CR rgrinberg: why do we pick a name randomly? How about just making it
+       anonymous here *)
+    Package.Name.Map.min_binding packages
+  with
+  | None -> Dune_project_name.anonymous dir
+  | Some (name, pkg) ->
+    let loc = Package.loc pkg in
+    (* TODO: This is a strange error: [name] comes from a package but is
+       rejected as a valid Dune project name. It would be better to make the
+       set of allowed package names and the set of project names coincide. *)
+    Dune_project_name.named loc (Package.Name.to_string name)
+;;
+
+let infer ~dir info packages =
   let lang = get_dune_lang () in
   let name = default_name ~dir ~packages in
-  let project_file = Path.Source.relative dir filename in
   let parsing_context, stanza_parser, extension_args =
     interpret_lang_and_extensions ~lang ~explicit_extensions:String.Map.empty
   in
@@ -524,6 +428,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   let opam_file_location = opam_file_location_default ~lang in
   { name
   ; allow_approximate_merlin = None
+  ; pins = Dune_pkg.Pin_stanza.DB.empty
   ; packages
   ; root
   ; info
@@ -535,7 +440,7 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; executables_implicit_empty_intf
   ; accept_alternative_dune_file_name = false
   ; stanza_parser
-  ; project_file
+  ; project_file = None
   ; extension_args
   ; parsing_context
   ; generate_opam_files = false
@@ -550,57 +455,16 @@ let infer ~dir ?(info = Package.Info.empty) packages =
   ; cram
   ; expand_aliases_in_sandbox
   ; opam_file_location
+  ; including_hidden_packages = packages
   }
 ;;
 
-module Toggle = struct
-  include Config.Toggle
-
-  let enabled : t -> bool = function
-    | `Enabled -> true
-    | `Disabled -> false
-  ;;
-
-  let of_bool = function
-    | true -> `Enabled
-    | false -> `Disabled
-  ;;
-
-  let all = [ "enable", `Enabled; "disable", `Disabled ]
-
-  let encode t =
-    let open Dune_lang.Encoder in
-    let v =
-      List.find_map all ~f:(fun (k, v) -> Option.some_if (v = t) k) |> Option.value_exn
-    in
-    string v
-  ;;
-
-  let decode =
-    Dune_lang.Decoder.(map_validate string) ~f:(fun s ->
-      match List.assoc all s with
-      | Some v -> Ok v
-      | None -> Error (User_error.make [ Pp.text "must be 'disable' or 'enable'" ]))
-  ;;
-
-  let field ?check name =
-    let open Dune_lang.Decoder in
-    let decode =
-      match check with
-      | None -> decode
-      | Some check -> check >>> decode
-    in
-    field_o name decode
-  ;;
-end
-
-let anonymous ~dir ?info ?(packages = Package.Name.Map.empty) () =
-  infer ~dir ?info packages
-;;
+let anonymous ~dir info packages = infer ~dir info packages
 
 let encode : t -> Dune_lang.t list =
   fun { name
       ; allow_approximate_merlin = _
+      ; pins
       ; version
       ; dune_version
       ; info
@@ -634,6 +498,7 @@ let encode : t -> Dune_lang.t list =
       ; root = _
       ; expand_aliases_in_sandbox
       ; opam_file_location = _
+      ; including_hidden_packages = _
       } ->
   let open Dune_lang.Encoder in
   let lang = Lang.get_exn "dune" in
@@ -670,11 +535,12 @@ let encode : t -> Dune_lang.t list =
       ; (match use_standard_c_and_cxx_flags with
          | None -> None
          | Some b ->
-           if not
-                (Option.equal
-                   Bool.equal
-                   (Some b)
-                   (use_standard_c_and_cxx_flags_default ~lang))
+           if
+             not
+               (Option.equal
+                  Bool.equal
+                  (Some b)
+                  (use_standard_c_and_cxx_flags_default ~lang))
            then Some (constr "use_standard_c_and_cxx_flags" bool b)
            else None)
       ; (if Bool.equal cram (cram_default ~lang)
@@ -704,24 +570,26 @@ let encode : t -> Dune_lang.t list =
       Package.encode name package)
   in
   let subst_config =
-    Option.map subst_config ~f:(fun x -> constr "subst" Subst_config.encode x)
+    Option.map subst_config ~f:(fun (_loc, x) -> constr "subst" Subst_config.encode x)
     |> Option.to_list
   in
-  let name = constr "name" Name.encode name in
+  let name = constr "name" Dune_project_name.encode name in
   let version =
     Option.map ~f:(constr "version" Package_version.encode) version |> Option.to_list
   in
-  [ lang_stanza; name ]
-  @ flags
-  @ version
-  @ Package.Info.encode_fields info
-  @ formatting
-  @ dialects
-  @ packages
-  @ subst_config
+  let pins = Dune_pkg.Pin_stanza.DB.encode pins in
+  List.concat
+    [ [ lang_stanza; name ]
+    ; flags
+    ; version
+    ; Package_info.encode_fields info
+    ; formatting
+    ; dialects
+    ; packages
+    ; subst_config
+    ; pins
+    ]
 ;;
-
-module Memo_package_name = Memo.Make_map_traversals (Package.Name.Map)
 
 let forbid_opam_files_relative_to_project opam_file_location packages =
   match opam_file_location with
@@ -738,109 +606,158 @@ let forbid_opam_files_relative_to_project opam_file_location packages =
         ]
 ;;
 
-let parse_packages
-  (name : Name.t option)
-  ~info
-  ~dir
-  ~version
-  packages
-  opam_file_location
-  ~generate_opam_files
-  opam_packages
+let set_parsing_context t parser =
+  let parsing_context = Univ_map.set t.parsing_context key t in
+  Dune_lang.Decoder.set_many parsing_context parser
+;;
+
+let wrapped_executables t = t.wrapped_executables
+let map_workspace_root t = t.map_workspace_root
+let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
+let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
+let () = Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
+let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return [])
+let strict_package_deps t = t.strict_package_deps
+let allow_approximate_merlin t = t.allow_approximate_merlin
+let cram t = t.cram
+let info t = t.info
+
+let update_execution_parameters t ep =
+  ep
+  |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
+  |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
+       (if t.map_workspace_root then Set "/workspace_root" else Unset)
+  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
+       (t.dune_version >= (2, 4))
+;;
+
+let opam_file_location t = t.opam_file_location
+
+let filter_packages t ~f =
+  let packages = Package.Name.Map.filter t.packages ~f:(fun p -> f (Package.name p)) in
+  { t with packages }
+;;
+
+let including_hidden_packages t = t.including_hidden_packages
+
+let make_packages
+      ~opam_packages
+      ~dir
+      ~generate_opam_files
+      ~opam_file_location
+      packages
+      name
   =
-  let open Memo.O in
-  let+ packages =
-    forbid_opam_files_relative_to_project opam_file_location opam_packages;
-    if List.is_empty packages
-    then
-      Package.Name.Map.to_list opam_packages
-      |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
-        let open Memo.O in
-        let+ pkg = pkg in
-        name, pkg)
-      |> Memo.map ~f:Package.Name.Map.of_list_exn
-    else (
-      (match packages, name with
-       | [ p ], Some (Named name) ->
-         if Package.Name.to_string (Package.name p) <> name
-         then
+  (match packages, Option.bind ~f:Dune_project_name.name name with
+   | [ p ], Some name ->
+     if Package.Name.to_string (Package.name p) <> name
+     then
+       User_error.raise
+         ~loc:(Package.loc p)
+         [ Pp.textf
+             "when a single package is defined, it must have the same name as the \
+              project name: %s"
+             name
+         ]
+   | _, _ -> ());
+  (let package_defined_twice name loc1 loc2 =
+     let main_message =
+       [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
+     in
+     let annots =
+       let message loc =
+         User_message.make
+           ~loc
+           [ Pp.textf "package named %s" (Package.Name.to_string name) ]
+       in
+       let related = [ message loc1; message loc2 ] in
+       User_message.Annots.singleton
+         Compound_user_error.annot
+         [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
+     in
+     User_error.raise
+       ~annots
+       (main_message
+        @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+          ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+          ])
+   in
+   let deprecated_package_names =
+     List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
+       let deprecated_package_names = Package.deprecated_package_names package in
+       Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
+   in
+   List.iter packages ~f:(fun p ->
+     let name = Package.name p in
+     Package.Name.Map.find deprecated_package_names name
+     |> Option.iter ~f:(fun loc -> package_defined_twice name loc (Package.loc p))));
+  match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
+  | Error (_, _, p) ->
+    User_error.raise
+      ~loc:(Package.loc p)
+      [ Pp.textf "package %s is already defined" (Package.name p |> Package.Name.to_string)
+      ]
+  | Ok packages ->
+    let generated_opam_file =
+      if generate_opam_files
+      then fun p -> Package.set_has_opam_file p Package.Generated
+      else Fun.id
+    in
+    (match opam_file_location with
+     | `Inside_opam_directory ->
+       Package.Name.Map.map packages ~f:(fun p ->
+         let dir = Path.Source.relative dir "opam" in
+         let p = Package.set_inside_opam_dir p ~dir in
+         generated_opam_file p)
+     | `Relative_to_project ->
+       Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
+         match dune, opam with
+         | None, None -> assert false
+         | Some p, None -> Some (generated_opam_file p)
+         | Some p, Some _ ->
+           let p = Package.set_has_opam_file p (Exists true) in
+           Some (generated_opam_file p)
+         | None, Some (loc, _) ->
            User_error.raise
-             ~loc:(Package.loc p)
-             [ Pp.textf
-                 "when a single package is defined, it must have the same name as the \
-                  project name: %s"
-                 name
-             ]
-       | _, _ -> ());
-      let package_defined_twice name loc1 loc2 =
-        let main_message =
-          [ Pp.textf "Package name %s is defined twice:" (Package.Name.to_string name) ]
-        in
-        let name = Package.Name.to_string name in
-        let annots =
-          let message loc = User_message.make ~loc [ Pp.textf "package named %s" name ] in
-          let related = [ message loc1; message loc2 ] in
-          User_message.Annots.singleton
-            Compound_user_error.annot
-            [ Compound_user_error.make ~main:(User_message.make main_message) ~related ]
-        in
-        User_error.raise
-          ~annots
-          (main_message
-           @ [ Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-             ])
-      in
-      let deprecated_package_names =
-        List.fold_left packages ~init:Package.Name.Map.empty ~f:(fun acc package ->
-          let deprecated_package_names = Package.deprecated_package_names package in
-          Package.Name.Map.union acc deprecated_package_names ~f:package_defined_twice)
-      in
-      List.iter packages ~f:(fun p ->
-        let name = Package.name p in
-        match Package.Name.Map.find deprecated_package_names name with
-        | None -> ()
-        | Some loc -> package_defined_twice name loc (Package.loc p));
-      match Package.Name.Map.of_list_map packages ~f:(fun p -> Package.name p, p) with
-      | Error (_, _, p) ->
-        let name = Package.name p in
-        User_error.raise
-          ~loc:(Package.loc p)
-          [ Pp.textf "package %s is already defined" (Package.Name.to_string name) ]
-      | Ok packages ->
-        Memo.return
-        @@
-        let generated_opam_file =
-          if generate_opam_files
-          then fun p -> Package.set_has_opam_file p Package.Generated
-          else Fun.id
-        in
-        (match opam_file_location with
-         | `Inside_opam_directory ->
-           Package.Name.Map.map packages ~f:(fun p ->
-             let dir = Path.Source.relative dir "opam" in
-             let p = Package.set_inside_opam_dir p ~dir in
-             generated_opam_file p)
-         | `Relative_to_project ->
-           Package.Name.Map.merge packages opam_packages ~f:(fun _name dune opam ->
-             match dune, opam with
-             | None, None -> assert false
-             | Some p, None -> Some (generated_opam_file p)
-             | Some p, Some _ ->
-               let p = Package.set_has_opam_file p (Exists true) in
-               Some (generated_opam_file p)
-             | None, Some (loc, _) ->
-               User_error.raise
-                 ~loc
-                 [ Pp.text
-                     "This opam file doesn't have a corresponding (package ...) stanza \
-                      in the dune-project file. Since you have at least one other \
-                      (package ...) stanza in your dune-project file, you must a \
-                      (package ...) stanza for each opam package in your project."
-                 ])))
-  in
-  Package.Name.Map.map packages ~f:(fun p ->
-    let info = Package.Info.superpose info (Package.info p) in
+             ~loc
+             [ Pp.text
+                 "This opam file doesn't have a corresponding (package ...) stanza in \
+                  the dune-project file. Since you have at least one other (package ...) \
+                  stanza in your dune-project file, you must a (package ...) stanza for \
+                  each opam package in your project."
+             ]))
+;;
+
+let parse_packages
+      name
+      ~info
+      ~dir
+      ~version
+      packages
+      opam_file_location
+      ~generate_opam_files
+      opam_packages
+  =
+  forbid_opam_files_relative_to_project opam_file_location opam_packages;
+  let open Memo.O in
+  (if List.is_empty packages
+   then
+     Package.Name.Map.to_list opam_packages
+     |> Memo.parallel_map ~f:(fun (name, (_loc, pkg)) ->
+       let+ pkg = pkg in
+       name, pkg)
+     |> Memo.map ~f:Package.Name.Map.of_list_exn
+   else
+     Memo.return
+       (make_packages
+          ~opam_packages
+          ~dir
+          ~generate_opam_files
+          ~opam_file_location
+          packages
+          name))
+  >>| Package.Name.Map.map ~f:(fun p ->
+    let info = Package_info.superpose info (Package.info p) in
     let version =
       match Package.version p with
       | Some _ as v -> v
@@ -852,10 +769,11 @@ let parse_packages
 let parse ~dir ~(lang : Lang.Instance.t) ~file =
   String_with_vars.set_decoding_env (Pform.Env.initial lang.version)
   @@ fields
-  @@ let+ name = field_o "name" Name.decode
+  @@ let+ name = field_o "name" Dune_project_name.decode
      and+ version = field_o "version" Package_version.decode
-     and+ info = Package.Info.decode ()
+     and+ info = Package_info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
+     and+ pins = Dune_pkg.Pin_stanza.DB.decode ~dir
      and+ explicit_extensions =
        multi_field
          "using"
@@ -909,7 +827,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode" ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
      and+ format_config = Format_config.field ~since:(2, 0)
-     and+ subst_config = Subst_config.field ~since:(3, 0)
+     and+ subst_config = Subst_config.field
      and+ strict_package_deps =
        field_o_b
          "strict_package_deps"
@@ -1018,7 +936,7 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; info
        ; packages
        ; stanza_parser
-       ; project_file = file
+       ; project_file = Some file
        ; extension_args
        ; parsing_context
        ; implicit_transitive_deps
@@ -1035,23 +953,25 @@ let parse ~dir ~(lang : Lang.Instance.t) ~file =
        ; subst_config
        ; strict_package_deps
        ; allow_approximate_merlin
+       ; pins
        ; cram
        ; expand_aliases_in_sandbox
        ; opam_file_location
+       ; including_hidden_packages = packages
        }
 ;;
 
-let load_dune_project ~dir opam_packages : t Memo.t =
+let load_dune_project ~read ~dir opam_packages : t Memo.t =
   let file = Path.Source.relative dir filename in
   let open Memo.O in
-  let* f =
-    Fs_memo.with_lexbuf_from_file (In_source_dir file) ~f:(fun lexbuf ->
-      parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file))
+  let* lexbuf =
+    let+ contents = read file in
+    Lexbuf.from_string contents ~fname:(Path.Source.to_string file)
   in
-  f opam_packages
+  parse_contents lexbuf ~f:(fun lang -> parse ~dir ~lang ~file) opam_packages
 ;;
 
-let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
+let gen_load ~read ~dir ~files ~infer_from_opam_files : t option Memo.t =
   let open Memo.O in
   let opam_packages =
     Filename.Set.fold files ~init:[] ~f:(fun fn acc ->
@@ -1060,41 +980,26 @@ let load ~dir ~files ~infer_from_opam_files : t option Memo.t =
       | Some name ->
         let opam_file = Path.Source.relative dir fn in
         let loc = Loc.in_file (Path.source opam_file) in
-        let pkg = Package.load_opam_file opam_file name in
+        let pkg =
+          let+ contents = read opam_file in
+          Dune_pkg.Opam_file.load_opam_file_with_contents ~contents opam_file name
+        in
         (name, (loc, pkg)) :: acc)
     |> Package.Name.Map.of_list_exn
   in
   if Filename.Set.mem files filename
-  then load_dune_project ~dir opam_packages >>| Option.some
-  else if Path.Source.is_root dir
-          || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))
+  then load_dune_project ~read ~dir opam_packages >>| Option.some
+  else if infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages)
   then
     let+ opam_packages =
+      let module Memo_package_name = Memo.Make_parallel_map (Package.Name.Map) in
       Memo_package_name.parallel_map opam_packages ~f:(fun _ (_loc, pkg) -> pkg)
     in
-    Some (infer ~dir opam_packages)
+    Some (infer Package_info.empty ~dir opam_packages)
   else Memo.return None
 ;;
 
-let set_parsing_context t parser = Dune_lang.Decoder.set_many t.parsing_context parser
-let wrapped_executables t = t.wrapped_executables
-let map_workspace_root t = t.map_workspace_root
-let executables_implicit_empty_intf t = t.executables_implicit_empty_intf
-let accept_alternative_dune_file_name t = t.accept_alternative_dune_file_name
-let () = Extension.register_simple Dune_lang.Action.Action_plugin.syntax (return [])
-let dune_site_extension = Extension.register_unit Site.dune_site_syntax (return [])
-let strict_package_deps t = t.strict_package_deps
-let allow_approximate_merlin t = t.allow_approximate_merlin
-let cram t = t.cram
-let info t = t.info
-
-let update_execution_parameters t ep =
-  ep
-  |> Execution_parameters.set_expand_aliases_in_sandbox t.expand_aliases_in_sandbox
-  |> Execution_parameters.set_workspace_root_to_build_path_prefix_map
-       (if t.map_workspace_root then Set "/workspace_root" else Unset)
-  |> Execution_parameters.set_should_remove_write_permissions_on_generated_files
-       (t.dune_version >= (2, 4))
+let load =
+  let read source = Fs_memo.file_contents (Path.Outside_build_dir.In_source_dir source) in
+  gen_load ~read
 ;;
-
-let opam_file_location t = t.opam_file_location

@@ -2,8 +2,8 @@ open! Import
 
 module Module_system : sig
   type t =
-    | Es6
-    | CommonJs
+    | ESM
+    | CommonJS
 
   val default : t * Filename.Extension.t
   val to_string : t -> string

@@ -27,7 +27,7 @@ Requires Dune 3.8.
 (concurrent ...) runs actions concurrently. Here we mock up an example where two
 subactions rely on eachother to also be running in order to terminate.
 
-We write a shell script that will similtaneously read and write to two named
+We write a shell script that will simultaneously read and write to two named
 pipes. (This has to be similtaneious otherwise the read will block the write).
 They will block on the read however, which means if called with the same two
 pipes but swapped, they will only terminate when both scripts are running at the

@@ -9,37 +9,67 @@ module Lock_dir = struct
     { path : Path.Source.t
     ; version_preference : Dune_pkg.Version_preference.t option
     ; solver_env : Dune_pkg.Solver_env.t option
-    ; unset_solver_vars : Dune_pkg.Variable_name.Set.t option
-    ; repositories : Dune_pkg.Pkg_workspace.Repository.Name.t list
+    ; unset_solver_vars : Package_variable_name.Set.t option
+    ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
+    ; pins : (Loc.t * string) list
     }
 
   let to_dyn
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
     =
     Dyn.record
       [ "path", Path.Source.to_dyn path
       ; ( "version_preference"
         , Dyn.option Dune_pkg.Version_preference.to_dyn version_preference )
       ; "solver_env", Dyn.option Dune_pkg.Solver_env.to_dyn solver_env
-      ; ( "unset_solver_vars"
-        , Dyn.option Dune_pkg.Variable_name.Set.to_dyn unset_solver_vars )
+      ; "unset_solver_vars", Dyn.option Package_variable_name.Set.to_dyn unset_solver_vars
       ; ( "repositories"
-        , Dyn.list Dune_pkg.Pkg_workspace.Repository.Name.to_dyn repositories )
+        , Dyn.list
+            Dune_pkg.Pkg_workspace.Repository.Name.to_dyn
+            (List.map repositories ~f:snd) )
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
+      ; "pins", (Dyn.list Dyn.string) (List.map pins ~f:snd)
       ]
   ;;
 
   let hash
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
     =
     Poly.hash
-      (path, version_preference, solver_env, unset_solver_vars, repositories, constraints)
+      ( path
+      , version_preference
+      , solver_env
+      , unset_solver_vars
+      , repositories
+      , constraints
+      , pins )
   ;;
 
   let equal
-    { path; version_preference; solver_env; unset_solver_vars; repositories; constraints }
-    t
+        { path
+        ; version_preference
+        ; solver_env
+        ; unset_solver_vars
+        ; repositories
+        ; constraints
+        ; pins
+        }
+        t
     =
     Path.Source.equal path t.path
     && Option.equal
@@ -47,9 +77,13 @@ module Lock_dir = struct
          version_preference
          t.version_preference
     && Option.equal Dune_pkg.Solver_env.equal solver_env t.solver_env
-    && Option.equal Dune_pkg.Variable_name.Set.equal unset_solver_vars t.unset_solver_vars
-    && List.equal Dune_pkg.Pkg_workspace.Repository.Name.equal repositories t.repositories
+    && Option.equal Package_variable_name.Set.equal unset_solver_vars t.unset_solver_vars
+    && List.equal
+         (Tuple.T2.equal Loc.equal Dune_pkg.Pkg_workspace.Repository.Name.equal)
+         repositories
+         t.repositories
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
+    && List.equal (Tuple.T2.equal Loc.equal String.equal) pins t.pins
   ;;
 
   let decode ~dir =
@@ -57,9 +91,10 @@ module Lock_dir = struct
       Dune_lang.Ordered_set_lang.eval
         ordered_set
         ~parse:(fun ~loc string ->
-          Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
-        ~eq:Dune_pkg.Pkg_workspace.Repository.Name.equal
-        ~standard:(List.map default_repositories ~f:Repository.name)
+          loc, Dune_pkg.Pkg_workspace.Repository.Name.parse_string_exn (loc, string))
+        ~eq:(fun (_, x) (_, y) -> Dune_pkg.Pkg_workspace.Repository.Name.equal x y)
+        ~standard:
+          (List.map default_repositories ~f:(fun d -> Loc.none, Repository.name d))
     in
     let decode =
       let+ path =
@@ -67,13 +102,13 @@ module Lock_dir = struct
         Path.Source.relative dir path
       and+ solver_env = field_o "solver_env" Dune_pkg.Solver_env.decode
       and+ unset_solver_vars =
-        field_o "unset_solver_vars" (repeat (located Dune_pkg.Variable_name.decode))
+        field_o "unset_solver_vars" (repeat (located Package_variable_name.decode))
       and+ version_preference =
         field_o "version_preference" Dune_pkg.Version_preference.decode
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
-      in
+      and+ pins = field ~default:[] "pins" (repeat (located string)) in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
           unset_solver_vars
@@ -86,11 +121,11 @@ module Lock_dir = struct
                    [ Pp.textf
                        "Variable %S appears in both 'solver_env' and 'unset_solver_vars' \
                         which is not allowed."
-                       (Dune_pkg.Variable_name.to_string variable)
+                       (Package_variable_name.to_string variable)
                    ])));
       let unset_solver_vars =
         Option.map unset_solver_vars ~f:(fun x ->
-          List.map x ~f:snd |> Dune_pkg.Variable_name.Set.of_list)
+          List.map x ~f:snd |> Package_variable_name.Set.of_list)
       in
       { path
       ; solver_env
@@ -98,6 +133,7 @@ module Lock_dir = struct
       ; version_preference
       ; repositories = repositories_of_ordered_set repositories
       ; constraints
+      ; pins
       }
     in
     fields decode
@@ -153,6 +189,49 @@ let env_field, env_field_lazy =
   make Fun.id Fun.id, make Lazy.from_val lazy_
 ;;
 
+module Lock_dir_selection = struct
+  type t =
+    | Name of string
+    | Cond of Dune_lang.Cond.t
+
+  let to_dyn = function
+    | Name name -> Dyn.variant "Name" [ Dyn.string name ]
+    | Cond cond -> Dyn.variant "Cond" [ Dune_lang.Cond.to_dyn cond ]
+  ;;
+
+  let decode =
+    enter
+      (let+ () = keyword "cond"
+       and+ cond = Dune_lang.Cond.decode in
+       Cond cond)
+    <|> let+ name = string in
+        Name name
+  ;;
+
+  let equal a b =
+    match a, b with
+    | Name a, Name b -> String.equal a b
+    | Cond a, Cond b -> Dune_lang.Cond.equal a b
+    | _ -> false
+  ;;
+
+  let eval t ~dir ~f =
+    let open Memo.O in
+    match t with
+    | Name name -> Memo.return (Path.Source.relative dir name)
+    | Cond cond ->
+      let+ value = Cond_expand.eval cond ~dir:(Path.source dir) ~f in
+      (match (value : Value.t option) with
+       | None ->
+         User_error.raise
+           ~loc:cond.loc
+           [ Pp.text "None of the conditions matched so no lockdir could be chosen." ]
+       | Some (String s) -> Path.Source.relative dir s
+       | Some (Dir p | Path p) ->
+         Path.reach ~from:(Path.source dir) p |> Path.Source.of_string)
+  ;;
+end
+
 module Context = struct
   module Target = struct
     type t =
@@ -187,6 +266,28 @@ module Context = struct
     ;;
   end
 
+  module Merlin = struct
+    type t =
+      | Selected
+      | Rules_only
+      | Not_selected
+
+    let equal x y =
+      match x, y with
+      | Selected, Selected | Rules_only, Rules_only | Not_selected, Not_selected -> true
+      | Selected, (Rules_only | Not_selected)
+      | (Rules_only | Not_selected), Selected
+      | Rules_only, Not_selected
+      | Not_selected, Rules_only -> false
+    ;;
+
+    let to_dyn : t -> Dyn.t = function
+      | Selected -> String "selected"
+      | Rules_only -> String "rules_only"
+      | Not_selected -> String "not_selected"
+    ;;
+  end
+
   module Common = struct
     type t =
       { loc : Loc.t
@@ -200,7 +301,7 @@ module Context = struct
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
       ; instrument_with : Lib_name.t list
-      ; merlin : bool
+      ; merlin : Merlin.t
       }
 
     let to_dyn { name; targets; host_context; _ } =
@@ -212,20 +313,20 @@ module Context = struct
     ;;
 
     let equal
-      { loc = _
-      ; profile
-      ; targets
-      ; env
-      ; toolchain
-      ; name
-      ; host_context
-      ; paths
-      ; fdo_target_exe
-      ; dynamically_linked_foreign_archives
-      ; instrument_with
-      ; merlin
-      }
-      t
+          { loc = _
+          ; profile
+          ; targets
+          ; env
+          ; toolchain
+          ; name
+          ; host_context
+          ; paths
+          ; fdo_target_exe
+          ; dynamically_linked_foreign_archives
+          ; instrument_with
+          ; merlin
+          }
+          t
       =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -239,7 +340,7 @@ module Context = struct
            dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
       && List.equal Lib_name.equal instrument_with t.instrument_with
-      && Bool.equal merlin t.merlin
+      && Merlin.equal merlin t.merlin
     ;;
 
     let fdo_suffix t =
@@ -305,7 +406,12 @@ module Context = struct
           "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc
-      and+ merlin = field_b "merlin" in
+      and+ merlin = field_b "merlin"
+      and+ generate_merlin_rules =
+        field_b
+          ~check:(Dune_lang.Syntax.since Stanza.syntax (3, 16))
+          "generate_merlin_rules"
+      in
       fun ~profile_default ~instrument_with_default ->
         let profile = Option.value profile ~default:profile_default in
         let instrument_with =
@@ -330,7 +436,13 @@ module Context = struct
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; instrument_with
-        ; merlin
+        ; merlin =
+            (match merlin with
+             | true -> Selected
+             | false ->
+               (match generate_merlin_rules with
+                | true -> Rules_only
+                | false -> Not_selected))
         }
     ;;
   end
@@ -350,6 +462,14 @@ module Context = struct
       Common.equal base t.base && Opam_switch.equal switch t.switch
     ;;
 
+    let name_hint_opt name =
+      if String.is_prefix ~prefix:"/" name
+      then (
+        let context_name = Filename.basename name in
+        Some [ Pp.textf "(name %s) would be a valid context name" context_name ])
+      else None
+    ;;
+
     let decode =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
@@ -367,9 +487,10 @@ module Context = struct
              | None ->
                User_error.raise
                  ~loc:loc_switch
-                 [ Pp.textf "Generated context name %S is invalid" name
-                 ; Pp.text
-                     "Please specify a context name manually with the (name ..) field"
+                 ?hints:(name_hint_opt name)
+                 [ Pp.textf
+                     "The name generated from this switch can not be used as a context \
+                      name. Please use (name) to disambiguate."
                  ])
         in
         let base = { base with targets = Target.add base.targets x; name } in
@@ -381,17 +502,17 @@ module Context = struct
   module Default = struct
     type t =
       { base : Common.t
-      ; lock_dir : Path.Source.t option
+      ; lock_dir : Lock_dir_selection.t option
       }
 
     let to_dyn { base; lock_dir } =
       Dyn.record
         [ "base", Common.to_dyn base
-        ; "lock_dir", Dyn.(option Path.Source.to_dyn) lock_dir
+        ; "lock_dir", Dyn.(option Lock_dir_selection.to_dyn) lock_dir
         ]
     ;;
 
-    let decode ~dir =
+    let decode =
       let+ common = Common.decode
       and+ name =
         field_o "name" (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
@@ -400,8 +521,7 @@ module Context = struct
            1. guard before version check before releasing
            2. allow external paths
         *)
-        let+ path = field_o "lock_dir" string in
-        Option.map path ~f:(Path.Source.relative dir)
+        field_o "lock_dir" Lock_dir_selection.decode
       in
       fun ~profile_default ~instrument_with_default ~x ->
         let common = common ~profile_default ~instrument_with_default in
@@ -416,7 +536,8 @@ module Context = struct
     ;;
 
     let equal { base; lock_dir } t =
-      Common.equal base t.base && Option.equal Path.Source.equal lock_dir t.lock_dir
+      Common.equal base t.base
+      && Option.equal Lock_dir_selection.equal lock_dir t.lock_dir
     ;;
   end
 
@@ -452,10 +573,10 @@ module Context = struct
       -> host_context
   ;;
 
-  let decode ~dir =
+  let decode =
     sum
       [ ( "default"
-        , let+ f = fields (Default.decode ~dir) in
+        , let+ f = fields Default.decode in
           fun ~profile_default ~instrument_with_default ~x ->
             Default (f ~profile_default ~instrument_with_default ~x) )
       ; ( "opam"
@@ -492,7 +613,7 @@ module Context = struct
           ; fdo_target_exe = None
           ; dynamically_linked_foreign_archives = true
           ; instrument_with = Option.value instrument_with ~default:[]
-          ; merlin = false
+          ; merlin = Not_selected
           }
       }
   ;;
@@ -516,9 +637,11 @@ type t =
   ; config : Dune_config.t
   ; repos : Dune_pkg.Pkg_workspace.Repository.t list
   ; lock_dirs : Lock_dir.t list
+  ; dir : Path.Source.t
+  ; pins : Dune_pkg.Pin_stanza.DB.Workspace.t
   }
 
-let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
+let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs; pins; dir } =
   let open Dyn in
   record
     [ "merlin_context", option Context_name.to_dyn merlin_context
@@ -527,31 +650,39 @@ let to_dyn { merlin_context; contexts; env; config; repos; lock_dirs } =
     ; "config", Dune_config.to_dyn config
     ; "repos", list Repository.to_dyn repos
     ; "solver", (list Lock_dir.to_dyn) lock_dirs
+    ; "dir", Path.Source.to_dyn dir
+    ; "pins", Dune_pkg.Pin_stanza.DB.Workspace.to_dyn pins
     ]
 ;;
 
-let equal { merlin_context; contexts; env; config; repos; lock_dirs } w =
+let equal { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Option.equal Dune_env.equal env w.env
   && Dune_config.equal config w.config
   && List.equal Repository.equal repos w.repos
   && List.equal Lock_dir.equal lock_dirs w.lock_dirs
+  && Path.Source.equal dir w.dir
+  && Dune_pkg.Pin_stanza.DB.Workspace.equal pins w.pins
 ;;
 
-let hash { merlin_context; contexts; env; config; repos; lock_dirs } =
+let hash { merlin_context; contexts; env; config; repos; lock_dirs; dir; pins } =
   Poly.hash
     ( Option.hash Context_name.hash merlin_context
     , List.hash Context.hash contexts
     , Option.hash Dune_env.hash env
     , Dune_config.hash config
     , List.hash Repository.hash repos
-    , List.hash Lock_dir.hash lock_dirs )
+    , List.hash Lock_dir.hash lock_dirs
+    , Path.Source.hash dir
+    , Dune_pkg.Pin_stanza.DB.Workspace.hash pins )
 ;;
 
 let find_lock_dir t path =
   List.find t.lock_dirs ~f:(fun lock_dir -> Path.Source.equal lock_dir.path path)
 ;;
+
+let add_repo t repo = { t with repos = repo :: t.repos }
 
 include Dune_lang.Versioned_file.Make (struct
     type t = unit
@@ -570,13 +701,13 @@ module Clflags = struct
     }
 
   let to_dyn
-    { x
-    ; profile
-    ; instrument_with
-    ; workspace_file
-    ; config_from_command_line
-    ; config_from_config_file
-    }
+        { x
+        ; profile
+        ; instrument_with
+        ; workspace_file
+        ; config_from_command_line
+        ; config_from_config_file
+        }
     =
     let open Dyn in
     record
@@ -642,9 +773,9 @@ let top_sort contexts =
 ;;
 
 let create_final_config
-  ~config_from_config_file
-  ~config_from_command_line
-  ~config_from_workspace_file
+      ~config_from_config_file
+      ~config_from_command_line
+      ~config_from_workspace_file
   =
   let ( ++ ) = Dune_config.superpose in
   Dune_config.default
@@ -713,8 +844,9 @@ let step1 clflags =
          (lazy_ (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode))
          ~default:(lazy []))
   and+ config_from_workspace_file = Dune_config.decode_fields_of_workspace_file
-  and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir) in
-  let+ contexts = multi_field "context" (lazy_ (Context.decode ~dir)) in
+  and+ lock_dirs = multi_field "lock_dir" (Lock_dir.decode ~dir)
+  and+ pins = Dune_pkg.Pin_stanza.DB.Workspace.decode in
+  let+ contexts = multi_field "context" (lazy_ Context.decode) in
   let config =
     create_final_config
       ~config_from_workspace_file
@@ -752,11 +884,11 @@ let step1 clflags =
                 !defined_names
                 (Context_name.Set.of_list (Context.all_names ctx));
            match Context.base ctx, acc with
-           | { merlin = true; _ }, Some _ ->
+           | { merlin = Selected; _ }, Some _ ->
              User_error.raise
                ~loc:(Context.loc ctx)
                [ Pp.text "you can only have one context for merlin" ]
-           | { merlin = true; _ }, None -> Some name
+           | { merlin = Selected; _ }, None -> Some name
            | _ -> acc)
        in
        let contexts =
@@ -773,9 +905,10 @@ let step1 clflags =
          match merlin_context with
          | Some _ -> merlin_context
          | None ->
-           if List.exists contexts ~f:(function
-                | Context.Default _ -> true
-                | _ -> false)
+           if
+             List.exists contexts ~f:(function
+               | Context.Default _ -> true
+               | _ -> false)
            then Some Context_name.default
            else None
        in
@@ -785,6 +918,8 @@ let step1 clflags =
        ; config
        ; repos
        ; lock_dirs
+       ; dir
+       ; pins
        })
   in
   { Step1.t; config }
@@ -816,6 +951,8 @@ let default clflags =
   ; config
   ; repos = default_repositories
   ; lock_dirs = []
+  ; dir = Path.Source.root
+  ; pins = Dune_pkg.Pin_stanza.DB.Workspace.empty
   }
 ;;
 

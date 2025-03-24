@@ -44,7 +44,7 @@ For an Existing Package
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 If you already have an opam file (or several of them), you can convert it by
-following the rules in :ref:`package`.
+following the rules in :doc:`/reference/dune-project/package`.
 
 For example, if your opam file looks like:
 
@@ -81,6 +81,7 @@ For example, if your opam file looks like:
      "conduit-async" { >= "1.0.3" }
      "async" { >= "v0.10.0" }
    ]
+   x-maintenance-intent: [ "(latest)" ]
 
 You can express this as::
 
@@ -88,6 +89,7 @@ You can express this as::
    (license ISC)
    (authors "Anil Madhavapeddy" "Rudi Grinberg")
    (maintainers "team@mirage.org")
+   (maintenance_intent "(latest)")
 
    (package
     (name cohttp-async)
@@ -113,9 +115,10 @@ General Notes and Tips
   keep the corresponding opam fields in a ``pkg.opam.template`` file. See
   :doc:`../reference/packages`.
 - It is not necessary to specify ``(version)``, this will be added at release
-  time if you use `dune-release`_.
-
-.. _dune-release: https://github.com/tarides/dune-release
+  time if you use `dune-release <https://github.com/tarides/dune-release>`_.
+- To generate an opam variable such as ``version``, use a colon ``:`` followed
+  by the name of the variable. For example, to generate ``a { = version }`` in
+  the opam file, use ``(a (= :version))`` in ``dune-project``.
 
 Generating Opam Files
 ---------------------
@@ -130,3 +133,11 @@ If you only want to generate the opam file, run ``dune build <project_name>.opam
 
 Run ``dune build`` once and observe that the opam files have been created or
 updated. Make sure to add these changes to your version control system.
+
+.. seealso::
+
+   :token:`~pkg-dep:dep_specification`
+     How ``(depends)`` and similar fields are processed.
+
+   :doc:`/explanation/opam-integration`
+     How ``with-test`` and related variables are used by opam.

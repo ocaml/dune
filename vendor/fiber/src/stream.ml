@@ -140,9 +140,9 @@ module Out = struct
       if Option.is_none x
       then
         t.write
-          <- (function
-              | None -> return ()
-              | Some _ -> Code_error.raise "Fiber.Stream.Out: stream output closed" []);
+        <- (function
+             | None -> return ()
+             | Some _ -> Code_error.raise "Fiber.Stream.Out: stream output closed" []);
       write x
     in
     t.write <- write;

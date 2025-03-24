@@ -17,8 +17,25 @@ let out =
   | Some out -> out
 ;;
 
+let default_toggles : (string * [ `Disabled | `Enabled ]) list =
+  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
+;;
+
+let toggles = ref default_toggles
+
+let toggle name v =
+  toggles := List.map !toggles ~f:(fun (x, y) -> x, if x = name then v else y)
+;;
+
+let toggle =
+  let toggles = [ "enable", `Enabled; "disable", `Disabled ] in
+  let options = List.map toggles ~f:fst in
+  fun name -> Arg.Symbol (options, fun s -> List.assoc s toggles |> toggle name)
+;;
+
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in
+  let prefix = ref None in
   let library_path = ref [] in
   let library_destdir = ref None in
   let mandir = ref None in
@@ -42,7 +59,8 @@ let () =
     v := Some dir
   in
   let args =
-    [ ( "--libdir"
+    [ "--prefix", Arg.String (set_dir prefix), "DIR where files are copied"
+    ; ( "--libdir"
       , Arg.String set_libdir
       , "DIR where public libraries are looked up in the default build context. Can be \
          specified multiple times new one taking precedence. The last is used as default \
@@ -70,6 +88,19 @@ let () =
       , Arg.String (set_dir datadir)
       , "DIR where files for the share_root section are installed for the default build \
          context" )
+    ; ( "--toolchains"
+      , toggle "toolchains"
+      , " Enable the toolchains behaviour, allowing dune to install the compiler in a \
+         user-wide directory." )
+    ; ( "--pkg-build-progress"
+      , toggle "pkg_build_progress"
+      , " Enable the displaying of package build progress.\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--lock-dev-tool"
+      , toggle "lock_dev_tool"
+      , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
+         it, independently from the project depenedencies .\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in
@@ -90,5 +121,14 @@ let () =
   pr "  ; sbin = %s" (option string !sbindir);
   pr "  ; libexec_root = %s" (option string !libexecdir);
   pr "  }";
+  pr "";
+  pr "let prefix : string option = %s" (option string !prefix);
+  List.iter !toggles ~f:(fun (name, value) ->
+    pr
+      "let %s = `%s"
+      name
+      (match value with
+       | `Enabled -> "Enabled"
+       | `Disabled -> "Disabled"));
   close_out oc
 ;;

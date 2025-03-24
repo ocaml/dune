@@ -1,5 +1,11 @@
-[@@@alert unstable "The API of this library is not stable and may change without notice."]
-[@@@alert "-unstable"]
+include struct
+  [@@@ocaml.warning "-53"]
+
+  [@@@alert
+    unstable "The API of this library is not stable and may change without notice."]
+
+  [@@@alert "-unstable"]
+end
 
 module Appendable_list = Appendable_list
 module Nonempty_list = Nonempty_list
@@ -13,11 +19,13 @@ module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace
 module Filename = Filename
 module Filename_set = Filename_set
+module Format = Format
 module Hashtbl = Hashtbl
 module Table = Table
 module Int = Int
 module Id = Id
 module Io = Io
+module Lazy = Lazy
 module List = List
 module Map = Map
 module Option = Option
@@ -33,29 +41,26 @@ module Pp = struct
   ;;
 
   let to_dyn tag_to_dyn t =
-    match Pp.to_ast t with
-    | Error _ -> Dyn.variant "Contains Format" [ Dyn.opaque "<error>" ]
-    | Ok t ->
+    let rec to_dyn t =
       let open Dyn in
-      let rec to_dyn t =
-        match (t : _ Pp.Ast.t) with
-        | Nop -> variant "Nop" []
-        | Seq (x, y) -> variant "Seq" [ to_dyn x; to_dyn y ]
-        | Concat (x, y) -> variant "Concat" [ to_dyn x; list to_dyn y ]
-        | Box (i, t) -> variant "Box" [ int i; to_dyn t ]
-        | Vbox (i, t) -> variant "Vbox" [ int i; to_dyn t ]
-        | Hbox t -> variant "Hbox" [ to_dyn t ]
-        | Hvbox (i, t) -> variant "Hvbox" [ int i; to_dyn t ]
-        | Hovbox (i, t) -> variant "Hovbox" [ int i; to_dyn t ]
-        | Verbatim s -> variant "Verbatim" [ string s ]
-        | Char c -> variant "Char" [ char c ]
-        | Break (x, y) ->
-          variant "Break" [ triple string int string x; triple string int string y ]
-        | Newline -> variant "Newline" []
-        | Text s -> variant "Text" [ string s ]
-        | Tag (s, t) -> variant "Tag" [ tag_to_dyn s; to_dyn t ]
-      in
-      to_dyn t
+      match (t : _ Pp.Ast.t) with
+      | Nop -> variant "Nop" []
+      | Seq (x, y) -> variant "Seq" [ to_dyn x; to_dyn y ]
+      | Concat (x, y) -> variant "Concat" [ to_dyn x; list to_dyn y ]
+      | Box (i, t) -> variant "Box" [ int i; to_dyn t ]
+      | Vbox (i, t) -> variant "Vbox" [ int i; to_dyn t ]
+      | Hbox t -> variant "Hbox" [ to_dyn t ]
+      | Hvbox (i, t) -> variant "Hvbox" [ int i; to_dyn t ]
+      | Hovbox (i, t) -> variant "Hovbox" [ int i; to_dyn t ]
+      | Verbatim s -> variant "Verbatim" [ string s ]
+      | Char c -> variant "Char" [ char c ]
+      | Break (x, y) ->
+        variant "Break" [ triple string int string x; triple string int string y ]
+      | Newline -> variant "Newline" []
+      | Text s -> variant "Text" [ string s ]
+      | Tag (s, t) -> variant "Tag" [ tag_to_dyn s; to_dyn t ]
+    in
+    to_dyn (Pp.to_ast t)
   ;;
 end
 
@@ -66,6 +71,7 @@ module Comparable = Comparable
 module Comparable_intf = Comparable_intf
 module Staged = Staged
 module String = String
+module String_builder = String_builder
 module Bool = Bool
 module Sexp = Sexp
 module Path = Path

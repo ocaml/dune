@@ -2,6 +2,8 @@
 
 open Import
 
+type 'a t = Context_name.t -> 'a Memo.t
+
 val create_by_name
   :  name:string
   -> (Context_name.t -> 'a Memo.t)

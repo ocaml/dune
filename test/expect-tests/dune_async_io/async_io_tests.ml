@@ -6,8 +6,7 @@ open Dune_async_io
 let config =
   { Scheduler.Config.concurrency = 1
   ; stats = None
-  ; insignificant_changes = `Ignore
-  ; signal_watcher = `No
+  ; print_ctrl_c_warning = false
   ; watch_exclusions = []
   }
 ;;
@@ -28,8 +27,8 @@ let%expect_test "read readiness" =
      assert (Bytes.to_string bytes = "0");
      Unix.close w;
      let+ () = Async_io.close r in
-     print_endline "succesful read");
-  [%expect {| succesful read |}]
+     print_endline "successful read");
+  [%expect {| successful read |}]
 ;;
 
 let%expect_test "write readiness" =
@@ -45,8 +44,8 @@ let%expect_test "write readiness" =
      assert (Unix.write w (Bytes.of_string "0") 0 1 = 1);
      Unix.close r;
      let+ () = Async_io.close w in
-     print_endline "succesful write");
-  [%expect {| succesful write |}]
+     print_endline "successful write");
+  [%expect {| successful write |}]
 ;;
 
 let%expect_test "first ready" =
@@ -72,8 +71,8 @@ let%expect_test "first ready" =
      Unix.close r2;
      let* () = Async_io.close w1 in
      let+ () = Async_io.close w2 in
-     print_endline "succesful write");
-  [%expect {| succesful write |}]
+     print_endline "successful write");
+  [%expect {| successful write |}]
 ;;
 
 let%expect_test "cancel task" =
@@ -84,13 +83,13 @@ let%expect_test "cancel task" =
    let* task = Async_io.ready r `Read ~f:ignore in
    Fiber.fork_and_join_unit
      (fun () ->
-       Async_io.Task.await task
-       >>= function
-       | Ok () | Error (`Exn _) -> assert false
-       | Error `Cancelled ->
-         Unix.close w;
-         let+ () = Async_io.close r in
-         print_endline "successfully cancelled")
+        Async_io.Task.await task
+        >>= function
+        | Ok () | Error (`Exn _) -> assert false
+        | Error `Cancelled ->
+          Unix.close w;
+          let+ () = Async_io.close r in
+          print_endline "successfully cancelled")
      (fun () -> Async_io.Task.cancel task));
   [%expect {| successfully cancelled |}]
 ;;

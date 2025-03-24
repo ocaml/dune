@@ -15,14 +15,14 @@ val gen_select_rules : Super_context.t -> dir:Path.Build.t -> Lib.Compile.t -> u
 (** Generate the rules for the [(select ...)] forms in library dependencies *)
 val with_lib_deps
   :  Context.t
-  -> Lib.Compile.t
+  -> Merlin_ident.t
   -> dir:Path.Build.t
   -> f:(unit -> 'a Memo.t)
   -> 'a Memo.t
 
 type kind =
-  | Executables of Dune_file.Buildable.t * (Loc.t * string) list
-  | Library of Dune_file.Buildable.t * Lib_name.Local.t
+  | Executables of Buildable.t * (Loc.t * string) list
+  | Library of Buildable.t * Lib_name.Local.t
   | Melange of
       { preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
       ; preprocessor_deps : Dep_conf.t list

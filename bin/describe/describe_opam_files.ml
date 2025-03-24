@@ -7,7 +7,7 @@ let term =
   let common, config = Common.init builder in
   Scheduler.go ~common ~config
   @@ fun () ->
-  Build_system.run_exn
+  build_exn
   @@ fun () ->
   let open Memo.O in
   let+ project = Source_tree.root () >>| Source_tree.Dir.project in
@@ -28,7 +28,7 @@ let term =
     in
     Dyn.Tuple [ String (Path.to_string opam_file); String contents ]
   in
-  Dyn.List (List.map packages ~f:opam_file_to_dyn) |> Describe_format.print_dyn format
+  packages |> Dyn.list opam_file_to_dyn |> Describe_format.print_dyn format
 ;;
 
 let command =

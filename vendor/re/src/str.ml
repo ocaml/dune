@@ -203,16 +203,18 @@ let substitute_first expr repl_fun text =
 
 let global_substitute expr repl_fun text =
   let rec replace accu start last_was_empty =
-    try
-      let startpos = if last_was_empty then start + 1 else start in
-      if startpos > String.length text then raise Not_found;
-      let pos = search_forward expr text startpos in
-      let end_pos = match_end () in
-      let repl_text = repl_fun text in
-      replace (repl_text :: String.sub text start (pos-start) :: accu)
-        end_pos (end_pos = pos)
-    with Not_found ->
-      (string_after text start) :: accu in
+    let startpos = if last_was_empty then start + 1 else start in
+    if startpos > String.length text then
+      (string_after text start) :: accu
+    else
+      match search_forward expr text startpos with
+      | pos ->
+        let end_pos = match_end () in
+        let repl_text = repl_fun text in
+        replace (repl_text :: String.sub text start (pos-start) :: accu)
+          end_pos (end_pos = pos)
+      | exception Not_found -> (string_after text start) :: accu
+  in
   String.concat "" (List.rev (replace [] 0 false))
 
 let global_replace expr repl text =

@@ -7,14 +7,14 @@ Promotion of directory targets.
   > EOF
   $ cat > dune <<EOF
   > (rule
-  >   (mode promote)
-  >   (deps (sandbox always))
-  >   (targets a (dir dir))
-  >   (action (bash "\| echo a > a;
-  >                 "\| mkdir -p dir/subdir;
-  >                 "\| echo b > dir/b;
-  >                 "\| echo c > dir/c;
-  >                 "\| echo d > dir/subdir/d
+  >  (mode promote)
+  >  (deps (sandbox always))
+  >  (targets a (dir dir))
+  >  (action (bash "\| echo a > a;
+  >                "\| mkdir -p dir/subdir;
+  >                "\| echo b > dir/b;
+  >                "\| echo c > dir/c;
+  >                "\| echo d > dir/subdir/d
   > )))
   > EOF
 
@@ -75,21 +75,21 @@ Test error message for (promote (into <dir>)) if <dir> is missing.
 
   $ cat > dune <<EOF
   > (rule
-  >   (mode (promote (into another_dir)))
-  >   (deps (sandbox always))
-  >   (targets a (dir dir))
-  >   (action (bash "\| echo a > a;
-  >                 "\| mkdir -p dir/subdir;
-  >                 "\| echo b > dir/b;
-  >                 "\| echo c > dir/c;
-  >                 "\| echo d > dir/subdir/d
+  >  (mode (promote (into another_dir)))
+  >  (deps (sandbox always))
+  >  (targets a (dir dir))
+  >  (action (bash "\| echo a > a;
+  >                "\| mkdir -p dir/subdir;
+  >                "\| echo b > dir/b;
+  >                "\| echo c > dir/c;
+  >                "\| echo d > dir/subdir/d
   > )))
   > EOF
 
   $ dune build a
-  File "dune", line 2, characters 23-34:
-  2 |   (mode (promote (into another_dir)))
-                             ^^^^^^^^^^^
+  File "dune", line 2, characters 22-33:
+  2 |  (mode (promote (into another_dir)))
+                            ^^^^^^^^^^^
   Error: Directory "another_dir" does not exist. Please create it manually.
   -> required by _build/default/a
   [1]
@@ -98,14 +98,14 @@ Test cleaning up unexpected files and directories in directory targets.
 
   $ cat > dune <<EOF
   > (rule
-  >   (mode (promote))
-  >   (deps (sandbox always))
-  >   (targets a (dir dir))
-  >   (action (bash "\| echo a > a;
-  >                 "\| mkdir -p dir/subdir;
-  >                 "\| echo b > dir/b;
-  >                 "\| echo c > dir/c;
-  >                 "\| echo d > dir/subdir/d
+  >  (mode (promote))
+  >  (deps (sandbox always))
+  >  (targets a (dir dir))
+  >  (action (bash "\| echo a > a;
+  >                "\| mkdir -p dir/subdir;
+  >                "\| echo b > dir/b;
+  >                "\| echo c > dir/c;
+  >                "\| echo d > dir/subdir/d
   > )))
   > EOF
 

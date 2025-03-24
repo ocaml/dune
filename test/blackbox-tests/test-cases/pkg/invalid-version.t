@@ -12,14 +12,7 @@ In this case we could also hint at the correct syntax for dune-project files.
   >  (name invalid)
   >  (depends foo.1.2.3))
   > EOF
-  $ cat >dune-workspace <<EOF
-  > (lang dune 3.13)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
   $ dune pkg lock 2>&1
   File "dune-project", line 4, characters 10-19:

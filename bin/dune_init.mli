@@ -4,12 +4,15 @@ open Import
 
 (** The context in which the initialization is executed *)
 module Init_context : sig
+  open Dune_config_file
+
   type t =
     { dir : Path.t
     ; project : Dune_project.t
+    ; defaults : Dune_config.Project_defaults.t
     }
 
-  val make : string option -> t Memo.t
+  val make : string option -> Dune_config.Project_defaults.t -> t Memo.t
 end
 
 module Public_name : sig
@@ -29,6 +32,7 @@ module Component : sig
     module Common : sig
       type t =
         { name : Dune_lang.Atom.t
+        ; public : Public_name.t option
         ; libraries : Dune_lang.Atom.t list
         ; pps : Dune_lang.Atom.t list
         }
@@ -36,15 +40,13 @@ module Component : sig
 
     (** Options for executable components *)
     module Executable : sig
-      type t = { public : Public_name.t option }
+      (** NOTE: no options supported yet *)
+      type t = unit
     end
 
     (** Options for library components *)
     module Library : sig
-      type t =
-        { public : Public_name.t option
-        ; inline_tests : bool
-        }
+      type t = { inline_tests : bool }
     end
 
     (** Options for test components *)

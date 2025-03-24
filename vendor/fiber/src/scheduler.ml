@@ -191,7 +191,7 @@ let repack_step (type a) (module W : Witness with type t = a) (step' : step') =
 ;;
 
 let advance (type a) (module W : Witness with type t = a) fill : a step =
-  fill |> Nonempty_list.to_list |> Jobs.exec_fills |> loop |> repack_step (module W)
+  fill |> Jobs.exec_fills |> loop |> repack_step (module W)
 ;;
 
 let start (type a) (t : a t) =

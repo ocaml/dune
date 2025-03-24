@@ -1,10 +1,12 @@
 open Import
 
-type context
+type 'a context
 
-val in_file : Path.Source.t -> context
+val in_src_file : Path.Source.t -> Path.Source.t context
+val in_build_file : Path.Build.t -> Path.Build.t context
+val file_path : 'a context -> Loc.t -> string -> 'a
 
 val load_sexps
-  :  context:context
+  :  context:'a context
   -> Loc.t * string
-  -> (Dune_lang.Ast.t list * context) Memo.t
+  -> (Dune_lang.Ast.t list * 'a context) Memo.t

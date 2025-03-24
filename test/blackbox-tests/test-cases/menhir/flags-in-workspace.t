@@ -16,5 +16,5 @@ See #9024.
   Internal error, please report upstream including the contents of _build/log.
   Description:
     ("Syntax identifier is unset",
-    { name = "menhir"
-    ; supported_versions =
+     { name = "menhir"
+     ; supported_versions =

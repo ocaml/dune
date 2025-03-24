@@ -1,0 +1,7 @@
+(executable
+ (name main)
+ (modes js wasm))
+
+(env
+ (js (wasm_of_ocaml (enabled_if false)))
+ (wasm (js_of_ocaml (enabled_if false))))

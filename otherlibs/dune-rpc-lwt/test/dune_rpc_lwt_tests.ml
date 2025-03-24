@@ -6,11 +6,21 @@ open Lwt.Syntax
 open Dune_rpc.V1
 open Dune_rpc_lwt.V1
 
-external realpath : string -> string = "dune_realpath"
+let _XDG_STATE_HOME = "XDG_STATE_HOME"
+let xdg_state_dir = Temp.create Dir ~prefix:"lwt" ~suffix:"dune"
+let () = Unix.putenv _XDG_STATE_HOME (Stdune.Path.to_absolute_filename xdg_state_dir)
 
 let connect ~root_dir =
   let build_dir = Filename.concat root_dir "_build" in
-  let env = Env.get Env.initial in
+  let env =
+    let env =
+      Env.add
+        Env.initial
+        ~var:_XDG_STATE_HOME
+        ~value:(Stdune.Path.to_absolute_filename xdg_state_dir)
+    in
+    Env.get env
+  in
   let* res = Where.get ~env ~build_dir in
   match res with
   | Error e -> Lwt.fail e
@@ -22,7 +32,7 @@ let connect ~root_dir =
         (* this hackery is needed because the temp dir we wrote the socket to is
            symlinked on a mac *)
         let addr =
-          match realpath addr with
+          match Unix.realpath addr with
           | s -> s
           | exception Unix.Unix_error _ -> addr
         in
@@ -55,17 +65,17 @@ let build_watch ~root_dir =
 let run_with_timeout f =
   Lwt.catch
     (fun () ->
-      let+ () =
-        Lwt_unix.with_timeout 3.0 (fun () ->
-          let+ _ = f () in
-          ())
-      in
-      print_endline "success")
+       let+ () =
+         Lwt_unix.with_timeout 3.0 (fun () ->
+           let+ _ = f () in
+           ())
+       in
+       print_endline "success")
     (fun exn ->
-      (match exn with
-       | Lwt_unix.Timeout -> print_endline "timeout"
-       | _ -> ());
-      Lwt.return_unit)
+       (match exn with
+        | Lwt_unix.Timeout -> print_endline "timeout"
+        | _ -> ());
+       Lwt.return_unit)
 ;;
 
 let initial_cwd = Sys.getcwd ()
@@ -115,8 +125,8 @@ let%expect_test "run and connect" =
      Lwt.finalize
        (fun () -> run_with_timeout (fun () -> Lwt.all [ run_client; run_build ]))
        (fun () ->
-         build#terminate;
-         Lwt.return_unit));
+          build#terminate;
+          Lwt.return_unit));
   [%expect
     {|
     started session

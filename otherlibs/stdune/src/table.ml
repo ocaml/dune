@@ -96,6 +96,7 @@ let filteri_inplace (type input output) ((module T) : (input, output) t) ~f =
 ;;
 
 let length (type input output) ((module T) : (input, output) t) = T.H.length T.value
+let to_list (type input output) ((module T) : (input, output) t) = T.H.to_list T.value
 
 module Multi = struct
   let cons t x v =

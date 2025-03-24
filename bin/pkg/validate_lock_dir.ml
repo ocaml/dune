@@ -15,23 +15,24 @@ let info =
    to be and can be simplified. *)
 
 let enumerate_lock_dirs_by_path ~lock_dirs () =
-  let open Fiber.O in
+  let open Memo.O in
   let+ per_contexts =
-    Memo.run (Workspace.workspace ())
-    >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
+    Workspace.workspace () >>| Pkg_common.Lock_dirs_arg.lock_dirs_of_workspace lock_dirs
   in
   List.filter_map per_contexts ~f:(fun lock_dir_path ->
     if Path.exists (Path.source lock_dir_path)
     then (
-      try Some (Ok (lock_dir_path, Lock_dir.read_disk lock_dir_path)) with
+      try Some (Ok (lock_dir_path, Lock_dir.read_disk_exn lock_dir_path)) with
       | User_error.E e -> Some (Error (lock_dir_path, `Parse_error e)))
     else None)
 ;;
 
 let validate_lock_dirs ~lock_dirs () =
   let open Fiber.O in
-  let+ lock_dirs_by_path = enumerate_lock_dirs_by_path ~lock_dirs ()
-  and+ local_packages = Pkg_common.find_local_packages in
+  let+ lock_dirs_by_path, local_packages =
+    Memo.both (enumerate_lock_dirs_by_path ~lock_dirs ()) Pkg_common.find_local_packages
+    |> Memo.run
+  in
   if List.is_empty lock_dirs_by_path
   then Console.print [ Pp.text "No lockdirs to validate." ]
   else (

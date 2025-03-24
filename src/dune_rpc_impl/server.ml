@@ -15,7 +15,6 @@ end
 
 include struct
   open Dune_engine
-  module Action_runner = Action_runner
   module Build_config = Build_config
   module Diff_promotion = Diff_promotion
 end
@@ -38,7 +37,6 @@ module Run = struct
 
   type t =
     { handler : Dune_rpc_server.t
-    ; action_runner : Action_runner.Rpc_server.t
     ; pool : Fiber.Pool.t
     ; root : string
     ; where : Dune_rpc.Where.t
@@ -73,34 +71,34 @@ module Run = struct
       let* () = Fiber.Ivar.fill t.server_ivar server in
       Fiber.fork_and_join_unit
         (fun () ->
-          let* sessions = Csexp_rpc.Server.serve server in
-          let () =
-            with_registry
-            @@ fun () ->
-            let (`Caller_should_write { Registry.File.path; contents }) =
-              let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
-              let dune =
-                let pid = Unix.getpid () in
-                let where =
-                  match t.where with
-                  | `Ip (host, port) -> `Ip (host, port)
-                  | `Unix a ->
-                    `Unix
-                      (if Filename.is_relative a
-                       then Filename.concat (Sys.getcwd ()) a
-                       else a)
-                in
-                Registry.Dune.create ~where ~root:t.root ~pid
-              in
-              Registry.Config.register registry_config dune
-            in
-            let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
-            Io.String_path.write_file path contents;
-            cleanup_registry := Some path;
-            at_exit run_cleanup_registry
-          in
-          let* () = Server.serve sessions t.stats t.handler in
-          Fiber.Pool.close t.pool)
+           let* sessions = Csexp_rpc.Server.serve server in
+           let () =
+             with_registry
+             @@ fun () ->
+             let (`Caller_should_write { Registry.File.path; contents }) =
+               let registry_config = Registry.Config.create (Lazy.force Dune_util.xdg) in
+               let dune =
+                 let pid = Unix.getpid () in
+                 let where =
+                   match t.where with
+                   | `Ip (host, port) -> `Ip (host, port)
+                   | `Unix a ->
+                     `Unix
+                       (if Filename.is_relative a
+                        then Filename.concat (Sys.getcwd ()) a
+                        else a)
+                 in
+                 Registry.Dune.create ~where ~root:t.root ~pid
+               in
+               Registry.Config.register registry_config dune
+             in
+             let (_ : Fpath.mkdir_p_result) = Fpath.mkdir_p (Filename.dirname path) in
+             Io.String_path.write_file path contents;
+             cleanup_registry := Some path;
+             at_exit run_cleanup_registry
+           in
+           let* () = Server.serve sessions t.stats t.handler in
+           Fiber.Pool.close t.pool)
         (fun () -> Fiber.Pool.run t.pool)
     in
     Fiber.finalize (with_print_errors run) ~finally:(fun () ->
@@ -204,16 +202,13 @@ let ready (t : _ t) =
 ;;
 
 let stop (t : _ t) =
-  Fiber.fork_and_join_unit
-    (fun () -> Action_runner.Rpc_server.stop t.config.action_runner)
-    (fun () ->
-      let* server = Fiber.Ivar.peek t.config.server_ivar in
-      match server with
-      | None -> Fiber.return ()
-      | Some server -> Csexp_rpc.Server.stop server)
+  let* server = Fiber.Ivar.peek t.config.server_ivar in
+  match server with
+  | None -> Fiber.return ()
+  | Some server -> Csexp_rpc.Server.stop server
 ;;
 
-let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.Handler.t =
+let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
   let on_init session (_ : Initialize.Request.t) =
     let t = Fdecl.get t in
     let client = () in
@@ -396,7 +391,8 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
   let () =
     let f _ path =
       let files = For_handlers.source_path_of_string path in
-      Diff_promotion.promote_files_registered_in_last_run (These ([ files ], ignore));
+      Promote.Diff_promotion.promote_files_registered_in_last_run
+        (These ([ files ], ignore));
       Fiber.return ()
     in
     Handler.implement_request rpc Procedures.Public.promote f
@@ -405,24 +401,14 @@ let handler (t : _ t Fdecl.t) action_runner_server handle : 'a Dune_rpc_server.H
     let f _ () = Fiber.return Path.Build.(to_string root) in
     Handler.implement_request rpc Procedures.Public.build_dir f
   in
-  Dune_engine.Action_runner.Rpc_server.implement_handler action_runner_server rpc;
   handle rpc;
   rpc
 ;;
 
-let create
-  ~lock_timeout
-  ~registry
-  ~root
-  ~watch_mode_config
-  ~handle
-  stats
-  action_runner
-  ~parse_build
-  =
+let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats ~parse_build =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
-  let handler = Dune_rpc_server.make (handler t action_runner handle) in
+  let handler = Dune_rpc_server.make (handler t handle) in
   let pool = Fiber.Pool.create () in
   let where = Where.default () in
   Global_lock.lock_exn ~timeout:lock_timeout;
@@ -454,7 +440,6 @@ let create
     ; stats
     ; server
     ; registry
-    ; action_runner
     ; server_ivar = Fiber.Ivar.create ()
     }
   in
@@ -472,12 +457,8 @@ let create
 
 let run t =
   let* () = Fiber.return () in
-  Fiber.fork_and_join_unit
-    (fun () -> Run.run t.config)
-    (fun () -> Dune_engine.Action_runner.Rpc_server.run t.config.action_runner)
+  Run.run t.config
 ;;
-
-let action_runner t = t.config.action_runner
 
 let pending_build_action t =
   Job_queue.read t.pending_build_jobs

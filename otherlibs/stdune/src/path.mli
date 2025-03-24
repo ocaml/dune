@@ -57,6 +57,7 @@ module Local : sig
   include Path_intf.S with type t := t
 
   val root : t
+  val append : t -> t -> t
 
   module L : sig
     val relative : ?error_loc:Loc0.t -> t -> string list -> t
@@ -65,18 +66,20 @@ module Local : sig
   val split_first_component : t -> (Filename.t * t) option
   val explode : t -> Filename.t list
   val descendant : t -> of_:t -> t option
+
+  module Table : Hashtbl.S with type key = t
 end
 
 module External : sig
   include Path_intf.S
 
+  val root : t
   val initial_cwd : t
   val cwd : unit -> t
   val relative : t -> string -> t
   val mkdir_p : ?perms:int -> t -> unit
   val of_filename_relative_to_initial_cwd : string -> t
   val append_local : t -> Local.t -> t
-  val drop_prefix : t -> prefix:t -> Local.t option
 
   module Table : Hashtbl.S with type key = t
 end
@@ -102,6 +105,7 @@ module Source : sig
       though having such paths is almost always an error. *)
   val is_in_build_dir : t -> bool
 
+  val append_local : t -> Local.t -> t
   val descendant : t -> of_:t -> t option
   val to_local : t -> Local.t
 
@@ -193,6 +197,7 @@ module Build : sig
   val chmod : t -> mode:int -> unit
 
   val lstat : t -> Unix.stats
+  val unlink : t -> Fpath.unlink_status
   val unlink_no_err : t -> unit
 
   module Table : Hashtbl.S with type key = t
@@ -226,6 +231,7 @@ module Table : sig
 end
 
 val equal : t -> t -> bool
+val as_outside_build_dir : t -> Outside_build_dir.t option
 val as_outside_build_dir_exn : t -> Outside_build_dir.t
 val destruct_build_dir : t -> [ `Inside of Build.t | `Outside of Outside_build_dir.t ]
 val outside_build_dir : Outside_build_dir.t -> t
@@ -354,7 +360,7 @@ val is_dir_sep : char -> bool
 val is_directory : t -> bool
 
 val rmdir : t -> unit
-val unlink : t -> unit
+val unlink_exn : t -> unit
 val unlink_no_err : t -> unit
 val link : t -> t -> unit
 
@@ -410,7 +416,13 @@ val rename : t -> t -> unit
     you need to modify existing permissions in a non-trivial way. *)
 val chmod : t -> mode:int -> unit
 
-(** Attempts to resolve a symlink. Returns [None] if the path isn't a symlink *)
+(** Attempts to resolve a symlink. Returns:
+
+    - [Ok path] with the resolved destination
+    - [Error Not_a_symlink] if the path isn't a symlink
+    - [Error Max_depth_exceeded] if the function reached the maximum symbolic
+      link depth
+    - [Error (Unix_error _)] with the underlying syscall error. *)
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any

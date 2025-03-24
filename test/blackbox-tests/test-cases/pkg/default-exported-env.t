@@ -6,7 +6,7 @@ Some environment variables are automatically exported by packages:
   $ echo "(version 0.0.1)" > dune.lock/test.pkg
   $ cat >dune.lock/usetest.pkg <<'EOF'
   > (version 0.0.1)
-  > (deps test)
+  > (depends test)
   > (build
   >  (system "\| echo MANPATH=$MANPATH
   >          "\| echo OCAMLPATH=$OCAMLPATH

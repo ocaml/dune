@@ -2,7 +2,6 @@ include Stdune
 include Dune_vcs
 module Console = Dune_console
 module Digest = Dune_digest
-module Section = Install.Section
 
 include struct
   open Dune_findlib.Findlib
@@ -91,6 +90,18 @@ include struct
   module Dep_conf = Dep_conf
   module Package_version = Package_version
   module Relop = Relop
+  module Package_variable_name = Package_variable_name
+  module Toggle = Toggle
+  module Site = Site
+  module Warning = Warning
+  module Source_kind = Source_kind
+  module Package_info = Package_info
+  module Section = Section
+  module Package_dependency = Package_dependency
+  module Package_constraint = Package_constraint
+  module Dune_project_name = Dune_project_name
+  module Package = Package
+  module Dialect = Dialect
 end
 
 include Dune_engine.No_io
@@ -102,9 +113,9 @@ module Build_config = struct
     module Rules = Rules
 
     let make
-      ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
-      ?(directory_targets = Rules.empty.directory_targets)
-      rules
+          ?(build_dir_only_sub_dirs = Rules.empty.build_dir_only_sub_dirs)
+          ?(directory_targets = Rules.empty.directory_targets)
+          rules
       =
       let rules = { Rules.build_dir_only_sub_dirs; directory_targets; rules } in
       Gen_rules_result.rules_here rules
@@ -151,8 +162,5 @@ let ( == ) = `Use_phys_equal
 
 (** Controls whether we use background threads in the dune rules *)
 let background_dune_rules =
-  Config.make
-    ~name:"background_dune_rules"
-    ~of_string:Config.Toggle.of_string
-    ~default:`Disabled
+  Config.make ~name:"background_dune_rules" ~of_string:Toggle.of_string ~default:`Disabled
 ;;

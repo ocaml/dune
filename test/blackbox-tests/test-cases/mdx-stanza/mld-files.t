@@ -44,7 +44,7 @@ So the tests pass now, but it only uses the default `.md` glob for files to
 process.
 
 Let's also run the test for `.mld` files. These need to be manually passed, at
-least as of mdx stanza verion 0.3 and require MDX 2.3.0 at minimum.
+least as of mdx stanza version 0.3 and require MDX 2.3.0 at minimum.
 
   $ cat > dune <<EOF
   > (mdx

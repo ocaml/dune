@@ -2,8 +2,10 @@
 *.rst             text eol=lf
 *.c               text eol=lf
 *.t               text eol=lf -linguist-detectable
+*.sh              text eol=lf
 *.ps1             text working-tree-encoding=UTF-16 eol=crlf
 dune              text eol=lf
 dune.inc          text eol=lf
 .gitignore        text eol=lf
 .gitattributes    text eol=lf
+.ocamlformat      text eol=lf

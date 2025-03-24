@@ -4,7 +4,8 @@ open Dyn
 open Dune_tests_common
 
 let printf = Printf.printf
-let () = init ()
+let print_dyn dyn = Dyn.to_string dyn |> print_endline
+let () = Printexc.record_backtrace false
 
 module Scheduler = struct
   let t = Test_scheduler.create ()
@@ -710,15 +711,18 @@ let%expect_test "Stream.parallel_iter doesn't leak" =
   in
   let test ~pred ~iter_function =
     let results = List.map data_points ~f:(test ~iter_function) in
-    Dyn.(list int) results |> print_dyn;
-    assert (pair_wise_check results ~f:pred)
+    if pair_wise_check results ~f:pred
+    then print_endline "[PASS] memory usage is as expected"
+    else (
+      print_endline "[FAIL] memory usage is not as expected";
+      Dyn.(list int) results |> print_dyn)
   in
   (* Check that the number of live words keeps on increasing because we are
      leaking memory: *)
   test ~pred:( < ) ~iter_function:naive_stream_parallel_iter;
-  [%expect {| [ 52; 115; 745; 7045 ] |}];
+  [%expect {| [PASS] memory usage is as expected |}];
   test ~pred:( = ) ~iter_function:Fiber.Stream.In.parallel_iter;
-  [%expect {| [ 43; 43; 43; 43 ] |}]
+  [%expect {| [PASS] memory usage is as expected |}]
 ;;
 
 let sorted_failures v =

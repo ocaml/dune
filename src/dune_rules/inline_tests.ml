@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 module Backend = struct
   module M = struct
@@ -17,7 +18,6 @@ module Backend = struct
     let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
-      let open Memo.O in
       let+ extends =
         Memo.parallel_map info.extends ~f:(fun ((loc, name) as x) ->
           Resolve.Memo.bind (resolve x) ~f:(fun lib ->
@@ -81,35 +81,35 @@ include Sub_system.Register_end_point (struct
       in
       let loc = lib.buildable.loc in
       let lib_name = snd lib.name in
-      let inline_test_name =
-        sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
+      let inline_test_dir =
+        Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
       in
-      let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
-      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:inline_test_name in
-      let name =
-        sprintf "inline_test_runner_%s" (Lib_name.Local.to_string (snd lib.name))
-      in
+      let runner_name = Inline_tests_info.inline_test_runner in
+      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:"t" in
       let main_module =
-        let name = Module_name.of_string name in
+        let name = Module_name.of_string "main" in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
-      let open Memo.O in
-      let modules = Modules.singleton_exe main_module in
+      let modules = Modules.With_vlib.singleton_exe main_module in
       let runner_libs =
         let open Resolve.Memo.O in
         let* libs =
           Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
             backend.runner_libraries)
         in
-        let* lib =
-          Lib.DB.resolve (Scope.libs scope) (loc, Dune_file.Library.best_name lib)
-        in
+        let* lib = Lib.DB.resolve (Scope.libs scope) (loc, Library.best_name lib) in
         let* more_libs =
           Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
         in
         Lib.closure ~linking:true ((lib :: libs) @ more_libs)
       in
       (* Generate the runner file *)
+      let js_of_ocaml =
+        Js_of_ocaml.Mode.Pair.map
+          ~f:(fun (x : Js_of_ocaml.In_context.t) ->
+            { x with javascript_files = []; wasm_files = [] })
+          (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml)
+      in
       let* () =
         Super_context.add_rule
           sctx
@@ -148,16 +148,11 @@ include Sub_system.Register_end_point (struct
            in
            Action_builder.With_targets.add ~file_targets:[ target ] action)
       and* cctx =
-        let package = Dune_file.Library.package lib in
+        let package = Library.package lib in
         let* ocaml_flags =
           Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
         in
         let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
-        let js_of_ocaml =
-          Js_of_ocaml.In_context.make
-            ~dir
-            { lib.buildable.js_of_ocaml with javascript_files = [] }
-        in
         Compilation_context.create
           ()
           ~super_context:sctx
@@ -168,22 +163,41 @@ include Sub_system.Register_end_point (struct
           ~requires_compile:runner_libs
           ~requires_link:(Memo.lazy_ (fun () -> runner_libs))
           ~flags
-          ~js_of_ocaml:(Some js_of_ocaml)
+          ~js_of_ocaml:(Js_of_ocaml.Mode.Pair.map ~f:Option.some js_of_ocaml)
+          ~melange_package_name:None
           ~package
       in
-      let linkages =
-        let modes =
-          if Mode_conf.Set.mem info.modes Javascript
-          then Mode_conf.Set.add info.modes Byte
-          else info.modes
+      let* modes =
+        let+ jsoo_enabled_modes =
+          Jsoo_rules.jsoo_enabled_modes ~expander ~dir ~in_context:js_of_ocaml
         in
-        let ocaml = Compilation_context.ocaml cctx in
-        List.concat_map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
+        Mode_conf.Set.to_list info.modes
+        |> List.filter ~f:(fun (mode : Mode_conf.t) ->
           match mode with
-          | Native -> [ Exe.Linkage.native ]
-          | Best -> [ Exe.Linkage.native_or_custom ocaml ]
-          | Byte -> [ Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version ]
-          | Javascript -> [ Exe.Linkage.js; Exe.Linkage.byte_for_jsoo ])
+          | Native | Best | Byte -> true
+          | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes)
+      in
+      let* linkages =
+        let ocaml = Compilation_context.ocaml cctx in
+        let l =
+          List.map modes ~f:(fun (mode : Mode_conf.t) ->
+            match mode with
+            | Native -> Exe.Linkage.native
+            | Best -> Exe.Linkage.native_or_custom ocaml
+            | Byte -> Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version
+            | Jsoo JS -> Exe.Linkage.js
+            | Jsoo Wasm -> Exe.Linkage.wasm)
+        in
+        let+ jsoo_is_whole_program =
+          Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
+        in
+        if
+          List.exists modes ~f:(fun mode ->
+            match (mode : Mode_conf.t) with
+            | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
+            | Native | Best | Byte -> false)
+        then Exe.Linkage.byte_for_jsoo :: l
+        else l
       in
       let* (_ : Exe.dep_graphs) =
         let link_args =
@@ -198,7 +212,7 @@ include Sub_system.Register_end_point (struct
         in
         Exe.build_and_link
           cctx
-          ~program:{ name; main_module_name = Module.name main_module; loc }
+          ~program:{ name = runner_name; main_module_name = Module.name main_module; loc }
           ~linkages
           ~link_args
           ~promote:None
@@ -247,15 +261,15 @@ include Sub_system.Register_end_point (struct
         let ext =
           match mode with
           | Native | Best -> ".exe"
-          | Javascript -> Js_of_ocaml.Ext.exe
+          | Jsoo mode -> Js_of_ocaml.Ext.exe ~mode
           | Byte -> ".bc"
         in
         let custom_runner =
           match mode with
           | Native | Best | Byte -> None
-          | Javascript -> Some Jsoo_rules.runner
+          | Jsoo _ -> Some Jsoo_rules.runner
         in
-        let exe = Path.build (Path.Build.relative inline_test_dir (name ^ ext)) in
+        let exe = Path.build (Path.Build.relative inline_test_dir (runner_name ^ ext)) in
         let open Action_builder.O in
         let+ action =
           match custom_runner with
@@ -263,7 +277,13 @@ include Sub_system.Register_end_point (struct
             let+ flags = flags in
             Action.run (Ok exe) flags
           | Some runner ->
-            let* prog = Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
+            let* prog =
+              Super_context.resolve_program
+                ~dir
+                sctx
+                ~where:Original_path
+                ~loc:(Some loc)
+                runner
             and* flags = flags in
             let action =
               Action.run prog (Path.reach exe ~from:(Path.build dir) :: flags)
@@ -274,7 +294,17 @@ include Sub_system.Register_end_point (struct
              | Error _ -> Action_builder.return action
              | Ok p -> Action_builder.path p >>> Action_builder.return action)
         and+ () = deps
-        and+ () = Action_builder.path exe in
+        and+ () = Action_builder.path exe
+        and+ () =
+          match mode with
+          | Native | Best | Byte | Jsoo JS -> Action_builder.return ()
+          | Jsoo Wasm ->
+            Action_builder.path
+              (Path.build
+                 (Path.Build.relative
+                    inline_test_dir
+                    (runner_name ^ Js_of_ocaml.Ext.wasm_dir)))
+        in
         Action.chdir (Path.build dir) action
       in
       let flags partition : string list Action_builder.t =
@@ -304,63 +334,57 @@ include Sub_system.Register_end_point (struct
         List.concat l
       in
       let source_files = List.concat_map source_modules ~f:Module.sources in
-      Memo.parallel_iter_set
-        (module Mode_conf.Set)
-        info.modes
-        ~f:(fun (mode : Mode_conf.t) ->
-          let partition_file =
-            Path.Build.relative inline_test_dir ("partitions-" ^ Mode_conf.to_string mode)
-          in
-          let* () =
-            match partitions_flags with
-            | None -> Memo.return ()
-            | Some partitions_flags ->
-              let open Action_builder.O in
-              action mode partitions_flags
-              >>| Action.Full.make ~sandbox
-              |> Action_builder.with_stdout_to partition_file
-              |> Super_context.add_rule sctx ~dir ~loc
-          in
-          let* runtest_alias =
-            match mode with
-            | Native | Best | Byte -> Memo.return Alias0.runtest
-            | Javascript -> Jsoo_rules.js_of_ocaml_runtest_alias sctx ~dir
-          in
-          Super_context.add_alias_action
-            sctx
-            ~dir
-            ~loc:info.loc
-            (Alias.make ~dir runtest_alias)
-            (let open Action_builder.O in
-             let+ actions =
-               let* partitions_flags =
-                 match partitions_flags with
-                 | None -> Action_builder.return [ None ]
-                 | Some _ ->
-                   let+ partitions =
-                     Action_builder.lines_of (Path.build partition_file)
-                   in
-                   List.map ~f:(fun x -> Some x) partitions
-               in
-               List.map partitions_flags ~f:(fun p -> action mode (flags p))
-               |> Action_builder.all
-             and+ () = Action_builder.paths source_files in
-             match actions with
-             | [] -> Action.Full.empty
-             | _ :: _ ->
-               let run_tests = Action.concurrent actions in
-               let diffs =
-                 List.map source_files ~f:(fun fn ->
-                   Path.as_in_build_dir_exn fn
-                   |> Path.Build.extend_basename ~suffix:".corrected"
-                   |> Action.diff ~optional:true fn)
-                 |> Action.concurrent
-               in
-               Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
+      Memo.parallel_iter modes ~f:(fun (mode : Mode_conf.t) ->
+        let partition_file =
+          Path.Build.relative inline_test_dir ("partitions-" ^ Mode_conf.to_string mode)
+        in
+        let* () =
+          match partitions_flags with
+          | None -> Memo.return ()
+          | Some partitions_flags ->
+            let open Action_builder.O in
+            action mode partitions_flags
+            >>| Action.Full.make ~sandbox
+            |> Action_builder.with_stdout_to partition_file
+            |> Super_context.add_rule sctx ~dir ~loc
+        in
+        let* runtest_alias =
+          match mode with
+          | Native | Best | Byte -> Memo.return Alias0.runtest
+          | Jsoo mode -> Jsoo_rules.js_of_ocaml_runtest_alias ~dir ~mode
+        in
+        Super_context.add_alias_action
+          sctx
+          ~dir
+          ~loc:info.loc
+          (Alias.make ~dir runtest_alias)
+          (let open Action_builder.O in
+           let+ actions =
+             let* partitions_flags =
+               match partitions_flags with
+               | None -> Action_builder.return [ None ]
+               | Some _ ->
+                 let+ partitions = Action_builder.lines_of (Path.build partition_file) in
+                 List.map ~f:(fun x -> Some x) partitions
+             in
+             List.map partitions_flags ~f:(fun p -> action mode (flags p))
+             |> Action_builder.all
+           and+ () = Action_builder.paths source_files in
+           match actions with
+           | [] -> Action.Full.empty
+           | _ :: _ ->
+             let run_tests = Action.concurrent actions in
+             let diffs =
+               List.map source_files ~f:(fun fn ->
+                 Path.as_in_build_dir_exn fn
+                 |> Path.Build.extend_basename ~suffix:".corrected"
+                 |> Promote.Diff_action.diff ~optional:true fn)
+               |> Action.concurrent
+             in
+             Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
     ;;
 
     let gen_rules c ~(info : Info.t) ~backends =
-      let open Memo.O in
       let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ } = c in
       let* expander = Super_context.expander sctx ~dir in
       let* enabled_if = Expander.eval_blang expander info.enabled_if in

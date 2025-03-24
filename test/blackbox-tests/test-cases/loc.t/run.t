@@ -1,7 +1,7 @@
 In this test we want to check the output of the rule reporting.
 
   $ dune build
-  File "dune", line 1, characters 0-154:
+  File "dune", lines 1-16, characters 0-154:
    1 | (rule
    2 |  (deps idontexist)
    3 |  ;

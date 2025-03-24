@@ -35,10 +35,7 @@ module All_targets = struct
 end
 
 module Source_tree = Dune_rules.Source_tree
-module Context_name = Dune_engine.Context_name
-module Sub_dirs = Dune_rules.Sub_dirs
 module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
-module Build_config = Dune_engine.Build_config
 
 let all_direct_targets dir =
   let open Memo.O in
@@ -55,7 +52,8 @@ let all_direct_targets dir =
   |> Memo.parallel_map ~f:(fun (ctx : Dune_engine.Build_context.t) ->
     Source_tree_map_reduce.map_reduce
       root
-      ~traverse:Sub_dirs.Status.Set.all
+      ~traverse:Source_dir_status.Set.all
+      ~trace_event_name:"All direct targets"
       ~f:(fun dir ->
         Dune_engine.Load_rules.load_dir
           ~dir:
@@ -171,15 +169,18 @@ let resolve_path path ~(setup : Dune_rules.Main.build_system)
 ;;
 
 let expand_path_from_root (root : Workspace_root.t) sctx sv =
-  let ctx = Super_context.context sctx in
-  let dir =
-    Path.Build.relative
-      (Context.build_dir ctx)
-      (String.concat ~sep:Filename.dir_sep root.to_cwd)
+  let+ s =
+    let* expander =
+      let dir =
+        let ctx = Super_context.context sctx in
+        Path.Build.relative
+          (Context.build_dir ctx)
+          (String.concat ~sep:Filename.dir_sep root.to_cwd)
+      in
+      Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir)
+    in
+    Dune_rules.Expander.expand_str expander sv
   in
-  let* expander = Action_builder.of_memo (Dune_rules.Super_context.expander sctx ~dir) in
-  let expander = Dune_rules.Dir_contents.add_sources_to_expander sctx expander in
-  let+ s = Dune_rules.Expander.expand_str expander sv in
   root.reach_from_root_prefix ^ s
 ;;
 
@@ -221,10 +222,10 @@ let resolve_target root ~setup target =
 ;;
 
 let resolve_targets
-  root
-  (config : Dune_config.t)
-  (setup : Dune_rules.Main.build_system)
-  user_targets
+      root
+      (config : Dune_config.t)
+      (setup : Dune_rules.Main.build_system)
+      user_targets
   =
   match user_targets with
   | [] -> Action_builder.return []
@@ -236,8 +237,8 @@ let resolve_targets
          [ Pp.text "Actual targets:"
          ; Pp.enumerate
              (List.concat_map targets ~f:(function
-               | Ok targets -> targets
-               | Error _ -> []))
+                | Ok targets -> targets
+                | Error _ -> []))
              ~f:(function
                | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
                | Alias a -> Alias.pp a)

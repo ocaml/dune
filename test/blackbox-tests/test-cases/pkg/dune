@@ -2,13 +2,18 @@
  (alias pkg)
  (applies_to :whole_subtree))
 
+(env
+ (_
+  (env-vars
+   (DUNE_DEBUG_PACKAGE_LOGS 1))))
+
 (cram
  (deps helpers.sh)
  (applies_to :whole_subtree))
 
 (cram
  (deps %{bin:patch})
- (applies_to patch opam-package-with-patch))
+ (applies_to patch opam-package-with-patch extra-sources))
 
 (cram
  (deps %{bin:git})
@@ -31,3 +36,37 @@
 (cram
  (deps %{bin:which})
  (applies_to pkg-deps))
+
+(cram
+ (deps %{bin:curl})
+ (applies_to
+  unavailable-source-package
+  compute-checksums-when-missing
+  e2e
+  ocamlformat-dev-tool
+  source-caching
+  tarball
+  pin-depends
+  extra-sources))
+
+(cram
+ (deps %{bin:md5sum})
+ (applies_to
+  source-caching
+  extra-sources
+  ocamlformat-dev-tool
+  dev-tool-conflict-test))
+
+(cram
+ (deps %{bin:tar})
+ (applies_to source-caching tarball pin-depends extra-sources))
+
+(cram
+ (deps %{bin:ocaml_index})
+ (applies_to gh10985))
+
+;; disabled for flakiness
+
+(cram
+ (enabled_if false)
+ (applies_to gh10959))

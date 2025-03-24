@@ -316,7 +316,7 @@ Test how Dune handles a loop with symbolic links.
 This loop is caught immediately after running the rule that creates it.
 
   $ dune build t --sandbox hardlink
-  File "dune", line 1, characters 0-57:
+  File "dune", lines 1-3, characters 0-57:
   1 | (rule
   2 |  (targets link)
   3 |  (action (bash "ln -s link link")))
@@ -343,7 +343,7 @@ which is circular.
 Still doesn't work: now the loop is detected when running [stat] on the
 dependency.
 
-  $ dune build t --sandbox hardlink 2>&1 | grep -v "line 1"
+  $ dune build t --sandbox hardlink 2>&1 | grep -v "lines 1"
   1 | (rule
   2 |  (deps $TESTCASE_ROOT/test/../link)
   3 |  (targets link)
@@ -373,7 +373,7 @@ So, it seems like we must play dirty to create a symbolic link loop.
 Finally, we get to see the error message printed out at sandbox creation.
 
   $ dune build t --sandbox hardlink
-  File "dune", line 8, characters 0-105:
+  File "dune", lines 8-11, characters 0-105:
    8 | (rule
    9 |  (targets t)
   10 |  (deps link dirty-rule)

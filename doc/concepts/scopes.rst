@@ -1,6 +1,10 @@
 Scopes
 ======
 
+.. TODO(diataxis)
+   - reference: library lookup
+   - howto: vendoring
+
 Any directory containing at least one ``<package>.opam`` file defines
 a scope. This scope is the subtree starting from this directory,
 excluding any other scopes rooted in subdirectories.

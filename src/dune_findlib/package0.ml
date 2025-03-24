@@ -25,9 +25,15 @@ let make_archives t var preds =
 let version t = Vars.get t.vars "version" Ps.empty
 let description t = Vars.get t.vars "description" Ps.empty
 let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
+let wasmoo_runtime t = get_paths t "wasmoo_runtime" Ps.empty
 
 let requires t =
   Vars.get_words t.vars "requires" preds
+  |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
+;;
+
+let exports t =
+  Vars.get_words t.vars "exports" Ps.empty
   |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
 ;;
 
@@ -56,7 +62,7 @@ let exists t ~is_builtin =
   let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
   match exists_if with
   | _ :: _ ->
-    Memo.List.for_all exists_if ~f:(fun fn -> Fs.file_exists (Path.relative t.dir fn))
+    Memo.List.exists exists_if ~f:(fun fn -> Fs.file_exists (Path.relative t.dir fn))
   | [] ->
     if not is_builtin
     then Memo.return true

@@ -61,6 +61,18 @@ val remove_future_syntax
   -> Ocaml.Version.t
   -> 'a Without_future_syntax.t
 
+module Instrumentation : sig
+  type t =
+    { backend : Loc.t * Lib_name.t
+    ; flags : String_with_vars.t list
+    ; deps : Dep_conf.t list
+    ; loc : Loc.t
+    }
+
+  (** [instrumentation] multi field *)
+  val instrumentation : t list Dune_lang.Decoder.fields_parser
+end
+
 module Per_module : sig
   type 'a preprocess := 'a t
   type 'a t = 'a preprocess Module_name.Per_item.t
@@ -80,10 +92,7 @@ module Per_module : sig
 
   val add_instrumentation
     :  With_instrumentation.t t
-    -> loc:Loc.t
-    -> flags:String_with_vars.t list
-    -> deps:Dep_conf.t list
-    -> Loc.t * Lib_name.t
+    -> Instrumentation.t
     -> With_instrumentation.t t
 
   val without_instrumentation : With_instrumentation.t t -> Without_instrumentation.t t
@@ -100,3 +109,8 @@ module Per_module : sig
          (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
     -> Dep_conf.t list Resolve.Memo.t
 end
+
+(** [preprocess] and [preprocessor_deps] fields *)
+val preprocess_fields
+  : (Without_instrumentation.t Per_module.t * Dep_conf.t list)
+      Dune_lang.Decoder.fields_parser

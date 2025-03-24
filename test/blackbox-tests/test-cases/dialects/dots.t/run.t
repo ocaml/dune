@@ -13,14 +13,11 @@ Test the (dialect ...) stanza inside the `dune-project` file.
 
   $ { echo '(lang dune 3.9)'; cat dune-project.in; } >dune-project
 
-  $ dune build --display short
+  $ dune build --display short 2>&1 | grep -i cppo
         ocamlc .cppo.eobjs/byte/dune__exe__Cppo.{cmi,cmti}
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmti}
       ocamlopt .cppo.eobjs/native/dune__exe__Cppo.{cmx,o}
       ocamlopt cppo.exe
           cppo main.cppo.ml.ml
-      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamlopt main.exe
 
   $ dune build @show
   print_endline "Hello, World"

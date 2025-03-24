@@ -79,7 +79,7 @@
   > EOF
   $ echo "Hello, Dune!" > input
   $ dune build --display=short --root . @f5
-  File "dune", line 32, characters 0-225:
+  File "dune", lines 32-40, characters 0-225:
   32 | (rule
   33 |  (alias f5)
   34 |  (action (with-accepted-exit-codes
@@ -105,7 +105,7 @@
   > EOF
 
   $ dune build --display=short --root . @g
-  File "dune", line 46, characters 3-98:
+  File "dune", lines 46-49, characters 3-98:
   46 |    (setenv VAR myvar
   47 |     (chdir .
   48 |      (with-stdout-to out.txt

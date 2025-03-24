@@ -33,10 +33,10 @@ We have to define both repositories in the workspace, but will only use `new`.
   >  (repositories new))
   > (repository
   >  (name new)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (repository
   >  (name old)
-  >  (source "git+file://$(pwd)/old-mock-opam-repository"))
+  >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > EOF
 
   $ cat > dune-project <<EOF
@@ -65,10 +65,10 @@ solution:
   >  (repositories old))
   > (repository
   >  (name new)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (repository
   >  (name old)
-  >  (source "git+file://$(pwd)/old-mock-opam-repository"))
+  >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > (context
   >  (default
   >   (name default)))
@@ -88,10 +88,10 @@ package:
   >  (repositories old new))
   > (repository
   >  (name new)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (repository
   >  (name old)
-  >  (source "git+file://$(pwd)/old-mock-opam-repository"))
+  >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > (context
   >  (default
   >   (name default)))
@@ -110,10 +110,10 @@ older version of foo:
   > (lang dune 3.10)
   > (repository
   >  (name new)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
+  >  (url "git+file://$(pwd)/mock-opam-repository"))
   > (repository
   >  (name old)
-  >  (source "git+file://$(pwd)/old-mock-opam-repository"))
+  >  (url "git+file://$(pwd)/old-mock-opam-repository"))
   > (lock_dir
   >  (repositories new old \ new))
   > (context

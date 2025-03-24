@@ -44,6 +44,27 @@ end
 
 (* This functor is where [(menhir ...)] stanzas are desugared. *)
 
+let menhir_env =
+  let f =
+    Env_stanza_db_flags.flags
+      ~name:"jsoo-env"
+      ~root:(fun _ _ ->
+        Menhir_env.map ~f:Action_builder.return Menhir_env.default |> Memo.return)
+      ~f:(fun ~parent expander (local : Dune_env.config) ->
+        let local = local.menhir in
+        let open Memo.O in
+        let+ parent = parent in
+        let flags =
+          Expander.expand_and_eval_set expander local.flags ~standard:parent.flags
+        in
+        { Menhir_env.flags; explain = Option.first_some local.explain parent.explain })
+  in
+  fun ~dir ->
+    let open Memo.O in
+    let* () = Memo.return () in
+    (Staged.unstage f) dir
+;;
+
 module Run (P : PARAMS) = struct
   open P
 
@@ -56,12 +77,7 @@ module Run (P : PARAMS) = struct
      directory to we get correct error paths. *)
   let build_dir = Super_context.context sctx |> Context.build_dir
   let expander = Super_context.expander ~dir sctx
-
-  let env =
-    let open Memo.O in
-    let* env = Super_context.env_node ~dir sctx in
-    Env_node.menhir env
-  ;;
+  let env = menhir_env ~dir
 
   let sandbox =
     let scope = Compilation_context.scope cctx in
@@ -103,7 +119,13 @@ module Run (P : PARAMS) = struct
   (* Rule generation. *)
 
   let menhir_binary =
-    Super_context.resolve_program sctx ~dir "menhir" ~loc:None ~hint:"opam install menhir"
+    Super_context.resolve_program
+      sctx
+      ~dir
+      ~where:Original_path
+      "menhir"
+      ~loc:None
+      ~hint:"opam install menhir"
   ;;
 
   (* Reminder (from command.mli):
@@ -194,15 +216,16 @@ module Run (P : PARAMS) = struct
                    should not be explicitly added to the list of Menhir flags."
               ]
         | Some text ->
-          if List.mem
-               ~equal:String.equal
-               [ "--depend"
-               ; "--raw-depend"
-               ; "--infer"
-               ; "--infer-write-query"
-               ; "--infer-read-reply"
-               ]
-               text
+          if
+            List.mem
+              ~equal:String.equal
+              [ "--depend"
+              ; "--raw-depend"
+              ; "--infer"
+              ; "--infer-write-query"
+              ; "--infer-read-reply"
+              ]
+              text
           then
             User_error.raise
               ~loc:(String_with_vars.loc sw)

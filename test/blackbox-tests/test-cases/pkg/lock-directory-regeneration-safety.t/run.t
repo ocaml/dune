@@ -4,10 +4,16 @@ Create a lock directory that didn't originally exist
   > (lang dune 3.10)
   > (lock_dir
   >  (repositories mock))
+  > (lock_dir
+  >  (path "dev/dune.lock")
+  >  (repositories mock))
   > (repository
   >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
+  >  (url "file://$(pwd)/mock-opam-repository"))
   > EOF
+  $ dune pkg lock "dev/dune.lock"
+  Solution for dev/dune.lock:
+  (no dependencies to lock)
   $ dune pkg lock
   Solution for dune.lock:
   (no dependencies to lock)
@@ -53,5 +59,5 @@ Attempt to create a lock directory with the same name as an existing regular fil
   $ touch dune.lock
   $ dune pkg lock
   Error: Refusing to regenerate lock directory dune.lock
-  Specified lock dir path is not a directory
+  Specified lock dir path (dune.lock) is not a directory
   [1]

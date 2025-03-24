@@ -1,0 +1,4 @@
+(library
+ (public_name odoctest3)
+ (libraries odoctest3.sublib2))
+

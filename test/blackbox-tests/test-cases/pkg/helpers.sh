@@ -1,3 +1,5 @@
+export XDG_CACHE_HOME="$PWD/.cache"
+
 dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
@@ -8,6 +10,10 @@ build_pkg() {
 
 show_pkg() {
   find $pkg_root/$1 | sort | sed "s#$pkg_root/$1##"
+}
+
+strip_sandbox() {
+  sed -E 's#[^ ]*.sandbox/[^/]+#$SANDBOX#g'
 }
 
 show_pkg_targets() {
@@ -38,6 +44,9 @@ mkpkg() {
 }
 
 add_mock_repo_if_needed() {
+  # default, but can be overridden, e.g. if git is required
+  repo="${1:-file://$(pwd)/mock-opam-repository}"
+
   if [ ! -e dune-workspace ]
   then
       cat >dune-workspace <<EOF
@@ -46,7 +55,7 @@ add_mock_repo_if_needed() {
  (repositories mock))
 (repository
  (name mock)
- (source "file://$(pwd)/mock-opam-repository"))
+ (url "${repo}"))
 EOF
   else
     if ! grep '(name mock)' > /dev/null dune-workspace
@@ -55,7 +64,7 @@ EOF
       cat >>dune-workspace <<EOF
 (repository
  (name mock)
- (source "file://$(pwd)/mock-opam-repository"))
+ (url "${repo}"))
 EOF
  
       # reference the repo
@@ -73,6 +82,13 @@ EOF
   fi
 }
 
+make_lockpkg() {
+  local dir="dune.lock"
+  mkdir -p $dir
+  local f="$dir/$1.pkg"
+  cat >$f
+}
+
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
@@ -80,7 +96,7 @@ solve_project() {
 }
 
 make_lockdir() {
-  mkdir dune.lock
+  mkdir -p dune.lock
   cat >dune.lock/lock.dune <<EOF
 (lang package 0.1)
 (repositories (complete true))
@@ -95,6 +111,10 @@ make_project() {
   (allow_empty)
   (depends $@))
 EOF
+}
+
+print_source() {
+  cat dune.lock/$1.pkg | sed -n "/source/,//p" | sed "s#$PWD#PWD#g" | tr '\n' ' '| tr -s " "
 }
 
 solve() {

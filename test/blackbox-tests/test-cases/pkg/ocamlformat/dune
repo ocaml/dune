@@ -1,0 +1,11 @@
+(cram
+ (deps helpers.sh)
+ (applies_to :whole_subtree))
+
+(cram
+ (deps %{bin:curl})
+ (applies_to ocamlformat-e2e))
+
+(cram
+ (deps %{bin:md5sum})
+ (applies_to ocamlformat-patch-extra-files))

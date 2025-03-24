@@ -37,3 +37,4 @@ module Deprecated : sig
 end
 
 val to_dyn : t Dyn.builder
+val to_sexp : t -> Sexp.t

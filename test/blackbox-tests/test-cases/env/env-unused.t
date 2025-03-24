@@ -17,7 +17,7 @@
 A warning is displayed when there are unreachable cases.
 
   $ dune runtest
-  File "dune", line 5, characters 0-71:
+  File "dune", lines 5-7, characters 0-71:
   5 | (env
   6 |  (_   (env-vars (VAR default )))
   7 |  (dev (env-vars (VAR specific))))
@@ -32,7 +32,7 @@ In 3.4, this warning becomes fatal.
   > EOF
 
   $ dune runtest
-  File "dune", line 5, characters 0-71:
+  File "dune", lines 5-7, characters 0-71:
   5 | (env
   6 |  (_   (env-vars (VAR default )))
   7 |  (dev (env-vars (VAR specific))))

@@ -29,7 +29,7 @@ between them:
 
 It is possible to pass a file name:
 
-  $ dune format-dune-file dune
+  $ dune format-dune-file dune.dune
   (a b)
 
 Parse errors are displayed:
@@ -48,6 +48,27 @@ When a list is indented, there is no extra space at the end.
 
 When there is a long list of atoms, quoted strings, templates and singletons,
 it gets wrapped.
+
+  $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file --dune-version 3.16
+  (library
+   (name dune)
+   (libraries
+    unix
+    stdune
+    fiber
+    xdg
+    dune_re
+    threads
+    opam_file_format
+    dune_lang
+    ocaml_config
+    which_program)
+   (synopsis "Internal Dune library, do not use!")
+   (preprocess
+    (action
+     (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
+
+The same file, but in the current version:
 
   $ echo '(library (name dune) (libraries unix stdune fiber xdg dune_re threads opam_file_format dune_lang ocaml_config which_program) (synopsis "Internal Dune library, do not use!") (preprocess  (action (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))' | dune format-dune-file
   (library
@@ -176,3 +197,65 @@ Non 0 error code:
   File "", line 2, characters 0-0:
   Error: unclosed parenthesis at end of input
   1
+
+Using the built-in action.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to file (echo "(   a     c)")))
+  > (rule (format-dune-file file file.formatted))
+  > EOF
+
+  $ dune build file.formatted
+
+  $ cat _build/default/file.formatted
+  (a c)
+
+Version check.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.17)
+  > EOF
+
+  $ dune build file.out
+  File "dune", line 2, characters 0-45:
+  2 | (rule (format-dune-file file file.formatted))
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'format-dune-file' in short-form 'rule' is only available since
+  version 3.18 of the dune language. Please update your dune-project file to
+  have (lang dune 3.18).
+  [1]
+
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to file (echo "(   a     c)")))
+  > (rule (action (format-dune-file file file.formatted)))
+  > EOF
+
+  $ dune build file.out
+  File "dune", line 2, characters 14-52:
+  2 | (rule (action (format-dune-file file file.formatted)))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'format-dune-file' is only available since version 3.18 of the dune
+  language. Please update your dune-project file to have (lang dune 3.18).
+  [1]
+
+Behaviour when the dune file is not syntactically valid.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule (with-stdout-to file (echo "xxx yyy (")))
+  > (rule (format-dune-file file file.formatted))
+  > EOF
+
+  $ dune build file.formatted
+  File "_build/default/file", line 1, characters 9-9:
+  1 | xxx yyy (
+               
+  Error: unclosed parenthesis at end of input
+  [1]

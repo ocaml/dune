@@ -11,3 +11,5 @@ val gen_rules
   -> Compilation_context.t
   -> Menhir_stanza.t
   -> unit Memo.t
+
+val menhir_env : dir:Path.Build.t -> string list Action_builder.t Menhir_env.t Memo.t

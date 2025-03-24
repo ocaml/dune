@@ -9,7 +9,7 @@ Setup mutable files
   >   (name test_lib))
   > EOF
 
-Adding a library
+Adding a Library
 ----------------
 
 Can init a public library
@@ -20,9 +20,10 @@ Can init a public library
 Can build the public library
 
   $ (cd _test_lib_dir && touch test_lib.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   $ cat ./_test_lib_dir/dune
   (library
@@ -61,7 +62,7 @@ Clean up library with inlines tests
 
   $ rm -rf ./_inline_tests_lib
 
-Adding an executable
+Adding an Executable
 --------------------
 
 Can init a public executable
@@ -72,17 +73,19 @@ Can init a public executable
 Can build an executable
 
   $ (cd _test_bin_dir && touch test_bin.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Can run the created executable
 
   $ (cd _test_bin_dir && dune exec test_bin)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
@@ -90,7 +93,7 @@ Clean up the executable tests
 
   $ rm -rf ./_test_bin_dir
 
-Adding tests
+Adding Tests
 ------------
 
 Can init tests
@@ -109,7 +112,7 @@ Clean up the test tests
 
   $ rm -rf ./_test_tests_dir
 
-Adding components to default and non-standard places
+Adding Components to Default and Non-Standard Places
 ---------------------------------------------------
 
 Add a library in the current working directory
@@ -124,27 +127,37 @@ Clean the library creation
 
   $ rm ./dune
 
-Add a library to a dune file in a specified directory
+Add a library to a `dune` file in a specified directory
 
   $ dune init lib test_lib ./_test_dir
   Success: initialized library component named test_lib
   $ test -f ./_test_dir/dune
 
-Clean up from the dune file created in ./_test_dir
+Clean up from the `dune` file created in ./_test_dir
 
   $ rm -rf ./_test_dir
 
-Add a library to a dune file in a directory specified with an absolute path
+Add a library to a `dune` file in a directory specified with an absolute path
 
   $ dune init lib test_lib $PWD/_test_dir
   Success: initialized library component named test_lib
   $ test -f $PWD/_test_dir/dune
 
-Clean up from the dune file created at an absolute path
+Clean up from the `dune` file created at an absolute path
 
   $ rm -rf $PWD/_test_dir
 
-Adding a library and an executable dependent on that library
+Add a library in the current working directory
+
+  $ dune init lib test_cwd_lib .
+  Success: initialized library component named test_cwd_lib
+  $ test -f dune
+
+Clean up from the `dune` file created in the current workding dir
+
+  $ rm dune
+
+Adding a Library and an Executable Dependent on that Library
 ------------------------------------------------------------
 
 Can init a library and dependent executable in a combo project
@@ -157,17 +170,19 @@ Can init a library and dependent executable in a combo project
 Can build the combo project
 
   $ (cd _test_lib_exe_dir && touch test_bin.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Can run the combo project
 
   $ (cd _test_lib_exe_dir && dune exec test_bin)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
   Hello, World!
 
@@ -175,7 +190,7 @@ Clean up the combo project
 
   $ rm -rf ./_test_lib_exe_dir
 
-Adding libraries in a single directory
+Adding Libraries in a Single Directory
 --------------------------------------
 
 Can add multiple libraries in the same directory
@@ -195,16 +210,17 @@ Can add multiple libraries in the same directory
 Can build the multiple library project
 
   $ (cd _test_lib && touch test_lib1.opam && dune build)
-  Warning: No dune-project file has been found. A default one is assumed but
-  the project might break when dune is upgraded. Please create a dune-project
-  file.
+  File ".", line 1, characters 0-0:
+  Warning: No dune-project file has been found in directory ".". A default one
+  is assumed but the project might break when dune is upgraded. Please create a
+  dune-project file.
   Hint: generate the project file with: $ dune init project <name>
 
 Clan up the multiple library project
 
   $ rm -rf ./_test_lib
 
-Multiple ppxs and library dependencies
+Multiple PPXs and Library Dependencies
 --------------------------------------
 
 Can add multiple library dependencies in one command
@@ -234,7 +250,7 @@ Will not overwrite existing files
   $ cat ./existing_project/bin/main.ml
   () = print_endline "Goodbye"
 
-Comments in dune files are preserved
+Comments in `dune` files are preserved
 
   $ dune init lib test_lib2 ./existing_project/src
   Success: initialized library component named test_lib2
@@ -261,7 +277,7 @@ Will not create components with invalid names
   $ test -f ./_test_lib
   [1]
 
-Adding fields to existing stanzas
+Adding Fields to Existing Stanzas
 ---------------------------------
 
 # TODO(shonfeder)
@@ -284,10 +300,10 @@ Adding fields to existing stanzas is currently not supported
    (name test_bin)
    (libraries test_lib1))
 
-Creating projects
+Creating Projects
 -----------------
 
-Initializing executable projects
+Initializing Executable Projects
 ================================
 
 We can init a new executable project:
@@ -297,7 +313,7 @@ We can init a new executable project:
   Success: initialized project component named new_exec_proj
   Leaving directory 'new_exec_proj'
 
-The generated project contains all expected sub-components:
+The generated project contains all expected subcomponents:
 
   $ ls new_exec_proj/**
   new_exec_proj/dune-project
@@ -317,7 +333,7 @@ The generated project contains all expected sub-components:
   dune
   test_new_exec_proj.ml
 
-In particular, the dune-project file has the expected content:
+In particular, the `dune-project` file has the expected content:
 
   $ cat new_exec_proj/dune-project | sed 's/dune [0-9].[0-9]*/dune $version/g'
   (lang dune $version)
@@ -329,9 +345,9 @@ In particular, the dune-project file has the expected content:
   (source
    (github username/reponame))
   
-  (authors "Author Name")
+  (authors "Author Name <author@example.com>")
   
-  (maintainers "Maintainer Name")
+  (maintainers "Maintainer Name <maintainer@example.com>")
   
   (license LICENSE)
   
@@ -341,11 +357,11 @@ In particular, the dune-project file has the expected content:
    (name new_exec_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
-    (topics "to describe" your project)))
+    ("add topics" "to describe" your project)))
   
-  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
 We can build the project:
 
@@ -360,16 +376,16 @@ And the opam file will be generated as expected
   opam-version: "2.0"
   synopsis: "A short synopsis"
   description: "A longer description"
-  maintainer: ["Maintainer Name"]
-  authors: ["Author Name"]
+  maintainer: ["Maintainer Name <maintainer@example.com>"]
+  authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
-  tags: ["topics" "to describe" "your" "project"]
+  tags: ["add topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
+    $dune {>= "3.18"}
     "ocaml"
-    $dune {>= "3.13"}
     "odoc" {with-doc}
   ]
   build: [
@@ -387,6 +403,7 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 We can build and run the resulting executable:
 
@@ -401,7 +418,7 @@ We can build and run the project's tests:
   Entering directory 'new_exec_proj'
   Leaving directory 'new_exec_proj'
 
-Initializing library projects
+Initializing Library Projects
 ================================
 
 We can init a new library project:
@@ -411,7 +428,7 @@ We can init a new library project:
   Success: initialized project component named new_lib_proj
   Leaving directory 'new_lib_proj'
 
-The generated project contains all expected sub-components:
+The generated project contains all expected subcomponents:
 
   $ ls new_lib_proj/**
   new_lib_proj/dune-project
@@ -427,7 +444,7 @@ The generated project contains all expected sub-components:
   dune
   test_new_lib_proj.ml
 
-In particular, the dune-project file has the expected content:
+In particular, the `dune-project` file has the expected content:
 
   $ cat new_lib_proj/dune-project | sed 's/dune [0-9].[0-9]*/dune $version/g'
   (lang dune $version)
@@ -439,9 +456,9 @@ In particular, the dune-project file has the expected content:
   (source
    (github username/reponame))
   
-  (authors "Author Name")
+  (authors "Author Name <author@example.com>")
   
-  (maintainers "Maintainer Name")
+  (maintainers "Maintainer Name <maintainer@example.com>")
   
   (license LICENSE)
   
@@ -451,11 +468,11 @@ In particular, the dune-project file has the expected content:
    (name new_lib_proj)
    (synopsis "A short synopsis")
    (description "A longer description")
-   (depends ocaml dune)
+   (depends ocaml)
    (tags
-    (topics "to describe" your project)))
+    ("add topics" "to describe" your project)))
   
-  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html
 
 We can build and install the project:
 
@@ -470,16 +487,16 @@ And the opam file will be generated as expected
   opam-version: "2.0"
   synopsis: "A short synopsis"
   description: "A longer description"
-  maintainer: ["Maintainer Name"]
-  authors: ["Author Name"]
+  maintainer: ["Maintainer Name <maintainer@example.com>"]
+  authors: ["Author Name <author@example.com>"]
   license: "LICENSE"
-  tags: ["topics" "to describe" "your" "project"]
+  tags: ["add topics" "to describe" "your" "project"]
   homepage: "https://github.com/username/reponame"
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
+    "dune" {>= "3.18"}
     "ocaml"
-    "dune" {>= "3.13"}
     "odoc" {with-doc}
   ]
   build: [
@@ -497,18 +514,36 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 And we we can run the tests:
 
-  $ dune runtest --root new_lib_proj --display short
+  $ dune runtest --root new_lib_proj
   Entering directory 'new_lib_proj'
-        ocamlc test/.test_new_lib_proj.eobjs/byte/dune__exe__Test_new_lib_proj.{cmi,cmti}
-      ocamlopt test/.test_new_lib_proj.eobjs/native/dune__exe__Test_new_lib_proj.{cmx,o}
-      ocamlopt test/test_new_lib_proj.exe
-  test_new_lib_proj alias test/runtest
   Leaving directory 'new_lib_proj'
 
-Initializing projects using Esy
+
+Initializing Projects Using the PATH Argument
+=============================================
+
+We can init a project in a specified directory:
+
+  $ dune init proj proj_at_path path/to/project
+  Entering directory 'path/to/project'
+  Success: initialized project component named proj_at_path
+  Leaving directory 'path/to/project'
+  $ test -f path/to/project/dune-project
+
+A project can be initialized in the current directory (addressing
+https://github.com/ocaml/dune/issues/9209):
+
+  $ mkdir a-new-dir
+  $ cd a-new-dir
+  $ dune init proj project_in_cwd .
+  Success: initialized project component named project_in_cwd
+  $ test -f dune-project
+
+Initializing Projects Using Esy
 ===============================
 
 We can init a project using Esy:
@@ -518,7 +553,7 @@ We can init a project using Esy:
   Success: initialized project component named new_esy_proj
   Leaving directory 'new_esy_proj'
 
-The esy project contains all expected sub-components:
+The `esy` project contains all expected subcomponents:
 
   $ ls new_esy_proj/**
   new_esy_proj/dune-project
@@ -538,7 +573,7 @@ The esy project contains all expected sub-components:
   dune
   test_new_esy_proj.ml
 
-And the dune-project file does NOT specify generation of an opam file:
+And the `dune-project` file does NOT specify generation of an opam file:
 
   $ cat new_esy_proj/dune-project | grep "generate_opam_files"
   (generate_opam_files false)

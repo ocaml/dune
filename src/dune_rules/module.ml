@@ -3,6 +3,9 @@ open Import
 module File = struct
   type t =
     { path : Path.t
+    ; original_path : Path.t
+      (* while path can be changed for a module (when it is being pp'ed), the
+           original_path stays the same and points to an original source file *)
     ; dialect : Dialect.t
     }
 
@@ -11,10 +14,10 @@ module File = struct
     fields
     @@ let+ path = field "path" (Dune_lang.Path.Local.decode ~dir) in
        (* TODO do not just assume the dialect is OCaml *)
-       { path; dialect = Dialect.ocaml }
+       { path; original_path = path; dialect = Dialect.ocaml }
   ;;
 
-  let encode { path; dialect = _ } ~dir =
+  let encode { path; original_path = _; dialect = _ } ~dir =
     let open Dune_lang.Encoder in
     record_fields [ field "path" (Dune_lang.Path.Local.encode ~dir) path ]
   ;;
@@ -32,11 +35,15 @@ module File = struct
     { t with path }
   ;;
 
-  let make dialect path = { dialect; path }
+  let make dialect path = { dialect; path; original_path = path }
 
-  let to_dyn { path; dialect } =
+  let to_dyn { path; original_path; dialect } =
     let open Dyn in
-    record [ "path", Path.to_dyn path; "dialect", Dyn.string @@ Dialect.name dialect ]
+    record
+      [ "path", Path.to_dyn path
+      ; "original_path", Path.to_dyn original_path
+      ; "dialect", Dyn.string @@ Dialect.name dialect
+      ]
   ;;
 end
 
@@ -92,7 +99,7 @@ module Kind = struct
           match next with
           | None -> return (Alias [])
           | Some _ ->
-            let+ path = Module_name.Path.decode in
+            let+ path = enter Module_name.Path.decode in
             Alias path )
       ]
   ;;
@@ -305,17 +312,17 @@ let wrapped_compat t =
   assert (t.visibility = Public);
   let source =
     let impl =
-      Some
-        { File.dialect = Dialect.ocaml
-        ; path =
-            (* Option.value_exn cannot fail because we disallow wrapped
-               compatibility mode for virtual libraries. That means none of the
-               modules are implementing a virtual module, and therefore all have
-               a source dir *)
-            Path.L.relative
-              (src_dir t)
-              [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
-        }
+      let path =
+        (* TODO(andreypopp): is this comment still relevant? *)
+        (* Option.value_exn cannot fail because we disallow wrapped
+           compatibility mode for virtual libraries. That means none of the
+           modules are implementing a virtual module, and therefore all have
+           a source dir *)
+        Path.L.relative
+          (src_dir t)
+          [ ".wrapped_compat"; Module_name.Path.to_string t.source.path ^ ml_gen ]
+      in
+      Some { File.dialect = Dialect.ocaml; path; original_path = path }
     in
     { t.source with files = { intf = None; impl } }
   in
@@ -328,6 +335,12 @@ let sources t =
   List.filter_map
     [ t.source.files.intf; t.source.files.impl ]
     ~f:(Option.map ~f:(fun (x : File.t) -> x.path))
+;;
+
+let sources_without_pp t =
+  List.filter_map
+    [ t.source.files.intf; t.source.files.impl ]
+    ~f:(Option.map ~f:(fun (x : File.t) -> x.original_path))
 ;;
 
 module Obj_map = struct
@@ -357,55 +370,6 @@ let encode ({ source; obj_name; pp = _; visibility; kind; install_as = _ } as t)
     ]
 ;;
 
-let decode_old ~src_dir =
-  let open Dune_lang.Decoder in
-  fields
-    (let+ obj_name = field "obj_name" Module_name.Unique.decode
-     and+ path = field_o "path" Module_name.Path.decode
-     and+ name = field_o "name" Module_name.decode
-     and+ visibility = field "visibility" Visibility.decode
-     and+ kind = field_o "kind" Kind.decode
-     and+ impl = field_b "impl"
-     and+ intf = field_b "intf" in
-     let path, name =
-       match path, name with
-       | None, None -> Code_error.raise "both name and path cannot be absent" []
-       | Some p, None -> p, List.last p |> Option.value_exn
-       | None, Some n -> [ n ], n
-       | Some path, Some name ->
-         (* XXX temp hacks until the old format is dropped *)
-         if Module_name.Path.equal path [ name ]
-         then path, name
-         else
-           Code_error.raise
-             "both name and path cannot be present"
-             [ "name", Module_name.to_dyn name; "path", Module_name.Path.to_dyn path ]
-     in
-     let file exists ml_kind =
-       let open Option.O in
-       if exists
-       then (
-         let module_basename n ~(ml_kind : Ml_kind.t) ~(dialect : Dialect.t) =
-           let n = Module_name.to_string n in
-           let+ ext = Dialect.extension dialect ml_kind in
-           String.lowercase n ^ ext
-         in
-         let+ basename = module_basename name ~ml_kind ~dialect:Dialect.ocaml in
-         File.make Dialect.ocaml (Path.relative src_dir basename))
-       else None
-     in
-     let kind =
-       match kind with
-       | Some k -> k
-       | None when impl -> Impl
-       | None -> Intf_only
-     in
-     let intf = file intf Intf in
-     let impl = file impl Impl in
-     let source = Source.make ?impl ?intf path in
-     of_source ~obj_name:(Some obj_name) ~visibility ~kind source)
-;;
-
 let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields
@@ -420,7 +384,6 @@ let decode ~src_dir =
        | None -> Intf_only
      in
      { install_as = None; source; obj_name; pp = None; kind; visibility })
-  <|> decode_old ~src_dir
 ;;
 
 let pped =
@@ -437,7 +400,7 @@ let ml_source =
     | None -> f
     | Some suffix ->
       let path = Path.extend_basename f.path ~suffix in
-      File.make Dialect.ocaml path)
+      { f with dialect = Dialect.ocaml; path })
 ;;
 
 let version_installed t ~src_root ~install_dir =
@@ -480,10 +443,6 @@ module Name_map = struct
 
   let encode t ~src_dir =
     Module_name.Map.to_list_map t ~f:(fun _ x -> Dune_lang.List (encode ~src_dir x))
-  ;;
-
-  let of_list_exn modules =
-    List.rev_map modules ~f:(fun m -> name m, m) |> Module_name.Map.of_list_exn
   ;;
 
   let add t module_ = Module_name.Map.set t (name module_) module_

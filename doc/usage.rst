@@ -2,6 +2,15 @@
 Command-Line Interface
 **********************
 
+.. TODO(diataxis)
+
+   There are mixed types of contents in this document, including:
+
+   - an how-to about ``dune init``
+   - reference info about finding the root and libraries
+   - reference info about the CLI
+   - how-to info about overriding what ``dune build`` does
+
 This section describes using ``dune`` from the shell.
 
 .. _initializing_components:
@@ -77,7 +86,31 @@ the file and directory, if necessary):
      (preprocess
       (pps ppx_inline_tests)))
 
-Consult the manual page using the ``dune init --help`` command for more details.
+Initializing Components in a Specified Directory
+------------------------------------------------
+
+All ``init`` subcommands take an optional ``PATH`` argument, which should be a
+path to a directory. When supplied, the component will be created in the
+specified directory. E.g., to initialize a project in the current working
+directory, run
+
+.. code:: console
+
+    $ dune init proj my_proj .
+
+To initialize a project in a directory in some nested path, run
+
+.. code:: console
+
+    $ dune init proj my_proj path/to/my/project
+
+If the specified directory does not already exist, it will be created.
+
+Learning More About the ``init`` Commands
+-----------------------------------------
+
+Consult the manual page using the ```dune init --help`` command for more
+details.
 
 .. _finding-root:
 
@@ -110,16 +143,16 @@ file is found, only parent ``dune-workspace`` files will be considered when
 looking for the root; however, if a `dune-project` file is found both parent
 ``dune-workspace`` and ``dune-project`` files will be considered.
 
-A ``dune-workspace`` file is also a configuration file. Dune will read
-it unless the ``--workspace`` command line option is used.  See the
-section :ref:`dune-workspace` for the syntax of this file. The scope
-of ``dune-project`` files is wider than the scope ``dune-workspace``
-files. For instance, a ``dune-project`` file may specify the name of
-the project which is a universal property of the project, while a
-``dune-workspace`` file may specify an opam switch name which is valid
-only on a given machine. For this reason, it is common and recommended
-to commit ``dune-project`` files in repositories, while it is less
-common to commit ``dune-workspace`` files.
+A ``dune-workspace`` file is also a configuration file. Dune will read it
+unless the ``--workspace`` command line option is used. See
+:doc:`/reference/dune-workspace/index` for the syntax of this file. The
+scope of ``dune-project`` files is wider than the scope ``dune-workspace``
+files. For instance, a ``dune-project`` file may specify the name of the
+project which is a universal property of the project, while a
+``dune-workspace`` file may specify an opam switch name which is valid only on
+a given machine. For this reason, it is common and recommended to commit
+``dune-project`` files in repositories, while it is less common to commit
+``dune-workspace`` files.
 
 
 Current Directory
@@ -144,7 +177,7 @@ Interpretation of Targets
 
 This section describes how Dune interprets the targets provided on
 the command line. When no targets are specified, Dune builds the
-:ref:`default alias <default-alias>`.
+:doc:`default alias </reference/aliases/default>`.
 
 Resolution
 ----------
@@ -225,7 +258,7 @@ Running Tests
 There are two ways to run tests:
 
 -  ``dune build @runtest``
--  ``dune test`` (or the more explicit ``dune runtest``)
+-  ``dune test`` (or its alias ``dune runtest``)
 
 The two commands are equivalent, and they will run all the tests defined in the
 current directory and its children directories recursively. You can also run the tests in a
@@ -309,8 +342,8 @@ must be prefixed by the shortest one.
 
 .. _dune-subst:
 
-dune subst
-==========
+``dune subst``
+==============
 
 One of the features ``dune-release`` provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all your project files
@@ -404,8 +437,8 @@ command:
 This command takes a list of package names to install.  If no packages
 are specified, Dune will install all available packages in the
 workspace.  When several build contexts are specified via a
-:ref:`dune-workspace` file, Dune performs the installation in all the
-build contexts.
+:doc:`/reference/dune-workspace/index` file, Dune performs the
+installation in all the build contexts.
 
 Destination Directory
 ---------------------

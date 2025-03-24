@@ -2,6 +2,14 @@
 Dealing with Foreign Libraries
 ******************************
 
+.. TODO(diataxis)
+
+   There are various types of content here:
+
+   - how-to guide for adding C stubs to an existing library
+   - tutorial for ctypes
+   - reference for ctypes field
+
 The OCaml programming language can interface with libraries written in foreign
 languages such as C. This section explains how to do this with Dune. Note that
 it does not cover how to write the C stubs themselves, but this is covered by
@@ -23,7 +31,8 @@ Adding C/C++ Stubs to an OCaml Library
 ======================================
 
 To add C stubs to an OCaml library, simply list the C files without the ``.c``
-extension in the :ref:`foreign-stubs` field. For instance:
+extension in the :doc:`(foreign_stubs) </reference/foreign-stubs>` field. For
+instance:
 
 .. code:: dune
 
@@ -44,7 +53,8 @@ Header Files
 ------------
 
 C/C++ source files may include header files in the same directory as the C/C++
-source files or in the same directory group when using :ref:`include_subdirs`.
+source files or in the same directory group when using
+:doc:`/reference/dune/include_subdirs`.
 
 The header files must have the ``.h`` extension.
 
@@ -52,9 +62,10 @@ Installing Header Files
 -----------------------
 
 It is sometimes desirable to install header files with the library. For that
-you have two choices: install them explicitly with an :ref:`install` stanza or
-use the ``install_c_headers`` field of the :ref:`library` stanza. This field
-takes a list of header files names without the ``.h`` extension. When a library
+you have two choices: install them explicitly with an
+:doc:`/reference/dune/install` stanza or use the ``install_c_headers``
+field of the :doc:`/reference/dune/library` stanza. This field takes a
+list of header files names without the ``.h`` extension. When a library
 installs header files, they are made visible to users of the library via the
 include search path.
 
@@ -92,7 +103,7 @@ file:
 
 .. code:: dune
 
-  (lang dune 3.13)
+  (lang dune 3.18)
   (using ctypes 0.3)
 
 
@@ -282,10 +293,10 @@ descriptions by referencing them as the module specified in optional
 - ``(vendored (c_flags <flags>) (c_library_flags <flags>))`` provide the build
   and link flags for binding your vendored code. You must also provide
   instructions in your ``dune`` file on how to build the vendored foreign
-  library; see the :ref:`foreign_library` stanza. Usually the ``<flags>`` should
-  contain ``:standard`` in order to add the default flags used by the OCaml
-  compiler for C files :ref:`always-add-cflags`.
-
+  library; see the :doc:`/reference/dune/foreign_library` stanza. Usually
+  the ``<flags>`` should contain ``:standard`` in order to add the default
+  flags used by the OCaml compiler for C files
+  :doc:`/reference/dune-project/use_standard_c_and_cxx_flags`.
 
 .. _foreign-sandboxing:
 
@@ -301,7 +312,7 @@ To do that, follow the following procedure:
 
 - Put all the foreign code in a sub-directory
 - Tell Dune not to interpret configuration files in this directory via an
-  :ref:`data_only_dirs <dune-data_only_dirs>` stanza
+  :doc:`/reference/dune/data_only_dirs` stanza
 - Write a custom rule that:
 
   - depends on this directory recursively via :ref:`source_tree <source_tree>`
@@ -312,7 +323,8 @@ To do that, follow the following procedure:
     should appear, otherwise the dynamic linking of the C library will be
     attempted. However, this usually fails because the ``libfoo.so`` isn't available at
     the time of the execution.
-- *Attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
+- *Attach* the C archive files to an OCaml library via
+  :doc:`/reference/foreign-archives`.
 
 For instance, let's assume that you want to build a C library
 ``libfoo`` using ``libfoo``'s own build system and attach it to an
@@ -342,9 +354,9 @@ writing the following code ``src/dune``:
       (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``. The build is done in a :dune:ref:`action-no-infer`
-action because ``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies
-produced by an external build system.
+declared as ``targets``. The build is done in a
+:doc:`/reference/actions/no-infer` action because ``libfoo/libfoo.a`` and
+``libfoo/libfoo.so`` are dependencies produced by an external build system.
 
 The last step is to attach these archives to an OCaml library as follows:
 

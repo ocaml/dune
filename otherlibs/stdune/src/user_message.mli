@@ -66,6 +66,8 @@ type t =
   ; paragraphs : Style.t Pp.t list
   ; hints : Style.t Pp.t list
   ; annots : Annots.t
+  ; context : string option
+  ; dir : string option
   }
 
 val compare : t -> t -> Ordering.t
@@ -90,6 +92,8 @@ val make
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> ?annots:Annots.t
+  -> ?context:string
+  -> ?dir:string
   -> Style.t Pp.t list
   -> t
 
@@ -120,3 +124,8 @@ val needs_stack_trace : t -> bool
 
 (** Formatting of shell commands *)
 val command : string -> Style.t Pp.t
+
+(** A message with a left and right component separated by a
+    space. The left component is padded to 12 characters so that the space
+    separating the left and right side of all messages are aligned. *)
+val aligned_message : left:Style.t * string -> right:Style.t Pp.t -> Style.t Pp.t

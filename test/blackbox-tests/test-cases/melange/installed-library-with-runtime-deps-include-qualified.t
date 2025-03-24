@@ -16,11 +16,12 @@ nested more than the dune-project file
   >  (public_name foo)
   >  (name foo)
   >  (modes melange)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps ./runtime/runtime.js))
   > EOF
   $ cat > lib/packages/foo/src/foo.ml <<EOF
-  > let dirname = [%bs.raw "__dirname"]
+  > let dirname = [%mel.raw "__dirname"]
   > let () = Js.log2 "dirname:" dirname
   > let read_asset () = Node.Fs.readFileSync (dirname ^ "/runtime/runtime.js") \`utf8
   > EOF
@@ -49,6 +50,7 @@ nested more than the dune-project file
   >  (public_name foo)
   >  (name foo)
   >  (modes melange)
+  >  (libraries melange.node)
   >  (preprocess (pps melange.ppx))
   >  (melange.runtime_deps ./runtime/runtime.js))
   > EOF

@@ -1,5 +1,6 @@
 Test docs generation with Melange
 
+  $ export DUNE_SANDBOX=none
   $ cat <<EOF > dune-project
   > (lang dune 3.8)
   > (using melange 0.1)

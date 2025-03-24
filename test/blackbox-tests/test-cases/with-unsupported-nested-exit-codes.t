@@ -20,7 +20,7 @@
   > EOF
 
   $ dune build --display=short --root . @a
-  File "dune", line 9, characters 10-64:
+  File "dune", lines 9-10, characters 10-64:
    9 |           (with-stdout-to out.txt
   10 |            (run ./exit.exe 1)))))
   Error: nesting modifiers under 'with-accepted-exit-codes' is only available

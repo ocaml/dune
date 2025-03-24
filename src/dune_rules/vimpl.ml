@@ -2,7 +2,7 @@ open Import
 
 type t =
   { vlib : Lib.t
-  ; impl : Dune_file.Library.t
+  ; impl : Library.t
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
   ; impl_cm_kind : Cm_kind.t
@@ -15,8 +15,8 @@ let impl_cm_kind t = t.impl_cm_kind
 
 let impl_modules t m =
   match t with
-  | None -> m
-  | Some t -> Modules.impl ~vlib:t.vlib_modules m
+  | None -> Modules.With_vlib.modules m
+  | Some t -> Modules.With_vlib.impl ~vlib:t.vlib_modules m
 ;;
 
 let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =

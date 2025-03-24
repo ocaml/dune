@@ -28,14 +28,7 @@ Generate a `dune-project` file.
   >     "bar" {>= "0.2"}
   > ]
   > EOF
-  > cat >dune-workspace <<EOF
-  > (lang dune 3.8)
-  > (lock_dir
-  >  (repositories mock))
-  > (repository
-  >  (name mock)
-  >  (source "file://$(pwd)/mock-opam-repository"))
-  > EOF
+  $ add_mock_repo_if_needed
 
 Run the solver and generate a lock directory.
 
@@ -69,7 +62,7 @@ Print the contents of each file in the lockdir:
   
   (version 0.0.1)
   
-  (deps baz bar)
+  (depends baz bar)
   
   
   ---
@@ -78,7 +71,7 @@ Print the contents of each file in the lockdir:
   
   (lang package 0.1)
   
-  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
+  (dependency_hash 8940266fc1693f5f2a008d1d58c1e1b9)
   
   (repositories
    (complete false)
@@ -114,7 +107,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   (version 0.0.1)
   
-  (deps baz bar)
+  (depends baz bar)
   
   
   ---
@@ -123,7 +116,7 @@ Run the solver again preferring oldest versions of dependencies:
   
   (lang package 0.1)
   
-  (dependency_hash ca83e32ab35d71d20fa075b395046c29)
+  (dependency_hash 8940266fc1693f5f2a008d1d58c1e1b9)
   
   (repositories
    (complete false)
@@ -145,16 +138,21 @@ Regenerate the `dune-project` file introducing an unsatisfiable constraint.
 
 Run the solver again. This time it will fail.
   $ dune pkg lock
-  Error: Unable to solve dependencies for dune.lock:
-  Can't find all required versions.
-  Selected: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
+  Error: Unable to solve dependencies for the following lock directories:
+  Lock directory dune.lock:
+  Couldn't solve the package dependency formula.
+  Selected candidates: baz.0.1.0 foo.0.0.1 lockfile_generation_test.dev
   - bar -> (problem)
-      foo 0.0.1 requires >= 0.2
-      lockfile_generation_test dev requires >= 0.6
-      Rejected candidates:
-        bar.0.5.0: Incompatible with restriction: >= 0.6
-        bar.0.4.0: Incompatible with restriction: >= 0.6
-        bar.0.0.1: Incompatible with restriction: >= 0.2
+      No usable implementations:
+        bar.0.5.0:
+          Package does not satisfy constraints of local package
+          lockfile_generation_test
+        bar.0.4.0:
+          Package does not satisfy constraints of local package
+          lockfile_generation_test
+        bar.0.0.1:
+          Package does not satisfy constraints of local package
+          lockfile_generation_test
   [1]
 
 We'll also test how the lockfile generation works with alternate solutions.

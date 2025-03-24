@@ -275,7 +275,7 @@ val field_o
   -> 'a t
   -> 'a option fields_parser
 
-(** [fields_mutually_exlusive] is for mutually exclusive fields. If [default] is
+(** [fields_mutually_exclusive] is for mutually exclusive fields. If [default] is
     provided, allow the fields' absence. *)
 val fields_mutually_exclusive
   :  ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
@@ -297,6 +297,9 @@ val field_o_b
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool option fields_parser
+
+(* [field_missing] raises the error raised by [field]. *)
+val field_missing : ?hints:User_message.Style.t Pp.t list -> Loc.t -> string -> _
 
 (** [multi_field] is a field that can appear multiple times. *)
 val multi_field : string -> 'a t -> 'a list fields_parser

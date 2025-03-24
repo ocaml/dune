@@ -15,16 +15,12 @@ val equal : t -> t -> bool
 val hash : t -> int
 val compare : t -> t -> Ordering.t
 val make : Name.t -> dir:Path.Build.t -> t
-val register_as_standard : Name.t -> unit
 
 (** The following always holds: [make (name t) ~dir:(dir t) = t] *)
 val name : t -> Name.t
 
 val dir : t -> Path.Build.t
 val to_dyn : t -> Dyn.t
-val encode : t Dune_sexp.Encoder.t
 val of_user_written_path : loc:Loc.t -> Path.t -> t
 val fully_qualified_name : t -> Path.Build.t
-val default : dir:Path.Build.t -> t
-val is_standard : Name.t -> bool
 val describe : ?loc:Loc.t -> t -> _ Pp.t

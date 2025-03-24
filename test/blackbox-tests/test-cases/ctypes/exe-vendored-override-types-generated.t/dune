@@ -1,27 +1,27 @@
 (rule
-  (targets libexample.a dllexample%{ext_dll})
-  (deps (source_tree vendor))
-  (action
-    (no-infer
-      (progn
-        (copy vendor/libexample.a libexample.a)
-        (copy vendor/libexample%{ext_dll} dllexample%{ext_dll})))))
+ (targets libexample.a dllexample%{ext_dll})
+ (deps (source_tree vendor))
+ (action
+  (no-infer
+   (progn
+    (copy vendor/libexample.a libexample.a)
+    (copy vendor/libexample%{ext_dll} dllexample%{ext_dll})))))
 
 (executable
-  (name example)
-  (flags (:standard -w -9-27))
-  (foreign_archives example)
-  (ctypes
-    (external_library_name examplelib)
-    (build_flags_resolver
-      (vendored
-        (c_flags "-Ivendor")))
-    (headers (include "example.h"))
-    (type_description
-      (instance Types)
-      (functor Type_description))
-    (function_description
-      (instance Functions)
-      (functor Function_description))
-    (generated_types My_generated_types)
-    (generated_entry_point C)))
+ (name example)
+ (flags (:standard -w -9-27))
+ (foreign_archives example)
+ (ctypes
+  (external_library_name examplelib)
+  (build_flags_resolver
+   (vendored
+    (c_flags "-Ivendor")))
+  (headers (include "example.h"))
+  (type_description
+   (instance Types)
+   (functor Type_description))
+  (function_description
+   (instance Functions)
+   (functor Function_description))
+  (generated_types My_generated_types)
+  (generated_entry_point C)))

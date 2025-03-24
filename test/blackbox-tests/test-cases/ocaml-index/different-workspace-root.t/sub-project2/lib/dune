@@ -1,0 +1,3 @@
+(library
+ (name subprojectlib2)
+ (public_name subprojectlib2))

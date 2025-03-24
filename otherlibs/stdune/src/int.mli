@@ -15,3 +15,4 @@ module Infix : Comparator.OPS with type t = t
 
 val shift_left : t -> t -> t
 val shift_right : t -> t -> t
+val max_int : t

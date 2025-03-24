@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries otherlib vendored_lib pmodlib))

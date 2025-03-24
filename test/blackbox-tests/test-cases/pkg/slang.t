@@ -138,11 +138,11 @@ Test for the error message when a slang expression fails to parse:
   File "dune.lock/test.pkg", line 2, characters 19-28:
   2 | (install (run echo (if true)))
                          ^^^^^^^^^
-  Error: Not enough arguments for if
+  Error: Not enough arguments for "if"
   [1]
   $ test_action '(run echo (if (= a) () ()))'
   File "dune.lock/test.pkg", line 2, characters 23-28:
   2 | (install (run echo (if (= a) () ())))
                              ^^^^^
-  Error: Not enough arguments for =
+  Error: Not enough arguments for "="
   [1]

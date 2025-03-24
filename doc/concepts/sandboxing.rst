@@ -1,6 +1,10 @@
 Sandboxing
 ==========
 
+.. TODO(diataxis)
+   - explanation: sandboxing
+   - reference: sandboxing
+
 The user actions that run external commands (``run``, ``bash``, ``system``)
 are opaque to Dune, so Dune has to rely on manual specification of dependencies
 and targets. One problem with manual specification is that it's error-prone.

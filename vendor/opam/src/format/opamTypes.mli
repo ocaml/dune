@@ -51,7 +51,6 @@ type std_path =
 (** Download result *)
 type 'a download =
   | Up_to_date of 'a
-  | Checksum_mismatch of OpamHash.t
   | Not_available of string option * string
   (** Arguments are respectively the short and long version of an error message.
       The usage is: the first argument is displayed on normal mode (nothing

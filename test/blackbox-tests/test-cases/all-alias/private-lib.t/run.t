@@ -1,8 +1,4 @@
 @all builds private libs
 
-  $ dune build --display short @all
-        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-      ocamlopt .bar.objs/native/bar.{cmx,o}
+  $ dune build --display short @all 2>&1 | grep bar.cma
         ocamlc bar.cma
-      ocamlopt bar.{a,cmxa}
-      ocamlopt bar.cmxs

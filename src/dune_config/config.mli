@@ -26,6 +26,8 @@ end
     parsed using [of_string], defaulting to [default]. *)
 val make : name:string -> of_string:(string -> ('a, string) result) -> default:'a -> 'a t
 
+val make_toggle : name:string -> default:Toggle.t -> Toggle.t t
+
 (** [get t] return the value of the configuration for [t] *)
 val get : 'a t -> 'a
 

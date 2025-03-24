@@ -1,5 +1,5 @@
-(lang dune 3.5)
-;          ^^^
+(lang dune 3.12)
+;          ^^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
@@ -89,7 +89,7 @@ no stability guarantee.
  (name dune-configurator)
  (synopsis "Helper library for gathering system configuration")
  (depends
-  (ocaml (>= 4.04.0))
+  (ocaml (>= 4.08.0))
   base-unix
   (csexp (>= 1.5.0)))
  (description "\
@@ -153,9 +153,8 @@ understood by dune language."))
  (synopsis "Communicate with dune using rpc and Lwt")
  (depends
   (dune-rpc (= :version))
-  (result (>= 1.5))
   (csexp (>= 1.5.0))
-  (lwt (>= 5.3.0))
+  (lwt (>= 5.6.0))
   base-unix)
  (description "Specialization of dune-rpc to Lwt"))
 
@@ -190,7 +189,7 @@ understood by dune language."))
   base-unix
   (dyn (= :version))
   (ordering (= :version))
-  (pp (>= 1.2.0))
+  (pp (>= 2.0.0))
   (csexp (>= 1.5.0)))
  (description "This library offers no backwards compatibility guarantees. Use at your own risk."))
 

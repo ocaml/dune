@@ -1,8 +1,27 @@
 open! Stdune
-module Dune_project = Dune_rules.Dune_project
-module Source_tree = Dune_rules.Source_tree
+
+include struct
+  open Dune_rules
+  module Dune_project = Dune_project
+  module Source_tree = Source_tree
+  module Source_dir_status = Source_dir_status
+  module Dune_file0 = Dune_file0
+end
+
+include struct
+  open Dune_sexp
+  module Atom = Atom
+  module Syntax = Syntax
+  module Ast = Ast
+  module Cst = Cst
+end
+
+include struct
+  open Dune_lang
+  module Dune_project_name = Dune_project_name
+end
+
 module Console = Dune_console
-module Sub_dirs = Dune_rules.Sub_dirs
 
 type rename_and_edit =
   { original_file : Path.Source.t
@@ -23,17 +42,17 @@ type project_version =
 
 module Common = struct
   module Ast_tools = struct
-    open Dune_lang.Ast
+    open Ast
 
     let field_of_list ?more:(m = []) atoms =
       List (Loc.none, List.map atoms ~f:(fun a -> Atom (Loc.none, a)) @ m)
     ;;
 
     let make_foreign_stubs lang names flags =
-      let open Dune_lang.Atom in
+      let open Atom in
       let add_more name olist m =
         match olist with
-        | Some (_ :: more) -> field_of_list [ of_string name ] ~more :: m
+        | Some (_ :: more) -> field_of_list [ Atom.of_string name ] ~more :: m
         | _ -> m
       in
       let more =
@@ -47,7 +66,7 @@ module Common = struct
 
     let rec replace_first old_name new_name = function
       | List (loc, Atom (loca, A atom) :: tll) :: tl when atom = old_name ->
-        List (loc, Atom (loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl
+        List (loc, Atom (loca, Atom.of_string new_name) :: tll) :: tl
       | List (loc, Quoted_string (loca, str) :: tll) :: tl when str = old_name ->
         List (loc, Quoted_string (loca, new_name) :: tll) :: tl
       | hd :: tl -> hd :: replace_first old_name new_name tl
@@ -77,7 +96,7 @@ module Common = struct
     ;;
 
     let bump_lang_version v =
-      let v = Dune_lang.Syntax.Version.to_string v in
+      let v = Syntax.Version.to_string v in
       function
       | List
           ( loc
@@ -85,8 +104,7 @@ module Common = struct
             :: (Atom (_, A "dune") as dune)
             :: Atom (loc3, A _)
             :: tll )
-        :: tl ->
-        List (loc, lang :: dune :: Atom (loc3, Dune_lang.Atom.of_string v) :: tll) :: tl
+        :: tl -> List (loc, lang :: dune :: Atom (loc3, Atom.of_string v) :: tll) :: tl
       | sexp -> sexp
     ;;
 
@@ -111,9 +129,9 @@ module Common = struct
   end
 
   let read_and_parse path =
-    let csts = Dune_lang.Parser.load (Path.source path) ~mode:Cst in
-    let comments = Dune_lang.Cst.extract_comments csts in
-    let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
+    let csts = Dune_sexp.Parser.load (Path.source path) ~mode:Cst in
+    let comments = Cst.extract_comments csts in
+    let sexps = List.filter_map csts ~f:Cst.abstract in
     sexps, comments
   ;;
 
@@ -133,30 +151,33 @@ module Common = struct
   ;;
 
   let string_of_sexps ~version sexps comments =
-    let new_csts = List.map sexps ~f:Dune_lang.Cst.concrete in
-    Dune_lang.Parser.insert_comments new_csts comments
+    let new_csts = List.map sexps ~f:Cst.concrete in
+    Dune_sexp.Parser.insert_comments new_csts comments
     |> Dune_lang.Format.pp_top_sexps ~version
     |> Format.asprintf "%a@?" Pp.to_fmt
   ;;
 
   let ensure_project_file_exists project ~lang_version =
-    let fn = Path.source (Dune_project.file project) in
-    if not (Path.exists fn)
-    then (
+    match Dune_project.file project with
+    | Some _ -> ()
+    | None ->
+      let fn =
+        Path.Source.relative (Dune_project.root project) Dune_project.filename
+        |> Path.source
+      in
       Console.print [ Pp.textf "Creating %s..." (Path.to_string_maybe_quoted fn) ];
       Io.write_lines
         fn
         ~binary:false
         (List.concat
-           [ [ sprintf "(lang dune %s)" (Dune_lang.Syntax.Version.to_string lang_version)
-             ]
-           ; (match Dune_project.name project with
-              | Anonymous _ -> []
-              | Named s ->
-                [ Dune_lang.to_string
-                    (List [ Dune_lang.atom "name"; Dune_lang.atom_or_quoted_string s ])
+           [ [ sprintf "(lang dune %s)" (Syntax.Version.to_string lang_version) ]
+           ; (match Dune_project.name project |> Dune_project_name.name with
+              | None -> []
+              | Some s ->
+                [ Dune_sexp.to_string
+                    (List [ Dune_sexp.atom "name"; Dune_sexp.atom_or_quoted_string s ])
                 ])
-           ]))
+           ])
   ;;
 end
 
@@ -168,7 +189,7 @@ module V2 = struct
     if Ast_tools.is_in_fields [ "modes" ] fields
     then fields
     else
-      Dune_lang.Atom.(
+      Atom.(
         Ast_tools.field_of_list [ of_string "modes"; of_string "byte"; of_string "exe" ])
       :: fields
   ;;
@@ -202,13 +223,13 @@ module V2 = struct
   ;;
 
   let update_stanza =
-    let open Dune_lang.Ast in
+    let open Ast in
     function
     | List (loc, Atom (loca, A "alias") :: tl) as ast ->
       if Ast_tools.is_in_fields [ "action" ] tl
       then (
         let tl = Ast_tools.replace_first "name" "alias" tl in
-        List (loc, Atom (loca, Dune_lang.Atom.of_string "rule") :: tl))
+        List (loc, Atom (loca, Atom.of_string "rule") :: tl))
       else ast
     | List (loc, Atom (loca, (A "executable" as atom)) :: tl)
     | List (loc, Atom (loca, (A "executables" as atom)) :: tl) ->
@@ -226,26 +247,23 @@ module V2 = struct
     (* Was not using fmt *)
     | None ->
       sexps
-      @ [ Ast_tools.field_of_list
-            Dune_lang.Atom.[ of_string "formatting"; of_string "disabled" ]
-        ]
+      @ [ Ast_tools.field_of_list Atom.[ of_string "formatting"; of_string "disabled" ] ]
     (* Was using fmt *)
     | Some [ _; _; _ ] -> sexps
     (* Was using fmt enabled_for *)
     | Some (_ :: _ :: _ :: tl) ->
-      sexps
-      @ [ Ast_tools.field_of_list Dune_lang.Atom.[ of_string "formatting" ] ~more:tl ]
+      sexps @ [ Ast_tools.field_of_list Atom.[ of_string "formatting" ] ~more:tl ]
     (* Unexpected *)
     | _ -> sexps
   ;;
 
   let update_project_file todo project =
-    let sexps, comments = read_and_parse (Dune_project.file project) in
+    let project_file = Option.value_exn (Dune_project.file project) in
+    let sexps, comments = read_and_parse project_file in
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps |> Ast_tools.bump_lang_version v |> update_formatting in
     let new_file_contents = string_of_sexps ~version:v sexps comments in
-    (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
-    todo.to_edit <- (Dune_project.file project, new_file_contents) :: todo.to_edit
+    todo.to_edit <- (project_file, new_file_contents) :: todo.to_edit
   ;;
 
   let upgrade_dune_file todo fn sexps comments =
@@ -256,10 +274,10 @@ module V2 = struct
   ;;
 
   let upgrade_dune_files todo dir =
-    if String.Set.mem (Source_tree.Dir.filenames dir) Source_tree.Dune_file.fname
+    if String.Set.mem (Source_tree.Dir.filenames dir) Dune_file0.fname
     then (
       let path = Source_tree.Dir.path dir in
-      let fn = Path.Source.relative path Source_tree.Dune_file.fname in
+      let fn = Path.Source.relative path Dune_file0.fname in
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lang.Dune_file_script.is_script
       then
         User_warning.emit
@@ -328,12 +346,12 @@ let detect_project_version project dir =
     Unknown)
   else (
     let project_dune_version = Dune_project.dune_version project in
-    let open Dune_lang.Syntax.Version.Infix in
+    let open Syntax.Version.Infix in
     if project_dune_version >= (2, 0)
     then Dune2_project
     else if project_dune_version >= (1, 0)
     then Dune1_project
-    else if in_tree Source_tree.Dune_file.fname
+    else if in_tree Dune_file0.fname
     then Dune1_project
     else Unknown)
 ;;
@@ -351,10 +369,13 @@ let upgrade () =
                   type t = Source_tree.Dir.t * project_version
                 end))
          in
-        M.map_reduce ~traverse:Sub_dirs.Status.Set.normal_only ~f:(fun dir ->
-          let project = Source_tree.Dir.project dir in
-          let detected_version = detect_project_version project dir in
-          Memo.return (Appendable_list.singleton (dir, detected_version))))
+        M.map_reduce
+          ~traverse:Source_dir_status.Set.normal_only
+          ~trace_event_name:"Upgrader"
+          ~f:(fun dir ->
+            let project = Source_tree.Dir.project dir in
+            let detected_version = detect_project_version project dir in
+            Memo.return (Appendable_list.singleton (dir, detected_version))))
       >>| Appendable_list.to_list
     in
     let v1_updates = ref false in
@@ -386,7 +407,7 @@ let upgrade () =
             (Path.Source.to_string_maybe_quoted new_file)
         ];
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-        Path.unlink (Path.source p));
+        Path.unlink_exn (Path.source p));
       Io.write_file (Path.source new_file) contents ~binary:true);
     if !v1_updates && not last
     then (

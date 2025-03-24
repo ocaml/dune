@@ -8,6 +8,7 @@ Test unmangling of js files
   $ cat > dune <<EOF
   > (melange.emit
   >  (target output)
+  >  (emit_stdlib false)
   >  (alias mel))
   > EOF
 

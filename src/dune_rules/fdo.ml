@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type phase =
   | All
@@ -35,6 +36,7 @@ let ocamlfdo_binary sctx dir =
   Super_context.resolve_program
     sctx
     ~dir
+    ~where:Original_path
     ~loc:None
     "ocamlfdo"
     ~hint:"opam install ocamlfdo"
@@ -43,10 +45,8 @@ let ocamlfdo_binary sctx dir =
 (* FDO flags are context dependent. *)
 let get_flags var =
   let f (ctx : Context.t) =
-    Env.get (Context.installed_env ctx) var
-    |> Option.value ~default:""
-    |> String.extract_blank_separated_words
-    |> Memo.return
+    let+ env = Context.installed_env ctx in
+    Env.get env var |> Option.value ~default:"" |> String.extract_blank_separated_words
   in
   let memo =
     Memo.create var ~input:(module Context) ~cutoff:(List.equal String.equal) f
@@ -99,7 +99,10 @@ let get_profile (ctx : Context.t) =
     Some path
   in
   let none () = Action_builder.return None in
-  match Mode.of_env (Context.installed_env ctx) with
+  Context.installed_env ctx
+  |> Action_builder.of_memo
+  >>| Mode.of_env
+  >>= function
   | Never -> none ()
   | Always -> some ()
   | If_exists -> Action_builder.if_file_exists path ~then_:(some ()) ~else_:(none ())
@@ -162,7 +165,6 @@ module Linker_script = struct
       | Some fdo_profile_path -> Command.Args.S [ A "-fdo-profile"; Dep fdo_profile_path ]
       | None -> As []
     in
-    let open Memo.O in
     let ocamlfdo_binary = ocamlfdo_binary sctx dir in
     let ocamlfdo_linker_script_flags =
       Action_builder.of_memo @@ ocamlfdo_linker_script_flags ctx
@@ -190,16 +192,16 @@ module Linker_script = struct
     match Context.fdo_target_exe ctx with
     | None -> None
     | Some fdo_target_exe ->
-      if let ocaml = Compilation_context.ocaml cctx in
-         Path.equal name fdo_target_exe
-         && (Ocaml.Version.supports_function_sections ocaml.version
-             || Ocaml_config.is_dev_version ocaml.ocaml_config)
+      if
+        let ocaml = Compilation_context.ocaml cctx in
+        Path.equal name fdo_target_exe
+        && (Ocaml.Version.supports_function_sections ocaml.version
+            || Ocaml_config.is_dev_version ocaml.ocaml_config)
       then Some (linker_script_rule cctx fdo_target_exe)
       else None
   ;;
 
   let flags t =
-    let open Memo.O in
     let open Command.Args in
     match t with
     | None -> Memo.return (As [])

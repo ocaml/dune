@@ -120,16 +120,6 @@ let symlink = Some Symlink
 let copy = Some Copy
 let hardlink = Some Hardlink
 
-let decode =
-  let open Dune_sexp.Decoder in
-  enum
-    [ "none", None
-    ; "symlink", Some Symlink
-    ; "copy", Some Copy
-    ; "hardlink", Some Hardlink
-    ]
-;;
-
 let to_string = function
   | None -> "none"
   | Some Symlink -> "symlink"

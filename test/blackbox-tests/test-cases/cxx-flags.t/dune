@@ -8,3 +8,26 @@
  (libraries quad)
  (foreign_stubs (language cxx) (names bazexe))
  (modules main))
+
+(env
+ (_
+  (ocamlopt_flags
+   :standard
+   (:include extra_flags.sexp))))
+
+(rule
+ (enabled_if
+  (or
+   (<> %{system} macosx)
+   (<> %{architecture} arm64)))
+ (action
+  (write-file extra_flags.sexp "()")))
+
+; with XCode 15+, the linker complains about duplicate -lc++ libraries
+(rule
+ (enabled_if
+  (and
+   (= %{system} macosx)
+   (= %{architecture} arm64)))
+ (action
+  (write-file extra_flags.sexp "(-ccopt -Wl,-no_warn_duplicate_libraries)")))

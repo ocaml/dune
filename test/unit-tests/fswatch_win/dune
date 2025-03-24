@@ -1,6 +1,6 @@
 (executable
  (name fswatch_win_tests)
- (libraries fswatch_win stdune))
+ (libraries fswatch_win unix stdune))
 
 (rule
  (alias fswatch_win_tests)

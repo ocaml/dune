@@ -1,30 +1,39 @@
 open Import
+open Memo.O
 
 module Includes = struct
   type t = Command.Args.without_targets Command.Args.t Lib_mode.Cm_kind.Map.t
 
-  let make ~project ~opaque ~requires : _ Lib_mode.Cm_kind.Map.t =
+  let make ~project ~opaque ~direct_requires ~hidden_requires lib_config
+    : _ Lib_mode.Cm_kind.Map.t
+    =
     (* TODO : some of the requires can filtered out using [ocamldep] info *)
     let open Resolve.Memo.O in
-    let iflags libs mode = Lib_flags.L.include_flags ~project libs mode in
+    let iflags direct_libs hidden_libs mode =
+      Lib_flags.L.include_flags ~project ~direct_libs ~hidden_libs mode lib_config
+    in
     let make_includes_args ~mode groups =
       Command.Args.memo
         (Resolve.Memo.args
-           (let+ libs = requires in
+           (let+ direct_libs = direct_requires
+            and+ hidden_libs = hidden_requires in
             Command.Args.S
-              [ iflags libs mode; Hidden_deps (Lib_file_deps.deps libs ~groups) ]))
+              [ iflags direct_libs hidden_libs mode
+              ; Hidden_deps (Lib_file_deps.deps (direct_libs @ hidden_libs) ~groups)
+              ]))
     in
     let cmi_includes = make_includes_args ~mode:(Ocaml Byte) [ Ocaml Cmi ] in
     let cmx_includes =
       Command.Args.memo
         (Resolve.Memo.args
-           (let+ libs = requires in
+           (let+ direct_libs = direct_requires
+            and+ hidden_libs = hidden_requires in
             Command.Args.S
-              [ iflags libs (Ocaml Native)
+              [ iflags direct_libs hidden_libs (Ocaml Native)
               ; Hidden_deps
                   (if opaque
                    then
-                     List.map libs ~f:(fun lib ->
+                     List.map (direct_libs @ hidden_libs) ~f:(fun lib ->
                        ( lib
                        , if Lib.is_local lib
                          then [ Lib_file_deps.Group.Ocaml Cmi ]
@@ -32,7 +41,7 @@ module Includes = struct
                      |> Lib_file_deps.deps_with_exts
                    else
                      Lib_file_deps.deps
-                       libs
+                       (direct_libs @ hidden_libs)
                        ~groups:[ Lib_file_deps.Group.Ocaml Cmi; Ocaml Cmx ])
               ]))
     in
@@ -59,12 +68,12 @@ let eval_opaque (ocaml : Ocaml_toolchain.t) profile = function
 ;;
 
 type modules =
-  { modules : Modules.t
+  { modules : Modules.With_vlib.t
   ; dep_graphs : Dep_graph.t Ml_kind.Dict.t
   }
 
 let singleton_modules m =
-  { modules = Modules.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
+  { modules = Modules.With_vlib.singleton m; dep_graphs = Dep_graph.Ml_kind.dummy m }
 ;;
 
 type t =
@@ -74,16 +83,17 @@ type t =
   ; modules : modules
   ; flags : Ocaml_flags.t
   ; requires_compile : Lib.t list Resolve.Memo.t
+  ; requires_hidden : Lib.t list Resolve.Memo.t
   ; requires_link : Lib.t list Resolve.t Memo.Lazy.t
   ; includes : Includes.t
   ; preprocessing : Pp_spec.t
   ; opaque : bool
   ; stdlib : Ocaml_stdlib.t option
-  ; js_of_ocaml : Js_of_ocaml.In_context.t option
+  ; js_of_ocaml : Js_of_ocaml.In_context.t option Js_of_ocaml.Mode.Pair.t
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
-  ; public_lib_name : Lib_name.t option
+  ; melange_package_name : Lib_name.t option
   ; modes : Lib_mode.Map.Set.t
   ; bin_annot : bool
   ; ocamldep_modules_data : Ocamldep.Modules_data.t
@@ -99,6 +109,7 @@ let obj_dir t = t.obj_dir
 let modules t = t.modules.modules
 let flags t = t.flags
 let requires_compile t = t.requires_compile
+let requires_hidden t = t.requires_hidden
 let requires_link t = Memo.Lazy.force t.requires_link
 let includes t = t.includes
 let preprocessing t = t.preprocessing
@@ -108,7 +119,7 @@ let js_of_ocaml t = t.js_of_ocaml
 let sandbox t = t.sandbox
 let set_sandbox t sandbox = { t with sandbox }
 let package t = t.package
-let public_lib_name t = t.public_lib_name
+let melange_package_name t = t.melange_package_name
 let vimpl t = t.vimpl
 let modes t = t.modes
 let bin_annot t = t.bin_annot
@@ -118,57 +129,62 @@ let dep_graphs t = t.modules.dep_graphs
 let ocaml t = t.ocaml
 
 let create
-  ~super_context
-  ~scope
-  ~obj_dir
-  ~modules
-  ~flags
-  ~requires_compile
-  ~requires_link
-  ?(preprocessing = Pp_spec.dummy)
-  ~opaque
-  ?stdlib
-  ~js_of_ocaml
-  ~package
-  ?public_lib_name
-  ?vimpl
-  ?modes
-  ?bin_annot
-  ?loc
-  ()
+      ~super_context
+      ~scope
+      ~obj_dir
+      ~modules
+      ~flags
+      ~requires_compile
+      ~requires_link
+      ?(preprocessing = Pp_spec.dummy)
+      ~opaque
+      ?stdlib
+      ~js_of_ocaml
+      ~package
+      ~melange_package_name
+      ?vimpl
+      ?modes
+      ?bin_annot
+      ?loc
+      ()
   =
-  let open Memo.O in
   let project = Scope.project scope in
-  let requires_compile =
+  let context = Super_context.context super_context in
+  let* ocaml = Context.ocaml context in
+  let direct_requires, hidden_requires =
     if Dune_project.implicit_transitive_deps project
-    then Memo.Lazy.force requires_link
-    else requires_compile
+    then Memo.Lazy.force requires_link, Resolve.Memo.return []
+    else if
+      Version.supports_hidden_includes ocaml.version
+      && Dune_project.dune_version project >= (3, 17)
+    then (
+      let requires_hidden =
+        let open Resolve.Memo.O in
+        let+ requires_compile = requires_compile
+        and+ requires_link = Memo.Lazy.force requires_link in
+        let requires_table = Table.create (module Lib) 5 in
+        List.iter ~f:(fun lib -> Table.set requires_table lib ()) requires_compile;
+        List.filter requires_link ~f:(fun l -> not (Table.mem requires_table l))
+      in
+      requires_compile, requires_hidden)
+    else requires_compile, Resolve.Memo.return []
   in
-  let sandbox =
-    (* With sandboxing, there are a few build errors in ocaml platform 1162238ae
-       like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1: Error: The
-       implementation ocaml_modules/ocamlgraph/src/pack.ml does not match the
-       interface
-       ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
-    Sandbox_config.no_sandboxing
-  in
+  let sandbox = Sandbox_config.no_special_requirements in
   let modes =
     let default =
-      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited)
+      { Lib_mode.Map.ocaml = Mode.Dict.make_both (Some Mode_conf.Kind.Inherited)
       ; melange = None
       }
     in
     Option.value ~default modes |> Lib_mode.Map.map ~f:Option.is_some
   in
-  let context = Super_context.context super_context in
-  let* ocaml = Context.ocaml context in
   let opaque =
     let profile = Context.profile context in
     eval_opaque ocaml profile opaque
   in
   let ocamldep_modules_data : Ocamldep.Modules_data.t =
     { dir = Obj_dir.dir obj_dir
-    ; sandbox = Sandbox_config.no_special_requirements
+    ; sandbox
     ; obj_dir
     ; sctx = super_context
     ; vimpl
@@ -187,9 +203,11 @@ let create
   ; obj_dir
   ; modules = { modules; dep_graphs }
   ; flags
-  ; requires_compile
+  ; requires_compile = direct_requires
+  ; requires_hidden = hidden_requires
   ; requires_link
-  ; includes = Includes.make ~project ~opaque ~requires:requires_compile
+  ; includes =
+      Includes.make ~project ~opaque ~direct_requires ~hidden_requires ocaml.lib_config
   ; preprocessing
   ; opaque
   ; stdlib
@@ -197,7 +215,7 @@ let create
   ; sandbox
   ; package
   ; vimpl
-  ; public_lib_name
+  ; melange_package_name
   ; modes
   ; bin_annot
   ; ocamldep_modules_data
@@ -212,7 +230,7 @@ let alias_and_root_module_flags =
 ;;
 
 let for_alias_module t alias_module =
-  let keep_flags = Modules.is_stdlib_alias (modules t) alias_module in
+  let keep_flags = Modules.With_vlib.is_stdlib_alias (modules t) alias_module in
   let flags =
     if keep_flags
     then (* in the case of stdlib, these flags can be written by the user *)
@@ -232,7 +250,7 @@ let for_alias_module t alias_module =
     else Sandbox_config.no_special_requirements
   in
   let (modules, includes) : modules * Includes.t =
-    match Modules.is_stdlib_alias t.modules.modules alias_module with
+    match Modules.With_vlib.is_stdlib_alias t.modules.modules alias_module with
     | false -> singleton_modules alias_module, Includes.empty
     | true ->
       (* The stdlib alias module is different from the alias modules usually
@@ -270,8 +288,17 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
        their implementation must also be compiled with -opaque *)
     Ocaml.Version.supports_opaque_for_mli cctx.ocaml.version
   in
+  let direct_requires = requires in
+  let hidden_requires = Resolve.Memo.return [] in
   let modules = singleton_modules module_ in
-  let includes = Includes.make ~project:(Scope.project cctx.scope) ~opaque ~requires in
+  let includes =
+    Includes.make
+      ~project:(Scope.project cctx.scope)
+      ~opaque
+      ~direct_requires
+      ~hidden_requires
+      cctx.ocaml.lib_config
+  in
   { cctx with
     opaque
   ; flags = Ocaml_flags.empty
@@ -282,7 +309,11 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   }
 ;;
 
-let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }
+let for_wrapped_compat t =
+  (* See #10689 *)
+  let flags = Ocaml_flags.append_common t.flags [ "-w"; "-53" ] in
+  { t with includes = Includes.empty; stdlib = None; flags }
+;;
 
 let for_plugin_executable t ~embed_in_plugin_libraries =
   let libs = Scope.libs t.scope in
@@ -299,10 +330,9 @@ let entry_module_names sctx t =
   match Lib_info.entry_modules (Lib.info t) with
   | External d -> Resolve.Memo.of_result d
   | Local ->
-    let open Memo.O in
     let+ modules = Dir_contents.modules_of_lib sctx t in
     let modules = Option.value_exn modules in
-    Resolve.return (Modules.entry_modules modules |> List.map ~f:Module.name)
+    Resolve.return (Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name)
 ;;
 
 let root_module_entries t =

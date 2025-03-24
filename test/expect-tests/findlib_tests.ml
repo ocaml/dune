@@ -2,17 +2,25 @@ open Stdune
 module Lib_name = Dune_lang.Lib_name
 module Meta = Dune_findlib.Findlib.Meta
 module Findlib_config = Dune_findlib.Findlib.Config
-module Lib_dep = Dune_lang.Lib_dep
+
+include struct
+  open Dune_lang
+  module Lib_dep = Lib_dep
+  module Package = Package
+end
+
 open Dune_rules
 open Dune_rules.For_tests
 open Dune_tests_common
 
 let () = init ()
 
-let foo_meta = {|
+let foo_meta =
+  {|
 requires = "bar"
 requires(ppx_driver) = "baz"
 |}
+;;
 
 let db_path : Path.Outside_build_dir.t =
   External (Path.External.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db")
@@ -107,7 +115,8 @@ let%expect_test "configurator" =
 
 let%expect_test "builtins" =
   print_pkg_archives "str";
-  [%expect {|
+  [%expect
+    {|
     Available { byte = []; native = [] } |}];
   print_pkg_archives "dynlink";
   [%expect
@@ -128,7 +137,7 @@ let%expect_test _ =
   let dyn = Dyn.list Lib_dep.to_dyn requires in
   let pp = Dyn.pp dyn in
   Format.printf "%a@." Pp.to_fmt pp;
-  [%expect {|[ "baz" ]|}]
+  [%expect {|[ re_export "baz"; "xyz" ]|}]
 ;;
 
 (* Meta parsing/simplification *)
@@ -167,7 +176,7 @@ let conf () =
     let open Memo.O in
     Findlib_config.discover_from_env
       ~which:(fun _ -> assert false)
-      ~ocamlpath:[]
+      ~ocamlpath:(Memo.return [])
       ~env:
         (Env.initial
          |> Env.add
@@ -201,9 +210,14 @@ let%expect_test _ =
               }
         ; preds = set { "tlc" }
         }
-    ; ocamlpath = []
     ; toolchain = Some "tlc"
     } |}];
   print_dyn (Env.to_dyn (Findlib_config.env conf));
-  [%expect {| map { "FOO_BAR" : "my variable" } |}]
+  [%expect {| map { "FOO_BAR" : "my variable" } |}];
+  Findlib_config.ocamlpath conf
+  |> Memo.run
+  |> Test_scheduler.(run (create ()))
+  |> Dyn.(list Path.to_dyn)
+  |> print_dyn;
+  [%expect {| [] |}]
 ;;

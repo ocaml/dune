@@ -2,26 +2,23 @@
 Quickstart
 **********
 
+.. TODO(diataxis)
+
+   Split this into:
+
+   - :doc:`tutorials/from-zero-to-opam`
+   - :doc:`tutorials/developing-with-dune`
+   - :doc:`howto/changing-flags`
+   - an how-to guide about ``cppo``
+   - an how-to guide about staged programming / generators
+   - an how-to guide about testing
+
 This document gives simple usage examples of Dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using Dune with `CRAM stanzas <https://ocaml.org/p/craml/1.0.0>`__.
 
-
-Install Dune
-============
-
-The best way to install Dune is with opam: 
-
-.. code:: console
-
-  $ opam install dune
-
-Then run ``eval $(opam env)`` to update the shell. When creating a new 
-directory or changing directories, run ``eval $(opam env)`` if you 
-get the `dune` command not found error.
-
-Now you're ready to create your first workspace and initialize projects. 
-
+To try these examples, you will need to have Dune installed. See
+:doc:`howto/install-dune`.
 
 Initializing Projects
 =====================
@@ -91,27 +88,29 @@ which you can dive deeper into Dune's capabilities:
 * The ``dune-project`` file specifies metadata about the project, including its
   name, packaging data (including dependencies), and information about the
   authors and maintainers. Open this in your editor to fill in the
-  placeholder values. See :ref:`dune-project` for details.
+  placeholder values. See :doc:`/reference/dune-project/index` for
+  details.
 * The ``test`` directory contains a skeleton for your project's tests. Add to
   the tests by editing ``test/test_project_name.ml``. See :ref:`writing-tests` for
   details on testing.
 * The ``lib`` directory will hold the library you write to provide your executable's core
   functionality. Add modules to your library by creating new
-  ``.ml`` files in this directory. See :ref:`library` for details on specifying
-  libraries manually.
+  ``.ml`` files in this directory. See :doc:`/reference/dune/library` for
+  details on specifying libraries manually.
 * The ``bin`` directory holds a skeleton for the executable program. Within the
   modules in this directory, you can access the modules in your ``lib`` under
   the namespace ``project_name.Mod``, where ``project_name`` is replaced with
   the name of your project and ``Mod`` corresponds to the name of the file in
   the ``lib`` directory. You can run the executable with ``dune exec
   project_name``.  See :ref:`hello-world-program` for an example of specifying
-  an executable manually and :ref:`executable` for details.
+  an executable manually and :doc:`/reference/dune/executable` for
+  details.
 * The ``project_name.opam`` file will be freshly generated from the
   ``dune-project`` file whenever you build your project. You shouldn't need to
   worry about this, but you can see :doc:`explanation/opam-integration` for
   details.
 * The ``dune`` files in each directory specify the component to be built with
-  the files in that directory. For details on ``dune`` files, see :ref:`dune-files`.
+  the files in that directory. For details on ``dune`` files, see :doc:`/reference/dune/index`.
 
 Initializing a Library
 ----------------------
@@ -159,7 +158,7 @@ All of the subcomponents generated are the same as those described in
 
 * There is no ``bin`` directory generated.
 * The ``dune`` file in the ``lib`` directory specifies that the library should
-  be *public*. See :ref:`library` for details.
+  be *public*. See :doc:`/reference/dune/library` for details.
 
 .. _hello-world-program:
 
@@ -203,24 +202,6 @@ step:
    $ dune exec -- ./hello_world.exe
 
 Voila! This should print "Hello, world!" in the command line.
-
-Please note: if you have Dune, opam, and OCaml installed, but you 
-get an error that the ``dune`` command isn't recognized, it will be necessary 
-to run ``eval $(opam env)`` to enable Dune in your directory. Find more 
-information in the `Dune ReadMe  <https://github.com/ocaml/dune>`__.
-
-If that didn't work, you should verify that OCaml and opam are installed correctly by
-running ``ocaml -version`` and ``opam --version``.
-
-If you still get an error that the ``dune`` command isn't recognized, try running 
-the following in this order:
-
-#. ``opam switch create . ocaml-base-compiler``
-#. ``opam install merlin ocp-indent dune utop``
-
-Then run ``eval $(opam env)`` again before trying to build and run 
-your new hello_world.exe program. 
-
 
 Building a Hello World Program Using Lwt
 ========================================

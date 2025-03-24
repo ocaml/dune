@@ -382,17 +382,17 @@ not stable across different setups.
      (uid c39d8e11db2363236e69af7750ce7b9a)
      (local false)
      (requires ())
-     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (source_dir /FINDLIB/compiler-libs)
      (modules ())
-     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+     (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
      (uid c9367091ddd9a70d99fc22ede348f17c)
      (local false)
      (requires (c39d8e11db2363236e69af7750ce7b9a))
-     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (source_dir /FINDLIB/compiler-libs)
      (modules ())
-     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+     (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
      (uid 8773da23dc506fbda63b4ff411075fb9)
@@ -554,7 +554,8 @@ not stable across different setups.
        24f4eb12e3ff51b310dbf7443c6087be
        5ae836dcdead11d5c16815297c5a1ae6
        249b2edaf3cc552a247667041bb5f015
-       449445be7a24ce51e119d57e9e255d3f))
+       449445be7a24ce51e119d57e9e255d3f
+       c9367091ddd9a70d99fc22ede348f17c))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))
@@ -922,17 +923,17 @@ not stable across different setups.
      (uid c39d8e11db2363236e69af7750ce7b9a)
      (local false)
      (requires ())
-     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (source_dir /FINDLIB/compiler-libs)
      (modules ())
-     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+     (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name compiler-libs.common)
      (uid c9367091ddd9a70d99fc22ede348f17c)
      (local false)
      (requires (c39d8e11db2363236e69af7750ce7b9a))
-     (source_dir /FINDLIB/ocaml/compiler-libs)
+     (source_dir /FINDLIB/compiler-libs)
      (modules ())
-     (include_dirs (/FINDLIB/ocaml/compiler-libs))))
+     (include_dirs (/FINDLIB/compiler-libs))))
    (library
     ((name dummy_ppx)
      (uid 8773da23dc506fbda63b4ff411075fb9)
@@ -1128,7 +1129,8 @@ not stable across different setups.
        24f4eb12e3ff51b310dbf7443c6087be
        5ae836dcdead11d5c16815297c5a1ae6
        249b2edaf3cc552a247667041bb5f015
-       449445be7a24ce51e119d57e9e255d3f))
+       449445be7a24ce51e119d57e9e255d3f
+       c9367091ddd9a70d99fc22ede348f17c))
      (source_dir /FINDLIB/ppxlib)
      (modules ())
      (include_dirs (/FINDLIB/ppxlib))))

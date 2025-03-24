@@ -2,7 +2,7 @@ open Import
 
 type t =
   | Lib of Lib_name.t
-  | Exes of string list
+  | Exes of string Nonempty_list.t
   | Melange_entries of string
 
 let for_lib l = Lib l
@@ -16,7 +16,6 @@ let to_string = function
   | Exes [ name ] -> sprintf "exe-%s" name
   | Exes (name :: names) -> sprintf "exe-%s-%s" name Digest.(generic names |> to_string)
   | Melange_entries name -> sprintf "melange-%s" name
-  | Exes [] -> assert false
 ;;
 
 let merlin_folder_name = ".merlin-conf"

@@ -23,7 +23,7 @@ detected and error is printed even if the rule is not executed.
   $ cp ../bin/foo.exe ./
 
   $ dune runtest
-  File "dune", line 4, characters 2-84:
+  File "dune", lines 4-6, characters 2-84:
   4 |   (progn
   5 |    (dynamic-run ./foo.exe some_arg)
   6 |    (dynamic-run ./foo.exe another_arg))))

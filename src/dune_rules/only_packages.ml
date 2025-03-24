@@ -1,5 +1,4 @@
 open Import
-open Memo.O
 
 module Clflags = struct
   type t =
@@ -26,51 +25,36 @@ module Clflags = struct
   let t () = Fdecl.get t
 end
 
-let conf =
-  Memo.lazy_ ~name:"only_packages" (fun () ->
-    match Clflags.t () with
-    | No_restriction -> Memo.return None
-    | Restrict { names; command_line_option } ->
-      let* { packages; _ } = Dune_load.load () in
-      Package.Name.Set.iter names ~f:(fun pkg_name ->
-        if not (Package.Name.Map.mem packages pkg_name)
-        then (
-          let pkg_name = Package.Name.to_string pkg_name in
-          User_error.raise
-            [ Pp.textf
-                "I don't know about package %s (passed through %s)"
-                pkg_name
-                command_line_option
-            ]
-            ~hints:
-              (User_message.did_you_mean
-                 pkg_name
-                 ~candidates:
-                   (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
-      Package.Name.Map.to_list packages
-      |> Memo.parallel_map ~f:(fun (name, pkg) ->
-        let+ vendored = Source_tree.is_vendored (Package.dir pkg) in
-        let included = Package.Name.Set.mem names name in
-        if vendored && included
-        then
-          User_error.raise
-            [ Pp.textf
-                "Package %s is vendored and so will never be masked. It is redundant to \
-                 pass it to %s."
-                (Package.Name.to_string name)
-                command_line_option
-            ];
-        Option.some_if (vendored || included) (name, pkg))
-      >>| List.filter_opt
-      >>| Package.Name.Map.of_list_exn
-      >>| Option.some)
+type t = Package.t Package.Name.Map.t option
+
+let mask packages ~vendored : t =
+  match Clflags.t () with
+  | No_restriction -> None
+  | Restrict { names; command_line_option } ->
+    Package.Name.Set.iter names ~f:(fun pkg_name ->
+      if not (Package.Name.Map.mem packages pkg_name)
+      then (
+        let pkg_name = Package.Name.to_string pkg_name in
+        User_error.raise
+          [ Pp.textf
+              "I don't know about package %s (passed through %s)"
+              pkg_name
+              command_line_option
+          ]
+          ~hints:
+            (User_message.did_you_mean
+               pkg_name
+               ~candidates:
+                 (Package.Name.Map.keys packages |> List.map ~f:Package.Name.to_string))));
+    Package.Name.Map.filter_map packages ~f:(fun pkg ->
+      let name = Package.name pkg in
+      let vendored = Package.Name.Set.mem vendored name in
+      let included = Package.Name.Set.mem names name in
+      Option.some_if (vendored || included) pkg)
+    |> Option.some
 ;;
 
-let get_mask () = Memo.Lazy.force conf
-
-let packages_of_project project =
-  let+ t = Memo.Lazy.force conf in
-  let packages = Dune_project.packages project in
+let filter_packages (t : t) packages =
   match t with
   | None -> packages
   | Some mask ->
@@ -80,68 +64,25 @@ let packages_of_project project =
       | _ -> None)
 ;;
 
-let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
-  List.filter_map ~f:(fun stanza ->
-    let include_stanza =
-      match Dune_file.stanza_package stanza with
-      | None -> true
-      | Some package ->
-        let name = Package.name package in
-        Package.Name.Map.mem visible_pkgs name
-    in
-    if include_stanza
-    then Some stanza
-    else (
-      match Stanza.repr stanza with
-      | Dune_file.Library.T l ->
-        let open Option.O in
-        let+ redirect = Dune_file.Library_redirect.Local.of_private_lib l in
-        Dune_file.Library_redirect.Local.make_stanza redirect
-      | _ -> None))
-;;
-
-let filtered_stanzas =
-  let db =
-    Per_context.create_by_name ~name:"filtered_stanzas"
-    @@ fun context ->
-    let* only_packages = Memo.Lazy.force conf
-    and+ { Dune_load.dune_files; packages = _; projects = _; projects_by_root = _ } =
-      Dune_load.load ()
-    in
-    let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
-    match only_packages with
-    | None -> stanzas
-    | Some visible_pkgs ->
-      List.map stanzas ~f:(fun (dir_conf : Dune_file.t) ->
-        { dir_conf with
-          stanzas = filter_out_stanzas_from_hidden_packages ~visible_pkgs dir_conf.stanzas
-        })
-  in
-  fun ctx -> Staged.unstage db ctx
-;;
-
-let get () =
-  let* { Dune_load.dune_files = _; packages; projects = _; projects_by_root = _ } =
-    Dune_load.load ()
-  in
-  let+ only_packages = Memo.Lazy.force conf in
-  Option.value only_packages ~default:packages
-;;
-
-let stanzas_in_dir dir =
-  if Path.Build.is_root dir
-  then Memo.return None
-  else
-    Dune_load.Dune_files.in_dir dir
-    >>= function
-    | None -> Memo.return None
-    | Some dune_file ->
-      let+ stanzas =
-        Memo.Lazy.force conf
-        >>| function
-        | None -> dune_file.stanzas
-        | Some visible_pkgs ->
-          filter_out_stanzas_from_hidden_packages ~visible_pkgs dune_file.stanzas
-      in
-      Some { dune_file with stanzas }
+let filter_packages_in_project ~vendored project =
+  match Clflags.t () with
+  | No_restriction -> project
+  | Restrict { names; command_line_option } ->
+    (match vendored with
+     | false -> Dune_project.filter_packages project ~f:(Package.Name.Set.mem names)
+     | true ->
+       let () =
+         Dune_project.packages project
+         |> Package.Name.Set.of_keys
+         |> Package.Name.Set.inter names
+         |> Package.Name.Set.iter ~f:(fun name ->
+           User_error.raise
+             [ Pp.textf
+                 "Package %s is vendored and so will never be masked. It is redundant to \
+                  pass it to %s."
+                 (Package.Name.to_string name)
+                 command_line_option
+             ])
+       in
+       project)
 ;;

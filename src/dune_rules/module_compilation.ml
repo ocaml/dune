@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 (* Arguments for the compiler to prevent it from being too clever.
 
@@ -14,12 +15,7 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
    generation *)
 
 let opens modules m =
-  match Modules.local_open modules m with
-  | [] -> Command.Args.empty
-  | modules ->
-    Command.Args.S
-      (List.map modules ~f:(fun name ->
-         Command.Args.As [ "-open"; Module_name.to_string name ]))
+  Command.Args.As (Modules.With_vlib.local_open modules m |> Ocaml_flags.open_flags)
 ;;
 
 let other_cm_files ~opaque ~cm_kind ~obj_dir =
@@ -43,13 +39,13 @@ let copy_interface ~sctx ~dir ~obj_dir ~cm_kind m =
     (Module.visibility m <> Visibility.Private
      && Obj_dir.need_dedicated_public_dir obj_dir)
     (fun () ->
-      let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
-      Super_context.add_rule
-        sctx
-        ~dir
-        (Action_builder.symlink
-           ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
-           ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
+       let cmi_kind = Lib_mode.Cm_kind.cmi cm_kind in
+       Super_context.add_rule
+         sctx
+         ~dir
+         (Action_builder.symlink
+            ~src:(Path.build (Obj_dir.Module.cm_file_exn obj_dir m ~kind:cmi_kind))
+            ~dst:(Obj_dir.Module.cm_public_file_exn obj_dir m ~kind:cmi_kind)))
 ;;
 
 let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) module_ =
@@ -60,7 +56,7 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
       let package_output =
         Module.file ~ml_kind:Impl module_ |> Option.value_exn |> Path.parent_exn
       in
-      match Compilation_context.public_lib_name cctx with
+      match Compilation_context.melange_package_name cctx with
       | None -> [], package_output
       | Some lib_name ->
         let dir =
@@ -88,12 +84,12 @@ let melange_args (cctx : Compilation_context.t) (cm_kind : Lib_mode.Cm_kind.t) m
 ;;
 
 let build_cm
-  cctx
-  ~force_write_cmi
-  ~precompiled_cmi
-  ~cm_kind
-  (m : Module.t)
-  ~(phase : Fdo.phase option)
+      cctx
+      ~force_write_cmi
+      ~precompiled_cmi
+      ~cm_kind
+      (m : Module.t)
+      ~(phase : Fdo.phase option)
   =
   if force_write_cmi && precompiled_cmi
   then Code_error.raise "force_read_cmi and precompiled_cmi are mutually exclusive" [];
@@ -111,7 +107,6 @@ let build_cm
       Sandbox_config.needs_sandboxing
     | _ -> default
   in
-  let open Memo.O in
   let ocaml = Compilation_context.ocaml cctx in
   let* compiler =
     match mode with
@@ -196,7 +191,14 @@ let build_cm
          let fn =
            Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~cm_kind ~ml_kind)
          in
-         fn :: other_targets, A "-bin-annot")
+         let annots =
+           [ "-bin-annot" ]
+           @
+           if Version.supports_bin_annot_occurrences ocaml.version
+           then [ "-bin-annot-occurrences" ]
+           else []
+         in
+         fn :: other_targets, As annots)
        else other_targets, Command.Args.empty
    in
    let opaque_arg : _ Command.Args.t =
@@ -309,21 +311,24 @@ let build_module ?(force_write_cmi = false) ?(precompiled_cmi = false) cctx m =
       match Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo) with
       | None -> Memo.return ()
       | Some src ->
-        Compilation_context.js_of_ocaml cctx
-        |> Memo.Option.iter ~f:(fun in_context ->
-          (* Build *.cmo.js *)
-          let sctx = Compilation_context.super_context cctx in
-          let dir = Compilation_context.dir cctx in
-          let action_with_targets =
-            Jsoo_rules.build_cm
-              sctx
-              ~dir
-              ~in_context
-              ~src:(Path.build src)
-              ~obj_dir
-              ~config:None
-          in
-          Super_context.add_rule sctx ~dir action_with_targets))
+        Memo.parallel_iter Js_of_ocaml.Mode.all ~f:(fun mode ->
+          Compilation_context.js_of_ocaml cctx
+          |> Js_of_ocaml.Mode.Pair.select ~mode
+          |> Memo.Option.iter ~f:(fun in_context ->
+            (* Build *.cmo.js / *.wasmo *)
+            let sctx = Compilation_context.super_context cctx in
+            let dir = Compilation_context.dir cctx in
+            let action_with_targets =
+              Jsoo_rules.build_cm
+                sctx
+                ~dir
+                ~in_context
+                ~mode
+                ~src:(Path.build src)
+                ~obj_dir
+                ~config:None
+            in
+            Super_context.add_rule sctx ~dir action_with_targets)))
   in
   Memo.when_ melange (fun () ->
     let* () = build_cm ~cm_kind:(Melange Cmj) ~phase:None in
@@ -426,7 +431,7 @@ module Alias_module = struct
     let aliases =
       Modules.Group.for_alias group
       |> List.map ~f:(fun (local_name, m) ->
-        let canonical_path = Modules.canonical_path modules group m in
+        let canonical_path = Modules.With_vlib.canonical_path modules group m in
         let obj_name = Module.obj_name m in
         { canonical_path; local_name; obj_name })
     in
@@ -454,7 +459,6 @@ let build_alias_module cctx group =
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file alias_module ~ml_kind:Impl) in
   let dir = Compilation_context.dir cctx in
-  let open Memo.O in
   let* () =
     Super_context.add_rule
       ~loc:Loc.none
@@ -484,7 +488,6 @@ let build_root_module cctx root_module =
   let sctx = Compilation_context.super_context cctx in
   let file = Option.value_exn (Module.file root_module ~ml_kind:Impl) in
   let dir = Compilation_context.dir cctx in
-  let open Memo.O in
   let* () =
     Super_context.add_rule
       ~loc:Loc.none
@@ -504,7 +507,7 @@ let build_all cctx =
   let for_wrapped_compat = lazy (Compilation_context.for_wrapped_compat cctx) in
   let modules = Compilation_context.modules cctx in
   Memo.parallel_iter
-    (Modules.fold_no_vlib_with_aliases
+    (Modules.With_vlib.fold_no_vlib_with_aliases
        modules
        ~init:[]
        ~normal:(fun x acc -> `Normal x :: acc)
@@ -520,7 +523,7 @@ let build_all cctx =
            build_module cctx m
          | _ ->
            let cctx =
-             if Modules.is_stdlib_alias modules m
+             if Modules.With_vlib.is_stdlib_alias modules m
              then
                (* XXX it would probably be simpler if the flags were just for this
                   module in the definition of the stanza *)
@@ -541,7 +544,6 @@ let with_empty_intf ~sctx ~dir module_ =
       (Path.as_in_build_dir_exn name)
       "(* Auto-generated by Dune *)"
   in
-  let open Memo.O in
   let+ () = Super_context.add_rule sctx ~dir rule in
   Module.add_file module_ Ml_kind.Intf (Module.File.make Dialect.ocaml name)
 ;;

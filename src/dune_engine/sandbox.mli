@@ -9,15 +9,15 @@ val dir : t -> Path.Build.t
 (** [map_path t p] returns the path corresponding to [p] inside the sandbox. *)
 val map_path : t -> Path.Build.t -> Path.Build.t
 
-(** Create a new sandbox and copy or link dependencies inside it. *)
+(** Create a new sandbox containing [dirs] and copy or link dependencies [deps] inside it. *)
 val create
   :  mode:Sandbox_mode.some
   -> dune_stats:Dune_stats.t option
   -> rule_loc:Loc.t
-  -> deps:Dep.Facts.t
+  -> dirs:Path.Build.Set.t
+  -> deps:Path.Set.t
   -> rule_dir:Path.Build.t
   -> rule_digest:Digest.t
-  -> expand_aliases:bool
   -> t Fiber.t
 
 (** Move all targets created by the action from the sandbox to the build

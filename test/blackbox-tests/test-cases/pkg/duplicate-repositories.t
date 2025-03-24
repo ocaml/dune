@@ -4,10 +4,10 @@ Duplicate repository definition in the same workspace file:
   > (lang dune 3.11)
   > (repository
   >  (name foo)
-  >  (source "git+file//$PWD/foo"))
+  >  (url "git+file//$PWD/foo"))
   > (repository
   >  (name foo)
-  >  (source "git+file//$PWD/foo"))
+  >  (url "git+file//$PWD/foo"))
   > EOF
 
   $ dune pkg outdated 2>&1 | awk '/Internal error/,/Raised/'

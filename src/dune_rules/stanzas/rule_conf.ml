@@ -11,7 +11,6 @@ type t =
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
   ; mode : Rule.Mode.t
-  ; patch_back_source_tree : bool
   ; locks : Locks.t
   ; loc : Loc.t
   ; enabled_if : Blang.t
@@ -63,6 +62,7 @@ let atom_table =
     ; "aliases", Field
     ; "alias", Field
     ; "enabled_if", Field
+    ; "format-dune-file", Since ((3, 18), Action)
     ; "package", Since ((3, 8), Field)
     ]
 ;;
@@ -73,7 +73,6 @@ let short_form =
   ; deps = Bindings.empty
   ; action = loc, action
   ; mode = Standard
-  ; patch_back_source_tree = false
   ; locks = []
   ; loc
   ; enabled_if = Blang.true_
@@ -87,6 +86,7 @@ let directory_targets_extension =
     Dune_lang.Syntax.create
       ~name:"directory-targets"
       ~desc:"experimental support for directory targets"
+      ~experimental:true
       [ (0, 1), `Since (3, 0) ]
   in
   Dune_project.Extension.register syntax (Dune_lang.Decoder.return ((), [])) Dyn.unit
@@ -101,7 +101,7 @@ let long_form =
   String_with_vars.add_user_vars_to_decoding_env
     (Bindings.var_names deps)
     (let+ loc = loc
-     and+ action = field "action" (located Dune_lang.Action.decode_dune_file)
+     and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
      and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
      and+ () =
@@ -116,7 +116,7 @@ let long_form =
           to provide a nice error message for people switching from jbuilder
           to dune. *)
        assert (not fallback)
-     and+ mode = Mode.Extended.field
+     and+ mode = Mode.field
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ package =
        field_o
@@ -135,34 +135,19 @@ let long_form =
            )
          ]
      in
-     let mode, patch_back_source_tree =
-       match mode with
-       | Normal mode -> mode, false
-       | Patch_back_source_tree ->
-         if List.exists (Bindings.to_list deps) ~f:(function
-              | Dep_conf.Sandbox_config _ -> true
-              | _ -> false)
-         then
-           User_error.raise
-             ~loc
-             [ Pp.text
-                 "Rules with (mode patch-back-source-tree) cannot have an explicit \
-                  sandbox configuration because it is implied by (mode \
-                  patch-back-source-tree)."
-             ];
-         Standard, true
+     let action =
+       match action_o with
+       | Some action -> action
+       | None ->
+         let hints =
+           if List.is_empty aliases
+           then []
+           else
+             [ Pp.text "You can use the (alias) stanza to add dependencies to an alias." ]
+         in
+         field_missing ~hints loc "action"
      in
-     { targets
-     ; deps
-     ; action
-     ; mode
-     ; locks
-     ; loc
-     ; enabled_if
-     ; aliases
-     ; package
-     ; patch_back_source_tree
-     })
+     { targets; deps; action; mode; locks; loc; enabled_if; aliases; package })
 ;;
 
 let decode =
@@ -230,7 +215,6 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
                 ; S.virt_pform __POS__ (Var Deps)
                 ] ) )
     ; mode
-    ; patch_back_source_tree = false
     ; locks = []
     ; loc
     ; enabled_if
@@ -260,7 +244,6 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
                 (S.virt_text __POS__ "ocamlyacc")
                 [ S.virt_pform __POS__ (Var Deps) ] ) )
     ; mode
-    ; patch_back_source_tree = false
     ; locks = []
     ; loc
     ; enabled_if

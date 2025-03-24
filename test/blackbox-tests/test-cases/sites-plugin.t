@@ -70,29 +70,7 @@ Test sites plugins (example from the manual)
   > Queue.add (fun () -> print_endline "Plugin1 is doing something...") Registration.todo
   > EOF
 
-  $ dune build --display short @all 2>&1 | dune_cmd sanitize
-      ocamldep .app.eobjs/dune__exe__App.impl.d
-        ocamlc .registration.objs/byte/registration.{cmi,cmo,cmt}
-      ocamlopt .app.eobjs/native/dune_site__Dune_site_data.{cmx,o}
-      ocamlopt .app.eobjs/native/dune_site_plugins__Dune_site_plugins_data.{cmx,o}
-      ocamldep .app.eobjs/dune__exe__Sites.impl.d
-      ocamlopt .registration.objs/native/registration.{cmx,o}
-        ocamlc plugin/.plugin1_impl.objs/byte/plugin1_impl.{cmi,cmo,cmt}
-        ocamlc registration.cma
-        ocamlc .app.eobjs/byte/dune__exe.{cmi,cmo,cmt}
-      ocamldep .app.eobjs/dune__exe__App.intf.d
-      ocamlopt registration.{a,cmxa}
-      ocamlopt plugin/.plugin1_impl.objs/native/plugin1_impl.{cmx,o}
-        ocamlc plugin/plugin1_impl.cma
-      ocamlopt .app.eobjs/native/dune__exe.{cmx,o}
-        ocamlc .app.eobjs/byte/dune__exe__Sites.{cmi,cmo,cmt}
-        ocamlc .app.eobjs/byte/dune__exe__App.{cmi,cmti}
-      ocamlopt registration.cmxs
-      ocamlopt plugin/plugin1_impl.{a,cmxa}
-      ocamlopt .app.eobjs/native/dune__exe__Sites.{cmx,o}
-      ocamlopt .app.eobjs/native/dune__exe__App.{cmx,o}
-      ocamlopt plugin/plugin1_impl.cmxs
-      ocamlopt app.exe
+  $ dune build @all 2>&1 | dune_cmd sanitize
   $ dune exec ./app.exe
   Registration of Plugin1
   Main app starts...

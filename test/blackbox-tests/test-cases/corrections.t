@@ -4,10 +4,10 @@
 It's OK if there's no correction:
 
   $ cat > dune <<EOF
-  > (rule (alias no_correction)
-  >   (deps )
-  >   (action (progn (diff? text-file text-file-corrected)))
-  > )
+  > (rule
+  >  (alias no_correction)
+  >  (deps)
+  >  (action (progn (diff? text-file text-file-corrected))))
   > EOF
   $ dune build @no_correction
 
@@ -16,11 +16,10 @@ and dune correctly complains
 
   $ cat > dune <<EOF
   > (rule (alias correction1)
-  >   (deps)
-  >   (action
-  >     (progn (bash "> text-file-corrected echo corrected-contents-1")
-  >     (diff? text-file text-file-corrected)))
-  > )
+  >  (deps)
+  >  (action
+  >   (progn (bash "> text-file-corrected echo corrected-contents-1")
+  >   (diff? text-file text-file-corrected))))
   > EOF
 
   $ dune build @correction1
@@ -42,11 +41,10 @@ When correction is no longer produced, dune no longer complains.
 
   $ cat > dune <<EOF
   > (rule (alias correction1)
-  >   (deps text-file)
-  >   (action
-  >     (progn 
-  >     (diff? text-file text-file-corrected)))
-  > )
+  >  (deps text-file)
+  >  (action
+  >   (progn 
+  >   (diff? text-file text-file-corrected))))
   > EOF
   $ echo new-contents > text-file
   $ dune build @correction1
@@ -54,13 +52,13 @@ When correction is no longer produced, dune no longer complains.
 Promotion should work when sandboxing is used:
 
   $ cat > dune <<EOF
-  > (rule (alias correction1)
-  >   (deps)
-  >   (action
-  >     (progn
-  >       (bash "echo another-correction > text-file-corrected")
-  >       (diff? text-file text-file-corrected)))
-  > )
+  > (rule
+  >  (alias correction1)
+  >  (deps)
+  >  (action
+  >   (progn
+  >    (bash "echo another-correction > text-file-corrected")
+  >    (diff? text-file text-file-corrected))))
   > EOF
 
   $ dune build @correction1 --sandbox copy
@@ -76,12 +74,12 @@ Dependency on the second argument of diff? is *not* automatically added.
 This is fine because we think of it as an intermediate file rather than dep.
 
   $ cat > dune <<EOF
-  > (rule (alias correction1)
-  >   (deps)
-  >   (action
-  >     (progn
-  >     (diff? text-file text-file-corrected)))
-  > )
+  > (rule
+  >  (alias correction1)
+  >  (deps)
+  >  (action
+  >   (progn
+  >   (diff? text-file text-file-corrected))))
   > EOF
 
   $ > text-file-corrected echo corrected-contents-1

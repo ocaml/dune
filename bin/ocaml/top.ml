@@ -19,8 +19,12 @@ let info = Cmd.info "top" ~doc ~man
 
 let link_deps sctx link =
   let open Memo.O in
+  let* lib_config =
+    let+ ocaml = Super_context.context sctx |> Context.ocaml in
+    ocaml.lib_config
+  in
   Memo.parallel_map link ~f:(fun t ->
-    Dune_rules.Lib_flags.link_deps sctx t Dune_rules.Link_mode.Byte)
+    Dune_rules.Lib_flags.link_deps sctx t Dune_rules.Link_mode.Byte lib_config)
   >>| List.concat
 ;;
 
@@ -41,15 +45,16 @@ let term =
   Scheduler.go ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
-    Build_system.run_exn (fun () ->
+    build_exn (fun () ->
       let open Memo.O in
       let* setup = setup in
       let sctx =
         Dune_engine.Context_name.Map.find setup.scontexts ctx_name |> Option.value_exn
       in
+      let context = Super_context.context sctx in
       let* libs =
         let dir =
-          let build_dir = Super_context.context sctx |> Context.build_dir in
+          let build_dir = Context.build_dir context in
           Path.Build.relative build_dir (Common.prefix_target common dir)
         in
         let* db =
@@ -62,7 +67,13 @@ let term =
       let* requires =
         Dune_rules.Resolve.Memo.read_memo (Dune_rules.Lib.closure ~linking:true libs)
       in
-      let include_paths = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
+      let* lib_config =
+        let+ ocaml = Context.ocaml context in
+        ocaml.lib_config
+      in
+      let include_paths =
+        Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+      in
       let+ files_to_load = files_to_load_of_requires sctx requires in
       Dune_rules.Toplevel.print_toplevel_init_file
         { include_paths; files_to_load; uses = []; pp = None; ppx = None; code = [] }))
@@ -97,14 +108,16 @@ module Module = struct
     then User_error.raise [ Pp.text "file is missing an extension" ];
     let open Memo.O in
     let module_name =
-      let name = Filename.chop_extension filename in
+      let name = Filename.remove_extension filename in
       Dune_rules.Module_name.of_string_user_error (Loc.none, name) |> User_error.ok_exn
     in
     let* expander = Super_context.expander sctx ~dir in
     let* top_module_info = Dune_rules.Top_module.find_module sctx mod_ in
     match top_module_info with
     | None -> User_error.raise [ Pp.text "no module found" ]
-    | Some (module_, cctx, merlin) ->
+    | Some (_, _, _, Melange _) ->
+      User_error.raise [ Pp.text "Modules belonging to `melange.emit' are not supported" ]
+    | Some (module_, cctx, merlin, _) ->
       let module Compilation_context = Dune_rules.Compilation_context in
       let module Obj_dir = Dune_rules.Obj_dir in
       let module Top_module = Dune_rules.Top_module in
@@ -114,7 +127,10 @@ module Module = struct
       in
       let private_obj_dir = Top_module.private_obj_dir ctx mod_ in
       let include_paths =
-        let libs = Dune_rules.Lib_flags.L.toplevel_include_paths requires in
+        let libs =
+          let lib_config = (Compilation_context.ocaml cctx).lib_config in
+          Dune_rules.Lib_flags.L.toplevel_include_paths requires lib_config
+        in
         Path.Set.add libs (Path.build (Obj_dir.byte_dir private_obj_dir))
       in
       let files_to_load () =
@@ -122,44 +138,46 @@ module Module = struct
           Memo.fork_and_join
             (fun () -> files_to_load_of_requires sctx requires)
             (fun () ->
-              let cmis () =
-                let glob =
-                  Dune_engine.File_selector.of_glob
-                    ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
-                    (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
-                in
-                let+ (_ : Dep.Fact.Files.t) = Build_system.build_pred glob in
-                ()
-              in
-              let cmos () =
-                let obj_dir = Compilation_context.obj_dir cctx in
-                let dep_graph = (Compilation_context.dep_graphs cctx).impl in
-                let* modules =
-                  let graph =
-                    Dune_rules.Dep_graph.top_closed_implementations dep_graph [ module_ ]
-                  in
-                  let+ modules, _ = Action_builder.evaluate_and_collect_facts graph in
-                  modules
-                in
-                let cmos =
-                  let module Module = Dune_rules.Module in
-                  let module Module_name = Dune_rules.Module_name in
-                  let module_obj_name = Module.obj_name module_ in
-                  List.filter_map modules ~f:(fun m ->
-                    let obj_dir =
-                      if Module_name.Unique.equal module_obj_name (Module.obj_name m)
-                      then private_obj_dir
-                      else obj_dir
-                    in
-                    Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo)
-                    |> Option.map ~f:Path.build)
-                in
-                let+ (_ : Dep.Facts.t) =
-                  Build_system.build_deps (Dep.Set.of_files cmos)
-                in
-                cmos
-              in
-              Memo.fork_and_join_unit cmis cmos)
+               let cmis () =
+                 let glob =
+                   Dune_engine.File_selector.of_glob
+                     ~dir:(Path.build (Obj_dir.byte_dir private_obj_dir))
+                     (Dune_lang.Glob.of_string_exn Loc.none "*.cmi")
+                 in
+                 let* files = Build_system.eval_pred glob in
+                 Memo.parallel_iter
+                   (Filename_set.to_list files)
+                   ~f:Build_system.build_file
+               in
+               let cmos () =
+                 let obj_dir = Compilation_context.obj_dir cctx in
+                 let dep_graph = (Compilation_context.dep_graphs cctx).impl in
+                 let* modules =
+                   let graph =
+                     Dune_rules.Dep_graph.top_closed_implementations dep_graph [ module_ ]
+                   in
+                   let+ modules, _ = Action_builder.evaluate_and_collect_facts graph in
+                   modules
+                 in
+                 let cmos =
+                   let module Module = Dune_rules.Module in
+                   let module Module_name = Dune_rules.Module_name in
+                   let module_obj_name = Module.obj_name module_ in
+                   List.filter_map modules ~f:(fun m ->
+                     let obj_dir =
+                       if Module_name.Unique.equal module_obj_name (Module.obj_name m)
+                       then private_obj_dir
+                       else obj_dir
+                     in
+                     Obj_dir.Module.cm_file obj_dir m ~kind:(Ocaml Cmo)
+                     |> Option.map ~f:Path.build)
+                 in
+                 let+ (_ : Dep.Facts.t) =
+                   Build_system.build_deps (Dep.Set.of_files cmos)
+                 in
+                 cmos
+               in
+               Memo.fork_and_join_unit cmis cmos)
         in
         libs @ modules
       in
@@ -179,7 +197,7 @@ module Module = struct
       let+ (pp, ppx), files_to_load = Memo.fork_and_join pps files_to_load in
       let code =
         let modules = Dune_rules.Compilation_context.modules cctx in
-        let opens_ = Dune_rules.Modules.local_open modules module_ in
+        let opens_ = Dune_rules.Modules.With_vlib.local_open modules module_ in
         List.map opens_ ~f:(fun name ->
           sprintf "open %s" (Dune_rules.Module_name.to_string name))
       in
@@ -189,13 +207,16 @@ module Module = struct
   let term =
     let+ builder = Common.Builder.term
     and+ module_path =
-      Arg.(required & pos 0 (some string) None & Arg.info [] ~docv:"MODULE")
+      Arg.(
+        required
+        & pos 0 (some string) None
+        & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
     and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
     let common, config = Common.init builder in
     Scheduler.go ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
-      Build_system.run_exn (fun () ->
+      build_exn (fun () ->
         let open Memo.O in
         let* setup = setup in
         let sctx =
@@ -203,12 +224,22 @@ module Module = struct
         in
         let+ directives =
           let module_path =
-            let root = Common.root common in
-            Path.Source.relative
-              Path.Source.root
-              (root.reach_from_root_prefix ^ module_path)
+            if Filename.is_relative module_path
+            then Path.Local.of_string module_path
+            else (
+              let root =
+                (Common.root common).dir
+                |> Path.of_string
+                |> Path.to_absolute_filename
+                |> Path.of_string
+              in
+              match Path.drop_prefix ~prefix:root (Path.of_string module_path) with
+              | Some module_path -> module_path
+              | None ->
+                User_error.raise
+                  [ Pp.text "Module path not a descendent of workspace root." ])
           in
-          module_directives sctx module_path
+          module_directives sctx (Path.Source.of_local module_path)
         in
         Dune_rules.Toplevel.print_toplevel_init_file directives))
   ;;

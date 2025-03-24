@@ -11,19 +11,7 @@ Thus we first create a repo:
   $ git add -A
   $ git commit --quiet -m "Initial commit"
   $ cd ..
-
-  $ cat > dune-workspace <<EOF
-  > (lang dune 3.10)
-  > (repository
-  >  (name mock)
-  >  (source "git+file://$(pwd)/mock-opam-repository"))
-  > (lock_dir
-  >  (repositories mock))
-  > (context
-  >  (default
-  >   (name default)
-  >   (lock_dir dune.lock)))
-  > EOF
+  $ add_mock_repo_if_needed "git+file://$(pwd)/mock-opam-repository"
 
 We set the project up to depend on `foo`
 

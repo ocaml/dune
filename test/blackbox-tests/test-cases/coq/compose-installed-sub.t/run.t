@@ -42,10 +42,12 @@ so this also tests that it won't be a problem.
   Installing $TESTCASE_ROOT/lib/global/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
 
@@ -76,10 +78,12 @@ somewhere else.
   Deleting $TESTCASE_ROOT/lib/global/dune-package
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmi
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
+  Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Deleting $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
   Deleting empty directory $TESTCASE_ROOT/lib/global
@@ -93,10 +97,12 @@ somewhere else.
   Installing $TESTCASE_ROOT/another-place/lib/global/dune-package
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmi
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmxs
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/algebra/b_alg.vo
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
+  Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/another-place/lib/coq/user-contrib/global/field/b_field.vo
   $ rmdir lib/coq/user-contrib/global
@@ -195,10 +201,12 @@ with the loadpath semantics of Coq.
   Installing $TESTCASE_ROOT/lib/global/dune-package
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/.coq-native/Nglobal_algebra_b_alg.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/algebra/b_alg.vo
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmi
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/.coq-native/Nglobal_field_b_field.cmxs
+  Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.glob
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.v
   Installing $TESTCASE_ROOT/lib/coq/user-contrib/global/field/b_field.vo
 

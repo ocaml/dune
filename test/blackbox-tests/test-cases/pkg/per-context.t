@@ -29,4 +29,3 @@ TODO: versioning will be added once this feature is stable
 
   $ build_pkg test
   building from default
-  building from foo

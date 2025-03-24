@@ -13,7 +13,7 @@ module Dst : sig
   include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t -> Dyn.t
-  val install_path : Paths.t -> Section.t -> t -> Path.t
+  val install_path : Path.t Paths.t -> Section.t -> t -> Path.t
 end
 
 type kind =
@@ -58,8 +58,8 @@ val make : Section.t -> ?dst:string -> kind:kind -> Path.Build.t -> Path.Build.t
 val make_with_dst : Section.t -> Dst.t -> kind:kind -> src:Path.Build.t -> Path.Build.t t
 val set_src : _ t -> 'src -> 'src t
 val map_dst : 'a t -> f:(Dst.t -> Dst.t) -> 'a t
-val relative_installed_path : _ t -> paths:Paths.t -> Path.t
-val add_install_prefix : 'a t -> paths:Paths.t -> prefix:Path.t -> 'a t
+val relative_installed_path : _ t -> paths:Path.t Paths.t -> Path.t
+val add_install_prefix : 'a t -> paths:Path.t Paths.t -> prefix:Path.t -> 'a t
 val compare : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
 val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 val gen_install_file : Path.t t list -> string

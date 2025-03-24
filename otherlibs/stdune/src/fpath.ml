@@ -1,4 +1,11 @@
-let is_root t = Filename.dirname t = t
+let is_root =
+  if Sys.unix
+  then fun x -> x = "/" || x = "."
+  else
+    (* CR-someday rgrinberg: can we do better on windows? *)
+    fun s -> Filename.dirname s = s
+;;
+
 let initial_cwd = Stdlib.Sys.getcwd ()
 
 type mkdir_result =
@@ -113,10 +120,29 @@ let win32_unlink fn =
      | _ -> raise e)
 ;;
 
-let unlink = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink
+
+type unlink_status =
+  | Success
+  | Does_not_exist
+  | Is_a_directory
+  | Error of exn
+
+let unlink t =
+  match unlink_exn t with
+  | () -> Success
+  | exception exn ->
+    (match exn with
+     | Unix.Unix_error (ENOENT, _, _) -> Does_not_exist
+     | Unix.Unix_error (error, _, _) ->
+       (match error, Platform.OS.value with
+        | EISDIR, _ | EPERM, Darwin -> Is_a_directory
+        | _ -> Error exn)
+     | _ -> Error exn)
+;;
 
 let unlink_no_err t =
-  try unlink t with
+  try unlink_exn t with
   | _ -> ()
 ;;
 
@@ -157,11 +183,11 @@ let rm_rf fn =
   match Unix.lstat fn with
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
   | { Unix.st_kind = S_DIR; _ } -> rm_rf_dir fn
-  | _ -> unlink fn
+  | _ -> unlink_exn fn
 ;;
 
-let traverse_files =
-  let rec loop root stack acc f =
+let traverse =
+  let rec loop on_file on_dir root stack acc =
     match stack with
     | [] -> acc
     | dir :: dirs ->
@@ -172,18 +198,22 @@ let traverse_files =
          let stack, acc =
            List.fold_left entries ~init:(dirs, acc) ~f:(fun (stack, acc) (fname, kind) ->
              match (kind : Unix.file_kind) with
-             | S_DIR -> Filename.concat dir fname :: stack, acc
-             | S_REG -> stack, f ~dir fname acc
+             | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
+             | S_REG -> stack, on_file ~dir fname acc
              | S_LNK ->
                let path = Filename.concat dir_path fname in
                (match (Unix.stat path).st_kind with
                 | exception Unix.Unix_error (Unix.ENOENT, _, _) -> stack, acc
-                | S_DIR -> Filename.concat dir fname :: stack, acc
-                | S_REG -> stack, f ~dir fname acc
+                | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
+                | S_REG -> stack, on_file ~dir fname acc
                 | _ -> stack, acc)
              | _ -> stack, acc)
          in
-         loop root stack acc f)
+         loop on_file on_dir root stack acc)
   in
-  fun ~dir ~init ~f -> loop dir [ "" ] init f
+  fun ~dir ~init ~on_file ~on_dir -> loop on_file on_dir dir [ "" ] init
+;;
+
+let traverse_files ~dir ~init ~f =
+  traverse ~dir ~init ~on_dir:(fun ~dir:_ _fname acc -> acc) ~on_file:f
 ;;

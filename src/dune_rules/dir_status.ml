@@ -1,6 +1,5 @@
 open Import
 open Memo.O
-open Dune_file
 
 module Is_component_of_a_group_but_not_the_root = struct
   type t =
@@ -21,7 +20,7 @@ end
 module Group_root = struct
   type t =
     { source_dir : Source_tree.Dir.t
-    ; qualification : Loc.t * Dune_file.Include_subdirs.qualification
+    ; qualification : Loc.t * Include_subdirs.qualification
     ; dune_file : Dune_file.t
     ; components : Group_component.t list Memo.t
     }
@@ -53,17 +52,14 @@ let current_group dir = function
   | Is_component_of_a_group_but_not_the_root { group_root; _ } -> Group_root group_root
 ;;
 
-let get_include_subdirs stanzas =
-  List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
-    match Stanza.repr stanza with
-    | Include_subdirs.T (loc, x) ->
-      if Option.is_some acc
-      then
-        User_error.raise
-          ~loc
-          [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ];
-      Some (loc, x)
-    | _ -> acc)
+let get_include_subdirs include_stanzas =
+  match include_stanzas with
+  | [] -> None
+  | [ (loc, x) ] -> Some (loc, x)
+  | _ :: (loc, _) :: _ ->
+    User_error.raise
+      ~loc
+      [ Pp.text "The 'include_subdirs' stanza cannot appear more than once" ]
 ;;
 
 let find_module_stanza stanzas =
@@ -89,15 +85,35 @@ let error_no_module_consumer ~loc (qualification : Include_subdirs.qualification
     ]
 ;;
 
-let extract_directory_targets ~dir stanzas =
-  Memo.List.fold_left stanzas ~init:Path.Build.Map.empty ~f:(fun acc stanza ->
-    match Stanza.repr stanza with
-    | Rule_conf.T { targets = Static { targets = l; _ }; loc = rule_loc; _ } ->
-      List.fold_left l ~init:acc ~f:(fun acc (target, kind) ->
-        let loc = String_with_vars.loc target in
+let when_enabled ~dir ~enabled_if directory_targets =
+  if Path.Build.Map.is_empty directory_targets
+  then Memo.return directory_targets
+  else
+    (match enabled_if with
+     | Blang.Const const -> Memo.return const
+     | _ ->
+       (* Only evaluate the expander if the enabled_if field is
+          non-trivial to avoid memo cycles. If the enabled_if field is absent
+          from the "rule" stanza then its value will be [Const true]. *)
+       let* expander = Expander0.get ~dir in
+       Expander0.eval_blang expander enabled_if)
+    >>| function
+    | false -> Path.Build.Map.empty
+    | true -> directory_targets
+;;
+
+let directory_targets_of_rule ~dir { Rule_conf.targets; loc = rule_loc; enabled_if; _ } =
+  match targets with
+  | Infer ->
+    (* we don't infer directory targets *)
+    Memo.return Path.Build.Map.empty
+  | Static { targets; _ } ->
+    let directory_targets =
+      List.fold_left targets ~init:Path.Build.Map.empty ~f:(fun acc (target, kind) ->
         match (kind : Targets_spec.Kind.t) with
         | File -> acc
         | Directory ->
+          let loc = String_with_vars.loc target in
           (match String_with_vars.text_only target with
            | None ->
              User_error.raise
@@ -114,20 +130,89 @@ let extract_directory_targets ~dir stanzas =
                (* This will be checked when we interpret the stanza
                   completely, so just ignore this rule for now. *)
                acc))
-      |> Memo.return
+    in
+    when_enabled ~dir ~enabled_if directory_targets
+;;
+
+let jsoo_wasm_enabled ~jsoo_enabled ~dir ~(buildable : Buildable.t) =
+  let* expander = Expander0.get ~dir in
+  jsoo_enabled
+    ~eval:(Expander0.eval_blang expander)
+    ~dir
+    ~in_context:(Js_of_ocaml.In_context.make ~dir buildable.js_of_ocaml)
+    ~mode:Js_of_ocaml.Mode.Wasm
+;;
+
+let directory_targets_of_executables
+      ~jsoo_enabled
+      ~dir
+      { Executables.names; modes; enabled_if; buildable; _ }
+  =
+  let* directory_targets =
+    match Executables.Link_mode.(Map.mem modes wasm) with
+    | false -> Memo.return Path.Build.Map.empty
+    | true ->
+      jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
+      >>| (function
+       | false -> Path.Build.Map.empty
+       | true ->
+         Nonempty_list.to_list names
+         |> List.fold_left ~init:Path.Build.Map.empty ~f:(fun acc (_, name) ->
+           let dir_target = Path.Build.relative dir (name ^ Js_of_ocaml.Ext.wasm_dir) in
+           Path.Build.Map.set acc dir_target buildable.loc))
+  in
+  when_enabled ~dir ~enabled_if directory_targets
+;;
+
+let directory_targets_of_library
+      ~jsoo_enabled
+      ~dir
+      { Library.sub_systems; name; enabled_if; buildable; _ }
+  =
+  let* directory_targets =
+    match Sub_system_name.Map.find sub_systems Inline_tests_info.Tests.name with
+    | Some (Inline_tests_info.Tests.T { modes; loc; enabled_if; _ })
+      when Inline_tests_info.Mode_conf.Set.mem modes (Jsoo Wasm) ->
+      jsoo_wasm_enabled ~jsoo_enabled ~dir ~buildable
+      >>| (function
+       | false -> Path.Build.Map.empty
+       | true ->
+         let dir_target =
+           let inline_test_dir =
+             let lib_name = snd name in
+             Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
+           in
+           Path.Build.relative
+             inline_test_dir
+             (Inline_tests_info.inline_test_runner ^ Js_of_ocaml.Ext.wasm_dir)
+         in
+         Path.Build.Map.singleton dir_target loc)
+      >>= when_enabled ~dir ~enabled_if
+    | _ -> Memo.return Path.Build.Map.empty
+  in
+  when_enabled ~dir ~enabled_if directory_targets
+;;
+
+let extract_directory_targets ~jsoo_enabled ~dir stanzas =
+  Memo.parallel_map stanzas ~f:(fun stanza ->
+    match Stanza.repr stanza with
+    | Rule_conf.T rule -> directory_targets_of_rule ~dir rule
+    | Executables.T exes | Tests.T { exes; _ } ->
+      directory_targets_of_executables ~jsoo_enabled ~dir exes
+    | Library.T lib -> directory_targets_of_library ~jsoo_enabled ~dir lib
     | Coq_stanza.Theory.T m ->
       (* It's unfortunate that we need to pull in the coq rules here. But
          we don't have a generic mechanism for this yet. *)
       Coq_doc.coqdoc_directory_targets ~dir m
-      >>| Path.Build.Map.union acc ~f:(fun path loc1 loc2 ->
-        User_error.raise
-          ~loc:loc1
-          [ Pp.textf
-              "The following both define the same directory target: %s"
-              (Path.Build.to_string path)
-          ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
-          ])
-    | _ -> Memo.return acc)
+    | _ -> Memo.return Path.Build.Map.empty)
+  >>| Path.Build.Map.union_all ~f:(fun path loc1 loc2 ->
+    User_error.raise
+      ~loc:loc1
+      [ Pp.textf
+          "The following both define the same directory target: %s"
+          (Path.Build.to_string path)
+      ; Pp.enumerate ~f:Loc.pp_file_colon_line [ loc1; loc2 ]
+      ])
 ;;
 
 module rec DB : sig
@@ -148,16 +233,18 @@ end = struct
       | Lock_dir | Generated | Source_only _ | Standalone _ | Group_root _ ->
         Memo.return Appendable_list.empty
       | Is_component_of_a_group_but_not_the_root { stanzas; group_root = _ } ->
+        let* stanzas =
+          match stanzas with
+          | None -> Memo.return []
+          | Some dune_file -> Dune_file.stanzas dune_file
+        in
         walk_children st_dir ~dir ~local
         >>| Appendable_list.( @ )
               (Appendable_list.singleton
                  { Group_component.dir
                  ; path_to_group_root = List.rev local
                  ; source_dir = st_dir
-                 ; stanzas =
-                     (match stanzas with
-                      | None -> []
-                      | Some d -> d.stanzas)
+                 ; stanzas
                  })
     and walk_children st_dir ~dir ~local =
       (* TODO take account of directory targets *)
@@ -174,7 +261,9 @@ end = struct
   ;;
 
   let has_dune_file ~dir st_dir ~build_dir_is_project_root (d : Dune_file.t) =
-    match get_include_subdirs d.stanzas with
+    Dune_file.find_stanzas d Include_subdirs.key
+    >>| get_include_subdirs
+    >>= function
     | Some (loc, Include mode) ->
       let components = Memo.Lazy.create (fun () -> collect_group st_dir ~dir) in
       Memo.return
@@ -194,7 +283,8 @@ end = struct
          | No_group -> Memo.return @@ Standalone (st_dir, d)
          | Group_root group_root ->
            let+ () =
-             match find_module_stanza d.stanzas with
+             let* stanzas = Dune_file.stanzas d in
+             match find_module_stanza stanzas with
              | None -> Memo.return ()
              | Some loc ->
                get ~dir:group_root
@@ -204,6 +294,11 @@ end = struct
                 | _ -> Code_error.raise "impossible as we looked up a group root" [])
            in
            Is_component_of_a_group_but_not_the_root { stanzas = Some d; group_root })
+  ;;
+
+  let build_dir_is_project_root st_dir =
+    let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
+    Source_tree.Dir.path st_dir |> Path.Source.equal project_root
   ;;
 
   let get_impl dir =
@@ -225,16 +320,13 @@ end = struct
       let src_dir = Source_tree.Dir.path st_dir in
       Pkg_rules.lock_dir_path (Context_name.of_string ctx)
       >>| (function
-             | None -> false
-             | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
+       | None -> false
+       | Some of_ -> Path.Source.is_descendant ~of_ src_dir)
       >>= (function
        | true -> Memo.return Lock_dir
        | false ->
-         let build_dir_is_project_root =
-           let project_root = Source_tree.Dir.project st_dir |> Dune_project.root in
-           Source_tree.Dir.path st_dir |> Path.Source.equal project_root
-         in
-         Only_packages.stanzas_in_dir dir
+         let build_dir_is_project_root = build_dir_is_project_root st_dir in
+         Dune_load.stanzas_in_dir dir
          >>= (function
           | Some d -> has_dune_file ~dir st_dir ~build_dir_is_project_root d
           | None ->
@@ -254,16 +346,21 @@ end = struct
   ;;
 end
 
-let directory_targets t ~dir =
+let directory_targets t ~jsoo_enabled ~dir =
   match t with
   | Lock_dir | Generated | Source_only _ | Is_component_of_a_group_but_not_the_root _ ->
     Memo.return Path.Build.Map.empty
-  | Standalone (_, dune_file) -> extract_directory_targets ~dir dune_file.stanzas
+  | Standalone (_, dune_file) ->
+    Dune_file.stanzas dune_file >>= extract_directory_targets ~jsoo_enabled ~dir
   | Group_root { components; dune_file; _ } ->
     let f ~dir stanzas acc =
-      extract_directory_targets ~dir stanzas >>| Path.Build.Map.superpose acc
+      extract_directory_targets ~jsoo_enabled ~dir stanzas
+      >>| Path.Build.Map.superpose acc
     in
-    let* init = f ~dir dune_file.stanzas Path.Build.Map.empty in
+    let* init =
+      let* stanzas = Dune_file.stanzas dune_file in
+      f ~dir stanzas Path.Build.Map.empty
+    in
     components
     >>= Memo.List.fold_left ~init ~f:(fun acc { Group_component.dir; stanzas; _ } ->
       f ~dir stanzas acc)

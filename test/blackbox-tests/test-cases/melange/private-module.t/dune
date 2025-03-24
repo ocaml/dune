@@ -1,4 +1,5 @@
 (melange.emit
  (target private-module)
  (modules foo)
+ (emit_stdlib false)
  (libraries lib))

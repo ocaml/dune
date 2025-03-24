@@ -4,8 +4,8 @@ project root directory.
 "dune exec --watch" works fine when invoked at the root level
   $ DONE_FLAG=_build/done_flag
   $ dune exec --watch ./bin/main.exe $DONE_FLAG &
-  Success, waiting for filesystem changes...
   foo
+  Success, waiting for filesystem changes...
   $ PID=$!
 
 Wait for the $DONE_FLAG file to exist, then delete the file. This file is
@@ -19,8 +19,8 @@ Perform the same test above but first enter the "bin" directory.
   $ cd bin
   $ dune exec --root .. --watch ./bin/main.exe ../$DONE_FLAG &
   Entering directory '..'
-  Success, waiting for filesystem changes...
   foo
+  Success, waiting for filesystem changes...
   Leaving directory '..'
   $ PID=$!
   $ cd ..

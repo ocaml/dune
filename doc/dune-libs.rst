@@ -146,6 +146,15 @@ at which the current executable was built is as simple as:
              | None -> "n/a"
              | Some v -> Build_info.V1.Version.to_string v)
 
+You can specify the project version using the ``version`` field in the 
+``dune-project`` file. For example:
+
+.. code:: dune
+
+  (version 1.2.3)   
+
+For more details, refer to :doc:`/reference/dune-project/version`.
+
 For libraries and executables from development repositories that don't
 have version information written directly in the ``dune-project``
 file, the version is obtained by querying the version control

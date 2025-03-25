@@ -1,4 +1,6 @@
-When building a project in release mode we should ignore the lock directory.
+When building a project with -p we should ignore the lock directory. This is so
+that packages with lockdirs in their source archive can be built by opam
+without using locked dependencies.
 
   $ . ./helpers.sh
 
@@ -17,4 +19,4 @@ When building a project in release mode we should ignore the lock directory.
   >  (depends test))
   > EOF
 
-  $ dune build @install --release
+  $ dune build @install -p foo

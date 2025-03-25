@@ -242,7 +242,6 @@ module Options_implied_by_dash_p = struct
       ; "--always-show-command-line"
       ; "--promote-install-files"
       ; "--require-dune-project-file"
-      ; "--ignore-lock-dir"
       ; "--default-target"
       ; "@install"
       ]
@@ -294,7 +293,7 @@ module Options_implied_by_dash_p = struct
     Term.with_used_args
       Arg.(
         value
-        & alias_opt (fun s -> [ "--release"; "--only-packages"; s ])
+        & alias_opt (fun s -> [ "--release"; "--ignore-lock-dir"; "--only-packages"; s ])
         & info
             [ "p"; "for-release-of-packages" ]
             ~docs

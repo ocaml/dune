@@ -316,20 +316,28 @@ let move_targets_to_build_dir t ~should_be_skipped ~(targets : Targets.Validated
         then Path.rename (Path.build src_dir) (Path.build target)))
 ;;
 
-let failed_to_delete_sandbox dir reason =
-  User_warning.emit
+let failed_to_delete_sandbox ~warn dir reason =
+  let msg =
     [ Pp.textf "failed to delete sandbox in %s" (Path.Build.to_string_maybe_quoted dir)
     ; Pp.text "Reason:"
     ; reason
     ]
+  in
+  if warn then User_warning.emit msg else User_error.raise msg
 ;;
 
 let destroy t =
   maybe_async (fun () ->
-    try Path.rm_rf (Path.build t.dir) with
-    | Sys_error e -> failed_to_delete_sandbox t.dir (Pp.verbatim e)
-    | Unix.Unix_error (error, syscall, arg) ->
-      failed_to_delete_sandbox
-        t.dir
-        (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg)))
+    let rec loop cnt =
+      try Path.rm_rf (Path.build t.dir) with
+      | Sys_error e -> failed_to_delete_sandbox ~warn:false t.dir (Pp.verbatim e)
+      | Unix.Unix_error (error, syscall, arg) ->
+        let warn = error = Unix.EACCES && cnt > 0 in
+        failed_to_delete_sandbox
+          ~warn
+          t.dir
+          (Unix_error.Detailed.pp (Unix_error.Detailed.create error ~syscall ~arg));
+        loop (cnt - 1)
+    in
+    loop (if Sys.win32 then 30 else 0))
 ;;

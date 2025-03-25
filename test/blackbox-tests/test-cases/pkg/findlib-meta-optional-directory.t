@@ -52,13 +52,8 @@ Reproduces #11405
   >  (name foo))
   > EOF
 
+No errors here as 'yes' actually exists
   $ dune build foo.exe
-  Error: This rule defines a directory target "default/.pkg/mypkg/target" that
-  matches the requested path "default/.pkg/mypkg/target/lib/mypkg/no" but the
-  rule's action didn't produce it
-  [1]
-
-No difference between below and above even though 'yes' actually exists.
 
   $ cat >dune <<EOF
   > (executable
@@ -66,8 +61,15 @@ No difference between below and above even though 'yes' actually exists.
   >  (name foo))
   > EOF
 
+Clearer error here as we really depend on non-existing 'no'
   $ dune build foo.exe
-  Error: This rule defines a directory target "default/.pkg/mypkg/target" that
-  matches the requested path "default/.pkg/mypkg/target/lib/mypkg/no" but the
-  rule's action didn't produce it
+  File "dune", line 2, characters 12-20:
+  2 |  (libraries mypkg.no)
+                  ^^^^^^^^
+  Error: Library "mypkg.no" in
+  _build/_private/default/.pkg/mypkg/target/lib/mypkg/no is hidden (unsatisfied
+  'exists_if').
+  -> required by _build/default/.foo.eobjs/byte/dune__exe__Foo.cmi
+  -> required by _build/default/.foo.eobjs/native/dune__exe__Foo.cmx
+  -> required by _build/default/foo.exe
   [1]

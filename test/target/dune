@@ -1,0 +1,10 @@
+
+(test
+ (name bar)               
+ (modules bar)         
+ (libraries base))
+
+(alias
+ (name runtest)
+ (deps bar.ml))
+

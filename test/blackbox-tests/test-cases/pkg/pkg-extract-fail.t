@@ -17,9 +17,9 @@ build this package and check for sufficient error handling
   $ solve foo
   Solution for dune.lock:
   - foo.0.0.1
-  $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
+  $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
   Error: failed to extract 'corrupted.tar'
-  Reason: tar failed with non-zero exit code X and output:
+  Reason: 'tar' failed with non-zero exit code X and output:
 
 Repeat the same test as above but ensure that error output from gzip is
 captured
@@ -38,7 +38,7 @@ captured
 
   $ build_pkg foo 2>&1 |  sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
   Error: failed to extract 'corrupted.tar.gz'
-  Reason: tar failed with non-zero exit code X and output:
+  Reason: 'tar' failed with non-zero exit code X and output:
 
 Now try another local package but this time of zip format to test if stderr is
 captured from the unzip tool. Note that preprocessing with sed here makes the
@@ -59,4 +59,4 @@ unzip error message a bit less clear
 
   $ build_pkg foo 2>&1 | sed -ne '/Error:/,$ p' | sed '/^Reason/ q' | sed "s/'[0-9]*'/X/"
   Error: failed to extract 'corrupted.zip'
-  Reason: unzip failed with non-zero exit code X and output:
+  Reason: 'unzip' failed with non-zero exit code X and output:

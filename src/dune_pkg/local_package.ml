@@ -157,12 +157,11 @@ let of_package (t : Dune_lang.Package.t) =
         User_warning.emit
           ~hints
           [ Pp.textf
-              "Package %s loaded from `dune-project` but does not declare any \
+              "Package %S loaded from `dune-project` but does not declare any \
                dependencies"
-              (t |> Package.name |> Package_name.to_string)
+              name
           ];
         []
-      | [], Exists false | [], Generated -> []
       | otherwise, _ -> otherwise
     in
     let dependencies = Dependency_formula.of_dependencies depends in

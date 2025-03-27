@@ -112,10 +112,12 @@ let extract t ~archive ~target =
       let stderr_lines = Io.input_lines err_channel in
       User_error.raise
         [ Pp.textf "failed to extract '%s'" (Path.basename archive)
-        ; Pp.textf
-            "Reason: %s failed with non-zero exit code '%d' and output:"
-            (Path.basename command.bin)
-            exit_code
+        ; Pp.concat
+            ~sep:Pp.space
+            [ Pp.text "Reason:"
+            ; User_message.command @@ Path.basename command.bin
+            ; Pp.textf "failed with non-zero exit code '%d' and output:" exit_code
+            ]
         ; Pp.enumerate stderr_lines ~f:Pp.text
         ])
 ;;

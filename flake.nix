@@ -167,7 +167,7 @@
           doc =
             pkgs.mkShell {
               buildInputs = (with pkgs;
-                let pythonPackages = python310Packages; in
+                let pythonPackages = python311Packages; in
                 [
                   sphinx
                   sphinx-autobuild

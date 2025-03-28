@@ -167,13 +167,14 @@
           doc =
             pkgs.mkShell {
               buildInputs = (with pkgs;
+                let pythonPackages = python310Packages; in
                 [
                   sphinx
                   sphinx-autobuild
-                  python310Packages.sphinx-copybutton
-                  python310Packages.furo
-                  python310Packages.sphinx-design
-                  python310Packages.myst-parser
+                  pythonPackages.sphinx-copybutton
+                  pythonPackages.furo
+                  pythonPackages.sphinx-design
+                  pythonPackages.myst-parser
                 ]
               );
               meta.description = ''

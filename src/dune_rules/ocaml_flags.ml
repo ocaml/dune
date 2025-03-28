@@ -64,11 +64,35 @@ let default_flags ~dune_version ~profile =
 
 type 'a t' =
   { common : 'a
+  ; keywords : string option * string list
   ; specific : 'a Lib_mode.Map.t
   }
 
-let equal f { common; specific } t =
-  f common t.common && Lib_mode.Map.equal f specific t.specific
+module Keywords = struct
+  let empty = None, []
+  let standard = empty
+
+  let equal (v1, e1) (v2, e2) =
+    Option.equal String.equal v1 v2 && List.equal String.equal e1 e2
+  ;;
+
+  let to_string_list t =
+    match t.keywords with
+    | None, [] -> []
+    | Some version, [] -> "-keywords" :: [ version ]
+    | None, extra_l ->
+      let keywords_arg = "" :: extra_l |> String.concat ~sep:"+" in
+      "-keywords" :: [ keywords_arg ]
+    | Some version, extra_l ->
+      let keywords_arg = version :: extra_l |> String.concat ~sep:"+" in
+      "-keywords" :: [ keywords_arg ]
+  ;;
+end
+
+let equal f { common; keywords; specific } t =
+  f common t.common
+  && Lib_mode.Map.equal f specific t.specific
+  && Keywords.equal keywords t.keywords
 ;;
 
 module Spec = struct
@@ -78,11 +102,20 @@ module Spec = struct
 
   let standard =
     { common = Ordered_set_lang.Unexpanded.standard
+    ; keywords = Keywords.standard
     ; specific = Lib_mode.Map.make_all Ordered_set_lang.Unexpanded.standard
     }
   ;;
 
-  let make ~common ~specific : t = { common; specific }
+  let make ~common ~keywords ~specific : t = { common; keywords; specific }
+
+  let decode_keywords =
+    let open Dune_lang.Decoder in
+    fields
+      (let+ version = field_o "version" string
+       and+ extra = field_o "extra" (repeat string) in
+       version, Option.value extra ~default:[])
+  ;;
 
   let decode =
     let open Dune_lang.Decoder in
@@ -90,13 +123,18 @@ module Spec = struct
     let+ common = field_oslu "flags"
     and+ byte = field_oslu "ocamlc_flags"
     and+ native = field_oslu "ocamlopt_flags"
+    and+ keywords =
+      field
+        "keywords"
+        (Dune_lang.Syntax.since Stanza.syntax (3, 18) >>> decode_keywords)
+        ~default:Keywords.empty
     and+ melange =
       field_oslu
         ~check:(Dune_lang.Syntax.since Melange_stanzas.syntax (0, 1))
         "melange.compile_flags"
     in
     let specific = Lib_mode.Map.make ~byte ~native ~melange in
-    { common; specific }
+    { common; keywords; specific }
   ;;
 end
 
@@ -104,13 +142,14 @@ type t = string list Action_builder.t t'
 
 let empty =
   let build = Action_builder.return [] in
-  { common = build; specific = Lib_mode.Map.make_all build }
+  { common = build; keywords = Keywords.empty; specific = Lib_mode.Map.make_all build }
 ;;
 
 let of_list l = { empty with common = Action_builder.return l }
 
 let default ~dune_version ~profile =
   { common = Action_builder.return (default_flags ~dune_version ~profile)
+  ; keywords = Keywords.standard
   ; specific =
       { ocaml =
           { byte = Action_builder.return default_ocamlc_flags
@@ -126,6 +165,7 @@ let make ~spec ~default ~eval =
     Action_builder.memoize ~cutoff:(List.equal String.equal) name (eval x ~standard)
   in
   { common = f "common flags" spec.common default.common
+  ; keywords = spec.keywords
   ; specific =
       { ocaml =
           { byte = f "ocamlc flags" spec.specific.ocaml.byte default.specific.ocaml.byte
@@ -154,6 +194,7 @@ let map_common t ~f =
 let append_common t flags = map_common t ~f:(fun l -> l @ flags)
 let with_vendored_warnings t = append_common t vendored_warnings
 let with_vendored_alerts t = append_common t vendored_alerts
+let with_keywords t = Keywords.to_string_list t |> append_common t
 
 let dump t =
   let+ common = t.common

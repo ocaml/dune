@@ -192,7 +192,7 @@ let create
     ; stdlib
     }
   in
-  let+ dep_graphs = Dep_rules.rules ocamldep_modules_data
+  let+ dep_graphs = Dep_rules.rules ~flags ocamldep_modules_data
   and+ bin_annot =
     match bin_annot with
     | Some b -> Memo.return b

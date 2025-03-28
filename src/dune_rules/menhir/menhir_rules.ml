@@ -274,7 +274,10 @@ module Run (P : PARAMS) = struct
       |> Compilation_context.without_bin_annot
     in
     let* deps =
-      Dep_rules.for_module (Compilation_context.ocamldep_modules_data cctx) mock_module
+      Dep_rules.for_module
+        ~flags:Ocaml_flags.empty
+        (Compilation_context.ocamldep_modules_data cctx)
+        mock_module
     in
     let* () =
       Module_compilation.ocamlc_i ~deps cctx mock_module ~output:(inferred_mli base)

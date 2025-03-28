@@ -290,9 +290,9 @@ let group =
   let doc = "Command group for initializing Dune components." in
   let synopsis =
     Common.command_synopsis
-      [ "init proj NAME [PATH] [OPTION]... "
-      ; "init exec NAME [PATH] [OPTION]... "
-      ; "init lib NAME [PATH] [OPTION]... "
+      [ "init project NAME [PATH] [OPTION]... "
+      ; "init executable NAME [PATH] [OPTION]... "
+      ; "init library NAME [PATH] [OPTION]... "
       ; "init test NAME [PATH] [OPTION]... "
       ]
   in
@@ -320,15 +320,15 @@ let group =
         [ ( {|Generate a project skeleton for an executable named `myproj' in a
             new directory named `myproj', depending on the bos library and
             using inline tests along with ppx_inline_test |}
-          , {|dune init proj myproj --libs bos --ppx ppx_inline_test --inline-tests|} )
+          , {|dune init project myproj --libs bos --ppx ppx_inline_test --inline-tests|} )
         ; ( {|Configure an executable component named `myexe' in a dune file in the
             current directory|}
-          , {|dune init exe myexe|} )
+          , {|dune init executable myexe|} )
         ; ( {|Configure a library component named `mylib' in a dune file in the ./src
             directory depending on the core and cmdliner libraries, the ppx_let
             and ppx_inline_test preprocessors, and declared as using inline
             tests|}
-          , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
+          , {|dune init library mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests|}
           )
         ; ( {|Configure a test component named `mytest' in a dune file in the
             ./test directory that depends on `mylib'|}

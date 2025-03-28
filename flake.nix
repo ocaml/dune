@@ -5,7 +5,6 @@
     melange = {
       url = "github:melange-re/melange/refs/tags/5.0.0-52";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
     ocaml-overlays = {
       url = "github:nix-ocaml/nix-overlays";

@@ -18,8 +18,8 @@ end
 
 module Static : sig
   type 'path t =
-    { targets : ('path * Kind.t) list
-    ; multiplicity : Multiplicity.t
+    { targets : ('path * Kind.t * string option) list;
+     multiplicity : Multiplicity.t
     }
 end
 
@@ -34,3 +34,5 @@ type 'a t =
 val field
   :  allow_directory_targets:bool
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
+  
+val get_target_by_name : string -> String_with_vars.t option

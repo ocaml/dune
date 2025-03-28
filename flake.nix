@@ -79,6 +79,14 @@
         [ file mercurial ]
         ++ lib.optionals stdenv.isLinux [ strace ];
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
+      
+      docInputs = with pkgs.python3.pkgs; [
+        sphinx-autobuild
+        furo
+        sphinx-copybutton
+        sphinx-design
+        myst-parser
+      ];
     in
     {
       formatter = pkgs.nixpkgs-fmt;
@@ -124,14 +132,8 @@
                 else pkgs;
 
               inherit (pkgs') writeScriptBin stdenv;
+              inherit docInputs;
 
-              docInputs = with pkgs'.python3.pkgs; [
-                sphinx-autobuild
-                furo
-                sphinx-copybutton
-                sphinx-design
-                myst-parser
-              ];
               duneScript =
                 writeScriptBin "dune" ''
                   #!${stdenv.shell}
@@ -166,17 +168,7 @@
         {
           doc =
             pkgs.mkShell {
-              buildInputs = (with pkgs;
-                let pythonPackages = python311Packages; in
-                [
-                  sphinx
-                  sphinx-autobuild
-                  pythonPackages.sphinx-copybutton
-                  pythonPackages.furo
-                  pythonPackages.sphinx-design
-                  pythonPackages.myst-parser
-                ]
-              );
+              buildInputs = docInputs;
               meta.description = ''
                 Provides a shell environment suitable for building the Dune
                 documentation website (e.g. `make doc`).

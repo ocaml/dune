@@ -68,7 +68,7 @@ type metadata =
   { loc : Loc.t option
   ; annots : User_message.Annots.t
   ; name : string option
-  (** name when emitting stats. defaults to the basename of the executable *)
+    (** name when emitting stats. defaults to the basename of the executable *)
   ; categories : string list (** additional categories when emitting stats *)
   ; purpose : purpose
   }

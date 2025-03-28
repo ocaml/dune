@@ -403,6 +403,7 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 We can build and run the resulting executable:
 
@@ -513,6 +514,7 @@ And the opam file will be generated as expected
     ]
   ]
   dev-repo: "git+https://github.com/username/reponame.git"
+  x-maintenance-intent: ["(latest)"]
 
 And we we can run the tests:
 

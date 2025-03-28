@@ -21,7 +21,7 @@ let lockdir_regenerate_hints =
 let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
   let from_local_packages =
     Package_name.Map.map local_packages ~f:(fun (local_package : Local_package.t) ->
-      Option.value local_package.version ~default:Lock_dir.Pkg_info.default_version)
+      local_package.version)
   in
   let from_lock_dir =
     Package_name.Map.map lock_dir.packages ~f:(fun pkg -> pkg.info.version)
@@ -48,14 +48,12 @@ let version_by_package_name local_packages (lock_dir : Lock_dir.t) =
 let concrete_dependencies_of_local_package t local_package_name ~with_test =
   let local_package = Package_name.Map.find_exn t.local_packages local_package_name in
   match
-    Local_package.(
-      for_solver local_package
-      |> (fun x -> x.dependencies)
-      |> Dependency_formula.to_filtered_formula)
+    (Local_package.for_solver local_package).dependencies
+    |> Dependency_formula.to_filtered_formula
     |> Resolve_opam_formula.filtered_formula_to_package_names
          ~with_test
-         (Solver_env.to_env t.solver_env)
-         t.version_by_package_name
+         ~env:(Solver_env.to_env t.solver_env)
+         ~packages:t.version_by_package_name
   with
   | Ok { regular; post = _ } -> regular
   | Error (`Formula_could_not_be_satisfied unsatisfied_formula_hints) ->
@@ -87,8 +85,8 @@ let all_non_local_dependencies_of_local_packages t =
 ;;
 
 let check_for_unnecessary_packges_in_lock_dir
-  lock_dir
-  all_non_local_dependencies_of_local_packages
+      lock_dir
+      all_non_local_dependencies_of_local_packages
   =
   let unneeded_packages_in_lock_dir =
     let locked_transitive_closure_of_local_package_dependencies =
@@ -198,9 +196,10 @@ let validate_dependency_hash local_packages ~saved_dependency_hash =
           (Package_name.to_string any_non_local_dependency_name)
       ]
   | Some (loc, lock_dir_dependency_hash), Some non_local_dependency_hash ->
-    if Local_package.Dependency_hash.equal
-         lock_dir_dependency_hash
-         non_local_dependency_hash
+    if
+      Local_package.Dependency_hash.equal
+        lock_dir_dependency_hash
+        non_local_dependency_hash
     then ()
     else
       User_error.raise

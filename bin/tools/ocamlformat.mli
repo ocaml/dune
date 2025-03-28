@@ -1,3 +1,9 @@
 open! Import
 
-val command : unit Cmd.t
+module Exec : sig
+  val command : unit Cmd.t
+end
+
+module Which : sig
+  val command : unit Cmd.t
+end

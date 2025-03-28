@@ -180,28 +180,28 @@ let tag_results { size; clean; zero } =
     - stack_size - not very useful
     - forced_collections - only available in OCaml >= 4.12 *)
 let display_clean_and_zero_with_sandboxing
-  ({ elapsed_time
-   ; user_cpu_time
-   ; system_cpu_time
-   ; minor_words
-   ; promoted_words
-   ; major_words
-   ; minor_collections
-   ; major_collections
-   ; heap_words
-   ; heap_chunks
-   ; live_words
-   ; live_blocks
-   ; free_words
-   ; free_blocks
-   ; largest_free
-   ; fragments = _
-   ; compactions
-   ; top_heap_words
-   ; stack_size = _
-   } :
-    _ Metrics.t)
-  (zero : _ Metrics.t)
+      ({ elapsed_time
+       ; user_cpu_time
+       ; system_cpu_time
+       ; minor_words
+       ; promoted_words
+       ; major_words
+       ; minor_collections
+       ; major_collections
+       ; heap_words
+       ; heap_chunks
+       ; live_words
+       ; live_blocks
+       ; free_words
+       ; free_blocks
+       ; largest_free
+       ; fragments = _
+       ; compactions
+       ; top_heap_words
+       ; stack_size = _
+       } :
+        _ Metrics.t)
+      (zero : _ Metrics.t)
   =
   let display what units clean zero =
     { Output.name = what

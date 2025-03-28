@@ -3,8 +3,7 @@ let is_root =
   then fun x -> x = "/" || x = "."
   else
     (* CR-someday rgrinberg: can we do better on windows? *)
-    fun s ->
-    Filename.dirname s = s
+    fun s -> Filename.dirname s = s
 ;;
 
 let initial_cwd = Stdlib.Sys.getcwd ()
@@ -118,7 +117,15 @@ let win32_unlink fn =
        Unix.chmod fn 0o666;
        Unix.unlink fn
      with
-     | _ -> raise e)
+     | Unix.Unix_error (Unix.EACCES, _, _) ->
+       (* On Windows a virus scanner frequently has a lock on new executables for a short while - just retry *)
+       let rec retry_loop cnt =
+         Unix.sleep 1;
+         try Unix.unlink fn with
+         | Unix.Unix_error (Unix.EACCES, _, _) ->
+           if cnt > 0 then retry_loop (cnt - 1) else raise e
+       in
+       retry_loop 30)
 ;;
 
 let unlink_exn = if Stdlib.Sys.win32 then win32_unlink else Unix.unlink

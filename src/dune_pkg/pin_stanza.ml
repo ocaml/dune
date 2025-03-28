@@ -290,9 +290,10 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
       assigned := Package_name.Map.add_exn !assigned package.name (package, stack);
       `Continue
     | Some (assigned, prefix) ->
-      if Stack.is_prefix stack ~prefix
-         || (OpamUrl.equal (snd assigned.url) (snd package.url)
-             && Package_version.equal package.version assigned.version)
+      if
+        Stack.is_prefix stack ~prefix
+        || (OpamUrl.equal (snd assigned.url) (snd package.url)
+            && Package_version.equal package.version assigned.version)
       then `Skip
       else
         (* CR-rgrinberg: we need to cancel all the other fibers *)
@@ -348,8 +349,9 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
         ]
     | Some pkg ->
       let resolved_package =
+        let local_package = Local_package.of_package pkg in
         let opam_file =
-          Local_package.of_package pkg
+          local_package
           |> Local_package.for_solver
           |> Local_package.For_solver.to_opam_file
           |> OpamFile.OPAM.with_url (OpamFile.URL.create (snd package.url))
@@ -359,7 +361,11 @@ let resolve (t : DB.t) ~(scan_project : Scan_project.t)
             (Package_name.to_opam_package_name package.name)
             (Package_version.to_opam_package_version package.version)
         in
-        Resolved_package.dune_package package.loc opam_file opam_package
+        Resolved_package.local_package
+          ~command_source:local_package.command_source
+          package.loc
+          opam_file
+          opam_package
       in
       resolve package.name resolved_package
   in

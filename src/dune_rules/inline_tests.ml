@@ -81,16 +81,13 @@ include Sub_system.Register_end_point (struct
       in
       let loc = lib.buildable.loc in
       let lib_name = snd lib.name in
-      let inline_test_name =
-        sprintf "%s.inline-tests" (Lib_name.Local.to_string lib_name)
+      let inline_test_dir =
+        Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
       in
-      let inline_test_dir = Path.Build.relative dir ("." ^ inline_test_name) in
-      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:inline_test_name in
-      let name =
-        sprintf "inline_test_runner_%s" (Lib_name.Local.to_string (snd lib.name))
-      in
+      let runner_name = Inline_tests_info.inline_test_runner in
+      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:"t" in
       let main_module =
-        let name = Module_name.of_string name in
+        let name = Module_name.of_string "main" in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
       let modules = Modules.With_vlib.singleton_exe main_module in
@@ -194,10 +191,11 @@ include Sub_system.Register_end_point (struct
         let+ jsoo_is_whole_program =
           Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
         in
-        if List.exists modes ~f:(fun mode ->
-             match (mode : Mode_conf.t) with
-             | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
-             | Native | Best | Byte -> false)
+        if
+          List.exists modes ~f:(fun mode ->
+            match (mode : Mode_conf.t) with
+            | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
+            | Native | Best | Byte -> false)
         then Exe.Linkage.byte_for_jsoo :: l
         else l
       in
@@ -214,7 +212,7 @@ include Sub_system.Register_end_point (struct
         in
         Exe.build_and_link
           cctx
-          ~program:{ name; main_module_name = Module.name main_module; loc }
+          ~program:{ name = runner_name; main_module_name = Module.name main_module; loc }
           ~linkages
           ~link_args
           ~promote:None
@@ -271,7 +269,7 @@ include Sub_system.Register_end_point (struct
           | Native | Best | Byte -> None
           | Jsoo _ -> Some Jsoo_rules.runner
         in
-        let exe = Path.build (Path.Build.relative inline_test_dir (name ^ ext)) in
+        let exe = Path.build (Path.Build.relative inline_test_dir (runner_name ^ ext)) in
         let open Action_builder.O in
         let+ action =
           match custom_runner with
@@ -296,7 +294,17 @@ include Sub_system.Register_end_point (struct
              | Error _ -> Action_builder.return action
              | Ok p -> Action_builder.path p >>> Action_builder.return action)
         and+ () = deps
-        and+ () = Action_builder.path exe in
+        and+ () = Action_builder.path exe
+        and+ () =
+          match mode with
+          | Native | Best | Byte | Jsoo JS -> Action_builder.return ()
+          | Jsoo Wasm ->
+            Action_builder.path
+              (Path.build
+                 (Path.Build.relative
+                    inline_test_dir
+                    (runner_name ^ Js_of_ocaml.Ext.wasm_dir)))
+        in
         Action.chdir (Path.build dir) action
       in
       let flags partition : string list Action_builder.t =

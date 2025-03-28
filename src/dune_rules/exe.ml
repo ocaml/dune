@@ -79,10 +79,10 @@ module Linkage = struct
   let cma_flags = [ "-a" ]
 
   let of_user_config
-    (ocaml : Ocaml_toolchain.t)
-    ~dynamically_linked_foreign_archives
-    ~loc
-    (m : Executables.Link_mode.t)
+        (ocaml : Ocaml_toolchain.t)
+        ~dynamically_linked_foreign_archives
+        ~loc
+        (m : Executables.Link_mode.t)
     =
     match m with
     | Jsoo JS -> js
@@ -158,31 +158,32 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
 ;;
 
 let link_exe
-  ~loc
-  ~name
-  ~(linkage : Linkage.t)
-  ~linkage_mode
-  ~cm_files
-  ~link_time_code_gen
-  ~promote
-  ~link_args
-  ~o_files
-  ?(sandbox = Sandbox_config.default)
-  cctx
+      ~loc
+      ~name
+      ~(linkage : Linkage.t)
+      ~linkage_mode
+      ~cm_files
+      ~link_time_code_gen
+      ~promote
+      ~link_args
+      ~o_files
+      ?(sandbox = Sandbox_config.default)
+      cctx
   =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let dir = Compilation_context.dir cctx in
   let mode = Link_mode.mode linkage_mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
-  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
-  let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   let* action_with_targets =
     let ocaml_flags = Ocaml_flags.get (Compilation_context.flags cctx) (Ocaml mode) in
     let prefix =
       Cm_files.top_sorted_objects_and_cms cm_files ~mode |> Action_builder.dyn_paths_unit
     in
-    let+ fdo_linker_script_flags = Fdo.Linker_script.flags fdo_linker_script in
+    let+ fdo_linker_script_flags =
+      let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
+      Fdo.Linker_script.flags fdo_linker_script
+    in
     let open Action_builder.With_targets.O in
     (* NB. Below we take care to pass [link_args] last on the command-line for
        the following reason: [link_args] contains the list of foreign libraries
@@ -225,7 +226,9 @@ let link_exe
                      ~mode:linkage_mode
                  ])
           ; Deps o_files
-          ; Dyn (Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+          ; Dyn
+              (let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
+               Action_builder.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
           ; fdo_linker_script_flags
           ; Dyn link_args
           ]
@@ -243,15 +246,15 @@ let link_exe
 ;;
 
 let link_js
-  ~name
-  ~loc
-  ~obj_dir
-  ~top_sorted_modules
-  ~link_args
-  ~promote
-  ~link_time_code_gen
-  ~jsoo_mode
-  cctx
+      ~name
+      ~loc
+      ~obj_dir
+      ~top_sorted_modules
+      ~link_args
+      ~promote
+      ~link_time_code_gen
+      ~jsoo_mode
+      cctx
   =
   let in_context =
     Compilation_context.js_of_ocaml cctx
@@ -283,14 +286,14 @@ let link_js
 type dep_graphs = { for_exes : Module.t list Action_builder.t list }
 
 let link_many
-  ?(link_args = Action_builder.return Command.Args.empty)
-  ?o_files
-  ?(embed_in_plugin_libraries = [])
-  ?sandbox
-  ~programs
-  ~linkages
-  ~promote
-  cctx
+      ?(link_args = Action_builder.return Command.Args.empty)
+      ?o_files
+      ?(embed_in_plugin_libraries = [])
+      ?sandbox
+      ~programs
+      ~linkages
+      ~promote
+      cctx
   =
   let o_files =
     match o_files with
@@ -379,14 +382,14 @@ let link_many
 ;;
 
 let build_and_link_many
-  ?link_args
-  ?o_files
-  ?embed_in_plugin_libraries
-  ?sandbox
-  ~programs
-  ~linkages
-  ~promote
-  cctx
+      ?link_args
+      ?o_files
+      ?embed_in_plugin_libraries
+      ?sandbox
+      ~programs
+      ~linkages
+      ~promote
+      cctx
   =
   let* () = Module_compilation.build_all cctx in
   let* () =
@@ -405,14 +408,14 @@ let build_and_link_many
 ;;
 
 let build_and_link
-  ?link_args
-  ?o_files
-  ?embed_in_plugin_libraries
-  ?sandbox
-  ~program
-  ~linkages
-  ~promote
-  cctx
+      ?link_args
+      ?o_files
+      ?embed_in_plugin_libraries
+      ?sandbox
+      ~program
+      ~linkages
+      ~promote
+      cctx
   =
   build_and_link_many
     ?link_args

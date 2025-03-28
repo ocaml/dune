@@ -185,17 +185,18 @@ let js_targets_of_libs ~sctx ~scope ~module_systems ~target_dir libs =
 ;;
 
 let build_js
-  ~loc
-  ~dir
-  ~pkg_name
-  ~mode
-  ~module_systems
-  ~output
-  ~obj_dir
-  ~sctx
-  ~includes
-  ~local_modules_and_obj_dir
-  m
+      ~loc
+      ~dir
+      ~pkg_name
+      ~mode
+      ~module_systems
+      ~output
+      ~obj_dir
+      ~sctx
+      ~includes
+      ~(compile_flags : Ocaml_flags.t)
+      ~local_modules_and_obj_dir
+      m
   =
   let* compiler = Melange_binary.melc sctx ~loc:(Some loc) ~dir in
   Memo.parallel_iter module_systems ~f:(fun (module_system, js_ext) ->
@@ -218,6 +219,7 @@ let build_js
           compiler
           [ Command.Args.S obj_dir
           ; Command.Args.as_any includes
+          ; Command.Args.dyn (Ocaml_flags.get compile_flags Melange)
           ; As melange_package_args
           ; A "-o"
           ; Target output
@@ -259,13 +261,20 @@ let add_deps_to_aliases ?(alias = Melange_stanzas.Emit.implicit_alias) ~dir deps
   Memo.parallel_iter ~f:attach [ alias; dune_default_alias ]
 ;;
 
+let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
+  let specific = Lib_mode.Map.make_all mel.compile_flags in
+  Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
+  |> Ocaml_flags_db.ocaml_flags sctx ~dir
+  >>| Ocaml_flags.allow_only_melange
+;;
+
 let setup_emit_cmj_rules
-  ~sctx
-  ~dir
-  ~scope
-  ~expander
-  ~dir_contents
-  (mel : Melange_stanzas.Emit.t)
+      ~sctx
+      ~dir
+      ~scope
+      ~expander
+      ~dir_contents
+      (mel : Melange_stanzas.Emit.t)
   =
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
@@ -297,12 +306,7 @@ let setup_emit_cmj_rules
       Modules.With_vlib.modules modules, pp
     in
     let requires_link = Lib.Compile.requires_link compile_info in
-    let* flags =
-      let specific = Lib_mode.Map.make_all mel.compile_flags in
-      Ocaml_flags.Spec.make ~common:Ordered_set_lang.Unexpanded.standard ~specific
-      |> Ocaml_flags_db.ocaml_flags sctx ~dir
-      >>| Ocaml_flags.allow_only_melange
-    in
+    let* flags = melange_compile_flags ~sctx ~dir mel in
     let* cctx =
       let direct_requires = Lib.Compile.direct_requires compile_info in
       Compilation_context.create
@@ -451,14 +455,14 @@ let modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope (mel : Melange_stanzas
 ;;
 
 let setup_entries_js
-  ~sctx
-  ~dir
-  ~dir_contents
-  ~scope
-  ~requires_link
-  ~target_dir
-  ~mode
-  (mel : Melange_stanzas.Emit.t)
+      ~sctx
+      ~dir
+      ~dir_contents
+      ~scope
+      ~requires_link
+      ~target_dir
+      ~mode
+      (mel : Melange_stanzas.Emit.t)
   =
   let* local_modules, modules_for_js, local_obj_dir =
     modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
@@ -473,7 +477,7 @@ let setup_entries_js
     in
     let requires_link = Resolve.return requires_link in
     cmj_includes ~requires_link ~scope lib_config
-  in
+  and* compile_flags = melange_compile_flags ~sctx ~dir mel in
   let output = `Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
@@ -493,6 +497,7 @@ let setup_entries_js
       ~obj_dir
       ~sctx
       ~includes
+      ~compile_flags
       ~local_modules_and_obj_dir
       m)
 ;;
@@ -556,7 +561,7 @@ let setup_js_rules_libraries =
           |> Resolve.Memo.map ~f:(with_vlib_implementations lib)
         in
         cmj_includes ~requires_link ~scope lib_config
-      in
+      and* compile_flags = melange_compile_flags ~sctx ~dir mel in
       let+ () =
         setup_runtime_assets_rules
           sctx
@@ -571,56 +576,72 @@ let setup_js_rules_libraries =
         | None -> Memo.return ()
         | Some vlib ->
           let* vlib = Resolve.Memo.read_memo vlib in
-          let* includes =
-            let+ requires_link =
-              let+ requires_link =
-                Lib.Compile.for_lib
-                  ~allow_overlaps:mel.allow_overlapping_dependencies
-                  (Scope.libs scope)
-                  vlib
-                |> Lib.Compile.requires_link
-                |> Memo.Lazy.force
-              in
-              let open Resolve.O in
-              let+ requires_link = requires_link in
-              (* Whenever a `concrete_lib` implementation contains a field
-                 `(implements virt_lib)`, we also set up the JS targets for the
-                 modules defined in `virt_lib`.
+          let vlib_output = output_of_lib ~target_dir vlib in
+          (match vlib_output, output with
+           | `Public_library _, `Private_library_or_emit _ ->
+             let info = Lib.info lib in
+             User_error.raise
+               ~loc:(Lib_info.loc info)
+               [ Pp.text
+                   "Dune doesn't currently support building private implementations of \
+                    virtual public libaries for `(modes melange)`"
+               ]
+               ~hints:
+                 [ Pp.textf
+                     "Add a `public_name` to the library `%s'."
+                     (Lib_name.to_string (Lib_info.name info))
+                 ]
+           | `Public_library _, `Public_library _ | `Private_library_or_emit _, _ ->
+             let* includes =
+               let+ requires_link =
+                 let+ requires_link =
+                   Lib.Compile.for_lib
+                     ~allow_overlaps:mel.allow_overlapping_dependencies
+                     (Scope.libs scope)
+                     vlib
+                   |> Lib.Compile.requires_link
+                   |> Memo.Lazy.force
+                 in
+                 let open Resolve.O in
+                 let+ requires_link = requires_link in
+                 (* Whenever a `concrete_lib` implementation contains a field
+                    `(implements virt_lib)`, we also set up the JS targets for the
+                    modules defined in `virt_lib`.
 
-                 In the cases where `virt_lib` (concrete) modules depend on any
-                 virtual modules (i.e. programming against the interface), we
-                 need to make sure that the JS rules that dune emits for
-                 `virt_lib` depend on `concrete_lib`, such that Melange can find
-                 the correct `.cmj` file, which is needed to emit the correct
-                 path in `import` / `require`. *)
-              lib :: requires_link
-            in
-            cmj_includes ~requires_link ~scope lib_config
-          in
-          parallel_build_source_modules
-            ~sctx
-            ~scope
-            vlib
-            ~f:(build_js ~dir ~output ~includes)
+                    In the cases where `virt_lib` (concrete) modules depend on any
+                    virtual modules (i.e. programming against the interface), we
+                    need to make sure that the JS rules that dune emits for
+                    `virt_lib` depend on `concrete_lib`, such that Melange can find
+                    the correct `.cmj` file, which is needed to emit the correct
+                    path in `import` / `require`. *)
+                 lib :: requires_link
+               in
+               cmj_includes ~requires_link ~scope lib_config
+             in
+             parallel_build_source_modules
+               ~sctx
+               ~scope
+               vlib
+               ~f:(build_js ~dir ~output:vlib_output ~includes ~compile_flags))
       and+ () =
         parallel_build_source_modules
           ~sctx
           ~scope
           lib
-          ~f:(build_js ~dir ~output ~includes)
+          ~f:(build_js ~dir ~output ~includes ~compile_flags)
       in
       ())
 ;;
 
 let setup_js_rules_libraries_and_entries
-  ~dir_contents
-  ~dir
-  ~scope
-  ~sctx
-  ~requires_link
-  ~mode
-  ~target_dir
-  mel
+      ~dir_contents
+      ~dir
+      ~scope
+      ~sctx
+      ~requires_link
+      ~mode
+      ~target_dir
+      mel
   =
   let+ () =
     setup_js_rules_libraries ~dir ~scope ~target_dir ~sctx ~requires_link ~mode mel

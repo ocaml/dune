@@ -52,7 +52,13 @@ module File = struct
   let do_promote ~correction_file ~dst =
     Path.Source.unlink_no_err dst;
     let chmod = Path.Permissions.add Path.Permissions.write in
-    Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) ()
+    match Io.copy_file ~chmod ~src:correction_file ~dst:(Path.source dst) () with
+    | () -> ()
+    | exception Unix.Unix_error (e, _, _) ->
+      User_error.raise
+        [ Pp.textf "failed to promote %s" (Path.Source.to_string dst)
+        ; Pp.text (Unix.error_message e)
+        ]
   ;;
 
   let correction_file { src; staging; _ } = Path.build (Option.value staging ~default:src)

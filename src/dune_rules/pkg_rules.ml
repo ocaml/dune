@@ -588,188 +588,6 @@ module Substitute = struct
   ;;
 end
 
-let depexts_hint = function
-  | [] -> None
-  | depexts ->
-    [ Pp.textf "You may want to verify the following depexts are installed:"
-    ; Pp.enumerate ~f:Pp.verbatim depexts
-    ]
-    |> Pp.concat_map ~sep:Pp.cut ~f:(fun pp -> Pp.box pp)
-    |> Option.some
-;;
-
-module Run_with_path = struct
-  module Output : sig
-    type error
-
-    val io : error -> Process.Io.output Process.Io.t
-
-    val with_error
-      :  accepted_exit_codes:int Predicate.t
-      -> pkg:Dune_pkg.Package_name.t * Loc.t
-      -> depexts:string list
-      -> display:Display.t
-      -> (error -> 'a)
-      -> 'a
-
-    val prerr : rc:int -> error -> unit
-  end = struct
-    type error =
-      { pkg : Dune_pkg.Package_name.t * Loc.t
-      ; depexts : string list
-      ; filename : Dpath.t
-      ; io : Process.Io.output Process.Io.t
-      ; accepted_exit_codes : int Predicate.t
-      ; display : Display.t
-      }
-
-    let io t = t.io
-
-    let with_error ~accepted_exit_codes ~pkg ~depexts ~display f =
-      let filename = Temp.create File ~prefix:"dune-pkg" ~suffix:"stderr" in
-      let io = Process.Io.(file filename Out) in
-      let t = { filename; io; accepted_exit_codes; display; pkg; depexts } in
-      let result = f t in
-      Temp.destroy File filename;
-      result
-    ;;
-
-    let to_paragraphs t error =
-      let pp_pkg = Pp.textf "Logs for package %s" (Package.Name.to_string (fst t.pkg)) in
-      [ pp_pkg; Pp.verbatim error ]
-    ;;
-
-    let prerr ~rc error =
-      let hints =
-        lazy
-          (match depexts_hint error.depexts with
-           | None -> []
-           | Some h -> [ h ])
-      in
-      let loc = snd error.pkg in
-      match Predicate.test error.accepted_exit_codes rc, error.display with
-      | false, _ ->
-        let paragraphs = Stdune.Io.read_file error.filename |> to_paragraphs error in
-        User_warning.emit ~hints:(Lazy.force hints) ~loc ~is_error:true paragraphs
-      | true, Display.Verbose ->
-        let content = Stdune.Io.read_file error.filename in
-        if not (String.is_empty content)
-        then (
-          let paragraphs = to_paragraphs error content in
-          User_warning.emit ~hints:(Lazy.force hints) ~loc paragraphs)
-      | true, _ -> ()
-    ;;
-  end
-
-  module Spec = struct
-    type 'path chunk =
-      | String of string
-      | Path of 'path
-
-    type 'path arg = 'path chunk Array.Immutable.t
-
-    type ('path, 'target) t =
-      { prog : Action.Prog.t
-      ; args : 'path arg Array.Immutable.t
-      ; ocamlfind_destdir : 'path
-      ; pkg : Dune_pkg.Package_name.t * Loc.t
-      ; depexts : string list
-      }
-
-    let name = "run-with-path"
-    let version = 2
-
-    let map_arg arg ~f =
-      Array.Immutable.map arg ~f:(function
-        | String _ as s -> s
-        | Path p -> Path (f p))
-    ;;
-
-    let bimap t f _g =
-      { t with
-        args = Array.Immutable.map t.args ~f:(map_arg ~f)
-      ; ocamlfind_destdir = f t.ocamlfind_destdir
-      }
-    ;;
-
-    let is_useful_to ~memoize:_ = true
-
-    let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
-      let prog : Sexp.t =
-        Atom
-          (match prog with
-           | Ok p -> Path.reach p ~from:Path.root
-           | Error e -> e.program)
-      in
-      let args =
-        Array.Immutable.to_list_map args ~f:(fun x ->
-          Sexp.List
-            (Array.Immutable.to_list_map x ~f:(function
-              | String s -> Sexp.Atom s
-              | Path p -> path p)))
-      in
-      List [ List ([ prog ] @ args); path ocamlfind_destdir ]
-    ;;
-
-    let action
-      { prog; args; ocamlfind_destdir; pkg; depexts }
-      ~(ectx : Action.context)
-      ~(eenv : Action.env)
-      =
-      let open Fiber.O in
-      let display = !Clflags.display in
-      match prog with
-      | Error e -> Action.Prog.Not_found.raise e
-      | Ok prog ->
-        let args =
-          Array.Immutable.to_list_map args ~f:(fun arg ->
-            Array.Immutable.to_list_map arg ~f:(function
-              | String s -> s
-              | Path p -> Path.to_absolute_filename p)
-            |> String.concat ~sep:"")
-        in
-        let metadata = Process.create_metadata ~purpose:ectx.metadata.purpose () in
-        let env =
-          Env.add
-            eenv.env
-            ~var:"OCAMLFIND_DESTDIR"
-            ~value:(Path.to_absolute_filename ocamlfind_destdir)
-        in
-        Output.with_error
-          ~accepted_exit_codes:eenv.exit_codes
-          ~pkg
-          ~depexts
-          ~display
-          (fun error ->
-             let stdout_to =
-               match !Clflags.debug_package_logs, display with
-               | true, _ | false, Display.Verbose -> eenv.stdout_to
-               | _ -> Process.Io.(null Out)
-             in
-             Process.run
-               Return
-               prog
-               args
-               ~display
-               ~metadata
-               ~stdout_to
-               ~stderr_to:(Output.io error)
-               ~stdin_from:eenv.stdin_from
-               ~dir:eenv.working_dir
-               ~env
-             >>= fun (_, rc) ->
-             Output.prerr ~rc error;
-             Fiber.return ())
-    ;;
-  end
-
-  module A = Action_ext.Make (Spec)
-
-  let action ~pkg ~depexts prog args ~ocamlfind_destdir =
-    A.action { Spec.prog; args; ocamlfind_destdir; pkg; depexts }
-  ;;
-end
-
 module Action_expander = struct
   module Expander = struct
     include Expander0
@@ -793,8 +611,8 @@ module Action_expander = struct
     ;;
 
     let section_dir_of_root
-      (roots : _ Install.Roots.t)
-      (section : Pform.Var.Pkg.Section.t)
+          (roots : _ Install.Roots.t)
+          (section : Pform.Var.Pkg.Section.t)
       =
       match section with
       | Lib -> roots.lib_root
@@ -891,17 +709,17 @@ module Action_expander = struct
     ;;
 
     let expand_pform
-      { name = _
-      ; env = _
-      ; paths
-      ; artifacts = _
-      ; context
-      ; depends
-      ; version = _
-      ; depexts = _
-      }
-      ~source
-      (pform : Pform.t)
+          { name = _
+          ; env = _
+          ; paths
+          ; artifacts = _
+          ; context
+          ; depends
+          ; version = _
+          ; depexts = _
+          }
+          ~source
+          (pform : Pform.t)
       : (Value.t list, [ `Undefined_pkg_var of Package_variable_name.t ]) result Memo.t
       =
       let loc = Dune_sexp.Template.Pform.loc source in
@@ -963,7 +781,7 @@ module Action_expander = struct
                  | Some p -> Ok p
                  | None ->
                    let hint =
-                     depexts_hint t.depexts
+                     Run_with_path.depexts_hint t.depexts
                      |> Option.map ~f:(fun pp -> Format.asprintf "%a" Pp.to_fmt pp)
                    in
                    Error
@@ -1432,15 +1250,15 @@ module Install_action = struct
     let version = 1
 
     let bimap
-      ({ install_file
-       ; config_file
-       ; target_dir
-       ; prefix_outside_build_dir = _
-       ; install_action = _
-       ; package = _
-       } as t)
-      f
-      g
+          ({ install_file
+           ; config_file
+           ; target_dir
+           ; prefix_outside_build_dir = _
+           ; install_action = _
+           ; package = _
+           } as t)
+          f
+          g
       =
       { t with
         install_file = f install_file
@@ -1452,15 +1270,15 @@ module Install_action = struct
     let is_useful_to ~memoize = memoize
 
     let encode
-      { install_file
-      ; config_file
-      ; target_dir
-      ; prefix_outside_build_dir
-      ; install_action
-      ; package
-      }
-      path
-      target
+          { install_file
+          ; config_file
+          ; target_dir
+          ; prefix_outside_build_dir
+          ; install_action
+          ; package
+          }
+          path
+          target
       : Sexp.t
       =
       List
@@ -1666,15 +1484,15 @@ module Install_action = struct
     ;;
 
     let action
-      { package
-      ; install_file
-      ; config_file
-      ; target_dir
-      ; prefix_outside_build_dir
-      ; install_action
-      }
-      ~ectx:_
-      ~eenv:_
+          { package
+          ; install_file
+          ; config_file
+          ; target_dir
+          ; prefix_outside_build_dir
+          ; install_action
+          }
+          ~ectx:_
+          ~eenv:_
       =
       let open Fiber.O in
       let* () = Fiber.return () in
@@ -2113,14 +1931,23 @@ let ocaml_toolchain context =
   | `System_provided -> None
   | `Inside_lock_dir pkg ->
     let toolchain =
-      let cookie = (Pkg_installed.of_paths pkg.paths).cookie in
       let open Action_builder.O in
-      let* cookie = cookie in
-      (* TODO we should use the closure of [pkg] *)
-      let binaries =
-        Section.Map.find cookie.files Bin |> Option.value ~default:[] |> Path.Set.of_list
+      let transitive_deps = pkg :: Pkg.deps_closure pkg in
+      let* env, binaries =
+        Action_builder.List.fold_left
+          ~init:(Global.env (), Path.Set.empty)
+          ~f:(fun (env, binaries) pkg ->
+            let env = Env.extend_env env (Pkg.exported_env pkg) in
+            let+ cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+            let binaries =
+              Section.Map.find cookie.files Bin
+              |> Option.value ~default:[]
+              |> Path.Set.of_list
+              |> Path.Set.union binaries
+            in
+            env, binaries)
+          transitive_deps
       in
-      let env = Env.extend_env (Global.env ()) (Pkg.exported_env pkg) in
       let path = Env_path.path (Global.env ()) in
       Action_builder.of_memo @@ Ocaml_toolchain.of_binaries ~path context env binaries
     in
@@ -2148,10 +1975,10 @@ let which context =
           "Loading all binaries in the lock directory for %S"
           (Context_name.to_string context))
       (fun () ->
-        let+ { binaries; dep_info = _ } =
-          all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
-        in
-        binaries)
+         let+ { binaries; dep_info = _ } =
+           all_packages context >>= Action_expander.Artifacts_and_deps.of_closure
+         in
+         binaries)
   in
   Staged.stage (fun program ->
     let+ artifacts = Memo.Lazy.force artifacts_and_deps in
@@ -2203,10 +2030,10 @@ let find_package ctx pkg =
   | true ->
     resolve_pkg_project ctx (Loc.none, pkg)
     >>| (function
-           | `System_provided -> Action_builder.return ()
-           | `Inside_lock_dir pkg ->
-             let open Action_builder.O in
-             let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
-             ())
+     | `System_provided -> Action_builder.return ()
+     | `Inside_lock_dir pkg ->
+       let open Action_builder.O in
+       let+ _cookie = (Pkg_installed.of_paths pkg.paths).cookie in
+       ())
     >>| Option.some
 ;;

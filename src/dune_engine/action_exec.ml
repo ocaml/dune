@@ -392,8 +392,8 @@ type input =
   }
 
 let exec
-  { targets; root; context; env; rule_loc; execution_parameters; action = t }
-  ~build_deps
+      { targets; root; context; env; rule_loc; execution_parameters; action = t }
+      ~build_deps
   =
   let ectx =
     let metadata = Process.create_metadata ~purpose:(Build_job targets) () in

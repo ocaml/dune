@@ -23,9 +23,6 @@ val foreign_sources : t -> Foreign_sources.t Memo.t
 
 val ocaml : t -> Ml_sources.t Memo.t
 
-(** Artifacts defined in this directory *)
-val artifacts : t -> Artifacts_obj.t Memo.t
-
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> stanza:Documentation.t -> Path.Build.t list Memo.t
 

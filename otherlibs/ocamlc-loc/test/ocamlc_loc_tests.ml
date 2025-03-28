@@ -3,8 +3,8 @@ open Stdune
 let cmd fmt =
   Printf.ksprintf
     (fun s ->
-      let (_ : int) = Sys.command s in
-      ())
+       let (_ : int) = Sys.command s in
+       ())
     fmt
 ;;
 
@@ -325,10 +325,12 @@ Error: Some record fields are undefined: signal_watcher
 ;;
 
 let%expect_test "undefined fields" =
-  test_error_raw {|
+  test_error_raw
+    {|
 Error: Some record fields are undefined: signal_watcher
 |};
-  [%expect {|
+  [%expect
+    {|
     [ "Error: Some record fields are undefined: signal_watcher" ] |}]
 ;;
 

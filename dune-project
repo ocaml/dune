@@ -89,7 +89,7 @@ no stability guarantee.
  (name dune-configurator)
  (synopsis "Helper library for gathering system configuration")
  (depends
-  (ocaml (>= 4.04.0))
+  (ocaml (>= 4.08.0))
   base-unix
   (csexp (>= 1.5.0)))
  (description "\

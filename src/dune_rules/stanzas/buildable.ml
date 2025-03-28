@@ -132,9 +132,10 @@ let decode (for_ : for_) =
   in
   let foreign_archives =
     let foreign_archives = Option.value ~default:[] foreign_archives in
-    if version < (2, 0)
-       && List.is_non_empty foreign_stubs
-       && Option.is_some self_build_stubs_archive
+    if
+      version < (2, 0)
+      && List.is_non_empty foreign_stubs
+      && Option.is_some self_build_stubs_archive
     then
       User_error.raise
         ~loc:self_build_stubs_archive_loc

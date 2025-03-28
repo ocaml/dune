@@ -113,8 +113,8 @@ end = struct
       "fs_memo_for_watching_directly"
       ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
-        watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
-        Memo.return ())
+         watch_or_record_path ~accessed_path ~path_to_watch:accessed_path;
+         Memo.return ())
   ;;
 
   let memo_for_watching_via_parent =
@@ -122,13 +122,13 @@ end = struct
       "fs_memo_for_watching_via_parent"
       ~input:(module Path.Outside_build_dir)
       (fun accessed_path ->
-        let path_to_watch =
-          Option.value
-            (Path.Outside_build_dir.parent accessed_path)
-            ~default:accessed_path
-        in
-        watch_or_record_path ~accessed_path ~path_to_watch;
-        Memo.return ())
+         let path_to_watch =
+           Option.value
+             (Path.Outside_build_dir.parent accessed_path)
+             ~default:accessed_path
+         in
+         watch_or_record_path ~accessed_path ~path_to_watch;
+         Memo.return ())
   ;;
 
   let watch ~try_to_watch_via_parent path =

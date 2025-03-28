@@ -5,9 +5,9 @@ module Package_variable_name = Dune_lang.Package_variable_name
 module Variable_value = Dune_pkg.Variable_value
 
 let solver_env
-  ~solver_env_from_current_system
-  ~solver_env_from_context
-  ~unset_solver_vars_from_context
+      ~solver_env_from_current_system
+      ~solver_env_from_context
+      ~unset_solver_vars_from_context
   =
   let solver_env =
     [ solver_env_from_current_system; solver_env_from_context ]
@@ -88,9 +88,15 @@ let get_repos repos ~repositories =
     | Some repo ->
       let loc, opam_url = Repository.opam_url repo in
       let module Opam_repo = Dune_pkg.Opam_repo in
-      (match Dune_pkg.OpamUrl.local_or_git_only opam_url loc with
+      (match Dune_pkg.OpamUrl.classify opam_url loc with
        | `Git -> Opam_repo.of_git_repo loc opam_url
-       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path))
+       | `Path path -> Fiber.return @@ Opam_repo.of_opam_repo_dir_path loc path
+       | `Archive ->
+         User_error.raise
+           ~loc
+           [ Pp.textf "Repositories stored in archives (%s) are currently unsupported"
+             @@ OpamUrl.to_string opam_url
+           ]))
 ;;
 
 let find_local_packages =
@@ -99,13 +105,19 @@ let find_local_packages =
   >>| Package.Name.Map.map ~f:Dune_pkg.Local_package.of_package
 ;;
 
-let pp_packages packages =
-  Pp.enumerate
-    packages
-    ~f:(fun { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; _ }; _ } ->
-      Pp.verbatim
-        (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version))
+let pp_package { Lock_dir.Pkg.info = { Lock_dir.Pkg_info.name; version; avoid; _ }; _ } =
+  let warn =
+    if avoid
+    then Pp.tag User_message.Style.Warning (Pp.text " (this version should be avoided)")
+    else Pp.nop
+  in
+  let open Pp.O in
+  Pp.verbatim
+    (Package_name.to_string name ^ "." ^ Dune_pkg.Package_version.to_string version)
+  ++ warn
 ;;
+
+let pp_packages packages = Pp.enumerate packages ~f:pp_package
 
 module Lock_dirs_arg = struct
   type t =

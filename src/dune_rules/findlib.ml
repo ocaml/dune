@@ -64,6 +64,12 @@ module DB = struct
     && String.equal t.ext_lib ext_lib
   ;;
 
+  let equal a b =
+    (* Since the DB is cached per context, physical equality will
+       shortcut almost all equality tests. *)
+    phys_equal a b || equal a b
+  ;;
+
   let hash { stdlib_dir; paths; builtins; ext_lib } =
     Poly.hash
       ( Path.hash stdlib_dir
@@ -199,9 +205,10 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
                 match Filename.check_suffix fname ext with
                 | false -> Ok None
                 | true ->
-                  if (* We add this hack to skip manually mangled
+                  if
+                    (* We add this hack to skip manually mangled
                         libraries *)
-                     String.contains_double_underscore fname
+                    String.contains_double_underscore fname
                   then Ok None
                   else (
                     match

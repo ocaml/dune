@@ -26,6 +26,21 @@ val of_git_repo : Loc.t -> OpamUrl.t -> t Fiber.t
 val revision : t -> Rev_store.At_rev.t
 val serializable : t -> Serializable.t option
 
+module Key : sig
+  type t
+
+  val opam_package : t -> OpamPackage.t
+end
+
+val all_packages_versions_map
+  :  t list
+  -> OpamPackage.Name.t
+  -> (t * Key.t) OpamPackage.Version.Map.t
+
+val load_all_versions_by_keys
+  :  (t * Key.t) OpamPackage.Version.Map.t
+  -> Resolved_package.t OpamPackage.Version.Map.t Fiber.t
+
 (** Load package metadata for all versions of a package with a given name *)
 val load_all_versions
   :  t list

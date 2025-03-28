@@ -209,10 +209,11 @@ let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
 let pp_split_strings ppf (t : t) =
-  if t.quoted
-     || List.exists t.parts ~f:(function
-       | Text s -> String.contains s '\n'
-       | Pform _ -> false)
+  if
+    t.quoted
+    || List.exists t.parts ~f:(function
+      | Text s -> String.contains s '\n'
+      | Pform _ -> false)
   then (
     List.iter t.parts ~f:(function
       | Pform s -> Format.pp_print_string ppf (Pform.to_string s)

@@ -24,9 +24,10 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
               (* We only drop the build context if it is correct. *)
               match Path.Build.extract_build_context d with
               | Some (dir_context_name, d) ->
-                if Dune_engine.Context_name.equal
-                     context
-                     (Dune_engine.Context_name.of_string dir_context_name)
+                if
+                  Dune_engine.Context_name.equal
+                    context
+                    (Dune_engine.Context_name.of_string dir_context_name)
                 then d
                 else
                   User_error.raise

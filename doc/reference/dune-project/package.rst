@@ -60,6 +60,13 @@ package
 
       The same as (and takes precedences over) the corresponding global field.
 
+   .. describe:: (maintenance_intent ...)
+
+      .. versionadded:: 3.18
+
+      The same as (and takes precedences over) the corresponding global field.
+      See :doc:`the global field for details </reference/dune-project/generate_opam_files>`.
+
    .. describe:: (source ...)
 
       .. versionadded:: 2.0

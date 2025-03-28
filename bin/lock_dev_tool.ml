@@ -53,7 +53,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
     Package_name.of_string (Package_name.to_string dev_tool_pkg_name ^ "_dev_tool_wrapper")
   in
   { Dune_pkg.Local_package.name = local_package_name
-  ; version = None
+  ; version = Dune_pkg.Lock_dir.Pkg_info.default_version
   ; dependencies =
       Dune_pkg.Dependency_formula.of_dependencies (dependency :: extra_dependencies)
   ; conflicts = []
@@ -61,6 +61,7 @@ let make_local_package_wrapping_dev_tool ~dev_tool ~dev_tool_version ~extra_depe
   ; pins = Package_name.Map.empty
   ; conflict_class = []
   ; loc = Loc.none
+  ; command_source = Opam_file { build = []; install = [] }
   }
 ;;
 
@@ -81,6 +82,7 @@ let solve ~dev_tool ~local_packages =
        ~solver_env_from_current_system
        ~version_preference:None
        ~lock_dirs:[ lock_dir ]
+       ~print_perf_stats:false
 ;;
 
 let compiler_package_name = Package_name.of_string "ocaml"

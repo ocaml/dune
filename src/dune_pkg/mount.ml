@@ -11,18 +11,56 @@ let backend t = t
 
 let of_opam_url loc url =
   let* () = Fiber.return () in
-  match OpamUrl.local_or_git_only url loc with
+  match OpamUrl.classify url loc with
   | `Path dir -> Fiber.return (Path dir)
   | `Git ->
     let+ rev =
       let* rev_store = Rev_store.get in
       OpamUrl.resolve url ~loc rev_store
       >>= (function
-             | Error _ as e -> Fiber.return e
-             | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
+       | Error _ as e -> Fiber.return e
+       | Ok s -> OpamUrl.fetch_revision url ~loc s rev_store)
       >>| User_error.ok_exn
     in
     Git rev
+  | `Archive ->
+    (* To prevent cache dir from growing too much, `/tmp/` stores the archive
+       when running `dune pkg lock`. We download and extract the archive
+       everytime the command runs.
+       CR-someday maiste: downloading and extracting should be cached to be
+       reused by the `dune build` command. *)
+    let dir = Temp.(create Dir ~prefix:"dune" ~suffix:"fetch-pinning") in
+    Source.fetch_archive_cached (loc, url)
+    >>= (function
+     | Error message_opt ->
+       let message =
+         Option.value
+           ~default:
+             (User_message.make
+                [ Pp.textf
+                    "Failed to retrieve source archive from: %s"
+                    (OpamUrl.to_string url)
+                ])
+           message_opt
+       in
+       raise (User_error.E message)
+     | Ok archive ->
+       let achive_path_string = Path.to_string archive in
+       let target =
+         let file_digest = Digest.file achive_path_string |> Digest.to_hex in
+         Path.relative dir file_digest
+       in
+       let archive_driver =
+         Archive_driver.choose_for_filename_default_to_tar achive_path_string
+       in
+       let+ path =
+         Archive_driver.extract archive_driver ~archive ~target
+         >>| function
+         | Error () ->
+           User_error.raise [ Pp.textf "unable to extract %S" (Path.to_string target) ]
+         | Ok () -> target
+       in
+       Path path)
 ;;
 
 let read t file =
@@ -58,9 +96,10 @@ let stat t path =
         | Some parent ->
           let files = Rev_store.At_rev.directory_entries ~recursive:false rev parent in
           let basename = Path.Local.basename path in
-          if Rev_store.File.Set.exists files ~f:(fun file ->
-               let path = Rev_store.File.path file in
-               String.equal basename (Path.Local.basename path))
+          if
+            Rev_store.File.Set.exists files ~f:(fun file ->
+              let path = Rev_store.File.path file in
+              String.equal basename (Path.Local.basename path))
           then `File
           else `Absent_or_unrecognized))
 ;;

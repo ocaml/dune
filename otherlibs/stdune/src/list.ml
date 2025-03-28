@@ -262,3 +262,14 @@ let intersperse xs ~sep =
   in
   loop [] xs
 ;;
+
+let rec partition_three xs ~f =
+  match xs with
+  | [] -> [], [], []
+  | first :: rest ->
+    let xs, ys, zs = partition_three ~f rest in
+    (match f first with
+     | `Left x -> x :: xs, ys, zs
+     | `Middle y -> xs, y :: ys, zs
+     | `Right z -> xs, ys, z :: zs)
+;;

@@ -10,6 +10,18 @@ type pin =
 
 type pins = pin Package_name.Map.t
 
+(** Describe the commands to execute from the source. [Assume_defaults] means
+    that no opam file is available and dune will use [dune] to build the
+    package. [Opam_file { build ; install }]  describe where there is an opam
+    file from which we extract the build and the install command. Note that
+    both of them can be empty. *)
+type command_source =
+  | Assume_defaults
+  | Opam_file of
+      { build : OpamTypes.command list
+      ; install : OpamTypes.command list
+      }
+
 (** Information about a local package that's relevant for package management.
     This is intended to represent local packages defined in a dune-project file
     (rather than packages in a lockdir). This is distinct from a
@@ -19,13 +31,14 @@ type pins = pin Package_name.Map.t
     it can use to represent local packages. *)
 type t =
   { name : Package_name.t
-  ; version : Package_version.t option
+  ; version : Package_version.t
   ; dependencies : Dependency_formula.t
   ; conflicts : Package_dependency.t list
   ; conflict_class : Package_name.t list
   ; depopts : Package_dependency.t list
   ; pins : pins
   ; loc : Loc.t
+  ; command_source : command_source
   }
 
 module Dependency_hash : sig
@@ -43,11 +56,14 @@ module For_solver : sig
   (** The minimum set of fields about a package needed by the solver. *)
   type t =
     { name : Package_name.t
+    ; version : Package_version.t
     ; dependencies : Dependency_formula.t
     ; conflicts : Package_dependency.t list
     ; depopts : Package_dependency.t list
     ; conflict_class : Package_name.t list
     ; pins : pins
+    ; build : OpamTypes.command list
+    ; install : OpamTypes.command list
     }
 
   (** [to_opam_file t] returns an [OpamFile.OPAM.t] whose fields are based on the

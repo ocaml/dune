@@ -19,10 +19,11 @@ module Object = struct
   type resolved = t
 
   let of_sha1 s =
-    if String.length s = 40
-       && String.for_all s ~f:(function
-         | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
-         | _ -> false)
+    if
+      String.length s = 40
+      && String.for_all s ~f:(function
+        | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
+        | _ -> false)
     then Some (Sha1 (String.lowercase_ascii s))
     else None
   ;;
@@ -92,40 +93,40 @@ let with_flock lock_path ~f =
       let+ () = Fiber.return () in
       Unix.close fd)
     (fun () ->
-      attempt_to_lock flock Flock.Exclusive ~max_retries
-      >>= function
-      | Ok `Success ->
-        Fiber.finalize
-          (fun () ->
-            Dune_util.Global_lock.write_pid fd;
-            f ())
-          ~finally:(fun () ->
-            let+ () = Fiber.return () in
-            Path.unlink_no_err lock_path;
-            match Flock.unlock flock with
-            | Ok () -> ()
-            | Error ue ->
-              Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
-              |> Unix_error.Detailed.raise)
-      | Ok `Failure ->
-        let pid = Io.read_file lock_path in
-        User_error.raise
-          ~hints:
-            [ Pp.textf
-                "Another dune instance (pid %s) has locked the revision store. If this \
-                 is happening in error, make sure to terminate that instance and re-run \
-                 the command."
-                pid
-            ]
-          [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
-          ]
-      | Error error ->
-        User_error.raise
-          [ Pp.textf
-              "Failed to get a lock for the revision store at %s: %s"
-              (Path.to_string_maybe_quoted lock_path)
-              (Unix.error_message error)
-          ])
+       attempt_to_lock flock Flock.Exclusive ~max_retries
+       >>= function
+       | Ok `Success ->
+         Fiber.finalize
+           (fun () ->
+              Dune_util.Global_lock.write_pid fd;
+              f ())
+           ~finally:(fun () ->
+             let+ () = Fiber.return () in
+             Path.unlink_no_err lock_path;
+             match Flock.unlock flock with
+             | Ok () -> ()
+             | Error ue ->
+               Unix_error.Detailed.create ue ~syscall:"flock" ~arg:"unlock"
+               |> Unix_error.Detailed.raise)
+       | Ok `Failure ->
+         let pid = Io.read_file lock_path in
+         User_error.raise
+           ~hints:
+             [ Pp.textf
+                 "Another dune instance (pid %s) has locked the revision store. If this \
+                  is happening in error, make sure to terminate that instance and re-run \
+                  the command."
+                 pid
+             ]
+           [ Pp.textf "Couldn't acquire revision store lock after %d attempts" max_retries
+           ]
+       | Error error ->
+         User_error.raise
+           [ Pp.textf
+               "Failed to get a lock for the revision store at %s: %s"
+               (Path.to_string_maybe_quoted lock_path)
+               (Unix.error_message error)
+           ])
 ;;
 
 let failure_mode = Process.Failure_mode.Return
@@ -168,14 +169,37 @@ end
 
 let run_with_exit_code { dir; _ } ~allow_codes ~display args =
   let stdout_to = make_stdout () in
-  let stderr_to = make_stderr () in
   let git = Lazy.force Vcs.git in
-  let+ (), exit_code =
-    Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+  let+ stderr, exit_code =
+    Fiber_util.Temp.with_temp_file
+      ~prefix:"dune"
+      ~suffix:"run_with_exit_code"
+      ~dir:(Path.of_string (Filename.get_temp_dir_name ()))
+      ~f:(function
+        | Error exn -> raise exn
+        | Ok path ->
+          let+ (), exit_code =
+            let stderr_to = Process.Io.file path Out in
+            Process.run ~dir ~display ~stdout_to ~stderr_to ~env failure_mode git args
+          in
+          Io.read_file path, exit_code)
   in
   if allow_codes exit_code
   then Ok exit_code
-  else Error { Git_error.dir; args; exit_code; output = [] }
+  else (
+    match exit_code with
+    | 129
+      when String.is_prefix ~prefix:"error: unknown option `no-write-fetch-head'" stderr
+      ->
+      User_error.raise
+        [ User_message.command
+            "Your git version doesn't support the '--no-write-fetch-head' flag. The \
+             minimum supported version is Git 2.29."
+        ]
+        ~hints:[ User_message.command "Please update your git version." ]
+    | _ ->
+      Dune_console.print [ Pp.verbatim stderr ];
+      Error { Git_error.dir; args; exit_code; output = [] })
 ;;
 
 let run t ~display args =
@@ -502,6 +526,7 @@ module At_rev = struct
     { repo : repo
     ; revision : Object.t
     ; files : File.Set.t
+    ; recursive_directory_entries : File.Set.t Path.Local.Table.t
     }
 
   let equal x y = Object.equal x.revision y.revision
@@ -661,25 +686,46 @@ module At_rev = struct
       >>| List.cons files
       >>| File.Set.union_all
     in
-    { repo; revision; files }
+    let recursive_directory_entries =
+      let recursive_directory_entries =
+        Path.Local.Table.create (File.Set.cardinal files)
+      in
+      (* Build a table mapping each directory path to the set of files under it
+         in the directory hierarchy. *)
+      File.Set.iter files ~f:(fun file ->
+        (* Add [file] to the set of files under each directory which is an
+           ancestor of [file]. *)
+        let rec loop = function
+          | None -> ()
+          | Some parent ->
+            let recursive_directory_entries_of_parent =
+              Path.Local.Table.find_or_add
+                recursive_directory_entries
+                parent
+                ~f:(Fun.const File.Set.empty)
+            in
+            let recursive_directory_entries_of_parent =
+              File.Set.add recursive_directory_entries_of_parent file
+            in
+            Path.Local.Table.set
+              recursive_directory_entries
+              parent
+              recursive_directory_entries_of_parent;
+            loop (Path.Local.parent parent)
+        in
+        loop (File.path file |> Path.Local.parent));
+      recursive_directory_entries
+    in
+    { repo; revision; files; recursive_directory_entries }
   ;;
 
-  let content { repo; revision; files = _ } path = show repo [ `Path (revision, path) ]
+  let content { repo; revision; files = _; recursive_directory_entries = _ } path =
+    show repo [ `Path (revision, path) ]
+  ;;
 
   let directory_entries_recursive t path =
-    (* TODO: there are much better ways of implementing this:
-       1. using libgit or ocamlgit
-       2. possibly using [$ git archive] *)
-    File.Set.to_list t.files
-    |> List.filter_map ~f:(fun (file : File.t) ->
-      let file_path = File.path file in
-      (* [directory_entries "foo"] shouldn't return "foo" as an entry, but
-         "foo" is indeed a descendant of itself. So we filter it manually. *)
-      if (not (Path.Local.equal file_path path))
-         && Path.Local.is_descendant file_path ~of_:path
-      then Some file
-      else None)
-    |> File.Set.of_list
+    Path.Local.Table.find t.recursive_directory_entries path
+    |> Option.value ~default:File.Set.empty
   ;;
 
   let directory_entries_immediate t path =
@@ -698,7 +744,14 @@ module At_rev = struct
       path
   ;;
 
-  let check_out { repo = { dir; _ }; revision = Sha1 rev; files = _ } ~target =
+  let check_out
+        { repo = { dir; _ }
+        ; revision = Sha1 rev
+        ; files = _
+        ; recursive_directory_entries = _
+        }
+        ~target
+    =
     (* TODO iterate over submodules to output sources *)
     let git = Lazy.force Vcs.git in
     let temp_dir = Temp_dir.dir_for_target ~target ~prefix:"rev-store" ~suffix:rev in
@@ -720,7 +773,7 @@ module At_rev = struct
     (* We untar things into a temp dir to make sure we don't create garbage
        in the build dir until we know can produce the files *)
     let target_in_temp_dir = Path.relative temp_dir "dir" in
-    Tar.extract ~archive ~target:target_in_temp_dir
+    Archive_driver.extract Archive_driver.tar ~archive ~target:target_in_temp_dir
     >>| function
     | Error () -> User_error.raise [ Pp.text "failed to untar archive created by git" ]
     | Ok () ->

@@ -179,6 +179,7 @@ let rec already_requires_odoc : Package_constraint.t -> bool = function
   | Bvar var -> Dune_lang.Package_variable_name.(one_of var [ with_doc; build; post ])
   | And l -> List.for_all ~f:already_requires_odoc l
   | Or l -> List.exists ~f:already_requires_odoc l
+  | Not t -> not (already_requires_odoc t)
 ;;
 
 let insert_odoc_dep depends =
@@ -187,13 +188,23 @@ let insert_odoc_dep depends =
   let rec loop acc = function
     | [] -> List.rev (odoc_dep :: acc)
     | (dep : Package_dependency.t) :: rest ->
-      if Package.Name.equal dep.name odoc_name
-         && Option.forall ~f:already_requires_odoc dep.constraint_
+      if
+        Package.Name.equal dep.name odoc_name
+        && Option.forall ~f:already_requires_odoc dep.constraint_
       then (* Stop now as odoc will be required anyway *)
         List.rev_append (dep :: acc) rest
       else loop (dep :: acc) rest
   in
   loop [] depends
+;;
+
+let maintenance_intent dune_version info =
+  if dune_version < (3, 18)
+  then None
+  else (
+    match Package_info.maintenance_intent info with
+    | None -> Some [ "(latest)" ]
+    | x -> x)
 ;;
 
 let opam_fields project (package : Package.t) =
@@ -228,6 +239,7 @@ let opam_fields project (package : Package.t) =
   in
   let list_fields =
     [ "maintainer", Package_info.maintainers info
+    ; "x-maintenance-intent", maintenance_intent dune_version info
     ; "authors", Package_info.authors info
     ; ( "license"
       , match Package_info.license info with

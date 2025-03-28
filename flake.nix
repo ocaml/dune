@@ -2,27 +2,20 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    ocamllsp = {
-      url = "git+https://github.com/ocaml/ocaml-lsp?submodules=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
     melange = {
-      url = "github:melange-re/melange/refs/tags/4.0.0-51";
+      url = "github:melange-re/melange/refs/tags/5.0.0-52";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
     ocaml-overlays = {
       url = "github:nix-ocaml/nix-overlays";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
   };
   outputs =
     { self
     , flake-utils
     , nixpkgs
-    , ocamllsp
     , melange
     , ocaml-overlays
     }:
@@ -30,7 +23,7 @@
     let
       pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [
         (self: super: {
-          ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
+          ocamlPackages = super.ocaml-ng.ocamlPackages_5_2.overrideScope (oself: osuper: {
             mdx = osuper.mdx.override {
               logs = oself.logs;
             };
@@ -40,7 +33,6 @@
           });
         })
         melange.overlays.default
-        ocamllsp.overlays.default
         (self: super: {
           coq_8_16_native = super.coq_8_16.overrideAttrs (a: {
             configureFlags = [ "-native-compiler" "yes" ];
@@ -48,7 +40,7 @@
         })
       ];
       dune-static-overlay = self: super: {
-        ocamlPackages = super.ocaml-ng.ocamlPackages_5_1.overrideScope (oself: osuper: {
+        ocamlPackages = super.ocaml-ng.ocamlPackages_5_2.overrideScope (oself: osuper: {
           dune_3 = osuper.dune_3.overrideAttrs (a: {
             src = ./.;
             preBuild = "ocaml boot/bootstrap.ml --static";
@@ -132,7 +124,7 @@
                     })
                 else pkgs;
 
-              inherit (pkgs') writeScriptBin stdenv lib;
+              inherit (pkgs') writeScriptBin stdenv;
 
               docInputs = with pkgs'.python3.pkgs; [
                 sphinx-autobuild

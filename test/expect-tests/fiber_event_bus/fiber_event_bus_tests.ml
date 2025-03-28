@@ -61,7 +61,8 @@ let%expect_test "Double close" =
     let* () = close event_bus in
     let* () = close event_bus in
     Fiber.return ());
-  [%expect {|
+  [%expect
+    {|
     Created bus.
     Closed bus.
     Closed bus. |}]
@@ -73,7 +74,8 @@ let%expect_test "Push together with delayed close should close bus and block pus
     let* () = push event_bus "Hello"
     and* () = Test_scheduler.yield scheduler >>> close event_bus in
     Fiber.return ());
-  [%expect {|
+  [%expect
+    {|
     Created bus.
     Closed bus.
     Couldn't push! Bus was closed. |}]
@@ -85,7 +87,8 @@ let%expect_test "Pop together with delayed close should close bus and block pop.
     let* () = pop event_bus
     and* () = Test_scheduler.yield scheduler >>> close event_bus in
     Fiber.return ());
-  [%expect {|
+  [%expect
+    {|
     Created bus.
     Closed bus.
     Couldn't pop! Bus was closed. |}]

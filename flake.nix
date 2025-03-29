@@ -3,7 +3,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     melange = {
-      url = "github:melange-re/melange/refs/tags/5.0.0-52";
+      url = "github:melange-re/melange/refs/tags/5.1.0-52";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {

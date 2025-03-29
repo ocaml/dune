@@ -52,9 +52,7 @@ let term =
         let path = Env_path.path Env.initial in
         Bin.which ~path cmd_name
       in
-      ( open_command
-      , (* First element of argv is the name of the command. *)
-        (cmd_name :: args) @ [ relative_toplevel_index_path ] )
+      open_command, args @ [ relative_toplevel_index_path ]
     with
     | Some (cmd, args) ->
       Proc.restore_cwd_and_execve (Path.to_absolute_filename cmd) args ~env:Env.initial

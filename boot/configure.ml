@@ -18,7 +18,11 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
+  [ "toolchains", `Enabled
+  ; "pkg_build_progress", `Disabled
+  ; "lock_dev_tool", `Disabled
+  ; "portable_lock_dir", `Disabled
+  ]
 ;;
 
 let toggles = ref default_toggles
@@ -101,6 +105,10 @@ let () =
       , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
          it, independently from the project depenedencies .\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--portable-lock-dir"
+      , toggle "portable_lock_dir"
+      , "Generate portable lock dirs. If this feature is disabled then lock dirs will be \
+         specialized to the machine where they are generated." )
     ]
   in
   let anon s = bad "Don't know what to do with %s" s in

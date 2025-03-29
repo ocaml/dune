@@ -22,6 +22,7 @@ end
 val deps_of
   :  Modules_data.t
   -> ml_kind:Ml_kind.t
+  -> ocamlflags:Ocaml_flags.t
   -> Module.t
   -> Module.t list Action_builder.t Memo.t
 

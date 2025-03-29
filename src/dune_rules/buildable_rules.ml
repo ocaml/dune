@@ -10,6 +10,7 @@ let ocaml_flags t ~dir (spec : Ocaml_flags.Spec.t) =
       ~default:ocaml_flags
       ~eval:(Expander.expand_and_eval_set expander)
   in
+  let flags = Ocaml_flags.with_keywords flags in
   Source_tree.is_vendored (Path.Build.drop_build_context_exn dir)
   >>= function
   | false -> Memo.return flags

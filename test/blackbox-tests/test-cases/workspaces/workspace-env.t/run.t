@@ -15,6 +15,8 @@ Workspaces also allow you to set the env for a context:
   (coq_flags (-q))
   (coqdep_flags ())
   (coqdoc_flags (--toc))
+  (coqdoc_header ())
+  (coqdoc_footer ())
   (js_of_ocaml_flags ())
   (js_of_ocaml_build_runtime_flags ())
   (js_of_ocaml_link_flags ())

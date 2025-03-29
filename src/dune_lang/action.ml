@@ -1,6 +1,11 @@
 open Stdune
 open Dune_sexp
 open Dune_util.Action
+open Pform.Macro
+
+module Named_targets = struct
+  type t = (string * String_with_vars.t) list
+end
 
 module Action_plugin = struct
   let syntax =
@@ -10,6 +15,55 @@ module Action_plugin = struct
       ~experimental:true
       [ (0, 1), `Since (2, 0) ]
   ;;
+end
+
+module Pform = struct
+  module Var = struct
+    type t =
+      | Values
+      | Loc
+      | C_flags
+      | Cxx_flags
+      | Cpp_flags
+      | Target of string  (* New variant for named targets *)
+      | Ocaml
+      | Ocamlc
+      | Ocamlopt
+      | Ocamldep
+      | Ocamlmklib
+      | Dev_null
+      | Null
+      | Ext_obj
+      | Ext_asm
+      | Ext_lib
+      | Ext_dll
+      | Ext_exe
+      | Ext_plugin
+      | Profile
+      | Context_name
+      | Os_type
+      | Architecture
+      | System
+      | Model
+      | Ignoring_promoted_rules
+      | Project_root
+      | Workspace_root
+      | Build_context
+      | First_dep
+      | Input_file
+      | Library_name
+      | Partition
+      | Impl_files
+      | Intf_files
+      | Test
+      | Corrected_suffix
+      | Inline_tests
+      | Toolchain
+
+    let compare = compare
+  end
+  type t =
+    | Var of Var.t
 end
 
 module Diff = struct
@@ -178,6 +232,11 @@ type t =
   | When of Slang.blang * t
   | Format_dune_file of String_with_vars.t * String_with_vars.t
 
+type expansion_context = {
+  dir : Path.t;
+  (* ... other fields ... *)
+  named_targets : Named_targets.t;
+}
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
 let translate_to_ignore fn output action =
@@ -185,7 +244,51 @@ let translate_to_ignore fn output action =
   then Ignore (output, action)
   else Redirect_out (output, fn, Normal, action)
 ;;
+let expand_target_var ~loc ~named_targets name =
+  match List.assoc_opt name named_targets with
+  | Some target -> 
+    (match String_with_vars.text_only target with
+     | Some text -> text
+     | None ->
+       User_error.raise ~loc [
+         Pp.textf "Named target '%s' contains variables and cannot be expanded here" name
+       ])
+  | None ->
+    User_error.raise ~loc [
+      Pp.textf "Undefined named target: %s" name;
+      Pp.text "Available named targets:";
+      Pp.enumerate named_targets ~f:(fun (name, _) -> Pp.text name)
+    ]
+  ;;
+let expand_str ~context sw =
+  let module S = String_with_vars in
 
+  match S.text_only sw with
+  | Some s -> s
+  | None ->
+    let expand_var = function
+      | Pform.Var var ->
+        if String.equal (Pform.Var.to_string var) "target" then
+          (match context.named_targets with
+          | (name, target) :: _ -> S.to_string target
+          | [] -> "%{target}")
+        else
+          S.to_string (S.make_var (S.loc sw) (Pform.Var var))
+    in
+    S.expand sw ~f:expand_var
+    ;;  
+
+let create_action targets action =
+  let named_targets = 
+    List.filter_map targets ~f:(fun (target, _, name) ->
+      Option.map name ~f:(fun n -> (n, target)))
+  in
+  { action with 
+    expansion_context = { 
+      dir = Path.root;
+      named_targets 
+    } 
+  }
 let two_or_more decode =
   let open Decoder in
   let+ n1 = decode
@@ -253,6 +356,19 @@ let decode_with_accepted_exit_codes =
                 "with-accepted-exit-codes can only be used with %s"
                 (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
             ]
+;;
+
+let decode_rule =
+  let open Decoder in
+  let* targets = 
+    repeat (
+      let* target = String_with_vars.decode in
+      let* name = optional string in
+      return (target, (), name)
+    )
+  in
+  let* action = decode_dune_file in
+  return (create_action targets action)
 ;;
 
 let sw = String_with_vars.decode

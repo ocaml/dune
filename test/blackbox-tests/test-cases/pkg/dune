@@ -59,11 +59,20 @@
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball pin-depends extra-sources))
+ (applies_to
+  source-caching
+  tarball
+  pin-depends
+  extra-sources
+  pkg-extract-fail))
 
 (cram
  (deps %{bin:ocaml_index})
  (applies_to gh10985))
+
+(cram
+ (deps %{bin:unzip})
+ (applies_to pkg-extract-fail))
 
 ;; disabled for flakiness
 

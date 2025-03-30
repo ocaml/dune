@@ -2,7 +2,7 @@ open Stdune
 
 type t =
   | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
+  | Quoted_string of Loc.t * Quoted_string.t
   | Template of Template.t
   | List of Loc.t * t list
 
@@ -10,7 +10,7 @@ let rec equal x y =
   match x, y with
   | Atom (loc, atom), Atom (loc', atom') -> Loc.equal loc loc' && Atom.equal atom atom'
   | Quoted_string (loc, s), Quoted_string (loc', s') ->
-    Loc.equal loc loc' && String.equal s s'
+    Loc.equal loc loc' && Quoted_string.equal s s'
   | Template t, Template t' -> Ordering.is_eq @@ Template.compare t t'
   | List (loc, xs), List (loc', xs') -> Loc.equal loc loc' && List.equal equal xs xs'
   | _, _ -> false

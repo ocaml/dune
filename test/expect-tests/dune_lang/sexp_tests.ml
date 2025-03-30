@@ -115,58 +115,37 @@ Error "unknown escape sequence"
 
 let%expect_test _ =
   parse {|"\%{x}"|};
-  [%expect
-    {|
-Ok [ "%{x}" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "%{x}") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"$foo"|};
-  [%expect
-    {|
-Ok [ "$foo" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "$foo") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"%foo"|};
-  [%expect
-    {|
-Ok [ "%foo" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "%foo") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar%foo"|};
-  [%expect
-    {|
-Ok [ "bar%foo" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "bar%foo") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar$foo"|};
-  [%expect
-    {|
-Ok [ "bar$foo" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "bar$foo") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"%bar$foo%"|};
-  [%expect
-    {|
-Ok [ "%bar$foo%" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "%bar$foo%") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"$bar%foo%"|};
-  [%expect
-    {|
-Ok [ "$bar%foo%" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "$bar%foo%") ] |}]
 ;;
 
 let%expect_test _ =
@@ -211,18 +190,12 @@ Ok [ template "\\$bar\\%foo%{bar}" ]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect
-    {|
-Ok [ template "\"bar%{foo}\"" ]
-|}]
+  [%expect {| Ok [ template "\"bar%{foo}\"" ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar\%{foo}"|};
-  [%expect
-    {|
-Ok [ "bar%{foo}" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "bar%{foo}") ] |}]
 ;;
 
 let%expect_test _ =
@@ -235,34 +208,22 @@ Ok [ template "bar%{foo}" ]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
-  [%expect
-    {|
-Ok [ template "\"bar%{foo}\"" ]
-|}]
+  [%expect {| Ok [ template "\"bar%{foo}\"" ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"bar\%foo"|};
-  [%expect
-    {|
-Ok [ "bar%foo" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "bar%foo") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"\0000"|};
-  [%expect
-    {|
-Ok [ "\0000" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "\0000") ] |}]
 ;;
 
 let%expect_test _ =
   parse {|"\x000"|};
-  [%expect
-    {|
-Ok [ "\0000" ]
-|}]
+  [%expect {| Ok [ quoted_string (single "\0000") ] |}]
 ;;
 
 (* Printing tests *)
@@ -360,16 +321,18 @@ let%expect_test _ =
   test Dune (tq [ Text "x%{" ]);
   [%expect
     {|
-(S (Dune, template "\"x\\%{\""), Did_not_round_trip "x%{")
-|}]
+    (S (Dune, template "\"x\\%{\""),
+     Did_not_round_trip (quoted_string (single "x%{")))
+    |}]
 ;;
 
 let%expect_test _ =
   test Dune (tq [ Text "x%"; Text "{" ]);
   [%expect
     {|
-(S (Dune, template "\"x\\%{\""), Did_not_round_trip "x%{")
-|}]
+    (S (Dune, template "\"x\\%{\""),
+     Did_not_round_trip (quoted_string (single "x%{")))
+    |}]
 ;;
 
 let%expect_test _ =
@@ -420,4 +383,121 @@ comment)
 block
 comment|#
 |}
+;;
+
+let test_parse s =
+  Dune_lang.Parser.parse ~mode:Cst (Lexing.from_string s)
+  |> Dyn.list Dune_lang.Cst.to_dyn
+  |> print_dyn
+;;
+
+let%expect_test "testing parsing of multiline strings" =
+  test_parse
+    {|
+       ; comments
+       "\| this string
+       "\| is multiline
+       "\| and keeps going on and on
+       ; are here
+|};
+  [%expect
+    {|
+    [ Comment [ " comments" ]
+    ; Quoted_string
+        (multi [ "this string"; "is multiline"; "and keeps going on and on" ])
+    ; Comment [ " are here" ]
+    ]
+    |}]
+;;
+
+let%expect_test "testing escaping in multiline strings" =
+  test_parse
+    {|
+       "\| this string\n23
+       "\> this string\n23
+       "\| is a \n multiline
+       "\> is a \n multiline
+       "\| and keeps going on and on
+       "\> and keeps going on and on
+       |};
+  (* The following quiriness from newlines is from Dyn.pp *)
+  [%expect
+    {|
+    [ Quoted_string
+        (multi
+           [ "this string\n\
+              23"
+           ; "this string\\n23"
+           ; "is a \n\
+             \ multiline"
+           ; "is a \\n multiline"
+           ; "and keeps going on and on"
+           ; "and keeps going on and on"
+           ])
+    ]
+    |}]
+;;
+
+let%expect_test "tyxml" =
+  test_parse
+    {|
+(package
+ (name tyxml-jsx)
+ (synopsis "JSX syntax to write TyXML documents")
+ (description
+"\| ```reason
+"\| open Tyxml;
+"\| let to_reason = <a href=\"reasonml.github.io/\"> \"Reason!\" </a>
+"\| ```
+"\|  
+"\| The TyXML JSX allow to write TyXML documents with reason's JSX syntax. 
+"\| It works with textual trees, virtual DOM trees, or any TyXML module.
+)
+ (depends
+  (ocaml
+   (>= 4.04))
+  (tyxml (= :version))
+  (tyxml-syntax (= :version))
+  (alcotest :with-test)
+  (reason :with-test)
+  (ppxlib
+   (>= 0.18))))|};
+  [%expect
+    {|
+    [ List
+        [ Atom (A "package")
+        ; List [ Atom (A "name"); Atom (A "tyxml-jsx") ]
+        ; List
+            [ Atom (A "synopsis")
+            ; Quoted_string (single "JSX syntax to write TyXML documents")
+            ]
+        ; List
+            [ Atom (A "description")
+            ; Quoted_string
+                (multi
+                   [ "```reason"
+                   ; "open Tyxml;"
+                   ; "let to_reason = <a href=\"reasonml.github.io/\"> \"Reason!\" </a>"
+                   ; "```"
+                   ; " "
+                   ; "The TyXML JSX allow to write TyXML documents with reason's JSX syntax. "
+                   ; "It works with textual trees, virtual DOM trees, or any TyXML module."
+                   ])
+            ]
+        ; List
+            [ Atom (A "depends")
+            ; List [ Atom (A "ocaml"); List [ Atom (A ">="); Atom (A "4.04") ] ]
+            ; List
+                [ Atom (A "tyxml"); List [ Atom (A "="); Atom (A ":version") ] ]
+            ; List
+                [ Atom (A "tyxml-syntax")
+                ; List [ Atom (A "="); Atom (A ":version") ]
+                ]
+            ; List [ Atom (A "alcotest"); Atom (A ":with-test") ]
+            ; List [ Atom (A "reason"); Atom (A ":with-test") ]
+            ; List [ Atom (A "ppxlib"); List [ Atom (A ">="); Atom (A "0.18") ] ]
+            ]
+        ]
+    ]
+    |}]
 ;;

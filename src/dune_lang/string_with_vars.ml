@@ -95,7 +95,9 @@ let decode_manually f =
   in
   match x with
   | Atom (loc, A s) -> literal ~quoted:false ~loc s
-  | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
+  | Quoted_string (loc, Single s) -> literal ~quoted:true ~loc s
+  | Quoted_string (loc, Multi _) ->
+    User_error.raise ~loc [ Pp.text "Unexpected multiline string" ]
   | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   | Template { quoted; loc; parts } ->
     { quoted

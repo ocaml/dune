@@ -89,12 +89,11 @@ The same file, but in the current version:
     (action
      (run %{project_root}/src/let-syntax/pp.exe %{input-file}))))
 
-In multi-line strings, newlines are escaped, but their syntax is not preserved.
+In multi-line strings, the new lines are preserved.
 
   $ dune format-dune-file <<EOF
   > (echo "\> multi
   >       "\> line
-  >       "\> string
   >       "\| string
   > )
   > 
@@ -104,9 +103,44 @@ In multi-line strings, newlines are escaped, but their syntax is not preserved.
   > string
   > ")
   > EOF
-  (echo "multi\nline\nstring\nstring\n")
+  (echo "\| multi
+        "\| line
+        "\| string
+        )
   
   (echo "multi\nline\nstring\n")
+
+Checking escape sequences in multiline strings and that the output makes sense.
+Multiline strings should break before the final closing `)`.
+
+  $ dune format-dune-file > file2 <<EOF
+  > (echo "\| multi \t
+  >       "\| line \n
+  >       "\| string
+  > )
+  > EOF
+  $ dune format-dune-file file2
+  (echo "\| multi \t
+        "\| line \n
+        "\| string
+        )
+
+Testing long text
+  $ dune format-dune-file <<EOF
+  > (echo "\| Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec velit nisi,
+  >       "\| sodales ut nunc nec, facilisis efficitur ligula. Donec mollis, nunc nec
+  >       "\| efficitur facilisis, nunc nisi sodales nunc, nec sodales nunc nisi, nec
+  >       "\| sodales nunc nisi, nec sodales nunc nisi, nec sodales nunc nisi, nec
+  >       "\| sodales nunc nisi, nec sodales nunc nisi, nec sodales nunc nisi, nec
+  > )
+  > EOF
+  (echo
+   "\| Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec velit nisi,
+   "\| sodales ut nunc nec, facilisis efficitur ligula. Donec mollis, nunc nec
+   "\| efficitur facilisis, nunc nisi sodales nunc, nec sodales nunc nisi, nec
+   "\| sodales nunc nisi, nec sodales nunc nisi, nec sodales nunc nisi, nec
+   "\| sodales nunc nisi, nec sodales nunc nisi, nec sodales nunc nisi, nec
+   )
 
 Comments are preserved.
 
@@ -259,3 +293,71 @@ Behaviour when the dune file is not syntactically valid.
                
   Error: unclosed parenthesis at end of input
   [1]
+
+Backticks 
+
+  $ dune format-dune-file <<'EOF'
+  > (echo
+  > "\> ```help
+  > "\> open Tyxml;
+  > "\| let to_reason = <a href=\"reasonml.github.io/\"> \"Reason!\" </a>
+  > "\> ```
+  > )
+  > EOF
+  (echo
+   "\| ```help
+   "\| open Tyxml;
+   "\| let to_reason = <a href=\"reasonml.github.io/\"> \"Reason!\" </a>
+   "\| ```
+   )
+
+  $ dune format-dune-file <<'EOF'
+  > ; what
+  > (package
+  >  (name tyxml-jsx)
+  >  (synopsis "JSX syntax to write TyXML documents")
+  >  (description
+  > "\| ```reason
+  > "\| open Tyxml;
+  > "\> let to_reason = <a href="reasonml.github.io/"> "Reason!" </a>
+  > "\| ```
+  > "\|  
+  > "\| The TyXML JSX allow to write TyXML documents with reason's JSX syntax. 
+  > "\| It works with textual trees, virtual DOM trees, or any TyXML module.
+  > )
+  >  (depends
+  >   (ocaml
+  >    (>= 4.04))
+  >   (tyxml (= :version))
+  >   (tyxml-syntax (= :version))
+  >   (alcotest :with-test)
+  >   (reason :with-test)
+  >   (ppxlib
+  >    (>= 0.18))))
+  > EOF
+  ; what
+  
+  (package
+   (name tyxml-jsx)
+   (synopsis "JSX syntax to write TyXML documents")
+   (description
+    "\| ```reason
+    "\| open Tyxml;
+    "\| let to_reason = <a href=\"reasonml.github.io/\"> \"Reason!\" </a>
+    "\| ```
+    "\|  
+    "\| The TyXML JSX allow to write TyXML documents with reason's JSX syntax. 
+    "\| It works with textual trees, virtual DOM trees, or any TyXML module.
+    )
+   (depends
+    (ocaml
+     (>= 4.04))
+    (tyxml
+     (= :version))
+    (tyxml-syntax
+     (= :version))
+    (alcotest :with-test)
+    (reason :with-test)
+    (ppxlib
+     (>= 0.18))))
+

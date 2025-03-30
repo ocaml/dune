@@ -18,7 +18,7 @@ module Encoded : sig
 
   val template : Template.t -> t
   val atom : Loc.t -> Atom.t -> t
-  val quoted_string : Loc.t -> string -> t
+  val quoted_string : Loc.t -> Quoted_string.t -> t
   val comment : Loc.t -> string list -> t
   val list : Loc.t -> t list -> t
   val to_csts : t list -> Cst.t list
@@ -54,7 +54,7 @@ end = struct
     List
       ( loc
       , Template comment_marker
-        :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, line)) )
+        :: List.map lines ~f:(fun line -> Quoted_string (Loc.none, Single line)) )
   ;;
 
   let list loc l = List (loc, l)
@@ -69,7 +69,7 @@ end = struct
       Comment
         ( loc
         , List.map l ~f:(function
-            | Quoted_string (_, s) -> s
+            | Quoted_string (_, Single s) -> s
             | _ -> assert false) )
     | List (loc, l) -> List (loc, to_csts l)
 

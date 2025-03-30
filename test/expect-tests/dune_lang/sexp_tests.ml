@@ -294,8 +294,6 @@ let dyn_of_sexp (S (syntax, dlang)) =
     ]
 ;;
 
-let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
-
 type round_trip_result =
   | Round_trip_success
   | Did_not_round_trip of Dune_lang.t

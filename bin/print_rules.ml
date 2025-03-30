@@ -176,7 +176,7 @@ let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =
          ; [ "action", sexp_of_action rule.action ]
          ])
   in
-  Format.fprintf ppf "%a@," Dune_lang.Deprecated.pp_split_strings sexp
+  Format.fprintf ppf "%a@," Pp.to_fmt (Dune_lang.pp sexp)
 ;;
 
 module Syntax = struct
@@ -195,8 +195,63 @@ module Syntax = struct
     | Sexp -> print_rule_sexp
   ;;
 
+  type formatter_state =
+    | In_atom
+    | In_makefile_action
+    | In_makefile_stuff
+
+  let prepare_formatter ppf =
+    let state = ref [] in
+    Format.pp_set_mark_tags ppf true;
+    let ofuncs = Format.pp_get_formatter_out_functions ppf () in
+    let tfuncs = Format.pp_get_formatter_stag_functions ppf () in
+    Format.pp_set_formatter_stag_functions
+      ppf
+      { tfuncs with
+        mark_open_stag =
+          (function
+            | Format.String_tag "atom" ->
+              state := In_atom :: !state;
+              ""
+            | Format.String_tag "makefile-action" ->
+              state := In_makefile_action :: !state;
+              ""
+            | Format.String_tag "makefile-stuff" ->
+              state := In_makefile_stuff :: !state;
+              ""
+            | s -> tfuncs.mark_open_stag s)
+      ; mark_close_stag =
+          (function
+            | Format.String_tag "atom"
+            | Format.String_tag "makefile-action"
+            | Format.String_tag "makefile-stuff" ->
+              state := List.tl !state;
+              ""
+            | s -> tfuncs.mark_close_stag s)
+      };
+    Format.pp_set_formatter_out_functions
+      ppf
+      { ofuncs with
+        out_newline =
+          (fun () ->
+            match !state with
+            | [ In_atom; In_makefile_action ] -> ofuncs.out_string "\\\n\t" 0 3
+            | [ In_atom ] -> ofuncs.out_string "\\\n" 0 2
+            | [ In_makefile_action ] -> ofuncs.out_string " \\\n\t" 0 4
+            | [ In_makefile_stuff ] -> ofuncs.out_string " \\\n" 0 3
+            | [] -> ofuncs.out_string "\n" 0 1
+            | _ -> assert false)
+      ; out_spaces =
+          (fun n ->
+            ofuncs.out_spaces
+              (match !state with
+               | In_atom :: _ -> max 0 (n - 2)
+               | _ -> n))
+      }
+  ;;
+
   let print_rules syntax ppf rules =
-    Dune_lang.Deprecated.prepare_formatter ppf;
+    prepare_formatter ppf;
     Format.pp_open_vbox ppf 0;
     Format.pp_print_list (print_rule syntax) ppf rules;
     Format.pp_print_flush ppf ()

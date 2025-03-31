@@ -10,12 +10,11 @@
   it](https://dev.haiku-os.org/ticket/18665). (@Sylvain78, #10953)
 - Fix flag ordering in generated Merlin configurations (#11503, @voodoos, fixes
   ocaml/merlin#1900, reported by @vouillon)
-- Display negative error codes on Windows in hex which is the more customary
-  way to display `NTSTATUS` codes (#11504, @MisterDA)
 
 ### Added
 
-- Add `(format-dune-file <src> <dst>)` action.  (#11166, @nojb)
+- Add `(format-dune-file <src> <dst>)` action. It provides a replacement to
+  `dune format-dune-file` command.  (#11166, @nojb)
 - Allow the `--prefix` flag when configuring dune with `ocaml configure.ml`.
   This allows to set the prefix just like `$ dune install --prefix`. (#11172,
   @rgrinberg)
@@ -29,7 +28,9 @@
 ### Changed
 
 - Format long lists in s-expressions to fill the line instead of formatting
-  them in a vertical way (#10892, fixes #10860, @nojb)
+  them in a vertical way. This change will only be available for dune using
+  `lang dune 3.19` or above. It publishes with `3.18` to make sure maintainers
+  have time to adapt. (#10892, fixes #10860, @nojb)
 - Warn when failing to discover root due to reads failing. The previous
   behavior was to abort. (@KoviRobi, #11173)
 - Use shorter path for inline-tests artifacts. (@hhugo, #11307)
@@ -39,6 +40,8 @@
   1s waiting gap (#11437, fixes #11425, @MSoegtropIMC)
 - Cache: we now only store the executable permission bit for files (#11541,
   fixes #11533, @ElectreAAS)
+- Display negative error codes on Windows in hex which is the more customary
+  way to display `NTSTATUS` codes (#11504, @MisterDA)
 
 3.17.2 (2025-01-23)
 -------------------

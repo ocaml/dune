@@ -27,10 +27,6 @@
 
 ### Changed
 
-- Format long lists in s-expressions to fill the line instead of formatting
-  them in a vertical way. This change will only be available for dune using
-  `lang dune 3.19` or above. It publishes with `3.18` to make sure maintainers
-  have time to adapt. (#10892, fixes #10860, @nojb)
 - Warn when failing to discover root due to reads failing. The previous
   behavior was to abort. (@KoviRobi, #11173)
 - Use shorter path for inline-tests artifacts. (@hhugo, #11307)

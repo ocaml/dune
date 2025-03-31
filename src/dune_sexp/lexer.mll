@@ -6,7 +6,7 @@ open Stdune
 module Token = struct
   type t =
     | Atom of Atom.t
-    | Quoted_string of string
+    | Quoted_string of Quoted_string.t 
     | Lparen
     | Rparen
     | Eof
@@ -83,9 +83,12 @@ module Template = struct
     val add_var : part -> unit
     val add_text : string -> unit
     val add_text_c : char -> unit
+    val start_block_string : unit -> unit
+    val add_new_line : unit -> unit
   end = struct
     type state =
       | String
+      | MultiString of string list
       | Template of Template.part list
 
     let text_buf = Buffer.create 256
@@ -106,12 +109,15 @@ module Template = struct
 
     let get () =
       match !state with
-      | String -> Token.Quoted_string (take_buf ())
+      | String -> Token.Quoted_string (Single (take_buf ()))
+      | MultiString parts ->
+        state := String;
+        Token.Quoted_string (Multi (List.rev parts))
       | Template parts ->
         state := String;
         begin match add_buf_to_parts parts with
         | [] -> assert false
-        | [Text s] -> Quoted_string s
+        | [Text s] -> Quoted_string (Single s)
         | parts ->
           Token.Template
             { quoted = true
@@ -122,11 +128,22 @@ module Template = struct
 
     let add_var v =
       match !state with
-      | String ->
+      | String 
+      | MultiString _ ->
+        (* TODO: is this correct? *)
         state := Template (v :: add_buf_to_parts []);
       | Template parts ->
         let parts = add_buf_to_parts parts in
         state := Template (v::parts)
+    
+    let start_block_string () = state := MultiString []
+    
+    let add_new_line () =
+      match !state with
+      | String -> assert false
+      | MultiString parts ->
+        state := MultiString (take_buf () :: parts)
+      | Template _ -> assert false
 
     let add_text   = Buffer.add_string text_buf
     let add_text_c = Buffer.add_char text_buf
@@ -189,16 +206,17 @@ and atom acc start = parse
 
 and start_quoted_string = parse
   | "\\|"
-    { block_string_start With_escape_sequences lexbuf }
+    { Template.Buffer.start_block_string ();
+      block_string_start With_escape_sequences lexbuf }
   | "\\>"
-    { block_string_start Raw lexbuf }
+    { Template.Buffer.start_block_string ();
+      block_string_start Raw lexbuf }
   | ""
     { quoted_string lexbuf }
 
 and block_string_start kind = parse
-  | newline as s
-    { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+  | newline
+    { Template.Buffer.add_new_line ();
       block_string_after_newline lexbuf
     }
   | ' '
@@ -213,9 +231,8 @@ and block_string_start kind = parse
     }
 
 and block_string = parse
-  | newline as s
-    { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+  | newline
+    { Template.Buffer.add_new_line ();
       block_string_after_newline lexbuf
     }
   | '\\'
@@ -246,9 +263,8 @@ and block_string_after_newline = parse
     }
 
 and raw_block_string = parse
-  | newline as s
-    { Lexing.new_line lexbuf;
-      Template.Buffer.add_text s;
+  | newline
+    { Template.Buffer.add_new_line ();
       block_string_after_newline lexbuf
     }
   | _ as c

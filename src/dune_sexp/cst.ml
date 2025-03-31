@@ -2,7 +2,7 @@ open Stdune
 
 type t =
   | Atom of Loc.t * Atom.t
-  | Quoted_string of Loc.t * string
+  | Quoted_string of Loc.t * Quoted_string.t
   | Template of Template.t
   | List of Loc.t * t list
   | Comment of Loc.t * string list
@@ -11,7 +11,7 @@ let rec to_dyn =
   let open Dyn in
   function
   | Atom (_, a) -> variant "Atom" [ Atom.to_dyn a ]
-  | Quoted_string (_, s) -> variant "Quoted_string" [ string s ]
+  | Quoted_string (_, s) -> variant "Quoted_string" [ Quoted_string.to_dyn s ]
   | Template t -> variant "Template" [ Template.to_dyn t ]
   | List (_, l) -> variant "List" [ list to_dyn l ]
   | Comment (_, c) -> variant "Comment" [ Dyn.(list string) c ]

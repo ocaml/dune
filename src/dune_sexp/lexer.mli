@@ -3,7 +3,7 @@ open! Stdune
 module Token : sig
   type t =
     | Atom of Atom.t
-    | Quoted_string of string
+    | Quoted_string of Quoted_string.t
     | Lparen
     | Rparen
     | Eof

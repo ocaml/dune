@@ -67,8 +67,8 @@ module Common = struct
     let rec replace_first old_name new_name = function
       | List (loc, Atom (loca, A atom) :: tll) :: tl when atom = old_name ->
         List (loc, Atom (loca, Atom.of_string new_name) :: tll) :: tl
-      | List (loc, Quoted_string (loca, str) :: tll) :: tl when str = old_name ->
-        List (loc, Quoted_string (loca, new_name) :: tll) :: tl
+      | List (loc, Quoted_string (loca, Single str) :: tll) :: tl when str = old_name ->
+        List (loc, Quoted_string (loca, Single new_name) :: tll) :: tl
       | hd :: tl -> hd :: replace_first old_name new_name tl
       | [] -> []
     ;;
@@ -76,8 +76,8 @@ module Common = struct
     let extract_first names =
       let rec is_names vals names =
         match vals, names with
-        | (Atom (_, A str) | Quoted_string (_, str)) :: tl, name :: tln when str = name ->
-          is_names tl tln
+        | (Atom (_, A str) | Quoted_string (_, Single str)) :: tl, name :: tln
+          when str = name -> is_names tl tln
         | _, [] -> true
         | _, _ -> false
       in
@@ -109,8 +109,10 @@ module Common = struct
     ;;
 
     let included_file path = function
-      | List (_, [ Atom (_, A "include"); (Atom (loc, A fn) | Quoted_string (loc, fn)) ])
-        ->
+      | List
+          ( _
+          , [ Atom (_, A "include"); (Atom (loc, A fn) | Quoted_string (loc, Single fn)) ]
+          ) ->
         let dir = Path.Source.parent_exn path in
         let included_file = Path.Source.relative dir fn in
         if not (Path.exists (Path.source included_file))

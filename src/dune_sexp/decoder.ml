@@ -337,8 +337,8 @@ let until_keyword =
 
 let plain_string f =
   next (function
-    | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
-    | Template { loc; _ } | List (loc, _) ->
+    | Atom (loc, A s) | Quoted_string (loc, Single s) -> f ~loc s
+    | Quoted_string (loc, Multi _) | Template { loc; _ } | List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 ;;
 

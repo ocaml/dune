@@ -30,7 +30,6 @@ module Pform : sig
     ; payload : Payload.t option
     }
 
-  val compare : t -> t -> Ordering.t
   val to_string : t -> string
   val to_dyn : t -> Dyn.t
   val name : t -> string

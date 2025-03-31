@@ -8,6 +8,7 @@ module Pform = struct
     let of_string t = t
     let to_string t = t
     let to_dyn = Dyn.string
+    let equal = String.equal
     let compare = String.compare
 
     module Args = struct
@@ -65,13 +66,10 @@ module Pform = struct
 
   let name { name; _ } = name
 
-  let compare { name; payload; loc } t =
-    match String.compare name t.name with
-    | (Lt | Gt) as x -> x
-    | Eq ->
-      (match Option.compare Payload.compare payload t.payload with
-       | (Lt | Gt) as x -> x
-       | Eq -> Loc.compare loc t.loc)
+  let equal { name; payload; loc } t =
+    String.equal name t.name
+    && Option.equal Payload.equal payload t.payload
+    && Loc.equal loc t.loc
   ;;
 
   let full_name t =
@@ -120,24 +118,16 @@ type t =
   ; loc : Loc.t
   }
 
-let compare_part p1 p2 =
-  match p1, p2 with
-  | Text s1, Text s2 -> String.compare s1 s2
-  | Pform v1, Pform v2 -> Pform.compare v1 v2
-  | Text _, Pform _ -> Ordering.Lt
-  | Pform _, Text _ -> Ordering.Gt
+let equal_part s1 s2 =
+  match s1, s2 with
+  | Text s1, Text s2 -> String.equal s1 s2
+  | Pform v1, Pform v2 -> Pform.equal v1 v2
+  | _ -> false
 ;;
 
-let compare { quoted; parts; loc } t =
-  match Bool.compare t.quoted quoted with
-  | (Lt | Gt) as x -> x
-  | Eq ->
-    (match List.compare ~compare:compare_part parts t.parts with
-     | (Lt | Gt) as x -> x
-     | Eq -> Loc.compare loc t.loc)
+let equal { quoted; parts; loc } t =
+  Loc.equal loc t.loc && Bool.equal quoted t.quoted && List.equal equal_part parts t.parts
 ;;
-
-let equal t1 t2 = Ordering.is_eq @@ compare t1 t2
 
 module Pp : sig
   val to_string : t -> string

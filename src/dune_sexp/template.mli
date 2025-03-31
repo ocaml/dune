@@ -35,7 +35,6 @@ module Pform : sig
   val name : t -> string
   val loc : t -> Loc.t
   val payload_loc : t -> Loc.t
-  val full_name : t -> string
 
   (** Variables do not have a payload. While macros always do. *)
   val payload : t -> Payload.t option

@@ -72,12 +72,6 @@ module Pform = struct
     && Loc.equal loc t.loc
   ;;
 
-  let full_name t =
-    match t.payload with
-    | None -> t.name
-    | Some v -> t.name ^ ":" ^ Payload.to_string v
-  ;;
-
   let payload t = t.payload
 
   let to_string { loc = _; name; payload } =

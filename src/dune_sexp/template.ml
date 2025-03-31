@@ -137,6 +137,8 @@ let compare { quoted; parts; loc } t =
      | Eq -> Loc.compare loc t.loc)
 ;;
 
+let equal t1 t2 = Ordering.is_eq @@ compare t1 t2
+
 module Pp : sig
   val to_string : t -> string
 end = struct

@@ -1,5 +1,4 @@
 open! Stdune
-module Format = Stdlib.Format
 
 module Pform = struct
   module Payload = struct

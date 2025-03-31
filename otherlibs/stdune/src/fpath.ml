@@ -195,7 +195,7 @@ let rm_rf fn =
 ;;
 
 let traverse =
-  let rec loop on_file on_dir root stack acc =
+  let rec loop on_file on_dir on_broken_symlink root stack acc =
     match stack with
     | [] -> acc
     | dir :: dirs ->
@@ -211,17 +211,30 @@ let traverse =
              | S_LNK ->
                let path = Filename.concat dir_path fname in
                (match (Unix.stat path).st_kind with
-                | exception Unix.Unix_error (Unix.ENOENT, _, _) -> stack, acc
+                | exception Unix.Unix_error (Unix.ENOENT, _, _) ->
+                  stack, on_broken_symlink ~dir fname acc
                 | S_DIR -> Filename.concat dir fname :: stack, on_dir ~dir fname acc
                 | S_REG -> stack, on_file ~dir fname acc
                 | _ -> stack, acc)
              | _ -> stack, acc)
          in
-         loop on_file on_dir root stack acc)
+         loop on_file on_dir on_broken_symlink root stack acc)
   in
-  fun ~dir ~init ~on_file ~on_dir -> loop on_file on_dir dir [ "" ] init
+  fun ~dir ~init ~on_file ~on_dir ~on_broken_symlink ->
+    loop on_file on_dir on_broken_symlink dir [ "" ] init
 ;;
 
 let traverse_files ~dir ~init ~f =
-  traverse ~dir ~init ~on_dir:(fun ~dir:_ _fname acc -> acc) ~on_file:f
+  let skip = fun ~dir:_ _fname acc -> acc in
+  traverse ~dir ~init ~on_dir:skip ~on_broken_symlink:skip ~on_file:f
+;;
+
+let is_broken_symlink path =
+  let stats = Unix.lstat path in
+  match (stats.st_kind : Unix.file_kind) with
+  | S_LNK ->
+    (match Unix.stat path with
+     | exception Unix.Unix_error (Unix.ENOENT, _, _) -> true
+     | _ -> false)
+  | _ -> false
 ;;

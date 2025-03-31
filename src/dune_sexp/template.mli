@@ -48,13 +48,15 @@ module Pform : sig
   val describe_kind : t -> string
 end
 
-type part =
-  | Text of string
-  | Pform of Pform.t
+module Part : sig
+  type t =
+    | Text of string
+    | Pform of Pform.t
+end
 
 type t =
   { quoted : bool
-  ; parts : part list
+  ; parts : Part.t list
   ; loc : Loc.t
   }
 

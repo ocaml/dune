@@ -101,25 +101,37 @@ module Pform = struct
   ;;
 end
 
-type part =
-  | Text of string
-  | Pform of Pform.t
+module Part = struct
+  type t =
+    | Text of string
+    | Pform of Pform.t
+
+  let equal s1 s2 =
+    match s1, s2 with
+    | Text s1, Text s2 -> String.equal s1 s2
+    | Pform v1, Pform v2 -> Pform.equal v1 v2
+    | _ -> false
+  ;;
+
+  let to_dyn = function
+    | Text s -> Dyn.variant "Text" [ Dyn.string s ]
+    | Pform v -> Dyn.variant "Pform" [ Pform.to_dyn v ]
+  ;;
+
+  let remove_locs = function
+    | Text s -> Text s
+    | Pform v -> Pform { v with loc = Loc.none }
+  ;;
+end
 
 type t =
   { quoted : bool
-  ; parts : part list
+  ; parts : Part.t list
   ; loc : Loc.t
   }
 
-let equal_part s1 s2 =
-  match s1, s2 with
-  | Text s1, Text s2 -> String.equal s1 s2
-  | Pform v1, Pform v2 -> Pform.equal v1 v2
-  | _ -> false
-;;
-
 let equal { quoted; parts; loc } t =
-  Loc.equal loc t.loc && Bool.equal quoted t.quoted && List.equal equal_part parts t.parts
+  Loc.equal loc t.loc && Bool.equal quoted t.quoted && List.equal Part.equal parts t.parts
 ;;
 
 module Pp : sig
@@ -158,7 +170,7 @@ end = struct
     in
     let rec add_parts acc_text = function
       | [] -> commit_text acc_text
-      | Text s :: rest -> add_parts (if acc_text = "" then s else acc_text ^ s) rest
+      | Part.Text s :: rest -> add_parts (if acc_text = "" then s else acc_text ^ s) rest
       | Pform v :: rest ->
         commit_text acc_text;
         add_pform v;
@@ -174,23 +186,9 @@ let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
 let remove_locs t =
-  { t with
-    loc = Loc.none
-  ; parts =
-      List.map t.parts ~f:(function
-        | Pform v -> Pform { v with loc = Loc.none }
-        | Text _ as s -> s)
-  }
-;;
-
-let dyn_of_part =
-  let open Dyn in
-  function
-  | Text s -> variant "Text" [ string s ]
-  | Pform v -> variant "Pform" [ Pform.to_dyn v ]
+  { t with loc = Loc.none; parts = List.map t.parts ~f:Part.remove_locs }
 ;;
 
 let to_dyn { quoted; parts; loc = _ } =
-  let open Dyn in
-  record [ "quoted", bool quoted; "parts", list dyn_of_part parts ]
+  Dyn.record [ "quoted", Dyn.bool quoted; "parts", Dyn.list Part.to_dyn parts ]
 ;;

@@ -61,7 +61,6 @@ type t =
   }
 
 val to_string : t -> string
-val compare_no_loc : t -> t -> Ordering.t
 val compare : t -> t -> Ordering.t
 val pp : t -> _ Pp.t
 val pp_split_strings : Stdlib.Format.formatter -> t -> unit

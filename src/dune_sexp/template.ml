@@ -180,29 +180,6 @@ end
 let to_string = Pp.to_string
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
-let pp_split_strings ppf (t : t) =
-  if
-    t.quoted
-    || List.exists t.parts ~f:(function
-      | Text s -> String.contains s '\n'
-      | Pform _ -> false)
-  then (
-    List.iter t.parts ~f:(function
-      | Pform s -> Format.pp_print_string ppf (Pform.to_string s)
-      | Text s ->
-        (match String.split s ~on:'\n' with
-         | [] -> assert false
-         | [ s ] -> Format.pp_print_string ppf (Escape.escaped s)
-         | split ->
-           Format.pp_print_list
-             ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
-             Format.pp_print_string
-             ppf
-             split));
-    Format.fprintf ppf "@}\"@]")
-  else Format.pp_print_string ppf (Pp.to_string t)
-;;
-
 let remove_locs t =
   { t with
     loc = Loc.none

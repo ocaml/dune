@@ -194,8 +194,8 @@ let rm_rf fn =
   | _ -> unlink_exn fn
 ;;
 
-let traverse =
-  let rec loop on_file on_dir on_broken_symlink root stack acc =
+let traverse ~dir ~init ~on_file ~on_dir ~on_broken_symlink =
+  let rec loop root stack acc =
     match stack with
     | [] -> acc
     | dir :: dirs ->
@@ -218,10 +218,9 @@ let traverse =
                 | _ -> stack, acc)
              | _ -> stack, acc)
          in
-         loop on_file on_dir on_broken_symlink root stack acc)
+         loop root stack acc)
   in
-  fun ~dir ~init ~on_file ~on_dir ~on_broken_symlink ->
-    loop on_file on_dir on_broken_symlink dir [ "" ] init
+  loop dir [ "" ] init
 ;;
 
 let traverse_files ~dir ~init ~f =

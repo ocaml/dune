@@ -18,8 +18,8 @@ end
 
 module Static : sig
   type 'path t =
-    { targets : ('path * Kind.t * string option) list;
-     multiplicity : Multiplicity.t
+    { targets : ('path * Kind.t * string option) list
+    ; multiplicity : Multiplicity.t
     }
 end
 
@@ -29,10 +29,16 @@ end
 type 'a t =
   | Static of 'a Static.t
   | Infer
+  | Bindings of 'a Bindings.t
 
 (** [target] or [targets] field with the correct multiplicity. *)
 val field
   :  allow_directory_targets:bool
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
-  
-val get_target_by_name : string -> String_with_vars.t option
+
+(* In targets_spec.mli *)
+val get_target_by_name : string -> String_with_vars.t t -> String_with_vars.t option
+
+val expand_bindings
+  :  String_with_vars.t Bindings.t
+  -> (String_with_vars.t * Kind.t * string option) list

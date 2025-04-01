@@ -271,7 +271,12 @@ let[@inline never] invalid_use_of_target_variable
          ~loc:source.loc
          ~field:multiplicity
          ~variable:var_multiplicity;
-       assert false)
+       assert false
+     | Bindings _ ->
+       (* Handle the Bindings case appropriately *)
+       User_error.raise
+         ~loc:source.loc
+         [ Pp.text "Cannot use named bindings in this context" ])
 ;;
 
 let expand_read_macro ~dir ~source s ~read =

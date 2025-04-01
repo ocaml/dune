@@ -640,8 +640,20 @@ let expand
                (Expander.Deps.Without
                   (Memo.return
                      (Value.L.paths
-                        (List.map targets ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
+                        (List.map targets ~f:(fun (target, _kind, _name_opt) ->
                            Path.build target))))))
+      | Bindings bindings ->  (* Handle the Bindings case *)
+        let targets = Targets_spec.expand_bindings bindings in
+        Expander.add_bindings_full
+          expander
+          ~bindings:
+            (Pform.Map.singleton
+               (Var Targets)  (* Bindings always implies Multiple targets *)
+               (Expander.Deps.Without
+                  (Memo.return
+                     (Value.L.paths
+                        (List.map targets ~f:(fun (target, _kind, _name_opt) ->
+                           Path.build (String_with_vars.to_string target))))))
     in
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
@@ -650,14 +662,15 @@ let expand
   in
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with
-    | Infer -> targets
-    | Static { targets = targets_written_by_user; multiplicity = _ } ->
+    | Infer -> targets  (* Return existing targets for Infer case *)
+    | Static { targets = targets_list; multiplicity = _ } ->  (* Renamed to avoid shadowing *)
       let files, dirs =
-        List.partition_map targets_written_by_user ~f:(fun (path, kind) ->
+        List.partition_map targets_list ~f:(fun (path, kind, _name_opt) ->
           validate_target_dir ~targets_dir ~loc targets path;
           match kind with
-          | File -> Left path
-          | Directory -> Right path)
+          | Targets_spec.Kind.File -> Left path
+          | Targets_spec.Kind.Directory -> Right path
+        )
       in
       let files = Path.Build.Set.of_list files in
       let dirs = Path.Build.Set.of_list dirs in
@@ -669,7 +682,6 @@ let expand
     Action.Full.make (Action.Chdir (Path.build chdir, action)) ~sandbox
   in
   Action_builder.with_targets ~targets build
-;;
 
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred
    types in this module with all the various t's *)

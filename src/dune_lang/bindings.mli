@@ -15,3 +15,5 @@ val to_dyn : 'a Dyn.builder -> 'a t Dyn.builder
 val decode : 'a Dune_sexp.Decoder.t -> 'a t Dune_sexp.Decoder.t
 val encode : 'a Dune_sexp.Encoder.t -> 'a t -> Dune_sexp.t
 val var_names : _ t -> string list
+val is_empty : 'a t -> bool
+val get_target_by_name : string -> String_with_vars.t t -> String_with_vars.t option

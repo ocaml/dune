@@ -89,16 +89,20 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
       | Infer -> Memo.return Targets_spec.Infer
       | Static { targets; multiplicity } ->
         let+ targets =
-          Memo.List.concat_map targets ~f:(fun (target, kind) ->
+          Memo.List.concat_map targets ~f:(fun (target, kind, _name_opt) ->
             (match multiplicity with
              | One ->
                Expander.No_deps.expand expander ~mode:Single target >>| List.singleton
              | Multiple -> Expander.No_deps.expand expander ~mode:Many target)
             >>|
             let error_loc = String_with_vars.loc target in
-            List.map ~f:(fun value -> check_filename ~kind ~dir ~error_loc value, kind))
+            List.map ~f:(fun value ->
+              check_filename ~kind ~dir ~error_loc value, kind, _name_opt))
         in
-        Targets_spec.Static { multiplicity; targets }
+        Memo.return (Targets_spec.Static { multiplicity; targets })
+      | Bindings bindings ->
+        let+ targets = Memo.return (Targets_spec.expand_bindings bindings) in
+        Memo.return (Targets_spec.Static { targets; multiplicity = Multiple })
     in
     let expander =
       match extra_bindings with

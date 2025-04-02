@@ -150,8 +150,8 @@ let of_package (t : Dune_lang.Package.t) =
       | [], Exists true ->
         let name = t |> Package.name |> Package_name.to_string in
         let hints =
-          [ Pp.textf "Delete the package %S from `dune-project`" name
-          ; Pp.textf "Add a `depends` field in the `package` stanza of package %S" name
+          [ Pp.textf "Add a `depends` field in the `package` stanza of package %S or" name
+          ; Pp.textf "Delete the package %S from `dune-project`" name
           ]
         in
         User_warning.emit

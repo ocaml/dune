@@ -29,18 +29,34 @@ should favor the dune metadata in such a case.
   > EOF
 
   $ dune pkg lock
+  Warning: Package "bar" loaded from `dune-project` but does not declare any
+  dependencies
+  Hint: Add a `depends` field in the `package` stanza of package "bar" or
+  Hint: Delete the package "bar" from `dune-project`
+  Warning: Package "bar" loaded from `dune-project` but does not declare any
+  dependencies
+  Hint: Add a `depends` field in the `package` stanza of package "bar" or
+  Hint: Delete the package "bar" from `dune-project`
+  Warning: Package "bar" loaded from `dune-project` but does not declare any
+  dependencies
+  Hint: Add a `depends` field in the `package` stanza of package "bar" or
+  Hint: Delete the package "bar" from `dune-project`
+  Warning: Package "bar" loaded from `dune-project` but does not declare any
+  dependencies
+  Hint: Add a `depends` field in the `package` stanza of package "bar" or
+  Hint: Delete the package "bar" from `dune-project`
   Solution for dune.lock:
   - bar.dev
   - foo.dev
 
-  $  cat dune.lock/bar.pkg | sed "/source/,//d"
+  $ cat dune.lock/bar.pkg | sed "/source/,//d"
   (version dev)
   
   (dune)
   
   
   (dev)
-  $  cat dune.lock/foo.pkg | sed "/source/,//d"
+  $ cat dune.lock/foo.pkg | sed "/source/,//d"
   (version dev)
   
   (dune)

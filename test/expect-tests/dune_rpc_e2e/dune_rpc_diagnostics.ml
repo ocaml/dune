@@ -136,85 +136,85 @@ let%expect_test "related error" =
     "foo.cma";
   [%expect
     {|
-  Building foo.cma
-  Build foo.cma failed
-  [ "Add"
-  ; [ [ "directory"; "$CWD" ]
-    ; [ "id"; "0" ]
-    ; [ "loc"
-      ; [ [ "start"
-          ; [ [ "pos_bol"; "0" ]
-            ; [ "pos_cnum"; "0" ]
-            ; [ "pos_fname"; "$CWD/foo.ml" ]
-            ; [ "pos_lnum"; "1" ]
+    Building foo.cma
+    Build foo.cma failed
+    [ "Add"
+    ; [ [ "directory"; "$CWD" ]
+      ; [ "id"; "0" ]
+      ; [ "loc"
+        ; [ [ "start"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
             ]
-          ]
-        ; [ "stop"
-          ; [ [ "pos_bol"; "0" ]
-            ; [ "pos_cnum"; "0" ]
-            ; [ "pos_fname"; "$CWD/foo.ml" ]
-            ; [ "pos_lnum"; "1" ]
+          ; [ "stop"
+            ; [ [ "pos_bol"; "0" ]
+              ; [ "pos_cnum"; "0" ]
+              ; [ "pos_fname"; "$CWD/foo.ml" ]
+              ; [ "pos_lnum"; "1" ]
+              ]
             ]
           ]
         ]
-      ]
-    ; [ "message"
-      ; [ "Verbatim"
-        ; "The implementation foo.ml\n\
-           does not match the interface .foo.objs/byte/foo.cmi: \n\
-           Values do not match: val x : bool is not included in val x : int\n\
-           The type bool is not compatible with the type int\n\
-           "
+      ; [ "message"
+        ; [ "Verbatim"
+          ; "The implementation foo.ml does not match the interface foo.ml: \n\
+             Values do not match: val x : bool is not included in val x : int\n\
+             The type bool is not compatible with the type int\n\
+             "
+          ]
         ]
-      ]
-    ; [ "promotion"; [] ]
-    ; [ "related"
-      ; [ [ [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "0" ]
-                  ; [ "pos_fname"; "$CWD/foo.mli" ]
-                  ; [ "pos_lnum"; "1" ]
+      ; [ "promotion"; [] ]
+      ; [ "related"
+        ; [ [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "0" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "11" ]
-                  ; [ "pos_fname"; "$CWD/foo.mli" ]
-                  ; [ "pos_lnum"; "1" ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "11" ]
+                    ; [ "pos_fname"; "$CWD/foo.mli" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
                 ]
               ]
+            ; [ "message"; [ "Verbatim"; "Expected declaration\n\
+                                          " ] ]
             ]
-          ; [ "message"; [ "Verbatim"; "Expected declaration\n\
-                                        " ] ]
-          ]
-        ; [ [ "loc"
-            ; [ [ "start"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "4" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
+          ; [ [ "loc"
+              ; [ [ "start"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "4" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
-                ]
-              ; [ "stop"
-                ; [ [ "pos_bol"; "0" ]
-                  ; [ "pos_cnum"; "5" ]
-                  ; [ "pos_fname"; "$CWD/foo.ml" ]
-                  ; [ "pos_lnum"; "1" ]
+                ; [ "stop"
+                  ; [ [ "pos_bol"; "0" ]
+                    ; [ "pos_cnum"; "5" ]
+                    ; [ "pos_fname"; "$CWD/foo.ml" ]
+                    ; [ "pos_lnum"; "1" ]
+                    ]
                   ]
                 ]
               ]
+            ; [ "message"; [ "Verbatim"; "Actual declaration\n\
+                                          " ] ]
             ]
-          ; [ "message"; [ "Verbatim"; "Actual declaration\n\
-                                        " ] ]
           ]
         ]
+      ; [ "severity"; "error" ]
+      ; [ "targets"; [] ]
       ]
-    ; [ "severity"; "error" ]
-    ; [ "targets"; [] ]
     ]
-  ] |}];
+    |}];
   diagnostic_with_build
     [ "dune", "(library (name foo)) (executable (name foo))"; "foo.ml", "" ]
     "@check";

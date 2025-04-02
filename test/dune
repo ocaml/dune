@@ -3,7 +3,9 @@
 ;; $ ./_build/default/bin/main.exe build @test/fail-with-background-jobs-running
 ;;
 
-(include_subdirs no)  ; Disable automatic inclusion
+(include_subdirs no)
+
+; Disable automatic inclusion
 
 (rule
  (alias sleep5)
@@ -162,4 +164,5 @@
 
 (rule
  (alias runtest)
- (action (diff output.txt output.expected)))
+ (action
+  (diff output.txt output.expected)))

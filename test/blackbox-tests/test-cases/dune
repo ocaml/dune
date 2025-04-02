@@ -177,4 +177,5 @@
 
 (rule
  (alias named-targets)
- (action (run %{bin:bash} ./named-targets.t)))
+ (action
+  (run %{bin:bash} ./named-targets.t)))

@@ -21,15 +21,15 @@ follows:
 
     (flags (:standard <my options>))
 
-If you would like to set the ``-keywords`` flag for Ocaml 5.3 and above,
+If you would like to set the ``-keywords`` flag for OCaml 5.3 and above,
 you can do so using the ``(keywords)`` field which is available in the
-same stanzas as the other Ocaml flags. You can set this field in the
+same stanzas as the other OCaml flags. You can set this field in the
 following ways:
 
-- ``(keywords (version <major>.<minor>))`` to set the Ocaml version to use
+- ``(keywords (version <major>.<minor>))`` to set the OCaml version to use
   keywords from, e.g. ``(keywords (version 5.3))``.
 - ``(keywords (extra <keyword1> <keyword2>))`` to add extra keywords to the
-  currently in use Ocaml version, e.g. ``(keywords (extra atomic))``.
+  currently in use OCaml version, e.g. ``(keywords (extra atomic))``.
 - ``(keywords (version <major>.<minor>) (extra <keyword1> <keyword2>))``
   to use the keywords from a specific version and add some extra keywords,
   e.g. ``(keywords (version 5.2) (extra effect))``.

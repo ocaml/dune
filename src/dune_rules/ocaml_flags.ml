@@ -77,15 +77,15 @@ module Keywords = struct
   ;;
 
   let to_string_list t =
+    let with_extras version extra_l =
+      let keywords_args = version :: extra_l |> String.concat ~sep:"+" in
+      "-keywords" :: [ keywords_args ]
+    in
     match t.keywords with
     | None, [] -> []
     | Some version, [] -> "-keywords" :: [ version ]
-    | None, extra_l ->
-      let keywords_arg = "" :: extra_l |> String.concat ~sep:"+" in
-      "-keywords" :: [ keywords_arg ]
-    | Some version, extra_l ->
-      let keywords_arg = version :: extra_l |> String.concat ~sep:"+" in
-      "-keywords" :: [ keywords_arg ]
+    | None, extra_l -> with_extras "" extra_l
+    | Some version, extra_l -> with_extras version extra_l
   ;;
 end
 

@@ -14,7 +14,7 @@ jobs:
         repository: roburio/caldav
         ref: 51f0d150542348dc259b7c9f7bc70ee592243f7f
     - name: Use OCaml ${{ matrix.ocaml-compiler }}
-      uses: ocaml/setup-ocaml@v2
+      uses: ocaml/setup-ocaml@v3
       with:
         ocaml-compiler: 4.14.x
         opam-depext: false

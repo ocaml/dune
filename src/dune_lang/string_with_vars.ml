@@ -102,7 +102,7 @@ let decode_manually f =
     ; loc
     ; parts =
         List.map parts ~f:(function
-          | Template.Text s -> Text s
+          | Template.Part.Text s -> Text s
           | Pform v ->
             (match f env v with
              | pform -> Pform (v, pform)
@@ -448,7 +448,7 @@ let encode t =
       ; quoted = t.quoted
       ; parts =
           List.map t.parts ~f:(function
-            | Text s -> Template.Text s
+            | Text s -> Template.Part.Text s
             | Error (_, msg) -> raise (User_error.E msg)
             | Pform (source, pform) ->
               (match Pform.encode_to_latest_dune_lang_version pform with

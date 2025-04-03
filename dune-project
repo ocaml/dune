@@ -30,7 +30,7 @@
   (ocaml-lsp-server (< 1.3.0))
   (dune-configurator (< 2.3.0))
   (odoc (< 2.0.1))
-  (dune-release (< 1.3.0))
+  (dune-release (< 2.0.0))
   (js_of_ocaml-compiler (< 3.6.0))
   (jbuilder (= transition)))
  (description "

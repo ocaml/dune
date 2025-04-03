@@ -11,7 +11,7 @@ let rec equal x y =
   | Atom (loc, atom), Atom (loc', atom') -> Loc.equal loc loc' && Atom.equal atom atom'
   | Quoted_string (loc, s), Quoted_string (loc', s') ->
     Loc.equal loc loc' && String.equal s s'
-  | Template t, Template t' -> Ordering.is_eq @@ Template.compare t t'
+  | Template t, Template t' -> Template.equal t t'
   | List (loc, xs), List (loc', xs') -> Loc.equal loc loc' && List.equal equal xs xs'
   | _, _ -> false
 ;;

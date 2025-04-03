@@ -79,6 +79,7 @@ The magic invocation is:
 ```console
 $ dune build --only-packages <package-name> @install
 ```
+
 ## Build Against Several Configurations at Once
 
 Dune can build a given source code repository against several configurations
@@ -126,7 +127,7 @@ $ ./dune.exe install dune
 ```
 
 The first command builds the `dune.exe` binary. The second builds the additional
-files installed by Dune, such as the *man* pages, and the last simply installs
+files installed by Dune, such as the _man_ pages, and the last simply installs
 all of that on the system.
 
 **Please note**: unless you ran the optional `./configure` script, you can
@@ -135,7 +136,6 @@ relocatable and discovers its environment at runtime rather than hard-coding it
 at compilation time.
 
 # Support
-
 
 [![Issues][issues-badge]][issues]
 [![Discussions][discussions-badge]][discussions]

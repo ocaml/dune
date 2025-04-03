@@ -3,6 +3,40 @@ include Dune_lang.Package_dependency
 
 let nopos pelem = { OpamParserTypes.FullPos.pelem; pos = Opam_file.nopos }
 
+(* Function to emit warnings for common typos when processing dependencies *)
+let warn_on_typos ~loc dependency =
+  (* We'll implement a copy of the check_for_version_typo function here 
+     since it's not directly accessible from the other module *)
+  let check_typo dep =
+    let open Dune_lang.Package_constraint in
+    match dep.constraint_ with
+    | Some (Uop (Dune_lang.Relop.Eq, Value.String_literal "version")) ->
+      Some
+        ( sprintf
+            "Possible typo in package dependency for %s: '(= version)' might be a mistake."
+            (Package_name.to_string dep.name)
+        , "Did you mean to use the `:version` variable instead? Use: (depends (bar :version))" )
+    | Some (Bop (Dune_lang.Relop.Eq, Value.String_literal "version", _)) ->
+      Some
+        ( sprintf
+            "Possible typo in package dependency for %s: '(= version)' might be a mistake."
+            (Package_name.to_string dep.name)
+        , "Did you mean to use the `:version` variable instead? Use: (depends (bar :version))" )
+    | Some (Bvar var) when String.equal (Package_variable_name.to_string var) "with_test" ->
+      Some
+        ( sprintf
+            "Possible typo in package dependency for %s: ':with_test' might be a mistake."
+            (Package_name.to_string dep.name)
+        , "Did you mean to use ':with-test' instead? Use: (depends (bar :with-test))" )
+    | _ -> None
+  in
+  
+  match check_typo dependency with
+  | Some (message, suggestion) ->
+    User_warning.emit ~loc [ Pp.text message; Pp.text suggestion ]
+  | None -> ()
+;;
+
 module Convert_from_opam_error = struct
   type t =
     | Can't_convert_opam_filter_to_value of OpamTypes.filter
@@ -223,15 +257,21 @@ let to_opam_filtered_formula { name; constraint_ } =
 let list_of_opam_disjunction loc filtered_formula =
   let exception E of Convert_from_opam_error.t in
   try
-    OpamFormula.ors_to_list filtered_formula
-    |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
-      match filtered_formula with
-      | Atom (name, condition) ->
-        let name = Package_name.of_opam_package_name name in
-        (match Constraint.opt_of_opam_condition condition with
-         | Ok constraint_ -> { name; constraint_ }
-         | Error error -> raise (E error))
-      | non_atom -> raise (E (Filtered_formula_is_not_the_correct_kind { non_atom })))
+    let deps = 
+      OpamFormula.ors_to_list filtered_formula
+      |> List.map ~f:(fun (filtered_formula : OpamTypes.filtered_formula) ->
+        match filtered_formula with
+        | Atom (name, condition) ->
+          let name = Package_name.of_opam_package_name name in
+          (match Constraint.opt_of_opam_condition condition with
+           | Ok constraint_ -> 
+              let dep = { name; constraint_ } in
+              warn_on_typos ~loc dep;
+              dep
+           | Error error -> raise (E error))
+        | non_atom -> raise (E (Filtered_formula_is_not_the_correct_kind { non_atom })))
+    in
+    deps
   with
   | E e ->
     let message =

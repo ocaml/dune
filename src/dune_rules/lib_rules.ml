@@ -17,7 +17,7 @@ let standard_cxx_flags ~dir ~has_cxx sctx =
   match Dune_project.use_standard_c_and_cxx_flags project with
   | Some true when has_cxx () ->
     let ctx = Super_context.context sctx in
-    Cxx_flags.get_flags ~for_:Link (Context.build_context ctx)
+    Cc_flags.get_flags ~for_:Link (Context.build_context ctx)
   | _ -> Action_builder.return []
 ;;
 
@@ -50,7 +50,7 @@ let build_lib
       (* https://github.com/ocaml/dune/issues/119 *)
       match ocaml.lib_config.ccomp_type with
       | Msvc -> msvc_hack_cclibs
-      | Other _ -> Fun.id
+      | Cc | Other _ -> Fun.id
     in
     let obj_deps =
       Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
@@ -173,7 +173,7 @@ let ocamlmklib
         let cclibs =
           match ocaml.lib_config.ccomp_type with
           | Msvc -> msvc_hack_cclibs cclibs
-          | Other _ -> cclibs
+          | Cc | Other _ -> cclibs
         in
         Command.quote_args "-ldopt" cclibs)
     in

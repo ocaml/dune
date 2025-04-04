@@ -44,7 +44,7 @@ let findlib =
     ; natdynlink_supported = Dynlink_supported.By_the_os.of_bool true
     ; ext_dll = ".so"
     ; stdlib_dir = Path.source @@ Path.Source.(relative root) "stdlib"
-    ; ccomp_type = Other "gcc"
+    ; ccomp_type = Cc
     ; ocaml_version_string = "4.02.3"
     ; ocaml_version = Ocaml.Version.make (4, 14, 1)
     }

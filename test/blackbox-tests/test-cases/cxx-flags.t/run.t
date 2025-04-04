@@ -19,9 +19,9 @@ Default: use_standard_c_and_cxx_flags = false
   $ Msvc_LF_LIB=""
 
 > Check that compiler detection is done
-  $ dune build .dune/ccomp/ccomp
+  $ dune build .dune/cc_vendor/cc_vendor
 
-  $ cat _build/default/.dune/ccomp/ccomp |
+  $ cat _build/default/.dune/cc_vendor/cc_vendor |
   > grep -ce "clang\|gcc\|msvc"
   1
 
@@ -82,9 +82,9 @@ With use_standard_c_and_cxx_flags = true
   > EOF
 
 > Check that compiler detection is done
-  $ dune build .dune/ccomp/ccomp
+  $ dune build .dune/cc_vendor/cc_vendor
 
-  $ cat _build/default/.dune/ccomp/ccomp |
+  $ cat _build/default/.dune/cc_vendor/cc_vendor |
   > grep -ce "clang\|gcc\|msvc"
   1
 
@@ -114,7 +114,7 @@ With use_standard_c_and_cxx_flags = true
   Hello World Baz!
   Hello World Bazexe!
 
-  $ [ -f _build/default/.dune/ccomp/ccomp ]
+  $ [ -f _build/default/.dune/cc_vendor/cc_vendor ]
 
 (this also works with sandbox=symlink, #6415)
 
@@ -124,14 +124,14 @@ With use_standard_c_and_cxx_flags = true
   Hello World Baz!
   Hello World Bazexe!
 
-ccomp is not computed if not required
+cc_vendor is not computed if not required
 =====================================
   $ dune clean
 
   $ dune exec ./sub/main_no_stubs.exe
   OK
 
-  $ [ -f _build/default/.dune/ccomp/ccomp ]
+  $ [ -f _build/default/.dune/cc_vendor/cc_vendor ]
   [1]
 
 

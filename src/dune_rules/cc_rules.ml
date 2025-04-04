@@ -3,22 +3,20 @@ open Memo.O
 
 let header_file_content =
   {|
-#if defined( __clang__ )
-  #define CCOMP clang
-#elif defined( _MSC_VER )
-  #define CCOMP msvc
+#if defined( _MSC_VER )
+msvc
+#elif defined( __clang__ )
+clang
 #elif defined( __GNUC__ )
-  #define CCOMP gcc
+gcc
 #else
-  #define CCOMP other
+other
 #endif
-
-CCOMP
 |}
 ;;
 
 let rules ~sctx ~dir =
-  let file = Path.Build.relative dir Cxx_flags.preprocessed_filename in
+  let file = Path.Build.relative dir Cc_flags.preprocessed_filename in
   let ocfg =
     Action_builder.of_memo
     @@
@@ -35,8 +33,8 @@ let rules ~sctx ~dir =
        let open Command.Args in
        S
          [ (match Ocaml_config.ccomp_type ocfg with
-            | Msvc -> A "/EP"
-            | Other _ -> As [ "-E"; "-P" ])
+            | Msvc -> As [ "/nologo"; "/EP" ]
+            | Cc | Other _ -> As [ "-E"; "-P" ])
          ; Path (Path.build header_file)
          ])
   in

@@ -5,6 +5,58 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
+3.18.0 (2025-04-03)
+-------------------
+
+### Fixed
+
+- Support HaikuOS: don't call `execve` since it's not allowed if other pthreads
+  have been created. The fact that Haiku can't call `execve` from other threads
+  than the principal thread of a process (a team in haiku jargon), is a
+  discrepancy to POSIX and hence there is a [bug about
+  it](https://dev.haiku-os.org/ticket/18665). (@Sylvain78, #10953)
+
+- Fix flag ordering in generated Merlin configurations (#11503, @voodoos, fixes
+  ocaml/merlin#1900, reported by @vouillon)
+
+### Added
+
+- Add `(format-dune-file <src> <dst>)` action. It provides a replacement to
+  `dune format-dune-file` command.  (#11166, @nojb)
+
+- Allow the `--prefix` flag when configuring dune with `ocaml configure.ml`.
+  This allows to set the prefix just like `$ dune install --prefix`. (#11172,
+  @rgrinberg)
+
+- Allow arguments starting with `+` in preprocessing definitions (starting with
+  `(lang dune 3.18)`). (@amonteiro, #11234)
+
+- Support for opam `(maintenance_intent ...)` in dune-project (#11274, @art-w)
+
+- Validate opam `maintenance_intent` (#11308, @art-w)
+
+- Support `not` in package dependencies constraints (#11404, @art-w, reported
+  by @hannesm)
+
+### Changed
+
+- Warn when failing to discover root due to reads failing. The previous
+  behavior was to abort. (@KoviRobi, #11173)
+
+- Use shorter path for inline-tests artifacts. (@hhugo, #11307)
+
+- Allow dash in `dune init` project name (#11402, @art-w, reported by @saroupille)
+
+- On Windows, under heavy load, file delete operations can sometimes fail due to
+  AV programs, etc. Guard against it by retrying the operation up to 30x with a
+  1s waiting gap (#11437, fixes #11425, @MSoegtropIMC)
+
+- Cache: we now only store the executable permission bit for files (#11541,
+  fixes #11533, @ElectreAAS)
+
+- Display negative error codes on Windows in hex which is the more customary
+  way to display `NTSTATUS` codes (#11504, @MisterDA)
+
 3.17.2 (2025-01-23)
 -------------------
 
@@ -12,10 +64,13 @@ changelog properly.
 
 - Fix a crash in the Melange rules that would prevent compiling public library
 implementations of virtual libraries. (@anmonteiro, #11248)
+
 - Pass `melange.emit`'s `compile_flags` to the JS emission phase. (@anmonteiro,
   #11252)
+
 - Disallow private implementations of public virtual libs in melange mode.
   (@anmonteiro, #11253)
+
 - Wasm_of_ocaml: fix the execution of tests in a sandbox.  (#11304, @vouillon)
 
 3.17.1 (2024-12-17)

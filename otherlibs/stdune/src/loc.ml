@@ -30,8 +30,7 @@ let pp_left_pad n s =
 ;;
 
 let pp_line padding_width (lnum, l) =
-  let open Pp.O in
-  pp_left_pad padding_width lnum ++ Pp.verbatim " | " ++ Pp.verbatim l ++ Pp.newline
+  Pp.concat [ pp_left_pad padding_width lnum; Pp.verbatim " | "; Pp.verbatim l ]
 ;;
 
 type tag = Loc
@@ -51,11 +50,13 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full loc : tag Pp.t =
       let padding_width = String.length line_num_str in
       let* line = Result.try_with (fun () -> Io.String_path.file_line file line_num) in
       let len = stop_c - start_c in
-      let open Pp.O in
       Ok
-        (pp_line padding_width (line_num_str, line)
-         ++ pp_left_pad (stop_c + padding_width + 3) (String.make len '^')
-         ++ Pp.newline)
+        (Pp.vbox
+         @@ Pp.concat
+              ~sep:Pp.cut
+              [ pp_line padding_width (line_num_str, line)
+              ; pp_left_pad (stop_c + padding_width + 3) (String.make len '^')
+              ])
     | `Multiline ->
       let get_padding lines =
         let lnum, _ = Option.value_exn (List.last lines) in
@@ -64,12 +65,10 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full loc : tag Pp.t =
       let print_ellipsis padding_width =
         (* We add 2 to the width of max line to account for the extra space and
            the `|` character at the end of a line number *)
-        let line = String.make (padding_width + 2) '.' in
-        let open Pp.O in
-        Pp.verbatim line ++ Pp.newline
+        Pp.verbatim (String.make (padding_width + 2) '.')
       in
       let print_lines lines padding_width =
-        Pp.concat_map lines ~f:(pp_line padding_width)
+        Pp.concat_map lines ~sep:Pp.cut ~f:(pp_line padding_width)
       in
       let file_lines ~start ~stop =
         Result.try_with (fun () -> Io.String_path.file_lines file ~start ~stop)
@@ -90,10 +89,13 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full loc : tag Pp.t =
           file_lines ~start:(stop.pos_lnum - context_lines) ~stop:stop.pos_lnum
         in
         let padding_width = get_padding last_shown_lines in
-        let open Pp.O in
-        print_lines first_shown_lines padding_width
-        ++ print_ellipsis padding_width
-        ++ print_lines last_shown_lines padding_width
+        Pp.vbox
+        @@ Pp.concat
+             ~sep:Pp.cut
+             [ print_lines first_shown_lines padding_width
+             ; print_ellipsis padding_width
+             ; print_lines last_shown_lines padding_width
+             ]
   in
   let whole_file = start_c = 0 && stop_c = 0 in
   if whole_file
@@ -125,18 +127,20 @@ let pp loc =
     then Printf.sprintf "line %d" start.pos_lnum
     else Printf.sprintf "lines %d-%d" start.pos_lnum stop.pos_lnum
   in
-  let open Pp.O in
-  Pp.tag
-    Loc
-    (Pp.verbatim
-       (Printf.sprintf
-          "File \"%s\", %s, characters %d-%d:"
-          start.pos_fname
-          lnum
-          start_c
-          stop_c))
-  ++ Pp.newline
-  ++ pp_file_excerpt ~context_lines:2 ~max_lines_to_print_in_full:10 loc
+  Pp.vbox
+  @@ Pp.concat
+       ~sep:Pp.cut
+       [ Pp.tag
+           Loc
+           (Pp.hbox
+              (Pp.textf
+                 "File \"%s\", %s, characters %d-%d:"
+                 start.pos_fname
+                 lnum
+                 start_c
+                 stop_c))
+       ; pp_file_excerpt ~context_lines:2 ~max_lines_to_print_in_full:10 loc
+       ]
 ;;
 
 let on_same_line loc1 loc2 =

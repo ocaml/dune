@@ -24,12 +24,13 @@ let pp_uncaught fmt { exn; backtrace } =
 ;;
 
 let pp { exn; backtrace } =
-  let open Pp.O in
-  Exn.pp exn
-  ++ Pp.newline
-  ++ Pp.text "backtrace:"
-  ++ Pp.newline
-  ++ Pp.text (Printexc.raw_backtrace_to_string backtrace)
+  Pp.vbox
+  @@ Pp.concat
+       ~sep:Pp.cut
+       [ Exn.pp exn
+       ; Pp.text "backtrace:"
+       ; Pp.text (Printexc.raw_backtrace_to_string backtrace)
+       ]
 ;;
 
 let map { exn; backtrace } ~f = { exn = f exn; backtrace }

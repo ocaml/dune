@@ -54,8 +54,9 @@ module Source = struct
       ~indent:2
       (Pp.verbatim "Clflags.include_dirs :=" ++ Pp.cut ++ Dyn.pp include_dirs)
     ++ Pp.verbatim ";"
-    ++ Pp.newline
+    ++ Pp.cut
     ++ Pp.verbatim t.main
+    |> Pp.vbox
   ;;
 
   let loc t = t.loc

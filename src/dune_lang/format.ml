@@ -60,8 +60,10 @@ and pp_sexp_list ~version sexps =
   Pp.char '(' ++ pp_list_with_comments (pp_sexp ~version) sexps ++ Pp.char ')'
 ;;
 
-let pp_top_sexp ~version sexp = pp_sexp ~version sexp ++ Pp.char '\n'
-let pp_top_sexps ~version = Pp.concat_map ~sep:Pp.newline ~f:(pp_top_sexp ~version)
+let pp_top_sexps ~version l =
+  Pp.vbox
+    (Pp.concat_map ~sep:(Pp.concat [ Pp.cut; Pp.nop; Pp.cut ]) ~f:(pp_sexp ~version) l)
+;;
 
 let format_string ~version input =
   match parse (Lexing.from_string input) with

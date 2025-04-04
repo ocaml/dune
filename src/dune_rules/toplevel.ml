@@ -98,12 +98,13 @@ let pp_flags t =
        toplevels because Topmain.main() resets Clflags.all_ppx. *)
     Pp.vbox ~indent:2 (Pp.verbatim "Clflags.all_ppx :=" ++ Pp.cut ++ Dyn.pp ppx)
     ++ Pp.verbatim ";"
-    ++ Pp.newline
+    ++ Pp.cut
     ++ Pp.verbatim "Compenv.first_ppx :="
     ++ Pp.cut
     ++ Dyn.pp ppx
     ++ Pp.verbatim ";"
-    ++ Pp.newline
+    ++ Pp.cut
+    |> Pp.vbox
   | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
   | No_preprocessing -> Action_builder.return Pp.nop
 ;;

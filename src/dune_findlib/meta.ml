@@ -342,7 +342,7 @@ let pp_quoted_value var =
   | _ -> pp_print_string
 ;;
 
-let rec pp entries = Pp.vbox (Pp.concat_map entries ~sep:Pp.newline ~f:pp_entry)
+let rec pp entries = Pp.vbox (Pp.concat_map entries ~sep:Pp.cut ~f:pp_entry)
 
 and pp_entry entry =
   match entry with

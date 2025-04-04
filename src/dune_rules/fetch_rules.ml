@@ -99,6 +99,7 @@ module Spec = struct
   let action { target; url = loc_url, url; checksum; kind } ~ectx:_ ~eenv:_ =
     let open Fiber.O in
     let* () = Fiber.return () in
+    let target = Path.build target in
     (let checksum = Option.map checksum ~f:snd in
      Dune_pkg.Fetch.fetch
        ~unpack:
@@ -106,10 +107,31 @@ module Spec = struct
           | `File -> false
           | `Directory -> true)
        ~checksum
-       ~target:(Path.build target)
+       ~target
        ~url:(loc_url, url))
     >>= function
-    | Ok () -> Fiber.return ()
+    | Ok () ->
+      (match kind with
+       | `File -> ()
+       | `Directory ->
+         (* Delete any broken symlinks from the unpacked archive. Dune can't
+            handle broken symlinks in the _build directory, but some opam
+            package contain broken symlinks. The logic here is applied to the
+            contents of package source archives but not to packages whose source
+            is in a local directory (e.g. when a package is pinned from the
+            filesystem). Broken symlinks are excluded while copying files from
+            local directories into the build directory, and the logic for
+            excluding them lives in [Pkg_rules.source_rules]. *)
+         let target_abs = Path.to_absolute_filename target in
+         Fpath.traverse
+           ~init:()
+           ~dir:target_abs
+           ~on_dir:(fun ~dir:_ _ () -> ())
+           ~on_file:(fun ~dir:_ _ () -> ())
+           ~on_broken_symlink:(fun ~dir fname () ->
+             let path = Filename.concat target_abs (Filename.concat dir fname) in
+             Fpath.rm_rf path));
+      Fiber.return ()
     | Error (Checksum_mismatch actual_checksum) ->
       (match checksum with
        | None ->
@@ -299,6 +321,7 @@ module Copy = struct
           let src = Path.L.relative src_dir [ dir; fname ] in
           let dst = Path.L.relative dst_dir [ dir; fname ] in
           Io.copy_file ~src ~dst ())
+        ~on_broken_symlink:(fun ~dir:_ _fname () -> ())
     ;;
   end
 

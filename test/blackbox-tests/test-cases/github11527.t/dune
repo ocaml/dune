@@ -1,3 +1,0 @@
-(executable
- (name bug)
- (public_name bug))

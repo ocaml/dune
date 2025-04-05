@@ -40,12 +40,43 @@ let encode { name; constraint_ } =
   | Some c -> pair Package_name.encode Package_constraint.encode (name, c)
 ;;
 
+(* Check for common typos in package dependency constraints *)
+let check_for_version_typo { name; constraint_ } =
+  let open Package_constraint in
+  match constraint_ with
+  | Some (Uop (Relop.Eq, Value.String_literal "version")) ->
+    Some
+      ( sprintf
+          "Possible typo in package dependency for %s: '(= version)' might be a mistake."
+          (Package_name.to_string name)
+      , "Did you mean to use the `:version` variable instead? Use: (depends (bar :version))" )
+  | Some (Bop (Relop.Eq, Value.String_literal "version", _)) ->
+    Some
+      ( sprintf
+          "Possible typo in package dependency for %s: '(= version)' might be a mistake."
+          (Package_name.to_string name)
+      , "Did you mean to use the `:version` variable instead? Use: (depends (bar :version))" )
+  | Some (Bvar var) when String.equal (Package_variable_name.to_string var) "with_test" ->
+    Some
+      ( sprintf
+          "Possible typo in package dependency for %s: ':with_test' might be a mistake."
+          (Package_name.to_string name)
+      , "Did you mean to use ':with-test' instead? Use: (depends (bar :with-test))" )
+  | _ -> None
+;;
+
 let decode =
   let open Dune_sexp.Decoder in
   let constrained =
     let+ name = Package_name.decode
     and+ expr = Package_constraint.decode in
-    { name; constraint_ = Some expr }
+    let result = { name; constraint_ = Some expr } in
+    (* Check for typos and emit warnings *)
+    (match check_for_version_typo result with
+     | Some (msg, suggestion) ->
+       User_warning.emit [Pp.text msg; Pp.text suggestion]
+     | None -> ());
+    result
   in
   enter constrained
   <|> let+ name = Well_formed_name.decode in

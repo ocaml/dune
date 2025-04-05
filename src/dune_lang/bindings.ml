@@ -71,27 +71,3 @@ let var_names t =
     | Unnamed _ -> None
     | Named (s, _) -> Some s)
 ;;
-
-let is_empty b = b = []
-
-let get_target_by_name name bindings =
-  let rec find_target = function
-    | [] -> None
-    | Unnamed target :: rest ->
-      (match String_with_vars.text_only target with
-       | Some s when s = name -> Some target
-       | _ -> find_target rest)
-    | Named (_, targets) :: rest ->
-      (match
-         List.find
-           ~f:(fun t ->
-             match String_with_vars.text_only t with
-             | Some s -> s = name
-             | None -> false)
-           targets
-       with
-       | Some target -> Some target
-       | None -> find_target rest)
-  in
-  find_target bindings
-;;

@@ -3,6 +3,7 @@ open Import
 type t =
   { name : Alias.Name.t
   ; deps : Dep_conf.t Bindings.t
+  ; synopsis : string option
   ; action : (Loc.t * Dune_lang.Action.t) option
   ; locks : Locks.t
   ; package : Package.t option

@@ -1,3 +1,4 @@
+(* TODO: make alias to be not only names, but also with synopsis *)
 open Import
 open Dune_lang.Decoder
 

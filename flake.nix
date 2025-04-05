@@ -76,7 +76,7 @@
         builtins.getAttr ("ocamlformat_" + ocamlformat_version) pkgs;
 
       testBuildInputs = with pkgs;
-        [ file mercurial ]
+        [ file mercurial unzip ]
         ++ lib.optionals stdenv.isLinux [ strace ];
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
       

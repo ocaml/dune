@@ -7,7 +7,7 @@ module Mode = struct
 end
 
 type t =
-  { targets : Path.Build.t Targets_spec.t
+  { targets : String_with_vars.t Targets_spec.t
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
   ; mode : Rule.Mode.t
@@ -98,29 +98,11 @@ let long_form =
   let allow_directory_targets =
     Dune_project.is_extension_set project directory_targets_extension
   in
-  let* targets =
-    field
-      "targets"
-      ~default:Targets_spec.Infer
-      (Targets_spec.field ~allow_directory_targets:true
-       <|> (* Change this part: *)
-       let* targets =
-        field
-          "targets"
-          ~default:Targets_spec.Infer
-          (Targets_spec.field ~allow_directory_targets:true
-           <|> fields_of (Bindings.decode String_with_vars.decode >>| fun bindings ->
-               let targets = Targets_spec.expand_bindings bindings in
-               Targets_spec.Static { targets; multiplicity = Multiple }))
-  in
   String_with_vars.add_user_vars_to_decoding_env
-    (Bindings.var_names deps
-     @
-     match targets with
-     | Targets_spec.Bindings b -> Bindings.var_names b
-     | _ -> [])
+    (Bindings.var_names deps)
     (let+ loc = loc
      and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
+     and+ targets = Targets_spec.field ~allow_directory_targets
      and+ locks = Locks.field ()
      and+ () =
        let+ fallback =
@@ -129,6 +111,10 @@ let long_form =
              (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)")
            "fallback"
        in
+       (* The "fallback" field was only allowed in jbuild file, which we don't
+          support anymore. So this cannot be [true]. We just keep the parser
+          to provide a nice error message for people switching from jbuilder
+          to dune. *)
        assert (not fallback)
      and+ mode = Mode.field
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
@@ -212,6 +198,9 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     let src = name ^ ".mll" in
     let dst = name ^ ".ml" in
     { targets =
+        (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
+           can't because this is might get parsed with old dune syntax where
+           [multiplicity = One] is not supported. *)
         Static { targets = [ S.make_text loc dst, File ]; multiplicity = Multiple }
     ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
     ; action =

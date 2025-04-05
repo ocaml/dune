@@ -1,12 +1,6 @@
 open Stdune
 open Dune_sexp
 open Dune_util.Action
-open Pform.Macro
-open Pform
-
-module Named_targets = struct
-  type t = (string * String_with_vars.t) list
-end
 
 module Action_plugin = struct
   let syntax =
@@ -16,55 +10,6 @@ module Action_plugin = struct
       ~experimental:true
       [ (0, 1), `Since (2, 0) ]
   ;;
-end
-
-module Pform = struct
-  module Var = struct
-    type t =
-      | Values
-      | Loc
-      | C_flags
-      | Cxx_flags
-      | Cpp_flags
-      | Target of string (* New variant for named targets *)
-      | Ocaml
-      | Ocamlc
-      | Ocamlopt
-      | Ocamldep
-      | Ocamlmklib
-      | Dev_null
-      | Null
-      | Ext_obj
-      | Ext_asm
-      | Ext_lib
-      | Ext_dll
-      | Ext_exe
-      | Ext_plugin
-      | Profile
-      | Context_name
-      | Os_type
-      | Architecture
-      | System
-      | Model
-      | Ignoring_promoted_rules
-      | Project_root
-      | Workspace_root
-      | Build_context
-      | First_dep
-      | Input_file
-      | Library_name
-      | Partition
-      | Impl_files
-      | Intf_files
-      | Test
-      | Corrected_suffix
-      | Inline_tests
-      | Toolchain
-
-    let compare = compare
-  end
-
-  type t = Var of Var.t
 end
 
 module Diff = struct
@@ -163,7 +108,7 @@ module Env_update = struct
 
   type 'a t =
     { op : Op.t
-    ; var : Var.t
+    ; var : Env.Var.t
     ; value : 'a
     }
 
@@ -175,36 +120,28 @@ module Env_update = struct
         { op = other_op; var = other_var; value = other_value }
     =
     Op.equal op other_op
-    && Var.compare var other_var = Ordering.Eq
+    && Ordering.is_eq (Env.Var.compare var other_var)
     && value_equal value other_value
   ;;
 
   let to_dyn value_to_dyn { op; var; value } =
-    Dyn.record [ "op", Op.to_dyn op; "var", Var.to_dyn var; "value", value_to_dyn value ]
+    Dyn.record
+      [ "op", Op.to_dyn op; "var", Env.Var.to_dyn var; "value", value_to_dyn value ]
   ;;
 
   let decode =
     let open Decoder in
     let env_update_op = enum Op.all in
     let+ op, var, value = triple env_update_op string String_with_vars.decode in
-    { op; var = Var.User_var var; value }
+    { op; var; value }
   ;;
 
   let encode { op; var; value } =
-    let op_str =
+    let op =
       List.find_map Op.all ~f:(fun (k, v) -> if Poly.equal v op then Some k else None)
       |> Option.value_exn
     in
-    let var_str =
-      match var with
-      | Var.User_var s -> s
-      | Var.Target -> "target"
-      | _ ->
-        (* Handle other cases or raise an error *)
-        Code_error.raise "Action.encode: unsupported variable" []
-    in
-    Dune_sexp.List
-      [ Dune_sexp.atom op_str; Dune_sexp.atom var_str; String_with_vars.encode value ]
+    List [ atom op; atom var; String_with_vars.encode value ]
   ;;
 end
 
@@ -241,71 +178,12 @@ type t =
   | When of Slang.blang * t
   | Format_dune_file of String_with_vars.t * String_with_vars.t
 
-type expansion_context =
-  { dir : Path.t
-  ; named_targets : (string * String_with_vars.t) list
-  ; named_deps : (string * Dep_conf.t) list
-  }
-
 let is_dev_null t = String_with_vars.is_pform t (Var Dev_null)
 
 let translate_to_ignore fn output action =
   if is_dev_null fn
   then Ignore (output, action)
   else Redirect_out (output, fn, Normal, action)
-;;
-
-let expand_str ~context sw =
-  let module S = String_with_vars in
-  match S.text_only sw with
-  | Some s -> s
-  | None ->
-    let expand_var = function
-      | Pform.Var (Var.User_var name) ->
-        (* Fixed pattern *)
-        (match List.assoc_opt name context.named_targets with
-         | Some target -> S.to_string target
-         | None ->
-           (match List.assoc_opt name context.named_deps with
-            | Some dep -> Dep_conf.to_string dep
-            | None ->
-              User_error.raise
-                ~loc:(S.loc sw)
-                [ Pp.textf "Undefined variable %%{%s}" name
-                ; Pp.text "Available variables:"
-                ; Pp.enumerate
-                    (List.map
-                       (context.named_targets @ context.named_deps)
-                       ~f:(fun (n, _) -> n))
-                ]))
-      | Pform.Var Var.Target ->
-        (* Correct pattern *)
-        (match List.assoc_opt "target" context.named_targets with
-         | Some target -> S.to_string target
-         | None ->
-           User_error.raise ~loc:(S.loc sw) [ Pp.text "Undefined target %{target}" ])
-      | Pform.Var other_var ->
-        (* Handle other built-in variables *)
-        S.to_string (S.make_var (S.loc sw) (Pform.Var other_var))
-      | Pform.Macro macro ->
-        (* Handle macros *)
-        S.to_string (S.make_var (S.loc sw) (Pform.Macro macro))
-    in
-    S.expand sw ~f:expand_var
-;;
-
-let create_action targets action =
-  let named_targets =
-    List.filter_map targets ~f:(fun (target, _, name) ->
-      Option.map name ~f:(fun n -> n, target))
-  in
-  { action with
-    expansion_context =
-      { dir = Path.root
-      ; named_targets
-      ; named_deps = [] (* Will be populated from rule.deps later *)
-      }
-  }
 ;;
 
 let two_or_more decode =
@@ -375,21 +253,6 @@ let decode_with_accepted_exit_codes =
                 "with-accepted-exit-codes can only be used with %s"
                 (String.enumerate_or (quote [ "run"; "bash"; "system" ]))
             ]
-;;
-
-let decode_rule =
-  let open Decoder in
-  let+ targets =
-    repeat
-      (let* target = String_with_vars.decode in
-       let* name = optional string in
-       return (target, (), name))
-  and+ deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-  and+ action = decode_dune_file in
-  let rule = create_action targets action in
-  { rule with
-    expansion_context = { rule.expansion_context with named_deps = Bindings.to_list deps }
-  }
 ;;
 
 let sw = String_with_vars.decode

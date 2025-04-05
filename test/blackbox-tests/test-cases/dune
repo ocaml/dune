@@ -175,7 +175,3 @@
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
 
-(rule
- (alias named-targets)
- (action
-  (run %{bin:bash} ./named-targets.t)))

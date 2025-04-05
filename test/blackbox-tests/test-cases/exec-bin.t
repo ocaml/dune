@@ -23,7 +23,7 @@ By default, e is executed with the program name and arguments in argv.
 
   $ dune exec ./e.exe a b c
   Hello
-  argv[0] = _build/default/e.exe
+  argv[0] = ./_build/default/e.exe
   argv[1] = a
   argv[2] = b
   argv[3] = c
@@ -32,7 +32,7 @@ The special form %{bin:public_name} is supported.
 
   $ dune exec %{bin:e} a b c
   Hello
-  argv[0] = _build/install/default/bin/e
+  argv[0] = ./_build/install/default/bin/e
   argv[1] = a
   argv[2] = b
   argv[3] = c

@@ -53,7 +53,7 @@ let ooi_deps
   read
 ;;
 
-let deps_of_module ({ modules; _ } as md) ~ml_kind m =
+let deps_of_module ({ modules; _ } as md) ~ml_kind m ~flags =
   match Module.kind m with
   | Wrapped_compat ->
     let interface_module =
@@ -63,7 +63,7 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
     in
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ ->
-    let+ deps = Ocamldep.deps_of md ~ml_kind m in
+    let+ deps = Ocamldep.deps_of md ~ml_kind m ~ocamlflags:flags in
     (match Modules.With_vlib.alias_for modules m with
      | [] -> deps
      | aliases ->
@@ -95,7 +95,7 @@ let deps_of_vlib_module ({ obj_dir; vimpl; dir; sctx; _ } as md) ~ml_kind source
     Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 ;;
 
-let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
+let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) ~flags =
   let is_alias =
     match m with
     | Impl_of_virtual_module _ -> false
@@ -115,9 +115,9 @@ let rec deps_of md ~ml_kind (m : Modules.Sourced_module.t) =
     in
     match m with
     | Imported_from_vlib _ -> skip_if_source_absent (deps_of_vlib_module md ~ml_kind) m
-    | Normal m -> skip_if_source_absent (deps_of_module md ~ml_kind) m
+    | Normal m -> skip_if_source_absent (deps_of_module md ~ml_kind ~flags) m
     | Impl_of_virtual_module impl_or_vlib ->
-      deps_of md ~ml_kind
+      deps_of md ~ml_kind ~flags
       @@
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       (match ml_kind with
@@ -150,9 +150,11 @@ let dict_of_func_concurrently f =
   Ml_kind.Dict.make ~impl ~intf
 ;;
 
-let for_module md module_ = dict_of_func_concurrently (deps_of md (Normal module_))
+let for_module md module_ ~flags =
+  dict_of_func_concurrently (deps_of ~flags md (Normal module_))
+;;
 
-let rules md =
+let rules md ~flags =
   let modules = md.modules in
   match Modules.With_vlib.as_singleton modules with
   | Some m -> Memo.return (Dep_graph.Ml_kind.dummy m)
@@ -161,7 +163,7 @@ let rules md =
       let+ per_module =
         Modules.With_vlib.obj_map modules
         |> Module_name.Unique.Parallel_map.parallel_map ~f:(fun _obj_name m ->
-          deps_of md ~ml_kind m)
+          deps_of md ~ml_kind m ~flags)
       in
       Dep_graph.make ~dir:md.dir ~per_module)
 ;;

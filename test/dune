@@ -3,6 +3,10 @@
 ;; $ ./_build/default/bin/main.exe build @test/fail-with-background-jobs-running
 ;;
 
+(include_subdirs no)
+
+; Disable automatic inclusion
+
 (rule
  (alias sleep5)
  (action
@@ -157,3 +161,8 @@
  (action
   (run ./incr.exe y %{targets}))
  (locks m))
+
+(rule
+ (alias runtest)
+ (action
+  (diff output.txt output.expected)))

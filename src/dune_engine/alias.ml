@@ -28,17 +28,19 @@ module T : sig
   type t = private
     { dir : Path.Build.t
     ; name : Name.t
+    ; synopsis : string option
     }
 
-  val make : Name.t -> dir:Path.Build.t -> t
+  val make : ?synopsis:string option -> Name.t -> dir:Path.Build.t -> t
   val of_user_written_path : loc:Loc.t -> Path.t -> t
 end = struct
   type t =
     { dir : Path.Build.t
     ; name : Name.t
+    ; synopsis : string option
     }
 
-  let make name ~dir = { dir; name }
+  let make ?(synopsis = None) name ~dir = { dir; name; synopsis }
 
   let of_user_written_path ~loc path =
     match Path.as_in_build_dir path with
@@ -46,7 +48,7 @@ end = struct
       let name =
         Path.Build.basename path |> Name.of_string_opt_loose |> Option.value_exn
       in
-      { dir = Path.Build.parent_exn path; name }
+      { dir = Path.Build.parent_exn path; name; synopsis = None }
     | None ->
       User_error.raise
         ~loc
@@ -60,22 +62,31 @@ end
 
 include T
 
-let compare { dir; name } t =
+let compare { dir; name; synopsis } t =
   let open Ordering.O in
   let= () = Name.compare name t.name in
+  let= () = (Option.compare String.compare) synopsis t.synopsis in
   Path.Build.compare dir t.dir
 ;;
 
 let equal x y = compare x y = Eq
-let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
 
-let to_dyn { dir; name } =
+let hash { dir; name; synopsis } =
+  Tuple.T3.hash Path.Build.hash Name.hash (Option.hash String.hash) (dir, name, synopsis)
+;;
+
+let to_dyn { dir; name; synopsis } =
   let open Dyn in
-  Record [ "dir", Path.Build.to_dyn dir; "name", Name.to_dyn name ]
+  Record
+    [ "dir", Path.Build.to_dyn dir
+    ; "name", Name.to_dyn name
+    ; "synopsis", option string synopsis
+    ]
 ;;
 
 let name t = t.name
 let dir t = t.dir
+let synopsis t = t.synopsis
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
 let get_ctx (path : Path.Build.t) =
@@ -87,6 +98,7 @@ let get_ctx (path : Path.Build.t) =
      | Some ctx -> Some (ctx, Path.Source.of_local sub))
 ;;
 
+(* TODO: add synopsis to describe?*)
 let describe ?(loc = Loc.none) alias =
   let open Pp.O in
   let pp =

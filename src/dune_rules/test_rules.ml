@@ -119,6 +119,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               { Alias_conf.name = runtest_alias
               ; locks = t.locks
               ; package = t.package
+              ; synopsis = None (* TODO: Add real synopsis for runtest_alias *)
               ; deps
               ; action = Some (loc, action)
               ; enabled_if = t.enabled_if

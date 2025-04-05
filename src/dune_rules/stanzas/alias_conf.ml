@@ -3,6 +3,7 @@ open Import
 type t =
   { name : Alias.Name.t
   ; deps : Dep_conf.t Bindings.t
+  ; synopsis : string option
   ; action : (Loc.t * Dune_lang.Action.t) option
   ; locks : Locks.t
   ; package : Package.t option
@@ -24,6 +25,7 @@ let decode =
        (Bindings.var_names deps)
        (let+ name = field "name" Dune_lang.Alias.decode
         and+ package = field_o "package" Stanza_common.Pkg.decode
+        and+ synopsis = field_o "synopsis" string
         and+ action =
           field_o
             "action"
@@ -35,5 +37,5 @@ let decode =
         and+ loc = loc
         and+ locks = Locks.field ()
         and+ enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_ in
-        { name; deps; action; package; locks; enabled_if; loc }))
+        { name; deps; synopsis; action; package; locks; enabled_if; loc }))
 ;;

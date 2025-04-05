@@ -15,6 +15,7 @@ module Dir_rules = struct
   type alias =
     { name : Alias.Name.t
     ; spec : Alias_spec.t
+    ; synopsis : string option
     }
 
   type data =
@@ -42,7 +43,7 @@ module Dir_rules = struct
       Id.Map.values t
       |> List.partition_map ~f:(function
         | Rule rule -> Left rule
-        | Alias { name; spec } -> Right (name, spec))
+        | Alias { name; spec; synopsis } -> Right (name, spec, synopsis))
     in
     let aliases =
       let add_item what = function
@@ -53,8 +54,12 @@ module Dir_rules = struct
          reversal whenever the expansion is inspected. The order doesn't really
          matter, but it does change the tests. So it's nice to maintain it if
          possible *)
-      List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
-        Alias.Name.Map.update acc name ~f:(add_item item))
+      (* TODO: Currently synopsis is not updated. This needs to be changed? *)
+      List.fold_left
+        aliases
+        ~init:Alias.Name.Map.empty
+        ~f:(fun acc (name, item, _synopsis) ->
+          Alias.Name.Map.update acc name ~f:(add_item item))
     in
     { rules; aliases }
   ;;
@@ -138,9 +143,10 @@ module Produce = struct
       produce
         (let dir = Alias.dir t in
          let name = Alias.name t in
+         let synopsis = Alias.synopsis t in
          Path.Build.Map.singleton
            dir
-           (Dir_rules.Nonempty.singleton (Alias { name; spec })))
+           (Dir_rules.Nonempty.singleton (Alias { name; spec; synopsis })))
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =

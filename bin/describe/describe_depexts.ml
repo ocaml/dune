@@ -30,7 +30,7 @@ let print_depexts ~lock_dirs_arg =
       |> Package_name.Map.values
       |> List.concat_map ~f:(fun (pkg : Lock_dir.Pkg.t) -> pkg.depexts))
   in
-  Console.print [ Pp.concat_map ~sep:Pp.newline ~f:Pp.verbatim depexts ]
+  Console.print [ Pp.vbox @@ Pp.concat_map ~sep:Pp.cut ~f:Pp.verbatim depexts ]
 ;;
 
 let term =

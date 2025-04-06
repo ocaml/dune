@@ -40,3 +40,4 @@ module Dune_rpc_client = Dune_rpc_client
 module Action_exec = Action_exec
 module Running_jobs = Running_jobs
 module Rule_cache = Rule_cache
+module Synopsis = Synopsis

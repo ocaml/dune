@@ -144,6 +144,7 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
               ; enabled_if = t.enabled_if
               ; aliases = []
               ; package = t.package
+              ; synopsis = None
               }
             in
             add_alias ~loc ~action:(Diff diff)

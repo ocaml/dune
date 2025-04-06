@@ -15,7 +15,6 @@ module Dir_rules = struct
   type alias =
     { name : Alias.Name.t
     ; spec : Alias_spec.t
-    ; synopsis : string option
     }
 
   type data =
@@ -43,7 +42,7 @@ module Dir_rules = struct
       Id.Map.values t
       |> List.partition_map ~f:(function
         | Rule rule -> Left rule
-        | Alias { name; spec; synopsis } -> Right (name, spec, synopsis))
+        | Alias { name; spec } -> Right (name, spec))
     in
     let aliases =
       let add_item what = function
@@ -55,11 +54,8 @@ module Dir_rules = struct
          matter, but it does change the tests. So it's nice to maintain it if
          possible *)
       (* TODO: Currently synopsis is not updated. This needs to be changed? *)
-      List.fold_left
-        aliases
-        ~init:Alias.Name.Map.empty
-        ~f:(fun acc (name, item, _synopsis) ->
-          Alias.Name.Map.update acc name ~f:(add_item item))
+      List.fold_left aliases ~init:Alias.Name.Map.empty ~f:(fun acc (name, item) ->
+        Alias.Name.Map.update acc name ~f:(add_item item))
     in
     { rules; aliases }
   ;;
@@ -143,10 +139,9 @@ module Produce = struct
       produce
         (let dir = Alias.dir t in
          let name = Alias.name t in
-         let synopsis = Alias.synopsis t in
          Path.Build.Map.singleton
            dir
-           (Dir_rules.Nonempty.singleton (Alias { name; spec; synopsis })))
+           (Dir_rules.Nonempty.singleton (Alias { name; spec })))
     ;;
 
     let add_deps t ?(loc = Loc.none) expansion =

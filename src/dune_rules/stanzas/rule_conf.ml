@@ -17,6 +17,7 @@ type t =
   ; enabled_if : Blang.t
   ; aliases : Alias.Name.t list
   ; package : Package.t option
+  ; synopsis : Dune_engine.Synopsis.t option
   }
 
 include Stanza.Make (struct
@@ -79,6 +80,7 @@ let short_form =
   ; enabled_if = Blang.true_
   ; aliases = []
   ; package = None
+  ; synopsis = None
   }
 ;;
 
@@ -135,6 +137,10 @@ let long_form =
            , Dune_lang.Syntax.since Stanza.syntax (3, 5) >>> repeat Dune_lang.Alias.decode
            )
          ]
+     and+ synopsis =
+       field_o
+         "synopsis"
+         (Dune_lang.Syntax.since Stanza.syntax (3, 19) >>> Dune_lang.Synopsis.decode)
      in
      let action =
        match action_o with
@@ -148,7 +154,7 @@ let long_form =
          in
          field_missing ~hints loc "action"
      in
-     { targets; deps; action; mode; locks; loc; enabled_if; aliases; package })
+     { targets; deps; action; mode; locks; loc; enabled_if; aliases; package; synopsis })
 ;;
 
 let decode =
@@ -221,6 +227,7 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     ; enabled_if
     ; aliases = []
     ; package = None
+    ; synopsis = None
     })
 ;;
 
@@ -250,5 +257,6 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
     ; enabled_if
     ; aliases = []
     ; package = None
+    ; synopsis = None
     })
 ;;

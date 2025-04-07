@@ -21,7 +21,7 @@ val is_compiler_and_toolchains_enabled : Package.Name.t -> bool
 
 (** Returns the path to the directory containing the given package within the
     toolchain directory. This will be something like
-    $XDG_CACHE_HOME/dune/toolchains/ocaml-base-compiler.5.2.1.XXXXXXXX where
+    $DUNE_CACHE_ROOT/toolchains/ocaml-base-compiler.5.2.1.XXXXXXXX where
     XXXXXXXX is a hash of the package's lockfile. *)
 val installation_prefix : Lock_dir.Pkg.t -> Path.Outside_build_dir.t
 

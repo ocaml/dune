@@ -11,6 +11,7 @@
   fiber_util
   chrome_trace
   dune_engine
+  dune_cache_storage
   dune_util
   dune_stats
   dune_lang

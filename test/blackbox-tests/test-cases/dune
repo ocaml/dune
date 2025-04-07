@@ -175,3 +175,12 @@
  (enabled_if
   (< %{ocaml_version} 5.2.0)))
 
+(rule
+ (targets output.txt secondary.log)
+ (action
+  (progn
+   (with-stdout-to output.txt (echo "Primary content"))
+   (with-stdout-to secondary.log (echo "Log content"))
+  )
+ )
+)

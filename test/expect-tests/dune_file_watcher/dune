@@ -13,9 +13,18 @@
     (= %{system} macosx)))
   (deps
    (sandbox always)))
- (libraries unix dune_file_watcher dune_file_watcher_tests_lib
-  ppx_expect.config ppx_expect.config_types base stdune
-  ppx_inline_test.config threads.posix stdio spawn)
+ (libraries
+  unix
+  dune_file_watcher
+  dune_file_watcher_tests_lib
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  stdune
+  ppx_inline_test.config
+  threads.posix
+  stdio
+  spawn)
  (preprocess
   (pps ppx_expect)))
 
@@ -27,9 +36,18 @@
    (= %{system} linux))
   (deps
    (sandbox always)))
- (libraries dune_file_watcher dune_file_watcher_tests_lib ppx_expect.config
-  ppx_expect.config_types base stdune ppx_inline_test.config threads.posix
-  stdio spawn unix)
+ (libraries
+  dune_file_watcher
+  dune_file_watcher_tests_lib
+  ppx_expect.config
+  ppx_expect.config_types
+  base
+  stdune
+  ppx_inline_test.config
+  threads.posix
+  stdio
+  spawn
+  unix)
  (preprocess
   (pps ppx_expect)))
 
@@ -39,7 +57,12 @@
  (inline_tests
   (deps
    (sandbox always)))
- (libraries base dune_config_file dune_file_watcher ppx_expect.config
-  ppx_expect.config_types ppx_inline_test.config)
+ (libraries
+  base
+  dune_config_file
+  dune_file_watcher
+  ppx_expect.config
+  ppx_expect.config_types
+  ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))

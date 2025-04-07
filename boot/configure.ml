@@ -18,7 +18,7 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled ]
+  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled; "bin_dev_tools", `Disabled ]
 ;;
 
 let toggles = ref default_toggles
@@ -98,6 +98,11 @@ let () =
         \      This flag is experimental and shouldn't be relied on by packagers." )
     ; ( "--lock-dev-tool"
       , toggle "lock_dev_tool"
+      , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
+         it, independently from the project depenedencies .\n\
+        \      This flag is experimental and shouldn't be relied on by packagers." )
+    ; ( "--bin-dev-tools"
+      , toggle "bin_dev_tools"
       , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
          it, independently from the project depenedencies .\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )

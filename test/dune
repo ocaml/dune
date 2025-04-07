@@ -166,3 +166,4 @@
  (alias runtest)
  (action
   (diff output.txt output.expected)))
+

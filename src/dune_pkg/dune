@@ -4,6 +4,7 @@
  (libraries
   build_info
   chrome_trace
+  dune_cache_storage
   dune_config
   dune_console
   dune_digest

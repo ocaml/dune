@@ -78,7 +78,7 @@ name so the output is consistent across test runs.
 
 Attempt to build the project. This will fail due to the fake compiler
 but the fake compiler will end up installed as a toolchain package.
-  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
+  $ DUNE_CACHE_ROOT=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled build_pkg ocaml-base-compiler 2>&1 | remove_hash
 
 Enumerate the contents of the fake toolchains directory:
   $ find fake-cache/dune/toolchains | sort | remove_hash

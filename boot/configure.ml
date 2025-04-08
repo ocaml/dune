@@ -18,7 +18,11 @@ let out =
 ;;
 
 let default_toggles : (string * [ `Disabled | `Enabled ]) list =
-  [ "toolchains", `Enabled; "pkg_build_progress", `Disabled; "lock_dev_tool", `Disabled; "bin_dev_tools", `Disabled ]
+  [ "toolchains", `Enabled
+  ; "pkg_build_progress", `Disabled
+  ; "lock_dev_tool", `Disabled
+  ; "bin_dev_tools", `Disabled
+  ]
 ;;
 
 let toggles = ref default_toggles

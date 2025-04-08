@@ -22,4 +22,3 @@ val pkg_build_progress : Config.Toggle.t Config.t
 val lock_dev_tools : Config.Toggle.t Config.t
 
 val bin_dev_tools : Config.Toggle.t Config.t
-

@@ -74,10 +74,9 @@ let solve ~dev_tool ~local_packages =
     >>| Option.some
   and* workspace =
     let+ workspace = Workspace.workspace () in
-    if (Lazy.force Bin_dev_tools.is_enabled) then
-     Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages
-    else
-      workspace
+    match Config.get Dune_rules.Compile_time.bin_dev_tools with
+      | `Enabled -> Workspace.add_repo workspace Dune_pkg.Pkg_workspace.Repository.binary_packages
+      | `Disabled -> workspace
     in
   let lock_dir = Lock_dir.dev_tool_lock_dir_path dev_tool in
     Memo.of_reproducible_fiber

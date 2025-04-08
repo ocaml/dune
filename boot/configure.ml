@@ -99,12 +99,12 @@ let () =
     ; ( "--lock-dev-tool"
       , toggle "lock_dev_tool"
       , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
-         it, independently from the project depenedencies .\n\
+         it, independently from the project dependencies.\n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
     ; ( "--bin-dev-tools"
       , toggle "bin_dev_tools"
-      , " Enable ocamlformat dev-tool, allows 'dune fmt' to build ocamlformat and use \
-         it, independently from the project depenedencies .\n\
+      , " Enable obtaining dev-tools binarys from the binary package opam repository. \
+         Allows fast installation of dev-tools. \n\
         \      This flag is experimental and shouldn't be relied on by packagers." )
     ]
   in

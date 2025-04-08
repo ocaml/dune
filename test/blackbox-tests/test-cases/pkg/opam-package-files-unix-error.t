@@ -30,7 +30,7 @@ This does not currently seem to be the case.
   > (dirs * \ mock-opam-repository)
   > EOF
 
-  $ solve with-patch
+  $ solve with-patch 2>&1 | sed -n '/^Error:/,$p'
   File "$TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files", line 1, characters 0-0:
   Error: Unable to read file in opam repository:
   opendir($TESTCASE_ROOT/mock-opam-repository/packages/with-patch/with-patch.0.0.1/files/dir): Permission denied

@@ -40,3 +40,7 @@ type 'a t =
 val field
   :  allow_directory_targets:bool
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
+
+val decode_target
+  :  allow_directory_targets:bool
+  -> String_with_vars.t Named_target.t Dune_sexp.Decoder.t

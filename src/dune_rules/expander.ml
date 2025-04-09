@@ -59,6 +59,7 @@ type t =
   ; context : Context.t
   ; expanding_what : Expanding_what.t
   ; project : Dune_project.t
+  ; named_targets : String_with_vars.t Targets_spec.Named_target.t String.Map.t
   }
 
 let artifacts t = t.artifacts_host
@@ -168,6 +169,8 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
              s
          ])
 ;;
+
+let named_targets t = t.named_targets
 
 let expand_artifact ~source t artifact arg =
   let path = Path.Build.relative t.dir arg in
@@ -791,6 +794,7 @@ let make_root
   ; context
   ; expanding_what = Nothing_special
   ; project
+  ; named_targets = String.Map.empty
   }
 ;;
 

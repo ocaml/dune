@@ -77,6 +77,7 @@ val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 val expand_str_partial : t -> String_with_vars.t -> String_with_vars.t Action_builder.t
+val named_targets : t -> String_with_vars.t Targets_spec.Named_target.t String.Map.t
 
 module No_deps : sig
   (** Same as [expand_xxx] but disallow percent forms that introduce action

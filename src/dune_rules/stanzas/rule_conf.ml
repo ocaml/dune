@@ -150,6 +150,20 @@ let long_form =
      { targets; deps; action; mode; locks; loc; enabled_if; aliases; package })
 ;;
 
+[@@@warning "-32"]
+
+let targets =
+  let* project = Dune_project.get_exn () in
+  let allow_directory_targets =
+    Dune_project.is_extension_set project directory_targets_extension
+  in
+  let+ targets = Targets_spec.field ~allow_directory_targets in
+  match targets with
+  | Targets_spec.Infer -> Targets_spec.Infer (* Use fully qualified name *)
+  | Targets_spec.Static { targets; multiplicity } ->
+    Targets_spec.Static { targets; multiplicity }
+;;
+
 let decode =
   let rec interpret atom = function
     | Field -> fields long_form

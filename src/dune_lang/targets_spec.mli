@@ -16,6 +16,12 @@ module Kind : sig
     | Directory
 end
 
+module Named_target : sig
+  type 'path t =
+    | Anonymous of 'path * Kind.t
+    | Named of string * ('path * Kind.t)
+end
+
 module Static : sig
   type 'path t =
     { targets : ('path * Kind.t) list
@@ -34,3 +40,7 @@ type 'a t =
 val field
   :  allow_directory_targets:bool
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
+
+val decode_target
+  :  allow_directory_targets:bool
+  -> String_with_vars.t Named_target.t Dune_sexp.Decoder.t

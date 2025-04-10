@@ -671,6 +671,15 @@ let expand
   Action_builder.with_targets ~targets build
 ;;
 
+let expand_target ~expander name =
+  let open Expander in
+  let open Stdune in
+  match String.Map.find (Expander.named_targets expander) name with
+  | Some target -> Ok target
+  | None -> Error (sprintf "Unknown target %%{target:%s}" name)
+[@@warning "-32-33"]
+;;
+
 (* We re-export [Dune_lang.Action] in the end to avoid polluting the inferred
    types in this module with all the various t's *)
 include Dune_lang.Action

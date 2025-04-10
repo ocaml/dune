@@ -54,7 +54,7 @@ end
 
 module File_perm : sig
   (** File mode, for when creating files. We only allow what Dune takes into
-      account when memoizing commands. *)
+          account when memoizing commands. *)
 
   type t = File_perm.t =
     | Normal
@@ -95,8 +95,8 @@ type t =
   | Chdir of String_with_vars.t * t
   | Setenv of String_with_vars.t * String_with_vars.t * t
   (* It's not possible to use a build String_with_vars.t here since jbuild
-     supports redirecting to /dev/null. In [dune] files this is replaced with
-     %{null} *)
+         supports redirecting to /dev/null. In [dune] files this is replaced with
+         %{null} *)
   | Redirect_out of Outputs.t * String_with_vars.t * File_perm.t * t
   | Redirect_in of Inputs.t * String_with_vars.t * t
   | Ignore of Outputs.t * t

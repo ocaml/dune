@@ -127,6 +127,7 @@ let transitive_deps =
 let deps_of
       ({ sandbox; modules; sctx; dir; obj_dir; vimpl = _; stdlib = _ } as md)
       ~ml_kind
+      ~ocamlflags
       unit
   =
   let source = Option.value_exn (Module.source unit ~ml_kind) in
@@ -147,11 +148,15 @@ let deps_of
        let flags, sandbox =
          Module.pp_flags unit |> Option.value ~default:(Action_builder.return [], sandbox)
        in
+       let keywords =
+         Ocaml_flags.Keywords.to_string_list ocamlflags |> Action_builder.return
+       in
        Command.run_dyn_prog
          ocamldep
          ~dir:(Path.build (Context.build_dir context))
          ~stdout_to:ocamldep_output
-         [ A "-modules"
+         [ Command.Args.dyn keywords
+         ; A "-modules"
          ; Command.Args.dyn flags
          ; Command.Ml_kind.flag ml_kind
          ; Dep (Module.File.path source)

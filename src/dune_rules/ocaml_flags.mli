@@ -4,6 +4,13 @@ open! Import
 
 type t
 
+module Keywords : sig
+  val empty : string option * string list
+  val standard : string option * string list
+  val equal : string option * string list -> string option * string list -> bool
+  val to_string_list : t -> string list
+end
+
 module Spec : sig
   type t
 
@@ -13,6 +20,7 @@ module Spec : sig
 
   val make
     :  common:Ordered_set_lang.Unexpanded.t
+    -> keywords:string option * string list
     -> specific:Ordered_set_lang.Unexpanded.t Lib_mode.Map.t
     -> t
 end
@@ -36,3 +44,4 @@ val with_vendored_alerts : t -> t
 val dump : t -> Dune_lang.t list Action_builder.t
 val with_vendored_flags : t -> ocaml_version:Version.t -> t
 val open_flags : Module_name.t list -> string list
+val with_keywords : t -> t

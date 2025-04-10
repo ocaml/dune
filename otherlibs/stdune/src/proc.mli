@@ -1,3 +1,13 @@
+(** [Proc.restore_cwd_and_execve prog args ~env] runs [prog] with [args] in [env].
+
+  - [prog] is the program being run. It should be a filename in the current working
+    directory.
+  
+  - [args] is a list of arguments to the program. Unlike in the system call [execve], the
+    first argument is not the program name. The first argument is the first argument
+    to the program. The program name is set to [prog] without the caller needing to.
+
+  - [env] is the environment in which the program is run. *)
 val restore_cwd_and_execve : string -> string list -> env:Env.t -> _
 
 module Resource_usage : sig

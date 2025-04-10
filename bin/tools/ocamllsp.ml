@@ -13,7 +13,7 @@ let run_ocamllsp common ~args =
        ~object_:
          (User_message.command (String.concat ~sep:" " (ocamllsp_exe_name :: args))));
   Console.finish ();
-  restore_cwd_and_execve common exe_path_string (exe_path_string :: args) Env.initial
+  restore_cwd_and_execve common exe_path_string args Env.initial
 ;;
 
 let build_ocamllsp common =

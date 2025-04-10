@@ -306,8 +306,7 @@ module Exec_context = struct
         path, args, env)
     in
     let prog = Path.to_string path in
-    let argv = prog :: args in
-    restore_cwd_and_execve (Common.root common) prog argv env
+    restore_cwd_and_execve (Common.root common) prog args env
   ;;
 
   let run_eager_watch t common config =

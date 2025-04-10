@@ -391,6 +391,7 @@ module File = struct
           }
 
     let compare = Poly.compare
+    let equal = Poly.equal
 
     let to_dyn = function
       | Redirect _ -> Dyn.opaque ()

@@ -192,7 +192,6 @@ type 'a t =
   { config : Run.t
   ; pending_build_jobs : ('a list * Build_outcome.t Fiber.Ivar.t) Job_queue.t
   ; parse_build : string -> 'a
-  ; watch_mode_config : Watch_mode_config.t
   ; mutable clients : Clients.t
   }
 
@@ -321,23 +320,10 @@ let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
   let () =
     let build _session targets =
       let server = Fdecl.get t in
-      match server.watch_mode_config with
-      | No -> assert false
-      | Yes Eager ->
-        let error =
-          Dune_rpc.Response.Error.create
-            ~kind:Invalid_request
-            ~message:
-              "the rpc server is running with eager watch mode using --watch. to run \
-               builds through an rpc client, start the server using --passive-watch-mode"
-            ()
-        in
-        raise (Dune_rpc.Response.Error.E error)
-      | Yes Passive ->
-        let ivar = Fiber.Ivar.create () in
-        let targets = List.map targets ~f:server.parse_build in
-        let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
-        Fiber.Ivar.read ivar
+      let ivar = Fiber.Ivar.create () in
+      let targets = List.map targets ~f:server.parse_build in
+      let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
+      Fiber.Ivar.read ivar
     in
     Handler.implement_request rpc Decl.build build
   in
@@ -405,7 +391,7 @@ let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
   rpc
 ;;
 
-let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats ~parse_build =
+let create ~lock_timeout ~registry ~root ~handle stats ~parse_build =
   let t = Fdecl.create Dyn.opaque in
   let pending_build_jobs = Job_queue.create () in
   let handler = Dune_rpc_server.make (handler t handle) in
@@ -443,14 +429,7 @@ let create ~lock_timeout ~registry ~root ~watch_mode_config ~handle stats ~parse
     ; server_ivar = Fiber.Ivar.create ()
     }
   in
-  let res =
-    { config
-    ; pending_build_jobs
-    ; watch_mode_config
-    ; clients = Clients.empty
-    ; parse_build
-    }
-  in
+  let res = { config; pending_build_jobs; clients = Clients.empty; parse_build } in
   Fdecl.set t res;
   res
 ;;

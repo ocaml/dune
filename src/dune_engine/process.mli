@@ -162,3 +162,10 @@ val run_capture_zero_separated
   -> Path.t
   -> string list
   -> 'a Fiber.t
+
+val run_external_in_out
+  :  ?dir:Path.t
+  -> ?env:Env.t
+  -> Path.t
+  -> string list
+  -> int Fiber.t

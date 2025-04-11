@@ -4,7 +4,6 @@ val create
   :  lock_timeout:float option
   -> registry:[ `Add | `Skip ]
   -> root:string
-  -> watch_mode_config:Watch_mode_config.t
   -> handle:(unit Dune_rpc_server.Handler.t -> unit)
        (** register additional requests or notifications *)
   -> Dune_stats.t option

@@ -1155,7 +1155,6 @@ let build (builder : Builder.t) =
              ~registry
              ~root:root.dir
              ~handle:Dune_rules_rpc.register
-             ~watch_mode_config:builder.watch
              ~parse_build:Dune_rules_rpc.parse_build
              stats))
     else `Forbid_builds

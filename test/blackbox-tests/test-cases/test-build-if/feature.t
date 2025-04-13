@@ -13,20 +13,34 @@ the test runs as part of @runtest
   >  (enabled_if %{env:ENABLED=false}))
   > EOF
 
-  $ touch t.ml
+  $ compiled_flag="t compiled"
+  $ ran_flag="t ran"
+
+  $ cat > t.ml <<EOF
+  > module T : sig
+  >   val message : string
+  >   [@@alert message "$compiled_flag"]
+  > end = struct
+  >   let message = "$ran_flag"
+  > end
+  > 
+  > let () =
+  >   Printf.printf "%s" T.message
+  > ;;
+  > EOF
 
 We test the various combinations:
 
   $ test_one () {
   >   dune clean
-  >   output=$( dune build "$1" --display short 2>&1 )
+  >   output=$( dune build "$1" 2>&1 )
   >   echo When building $1 with ENABLED=${ENABLED:-unset}:
-  >   if echo $output|grep -q ocamlopt ; then
+  >   if echo $output | grep -q "$compiled_flag" ; then
   >     echo '  build was done: YES'
   >   else
   >     echo '  build was done: NO'
   >   fi
-  >   if echo $output|grep -q "alias t" ; then
+  >   if echo $output | grep -q "$ran_flag" ; then
   >     echo '  test did run:   YES'
   >   else
   >     echo '  test did run:   NO'

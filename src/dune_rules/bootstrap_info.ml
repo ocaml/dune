@@ -13,7 +13,7 @@ let flags flags =
 let rule sctx ~requires_link =
   let open Action_builder.O in
   let* () = Action_builder.return () in
-  let* locals, externals =
+  let* locals, _externals =
     Memo.Lazy.force requires_link
     |> Resolve.Memo.read
     >>| List.partition_map ~f:(fun lib ->
@@ -64,11 +64,8 @@ let rule sctx ~requires_link =
         ])
     |> Action_builder.of_memo
   in
-  let externals =
-    List.filter_map externals ~f:(fun lib ->
-      let name = Lib.name lib in
-      Option.some_if (Lib_name.equal name (Lib_name.of_string "threads.posix")) name)
-  in
+  (* These are hardcoded *)
+  let externals = List.map ~f:Lib_name.of_string [ "unix"; "threads" ] in
   Format.asprintf
     "%a@."
     Pp.to_fmt

@@ -140,7 +140,8 @@ let long_form =
      and+ synopsis =
        field_o
          "synopsis"
-         (Dune_lang.Syntax.since Stanza.syntax (3, 19) >>> Dune_lang.Synopsis.decode)
+         (* TODO: make 3.19 *)
+         (Dune_lang.Syntax.since Stanza.syntax (3, 18) >>> Dune_lang.Synopsis.decode)
      in
      let action =
        match action_o with

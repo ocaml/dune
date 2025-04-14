@@ -11,11 +11,7 @@ let run_dev_tool workspace_root ~args =
        ~verb:"Running"
        ~object_:(User_message.command (String.concat ~sep:" " (exe_name :: args))));
   Console.finish ();
-  restore_cwd_and_execve
-    workspace_root
-    exe_path_string
-    (exe_path_string :: args)
-    Env.initial
+  restore_cwd_and_execve workspace_root exe_path_string args Env.initial
 ;;
 
 let dev_tool_exe_exists () = Path.exists exe_path

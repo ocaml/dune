@@ -11,6 +11,7 @@ Test detection of common typos in package dependencies
   >   qux))
   > EOF
 
+
   $ dune build
   File "dune-project", line 6, characters 2-19:
   6 |   (bar (= version))  ; Should detect typo and suggest :version

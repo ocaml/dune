@@ -628,14 +628,14 @@ let expand
     let expander =
       match (targets_written_by_user : _ Targets_spec.t) with
       | Infer -> expander
-      | Static { targets; multiplicity } ->
+      | Static { targets; multiplicity; _ } ->
         Expander.add_bindings_full
           expander
           ~bindings:
             (Pform.Map.singleton
                (Var
                   (match multiplicity with
-                   | One -> Target
+                   | One -> Target "target"
                    | Multiple -> Targets))
                (Expander.Deps.Without
                   (Memo.return
@@ -651,7 +651,7 @@ let expand
   let targets =
     match (targets_written_by_user : _ Targets_spec.t) with
     | Infer -> targets
-    | Static { targets = targets_written_by_user; multiplicity = _ } ->
+    | Static { targets = targets_written_by_user; multiplicity = _; named_targets = _ } ->
       let files, dirs =
         List.partition_map targets_written_by_user ~f:(fun (path, kind) ->
           validate_target_dir ~targets_dir ~loc targets path;

@@ -126,3 +126,5 @@ val foreign_flags
 
 val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
 val to_expander0 : t -> Expander0.t
+val add_named_target : t -> name:string -> target:string * String_with_vars.t -> t
+val add_named_targets : t -> (string * 'path Targets_spec.Named_target.t) list -> t

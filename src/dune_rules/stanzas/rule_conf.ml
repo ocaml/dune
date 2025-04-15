@@ -1,13 +1,28 @@
 open Import
 open Dune_lang.Decoder
+module Base_targets_spec = Targets_spec
 
 module Mode = struct
   include Rule.Mode
   include Rule_mode_decoder
 end
 
+module Named_target = struct
+  type t = string * String_with_vars.t
+end
+
+module Targets_spec = struct
+  module Static = struct
+    type t =
+      { targets : (String_with_vars.t * Base_targets_spec.Kind.t) list
+      ; multiplicity : Targets_spec.Multiplicity.t
+      ; named_targets : Named_target.t list
+      }
+  end
+end
+
 type t =
-  { targets : String_with_vars.t Targets_spec.t
+  { targets : String_with_vars.t Dune_lang.Targets_spec.t
   ; deps : Dep_conf.t Bindings.t
   ; action : Loc.t * Dune_lang.Action.t
   ; mode : Rule.Mode.t
@@ -93,16 +108,40 @@ let directory_targets_extension =
 ;;
 
 let long_form =
-  let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
+  let* deps =
+    let decode_deps =
+      let open Dune_sexp.Decoder in
+      peek_exn >>= function
+      | List (_, (_ :: _ :: _)) -> (* Named bindings case *)
+        Bindings.decode String_with_vars.decode >>| fun bindings ->
+        (* Convert bindings to a single String_with_vars representing all dependencies *)
+        let strings = List.map bindings ~f:(fun (name, sw) ->
+          match name with
+          | None -> String_with_vars.to_string sw
+          | Some name -> sprintf "%s:%s" name (String_with_vars.to_string sw))
+        in
+        String_with_vars.make_text (Loc.none, String.concat ~sep:" " strings)
+      | _ -> (* Simple string case *)
+        String_with_vars.decode
+    in
+    Base_targets_spec.field
+      ~allow_directory_targets:true
+      "deps"
+      decode_deps
+  in
   let* project = Dune_project.get_exn () in
   let allow_directory_targets =
     Dune_project.is_extension_set project directory_targets_extension
   in
   String_with_vars.add_user_vars_to_decoding_env
-    (Bindings.var_names deps)
+    (match deps with
+     | Base_targets_spec.Infer -> []
+     | Base_targets_spec.Static { targets; _ } ->
+       targets |> List.map ~f:fst |> List.concat_map ~f:Bindings.var_names)
     (let+ loc = loc
      and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
-     and+ targets = Targets_spec.field ~allow_directory_targets
+     and+ targets =
+       Targets_spec.field_many ~allow_directory_targets "targets" String_with_vars.decode
      and+ locks = Locks.field ()
      and+ () =
        let+ fallback =
@@ -111,10 +150,6 @@ let long_form =
              (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)")
            "fallback"
        in
-       (* The "fallback" field was only allowed in jbuild file, which we don't
-          support anymore. So this cannot be [true]. We just keep the parser
-          to provide a nice error message for people switching from jbuilder
-          to dune. *)
        assert (not fallback)
      and+ mode = Mode.field
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
@@ -147,8 +182,13 @@ let long_form =
          in
          field_missing ~hints loc "action"
      in
+     let targets =
+       match targets with
+       | Base_targets_spec.Infer -> Base_targets_spec.Infer
+       | Base_targets_spec.Static { targets; multiplicity } ->
+         Base_targets_spec.Static { targets; multiplicity; named_targets = [] }
+     in
      { targets; deps; action; mode; locks; loc; enabled_if; aliases; package })
-;;
 
 [@@@warning "-32"]
 
@@ -157,11 +197,11 @@ let targets =
   let allow_directory_targets =
     Dune_project.is_extension_set project directory_targets_extension
   in
-  let+ targets = Targets_spec.field ~allow_directory_targets in
+  let+ targets = Base_targets_spec.field ~allow_directory_targets in
   match targets with
-  | Targets_spec.Infer -> Targets_spec.Infer (* Use fully qualified name *)
-  | Targets_spec.Static { targets; multiplicity } ->
-    Targets_spec.Static { targets; multiplicity }
+  | Base_targets_spec.Infer -> Base_targets_spec.Infer
+  | Base_targets_spec.Static { targets; multiplicity } ->
+    Base_targets_spec.Static { targets; multiplicity; named_targets = [] }
 ;;
 
 let decode =
@@ -212,10 +252,11 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     let src = name ^ ".mll" in
     let dst = name ^ ".ml" in
     { targets =
-        (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
-           can't because this is might get parsed with old dune syntax where
-           [multiplicity = One] is not supported. *)
-        Static { targets = [ S.make_text loc dst, File ]; multiplicity = Multiple }
+        Static
+          { targets = [ S.make_text loc dst, File ]
+          ; multiplicity = Multiple
+          ; named_targets = [ "main", S.make_text loc dst ]
+          }
     ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
     ; action =
         ( loc
@@ -225,7 +266,7 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
                 (S.virt_text __POS__ "ocamllex")
                 [ S.virt_text __POS__ "-q"
                 ; S.virt_text __POS__ "-o"
-                ; S.virt_pform __POS__ (Var Targets)
+                ; S.virt_pform __POS__ (Var Target) (* Changed from Targets to Target *)
                 ; S.virt_pform __POS__ (Var Deps)
                 ] ) )
     ; mode
@@ -248,6 +289,10 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
                 [ name ^ ".ml"; name ^ ".mli" ]
                 ~f:(fun target -> S.make_text loc target, Targets_spec.Kind.File)
           ; multiplicity = Multiple
+          ; named_targets =
+              [ "implementation", S.make_text loc (name ^ ".ml")
+              ; "interface", S.make_text loc (name ^ ".mli")
+              ]
           }
     ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
     ; action =
@@ -264,4 +309,28 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
     ; aliases = []
     ; package = None
     })
+;;
+
+let decode_named_target =
+  let+ loc = loc
+  and+ name = plain_string
+  and+ target = String_with_vars.decode in
+  loc, (name, target)
+;;
+
+let decode_targets =
+  let* project = Dune_project.get_exn () in
+  let allow_directory_targets =
+    Dune_project.is_extension_set project directory_targets_extension
+  in
+  if allow_directory_targets
+  then
+    let+ targets = repeat (pair String_with_vars.decode Base_targets_spec.Kind.decode)
+    and+ named_targets = field ~default:[] "named_targets" (repeat decode_named_target) in
+    Base_targets_spec.Static { targets; multiplicity = Multiple; named_targets }
+  else
+    let+ targets =
+      repeat (String_with_vars.decode >>| fun x -> x, Base_targets_spec.Kind.File)
+    and+ named_targets = field ~default:[] "named_targets" (repeat decode_named_target) in
+    Base_targets_spec.Static { targets; multiplicity = Multiple; named_targets }
 ;;

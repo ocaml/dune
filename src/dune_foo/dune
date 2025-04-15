@@ -1,3 +1,0 @@
-(alias
- (name build-bar)
- (deps bar.ml))

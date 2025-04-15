@@ -55,6 +55,7 @@ module Var = struct
       | Arch
       | Sys_ocaml_version
       | Section_dir of Section.t
+      | Target of string
 
     let compare = Poly.compare
 
@@ -75,6 +76,7 @@ module Var = struct
       | Sys_ocaml_version -> variant "Sys_ocaml_version" []
       | Section_dir section ->
         variant "Section_dir" [ string (Section.to_string section) ]
+      | Target target -> variant "Target" [ string target ]
     ;;
 
     let encode_to_latest_dune_lang_version = function
@@ -91,6 +93,7 @@ module Var = struct
       | Arch -> "arch"
       | Sys_ocaml_version -> "sys_ocaml_version"
       | Section_dir section -> Section.to_string section
+      | Target target -> target
     ;;
   end
 
@@ -102,7 +105,7 @@ module Var = struct
     | First_dep
     | Deps
     | Targets
-    | Target
+    | Target of string
     | Cc
     | Cxx
     | Ccomp_type
@@ -141,9 +144,16 @@ module Var = struct
     | Toolchain
     | Pkg of Pkg.t
 
-  let compare : t -> t -> Ordering.t = Poly.compare
+  let compare (a : t) (b : t) : Ordering.t =
+    match a, b with
+    | Target a, Target b -> String.compare a b
+    | Target _, _ -> Lt
+    | _, Target _ -> Gt
+    | a, b -> Poly.compare a b
+  ;;
 
   let to_dyn = function
+    | Target name -> Dyn.Variant ("Target", [ String name ])
     | User_var v -> Dyn.Variant ("User_var", [ String v ])
     | t ->
       let open Dyn in
@@ -155,7 +165,7 @@ module Var = struct
        | First_dep -> variant "First_dep" []
        | Deps -> variant "Deps" []
        | Targets -> variant "Targets" []
-       | Target -> variant "Target" []
+       | Target _ -> assert false (* Handled above *)
        | Cc -> variant "Cc" []
        | Cxx -> variant "Cxx" []
        | Ccomp_type -> variant "Ccomp_type" []
@@ -193,6 +203,12 @@ module Var = struct
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
        | Pkg pkg -> Pkg.to_dyn pkg)
+  ;;
+
+  let parse_target_var name =
+    match String.split ~on:':' name with
+    | [ "target"; target_name ] -> Some (Target target_name)
+    | _ -> None
   ;;
 
   let of_opam_global_variable_name name =
@@ -465,7 +481,7 @@ let encode_to_latest_dune_lang_version t =
        | First_dep -> None
        | Deps -> Some "deps"
        | Targets -> Some "targets"
-       | Target -> Some "target"
+       | Target _ -> Some "target"
        | Cc -> Some "cc"
        | Cxx -> Some "cxx"
        | Ccomp_type -> Some "ccomp_type"
@@ -654,7 +670,8 @@ module Env = struct
       in
       let other : (string * Var.t With_versioning_info.t) list =
         [ "targets", since ~version:(1, 0) Var.Targets
-        ; "target", since ~version:(1, 11) Var.Target
+        ; "target", since ~version:(1, 11) (Var.Target "")
+          (* or some appropriate default value *)
         ; "deps", since ~version:(1, 0) Var.Deps
         ; "project_root", since ~version:(1, 0) Var.Project_root
         ; ( "<"
@@ -815,4 +832,29 @@ module Env = struct
          Macro { macro = With_versioning_info.get_data x; payload = Payload.of_string "" }))
       ~f:(fun _ _ _ -> assert false)
   ;;
+
+  let parse_target_var s =
+    match s with
+    | "target" -> Some Var.Targets  (* Likely this should be singular Target, but you'll need to determine the right mapping *)
+    | "targets" -> Some Var.Targets
+    | _ -> None
+
+    let parse_pkg_target_var s =
+      match Var.Pkg.Section.of_string s with
+      | Some section -> Some (Var.Pkg.Section_dir section)
+      | None ->
+        match s with
+        | "switch" -> Some Var.Pkg.Switch
+        | "os" -> Some Var.Pkg.Os
+        | "os_version" -> Some Var.Pkg.Os_version
+        | "os_distribution" -> Some Var.Pkg.Os_distribution
+        | "os_family" -> Some Var.Pkg.Os_family
+        | "build" -> Some Var.Pkg.Build
+        | "prefix" -> Some Var.Pkg.Prefix
+        | "user" -> Some Var.Pkg.User
+        | "group" -> Some Var.Pkg.Group
+        | "jobs" -> Some Var.Pkg.Jobs
+        | "arch" -> Some Var.Pkg.Arch
+        | "sys_ocaml_version" -> Some Var.Pkg.Sys_ocaml_version
+        | s -> Some (Var.Pkg.Target s)
 end

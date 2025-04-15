@@ -1,6 +1,7 @@
 open Import
 open Action_builder.O
 open Expander0
+open Targets_spec
 
 module Expanding_what = struct
   type t =
@@ -8,6 +9,7 @@ module Expanding_what = struct
     | Deps_like_field
     | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
+    
 end
 
 module Deps = struct
@@ -46,22 +48,43 @@ type value = Value.t list Deps.t
 
 let lookup_artifacts = Fdecl.create Dyn.opaque
 
-type t =
-  { dir : Path.Build.t
-  ; env : Env.t Memo.t
-  ; local_env : string Action_builder.t Env.Var.Map.t
-  ; public_libs : Lib.DB.t Memo.t
-  ; public_libs_host : Lib.DB.t Memo.t
-  ; artifacts_host : Artifacts.t Memo.t
-  ; bindings : value Pform.Map.t
-  ; scope : Scope.t Memo.t
-  ; scope_host : Scope.t Memo.t
-  ; context : Context.t
-  ; expanding_what : Expanding_what.t
-  ; project : Dune_project.t
-  ; named_targets : String_with_vars.t Targets_spec.Named_target.t String.Map.t
-  }
 
+type t =
+{ dir : Path.Build.t
+; env : Env.t Memo.t
+; local_env : string Action_builder.t Env.Var.Map.t
+; public_libs : Lib.DB.t Memo.t
+; public_libs_host : Lib.DB.t Memo.t
+; artifacts_host : Artifacts.t Memo.t
+; bindings : value Pform.Map.t
+; scope : Scope.t Memo.t
+; scope_host : Scope.t Memo.t
+; context : Context.t
+; expanding_what : Expanding_what.t
+; project : Dune_project.t
+named_targets : Path.Build.t String.Map.t
+}
+  
+  let named_targets t = t.named_targets
+  
+  let expand_target_var t ~source name =
+    match String.Map.find (named_targets t) name with
+    | Some (Named_target.Named (_, (path, _))) ->
+      (match String_with_vars.text_only path with
+       | Some text -> Value.String text
+       | None ->
+         User_error.raise ~loc:(String_with_vars.loc path) [
+           Pp.text "Target path must be a text literal (no variables)"
+         ])
+    | Some (Named_target.Anonymous (path, _)) ->  (* Now we capture path here *)
+      User_error.raise ~loc:(String_with_vars.loc path) [
+        Pp.textf "Variable %%{target:%s} refers to anonymous target" name
+      ]
+    | None ->
+      User_error.raise ~loc:Loc.none [  (* Using Loc.none since we don't have a path *)
+        Pp.textf "Undefined target variable: %%{target:%s}" name
+      ]
+  
 let artifacts t = t.artifacts_host
 let dir t = t.dir
 let project t = t.project
@@ -170,7 +193,6 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
          ])
 ;;
 
-let named_targets t = t.named_targets
 
 let expand_artifact ~source t artifact arg =
   let path = Path.Build.relative t.dir arg in
@@ -208,6 +230,24 @@ let expand_artifact ~source t artifact arg =
          let+ () = Action_builder.path fn in
          Value.Path fn))
 ;;
+
+let expand_target_var t ~source name =
+  match String.Map.find t.named_targets name with
+  | Some (Named_target.Named (_, (path, _))) ->
+    (match String_with_vars.text_only path with
+     | Some text -> Value.String text
+     | None ->
+       User_error.raise ~loc:(String_with_vars.loc path) [
+         Pp.text "Target path must be a text literal (no variables)"
+       ])
+  | Some (Anonymous (path, _)) ->  (* Capture path for error location *)
+    User_error.raise ~loc:(String_with_vars.loc path) [
+      Pp.textf "Variable %%{target:%s} refers to anonymous target" name
+    ]
+  | None ->
+    User_error.raise ~loc:Loc.none [  (* Or use source.loc if available *)
+      Pp.textf "Undefined target variable: %%{target:%s}" name
+    ]
 
 let foreign_flags = Fdecl.create Dyn.opaque
 
@@ -268,7 +308,7 @@ let[@inline never] invalid_use_of_target_variable
              "You cannot use %s with inferred rules."
              (Dune_lang.Template.Pform.describe source)
          ]
-     | Static { targets = _; multiplicity } ->
+     | Static { targets = _; multiplicity; _ } ->
        assert (multiplicity <> var_multiplicity);
        Targets_spec.Multiplicity.check_variable_matches_field
          ~loc:source.loc
@@ -485,12 +525,17 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
   | First_dep ->
     (* This case is for %{<} which was only allowed inside jbuild files *)
     assert false
-  | Target ->
+  | Target target_name ->
     Need_full_expander
       (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:One)
-  | Targets ->
-    Need_full_expander
-      (fun t -> invalid_use_of_target_variable t ~source ~var_multiplicity:Multiple)
+      | Target name ->
+        Need_full_expander
+          (fun t ->
+            match String.Map.find t.named_targets name with
+            | Some path -> Without (Memo.return [Value.Path (Path.build path)])
+            | None ->
+              User_error.raise ~loc:(Dune_lang.Template.Pform.loc source)
+                [Pp.textf "Unknown target variable %s" name])
   | Profile ->
     Context.profile context |> Profile.to_string |> string |> Memo.return |> static
   | Workspace_root ->
@@ -738,23 +783,33 @@ let describe_source ~source =
 ;;
 
 let expand_pform t ~source pform =
-  Action_builder.push_stack_frame
-    (fun () ->
-       match
+  (* Handle target variables first *)
+  match pform with
+  | { desc = Var (Target, name); _ } ->
+    (* Directly expand target variables without going through expand_pform_gen *)
+    expand_target_var t ~source name
+    |> Action_builder.return
+    |> Action_builder.push_stack_frame
+         ~human_readable_description:(fun () -> describe_source ~source)
+  | _ ->
+    (* Existing logic for all other variables *)
+    Action_builder.push_stack_frame
+      (fun () ->
          match
-           expand_pform_gen
-             ~context:t.context
-             ~bindings:t.bindings
-             ~dir:t.dir
-             ~source
-             pform
+           match
+             expand_pform_gen
+               ~context:t.context
+               ~bindings:t.bindings
+               ~dir:t.dir
+               ~source
+               pform
+           with
+           | Direct v -> v
+           | Need_full_expander f -> f t
          with
-         | Direct v -> v
-         | Need_full_expander f -> f t
-       with
-       | With x -> x
-       | Without x -> Action_builder.of_memo x)
-    ~human_readable_description:(fun () -> describe_source ~source)
+         | With x -> x
+         | Without x -> Action_builder.of_memo x)
+      ~human_readable_description:(fun () -> describe_source ~source)
 ;;
 
 let expand t ~mode template =
@@ -859,25 +914,33 @@ module With_deps_if_necessary = struct
   module E = String_with_vars.Make_expander (Deps)
 
   let expand_pform t ~source pform : _ Deps.t =
-    match
+    match pform with
+    | { desc = Var (Target, name); _ } ->
+      (* Handle target variable expansion *)
+      let value = expand_target_var t ~source name in
+      Without (Memo.return value)
+    | _ ->
+      (* Existing logic for all other variables *)
       match
-        expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source pform
+        match
+          expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source pform
+        with
+        | Direct v -> v
+        | Need_full_expander f -> f t
       with
-      | Direct v -> v
-      | Need_full_expander f -> f t
-    with
-    | Without t ->
-      Without
-        (Memo.push_stack_frame
-           (fun () -> t)
-           ~human_readable_description:(fun () -> describe_source ~source))
-    | With t ->
-      With
-        (Action_builder.push_stack_frame
-           (fun () -> t)
-           ~human_readable_description:(fun () -> describe_source ~source))
+      | Without t ->
+        Without
+          (Memo.push_stack_frame
+             (fun () -> t)
+             ~human_readable_description:(fun () -> describe_source ~source))
+      | With t ->
+        With
+          (Action_builder.push_stack_frame
+             (fun () -> t)
+             ~human_readable_description:(fun () -> describe_source ~source))
   ;;
 
+  (* Rest of the module remains unchanged *)
   let expand t ~mode sw = E.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
 
   let expand_path t sw =
@@ -889,6 +952,7 @@ module With_deps_if_necessary = struct
            ~error_loc:(String_with_vars.loc sw)
            ~dir:t.dir)
   ;;
+
 end
 
 let expand_ordered_set_lang =
@@ -921,6 +985,17 @@ let expand_locks t (locks : Locks.t) =
   |> Action_builder.of_memo
 ;;
 
+let setup_rule ~expander ~targets ~action =
+  let named_targets =
+    match targets with
+    | Targets_spec.Static { targets; _ } ->
+      List.filter_map targets ~f:(function
+        | Named_target.Named (name, target) -> Some (name, target)
+        | Anonymous _ -> None)
+    | Infer -> []
+  in
+  (add_named_targets expander named_targets, action)
+
 module M = struct
   type nonrec t = t
 
@@ -932,3 +1007,17 @@ module M = struct
 end
 
 let to_expander0 t = Expander0.create (Memo.return t) (module M)
+
+let add_named_target t ~name ~target:(target_name, target_path) =
+  let open Targets_spec.Named_target in
+  match target with
+  | Anonymous (path, kind) ->
+    (* Convert anonymous to named target *)
+    Named (name, (path, kind))
+  | Named (existing_name, (path, kind)) ->
+    (* Maybe check for name conflicts here *)
+    Named (name, (path, kind))
+
+let add_named_targets t targets =
+  List.fold_left targets ~init:t ~f:(fun acc (name, target) ->
+    add_named_target acc ~name ~target)

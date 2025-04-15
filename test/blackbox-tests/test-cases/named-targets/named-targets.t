@@ -1,11 +1,11 @@
-# Basic test for multiple targets
+# Basic test for multiple targets with named targets
   $ echo '(lang dune 3.8)' > dune-project
   $ cat > dune << 'EOF'
   > (rule
-  >  (targets output.txt secondary.log)
+  >  (targets (:primary output.txt) secondary.log)
   >  (action
   >   (progn
-  >    (with-stdout-to output.txt (echo "Primary content"))
+  >    (with-stdout-to %{primary} (echo "Primary content"))
   >    (with-stdout-to secondary.log (echo "Log content"))
   >   )
   >  )

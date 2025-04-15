@@ -26,16 +26,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1739155595,
-        "narHash": "sha256-bOm4f7HKuB5odaiH7IWB4pLyMm44uRE1HyTJX5KKXyU=",
+        "lastModified": 1742771471,
+        "narHash": "sha256-VAWsw6ytwM0Ysa9D95/xxCcRZ1tRZ+VRoRsBHEM4tlc=",
         "owner": "melange-re",
         "repo": "melange",
-        "rev": "e09eeff6112d8c5daf2d24f37be1f9ccb69e523e",
+        "rev": "7fef609b2770933f1d99ebfb05fe693e79880bb6",
         "type": "github"
       },
       "original": {
         "owner": "melange-re",
-        "ref": "refs/tags/5.0.0-52",
+        "ref": "refs/tags/5.1.0-52",
         "repo": "melange",
         "type": "github"
       }
@@ -48,11 +48,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1737850230,
-        "narHash": "sha256-9gBHHAd6uZWqL1xsS0NbY+OE8KBDQPLgHM1SXKg2HUY=",
+        "lastModified": 1742763192,
+        "narHash": "sha256-z2zeESs7U23GSBg5XnNm/KJJbTwkkOl0E2LF1YB47qc=",
         "owner": "melange-re",
         "repo": "melange-compiler-libs",
-        "rev": "327008ba17b54bfe912407c61eb9aca969e5e7b0",
+        "rev": "6086dd83494b777749d6826f49fc3686d757987f",
         "type": "github"
       },
       "original": {
@@ -64,11 +64,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1739019272,
-        "narHash": "sha256-7Fu7oazPoYCbDzb9k8D/DdbKrC3aU1zlnc39Y8jy/s8=",
+        "lastModified": 1743076231,
+        "narHash": "sha256-yQugdVfi316qUfqzN8JMaA2vixl+45GxNm4oUfXlbgw=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "fa35a3c8e17a3de613240fea68f876e5b4896aec",
+        "rev": "6c5963357f3c1c840201eda129a99d455074db04",
         "type": "github"
       },
       "original": {
@@ -85,11 +85,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1738777743,
-        "narHash": "sha256-l2eEAvqeBcpIRf75GyTasMZdSpP1wcJzGDdHZuUpa3U=",
+        "lastModified": 1742787740,
+        "narHash": "sha256-6q1v+TN+xFYr/+OgQxZ2fiPmnxatzlDGwjMJZiI4kag=",
         "owner": "nix-ocaml",
         "repo": "nix-overlays",
-        "rev": "578dae4718747c751e5f39fa7d155f35d9e0775c",
+        "rev": "dbe213c8d7b52b0995c549fc7a2123fef3af85d6",
         "type": "github"
       },
       "original": {

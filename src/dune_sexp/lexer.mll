@@ -59,13 +59,13 @@ module Template = struct
   let dummy_loc = Loc.create ~start:Lexing.dummy_pos ~stop:Lexing.dummy_pos
 
   let add_text parts s =
-    match parts with
-    | Template.Text s' :: parts -> Template.Text (s' ^ s) :: parts
-    | _ -> Template.Text s :: parts
+    match (parts : Part.t list)  with
+    | Text s' :: parts -> Part.Text (s' ^ s) :: parts
+    | _ -> Text s :: parts
 
   let token parts ~quoted ~start (lexbuf : Lexing.lexbuf) =
     lexbuf.lex_start_p <- start;
-    match parts with
+    match (parts : Part.t list) with
     | [] | [Text ""] ->
       invalid_dune_or_jbuild lexbuf
     | [Text s] ->
@@ -80,13 +80,13 @@ module Template = struct
   module Buffer : sig
     val new_token : unit -> unit
     val get : unit -> Token.t
-    val add_var : part -> unit
+    val add_var : Part.t -> unit
     val add_text : string -> unit
     val add_text_c : char -> unit
   end = struct
     type state =
       | String
-      | Template of Template.part list
+      | Template of Part.t list
 
     let text_buf = Buffer.create 256
 
@@ -348,7 +348,8 @@ and template_variable = parse
       (* -2 to account for the "%{" *)
       let start = { start with pos_cnum = start.pos_cnum - 2 } in
       let loc = Loc.create ~start ~stop:(Lexing.lexeme_end_p lexbuf) in
-      Template.Pform { loc ; name ; payload = Option.map ~f:Template.Pform.Payload.of_string payload }
+      Template.Part.Pform
+        { loc ; name ; payload = Option.map ~f:Template.Pform.Payload.of_string payload }
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }

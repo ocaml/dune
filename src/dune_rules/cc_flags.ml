@@ -1,6 +1,6 @@
 open Import
 
-type ccomp_type =
+type cc_vendor =
   | Gcc
   | Msvc
   | Clang
@@ -31,15 +31,21 @@ let fdiagnostics_color = function
   | _ -> []
 ;;
 
-let preprocessed_filename = "ccomp"
+let warnings = function
+  | Gcc | Clang -> [ "-Wall" ]
+  | Msvc -> [ "-W2" ]
+  | _ -> []
+;;
 
-let ccomp_type build_dir =
+let preprocessed_filename = "cc_vendor"
+
+let cc_vendor build_dir =
   let open Action_builder.O in
   let filepath =
-    Path.Build.(relative (relative build_dir ".dune/ccomp") preprocessed_filename)
+    Path.Build.(relative (relative build_dir ".dune/cc_vendor") preprocessed_filename)
   in
-  let+ ccomp = Action_builder.contents (Path.build filepath) in
-  match String.trim ccomp with
+  let+ cc_vendor = Action_builder.contents (Path.build filepath) in
+  match String.trim cc_vendor with
   | "clang" -> Clang
   | "gcc" -> Gcc
   | "msvc" -> Msvc
@@ -50,25 +56,25 @@ let check_warn = function
   | Other s ->
     User_warning.emit
       [ Pp.textf
-          "Dune was not able to automatically infer the C compiler in use: \"%s\". \
-           Please open an issue on github to help us improve this feature."
+          "Dune was not able to automatically infer the C/C++ compiler in use: \"%s\". \
+           Please open an issue on GitHub to help us improve this feature."
           s
       ]
   | _ -> ()
 ;;
 
-let ccomp_type (ctx : Build_context.t) =
+let cc_vendor (ctx : Build_context.t) =
   let open Action_builder.O in
-  let+ ccomp_type = ccomp_type ctx.build_dir in
-  check_warn ccomp_type;
-  ccomp_type
+  let+ cc_vendor = cc_vendor ctx.build_dir in
+  check_warn cc_vendor;
+  cc_vendor
 ;;
 
 let get_flags ~for_ ctx =
   let open Action_builder.O in
-  let+ ccomp_type = ccomp_type ctx in
+  let+ cc_vendor = cc_vendor ctx in
   (match for_ with
    | Compile version -> base_cxx_compile_flags version
    | Link -> base_cxx_link_flags)
-    ccomp_type
+    cc_vendor
 ;;

@@ -496,6 +496,7 @@ module External : sig
   val as_local : t -> string
   val append_local : t -> Local.t -> t
   val of_filename_relative_to_initial_cwd : string -> t
+  val is_broken_symlink : t -> bool
 end = struct
   module Table = String.Table
 
@@ -570,6 +571,8 @@ end = struct
   let of_filename_relative_to_initial_cwd fn =
     if Filename.is_relative fn then relative initial_cwd fn else of_string fn
   ;;
+
+  let is_broken_symlink = Fpath.is_broken_symlink
 
   include (
     Comparator.Operators (struct
@@ -1467,6 +1470,14 @@ let drop_prefix_exn t ~prefix =
   | None ->
     Code_error.raise "Path.drop_prefix_exn" [ "t", to_dyn t; "prefix", to_dyn prefix ]
   | Some p -> p
+;;
+
+let is_broken_symlink = function
+  | External e -> External.is_broken_symlink e
+  | In_source_tree _ | In_build_dir _ ->
+    (* Paths within the source tree and build dir are always fully-expanded,
+       so there's no possibility for them to be broken symlinks. *)
+    false
 ;;
 
 module Expert = struct

@@ -17,23 +17,29 @@ let default_context_flags (ctx : Build_context.t) ocaml_config ~project =
     match Dune_project.use_standard_c_and_cxx_flags project with
     | None | Some false -> Action_builder.(return cflags, return cxxflags)
     | Some true ->
-      let fdiagnostics_color =
-        Cxx_flags.ccomp_type ctx |> Action_builder.map ~f:Cxx_flags.fdiagnostics_color
-      in
+      let cc_vendor = Cc_flags.cc_vendor ctx in
+      let fdiagnostics_color = Action_builder.map ~f:Cc_flags.fdiagnostics_color cc_vendor
+      and warnings = Action_builder.map ~f:Cc_flags.warnings cc_vendor in
       let open Action_builder.O in
       let c =
-        let+ fdiagnostics_color = fdiagnostics_color in
+        let+ fdiagnostics_color = fdiagnostics_color
+        and+ warnings = warnings in
         List.concat
-          [ cflags; Ocaml_config.ocamlc_cppflags ocaml_config; fdiagnostics_color ]
+          [ cflags
+          ; Ocaml_config.ocamlc_cppflags ocaml_config
+          ; warnings
+          ; fdiagnostics_color
+          ]
       in
       let cxx =
         let+ fdiagnostics_color = fdiagnostics_color
+        and+ warnings = warnings
         and+ db_flags =
-          Cxx_flags.get_flags
+          Cc_flags.get_flags
             ~for_:(Compile (Ocaml.Version.make (Ocaml_config.version ocaml_config)))
             ctx
         in
-        List.concat [ db_flags; cxxflags; fdiagnostics_color ]
+        List.concat [ db_flags; cxxflags; warnings; fdiagnostics_color ]
       in
       c, cxx
   in
@@ -285,7 +291,7 @@ let build_c
   let output_param =
     match ocaml.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
-    | Other _ -> [ A "-o"; Target dst ]
+    | Cc | Other _ -> [ A "-o"; Target dst ]
   in
   Super_context.add_rule
     sctx

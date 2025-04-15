@@ -47,7 +47,8 @@
   source-caching
   tarball
   pin-depends
-  extra-sources))
+  extra-sources
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:md5sum})
@@ -55,15 +56,26 @@
   source-caching
   extra-sources
   ocamlformat-dev-tool
-  dev-tool-conflict-test))
+  dev-tool-conflict-test
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:tar})
- (applies_to source-caching tarball pin-depends extra-sources))
+ (applies_to
+  source-caching
+  tarball
+  pin-depends
+  extra-sources
+  pkg-extract-fail
+  broken-symlink-in-dependency))
 
 (cram
  (deps %{bin:ocaml_index})
  (applies_to gh10985))
+
+(cram
+ (deps %{bin:unzip})
+ (applies_to pkg-extract-fail))
 
 ;; disabled for flakiness
 

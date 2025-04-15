@@ -59,22 +59,26 @@ end
 module Ccomp_type = struct
   type t =
     | Msvc
+    | Cc
     | Other of string
 
   let to_dyn =
     let open Dyn in
     function
     | Msvc -> variant "Msvc" []
+    | Cc -> variant "Cc" []
     | Other s -> variant "Other" [ string s ]
   ;;
 
   let of_string = function
     | "msvc" -> Msvc
+    | "cc" -> Cc
     | s -> Other s
   ;;
 
   let to_string = function
     | Msvc -> "msvc"
+    | Cc -> "cc"
     | Other s -> s
   ;;
 end

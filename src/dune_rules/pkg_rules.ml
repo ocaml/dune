@@ -1627,9 +1627,20 @@ let source_rules (pkg : Pkg.t) =
            Pkg.source_files pkg ~loc
            >>| Path.Local.Set.fold ~init:([], []) ~f:(fun file (source_files, rules) ->
              let src = Path.append_local source_root file in
-             let dst = Path.Build.append_local pkg.write_paths.source_dir file in
-             let copy = loc, Action_builder.copy ~src ~dst in
-             Path.build dst :: source_files, copy :: rules)
+             if Path.is_broken_symlink src
+             then
+               (* Don't copy broken symlinks into the build directory. Note
+                  that this only works for packages sourced from local
+                  directories. Packages whose source is extracted from an
+                  archive (possibly fetched over the web) have broken symlinks
+                  explicitly deleted immediately after the archive is
+                  extracted. This logic is implemented in the "source-fetch"
+                  action spec in [Fetch_rules]. *)
+               source_files, rules
+             else (
+               let dst = Path.Build.append_local pkg.write_paths.source_dir file in
+               let copy = loc, Action_builder.copy ~src ~dst in
+               Path.build dst :: source_files, copy :: rules))
          in
          Dep.Set.of_files source_files, rules)
   in

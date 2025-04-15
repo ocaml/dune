@@ -1,5 +1,12 @@
+3.18.1 (2025-04-15)
+-------------------
+
+- fix: pass pkg-config (extra) args in all pkgconfig invocations. A missing
+  `--personality` flag would result in pkgconf not finding libraries in some
+  contexts. (#11619, @MisterDA)
+
 3.18.0 (2025-04-03)
---------------------------
+-------------------
 
 ### Fixed
 

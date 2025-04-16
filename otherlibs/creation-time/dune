@@ -1,0 +1,20 @@
+(rule
+ (with-stdout-to
+  stub_flags.sexp
+  (run gen_flags/gen_flags.exe %{cc})))
+
+(library
+ (name creation_time)
+ (public_name creation-time)
+ (foreign_stubs
+  (language c)
+  (names creation_time_stubs)
+  (flags
+   (:standard
+    (:include stub_flags.sexp))))
+ (synopsis "[Internal] Determine the creation time of files")
+ (instrumentation
+  (backend bisect_ppx)))
+
+(documentation
+ (package creation-time))

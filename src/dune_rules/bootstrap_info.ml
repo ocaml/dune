@@ -67,7 +67,7 @@ let rule sctx ~requires_link =
   let externals =
     List.filter_map externals ~f:(fun lib ->
       let name = Lib.name lib in
-      Option.some_if (Lib_name.equal name (Lib_name.of_string "threads.posix")) name)
+      Option.some_if (not (Lib_name.equal name (Lib_name.of_string "threads.posix"))) name)
   in
   Format.asprintf
     "%a@."

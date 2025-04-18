@@ -77,7 +77,7 @@ val expand_path : t -> String_with_vars.t -> Path.t Action_builder.t
 val expand_str : t -> String_with_vars.t -> string Action_builder.t
 val expand_pform : t -> Value.t list Action_builder.t String_with_vars.expander
 val expand_str_partial : t -> String_with_vars.t -> String_with_vars.t Action_builder.t
-val named_targets : t -> String_with_vars.t Targets_spec.Named_target.t String.Map.t
+val named_targets : t -> Path.Build.t String.Map.t
 
 module No_deps : sig
   (** Same as [expand_xxx] but disallow percent forms that introduce action
@@ -126,5 +126,30 @@ val foreign_flags
 
 val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
 val to_expander0 : t -> Expander0.t
-val add_named_target : t -> name:string -> target:string * String_with_vars.t -> t
-val add_named_targets : t -> (string * 'path Targets_spec.Named_target.t) list -> t
+
+val add_named_target :
+  t ->
+  name:string ->
+  target:string * String_with_vars.t ->
+  kind:Targets_spec.Kind.t ->
+  String_with_vars.t Targets_spec.Named_target.t
+
+val add_named_targets :
+  t ->
+  (string * (string * String_with_vars.t)) list ->
+  kind:Targets_spec.Kind.t ->
+  String_with_vars.t Targets_spec.Named_target.t
+
+(* In expander.mli *)
+val expand_target_var : 
+  t -> 
+  source:Dune_lang.Template.Pform.t -> 
+  string -> 
+  Value.t
+
+(* In src/dune_rules/expander.mli *)
+val invalid_use_of_target_variable : 
+  t -> 
+  source:Dune_lang.Template.Pform.t -> 
+  var_multiplicity:Import.Targets_spec.Multiplicity.t -> 
+  'a

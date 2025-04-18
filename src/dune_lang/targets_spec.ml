@@ -144,7 +144,7 @@ let decode_one_static ~allow_directory_targets =
   Static { targets = [ target ]; multiplicity = One; named_targets }
 ;;
 
-let decode ~allow_directory_targets string_decoder =
+let decode ~allow_directory_targets:_ string_decoder =
   let open Dune_sexp.Decoder in
   let+ path = string_decoder in
   let kind = Kind.File in 
@@ -156,6 +156,10 @@ let field_one ~allow_directory_targets name decode =
   field name (
     decode >>= fun name_value ->
     decode_one_static ~allow_directory_targets >>= fun static_spec ->
+    let targets = match static_spec with
+      | Static { targets; _ } -> targets
+      | _ -> [] (* or handle other cases appropriately *)
+    in
     match static_spec with
     | Static { targets = [(path, kind)]; multiplicity; named_targets } ->
       let new_target = (path, kind) in
@@ -165,16 +169,28 @@ let field_one ~allow_directory_targets name decode =
         multiplicity;
         named_targets = new_named_targets @ named_targets
       })
+    | _ ->
+      User_error.raise ~loc:(String_with_vars.loc name_value)
+        [ Pp.textf "Expected exactly one target but got %d" (List.length targets) ]
   )
 
-  let field_many ~allow_directory_targets name decode =
-    let open Dune_sexp.Decoder in
-    field name (
-      decode >>= fun name_value ->
-      decode_static ~allow_directory_targets >>= fun static_spec ->
-      let named_targets = [(name_str, path)] in
-      return { static_spec with named_targets = named_targets @ static_spec.named_targets }
-    )
+let field_many ~allow_directory_targets name decode =
+  let open Dune_sexp.Decoder in
+  field name (
+    decode >>= fun name_value ->
+    decode_static ~allow_directory_targets >>= function
+    | Static static_record ->
+      (* Maintain the same type parameter throughout *)
+      let new_named_targets = [(name, name_value)] in
+      return (Static {
+        static_record with
+        named_targets = new_named_targets @ static_record.named_targets
+      })
+      | Infer ->
+        User_error.raise 
+          ~loc:(Loc.of_pos __POS__) 
+          [Pp.text "Cannot infer targets in this context"]
+  )
 
 let field ~allow_directory_targets name decode =
   let open Dune_sexp.Decoder in
@@ -182,14 +198,18 @@ let field ~allow_directory_targets name decode =
   | "target" -> field_one ~allow_directory_targets name decode
   | "targets" -> field_many ~allow_directory_targets name decode
   | _ ->
-    field
-      name
-      (decode
-        >>= fun name_value ->
-        let name_str = String_with_vars.to_string name_value in
-        return (Static { 
-          targets = [(name_value, Kind.File)]; 
-          multiplicity = One; 
-          named_targets = [(name_str, name_value)] 
-        }))
+    field name (
+      decode >>= fun name_value ->
+      match String_with_vars.text_only name_value with
+      | Some name_str ->
+        return (Static {
+          targets = [(name_value, Kind.File)];
+          multiplicity = One;
+          named_targets = [(name_str, name_value)]
+        })
+      | None ->
+        User_error.raise
+          ~loc:(String_with_vars.loc name_value)
+          [Pp.text "Expected a static string without variables"]
+    )
 ;;

@@ -3,6 +3,7 @@
   $ cat > dune << 'EOF'
   > (rule
   >  (targets (:primary output.txt) secondary.log)
+  >  (deps dune-project)
   >  (action
   >   (progn
   >    (with-stdout-to %{primary} (echo "Primary content"))

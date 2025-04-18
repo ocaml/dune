@@ -2,6 +2,7 @@ open Stdune
 open Dune_sexp
 module Payload = Template.Pform.Payload
 
+
 module Var = struct
   module Pkg = struct
     module Section = struct
@@ -203,12 +204,6 @@ module Var = struct
        | Inline_tests -> variant "Inline_tests" []
        | Toolchain -> variant "Toolchain" []
        | Pkg pkg -> Pkg.to_dyn pkg)
-  ;;
-
-  let parse_target_var name =
-    match String.split ~on:':' name with
-    | [ "target"; target_name ] -> Some (Target target_name)
-    | _ -> None
   ;;
 
   let of_opam_global_variable_name name =
@@ -833,28 +828,35 @@ module Env = struct
       ~f:(fun _ _ _ -> assert false)
   ;;
 
-  let parse_target_var s =
-    match s with
-    | "target" -> Some Var.Targets  (* Likely this should be singular Target, but you'll need to determine the right mapping *)
-    | "targets" -> Some Var.Targets
-    | _ -> None
-
-    let parse_pkg_target_var s =
-      match Var.Pkg.Section.of_string s with
-      | Some section -> Some (Var.Pkg.Section_dir section)
-      | None ->
-        match s with
-        | "switch" -> Some Var.Pkg.Switch
-        | "os" -> Some Var.Pkg.Os
-        | "os_version" -> Some Var.Pkg.Os_version
-        | "os_distribution" -> Some Var.Pkg.Os_distribution
-        | "os_family" -> Some Var.Pkg.Os_family
-        | "build" -> Some Var.Pkg.Build
-        | "prefix" -> Some Var.Pkg.Prefix
-        | "user" -> Some Var.Pkg.User
-        | "group" -> Some Var.Pkg.Group
-        | "jobs" -> Some Var.Pkg.Jobs
-        | "arch" -> Some Var.Pkg.Arch
-        | "sys_ocaml_version" -> Some Var.Pkg.Sys_ocaml_version
-        | s -> Some (Var.Pkg.Target s)
 end
+let parse_target_var s =
+  match String.split_on_char ~sep:':' s with
+  | ["target"; name] -> Some (Var (Var.Target name))
+  | ["targets"] -> Some (Var Var.Targets)
+  | _ -> None
+
+let parse_pkg_target_var s =
+  match String.split_on_char ~sep:':' s with
+  | ["pkg"; pkg_name; "target"; target_name] ->
+    Some (Var.Pkg.Target (pkg_name ^ ":" ^ target_name))
+  | ["pkg"; pkg_name; section] ->
+    (match Var.Pkg.Section.of_string section with
+     | Some section -> Some (Var.Pkg.Section_dir section)
+     | None -> Some (Var.Pkg.Target (pkg_name ^ ":" ^ section)))
+  | ["pkg"; var] ->
+    (match var with
+     | "switch" -> Some Var.Pkg.Switch
+     | "os" -> Some Var.Pkg.Os
+     | "os_version" -> Some Var.Pkg.Os_version
+     | "os_distribution" -> Some Var.Pkg.Os_distribution
+     | "os_family" -> Some Var.Pkg.Os_family
+     | "build" -> Some Var.Pkg.Build
+     | "prefix" -> Some Var.Pkg.Prefix
+     | "user" -> Some Var.Pkg.User
+     | "group" -> Some Var.Pkg.Group
+     | "jobs" -> Some Var.Pkg.Jobs
+     | "arch" -> Some Var.Pkg.Arch
+     | "sys_ocaml_version" -> Some Var.Pkg.Sys_ocaml_version
+     | target -> Some (Var.Pkg.Target target))
+  | _ -> None
+

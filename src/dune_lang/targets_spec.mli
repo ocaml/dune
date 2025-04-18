@@ -44,8 +44,18 @@ val field
   -> (String_with_vars.t, Dune_sexp.Decoder.values) Dune_sexp.Decoder.parser
   -> String_with_vars.t t Dune_sexp.Decoder.fields_parser
 
+val field_many 
+:  allow_directory_targets:bool 
+-> string 
+-> String_with_vars.t Dune_sexp.Decoder.t 
+-> String_with_vars.t t Dune_sexp.Decoder.fields_parser
+
 val decode_target
   :  allow_directory_targets:bool
   -> String_with_vars.t Named_target.t Dune_sexp.Decoder.t
 
 val extract_named_targets : 'path Named_target.t list -> 'path String.Map.t
+
+val decode 
+  : allow_directory_targets:bool 
+  -> String_with_vars.t Dune_sexp.Decoder.t -> String_with_vars.t t Dune_sexp.Decoder.t

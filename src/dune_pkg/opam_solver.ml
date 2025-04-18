@@ -1,3 +1,17 @@
+(*
+   This file includes code from the 0install library. It is distributed under
+   the LGPL-2.1-or-later licence. See src/sdune_pkg/COPYING.md for the full
+   license.
+
+   Copyright (C) 2013, Thomas Leonard
+   See the README file for details, or visit http://0install.net.
+
+   Files:
+   - Includes solver_core.ml and solver_core.mli files
+   - Includes diagnostics.ml and diagnostics.mli
+   - Remove usage from the S module from the s.ml file
+*)
+
 open Import
 open Fiber.O
 

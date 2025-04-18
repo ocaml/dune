@@ -21,6 +21,7 @@ module File : sig
 
   val path : t -> Path.Local.t
   val to_dyn : t -> Dyn.t
+  val equal : t -> t -> bool
 
   module Set : Set.S with type elt = t
 end

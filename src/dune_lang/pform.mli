@@ -34,6 +34,7 @@ module Var : sig
       | Arch
       | Sys_ocaml_version
       | Section_dir of Section.t
+      | Target of string
 
     val compare : t -> t -> Ordering.t
     val to_dyn : t -> Dyn.t
@@ -47,7 +48,7 @@ module Var : sig
     | First_dep
     | Deps
     | Targets
-    | Target
+    | Target of string
     | Cc
     | Cxx
     | Ccomp_type
@@ -207,3 +208,6 @@ module Env : sig
   val to_stamp : t -> stamp
   val to_dyn : t -> Dyn.t
 end
+
+val parse_target_var : string -> t option
+val parse_pkg_target_var : string -> Var.Pkg.t option

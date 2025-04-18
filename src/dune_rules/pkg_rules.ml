@@ -660,6 +660,7 @@ module Action_expander = struct
         let roots = Paths.install_roots paths in
         let dir = section_dir_of_root roots section in
         Memo.return [ Value.Dir dir ]
+      | Target target_name -> Memo.return [ Value.String target_name ]
     ;;
 
     let expand_pkg_macro ~loc (paths : _ Paths.t) deps macro_invocation =

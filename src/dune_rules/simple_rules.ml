@@ -87,7 +87,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
     let* targets =
       match rule.targets with
       | Infer -> Memo.return Targets_spec.Infer
-      | Static { targets; multiplicity } ->
+      | Static { targets; multiplicity; _ } ->
         let+ targets =
           Memo.List.concat_map targets ~f:(fun (target, kind) ->
             (match multiplicity with
@@ -98,7 +98,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
             let error_loc = String_with_vars.loc target in
             List.map ~f:(fun value -> check_filename ~kind ~dir ~error_loc value, kind))
         in
-        Targets_spec.Static { multiplicity; targets }
+        Targets_spec.Static { multiplicity; targets; named_targets = [] }
     in
     let expander =
       match extra_bindings with

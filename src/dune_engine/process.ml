@@ -49,6 +49,7 @@ module Io = struct
         { output_on_success : Action_output_on_success.t
         ; output_limit : Action_output_limit.t
         }
+    | External
 
   type status =
     | Keep_open
@@ -214,6 +215,7 @@ let io_to_redirection_path (kind : Io.kind) =
   | Terminal _ -> None
   | Null -> Some (Path.to_string Dev_null.path)
   | File fn -> Some (Path.to_string fn)
+  | External -> None
 ;;
 
 let command_line_enclosers
@@ -230,7 +232,7 @@ let command_line_enclosers
   in
   let suffix =
     match stdin_from.kind with
-    | Null | Terminal _ -> suffix
+    | Null | Terminal _ | External -> suffix
     | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
@@ -879,6 +881,7 @@ let spawn
   and stderr_limit = Io.output_limit stderr in
   let (stdout_capture, stdout), (stderr_capture, stderr) =
     match stdout.kind, stderr.kind with
+    | External, _ | _, External -> (None, stdout), (None, stderr)
     | (Terminal _, _ | _, Terminal _) when !Clflags.capture_outputs ->
       let capture ~suffix =
         let fn = Temp.create File ~prefix:"dune" ~suffix in
@@ -1224,4 +1227,23 @@ let run_capture_line
                  (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
                     Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
              ]))
+;;
+
+let run_external_in_out =
+  let external_ ch =
+    let fd = Io.descr_of_channel ch in
+    { Io.kind = External; fd = lazy fd; channel = lazy ch; status = Keep_open }
+  in
+  fun ?dir ?env prog args ->
+    run
+      ?dir
+      ?env
+      ~display:Display.Quiet
+      ~stdout_to:(external_ (Out_chan stdout))
+      ~stderr_to:(external_ (Out_chan stderr))
+      ~stdin_from:(external_ (In_chan stdin))
+      Return
+      prog
+      args
+    >>| snd
 ;;

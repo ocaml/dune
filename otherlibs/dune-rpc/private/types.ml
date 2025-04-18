@@ -27,7 +27,7 @@ end
 module Version = struct
   type t = int * int
 
-  let latest = 3, 18
+  let latest = 3, 19
 
   let sexp : t Conv.value =
     let open Conv in

@@ -25,6 +25,6 @@ Solve the dependencies:
   Error: The current version of Dune does not satisfy the version constraints
   for Dune in this project's dependencies.
   Details:
-  Found version "3.18" of package "dune" which doesn't satisfy the required
+  Found version "3.19" of package "dune" which doesn't satisfy the required
   version constraint "< 3.0"
   [1]

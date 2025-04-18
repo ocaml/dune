@@ -384,7 +384,7 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
-    $dune {>= "3.18"}
+    $dune {>= "3.19"}
     "ocaml"
     "odoc" {with-doc}
   ]
@@ -495,7 +495,7 @@ And the opam file will be generated as expected
   doc: "https://url/to/documentation"
   bug-reports: "https://github.com/username/reponame/issues"
   depends: [
-    "dune" {>= "3.18"}
+    "dune" {>= "3.19"}
     "ocaml"
     "odoc" {with-doc}
   ]

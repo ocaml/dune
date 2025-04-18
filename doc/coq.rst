@@ -69,6 +69,8 @@ The Coq theory stanza is very similar in form to the OCaml
      (modules_flags <flags_map>)
      (coqdep_flags <coqdep_flags>)
      (coqdoc_flags <coqdoc_flags>)
+     (coqdoc_header <coqdoc_header>)
+     (coqdoc_footer <coqdoc_footer>)
      (stdlib <stdlib_included>)
      (mode <coq_native_mode>)
      (theories <coq_theories>))
@@ -146,6 +148,14 @@ The semantics of the fields are:
   flags are passed separately depending on which mode is target. See the section
   on :ref:`documentation using coqdoc<coqdoc>` for more information.
 
+- ``<coqdoc_header>`` is a file passed to ``coqdoc`` using the ``--with-header``
+  option, to configure a custom HTML header for the generated HTML pages.
+  (Appeared in :ref:`Coq lang 0.10<coq-lang>`)
+
+- ``<coqdoc_footer>`` is a file passed to ``coqdoc`` using the ``--with-footer``
+  option, to configure a custom HTML footer for the generated HTML pages.
+  (Appeared in :ref:`Coq lang 0.10<coq-lang>`)
+
 - ``<stdlib_included>`` can either be ``yes`` or ``no``, currently defaulting to
   ``yes``. When set to ``no``, Coq's standard library won't be visible from this
   theory, which means the ``Coq`` prefix won't be bound, and
@@ -211,6 +221,10 @@ Further flags can also be configured using the ``(coqdoc_flags)`` field in the
 ``coq.theory`` stanza. These will be passed to ``coqdoc`` and the default value
 is ``:standard`` which is ``--toc``. Extra flags can therefore be passed by
 writing ``(coqdoc_flags :standard --body-only)`` for example.
+
+When building the HTML documentation, flags ``(coqdoc_header)`` and
+``(coqdoc_footer)`` can also be used to configure a custom HTML header or
+footer respectively.
 
 .. _include-subdirs-coq:
 
@@ -354,7 +368,8 @@ The Coq lang can be modified by adding the following to a
 
 The supported Coq language versions (not the version of Coq) are:
 
-- ``0.10``: Support for the ``(coqdep_flags ...)`` field.
+- ``0.10``: Support for the ``(coqdep_flags ...)``, ``(coqdoc_header ...)``,
+  and ``(coqdoc_footer ...)`` fields.
 - ``0.9``: Support for per-module flags with the ``(module_flags ...)``` field.
 - ``0.8``: Support for composition with installed Coq theories;
   support for ``vos`` builds.
@@ -849,3 +864,9 @@ with the following values for ``<coq_fields>``:
 - ``(coqdoc_flags <flags>)``: The default flags passed to ``coqdoc``. The default
   value is ``--toc``. Values set here become the ``:standard`` value in the
   ``(coq.theory (coqdoc_flags <flags>))`` field.
+- ``(coqdoc_header <file>)``: The default HTML header passed to ``coqdoc`` via
+  the ``--with-header`` flag. Values set here become the ``:standard`` value in the
+  ``(coq.theory (coqdoc_header <file>))`` field.
+- ``(coqdoc_footer <file>)``: The default HTML footer passed to ``coqdoc`` via
+  the ``--with-footer`` flag. Values set here become the ``:standard`` value in the
+  ``(coq.theory (coqdoc_footer <file>))`` field.

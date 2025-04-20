@@ -26,3 +26,6 @@ val ocamlyacc : lex_or_yacc Dune_lang.Decoder.t
 val ocamllex : lex_or_yacc Dune_lang.Decoder.t
 val ocamllex_to_rule : Loc.t -> lex_or_yacc -> t list
 val ocamlyacc_to_rule : Loc.t -> lex_or_yacc -> t list
+
+val process_rule : expander:Expander.t -> t -> Expander.t * (Loc.t * Dune_lang.Action.t)
+[@@deprecated "Use Rule_processor.process_rule instead"]

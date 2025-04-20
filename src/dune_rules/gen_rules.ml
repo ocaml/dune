@@ -1,6 +1,33 @@
 open Import
 open Memo.O
+open Expander (* or however you typically import modules *)
 module Gen_rules = Build_config.Gen_rules
+
+let prepare_rule ~expander rule =
+  let { Rule_conf.targets; action; _ } = rule in
+  let string_targets =
+    match targets with
+    | Infer -> Targets_spec.Infer
+    | Static { targets; multiplicity; named_targets } ->
+      Targets_spec.Static
+        { targets =
+            List.map targets ~f:(fun (sw, kind) ->
+              match String_with_vars.text_only sw with
+              | Some s -> s, kind (* Changed from (s, (sw, kind)) to (s, kind) *)
+              | None -> failwith "Cannot expand variables in target name")
+        ; multiplicity
+        ; named_targets =
+            List.map named_targets ~f:(fun (name, sw) ->
+              match String_with_vars.text_only sw with
+              | Some s -> name, s
+              | None ->
+                failwith
+                  (Printf.sprintf "Cannot expand variables in named target '%s'" name))
+        }
+  in
+  let expander', action = Expander.setup_rule ~expander ~targets:string_targets ~action in
+  expander', action
+;;
 
 let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
   let action =
@@ -30,13 +57,6 @@ let install_stanza_rules ~ctx_dir ~expander (install_conf : Install_conf.t) =
 ;;
 
 module For_stanza : sig
-  type ('merlin, 'cctx, 'js, 'source_dirs) t =
-    { merlin : 'merlin
-    ; cctx : 'cctx
-    ; js : 'js
-    ; source_dirs : 'source_dirs
-    }
-
   val of_stanzas
     :  Stanza.t list
     -> cctxs:(Loc.t * Compilation_context.t) list
@@ -118,7 +138,11 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () ->
+           let* rule = Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander in
+           let rule, expander' = prepare_rule ~expander rule in
+           Super_context.add_rule sctx ~dir rule
+           >>| fun () -> with_cctx_merlin ~loc:lib.buildable.loc (rule.cctx, rule.merlin))
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
@@ -128,26 +152,35 @@ end = struct
     | Executables.T exes ->
       Expander.eval_blang expander exes.enabled_if
       >>= if_available (fun () ->
-        let+ () =
+        let* () =
           Memo.Option.iter exes.install_conf ~f:(install_stanza_rules ~expander ~ctx_dir)
-        and+ cctx_merlin =
+        in
+        let* cctx_merlin =
           Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
         in
-        { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
-          js =
-            Some
-              (Nonempty_list.to_list exes.names
-               |> List.concat_map ~f:(fun (_, exe) ->
-                 List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
-                   Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
-        })
+        let rule =
+          { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
+            js =
+              Some
+                (Nonempty_list.to_list exes.names
+                 |> List.concat_map ~f:(fun (_, exe) ->
+                   List.map Js_of_ocaml.Mode.all ~f:(fun mode ->
+                     Path.Build.relative dir (exe ^ Js_of_ocaml.Ext.exe ~mode))))
+          }
+        in
+        let rule, _ = prepare_rule ~expander rule in
+        Memo.return rule)
     | Alias_conf.T alias ->
       let+ () = Simple_rules.alias sctx alias ~dir ~expander in
       empty_none
     | Tests.T tests ->
       Expander.eval_blang expander tests.exes.enabled_if
       >>= if_available_buildable ~loc:tests.exes.buildable.loc (fun () ->
-        Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents)
+        let* rule = Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents in
+        let rule, expander' = prepare_rule ~expander rule in
+        Super_context.add_rule sctx ~dir rule
+        >>| fun () ->
+        with_cctx_merlin ~loc:tests.exes.buildable.loc (rule.cctx, rule.merlin))
     | Copy_files.T { files = glob; _ } ->
       let+ source_dirs =
         let+ src_glob = Expander.No_deps.expand_str expander glob in
@@ -179,8 +212,63 @@ end = struct
     | Melange_stanzas.Emit.T mel ->
       Expander.eval_blang expander mel.enabled_if
       >>= if_available_buildable ~loc:mel.loc (fun () ->
-        Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel)
-    | _ -> Memo.return empty_none
+        let* rule =
+          Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel
+        in
+        let rule, _ = prepare_rule ~expander rule in
+        Super_context.add_rule sctx ~dir rule
+        >>| fun () -> with_cctx_merlin ~loc:mel.loc (rule.cctx, rule.merlin))
+    | Menhir_stanza.T m ->
+      Expander.eval_blang expander m.enabled_if
+      >>= (function
+       | false -> Memo.return empty_none
+       | true ->
+         let* ml_sources = Dir_contents.ocaml dir_contents in
+         let base_path =
+           match Ml_sources.include_subdirs ml_sources with
+           | Include Unqualified | No -> []
+           | Include Qualified ->
+             Path.Local.descendant
+               (Path.Build.local ctx_dir)
+               ~of_:(Path.Build.local (Dir_contents.dir dir_contents))
+             |> Option.value_exn
+             |> Path.Local.explode
+             |> List.map ~f:Module_name.of_string
+         in
+         Menhir_rules.module_names m
+         |> Memo.List.find_map ~f:(fun name ->
+           let path = base_path @ [ name ] in
+           Ml_sources.find_origin ml_sources ~libs:(Scope.libs scope) path
+           >>| function
+           | None -> None
+           | Some origin ->
+             List.find_map cctxs ~f:(fun (loc, cctx) ->
+               Option.some_if (Loc.equal loc (Ml_sources.Origin.loc origin)) cctx))
+         >>= (function
+          | Some cctx ->
+            let* rule = Menhir_rules.gen_rules cctx m ~dir:ctx_dir in
+            let rule, _ = prepare_rule ~expander rule in
+            Super_context.add_rule sctx ~dir:ctx_dir rule >>| fun () -> empty_none
+          | None ->
+            let file_targets =
+              Menhir_stanza.targets m |> List.map ~f:(Path.Build.relative ctx_dir)
+            in
+            let rule =
+              Action_builder.fail
+                { fail =
+                    (fun () ->
+                      User_error.raise
+                        ~loc:m.loc
+                        [ Pp.text
+                            "I can't determine what library/executable the files \
+                             produced by this stanza are part of."
+                        ])
+                }
+              |> Action_builder.with_file_targets ~file_targets
+            in
+            let rule, _ = prepare_rule ~expander rule in
+            Super_context.add_rule sctx ~dir:ctx_dir rule >>| fun () -> empty_none
+          | _ -> Memo.return empty_none))
   ;;
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander =

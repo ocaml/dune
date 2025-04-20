@@ -127,29 +127,33 @@ val foreign_flags
 val lookup_artifacts : (dir:Path.Build.t -> Artifacts_obj.t Memo.t) Fdecl.t
 val to_expander0 : t -> Expander0.t
 
-val add_named_target :
-  t ->
-  name:string ->
-  target:string * String_with_vars.t ->
-  kind:Targets_spec.Kind.t ->
-  String_with_vars.t Targets_spec.Named_target.t
-
-val add_named_targets :
-  t ->
-  (string * (string * String_with_vars.t)) list ->
-  kind:Targets_spec.Kind.t ->
-  String_with_vars.t Targets_spec.Named_target.t
+(* In expander.mli *)
+val add_named_target
+  :  t
+  -> name:string
+  -> target:string * String_with_vars.t
+  -> kind:Targets_spec.Kind.t
+  -> t * String_with_vars.t Targets_spec.Named_target.t
 
 (* In expander.mli *)
-val expand_target_var : 
-  t -> 
-  source:Dune_lang.Template.Pform.t -> 
-  string -> 
-  Value.t
+val add_named_targets
+  :  t
+  -> (string * (string * String_with_vars.t)) list
+  -> kind:Targets_spec.Kind.t
+  -> t * String_with_vars.t Targets_spec.Named_target.t list
+
+(* In expander.mli *)
+val expand_target_var : t -> source:Dune_lang.Template.Pform.t -> string -> Value.t
 
 (* In src/dune_rules/expander.mli *)
-val invalid_use_of_target_variable : 
-  t -> 
-  source:Dune_lang.Template.Pform.t -> 
-  var_multiplicity:Import.Targets_spec.Multiplicity.t -> 
-  'a
+val invalid_use_of_target_variable
+  :  t
+  -> source:Dune_lang.Template.Pform.t
+  -> var_multiplicity:Import.Targets_spec.Multiplicity.t
+  -> 'a
+
+val setup_rule
+  :  expander:t
+  -> targets:(string * String_with_vars.t) Targets_spec.t
+  -> action:'a
+  -> t * 'a

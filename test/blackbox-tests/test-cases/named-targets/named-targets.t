@@ -2,12 +2,12 @@
   $ echo '(lang dune 3.8)' > dune-project
   $ cat > dune << 'EOF'
   > (rule
-  >  (targets (:primary output.txt) secondary.log)
+  >  (targets (output.txt as primary) secondary.log)
   >  (deps dune-project)
   >  (action
   >   (progn
-  >    (with-stdout-to %{primary} (echo "Primary content"))
-  >    (with-stdout-to secondary.log (echo "Log content"))
+  >    (with-stdout-to %{targets:primary} (echo "Primary content"))
+  >    (with-stdout-to %{targets:secondary.log} (echo "Log content"))
   >   )
   >  )
   > )

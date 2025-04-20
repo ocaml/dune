@@ -2,7 +2,6 @@ open Stdune
 open Dune_sexp
 module Payload = Template.Pform.Payload
 
-
 module Var = struct
   module Pkg = struct
     module Section = struct
@@ -827,23 +826,24 @@ module Env = struct
          Macro { macro = With_versioning_info.get_data x; payload = Payload.of_string "" }))
       ~f:(fun _ _ _ -> assert false)
   ;;
-
 end
+
 let parse_target_var s =
   match String.split_on_char ~sep:':' s with
-  | ["target"; name] -> Some (Var (Var.Target name))
-  | ["targets"] -> Some (Var Var.Targets)
+  | [ "target"; name ] -> Some (Var (Var.Target name))
+  | [ "targets" ] -> Some (Var Var.Targets)
   | _ -> None
+;;
 
 let parse_pkg_target_var s =
   match String.split_on_char ~sep:':' s with
-  | ["pkg"; pkg_name; "target"; target_name] ->
+  | [ "pkg"; pkg_name; "target"; target_name ] ->
     Some (Var.Pkg.Target (pkg_name ^ ":" ^ target_name))
-  | ["pkg"; pkg_name; section] ->
+  | [ "pkg"; pkg_name; section ] ->
     (match Var.Pkg.Section.of_string section with
      | Some section -> Some (Var.Pkg.Section_dir section)
      | None -> Some (Var.Pkg.Target (pkg_name ^ ":" ^ section)))
-  | ["pkg"; var] ->
+  | [ "pkg"; var ] ->
     (match var with
      | "switch" -> Some Var.Pkg.Switch
      | "os" -> Some Var.Pkg.Os
@@ -859,4 +859,4 @@ let parse_pkg_target_var s =
      | "sys_ocaml_version" -> Some Var.Pkg.Sys_ocaml_version
      | target -> Some (Var.Pkg.Target target))
   | _ -> None
-
+;;

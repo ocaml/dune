@@ -2,7 +2,7 @@ open Import
 open Action_builder.O
 open Expander0
 open Targets_spec
-module Pform = Dune_lang.Pform  (* Use only this one *)
+module Pform = Dune_lang.Pform (* Use only this one *)
 
 module Expanding_what = struct
   type t =
@@ -10,7 +10,6 @@ module Expanding_what = struct
     | Deps_like_field
     | User_action of Path.Build.t Targets_spec.t
     | User_action_without_targets of { what : string }
-    
 end
 
 module Deps = struct
@@ -35,7 +34,6 @@ module Deps = struct
       | With a, Without b -> With (Action_builder.both a (Action_builder.of_memo b))
     ;;
   end
-
 
   include T
   include Applicative.Make (T)
@@ -65,16 +63,63 @@ type t =
   ; project : Dune_project.t
   ; named_targets : Path.Build.t String.Map.t
   }
-  
+
 let named_targets t = t.named_targets
+
+let add_named_target t ~name ~target:(_, target_str) ~kind =
+  let open Targets_spec.Named_target in
+  (* Convert String_with_vars to string with proper error handling *)
+  let target_path =
+    match String_with_vars.text_only target_str with
+    | Some s -> Path.Build.of_string s
+    | None ->
+      User_error.raise
+        ~loc:(String_with_vars.loc target_str)
+        [ Pp.textf
+            "Complex target expressions not supported for %s. Only plain strings are \
+             allowed."
+            name
+        ]
+  in
+  (* Update the expander's named_targets map and return the updated expander *)
+  let updated_expander =
+    { t with named_targets = String.Map.set t.named_targets name target_path }
+  in
+  (* Return both the updated expander and the named target specification *)
+  updated_expander, Named (name, (target_str, kind))
+;;
+
+let add_named_targets t targets ~kind =
+  (* Process all targets and collect the updated expander *)
+  List.fold_left
+    targets
+    ~init:(t, []) (* Start with the original expander and empty list *)
+    ~f:(fun (acc_t, acc_targets) (name, target) ->
+      let t', named_target = add_named_target acc_t ~name ~target ~kind in
+      t', named_target :: acc_targets)
+;;
+
+let setup_rule ~expander ~targets ~action =
+  let expander' =
+    match targets with
+    | Targets_spec.Static { named_targets; _ } ->
+      let expander', _ =
+        add_named_targets expander named_targets ~kind:Targets_spec.Kind.File
+      in
+      expander'
+    | Infer -> expander
+  in
+  expander', action
+;;
 
 let[@warning "-32"] expand_target_var t ~source name =
   match String.Map.find t.named_targets name with
   | Some path -> Value.String (Path.Build.to_string path)
   | None ->
-    User_error.raise ~loc:(Dune_lang.Template.Pform.loc source) [
-      Pp.textf "Undefined target variable: %%{target:%s}" name
-    ]
+    User_error.raise
+      ~loc:(Dune_lang.Template.Pform.loc source)
+      [ Pp.textf "Undefined target variable: %%{target:%s}" name ]
+;;
 
 let artifacts t = t.artifacts_host
 let dir t = t.dir
@@ -184,7 +229,6 @@ let expand_version { scope; _ } ~(source : Dune_lang.Template.Pform.t) s =
          ])
 ;;
 
-
 let expand_artifact ~source t artifact arg =
   let path = Path.Build.relative t.dir arg in
   let loc = Dune_lang.Template.Pform.loc source in
@@ -226,9 +270,10 @@ let expand_target_var t ~source name =
   match String.Map.find t.named_targets name with
   | Some path -> Value.String (Path.Build.to_string path)
   | None ->
-    User_error.raise ~loc:(Dune_lang.Template.Pform.loc source) [
-      Pp.textf "Undefined target variable: %%{target:%s}" name
-    ]
+    User_error.raise
+      ~loc:(Dune_lang.Template.Pform.loc source)
+      [ Pp.textf "Undefined target variable: %%{target:%s}" name ]
+;;
 
 let foreign_flags = Fdecl.create Dyn.opaque
 
@@ -500,34 +545,35 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
   | Impl_files
   | Intf_files
   | Test
-  | Corrected_suffix ->
-    isn't_allowed_in_this_position ~source
+  | Corrected_suffix -> isn't_allowed_in_this_position ~source
   | First_dep -> assert false
   | Target name ->
     Need_full_expander
       (fun t ->
         match String.Map.find t.named_targets name with
-        | Some path -> Without (Memo.return [Value.Path (Path.build path)])
+        | Some path -> Without (Memo.return [ Value.Path (Path.build path) ])
         | None ->
-          User_error.raise ~loc:(Dune_lang.Template.Pform.loc source)
-            [Pp.textf "Unknown target variable %s" name])
-            | Targets ->
-              Need_full_expander
-                (fun t ->
-                  match t.expanding_what with
-                  | User_action targets_spec ->
-                    (match targets_spec with
-                     | Infer -> Without (Memo.return [])
-                     | Static { targets; _ } ->
-                       Without
-                         (Memo.map
-                            (Memo.return targets)
-                            ~f:(List.map ~f:(fun (path, _) -> 
-                               Value.String (Path.Build.to_string path)))))
-                  | Nothing_special -> Without (Memo.return [])
-                  | Deps_like_field -> Without (Memo.return [])
-                  | User_action_without_targets _ -> Without (Memo.return []))
-  | Profile -> 
+          User_error.raise
+            ~loc:(Dune_lang.Template.Pform.loc source)
+            [ Pp.textf "Unknown target variable %s" name ])
+  | Targets ->
+    Need_full_expander
+      (fun t ->
+        match t.expanding_what with
+        | User_action targets_spec ->
+          (match targets_spec with
+           | Infer -> Without (Memo.return [])
+           | Static { targets; _ } ->
+             Without
+               (Memo.map
+                  (Memo.return targets)
+                  ~f:
+                    (List.map ~f:(fun (path, _) ->
+                       Value.String (Path.Build.to_string path)))))
+        | Nothing_special -> Without (Memo.return [])
+        | Deps_like_field -> Without (Memo.return [])
+        | User_action_without_targets _ -> Without (Memo.return []))
+  | Profile ->
     Context.profile context |> Profile.to_string |> string |> Memo.return |> static
   | Workspace_root ->
     [ Value.Dir (Path.build (Context.build_dir context)) ] |> Memo.return |> static
@@ -776,31 +822,33 @@ let describe_source ~source =
 let expand_pform t ~source = function
   | Pform.Var (Pform.Var.Target name) ->
     Action_builder.push_stack_frame
-      (fun () -> 
-        let value = expand_target_var t ~source name in
-        Action_builder.return [value])
+      (fun () ->
+         match String.Map.find t.named_targets name with
+         | Some path -> Action_builder.return [ Value.Path (Path.build path) ]
+         | None ->
+           User_error.raise
+             ~loc:(Dune_lang.Template.Pform.loc source)
+             [ Pp.textf "Unknown target variable %%{%s}" name ])
       ~human_readable_description:(fun () -> describe_source ~source)
   | other_pform ->
     Action_builder.push_stack_frame
       (fun () ->
-         match expand_pform_gen
-           ~context:t.context
-           ~bindings:t.bindings
-           ~dir:t.dir
-           ~source
-           other_pform
+         match
+           expand_pform_gen
+             ~context:t.context
+             ~bindings:t.bindings
+             ~dir:t.dir
+             ~source
+             other_pform
          with
-         | Direct v ->
-           (match v with
-            | Deps.With x -> x
-            | Deps.Without x -> Action_builder.of_memo x)
+         | Direct (Deps.With x) -> x (* Already Action_builder.t *)
+         | Direct (Deps.Without x) -> Action_builder.of_memo x
          | Need_full_expander f ->
            (match f t with
             | Deps.With x -> x
             | Deps.Without x -> Action_builder.of_memo x))
       ~human_readable_description:(fun () -> describe_source ~source)
 ;;
-
 
 let expand t ~mode template =
   String_expander.Action_builder.expand
@@ -906,46 +954,60 @@ module With_deps_if_necessary = struct
   let expand_pform t ~source pform : _ Deps.t =
     let combine_values vs =
       match vs with
-      | [x] -> x  (* Single value - return as-is *)
-      | [] -> Value.String ""  (* Empty list - return empty string *)
+      | [ x ] -> x (* Single value - return as-is *)
+      | [] -> Value.String "" (* Empty list - return empty string *)
       | xs ->
         (* For multiple values, ensure they're all strings and concatenate *)
-        if List.for_all xs ~f:(function Value.String _ -> true | _ -> false) then
-          Value.String (String.concat ~sep:" " 
-            (List.map xs ~f:(function 
-               | Value.String s -> s 
-               | _ -> assert false (* can't happen due to check above *))))
+        if
+          List.for_all xs ~f:(function
+            | Value.String _ -> true
+            | _ -> false)
+        then
+          Value.String
+            (String.concat
+               ~sep:" "
+               (List.map xs ~f:(function
+                  | Value.String s -> s
+                  | _ -> assert false (* can't happen due to check above *))))
         else
           (* If not all strings, fail with descriptive error *)
           User_error.raise
-            [Pp.textf "Cannot combine non-string values: %s"
-               (String.concat ~sep:", " 
-                  (List.map xs ~f:(fun v -> 
-                    Value.to_string v ~dir:(Path.build t.dir))))]
+            [ Pp.textf
+                "Cannot combine non-string values: %s"
+                (String.concat
+                   ~sep:", "
+                   (List.map xs ~f:(fun v -> Value.to_string v ~dir:(Path.build t.dir))))
+            ]
     in
     match pform with
     | Pform.Var (Pform.Var.Target name) ->
       (* Handle target variable expansion - wrap single value in a list *)
       let value = expand_target_var t ~source name in
-      Without (Memo.return [value])
+      Without (Memo.return [ value ])
     | other_pform ->
-      match
-        match
-          expand_pform_gen ~context:t.context ~bindings:t.bindings ~dir:t.dir ~source other_pform
-        with
-        | Direct v -> v
-        | Need_full_expander f -> f t
-      with
-      | Without t ->
-        Without
-          (Memo.push_stack_frame
-             (fun () -> Memo.map t ~f:(fun vs -> [combine_values vs]))
-             ~human_readable_description:(fun () -> describe_source ~source))
-      | With t ->
-        With
-          (Action_builder.push_stack_frame
-             (fun () -> Action_builder.map t ~f:(fun vs -> [combine_values vs]))
-             ~human_readable_description:(fun () -> describe_source ~source))
+      (match
+         match
+           expand_pform_gen
+             ~context:t.context
+             ~bindings:t.bindings
+             ~dir:t.dir
+             ~source
+             other_pform
+         with
+         | Direct v -> v
+         | Need_full_expander f -> f t
+       with
+       | Without t ->
+         Without
+           (Memo.push_stack_frame
+              (fun () -> Memo.map t ~f:(fun vs -> [ combine_values vs ]))
+              ~human_readable_description:(fun () -> describe_source ~source))
+       | With t ->
+         With
+           (Action_builder.push_stack_frame
+              (fun () -> Action_builder.map t ~f:(fun vs -> [ combine_values vs ]))
+              ~human_readable_description:(fun () -> describe_source ~source)))
+  ;;
 
   (* Rest of the module remains unchanged *)
   let expand t ~mode sw = E.expand ~dir:(Path.build t.dir) ~mode sw ~f:(expand_pform t)
@@ -959,7 +1021,6 @@ module With_deps_if_necessary = struct
            ~error_loc:(String_with_vars.loc sw)
            ~dir:t.dir)
   ;;
-
 end
 
 let expand_ordered_set_lang =
@@ -992,51 +1053,14 @@ let expand_locks t (locks : Locks.t) =
   |> Action_builder.of_memo
 ;;
 
-let add_named_target t ~name ~target:(_target_name, target_str) ~kind =
-  let open Targets_spec.Named_target in
-  (* Convert String_with_vars to string with proper error handling *)
-  let target_path = match String_with_vars.text_only target_str with
-    | Some s -> Path.Build.of_string s
-    | None ->
-      User_error.raise
-        ~loc:(String_with_vars.loc target_str)
-        [Pp.textf "Complex target expressions not supported for %s. \
-                Only plain strings are allowed." name]
-  in
-  (* Update the expander's named_targets map - store the updating for future use *)
-  let _updated_expander = { t with named_targets = String.Map.set t.named_targets name target_path } in
-  (* Return the named target specification with original String_with_vars *)
-  Named (name, (target_str, kind))
+module M = struct
+  type nonrec t = t
 
-  let add_named_targets t targets ~kind =
-    (* Create an initial anonymous target with String_with_vars *)
-    let empty_target = 
-      String_with_vars.make_text Loc.none (Path.Build.to_string Path.Build.root)
-    in
-    (* Process all targets *)
-    List.fold_left targets
-      ~init:(Targets_spec.Named_target.Anonymous (empty_target, kind))
-      ~f:(fun _acc (name, target) ->
-        add_named_target t ~name ~target ~kind)
-    
+  let expand = expand
+  let project = project
+  let eval_blang = eval_blang
+  let expand_str = expand_str
+  let expand_str_partial = expand_str_partial
+end
 
-let[@warning "-32"] setup_rule ~expander ~targets ~action =
-  let named_targets =
-    match targets with
-    | Targets_spec.Static { named_targets; _ } -> named_targets
-    | Infer -> []
-  in
-  (add_named_targets expander named_targets, action)
-
-  module M = struct
-    type nonrec t = t  
-    
-    let expand  = expand 
-    let project  = project
-    let eval_blang  = eval_blang 
-    let expand_str  = expand_str
-    let expand_str_partial  = expand_str_partial 
-  end 
-  
-  let to_expander0 t = Expander0.create (Memo.return t) (module M)
-
+let to_expander0 t = Expander0.create (Memo.return t) (module M)

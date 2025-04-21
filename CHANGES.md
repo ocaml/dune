@@ -5,6 +5,15 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
+3.18.1 (2025-04-15)
+-------------------
+
+### Fixed
+
+- fix: pass pkg-config (extra) args in all `pkg-config` invocations. A missing
+  `--personality` flag would result in pkgconf not finding libraries in some
+  contexts. (#11619, @MisterDA)
+
 3.18.0 (2025-04-03)
 -------------------
 

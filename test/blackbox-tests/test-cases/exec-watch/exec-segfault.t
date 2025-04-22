@@ -26,36 +26,37 @@ in this way. But for now we fail and stop the program silently.
   > ;;
   > EOF
 
-This first program will cause a segfault by using Obj.magic and calling an integer like it
-is a function.
+This first program will cause a segfault:
   $ cat > foo.ml <<EOF
   > let () =
-  >   let f = Obj.magic 0 in
   >   Touch.touch "$DONE_FLAG";
   >   print_endline "about to segfault";
-  >   f 1  (* Segfault: calling an int as if it is a function *)
-  >   [@@warning "-20"]
+  >   let pid = Unix.getpid () in
+  >   Unix.kill pid Sys.sigsegv
   > ;;
   > EOF
 
-When we start ./foo.exe with dune exec -w we note that we haven't exited, but simply
-finished a build.
+When reaching a signal like SEGV dune exec -w will exit.
   $ dune exec -w ./foo.exe &
   about to segfault
-  fixed segfault
-  Success, waiting for filesystem changes...
+  Command got signal SEGV.
   $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
+  $ wait $PID
+  [1]
+
+Ideally we should be able to restart the build after a segfault.
+
 We can now start a new build by modifying the original program and removing the segfault.
 This rebuilds successfully as indicated by the above output.
-  $ cat > foo.ml <<EOF
-  > let () =
-  >   Touch.touch "$DONE_FLAG";
-  >   print_endline "fixed segfault";
-  > ;;
-  > EOF
+$ cat > foo.ml <<EOF
+> let () =
+>   Touch.touch "$DONE_FLAG";
+>   print_endline "fixed segfault";
+> ;;
+> EOF
 
-  $ ./wait-for-file.sh $DONE_FLAG
+$ ./wait-for-file.sh $DONE_FLAG
 
-  $ kill $PID
+$ kill $PID

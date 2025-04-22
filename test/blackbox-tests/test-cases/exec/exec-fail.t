@@ -20,7 +20,7 @@ If a program exits with a non-zero exit code, we should return that code.
 
   $ dune exec -- ./foo.exe
   oh no!
-  [1]
+  Program exited with code [1]
 
 If a program encounters an exception, we should return a non-zero exit code.
 
@@ -32,7 +32,7 @@ If a program encounters an exception, we should return a non-zero exit code.
 
   $ dune exec -- ./foo.exe
   Fatal error: exception Failure("oh no!")
-  [2]
+  Program exited with code [2]
 
 If a program segfaults, we should return a non-zero exit code.
 
@@ -46,7 +46,8 @@ If a program segfaults, we should return a non-zero exit code.
 
 Note that 128 + 11 (SEGV) = 139
   $ $(dune exec -- ./foo.exe)
-  [139]
+  Command got signal SEGV.
+  [1]
 
 If a program is killed by a signal before it terminates, we should return a non-zero exit
 code.
@@ -66,4 +67,5 @@ code.
   > EOF
 
   $ $(dune exec -- ./foo.exe)
-  [137]
+  Command got signal KILL.
+  [1]

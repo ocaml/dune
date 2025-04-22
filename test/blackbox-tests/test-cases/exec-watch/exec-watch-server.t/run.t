@@ -14,9 +14,7 @@ between each change to its code.
   > EOF
 
   $ dune exec --watch ./foo.exe &
-  Success, waiting for filesystem changes...
   0: before
-  Success, waiting for filesystem changes...
   1: before
   1: after
   Success, waiting for filesystem changes...
@@ -49,3 +47,7 @@ Change the program so that it no longer terminates immediately.
 
 Prevent the test from leaking the dune process.
   $ kill $PID
+
+Checking for the child process
+  $ pgrep -c "foo.exe" || true
+  0

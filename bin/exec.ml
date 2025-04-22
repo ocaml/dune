@@ -212,29 +212,20 @@ let run_once config ~prog ~args ~common ~no_rebuild ~context =
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
-  let* path, args, env =
-    build_exn (fun () ->
-      let open Memo.O in
-      let sctx =
-        let+ setup = setup in
-        Import.Main.find_scontext_exn setup ~name:context
+  build_exn (fun () ->
+    let open Memo.O in
+    let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
+    let* env = Super_context.context_env sctx in
+    let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
+    let* prog =
+      let dir =
+        let context = Dune_rules.Super_context.context sctx in
+        Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
       in
-      let* env = Memo.bind sctx ~f:Super_context.context_env
-      and* sctx = sctx in
-      let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
-      let* path =
-        let* prog = expand prog in
-        let dir =
-          let context = Dune_rules.Super_context.context sctx in
-          Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
-        in
-        get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
-      in
-      let+ args = Memo.parallel_map ~f:expand args in
-      path, args, env)
-  in
-  let prog = Path.to_string path in
-  restore_cwd_and_execve (Common.root common) prog args env
+      let* prog = expand prog in
+      get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog >>| Path.to_string
+    and* args = Memo.parallel_map ~f:expand args in
+    restore_cwd_and_execve (Common.root common) prog args env)
 ;;
 
 let run_eager_watch config ~prog ~args ~common ~no_rebuild ~context =
@@ -269,3 +260,8 @@ let term : unit Term.t =
 ;;
 
 let command = Cmd.v info term
+
+(* TODO:
+
+  - Simplify implementation of step
+*)

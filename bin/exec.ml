@@ -151,7 +151,7 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | None -> not_found ~dir ~prog)
 ;;
 
-let step ~setup ~prog ~args ~common ~no_rebuild ~context () =
+let step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit () =
   let open Memo.O in
   let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
   let* env = Super_context.context_env sctx in
@@ -172,7 +172,7 @@ let step ~setup ~prog ~args ~common ~no_rebuild ~context () =
        args
   >>| function
   | 0 -> ()
-  | exit_code -> Console.print [ Pp.textf "Program exited with code [%d]" exit_code ]
+  | exit_code -> on_exit exit_code
 ;;
 
 let term : unit Term.t =
@@ -194,16 +194,17 @@ let term : unit Term.t =
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
+    let on_exit = Console.printf "Program exited with code [%d]" in
     Scheduler.Run.poll
     @@
     let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
-    build @@ step ~setup ~prog ~args ~common ~no_rebuild ~context
+    build @@ step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit
   | No ->
     Scheduler.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
-    build_exn @@ step ~setup ~prog ~args ~common ~no_rebuild ~context
+    build_exn @@ step ~setup ~prog ~args ~common ~no_rebuild ~context ~on_exit:exit
 ;;
 
 let command = Cmd.v info term

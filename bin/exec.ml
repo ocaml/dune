@@ -151,51 +151,28 @@ let get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog =
      | None -> not_found ~dir ~prog)
 ;;
 
-let step ~setup ~prog ~args ~common ~no_rebuild ~context =
-  build (fun () ->
-    let open Memo.O in
-    let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
-    let* env = Super_context.context_env sctx in
-    let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
-    let* path =
-      let dir =
-        let context = Dune_rules.Super_context.context sctx in
-        Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
-      in
-      let* prog = expand prog in
-      get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
-    and* args = Memo.parallel_map args ~f:expand in
-    Memo.of_non_reproducible_fiber
-    @@ Dune_engine.Process.run_external_in_out
-         ~dir:(Path.of_string Fpath.initial_cwd)
-         ~env
-         path
-         args
-    >>| function
-    | 0 -> ()
-    | exit_code -> Console.print [ Pp.textf "Program exited with code [%d]" exit_code ])
-;;
-
-let run_once config ~prog ~args ~common ~no_rebuild ~context =
-  Scheduler.go_with_rpc_server ~common ~config
-  @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  step ~setup ~prog ~args ~common ~no_rebuild ~context
+let step ~setup ~prog ~args ~common ~no_rebuild ~context () =
+  let open Memo.O in
+  let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
+  let* env = Super_context.context_env sctx in
+  let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
+  let* path =
+    let dir =
+      let context = Dune_rules.Super_context.context sctx in
+      Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
+    in
+    let* prog = expand prog in
+    get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog
+  and* args = Memo.parallel_map args ~f:expand in
+  Memo.of_non_reproducible_fiber
+  @@ Dune_engine.Process.run_external_in_out
+       ~dir:(Path.of_string Fpath.initial_cwd)
+       ~env
+       path
+       args
   >>| function
-  | Ok () -> ()
-  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
-;;
-
-let run_eager_watch config ~prog ~args ~common ~no_rebuild ~context =
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
-  @@ fun () ->
-  let open Fiber.O in
-  let* setup = Import.Main.setup () in
-  Scheduler.Run.poll
-  @@
-  let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
-  step ~setup ~prog ~args ~common ~no_rebuild ~context
+  | 0 -> ()
+  | exit_code -> Console.print [ Pp.textf "Program exited with code [%d]" exit_code ]
 ;;
 
 let term : unit Term.t =
@@ -209,14 +186,24 @@ let term : unit Term.t =
      For watch mode, we should finalize the backend and then restart it in between
      runs. *)
   let common, config = Common.init builder in
-  let f =
-    match Common.watch common with
-    | Yes Passive ->
-      User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
-    | Yes Eager -> run_eager_watch
-    | No -> run_once
-  in
-  f config ~prog ~args ~common ~no_rebuild ~context
+  match Common.watch common with
+  | Yes Passive ->
+    User_error.raise [ Pp.textf "passive watch mode is unsupported by exec" ]
+  | Yes Eager ->
+    Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
+    @@ fun () ->
+    let open Fiber.O in
+    let* setup = Import.Main.setup () in
+    Scheduler.Run.poll
+    @@
+    let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
+    build @@ step ~setup ~prog ~args ~common ~no_rebuild ~context
+  | No ->
+    Scheduler.go_with_rpc_server ~common ~config
+    @@ fun () ->
+    let open Fiber.O in
+    let* setup = Import.Main.setup () in
+    build_exn @@ step ~setup ~prog ~args ~common ~no_rebuild ~context
 ;;
 
 let command = Cmd.v info term

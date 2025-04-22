@@ -20,7 +20,7 @@ If a program exits with a non-zero exit code, we should return that code.
 
   $ dune exec -- ./foo.exe
   oh no!
-  Program exited with code [1]
+  [1]
 
 If a program encounters an exception, we should return a non-zero exit code.
 
@@ -32,7 +32,7 @@ If a program encounters an exception, we should return a non-zero exit code.
 
   $ dune exec -- ./foo.exe
   Fatal error: exception Failure("oh no!")
-  Program exited with code [2]
+  [2]
 
 If a program segfaults, we should return a non-zero exit code.
 

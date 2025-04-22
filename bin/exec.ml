@@ -181,20 +181,10 @@ let run_once config ~prog ~args ~common ~no_rebuild ~context =
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in
-  build_exn (fun () ->
-    let open Memo.O in
-    let* sctx = setup >>| Import.Main.find_scontext_exn ~name:context in
-    let* env = Super_context.context_env sctx in
-    let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
-    let* prog =
-      let dir =
-        let context = Dune_rules.Super_context.context sctx in
-        Path.Build.relative (Context.build_dir context) (Common.prefix_target common "")
-      in
-      let* prog = expand prog in
-      get_path_and_build_if_necessary sctx ~no_rebuild ~dir ~prog >>| Path.to_string
-    and* args = Memo.parallel_map ~f:expand args in
-    restore_cwd_and_execve (Common.root common) prog args env)
+  step ~setup ~prog ~args ~common ~no_rebuild ~context
+  >>| function
+  | Ok () -> ()
+  | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
 ;;
 
 let run_eager_watch config ~prog ~args ~common ~no_rebuild ~context =

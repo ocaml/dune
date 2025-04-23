@@ -28,12 +28,10 @@ Dune will not scan a directory that isn't included in this stanza. Any contained
 treated as raw data. It is however possible to depend on files inside ignored
 subdirectories.
 
-
 .. warning::
 
-  Remove any trailing slashes in repository names.
-
-
+  Directory names should not contain any trailing slashes.
+  
 If you want to exclude a subdirectory, such as `foo/bar`, you need to use the :doc:`/reference/dune/subdir` stanza:
 
 .. code:: dune

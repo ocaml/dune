@@ -212,6 +212,7 @@ let eval_foreign_stubs
 
 let make stanzas ~(sources : Unresolved.t) ~dune_version =
   let libs, foreign_libs, exes =
+    let eval_foreign_stubs = eval_foreign_stubs ~dune_version ~sources in
     let libs, foreign_libs, exes =
       List.fold_left
         stanzas
@@ -220,25 +221,17 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
           match Stanza.repr stanza with
           | Library.T lib ->
             let all =
-              eval_foreign_stubs
-                ~dune_version
-                lib.buildable.foreign_stubs
-                lib.buildable.ctypes
-                ~sources
+              eval_foreign_stubs lib.buildable.foreign_stubs lib.buildable.ctypes
             in
             (lib, all) :: libs, foreign_libs, exes
           | Foreign_library.T library ->
-            let all = eval_foreign_stubs ~dune_version [ library.stubs ] ~sources None in
+            let all = eval_foreign_stubs [ library.stubs ] None in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all)) :: foreign_libs
             , exes )
           | Executables.T exe | Tests.T { exes = exe; _ } ->
             let all =
-              eval_foreign_stubs
-                ~dune_version
-                exe.buildable.foreign_stubs
-                ~sources
-                exe.buildable.ctypes
+              eval_foreign_stubs exe.buildable.foreign_stubs exe.buildable.ctypes
             in
             libs, foreign_libs, (exe, all) :: exes
           | _ -> acc)

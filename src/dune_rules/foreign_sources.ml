@@ -120,6 +120,28 @@ let valid_name language ~loc s =
   | _ -> s
 ;;
 
+let ctypes_stubs sources (ctypes : Ctypes_field.t) =
+  String.Map.of_list_map_exn
+    ctypes.function_description
+    ~f:(fun (fd : Ctypes_field.Function_description.t) ->
+      let loc =
+        Loc.none
+        (* TODO *)
+      in
+      let name =
+        Ctypes_field.c_generated_functions_cout_c ctypes fd |> Filename.remove_extension
+      in
+      let path =
+        match Unresolved.find_source sources C (loc, name) with
+        | Some p -> p
+        | None ->
+          (* impossible b/c ctypes fields generates this *)
+          assert false
+      in
+      let source = Foreign.Source.make (Ctypes ctypes) ~path in
+      name, (loc, source))
+;;
+
 let eval_foreign_stubs
       foreign_stubs
       (ctypes : Ctypes_field.t option)
@@ -172,31 +194,7 @@ let eval_foreign_stubs
     let init = List.map foreign_stubs ~f:eval in
     match ctypes with
     | None -> init
-    | Some ctypes ->
-      let ctypes =
-        List.fold_left
-          ~init:String.Map.empty
-          ctypes.function_description
-          ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
-            let loc =
-              Loc.none
-              (* TODO *)
-            in
-            let name =
-              Ctypes_field.c_generated_functions_cout_c ctypes fd
-              |> Filename.remove_extension
-            in
-            let path =
-              match Unresolved.find_source sources C (loc, name) with
-              | Some p -> p
-              | None ->
-                (* impossible b/c ctypes fields generates this *)
-                assert false
-            in
-            let source = Foreign.Source.make (Ctypes ctypes) ~path in
-            String.Map.add_exn acc name (loc, source))
-      in
-      ctypes :: init
+    | Some ctypes -> ctypes_stubs sources ctypes :: init
   in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
     String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->

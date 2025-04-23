@@ -239,7 +239,7 @@ let build_c
   let* with_user_and_std_flags =
     Memo.map ~f:(Action_builder.map ~f:(List.append base_flags))
     @@
-    match src.kind with
+    match Foreign.Source.kind src with
     | Ctypes field ->
       Memo.return
       @@
@@ -368,7 +368,7 @@ let build_o_files
         let include_flags =
           let extra_deps =
             let extra_deps, sandbox =
-              match src.kind with
+              match Foreign.Source.kind src with
               | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
               | Ctypes _ -> Action_builder.return (), Sandbox_config.default
             in
@@ -382,7 +382,7 @@ let build_o_files
               ~expander
               ~dir
               ~include_dirs:
-                (match src.kind with
+                (match Foreign.Source.kind src with
                  | Stubs stubs -> stubs.include_dirs
                  | Ctypes _ -> [])
           in

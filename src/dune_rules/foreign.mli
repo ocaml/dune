@@ -121,11 +121,9 @@ module Source : sig
     | Stubs of Stubs.t
     | Ctypes of Ctypes_field.t
 
-  type t = private
-    { kind : kind
-    ; path : Path.Build.t
-    }
+  type t
 
+  val kind : t -> kind
   val language : t -> Foreign_language.t
   val mode : t -> Mode.Select.t
   val path : t -> Path.Build.t

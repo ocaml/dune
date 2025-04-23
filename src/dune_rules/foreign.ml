@@ -251,6 +251,7 @@ module Source = struct
   ;;
 
   let path t = t.path
+  let kind t = t.kind
 
   let mode t =
     match t.kind with

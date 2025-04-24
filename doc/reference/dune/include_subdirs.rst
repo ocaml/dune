@@ -36,7 +36,8 @@ following stanzas:
 - ``executable(s)``
 - ``test(s)``
 
-
 .. warning::
 
-   As of now, there is an `issue <https://github.com/ocaml/dune/issues/11119>`_ when using ``(include_subdirs qualified)`` and lexing/parsing rules (e.g., ``ocamllex`` and ``menhir``).
+   Currently the `(ocamllex)`, `(ocamlyacc)` and `(menhir)` stanzas do not work
+   well in combination with `(include_subdirs qualified)`. See `this issue
+   <https://github.com/ocaml/dune/issues/11119>`_ for more information.

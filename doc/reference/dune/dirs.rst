@@ -31,11 +31,10 @@ subdirectories.
 .. warning::
 
   Directory names should not contain any trailing slashes.
-  
-If you want to exclude a subdirectory, such as `foo/bar`, you need to use the :doc:`/reference/dune/subdir` stanza:
+
+If you want to exclude a subdirectory, such as `foo/bar`, you need to use the
+:doc:`/reference/dune/subdir` stanza:
 
 .. code:: dune
 
   (subdir foo (dirs :standard \ bar)) ;; exclude foo/bar
-
-

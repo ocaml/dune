@@ -1,6 +1,11 @@
 open Import
 
-let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
+type name_synopsises =
+  { name : string
+  ; synopsises : Dune_engine.Synopsis.t list
+  }
+
+let ls_term (fetch_results : Path.Build.t -> name_synopsises list Action_builder.t) =
   let+ builder = Common.Builder.term
   and+ paths = Arg.(value & pos_all string [ "." ] & info [] ~docv:"DIR")
   and+ context =
@@ -75,9 +80,18 @@ let ls_term (fetch_results : Path.Build.t -> string list Action_builder.t) =
         let+ targets = fetch_results build_dir in
         (* If we are printing multiple directories, we print the directory
            name as a header. *)
+
+        (* TODO: Pp.enumerate can be used to display synopsis in fancy way *)
         (if header then [ Pp.textf "%s:" (Path.to_string dir) ] else [])
-        @ [ Pp.concat_map targets ~f:Pp.text ~sep:Pp.space ]
-        |> Pp.concat ~sep:Pp.space)
+        @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopsises } ->
+              Pp.concat
+                ~sep:(if synopsises = [] then Pp.nop else Pp.cut)
+                [ Pp.hbox (Pp.textf "%s" name)
+                ; Pp.enumerate synopsises ~f:(fun synopsis ->
+                    Pp.text (Dune_engine.Synopsis.value synopsis))
+                ])
+          ]
+        |> Pp.concat ~sep:Pp.cut)
     in
     Console.print
       [ Pp.vbox @@ Pp.concat_map ~f:Pp.vbox paragraphs ~sep:(Pp.seq Pp.space Pp.space) ]
@@ -100,7 +114,9 @@ module Aliases_cmd = struct
       | Load_rules.Loaded.Build build -> Dune_engine.Alias.Name.Map.keys build.aliases
       | _ -> []
     in
-    List.map ~f:Dune_engine.Alias.Name.to_string alias_targets
+    List.map
+      ~f:(fun name -> { name = Dune_engine.Alias.Name.to_string name; synopsises = [] })
+      alias_targets
   ;;
 
   let term = ls_term fetch_results
@@ -130,15 +146,9 @@ module Targets_cmd = struct
           (match kind with
            | Target.File { synopsis } ->
              let target_name = Path.Build.basename path in
-             (match synopsis with
-              | Some synopsis ->
-                (* TODO: make fancy printing here somehow? *)
-                Printf.sprintf
-                  "Target name: %s \n synopsis: %s"
-                  target_name
-                  (Dune_util.Synopsis.value synopsis)
-              | None -> Printf.sprintf "Target name: %s" target_name)
-           | Directory -> Path.Build.basename path ^ Filename.dir_sep))
+             { name = target_name; synopsises = Option.to_list synopsis }
+           | Directory ->
+             { name = Path.Build.basename path ^ Filename.dir_sep; synopsises = [] }))
   ;;
 
   let term = ls_term fetch_results

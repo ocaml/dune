@@ -16,3 +16,7 @@ Dune should parse rule with alias with synopsis. TODO: version 3.19?
   $ cat _build/default/touched-file.ml
   Echo from rule with alias rule-with-synopsis
   $ dune show targets
+  dune
+  dune-project
+  touched-file.ml
+  - Synopsis for rule with alias rule-with-synopsis

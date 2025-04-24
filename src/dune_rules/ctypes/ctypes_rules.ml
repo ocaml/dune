@@ -106,9 +106,7 @@ let gen_headers ~expander (headers : Ctypes_field.Headers.t) =
     verbatimf "  print_endline %S;" s
 ;;
 
-let type_gen_gen ~expander ~headers ~type_description_functor =
-  let open Action_builder.O in
-  let+ headers = gen_headers ~expander headers in
+let type_gen_gen headers ~type_description_functor =
   Format.asprintf
     "%a@."
     Pp.to_fmt
@@ -123,13 +121,11 @@ let type_gen_gen ~expander ~headers ~type_description_functor =
 ;;
 
 let function_gen_gen
-      ~expander
       ~(concurrency : Ctypes_field.Concurrency_policy.t)
       ~(errno_policy : Ctypes_field.Errno_policy.t)
-      ~headers
       ~function_description_functor
+      headers
   =
-  let open Action_builder.O in
   let module_name = Module_name.to_string function_description_functor in
   let concurrency =
     match concurrency with
@@ -143,7 +139,6 @@ let function_gen_gen
     | Ignore_errno -> "Cstubs.ignore_errno"
     | Return_errno -> "Cstubs.return_errno"
   in
-  let+ headers = gen_headers ~expander headers in
   Format.asprintf
     "%a@."
     Pp.to_fmt
@@ -348,7 +343,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         sctx
   in
   let generated_entry_module = ctypes.generated_entry_point in
-  let headers = ctypes.headers in
+  let headers =
+    gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
+  in
   let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces
@@ -372,11 +369,12 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     let* () =
       Super_context.add_rule ~loc:Loc.none sctx ~dir
       @@
-      let script = type_gen_gen ~headers ~type_description_functor ~expander in
+      let script =
+        Action_builder.map headers ~f:(type_gen_gen ~type_description_functor)
+      in
       let target = Path.Build.relative dir (type_gen_script ^ ".ml") in
-      Action_builder.With_targets.write_file_dyn
-        target
-        (Action_builder.with_no_targets script)
+      Action_builder.with_no_targets script
+      |> Action_builder.With_targets.write_file_dyn target
     in
     let* (_ : Exe.dep_graphs) = exe_link_only type_gen_script in
     let* () =
@@ -432,17 +430,15 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         Super_context.add_rule ~loc:Loc.none sctx ~dir
         @@
         let target = Path.Build.relative dir (function_gen_script ^ ".ml") in
-        let script =
-          function_gen_gen
-            ~concurrency:fd.concurrency
-            ~errno_policy:fd.errno_policy
-            ~headers
-            ~function_description_functor:fd.functor_
-            ~expander
-        in
-        Action_builder.With_targets.write_file_dyn
-          target
-          (Action_builder.with_no_targets script)
+        Action_builder.map
+          headers
+          ~f:
+            (function_gen_gen
+               ~concurrency:fd.concurrency
+               ~errno_policy:fd.errno_policy
+               ~function_description_functor:fd.functor_)
+        |> Action_builder.with_no_targets
+        |> Action_builder.With_targets.write_file_dyn target
       in
       let* (_ : Exe.dep_graphs) = exe_link_only function_gen_script in
       let exe =

@@ -128,7 +128,16 @@ module Targets_cmd = struct
         *)
         Some
           (match kind with
-           | Target.File -> Path.Build.basename path
+           | Target.File { synopsis } ->
+             let target_name = Path.Build.basename path in
+             (match synopsis with
+              | Some synopsis ->
+                (* TODO: make fancy printing here somehow? *)
+                Printf.sprintf
+                  "Target name: %s \n synopsis: %s"
+                  target_name
+                  (Dune_util.Synopsis.value synopsis)
+              | None -> Printf.sprintf "Target name: %s" target_name)
            | Directory -> Path.Build.basename path ^ Filename.dir_sep))
   ;;
 

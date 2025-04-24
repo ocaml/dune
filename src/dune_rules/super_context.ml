@@ -156,9 +156,9 @@ let extend_action t ~dir action =
     | a -> Chdir (Path.build (Context.build_dir t.context), a))
 ;;
 
-let make_rule t ?mode ?loc ~dir { Action_builder.With_targets.build; targets } =
+let make_rule t ?mode ?loc ?synopsis ~dir { Action_builder.With_targets.build; targets } =
   let build = extend_action t build ~dir in
-  Rule.make ?mode ~info:(Rule.Info.of_loc_opt loc) ~targets build
+  Rule.make ?mode ?synopsis ~info:(Rule.Info.of_loc_opt loc) ~targets build
 ;;
 
 let add_rule t ?mode ?loc ~dir build =
@@ -166,8 +166,8 @@ let add_rule t ?mode ?loc ~dir build =
   Rules.Produce.rule rule
 ;;
 
-let add_rule_get_targets t ?mode ?loc ~dir build =
-  let rule = make_rule t ?mode ?loc ~dir build in
+let add_rule_get_targets t ?mode ?loc ?synopsis ~dir build =
+  let rule = make_rule t ?mode ?loc ?synopsis ~dir build in
   let+ () = Rules.Produce.rule rule in
   rule.targets
 ;;

@@ -40,6 +40,7 @@ val add_rule_get_targets
   :  t
   -> ?mode:Rule.Mode.t
   -> ?loc:Loc.t
+  -> ?synopsis:Dune_engine.Synopsis.t option
   -> dir:Path.Build.t
   -> Action.Full.t Action_builder.With_targets.t
   -> Targets.Validated.t Memo.t

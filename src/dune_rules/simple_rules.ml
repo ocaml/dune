@@ -70,7 +70,13 @@ let add_user_rule
     let build = interpret_and_add_locks ~expander rule.locks action.build in
     { action with Action_builder.With_targets.build }
   in
-  Super_context.add_rule_get_targets sctx ~dir ~mode:rule.mode ~loc:rule.loc action
+  Super_context.add_rule_get_targets
+    sctx
+    ~dir
+    ~mode:rule.mode
+    ~synopsis:rule.synopsis
+    ~loc:rule.loc
+    action
 ;;
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
@@ -133,6 +139,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
        let+ () =
          let action = interpret_and_add_locks ~expander rule.locks action.build in
          Memo.parallel_iter aliases ~f:(fun alias ->
+           (* TODO: I can attach synopsis to alias here! *)
            let alias = Alias.make ~dir alias in
            Alias_rules.add sctx ~alias ~loc:rule.loc action)
        in

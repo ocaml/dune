@@ -10,6 +10,7 @@ module Rule : sig
       expanded_deps : Path.Set.t
     ; targets : Targets.Validated.t
     ; action : Action.t
+    ; synopsis : Synopsis.t option
     }
 end
 

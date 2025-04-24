@@ -18,8 +18,10 @@ let request targets =
 ;;
 
 module Target_type = struct
+  type metadata = { synopsis : Dune_util.Synopsis.t option }
+
   type t =
-    | File
+    | File of metadata
     | Directory
 end
 
@@ -63,7 +65,10 @@ let all_direct_targets dir =
         | External _ | Source _ -> All_targets.empty
         | Build { rules_here; _ } ->
           All_targets.combine
-            (Path.Build.Map.map rules_here.by_file_targets ~f:(fun _ -> Target_type.File))
+            (Path.Build.Map.map
+               rules_here.by_file_targets
+               ~f:(fun ({ synopsis; _ } : Dune_engine.Rule.t) ->
+                 Target_type.File { synopsis }))
             (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
                Target_type.Directory))
         | Build_under_directory_target _ -> All_targets.empty))
@@ -262,6 +267,8 @@ let interpret_targets root config setup user_targets =
   resolve_targets_exn root config setup user_targets >>= request
 ;;
 
+type metadata = Target_type.metadata = { synopsis : Dune_util.Synopsis.t option }
+
 type target_type = Target_type.t =
-  | File
+  | File of Target_type.metadata
   | Directory

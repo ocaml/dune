@@ -816,6 +816,7 @@ end = struct
         let dir = Path.build dir in
         Rules.find rules_produced dir
       in
+      (* TODO: here rules are collected and this then used to get Map of aliases. *)
       let collected = Rules.Dir_rules.consume rules in
       let rules = collected.rules in
       (* Compute the set of sources and targets promoted to the source tree that

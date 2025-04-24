@@ -455,7 +455,7 @@ end = struct
   ;;
 
   let execute_rule_impl ~rule_kind rule =
-    let { Rule.id = _; targets; mode; action; info = _; loc } = rule in
+    let { Rule.id = _; targets; mode; action; info = _; loc; synopsis = _ } = rule in
     (* We run [State.start_rule_exn ()] entirely for its side effect, so one
        might be tempted to use [Memo.of_non_reproducible_fiber] here but that is
        wrong, because that would force us to rerun [execute_rule_impl] on every

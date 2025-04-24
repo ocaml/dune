@@ -1,7 +1,9 @@
 open Import
 
+type metadata = { synopsis : Dune_util.Synopsis.t option }
+
 type target_type =
-  | File
+  | File of metadata
   | Directory
 
 (** List of all buildable direct targets. This does not include files and

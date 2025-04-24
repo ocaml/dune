@@ -13,8 +13,6 @@ module Alias_rules : sig
   val add_empty : Super_context.t -> loc:Stdune.Loc.t -> alias:Alias.t -> unit Memo.t
 end
 
-(* TODO: here stanza interpretation happens. Should I attach synopsis with targets here? *)
-
 (** Interpret a [(rule ...)] stanza and return the targets it produces, if any. *)
 val user_rule
   :  Super_context.t

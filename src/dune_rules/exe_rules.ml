@@ -193,12 +193,10 @@ let executables_rules
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
-      Js_of_ocaml.Mode.Pair.mapi
-        ~f:(fun mode x ->
-          Option.some_if
-            ((not explicit_js_mode) || List.exists linkages ~f:(Exe.Linkage.is_jsoo ~mode))
-            x)
-        js_of_ocaml
+      Js_of_ocaml.Mode.Pair.mapi js_of_ocaml ~f:(fun mode x ->
+        Option.some_if
+          ((not explicit_js_mode) || List.exists linkages ~f:(Exe.Linkage.is_jsoo ~mode))
+          x)
     in
     Compilation_context.create
       ()
@@ -217,97 +215,95 @@ let executables_rules
       ~package:exes.package
   in
   let lib_config = ocaml.lib_config in
-  let stdlib_dir = lib_config.stdlib_dir in
   let* requires_compile = Compilation_context.requires_compile cctx in
-  let* requires_hidden = Compilation_context.requires_hidden cctx in
-  let* dep_graphs =
-    (* Building an archive for foreign stubs, we link the corresponding object
+  let* () =
+    let* dep_graphs =
+      (* Building an archive for foreign stubs, we link the corresponding object
        files directly to improve perf. *)
-    let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
-    let link_args =
-      let open Action_builder.O in
-      let+ flags =
-        let* () = link_deps in
-        let* link_flags =
-          Action_builder.of_memo (Ocaml_flags_db.link_flags sctx ~dir exes.link_flags)
-        in
-        let use_standard_cxx_flags =
-          match Dune_project.use_standard_c_and_cxx_flags project with
-          | Some true -> Buildable.has_foreign_cxx exes.buildable
-          | _ -> false
-        in
-        Link_flags.get ~use_standard_cxx_flags link_flags
-      in
-      Command.Args.S
-        [ As flags
-        ; S
-            (let ext_lib = lib_config.ext_lib in
-             let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
-             (* XXX: don't these need the msvc hack being done in lib_rules? *)
-             (* XXX: also the Command.quote_args being done in lib_rules? *)
-             List.map foreign_archives ~f:(fun archive ->
-               let lib =
-                 Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
+      let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
+      let link_args : Command.Args.without_targets Command.Args.t Action_builder.t =
+        Command.Args.S
+          [ Dyn
+              (let open Action_builder.O in
+               let* () = link_deps in
+               let use_standard_cxx_flags =
+                 match Dune_project.use_standard_c_and_cxx_flags project with
+                 | Some true -> Buildable.has_foreign_cxx exes.buildable
+                 | _ -> false
                in
-               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-          (* XXX: don't these need the msvc hack being done in lib_rules? *)
-          (* XXX: also the Command.quote_args being done in lib_rules? *)
-        ; Dyn
-            (let open Action_builder.O in
-             let+ args =
-               Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
-               >>| List.concat_map ~f:(fun f -> [ "-cclib"; f ])
-             in
-             Command.Args.As args)
-        ]
-    in
-    let* o_files =
-      o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
-    in
-    let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
-    let buildable = exes.buildable in
-    match buildable.ctypes with
-    | None ->
-      Exe.build_and_link_many
-        cctx
-        ~programs
-        ~linkages
-        ~link_args
-        ~o_files
-        ~promote:exes.promote
-        ~embed_in_plugin_libraries
-        ~sandbox
-    | Some _ ->
-      (* Ctypes stubgen builds utility .exe files that need to share modules
-         with this compilation context. To support that, we extract the one-time
-         run bits from [Exe.build_and_link_many] and run them here, then pass
-         that to the [Exe.link_many] call here as well as the Ctypes_rules. This
-         dance is done to avoid triggering duplicate rule exceptions. *)
-      let+ () =
-        let loc = fst (Nonempty_list.hd exes.names) in
-        Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
-      and+ () = Module_compilation.build_all cctx
-      and+ link =
-        Exe.link_many
+               Ocaml_flags_db.link_flags sctx ~dir exes.link_flags
+               |> Action_builder.of_memo
+               >>= Link_flags.get ~use_standard_cxx_flags
+               >>| fun s -> Command.Args.As s)
+          ; S
+              ((* XXX: don't these need the msvc hack being done in lib_rules? *)
+               (* XXX: also the Command.quote_args being done in lib_rules? *)
+               exes.buildable.foreign_archives
+               |> List.map ~f:(fun (_, archive) ->
+                 let lib =
+                   let ext_lib = lib_config.ext_lib in
+                   Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
+                 in
+                 Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
+            (* XXX: don't these need the msvc hack being done in lib_rules? *)
+            (* XXX: also the Command.quote_args being done in lib_rules? *)
+          ; Dyn
+              (let open Action_builder.O in
+               let+ args =
+                 Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
+                 >>| List.concat_map ~f:(fun f -> [ "-cclib"; f ])
+               in
+               Command.Args.As args)
+          ]
+        |> Action_builder.return
+      in
+      let* o_files =
+        o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
+      in
+      let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
+      let buildable = exes.buildable in
+      match buildable.ctypes with
+      | None ->
+        Exe.build_and_link_many
+          cctx
           ~programs
           ~linkages
           ~link_args
           ~o_files
           ~promote:exes.promote
           ~embed_in_plugin_libraries
-          cctx
           ~sandbox
-      in
-      link
-  in
-  let+ () =
+      | Some _ ->
+        (* Ctypes stubgen builds utility .exe files that need to share modules
+         with this compilation context. To support that, we extract the one-time
+         run bits from [Exe.build_and_link_many] and run them here, then pass
+         that to the [Exe.link_many] call here as well as the Ctypes_rules. This
+         dance is done to avoid triggering duplicate rule exceptions. *)
+        let+ () =
+          let loc = fst (Nonempty_list.hd exes.names) in
+          Ctypes_rules.gen_rules ~cctx ~buildable ~loc ~sctx ~scope ~dir
+        and+ () = Module_compilation.build_all cctx
+        and+ link =
+          Exe.link_many
+            ~programs
+            ~linkages
+            ~link_args
+            ~o_files
+            ~promote:exes.promote
+            ~embed_in_plugin_libraries
+            cctx
+            ~sandbox
+        in
+        link
+    in
     Memo.parallel_iter dep_graphs.for_exes ~f:(Check_rules.add_cycle_check sctx ~dir)
   in
-  ( cctx
-  , Merlin.make
+  let+ merlin =
+    let+ requires_hidden = Compilation_context.requires_hidden cctx in
+    Merlin.make
       ~requires_compile
       ~requires_hidden
-      ~stdlib_dir
+      ~stdlib_dir:lib_config.stdlib_dir
       ~flags
       ~modules
       ~libname:None
@@ -316,7 +312,9 @@ let executables_rules
         (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
       ~dialects:(Dune_project.dialects (Scope.project scope))
       ~ident:(Merlin_ident.for_exes ~names:(Nonempty_list.map ~f:snd exes.names))
-      ~modes:`Exe )
+      ~modes:`Exe
+  in
+  cctx, merlin
 ;;
 
 let compile_info ~scope (exes : Executables.t) =

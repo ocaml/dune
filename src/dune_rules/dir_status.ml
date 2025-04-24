@@ -109,12 +109,13 @@ let directory_targets_of_rule ~dir { Rule_conf.targets; loc = rule_loc; enabled_
     Memo.return Path.Build.Map.empty
   | Static { targets; _ } ->
     let directory_targets =
-      List.fold_left targets ~init:Path.Build.Map.empty ~f:(fun acc (target, kind) ->
+      List.fold_left targets ~init:Path.Build.Map.empty ~f:(fun acc named_target ->
+        let { Targets_spec.Static.path = (string_with_vars, kind); _ } = named_target in
         match (kind : Targets_spec.Kind.t) with
         | File -> acc
         | Directory ->
-          let loc = String_with_vars.loc target in
-          (match String_with_vars.text_only target with
+          let loc = String_with_vars.loc string_with_vars in  (* Changed target to string_with_vars *)
+          (match String_with_vars.text_only string_with_vars with  (* Changed target to string_with_vars *)
            | None ->
              User_error.raise
                ~loc

@@ -17,10 +17,15 @@ module Kind : sig
 end
 
 module Static : sig
-  type 'path t =
-    { targets : ('path * Kind.t) list
-    ; multiplicity : Multiplicity.t
-    }
+  type ('path, 'kind) named = {
+    name : string option;
+    path : 'path * 'kind;  (* Now takes the tuple *)
+  }
+
+  type 'path t = {
+    targets : ('path, Kind.t) named list;  (* This now matches *)
+    multiplicity : Multiplicity.t;
+  }
 end
 
 (** [Static] targets are listed by the user while [Infer] denotes that Dune must

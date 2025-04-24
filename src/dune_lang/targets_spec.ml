@@ -33,16 +33,23 @@ module Kind = struct
 end
 
 module Static = struct
-  type 'path t =
-    { targets : ('path * Kind.t) list
-    ; multiplicity : Multiplicity.t
-    }
+  (* Change to take the full pair as path *)
+  type ('path, 'kind) named = {
+    name : string option;
+    path : 'path * 'kind;  (* Now takes the tuple *)
+  }
+
+  type 'path t = {
+    targets : ('path, Kind.t) named list;  (* This now matches *)
+    multiplicity : Multiplicity.t;
+  }
 end
 
 type 'a t =
   | Static of 'a Static.t
   | Infer
 
+(* Move decode_target before decode_named_target *)
 let decode_target ~allow_directory_targets =
   let open Dune_sexp.Decoder in
   let file =
@@ -61,28 +68,71 @@ let decode_target ~allow_directory_targets =
   file <|> dir
 ;;
 
-let decode_static ~allow_directory_targets =
+let decode_named_target ~allow_directory_targets =
   let open Dune_sexp.Decoder in
-  let+ syntax_version = Dune_sexp.Syntax.get_exn Stanza.syntax
-  and+ targets = repeat (decode_target ~allow_directory_targets) in
-  if syntax_version < (1, 3)
-  then
-    List.iter targets ~f:(fun (target, (_ : Kind.t)) ->
-      if String_with_vars.has_pforms target
-      then
-        Dune_sexp.Syntax.Error.since
-          (String_with_vars.loc target)
-          Stanza.syntax
-          (1, 3)
-          ~what:"Using variables in the targets field");
-  Static { targets; multiplicity = Multiple }
+  let named =
+    enter (
+      let* loc = loc in
+      let* sexp_opt = peek in
+      match sexp_opt with
+      | Some (sexp : Dune_sexp.Ast.t) ->
+        (match sexp with
+        | Atom (loc, atom) when String.is_prefix (Dune_sexp.Atom.to_string atom) ~prefix:":" ->
+          let* () = junk in
+          let+ target = decode_target ~allow_directory_targets in
+          let atom_str = Dune_sexp.Atom.to_string atom in
+          let name = 
+            match String.drop_prefix atom_str ~prefix:":" with
+            | Some name -> name
+            | None -> 
+                User_error.raise ~loc [ Pp.text "Expected ':' prefix but couldn't extract name" ]
+          in
+          { Static.name = Some name;
+            path = target;  (* target is already the (path, kind) tuple *)
+          }
+        | _ ->
+          let+ target = decode_target ~allow_directory_targets in
+          { Static.name = None;
+            path = target;  (* target is already the (path, kind) tuple *)
+          })
+      | None ->
+        let+ () = return () in
+        User_error.raise ~loc [ Pp.text "Expected an S-expression but got nothing" ]
+    )
+  in
+  named
+
+  let decode_static ~allow_directory_targets =
+    let open Dune_sexp.Decoder in
+    let+ syntax_version = Dune_sexp.Syntax.get_exn Stanza.syntax
+    and+ targets = repeat (decode_named_target ~allow_directory_targets) in
+    (* Check for variables in targets if using older syntax *)
+    if syntax_version < (1, 3) then
+      List.iter targets ~f:(fun target ->
+        let path = fst target.Static.path in  (* Extract just the path from the tuple *)
+        if String_with_vars.has_pforms path then
+          Dune_sexp.Syntax.Error.since
+            (String_with_vars.loc path)
+            Stanza.syntax
+            (1, 3)
+            ~what:"Using variables in the targets field");
+    
+    (* Check for duplicate names *)
+    let names = List.filter_map targets ~f:(fun t -> t.Static.name) in
+    if List.length names <> String.Set.cardinal (String.Set.of_list names) then
+      User_error.raise ~loc:(Loc.of_pos __POS__) [ Pp.text "Duplicate target names found" ];
+    
+    Static { targets; multiplicity = Multiple }
 ;;
 
 let decode_one_static ~allow_directory_targets =
   let open Dune_sexp.Decoder in
   let+ () = Dune_sexp.Syntax.since Stanza.syntax (1, 11)
-  and+ target = decode_target ~allow_directory_targets in
-  Static { targets = [ target ]; multiplicity = One }
+  and+ target = decode_named_target ~allow_directory_targets in
+  Static { 
+    targets = [ target ];  (* Directly use the target from decode_named_target *)
+    multiplicity = One 
+  }
 ;;
 
 let field ~allow_directory_targets =

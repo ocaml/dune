@@ -6,21 +6,45 @@ module Mode = struct
   include Rule_mode_decoder
 end
 
-type t =
-  { targets : String_with_vars.t Targets_spec.t
-  ; deps : Dep_conf.t Bindings.t
-  ; action : Loc.t * Dune_lang.Action.t
-  ; mode : Rule.Mode.t
-  ; locks : Locks.t
-  ; loc : Loc.t
-  ; enabled_if : Blang.t
-  ; aliases : Alias.Name.t list
-  ; package : Package.t option
-  }
+module Targets_bindings = struct
+  type t = String_with_vars.t Bindings.t
+
+  let decode : t Dune_lang.Decoder.t =
+    let+ bindings = Bindings.decode String_with_vars.decode in
+    let names = Bindings.var_names bindings in
+    let unique_names = String.Set.of_list names in
+    if List.length names <> String.Set.cardinal unique_names then
+      User_error.raise ~loc:(Loc.of_pos __POS__)
+        [Pp.text "Duplicate target names found"];
+    bindings
+  
+
+    let to_targets (bindings : t) : String_with_vars.t Targets_spec.t =
+      let targets = Bindings.to_list bindings in
+      Targets_spec.Static {
+        targets = List.map targets ~f:(fun path ->
+          { Targets_spec.Static.name = None;
+            path = (path, Targets_spec.Kind.File);
+          });
+        multiplicity = Multiple
+      }
+  end
+
+
+type t = {
+  targets : String_with_vars.t Targets_spec.t;
+  deps : Dep_conf.t Bindings.t;
+  action : Loc.t * Dune_lang.Action.t;
+  mode : Rule.Mode.t;
+  locks : Locks.t;
+  loc : Loc.t;
+  enabled_if : Blang.t;
+  aliases : Alias.Name.t list;
+  package : Package.t option;
+}
 
 include Stanza.Make (struct
     type nonrec t = t
-
     include Poly
   end)
 
@@ -92,30 +116,31 @@ let directory_targets_extension =
   Dune_project.Extension.register syntax (Dune_lang.Decoder.return ((), [])) Dyn.unit
 ;;
 
+
 let long_form =
   let* deps = field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty in
   let* project = Dune_project.get_exn () in
-  let allow_directory_targets =
+  let _allow_directory_targets =
     Dune_project.is_extension_set project directory_targets_extension
   in
   String_with_vars.add_user_vars_to_decoding_env
     (Bindings.var_names deps)
-    (let+ loc = loc
-     and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
-     and+ targets = Targets_spec.field ~allow_directory_targets
-     and+ locks = Locks.field ()
-     and+ () =
+    (let* targets = 
+       field "targets" ~default:(Targets_spec.Infer)
+         (Targets_bindings.decode >>| Targets_bindings.to_targets)
+     in
+     let* () =
        let+ fallback =
          field_b
            ~check:
              (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)")
            "fallback"
        in
-       (* The "fallback" field was only allowed in jbuild file, which we don't
-          support anymore. So this cannot be [true]. We just keep the parser
-          to provide a nice error message for people switching from jbuilder
-          to dune. *)
        assert (not fallback)
+     in
+     let+ loc = loc
+     and+ action_o = field_o "action" (located Dune_lang.Action.decode_dune_file)
+     and+ locks = Locks.field ()
      and+ mode = Mode.field
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
      and+ package =
@@ -198,28 +223,33 @@ let ocamllex_to_rule loc { modules; mode; enabled_if } =
     let src = name ^ ".mll" in
     let dst = name ^ ".ml" in
     { targets =
-        (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
-           can't because this is might get parsed with old dune syntax where
-           [multiplicity = One] is not supported. *)
-        Static { targets = [ S.make_text loc dst, File ]; multiplicity = Multiple }
-    ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
-    ; action =
-        ( loc
-        , Chdir
-            ( S.virt_pform __POS__ (Var Workspace_root)
-            , Dune_lang.Action.run
+        Static {
+          targets = [
+            {
+              Targets_spec.Static.name = None;
+              path = (S.make_text loc dst, Targets_spec.Kind.File);
+            }
+          ];
+          multiplicity = Multiple
+        };
+      deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src));
+      action =
+        ( loc,
+          Chdir
+            ( S.virt_pform __POS__ (Var Workspace_root),
+              Dune_lang.Action.run
                 (S.virt_text __POS__ "ocamllex")
-                [ S.virt_text __POS__ "-q"
-                ; S.virt_text __POS__ "-o"
-                ; S.virt_pform __POS__ (Var Targets)
-                ; S.virt_pform __POS__ (Var Deps)
-                ] ) )
-    ; mode
-    ; locks = []
-    ; loc
-    ; enabled_if
-    ; aliases = []
-    ; package = None
+                [ S.virt_text __POS__ "-q";
+                  S.virt_text __POS__ "-o";
+                  S.virt_pform __POS__ (Var Targets);
+                  S.virt_pform __POS__ (Var Deps);
+                ] ) );
+      mode;
+      locks = [];
+      loc;
+      enabled_if;
+      aliases = [];
+      package = None;
     })
 ;;
 
@@ -230,9 +260,13 @@ let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
     { targets =
         Static
           { targets =
-              List.map
-                [ name ^ ".ml"; name ^ ".mli" ]
-                ~f:(fun target -> S.make_text loc target, Targets_spec.Kind.File)
+          List.map
+          [ name ^ ".ml"; name ^ ".mli" ]
+          ~f:(fun target -> 
+            { Targets_spec.Static.name = None;
+              path = (S.make_text loc target, Targets_spec.Kind.File);
+            }
+          )
           ; multiplicity = Multiple
           }
     ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))

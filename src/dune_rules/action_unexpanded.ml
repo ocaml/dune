@@ -640,8 +640,9 @@ let expand
                (Expander.Deps.Without
                   (Memo.return
                      (Value.L.paths
-                        (List.map targets ~f:(fun (target, (_ : Targets_spec.Kind.t)) ->
-                           Path.build target))))))
+                     (List.map targets ~f:(fun named_target ->
+                      let { Targets_spec.Static.path = (path_value, _kind); _ } = named_target in
+                      Path.build path_value))))))
     in
     Expander.set_expanding_what expander (User_action targets_written_by_user)
   in
@@ -653,7 +654,8 @@ let expand
     | Infer -> targets
     | Static { targets = targets_written_by_user; multiplicity = _ } ->
       let files, dirs =
-        List.partition_map targets_written_by_user ~f:(fun (path, kind) ->
+      List.partition_map targets_written_by_user ~f:(fun named_target ->
+        let { Targets_spec.Static.path = (path, kind); _ } = named_target in
           validate_target_dir ~targets_dir ~loc targets path;
           match kind with
           | File -> Left path

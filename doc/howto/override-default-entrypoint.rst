@@ -14,7 +14,7 @@ file:
 
 The default C entry point is a ``main`` function, originally defined in
 `runtime/main.c <https://github.com/ocaml/ocaml/blob/trunk/runtime/main.c>`_. It
-can be overriden by defining a ``main`` function that will at some point call
+can be overridden by defining a ``main`` function that will at some point call
 the OCaml runtime. Let's write such a minimal example in a ``main.c`` file:
 
 .. code:: C

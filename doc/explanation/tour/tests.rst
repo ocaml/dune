@@ -8,7 +8,7 @@ library itself.
 We have 3 kind of tests:
 
 - Unit tests, in :file:`test/unit-tests` (we have very few of these, usually
-  prefering other kinds)
+  preferring other kinds)
 - Expect tests, in :file:`test/expect-tests` (using ``ppx_expect``)
 - :doc:`Cram tests </reference/cram>`, in :file:`test/blackbox-tests/`. This is
   our preferred way of testing.

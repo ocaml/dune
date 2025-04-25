@@ -81,7 +81,7 @@ module Spec = struct
   type 'path arg = 'path chunk Array.Immutable.t
 
   type ('path, 'target) t =
-    { prog : Action.Prog.t
+    { prog : ('path, Action.Prog.Not_found.t) result
     ; args : 'path arg Array.Immutable.t
     ; ocamlfind_destdir : 'path
     ; pkg : Dune_pkg.Package_name.t * Loc.t
@@ -101,6 +101,7 @@ module Spec = struct
     { t with
       args = Array.Immutable.map t.args ~f:(map_arg ~f)
     ; ocamlfind_destdir = f t.ocamlfind_destdir
+    ; prog = Result.map t.prog ~f
     }
   ;;
 
@@ -108,10 +109,9 @@ module Spec = struct
 
   let encode { prog; args; ocamlfind_destdir; pkg = _; depexts = _ } path _ : Sexp.t =
     let prog : Sexp.t =
-      Atom
-        (match prog with
-         | Ok p -> Path.reach p ~from:Path.root
-         | Error e -> e.program)
+      match prog with
+      | Ok p -> path p
+      | Error e -> Atom e.program
     in
     let args =
       Array.Immutable.to_list_map args ~f:(fun x ->

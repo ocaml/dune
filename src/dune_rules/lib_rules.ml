@@ -623,21 +623,20 @@ let library_rules
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
   in
-  ( cctx
-  , let stdlib_dir = lib_config.stdlib_dir in
-    let flags = Compilation_context.flags cctx in
-    Merlin.make
-      ~requires_compile
-      ~requires_hidden
-      ~stdlib_dir
-      ~flags
-      ~modules
-      ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
-      ~libname:(Some (snd lib.name))
-      ~obj_dir
-      ~dialects:(Dune_project.dialects (Scope.project scope))
-      ~ident:(Merlin_ident.for_lib (Library.best_name lib))
-      ~modes:(`Lib (Lib_info.modes lib_info)) )
+  let stdlib_dir = lib_config.stdlib_dir in
+  let flags = Compilation_context.flags cctx in
+  Merlin.make
+    ~requires_compile
+    ~requires_hidden
+    ~stdlib_dir
+    ~flags
+    ~modules
+    ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
+    ~libname:(Some (snd lib.name))
+    ~obj_dir
+    ~dialects:(Dune_project.dialects (Scope.project scope))
+    ~ident:(Merlin_ident.for_lib (Library.best_name lib))
+    ~modes:(`Lib (Lib_info.modes lib_info))
 ;;
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
@@ -664,14 +663,17 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
       | Some _ ->
         Ctypes_rules.gen_rules ~loc:(fst lib.name) ~cctx ~buildable ~sctx ~scope ~dir
     in
-    library_rules
-      lib
-      ~local_lib:(Lib.Local.of_lib_exn local_lib)
-      ~cctx
-      ~source_modules
-      ~dir_contents
-      ~compile_info
-      ~ctx_dir:dir
+    let+ merlin =
+      library_rules
+        lib
+        ~local_lib:(Lib.Local.of_lib_exn local_lib)
+        ~cctx
+        ~source_modules
+        ~dir_contents
+        ~compile_info
+        ~ctx_dir:dir
+    in
+    cctx, merlin
   in
   let* () = Buildable_rules.gen_select_rules sctx compile_info ~dir in
   let merlin_ident = Merlin_ident.for_lib (Library.best_name lib) in

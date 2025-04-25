@@ -551,7 +551,6 @@ let library_rules
   let scope = Compilation_context.scope cctx in
   let* requires_compile = Compilation_context.requires_compile cctx in
   let lib_config = (Compilation_context.ocaml cctx).lib_config in
-  let* requires_hidden = Compilation_context.requires_hidden cctx in
   let top_sorted_modules =
     let impl_only = Modules.With_vlib.impl_only modules in
     Dep_graph.top_closed_implementations
@@ -605,21 +604,23 @@ let library_rules
     in
     Sub_system.gen_rules
       { super_context = sctx; dir; stanza = lib; scope; source_modules; compile_info }
+  and+ merlin =
+    let+ requires_hidden = Compilation_context.requires_hidden cctx in
+    let flags = Compilation_context.flags cctx in
+    Merlin.make
+      ~requires_compile
+      ~requires_hidden
+      ~stdlib_dir:lib_config.stdlib_dir
+      ~flags
+      ~modules
+      ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
+      ~libname:(Some (snd lib.name))
+      ~obj_dir
+      ~dialects:(Dune_project.dialects (Scope.project scope))
+      ~ident:(Merlin_ident.for_lib (Library.best_name lib))
+      ~modes:(`Lib (Lib_info.modes lib_info))
   in
-  let stdlib_dir = lib_config.stdlib_dir in
-  let flags = Compilation_context.flags cctx in
-  Merlin.make
-    ~requires_compile
-    ~requires_hidden
-    ~stdlib_dir
-    ~flags
-    ~modules
-    ~preprocess:(Preprocess.Per_module.without_instrumentation lib.buildable.preprocess)
-    ~libname:(Some (snd lib.name))
-    ~obj_dir
-    ~dialects:(Dune_project.dialects (Scope.project scope))
-    ~ident:(Merlin_ident.for_lib (Library.best_name lib))
-    ~modes:(`Lib (Lib_info.modes lib_info))
+  merlin
 ;;
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =

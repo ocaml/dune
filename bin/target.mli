@@ -7,6 +7,7 @@ type target_type =
 type target_info =
   { target_type : target_type
   ; synopsis : Dune_engine.Synopsis.t option
+  ; loc : Loc.t
   }
 
 (** List of all buildable direct targets. This does not include files and

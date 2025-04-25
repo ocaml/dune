@@ -21,7 +21,7 @@ Dune should show synopsis for alias.
   dune
   dune-project
   touched-file.ml
-  - Synopsis for rule with alias rule-with-synopsis
+  - dune:1 Synopsis for rule with alias rule-with-synopsis
   $ dune show aliases
   all
   default
@@ -29,4 +29,4 @@ Dune should show synopsis for alias.
   ocaml-index
   pkg-install
   rule-with-synopsis
-  - Synopsis for rule with alias rule-with-synopsis
+  - dune:1 Synopsis for rule with alias rule-with-synopsis

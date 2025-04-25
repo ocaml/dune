@@ -18,6 +18,6 @@ Dune should attach synopsis to target that produces directory.
   $ dune build @synopsis-for-dir
   $ dune show targets
   created_dir/
-  - Synopsis for rule with directory target
+  - dune:1 Synopsis for rule with directory target
   dune
   dune-project

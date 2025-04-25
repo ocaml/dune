@@ -2,7 +2,7 @@ open Import
 
 type name_synopses =
   { name : string
-  ; synopses : Dune_engine.Synopsis.t list
+  ; synopses : (Loc.t * Dune_engine.Synopsis.t) list
   }
 
 let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t) =
@@ -87,8 +87,12 @@ let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t
               Pp.concat
                 ~sep:(if synopses = [] then Pp.nop else Pp.cut)
                 [ Pp.hbox (Pp.textf "%s" name)
-                ; Pp.enumerate synopses ~f:(fun synopsis ->
-                    Pp.text (Dune_engine.Synopsis.value synopsis))
+                ; Pp.enumerate synopses ~f:(fun (loc, synopsis) ->
+                    Pp.concat
+                      ~sep:Pp.space
+                      [ Loc.pp_file_colon_line loc
+                      ; Pp.text (Dune_engine.Synopsis.value synopsis)
+                      ])
                 ])
           ]
         |> Pp.concat ~sep:Pp.cut)
@@ -115,7 +119,6 @@ module Aliases_cmd = struct
         let name_synopses =
           build.aliases
           |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name (_, synopses) ->
-            let synopses = List.map ~f:snd synopses in
             let name = Dune_engine.Alias.Name.to_string name in
             { name; synopses })
           |> Dune_engine.Alias.Name.Map.values
@@ -149,14 +152,17 @@ module Targets_cmd = struct
       | true ->
         (* directory targets can be distinguied by the trailing path separator
         *)
+        let synopses synopsis loc =
+          synopsis |> Option.to_list |> List.map ~f:(fun synopsis -> loc, synopsis)
+        in
         Some
           (match target_info with
-           | { target_type = Target.File; synopsis } ->
+           | { target_type = Target.File; synopsis; loc } ->
              let target_name = Path.Build.basename path in
-             { name = target_name; synopses = Option.to_list synopsis }
-           | { target_type = Target.Directory; synopsis } ->
+             { name = target_name; synopses = synopses synopsis loc }
+           | { target_type = Target.Directory; synopsis; loc } ->
              { name = Path.Build.basename path ^ Filename.dir_sep
-             ; synopses = Option.to_list synopsis
+             ; synopses = synopses synopsis loc
              }))
   ;;
 

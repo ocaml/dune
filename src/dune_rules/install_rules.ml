@@ -219,7 +219,6 @@ end = struct
               in
               subdir, Some (Path.Local.basename p)
             | None ->
-              let dst = Path.Build.basename source |> String.drop_suffix ~suffix:"-gen" in
               let sub_dir =
                 let src_dir = Path.Build.parent_exn source in
                 if Path.Build.equal src_dir lib_src_dir
@@ -229,7 +228,7 @@ end = struct
                   |> Path.Local.descendant ~of_:(Path.Build.local lib_src_dir)
                   |> Option.map ~f:Path.Local.to_string
               in
-              sub_dir, dst
+              sub_dir, None
           in
           make_entry ?sub_dir Lib source ?dst))
     in

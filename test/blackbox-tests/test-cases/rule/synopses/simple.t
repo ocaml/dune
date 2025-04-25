@@ -3,7 +3,7 @@ Dune should show synopsis for targets.
 Dune should show synopsis for alias.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.18)
+  > (lang dune 3.19)
   > EOF
   $ cat > dune << EOF
   > (rule

@@ -1,7 +1,7 @@
 Dune should attach synopsis to target that produces directory.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.18)
+  > (lang dune 3.19)
   > (using directory-targets 0.1)
   > EOF
   $ cat > dune << EOF

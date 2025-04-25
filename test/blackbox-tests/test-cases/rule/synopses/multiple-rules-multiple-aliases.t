@@ -1,7 +1,7 @@
 Dune should show all synopses with their location for all rules to aliases attached.
 
   $ cat > dune-project << EOF
-  > (lang dune 3.18)
+  > (lang dune 3.19)
   > EOF
   $ cat > dune << EOF
   > (rule

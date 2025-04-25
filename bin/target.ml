@@ -18,15 +18,18 @@ let request targets =
 ;;
 
 module Target_type = struct
-  type metadata = { synopsis : Dune_util.Synopsis.t option }
-
   type t =
-    | File of metadata
+    | File
     | Directory
+
+  type target_info =
+    { target_type : t
+    ; synopsis : Dune_engine.Synopsis.t option
+    }
 end
 
 module All_targets = struct
-  type t = Target_type.t Path.Build.Map.t
+  type t = Target_type.target_info Path.Build.Map.t
 
   include Monoid.Make (struct
       type nonrec t = t
@@ -65,13 +68,10 @@ let all_direct_targets dir =
         | External _ | Source _ -> All_targets.empty
         | Build { rules_here; _ } ->
           All_targets.combine
-            (Path.Build.Map.map
-               rules_here.by_file_targets
-               ~f:(fun ({ synopsis; _ } : Dune_engine.Rule.t) ->
-                 Target_type.File { synopsis }))
-            (* TODO attach synopsis to directory as well *)
-            (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
-               Target_type.Directory))
+            (Path.Build.Map.map rules_here.by_file_targets ~f:(fun { synopsis; _ } ->
+               { Target_type.target_type = Target_type.File; synopsis }))
+            (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun { synopsis; _ } ->
+               { Target_type.target_type = Target_type.Directory; synopsis }))
         | Build_under_directory_target _ -> All_targets.empty))
   >>| All_targets.reduce
 ;;
@@ -268,8 +268,11 @@ let interpret_targets root config setup user_targets =
   resolve_targets_exn root config setup user_targets >>= request
 ;;
 
-type metadata = Target_type.metadata = { synopsis : Dune_util.Synopsis.t option }
-
 type target_type = Target_type.t =
-  | File of Target_type.metadata
+  | File
   | Directory
+
+type target_info = Target_type.target_info =
+  { target_type : target_type
+  ; synopsis : Dune_engine.Synopsis.t option
+  }

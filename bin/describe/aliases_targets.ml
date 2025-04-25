@@ -143,19 +143,21 @@ module Targets_cmd = struct
       >>| Path.Build.Map.to_list
       |> Action_builder.of_memo
     in
-    List.filter_map targets ~f:(fun (path, kind) ->
+    List.filter_map targets ~f:(fun (path, target_info) ->
       match Path.Build.equal (Path.Build.parent_exn path) dir with
       | false -> None
       | true ->
         (* directory targets can be distinguied by the trailing path separator
         *)
         Some
-          (match kind with
-           | Target.File { synopsis } ->
+          (match target_info with
+           | { target_type = Target.File; synopsis } ->
              let target_name = Path.Build.basename path in
              { name = target_name; synopses = Option.to_list synopsis }
-           | Directory ->
-             { name = Path.Build.basename path ^ Filename.dir_sep; synopses = [] }))
+           | { target_type = Target.Directory; synopsis } ->
+             { name = Path.Build.basename path ^ Filename.dir_sep
+             ; synopses = Option.to_list synopsis
+             }))
   ;;
 
   let term = ls_term fetch_results

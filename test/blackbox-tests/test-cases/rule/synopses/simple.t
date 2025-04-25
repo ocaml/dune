@@ -11,17 +11,14 @@ Dune should show synopsis for alias.
   >  (alias rule-with-synopsis)
   >  (synopsis "Synopsis for rule with alias rule-with-synopsis")
   >  (action
-  >   (write-file touched-file.ml "Echo from rule with alias rule-with-synopsis")))
+  >   (write-file touched-file.ml "")))
   > EOF
 
-  $ dune build @rule-with-synopsis
-  $ cat _build/default/touched-file.ml
-  Echo from rule with alias rule-with-synopsis
   $ dune show targets
   dune
   dune-project
   touched-file.ml
-  - dune:1 Synopsis for rule with alias rule-with-synopsis
+    - dune:1 Synopsis for rule with alias rule-with-synopsis
   $ dune show aliases
   all
   default
@@ -29,4 +26,4 @@ Dune should show synopsis for alias.
   ocaml-index
   pkg-install
   rule-with-synopsis
-  - dune:1 Synopsis for rule with alias rule-with-synopsis
+    - dune:1 Synopsis for rule with alias rule-with-synopsis

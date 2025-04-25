@@ -15,9 +15,8 @@ Dune should attach synopsis to target that produces directory.
   >     (run touch created_dir/empty-file))))
   > EOF
 
-  $ dune build @synopsis-for-dir
   $ dune show targets
   created_dir/
-  - dune:1 Synopsis for rule with directory target
+    - dune:1 Synopsis for rule with directory target
   dune
   dune-project

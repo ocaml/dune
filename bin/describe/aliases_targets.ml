@@ -5,6 +5,21 @@ type name_synopses =
   ; synopses : (Loc.t * Dune_engine.Synopsis.t) list
   }
 
+let pp_synopsis (loc, synopsis) =
+  Pp.concat
+    ~sep:Pp.space
+    [ Loc.pp_file_colon_line loc; Pp.text (Dune_engine.Synopsis.value synopsis) ]
+;;
+
+let pp_synopses synopses =
+  if synopses = []
+  then Pp.nop
+  else
+    Pp.map_tags
+      ~f:(fun _ -> User_message.Style.Details)
+      (Pp.concat [ Pp.verbatim "  "; Pp.enumerate synopses ~f:pp_synopsis ])
+;;
+
 let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t) =
   let+ builder = Common.Builder.term
   and+ paths = Arg.(value & pos_all string [ "." ] & info [] ~docv:"DIR")
@@ -86,14 +101,7 @@ let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t
         @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopses } ->
               Pp.concat
                 ~sep:(if synopses = [] then Pp.nop else Pp.cut)
-                [ Pp.hbox (Pp.textf "%s" name)
-                ; Pp.enumerate synopses ~f:(fun (loc, synopsis) ->
-                    Pp.concat
-                      ~sep:Pp.space
-                      [ Loc.pp_file_colon_line loc
-                      ; Pp.text (Dune_engine.Synopsis.value synopsis)
-                      ])
-                ])
+                [ Pp.hbox (Pp.textf "%s" name); pp_synopses synopses ])
           ]
         |> Pp.concat ~sep:Pp.cut)
     in

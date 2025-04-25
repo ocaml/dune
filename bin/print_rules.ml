@@ -150,13 +150,9 @@ let encode_dep_set deps =
           | Universe -> string "Universe"))
 ;;
 
-(* TODO move this encoding to Dune_lang.Synopsis *)
 let encode_synopsis_field = function
   | None -> []
-  | Some (synopsis : Dune_engine.Synopsis.t) ->
-    [ ( "synopsis"
-      , synopsis |> Dune_engine.Synopsis.value |> Dune_sexp.atom_or_quoted_string )
-    ]
+  | Some synopsis -> [ "synopsis", Dune_lang.Synopsis.encode synopsis ]
 ;;
 
 let print_rule_sexp ppf (rule : Dune_engine.Reflection.Rule.t) =

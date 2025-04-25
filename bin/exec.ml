@@ -64,106 +64,46 @@ module Cmd_arg = struct
   let conv = Arg.conv ((fun s -> Ok (parse s)), pp)
 end
 
-module Command_to_exec = struct
-  (* A command to execute, which knows how to (re)build the program and then
-     run it with some arguments in an environment *)
-
-  type command_env =
-    { path : Path.t
-    ; env : Env.t
-    }
-
-  type t =
-    { get_env_and_build_if_necessary :
-        string -> (command_env, [ `Already_reported ]) result Fiber.t
-    ; prog : string
-    ; args : string list
-    }
-
-  (* Helper function to spawn a new process running a command in an
-     environment, returning the new process' pid *)
-  let spawn_process ~root path ~args ~env =
-    let pid =
-      let prog = string_path_relative_to_specified_root root (Path.to_string path) in
-      let env = Env.to_unix env |> Spawn.Env.of_list in
-      let argv = prog :: args in
-      let cwd = Spawn.Working_dir.Path Fpath.initial_cwd in
-      Spawn.spawn ~prog ~env ~cwd ~argv ()
-    in
-    Pid.of_int pid
-  ;;
-
-  (* Run the command, first (re)building the program which the command is
-     invoking *)
-  let build_and_run_in_child_process
-        ~root
-        ~config
-        { get_env_and_build_if_necessary; prog; args }
-    =
-    get_env_and_build_if_necessary prog
-    |> Fiber.map
-         ~f:
-           (Result.map ~f:(fun { path; env } ->
-              Scheduler.maybe_clear_screen ~details_hum:[] config;
-              spawn_process ~root ~args ~env path))
-  ;;
-end
-
 module Watch = struct
-  (* When running `dune exec` in watch mode, this will keep track of the pid of
-     the process created to run the program in the previous iteration so that
-     it can be killed (for long running programs, e.g. servers) and restarted
-     when its source is changed. *)
-
-  type state = { currently_running_pid : Pid.t option ref }
-
-  let init_state () = { currently_running_pid = ref None }
-
-  let kill_process pid =
-    let pid_int = Pid.to_int pid in
-    (* TODO This logic should exist in one place. Currently it's here and in
-       the scheduler *)
-    let signal = if Sys.win32 then Sys.sigkill else Sys.sigterm in
-    (* FIXME Since we're reaping in a different thread, this can technically
-       cause pid reuse *)
-    Unix.kill pid_int signal;
-    let do_wait () =
-      Scheduler.wait_for_process ~timeout_seconds:1. pid
-      |> Fiber.map ~f:(fun (_ : Proc.Process_info.t) -> ())
-    in
-    let on_error (e : Exn_with_backtrace.t) =
-      (* Ignore [Build_cancelled] exception we expect the build to be cancelled
-         if the source is changed during compilation. *)
-      match e.exn with
-      | Memo.Non_reproducible Scheduler.Run.Build_cancelled -> Fiber.return ()
-      | _ -> Exn_with_backtrace.reraise e
-    in
-    Fiber.map_reduce_errors (module Monoid.Unit) ~on_error do_wait
-    |> Fiber.map ~f:(function Ok () | Error () -> ())
+  let on_error (e : Exn_with_backtrace.t) =
+    (* Ignore [Build_cancelled] exception we expect the build to be cancelled if the
+       source is changed during compilation. *)
+    match e.exn with
+    | Memo.Non_reproducible Scheduler.Run.Build_cancelled -> Fiber.return ()
+    | _ -> Exn_with_backtrace.reraise e
   ;;
 
-  let kill_currently_running_process { currently_running_pid } =
-    match !currently_running_pid with
-    | None -> Fiber.return ()
-    | Some pid ->
-      currently_running_pid := None;
-      kill_process pid
-  ;;
-
-  (* Kills the currently running process, then runs the given command after
-     (re)building the program which it will invoke *)
-  let run ~root ~config state ~command_to_exec =
+  let step ~root ~sctx ~env ~prog ~args ~get_path_and_build_if_necessary =
     let open Fiber.O in
-    let* () = Fiber.return () in
-    let* () = kill_currently_running_process state in
-    let* command_to_exec = command_to_exec () in
-    Command_to_exec.build_and_run_in_child_process ~root ~config command_to_exec
-    >>| Result.map ~f:(fun pid -> state.currently_running_pid := Some pid)
-  ;;
-
-  let loop ~root ~config ~command_to_exec =
-    let state = init_state () in
-    Scheduler.Run.poll (run ~root ~config state ~command_to_exec)
+    let* get_env_and_build_if_necessary, args =
+      Memo.run
+      @@
+      let open Memo.O in
+      let* sctx = sctx in
+      let expand = Cmd_arg.expand ~root ~sctx in
+      let+ prog = expand prog
+      and+ args = Memo.parallel_map args ~f:expand in
+      ( build (fun () ->
+          let+ env = env
+          and+ path = get_path_and_build_if_necessary ~prog in
+          path, env)
+      , args )
+    in
+    get_env_and_build_if_necessary
+    >>= function
+    | Ok (path, env) ->
+      Fiber.map ~f:(function Ok () | Error () -> Ok ())
+      @@ Fiber.map_reduce_errors (module Monoid.Unit) ~on_error
+      @@ fun () ->
+      Dune_engine.Process.run_external_in_out
+        ~dir:(Path.of_string Fpath.initial_cwd)
+        ~env
+        path
+        args
+      >>| (function
+       | 0 -> ()
+       | exit_code -> Console.print [ Pp.textf "Program exited with code [%d]" exit_code ])
+    | Error `Already_reported as e -> Fiber.return e
   ;;
 end
 
@@ -297,46 +237,33 @@ module Exec_context = struct
         let open Memo.O in
         let* env = env
         and* sctx = sctx in
-        let root = Common.root common in
+        let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
         let* path =
-          let* prog = Cmd_arg.expand prog ~root ~sctx in
+          let* prog = expand prog in
           get_path_and_build_if_necessary ~prog
         in
-        let+ args = Memo.parallel_map ~f:(Cmd_arg.expand ~root ~sctx) args in
+        let+ args = Memo.parallel_map ~f:expand args in
         path, args, env)
     in
     let prog = Path.to_string path in
-    let argv = prog :: args in
-    restore_cwd_and_execve (Common.root common) prog argv env
+    restore_cwd_and_execve (Common.root common) prog args env
   ;;
 
   let run_eager_watch t common config =
     Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config
     @@ fun () ->
-    let command_to_exec () =
-      let open Fiber.O in
-      let* { sctx; env; prog; args; get_path_and_build_if_necessary } = t in
-      Memo.run
-      @@
-      let open Memo.O in
-      let* sctx = sctx in
-      let expand = Cmd_arg.expand ~root:(Common.root common) ~sctx in
-      let* prog = expand prog in
-      let+ args = Memo.parallel_map args ~f:expand in
-      { Command_to_exec.get_env_and_build_if_necessary =
-          (fun prog ->
-            (* TODO we should release the dune lock. But we aren't doing it
-               because we don't unload the database files we've marshalled.
-            *)
-            build (fun () ->
-              let+ env = env
-              and+ path = get_path_and_build_if_necessary ~prog in
-              { Command_to_exec.path; env }))
-      ; prog
-      ; args
-      }
-    in
-    Watch.loop ~root:(Common.root common) ~config ~command_to_exec
+    let open Fiber.O in
+    let* { sctx; env; prog; args; get_path_and_build_if_necessary } = t in
+    Scheduler.Run.poll
+    @@
+    let* () = Fiber.return @@ Scheduler.maybe_clear_screen ~details_hum:[] config in
+    Watch.step
+      ~root:(Common.root common)
+      ~sctx
+      ~env
+      ~prog
+      ~args
+      ~get_path_and_build_if_necessary
   ;;
 end
 

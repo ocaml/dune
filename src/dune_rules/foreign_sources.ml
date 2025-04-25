@@ -120,6 +120,28 @@ let valid_name language ~loc s =
   | _ -> s
 ;;
 
+let ctypes_stubs sources (ctypes : Ctypes_field.t) =
+  String.Map.of_list_map_exn
+    ctypes.function_description
+    ~f:(fun (fd : Ctypes_field.Function_description.t) ->
+      let loc =
+        Loc.none
+        (* TODO *)
+      in
+      let name =
+        Ctypes_field.c_generated_functions_cout_c ctypes fd |> Filename.remove_extension
+      in
+      let path =
+        match Unresolved.find_source sources C (loc, name) with
+        | Some p -> p
+        | None ->
+          (* impossible b/c ctypes fields generates this *)
+          assert false
+      in
+      let source = Foreign.Source.make (Ctypes ctypes) ~path in
+      name, (loc, source))
+;;
+
 let eval_foreign_stubs
       foreign_stubs
       (ctypes : Ctypes_field.t option)
@@ -172,31 +194,7 @@ let eval_foreign_stubs
     let init = List.map foreign_stubs ~f:eval in
     match ctypes with
     | None -> init
-    | Some ctypes ->
-      let ctypes =
-        List.fold_left
-          ~init:String.Map.empty
-          ctypes.function_description
-          ~f:(fun acc (fd : Ctypes_field.Function_description.t) ->
-            let loc =
-              Loc.none
-              (* TODO *)
-            in
-            let name =
-              Ctypes_field.c_generated_functions_cout_c ctypes fd
-              |> Filename.remove_extension
-            in
-            let path =
-              match Unresolved.find_source sources C (loc, name) with
-              | Some p -> p
-              | None ->
-                (* impossible b/c ctypes fields generates this *)
-                assert false
-            in
-            let source = Foreign.Source.make (Ctypes ctypes) ~path in
-            String.Map.add_exn acc name (loc, source))
-      in
-      ctypes :: init
+    | Some ctypes -> ctypes_stubs sources ctypes :: init
   in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
     String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->
@@ -212,6 +210,7 @@ let eval_foreign_stubs
 
 let make stanzas ~(sources : Unresolved.t) ~dune_version =
   let libs, foreign_libs, exes =
+    let eval_foreign_stubs = eval_foreign_stubs ~dune_version ~sources in
     let libs, foreign_libs, exes =
       List.fold_left
         stanzas
@@ -220,25 +219,17 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
           match Stanza.repr stanza with
           | Library.T lib ->
             let all =
-              eval_foreign_stubs
-                ~dune_version
-                lib.buildable.foreign_stubs
-                lib.buildable.ctypes
-                ~sources
+              eval_foreign_stubs lib.buildable.foreign_stubs lib.buildable.ctypes
             in
             (lib, all) :: libs, foreign_libs, exes
           | Foreign_library.T library ->
-            let all = eval_foreign_stubs ~dune_version [ library.stubs ] ~sources None in
+            let all = eval_foreign_stubs [ library.stubs ] None in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all)) :: foreign_libs
             , exes )
           | Executables.T exe | Tests.T { exes = exe; _ } ->
             let all =
-              eval_foreign_stubs
-                ~dune_version
-                exe.buildable.foreign_stubs
-                ~sources
-                exe.buildable.ctypes
+              eval_foreign_stubs exe.buildable.foreign_stubs exe.buildable.ctypes
             in
             libs, foreign_libs, (exe, all) :: exes
           | _ -> acc)

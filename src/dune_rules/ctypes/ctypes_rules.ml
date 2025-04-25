@@ -292,28 +292,15 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let type_description_functor = ctypes.type_description.functor_ in
   let c_types_includer_module = ctypes.generated_types in
   let c_generated_types_module = Ctypes_field.c_generated_types_module ctypes in
-  let foreign_archives_deps =
-    let { Lib_config.ext_lib; ext_dll; _ } =
-      (Compilation_context.ocaml cctx).lib_config
-    in
-    List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
-      let mode = Mode.Select.All in
-      [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
-      ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
-      ])
-  in
-  let* expander = Super_context.expander sctx ~dir in
-  let deps, sandbox = Dep_conf_eval.unnamed ~expander ctypes.deps in
   let* () =
-    Super_context.add_rule sctx ~loc:Loc.none ~dir
-    @@
     let target =
       Path.Build.relative dir (Ctypes_field.ml_of_module_name c_types_includer_module)
     in
-    Action_builder.write_file
-      target
-      (write_c_types_includer_module ~c_generated_types_module ~type_description_functor)
+    write_c_types_includer_module ~c_generated_types_module ~type_description_functor
+    |> Action_builder.write_file target
+    |> Super_context.add_rule sctx ~loc:Loc.none ~dir
   in
+  let* expander = Super_context.expander sctx ~dir in
   (* The output of this process is to generate a cflags sexp and a c library
      flags sexp file. We can probe these flags by using the system pkg-config,
      if it's an external system library. The user could also tell us what they
@@ -328,10 +315,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     | Pkg_config ->
       let+ () =
         let setup query =
-          let* res = Pkg_config.gen_rule sctx ~dir ~loc query in
-          match res with
-          | Ok () -> Memo.return ()
-          | Error `Not_found -> Memo.return ()
+          Pkg_config.gen_rule sctx ~dir ~loc query
+          >>| function
+          | Ok () | Error `Not_found -> ()
         in
         let lib = External_lib_name.to_string external_library_name in
         let* () = setup (Libs lib) in
@@ -346,6 +332,7 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
   let headers =
     gen_headers ~expander ctypes.headers |> Action_builder.memoize "ctypes-gen-headers"
   in
+  let deps, sandbox = Dep_conf_eval.unnamed ~expander ctypes.deps in
   let exe_link_only = exe_link_only ~deps ~dir ~shared_cctx:cctx ~sandbox in
   (* Type_gen produces a .c file, taking your type description module above as
      an input. The .c file is compiled into an .exe. The .exe, when run produces
@@ -365,19 +352,18 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         "%s__c_cout_generated_types.exe"
         (External_lib_name.to_string external_library_name)
     in
-    let type_gen_script = Ctypes_field.type_gen_script ctypes in
     let* () =
-      Super_context.add_rule ~loc:Loc.none sctx ~dir
-      @@
-      let script =
-        Action_builder.map headers ~f:(type_gen_gen ~type_description_functor)
+      let type_gen_script = Ctypes_field.type_gen_script ctypes in
+      let* () =
+        let script =
+          Action_builder.map headers ~f:(type_gen_gen ~type_description_functor)
+        in
+        let target = Path.Build.relative dir (type_gen_script ^ ".ml") in
+        Action_builder.with_no_targets script
+        |> Action_builder.With_targets.write_file_dyn target
+        |> Super_context.add_rule ~loc:Loc.none sctx ~dir
       in
-      let target = Path.Build.relative dir (type_gen_script ^ ".ml") in
-      Action_builder.with_no_targets script
-      |> Action_builder.With_targets.write_file_dyn target
-    in
-    let* (_ : Exe.dep_graphs) = exe_link_only type_gen_script in
-    let* () =
+      let* (_ : Exe.dep_graphs) = exe_link_only type_gen_script in
       Super_context.add_rule
         sctx
         ~dir
@@ -387,6 +373,16 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
          Command.run ~stdout_to ~dir:(Path.build dir) exe [])
     in
     let* () =
+      let foreign_archives_deps =
+        let { Lib_config.ext_lib; ext_dll; _ } =
+          (Compilation_context.ocaml cctx).lib_config
+        in
+        List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
+          let mode = Mode.Select.All in
+          [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
+          ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
+          ])
+      in
       build_c_program
         ~foreign_archives_deps
         ~sctx
@@ -402,9 +398,9 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
       ~loc:Loc.none
       ~dir
       (let stdout_to =
-         Path.Build.relative
-           dir
-           (c_generated_types_module |> Ctypes_field.ml_of_module_name)
+         c_generated_types_module
+         |> Ctypes_field.ml_of_module_name
+         |> Path.Build.relative dir
        in
        let exe = Ok (Path.build (Path.Build.relative dir c_generated_types_cout_exe)) in
        Command.run ~stdout_to ~dir:(Path.build dir) exe [])
@@ -419,51 +415,52 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
      in the code generator. *)
   let* () =
     Memo.parallel_iter ctypes.function_description ~f:(fun fd ->
-      let stubs_prefix =
-        External_lib_name.(external_library_name |> clean |> to_string) ^ "_stubs"
+      let* command =
+        let+ exe =
+          let function_gen_script = Ctypes_field.function_gen_script ctypes fd in
+          let* () =
+            let target = Path.Build.relative dir (function_gen_script ^ ".ml") in
+            Action_builder.map
+              headers
+              ~f:
+                (function_gen_gen
+                   ~concurrency:fd.concurrency
+                   ~errno_policy:fd.errno_policy
+                   ~function_description_functor:fd.functor_)
+            |> Action_builder.with_no_targets
+            |> Action_builder.With_targets.write_file_dyn target
+            |> Super_context.add_rule ~loc:Loc.none sctx ~dir
+          in
+          let+ (_ : Exe.dep_graphs) = exe_link_only function_gen_script in
+          Ok (Path.build (Path.Build.relative dir (function_gen_script ^ ".exe")))
+        in
+        let stubs_prefix =
+          External_lib_name.(external_library_name |> clean |> to_string) ^ "_stubs"
+        in
+        fun ~stdout_to ~what ->
+          Command.run ~stdout_to ~dir:(Path.build dir) exe [ A what; A stubs_prefix ]
       in
-      let c_generated_functions_cout_c =
-        Ctypes_field.c_generated_functions_cout_c ctypes fd
-      in
-      let function_gen_script = Ctypes_field.function_gen_script ctypes fd in
-      let* () =
-        Super_context.add_rule ~loc:Loc.none sctx ~dir
-        @@
-        let target = Path.Build.relative dir (function_gen_script ^ ".ml") in
-        Action_builder.map
-          headers
-          ~f:
-            (function_gen_gen
-               ~concurrency:fd.concurrency
-               ~errno_policy:fd.errno_policy
-               ~function_description_functor:fd.functor_)
-        |> Action_builder.with_no_targets
-        |> Action_builder.With_targets.write_file_dyn target
-      in
-      let* (_ : Exe.dep_graphs) = exe_link_only function_gen_script in
-      let exe =
-        Ok (Path.build (Path.Build.relative dir (function_gen_script ^ ".exe")))
-      in
-      let command ~stdout_to = Command.run ~stdout_to ~dir:(Path.build dir) exe in
       let* () =
         Super_context.add_rule
           sctx
           ~dir
           ~loc:Loc.none
-          (let stdout_to = Path.Build.relative dir c_generated_functions_cout_c in
-           command ~stdout_to [ A "c"; A stubs_prefix ])
+          (let stdout_to =
+             Ctypes_field.c_generated_functions_cout_c ctypes fd
+             |> Path.Build.relative dir
+           in
+           command ~stdout_to ~what:"c")
       in
       Super_context.add_rule
         sctx
         ~dir
         ~loc:Loc.none
         (let stdout_to =
-           Path.Build.relative
-             dir
-             (Ctypes_field.c_generated_functions_module ctypes fd
-              |> Ctypes_field.ml_of_module_name)
+           Ctypes_field.c_generated_functions_module ctypes fd
+           |> Ctypes_field.ml_of_module_name
+           |> Path.Build.relative dir
          in
-         command ~stdout_to [ A "ml"; A stubs_prefix ]))
+         command ~stdout_to ~what:"ml"))
   in
   (* The entry point module binds the instantiated Types and Functions functors
      to the entry point module name and instances the user specified. *)
@@ -474,13 +471,12 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
     (let target =
        Path.Build.relative dir (generated_entry_module |> Ctypes_field.ml_of_module_name)
      in
-     Action_builder.write_file
-       target
-       (write_entry_point_module
-          ~ctypes
-          ~type_description_instance:ctypes.type_description.instance
-          ~function_description:ctypes.function_description
-          ~c_types_includer_module))
+     write_entry_point_module
+       ~ctypes
+       ~type_description_instance:ctypes.type_description.instance
+       ~function_description:ctypes.function_description
+       ~c_types_includer_module
+     |> Action_builder.write_file target)
 ;;
 
 let ctypes_cclib_flags sctx ~expander ~(buildable : Buildable.t) =

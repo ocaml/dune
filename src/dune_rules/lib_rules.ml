@@ -171,27 +171,21 @@ let ocamlmklib
         Command.quote_args "-ldopt" cclibs)
     in
     fun ~custom ~sandbox targets ->
-      Super_context.add_rule
-        sctx
-        ~dir
-        ~loc
-        (let open Action_builder.With_targets.O in
-         let ctx = Super_context.context sctx in
-         Command.run
-           ~dir:(Path.build (Context.build_dir ctx))
-           ocaml.ocamlmklib
-           [ A "-g"
-           ; (if custom then A "-custom" else Command.Args.empty)
-           ; A "-o"
-           ; Path
-               (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
-           ; Deps o_files
-             (* The [c_library_flags] is needed only for the [dynamic_target] case,
+      let open Action_builder.With_targets.O in
+      let ctx = Super_context.context sctx in
+      [ Command.Args.A "-g"
+      ; (if custom then A "-custom" else Command.Args.empty)
+      ; A "-o"
+      ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
+      ; Deps o_files
+        (* The [c_library_flags] is needed only for the [dynamic_target] case,
                 but we pass them unconditionally for simplicity. *)
-           ; Dyn cclibs
-           ; Hidden_targets targets
-           ]
-         >>| Action.Full.add_sandbox sandbox)
+      ; Dyn cclibs
+      ; Hidden_targets targets
+      ]
+      |> Command.run ~dir:(Path.build (Context.build_dir ctx)) ocaml.ocamlmklib
+      >>| Action.Full.add_sandbox sandbox
+      |> Super_context.add_rule sctx ~dir ~loc
   in
   let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in
   let dynamic_target =

@@ -424,20 +424,21 @@ let setup_build_archives (lib : Library.t) ~top_sorted_modules ~cctx ~expander ~
          implicitly adds this module. *)
       [ Cm_kind.Cmx, Cm_kind.ext Cmx; Cmo, Cm_kind.ext Cmo; Cmx, ext_obj ]
       |> Memo.parallel_iter ~f:(fun (kind, ext) ->
-        let src =
-          Path.build (Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml kind) ~ext)
+        let symlink =
+          let src =
+            Path.build (Obj_dir.Module.obj_file obj_dir m ~kind:(Ocaml kind) ~ext)
+          in
+          let dst =
+            (* XXX we should get the directory from the dir of the cma
+               file explicitly *)
+            Module.obj_name m
+            |> Module_name.Unique.artifact_filename ~ext
+            |> Path.Build.relative (Obj_dir.dir obj_dir)
+          in
+          Action_builder.symlink ~src ~dst
         in
-        let obj_name = Module.obj_name m in
-        let fname = Module_name.Unique.artifact_filename obj_name ~ext in
-        (* XXX we should get the directory from the dir of the cma
-           file explicitly *)
-        let dst = Path.Build.relative (Obj_dir.dir obj_dir) fname in
         let dir = Compilation_context.dir cctx in
-        Super_context.add_rule
-          sctx
-          ~dir
-          ~loc:lib.buildable.loc
-          (Action_builder.symlink ~src ~dst)))
+        Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc symlink))
   in
   let modes = Compilation_context.modes cctx in
   (* The [dir] below is used as an object directory without going through

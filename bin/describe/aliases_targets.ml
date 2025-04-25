@@ -95,8 +95,6 @@ let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t
         let+ targets = fetch_results build_dir in
         (* If we are printing multiple directories, we print the directory
            name as a header. *)
-
-        (* TODO: Pp.enumerate can be used to display synopsis in fancy way *)
         (if header then [ Pp.textf "%s:" (Path.to_string dir) ] else [])
         @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopses } ->
               Pp.concat

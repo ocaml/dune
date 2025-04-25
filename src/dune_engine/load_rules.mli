@@ -16,9 +16,7 @@ module Loaded : sig
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases :
-        (* TODO: make explicit type here *)
-        Rules.Dir_rules.Alias_spec.expansion list Alias.Name.Map.t
+    ; aliases : Rules.Dir_rules.Alias_spec.expansion list Alias.Name.Map.t
     }
 
   (* CR-someday amokhov: Switch to [Filename_set.Source.t] and [Filename_set.External.t]

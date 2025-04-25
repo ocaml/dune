@@ -1,4 +1,6 @@
-Dune should parse rule with alias with synopsis. TODO: version 3.19?
+Dune should parse rule with alias with synopsis.
+Dune should show synopsis for targets.
+Dune should show synopsis for alias.
 
   $ cat > dune-project << EOF
   > (lang dune 3.18)

@@ -290,31 +290,40 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
   if List.for_all ~f:List.is_empty [ all_o_files; vlib_stubs_o_files ]
   then Memo.return ()
   else (
-    let archive_name =
-      let lib_name = Lib_name.Local.to_string (snd lib.name) in
-      Foreign.Archive.Name.stubs lib_name
-    in
     let modes = (Compilation_context.modes cctx).ocaml in
-    let build_targets_together =
-      modes.native
-      && modes.byte
-      && Dynlink_supported.get_ocaml_config
-           lib.dynlink
-           (Compilation_context.ocaml cctx).ocaml_config
-    in
-    let c_library_flags =
-      let open Action_builder.O in
-      let standard =
-        standard_cxx_flags ~dir sctx ~has_cxx:(fun () ->
-          Foreign.Sources.has_cxx_sources foreign_sources)
+    let ocamlmklib =
+      let build_targets_together =
+        modes.native
+        && modes.byte
+        && Dynlink_supported.get_ocaml_config
+             lib.dynlink
+             (Compilation_context.ocaml cctx).ocaml_config
       in
-      let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
-      and+ ctypes_lib =
-        (* CR rgrinberg: Should we add these flags to :standard? to make
+      let archive_name =
+        let lib_name = Lib_name.Local.to_string (snd lib.name) in
+        Foreign.Archive.Name.stubs lib_name
+      in
+      let c_library_flags =
+        let open Action_builder.O in
+        let standard =
+          standard_cxx_flags ~dir sctx ~has_cxx:(fun () ->
+            Foreign.Sources.has_cxx_sources foreign_sources)
+        in
+        let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+        and+ ctypes_lib =
+          (* CR rgrinberg: Should we add these flags to :standard? to make
            it possible for users to remove these *)
-        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
+          Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
+        in
+        c_lib @ ctypes_lib
       in
-      c_lib @ ctypes_lib
+      ocamlmklib
+        ~archive_name
+        ~loc:lib.buildable.loc
+        ~sctx
+        ~dir
+        ~c_library_flags
+        ~build_targets_together
     in
     let for_all_modes =
       let lib_o_files_for_all_modes = Mode.Map.Multi.for_all_modes o_files in
@@ -324,33 +333,16 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       Mode.Dict.Set.to_list modes
       |> List.for_all ~f:(fun mode ->
         List.is_empty @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
-    then (
+    then
       (* if stubs are not mode dependent *)
-      let o_files = for_all_modes in
-      ocamlmklib
-        ~archive_name
-        ~loc:lib.buildable.loc
-        ~sctx
-        ~dir
-        ~o_files
-        ~c_library_flags
-        ~build_targets_together
-        ~stubs_mode:All)
+      ocamlmklib ~o_files:for_all_modes ~stubs_mode:All
     else
       Mode.Dict.Set.to_list modes
       |> List.map ~f:(fun mode ->
         let o_files_for_mode = Mode.Map.Multi.for_only ~and_all:false o_files mode in
         List.rev_append for_all_modes o_files_for_mode, Mode.Select.Only mode)
       |> Memo.parallel_iter ~f:(fun (o_files, stubs_mode) ->
-        ocamlmklib
-          ~archive_name
-          ~loc:lib.buildable.loc
-          ~sctx
-          ~dir
-          ~o_files
-          ~c_library_flags
-          ~build_targets_together
-          ~stubs_mode))
+        ocamlmklib ~o_files ~stubs_mode))
 ;;
 
 let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =

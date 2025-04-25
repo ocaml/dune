@@ -52,72 +52,65 @@ let build_lib
       | Msvc -> msvc_hack_cclibs
       | Cc | Other _ -> Fun.id
     in
-    let obj_deps =
-      Action_builder.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
-    in
-    Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-    @@
-    let open Action_builder.With_targets.O in
-    Action_builder.with_no_targets obj_deps
-    >>> Command.run
-          (Ok compiler)
-          ~dir:(Path.build (Context.build_dir ctx))
-          [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
-          ; A "-a"
-          ; A "-o"
-          ; Target (Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode))
-          ; As
-              (let foreign_archives =
-                 let foreign_archives = Library.foreign_archives lib in
-                 List.concat_map foreign_archives ~f:(lib_args mode ~stub_mode:All)
-               in
-               match Library.stubs_archive lib with
-               | None -> foreign_archives
-               | Some lib_archive ->
-                 let stub_mode : Mode.Select.t =
-                   if Buildable.has_mode_dependent_foreign_stubs lib.buildable
-                   then Only mode
-                   else All
-                 in
-                 lib_args mode ~stub_mode lib_archive @ foreign_archives)
-          ; Dyn
-              (let open Action_builder.O in
-               let+ cclibs =
-                 let standard =
-                   standard_cxx_flags
-                     ~dir
-                     ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
-                     sctx
-                 in
-                 Expander.expand_and_eval_set expander lib.c_library_flags ~standard
-               in
-               Command.quote_args "-cclib" (map_cclibs cclibs))
-          ; Command.Args.dyn
-              (let standard = Action_builder.return [] in
-               Expander.expand_and_eval_set expander lib.library_flags ~standard)
-          ; As
-              (match lib.kind with
-               | Normal -> []
-               | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
-          ; Dyn
-              (Cm_files.top_sorted_cms cm_files ~mode
-               |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))
-          ; Hidden_targets
-              (match mode with
-               | Byte -> []
-               | Native -> native_archives)
-          ; Dyn
-              (let open Action_builder.O in
-               let+ ctypes_cclib_flags =
-                 Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
-               in
-               Command.quote_args "-cclib" (map_cclibs ctypes_cclib_flags))
-          ; Deps
-              (Foreign.Objects.build_paths
-                 lib.buildable.extra_objects
-                 ~ext_obj:ocaml.lib_config.ext_obj
-                 ~dir)
-          ])
+    [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
+    ; A "-a"
+    ; A "-o"
+    ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
+    ; Target (Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode))
+    ; As
+        (let foreign_archives =
+           let foreign_archives = Library.foreign_archives lib in
+           List.concat_map foreign_archives ~f:(lib_args mode ~stub_mode:All)
+         in
+         match Library.stubs_archive lib with
+         | None -> foreign_archives
+         | Some lib_archive ->
+           let stub_mode : Mode.Select.t =
+             if Buildable.has_mode_dependent_foreign_stubs lib.buildable
+             then Only mode
+             else All
+           in
+           lib_args mode ~stub_mode lib_archive @ foreign_archives)
+    ; Dyn
+        (let open Action_builder.O in
+         let+ cclibs =
+           let standard =
+             standard_cxx_flags
+               ~dir
+               ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
+               sctx
+           in
+           Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+         in
+         Command.quote_args "-cclib" (map_cclibs cclibs))
+    ; Command.Args.dyn
+        (let standard = Action_builder.return [] in
+         Expander.expand_and_eval_set expander lib.library_flags ~standard)
+    ; As
+        (match lib.kind with
+         | Normal -> []
+         | Ppx_deriver _ | Ppx_rewriter _ -> [ "-linkall" ])
+    ; Dyn
+        (Cm_files.top_sorted_cms cm_files ~mode
+         |> Action_builder.map ~f:(fun x -> Command.Args.Deps x))
+    ; Hidden_targets
+        (match mode with
+         | Byte -> []
+         | Native -> native_archives)
+    ; Dyn
+        (let open Action_builder.O in
+         let+ ctypes_cclib_flags =
+           Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
+         in
+         Command.quote_args "-cclib" (map_cclibs ctypes_cclib_flags))
+    ; Deps
+        (Foreign.Objects.build_paths
+           lib.buildable.extra_objects
+           ~ext_obj:ocaml.lib_config.ext_obj
+           ~dir)
+    ]
+    |> Command.run (Ok compiler) ~dir:(Path.build (Context.build_dir ctx))
+    |> Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc)
 ;;
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =

@@ -336,14 +336,12 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         ~c_library_flags
         ~build_targets_together
         ~stubs_mode:All)
-    else (
-      let modes =
-        Mode.Dict.Set.to_list modes
-        |> List.map ~f:(fun mode ->
-          let o_files_for_mode = Mode.Map.Multi.for_only ~and_all:false o_files mode in
-          List.rev_append for_all_modes o_files_for_mode, Mode.Select.Only mode)
-      in
-      Memo.parallel_iter modes ~f:(fun (o_files, stubs_mode) ->
+    else
+      Mode.Dict.Set.to_list modes
+      |> List.map ~f:(fun mode ->
+        let o_files_for_mode = Mode.Map.Multi.for_only ~and_all:false o_files mode in
+        List.rev_append for_all_modes o_files_for_mode, Mode.Select.Only mode)
+      |> Memo.parallel_iter ~f:(fun (o_files, stubs_mode) ->
         ocamlmklib
           ~archive_name
           ~loc:lib.buildable.loc
@@ -352,7 +350,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
           ~o_files
           ~c_library_flags
           ~build_targets_together
-          ~stubs_mode)))
+          ~stubs_mode))
 ;;
 
 let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =

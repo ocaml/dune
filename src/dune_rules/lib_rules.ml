@@ -59,18 +59,21 @@ let build_lib
     ; Target (Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode))
     ; As
         (let foreign_archives =
-           let foreign_archives = Library.foreign_archives lib in
-           List.concat_map foreign_archives ~f:(lib_args mode ~stub_mode:All)
+           Library.foreign_archives lib
+           |> List.concat_map ~f:(lib_args mode ~stub_mode:All)
          in
-         match Library.stubs_archive lib with
-         | None -> foreign_archives
-         | Some lib_archive ->
-           let stub_mode : Mode.Select.t =
-             if Buildable.has_mode_dependent_foreign_stubs lib.buildable
-             then Only mode
-             else All
-           in
-           lib_args mode ~stub_mode lib_archive @ foreign_archives)
+         let stubs_archive =
+           match Library.stubs_archive lib with
+           | None -> []
+           | Some lib_archive ->
+             let stub_mode : Mode.Select.t =
+               if Buildable.has_mode_dependent_foreign_stubs lib.buildable
+               then Only mode
+               else All
+             in
+             lib_args mode ~stub_mode lib_archive
+         in
+         stubs_archive @ foreign_archives)
     ; Dyn
         (let open Action_builder.O in
          let+ cclibs =

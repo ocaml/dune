@@ -1,14 +1,24 @@
 open Import
 open Memo.O
 
-let msvc_hack_cclibs =
-  List.map ~f:(fun lib ->
-    let lib =
-      match String.drop_prefix lib ~prefix:"-l" with
-      | None -> lib
-      | Some l -> l ^ ".lib"
-    in
-    Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
+let cclibs =
+  (* https://github.com/ocaml/dune/issues/119 *)
+  let msvc_hack_cclibs =
+    List.map ~f:(fun lib ->
+      let lib =
+        match String.drop_prefix lib ~prefix:"-l" with
+        | None -> lib
+        | Some l -> l ^ ".lib"
+      in
+      Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
+  in
+  fun (ccomp : Ocaml_config.Ccomp_type.t) ~flag c_library_flags ->
+    Command.quote_args
+      flag
+      ((match ccomp with
+        | Msvc -> msvc_hack_cclibs
+        | Cc | Other _ -> Fun.id)
+         c_library_flags)
 ;;
 
 let standard_cxx_flags ~dir ~has_cxx sctx =
@@ -42,15 +52,7 @@ let build_lib
   =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
-  let map_cclibs =
-    let hack =
-      (* https://github.com/ocaml/dune/issues/119 *)
-      match ocaml.lib_config.ccomp_type with
-      | Msvc -> msvc_hack_cclibs
-      | Cc | Other _ -> Fun.id
-    in
-    fun s -> Command.quote_args "-cclib" (hack s)
-  in
+  let map_cclibs = cclibs ocaml.lib_config.ccomp_type ~flag:"-cclib" in
   Ocaml_toolchain.compiler ocaml mode
   |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
@@ -161,14 +163,9 @@ let ocamlmklib
   let* ocaml = Context.ocaml ctx in
   let build =
     let cclibs =
-      Action_builder.map c_library_flags ~f:(fun cclibs ->
-        (* https://github.com/ocaml/dune/issues/119 *)
-        let cclibs =
-          match ocaml.lib_config.ccomp_type with
-          | Msvc -> msvc_hack_cclibs cclibs
-          | Cc | Other _ -> cclibs
-        in
-        Command.quote_args "-ldopt" cclibs)
+      Action_builder.map
+        c_library_flags
+        ~f:(cclibs ocaml.lib_config.ccomp_type ~flag:"-ldopt")
     in
     fun ~custom ~sandbox targets ->
       let open Action_builder.With_targets.O in

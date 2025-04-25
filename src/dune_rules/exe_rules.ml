@@ -12,58 +12,50 @@ let linkages
       ~jsoo_is_whole_program
   =
   let module L = Executables.Link_mode in
-  let l =
-    let has_native = Result.is_ok ocaml.ocamlopt in
-    let modes =
-      L.Map.to_list exes.modes
-      |> List.filter ~f:(fun (mode, _) ->
-        match (mode : Executables.Link_mode.t) with
-        | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
-        | Byte_complete | Other _ -> true)
-      |> List.map ~f:(fun (mode, loc) ->
-        Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
-    in
-    let modes =
-      if has_native
-      then modes
-      else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x))
-    in
-    let modes =
-      if L.Map.existsi ~f:(fun m _ -> L.is_jsoo m) exes.modes
-      then (
-        let jsoo_bytecode_exe_needed =
-          Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
-        in
-        let bytecode_exe_needed =
-          L.Map.existsi
-            ~f:(fun mode _ ->
-              match (mode : Executables.Link_mode.t) with
-              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed
-              | Byte_complete | Other _ -> false)
-            exes.modes
-        in
-        if bytecode_exe_needed then Exe.Linkage.byte_for_jsoo :: modes else modes)
-      else if explicit_js_mode
-      then modes
-      else if L.Map.mem exes.modes L.byte
-      then
-        Exe.Linkage.js
-        ::
-        (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
-         then Exe.Linkage.byte_for_jsoo :: modes
-         else modes)
-      else modes
-    in
-    modes
-  in
-  (* If bytecode was requested but not native or best version, add custom
+  List.concat
+    [ (let modes =
+         L.Map.to_list exes.modes
+         |> List.filter ~f:(fun (mode, _) ->
+           match (mode : Executables.Link_mode.t) with
+           | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes
+           | Byte_complete | Other _ -> true)
+         |> List.map ~f:(fun (mode, loc) ->
+           Exe.Linkage.of_user_config ocaml ~dynamically_linked_foreign_archives ~loc mode)
+       in
+       if Result.is_ok ocaml.ocamlopt
+       then modes
+       else List.filter modes ~f:(fun x -> not (Exe.Linkage.is_native x)))
+    ; (if L.Map.existsi ~f:(fun m _ -> L.is_jsoo m) exes.modes
+       then (
+         let bytecode_exe_needed =
+           let jsoo_bytecode_exe_needed =
+             Js_of_ocaml.Mode.Set.inter jsoo_enabled_modes jsoo_is_whole_program
+           in
+           L.Map.existsi exes.modes ~f:(fun mode _ ->
+             match (mode : Executables.Link_mode.t) with
+             | Byte_complete | Other _ -> false
+             | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_bytecode_exe_needed)
+         in
+         if bytecode_exe_needed then [ Exe.Linkage.byte_for_jsoo ] else [])
+       else if explicit_js_mode
+       then []
+       else if L.Map.mem exes.modes L.byte
+       then
+         Exe.Linkage.js
+         ::
+         (if Js_of_ocaml.Mode.Pair.select ~mode:JS jsoo_is_whole_program
+          then [ Exe.Linkage.byte_for_jsoo ]
+          else [])
+       else [])
+    ; (if
+         (* If bytecode was requested but not native or best version, add custom
      linking *)
-  if
-    L.Map.mem exes.modes L.byte
-    && (not (L.Map.mem exes.modes L.native))
-    && not (L.Map.mem exes.modes L.exe)
-  then Exe.Linkage.custom ocaml.version :: l
-  else l
+         L.Map.mem exes.modes L.byte
+         && (not (L.Map.mem exes.modes L.native))
+         && not (L.Map.mem exes.modes L.exe)
+       then [ Exe.Linkage.custom ocaml.version ]
+       else [])
+    ]
 ;;
 
 let programs ~modules ~(exes : Executables.t) =

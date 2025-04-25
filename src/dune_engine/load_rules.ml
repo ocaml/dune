@@ -32,9 +32,7 @@ module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases :
-        ((Loc.t * Rules.Dir_rules.Alias_spec.item) list * (Loc.t * Synopsis.t) list)
-          Alias.Name.Map.t
+    ; aliases : Rules.Dir_rules.Alias_spec.expansion list Alias.Name.Map.t
     }
 
   type t =
@@ -342,7 +340,13 @@ end = struct
     | Source _ | External _ ->
       Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
     | Build { aliases; _ } ->
-      Option.map ~f:fst (Alias.Name.Map.find aliases (Alias.name alias))
+      Option.map
+        ~f:(fun (expansions : Rules.Dir_rules.Alias_spec.expansion list) ->
+          List.map
+            ~f:(fun (expansion : Rules.Dir_rules.Alias_spec.expansion) ->
+              expansion.loc, expansion.item)
+            expansions)
+        (Alias.Name.Map.find aliases (Alias.name alias))
     | Build_under_directory_target _ -> None
   ;;
 
@@ -361,18 +365,17 @@ end = struct
             Alias.Name.default
             { expansions =
                 Appendable_list.singleton
-                  (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
-                (* TODO: Synopsis for default alias? *)
-            ; synopses = Appendable_list.empty
+                  { Rules.Dir_rules.Alias_spec.loc = Loc.none
+                  ; item = Deps expansion
+                  ; synopsis = None (* TODO add synopsis *)
+                  }
             }
     in
-    Alias.Name.Map.map
-      aliases
-      ~f:(fun { Rules.Dir_rules.Alias_spec.expansions; synopses } ->
-        (* CR-soon rgrinberg: hide this reversal behind the interface from
+    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
+      (* CR-soon rgrinberg: hide this reversal behind the interface from
          [Alias_spec]. The order doesn't really matter, as we're just
          collecting the dependencies that are attached to the alias *)
-        Appendable_list.to_list_rev expansions, Appendable_list.to_list_rev synopses)
+      Appendable_list.to_list_rev expansions)
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =

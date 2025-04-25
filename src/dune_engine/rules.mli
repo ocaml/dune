@@ -27,10 +27,13 @@ module Dir_rules : sig
            will be re-executed. *)
         Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t =
-      { expansions : (Loc.t * item) Appendable_list.t
-      ; synopses : (Loc.t * Synopsis.t) Appendable_list.t
+    type expansion =
+      { loc : Loc.t
+      ; synopsis : Synopsis.t option
+      ; item : item
       }
+
+    type t = { expansions : expansion Appendable_list.t } [@@unboxed]
   end
 
   (** A ready to process view of the rules of a directory *)

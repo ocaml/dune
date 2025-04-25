@@ -118,8 +118,14 @@ module Aliases_cmd = struct
       | Load_rules.Loaded.Build build ->
         let name_synopses =
           build.aliases
-          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name (_, synopses) ->
+          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name expansions ->
             let name = Dune_engine.Alias.Name.to_string name in
+            let synopses =
+              List.filter_map
+                ~f:(fun { Dune_engine.Rules.Dir_rules.Alias_spec.synopsis; loc; _ } ->
+                  synopsis |> Option.map ~f:(fun s -> loc, s))
+                expansions
+            in
             { name; synopses })
           |> Dune_engine.Alias.Name.Map.values
         in

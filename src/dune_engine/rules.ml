@@ -7,16 +7,15 @@ module Dir_rules = struct
       | Deps of unit Action_builder.t
       | Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t =
-      { expansions : (Loc.t * item) Appendable_list.t
-      ; synopses : (Loc.t * Synopsis.t) Appendable_list.t
+    type expansion =
+      { loc : Loc.t
+      ; synopsis : Synopsis.t option
+      ; item : item
       }
 
-    let union x y =
-      { expansions = Appendable_list.( @ ) x.expansions y.expansions
-      ; synopses = Appendable_list.( @ ) x.synopses y.synopses
-      }
-    ;;
+    type t = { expansions : expansion Appendable_list.t } [@@unboxed]
+
+    let union x y = { expansions = Appendable_list.( @ ) x.expansions y.expansions }
   end
 
   type alias =
@@ -151,15 +150,14 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) ?(synopsis = None) expansion =
-      let synopses =
-        match synopsis with
-        | None -> Appendable_list.empty
-        | Some synopsis -> Appendable_list.singleton (loc, synopsis)
-      in
       alias
         t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        ; synopses
+        { expansions =
+            Appendable_list.singleton
+              { Dir_rules.Alias_spec.loc
+              ; item = Dir_rules.Alias_spec.Deps expansion
+              ; synopsis
+              }
         }
     ;;
 
@@ -173,15 +171,14 @@ module Produce = struct
         ; alias = Some (Alias.name t)
         }
       in
-      let synopses =
-        match synopsis with
-        | None -> Appendable_list.empty
-        | Some synopsis -> Appendable_list.singleton (loc, synopsis)
-      in
       alias
         t
-        { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-        ; synopses
+        { expansions =
+            Appendable_list.singleton
+              { Dir_rules.Alias_spec.loc
+              ; item = Dir_rules.Alias_spec.Action action
+              ; synopsis
+              }
         }
     ;;
   end

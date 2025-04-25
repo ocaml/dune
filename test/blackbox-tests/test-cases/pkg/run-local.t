@@ -18,8 +18,8 @@ Now build the package per se. The output is suppressed for now as `./configure`
 fails with an OS-dependent error (when it cannot find the script in the sources)
 so we can only observe the failure until this is fixed.
 
-  $ build_pkg test 2> /dev/null
-  [1]
+  $ build_pkg test
+  Package configured
 
 Note that this can be worked around for now calling explicitly `sh` instead:
 

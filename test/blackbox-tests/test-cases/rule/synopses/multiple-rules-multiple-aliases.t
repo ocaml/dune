@@ -42,6 +42,9 @@ Dune should show all synopses with their location for all rules to aliases attac
     - dune:8 Rule creates file2.ml
     - dune:15 Rule creates file3.ml
   default
+    - This alias corresponds to the default argument for dune build. More
+      information on
+      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   ocaml-index
   pkg-install

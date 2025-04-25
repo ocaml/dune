@@ -6,9 +6,11 @@ type name_synopses =
   }
 
 let pp_synopsis (loc, synopsis) =
-  Pp.concat
-    ~sep:Pp.space
-    [ Loc.pp_file_colon_line loc; Pp.text (Dune_engine.Synopsis.value synopsis) ]
+  let synopsis = Pp.text (Dune_engine.Synopsis.value synopsis) in
+  let loc_synopsis =
+    if Loc.is_none loc then [ synopsis ] else [ Loc.pp_file_colon_line loc; synopsis ]
+  in
+  Pp.concat ~sep:Pp.space loc_synopsis
 ;;
 
 let pp_synopses synopses =

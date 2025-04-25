@@ -225,22 +225,18 @@ let executables_rules
        files directly to improve perf. *)
     let link_deps, sandbox = Dep_conf_eval.unnamed ~expander exes.link_deps in
     let link_args =
-      let use_standard_cxx_flags =
-        match Dune_project.use_standard_c_and_cxx_flags project with
-        | Some true -> Buildable.has_foreign_cxx exes.buildable
-        | _ -> false
-      in
       let open Action_builder.O in
-      let link_flags =
+      let+ flags =
         let* () = link_deps in
         let* link_flags =
           Action_builder.of_memo (Ocaml_flags_db.link_flags sctx ~dir exes.link_flags)
         in
+        let use_standard_cxx_flags =
+          match Dune_project.use_standard_c_and_cxx_flags project with
+          | Some true -> Buildable.has_foreign_cxx exes.buildable
+          | _ -> false
+        in
         Link_flags.get ~use_standard_cxx_flags link_flags
-      in
-      let+ flags = link_flags
-      and+ ctypes_cclib_flags =
-        Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
       in
       Command.Args.S
         [ As flags
@@ -256,7 +252,13 @@ let executables_rules
                Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
           (* XXX: don't these need the msvc hack being done in lib_rules? *)
           (* XXX: also the Command.quote_args being done in lib_rules? *)
-        ; As (List.concat_map ctypes_cclib_flags ~f:(fun f -> [ "-cclib"; f ]))
+        ; Dyn
+            (let open Action_builder.O in
+             let+ args =
+               Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:exes.buildable
+               >>| List.concat_map ~f:(fun f -> [ "-cclib"; f ])
+             in
+             Command.Args.As args)
         ]
     in
     let* o_files =

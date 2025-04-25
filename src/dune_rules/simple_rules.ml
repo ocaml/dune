@@ -2,9 +2,9 @@ open Import
 open Memo.O
 
 module Alias_rules = struct
-  let add sctx ~alias ~loc build =
+  let add sctx ~alias ~loc ?(synopsis = None) build =
     let dir = Alias.dir alias in
-    Super_context.add_alias_action sctx alias ~dir ~loc build
+    Super_context.add_alias_action sctx alias ~dir ~loc ~synopsis build
   ;;
 
   let add_empty sctx ~loc ~alias =
@@ -132,6 +132,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
            let alias = Alias.make ~dir alias in
            Rules.Produce.Alias.add_deps
              alias
+             ~synopsis:rule.synopsis
              (Action_builder.path (Path.build alias_target)))
        and+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in
        Some targets
@@ -139,9 +140,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
        let+ () =
          let action = interpret_and_add_locks ~expander rule.locks action.build in
          Memo.parallel_iter aliases ~f:(fun alias ->
-           (* TODO: I can attach synopsis to alias here! *)
            let alias = Alias.make ~dir alias in
-           Alias_rules.add sctx ~alias ~loc:rule.loc action)
+           Alias_rules.add sctx ~alias ~synopsis:rule.synopsis ~loc:rule.loc action)
        in
        None)
 ;;

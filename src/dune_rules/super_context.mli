@@ -57,6 +57,7 @@ val add_alias_action
   -> Alias.t
   -> dir:Path.Build.t
   -> loc:Loc.t
+  -> ?synopsis:Dune_engine.Synopsis.t option
   -> Action.Full.t Action_builder.t
   -> unit Memo.t
 

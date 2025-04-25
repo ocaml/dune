@@ -32,7 +32,9 @@ module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_here : rules_here
-    ; aliases : (Loc.t * Rules.Dir_rules.Alias_spec.item) list Alias.Name.Map.t
+    ; aliases :
+        ((Loc.t * Rules.Dir_rules.Alias_spec.item) list * (Loc.t * Synopsis.t) list)
+          Alias.Name.Map.t
     }
 
   type t =
@@ -339,7 +341,8 @@ end = struct
     >>| function
     | Source _ | External _ ->
       Code_error.raise "Alias in a non-build dir" [ "alias", Alias.to_dyn alias ]
-    | Build { aliases; _ } -> Alias.Name.Map.find aliases (Alias.name alias)
+    | Build { aliases; _ } ->
+      Option.map ~f:fst (Alias.Name.Map.find aliases (Alias.name alias))
     | Build_under_directory_target _ -> None
   ;;
 
@@ -359,13 +362,17 @@ end = struct
             { expansions =
                 Appendable_list.singleton
                   (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
+                (* TODO: Synopsis for default alias? *)
+            ; synopsises = Appendable_list.empty
             }
     in
-    Alias.Name.Map.map aliases ~f:(fun { Rules.Dir_rules.Alias_spec.expansions } ->
-      (* CR-soon rgrinberg: hide this reversal behind the interface from
+    Alias.Name.Map.map
+      aliases
+      ~f:(fun { Rules.Dir_rules.Alias_spec.expansions; synopsises } ->
+        (* CR-soon rgrinberg: hide this reversal behind the interface from
          [Alias_spec]. The order doesn't really matter, as we're just
          collecting the dependencies that are attached to the alias *)
-      Appendable_list.to_list_rev expansions)
+        Appendable_list.to_list_rev expansions, Appendable_list.to_list synopsises)
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =

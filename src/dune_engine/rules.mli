@@ -27,7 +27,10 @@ module Dir_rules : sig
            will be re-executed. *)
         Action of Rule.Anonymous_action.t Action_builder.t
 
-    type t = { expansions : (Loc.t * item) Appendable_list.t } [@@unboxed]
+    type t =
+      { expansions : (Loc.t * item) Appendable_list.t
+      ; synopsises : (Loc.t * Synopsis.t) Appendable_list.t
+      }
   end
 
   (** A ready to process view of the rules of a directory *)
@@ -70,11 +73,21 @@ module Produce : sig
     (** [add_deps alias ?loc deps] arrange things so that all the dependencies
         registered by [deps] are considered as a part of alias expansion of
         [alias]. *)
-    val add_deps : t -> ?loc:Stdune.Loc.t -> unit Action_builder.t -> unit Memo.t
+    val add_deps
+      :  t
+      -> ?loc:Stdune.Loc.t
+      -> ?synopsis:Synopsis.t option
+      -> unit Action_builder.t
+      -> unit Memo.t
 
-    (** [add_action alias ~loc action] arrange things so that [action]
+    (** [add_action alias ~loc ~synopsis ~action] arrange things so that [action]
         is executed as part of the build of alias [alias]. *)
-    val add_action : t -> loc:Loc.t -> Action.Full.t Action_builder.t -> unit Memo.t
+    val add_action
+      :  t
+      -> loc:Loc.t
+      -> ?synopsis:Synopsis.t option
+      -> Action.Full.t Action_builder.t
+      -> unit Memo.t
   end
 end
 

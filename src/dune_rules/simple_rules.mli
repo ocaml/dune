@@ -7,6 +7,7 @@ module Alias_rules : sig
     :  Super_context.t
     -> alias:Alias.t
     -> loc:Loc.t
+    -> ?synopsis:Dune_engine.Synopsis.t option
     -> Action.Full.t Action_builder.t
     -> unit Memo.t
 

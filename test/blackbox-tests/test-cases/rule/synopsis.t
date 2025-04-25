@@ -20,3 +20,11 @@ Dune should parse rule with alias with synopsis. TODO: version 3.19?
   dune-project
   touched-file.ml
   - Synopsis for rule with alias rule-with-synopsis
+  $ dune show aliases
+  all
+  default
+  fmt
+  ocaml-index
+  pkg-install
+  rule-with-synopsis
+  - Synopsis for rule with alias rule-with-synopsis

@@ -111,12 +111,19 @@ module Aliases_cmd = struct
         Action_builder.of_memo (Load_rules.load_dir ~dir:(Path.build dir))
       in
       match load_dir with
-      | Load_rules.Loaded.Build build -> Dune_engine.Alias.Name.Map.keys build.aliases
+      | Load_rules.Loaded.Build build ->
+        let name_synopsises =
+          build.aliases
+          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name (_, synopsises) ->
+            let synopsises = List.map ~f:snd synopsises in
+            let name = Dune_engine.Alias.Name.to_string name in
+            { name; synopsises })
+          |> Dune_engine.Alias.Name.Map.values
+        in
+        name_synopsises
       | _ -> []
     in
-    List.map
-      ~f:(fun name -> { name = Dune_engine.Alias.Name.to_string name; synopsises = [] })
-      alias_targets
+    alias_targets
   ;;
 
   let term = ls_term fetch_results

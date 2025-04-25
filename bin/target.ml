@@ -69,6 +69,7 @@ let all_direct_targets dir =
                rules_here.by_file_targets
                ~f:(fun ({ synopsis; _ } : Dune_engine.Rule.t) ->
                  Target_type.File { synopsis }))
+            (* TODO attach synopsis to directory as well *)
             (Path.Build.Map.map rules_here.by_directory_targets ~f:(fun _ ->
                Target_type.Directory))
         | Build_under_directory_target _ -> All_targets.empty))

@@ -42,18 +42,21 @@ let build_lib
   =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
-  Ocaml_toolchain.compiler ocaml mode
-  |> Memo.Result.iter ~f:(fun compiler ->
-    let map_cclibs =
+  let map_cclibs =
+    let hack =
       (* https://github.com/ocaml/dune/issues/119 *)
       match ocaml.lib_config.ccomp_type with
       | Msvc -> msvc_hack_cclibs
       | Cc | Other _ -> Fun.id
     in
+    fun s -> Command.quote_args "-cclib" (hack s)
+  in
+  Ocaml_toolchain.compiler ocaml mode
+  |> Memo.Result.iter ~f:(fun compiler ->
     [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml mode))
+    ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
     ; A "-a"
     ; A "-o"
-    ; Hidden_deps (Cm_files.unsorted_objects_and_cms cm_files ~mode |> Dep.Set.of_files)
     ; Target (Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode))
     ; As
         (let foreign_archives =
@@ -74,16 +77,14 @@ let build_lib
          stubs_archive @ foreign_archives)
     ; Dyn
         (let open Action_builder.O in
-         let+ cclibs =
-           let standard =
-             standard_cxx_flags
-               ~dir
-               ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
-               sctx
-           in
-           Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+         let standard =
+           standard_cxx_flags
+             ~dir
+             ~has_cxx:(fun () -> Buildable.has_foreign_cxx lib.buildable)
+             sctx
          in
-         Command.quote_args "-cclib" (map_cclibs cclibs))
+         Expander.expand_and_eval_set expander lib.c_library_flags ~standard
+         >>| map_cclibs)
     ; Command.Args.dyn
         (let standard = Action_builder.return [] in
          Expander.expand_and_eval_set expander lib.library_flags ~standard)
@@ -100,10 +101,8 @@ let build_lib
          | Native -> native_archives)
     ; Dyn
         (let open Action_builder.O in
-         let+ ctypes_cclib_flags =
-           Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
-         in
-         Command.quote_args "-cclib" (map_cclibs ctypes_cclib_flags))
+         Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
+         >>| map_cclibs)
     ; Deps
         (Foreign.Objects.build_paths
            lib.buildable.extra_objects

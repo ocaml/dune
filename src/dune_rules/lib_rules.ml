@@ -359,41 +359,36 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   let* ocaml = Context.ocaml ctx in
   Memo.Result.iter ocaml.ocamlopt ~f:(fun ocamlopt ->
-    let build =
-      let open Action_builder.With_targets.O in
-      List.map ~f:Path.build native_archives
-      |> Action_builder.paths
-      |> Action_builder.with_no_targets
-      >>> ((let ext_lib = ocaml.lib_config.ext_lib in
-            Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:(Only Byte)
-            @ Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:All
-            |> List.map ~f:Path.build)
-           |> Action_builder.paths
-           |> Action_builder.with_no_targets
-           >>> Command.run
-                 ~dir:(Path.build (Context.build_dir ctx))
-                 (Ok ocamlopt)
-                 [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
-                 ; A "-shared"
-                 ; A "-linkall"
-                 ; A "-I"
-                 ; Path (Path.build dir)
-                 ; (let include_flags_for_relative_foreign_archives =
-                      List.map lib.buildable.foreign_archives ~f:(fun (_loc, archive) ->
-                        let dir = Foreign.Archive.dir_path ~dir archive in
-                        Command.Args.S [ A "-I"; Path (Path.build dir) ])
-                    in
-                    Command.Args.S include_flags_for_relative_foreign_archives)
-                 ; A "-o"
-                 ; Target
-                     (let ext = Mode.plugin_ext Native in
-                      Library.archive lib ~dir ~ext)
-                 ; Dep
-                     (let ext = Mode.compiled_lib_ext Native in
-                      Path.build (Library.archive lib ~dir ~ext))
-                 ])
-    in
-    Super_context.add_rule sctx build ~dir ~loc:lib.buildable.loc)
+    [ Command.Args.dyn (Ocaml_flags.get flags (Ocaml Native))
+    ; Hidden_deps
+        (let ext_lib = ocaml.lib_config.ext_lib in
+         List.rev_concat
+           [ Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:(Only Byte)
+           ; Library.foreign_lib_files lib ~dir ~ext_lib ~for_mode:All
+           ; native_archives
+           ]
+         |> List.rev_map ~f:Path.build
+         |> Dep.Set.of_files)
+    ; A "-shared"
+    ; A "-linkall"
+    ; A "-I"
+    ; Path (Path.build dir)
+    ; (let include_flags_for_relative_foreign_archives =
+         List.map lib.buildable.foreign_archives ~f:(fun (_loc, archive) ->
+           let dir = Foreign.Archive.dir_path ~dir archive in
+           Command.Args.S [ A "-I"; Path (Path.build dir) ])
+       in
+       Command.Args.S include_flags_for_relative_foreign_archives)
+    ; A "-o"
+    ; Target
+        (let ext = Mode.plugin_ext Native in
+         Library.archive lib ~dir ~ext)
+    ; Dep
+        (let ext = Mode.compiled_lib_ext Native in
+         Path.build (Library.archive lib ~dir ~ext))
+    ]
+    |> Command.run ~dir:(Path.build (Context.build_dir ctx)) (Ok ocamlopt)
+    |> Super_context.add_rule sctx ~dir ~loc:lib.buildable.loc)
 ;;
 
 let iter_modes_concurrently (t : _ Ocaml.Mode.Dict.t) ~(f : Ocaml.Mode.t -> unit Memo.t) =

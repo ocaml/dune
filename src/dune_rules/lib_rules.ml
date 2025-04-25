@@ -23,12 +23,10 @@ let standard_cxx_flags ~dir ~has_cxx sctx =
 
 let lib_args (mode : Mode.t) ~stub_mode archive =
   let lname = "-l" ^ Foreign.Archive.(name ~mode:stub_mode archive |> Name.to_string) in
-  let cclib = [ "-cclib"; lname ] in
-  match mode with
-  | Native -> cclib
-  | Byte ->
-    let dllib = [ "-dllib"; lname ] in
-    dllib @ cclib
+  (match mode with
+   | Native -> []
+   | Byte -> [ "-dllib"; lname ])
+  @ [ "-cclib"; lname ]
 ;;
 
 (* Build an OCaml library. *)

@@ -29,7 +29,7 @@ module Dir_rules : sig
 
     type t =
       { expansions : (Loc.t * item) Appendable_list.t
-      ; synopsises : (Loc.t * Synopsis.t) Appendable_list.t
+      ; synopses : (Loc.t * Synopsis.t) Appendable_list.t
       }
   end
 

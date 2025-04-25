@@ -363,16 +363,16 @@ end = struct
                 Appendable_list.singleton
                   (Loc.none, Rules.Dir_rules.Alias_spec.Deps expansion)
                 (* TODO: Synopsis for default alias? *)
-            ; synopsises = Appendable_list.empty
+            ; synopses = Appendable_list.empty
             }
     in
     Alias.Name.Map.map
       aliases
-      ~f:(fun { Rules.Dir_rules.Alias_spec.expansions; synopsises } ->
+      ~f:(fun { Rules.Dir_rules.Alias_spec.expansions; synopses } ->
         (* CR-soon rgrinberg: hide this reversal behind the interface from
          [Alias_spec]. The order doesn't really matter, as we're just
          collecting the dependencies that are attached to the alias *)
-        Appendable_list.to_list_rev expansions, Appendable_list.to_list synopsises)
+        Appendable_list.to_list_rev expansions, Appendable_list.to_list synopses)
   ;;
 
   let add_non_fallback_rules ~init ~dir ~source_filenames rules =

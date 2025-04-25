@@ -9,12 +9,12 @@ module Dir_rules = struct
 
     type t =
       { expansions : (Loc.t * item) Appendable_list.t
-      ; synopsises : (Loc.t * Synopsis.t) Appendable_list.t
+      ; synopses : (Loc.t * Synopsis.t) Appendable_list.t
       }
 
     let union x y =
       { expansions = Appendable_list.( @ ) x.expansions y.expansions
-      ; synopsises = Appendable_list.( @ ) x.synopsises y.synopsises
+      ; synopses = Appendable_list.( @ ) x.synopses y.synopses
       }
     ;;
   end
@@ -152,7 +152,7 @@ module Produce = struct
     ;;
 
     let add_deps t ?(loc = Loc.none) ?(synopsis = None) expansion =
-      let synopsises =
+      let synopses =
         match synopsis with
         | None -> Appendable_list.empty
         | Some synopsis -> Appendable_list.singleton (loc, synopsis)
@@ -160,7 +160,7 @@ module Produce = struct
       alias
         t
         { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Deps expansion)
-        ; synopsises
+        ; synopses
         }
     ;;
 
@@ -174,7 +174,7 @@ module Produce = struct
         ; alias = Some (Alias.name t)
         }
       in
-      let synopsises =
+      let synopses =
         match synopsis with
         | None -> Appendable_list.empty
         | Some synopsis -> Appendable_list.singleton (loc, synopsis)
@@ -182,7 +182,7 @@ module Produce = struct
       alias
         t
         { expansions = Appendable_list.singleton (loc, Dir_rules.Alias_spec.Action action)
-        ; synopsises
+        ; synopses
         }
     ;;
   end

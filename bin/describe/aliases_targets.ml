@@ -1,11 +1,11 @@
 open Import
 
-type name_synopsises =
+type name_synopses =
   { name : string
-  ; synopsises : Dune_engine.Synopsis.t list
+  ; synopses : Dune_engine.Synopsis.t list
   }
 
-let ls_term (fetch_results : Path.Build.t -> name_synopsises list Action_builder.t) =
+let ls_term (fetch_results : Path.Build.t -> name_synopses list Action_builder.t) =
   let+ builder = Common.Builder.term
   and+ paths = Arg.(value & pos_all string [ "." ] & info [] ~docv:"DIR")
   and+ context =
@@ -83,11 +83,11 @@ let ls_term (fetch_results : Path.Build.t -> name_synopsises list Action_builder
 
         (* TODO: Pp.enumerate can be used to display synopsis in fancy way *)
         (if header then [ Pp.textf "%s:" (Path.to_string dir) ] else [])
-        @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopsises } ->
+        @ [ Pp.concat_map targets ~sep:Pp.cut ~f:(fun { name; synopses } ->
               Pp.concat
-                ~sep:(if synopsises = [] then Pp.nop else Pp.cut)
+                ~sep:(if synopses = [] then Pp.nop else Pp.cut)
                 [ Pp.hbox (Pp.textf "%s" name)
-                ; Pp.enumerate synopsises ~f:(fun synopsis ->
+                ; Pp.enumerate synopses ~f:(fun synopsis ->
                     Pp.text (Dune_engine.Synopsis.value synopsis))
                 ])
           ]
@@ -112,15 +112,15 @@ module Aliases_cmd = struct
       in
       match load_dir with
       | Load_rules.Loaded.Build build ->
-        let name_synopsises =
+        let name_synopses =
           build.aliases
-          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name (_, synopsises) ->
-            let synopsises = List.map ~f:snd synopsises in
+          |> Dune_engine.Alias.Name.Map.mapi ~f:(fun name (_, synopses) ->
+            let synopses = List.map ~f:snd synopses in
             let name = Dune_engine.Alias.Name.to_string name in
-            { name; synopsises })
+            { name; synopses })
           |> Dune_engine.Alias.Name.Map.values
         in
-        name_synopsises
+        name_synopses
       | _ -> []
     in
     alias_targets
@@ -153,9 +153,9 @@ module Targets_cmd = struct
           (match kind with
            | Target.File { synopsis } ->
              let target_name = Path.Build.basename path in
-             { name = target_name; synopsises = Option.to_list synopsis }
+             { name = target_name; synopses = Option.to_list synopsis }
            | Directory ->
-             { name = Path.Build.basename path ^ Filename.dir_sep; synopsises = [] }))
+             { name = Path.Build.basename path ^ Filename.dir_sep; synopses = [] }))
   ;;
 
   let term = ls_term fetch_results

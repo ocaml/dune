@@ -44,7 +44,7 @@ Dune will display a diff with the actual output:
    $ calc -e '1+'
 +  calc: internal error, uncaught exception:
 +        Calc.Parser.MenhirBasics.Error
-+        
++
 +  [125]
 ```
 
@@ -129,7 +129,7 @@ Run `dune runtest`: this displays an error.
    $ calc -e '1+2.5'
 +  calc: internal error, uncaught exception:
 +        Failure("lexing: empty token")
-+        
++
 +  [125]
 ```
 
@@ -600,7 +600,8 @@ Update `lib/lexer.mll`:
 
 ### Evaluation
 
-We'll need a `float` to pass to `Stdlib.sin`, so let's introduce a conversion functin. We'll also add the corresponding cases in `lib/cli.ml`:
+We'll need a `float` to pass to `Stdlib.sin`, so let's introduce a conversion
+function. We'll also add the corresponding cases in `lib/cli.ml`:
 
 ```{code-block} ocaml
 :emphasize-lines: 1-3,13-14

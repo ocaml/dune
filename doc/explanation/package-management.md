@@ -69,7 +69,7 @@ Given the list of the project's dependencies and their version
 constraints, the next steps are:
 
 1. Find the transitive dependencies and figure out a version for each
-   dependency that satisifies the constraints
+   dependency that satisfies the constraints
 2. For each dependency, download it, build it, and make it available to the
    project
 

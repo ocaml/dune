@@ -126,8 +126,8 @@ module Stubs = struct
     ; extra_deps : Dep_conf.t list
     }
 
-  let make ~loc ~language ~names ~mode ~flags =
-    { loc; language; names; mode; flags; include_dirs = []; extra_deps = [] }
+  let make ~loc ~language ~names ~flags =
+    { loc; language; names; flags; include_dirs = []; extra_deps = []; mode = All }
   ;;
 
   let syntax =

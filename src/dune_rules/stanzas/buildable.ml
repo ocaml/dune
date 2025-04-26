@@ -41,8 +41,7 @@ let decode (for_ : for_) =
     | Some names ->
       let names = Ordered_set_lang.replace_standard_with_empty names in
       let flags = Option.value ~default:Ordered_set_lang.Unexpanded.standard flags in
-      Foreign.Stubs.make ~loc ~language ~names ~mode:Mode.Select.All ~flags
-      :: foreign_stubs
+      Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
   and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields

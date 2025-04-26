@@ -105,7 +105,6 @@ module Stubs : sig
     :  loc:Loc.t
     -> language:Foreign_language.t
     -> names:Ordered_set_lang.t
-    -> mode:Mode.Select.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
 

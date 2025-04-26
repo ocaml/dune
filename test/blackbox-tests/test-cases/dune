@@ -100,18 +100,6 @@
   (enabled_if
    (<> "macosx" %{ocaml-config:system}))))
 
-(cram
- (applies_to github3766)
- (enabled_if
-  (>= %{ocaml_version} 4.12.0))
- (deps ./github3766.t/test.exe))
-
-(subdir
- github3766.t
- (executable
-  (libraries stdune spawn unix)
-  (name test)))
-
 (subdir
  cram
  (cram

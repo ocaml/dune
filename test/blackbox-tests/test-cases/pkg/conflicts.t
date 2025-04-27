@@ -68,39 +68,33 @@ Even though the conflicts are listed by opam without a `|` to indicate a
 disjunction, either package is problematic:
 
   $ mkpkg dune 3.11
-  $ solve_project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
-  - dune -> dune.3.11
-      User requested = 3.19
+  - dune -> dune.3.XX
+      User requested = 3.XX
   - foo -> (problem)
       No usable implementations:
         foo.0.0.1: Package does not satisfy constraints of local package x
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
-  [1]
 
 Adding a new version of `foo` only resolves one conflict:
 
   $ mkpkg foo 0.2
-  $ solve_project <<EOF
-  > (lang dune 3.11)
-  > EOF
+  $ echo '(lang dune 3.11)' | solve_project 2>&1 | sed -E 's/3.[0-9]+/3.XX/'
   Error: Unable to solve dependencies for the following lock directories:
   Lock directory dune.lock:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 x.dev
-  - dune -> dune.3.11
-      User requested = 3.19
+  - dune -> dune.3.XX
+      User requested = 3.XX
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x
-  [1]
 
 Addition of `foo2` to solve the last remaining conflict:
 

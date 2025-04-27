@@ -3,7 +3,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     melange = {
-      url = "github:melange-re/melange/refs/tags/5.1.0-52";
+      url = "github:melange-re/melange/refs/tags/5.1.0-53";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     ocaml-overlays = {
@@ -81,7 +81,7 @@
         [ file mercurial unzip ]
         ++ lib.optionals stdenv.isLinux [ strace ];
       testNativeBuildInputs = with pkgs; [ nodejs-slim pkg-config opam ocamlformat ];
-      
+
       docInputs = with pkgs.python3.pkgs; [
         sphinx-autobuild
         furo

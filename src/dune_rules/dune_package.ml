@@ -314,14 +314,6 @@ module Lib = struct
        { info; main_module_name; external_location })
   ;;
 
-  let main_module_name t = t.main_module_name
-
-  let wrapped t =
-    match Lib_info.modules t.info with
-    | External modules -> Option.map modules ~f:Modules.With_vlib.wrapped
-    | Local -> None
-  ;;
-
   let info dp = dp.info
   let external_location dp = dp.external_location
 

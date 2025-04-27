@@ -19,9 +19,6 @@ end
 module Lib : sig
   type t
 
-  val main_module_name : t -> Module_name.t option
-  val dir_of_name : Lib_name.t -> Path.Local.t
-  val wrapped : t -> Wrapped.t option
   val info : t -> Path.t Lib_info.t
   val external_location : t -> External_location.t option
   val of_findlib : Path.t Lib_info.t -> External_location.t -> t

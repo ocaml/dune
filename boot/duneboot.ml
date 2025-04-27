@@ -56,6 +56,19 @@ end
 module List = struct
   include List
 
+  let partition_map_skip t ~f =
+    let rec loop l r = function
+      | [] -> l, r
+      | x :: xs ->
+        (match f x with
+         | `Skip -> loop l r xs
+         | `Left x -> loop (x :: l) r xs
+         | `Right x -> loop l (x :: r) xs)
+    in
+    let l, r = loop [] [] t in
+    rev l, rev r
+  ;;
+
   let rec filter_map l ~f =
     match l with
     | [] -> []
@@ -889,28 +902,33 @@ module Library = struct
          Fiber.parallel_map files ~f:(fun ({ file = fn; kind } as source) ->
            let mangled = Wrapper.mangle_filename wrapper source in
            let dst = build_dir ^/ mangled in
-           match kind with
-           | Header | C ->
-             copy "line" fn dst;
-             Fiber.return [ mangled ]
-           | Ml | Mli ->
-             copy "" fn dst ~header;
-             Fiber.return [ mangled ]
-           | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
-           | Mly -> copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ]))
+           (match kind with
+            | Header | C ->
+              copy "line" fn dst;
+              Fiber.return [ mangled ]
+            | Ml | Mli ->
+              copy "" fn dst ~header;
+              Fiber.return [ mangled ]
+            | Mll -> copy_lexer fn dst ~header >>> Fiber.return [ mangled ]
+            | Mly ->
+              (* CR rgrinberg: what if the parser already has an mli? *)
+              copy_parser fn dst ~header >>> Fiber.return [ mangled; mangled ^ "i" ])
+           >>| function
+           | mangled -> List.map mangled ~f:(fun m -> source, m)))
       (fun () ->
          match build_info_module with
          | None -> Fiber.return None
          | Some m ->
-           let mangled =
+           let src =
              let fn = String.uncapitalize_ascii m ^ ".ml" in
-             Wrapper.mangle_filename wrapper { file = fn; kind = Ml }
+             { file = fn; kind = Ml }
            in
+           let mangled = Wrapper.mangle_filename wrapper src in
            let oc = open_out (build_dir ^/ mangled) in
            Build_info.gen_data_module oc
            >>| fun () ->
            close_out oc;
-           Some mangled)
+           Some (src, mangled))
     >>| fun (files, build_info_file) ->
     let alias_file = Wrapper.generate_wrapper wrapper modules in
     let c_files, ocaml_files =
@@ -920,7 +938,11 @@ module Library = struct
         | None -> files
         | Some fn -> fn :: files
       in
-      List.partition files ~f:(fun fn -> Filename.extension fn = ".c")
+      List.partition_map_skip files ~f:(fun (src, fn) ->
+        match src.kind with
+        | C -> `Left fn
+        | Ml | Mli | Mly | Mll -> `Right fn
+        | Header -> `Skip)
     in
     { ocaml_files; alias_file; c_files }
   ;;

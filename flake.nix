@@ -155,6 +155,7 @@
               buildInputs = testBuildInputs ++ (with pkgs'.ocamlPackages; [
                 ocaml-lsp
                 merlin
+                ocaml-index
                 ppx_expect
                 ctypes
                 integers

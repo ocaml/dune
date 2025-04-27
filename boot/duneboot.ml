@@ -32,7 +32,7 @@ let build_dir = "_boot"
 type task =
   { target : string * string
   ; external_libraries : string list
-  ; local_libraries : (string * string option * bool * string option) list
+  ; local_libraries : Libs.library list
   }
 
 let task =
@@ -720,7 +720,7 @@ module Build_info = struct
        | Some v -> sprintf "Some %S" v);
     pr "\n";
     let libs =
-      List.map task.local_libraries ~f:(fun (name, _, _, _) -> name, "version")
+      List.map task.local_libraries ~f:(fun (lib : Libs.library) -> lib.path, "version")
       @ List.map task.external_libraries ~f:(fun name ->
         name, {|Some "[distributed with OCaml]"|})
       |> List.sort ~cmp:(fun (a, _) (b, _) -> String.compare a b)
@@ -858,7 +858,13 @@ module Library = struct
     ; c_files : string list
     }
 
-  let process (dir, namespace, scan_subdirs, build_info_module) =
+  let process
+        { Libs.path = dir
+        ; main_module_name = namespace
+        ; include_subdirs_unqualified = scan_subdirs
+        ; special_builtin_support = build_info_module
+        }
+    =
     let files = scan ~dir ~scan_subdirs in
     let modules =
       let modules =
@@ -1023,7 +1029,11 @@ let assemble_libraries { local_libraries; target = _, main; _ } =
     let namespace =
       String.capitalize_ascii (Filename.chop_extension (Filename.basename main))
     in
-    dir, Some namespace, true (* enable (include_subdirs unqualified *), None
+    { Libs.path = dir
+    ; main_module_name = Some namespace
+    ; include_subdirs_unqualified = true
+    ; special_builtin_support = None
+    }
   in
   local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:Library.process
 ;;

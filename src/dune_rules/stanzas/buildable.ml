@@ -56,9 +56,10 @@ let decode (for_ : for_) =
       (Dune_lang.Syntax.since Stanza.syntax (2, 0)
        >>> repeat (located Foreign.Archive.decode))
   and+ extra_objects =
-    field_o
+    field
       "extra_objects"
       (Dune_lang.Syntax.since Stanza.syntax (3, 5) >>> Foreign.Objects.decode)
+      ~default:Foreign.Objects.empty
   and+ c_flags =
     only_in_library
       (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
@@ -156,7 +157,6 @@ let decode (for_ : for_) =
          the "lib" prefix, however, since standard linkers require it). *)
       | Some name -> (loc, Foreign.Archive.stubs name) :: foreign_archives)
   in
-  let extra_objects = Option.value ~default:Foreign.Objects.empty extra_objects in
   { loc
   ; preprocess
   ; preprocessor_deps

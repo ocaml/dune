@@ -744,6 +744,7 @@ module Library = struct
       | Mly
 
     let analyse fn =
+      let dn = Filename.dirname fn in
       let fn = Filename.basename fn in
       let i =
         try String.index fn '.' with
@@ -758,7 +759,6 @@ module Library = struct
       | ".mly" -> Some Mly
       | ".defaults.ml" ->
         let fn' = String.sub fn ~pos:0 ~len:i ^ ".ml" in
-        let dn = Filename.dirname fn in
         if Sys.file_exists (dn ^/ fn') then None else Some Ml
       | _ -> None
     ;;

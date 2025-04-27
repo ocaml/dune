@@ -787,19 +787,19 @@ module Library = struct
         else Some { toplevel_module = namespace; alias_module = namespace }
     ;;
 
-    let mangle_filename t ({ file = fn; kind } : source) =
-      let base =
-        let fn = Filename.basename fn in
-        String.sub fn ~pos:0 ~len:(String.index fn '.') |> String.uncapitalize_ascii
-      in
+    let mangle_filename t ({ file; kind } : source) =
+      let base = Filename.basename file in
       match kind with
-      | C -> base ^ ".c"
-      | Header -> base ^ ".h"
-      | _ ->
+      | C -> base
+      | Header -> base
+      | Mll | Mly | Ml | Mli ->
         let ext =
           match kind with
           | Mli -> ".mli"
           | _ -> ".ml"
+        in
+        let base =
+          String.sub base ~pos:0 ~len:(String.index base '.') |> String.uncapitalize_ascii
         in
         (match t with
          | None -> base ^ ext

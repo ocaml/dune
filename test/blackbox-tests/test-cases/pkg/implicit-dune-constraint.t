@@ -22,9 +22,9 @@ dependency.
   Couldn't solve the package dependency formula.
   Selected candidates: foo.0.0.1 x.dev
   - dune -> (problem)
-      User requested = 3.18
+      User requested = 3.19
       Rejected candidates:
-        dune.3.11.0: Incompatible with restriction: = 3.18
+        dune.3.11.0: Incompatible with restriction: = 3.19
   [1]
   $ test "4.0.0"
   Solution for dune.lock:

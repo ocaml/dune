@@ -76,7 +76,7 @@ disjunction, either package is problematic:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 x.dev
   - dune -> dune.3.11
-      User requested = 3.18
+      User requested = 3.19
   - foo -> (problem)
       No usable implementations:
         foo.0.0.1: Package does not satisfy constraints of local package x
@@ -96,7 +96,7 @@ Adding a new version of `foo` only resolves one conflict:
   Couldn't solve the package dependency formula.
   Selected candidates: bar.0.0.1 bar2.0.0.1 foo.0.2 x.dev
   - dune -> dune.3.11
-      User requested = 3.18
+      User requested = 3.19
   - foo2 -> (problem)
       No usable implementations:
         foo2.0.0.1: Package does not satisfy constraints of local package x

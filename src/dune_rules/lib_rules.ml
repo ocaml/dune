@@ -233,7 +233,14 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
     >>| Foreign_sources.for_archive ~archive_name
   in
   let* o_files =
-    let+ o_files_by_mode =
+    let* extra_o_files =
+      let+ { Lib_config.ext_obj; _ } =
+        let+ ocaml = Super_context.context sctx |> Context.ocaml in
+        ocaml.lib_config
+      in
+      Foreign.Objects.build_paths library.extra_objects ~ext_obj ~dir
+    in
+    let+ o_files =
       Foreign_rules.build_o_files
         ~sctx
         ~dir
@@ -242,7 +249,7 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
         ~dir_contents
         ~foreign_sources
     in
-    Mode.Map.Multi.for_all_modes o_files_by_mode
+    Mode.Map.Multi.add_all o_files All extra_o_files |> Mode.Map.Multi.for_all_modes
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
   let c_library_flags =

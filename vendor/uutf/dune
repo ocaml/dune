@@ -1,3 +1,2 @@
 (library
- (name dune_uutf)
- (wrapped false))
+ (name dune_uutf))

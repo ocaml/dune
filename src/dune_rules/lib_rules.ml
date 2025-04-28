@@ -174,7 +174,8 @@ let ocamlmklib
       ; (if custom then A "-custom" else Command.Args.empty)
       ; A "-o"
       ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
-      ; Deps o_files
+      ; Command.Args.Dyn
+          (Action_builder.map o_files ~f:(fun o_files -> Command.Args.Deps o_files))
         (* The [c_library_flags] is needed only for the [dynamic_target] case,
                 but we pass them unconditionally for simplicity. *)
       ; Dyn cclibs
@@ -238,7 +239,12 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
         let+ ocaml = Super_context.context sctx |> Context.ocaml in
         ocaml.lib_config
       in
-      Foreign.Objects.build_paths library.extra_objects ~ext_obj ~dir
+      let open Action_builder.O in
+      Expander.expand_and_eval_set
+        expander
+        library.extra_objects
+        ~standard:(Action_builder.return [])
+      >>| List.map ~f:(fun obj -> Path.build @@ Path.Build.relative dir (obj ^ ext_obj))
     in
     let+ o_files =
       Foreign_rules.build_o_files
@@ -249,7 +255,8 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
         ~dir_contents
         ~foreign_sources
     in
-    Mode.Map.Multi.add_all o_files All extra_o_files |> Mode.Map.Multi.for_all_modes
+    let open Action_builder.O in
+    extra_o_files >>| Mode.Map.Multi.add_all o_files All >>| Mode.Map.Multi.for_all_modes
   in
   let* () = Check_rules.add_files sctx ~dir o_files in
   let c_library_flags =
@@ -290,7 +297,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       ~foreign_sources
   in
   let all_o_files = Mode.Map.Multi.to_flat_list o_files in
-  let* () = Check_rules.add_files sctx ~dir all_o_files in
+  let* () = Check_rules.add_files sctx ~dir (Action_builder.return all_o_files) in
   if List.for_all ~f:List.is_empty [ all_o_files; vlib_stubs_o_files ]
   then Memo.return ()
   else (
@@ -339,14 +346,14 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         List.is_empty @@ Mode.Map.Multi.for_only ~and_all:false o_files mode)
     then
       (* if stubs are not mode dependent *)
-      ocamlmklib ~o_files:for_all_modes ~stubs_mode:All
+      ocamlmklib ~o_files:(Action_builder.return for_all_modes) ~stubs_mode:All
     else
       Mode.Dict.Set.to_list modes
       |> List.map ~f:(fun mode ->
         let o_files_for_mode = Mode.Map.Multi.for_only ~and_all:false o_files mode in
         List.rev_append for_all_modes o_files_for_mode, Mode.Select.Only mode)
       |> Memo.parallel_iter ~f:(fun (o_files, stubs_mode) ->
-        ocamlmklib ~o_files ~stubs_mode))
+        ocamlmklib ~o_files:(Action_builder.return o_files) ~stubs_mode))
 ;;
 
 let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =

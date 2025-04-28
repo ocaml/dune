@@ -1,4 +1,5 @@
 open! Stdune
+open Import
 module Inotify_lib = Async_inotify_for_dune.Async_inotify
 module Console = Dune_console
 

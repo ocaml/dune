@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 (** Note: on OCaml >= 4.14, this can be switched to the following (and the
     dependency to [Uutf] can be removed)

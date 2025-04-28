@@ -480,27 +480,28 @@ type external_ = Path.t t
 type local = Path.Build.t t
 
 let map t ~path_kind ~f_path ~f_obj_dir ~f_public_deps =
-  let f = f_path in
+  let f_dir = f_path ~kind:`Dir in
+  let f = f_path ~kind:`File in
   let list = List.map ~f in
   let mode_list = Mode.Dict.map ~f:list in
   let native_archives =
     match t.native_archives with
     | Needs_module_info t -> Needs_module_info (f t)
-    | Files t -> Files (List.map t ~f)
+    | Files t -> Files (list t)
   in
   { t with
-    src_dir = f t.src_dir
-  ; orig_src_dir = Option.map ~f t.orig_src_dir
+    src_dir = f_dir t.src_dir
+  ; orig_src_dir = Option.map ~f:f_dir t.orig_src_dir
   ; obj_dir = f_obj_dir t.obj_dir
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
-  ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
+  ; foreign_objects = Source.map ~f:list t.foreign_objects
   ; public_headers = File_deps.map ~f:f_public_deps t.public_headers
   ; foreign_archives = Mode.Map.Multi.map t.foreign_archives ~f
-  ; foreign_dll_files = List.map ~f t.foreign_dll_files
+  ; foreign_dll_files = list t.foreign_dll_files
   ; native_archives
-  ; jsoo_runtime = List.map ~f t.jsoo_runtime
-  ; wasmoo_runtime = List.map ~f t.wasmoo_runtime
+  ; jsoo_runtime = list t.jsoo_runtime
+  ; wasmoo_runtime = list t.wasmoo_runtime
   ; melange_runtime_deps = File_deps.map ~f:f_public_deps t.melange_runtime_deps
   ; path_kind
   }
@@ -513,7 +514,7 @@ let map_path t ~f =
 let of_local =
   map
     ~path_kind:External
-    ~f_path:Path.build
+    ~f_path:(fun ~kind:_ -> Path.build)
     ~f_obj_dir:Obj_dir.of_local
     ~f_public_deps:Path.build
 ;;
@@ -521,7 +522,7 @@ let of_local =
 let as_local_exn =
   map
     ~path_kind:Local
-    ~f_path:Path.as_in_build_dir_exn
+    ~f_path:(fun ~kind:_ -> Path.as_in_build_dir_exn)
     ~f_obj_dir:Obj_dir.as_local_exn
     ~f_public_deps:Path.as_in_build_dir_exn
 ;;
@@ -672,5 +673,11 @@ let for_dune_package
   |> map_path
        ~f:
          (let dir = Obj_dir.dir obj_dir in
-          fun p -> if Path.is_managed p then Path.relative dir (Path.basename p) else p)
+          fun ~kind p ->
+            if Path.is_managed p
+            then (
+              match kind with
+              | `File -> Path.relative dir (Path.basename p)
+              | `Dir -> dir)
+            else p)
 ;;

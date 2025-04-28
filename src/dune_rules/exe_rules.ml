@@ -252,7 +252,11 @@ let executables_rules
       let* o_files =
         o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
       in
-      let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
+      let* () =
+        Mode.Map.Multi.to_flat_list o_files
+        |> Action_builder.return
+        |> Check_rules.add_files sctx ~dir
+      in
       let buildable = exes.buildable in
       match buildable.ctypes with
       | None ->

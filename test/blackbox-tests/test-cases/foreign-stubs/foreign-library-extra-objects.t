@@ -43,3 +43,33 @@ working as intended.
 Our test executable works as intended and prints the message from the object file.
   $ ./test.exe
   Hello from C!
+
+  $ rm test.exe
+  $ rm test.o
+  $ rm message.o
+
+Testing that (:include) works
+
+  $ cat > dune <<EOF
+  > (foreign_library
+  >  (archive_name foo)
+  >  (names foo)
+  >  (language c)
+  >  (extra_objects
+  >   (:include message.in)))
+  > EOF
+
+  $ cat > message.in <<EOF
+  > message
+  > EOF
+
+  $ cat > message.c <<EOF
+  > char *message = "Hello from C with an (:include)!";
+  > EOF
+  $ ocamlopt -c message.c -o message.o
+
+  $ dune build _build/default/libfoo.a
+  $ ocamlopt test.c _build/default/libfoo.a -o test.exe
+  $ chmod +x test.exe
+  $ ./test.exe
+  Hello from C with an (:include)!

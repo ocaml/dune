@@ -21,10 +21,9 @@ project:
   $ mkpkg dune 2.0.0
 
 Solve the dependencies:
-  $ dune pkg lock
+  $ dune pkg lock 2>&1 | sed -E 's/"3.[0-9]+"/"3.XX"/'
   Error: The current version of Dune does not satisfy the version constraints
   for Dune in this project's dependencies.
   Details:
-  Found version "3.19" of package "dune" which doesn't satisfy the required
+  Found version "3.XX" of package "dune" which doesn't satisfy the required
   version constraint "< 3.0"
-  [1]

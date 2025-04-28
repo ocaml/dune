@@ -1,6 +1,7 @@
 module Dune_config = struct
   open Stdune
   open Dune_lang.Decoder
+  module Spawn = Dune_spawn.Spawn
   module Display = Display
   module Scheduler = Dune_engine.Scheduler
   module Sandbox_mode = Dune_engine.Sandbox_mode

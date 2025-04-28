@@ -18,6 +18,7 @@ depends: [
   "ocamlfind" { with-dev-setup & os != "win32" }
   "odoc" { with-dev-setup & >= "2.4.0" & os != "win32" }
   "ppx_expect" { with-dev-setup & >= "v0.17" & os != "win32" }
+  "spawn" { with-dev-setup }
   "ppx_inline_test" { with-dev-setup & os != "win32" }
   "ppxlib" { with-dev-setup & >= "0.35.0" & os != "win32" }
   "ctypes" { with-dev-setup & os != "win32" }

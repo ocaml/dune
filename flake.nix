@@ -157,6 +157,7 @@
                 merlin
                 ocaml-index
                 ppx_expect
+                spawn
                 ctypes
                 integers
                 mdx

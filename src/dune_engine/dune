@@ -28,7 +28,7 @@
   dune_rpc_private
   dune_rpc_client
   dune_thread_pool
-  spawn
+  dune_spawn
   ocamlc_loc
   dune_file_watcher
   dune_filesystem_stubs

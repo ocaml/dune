@@ -83,28 +83,38 @@ let run_build_system ~common ~request =
       Fiber.return ())
 ;;
 
-let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
-  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    Scheduler.Run.poll (run_build_system ~common ~request))
-;;
-
-let run_build_command_poll_passive ~(common : Common.t) ~config ~request:_ : unit =
-  (* CR-someday aalekseyev: It would've been better to complain if [request] is
-     non-empty, but we can't check that here because [request] is a function.*)
+let poll_handling_rpc_build_requests ~(common : Common.t) ~config =
   let open Fiber.O in
   let rpc =
     match Common.rpc common with
     | `Allow server -> server
     | `Forbid_builds -> Code_error.raise "rpc server must be allowed in passive mode" []
   in
+  Scheduler.Run.poll_passive
+    ~get_build_request:
+      (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
+       let request setup =
+         Target.interpret_targets (Common.root common) config setup targets
+       in
+       run_build_system ~common ~request, ivar)
+;;
+
+let run_build_command_poll_eager ~(common : Common.t) ~config ~request : unit =
   Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
-    Scheduler.Run.poll_passive
-      ~get_build_request:
-        (let+ (Build (targets, ivar)) = Dune_rpc_impl.Server.pending_build_action rpc in
-         let request setup =
-           Target.interpret_targets (Common.root common) config setup targets
-         in
-         run_build_system ~common ~request, ivar))
+    let open Fiber.O in
+    (* Run two fibers concurrently. One is responible for rebuilding targets
+       named on the command line in reaction to file system changes. The other
+       is responsible for building targets named in RPC build requests. *)
+    let+ () = Scheduler.Run.poll (run_build_system ~common ~request)
+    and+ () = poll_handling_rpc_build_requests ~common ~config in
+    ())
+;;
+
+let run_build_command_poll_passive ~common ~config ~request:_ : unit =
+  (* CR-someday aalekseyev: It would've been better to complain if [request] is
+     non-empty, but we can't check that here because [request] is a function.*)
+  Scheduler.go_with_rpc_server_and_console_status_reporting ~common ~config (fun () ->
+    poll_handling_rpc_build_requests ~common ~config)
 ;;
 
 let run_build_command_once ~(common : Common.t) ~config ~request =

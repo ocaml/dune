@@ -184,8 +184,6 @@ val for_dune_package
   -> modules:Modules.With_vlib.t
   -> Path.t t
 
-val map_path : Path.t t -> f:(Path.t -> Path.t) -> Path.t t
-
 type 'a path =
   | Local : Path.Build.t path
   | External : Path.t path

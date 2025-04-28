@@ -100,7 +100,7 @@ let local_libraries =
     ; special_builtin_support = None
     }
   ; { path = "vendor/spawn/src"
-    ; main_module_name = None
+    ; main_module_name = Some "Dune_spawn"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }

@@ -1,5 +1,5 @@
 (library
- (name spawn)
+ (name dune_spawn)
  (foreign_stubs
   (language c)
   (flags (:standard (:include flags.sexp)))

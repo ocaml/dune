@@ -120,7 +120,7 @@ let local_libraries =
     ; special_builtin_support = None
     }
   ; { path = "vendor/uutf"
-    ; main_module_name = None
+    ; main_module_name = Some "Dune_uutf"
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }

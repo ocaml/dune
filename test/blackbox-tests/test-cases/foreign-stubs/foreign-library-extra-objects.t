@@ -73,3 +73,34 @@ Testing that (:include) works
   $ chmod +x test.exe
   $ ./test.exe
   Hello from C with an (:include)!
+
+Testing how (:include) interacts with a non-existant file.
+  $ rm message.in test.exe test.o
+
+  $ dune build _build/default/libfoo.a
+  File "dune", lines 1-6, characters 0-105:
+  1 | (foreign_library
+  2 |  (archive_name foo)
+  3 |  (names foo)
+  4 |  (language c)
+  5 |  (extra_objects
+  6 |   (:include message.in)))
+  Error: No rule found for message.in
+  [1]
+
+Testing how (:include) interacts when returning a non-existent object file.
+
+  $ cat > message.in <<EOF
+  > foobar
+  > EOF
+
+  $ dune build _build/default/libfoo.a
+  File "dune", lines 1-6, characters 0-105:
+  1 | (foreign_library
+  2 |  (archive_name foo)
+  3 |  (names foo)
+  4 |  (language c)
+  5 |  (extra_objects
+  6 |   (:include message.in)))
+  Error: No rule found for foobar.o
+  [1]

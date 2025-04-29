@@ -24,6 +24,7 @@ Set up and build a Melange library and `melange.emit`
   $ cat > dune <<EOF
   > (melange.emit
   >  (target out)
+  >  (emit_stdlib false)
   >  (libraries foo))
   > EOF
   $ cat > x.ml <<EOF

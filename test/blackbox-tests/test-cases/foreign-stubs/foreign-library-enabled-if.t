@@ -28,14 +28,6 @@ one of them is enabled:
   > EOF
   $ cat > a.c
   $ dune build
-  File "dune", line 5, characters 8-9:
-  5 |  (names a))
-              ^
-  Error: Multiple definitions for the same object file "a". See another
-  definition at dune:11.
-  Hint: You can avoid the name clash by renaming one of the objects, or by
-  placing it into a different directory.
-  [1]
 
 
 Repeat the test, but now two of the libraries are indeed enabled which is

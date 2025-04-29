@@ -59,10 +59,6 @@ install-ocamlformat:
 dev-deps:
 	opam install -y . --deps-only --with-dev-setup
 
-.PHONY: coverage-deps
-coverage-deps:
-	opam install -y bisect_ppx
-
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps
 

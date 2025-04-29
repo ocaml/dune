@@ -4,6 +4,12 @@ Interaction of the foreign_library stanza and the enabled_if field.
   > (lang dune 3.18)
   > EOF
 
+  $ cat > a.c <<EOF
+  > int foo() {
+  >   return 1;
+  > }
+  > EOF
+
 We should allow multiple foreign libraries to define the same archive if only
 one of them is enabled:
 
@@ -26,7 +32,6 @@ one of them is enabled:
   >  (archive_name a)
   >  (names a))
   > EOF
-  $ cat > a.c
   $ dune build
 
 
@@ -52,7 +57,7 @@ illegal:
   >  (archive_name a)
   >  (names a))
   > EOF
-  $ cat > a.c
+
   $ dune build
   File "dune", line 5, characters 8-9:
   5 |  (names a))

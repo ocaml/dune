@@ -1,12 +1,10 @@
-Here we test what happens if there is a segfault in the program we are running with dune
-exec. Segfaults are determined and signalled from the operating system. It is usually
+Here we test what happens if there is a signal for the program to terminate when we are
+running with dune exec. Signals are dispatched from the operating system. It is usually
 impossible for a program to recover after recieving such a signal.
 
 For dune exec -w, we are indifferent to what the process we are running is actually doing
 since it shouldn't affect dune's other functions.
 
-TODO: It would be nice for Dune to indicate to the user that the subprocess was terminated
-in this way. But for now we fail and stop the program silently.
   $ DONE_FLAG=_build/done_flag
 
   $ cat > dune-project <<EOF
@@ -26,13 +24,13 @@ in this way. But for now we fail and stop the program silently.
   > ;;
   > EOF
 
-This first program will cause a segfault:
+This first program will signal itself with a KILL signal.:
   $ cat > foo.ml <<EOF
   > let () =
   >   Touch.touch "$DONE_FLAG";
-  >   print_endline "about to segfault";
+  >   print_endline "about to be killed";
   >   let pid = Unix.getpid () in
-  >   Unix.kill pid Sys.sigsegv
+  >   Unix.kill pid Sys.sigkill
   > ;;
   > EOF
 
@@ -41,26 +39,26 @@ This first program will cause a segfault:
 
 When reaching a signal like SEGV dune exec -w will exit.
   $ dune exec -w ./foo.exe 2> >(tee "$LOG_FILE" >&2) &
-  about to segfault
-  Command got signal SEGV.
+  about to be killed
+  Command got signal KILL.
   Had 1 error, waiting for filesystem changes...
-  fixed segfault
+  fixed signal
   Success, waiting for filesystem changes...
   $ PID=$!
   $ ./wait-for-file.sh $DONE_FLAG
 
-Waiting for SEGV
+Waiting for KILL signal...
   $ tail -f "$LOG_FILE" | while read line; do
-  >   echo "$line" | grep 'SEGV' && break
+  >   echo "$line" | grep 'KILL' && break
   > done
-  Command got signal SEGV.
+  Command got signal KILL.
 
 We can now start a new build by modifying the original program and removing the segfault.
 This rebuilds successfully as indicated by the above output.
   $ cat > foo.ml <<EOF
   > let () =
   >   Touch.touch "$DONE_FLAG";
-  >   print_endline "fixed segfault";
+  >   print_endline "fixed signal";
   > ;;
   > EOF
 

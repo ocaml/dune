@@ -101,7 +101,7 @@
       packages = {
         default = with pkgs; stdenv.mkDerivation {
           pname = "dune";
-          version = "n/a";
+          version = "3.x-n/a";
           src =
             let fs = lib.fileset; in
             fs.toSource {

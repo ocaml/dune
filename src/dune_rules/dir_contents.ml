@@ -292,7 +292,7 @@ end = struct
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
                     let dune_version = Dune_project.dune_version project in
-                    stanzas >>| Foreign_sources.make ~dune_version ~dirs)
+                    stanzas >>= Foreign_sources.make ~dir ~dune_version ~dirs)
               ; coq =
                   Memo.lazy_ (fun () ->
                     stanzas >>| Coq_sources.of_dir ~dir ~include_subdirs ~dirs)
@@ -370,7 +370,7 @@ end = struct
            let foreign_sources =
              Memo.lazy_ (fun () ->
                let dune_version = Dune_project.dune_version project in
-               stanzas >>| Foreign_sources.make ~dune_version ~dirs)
+               stanzas >>= Foreign_sources.make ~dir ~dune_version ~dirs)
            in
            let coq =
              Memo.lazy_ (fun () ->

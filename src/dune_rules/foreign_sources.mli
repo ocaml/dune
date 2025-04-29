@@ -11,6 +11,7 @@ val for_exes : t -> first_exe:string -> Foreign.Sources.t
 
 val make
   :  Stanza.t list
+  -> dir:Path.Build.t
   -> dune_version:Syntax.Version.t
   -> dirs:Source_file_dir.t list
-  -> t
+  -> t Memo.t

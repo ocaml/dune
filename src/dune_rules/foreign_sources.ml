@@ -1,4 +1,5 @@
 open Import
+open Memo.O
 
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
@@ -215,24 +216,23 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
       List.fold_left
         stanzas
         ~init:([], [], [])
-        ~f:(fun ((libs, foreign_libs, exes) as acc) stanza ->
-          match Stanza.repr stanza with
-          | Library.T lib ->
+        ~f:(fun (libs, foreign_libs, exes) stanza ->
+          match stanza with
+          | `Library (lib : Library.t) ->
             let all =
               eval_foreign_stubs lib.buildable.foreign_stubs lib.buildable.ctypes
             in
             (lib, all) :: libs, foreign_libs, exes
-          | Foreign_library.T library ->
+          | `Foreign_library (library : Foreign_library.t) ->
             let all = eval_foreign_stubs [ library.stubs ] None in
             ( libs
             , (library.archive_name, (library.archive_name_loc, all)) :: foreign_libs
             , exes )
-          | Executables.T exe | Tests.T { exes = exe; _ } ->
+          | `Executables exe | `Tests { Tests.exes = exe; _ } ->
             let all =
               eval_foreign_stubs exe.buildable.foreign_stubs exe.buildable.ctypes
             in
-            libs, foreign_libs, (exe, all) :: exes
-          | _ -> acc)
+            libs, foreign_libs, (exe, all) :: exes)
     in
     List.(rev libs, rev foreign_libs, rev exes)
   in
@@ -336,4 +336,24 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
 let make stanzas ~dune_version ~dirs =
   let sources = Unresolved.load_dirs ~dune_version dirs in
   make stanzas ~dune_version ~sources
+;;
+
+let make stanzas ~dir ~dune_version ~dirs =
+  let+ stanzas =
+    List.filter_map stanzas ~f:(fun stanza ->
+      match Stanza.repr stanza with
+      | Library.T lib -> Some (`Library lib, lib.enabled_if)
+      | Foreign_library.T lib -> Some (`Foreign_library lib, lib.enabled_if)
+      | Executables.T exe -> Some (`Executables exe, exe.enabled_if)
+      | Tests.T ({ exes = exe; _ } as tests) -> Some (`Tests tests, exe.enabled_if)
+      | _ -> None)
+    |> Memo.parallel_map ~f:(fun (stanza, enabled_if) ->
+      let* expander = Expander0.get ~dir in
+      Expander0.eval_blang expander enabled_if
+      >>| function
+      | false -> None
+      | true -> Some stanza)
+    >>| List.filter_opt
+  in
+  make stanzas ~dune_version ~dirs
 ;;

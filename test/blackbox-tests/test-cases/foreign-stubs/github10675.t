@@ -20,8 +20,3 @@ stubs, dune should not crash. See #10675.
   $ touch startup.c main.ml
 
   $ dune build
-  File "dune", line 3, characters 7-11:
-  3 |  (name main))
-             ^^^^
-  Error: Executables with same name "main" use different foreign sources
-  [1]

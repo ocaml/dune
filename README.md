@@ -4,7 +4,6 @@
 
 [![Main Workflow][workflow-badge]][workflow]
 [![Release][release-badge]][release]
-[![Coverage][coverage-badge]][coverage]
 [![License][license-badge]][license]
 [![Contributors][contributors-badge]][contributors]
 
@@ -13,8 +12,6 @@
 [workflow-badge]: https://img.shields.io/github/actions/workflow/status/ocaml/dune/workflow.yml?label=CI&logo=github
 [release]: https://github.com/ocaml/dune/releases/latest
 [release-badge]: https://img.shields.io/github/v/release/ocaml/dune?label=release
-[coverage]: https://coveralls.io/github/ocaml/dune
-[coverage-badge]: https://img.shields.io/coveralls/github/ocaml/dune?logo=coveralls
 [license]: https://github.com/ocaml/dune/blob/main/LICENSE.md
 [license-badge]: https://img.shields.io/github/license/ocaml/dune
 [contributors]: https://github.com/ocaml/dune/graphs/contributors
@@ -79,6 +76,7 @@ The magic invocation is:
 ```console
 $ dune build --only-packages <package-name> @install
 ```
+
 ## Build Against Several Configurations at Once
 
 Dune can build a given source code repository against several configurations
@@ -126,7 +124,7 @@ $ ./dune.exe install dune
 ```
 
 The first command builds the `dune.exe` binary. The second builds the additional
-files installed by Dune, such as the *man* pages, and the last simply installs
+files installed by Dune, such as the _man_ pages, and the last simply installs
 all of that on the system.
 
 **Please note**: unless you ran the optional `./configure` script, you can
@@ -135,7 +133,6 @@ relocatable and discovers its environment at runtime rather than hard-coding it
 at compilation time.
 
 # Support
-
 
 [![Issues][issues-badge]][issues]
 [![Discussions][discussions-badge]][discussions]

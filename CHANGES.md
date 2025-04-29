@@ -1,3 +1,9 @@
+3.18.2 (2024-04-29)
+-------------------
+
+- fix compatibility with `ocaml.5.4.0` by avoiding shadowing sigwinch (@nojb,
+  #11639)
+
 3.18.1 (2025-04-15)
 -------------------
 

@@ -74,22 +74,20 @@ let impl sctx ~(lib : Library.t) ~scope =
          ]
      | Some vlib ->
        let info = Lib.info vlib in
-       let virtual_ =
-         match Lib_info.virtual_ info with
-         | Some v -> v
-         | None ->
-           User_error.raise
-             ~loc:lib.buildable.loc
-             [ Pp.textf
-                 "Library %s isn't virtual and cannot be implemented"
-                 (Lib_name.to_string implements)
-             ]
-       in
+       if not (Lib_info.virtual_ info)
+       then
+         User_error.raise
+           ~loc:lib.buildable.loc
+           [ Pp.textf
+               "Library %s isn't virtual and cannot be implemented"
+               (Lib_name.to_string implements)
+           ];
        let+ vlib_modules, vlib_foreign_objects =
-         let foreign_objects = Lib_info.foreign_objects info in
-         match virtual_, foreign_objects with
+         match Lib_info.modules info, Lib_info.foreign_objects info with
+         | External modules, External fa ->
+           let modules = Option.value_exn modules in
+           Memo.return (Modules.With_vlib.drop_vlib modules, fa)
          | External _, Local | Local, External _ -> assert false
-         | External modules, External fa -> Memo.return (modules, fa)
          | Local, Local ->
            let name = Lib.name vlib in
            let vlib = Lib.Local.of_lib_exn vlib in

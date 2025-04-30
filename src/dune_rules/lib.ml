@@ -688,14 +688,14 @@ end = struct
     let add t lib =
       let virtual_ = Lib_info.virtual_ lib.info in
       match lib.implements, virtual_ with
-      | None, None -> Resolve.Memo.return t
-      | Some _, Some _ -> assert false (* can't be virtual and implement *)
-      | None, Some _ ->
+      | None, false -> Resolve.Memo.return t
+      | Some _, true -> assert false (* can't be virtual and implement *)
+      | None, true ->
         Resolve.Memo.return
           (if Set.mem t.implemented lib
            then t
            else { t with unimplemented = Set.add t.unimplemented lib })
-      | Some vlib, None ->
+      | Some vlib, false ->
         let+ vlib = Memo.return vlib in
         { implemented = Set.add t.implemented vlib
         ; unimplemented = Set.remove t.unimplemented vlib
@@ -726,10 +726,10 @@ end = struct
           | (lib, stack) :: libs ->
             let virtual_ = Lib_info.virtual_ lib.info in
             (match lib.implements, virtual_ with
-             | None, None -> loop acc libs
-             | Some _, Some _ -> assert false (* can't be virtual and implement *)
-             | None, Some _ -> loop (Map.set acc lib (No_impl stack)) libs
-             | Some vlib, None ->
+             | None, false -> loop acc libs
+             | Some _, true -> assert false (* can't be virtual and implement *)
+             | None, true -> loop (Map.set acc lib (No_impl stack)) libs
+             | Some vlib, false ->
                let* vlib = Memo.return vlib in
                (match Map.find acc vlib with
                 | None ->
@@ -948,8 +948,8 @@ end = struct
           let* vlib = resolve_forbid_ignore name in
           let virtual_ = Lib_info.virtual_ vlib.info in
           match virtual_ with
-          | None -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-          | Some _ -> Resolve.Memo.return vlib
+          | false -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
+          | true -> Resolve.Memo.return vlib
         in
         Memo.map res ~f:Option.some
     in
@@ -1616,8 +1616,7 @@ end = struct
         in
         (* If the library has an implementation according to variants or
            default impl. *)
-        let virtual_ = Lib_info.virtual_ lib.info in
-        if Option.is_none virtual_
+        if not (Lib_info.virtual_ lib.info)
         then R.return ()
         else
           let* impl = R.lift (impl_for lib) in

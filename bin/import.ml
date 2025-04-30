@@ -186,7 +186,7 @@ module Scheduler = struct
     }
   ;;
 
-  let go ~(common : Common.t) ~config:dune_config f =
+  let go_without_rpc_server ~(common : Common.t) ~config:dune_config f =
     let stats = Common.stats common in
     let config =
       let watch_exclusions = Common.watch_exclusions common in
@@ -197,12 +197,16 @@ module Scheduler = struct
         ~watch_exclusions
     in
     Dune_rules.Clflags.concurrency := config.concurrency;
+    Run.go config ~on_event:(on_event dune_config) f
+  ;;
+
+  let go ~common ~config f =
     let f =
       match Common.rpc common with
       | `Allow server -> fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f
       | `Forbid_builds -> f
     in
-    Run.go config ~on_event:(on_event dune_config) f
+    go_without_rpc_server ~common ~config f
   ;;
 
   let go_with_rpc_server_and_console_status_reporting
@@ -265,12 +269,17 @@ let command_alias ?orig_name cmd term name =
   Cmd.v (Cmd.info name ~docs:"COMMAND ALIASES" ~doc ~man) term
 ;;
 
+(* The build system has some global state which makes it unsafe for
+   multiple instances of it to be executed concurrently, so we ensure
+   serialization by holding this mutex while running the build system. *)
+let build_system_mutex = Fiber.Mutex.create ()
+
 let build f =
   Hooks.End_of_build.once Promote.Diff_promotion.finalize;
-  Build_system.run f
+  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run f)
 ;;
 
 let build_exn f =
   Hooks.End_of_build.once Promote.Diff_promotion.finalize;
-  Build_system.run_exn f
+  Fiber.Mutex.with_lock build_system_mutex ~f:(fun () -> Build_system.run_exn f)
 ;;

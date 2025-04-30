@@ -205,7 +205,72 @@ module Ansi_color = struct
   end
 end
 
+module Pp = struct
+  include Pp
+
+  let sexp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
+    let open Conv in
+    let open Pp.Ast in
+    let nop = constr "Nop" unit (fun () -> Nop) in
+    let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
+    let char = constr "Char" char (fun c -> Char c) in
+    let newline = constr "Newline" unit (fun () -> Newline) in
+    let t =
+      fixpoint (fun t ->
+        let text = constr "Text" string (fun s -> Text s) in
+        let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
+        let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
+        let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
+        let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
+        let hbox = constr "Hbox" t (fun t -> Hbox t) in
+        let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
+        let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
+        let break =
+          constr
+            "Break"
+            (pair (triple string int string) (triple string int string))
+            (fun (x, y) -> Break (x, y))
+        in
+        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
+        sum
+          [ econstr nop
+          ; econstr verbatim
+          ; econstr char
+          ; econstr newline
+          ; econstr text
+          ; econstr seq
+          ; econstr concat
+          ; econstr box
+          ; econstr vbox
+          ; econstr hbox
+          ; econstr hvbox
+          ; econstr hovbox
+          ; econstr break
+          ; econstr tag
+          ]
+          (function
+            | Nop -> case () nop
+            | Seq (x, y) -> case (x, y) seq
+            | Concat (x, y) -> case (x, y) concat
+            | Box (i, t) -> case (i, t) box
+            | Vbox (i, t) -> case (i, t) vbox
+            | Hbox t -> case t hbox
+            | Hvbox (i, t) -> case (i, t) hvbox
+            | Hovbox (i, t) -> case (i, t) hovbox
+            | Verbatim s -> case s verbatim
+            | Char c -> case c char
+            | Break (x, y) -> case (x, y) break
+            | Newline -> case () newline
+            | Text s -> case s text
+            | Tag (s, t) -> case (s, t) tag))
+    in
+    iso t Pp.of_ast Pp.to_ast
+  ;;
+end
+
 module User_message = struct
+  include Stdune.User_message
+
   module Style = struct
     type t = Stdune.User_message.Style.t =
       | Loc
@@ -266,6 +331,25 @@ module User_message = struct
           | Ansi_styles l -> case l ansi_styles)
     ;;
   end
+
+  let sexp_without_annots =
+    let open Conv in
+    let sexp_pp = Pp.sexp Style.sexp in
+    let from { loc; paragraphs; hints; annots = _; context; dir } =
+      let loc = Option.map loc ~f:Import.Loc.to_lexbuf_loc in
+      loc, paragraphs, hints, context, dir
+    in
+    let to_ (loc, paragraphs, hints, context, dir) =
+      let loc = Option.map loc ~f:Import.Loc.of_lexbuf_loc in
+      { loc; paragraphs; hints; context; dir; annots = Annots.empty }
+    in
+    let loc = field "loc" (optional Loc.sexp) in
+    let paragraphs = field "paragraphs" (required (list sexp_pp)) in
+    let hints = field "hints" (required (list sexp_pp)) in
+    let context = field "context" (optional string) in
+    let dir = field "dir" (optional string) in
+    iso (record (five loc paragraphs hints context dir)) to_ from
+  ;;
 end
 
 module Target = struct
@@ -406,65 +490,6 @@ module Diagnostic = struct
     ;;
   end
 
-  let sexp_pp (conv_tag : 'a Conv.value) : 'a Pp.t Conv.value =
-    let open Conv in
-    let open Pp.Ast in
-    let nop = constr "Nop" unit (fun () -> Nop) in
-    let verbatim = constr "Verbatim" string (fun s -> Verbatim s) in
-    let char = constr "Char" char (fun c -> Char c) in
-    let newline = constr "Newline" unit (fun () -> Newline) in
-    let t =
-      fixpoint (fun t ->
-        let text = constr "Text" string (fun s -> Text s) in
-        let seq = constr "Seq" (pair t t) (fun (x, y) -> Seq (x, y)) in
-        let concat = constr "Concat" (pair t (list t)) (fun (x, y) -> Concat (x, y)) in
-        let box = constr "Box" (pair int t) (fun (x, y) -> Box (x, y)) in
-        let vbox = constr "Vbox" (pair int t) (fun (x, y) -> Vbox (x, y)) in
-        let hbox = constr "Hbox" t (fun t -> Hbox t) in
-        let hvbox = constr "Hvbox" (pair int t) (fun (x, y) -> Hvbox (x, y)) in
-        let hovbox = constr "Hovbox" (pair int t) (fun (x, y) -> Hovbox (x, y)) in
-        let break =
-          constr
-            "Break"
-            (pair (triple string int string) (triple string int string))
-            (fun (x, y) -> Break (x, y))
-        in
-        let tag = constr "Tag" (pair conv_tag t) (fun (s, t) -> Tag (s, t)) in
-        sum
-          [ econstr nop
-          ; econstr verbatim
-          ; econstr char
-          ; econstr newline
-          ; econstr text
-          ; econstr seq
-          ; econstr concat
-          ; econstr box
-          ; econstr vbox
-          ; econstr hbox
-          ; econstr hvbox
-          ; econstr hovbox
-          ; econstr break
-          ; econstr tag
-          ]
-          (function
-            | Nop -> case () nop
-            | Seq (x, y) -> case (x, y) seq
-            | Concat (x, y) -> case (x, y) concat
-            | Box (i, t) -> case (i, t) box
-            | Vbox (i, t) -> case (i, t) vbox
-            | Hbox t -> case t hbox
-            | Hvbox (i, t) -> case (i, t) hvbox
-            | Hovbox (i, t) -> case (i, t) hovbox
-            | Verbatim s -> case s verbatim
-            | Char c -> case c char
-            | Break (x, y) -> case (x, y) break
-            | Newline -> case () newline
-            | Text s -> case s text
-            | Tag (s, t) -> case (s, t) tag))
-    in
-    iso t Pp.of_ast Pp.to_ast
-  ;;
-
   module Id = struct
     type t = int
 
@@ -487,7 +512,7 @@ module Diagnostic = struct
     let sexp =
       let open Conv in
       let loc = field "loc" (required Loc.sexp) in
-      let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
+      let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
       let to_ (loc, message) = { loc; message } in
       let from { loc; message } = loc, message in
       iso (record (both loc message)) to_ from
@@ -529,7 +554,7 @@ module Diagnostic = struct
       { targets; message; loc; severity; promotion; directory; id; related }
     in
     let loc = field "loc" (optional Loc.sexp) in
-    let message = field "message" (required (sexp_pp User_message.Style.sexp)) in
+    let message = field "message" (required (Pp.sexp User_message.Style.sexp)) in
     let targets = field "targets" (required (list Target.sexp)) in
     let severity = field "severity" (optional sexp_severity) in
     let directory = field "directory" (optional string) in

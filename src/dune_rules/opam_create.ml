@@ -123,6 +123,7 @@ let package_fields package ~project =
   in
   let dep_fields =
     [ "depends", Package.depends package
+    ; ("x-extra-doc-deps", Package.doc_depends package |> fun { packages; _ } -> packages)
     ; "conflicts", Package.conflicts package
     ; "depopts", Package.depopts package
     ]

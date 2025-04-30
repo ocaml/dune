@@ -1,6 +1,7 @@
 _opam
 _build
 _boot
+_test_boot
 _perf
 _coverage
 __pycache__

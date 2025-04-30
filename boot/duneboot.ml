@@ -1,6 +1,7 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, debug, secondary, force_byte_compilation, static =
+let concurrency, verbose, debug, secondary, force_byte_compilation, static, build_dir =
+  let build_dir = ref "_boot" in
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
@@ -19,15 +20,14 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static =
       , Set force_byte_compilation
       , " Force bytecode compilation even if ocamlopt is available" )
     ; "--static", Set static, " Build a static binary"
+    ; "--boot-dir", Set_string build_dir, " Set the boot directory"
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
-  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static
+  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static, !build_dir
 ;;
 
 (** {2 General configuration} *)
-
-let build_dir = "_boot"
 
 type task =
   { target : string * string
@@ -51,6 +51,8 @@ module String = struct
   include String
   module Set = Set.Make (String)
   module Map = Map.Make (String)
+
+  let is_suffix t ~suffix = Filename.check_suffix t suffix
 end
 
 module List = struct
@@ -176,7 +178,7 @@ let split_lines s =
 ;;
 
 (* copy a file - fails if the file exists *)
-let copy ?(header = "") directive a b =
+let copy ~header directive a b =
   if Sys.file_exists b then fatal "%s already exists" b;
   let ic = open_in_bin a in
   let len = in_channel_length ic in
@@ -748,9 +750,14 @@ end
 
 module Library = struct
   module File_kind = struct
+    type c =
+      { arch : [ `Arm64 | `X86 ] option
+      ; flags : string list
+      }
+
     type t =
       | Header
-      | C
+      | C of c
       | Ml
       | Mli
       | Mll
@@ -763,8 +770,28 @@ module Library = struct
         | Not_found -> String.length fn
       in
       match String.sub fn ~pos:i ~len:(String.length fn - i) with
+      | ".c" ->
+        let arch, flags =
+          let fn = Filename.remove_extension fn in
+          let check suffix = String.is_suffix fn ~suffix in
+          let x86 gnu _msvc =
+            (* CR rgrinberg: select msvc flags on windows *)
+            Some `X86, gnu
+          in
+          if check "_sse2"
+          then x86 [ "-msse2" ] [ "/arch:SSE2" ]
+          else if check "_sse41"
+          then x86 [ "-msse4.1" ] [ "/arch:AVX" ]
+          else if check "_avx2"
+          then x86 [ "-mavx2" ] [ "/arch:AVX2" ]
+          else if check "_avx512"
+          then x86 [ "-mavx512f"; "-mavx512vl" ] [ "/arch:AVX512" ]
+          else if String.is_suffix fn ~suffix:"_neon"
+          then Some `Arm64, []
+          else None, []
+        in
+        Some (C { arch; flags })
       | ".h" -> Some Header
-      | ".c" -> Some C
       | ".ml" -> Some Ml
       | ".mli" -> Some Mli
       | ".mll" -> Some Mll
@@ -780,6 +807,11 @@ module Library = struct
   type source =
     { file : string
     ; kind : File_kind.t
+    }
+
+  type c_file =
+    { name : string
+    ; flags : string list
     }
 
   module Wrapper = struct
@@ -803,8 +835,7 @@ module Library = struct
     let mangle_filename t ({ file; kind } : source) =
       let base = Filename.basename file in
       match kind with
-      | C -> base
-      | Header -> base
+      | C _ | Header -> base
       | Mll | Mly | Ml | Mli ->
         let ext =
           match kind with
@@ -868,8 +899,15 @@ module Library = struct
   type t =
     { ocaml_files : string list
     ; alias_file : string option
-    ; c_files : string list
+    ; c_files : c_file list
     }
+
+  let keep_c { File_kind.arch; flags = _ } ~architecture =
+    match arch with
+    | None -> true
+    | Some `Arm64 -> architecture = "arm64"
+    | Some `X86 -> architecture = "amd64" || architecture = "x86_64"
+  ;;
 
   let process
         { Libs.path = dir
@@ -877,13 +915,14 @@ module Library = struct
         ; include_subdirs_unqualified = scan_subdirs
         ; special_builtin_support = build_info_module
         }
+        ~ocaml_config
     =
     let files = scan ~dir ~scan_subdirs in
     let modules =
       let modules =
         List.fold_left files ~init:String.Set.empty ~f:(fun acc { file = fn; kind } ->
           match (kind : File_kind.t) with
-          | Header | C -> acc
+          | Header | C _ -> acc
           | Ml | Mli | Mll | Mly ->
             let module_name =
               let fn = Filename.basename fn in
@@ -903,8 +942,8 @@ module Library = struct
            let mangled = Wrapper.mangle_filename wrapper source in
            let dst = build_dir ^/ mangled in
            (match kind with
-            | Header | C ->
-              copy "line" fn dst;
+            | Header | C _ ->
+              copy ~header:"" "line" fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->
               copy "" fn dst ~header;
@@ -938,9 +977,11 @@ module Library = struct
         | None -> files
         | Some fn -> fn :: files
       in
+      let architecture = String.Map.find "architecture" ocaml_config in
       List.partition_map_skip files ~f:(fun (src, fn) ->
         match src.kind with
-        | C -> `Left fn
+        | C c ->
+          if keep_c c ~architecture then `Left { flags = c.flags; name = fn } else `Skip
         | Ml | Mli | Mly | Mll -> `Right fn
         | Header -> `Skip)
     in
@@ -1043,7 +1084,7 @@ let get_dependencies libraries =
   deps
 ;;
 
-let assemble_libraries { local_libraries; target = _, main; _ } =
+let assemble_libraries { local_libraries; target = _, main; _ } ~ocaml_config =
   (* In order to assemble all the sources in one place, the executables
        modules are also put in a namespace *)
   let task_lib =
@@ -1057,7 +1098,7 @@ let assemble_libraries { local_libraries; target = _, main; _ } =
     ; special_builtin_support = None
     }
   in
-  local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:Library.process
+  local_libraries @ [ task_lib ] |> Fiber.parallel_map ~f:(Library.process ~ocaml_config)
 ;;
 
 type status =
@@ -1155,11 +1196,13 @@ let build
   Fiber.fork_and_join_unit
     (fun () -> build (Filename.basename main))
     (fun () ->
-       Fiber.parallel_map c_files ~f:(fun file ->
+       Fiber.parallel_map c_files ~f:(fun { Library.name = file; flags } ->
+         let flags = List.map flags ~f:(fun flag -> [ "-ccopt"; flag ]) |> List.concat in
          Process.run
            ~cwd:build_dir
            Config.compiler
-           (List.concat [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ] ])
+           (List.concat
+              [ [ "-c"; "-g" ]; external_includes; build_flags; [ file ]; flags ])
          >>| fun () -> Filename.chop_extension file ^ ext_obj))
   >>= fun obj_files ->
   let compiled_ml_files =
@@ -1211,7 +1254,7 @@ let main () =
    | Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   Config.ocaml_config ()
   >>= fun ocaml_config ->
-  assemble_libraries task
+  assemble_libraries ~ocaml_config task
   >>= fun libraries ->
   let c_files =
     List.map ~f:(fun (lib : Library.t) -> lib.c_files) libraries |> List.concat

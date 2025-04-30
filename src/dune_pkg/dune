@@ -1,13 +1,15 @@
 (library
  (name dune_pkg)
  (synopsis "[Internal] Dune's packaging support")
+ (foreign_stubs
+  (names md5_stubs)
+  (language c))
  (libraries
   stdune
   fiber
   fiber_util
   chrome_trace
   dune_engine
-  dune_digest
   dune_util
   dune_stats
   dune_lang

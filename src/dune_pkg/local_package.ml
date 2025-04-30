@@ -31,17 +31,17 @@ type t =
   }
 
 module Dependency_hash = struct
-  type t = Dune_digest.t
+  type t = Md5.t
 
-  let equal = Dune_digest.equal
-  let to_dyn = Dune_digest.to_dyn
-  let to_string = Dune_digest.to_string
+  let equal = Md5.equal
+  let to_dyn = Md5.to_dyn
+  let to_string = Md5.to_string
   let encode t = to_string t |> Encoder.string
 
   let decode =
     let open Decoder in
     let+ loc, hash = located string in
-    match Dune_digest.Digest.from_hex hash with
+    match Md5.from_hex hash with
     | Some hash -> hash
     | None ->
       User_error.raise
@@ -54,7 +54,7 @@ module Dependency_hash = struct
     | false -> None
     | true ->
       let hashable = formula |> Dependency_formula.to_dyn |> Dyn.to_string in
-      Some (Dune_digest.string hashable)
+      Some (Md5.string hashable)
   ;;
 end
 

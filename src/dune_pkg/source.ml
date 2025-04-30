@@ -42,7 +42,7 @@ let fetch_and_hash_archive_cached (url_loc, url) =
   let open Fiber.O in
   fetch_archive_cached (url_loc, url)
   >>| function
-  | Ok target -> Some (Dune_digest.file target |> Checksum.of_dune_digest)
+  | Ok target -> Some (Md5.file target |> Checksum.of_md5)
   | Error message_opt ->
     let message =
       Option.value

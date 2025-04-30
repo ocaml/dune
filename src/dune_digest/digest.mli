@@ -1,6 +1,6 @@
 open Stdune
 
-(** Digests (MD5) *)
+(** Digests (BLAKE3) *)
 
 type t
 

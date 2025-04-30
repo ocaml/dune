@@ -1,12 +1,17 @@
 open Stdune
 
-type t = string
+module T = struct
+  type t = Blake3_mini.Digest.t
 
-external md5_fd : Unix.file_descr -> string = "dune_md5_fd"
+  let to_string = Blake3_mini.Digest.to_hex
+  let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
+  let compare x y = Ordering.of_int (Blake3_mini.Digest.compare x y)
+end
 
-module D = Stdlib.Digest
-module Set = String.Set
-module Map = String.Map
+include T
+module C = Comparable.Make (T)
+module Set = C.Set
+module Map = C.Map
 module Metrics = Dune_metrics
 
 let file file =
@@ -21,24 +26,24 @@ let file file =
       raise (Sys_error (sprintf "%s: Permission denied" file))
     | exception exn -> reraise exn
   in
-  Exn.protectx fd ~f:md5_fd ~finally:Unix.close
+  Exn.protectx fd ~f:Blake3_mini.fd ~finally:Unix.close
 ;;
 
+let equal = Blake3_mini.Digest.equal
 let hash = Poly.hash
-let equal = String.equal
 let file p = file (Path.to_string p)
-let compare x y = Ordering.of_int (D.compare x y)
-let to_string = D.to_hex
-let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
+let from_hex s = Blake3_mini.Digest.of_hex s
+let hasher = lazy (Blake3_mini.create ())
 
-let from_hex s =
-  match D.from_hex s with
-  | s -> Some s
-  | exception Invalid_argument _ -> None
+let string s =
+  let hasher = Lazy.force hasher in
+  Blake3_mini.feed_string hasher s ~pos:0 ~len:(String.length s);
+  let res = Blake3_mini.digest hasher in
+  Blake3_mini.reset hasher;
+  res
 ;;
 
-let string = D.string
-let to_string_raw s = s
+let to_string_raw s = Blake3_mini.Digest.to_binary s
 
 (* We use [No_sharing] to avoid generating different digests for inputs that
    differ only in how they share internal values. Without [No_sharing], if a
@@ -54,7 +59,7 @@ let generic a =
 let path_with_executable_bit =
   (* We follow the digest scheme used by Jenga. *)
   let string_and_bool ~digest_hex ~bool =
-    string (digest_hex ^ if bool then "\001" else "\000")
+    string (Blake3_mini.Digest.to_hex digest_hex ^ if bool then "\001" else "\000")
   in
   fun ~executable ~content_digest ->
     string_and_bool ~digest_hex:content_digest ~bool:executable
@@ -86,7 +91,7 @@ end
 
 exception E of Path_digest_error.t
 
-let directory_digest_version = 2
+let directory_digest_version = 3
 
 let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
   let rec loop path (stats : Stats_for_digest.t) =
@@ -94,7 +99,7 @@ let path_with_stats ~allow_dirs path (stats : Stats_for_digest.t) =
     | S_LNK ->
       Dune_filesystem_stubs.Unix_error.Detailed.catch
         (fun path ->
-           let contents = Unix.readlink (Path.to_string path) in
+           let contents = Path.to_string path |> Unix.readlink |> string in
            path_with_executable_bit ~executable:stats.executable ~content_digest:contents)
         path
       |> Result.map_error ~f:(fun x -> Path_digest_error.Unix_error x)

@@ -42,7 +42,7 @@ Same, but with error pointing to .ppx
 Test the argument syntax
 
   $ dune build test_ppx_args.cma
-  .ppx/454728df5270ab91f8a5af6b5e860eb0/ppx.exe
+  .ppx/7e2e4f08e99331b1c723b81d3aa870ba/ppx.exe
   -arg1
   -arg2
   -arg3=Oreo

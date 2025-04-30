@@ -124,7 +124,7 @@ module Processed = struct
     type nonrec t = t
 
     let name = "merlin-conf"
-    let version = 6
+    let version = 7
     let to_dyn _ = Dyn.String "Use [dune ocaml dump-dot-merlin] instead"
 
     let test_example () =

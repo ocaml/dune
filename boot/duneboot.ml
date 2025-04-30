@@ -178,7 +178,7 @@ let split_lines s =
 ;;
 
 (* copy a file - fails if the file exists *)
-let copy ?(header = "") directive a b =
+let copy ~header directive a b =
   if Sys.file_exists b then fatal "%s already exists" b;
   let ic = open_in_bin a in
   let len = in_channel_length ic in
@@ -906,7 +906,7 @@ module Library = struct
            let dst = build_dir ^/ mangled in
            (match kind with
             | Header | C ->
-              copy "line" fn dst;
+              copy ~header:"" "line" fn dst;
               Fiber.return [ mangled ]
             | Ml | Mli ->
               copy "" fn dst ~header;

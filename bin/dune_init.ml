@@ -433,6 +433,7 @@ module Component = struct
                 ; constraint_ = None
                 }
               ]
+            ~doc_depends:{ libraries = []; packages = [] }
             ~contents_basename:None
             ~enabled_if:None
         in

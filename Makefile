@@ -24,6 +24,10 @@ help:
 bootstrap:
 	$(MAKE) -B $(BIN)
 
+.PHONY: test-bootstrap
+test-bootstrap:
+	@ocaml boot/bootstrap.ml --boot-dir _test_boot
+
 .PHONY: release
 release: $(BIN)
 	@$(BIN) build @install -p dune --profile dune-bootstrap

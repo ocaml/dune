@@ -920,6 +920,16 @@ let source_dirs =
     |> List.fold_left ~init:acc ~f:(fun acc f -> Path.Set.add acc (Path.parent_exn f)))
 ;;
 
+let compat_for_exn t m =
+  match t.modules with
+  | Singleton _ | Stdlib _ | Unwrapped _ -> assert false
+  | Wrapped { group; _ } ->
+    (match Module_name.Map.find group.modules (Module.name m) with
+     | None -> assert false
+     | Some (Module m) -> m
+     | Some (Group g) -> Group.lib_interface g)
+;;
+
 module With_vlib = struct
   type impl =
     { obj_map : Sourced_module.t Module_name.Unique.Map.t Lazy.t
@@ -1196,19 +1206,6 @@ module With_vlib = struct
       let impl = fold impl ~init ~f in
       { vlib; impl }
     | Modules t -> { impl = fold t ~init ~f; vlib = [] }
-  ;;
-
-  let compat_for_exn t m =
-    match t with
-    | Impl _ -> Code_error.raise "wrapped compat not supported for vlib" []
-    | Modules t ->
-      (match t.modules with
-       | Singleton _ | Stdlib _ | Unwrapped _ -> assert false
-       | Wrapped { group; _ } ->
-         (match Module_name.Map.find group.modules (Module.name m) with
-          | None -> assert false
-          | Some (Module m) -> m
-          | Some (Group g) -> Group.lib_interface g))
   ;;
 
   let wrapped_compat t =

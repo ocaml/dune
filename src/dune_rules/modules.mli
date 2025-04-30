@@ -57,6 +57,11 @@ val wrapped : t -> Wrapped.t
 val source_dirs : t -> Path.Set.t
 val compat_for_exn : t -> Module.t -> Module.t
 
+(** List of entry modules visible to users of the library. For wrapped
+    libraries, this is always one module. For unwrapped libraries, this could
+    be more than one. *)
+val entry_modules : t -> Module.t list
+
 module With_vlib : sig
   type modules := t
   type t
@@ -95,11 +100,6 @@ module With_vlib : sig
 
   (** Returns all the compatibility modules. *)
   val wrapped_compat : t -> Module.Name_map.t
-
-  (** List of entry modules visible to users of the library. For wrapped
-      libraries, this is always one module. For unwrapped libraries, this could be
-      more than one. *)
-  val entry_modules : t -> Module.t list
 
   (** Returns the main module name if it exists. It exist for libraries with
       [(wrapped true)] or one module libraries. *)

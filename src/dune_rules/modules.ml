@@ -930,6 +930,18 @@ let compat_for_exn t m =
      | Some (Group g) -> Group.lib_interface g)
 ;;
 
+let entry_modules t =
+  List.filter
+    ~f:(fun m -> Module.visibility m = Public)
+    (match t.modules with
+     | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
+     | Singleton m -> [ m ]
+     | Unwrapped m -> Unwrapped.entry_modules m
+     | Wrapped m ->
+       (* we assume this is never called for implementations *)
+       [ Wrapped.lib_interface m ])
+;;
+
 module With_vlib = struct
   type impl =
     { obj_map : Sourced_module.t Module_name.Unique.Map.t Lazy.t
@@ -1230,23 +1242,6 @@ module With_vlib = struct
     match t with
     | Modules t -> Modules (map t)
     | Impl w -> Impl { w with impl = map w.impl }
-  ;;
-
-  let entry_modules = function
-    | Impl i ->
-      Code_error.raise
-        "entry_modules: not defined for implementations"
-        [ "impl", dyn_of_impl i ]
-    | Modules t ->
-      List.filter
-        ~f:(fun m -> Module.visibility m = Public)
-        (match t.modules with
-         | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
-         | Singleton m -> [ m ]
-         | Unwrapped m -> Unwrapped.entry_modules m
-         | Wrapped m ->
-           (* we assume this is never called for implementations *)
-           [ Wrapped.lib_interface m ])
   ;;
 
   let wrapped = function

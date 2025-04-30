@@ -1,6 +1,9 @@
 (** {2 Command line} *)
 
-let concurrency, verbose, debug, secondary, force_byte_compilation, static =
+let build_dir = "_boot"
+
+let concurrency, verbose, debug, secondary, force_byte_compilation, static, build_dir =
+  let build_dir = ref "_boot" in
   let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
   let concurrency = ref None in
   let verbose = ref false in
@@ -19,15 +22,14 @@ let concurrency, verbose, debug, secondary, force_byte_compilation, static =
       , Set force_byte_compilation
       , " Force bytecode compilation even if ocamlopt is available" )
     ; "--static", Set static, " Build a static binary"
+    ; "--boot-dir", Set_string build_dir, " Set the boot directory"
     ]
     anon
     (Printf.sprintf "Usage: %s <options>\nOptions are:" prog);
-  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static
+  !concurrency, !verbose, !debug, !secondary, !force_byte_compilation, !static, !build_dir
 ;;
 
 (** {2 General configuration} *)
-
-let build_dir = "_boot"
 
 type task =
   { target : string * string

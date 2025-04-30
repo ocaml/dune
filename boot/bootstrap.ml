@@ -18,6 +18,7 @@ let keep_generated_files =
       , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
     ; "--static", Arg.Unit ignore, " Build a static binary"
+    ; "--boot-dir", Arg.String (fun _ -> ()), " set the boot directory"
     ]
     anon
     "Usage: ocaml bootstrap.ml <options>\nOptions are:";

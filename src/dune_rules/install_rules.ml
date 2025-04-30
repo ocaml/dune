@@ -98,8 +98,8 @@ end = struct
       >>| Option.some
     and+ foreign_archives =
       match Lib_info.virtual_ lib with
-      | None -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
-      | Some _ ->
+      | false -> Memo.return (Mode.Map.Multi.to_flat_list @@ Lib_info.foreign_archives lib)
+      | true ->
         let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
@@ -823,7 +823,7 @@ end = struct
           match
             List.find_map libraries ~f:(fun lib ->
               let info = Lib.Local.info lib in
-              Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib)
+              Option.some_if (Lib_info.virtual_ info) lib)
           with
           | None -> Action_builder.lines_of meta_template
           | Some vlib ->

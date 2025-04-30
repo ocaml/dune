@@ -920,6 +920,28 @@ let source_dirs =
     |> List.fold_left ~init:acc ~f:(fun acc f -> Path.Set.add acc (Path.parent_exn f)))
 ;;
 
+let compat_for_exn t m =
+  match t.modules with
+  | Singleton _ | Stdlib _ | Unwrapped _ -> assert false
+  | Wrapped { group; _ } ->
+    (match Module_name.Map.find group.modules (Module.name m) with
+     | None -> assert false
+     | Some (Module m) -> m
+     | Some (Group g) -> Group.lib_interface g)
+;;
+
+let entry_modules t =
+  List.filter
+    ~f:(fun m -> Module.visibility m = Public)
+    (match t.modules with
+     | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
+     | Singleton m -> [ m ]
+     | Unwrapped m -> Unwrapped.entry_modules m
+     | Wrapped m ->
+       (* we assume this is never called for implementations *)
+       [ Wrapped.lib_interface m ])
+;;
+
 module With_vlib = struct
   type impl =
     { obj_map : Sourced_module.t Module_name.Unique.Map.t Lazy.t
@@ -1198,19 +1220,6 @@ module With_vlib = struct
     | Modules t -> { impl = fold t ~init ~f; vlib = [] }
   ;;
 
-  let compat_for_exn t m =
-    match t with
-    | Impl _ -> Code_error.raise "wrapped compat not supported for vlib" []
-    | Modules t ->
-      (match t.modules with
-       | Singleton _ | Stdlib _ | Unwrapped _ -> assert false
-       | Wrapped { group; _ } ->
-         (match Module_name.Map.find group.modules (Module.name m) with
-          | None -> assert false
-          | Some (Module m) -> m
-          | Some (Group g) -> Group.lib_interface g))
-  ;;
-
   let wrapped_compat t =
     match t with
     | Impl _ | Modules { modules = Stdlib _ | Singleton _ | Unwrapped _; _ } ->
@@ -1233,23 +1242,6 @@ module With_vlib = struct
     match t with
     | Modules t -> Modules (map t)
     | Impl w -> Impl { w with impl = map w.impl }
-  ;;
-
-  let entry_modules = function
-    | Impl i ->
-      Code_error.raise
-        "entry_modules: not defined for implementations"
-        [ "impl", dyn_of_impl i ]
-    | Modules t ->
-      List.filter
-        ~f:(fun m -> Module.visibility m = Public)
-        (match t.modules with
-         | Stdlib w -> Stdlib.lib_interface w |> Option.to_list
-         | Singleton m -> [ m ]
-         | Unwrapped m -> Unwrapped.entry_modules m
-         | Wrapped m ->
-           (* we assume this is never called for implementations *)
-           [ Wrapped.lib_interface m ])
   ;;
 
   let wrapped = function

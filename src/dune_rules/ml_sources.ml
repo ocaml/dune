@@ -328,8 +328,10 @@ let modules t ~libs ~for_ = modules_and_obj_dir t ~libs ~for_ >>| fst
 let virtual_modules ~lookup_vlib ~libs vlib =
   let info = Lib.info vlib in
   let+ modules =
-    match Option.value_exn (Lib_info.virtual_ info) with
-    | External modules -> Memo.return modules
+    match Lib_info.modules info with
+    | External modules ->
+      let modules = Option.value_exn modules in
+      Memo.return (Modules_group.With_vlib.drop_vlib modules)
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
       let* t = lookup_vlib ~dir:src_dir in

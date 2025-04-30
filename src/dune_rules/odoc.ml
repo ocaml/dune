@@ -608,9 +608,7 @@ let libs_of_pkg ctx ~pkg =
 ;;
 
 let entry_modules_by_lib sctx lib =
-  Dir_contents.modules_of_local_lib sctx lib
-  >>| Modules.With_vlib.modules
-  >>| Modules.With_vlib.entry_modules
+  Dir_contents.modules_of_local_lib sctx lib >>| Modules.entry_modules
 ;;
 
 let entry_modules sctx ~pkg =

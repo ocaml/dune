@@ -105,7 +105,7 @@ module Lib = struct
     let melange_runtime_deps = additional_paths (Lib_info.melange_runtime_deps info) in
     let jsoo_runtime = Lib_info.jsoo_runtime info in
     let wasmoo_runtime = Lib_info.wasmoo_runtime info in
-    let virtual_ = Option.is_some (Lib_info.virtual_ info) in
+    let virtual_ = Lib_info.virtual_ info in
     let instrumentation_backend = Lib_info.instrumentation_backend info in
     let native_archives =
       match Lib_info.native_archives info with
@@ -247,13 +247,8 @@ module Lib = struct
          let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
-         let virtual_ =
-           if virtual_ then Some (Lib_info.Source.External modules) else None
-         in
+         let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
          let modules = Modules.With_vlib.modules modules in
-         let entry_modules =
-           Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name
-         in
          let wrapped =
            Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
          in

@@ -55,6 +55,12 @@ val virtual_module_names : t -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
 val source_dirs : t -> Path.Set.t
+val compat_for_exn : t -> Module.t -> Module.t
+
+(** List of entry modules visible to users of the library. For wrapped
+    libraries, this is always one module. For unwrapped libraries, this could
+    be more than one. *)
+val entry_modules : t -> Module.t list
 
 module With_vlib : sig
   type modules := t
@@ -72,7 +78,6 @@ module With_vlib : sig
     -> (Module.t list, [ `Parent_cycle ]) result
 
   val find : t -> Module_name.t -> Module.t option
-  val compat_for_exn : t -> Module.t -> Module.t
   val impl_only : t -> Module.t list
 
   (** A set of modules from a single module. Not suitable for single module exe as
@@ -95,11 +100,6 @@ module With_vlib : sig
 
   (** Returns all the compatibility modules. *)
   val wrapped_compat : t -> Module.Name_map.t
-
-  (** List of entry modules visible to users of the library. For wrapped
-      libraries, this is always one module. For unwrapped libraries, this could be
-      more than one. *)
-  val entry_modules : t -> Module.t list
 
   (** Returns the main module name if it exists. It exist for libraries with
       [(wrapped true)] or one module libraries. *)

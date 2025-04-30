@@ -250,10 +250,8 @@ module Lib = struct
          let virtual_ =
            if virtual_ then Some (Lib_info.Source.External modules) else None
          in
+         let entry_modules = Modules.entry_modules modules |> List.map ~f:Module.name in
          let modules = Modules.With_vlib.modules modules in
-         let entry_modules =
-           Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name
-         in
          let wrapped =
            Some (Lib_info.Inherited.This (Modules.With_vlib.wrapped modules))
          in

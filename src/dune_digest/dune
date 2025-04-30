@@ -8,8 +8,5 @@
   dune_util
   stdune
   unix)
- (foreign_stubs
-  (names dune_digest_stubs)
-  (language c))
  (instrumentation
   (backend bisect_ppx)))

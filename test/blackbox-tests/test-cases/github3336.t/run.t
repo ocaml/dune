@@ -7,4 +7,4 @@ Here we demonstrate that such a ppx .exe is built successfully.
   [1]
 
   $ find _build | grep \.exe$
-  _build/default/.ppx/98cd9c27bc47def1a842c7a721af4e6b/ppx.exe
+  _build/default/.ppx/0747fa92c6bc2f7f4818823e4f8871ab/ppx.exe

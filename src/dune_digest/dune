@@ -7,7 +7,4 @@
   dune_console
   dune_util
   stdune
-  unix)
- (foreign_stubs
-  (names dune_digest_stubs)
-  (language c)))
+  unix))

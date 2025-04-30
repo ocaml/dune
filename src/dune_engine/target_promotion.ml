@@ -12,7 +12,7 @@ module To_delete = struct
       type t = Path.Source.Set.t
 
       let name = "PROMOTED-TO-DELETE"
-      let version = 2
+      let version = 3
       let to_dyn = Path.Source.Set.to_dyn
       let test_example () = Path.Source.Set.empty
     end)

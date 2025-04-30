@@ -1,0 +1,90 @@
+(library
+ (name blake3_mini)
+ (libraries unix)
+ (foreign_archives blake3)
+ (foreign_stubs
+  (language c)
+  (names blake3_stubs)
+  (flags :standard -O3)))
+
+; There are 4 configrations for the blake3 rules:
+; 1. Handwritten assembly for x86_64
+; 2. SIMD instructions with neon intrinsics for arm64
+; 3. SIMD instructions with x86 intrinsics for amd64
+; 4. Portable C implementation
+
+; We only handle the last 3 configurations here.
+
+; x86 intrinsics
+
+(foreign_library
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (archive_name blake3)
+ (language c)
+ (flags :standard -O2)
+ (names blake3 blake3_portable blake3_dispatch)
+ (extra_objects blake3_avx2 blake3_avx512 blake3_sse2 blake3_sse41))
+
+(rule
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (deps blake3_avx2.c)
+ (targets blake3_avx2%{ext_obj})
+ (action
+  (run %{cc} -mavx2 -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (deps blake3_avx512.c)
+ (targets blake3_avx512%{ext_obj})
+ (action
+  (run %{cc} -mavx512f -mavx512vl -mavx512bw -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (deps blake3_sse2.c)
+ (targets blake3_sse2%{ext_obj})
+ (action
+  (run %{cc} -msse2 -c %{deps} -o %{targets})))
+
+(rule
+ (enabled_if
+  (= %{architecture} "amd64"))
+ (deps blake3_sse41.c)
+ (targets blake3_sse41%{ext_obj})
+ (action
+  (run %{cc} -msse4.1 -c %{deps} -o %{targets})))
+
+; neon intrinsics
+
+(foreign_library
+ (enabled_if
+  (or
+   (= %{architecture} "arm64")
+   (= %{architecture} "aarch64")))
+ (archive_name blake3)
+ (language c)
+ (flags :standard -O2)
+ (names blake3 blake3_portable blake3_dispatch blake3_neon))
+
+; portable C implementation
+
+(foreign_library
+ (enabled_if
+  (and
+   (<> %{architecture} "amd64")
+   (<> %{architecture} "arm64")
+   (<> %{architecture} "aarch64")))
+ (archive_name blake3)
+ (language c)
+ (flags
+  :standard
+  -O2
+  "-DBLAKE3_NO_SSE2"
+  "-DBLAKE3_NO_SSE41"
+  "-DBLAKE3_NO_AVX2"
+  "-DBLAKE3_NO_AVX512")
+ (names blake3 blake3_portable blake3_dispatch))

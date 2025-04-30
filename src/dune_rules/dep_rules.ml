@@ -59,7 +59,9 @@ let deps_of_module ({ modules; _ } as md) ~ml_kind m =
     let interface_module =
       match Modules.With_vlib.lib_interface modules with
       | Some m -> m
-      | None -> Modules.With_vlib.compat_for_exn modules m
+      | None ->
+        let modules = Modules.With_vlib.drop_vlib modules in
+        Modules.compat_for_exn modules m
     in
     List.singleton interface_module |> Action_builder.return |> Memo.return
   | _ ->
@@ -135,7 +137,9 @@ let immediate_deps_of unit modules ~obj_dir ~ml_kind =
     let interface_module =
       match Modules.With_vlib.lib_interface modules with
       | Some m -> m
-      | None -> Modules.With_vlib.compat_for_exn modules unit
+      | None ->
+        let modules = Modules.With_vlib.drop_vlib modules in
+        Modules.compat_for_exn modules unit
     in
     List.singleton interface_module |> Action_builder.return
   | _ ->

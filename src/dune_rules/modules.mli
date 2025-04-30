@@ -55,6 +55,7 @@ val virtual_module_names : t -> Module_name.Path.Set.t
 
 val wrapped : t -> Wrapped.t
 val source_dirs : t -> Path.Set.t
+val compat_for_exn : t -> Module.t -> Module.t
 
 module With_vlib : sig
   type modules := t
@@ -72,7 +73,6 @@ module With_vlib : sig
     -> (Module.t list, [ `Parent_cycle ]) result
 
   val find : t -> Module_name.t -> Module.t option
-  val compat_for_exn : t -> Module.t -> Module.t
   val impl_only : t -> Module.t list
 
   (** A set of modules from a single module. Not suitable for single module exe as

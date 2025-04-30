@@ -30,7 +30,7 @@ jobs:
         # We don't run tests on all versions of the Windows environment and on
         # 4.02.x and 4.07.x in other environments
         ocaml-compiler:
-          - 5.1.x
+          - 5.2.x
         include:
           # OCaml trunk:
           - ocaml-compiler: ocaml-variants.5.4.0+trunk
@@ -44,14 +44,14 @@ jobs:
             os: macos-latest
             skip_test: true
           # macOS x86_64 (Intel)
-          - ocaml-compiler: 5.1.x
+          - ocaml-compiler: 5.2.x
             os: macos-13
             skip_test: true
           # MSVC (left behind until we upgrade to 5.2.0)
           - ocaml-compiler: ocaml-base-compiler.4.14.2,system-msvc
             os: windows-latest
           # mingw
-          - ocaml-compiler: ocaml-base-compiler.5.1.1,system-mingw
+          - ocaml-compiler: ocaml-base-compiler.5.2.1,system-mingw
             os: windows-latest
           - ocaml-compiler: 4.08.x
             os: ubuntu-latest

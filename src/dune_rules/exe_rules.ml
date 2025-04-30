@@ -108,7 +108,7 @@ let o_files
       let first_exe = first_exe exes in
       Foreign_sources.for_exes foreign_sources ~first_exe
     in
-    let* foreign_o_files =
+    let* extra_o_files =
       let+ { Lib_config.ext_obj; _ } =
         let+ ocaml = Super_context.context sctx |> Context.ocaml in
         ocaml.lib_config
@@ -124,8 +124,8 @@ let o_files
         ~dir_contents
         ~foreign_sources
     in
-    (* [foreign_o_files] are not mode-dependent *)
-    Mode.Map.Multi.add_all o_files All foreign_o_files)
+    (* [extra_o_files] are not mode-dependent *)
+    Mode.Map.Multi.add_all o_files All extra_o_files)
 ;;
 
 let executables_rules
@@ -252,7 +252,11 @@ let executables_rules
       let* o_files =
         o_files sctx ~dir ~expander ~exes ~linkages ~dir_contents ~requires_compile
       in
-      let* () = Check_rules.add_files sctx ~dir @@ Mode.Map.Multi.to_flat_list o_files in
+      let* () =
+        Mode.Map.Multi.to_flat_list o_files
+        |> Action_builder.return
+        |> Check_rules.add_files sctx ~dir
+      in
       let buildable = exes.buildable in
       match buildable.ctypes with
       | None ->

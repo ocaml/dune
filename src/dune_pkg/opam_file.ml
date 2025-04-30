@@ -299,6 +299,7 @@ let load_opam_file_with_contents ~contents:opam_file_string file name =
        >>| User_error.ok_exn)
     ~conflicts:[]
     ~depends:[]
+    ~doc_depends:{ Dune_lang.Package_doc_dependency.libraries = []; packages = [] }
     ~depopts:[]
     ~enabled_if:None (* CR-someday rgrinberg: would be nice to interpret this *)
     ~info

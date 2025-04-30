@@ -4,6 +4,7 @@ module Name : sig
   include module type of Dune_util.Alias_name with type t = Dune_util.Alias_name.t
 
   val default : t
+  val empty : t
   val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
 
   include Comparable_intf.S with type key := t

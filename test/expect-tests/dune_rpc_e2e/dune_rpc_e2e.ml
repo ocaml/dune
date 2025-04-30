@@ -148,7 +148,7 @@ let dune_build client what =
       what
       (match res with
        | Success -> "succeeded"
-       | Failure -> "failed")
+       | Failure _ -> "failed")
 ;;
 
 let with_dune_watch ?watch_mode_args ?env f =

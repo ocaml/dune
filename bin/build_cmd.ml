@@ -138,6 +138,35 @@ let run_build_command ~(common : Common.t) ~config ~request =
     ~request
 ;;
 
+(* Instruct the specified RPC server to build the specified targets, waiting
+   for a response from the server indicating that the build succeeded or failed
+   and print error messages if the build failed.
+*)
+let build_via_rpc_server targets =
+  let open Fiber.O in
+  let+ response = Rpc.Build.build ~wait:true targets in
+  match response with
+  | Error (error : Dune_rpc_private.Response.Error.t) ->
+    Printf.eprintf
+      "Error: %s\n%!"
+      (Dyn.to_string (Dune_rpc_private.Response.Error.to_dyn error))
+  | Ok Success ->
+    Console.print_user_message
+      (User_message.make [ Pp.text "Success" |> Pp.tag User_message.Style.Success ])
+  | Ok (Failure errors) ->
+    List.iter errors ~f:(fun { Dune_engine.Compound_user_error.main; _ } ->
+      Console.print_user_message main);
+    User_error.raise
+      [ (match List.length errors with
+         | 0 ->
+           Code_error.raise
+             "Build via RPC failed, but the RPC server did not send an error message."
+             []
+         | 1 -> Pp.textf "Build failed with 1 error."
+         | n -> Pp.textf "Build failed with %d errors." n)
+      ]
+;;
+
 let build =
   let doc = "Build the given targets, or the default ones if none are given." in
   let man =
@@ -164,10 +193,36 @@ let build =
       | _ :: _ -> targets
     in
     let common, config = Common.init builder in
-    let request setup =
-      Target.interpret_targets (Common.root common) config setup targets
-    in
-    run_build_command ~common ~config ~request
+    (* Here we need to find out whether another instance of dune already holds
+       the global build lock, as this will determine whether the current
+       instance of dune will perform the build itself or send a build request
+       to the RPC server in an already-running dune process. The method of
+       checking whether another dune instance holds the lock is to simply try
+       to take the lock. If taking the lock succeeds then the current process
+       will perform the build itself, and future attempts by this process to
+       take the lock are guaranteed to succeed. If taking the lock fails then
+       we know that another instance of dune must have it, and the current
+       process will send a build RPC request to that dune instance. Checking
+       the status of the lock by taking prevents a race condition where the
+       state of the lock could otherwise change between checking it and taking
+       it. *)
+    match Dune_util.Global_lock.lock ~timeout:None with
+    | Error () ->
+      (* This case is reached if dune detects that another instance of dune
+         is already running. Rather than performing the build itself, the
+         current instance of dune will instruct the already-running instance to
+         perform the build by sending an RPC message. As only one RPC server
+         can run at a time we need to use a fiber scheduler which does not run
+         an RPC server in the background to schedule the fiber which will
+         perform the RPC call.
+      *)
+      Scheduler.go_without_rpc_server ~common ~config (fun () ->
+        build_via_rpc_server targets)
+    | Ok () ->
+      let request setup =
+        Target.interpret_targets (Common.root common) config setup targets
+      in
+      run_build_command ~common ~config ~request
   in
   Cmd.v (Cmd.info "build" ~doc ~man ~envs:Common.envs) term
 ;;

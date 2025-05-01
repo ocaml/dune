@@ -118,7 +118,7 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () -> Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander)
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
@@ -130,9 +130,7 @@ end = struct
       >>= if_available (fun () ->
         let+ () =
           Memo.Option.iter exes.install_conf ~f:(install_stanza_rules ~expander ~ctx_dir)
-        and+ cctx_merlin =
-          Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
-        in
+        and+ cctx_merlin = Exe_rules.rules exes ~sctx ~scope ~expander ~dir_contents in
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
@@ -179,7 +177,7 @@ end = struct
     | Melange_stanzas.Emit.T mel ->
       Expander.eval_blang expander mel.enabled_if
       >>= if_available_buildable ~loc:mel.loc (fun () ->
-        Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel)
+        Melange_rules.setup_emit_cmj_rules ~dir_contents ~scope ~sctx ~expander mel)
     | _ -> Memo.return empty_none
   ;;
 

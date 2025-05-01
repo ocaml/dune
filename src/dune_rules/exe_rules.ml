@@ -333,7 +333,8 @@ let compile_info ~scope (exes : Executables.t) =
     ~forbidden_libraries:exes.forbidden_libraries
 ;;
 
-let rules ~sctx ~dir ~dir_contents ~scope ~expander (exes : Executables.t) =
+let rules ~sctx ~dir_contents ~scope ~expander (exes : Executables.t) =
+  let dir = Dir_contents.dir dir_contents in
   let* compile_info = compile_info ~scope exes in
   let f () =
     executables_rules

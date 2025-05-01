@@ -213,20 +213,6 @@ jobs:
           # We disable the Dune cache when running the tests
           DUNE_CACHE: disabled
 
-  monorepo_benchmark_test:
-    name: Build monorepo benchmark docker image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - uses: whoan/docker-build-with-cache-action@v6
-        with:
-          image_name: monorepobenchmark
-          dockerfile: bench/monorepo/bench.Dockerfile
-          push_image_and_stages: on:push
-          username: ocamldune
-          password: "${{ secrets.DOCKER_HUB_PASSWORD }}"
-
   create-local-opam-switch:
     name: Create local opam switch
     strategy:

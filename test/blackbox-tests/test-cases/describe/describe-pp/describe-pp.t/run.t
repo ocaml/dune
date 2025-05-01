@@ -24,3 +24,6 @@ This also works for reason code
   # 1 "src/main_re.pp.re.ml"
   # 1 "src/main_re.pp.re"
   Util.log ("Hello, world!")
+
+  $ dune describe pp lib/subdir/bazy.ml
+  

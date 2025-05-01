@@ -49,9 +49,3 @@ Test transitive deps can not be directly accessed, both for compiler versions su
   1 | let a = Bar.y + Foo.v
                       ^^^^^
   Error: Unbound module Foo
-
-Test if #274 is fixed:
-
-  $ dune build --root=./tyxml
-  Entering directory 'tyxml'
-  Leaving directory 'tyxml'

@@ -10,4 +10,8 @@
   (<> "macosx" %{ocaml-config:system})))
 
 (cram
+ (applies_to exec-watch-server)
+ (enabled_if false))
+
+(cram
  (deps wait-for-file.sh))

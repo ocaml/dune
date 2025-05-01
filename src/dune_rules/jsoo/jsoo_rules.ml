@@ -41,95 +41,6 @@ let js_env = compute_env ~mode:JS
 let wasm_env = compute_env ~mode:Wasm
 let jsoo_env ~dir ~mode = (Js_of_ocaml.Mode.select ~mode ~js:js_env ~wasm:wasm_env) ~dir
 
-module Config : sig
-  type t
-
-  val all : t list
-  val path : t -> string
-  val of_string : string -> t
-  val of_flags : string list -> t
-  val to_flags : t -> string list
-end = struct
-  type t =
-    { js_string : bool option
-    ; effects : bool option
-    ; toplevel : bool option
-    }
-
-  let default = { js_string = None; effects = None; toplevel = None }
-  let bool_opt = [ None; Some true; Some false ]
-
-  let all =
-    List.concat_map bool_opt ~f:(fun js_string ->
-      List.concat_map bool_opt ~f:(fun effects ->
-        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
-  ;;
-
-  let get t =
-    List.filter_map
-      [ "use-js-string", t.js_string; "effects", t.effects; "toplevel", t.toplevel ]
-      ~f:(fun (n, v) ->
-        match v with
-        | None -> None
-        | Some v -> Some (n, v))
-  ;;
-
-  let set acc name v =
-    match name with
-    | "use-js-string" -> { acc with js_string = Some v }
-    | "effects" -> { acc with effects = Some v }
-    | "toplevel" -> { acc with toplevel = Some v }
-    | _ -> acc
-  ;;
-
-  let path t =
-    if t = default
-    then "default"
-    else
-      List.map (get t) ~f:(function
-        | x, true -> x
-        | x, false -> "!" ^ x)
-      |> String.concat ~sep:"+"
-  ;;
-
-  let of_string x =
-    match x with
-    | "default" -> default
-    | _ ->
-      List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
-        match String.drop_prefix ~prefix:"!" name with
-        | Some name -> set acc name false
-        | None -> set acc name true)
-  ;;
-
-  let of_flags l =
-    let rec loop acc = function
-      | [] -> acc
-      | "--enable" :: name :: rest -> loop (set acc name true) rest
-      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
-        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
-         | Some name -> loop (set acc name true) rest
-         | _ -> assert false)
-      | "--disable" :: name :: rest -> loop (set acc name false) rest
-      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
-        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
-         | Some name -> loop (set acc name false) rest
-         | _ -> assert false)
-      | "--toplevel" :: rest -> loop (set acc "toplevel" true) rest
-      | _ :: rest -> loop acc rest
-    in
-    loop default l
-  ;;
-
-  let to_flags t =
-    List.concat_map (get t) ~f:(function
-      | "toplevel", true -> [ "--toplevel" ]
-      | "toplevel", false -> []
-      | name, true -> [ "--enable"; name ]
-      | name, false -> [ "--disable"; name ])
-  ;;
-end
-
 module Version = struct
   type t = int * int
 
@@ -171,6 +82,191 @@ module Version = struct
     match jsoo with
     | Ok jsoo_path -> Memo.exec version_memo jsoo_path
     | Error e -> Action.Prog.Not_found.raise e
+  ;;
+end
+
+module Config : sig
+  type t
+
+  val all : t list
+  val path : t -> string
+  val of_string : string -> t
+  val of_flags : string list -> t
+  val to_flags : jsoo_version:Version.t option -> t -> string list
+  val remove_config_flags : string list -> string list
+end = struct
+  type effects_backend =
+    | Cps
+    | Double_translation
+
+  type t =
+    { js_string : bool option
+    ; effects : effects_backend option
+    ; toplevel : bool option
+    }
+
+  let default = { js_string = None; effects = None; toplevel = None }
+  let bool_opt = [ None; Some true; Some false ]
+  let effects_opt = [ None; Some Cps; Some Double_translation ]
+
+  let all =
+    List.concat_map bool_opt ~f:(fun js_string ->
+      List.concat_map effects_opt ~f:(fun effects ->
+        List.concat_map bool_opt ~f:(fun toplevel -> [ { js_string; effects; toplevel } ])))
+  ;;
+
+  let enable name acc =
+    match name with
+    | "use-js-string" -> { acc with js_string = Some true }
+    | "effects" ->
+      (* [--enable effects], used alone, implies [--effects=cps] *)
+      (match acc.effects with
+       | None -> { acc with effects = Some Cps }
+       | Some _ -> acc)
+    | "toplevel" -> { acc with toplevel = Some true }
+    | _ -> acc
+  ;;
+
+  let disable name acc =
+    match name with
+    | "use-js-string" -> { acc with js_string = Some false }
+    | "effects" -> { acc with effects = None }
+    | "toplevel" -> { acc with toplevel = Some false }
+    | _ -> acc
+  ;;
+
+  let string_of_effects = function
+    | Cps -> "cps"
+    | Double_translation -> "double-translation"
+  ;;
+
+  let path t =
+    if t = default
+    then "default"
+    else (
+      let of_bool_opt key =
+        Option.map ~f:(function
+          | true -> key
+          | false -> "!" ^ key)
+      in
+      List.filter_opt
+        [ of_bool_opt "use-js-string" t.js_string
+        ; Option.map t.effects ~f:(fun e -> "effects=" ^ string_of_effects e)
+        ; of_bool_opt "toplevel" t.toplevel
+        ]
+      |> String.concat ~sep:"+")
+  ;;
+
+  let effects_of_string = function
+    | "cps" -> Some Cps
+    | "double-translation" -> Some Double_translation
+    | _ -> None
+  ;;
+
+  let of_string x =
+    match x with
+    | "default" -> default
+    | _ ->
+      List.fold_left (String.split ~on:'+' x) ~init:default ~f:(fun acc name ->
+        match
+          String.drop_prefix ~prefix:"!" name, String.drop_prefix ~prefix:"effects=" name
+        with
+        | Some name, _ -> disable name acc
+        | None, None -> enable name acc
+        | None, Some backend ->
+          (match effects_of_string backend with
+           | Some backend -> { acc with effects = Some backend }
+           | None -> acc))
+  ;;
+
+  let of_flags l =
+    let rec loop acc = function
+      | [] -> acc
+      | "--enable" :: name :: rest -> loop (enable name acc) rest
+      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+         | Some name -> loop (enable name acc) rest
+         | _ -> assert false)
+      | "--disable" :: name :: rest -> loop (disable name acc) rest
+      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+         | Some name -> loop (disable name acc) rest
+         | _ -> assert false)
+      | "--toplevel" :: rest -> loop (enable "toplevel" acc) rest
+      | "--effects" :: "cps" :: rest -> loop { acc with effects = Some Cps } rest
+      | "--effects" :: "double-translation" :: rest ->
+        loop { acc with effects = Some Double_translation } rest
+      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+        let backend =
+          Option.bind
+            (String.drop_prefix maybe_effects ~prefix:"--effects=")
+            ~f:effects_of_string
+        in
+        (match backend with
+         | Some backend -> loop { acc with effects = Some backend } rest
+         | None -> loop acc rest)
+      | _ :: rest -> loop acc rest
+    in
+    loop default l
+  ;;
+
+  let backward_compatible_effects ~jsoo_version str =
+    match str with
+    | None ->
+      (* For jsoo, this means unsupported effects. For wasmoo, this means effects go
+         through the Javascript Promise API. *)
+      None
+    | Some Cps ->
+      let v6_or_higher =
+        match jsoo_version with
+        | Some v ->
+          (match Version.compare v (6, 0) with
+           | Gt | Eq -> true
+           | Lt -> false)
+        | None -> false
+      in
+      if v6_or_higher then Some "--effects=cps" else Some "--enable=effects"
+    | Some Double_translation ->
+      (* For js_of_ocaml < 6.0, this flag does not exist and will raise an error,
+         which is fine. *)
+      Some "--effects=double-translation"
+  ;;
+
+  let to_flags ~jsoo_version t =
+    List.filter_opt
+      [ (match t.toplevel with
+         | Some true -> Some "--toplevel"
+         | _ -> None)
+      ; backward_compatible_effects ~jsoo_version t.effects
+      ; (match t.js_string with
+         | Some true -> Some "--enable=use-js-string"
+         | Some false -> Some "--disable=use-js-string"
+         | None -> None)
+      ]
+  ;;
+
+  let remove_config_flags flags =
+    let rec loop acc = function
+      | [] -> acc
+      | "--enable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
+      | maybe_enable :: rest when String.is_prefix maybe_enable ~prefix:"--enable=" ->
+        (match String.drop_prefix maybe_enable ~prefix:"--enable=" with
+         | Some ("effects" | "use-js-string") -> loop acc rest
+         | Some _ -> loop (maybe_enable :: acc) rest
+         | None -> assert false)
+      | "--disable" :: ("effects" | "use-js-string") :: rest -> loop acc rest
+      | maybe_disable :: rest when String.is_prefix maybe_disable ~prefix:"--disable=" ->
+        (match String.drop_prefix maybe_disable ~prefix:"--disable=" with
+         | Some ("effects" | "use-js-string") -> loop acc rest
+         | Some _ -> loop (maybe_disable :: acc) rest
+         | None -> assert false)
+      | "--effects" :: _backend :: rest -> loop acc rest
+      | maybe_effects :: rest when String.is_prefix maybe_effects ~prefix:"--effects=" ->
+        loop acc rest
+      | "--toplevel" :: rest -> loop acc rest
+      | other :: rest -> loop (other :: acc) rest
+    in
+    loop [] flags |> List.rev
   ;;
 end
 
@@ -259,6 +355,13 @@ let js_of_ocaml_rule
     | Link -> flags.link
     | Build_runtime -> flags.build_runtime
   in
+  let flags =
+    (* Avoid duplicating flags that are covered by the config *)
+    Action_builder.map flags ~f:(fun flags ->
+      match config with
+      | None -> flags
+      | Some _ -> Config.remove_config_flags flags)
+  in
   Command.run_dyn_prog
     ~dir:(Path.build dir)
     jsoo
@@ -280,9 +383,14 @@ let js_of_ocaml_rule
        | None -> S []
        | Some config ->
          Dyn
-           (Action_builder.map config ~f:(fun config ->
-              Command.Args.S
-                (List.map (Config.to_flags config) ~f:(fun x -> Command.Args.A x)))))
+           (let+ config = config
+            and+ jsoo_version =
+              let* jsoo = jsoo in
+              Action_builder.of_memo (Version.jsoo_version jsoo)
+            in
+            Command.Args.S
+              (List.map (Config.to_flags ~jsoo_version config) ~f:(fun x ->
+                 Command.Args.A x))))
     ; A "-o"
     ; Target target
     ; spec

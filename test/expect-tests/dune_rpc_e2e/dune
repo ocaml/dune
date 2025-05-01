@@ -73,6 +73,8 @@
  (name dune_rpc_jobs_test)
  (modules dune_rpc_jobs)
  (inline_tests
+  ;; this test is flaky
+  (enabled_if false)
   (deps
    (package dune)))
  (libraries

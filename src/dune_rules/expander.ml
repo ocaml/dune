@@ -219,7 +219,7 @@ let cc t =
     in
     strings (c_compiler :: cc)
   in
-  { Foreign_language.Dict.c = make C; cxx = make Cxx }
+  { Foreign_language.Dict.c = make `C; cxx = make `Cxx }
 ;;
 
 let get_prog = function

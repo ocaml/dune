@@ -133,7 +133,7 @@ let ctypes_stubs sources (ctypes : Ctypes_field.t) =
         Ctypes_field.c_generated_functions_cout_c ctypes fd |> Filename.remove_extension
       in
       let path =
-        match Unresolved.find_source sources C (loc, name) with
+        match Unresolved.find_source sources `C (loc, name) with
         | Some p -> p
         | None ->
           (* impossible b/c ctypes fields generates this *)

@@ -120,8 +120,8 @@ let decode (for_ : for_) =
   in
   let foreign_stubs =
     foreign_stubs
-    |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
-    |> add_stubs Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
+    |> add_stubs `C ~loc:c_names_loc ~names:c_names ~flags:c_flags
+    |> add_stubs `Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
   in
   let libraries =
     let ctypes_libraries =
@@ -184,7 +184,7 @@ let has_foreign t =
 
 let has_foreign_cxx t =
   List.exists
-    ~f:(fun stub -> Foreign_language.(equal Cxx stub.Foreign.Stubs.language))
+    ~f:(fun stub -> Foreign_language.(equal `Cxx stub.Foreign.Stubs.language))
     t.foreign_stubs
 ;;
 

@@ -1,39 +1,34 @@
 open Import
 
-module T = struct
-  type t =
-    | C
-    | Cxx
+type t =
+  [ `C
+  | `Cxx
+  ]
 
-  let compare x y =
-    match x, y with
-    | C, C -> Eq
-    | C, _ -> Lt
-    | _, C -> Gt
-    | Cxx, Cxx -> Eq
-  ;;
-
-  let equal x y =
-    match x, y with
-    | C, C -> true
-    | Cxx, Cxx -> true
-    | _, _ -> false
-  ;;
-
-  let to_dyn = function
-    | C -> Dyn.Variant ("C", [])
-    | Cxx -> Dyn.Variant ("Cxx", [])
-  ;;
-end
-
-include T
-
-let proper_name = function
-  | C -> "C"
-  | Cxx -> "C++"
+let equal x y =
+  match x, y with
+  | `C, `C -> true
+  | `Cxx, `Cxx -> true
+  | _, _ -> false
 ;;
 
-include Comparable.Make (T)
+let to_dyn = function
+  | `C -> Dyn.Variant ("C", [])
+  | `Cxx -> Dyn.Variant ("Cxx", [])
+;;
+
+let proper_name = function
+  | `C -> "C"
+  | `Cxx -> "C++"
+;;
+
+let decode =
+  let encode_lang = function
+    | `C -> "c"
+    | `Cxx -> "cxx"
+  in
+  Decoder.enum [ encode_lang `C, `C; encode_lang `Cxx, `Cxx ]
+;;
 
 module Dict = struct
   type 'a t =
@@ -45,19 +40,19 @@ module Dict = struct
   let c t = t.c
   let cxx t = t.cxx
   let map { c; cxx } ~f = { c = f c; cxx = f cxx }
-  let mapi { c; cxx } ~f = { c = f ~language:C c; cxx = f ~language:Cxx cxx }
+  let mapi { c; cxx } ~f = { c = f ~language:`C c; cxx = f ~language:`Cxx cxx }
   let make_both a = { c = a; cxx = a }
   let make ~c ~cxx = { c; cxx }
 
   let get { c; cxx } = function
-    | C -> c
-    | Cxx -> cxx
+    | `C -> c
+    | `Cxx -> cxx
   ;;
 
   let add t k v =
     match k with
-    | C -> { t with c = v }
-    | Cxx -> { t with cxx = v }
+    | `C -> { t with c = v }
+    | `Cxx -> { t with cxx = v }
   ;;
 
   let update t k ~f =
@@ -72,7 +67,11 @@ let header_extension = ".h"
 
 let source_extensions =
   String.Map.of_list_exn
-    [ "c", (C, (1, 0)); "cpp", (Cxx, (1, 0)); "cxx", (Cxx, (1, 8)); "cc", (Cxx, (1, 10)) ]
+    [ "c", (`C, (1, 0))
+    ; "cpp", (`Cxx, (1, 0))
+    ; "cxx", (`Cxx, (1, 8))
+    ; "cc", (`Cxx, (1, 10))
+    ]
 ;;
 
 let has_foreign_extension ~fn =

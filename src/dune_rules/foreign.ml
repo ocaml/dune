@@ -138,20 +138,11 @@ module Stubs = struct
 
   let () = Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
 
-  let decode_lang =
-    let encode_lang = function
-      | Foreign_language.C -> "c"
-      | Cxx -> "cxx"
-    in
-    let open Foreign_language in
-    Dune_lang.Decoder.enum [ encode_lang C, C; encode_lang Cxx, Cxx ]
-  ;;
-
   let decode_stubs ~for_library =
     let open Dune_lang.Decoder in
     let* loc = loc in
     let+ loc_archive_name, archive_name = located (field_o "archive_name" string)
-    and+ language = field "language" decode_lang
+    and+ language = field "language" Foreign_language.decode
     and+ names = Ordered_set_lang.field "names"
     and+ loc_mode, mode =
       located (field_o "mode" (Dune_lang.Syntax.since syntax (0, 1) >>> Mode.decode))
@@ -247,7 +238,7 @@ module Source = struct
   let language t =
     match t.kind with
     | Stubs stubs -> stubs.language
-    | Ctypes _ -> C
+    | Ctypes _ -> `C
   ;;
 
   let path t = t.path
@@ -280,6 +271,6 @@ module Sources = struct
   let has_cxx_sources (t : t) =
     String.Map.exists t ~f:(fun (_loc, source) ->
       let language = Source.language source in
-      Foreign_language.(equal Cxx language))
+      Foreign_language.(equal `Cxx language))
   ;;
 end

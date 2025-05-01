@@ -62,7 +62,7 @@ let foreign_flags_env =
                expander
                ~standard:(Foreign_language.Dict.get parent lang)
         in
-        Foreign_language.Dict.make ~c:(foreign_flags C) ~cxx:(foreign_flags Cxx))
+        Foreign_language.Dict.make ~c:(foreign_flags `C) ~cxx:(foreign_flags `Cxx))
   in
   fun ~dir ->
     let* () = Memo.return () in
@@ -210,7 +210,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
 ;;
 
 let build_c
-      ~(kind : Foreign_language.t)
+      ~(kind : [ `C | `Cxx ])
       ~sctx
       ~dir
       ~expander
@@ -223,8 +223,8 @@ let build_c
   let* ocaml = Context.ocaml ctx in
   let base_flags =
     match kind with
-    | Cxx -> Fdo.cxx_flags ctx
-    | C ->
+    | `Cxx -> Fdo.cxx_flags ctx
+    | `C ->
       (match use_standard_flags with
        | Some true -> Fdo.c_flags ctx
        | None | Some false ->
@@ -245,12 +245,12 @@ let build_c
       @@
         (match field.build_flags_resolver with
         | Vendored { c_flags; c_library_flags = _ } ->
-          foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:C
+          foreign_flags sctx ~dir ~expander ~flags:c_flags ~language:`C
         | Pkg_config ->
           let open Action_builder.O in
           let+ default_flags =
             let dir = Path.Build.parent_exn dst in
-            default_foreign_flags ~dir ~language:C
+            default_foreign_flags ~dir ~language:`C
           and+ pkg_config_flags =
             let lib = External_lib_name.to_string field.external_library_name in
             Pkg_config.Query.read ~dir (Cflags lib) sctx

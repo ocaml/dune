@@ -1,18 +1,17 @@
 open Import
 
 type t =
-  | C
-  | Cxx
+  [ `C
+  | `Cxx
+  ]
 
-val compare : t -> t -> ordering
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
+val decode : t Dune_lang.Decoder.t
 
 (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for diagnostic
     messages. *)
 val proper_name : t -> string
-
-module Map : Map.S with type key = t
 
 module Dict : sig
   type language := t

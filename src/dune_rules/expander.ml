@@ -209,7 +209,7 @@ let expand_artifact ~source t artifact arg =
 let foreign_flags = Fdecl.create Dyn.opaque
 
 let cc t =
-  let make (language : Foreign_language.t) =
+  let make language =
     let+ cc =
       let* cc = Action_builder.of_memo @@ Fdecl.get foreign_flags ~dir:t.dir in
       Foreign_language.Dict.get cc language
@@ -219,7 +219,7 @@ let cc t =
     in
     strings (c_compiler :: cc)
   in
-  { Foreign_language.Dict.c = make `C; cxx = make `Cxx }
+  Foreign_language.Dict.make ~c:(make `C) ~cxx:(make `Cxx)
 ;;
 
 let get_prog = function
@@ -543,8 +543,8 @@ let expand_pform_var (context : Context.t) ~dir ~source (var : Pform.Var.t) =
                 |> Path.build)
            ]
            |> Memo.return))
-  | Cc -> Need_full_expander (fun t -> With (cc t).c)
-  | Cxx -> Need_full_expander (fun t -> With (cc t).cxx)
+  | Cc -> Need_full_expander (fun t -> With (Foreign_language.Dict.c (cc t)))
+  | Cxx -> Need_full_expander (fun t -> With (Foreign_language.Dict.cxx (cc t)))
   | Toolchain ->
     (match Context.findlib_toolchain context with
      | Some toolchain -> Context_name.to_string toolchain

@@ -41,6 +41,7 @@ include struct
   module Melange = Melange
   module Melange_stanzas = Melange_stanzas
   module Executables = Executables
+  module Foreign_language = Foreign_language
 end
 
 include struct

@@ -71,7 +71,7 @@ let foreign_flags_env =
 
 let () = Fdecl.set Expander.foreign_flags foreign_flags_env
 
-let default_foreign_flags ~dir ~language =
+let default_foreign_flags ~dir ~(language : [ `C | `Cxx ]) =
   (let+ dict = foreign_flags_env ~dir in
    Foreign_language.Dict.get dict language)
   |> Action_builder.of_memo_join
@@ -323,6 +323,26 @@ let build_c
      >>| Action.Full.add_sandbox Sandbox_config.no_sandboxing)
 ;;
 
+let build_asm ~sctx ~dir (loc, src, dst) =
+  let ctx = Super_context.context sctx in
+  let* ocaml = Context.ocaml ctx in
+  Super_context.add_rule sctx ~loc ~dir
+  @@
+  let src = Path.build (Foreign.Source.path src) in
+  let c_compiler =
+    Super_context.resolve_program
+      ~loc:None
+      ~dir
+      sctx
+      (Ocaml_config.c_compiler ocaml.ocaml_config)
+  in
+  Command.run_dyn_prog
+    ~dir:(Path.build dir)
+    c_compiler
+    (* TODO: windows *)
+    [ Command.Args.S [ A "-c"; A "-o"; Target dst; Dep src ] ]
+;;
+
 (* TODO: [requires] is a confusing name, probably because it's too general: it
    looks like it's a list of libraries we depend on. *)
 let build_o_files
@@ -390,13 +410,10 @@ let build_o_files
         in
         let dst = Path.Build.relative dir (obj ^ ext_obj) in
         let+ () =
-          build_c
-            ~kind:(Foreign.Source.language src)
-            ~sctx
-            ~dir
-            ~expander
-            ~include_flags
-            (loc, src, dst)
+          match Foreign.Source.language src with
+          | `Asm -> build_asm ~sctx ~dir (loc, src, dst)
+          | (`C | `Cxx) as kind ->
+            build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst)
         in
         dst
       in

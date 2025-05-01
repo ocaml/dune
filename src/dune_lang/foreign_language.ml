@@ -3,32 +3,40 @@ open Import
 type t =
   [ `C
   | `Cxx
+  | `Asm
   ]
 
 let equal x y =
   match x, y with
   | `C, `C -> true
+  | `C, _ | _, `C -> false
   | `Cxx, `Cxx -> true
+  | `Cxx, _ | _, `Cxx -> false
+  | `Asm, `Asm -> true
+  | `Asm, _ | _, `Asm -> false
   | _, _ -> false
 ;;
 
-let to_dyn = function
-  | `C -> Dyn.Variant ("C", [])
-  | `Cxx -> Dyn.Variant ("Cxx", [])
+let to_dyn : t -> Dyn.t = function
+  | `C -> Dyn.variant "C" []
+  | `Cxx -> Dyn.variant "Cxx" []
+  | `Asm -> Dyn.variant "Asm" []
 ;;
 
 let proper_name = function
   | `C -> "C"
   | `Cxx -> "C++"
+  | `Asm -> "Assembly"
 ;;
 
-let decode =
-  let encode_lang = function
-    | `C -> "c"
-    | `Cxx -> "cxx"
-  in
-  Dune_lang.Decoder.enum [ encode_lang `C, `C; encode_lang `Cxx, `Cxx ]
+let to_string : t -> string = function
+  | `C -> "c"
+  | `Cxx -> "cxx"
+  | `Asm -> "asm"
 ;;
+
+let all = [ `C; `Cxx; `Asm ]
+let decode = all |> List.map ~f:(fun x -> to_string x, x) |> Dune_lang.Decoder.enum
 
 module Dict = struct
   type 'a t =
@@ -41,7 +49,7 @@ module Dict = struct
   let cxx t = t.cxx
   let map { c; cxx } ~f = { c = f c; cxx = f cxx }
   let mapi { c; cxx } ~f = { c = f ~language:`C c; cxx = f ~language:`Cxx cxx }
-  let make_both a = { c = a; cxx = a }
+  let make_all a = { c = a; cxx = a }
   let make ~c ~cxx = { c; cxx }
 
   let get { c; cxx } = function
@@ -71,6 +79,9 @@ let source_extensions =
     ; "cpp", (`Cxx, (1, 0))
     ; "cxx", (`Cxx, (1, 8))
     ; "cc", (`Cxx, (1, 10))
+    ; "S", (`Asm, (3, 19))
+    ; "s", (`Asm, (3, 19))
+    ; "asm", (`Asm, (3, 19))
     ]
 ;;
 

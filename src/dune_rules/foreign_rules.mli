@@ -5,7 +5,7 @@ val foreign_flags
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t
-  -> language:Foreign_language.t
+  -> language:[ `C | `Cxx ]
   -> string list Action_builder.t
 
 val build_o_files

@@ -85,10 +85,11 @@ module Unresolved = struct
   let find_source sources language (loc, name) =
     let open Option.O in
     let* candidates = String.Map.find sources name in
-    match
+    let x =
       List.filter_map candidates ~f:(fun (l, path) ->
         Option.some_if (Foreign_language.equal l language) path)
-    with
+    in
+    match x with
     | [ path ] -> Some path
     | [] -> None
     | _ :: _ :: _ as paths -> multiple_sources_error ~mode:All ~name ~loc ~paths

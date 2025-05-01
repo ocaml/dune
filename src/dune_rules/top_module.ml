@@ -43,18 +43,10 @@ let find_module sctx src =
          drop_rules
          @@ fun () ->
          match origin with
-         | Executables exes ->
-           Exe_rules.rules ~sctx ~dir:stanza_dir ~dir_contents ~scope ~expander exes
-         | Library lib ->
-           Lib_rules.rules lib ~sctx ~dir_contents ~dir:stanza_dir ~expander ~scope
+         | Executables exes -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander exes
+         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
          | Melange mel ->
-           Melange_rules.setup_emit_cmj_rules
-             ~sctx
-             ~dir_contents
-             ~dir:stanza_dir
-             ~expander
-             ~scope
-             mel
+           Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel
        in
        let module_ =
          let modules = Compilation_context.modules cctx in

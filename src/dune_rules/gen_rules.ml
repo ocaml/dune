@@ -211,7 +211,7 @@ let define_all_alias ~dir ~project ~js_targets =
   Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
+let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
   let* stanzas = Dune_file.stanzas dune_file
   and* scope = Scope.DB.find_by_dir ctx_dir in
@@ -319,22 +319,18 @@ let gen_rules_source_only sctx ~dir source_dir =
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : (Loc.t * Compilation_context.t) list Memo.t
   =
-  let* expander = Super_context.expander sctx ~dir in
-  let* () = gen_format_and_cram_rules sctx ~dir source_dir
-  and+ stanzas =
+  let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+  and+ contexts =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
     Dune_load.stanzas_in_dir dir
     >>= function
-    | Some d -> Memo.return (Some d)
+    | Some dune_file ->
+      Super_context.expander sctx ~dir
+      >>= gen_rules_for_stanzas sctx dir_contents cctxs ~dune_file ~dir
     | None ->
       let project = Source_tree.Dir.project source_dir in
       let+ () = define_all_alias ~dir ~js_targets:[] ~project in
-      None
-  in
-  let+ contexts =
-    match stanzas with
-    | None -> Memo.return []
-    | Some d -> gen_rules_for_stanzas sctx dir_contents cctxs expander d ~dir
+      []
   in
   contexts
 ;;

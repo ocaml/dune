@@ -44,7 +44,9 @@ Test that dune can dynamically select a lockdir with a cond statement
   > (context
   >  (default
   >   (lock_dir (cond
-  >    ((and (= %{architecture} arm64) (= %{system} macosx)) dune.macos.arm64.lock)
+  >    ((and
+  >      (= %{architecture} arm64)
+  >      (= %{system} macosx)) dune.macos.arm64.lock)
   >    ((= %{system} macosx) dune.macos.lock)
   >    ((= %{system} linux) dune.linux.lock)))))
   > EOF
@@ -104,10 +106,12 @@ Build linux package on linux:
 Try setting the os to one which doesn't have a corresponding lockdir:
   $ dune clean
   $ DUNE_CONFIG__OS=windows dune build _build/_private/default/.pkg/linux-only/target/
-  File "dune-workspace", lines 28-30, characters 3-162:
-  28 |    ((and (= %{architecture} arm64) (= %{system} macosx)) dune.macos.arm64.lock)
-  29 |    ((= %{system} macosx) dune.macos.lock)
-  30 |    ((= %{system} linux) dune.linux.lock)))))
+  File "dune-workspace", lines 28-32, characters 3-172:
+  28 |    ((and
+  29 |      (= %{architecture} arm64)
+  30 |      (= %{system} macosx)) dune.macos.arm64.lock)
+  31 |    ((= %{system} macosx) dune.macos.lock)
+  32 |    ((= %{system} linux) dune.linux.lock)))))
   Error: None of the conditions matched so no lockdir could be chosen.
   [1]
 
@@ -124,9 +128,10 @@ Test that cond statements can have a default value:
   >  (url "file://$(pwd)/mock-opam-repository"))
   > (context
   >  (default
-  >   (lock_dir (cond
-  >    (false non-existant)
-  >    (default dune.lock)))))
+  >   (lock_dir
+  >    (cond
+  >     (false non-existant)
+  >     (default dune.lock)))))
   > EOF
 
   $ dune pkg lock dune.lock

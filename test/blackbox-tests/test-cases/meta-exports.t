@@ -95,7 +95,7 @@ using `(re_export)`.
 First we try with dune version 3.16 (it should not generate the `exports` field):
 
   $ VERSION=3.16 sh dune-project.gen >dune-project
-  $ dune build && dune install --libdir $(pwd)/_local
+  $ dune build && dune install --libdir $(pwd)/_local --prefix $(pwd)
   $ cat _local/foo/META
   description = ""
   requires = "bar"
@@ -107,7 +107,7 @@ First we try with dune version 3.16 (it should not generate the `exports` field)
 Now with dune version 3.17 (it should generate the `exports` field):
 
   $ VERSION=3.17 sh dune-project.gen >dune-project
-  $ dune build && dune install --libdir $(pwd)/_local
+  $ dune build && dune install --libdir $(pwd)/_local --prefix $(pwd)
   $ cat _local/foo/META
   description = ""
   requires = "bar"

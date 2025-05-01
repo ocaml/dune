@@ -270,7 +270,6 @@ let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
 
 let setup_emit_cmj_rules
       ~sctx
-      ~dir
       ~scope
       ~expander
       ~dir_contents
@@ -279,6 +278,7 @@ let setup_emit_cmj_rules
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
+  let dir = Dir_contents.dir dir_contents in
   let f () =
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents

@@ -624,7 +624,8 @@ let library_rules
   merlin
 ;;
 
-let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope =
+let rules (lib : Library.t) ~sctx ~dir_contents ~expander ~scope =
+  let dir = Dir_contents.dir dir_contents in
   let buildable = lib.buildable in
   let libs = Scope.libs scope in
   let lib_id =

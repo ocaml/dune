@@ -5,6 +5,7 @@ a mock compiler package using dune's toolchain mechanism.
   $ make_lockdir
 
 We create a fake compiler by creating a configure file.
+
   $ mkdir fake-compiler
   $ cat > fake-compiler/configure << 'EOF'
   > #!/bin/sh
@@ -14,6 +15,7 @@ We create a fake compiler by creating a configure file.
   $ chmod a+x fake-compiler/configure
 
 We add a shell script to be installed as a fake compiler
+
   $ mkdir -p fake-compiler/target/share/bin
   $ cat > fake-compiler/target/share/bin/ocamlc << EOF
   > #!/bin/sh
@@ -23,21 +25,27 @@ We add a shell script to be installed as a fake compiler
 
 We make sure the installed script is installing the script at the correct
 location
-  $ cat > fake-compiler/Makefile << 'EOF'
-  > prefix := $(shell cat prefix.txt)
-  > target := $(DESTDIR)$(prefix)
-  > install:
-  > 	@mkdir -p $(target)
-  > 	@cp -r target/* $(target)
-  > EOF
 
-We genrate the lockfile for the fake compiler
+  $ cat > fake-compiler/make << 'EOF'
+  > #!/bin/sh
+  > prefix=$(cat prefix.txt)
+  > target=${DESTDIR}${prefix}
+  > install() {
+  >   mkdir -p "${target}"
+  >   cp -r target/* "${target}"
+  > }
+  > install
+  > EOF
+  $ chmod +x fake-compiler/make
+
+We generate the lockfile for the fake compiler
+
   $ cat > dune.lock/ocaml-base-compiler.pkg << EOF
   > (version 1)
   > (build
-  >     (run ./configure %{prefix}))
+  >  (run ./configure %{prefix}))
   > (install
-  >  (run %{make} install))
+  >  (run ./make install))
   > (source
   >  (copy $PWD/fake-compiler))
   > EOF
@@ -45,6 +53,7 @@ We genrate the lockfile for the fake compiler
 We generate the lock file for the package to demonstrate the variable is
 replaced with the path to the sandbox inside of the path to the non-relocatable
 location.
+
   $ cat > dune.lock/baz.pkg << EOF
   > (version 1)
   > (build
@@ -53,6 +62,7 @@ location.
   > EOF
 
 We generate a fake package to use it
+
   $ cat > dune-project << EOF
   > (lang dune 3.18)
   > (package
@@ -71,6 +81,7 @@ We generate a fake package to use it
 
 We try to build the dependency to show that it echoes the wong path. Until we
 fix the problem, it shows the sandbox path
-  $ XDG_CACHE_HOME=$PWD/fake-cache DUNE_CONFIG__TOOLCHAINS=enabled dune build @pkg-install 2>&1 | sed -E 's#[[:alnum:]]{32}#<hash>#g' | sed 's#[^ ]*_build#$TESTCASE_ROOT/_build#g'
+
+  $ XDG_CACHE_HOME=$PWD/fake-cache dune build @pkg-install 2>&1 | sed -E 's#[[:alnum:]]{32}#<hash>#g' | sed 's#[^ ]*_build#$TESTCASE_ROOT/_build#g'
   $TESTCASE_ROOT/_build/.sandbox/<hash>/_private/default/.pkg/ocaml-base-compiler/target/share/ocaml-base-compiler
 

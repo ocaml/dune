@@ -154,13 +154,3 @@ module Sources : sig
 
   val has_cxx_sources : t -> bool
 end
-
-(** For the [(foreign_objects ...)] field.*)
-module Objects : sig
-  type t
-
-  val empty : t
-  val is_empty : t -> bool
-  val decode : t Dune_lang.Decoder.t
-  val build_paths : t -> ext_obj:Filename.Extension.t -> dir:Path.Build.t -> Path.t list
-end

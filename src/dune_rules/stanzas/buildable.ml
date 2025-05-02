@@ -12,7 +12,7 @@ type t =
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
-  ; extra_objects : Foreign.Objects.t
+  ; extra_objects : Foreign_objects.t
   ; foreign_stubs : Foreign.Stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
@@ -59,8 +59,8 @@ let decode (for_ : for_) =
   and+ extra_objects =
     field
       "extra_objects"
-      (Dune_lang.Syntax.since Stanza.syntax (3, 5) >>> Foreign.Objects.decode)
-      ~default:Foreign.Objects.empty
+      (Dune_lang.Syntax.since Stanza.syntax (3, 5) >>> Foreign_objects.decode)
+      ~default:Foreign_objects.empty
   and+ c_flags =
     only_in_library
       (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
@@ -178,7 +178,7 @@ let decode (for_ : for_) =
 let has_foreign t =
   List.is_non_empty t.foreign_stubs
   || List.is_non_empty t.foreign_archives
-  || (not (Foreign.Objects.is_empty t.extra_objects))
+  || (not (Foreign_objects.is_empty t.extra_objects))
   || Option.is_some t.ctypes
 ;;
 

@@ -113,7 +113,7 @@ let o_files
         let+ ocaml = Super_context.context sctx |> Context.ocaml in
         ocaml.lib_config
       in
-      Foreign.Objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
+      Foreign_objects.build_paths exes.buildable.extra_objects ~ext_obj ~dir
     in
     let+ o_files =
       Foreign_rules.build_o_files

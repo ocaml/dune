@@ -106,7 +106,7 @@ let build_lib
          Ctypes_rules.ctypes_cclib_flags sctx ~expander ~buildable:lib.buildable
          >>| map_cclibs)
     ; Deps
-        (Foreign.Objects.build_paths
+        (Foreign_objects.build_paths
            lib.buildable.extra_objects
            ~ext_obj:ocaml.lib_config.ext_obj
            ~dir)

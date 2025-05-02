@@ -11,7 +11,7 @@ type t =
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
-  ; extra_objects : Foreign.Objects.t
+  ; extra_objects : Foreign_objects.t
   ; foreign_stubs : Foreign.Stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list

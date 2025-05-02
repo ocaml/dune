@@ -104,7 +104,7 @@ end = struct
         let name = Lib_info.name lib in
         let files = Foreign_sources.for_lib foreign_sources ~name in
         let { Lib_config.ext_obj; _ } = lib_config in
-        Foreign.Sources.object_files files ~dir ~ext_obj
+        Foreign_source_files.object_files files ~dir ~ext_obj
     in
     List.rev_append
       (List.rev_concat_map
@@ -673,7 +673,7 @@ end = struct
             in
             let+ foreign_sources = Dir_contents.foreign_sources dir_contents in
             Foreign_sources.for_lib ~name foreign_sources
-            |> Foreign.Sources.object_files ~dir ~ext_obj
+            |> Foreign_source_files.object_files ~dir ~ext_obj
             |> List.map ~f:Path.build
           and* modules =
             let* libs = Scope.DB.find_by_dir dir >>| Scope.libs in

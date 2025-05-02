@@ -381,7 +381,7 @@ let build_o_files
     in
     ocaml.lib_config.ext_obj
   in
-  Foreign.Sources.to_list_map
+  Foreign_source_files.to_list_map
     foreign_sources
     ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
       let+ build_file =

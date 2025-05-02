@@ -263,7 +263,7 @@ let foreign_rules (library : Foreign_library.t) ~sctx ~expander ~dir ~dir_conten
     let standard =
       standard_cxx_flags
         ~dir
-        ~has_cxx:(fun () -> Foreign.Sources.has_cxx_sources foreign_sources)
+        ~has_cxx:(fun () -> Foreign_source_files.has_cxx_sources foreign_sources)
         sctx
     in
     Expander.expand_and_eval_set expander Ordered_set_lang.Unexpanded.standard ~standard
@@ -318,7 +318,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
         let open Action_builder.O in
         let standard =
           standard_cxx_flags ~dir sctx ~has_cxx:(fun () ->
-            Foreign.Sources.has_cxx_sources foreign_sources)
+            Foreign_source_files.has_cxx_sources foreign_sources)
         in
         let+ c_lib = Expander.expand_and_eval_set expander lib.c_library_flags ~standard
         and+ ctypes_lib =

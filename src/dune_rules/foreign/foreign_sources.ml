@@ -2,9 +2,9 @@ open Import
 open Memo.O
 
 type t =
-  { libraries : Foreign.Sources.t Lib_name.Map.t
-  ; archives : Foreign.Sources.t Foreign_archive.Name.Map.t
-  ; executables : Foreign.Sources.t String.Map.t
+  { libraries : Foreign_source_files.t Lib_name.Map.t
+  ; archives : Foreign_source_files.t Foreign_archive.Name.Map.t
+  ; executables : Foreign_source_files.t String.Map.t
   }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
@@ -149,7 +149,7 @@ let eval_foreign_stubs
       (ctypes : Ctypes_field.t option)
       ~dune_version
       ~(sources : Unresolved.t)
-  : Foreign.Sources.t
+  : Foreign_source_files.t
   =
   let eval (stubs : Foreign_stubs.t) =
     let language = stubs.language in
@@ -207,7 +207,7 @@ let eval_foreign_stubs
         ~loc
         ~mode
         ~paths:Foreign.Source.[ path src1; path src2 ]))
-  |> Foreign.Sources.make
+  |> Foreign_source_files.make
 ;;
 
 let make stanzas ~(sources : Unresolved.t) ~dune_version =
@@ -245,7 +245,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
         ; List.map exes ~f:snd
         ]
       |> List.concat_map ~f:(fun sources ->
-        Foreign.Sources.to_list_map sources ~f:(fun _ (loc, source) ->
+        Foreign_source_files.to_list_map sources ~f:(fun _ (loc, source) ->
           Foreign.Source.object_name source, loc))
     in
     match String.Map.of_list objects with

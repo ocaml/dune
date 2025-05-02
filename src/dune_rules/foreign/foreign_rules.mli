@@ -10,7 +10,7 @@ val foreign_flags
 
 val build_o_files
   :  sctx:Super_context.t
-  -> foreign_sources:Foreign.Sources.t
+  -> foreign_sources:Foreign_source_files.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> requires:Lib.t list Resolve.t

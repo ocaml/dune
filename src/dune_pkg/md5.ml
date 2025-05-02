@@ -22,8 +22,12 @@ let file file =
   let fd =
     match Unix.openfile file [ Unix.O_RDONLY; O_SHARE_DELETE; O_CLOEXEC ] 0 with
     | fd -> fd
-    | exception Unix.Unix_error (Unix.EACCES, _, _) ->
-      raise (Sys_error (sprintf "%s: Permission denied" file))
+    | exception Unix.Unix_error (error, syscall, arg) ->
+      let error = Unix_error.Detailed.create ~syscall ~arg error in
+      User_error.raise
+        [ Pp.textf "Failed to open file for md5 digest: %s" file
+        ; Unix_error.Detailed.pp error
+        ]
     | exception exn -> reraise exn
   in
   Exn.protectx fd ~f:md5_fd ~finally:Unix.close

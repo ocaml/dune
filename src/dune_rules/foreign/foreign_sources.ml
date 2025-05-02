@@ -140,7 +140,7 @@ let ctypes_stubs sources (ctypes : Ctypes_field.t) =
           (* impossible b/c ctypes fields generates this *)
           assert false
       in
-      let source = Foreign.Source.make (Ctypes ctypes) ~path in
+      let source = Foreign_source.make (Ctypes ctypes) ~path in
       name, (loc, source))
 ;;
 
@@ -178,8 +178,8 @@ let eval_foreign_stubs
           ];
       match Unresolved.find_source sources language (loc, name) with
       | Some path ->
-        let src = Foreign.Source.make (Stubs stubs) ~path in
-        let new_key = Foreign.Source.object_name src in
+        let src = Foreign_source.make (Stubs stubs) ~path in
+        let new_key = Foreign_source.object_name src in
         String.Map.add_exn acc new_key (loc, src)
       | None ->
         User_error.raise
@@ -200,13 +200,13 @@ let eval_foreign_stubs
   in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
     String.Map.union a b ~f:(fun _name (loc, src1) (_, src2) ->
-      let name = Foreign.Source.user_object_name src1 in
-      let mode = Foreign.Source.mode src1 in
+      let name = Foreign_source.user_object_name src1 in
+      let mode = Foreign_source.mode src1 in
       multiple_sources_error
         ~name
         ~loc
         ~mode
-        ~paths:Foreign.Source.[ path src1; path src2 ]))
+        ~paths:Foreign_source.[ path src1; path src2 ]))
   |> Foreign_source_files.make
 ;;
 
@@ -246,7 +246,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
         ]
       |> List.concat_map ~f:(fun sources ->
         Foreign_source_files.to_list_map sources ~f:(fun _ (loc, source) ->
-          Foreign.Source.object_name source, loc))
+          Foreign_source.object_name source, loc))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()

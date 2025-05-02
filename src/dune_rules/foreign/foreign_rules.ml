@@ -215,7 +215,7 @@ let build_c
       ~dir
       ~expander
       ~include_flags
-      (loc, (src : Foreign.Source.t), dst)
+      (loc, (src : Foreign_source.t), dst)
   =
   let ctx = Super_context.context sctx in
   let* project = Dune_load.find_project ~dir in
@@ -239,7 +239,7 @@ let build_c
   let* with_user_and_std_flags =
     Memo.map ~f:(Action_builder.map ~f:(List.append base_flags))
     @@
-    match Foreign.Source.kind src with
+    match Foreign_source.kind src with
     | Ctypes field ->
       Memo.return
       @@
@@ -298,7 +298,7 @@ let build_c
     ~loc
     ~dir
     (let open Action_builder.With_targets.O in
-     let src = Path.build (Foreign.Source.path src) in
+     let src = Path.build (Foreign_source.path src) in
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *)
      let c_compiler =
@@ -328,7 +328,7 @@ let build_asm ~sctx ~dir (loc, src, dst) =
   let* ocaml = Context.ocaml ctx in
   Super_context.add_rule sctx ~loc ~dir
   @@
-  let src = Path.build (Foreign.Source.path src) in
+  let src = Path.build (Foreign_source.path src) in
   let c_compiler =
     Super_context.resolve_program
       ~loc:None
@@ -383,12 +383,12 @@ let build_o_files
   in
   Foreign_source_files.to_list_map
     foreign_sources
-    ~f:(fun obj (loc, (src : Foreign.Source.t)) ->
+    ~f:(fun obj (loc, (src : Foreign_source.t)) ->
       let+ build_file =
         let include_flags =
           let extra_deps =
             let extra_deps, sandbox =
-              match Foreign.Source.kind src with
+              match Foreign_source.kind src with
               | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
               | Ctypes _ -> Action_builder.return (), Sandbox_config.default
             in
@@ -402,7 +402,7 @@ let build_o_files
               ~expander
               ~dir
               ~include_dirs:
-                (match Foreign.Source.kind src with
+                (match Foreign_source.kind src with
                  | Stubs stubs -> stubs.include_dirs
                  | Ctypes _ -> [])
           in
@@ -410,14 +410,14 @@ let build_o_files
         in
         let dst = Path.Build.relative dir (obj ^ ext_obj) in
         let+ () =
-          match Foreign.Source.language src with
+          match Foreign_source.language src with
           | `Asm -> build_asm ~sctx ~dir (loc, src, dst)
           | (`C | `Cxx) as kind ->
             build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst)
         in
         dst
       in
-      Foreign.Source.mode src, Path.build build_file)
+      Foreign_source.mode src, Path.build build_file)
   |> Memo.all_concurrently
   >>| List.fold_left ~init:Mode.Map.empty ~f:(fun tbl (for_mode, file) ->
     Mode.Map.Multi.cons tbl for_mode file)

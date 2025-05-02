@@ -17,10 +17,9 @@ val file : Path.t -> t
 (** [Md5.string s] returns the [Md5.t] digest of the string [s]. *)
 val string : string -> t
 
-(** [Md5.to_hex_string t] returns the printable hexadecimal representation of the given
-    digest [t]. *)
-val to_hex_string : t -> string
+(** [Md5.to_hex t] returns the hexadecimal representation of the given digest [t]. *)
+val to_hex : t -> string
 
-(** [Md5.of_hex_string s] convert a hexadecimal representation back into the corresponding
+(** [Md5.of_hex s] converts a hexadecimal representation back into the corresponding
     digest. *)
-val of_hex_string : string -> t option
+val of_hex : string -> t option

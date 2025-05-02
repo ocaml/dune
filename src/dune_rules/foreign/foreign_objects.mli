@@ -1,6 +1,6 @@
 open Import
 
-(** For the [(foreign_objects ...)] field.*)
+(** For the [(extra_objects ...)] field.*)
 type t
 
 val empty : t

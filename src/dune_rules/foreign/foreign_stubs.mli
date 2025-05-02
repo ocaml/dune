@@ -16,8 +16,6 @@ module Include_dir : sig
 
   type t
 
-  val decode : t Dune_lang.Decoder.t
-
   val expand_include
     :  t
     -> expand:(String_with_vars.t -> Value.t Memo.t)

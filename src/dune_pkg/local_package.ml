@@ -35,13 +35,13 @@ module Dependency_hash = struct
 
   let equal = Md5.equal
   let to_dyn = Md5.to_dyn
-  let to_string = Md5.to_string
+  let to_string = Md5.to_hex_string
   let encode t = to_string t |> Encoder.string
 
   let decode =
     let open Decoder in
     let+ loc, hash = located string in
-    match Md5.from_hex hash with
+    match Md5.of_hex_string hash with
     | Some hash -> hash
     | None ->
       User_error.raise

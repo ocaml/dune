@@ -2,9 +2,17 @@ open Stdune
 
 type t = string
 
-external md5_fd : Unix.file_descr -> string = "dune_pkg_md5_fd"
+let equal = String.equal
+let to_hex_string = Stdlib.Digest.to_hex
+let to_dyn s = Dyn.variant "digest" [ String (to_hex_string s) ]
 
-module D = Stdlib.Digest
+let of_hex_string s =
+  match Stdlib.Digest.from_hex s with
+  | s -> Some s
+  | exception Invalid_argument _ -> None
+;;
+
+external md5_fd : Unix.file_descr -> string = "dune_pkg_md5_fd"
 
 let file file =
   (* On Windows, if this function is invoked in a background thread, if can happen that
@@ -21,13 +29,4 @@ let file file =
   Exn.protectx fd ~f:md5_fd ~finally:Unix.close
 ;;
 
-let string = D.string
-let equal = String.equal
-let to_string = D.to_hex
-let to_dyn s = Dyn.variant "digest" [ String (to_string s) ]
-
-let from_hex s =
-  match D.from_hex s with
-  | s -> Some s
-  | exception Invalid_argument _ -> None
-;;
+let string = Stdlib.Digest.string

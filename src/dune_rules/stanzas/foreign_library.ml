@@ -3,7 +3,7 @@ open Import
 type t =
   { archive_name : Foreign.Archive.Name.t
   ; archive_name_loc : Loc.t
-  ; stubs : Foreign.Stubs.t
+  ; stubs : Foreign_stubs.t
   ; enabled_if : Blang.t
   ; extra_objects : Ordered_set_lang.Unexpanded.t
   }
@@ -13,7 +13,7 @@ let decode =
   fields
     (let+ archive_name_loc, archive_name =
        located (field "archive_name" Foreign.Archive.Name.decode)
-     and+ stubs = Foreign.Stubs.decode_stubs ~for_library:true
+     and+ stubs = Foreign_stubs.decode_stubs ~for_library:true
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (3, 14)) ()
      and+ extra_objects =
        Ordered_set_lang.Unexpanded.field

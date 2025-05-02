@@ -118,7 +118,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
     @@
     let open Resolve.Memo.O in
     let+ loc, include_dir =
-      match (include_dir : Foreign.Stubs.Include_dir.Without_include.t) with
+      match (include_dir : Foreign_stubs.Include_dir.Without_include.t) with
       | Dir dir ->
         Resolve.Memo.return (String_with_vars.loc dir, Expander.expand_path expander dir)
       | Lib (loc, lib_name) ->
@@ -203,7 +203,7 @@ let include_dir_flags ~expander ~dir ~include_dirs =
        let expand = Expander.No_deps.expand expander ~mode:Single in
        Memo.List.concat_map
          include_dirs
-         ~f:(Foreign.Stubs.Include_dir.expand_include ~expand ~dir:(Path.build dir))
+         ~f:(Foreign_stubs.Include_dir.expand_include ~expand ~dir:(Path.build dir))
        |> Action_builder.of_memo
      in
      Command.Args.S (List.map include_dirs_expanded ~f:args_of_include_dir))
@@ -256,7 +256,7 @@ let build_c
             Pkg_config.Query.read ~dir (Cflags lib) sctx
           in
           default_flags @ pkg_config_flags)
-    | Stubs { Foreign.Stubs.flags; _ } ->
+    | Stubs { Foreign_stubs.flags; _ } ->
       (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
          guide users toward this change we emit a warning when dune_lang is >=
          1.8, [use_standard_c_and_cxx_flags] is not specified in the

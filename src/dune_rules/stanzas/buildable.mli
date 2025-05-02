@@ -12,7 +12,7 @@ type t =
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
   ; extra_objects : Foreign_objects.t
-  ; foreign_stubs : Foreign.Stubs.t list
+  ; foreign_stubs : Foreign_stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
   ; lint : Lint.t

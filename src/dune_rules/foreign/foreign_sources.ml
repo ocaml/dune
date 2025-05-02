@@ -151,7 +151,7 @@ let eval_foreign_stubs
       ~(sources : Unresolved.t)
   : Foreign.Sources.t
   =
-  let eval (stubs : Foreign.Stubs.t) =
+  let eval (stubs : Foreign_stubs.t) =
     let language = stubs.language in
     let names =
       let standard : (Loc.t * string) String.Map.t =

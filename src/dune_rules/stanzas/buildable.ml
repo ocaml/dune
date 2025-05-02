@@ -13,7 +13,7 @@ type t =
   ; libraries : Lib_dep.t list
   ; foreign_archives : (Loc.t * Foreign.Archive.t) list
   ; extra_objects : Foreign_objects.t
-  ; foreign_stubs : Foreign.Stubs.t list
+  ; foreign_stubs : Foreign_stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
   ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
@@ -42,7 +42,7 @@ let decode (for_ : for_) =
     | Some names ->
       let names = Ordered_set_lang.replace_standard_with_empty names in
       let flags = Option.value ~default:Ordered_set_lang.Unexpanded.standard flags in
-      Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
+      Foreign_stubs.make ~loc ~language ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
   and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
@@ -50,7 +50,7 @@ let decode (for_ : for_) =
   and+ foreign_stubs =
     multi_field
       "foreign_stubs"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
+      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign_stubs.decode)
   and+ foreign_archives =
     field_o
       "foreign_archives"
@@ -184,12 +184,12 @@ let has_foreign t =
 
 let has_foreign_cxx t =
   List.exists
-    ~f:(fun stub -> Foreign_language.(equal `Cxx stub.Foreign.Stubs.language))
+    ~f:(fun stub -> Foreign_language.(equal `Cxx stub.Foreign_stubs.language))
     t.foreign_stubs
 ;;
 
 let has_mode_dependent_foreign_stubs t =
-  List.exists ~f:Foreign.Stubs.is_mode_dependent t.foreign_stubs
+  List.exists ~f:Foreign_stubs.is_mode_dependent t.foreign_stubs
 ;;
 
 let has_foreign_stubs t =

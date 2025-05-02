@@ -23,7 +23,7 @@ open Import
 type t =
   { archive_name : Foreign.Archive.Name.t
   ; archive_name_loc : Loc.t
-  ; stubs : Foreign.Stubs.t
+  ; stubs : Foreign_stubs.t
   ; enabled_if : Blang.t
   ; extra_objects : Ordered_set_lang.Unexpanded.t
   }

@@ -21,7 +21,7 @@ open Import
     
     - [extra_objects] are additional object files to be linked in the archive. *)
 type t =
-  { archive_name : Foreign.Archive.Name.t
+  { archive_name : Foreign_archive.Name.t
   ; archive_name_loc : Loc.t
   ; stubs : Foreign_stubs.t
   ; enabled_if : Blang.t

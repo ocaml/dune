@@ -11,7 +11,7 @@ type t =
   ; modules : Stanza_common.Modules_settings.t
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
-  ; foreign_archives : (Loc.t * Foreign.Archive.t) list
+  ; foreign_archives : (Loc.t * Foreign_archive.t) list
   ; extra_objects : Foreign_objects.t
   ; foreign_stubs : Foreign_stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
@@ -55,7 +55,7 @@ let decode (for_ : for_) =
     field_o
       "foreign_archives"
       (Dune_lang.Syntax.since Stanza.syntax (2, 0)
-       >>> repeat (located Foreign.Archive.decode))
+       >>> repeat (located Foreign_archive.decode))
   and+ extra_objects =
     field
       "extra_objects"
@@ -156,7 +156,7 @@ let decode (for_ : for_) =
          used this naming convention; [foreign_archives] does not use it and
          allows users to name archives as they like (they still need to add
          the "lib" prefix, however, since standard linkers require it). *)
-      | Some name -> (loc, Foreign.Archive.stubs name) :: foreign_archives)
+      | Some name -> (loc, Foreign_archive.stubs name) :: foreign_archives)
   in
   { loc
   ; preprocess

@@ -379,8 +379,8 @@ let gen_rules ~cctx ~(buildable : Buildable.t) ~loc ~scope ~dir ~sctx =
         in
         List.concat_map buildable.foreign_archives ~f:(fun (_loc, archive) ->
           let mode = Mode.Select.All in
-          [ Foreign.Archive.lib_file ~mode ~archive ~dir ~ext_lib
-          ; Foreign.Archive.dll_file ~mode ~archive ~dir ~ext_dll
+          [ Foreign_archive.lib_file ~mode ~archive ~dir ~ext_lib
+          ; Foreign_archive.dll_file ~mode ~archive ~dir ~ext_dll
           ])
       in
       build_c_program

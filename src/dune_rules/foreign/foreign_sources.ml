@@ -3,21 +3,21 @@ open Memo.O
 
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
-  ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t
+  ; archives : Foreign.Sources.t Foreign_archive.Name.Map.t
   ; executables : Foreign.Sources.t String.Map.t
   }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
 
 let for_archive t ~archive_name =
-  Foreign.Archive.Name.Map.find_exn t.archives archive_name
+  Foreign_archive.Name.Map.find_exn t.archives archive_name
 ;;
 
 let for_exes t ~first_exe = String.Map.find_exn t.executables first_exe
 
 let empty =
   { libraries = Lib_name.Map.empty
-  ; archives = Foreign.Archive.Name.Map.empty
+  ; archives = Foreign_archive.Name.Map.empty
   ; executables = String.Map.empty
   }
 ;;
@@ -304,13 +304,13 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
         ]
   in
   let archives =
-    Foreign.Archive.Name.Map.of_list_reducei
+    Foreign_archive.Name.Map.of_list_reducei
       foreign_libs
       ~f:(fun archive_name (loc1, _) (loc2, _) ->
         let main_message =
           sprintf
             "Multiple foreign libraries with the same archive name %S"
-            (Foreign.Archive.Name.to_string archive_name)
+            (Foreign_archive.Name.to_string archive_name)
         in
         let annots =
           let main = User_message.make ~loc:loc2 [ Pp.text main_message ] in
@@ -329,7 +329,7 @@ let make stanzas ~(sources : Unresolved.t) ~dune_version =
               main_message
               (Loc.to_file_colon_line loc1)
           ])
-    |> Foreign.Archive.Name.Map.map ~f:snd
+    |> Foreign_archive.Name.Map.map ~f:snd
   in
   { libraries; archives; executables }
 ;;

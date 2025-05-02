@@ -10,7 +10,7 @@ type t =
   ; modules : Stanza_common.Modules_settings.t
   ; empty_module_interface_if_absent : bool
   ; libraries : Lib_dep.t list
-  ; foreign_archives : (Loc.t * Foreign.Archive.t) list
+  ; foreign_archives : (Loc.t * Foreign_archive.t) list
   ; extra_objects : Foreign_objects.t
   ; foreign_stubs : Foreign_stubs.t list
   ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t

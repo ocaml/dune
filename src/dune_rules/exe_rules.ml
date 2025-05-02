@@ -234,7 +234,7 @@ let executables_rules
                |> List.map ~f:(fun (_, archive) ->
                  let lib =
                    let ext_lib = lib_config.ext_lib in
-                   Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
+                   Foreign_archive.lib_file ~archive ~dir ~ext_lib ~mode:Mode.Select.All
                  in
                  Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
             (* XXX: don't these need the msvc hack being done in lib_rules? *)

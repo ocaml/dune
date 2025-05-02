@@ -196,7 +196,7 @@ let to_dune_library (t : Findlib.Package.t) ~dir_contents ~ext_lib ~external_loc
           if ext = ext_lib
           then (
             let file = Path.relative t.dir f in
-            if String.is_prefix f ~prefix:Foreign.Archive.Name.lib_file_prefix
+            if String.is_prefix f ~prefix:Foreign_archive.Name.lib_file_prefix
             then Left file
             else Right file)
           else Skip)

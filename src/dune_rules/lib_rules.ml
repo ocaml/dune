@@ -32,7 +32,7 @@ let standard_cxx_flags ~dir ~has_cxx sctx =
 ;;
 
 let lib_args (mode : Mode.t) ~stub_mode archive =
-  let lname = "-l" ^ Foreign.Archive.(name ~mode:stub_mode archive |> Name.to_string) in
+  let lname = "-l" ^ Foreign_archive.(name ~mode:stub_mode archive |> Name.to_string) in
   (match mode with
    | Native -> []
    | Byte -> [ "-dllib"; lname ])
@@ -173,7 +173,7 @@ let ocamlmklib
       [ Command.Args.A "-g"
       ; (if custom then A "-custom" else Command.Args.empty)
       ; A "-o"
-      ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name ~mode:stubs_mode))
+      ; Path (Path.build (Foreign_archive.Name.path ~dir archive_name ~mode:stubs_mode))
       ; Command.Args.Dyn
           (Action_builder.map o_files ~f:(fun o_files -> Command.Args.Deps o_files))
         (* The [c_library_flags] is needed only for the [dynamic_target] case,
@@ -187,10 +187,10 @@ let ocamlmklib
   in
   let { Lib_config.ext_lib; ext_dll; _ } = ocaml.lib_config in
   let dynamic_target =
-    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll ~mode:stubs_mode
+    Foreign_archive.Name.dll_file archive_name ~dir ~ext_dll ~mode:stubs_mode
   in
   let static_target =
-    Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib ~mode:stubs_mode
+    Foreign_archive.Name.lib_file archive_name ~dir ~ext_lib ~mode:stubs_mode
   in
   if build_targets_together
   then
@@ -312,7 +312,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents ~vlib_stubs_o_f
       in
       let archive_name =
         let lib_name = Lib_name.Local.to_string (snd lib.name) in
-        Foreign.Archive.Name.stubs lib_name
+        Foreign_archive.Name.stubs lib_name
       in
       let c_library_flags =
         let open Action_builder.O in
@@ -376,7 +376,7 @@ let build_shared (lib : Library.t) ~native_archives ~sctx ~dir ~flags =
     ; Path (Path.build dir)
     ; (let include_flags_for_relative_foreign_archives =
          List.map lib.buildable.foreign_archives ~f:(fun (_loc, archive) ->
-           let dir = Foreign.Archive.dir_path ~dir archive in
+           let dir = Foreign_archive.dir_path ~dir archive in
            Command.Args.S [ A "-I"; Path (Path.build dir) ])
        in
        Command.Args.S include_flags_for_relative_foreign_archives)

@@ -304,7 +304,7 @@ let has_foreign_cxx t = Buildable.has_foreign_cxx t.buildable
 
 let stubs_archive t =
   if Buildable.has_foreign_stubs t.buildable
-  then Some (Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)))
+  then Some (Foreign_archive.stubs (Lib_name.Local.to_string (snd t.name)))
   else None
 ;;
 
@@ -322,7 +322,7 @@ let foreign_lib_files t ~dir ~ext_lib ~for_mode =
   let foreign_archives = foreign_archives t in
   let stubs_are_mode_dependent = Buildable.has_mode_dependent_foreign_stubs t.buildable in
   let lib_file ~for_mode archive =
-    Foreign.Archive.lib_file ~archive ~dir ~ext_lib ~mode:for_mode
+    Foreign_archive.lib_file ~archive ~dir ~ext_lib ~mode:for_mode
   in
   let stubs_archive =
     Option.bind stubs_archive ~f:(fun archive ->
@@ -352,7 +352,7 @@ let foreign_dll_files t ~dir ~ext_dll =
       Mode.Select.Only Mode.Byte
     else Mode.Select.All
   in
-  let dll_file ~mode archive = Foreign.Archive.dll_file ~archive ~dir ~ext_dll ~mode in
+  let dll_file ~mode archive = Foreign_archive.dll_file ~archive ~dir ~ext_dll ~mode in
   let foreign_archives = List.map foreign_archives ~f:(dll_file ~mode:Mode.Select.All) in
   (* Stubs can have mode-dependent versions, not foreign archives *)
   match stubs_archive with

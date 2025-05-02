@@ -1,7 +1,7 @@
 open Import
 
 type t =
-  { archive_name : Foreign.Archive.Name.t
+  { archive_name : Foreign_archive.Name.t
   ; archive_name_loc : Loc.t
   ; stubs : Foreign_stubs.t
   ; enabled_if : Blang.t
@@ -12,7 +12,7 @@ let decode =
   let open Dune_lang.Decoder in
   fields
     (let+ archive_name_loc, archive_name =
-       located (field "archive_name" Foreign.Archive.Name.decode)
+       located (field "archive_name" Foreign_archive.Name.decode)
      and+ stubs = Foreign_stubs.decode_stubs ~for_library:true
      and+ enabled_if = Enabled_if.decode ~allowed_vars:Any ~since:(Some (3, 14)) ()
      and+ extra_objects =

@@ -36,7 +36,7 @@ let to_string : t -> string = function
 ;;
 
 let all = [ `C; `Cxx; `Asm ]
-let decode = all |> List.map ~f:(fun x -> to_string x, x) |> Dune_lang.Decoder.enum
+let decode = all |> List.map ~f:(fun x -> to_string x, x) |> Decoder.enum
 
 module Dict = struct
   type 'a t =

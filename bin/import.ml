@@ -41,7 +41,6 @@ include struct
   module Melange = Melange
   module Melange_stanzas = Melange_stanzas
   module Executables = Executables
-  module Foreign_language = Foreign_language
 end
 
 include struct
@@ -77,6 +76,7 @@ include struct
   module Section = Section
   module Dune_project_name = Dune_project_name
   module Dune_project = Dune_project
+  module Foreign_language = Foreign_language
 end
 
 module Log = Dune_util.Log

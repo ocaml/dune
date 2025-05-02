@@ -8,7 +8,7 @@ type t =
 
 val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
-val decode : t Dune_lang.Decoder.t
+val decode : t Decoder.t
 
 (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for diagnostic
     messages. *)

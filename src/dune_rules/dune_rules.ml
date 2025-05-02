@@ -10,7 +10,6 @@ module Ocaml_flags = Ocaml_flags
 module Ocaml_flags_db = Ocaml_flags_db
 module Menhir_rules = Menhir_rules
 module Foreign_rules = Foreign_rules
-module Foreign_language = Foreign_language
 module Jsoo_rules = Jsoo_rules
 module Super_context = Super_context
 module Compilation_context = Compilation_context

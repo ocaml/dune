@@ -2,9 +2,7 @@ open Import
 open Memo.O
 
 let base_dir () =
-  let cache_dir =
-    Lazy.force Dune_util.xdg |> Xdg.cache_dir |> Path.Outside_build_dir.of_string
-  in
+  let cache_dir = Dune_cache_storage.Layout.root_dir |> Path.as_outside_build_dir_exn in
   let path =
     Path.Outside_build_dir.relative
       (Path.Outside_build_dir.relative cache_dir "dune")

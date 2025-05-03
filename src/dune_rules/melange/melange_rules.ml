@@ -1,7 +1,7 @@
 open Import
 open Memo.O
 
-module Output_kind : sig
+module Output_kind = struct
   type t =
     | Private_library_or_emit of Path.Build.t
     | Public_library of
@@ -9,16 +9,7 @@ module Output_kind : sig
         ; output_dir : Path.Build.t
         }
 
-  val [@ocaml.warning "-32"] to_dyn : t -> Dyn.t
-end = struct
-  type t =
-    | Private_library_or_emit of Path.Build.t
-    | Public_library of
-        { lib_dir : Path.t
-        ; output_dir : Path.Build.t
-        }
-
-  let to_dyn t =
+  let[@ocaml.warning "-32"] to_dyn t =
     match t with
     | Private_library_or_emit dir ->
       Dyn.variant "Private_library_or_emit" [ Path.Build.to_dyn dir ]

@@ -1,6 +1,4 @@
 (library
  (name dag)
  (libraries stdune incremental_cycles)
- (synopsis "Directed Acyclic Graph library")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Directed Acyclic Graph library"))

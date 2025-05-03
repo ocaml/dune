@@ -1,5 +1,3 @@
 (library
  (name dune_output_truncation)
- (libraries stdune)
- (instrumentation
-  (backend bisect_ppx)))
+ (libraries stdune))

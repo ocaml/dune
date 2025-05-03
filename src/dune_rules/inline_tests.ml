@@ -80,35 +80,20 @@ include Sub_system.Register_end_point (struct
         c
       in
       let loc = lib.buildable.loc in
-      let lib_name = snd lib.name in
       let inline_test_dir =
+        let lib_name = snd lib.name in
         Path.Build.relative dir (Inline_tests_info.inline_test_dirname lib_name)
       in
       let runner_name = Inline_tests_info.inline_test_runner in
-      let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:"t" in
       let main_module =
         let name = Module_name.of_string "main" in
         Module.generated ~kind:Impl ~src_dir:inline_test_dir [ name ]
       in
-      let modules = Modules.With_vlib.singleton_exe main_module in
-      let runner_libs =
-        let open Resolve.Memo.O in
-        let* libs =
-          Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
-            backend.runner_libraries)
-        in
-        let* lib = Lib.DB.resolve (Scope.libs scope) (loc, Library.best_name lib) in
-        let* more_libs =
-          Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
-        in
-        Lib.closure ~linking:true ((lib :: libs) @ more_libs)
-      in
       (* Generate the runner file *)
       let js_of_ocaml =
-        Js_of_ocaml.Mode.Pair.map
-          ~f:(fun (x : Js_of_ocaml.In_context.t) ->
-            { x with javascript_files = []; wasm_files = [] })
-          (Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml)
+        Js_of_ocaml.In_context.make ~dir lib.buildable.js_of_ocaml
+        |> Js_of_ocaml.Mode.Pair.map ~f:(fun (x : Js_of_ocaml.In_context.t) ->
+          { x with javascript_files = []; wasm_files = [] })
       in
       let* () =
         Super_context.add_rule
@@ -120,17 +105,20 @@ include Sub_system.Register_end_point (struct
              |> Option.value_exn
              |> Path.as_in_build_dir_exn
            in
-           let files ml_kind =
-             Value.L.paths (List.filter_map source_modules ~f:(Module.file ~ml_kind))
-           in
-           let bindings =
-             Pform.Map.of_list_exn
-               [ Var Impl_files, files Impl; Var Intf_files, files Intf ]
-           in
-           let expander = Expander.add_bindings expander ~bindings in
            let action =
              let open Action_builder.With_targets.O in
              let+ actions =
+               let expander =
+                 let bindings =
+                   let files ml_kind =
+                     Value.L.paths
+                       (List.filter_map source_modules ~f:(Module.file ~ml_kind))
+                   in
+                   Pform.Map.of_list_exn
+                     [ Var Impl_files, files Impl; Var Intf_files, files Intf ]
+                 in
+                 Expander.add_bindings expander ~bindings
+               in
                List.filter_map backends ~f:(fun (backend : Backend.t) ->
                  Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                    Action_unexpanded.expand_no_targets
@@ -149,10 +137,26 @@ include Sub_system.Register_end_point (struct
            Action_builder.With_targets.add ~file_targets:[ target ] action)
       and* cctx =
         let package = Library.package lib in
-        let* ocaml_flags =
-          Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
+        let* flags =
+          let+ ocaml_flags =
+            Buildable_rules.ocaml_flags sctx ~dir info.executable_ocaml_flags
+          in
+          Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ]
         in
-        let flags = Ocaml_flags.append_common ocaml_flags [ "-w"; "-24"; "-g" ] in
+        let obj_dir = Obj_dir.make_exe ~dir:inline_test_dir ~name:"t" in
+        let modules = Modules.With_vlib.singleton_exe main_module in
+        let runner_libs =
+          let open Resolve.Memo.O in
+          let* libs =
+            Resolve.Memo.List.concat_map backends ~f:(fun (backend : Backend.t) ->
+              backend.runner_libraries)
+          in
+          let* lib = Lib.DB.resolve (Scope.libs scope) (loc, Library.best_name lib) in
+          let* more_libs =
+            Resolve.Memo.List.map info.libraries ~f:(Lib.DB.resolve (Scope.libs scope))
+          in
+          Lib.closure ~linking:true ((lib :: libs) @ more_libs)
+        in
         Compilation_context.create
           ()
           ~super_context:sctx
@@ -177,29 +181,29 @@ include Sub_system.Register_end_point (struct
           | Native | Best | Byte -> true
           | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_enabled_modes)
       in
-      let* linkages =
-        let ocaml = Compilation_context.ocaml cctx in
-        let l =
-          List.map modes ~f:(fun (mode : Mode_conf.t) ->
-            match mode with
-            | Native -> Exe.Linkage.native
-            | Best -> Exe.Linkage.native_or_custom ocaml
-            | Byte -> Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version
-            | Jsoo JS -> Exe.Linkage.js
-            | Jsoo Wasm -> Exe.Linkage.wasm)
-        in
-        let+ jsoo_is_whole_program =
-          Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
-        in
-        if
-          List.exists modes ~f:(fun mode ->
-            match (mode : Mode_conf.t) with
-            | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
-            | Native | Best | Byte -> false)
-        then Exe.Linkage.byte_for_jsoo :: l
-        else l
-      in
       let* (_ : Exe.dep_graphs) =
+        let* linkages =
+          let ocaml = Compilation_context.ocaml cctx in
+          let l =
+            List.map modes ~f:(fun (mode : Mode_conf.t) ->
+              match mode with
+              | Native -> Exe.Linkage.native
+              | Best -> Exe.Linkage.native_or_custom ocaml
+              | Byte -> Exe.Linkage.custom_with_ext ~ext:".bc" ocaml.version
+              | Jsoo JS -> Exe.Linkage.js
+              | Jsoo Wasm -> Exe.Linkage.wasm)
+          in
+          let+ jsoo_is_whole_program =
+            Jsoo_rules.jsoo_is_whole_program sctx ~dir ~in_context:js_of_ocaml
+          in
+          if
+            List.exists modes ~f:(fun mode ->
+              match (mode : Mode_conf.t) with
+              | Jsoo mode -> Js_of_ocaml.Mode.Pair.select ~mode jsoo_is_whole_program
+              | Native | Best | Byte -> false)
+          then Exe.Linkage.byte_for_jsoo :: l
+          else l
+        in
         let link_args =
           let open Action_builder.O in
           let+ link_args_info =
@@ -246,13 +250,15 @@ include Sub_system.Register_end_point (struct
           in
           Some flags
       in
-      let sandbox =
-        let project = Scope.project scope in
-        if Dune_project.dune_version project < (3, 5)
-        then Sandbox_config.no_special_requirements
-        else Sandbox_config.needs_sandboxing
+      let deps, sandbox =
+        let sandbox =
+          let project = Scope.project scope in
+          if Dune_project.dune_version project < (3, 5)
+          then Sandbox_config.no_special_requirements
+          else Sandbox_config.needs_sandboxing
+        in
+        Dep_conf_eval.unnamed ~sandbox info.deps ~expander
       in
-      let deps, sandbox = Dep_conf_eval.unnamed ~sandbox info.deps ~expander in
       let action (mode : Mode_conf.t) (flags : string list Action_builder.t)
         : Action.t Action_builder.t
         =
@@ -273,9 +279,7 @@ include Sub_system.Register_end_point (struct
         let open Action_builder.O in
         let+ action =
           match custom_runner with
-          | None ->
-            let+ flags = flags in
-            Action.run (Ok exe) flags
+          | None -> flags >>| Action.run (Ok exe)
           | Some runner ->
             let* prog =
               Super_context.resolve_program
@@ -312,17 +316,20 @@ include Sub_system.Register_end_point (struct
           List.map backends ~f:(fun (backend : Backend.t) -> backend.info.flags)
           @ [ info.flags ]
         in
-        let bindings =
-          Pform.Map.singleton
-            (Pform.Var Library_name)
-            [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
+        let expander =
+          let bindings =
+            let bindings =
+              Pform.Map.singleton
+                (Pform.Var Library_name)
+                [ Value.String (Lib_name.Local.to_string (snd lib.name)) ]
+            in
+            match partition with
+            | None -> bindings
+            | Some p ->
+              Pform.Map.add_exn bindings (Pform.Var Partition) [ Value.String p ]
+          in
+          Expander.add_bindings expander ~bindings
         in
-        let bindings =
-          match partition with
-          | None -> bindings
-          | Some p -> Pform.Map.add_exn bindings (Pform.Var Partition) [ Value.String p ]
-        in
-        let expander = Expander.add_bindings expander ~bindings in
         let open Action_builder.O in
         let+ l =
           List.map
@@ -384,15 +391,18 @@ include Sub_system.Register_end_point (struct
              Action.Full.make ~sandbox @@ Action.progn [ run_tests; diffs ]))
     ;;
 
-    let gen_rules c ~(info : Info.t) ~backends =
-      let { dir; Sub_system.Library_compilation_context.super_context = sctx; _ } = c in
+    let gen_rules
+          ({ dir; Sub_system.Library_compilation_context.super_context = sctx; _ } as c)
+          ~(info : Info.t)
+          ~backends
+      =
       let* expander = Super_context.expander sctx ~dir in
-      let* enabled_if = Expander.eval_blang expander info.enabled_if in
-      if enabled_if
-      then gen_rules c ~expander ~info ~backends
-      else (
+      Expander.eval_blang expander info.enabled_if
+      >>= function
+      | true -> gen_rules c ~expander ~info ~backends
+      | false ->
         let alias = Alias.make Alias0.runtest ~dir in
-        Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:info.loc)
+        Simple_rules.Alias_rules.add_empty sctx ~alias ~loc:info.loc
     ;;
   end)
 

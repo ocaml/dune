@@ -408,8 +408,15 @@ let setup_emit_cmj_rules
 ;;
 
 module Runtime_deps = struct
-  let targets sctx ~dir ~output ~for_ (mel : Melange_stanzas.Emit.t) =
-    let raise_external_dep_error src =
+  type targets =
+    { copy : (Path.t * Path.Build.t) list
+    ; deps : Path.t list
+    }
+
+  let empty = { copy = []; deps = [] }
+
+  let targets =
+    let raise_external_dep_error src ~for_ =
       let lib_info =
         match for_ with
         | `Library lib_info -> lib_info
@@ -422,47 +429,52 @@ module Runtime_deps = struct
       in
       Lib_file_deps.raise_disallowed_external_path ~loc (Lib_info.name lib_info) src
     in
-    let+ deps =
-      match for_ with
-      | `Emit ->
-        let* expander = Super_context.expander sctx ~dir in
-        let loc, runtime_deps = mel.runtime_deps in
-        Lib_file_deps.eval ~expander ~loc ~paths:Allow_all runtime_deps
-      | `Library lib_info ->
-        (match Lib_info.melange_runtime_deps lib_info with
-         | External paths -> Memo.return (Path.Set.of_list paths)
-         | Local (loc, dep_conf) ->
-           let dir =
-             let info = Lib_info.as_local_exn lib_info in
-             Lib_info.src_dir info
-           in
-           let* expander = Super_context.expander sctx ~dir in
-           Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf)
-    in
-    Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
+    fun sctx ~dir ~output ~for_ (mel : Melange_stanzas.Emit.t) ->
+      let+ deps =
+        match for_ with
+        | `Emit ->
+          let* expander = Super_context.expander sctx ~dir in
+          let loc, runtime_deps = mel.runtime_deps in
+          Lib_file_deps.eval ~expander ~loc ~paths:Allow_all runtime_deps
+        | `Library lib_info ->
+          (match Lib_info.melange_runtime_deps lib_info with
+           | External paths -> Memo.return (Path.Set.of_list paths)
+           | Local (loc, dep_conf) ->
+             let dir = Lib_info.src_dir (Lib_info.as_local_exn lib_info) in
+             let* expander = Super_context.expander sctx ~dir in
+             Lib_file_deps.eval ~expander ~loc ~paths:Allow_all dep_conf)
+      in
       match output with
       | Output_kind.Public_library { lib_dir; output_dir } ->
-        (match Path.as_external src with
-         | None -> (src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy
-         | Some src_e ->
-           (match Path.as_external lib_dir with
-            | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e ->
-              (src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy
-            | Some _ | None -> raise_external_dep_error src))
+        Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps = _ } as acc) ->
+          let copy =
+            match Path.as_external src with
+            | None -> (src, lib_output_path ~output_dir ~lib_dir src) :: copy
+            | Some src_e ->
+              (match Path.as_external lib_dir with
+               | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e ->
+                 (src, lib_output_path ~output_dir ~lib_dir src) :: copy
+               | Some _ | None -> raise_external_dep_error src ~for_)
+          in
+          { acc with copy })
       | Private_library_or_emit output_dir ->
-        (match Path.as_in_build_dir src with
-         | None -> copy, src :: non_copy
-         | Some src_build ->
-           let target = Path.Build.drop_build_context_exn src_build in
-           (src, Path.Build.append_source output_dir target) :: copy, non_copy))
+        Path.Set.fold ~init:empty deps ~f:(fun src ({ copy; deps } as acc) ->
+          match Path.as_in_build_dir src with
+          | None -> { acc with deps = src :: deps }
+          | Some src_build ->
+            let target = Path.Build.drop_build_context_exn src_build in
+            { acc with copy = (src, Path.Build.append_source output_dir target) :: copy })
   ;;
 end
 
 let setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_ mel =
-  let* copy, non_copy = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
+  let* { Runtime_deps.copy; deps } = Runtime_deps.targets sctx ~dir ~output ~for_ mel in
   let deps =
-    Action_builder.paths
-      (non_copy @ List.rev_map copy ~f:(fun (_, target) -> Path.build target))
+    let paths =
+      List.fold_left copy ~init:deps ~f:(fun paths (_, target) ->
+        Path.build target :: paths)
+    in
+    Action_builder.paths paths
   in
   let+ () =
     let loc = mel.loc in

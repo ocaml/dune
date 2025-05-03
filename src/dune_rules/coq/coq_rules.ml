@@ -888,7 +888,7 @@ let setup_coqdoc_rules ~sctx ~dir ~theories_deps (s : Coq_stanza.Theory.t) coq_m
       Coq_doc.coqdoc_directory ~mode ~obj_dir:dir ~name
       |> Path.build
       |> Action_builder.path
-      |> Rules.Produce.Alias.add_deps alias ~loc
+      |> Rules.Produce.Alias.add_deps alias ~loc ~synopsis:None
   in
   rule `Html >>> rule `Latex
 ;;

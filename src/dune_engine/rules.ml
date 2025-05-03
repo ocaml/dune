@@ -149,7 +149,7 @@ module Produce = struct
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
     ;;
 
-    let add_deps t ?(loc = Loc.none) ?(synopsis = None) expansion =
+    let add_deps t ?(loc = Loc.none) ~synopsis expansion =
       alias
         t
         { expansions =

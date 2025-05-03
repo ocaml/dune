@@ -309,7 +309,7 @@ let add_alias_rule (ctx : Build_context.t) ~project ~pkg =
   Memo.parallel_iter aliases ~f:(fun alias ->
     (* TODO slow. we should be calling these functions only once, rather than
        once per package *)
-    Rules.Produce.Alias.add_deps alias (Action_builder.path_set deps))
+    Rules.Produce.Alias.add_deps alias ~synopsis:None (Action_builder.path_set deps))
 ;;
 
 let add_opam_file_rule sctx ~project ~pkg =

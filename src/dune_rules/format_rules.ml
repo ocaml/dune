@@ -196,7 +196,7 @@ let gen_rules_output
             let rule = Rule.make ~mode:Standard ~synopsis:None ~targets build in
             Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
   in
-  Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
+  Rules.Produce.Alias.add_deps alias_formatted ~synopsis:None (Action_builder.return ())
 ;;
 
 let format_config ~dir =
@@ -238,5 +238,8 @@ let setup_alias ~dir =
     let output_dir = Path.Build.relative dir formatted_dir_basename in
     let alias = Alias.fmt ~dir in
     let alias_formatted = Alias.fmt ~dir:output_dir in
-    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
+    Rules.Produce.Alias.add_deps
+      alias
+      ~synopsis:None
+      (Action_builder.dep (Dep.alias alias_formatted)))
 ;;

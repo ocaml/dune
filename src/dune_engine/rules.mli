@@ -79,7 +79,7 @@ module Produce : sig
     val add_deps
       :  t
       -> ?loc:Stdune.Loc.t
-      -> ?synopsis:Synopsis.t option
+      -> synopsis:Synopsis.t option
       -> unit Action_builder.t
       -> unit Memo.t
 

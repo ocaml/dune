@@ -22,9 +22,11 @@ let output_of_lib =
 ;;
 
 let lib_output_path ~output_dir ~lib_dir src =
-  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
-  | "" -> output_dir
-  | dir -> Path.Build.relative output_dir dir
+  if Path.equal lib_dir src
+  then output_dir
+  else (
+    let src_dir = Path.drop_prefix_exn src ~prefix:lib_dir in
+    Path.Build.append_local output_dir src_dir)
 ;;
 
 let make_js_name ~js_ext ~output m =

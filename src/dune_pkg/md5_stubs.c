@@ -12,7 +12,7 @@
 /* yanked from:
  * https://github.com/janestreet/core/blob/master/core/src/md5_stubs.c
  */
-CAMLprim value dune_md5_fd(value v_fd) {
+CAMLprim value dune_pkg_md5_fd(value v_fd) {
   CAMLparam1(v_fd);
   CAMLlocal1(v_res);
 #ifdef _WIN32

@@ -129,10 +129,16 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
      | Aliases_with_targets (aliases, alias_target) ->
        let+ () =
          Memo.parallel_iter aliases ~f:(fun alias ->
+           let loc =
+             (* standard aliases don't have a loc *)
+             match Alias0.is_standard alias with
+             | true -> Loc.none
+             | false -> rule.loc
+           in
            let alias = Alias.make ~dir alias in
            Rules.Produce.Alias.add_deps
-             ~loc:rule.loc
              alias
+             ~loc
              ~synopsis:rule.synopsis
              (Action_builder.path (Path.build alias_target)))
        and+ targets = add_user_rule sctx ~dir ~rule ~action ~expander in

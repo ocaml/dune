@@ -139,7 +139,7 @@ val jsoo_runtime : 'path t -> 'path list
 val wasmoo_runtime : 'path t -> 'path list
 val melange_runtime_deps : 'path t -> 'path File_deps.t
 val obj_dir : 'path t -> 'path Obj_dir.t
-val virtual_ : _ t -> Modules.t Source.t option
+val virtual_ : _ t -> bool
 val entry_modules : _ t -> (Module_name.t list, User_message.t) result Source.t
 val main_module_name : _ t -> Main_module_name.t
 val wrapped : _ t -> Wrapped.t Inherited.t option
@@ -184,8 +184,6 @@ val for_dune_package
   -> modules:Modules.With_vlib.t
   -> Path.t t
 
-val map_path : Path.t t -> f:(Path.t -> Path.t) -> Path.t t
-
 type 'a path =
   | Local : Path.Build.t path
   | External : Path.t path
@@ -219,7 +217,7 @@ val create
   -> enabled:Enabled_status.t Memo.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
-  -> virtual_:Modules.t Source.t option
+  -> virtual_:bool
   -> entry_modules:(Module_name.t list, User_message.t) result Source.t
   -> implements:(Loc.t * Lib_name.t) option
   -> default_implementation:(Loc.t * Lib_name.t) option

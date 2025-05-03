@@ -1,17 +1,48 @@
 open Import
 open Memo.O
 
+module Output_kind : sig
+  type t =
+    | Private_library_or_emit of Path.Build.t
+    | Public_library of
+        { lib_dir : Path.t
+        ; output_dir : Path.Build.t
+        }
+
+  val [@ocaml.warning "-32"] to_dyn : t -> Dyn.t
+end = struct
+  type t =
+    | Private_library_or_emit of Path.Build.t
+    | Public_library of
+        { lib_dir : Path.t
+        ; output_dir : Path.Build.t
+        }
+
+  let to_dyn t =
+    match t with
+    | Private_library_or_emit dir ->
+      Dyn.variant "Private_library_or_emit" [ Path.Build.to_dyn dir ]
+    | Public_library { lib_dir; output_dir } ->
+      Dyn.variant
+        "Public_library"
+        [ Dyn.record
+            [ "lib_dir", Path.to_dyn lib_dir; "output_dir", Path.Build.to_dyn output_dir ]
+        ]
+  ;;
+end
+
 let output_of_lib =
   let public_lib ~info ~target_dir lib_name =
-    `Public_library
-      ( Lib_info.src_dir info
-      , Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
-      )
+    Output_kind.Public_library
+      { lib_dir = Lib_info.src_dir info
+      ; output_dir =
+          Path.Build.L.relative target_dir [ "node_modules"; Lib_name.to_string lib_name ]
+      }
   in
   fun ~target_dir lib ->
     let info = Lib.info lib in
     match Lib_info.status info with
-    | Private (_, None) -> `Private_library_or_emit target_dir
+    | Private (_, None) -> Output_kind.Private_library_or_emit target_dir
     | Private (_, Some pkg) ->
       public_lib
         ~info
@@ -22,29 +53,26 @@ let output_of_lib =
 ;;
 
 let lib_output_path ~output_dir ~lib_dir src =
-  match Path.drop_prefix_exn src ~prefix:lib_dir |> Path.Local.to_string with
-  | "" -> output_dir
-  | dir -> Path.Build.relative output_dir dir
+  if Path.equal lib_dir src
+  then output_dir
+  else (
+    let src_dir = Path.drop_prefix_exn src ~prefix:lib_dir in
+    Path.Build.append_local output_dir src_dir)
 ;;
 
 let make_js_name ~js_ext ~output m =
-  let basename = Melange.js_basename m ^ js_ext in
-  match output with
-  | `Public_library (lib_dir, output_dir) ->
+  let dst_dir =
     let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
-    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
-    Path.Build.relative output_dir basename
-  | `Private_library_or_emit target_dir ->
-    let dst_dir =
+    match output with
+    | Output_kind.Public_library { lib_dir; output_dir } ->
+      lib_output_path ~output_dir ~lib_dir src_dir
+    | Private_library_or_emit target_dir ->
       Path.Build.append_source
         target_dir
-        (Module.file m ~ml_kind:Impl
-         |> Option.value_exn
-         |> Path.as_in_build_dir_exn
-         |> Path.Build.parent_exn
-         |> Path.Build.drop_build_context_exn)
-    in
-    Path.Build.relative dst_dir basename
+        (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
+  in
+  let basename = Melange.js_basename m ^ js_ext in
+  Path.Build.relative dst_dir basename
 ;;
 
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
@@ -105,26 +133,26 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
       |> List.filter ~f:(Module.has ~ml_kind:Impl) )
 ;;
 
-let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
-
-let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope lib_config =
-  let project = Scope.project scope in
-  let deps_of_lib lib =
-    let info = Lib.info lib in
-    let obj_dir = Lib_info.obj_dir info in
-    let dir = Obj_dir.melange_dir obj_dir in
-    Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
-  in
-  Command.Args.memo
-  @@ Resolve.args
-  @@
-  let open Resolve.O in
-  let+ requires_link = requires_link in
-  let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
-  Command.Args.S
-    [ Lib_flags.L.melange_emission_include_flags ~project requires_link lib_config
-    ; Hidden_deps deps
-    ]
+let cmj_includes =
+  let cmj_glob = Glob.of_string_exn Loc.none "*.cmj" in
+  fun ~(requires_link : Lib.t list Resolve.t) ~scope lib_config ->
+    let project = Scope.project scope in
+    let deps_of_lib lib =
+      let info = Lib.info lib in
+      let obj_dir = Lib_info.obj_dir info in
+      let dir = Obj_dir.melange_dir obj_dir in
+      Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
+    in
+    Command.Args.memo
+    @@ Resolve.args
+    @@
+    let open Resolve.O in
+    let+ requires_link = requires_link in
+    let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
+    Command.Args.S
+      [ Lib_flags.L.melange_emission_include_flags ~project requires_link lib_config
+      ; Hidden_deps deps
+      ]
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =
@@ -270,7 +298,6 @@ let melange_compile_flags ~sctx ~dir (mel : Melange_stanzas.Emit.t) =
 
 let setup_emit_cmj_rules
       ~sctx
-      ~dir
       ~scope
       ~expander
       ~dir_contents
@@ -279,6 +306,7 @@ let setup_emit_cmj_rules
   let* compile_info = compile_info ~scope mel in
   let ctx = Super_context.context sctx in
   let merlin_ident = Merlin_ident.for_melange ~target:mel.target in
+  let dir = Dir_contents.dir dir_contents in
   let f () =
     let* modules, obj_dir =
       Dir_contents.ocaml dir_contents
@@ -338,7 +366,7 @@ let setup_emit_cmj_rules
         let open Action_builder.O in
         let+ () =
           js_targets_of_modules
-            ~output:(`Private_library_or_emit target_dir)
+            ~output:(Private_library_or_emit target_dir)
             ~module_systems
             modules
           |> Action_builder.path_set
@@ -408,7 +436,7 @@ module Runtime_deps = struct
     in
     Path.Set.fold ~init:([], []) deps ~f:(fun src (copy, non_copy) ->
       match output with
-      | `Public_library (lib_dir, output_dir) ->
+      | Output_kind.Public_library { lib_dir; output_dir } ->
         (match Path.as_external src with
          | None -> (src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy
          | Some src_e ->
@@ -416,7 +444,7 @@ module Runtime_deps = struct
             | Some lib_dir_e when Path.External.is_descendant src_e ~of_:lib_dir_e ->
               (src, lib_output_path ~output_dir ~lib_dir src) :: copy, non_copy
             | Some _ | None -> raise_external_dep_error src))
-      | `Private_library_or_emit output_dir ->
+      | Private_library_or_emit output_dir ->
         (match Path.as_in_build_dir src with
          | None -> copy, src :: non_copy
          | Some src_build ->
@@ -478,7 +506,7 @@ let setup_entries_js
     let requires_link = Resolve.return requires_link in
     cmj_includes ~requires_link ~scope lib_config
   and* compile_flags = melange_compile_flags ~sctx ~dir mel in
-  let output = `Private_library_or_emit target_dir in
+  let output = Output_kind.Private_library_or_emit target_dir in
   let obj_dir = Obj_dir.of_local local_obj_dir in
   let* () =
     setup_runtime_assets_rules sctx ~dir ~target_dir ~mode ~output ~for_:`Emit mel
@@ -578,7 +606,7 @@ let setup_js_rules_libraries =
           let* vlib = Resolve.Memo.read_memo vlib in
           let vlib_output = output_of_lib ~target_dir vlib in
           (match vlib_output, output with
-           | `Public_library _, `Private_library_or_emit _ ->
+           | Public_library _, Private_library_or_emit _ ->
              let info = Lib.info lib in
              User_error.raise
                ~loc:(Lib_info.loc info)
@@ -591,7 +619,7 @@ let setup_js_rules_libraries =
                      "Add a `public_name` to the library `%s'."
                      (Lib_name.to_string (Lib_info.name info))
                  ]
-           | `Public_library _, `Public_library _ | `Private_library_or_emit _, _ ->
+           | Public_library _, Public_library _ | Private_library_or_emit _, _ ->
              let* includes =
                let+ requires_link =
                  let+ requires_link =
@@ -686,7 +714,7 @@ let setup_emit_js_rules ~dir_contents ~dir ~scope ~sctx mel =
       modules_for_js_and_obj_dir ~sctx ~dir_contents ~scope mel
     in
     let module_systems = mel.module_systems in
-    let output = `Private_library_or_emit target_dir in
+    let output = Output_kind.Private_library_or_emit target_dir in
     let loc = mel.loc in
     Memo.parallel_iter modules_for_js ~f:(fun m ->
       Memo.parallel_iter module_systems ~f:(fun (_module_system, js_ext) ->

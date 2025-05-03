@@ -118,7 +118,7 @@ end = struct
       in
       if_available_buildable
         ~loc:lib.buildable.loc
-        (fun () -> Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander)
+        (fun () -> Lib_rules.rules lib ~sctx ~scope ~dir_contents ~expander)
         enabled_if
     | Foreign_library.T lib ->
       Expander.eval_blang expander lib.enabled_if
@@ -130,9 +130,7 @@ end = struct
       >>= if_available (fun () ->
         let+ () =
           Memo.Option.iter exes.install_conf ~f:(install_stanza_rules ~expander ~ctx_dir)
-        and+ cctx_merlin =
-          Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
-        in
+        and+ cctx_merlin = Exe_rules.rules exes ~sctx ~scope ~expander ~dir_contents in
         { (with_cctx_merlin ~loc:exes.buildable.loc cctx_merlin) with
           js =
             Some
@@ -179,7 +177,7 @@ end = struct
     | Melange_stanzas.Emit.T mel ->
       Expander.eval_blang expander mel.enabled_if
       >>= if_available_buildable ~loc:mel.loc (fun () ->
-        Melange_rules.setup_emit_cmj_rules ~dir_contents ~dir ~scope ~sctx ~expander mel)
+        Melange_rules.setup_emit_cmj_rules ~dir_contents ~scope ~sctx ~expander mel)
     | _ -> Memo.return empty_none
   ;;
 
@@ -211,7 +209,7 @@ let define_all_alias ~dir ~project ~js_targets =
   Rules.Produce.Alias.add_deps (Alias.make Alias0.all ~dir) deps
 ;;
 
-let gen_rules_for_stanzas sctx dir_contents cctxs expander dune_file ~dir:ctx_dir =
+let gen_rules_for_stanzas sctx dir_contents cctxs expander ~dune_file ~dir:ctx_dir =
   let src_dir = Dune_file.dir dune_file in
   let* stanzas = Dune_file.stanzas dune_file
   and* scope = Scope.DB.find_by_dir ctx_dir in
@@ -319,22 +317,18 @@ let gen_rules_source_only sctx ~dir source_dir =
 let gen_rules_group_part_or_root sctx dir_contents cctxs ~source_dir ~dir
   : (Loc.t * Compilation_context.t) list Memo.t
   =
-  let* expander = Super_context.expander sctx ~dir in
-  let* () = gen_format_and_cram_rules sctx ~dir source_dir
-  and+ stanzas =
+  let+ () = gen_format_and_cram_rules sctx ~dir source_dir
+  and+ contexts =
     (* CR-soon rgrinberg: we shouldn't have to fetch the stanzas yet again *)
     Dune_load.stanzas_in_dir dir
     >>= function
-    | Some d -> Memo.return (Some d)
+    | Some dune_file ->
+      Super_context.expander sctx ~dir
+      >>= gen_rules_for_stanzas sctx dir_contents cctxs ~dune_file ~dir
     | None ->
       let project = Source_tree.Dir.project source_dir in
       let+ () = define_all_alias ~dir ~js_targets:[] ~project in
-      None
-  in
-  let+ contexts =
-    match stanzas with
-    | None -> Memo.return []
-    | Some d -> gen_rules_for_stanzas sctx dir_contents cctxs expander d ~dir
+      []
   in
   contexts
 ;;

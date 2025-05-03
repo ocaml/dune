@@ -440,7 +440,7 @@ let to_lib_info
     | Private pkg -> Lib_info.Status.Private (conf.project, pkg)
     | Public p -> Public (conf.project, p.package)
   in
-  let virtual_library = is_virtual conf in
+  let virtual_ = is_virtual conf in
   let foreign_archives =
     let init =
       Mode.Map.Multi.create_for_all_modes
@@ -456,7 +456,7 @@ let to_lib_info
   in
   let native_archives =
     let archive = archive ext_lib in
-    if virtual_library || not modes.ocaml.native
+    if virtual_ || not modes.ocaml.native
     then Lib_info.Files []
     else if
       Option.is_some conf.implements
@@ -467,10 +467,9 @@ let to_lib_info
   in
   let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
   let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
-  let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local) in
   let foreign_objects = Lib_info.Source.Local in
   let archives, plugins =
-    if virtual_library
+    if virtual_
     then Mode.Dict.make_both [], Mode.Dict.make_both []
     else (
       let plugins =

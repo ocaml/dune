@@ -153,5 +153,5 @@ let rules (t : Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
                 in
                 ()))
   in
-  Exe_rules.rules t.exes ~sctx ~dir ~scope ~expander ~dir_contents
+  Exe_rules.rules t.exes ~sctx ~scope ~expander ~dir_contents
 ;;

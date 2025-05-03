@@ -6,15 +6,6 @@
 (executable
  (name main)
  (modules main)
- (enabled_if
-  ; Currently the build of this program fails because there is a
-  ; conflict between vendor/spawn and the spawn library installed in
-  ; opam that core_bench depends on.
-  ;
-  ; There is a work in progress to "unvendor" Dune's dependencies
-  ; when working on Dune to avoid such issues. See
-  ; https://github.com/ocaml/dune/pull/3575
-  false)
  (libraries dune_bench core_bench.inline_benchmarks))
 
 (executable

@@ -12,7 +12,7 @@ DEV_DEPS := \
 core_bench \
 patdiff
 
-TEST_OCAMLVERSION := 5.1.1
+TEST_OCAMLVERSION := 5.2.1
 
 -include Makefile.dev
 
@@ -23,6 +23,10 @@ help:
 .PHONY: bootstrap
 bootstrap:
 	$(MAKE) -B $(BIN)
+
+.PHONY: test-bootstrap
+test-bootstrap:
+	@ocaml boot/bootstrap.ml --boot-dir _test_boot
 
 .PHONY: release
 release: $(BIN)
@@ -58,10 +62,6 @@ install-ocamlformat:
 .PHONY: dev-deps
 dev-deps:
 	opam install -y . --deps-only --with-dev-setup
-
-.PHONY: coverage-deps
-coverage-deps:
-	opam install -y bisect_ppx
 
 .PHONY: dev-deps-sans-melange
 dev-deps-sans-melange: dev-deps

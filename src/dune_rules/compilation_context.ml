@@ -330,9 +330,8 @@ let entry_module_names sctx t =
   match Lib_info.entry_modules (Lib.info t) with
   | External d -> Resolve.Memo.of_result d
   | Local ->
-    let+ modules = Dir_contents.modules_of_lib sctx t in
-    let modules = Option.value_exn modules in
-    Resolve.return (Modules.With_vlib.entry_modules modules |> List.map ~f:Module.name)
+    let+ modules = Dir_contents.modules_of_local_lib sctx (Lib.Local.of_lib_exn t) in
+    modules |> Modules.entry_modules |> List.map ~f:Module.name |> Resolve.return
 ;;
 
 let root_module_entries t =

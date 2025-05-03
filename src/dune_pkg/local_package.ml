@@ -1,6 +1,5 @@
 open! Import
 module Package_constraint = Dune_lang.Package_constraint
-module Digest = Dune_digest
 
 type pin =
   { loc : Loc.t
@@ -32,14 +31,17 @@ type t =
   }
 
 module Dependency_hash = struct
-  include Digest
+  type t = Dune_digest.t
 
+  let equal = Dune_digest.equal
+  let to_dyn = Dune_digest.to_dyn
+  let to_string = Dune_digest.to_string
   let encode t = to_string t |> Encoder.string
 
   let decode =
     let open Decoder in
     let+ loc, hash = located string in
-    match Digest.from_hex hash with
+    match Dune_digest.Digest.from_hex hash with
     | Some hash -> hash
     | None ->
       User_error.raise
@@ -52,7 +54,7 @@ module Dependency_hash = struct
     | false -> None
     | true ->
       let hashable = formula |> Dependency_formula.to_dyn |> Dyn.to_string in
-      Some (string hashable)
+      Some (Dune_digest.string hashable)
   ;;
 end
 

@@ -1,4 +1,5 @@
 open Stdune
+module Spawn = Dune_spawn.Spawn
 module Timestamp = Chrome_trace.Event.Timestamp
 module Event = Chrome_trace.Event
 

@@ -195,6 +195,7 @@ let os_family ~os_distribution ~os_release_fields ~os =
   | Some "linux" ->
     (match List.assoc (Lazy.force os_release_fields) "ID_LIKE" with
      | None -> os_distribution
+     | Some "" -> os_distribution
      | Some s ->
        (* first word *)
        (match Scanf.sscanf s " %s" Fun.id with

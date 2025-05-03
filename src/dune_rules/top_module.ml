@@ -31,8 +31,9 @@ let find_module sctx src =
   | None -> Memo.return None
   | Some module_name ->
     let* dir_contents = drop_rules @@ fun () -> Dir_contents.get sctx ~dir in
+    let stanza_dir = Dir_contents.dir dir_contents in
     let* ocaml = Dir_contents.ocaml dir_contents
-    and* scope = Scope.DB.find_by_dir dir in
+    and* scope = Scope.DB.find_by_dir stanza_dir in
     Ml_sources.find_origin ocaml ~libs:(Scope.libs scope) [ module_name ]
     >>= (function
      | None -> Memo.return None
@@ -42,17 +43,10 @@ let find_module sctx src =
          drop_rules
          @@ fun () ->
          match origin with
-         | Executables exes ->
-           Exe_rules.rules ~sctx ~dir ~dir_contents ~scope ~expander exes
-         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~dir ~expander ~scope
+         | Executables exes -> Exe_rules.rules ~sctx ~dir_contents ~scope ~expander exes
+         | Library lib -> Lib_rules.rules lib ~sctx ~dir_contents ~expander ~scope
          | Melange mel ->
-           Melange_rules.setup_emit_cmj_rules
-             ~sctx
-             ~dir_contents
-             ~dir
-             ~expander
-             ~scope
-             mel
+           Melange_rules.setup_emit_cmj_rules ~sctx ~dir_contents ~expander ~scope mel
        in
        let module_ =
          let modules = Compilation_context.modules cctx in

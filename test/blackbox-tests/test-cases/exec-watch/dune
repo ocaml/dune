@@ -9,5 +9,11 @@
   ;; unreliable to depend on in a test so these tests are disabled on macos.
   (<> "macosx" %{ocaml-config:system})))
 
+; These tests are explicitly disabled due to flakiness
+
+(cram
+ (applies_to exec-watch-server exec-watch-ignore-sigterm)
+ (enabled_if false))
+
 (cram
  (deps wait-for-file.sh))

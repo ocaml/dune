@@ -61,23 +61,18 @@ let lib_output_path ~output_dir ~lib_dir src =
 ;;
 
 let make_js_name ~js_ext ~output m =
-  let basename = Melange.js_basename m ^ js_ext in
-  match output with
-  | Output_kind.Public_library { lib_dir; output_dir } ->
+  let dst_dir =
     let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
-    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
-    Path.Build.relative output_dir basename
-  | Private_library_or_emit target_dir ->
-    let dst_dir =
+    match output with
+    | Output_kind.Public_library { lib_dir; output_dir } ->
+      lib_output_path ~output_dir ~lib_dir src_dir
+    | Private_library_or_emit target_dir ->
       Path.Build.append_source
         target_dir
-        (Module.file m ~ml_kind:Impl
-         |> Option.value_exn
-         |> Path.as_in_build_dir_exn
-         |> Path.Build.parent_exn
-         |> Path.Build.drop_build_context_exn)
-    in
-    Path.Build.relative dst_dir basename
+        (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
+  in
+  let basename = Melange.js_basename m ^ js_ext in
+  Path.Build.relative dst_dir basename
 ;;
 
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =

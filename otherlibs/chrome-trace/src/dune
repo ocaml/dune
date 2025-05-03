@@ -1,6 +1,4 @@
 (library
  (name chrome_trace)
  (public_name chrome-trace)
- (synopsis "Emit catapult trace files, compatible with chrome://tracing")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Emit catapult trace files, compatible with chrome://tracing"))

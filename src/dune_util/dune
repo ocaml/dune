@@ -16,6 +16,4 @@
   dune_sexp
   dune_config
   memo
-  (re_export unix))
- (instrumentation
-  (backend bisect_ppx)))
+  (re_export unix)))

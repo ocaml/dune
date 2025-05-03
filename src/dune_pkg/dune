@@ -19,6 +19,4 @@
   opam_format
   build_info
   sat
-  xdg)
- (instrumentation
-  (backend bisect_ppx)))
+  xdg))

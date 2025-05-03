@@ -10,6 +10,4 @@
   dune_stats
   dune_util
   dune_rpc_private
-  unix)
- (instrumentation
-  (backend bisect_ppx)))
+  unix))

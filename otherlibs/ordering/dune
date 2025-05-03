@@ -1,6 +1,4 @@
 (library
  (name ordering)
  (public_name ordering)
- (synopsis "Element ordering.")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "Element ordering."))

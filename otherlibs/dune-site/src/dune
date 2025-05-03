@@ -8,6 +8,4 @@
    (data_module dune_site_data)))
  (libraries
   (re_export dune-private-libs.dune-section)
-  dune-site.private)
- (instrumentation
-  (backend bisect_ppx)))
+  dune-site.private))

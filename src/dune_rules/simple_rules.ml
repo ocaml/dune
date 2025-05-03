@@ -154,7 +154,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule_conf.t) =
            >>> Memo.parallel_iter extra_aliases ~f:(fun extra_alias ->
              Dep.alias alias
              |> Action_builder.dep
-             |> Rules.Produce.Alias.add_deps ~synopsis:rule.synopsis ~loc extra_alias)
+             |> Rules.Produce.Alias.add_deps ~loc ~synopsis:rule.synopsis extra_alias)
        in
        None)
 ;;

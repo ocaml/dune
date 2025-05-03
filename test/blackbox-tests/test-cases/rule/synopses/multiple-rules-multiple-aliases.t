@@ -5,25 +5,25 @@ Dune should show all synopses with their location for all rules to aliases attac
   > EOF
   $ cat > dune << EOF
   > (rule
-  >  (targets file1.ml)
+  >  (target file1.ml)
   >  (aliases rule-with-synopses and-another-rule)
   >  (synopsis "Rule creates file1.ml")
   >  (action
-  >    (write-file file1.ml "")))
+  >    (write-file %{target} "")))
   > 
   > (rule
-  >  (targets file2.ml)
+  >  (target file2.ml)
   >  (aliases rule-with-synopses and-another-rule)
   >  (synopsis "Rule creates file2.ml")
   >  (action
-  >    (write-file file2.ml "")))
+  >    (write-file %{target} "")))
   > 
   > (rule
-  >  (targets file3.ml)
+  >  (target file3.ml)
   >  (alias and-another-rule)
   >  (synopsis "Rule creates file3.ml")
   >  (action
-  >    (write-file file3.ml "")))
+  >    (write-file %{target} "")))
   > EOF
 
   $ dune show targets

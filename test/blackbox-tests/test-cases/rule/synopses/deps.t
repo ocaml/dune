@@ -5,11 +5,11 @@ Dune should attach synopsis to alias, but should not attach deps synopsis.
   > EOF
   $ cat > dune << EOF
   > (rule
-  >  (targets dep-file)
+  >  (target dep-file)
   >  (alias dep-rule)
   >  (synopsis "Synopsis for rule used as deps")
   >  (action
-  >   (run touch dep-file)))
+  >   (run touch %{target})))
   > (rule
   >  (deps dep-synopsis)
   >  (alias has-dep-rule)

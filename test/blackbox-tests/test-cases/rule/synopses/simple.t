@@ -7,11 +7,11 @@ Dune should show synopsis for alias.
   > EOF
   $ cat > dune << EOF
   > (rule
-  >  (targets touched-file.ml)
+  >  (target touched-file.ml)
   >  (alias rule-with-synopsis)
   >  (synopsis "Synopsis for rule with alias rule-with-synopsis")
   >  (action
-  >   (write-file touched-file.ml "")))
+  >   (write-file %{target} "")))
   > EOF
 
   $ dune show targets

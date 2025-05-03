@@ -116,7 +116,7 @@ Test depending on paths that "escape" the melange.emit directory
   > let () = Js.log file_content
   > EOF
 
-Need to create the source dir first for the alias to be picked up
+Rules are created for the runtime deps
 
   $ dune rules @mel | grep .txt
   ((deps ((File (In_build_dir _build/default/a/assets/file.txt))))

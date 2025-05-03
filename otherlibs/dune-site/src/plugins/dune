@@ -6,6 +6,4 @@
   (dune_site
    (plugins)
    (data_module dune_site_plugins_data)))
- (libraries dune-site dune-private-libs.meta_parser dune-site.linker)
- (instrumentation
-  (backend bisect_ppx)))
+ (libraries dune-site dune-private-libs.meta_parser dune-site.linker))

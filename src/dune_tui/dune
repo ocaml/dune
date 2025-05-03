@@ -10,8 +10,6 @@
   dune_config
   dune_console
   dune_threaded_console
-  threads.posix)
- (instrumentation
-  (backend bisect_ppx)))
+  threads.posix))
 
 (include_subdirs unqualified)

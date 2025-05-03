@@ -1,5 +1,3 @@
 (library
  (name dune_thread_pool)
- (libraries stdune threads.posix)
- (instrumentation
-  (backend bisect_ppx)))
+ (libraries stdune threads.posix))

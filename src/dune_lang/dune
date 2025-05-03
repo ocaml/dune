@@ -13,8 +13,6 @@
   ordering
   predicate_lang
   dune_section
-  (re_export dune_sexp))
- (instrumentation
-  (backend bisect_ppx)))
+  (re_export dune_sexp)))
 
 (ocamllex dune_file_script)

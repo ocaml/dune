@@ -5,12 +5,6 @@ module Name = struct
 
   let default = of_string "default"
 
-  let default_synopsis =
-    Synopsis.of_string
-      "This alias corresponds to the default argument for dune build. More information \
-       on https://dune.readthedocs.io/en/latest/reference/aliases/default.html"
-  ;;
-
   let parse_local_path (loc, p) =
     match Path.Local.parent p with
     | Some dir ->

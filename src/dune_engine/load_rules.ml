@@ -368,7 +368,7 @@ end = struct
                 Appendable_list.singleton
                   { Rules.Dir_rules.Alias_spec.loc = Loc.none
                   ; item = Deps expansion
-                  ; synopsis = Some Alias.Name.default_synopsis
+                  ; synopsis = None
                   }
             }
     in

@@ -22,9 +22,6 @@ Dune should show synopsis for alias.
   $ dune show aliases
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   ocaml-index
   pkg-install

@@ -7,9 +7,6 @@ In an empty dune project, the following aliases are available.
   $ dune show aliases
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   ocaml-index
   pkg-install
@@ -25,9 +22,6 @@ the command.
   $ dune show aliases
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   foo
   ocaml-index
@@ -44,9 +38,6 @@ Aliases in subdirectories should not be picked up.
   $ dune show aliases
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   foo
   ocaml-index
@@ -58,9 +49,6 @@ But checking the subdirectory it should be available.
   all
   bar
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
 
 Adding an OCaml library will introduce OCaml specific aliases:
@@ -74,9 +62,6 @@ Adding an OCaml library will introduce OCaml specific aliases:
   all
   check
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   doc-private
   fmt
   ocaml-index
@@ -91,9 +76,6 @@ bbb
   $ dune show aliases
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   mytest
   ocaml-index
@@ -106,9 +88,6 @@ We can also show aliases in multiple directories at once:
   .:
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   mytest
   ocaml-index
@@ -119,9 +98,6 @@ We can also show aliases in multiple directories at once:
   all
   bar
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
 
 Including those in the _build/ directory:
@@ -131,9 +107,6 @@ Including those in the _build/ directory:
   .:
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   mytest
   ocaml-index
@@ -143,9 +116,6 @@ Including those in the _build/ directory:
   _build/default:
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   mytest
   ocaml-index
@@ -167,9 +137,6 @@ These are context sensitive:
   $ dune show aliases --context other_context _build/other_context
   all
   default
-    - This alias corresponds to the default argument for dune build. More
-      information on
-      https://dune.readthedocs.io/en/latest/reference/aliases/default.html
   fmt
   mytest
   ocaml-index

@@ -80,7 +80,8 @@ The runtime_dep index.txt was copied to the build folder
   
   Some text
   
-The same does not work for non-recursive aliases
+
+The same does not work for non-recursive aliases (no assets dir)
 
   $ dune clean
   $ dune build @@mel

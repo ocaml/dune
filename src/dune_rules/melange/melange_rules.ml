@@ -61,23 +61,18 @@ let lib_output_path ~output_dir ~lib_dir src =
 ;;
 
 let make_js_name ~js_ext ~output m =
-  let basename = Melange.js_basename m ^ js_ext in
-  match output with
-  | Output_kind.Public_library { lib_dir; output_dir } ->
+  let dst_dir =
     let src_dir = Module.file m ~ml_kind:Impl |> Option.value_exn |> Path.parent_exn in
-    let output_dir = lib_output_path ~output_dir ~lib_dir src_dir in
-    Path.Build.relative output_dir basename
-  | Private_library_or_emit target_dir ->
-    let dst_dir =
+    match output with
+    | Output_kind.Public_library { lib_dir; output_dir } ->
+      lib_output_path ~output_dir ~lib_dir src_dir
+    | Private_library_or_emit target_dir ->
       Path.Build.append_source
         target_dir
-        (Module.file m ~ml_kind:Impl
-         |> Option.value_exn
-         |> Path.as_in_build_dir_exn
-         |> Path.Build.parent_exn
-         |> Path.Build.drop_build_context_exn)
-    in
-    Path.Build.relative dst_dir basename
+        (src_dir |> Path.as_in_build_dir_exn |> Path.Build.drop_build_context_exn)
+  in
+  let basename = Melange.js_basename m ^ js_ext in
+  Path.Build.relative dst_dir basename
 ;;
 
 let modules_in_obj_dir ~sctx ~scope ~preprocess modules =
@@ -138,26 +133,26 @@ let impl_only_modules_defined_in_this_lib ~sctx ~scope lib =
       |> List.filter ~f:(Module.has ~ml_kind:Impl) )
 ;;
 
-let cmj_glob = Glob.of_string_exn Loc.none "*.cmj"
-
-let cmj_includes ~(requires_link : Lib.t list Resolve.t) ~scope lib_config =
-  let project = Scope.project scope in
-  let deps_of_lib lib =
-    let info = Lib.info lib in
-    let obj_dir = Lib_info.obj_dir info in
-    let dir = Obj_dir.melange_dir obj_dir in
-    Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
-  in
-  Command.Args.memo
-  @@ Resolve.args
-  @@
-  let open Resolve.O in
-  let+ requires_link = requires_link in
-  let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
-  Command.Args.S
-    [ Lib_flags.L.melange_emission_include_flags ~project requires_link lib_config
-    ; Hidden_deps deps
-    ]
+let cmj_includes =
+  let cmj_glob = Glob.of_string_exn Loc.none "*.cmj" in
+  fun ~(requires_link : Lib.t list Resolve.t) ~scope lib_config ->
+    let project = Scope.project scope in
+    let deps_of_lib lib =
+      let info = Lib.info lib in
+      let obj_dir = Lib_info.obj_dir info in
+      let dir = Obj_dir.melange_dir obj_dir in
+      Dep.file_selector @@ File_selector.of_glob ~dir cmj_glob
+    in
+    Command.Args.memo
+    @@ Resolve.args
+    @@
+    let open Resolve.O in
+    let+ requires_link = requires_link in
+    let deps = List.map requires_link ~f:deps_of_lib |> Dep.Set.of_list in
+    Command.Args.S
+      [ Lib_flags.L.melange_emission_include_flags ~project requires_link lib_config
+      ; Hidden_deps deps
+      ]
 ;;
 
 let compile_info ~scope (mel : Melange_stanzas.Emit.t) =

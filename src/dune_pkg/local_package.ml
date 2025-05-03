@@ -96,7 +96,7 @@ module For_solver = struct
          (List.map conflict_class ~f:Package_name.to_opam_package_name)
     |> OpamFile.OPAM.with_depopts
          (List.map depopts ~f:Package_dependency.to_opam_filtered_formula
-          |> OpamFormula.ands)
+          |> OpamFormula.ors)
     |> OpamFile.OPAM.with_install install
     |> OpamFile.OPAM.with_build build
   ;;

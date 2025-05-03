@@ -88,7 +88,7 @@ module Produce : sig
     val add_action
       :  t
       -> loc:Loc.t
-      -> ?synopsis:Synopsis.t option
+      -> synopsis:Synopsis.t option
       -> Action.Full.t Action_builder.t
       -> unit Memo.t
   end

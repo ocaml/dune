@@ -161,7 +161,7 @@ module Produce = struct
         }
     ;;
 
-    let add_action t ~loc ?(synopsis = None) action =
+    let add_action t ~loc ~synopsis action =
       let action =
         let open Action_builder.O in
         let+ action = action in

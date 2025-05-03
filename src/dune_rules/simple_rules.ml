@@ -2,14 +2,14 @@ open Import
 open Memo.O
 
 module Alias_rules = struct
-  let add sctx ~alias ~loc ?(synopsis = None) build =
+  let add sctx ~alias ~loc ~synopsis build =
     let dir = Alias.dir alias in
     Super_context.add_alias_action sctx alias ~dir ~loc ~synopsis build
   ;;
 
   let add_empty sctx ~loc ~alias =
     let action = Action_builder.return (Action.Full.make Action.empty) in
-    add sctx ~loc ~alias action
+    add sctx ~loc ~alias ~synopsis:None action
   ;;
 end
 
@@ -304,5 +304,5 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
            ~what:"aliases"
        in
        interpret_and_add_locks ~expander alias_conf.locks action
-       |> Alias_rules.add sctx ~loc ~alias)
+       |> Alias_rules.add sctx ~loc ~synopsis:None ~alias)
 ;;

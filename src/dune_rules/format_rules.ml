@@ -165,7 +165,7 @@ let gen_rules_output
          let open Memo.O in
          let* sctx = sctx in
          Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
-     >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
+     >>> add_diff loc alias_formatted ~input:(Path.build input) ~output ~synopsis:None)
     |> Memo.Option.iter ~f:Fun.id
   in
   let* source_dir = Source_tree.find_dir (Path.Build.drop_build_context_exn dir) in
@@ -194,10 +194,12 @@ let gen_rules_output
               |> Action_builder.with_file_targets ~file_targets:[ output ]
             in
             let rule = Rule.make ~mode:Standard ~synopsis:None ~targets build in
-            Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
+            Rules.Produce.rule rule
+            >>> add_diff loc alias_formatted ~input ~output ~synopsis:None)))
   in
   Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
 ;;
+
 let format_config ~dir =
   let+ value =
     Env_stanza_db.value_opt ~dir ~f:(fun (t : Dune_env.config) ->

@@ -297,6 +297,7 @@ end = struct
       let build_path = Path.Build.append_source ctx_dir src_path in
       Rule.make
         ~info:(Source_file_copy src_path)
+        ~synopsis:None
         ~targets:(Targets.File.create build_path)
         (copy_source_action ~src_path ~build_path))
   ;;

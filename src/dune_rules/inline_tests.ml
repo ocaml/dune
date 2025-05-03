@@ -357,6 +357,7 @@ include Sub_system.Register_end_point (struct
           sctx
           ~dir
           ~loc:info.loc
+          ~synopsis:None
           (Alias.make ~dir runtest_alias)
           (let open Action_builder.O in
            let+ actions =

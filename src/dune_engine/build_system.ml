@@ -696,6 +696,7 @@ end = struct
       let { Rule.Anonymous_action.action = _; loc; dir = _; alias = _ } = act in
       Rule.make
         ~info:(if Loc.is_none loc then Internal else From_dune_file loc)
+        ~synopsis:None
         ~targets:(Targets.File.create target)
         ~mode:Standard
         (Action_builder.record act.action deps ~f:build_dep)

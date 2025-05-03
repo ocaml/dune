@@ -70,13 +70,7 @@ end
 include T
 include Comparable.Make (T)
 
-let make
-      ?(mode = Mode.Standard)
-      ?(info = Info.Internal)
-      ?(synopsis = None)
-      ~targets
-      action
-  =
+let make ?(mode = Mode.Standard) ?(info = Info.Internal) ~synopsis ~targets action =
   let action = Action_builder.memoize "Rule.make" action in
   let report_error ?(extra_pp = []) message =
     match info with

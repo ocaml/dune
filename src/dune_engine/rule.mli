@@ -73,7 +73,7 @@ val to_dyn : t -> Dyn.t
 val make
   :  ?mode:Mode.t
   -> ?info:Info.t
-  -> ?synopsis:Synopsis.t option
+  -> synopsis:Synopsis.t option
   -> targets:Targets.t
   -> Action.Full.t Action_builder.t
   -> t

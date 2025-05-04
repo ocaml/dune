@@ -119,15 +119,7 @@ module Context = struct
         end)
         1
     in
-    let expanded_packages =
-      Table.create
-        (module struct
-          include Package_name
-
-          let to_dyn = Package_name.to_dyn
-        end)
-        1
-    in
+    let expanded_packages = Table.create (module Package_name) 1 in
     let local_constraints =
       lazy
         (let acc = Table.create (module Package_name) 20 in

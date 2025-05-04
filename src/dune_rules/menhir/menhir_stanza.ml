@@ -9,6 +9,7 @@ let syntax =
     ; (2, 0), `Since (1, 4)
     ; (2, 1), `Since (2, 2)
     ; (3, 0), `Since (3, 13)
+    ; (3, 1), `Since (3, 19)
     ]
 ;;
 
@@ -24,6 +25,7 @@ type t =
   ; enabled_if : Blang.t
   ; explain : Blang.t option
   ; menhir_syntax : Syntax.Version.t
+  ; messages : string option
   }
 
 let explain_since = 3, 0
@@ -40,13 +42,25 @@ let decode =
      and+ loc = loc
      and+ explain =
        field_o "explain" (Dune_lang.Syntax.since syntax explain_since >>> Blang.decode)
+     and+ messages =
+       field_o "messages" (Dune_lang.Syntax.since syntax (3, 1) >>> string)
      in
      let infer =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
      in
-     { merge_into; flags; modules; mode; loc; infer; enabled_if; explain; menhir_syntax })
+     { merge_into
+     ; flags
+     ; modules
+     ; mode
+     ; loc
+     ; infer
+     ; enabled_if
+     ; explain
+     ; menhir_syntax
+     ; messages
+     })
 ;;
 
 include Stanza.Make (struct
@@ -73,5 +87,8 @@ let modules (stanza : t) : string list =
 
 let targets (stanza : t) : string list =
   let f m = [ m ^ ".ml"; m ^ ".mli" ] in
-  List.concat_map (modules stanza) ~f
+  let modules = List.concat_map (modules stanza) ~f in
+  match stanza.messages with
+  | None -> modules
+  | Some m -> (m ^ ".ml") :: modules
 ;;

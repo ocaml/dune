@@ -921,7 +921,7 @@ end = struct
           ~loc
           [ Pp.text
               "library does not exist but is automatically provided. It cannot be used \
-               in this position"
+               in this position."
           ]
     in
     let* resolved =

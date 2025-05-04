@@ -16,14 +16,14 @@ module Version : sig
 end
 
 val build_cm
-  :  Super_context.t
+  :  Compilation_context.t
   -> dir:Path.Build.t
   -> in_context:Js_of_ocaml.In_context.t
   -> mode:Js_of_ocaml.Mode.t
   -> src:Path.t
   -> obj_dir:Path.Build.t Obj_dir.t
   -> config:Config.t option
-  -> Action.Full.t Action_builder.With_targets.t
+  -> Action.Full.t Action_builder.With_targets.t Memo.t
 
 val build_exe
   :  Compilation_context.t

@@ -920,8 +920,8 @@ end = struct
         User_error.raise
           ~loc
           [ Pp.text
-              "librarys does not exist but is automatically provided. It cannot be used \
-               in this position"
+              "library does not exist but is automatically provided. It cannot be used \
+               in this position."
           ]
     in
     let* resolved =

@@ -1,0 +1,229 @@
+Test support for .messages file in the Menhir stanza. The test program (in
+calc.ml) is taken from
+
+ https://gitlab.inria.fr/fpottier/menhir/-/blob/master/demos/calc-syntax-errors
+
+and adapted slightly.
+
+  $ cat >dune <<EOF
+  > (ocamllex
+  >  (modules lexer))
+  > 
+  > (menhir
+  >  (modules parser)
+  >  (flags --table)
+  >  (messages parserMessages))
+  > 
+  > (executable
+  >  (name calc)
+  >  (libraries menhirLib))
+  > EOF
+
+First we test that the version guards work correctly. The Menhir extension
+version should be >= 3.1, which is in turn supported only when the Dune lang
+version is >= 3.19.
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (using menhir 3.0)
+  > EOF
+
+  $ dune build
+  File "dune", line 7, characters 1-26:
+  7 |  (messages parserMessages))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: 'messages' is only available since version 3.1 of the menhir
+  extension. Please update your dune-project file to have (using menhir 3.1).
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.18)
+  > (using menhir 3.1)
+  > EOF
+
+  $ dune build
+  File "dune-project", line 2, characters 14-17:
+  2 | (using menhir 3.1)
+                    ^^^
+  Error: Version 3.1 of the menhir extension is not supported until version
+  3.19 of the dune language.
+  Supported versions of this extension in version 3.18 of the dune language:
+  - 1.0 to 1.1
+  - 2.0 to 2.1
+  - 3.0
+  [1]
+
+  $ cat >dune-project <<EOF
+  > (lang dune 3.19)
+  > (using menhir 3.1)
+  > EOF
+
+We try first with the unmodified parser. The committed parserMessages.messages file
+should work out-of-the-box.
+
+  $ cat parser.mly.in > parser.mly
+
+We build the test tool. We see that ParserMessages is generated.
+
+  $ dune build --display short 2>&1 | grep '[mM]essages'
+        menhir parserMessages.messages.list
+        menhir parserMessages.messages.update
+  Read 8 sample input sentences and 5 error messages.
+        menhir parserMessages.messages.new
+  Read 8 sample input sentences and 8 error messages.
+  Read 8 sample input sentences and 5 error messages.
+        menhir parserMessages.ml
+  Read 8 sample input sentences and 5 error messages.
+      ocamldep .calc.eobjs/dune__exe__ParserMessages.impl.d
+        ocamlc .calc.eobjs/byte/dune__exe__ParserMessages.{cmi,cmo,cmt}
+      ocamlopt .calc.eobjs/native/dune__exe__ParserMessages.{cmx,o}
+
+We test the tool (and the error messages):
+
+  $ _build/default/calc.exe '1+2*3+(42-12)*((2+12)*3-17-18)'
+  217
+
+  $ _build/default/calc.exe '(1+2)(2+3)'
+  File "<input>", line 1, characters 5-6:
+  Syntax error after ')' and before '('.
+  I have read the expression '(1+2)'.
+  I am now expecting either an arithmetic operator or the end of the input.
+  [1]
+
+  $ _build/default/calc.exe '(1 + 2 * 10 * 23()'
+  File "<input>", line 1, characters 16-17:
+  Syntax error after '23' and before '('.
+  I have read an opening parenthesis,
+  followed with the expression '1 + 2 * 10 * 23'.
+  I am now expecting either an arithmetic operator or a closing parenthesis.
+  [1]
+
+  $ _build/default/calc.exe '(+1)'
+  File "<input>", line 1, characters 1-2:
+  Syntax error after '(' and before '+'.
+  After an opening parenthesis, an expression is expected.
+  [1]
+
+Now we simulate iterating on parser.mly by removing the comment markers in that
+file.
+
+  $ sed '/([*]\|[*])/d' < parser.mly.in > parser.mly
+
+We try to build, but the build fails as Menhir detects that
+parserMessages.messages needs to be updated (when doing this interactively, Dune
+will show the diff).
+
+  $ dune build --diff-command='diff -u' 2>&1 | sed -e 's/\t.*$//'
+  Read 8 sample input sentences and 5 error messages.
+  Read 9 sample input sentences and 9 error messages.
+  Read 8 sample input sentences and 5 error messages.
+  File "parserMessages.messages", line 1, characters 0-0:
+  --- parserMessages.messages
+  +++ parserMessages.messages.new
+  @@ -1,6 +1,6 @@
+   main: INT DIV TIMES
+   ##
+  -## Ends in an error in state: 9.
+  +## Ends in an error in state: 10.
+   ##
+   ## expr -> expr DIV . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ##
+  @@ -9,7 +9,7 @@
+   ##
+   main: INT MINUS TIMES
+   ##
+  -## Ends in an error in state: 11.
+  +## Ends in an error in state: 12.
+   ##
+   ## expr -> expr MINUS . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ##
+  @@ -18,7 +18,7 @@
+   ##
+   main: INT PLUS TIMES
+   ##
+  -## Ends in an error in state: 7.
+  +## Ends in an error in state: 8.
+   ##
+   ## expr -> expr PLUS . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ##
+  @@ -27,7 +27,7 @@
+   ##
+   main: INT TIMES TIMES
+   ##
+  -## Ends in an error in state: 4.
+  +## Ends in an error in state: 5.
+   ##
+   ## expr -> expr TIMES . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ##
+  @@ -42,7 +42,7 @@
+   
+   main: INT RPAREN
+   ##
+  -## Ends in an error in state: 14.
+  +## Ends in an error in state: 16.
+   ##
+   ## expr -> expr . PLUS expr [ TIMES PLUS MINUS EOF DIV ]
+   ## expr -> expr . MINUS expr [ TIMES PLUS MINUS EOF DIV ]
+  @@ -61,7 +61,7 @@
+   
+   main: LPAREN INT LPAREN
+   ##
+  -## Ends in an error in state: 3.
+  +## Ends in an error in state: 4.
+   ##
+   ## expr -> LPAREN expr . RPAREN [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ## expr -> expr . PLUS expr [ TIMES RPAREN PLUS MINUS DIV ]
+  @@ -82,7 +82,7 @@
+   
+   main: LPAREN TIMES
+   ##
+  -## Ends in an error in state: 1.
+  +## Ends in an error in state: 2.
+   ##
+   ## expr -> LPAREN . expr RPAREN [ TIMES RPAREN PLUS MINUS EOF DIV ]
+   ##
+  @@ -103,3 +103,15 @@
+   ##
+   
+   At the beginning, an expression is expected.
+  +
+  +main: MINUS TIMES
+  +##
+  +## Ends in an error in state: 1.
+  +##
+  +## expr -> MINUS . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+  +##
+  +## The known suffix of the stack is as follows:
+  +## MINUS
+  +##
+  +
+  +<YOUR SYNTAX ERROR MESSAGE HERE>
+
+We promote the "updated" .messages file generated by Menhir.
+
+  $ dune promote
+  Promoting _build/default/parserMessages.messages.new to
+    parserMessages.messages.
+
+We try to compile again. The generated parserMessages.messages now passes muster
+(even if one of the syntax error messages is a dummy).
+
+  $ dune build --display short 2>&1 | grep '[mM]essages'
+        menhir parserMessages.messages.update
+  Read 9 sample input sentences and 6 error messages.
+        menhir parserMessages.messages.new
+  Read 9 sample input sentences and 9 error messages.
+  Read 9 sample input sentences and 6 error messages.
+        menhir parserMessages.ml
+  Read 9 sample input sentences and 6 error messages.
+      ocamldep .calc.eobjs/dune__exe__ParserMessages.impl.d
+        ocamlc .calc.eobjs/byte/dune__exe__ParserMessages.{cmi,cmo,cmt}
+      ocamlopt .calc.eobjs/native/dune__exe__ParserMessages.{cmx,o}
+
+Let's try the new error state out.
+
+  $ _build/default/calc.exe '- *'
+  File "<input>", line 1, characters 2-3:
+  Syntax error after '-' and before '*'.
+  <YOUR SYNTAX ERROR MESSAGE HERE>
+  [1]

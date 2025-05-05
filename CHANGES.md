@@ -5,6 +5,14 @@ If you're a contributor, please include your CHANGES entry in a file
 `doc/changes/$PR_NAME.md`. At release time, it will be incoporated into the
 changelog properly.
 
+3.18.2 (2024-04-29)
+-------------------
+
+### Fixed
+
+- fix compatibility with `ocaml.5.4.0` by avoiding shadowing sigwinch (@nojb,
+  #11639)
+
 3.18.1 (2025-04-15)
 -------------------
 

@@ -15,7 +15,6 @@
   dune_re
   dune_vcs
   dune_config
-  opam_core
   opam_format
   build_info
   sat

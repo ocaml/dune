@@ -27,7 +27,6 @@
   dune_cache
   dune_pkg
   dune_targets
-  opam_core
   promote
   action_ext
   build_path_prefix_map

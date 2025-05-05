@@ -86,6 +86,8 @@ let make ~name ~of_string ~default =
 ;;
 
 let make_toggle ~name ~default = make ~name ~default ~of_string:Toggle.of_string
+
+(* Existing config options *)
 let global_lock = make ~name:"global_lock" ~of_string:Toggle.of_string ~default:`Enabled
 
 let cutoffs_that_reduce_concurrency_in_watch_mode =
@@ -146,4 +148,9 @@ let threaded_console_frames_per_second =
       | Some _ -> Error (sprintf "value must be between 1 and 1000")
       | None -> Error (sprintf "could not parse %S as an integer" x))
     ~default:`Default
+;;
+
+(* New configuration option for typo warnings *)
+let typo_warnings =
+  make ~name:"typo_warnings" ~of_string:Toggle.of_string ~default:`Enabled
 ;;

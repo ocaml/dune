@@ -317,11 +317,6 @@ let subst vcs =
      and+ files = Vcs.files vcs in
      Some (version, commit_id, files)
    | None ->
-     (* We have to do this because scanning the source tree evaluates [-p].
-        That's because [-p] is needed to interpret packages in dune projects
-        correctly. It should not be necessary, so we should probably make the
-        package loading lazier. *)
-     Dune_rules.Only_packages.Clflags.set No_restriction;
      let* root = Source_tree.root () in
      let project = Source_tree.Dir.project root in
      if Dune_project.dune_version project < (3, 17)
@@ -442,16 +437,7 @@ let subst vcs =
       then subst_file path ~map:watermarks opam_package_files))
 ;;
 
-let subst () =
-  (* CR-someday rgrinberg: use [Source_tree.nearest_vcs] *)
-  Sys.readdir "."
-  |> Array.to_list
-  |> String.Set.of_list
-  |> Vcs.Kind.of_dir_contents
-  |> Option.map ~f:(fun kind -> { Vcs.kind; root = Path.root })
-  |> subst
-  |> Memo.run
-;;
+let subst () = Source_tree.nearest_vcs Path.Source.root |> Memo.bind ~f:subst |> Memo.run
 
 (** A string that is "%%VERSION%%" but not expanded by [dune subst] *)
 let literal_version = "%%" ^ "VERSION%%"
@@ -519,6 +505,11 @@ let term =
     ; concurrency = Fixed 1
     }
   in
+  (* We have to do this because scanning the source tree evaluates [-p].
+     That's because [-p] is needed to interpret packages in dune projects
+     correctly. It should not be necessary, so we should probably make the
+     package loading lazier. *)
+  Dune_rules.Only_packages.Clflags.set No_restriction;
   Dune_engine.Clflags.debug_backtraces debug_backtraces;
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Outside_build_dir.of_string Common.default_build_dir);

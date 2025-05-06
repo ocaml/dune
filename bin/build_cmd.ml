@@ -125,7 +125,7 @@ let run_build_command_once ~(common : Common.t) ~config ~request =
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
     | Ok () -> ()
   in
-  Scheduler.go ~common ~config once
+  Scheduler.go_with_rpc_server ~common ~config once
 ;;
 
 let run_build_command ~(common : Common.t) ~config ~request =

@@ -73,7 +73,8 @@ let term =
   and+ lock_dirs_arg = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config @@ find_outdated_packages ~transitive ~lock_dirs_arg
+  Scheduler.go_with_rpc_server ~common ~config
+  @@ find_outdated_packages ~transitive ~lock_dirs_arg
 ;;
 
 let info =

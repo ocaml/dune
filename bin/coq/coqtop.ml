@@ -42,7 +42,7 @@ let term =
   in
   let coq_file_arg = Common.prefix_target common coq_file_arg |> Path.Local.of_string in
   let coqtop, args, env =
-    Scheduler.go ~common ~config
+    Scheduler.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in

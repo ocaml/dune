@@ -27,7 +27,7 @@ module Show_lock = struct
     and+ lock_dir_arg = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config @@ print_lock lock_dir_arg
+    Scheduler.go_with_rpc_server ~common ~config @@ print_lock lock_dir_arg
   ;;
 
   let command =
@@ -60,7 +60,7 @@ module Dependency_hash = struct
     let+ builder = Common.Builder.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config print_local_packages_hash
+    Scheduler.go_with_rpc_server ~common ~config print_local_packages_hash
   ;;
 
   let info =
@@ -180,7 +180,8 @@ module List_locked_dependencies = struct
     and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
     let builder = Common.Builder.forbid_builds builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config @@ list_locked_dependencies ~transitive ~lock_dirs
+    Scheduler.go_with_rpc_server ~common ~config
+    @@ list_locked_dependencies ~transitive ~lock_dirs
   ;;
 
   let command = Cmd.v info term

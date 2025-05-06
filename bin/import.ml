@@ -200,7 +200,7 @@ module Scheduler = struct
     Run.go config ~on_event:(on_event dune_config) f
   ;;
 
-  let go ~common ~config f =
+  let go_with_rpc_server ~common ~config f =
     let f =
       match Common.rpc common with
       | `Allow server -> fun () -> Dune_engine.Rpc.with_background_rpc (rpc server) f

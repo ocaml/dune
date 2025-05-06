@@ -42,7 +42,7 @@ let term =
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
   and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () ->
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     build_exn (fun () ->
@@ -213,7 +213,7 @@ module Module = struct
         & Arg.info [] ~docv:"MODULE" ~doc:"Path to an OCaml module.")
     and+ ctx_name = Common.context_arg ~doc:{|Select context where to build/run utop.|} in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       build_exn (fun () ->

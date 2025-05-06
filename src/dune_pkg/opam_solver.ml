@@ -1575,6 +1575,28 @@ let reject_unreachable_packages =
     reachable pkgs_by_name ~roots
 ;;
 
+let files opam_packages_to_lock candidates_cache =
+  let resolved_packages =
+    List.map opam_packages_to_lock ~f:(fun opam_package ->
+      let candidates : Context.candidates =
+        OpamPackage.name opam_package
+        |> Package_name.of_opam_package_name
+        |> Table.find_exn candidates_cache
+      in
+      OpamPackage.Version.Map.find (OpamPackage.version opam_package) candidates.resolved)
+  in
+  Resolved_package.get_opam_package_files resolved_packages
+  >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
+    let package_name =
+      Resolved_package.package resolved_package
+      |> OpamPackage.name
+      |> Package_name.of_opam_package_name
+    in
+    package_name, entries)
+  >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
+  >>| Package_name.Map.of_list_exn
+;;
+
 let solve_lock_dir
       solver_env
       version_preference
@@ -1633,10 +1655,9 @@ let solve_lock_dir
     let ocaml, pkgs =
       let pkgs =
         let version_by_package_name =
-          List.map solution ~f:(fun (package : OpamPackage.t) ->
+          Package_name.Map.of_list_map_exn solution ~f:(fun (package : OpamPackage.t) ->
             ( Package_name.of_opam_package_name (OpamPackage.name package)
             , Package_version.of_opam_package_version (OpamPackage.version package) ))
-          |> Package_name.Map.of_list_exn
         in
         let candidates_cache package_name =
           (Table.find_exn candidates_cache package_name).resolved
@@ -1663,7 +1684,7 @@ let solve_lock_dir
         | [ x ] -> Some (Loc.none, x)
         | _ ->
           User_error.raise
-            (* CR-rgrinberg: needs to include locations *)
+            (* CR rgrinberg: needs to include locations *)
             [ Pp.text "multiple compilers selected" ]
             ~hints:[ Pp.text "add a conflict" ]
       in
@@ -1718,29 +1739,7 @@ let solve_lock_dir
           ~repos:(Some repos)
           ~expanded_solver_variable_bindings
     in
-    let+ files =
-      let resolved_packages =
-        List.map opam_packages_to_lock ~f:(fun opam_package ->
-          let candidates =
-            OpamPackage.name opam_package
-            |> Package_name.of_opam_package_name
-            |> Table.find_exn candidates_cache
-          in
-          OpamPackage.Version.Map.find
-            (OpamPackage.version opam_package)
-            candidates.resolved)
-      in
-      Resolved_package.get_opam_package_files resolved_packages
-      >>| List.map2 resolved_packages ~f:(fun resolved_package entries ->
-        let package_name =
-          Resolved_package.package resolved_package
-          |> OpamPackage.name
-          |> Package_name.of_opam_package_name
-        in
-        package_name, entries)
-      >>| List.filter ~f:(fun (_, entries) -> List.is_non_empty entries)
-      >>| Package_name.Map.of_list_exn
-    in
+    let+ files = files opam_packages_to_lock candidates_cache in
     Ok
       { Solver_result.lock_dir
       ; files

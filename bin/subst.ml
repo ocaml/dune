@@ -135,15 +135,26 @@ let subst_file path ~map opam_package_files =
       ~hints
       [ Pp.textf "Ignoring large file: %s" (Path.Source.to_string path) ]
   | Ok s ->
-    let s =
+    let version =
       if Path.Source.Set.mem opam_package_files path
-      then "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
-      else s
+      then (
+        try
+          subst_string ("version: \"%%" ^ "VERSION_NUM" ^ "%%\"") ~map (Path.source path)
+        with
+        | User_error.E e ->
+          raise (User_error.E { e with loc = Some (Loc.in_file (Path.source path)) }))
+      else None
     in
     let path = Path.source path in
-    (match subst_string s ~map path with
-     | None -> ()
-     | Some s -> Io.write_file path s)
+    let subst = subst_string s ~map path in
+    let contents =
+      match version, subst with
+      | None, None -> None
+      | Some x, None -> Some (x ^ "\n" ^ s)
+      | None, Some x -> Some x
+      | Some x, Some y -> Some (x ^ "\n" ^ y)
+    in
+    Option.iter contents ~f:(Io.write_file path)
 ;;
 
 (* Extending the Dune_project APIs, but adding capability to modify *)

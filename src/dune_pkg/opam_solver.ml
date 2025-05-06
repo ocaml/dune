@@ -632,14 +632,13 @@ module Solver = struct
             let requires =
               lazy
                 (let rank = Rank.assign () in
-                 let make_deps importance xform get =
-                   get opam
-                   |> Context.filter_deps context pkg
+                 let make_deps importance xform deps =
+                   Context.filter_deps context pkg deps
                    |> xform
                    |> list_deps ~importance ~rank
                  in
-                 make_deps Ensure ensure OpamFile.OPAM.depends
-                 @ make_deps Prevent prevent OpamFile.OPAM.conflicts)
+                 (OpamFile.OPAM.depends opam |> make_deps Ensure ensure)
+                 @ (OpamFile.OPAM.conflicts opam |> make_deps Prevent prevent))
             in
             let conflict_class = OpamFile.OPAM.conflict_class opam in
             Some (RealImpl { pkg; avoid; requires; conflict_class }))

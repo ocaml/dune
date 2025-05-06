@@ -16,7 +16,7 @@ let info = Cmd.info "upgrade" ~doc ~man
 let term =
   let+ builder = Common.Builder.term in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () -> Dune_upgrader.upgrade ())
+  Scheduler.go_with_rpc_server ~common ~config (fun () -> Dune_upgrader.upgrade ())
 ;;
 
 let command = Cmd.v info term

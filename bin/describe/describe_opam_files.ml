@@ -5,7 +5,7 @@ let term =
   and+ format = Describe_format.arg
   and+ _ = Describe_lang_compat.arg in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
+  Scheduler.go_with_rpc_server ~common ~config
   @@ fun () ->
   build_exn
   @@ fun () ->

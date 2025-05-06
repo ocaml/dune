@@ -38,7 +38,7 @@ module Exec = struct
     let+ builder = Common.Builder.term
     and+ args = Arg.(value & pos_all string [] (info [] ~docv:"ARGS")) in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* () = Lock_dev_tool.lock_ocamlformat () |> Memo.run in
       let+ () = build_dev_tool common in

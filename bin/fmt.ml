@@ -40,7 +40,7 @@ let run_fmt_command ~(common : Common.t) ~config =
     | Ok () -> ()
     | Error `Already_reported -> raise Dune_util.Report_error.Already_reported
   in
-  Scheduler.go ~common ~config once
+  Scheduler.go_with_rpc_server ~common ~config once
 ;;
 
 let command =

@@ -816,7 +816,7 @@ let make ~what =
     let builder = Common.Builder.forbid_builds builder in
     let builder = Common.Builder.disable_log_file builder in
     let common, config = Common.init builder in
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let from_command_line =
         { Install.Roots.lib_root = libdir_from_command_line
         ; etc_root = etcdir_from_command_line

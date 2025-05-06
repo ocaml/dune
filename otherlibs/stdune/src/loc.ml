@@ -108,8 +108,8 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full loc : tag Pp.t =
     | Error exn ->
       let backtrace = Printexc.get_backtrace () in
       Format.eprintf
-        "Raised when trying to print location contents of %s@.%a@."
-        file
+        "Raised when trying to print location %s@.%a@."
+        (Loc0.to_dyn loc |> Dyn.to_string)
         (Exn.pp_uncaught ~backtrace)
         exn;
       Pp.nop)

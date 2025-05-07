@@ -13,5 +13,5 @@ val opam_package_to_lock_file_pkg
   -> Package_version.t Package_name.Map.t
   -> OpamPackage.t
   -> pinned:bool
-  -> candidates_cache:(Package_name.t -> Resolved_package.t OpamPackage.Version.Map.t)
+  -> Resolved_package.t
   -> [> `Compiler | `Non_compiler ] * Lock_dir.Pkg.t

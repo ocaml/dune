@@ -278,7 +278,7 @@ let term =
   and+ targets = Arg.(value & pos_all dep [] & Arg.info [] ~docv:"TARGET") in
   let common, config = Common.init builder in
   let out = Option.map ~f:Path.of_string out in
-  Scheduler.go ~common ~config (fun () ->
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
     let open Fiber.O in
     let* setup = Import.Main.setup () in
     build_exn (fun () ->

@@ -81,6 +81,13 @@ module User_message : sig
       | Success
       | Ansi_styles of Ansi_color.Style.t list
   end
+
+  type t = Stdune.User_message.t
+
+  (** (De)serializer for [User_message.t] which ignores the [annots] field. The
+      [annots] field is non-trivial to serialize and is not necessary for
+      formatting messages, so it's not handled here. *)
+  val sexp_without_annots : t Conv.value
 end
 
 module Diagnostic : sig

@@ -17,11 +17,12 @@ include struct
   open Dune_engine
   module Build_config = Build_config
   module Diff_promotion = Diff_promotion
+  module Build_outcome = Scheduler.Run.Build_outcome
 end
 
 include struct
   open Decl
-  module Build_outcome = Build_outcome
+  module Build_outcome_with_diagnostics = Build_outcome_with_diagnostics
   module Status = Status
 end
 
@@ -107,7 +108,8 @@ module Run = struct
   ;;
 end
 
-type 'a pending_build_action = Build of 'a list * Build_outcome.t Fiber.Ivar.t
+type 'a pending_build_action =
+  | Build of 'a list * Dune_engine.Scheduler.Run.Build_outcome.t Fiber.Ivar.t
 
 module Client = Stdune.Unit
 
@@ -205,6 +207,16 @@ let stop (t : _ t) =
   match server with
   | None -> Fiber.return ()
   | Some server -> Csexp_rpc.Server.stop server
+;;
+
+let get_current_diagnostic_errors () =
+  Fiber.Svar.read Build_system.errors
+  |> Build_system_error.Set.current
+  |> Build_system_error.Id.Map.values
+  |> List.filter_map ~f:(fun error ->
+    match Build_system_error.description error with
+    | `Exn _ -> None
+    | `Diagnostic compound_user_error -> Some compound_user_error)
 ;;
 
 let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
@@ -323,7 +335,10 @@ let handler (t : _ t Fdecl.t) handle : 'a Dune_rpc_server.Handler.t =
       let ivar = Fiber.Ivar.create () in
       let targets = List.map targets ~f:server.parse_build in
       let* () = Job_queue.write server.pending_build_jobs (targets, ivar) in
-      Fiber.Ivar.read ivar
+      let+ build_outcome = Fiber.Ivar.read ivar in
+      match (build_outcome : Build_outcome.t) with
+      | Success -> Build_outcome_with_diagnostics.Success
+      | Failure -> Failure (get_current_diagnostic_errors ())
     in
     Handler.implement_request rpc Decl.build build
   in

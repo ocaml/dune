@@ -23,7 +23,16 @@ val triple
   -> ('a * 'b * 'c, values) t
 
 val enum : (string * 'a) list -> ('a, values) t
+
+(** [iso t to_ from] creates a parser for a type ['b] out of a parser for a
+    type ['a], where ['a] and ['b] are isomorphic to one another. The functions
+    [to_] and [from] convert between the two types ['a] and ['b]. A typical
+    approach for parsing record types is to convert them to/from tuples (via the
+    [three], [four], etc. combinators) which can be parsed with [record], and
+    then use [iso] to convert the parser for a tuple type into a parser for the
+    original record type. *)
 val iso : ('a, 'k) t -> ('a -> 'b) -> ('b -> 'a) -> ('b, 'k) t
+
 val iso_result : ('a, 'k) t -> ('a -> ('b, exn) result) -> ('b -> 'a) -> ('b, 'k) t
 val version : ?until:int * int -> ('a, 'k) t -> since:int * int -> ('a, 'k) t
 
@@ -118,5 +127,12 @@ val error : error -> 'a
 val dyn_of_error : error -> Dyn.t
 val to_sexp : ('a, values) t -> 'a -> Sexp.t
 val of_sexp : ('a, values) t -> version:int * int -> Sexp.t -> ('a, error) result
+
+(** [fixpoint f] is a helper for creating parsers of recursive data structures
+    such as ASTs. [f] is a function which returns a parser for a single node in
+    the hierarchy, and [f] is passed a parser which it can use for parsing
+    children of the current node. [fixpoint f] then returns a parser for the
+    recursive data structure. *)
 val fixpoint : (('a, 'k) t -> ('a, 'k) t) -> ('a, 'k) t
+
 val sexp_for_digest : ('a, 'k) t -> Sexp.t

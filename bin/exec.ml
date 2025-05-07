@@ -228,7 +228,7 @@ module Exec_context = struct
   ;;
 
   let run_once t common config =
-    Scheduler.go ~common ~config
+    Scheduler.go_with_rpc_server ~common ~config
     @@ fun () ->
     let open Fiber.O in
     let* path, args, env =

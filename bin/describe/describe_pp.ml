@@ -161,7 +161,7 @@ let term =
   and+ _ = Describe_lang_compat.arg
   and+ file = Arg.(required & pos 0 (some string) None (Arg.info [] ~docv:"FILE")) in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config
+  Scheduler.go_with_rpc_server ~common ~config
   @@ fun () ->
   let open Fiber.O in
   let* setup = Import.Main.setup () in

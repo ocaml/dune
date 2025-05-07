@@ -58,10 +58,6 @@ val in_dir: Dir.t -> (unit -> 'a) -> 'a
 (** Turns an assoc list into an array suitable to be provided as environment *)
 val env_of_list: (string * string) list -> string array
 
-(** Execute a list of commands in a given directory *)
-val exec: Dir.t -> ?env:(string * string) list -> ?name:string ->
-  ?metadata:(string * string) list -> ?keep_going:bool -> string list list -> unit
-
 (** Move a directory *)
 val move_dir: src:Dir.t -> dst:Dir.t -> unit
 
@@ -92,9 +88,6 @@ val raw_dir: string -> Dir.t
 
 (** Execute a function in a temp directory *)
 val with_tmp_dir: (Dir.t -> 'a) -> 'a
-
-(** Provide an automatically cleaned up temp directory to a job *)
-val with_tmp_dir_job: (Dir.t -> 'a OpamProcess.job) -> 'a OpamProcess.job
 
 (** Raw function to create a temporary directory. No automatic cleanup *)
 val mk_tmp_dir: unit -> Dir.t
@@ -221,20 +214,6 @@ val link: ?relative:bool -> target:t -> link:t -> unit
 (** Returns true if the given file is an archive (zip or tar) *)
 val is_archive: t -> bool
 
-(** Extract an archive in a given directory (it rewrites the root to
-    match [Dir.t] dir if needed) *)
-val extract: t -> Dir.t -> unit
-
-(** Same as [extract], as an OpamProcess.job *)
-val extract_job: t -> Dir.t -> exn option OpamProcess.job
-
-(** Extract an archive in a given directory *)
-val extract_in: t -> Dir.t -> unit
-
-val extract_in_job: t -> Dir.t -> exn option OpamProcess.job
-
-val make_tar_gz_job: t -> Dir.t -> exn option OpamProcess.job
-
 (** Extract a generic file *)
 val extract_generic_file: generic_file -> Dir.t -> unit
 
@@ -257,10 +236,6 @@ val remove_prefix_dir: Dir.t -> Dir.t -> string
 
 (** Remove a suffix from a filename *)
 val remove_suffix: Base.t -> t -> string
-
-(** Apply a patch in a directory. If [preprocess] is set to false, there is no
-    CRLF translation. Returns [None] on success, the process error otherwise *)
-val patch: ?preprocess:bool -> t -> Dir.t -> exn option OpamProcess.job
 
 (** Create an empty file *)
 val touch: t -> unit

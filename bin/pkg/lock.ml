@@ -249,7 +249,7 @@ let term =
   and+ print_perf_stats = Arg.(value & flag & info [ "print-perf-stats" ]) in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config (fun () ->
+  Scheduler.go_with_rpc_server ~common ~config (fun () ->
     lock ~version_preference ~lock_dirs_arg ~print_perf_stats)
 ;;
 

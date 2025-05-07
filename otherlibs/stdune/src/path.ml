@@ -1453,16 +1453,23 @@ let chmod t ~mode = Unix.chmod (to_string t) mode
 let follow_symlink path = Fpath.follow_symlink (to_string path) |> Result.map ~f:of_string
 
 let drop_prefix path ~prefix =
-  if prefix = path
-  then Some Local.root
-  else (
-    let prefix_s = to_string prefix in
-    let prefix =
-      if String.is_suffix ~suffix:"/" prefix_s then prefix_s else prefix_s ^ "/"
-    in
+  let prefix_s = to_string prefix in
+  let path_s = to_string path in
+  match Int.compare (String.length prefix_s) (String.length path_s) with
+  | Eq -> if prefix = path then Some Local.root else None
+  | Gt -> None
+  | Lt ->
     let open Option.O in
-    let+ suffix = String.drop_prefix (to_string path) ~prefix in
-    Local.of_string suffix)
+    let* prefix =
+      let* last = String.last prefix_s in
+      if is_dir_sep last
+      then Some prefix_s
+      else if is_dir_sep path_s.[String.length prefix_s]
+      then Some (prefix_s ^ String.make 1 path_s.[String.length prefix_s])
+      else None
+    in
+    let+ suffix = String.drop_prefix path_s ~prefix in
+    Local.of_string suffix
 ;;
 
 let drop_prefix_exn t ~prefix =

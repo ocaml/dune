@@ -338,15 +338,11 @@ let opam_package_to_lock_file_pkg
       version_by_package_name
       opam_package
       ~pinned
-      ~candidates_cache
+      resolved_package
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
   let version =
     OpamPackage.version opam_package |> Package_version.of_opam_package_version
-  in
-  let resolved_package =
-    candidates_cache name
-    |> OpamPackage.Version.Map.find (Package_version.to_opam_package_version version)
   in
   let opam_file = Resolved_package.opam_file resolved_package in
   let loc = Resolved_package.loc resolved_package in

@@ -232,7 +232,7 @@ to add a new stanza is:
 - Extend ``Stanza.t`` with a new constructor to represent the new stanza
 - Modify ``Dune_file`` to parse the Dune language into this constructor
 - Modify the rules to interpret this stanza into rules, usually done in
-  ``Gen_rules```
+  ``Gen_rules``
 
 Versioning
 ----------

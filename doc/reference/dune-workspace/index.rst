@@ -2,7 +2,7 @@ dune-workspace
 ==============
 
 By default, a workspace has only one build context named ``default`` which
-corresponds to the environment, in which ``dune`` is run. You can define more
+corresponds to the environment in which ``dune`` is run. You can define more
 contexts by writing a ``dune-workspace`` file.
 
 You can point Dune to an explicit ``dune-workspace`` file with the

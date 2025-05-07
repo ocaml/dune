@@ -337,7 +337,7 @@ let opam_package_to_lock_file_pkg
       stats_updater
       version_by_package_name
       opam_package
-      ~pinned_package_names
+      ~pinned
       ~candidates_cache
   =
   let name = Package_name.of_opam_package_name (OpamPackage.name opam_package) in
@@ -375,7 +375,7 @@ let opam_package_to_lock_file_pkg
         { Source.url; checksum })
     in
     let dev =
-      Package_name.Set.mem pinned_package_names name
+      pinned
       ||
       match url with
       | None -> false

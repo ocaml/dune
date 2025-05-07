@@ -1668,8 +1668,11 @@ let solve_lock_dir
             stats_updater
             version_by_package_name
             opam_package
-            ~pinned_package_names
-            ~candidates_cache)
+            ~candidates_cache
+            ~pinned:
+              (OpamPackage.name opam_package
+               |> Package_name.of_opam_package_name
+               |> Package_name.Set.mem pinned_package_names))
       in
       let ocaml =
         (* This doesn't allow the compiler to live in the source tree. Oh

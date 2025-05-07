@@ -1,7 +1,5 @@
 By default, dune utop tries to make a toplevel for the current directory:
 
-  $ echo 'exit 0;;' | dune utop . -- -init "" | grep -v 'version'
-  Enter #help;; for help.
-  
-  Init file not found: "".
-  # 
+  $ touch empty
+  $ echo 'open Stdlib;; print_endline "success";; exit 0;;' | dune utop . -- -stdin -init empty
+  success

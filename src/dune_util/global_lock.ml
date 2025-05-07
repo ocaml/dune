@@ -66,12 +66,13 @@ end
 
 let locked = ref false
 
-let lock_exn ~timeout =
+let lock ~timeout =
   match Config.(get global_lock) with
-  | `Disabled -> ()
+  | `Disabled -> Ok ()
   | `Enabled ->
-    if not !locked
-    then (
+    if !locked
+    then Ok ()
+    else (
       let res =
         match timeout with
         | None -> Lock.lock ()
@@ -86,17 +87,25 @@ let lock_exn ~timeout =
            | `Success -> `Success)
       in
       match res with
-      | `Success -> locked := true
-      | `Failure ->
-        User_error.raise
-          [ Pp.textf
-              "A running dune%s instance has locked the build directory. If this is not \
-               the case, please delete %s"
-              (match Io.read_file (Path.build lock_file) with
-               | exception _ -> ""
-               | pid -> sprintf " (pid: %s)" pid)
-              (Path.Build.to_string_maybe_quoted lock_file)
-          ])
+      | `Success ->
+        locked := true;
+        Ok ()
+      | `Failure -> Error ())
+;;
+
+let lock_exn ~timeout =
+  match lock ~timeout with
+  | Ok () -> ()
+  | Error () ->
+    User_error.raise
+      [ Pp.textf
+          "A running dune%s instance has locked the build directory. If this is not the \
+           case, please delete %s"
+          (match Io.read_file (Path.build lock_file) with
+           | exception _ -> ""
+           | pid -> sprintf " (pid: %s)" pid)
+          (Path.Build.to_string_maybe_quoted lock_file)
+      ]
 ;;
 
 let unlock () =

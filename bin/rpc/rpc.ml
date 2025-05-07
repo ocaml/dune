@@ -12,3 +12,5 @@ let info =
 ;;
 
 let group = Cmd.group info [ Status.cmd; Build.cmd; Ping.cmd ]
+
+module Build = Build

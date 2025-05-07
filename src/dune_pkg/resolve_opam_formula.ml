@@ -113,7 +113,7 @@ let formula_to_package_names version_by_package_name opam_formula =
            if OpamFormula.check_version_formula version_formula opam_version
            then Ok ()
            else
-             (* CR-rgrinberg: shouldn't we accumulate all these errors? *)
+             (* CR rgrinberg: shouldn't we accumulate all these errors? *)
              Error
                (Unsatisfied_formula_hint.Unsatisfied_version_constraint
                   { package_name

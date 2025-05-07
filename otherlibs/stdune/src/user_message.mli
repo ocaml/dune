@@ -107,7 +107,7 @@ val prerr : ?config:Print_config.t -> t -> unit
 val did_you_mean : string -> candidates:string list -> Style.t Pp.t list
 
 (** Produces a plain text representation of the error message, without the
-    "Error: " prefix. *)
+    "Error:" prefix. *)
 val to_string : t -> string
 
 (** Returns [true] if the message has an explicit location or one embedded in

@@ -1,5 +1,3 @@
 (library
  (name scheme)
- (instrumentation
-  (backend bisect_ppx))
  (libraries stdune dune_engine memo))

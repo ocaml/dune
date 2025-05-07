@@ -22,7 +22,7 @@ let term =
   if not (Path.is_directory (Path.of_string dir))
   then User_error.raise [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let env, lib_config, utop_path, requires =
-    Scheduler.go ~common ~config (fun () ->
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
       let open Fiber.O in
       let* setup = Import.Main.setup () in
       build_exn (fun () ->

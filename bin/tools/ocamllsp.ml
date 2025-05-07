@@ -48,7 +48,7 @@ module Exec = struct
         ]
     | true ->
       let common, config = Common.init builder in
-      Scheduler.go ~common ~config (fun () ->
+      Scheduler.go_with_rpc_server ~common ~config (fun () ->
         let open Fiber.O in
         let* () = Lock_dev_tool.lock_ocamllsp () |> Memo.run in
         let+ () = build_ocamllsp common in

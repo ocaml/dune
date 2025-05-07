@@ -104,10 +104,6 @@ test-all: $(BIN)
 test-all-sans-melange: $(BIN)
 	$(BIN) build @runtest @runtest-js @runtest-coq
 
-test-coverage: $(BIN)
-	- $(BIN) build --instrument-with bisect_ppx --force @runtest
-	bisect-ppx-report send-to Coveralls
-
 .PHONY: check
 check: $(BIN)
 	@$(BIN) build @check

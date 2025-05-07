@@ -69,7 +69,8 @@ module Diff = struct
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go ~common ~config (fun () -> Diff_promotion.display files_to_promote)
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      Diff_promotion.display files_to_promote)
   ;;
 
   let command = Cmd.v info term
@@ -83,7 +84,8 @@ module Files = struct
     and+ files = Arg.(value & pos_all Cmdliner.Arg.file [] & info [] ~docv:"FILE") in
     let common, config = Common.init builder in
     let files_to_promote = files_to_promote ~common files in
-    Scheduler.go ~common ~config (fun () -> display_files files_to_promote)
+    Scheduler.go_with_rpc_server ~common ~config (fun () ->
+      display_files files_to_promote)
   ;;
 
   let command = Cmd.v info term

@@ -1,6 +1,4 @@
 (library
  (name ocaml_config)
  (libraries stdune)
- (synopsis "[Internal] Interpret the output of 'ocamlc -config'")
- (instrumentation
-  (backend bisect_ppx)))
+ (synopsis "[Internal] Interpret the output of 'ocamlc -config'"))

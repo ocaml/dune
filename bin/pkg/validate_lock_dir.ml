@@ -76,7 +76,7 @@ let term =
   and+ lock_dirs = Pkg_common.Lock_dirs_arg.term in
   let builder = Common.Builder.forbid_builds builder in
   let common, config = Common.init builder in
-  Scheduler.go ~common ~config @@ validate_lock_dirs ~lock_dirs
+  Scheduler.go_with_rpc_server ~common ~config @@ validate_lock_dirs ~lock_dirs
 ;;
 
 let command = Cmd.v info term

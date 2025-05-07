@@ -9,6 +9,14 @@ module Progress = struct
     ; number_of_rules_failed : int
     }
 
+  let to_dyn t =
+    Dyn.record
+      [ "number_of_rules_discovered", Dyn.int t.number_of_rules_discovered
+      ; "number_of_rules_executed", Dyn.int t.number_of_rules_executed
+      ; "number_of_rules_failed", Dyn.int t.number_of_rules_failed
+      ]
+  ;;
+
   let equal
         { number_of_rules_discovered; number_of_rules_executed; number_of_rules_failed }
         t
@@ -35,6 +43,16 @@ module State = struct
     | Restarting_current_build
     | Build_succeeded__now_waiting_for_changes
     | Build_failed__now_waiting_for_changes
+
+  let to_dyn = function
+    | Initializing -> Dyn.variant "Initializing" []
+    | Building progress -> Dyn.variant "Building" [ Progress.to_dyn progress ]
+    | Restarting_current_build -> Dyn.variant "Restarting_current_build" []
+    | Build_succeeded__now_waiting_for_changes ->
+      Dyn.variant "Build_succeeded__now_waiting_for_changes" []
+    | Build_failed__now_waiting_for_changes ->
+      Dyn.variant "Build_failed__now_waiting_for_changes" []
+  ;;
 
   let equal x y =
     match x, y with
@@ -64,7 +82,10 @@ module State = struct
     let current = Svar.read t in
     match current with
     | Building current -> Svar.write t @@ Building (f current)
-    | _ -> assert false
+    | other ->
+      Code_error.raise
+        "Unexpected build progress state (expected [Building _])"
+        [ "current", to_dyn other ]
   ;;
 
   let incr_rule_done_exn () =

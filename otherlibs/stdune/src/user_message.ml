@@ -289,7 +289,7 @@ let did_you_mean s ~candidates =
 
 let to_string t =
   let full_error = Format.asprintf "%a" Pp.to_fmt (pp { t with loc = None }) in
-  match String.drop_prefix ~prefix:"Error: " full_error with
+  match String.drop_prefix ~prefix:"Error:" full_error with
   | None -> full_error
   | Some error -> String.trim error
 ;;

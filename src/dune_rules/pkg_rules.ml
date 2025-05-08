@@ -1817,6 +1817,9 @@ let setup_pkg_install_alias =
     |> List.map ~f:(fun pkg ->
       Paths.make ~relative:Path.Build.relative project_deps pkg
       |> Paths.target_dir
+      |> (fun t ->
+          Printf.printf "TARGET DIR %s\n" (Path.Build.to_string t);
+      t)
       |> Path.build)
     |> Action_builder.paths
   in
@@ -1842,6 +1845,18 @@ let setup_pkg_install_alias =
     Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
     |> Gen_rules.rules_here
 ;;
+
+let setup_tmp_lock_alias =
+  fun ~dir _ctx_name ->
+    let alias = Alias.make ~dir Alias0.pkg_lock in
+    let rule = Rules.collect_unit (fun () ->
+      (* careful, need to point to a file that will be created by the rule *)
+      let path = Path.Build.of_string "_private/default/.lock/dune.lock/lock.dune" in
+      let deps = Action_builder.path (Path.build path) in
+      Rules.Produce.Alias.add_deps alias deps)
+    in
+    Gen_rules.rules_for ~dir ~allowed_subdirs:Filename.Set.empty rule
+    |> Gen_rules.rules_here
 
 let setup_package_rules ~package_universe ~dir ~pkg_name : Gen_rules.result Memo.t =
   let name = User_error.ok_exn (Package.Name.of_string_user_error (Loc.none, pkg_name)) in
@@ -1912,6 +1927,9 @@ let setup_rules ~components ~dir ctx =
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
   | true, ".dev-tool" :: _ :: _ :: _ ->
     Memo.return @@ Gen_rules.redirect_to_parent Gen_rules.Rules.empty
+  | _, ".lock" :: lock_dir :: _ ->
+      Printf.printf "registering lock rule for %S, HOORAY\n" lock_dir;
+      Memo.return @@ Gen_rules.rules_here Gen_rules.Rules.empty
   | is_default, [] ->
     let sub_dirs = ".pkg" :: (if is_default then [ ".dev-tool" ] else []) in
     let build_dir_only_sub_dirs =

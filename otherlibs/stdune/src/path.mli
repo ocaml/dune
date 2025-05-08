@@ -426,11 +426,13 @@ val chmod : t -> mode:int -> unit
 val follow_symlink : t -> (t, Fpath.follow_symlink_error) result
 
 (** [drop_prefix_exn t ~prefix] drops the [prefix] from a path, including any
-    leftover `/` prefix. Raises a [Code_error.t] if the prefix wasn't found. *)
+    leftover directory separator prefix. Raises a [Code_error.t] if the prefix
+    wasn't found. *)
 val drop_prefix_exn : t -> prefix:t -> Local.t
 
 (** [drop_prefix t ~prefix] drops the [prefix] from a path, including any
-    leftover `/` prefix. Returns [None] if the prefix wasn't found. *)
+    leftover directory separator prefix. Returns [None] if the prefix wasn't
+    found. *)
 val drop_prefix : t -> prefix:t -> Local.t option
 
 val make_local_path : Local.t -> t

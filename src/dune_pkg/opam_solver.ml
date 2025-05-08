@@ -1659,17 +1659,17 @@ let solve_lock_dir
             ( Package_name.of_opam_package_name (OpamPackage.name package)
             , Package_version.of_opam_package_version (OpamPackage.version package) ))
         in
-        let candidates_cache package_name =
-          (Table.find_exn candidates_cache package_name).resolved
-        in
         List.map opam_packages_to_lock ~f:(fun opam_package ->
+          let name = OpamPackage.name opam_package |> Package_name.of_opam_package_name in
           Lock_pkg.opam_package_to_lock_file_pkg
             solver_env
             stats_updater
             version_by_package_name
             opam_package
-            ~pinned_package_names
-            ~candidates_cache)
+            ~pinned:(Package_name.Set.mem pinned_package_names name)
+            (let version = OpamPackage.version opam_package in
+             (Table.find_exn candidates_cache name).resolved
+             |> OpamPackage.Version.Map.find version))
       in
       let ocaml =
         (* This doesn't allow the compiler to live in the source tree. Oh

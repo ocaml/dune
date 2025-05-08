@@ -32,3 +32,5 @@ val setup_pkg_install_alias
   :  dir:Path.Build.t
   -> Context_name.t
   -> Build_config.Gen_rules.t
+
+val setup_tmp_lock_alias : dir:Path.Build.t -> Context_name.t -> Build_config.Gen_rules.t

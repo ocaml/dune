@@ -147,18 +147,14 @@ let requires ~loc ~db ~libs =
   >>= Lib.closure ~linking:true
 ;;
 
-let utop_dev_tool_lock_dir_exists =
-  Memo.Lazy.create (fun () ->
-    let path = Dune_pkg.Lock_dir.dev_tool_lock_dir_path Utop in
-    Fs_memo.dir_exists (Path.as_outside_build_dir_exn path))
-;;
-
 let utop_findlib_conf = Filename.concat utop_dir_basename "findlib.conf"
 
 (* The lib directory of the utop package and of each of its dependencies within
    the _build directory (or the toolchains directory in the case of the OCaml
    compiler). *)
-let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Utop)
+let utop_ocamlpath ctx_name =
+  Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath ctx_name Utop)
+;;
 
 (* Creates a rule that generates a custom findlib.conf containing the path to
    the utop library as well as all of its dependencies in the _build directory
@@ -169,14 +165,15 @@ let utop_ocamlpath = Memo.Lazy.create (fun () -> Pkg_rules.dev_tool_ocamlpath Ut
    we need to tell findlib where to look for libraries by means of a custom
    findlib.conf file. *)
 let findlib_conf sctx ~dir =
-  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
-  match lock_dir_exists with
+  let* lock_dir_enabled = Lock_dir.enabled in
+  match lock_dir_enabled with
   | false ->
     (* If there isn't lockdir don't create the findlib.conf rule. *)
     Memo.return ()
   | true ->
     let path = Path.Build.relative dir utop_findlib_conf in
-    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    let ctx_name = sctx |> Super_context.context |> Context.name in
+    let* ocamlpath = Memo.Lazy.force (utop_ocamlpath ctx_name) in
     let findlib_path =
       String.concat (ocamlpath |> List.map ~f:Path.to_absolute_filename) ~sep:":"
     in
@@ -186,11 +183,12 @@ let findlib_conf sctx ~dir =
 
 let lib_db sctx ~dir =
   let* scope = Scope.DB.find_by_dir dir in
-  let* lock_dir_exists = Memo.Lazy.force utop_dev_tool_lock_dir_exists in
-  match lock_dir_exists with
+  let* lock_dir_enabled = Lock_dir.enabled in
+  match lock_dir_enabled with
   | false -> Memo.return (Scope.libs scope)
   | true ->
-    let* ocamlpath = Memo.Lazy.force utop_ocamlpath in
+    let ctx_name = sctx |> Super_context.context |> Context.name in
+    let* ocamlpath = Memo.Lazy.force (utop_ocamlpath ctx_name) in
     Lib.DB.of_paths (Super_context.context sctx) ~paths:ocamlpath
     >>| Lib.DB.with_parent ~parent:(Some (Scope.libs scope))
 ;;

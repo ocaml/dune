@@ -13,8 +13,8 @@ dune="dune"
 
 pkg_root="_build/_private/default/.pkg"
 
-default_lock_dir="dune.lock"
-source_lock_dir="${default_lock_dir}"
+default_lock_dir="_build/_private/default/.lock/dune.lock/content"
+source_lock_dir="dune.lock"
 
 build_pkg() {
   $dune build $pkg_root/$1/target/
@@ -22,6 +22,26 @@ build_pkg() {
 
 show_pkg() {
   find $pkg_root/$1 | sort | sed "s#$pkg_root/$1##"
+}
+
+# function to show the solver result of the default lock directory
+show_solution() {
+  echo "Solution for dune.lock:"
+  if [ -d ${default_lock_dir} ]; then
+    local pkgs=$(ls ${default_lock_dir} 2>/dev/null | sort | grep -v lock.dune)
+    local count=0
+    for pkg in ${pkgs}; do
+      version=$(sed -n "s/(version \(.*\))/\1/p" ${default_lock_dir}/${pkg})
+      echo "- ${pkg%.pkg}.${version}"
+      count=$((count + 1))
+    done
+    if [ "${count}" -eq "0" ]; then
+      echo "(no dependencies to lock)"
+    fi
+  else
+    echo "(no solution found)"
+    return 1
+  fi
 }
 
 strip_sandbox() {
@@ -55,29 +75,46 @@ mkpkg() {
   cat >>$mock_packages/$name/$name.$version/opam
 }
 
+add_mock_repo() {
+  repo="${1:-file://$(pwd)/mock-opam-repository}"
+  # add the repo definition
+  cat >> dune-workspace <<EOF
+(repository
+ (name mock)
+ (url "${repo}"))
+EOF
+}
+
+create_dune_workspace() {
+  repo="${1}"
+  cat > dune-workspace <<EOF
+(lang dune 3.20)
+(lock_dir
+ (repositories mock))
+EOF
+  add_mock_repo "${repo}"
+}
+
+enable_pkg_if_needed() {
+  if ! grep '(pkg enabled)' > /dev/null dune-workspace
+  then
+    cat >> dune-workspace <<EOF
+(pkg enabled)
+EOF
+  fi
+}
+
 add_mock_repo_if_needed() {
   # default, but can be overridden, e.g. if git is required
   repo="${1:-file://$(pwd)/mock-opam-repository}"
 
   if [ ! -e dune-workspace ]
   then
-      cat >dune-workspace <<EOF
-(lang dune 3.10)
-(lock_dir
- (repositories mock))
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+    create_dune_workspace "${repo}"
   else
     if ! grep '(name mock)' > /dev/null dune-workspace
     then
-      # add the repo definition
-      cat >>dune-workspace <<EOF
-(repository
- (name mock)
- (url "${repo}"))
-EOF
+      add_mock_repo "${repo}"
  
       # reference the repo
       if grep -s '(repositories'
@@ -92,6 +129,9 @@ EOF
   
     fi
   fi
+
+  # enable Dune pkg
+  enable_pkg_if_needed
 }
 
 make_lockpkg() {
@@ -115,7 +155,8 @@ make_lockpkg_file() {
 solve_project() {
   cat >dune-project
   add_mock_repo_if_needed
-  dune pkg lock $@
+  dune build @pkg-lock
+  show_solution
 }
 
 make_lockdir() {

@@ -43,13 +43,24 @@ let decode =
      and+ explain =
        field_o "explain" (Dune_lang.Syntax.since syntax explain_since >>> Blang.decode)
      and+ messages =
-       field_o "messages" (Dune_lang.Syntax.since syntax (3, 1) >>> string)
+       field_o "messages" (Dune_lang.Syntax.since syntax (3, 1) >>> located string)
      in
      let infer =
        match infer with
        | Some infer -> infer
        | None -> menhir_syntax >= (2, 0)
      in
+     if List.length modules > 1 && Option.is_none merge_into
+     then (
+       match messages with
+       | None -> ()
+       | Some (loc, _) ->
+         User_error.raise
+           ~loc
+           [ Pp.text
+               "The (messages) field can only be specified when the (menhir) stanza \
+                defines a single parser."
+           ]);
      { merge_into
      ; flags
      ; modules
@@ -59,7 +70,7 @@ let decode =
      ; enabled_if
      ; explain
      ; menhir_syntax
-     ; messages
+     ; messages = Option.map ~f:snd messages
      })
 ;;
 

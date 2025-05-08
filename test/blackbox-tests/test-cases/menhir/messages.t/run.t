@@ -227,3 +227,19 @@ Let's try the new error state out.
   Syntax error after '-' and before '*'.
   <YOUR SYNTAX ERROR MESSAGE HERE>
   [1]
+
+Check that (messages) is only allowed when defining a single parser.
+
+  $ cat >dune <<EOF
+  > (menhir
+  >  (modules parser1 parser2)
+  >  (messages parserMessages))
+  > EOF
+
+  $ dune build
+  File "dune", line 3, characters 11-25:
+  3 |  (messages parserMessages))
+                 ^^^^^^^^^^^^^^
+  Error: The (messages) field can only be specified when the (menhir) stanza
+  defines a single parser.
+  [1]

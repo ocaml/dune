@@ -52,7 +52,8 @@ Test that we can read package metadata from opam files.
     
 
   $ cat > dune-workspace <<EOF
-  > (lang dune 3.12)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (repositories mock)
   >  (solver_env

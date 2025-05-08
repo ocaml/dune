@@ -89,13 +89,7 @@ module Package_universe = struct
   let lock_dir_path t =
     match t with
     | Project_dependencies ctx -> Lock_dir.get_path ctx
-    | Dev_tool dev_tool ->
-      (* CR-Leonidas-from-XIV: It probably isn't always [Some] *)
-      dev_tool
-      |> Lock_dir.dev_tool_source_lock_dir
-      |> Path.source
-      |> Option.some
-      |> Memo.return
+    | Dev_tool dev_tool -> Memo.return (Some (Lock_dir.dev_tool_lock_dir_path dev_tool))
   ;;
 end
 

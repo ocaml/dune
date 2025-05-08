@@ -2,7 +2,8 @@
 # project and the odoc lockdir.
 setup_odoc_workspace() {
   cat > dune-workspace <<EOF
-(lang dune 3.16)
+(lang dune 3.20)
+(pkg enabled)
 (lock_dir
  (path "dev-tools.locks/odoc")
  (repositories mock))

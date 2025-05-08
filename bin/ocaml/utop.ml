@@ -13,12 +13,6 @@ let man =
 let man_xrefs = [ `Cmd "top" ]
 let info = Cmd.info "utop" ~man_xrefs ~doc ~man
 
-let lock_utop_if_dev_tool_enabled () =
-  match Lazy.force Lock_dev_tool.is_enabled with
-  | false -> Memo.return ()
-  | true -> Lock_dev_tool.lock_dev_tool Utop
-;;
-
 let term =
   let+ builder = Common.Builder.term
   and+ dir = Arg.(value & pos 0 string "" & Arg.info [] ~docv:"DIR")
@@ -49,7 +43,7 @@ let term =
              and memoizing whether or not the utop dev tool lockdir exists.
              thus if we generate the lockdir any later than this point, dune
              will not observe the fact that it now exists. *)
-          lock_utop_if_dev_tool_enabled ()
+          Dev_tool_lock.lock_dir Dune_pkg.Dev_tool.Utop
         in
         Build_system.file_exists utop_exe
         >>= function
@@ -58,11 +52,9 @@ let term =
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
         | true ->
           let* () = Build_system.build_file utop_exe in
-          let* utop_dev_tool_lock_dir_exists =
-            Memo.Lazy.force Utop.utop_dev_tool_lock_dir_exists
-          in
+          let* lock_dir_enabled = Dune_rules.Lock_dir.enabled in
           let* () =
-            if utop_dev_tool_lock_dir_exists
+            if lock_dir_enabled
             then
               (* Generate the custom findlib.conf file needed when utop is run
                  as a dev tool. *)
@@ -87,7 +79,7 @@ let term =
                  ~init:env
           in
           let env =
-            if utop_dev_tool_lock_dir_exists
+            if lock_dir_enabled
             then
               (* If there's a utop lockdir then dune will have built utop as a
                  dev tool. In order for it to run correctly dune needed to

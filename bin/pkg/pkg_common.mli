@@ -73,8 +73,9 @@ module Lock_dirs_arg : sig
         of the workspace are considered. *)
   val term : t Term.t
 
-  (** [Lock_dirs_arg.lock_dirs_of_workspace t workspace] returns the list of
-      lock directories that should be considered for various operations.
+  (** [Lock_dirs_arg.lock_dirs_of_workspace t workspace] returns the
+      list of lock directories that should be considered for various
+      operations.
 
       The [workspace] argument is used to determine the list of all lock lock
       directories.

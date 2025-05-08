@@ -5,7 +5,7 @@ Demonstrate how dune handles project dependency cycles in the same project
   $ mkrepo
   $ add_mock_repo_if_needed
 
-  $ cat >dune-project <<EOF
+  $ cat > dune-project <<EOF
   > (lang dune 3.13)
   > (package
   >  (name a)

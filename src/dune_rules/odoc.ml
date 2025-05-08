@@ -262,12 +262,9 @@ let odoc_dev_tool_exe_path_building_if_necessary () =
 ;;
 
 let odoc_program sctx dir =
-  let odoc_dev_tool_lock_dir_exists =
-    match Config.get Compile_time.lock_dev_tools with
-    | `Enabled -> true
-    | `Disabled -> false
-  in
-  match odoc_dev_tool_lock_dir_exists with
+  let open Action_builder.O in
+  let* odoc_dev_tool_enabled = Action_builder.of_memo Lock_dir.enabled in
+  match odoc_dev_tool_enabled with
   | true -> odoc_dev_tool_exe_path_building_if_necessary ()
   | false ->
     Super_context.resolve_program

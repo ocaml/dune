@@ -18,8 +18,7 @@ Make a project that uses the foo library:
   > EOF
 
 Locking should succeed and not include the "unzip" package
-  $ dune pkg lock 2>&1 | head -n 1
-  Solution for dune.lock:
 
-  $ cat ${default_lock_dir}/foo.pkg
-  (version 0.0.1)
+  $ dune pkg lock
+  Solution for dune.lock:
+  - foo.0.0.1

@@ -65,7 +65,13 @@ module Update = struct
 end
 
 let lock_dir_encode_decode_round_trip_test ?commit ~lock_dir_path ~lock_dir () =
-  let lock_dir_path = Path.of_string lock_dir_path in
+  let ctx_name = Dune_engine.Context_name.default in
+  let lock_dir_path =
+    Path.Build.L.relative
+      Dune_rules.Private_context.t.build_dir
+      [ Dune_engine.Context_name.to_string ctx_name; ".lock"; lock_dir_path ]
+    |> Path.build
+  in
   Lock_dir.Write_disk.(
     prepare ~portable_lock_dir:false ~lock_dir_path ~files:Package_name.Map.empty lock_dir
     |> commit);
@@ -218,7 +224,9 @@ let%expect_test "encode/decode round trip test for lockdir with simple deps" =
                     }
                 }
           }
-    ; ocaml = Some ("simple_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml =
+        Some
+          ("_build/_private/default/.lock/simple_lock_dir/lock.dune:3", "ocaml")
     ; repos = { complete = true; used = None }
     ; expanded_solver_variable_bindings =
         { variable_values = [ ("os", "linux") ]
@@ -378,7 +386,10 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/b.pkg:3"; name = "a" }
+                              [ { loc =
+                                    "_build/_private/default/.lock/complex_lock_dir/b.pkg:3"
+                                ; name = "a"
+                                }
                               ]
                           }
                         ]
@@ -409,8 +420,14 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     ; depends =
                         [ { condition = [ map {} ]
                           ; value =
-                              [ { loc = "complex_lock_dir/c.pkg:3"; name = "a" }
-                              ; { loc = "complex_lock_dir/c.pkg:3"; name = "b" }
+                              [ { loc =
+                                    "_build/_private/default/.lock/complex_lock_dir/c.pkg:3"
+                                ; name = "a"
+                                }
+                              ; { loc =
+                                    "_build/_private/default/.lock/complex_lock_dir/c.pkg:3"
+                                ; name = "b"
+                                }
                               ]
                           }
                         ]
@@ -432,7 +449,9 @@ let%expect_test "encode/decode round trip test for lockdir with complex deps" =
                     }
                 }
           }
-    ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml =
+        Some
+          ("_build/_private/default/.lock/complex_lock_dir/lock.dune:3", "ocaml")
     ; repos =
         { complete = true
         ; used = Some [ opam_repo_serializable "https://github.com/ocaml/dune" ]
@@ -547,7 +566,9 @@ let%expect_test "encode/decode round trip test with locked repo revision" =
                     }
                 }
           }
-    ; ocaml = Some ("complex_lock_dir/lock.dune:3", "ocaml")
+    ; ocaml =
+        Some
+          ("_build/_private/default/.lock/complex_lock_dir/lock.dune:3", "ocaml")
     ; repos =
         { complete = true
         ; used =

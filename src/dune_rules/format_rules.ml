@@ -32,11 +32,6 @@ module Alias = struct
 end
 
 module Ocamlformat = struct
-  let dev_tool_lock_dir_exists () =
-    let path = Lock_dir.dev_tool_source_lock_dir Ocamlformat in
-    Source_tree.find_dir path >>| Option.is_some
-  ;;
-
   (* Config files for ocamlformat. When these are changed, running
      `dune fmt` should cause ocamlformat to re-format the ocaml files
      in the project. *)
@@ -129,7 +124,7 @@ let gen_rules_output
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let* ocamlformat_is_locked = Ocamlformat.dev_tool_lock_dir_exists () in
+  let* ocamlformat_is_locked = Lock_dir.enabled in
   let setup_formatting file =
     (let input_basename = Path.Source.basename file in
      let input = Path.Build.relative dir input_basename in
@@ -151,6 +146,8 @@ let gen_rules_output
      in
      format_action format ~ocamlformat_is_locked ~input ~output ~expander kind
      |> Memo.bind ~f:(fun rule ->
+       let open Memo.O in
+       let* sctx = sctx in
        if ocamlformat_is_locked
        then (
          let { Action_builder.With_targets.build; targets } = rule in
@@ -161,10 +158,7 @@ let gen_rules_output
            Action.Full.add_env env build
          in
          Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
-       else
-         let open Memo.O in
-         let* sctx = sctx in
-         Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
+       else Super_context.add_rule sctx ~mode:Standard ~loc ~dir rule)
      >>> add_diff loc alias_formatted ~input:(Path.build input) ~output)
     |> Memo.Option.iter ~f:Fun.id
   in

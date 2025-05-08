@@ -20,7 +20,8 @@ Demonstrate how depopts can be forced in the workspace
 Select just foo
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (depopts foo)
   >  (repositories mock))
@@ -36,7 +37,8 @@ Select just foo
 Select both foo and bar
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (depopts foo bar)
   >  (repositories mock))
@@ -53,7 +55,8 @@ Select both foo and bar
 Select a package that is not listed as depopt
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (depopts baz)
   >  (repositories mock))
@@ -70,7 +73,8 @@ Select a package that is not listed as depopt
 Select garbage
 
   $ cat >dune-workspace <<EOF
-  > (lang dune 3.10)
+  > (lang dune 3.20)
+  > (pkg enabled)
   > (lock_dir
   >  (depopts z)
   >  (repositories mock))

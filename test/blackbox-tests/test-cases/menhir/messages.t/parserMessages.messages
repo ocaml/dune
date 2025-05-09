@@ -1,0 +1,105 @@
+main: INT DIV TIMES
+##
+## Ends in an error in state: 9.
+##
+## expr -> expr DIV . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+##
+## The known suffix of the stack is as follows:
+## expr DIV
+##
+main: INT MINUS TIMES
+##
+## Ends in an error in state: 11.
+##
+## expr -> expr MINUS . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+##
+## The known suffix of the stack is as follows:
+## expr MINUS
+##
+main: INT PLUS TIMES
+##
+## Ends in an error in state: 7.
+##
+## expr -> expr PLUS . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+##
+## The known suffix of the stack is as follows:
+## expr PLUS
+##
+main: INT TIMES TIMES
+##
+## Ends in an error in state: 4.
+##
+## expr -> expr TIMES . expr [ TIMES RPAREN PLUS MINUS EOF DIV ]
+##
+## The known suffix of the stack is as follows:
+## expr TIMES
+##
+
+# All of these sentences correspond to a situation where we have just read a
+# (unary or binary) arithmetic operator.
+
+After an arithmetic operator, an expression is expected.
+
+main: INT RPAREN
+##
+## Ends in an error in state: 14.
+##
+## expr -> expr . PLUS expr [ TIMES PLUS MINUS EOF DIV ]
+## expr -> expr . MINUS expr [ TIMES PLUS MINUS EOF DIV ]
+## expr -> expr . TIMES expr [ TIMES PLUS MINUS EOF DIV ]
+## expr -> expr . DIV expr [ TIMES PLUS MINUS EOF DIV ]
+## main -> expr . EOF [ # ]
+##
+## The known suffix of the stack is as follows:
+## expr
+##
+
+# We have an expression on the stack at offset 0.
+
+I have read the expression '$0'.
+I am now expecting either an arithmetic operator or the end of the input.
+
+main: LPAREN INT LPAREN
+##
+## Ends in an error in state: 3.
+##
+## expr -> LPAREN expr . RPAREN [ TIMES RPAREN PLUS MINUS EOF DIV ]
+## expr -> expr . PLUS expr [ TIMES RPAREN PLUS MINUS DIV ]
+## expr -> expr . MINUS expr [ TIMES RPAREN PLUS MINUS DIV ]
+## expr -> expr . TIMES expr [ TIMES RPAREN PLUS MINUS DIV ]
+## expr -> expr . DIV expr [ TIMES RPAREN PLUS MINUS DIV ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN expr
+##
+
+# We have an expression on the stack at offset 0,
+# and an opening parenthesis at offset 1.
+
+I have read an opening parenthesis,
+followed with the expression '$0'.
+I am now expecting either an arithmetic operator or a closing parenthesis.
+
+main: LPAREN TIMES
+##
+## Ends in an error in state: 1.
+##
+## expr -> LPAREN . expr RPAREN [ TIMES RPAREN PLUS MINUS EOF DIV ]
+##
+## The known suffix of the stack is as follows:
+## LPAREN
+##
+
+After an opening parenthesis, an expression is expected.
+
+main: TIMES
+##
+## Ends in an error in state: 0.
+##
+## main' -> . main [ # ]
+##
+## The known suffix of the stack is as follows:
+##
+##
+
+At the beginning, an expression is expected.

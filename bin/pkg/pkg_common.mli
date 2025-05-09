@@ -38,6 +38,11 @@ val constraints_of_workspace
   -> lock_dir_path:Path.Source.t
   -> Dune_lang.Package_dependency.t list
 
+val depopts_of_workspace
+  :  Workspace.t
+  -> lock_dir_path:Path.Source.t
+  -> Package_name.t list
+
 val get_repos
   :  Dune_pkg.Pkg_workspace.Repository.t Dune_pkg.Pkg_workspace.Repository.Name.Map.t
   -> repositories:(Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list

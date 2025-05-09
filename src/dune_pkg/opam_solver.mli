@@ -16,5 +16,6 @@ val solve_lock_dir
   -> local_packages:Local_package.For_solver.t Package_name.Map.t
   -> pins:Resolved_package.t Package_name.Map.t
   -> constraints:Dune_lang.Package_dependency.t list
+  -> selected_depopts:Package_name.t list
   -> (Solver_result.t, [ `Diagnostic_message of User_message.Style.t Pp.t ]) result
        Fiber.t

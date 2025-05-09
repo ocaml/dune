@@ -13,6 +13,7 @@ module Lock_dir = struct
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
+    ; depopts : (Loc.t * Package.Name.t) list
     }
 
   let to_dyn
@@ -23,6 +24,7 @@ module Lock_dir = struct
         ; repositories
         ; constraints
         ; pins
+        ; depopts
         }
     =
     Dyn.record
@@ -37,6 +39,7 @@ module Lock_dir = struct
             (List.map repositories ~f:snd) )
       ; "constraints", Dyn.list Dune_lang.Package_dependency.to_dyn constraints
       ; "pins", (Dyn.list Dyn.string) (List.map pins ~f:snd)
+      ; "depopts", (Dyn.list Package.Name.to_dyn) (List.map ~f:snd depopts)
       ]
   ;;
 
@@ -48,6 +51,7 @@ module Lock_dir = struct
         ; repositories
         ; constraints
         ; pins
+        ; depopts
         }
     =
     Poly.hash
@@ -57,7 +61,8 @@ module Lock_dir = struct
       , unset_solver_vars
       , repositories
       , constraints
-      , pins )
+      , pins
+      , depopts )
   ;;
 
   let equal
@@ -68,6 +73,7 @@ module Lock_dir = struct
         ; repositories
         ; constraints
         ; pins
+        ; depopts
         }
         t
     =
@@ -84,6 +90,7 @@ module Lock_dir = struct
          t.repositories
     && List.equal Dune_lang.Package_dependency.equal constraints t.constraints
     && List.equal (Tuple.T2.equal Loc.equal String.equal) pins t.pins
+    && List.equal (Tuple.T2.equal Loc.equal Package.Name.equal) depopts t.depopts
   ;;
 
   let decode ~dir =
@@ -108,6 +115,7 @@ module Lock_dir = struct
       and+ repositories = Dune_lang.Ordered_set_lang.field "repositories"
       and+ constraints =
         field ~default:[] "constraints" (repeat Dune_lang.Package_dependency.decode)
+      and+ depopts = field ~default:[] "depopts" (repeat (located Package.Name.decode))
       and+ pins = field ~default:[] "pins" (repeat (located string)) in
       Option.iter solver_env ~f:(fun solver_env ->
         Option.iter
@@ -134,6 +142,7 @@ module Lock_dir = struct
       ; repositories = repositories_of_ordered_set repositories
       ; constraints
       ; pins
+      ; depopts
       }
     in
     fields decode

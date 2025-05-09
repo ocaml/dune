@@ -11,6 +11,7 @@ module Lock_dir : sig
     ; repositories : (Loc.t * Dune_pkg.Pkg_workspace.Repository.Name.t) list
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
+    ; depopts : (Loc.t * Package.Name.t) list
     }
 
   val equal : t -> t -> bool

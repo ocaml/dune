@@ -26,6 +26,17 @@ We add a rule for building the assembly file. This will not interfere with our a
   >  (action
   >   (progn
   >    (run %{ocaml-config:c_compiler} -S hello.c))))
+  > 
+  > (rule
+  >  (enabled_if
+  >   (= %{system} "win32"))
+  >  (target hello.asm)
+  >  (deps
+  >   (sandbox always)
+  >   hello.c)
+  >  (action
+  >   (progn
+  >    (run %{ocaml-config:c_compiler} /FA hello.c))))
   > EOF
 
 Here is the C file we will turn into assembly.

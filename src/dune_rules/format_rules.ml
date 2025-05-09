@@ -10,7 +10,7 @@ let add_diff loc alias ~input ~output =
   in
   Action_builder.paths [ input; Path.build output ]
   >>> Action_builder.return (Action.Full.make action)
-  |> Rules.Produce.Alias.add_action alias ~loc
+  |> Rules.Produce.Alias.add_action alias ~loc ~synopsis:None
 ;;
 
 let rec subdirs_until_root dir =
@@ -160,7 +160,7 @@ let gen_rules_output
            and+ env = Action_builder.of_memo (Pkg_rules.dev_tool_env Ocamlformat) in
            Action.Full.add_env env build
          in
-         Rule.make ~mode:Standard ~targets build |> Rules.Produce.rule)
+         Rule.make ~mode:Standard ~synopsis:None ~targets build |> Rules.Produce.rule)
        else
          let open Memo.O in
          let* sctx = sctx in
@@ -193,10 +193,10 @@ let gen_rules_output
                Action.Full.make (Format_dune_file.action ~version input output))
               |> Action_builder.with_file_targets ~file_targets:[ output ]
             in
-            let rule = Rule.make ~mode:Standard ~targets build in
+            let rule = Rule.make ~mode:Standard ~synopsis:None ~targets build in
             Rules.Produce.rule rule >>> add_diff loc alias_formatted ~input ~output)))
   in
-  Rules.Produce.Alias.add_deps alias_formatted (Action_builder.return ())
+  Rules.Produce.Alias.add_deps alias_formatted ~synopsis:None (Action_builder.return ())
 ;;
 
 let format_config ~dir =
@@ -238,5 +238,8 @@ let setup_alias ~dir =
     let output_dir = Path.Build.relative dir formatted_dir_basename in
     let alias = Alias.fmt ~dir in
     let alias_formatted = Alias.fmt ~dir:output_dir in
-    Rules.Produce.Alias.add_deps alias (Action_builder.dep (Dep.alias alias_formatted)))
+    Rules.Produce.Alias.add_deps
+      alias
+      ~synopsis:None
+      (Action_builder.dep (Dep.alias alias_formatted)))
 ;;

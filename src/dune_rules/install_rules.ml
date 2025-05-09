@@ -966,7 +966,7 @@ let symlink_installed_artifacts_to_build_install
     in
     let src = Path.build entry.src in
     let rule { Action_builder.With_targets.targets; build } =
-      Rule.make ~info:(From_dune_file loc) ~targets build
+      Rule.make ~info:(From_dune_file loc) ~synopsis:None ~targets build
     in
     match entry.kind with
     | `Source_tree ->
@@ -1244,6 +1244,7 @@ let gen_package_install_file_rules sctx (package : Package.t) =
     let open Action_builder.O in
     Rules.Produce.Alias.add_deps
       target_alias
+      ~synopsis:None
       (Action_builder.dyn_deps
          (let+ packages = packages
           and+ () = install_file_deps in
@@ -1380,7 +1381,10 @@ let gen_install_alias sctx (package : Package.t) =
     let path = Package_paths.build_dir (Context.build_context context) package in
     let install_alias = Alias.make Alias0.install ~dir:path in
     let install_file = Path.relative (Path.build path) install_fn in
-    Rules.Produce.Alias.add_deps install_alias (Action_builder.path install_file))
+    Rules.Produce.Alias.add_deps
+      install_alias
+      ~synopsis:None
+      (Action_builder.path install_file))
 ;;
 
 let stanzas_to_entries = Stanzas_to_entries.stanzas_to_entries

@@ -147,7 +147,26 @@ let of_package (t : Dune_lang.Package.t) =
   let name = Package.name t in
   match Package.original_opam_file t with
   | None ->
-    let dependencies = t |> Package.depends |> Dependency_formula.of_dependencies in
+    let depends =
+      match Package.depends t, Package.has_opam_file t with
+      | [], Exists true ->
+        let name = t |> Package.name |> Package_name.to_string in
+        let hints =
+          [ Pp.textf "Add a `depends` field in the `package` stanza of package %S or" name
+          ; Pp.textf "Delete the package %S from `dune-project`" name
+          ]
+        in
+        User_warning.emit
+          ~hints
+          [ Pp.textf
+              "Package %S loaded from `dune-project` but does not declare any \
+               dependencies"
+              name
+          ];
+        []
+      | otherwise, _ -> otherwise
+    in
+    let dependencies = Dependency_formula.of_dependencies depends in
     { name
     ; version
     ; dependencies

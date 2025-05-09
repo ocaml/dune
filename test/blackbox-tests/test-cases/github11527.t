@@ -21,14 +21,14 @@ and argv.(0) can be concatenated to get a valid path.
 When running dune exec from the root this is true.
   $ dune exec -- ./bug.exe
   pwd: $TESTCASE_ROOT
-  exe: ./_build/default/bug.exe
+  exe: $TESTCASE_ROOT/_build/default/bug.exe
 
   $ mkdir subdir
 
 As expected, the `exe:` argument shows the correct path
   $ (cd subdir && dune exec --root .. -- ./bug.exe)
   Entering directory '..'
-  Leaving directory '..'
   pwd: $TESTCASE_ROOT/subdir
-  exe: ../_build/default/bug.exe
+  exe: $TESTCASE_ROOT/_build/default/bug.exe
+  Leaving directory '..'
  

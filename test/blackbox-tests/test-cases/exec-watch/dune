@@ -12,7 +12,7 @@
 ; These tests are explicitly disabled due to flakiness
 
 (cram
- (applies_to exec-watch-server exec-watch-ignore-sigterm)
+ (applies_to exec-watch-server exec-watch-ignore-sigterm exec-signal)
  (enabled_if false))
 
 (cram

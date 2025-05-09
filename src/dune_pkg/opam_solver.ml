@@ -128,7 +128,7 @@ module Context = struct
     ; version_preference
     ; local_packages
     ; pinned_packages
-    ; solver_env
+    ; solver_env = Solver_env.add_sentinel_values_for_unset_platform_vars solver_env
     ; dune_version = Dune_dep.version
     ; stats_updater
     ; candidates_cache
@@ -1462,6 +1462,30 @@ module Solver_result = struct
     ; pinned_packages : Package_name.Set.t
     ; num_expanded_packages : int
     }
+
+  let merge a b =
+    let lock_dir = Lock_dir.merge_conditionals a.lock_dir b.lock_dir in
+    let files =
+      Package_name.Map.merge a.files b.files ~f:(fun _ a b ->
+        match a, b with
+        | Some a, Some b ->
+          (* The package is present in both solutions. Make sure its associated
+             files are the same in both instances. *)
+          if not (List.equal File_entry.equal a b)
+          then
+            Code_error.raise
+              "Package files differ between merged solver results"
+              [ "files_1", Dyn.list File_entry.to_dyn a
+              ; "files_2", Dyn.list File_entry.to_dyn b
+              ];
+          Some a
+        | Some x, None | None, Some x -> Some x
+        | None, None -> None)
+    in
+    let pinned_packages = Package_name.Set.union a.pinned_packages b.pinned_packages in
+    let num_expanded_packages = a.num_expanded_packages + b.num_expanded_packages in
+    { lock_dir; files; pinned_packages; num_expanded_packages }
+  ;;
 end
 
 let reject_unreachable_packages =
@@ -1505,7 +1529,13 @@ let reject_unreachable_packages =
           Code_error.raise
             "package is both local and returned by solver"
             [ "name", Package_name.to_dyn name ]
-        | Some (pkg : Lock_dir.Pkg.t), None -> Some (List.map pkg.depends ~f:snd)
+        | Some (pkg : Lock_dir.Pkg.t), None ->
+          Some
+            (Lock_dir.Conditional_choice.choose_for_platform
+               pkg.depends
+               ~platform:solver_env
+             |> Option.value ~default:[]
+             |> List.map ~f:(fun (depend : Lock_dir.Dependency.t) -> depend.name))
         | None, Some (pkg : Local_package.For_solver.t) ->
           let deps =
             match
@@ -1710,18 +1740,24 @@ let solve_lock_dir
         Package_name.Map.iter
           pkgs_by_name
           ~f:(fun { Lock_dir.Pkg.depends; info = { name; _ }; _ } ->
-            List.iter depends ~f:(fun (loc, dep_name) ->
-              if Package_name.Map.mem local_packages dep_name
-              then
-                User_error.raise
-                  ~loc
-                  [ Pp.textf
-                      "Dune does not support packages outside the workspace depending on \
-                       packages in the workspace. The package %S is not in the workspace \
-                       but it depends on the package %S which is in the workspace."
-                      (Package_name.to_string name)
-                      (Package_name.to_string dep_name)
-                  ]));
+            Option.iter
+              (Lock_dir.Conditional_choice.choose_for_platform
+                 depends
+                 ~platform:solver_env)
+              ~f:
+                (List.iter ~f:(fun (depend : Lock_dir.Dependency.t) ->
+                   if Package_name.Map.mem local_packages depend.name
+                   then
+                     User_error.raise
+                       ~loc:depend.loc
+                       [ Pp.textf
+                           "Dune does not support packages outside the workspace \
+                            depending on packages in the workspace. The package %S is \
+                            not in the workspace but it depends on the package %S which \
+                            is in the workspace."
+                           (Package_name.to_string name)
+                           (Package_name.to_string depend.name)
+                       ])));
         let pkgs_by_name =
           let reachable =
             reject_unreachable_packages
@@ -1739,6 +1775,7 @@ let solve_lock_dir
           ~ocaml
           ~repos:(Some repos)
           ~expanded_solver_variable_bindings
+          ~solved_for_platform:(Some solver_env)
     in
     let+ files = files opam_packages_to_lock candidates_cache in
     Ok

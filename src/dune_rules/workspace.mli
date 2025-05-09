@@ -2,6 +2,12 @@
 
 open Import
 
+module Solve_for_platforms : sig
+  type t
+
+  val platforms : t -> Dune_pkg.Solver_env.t list
+end
+
 module Lock_dir : sig
   type t =
     { path : Path.Source.t
@@ -12,6 +18,7 @@ module Lock_dir : sig
     ; constraints : Dune_lang.Package_dependency.t list
     ; pins : (Loc.t * string) list
     ; depopts : (Loc.t * Package.Name.t) list
+    ; solve_for_platforms : Solve_for_platforms.t
     }
 
   val equal : t -> t -> bool

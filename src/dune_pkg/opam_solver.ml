@@ -1604,6 +1604,7 @@ let solve_lock_dir
       ~local_packages
       ~pins:pinned_packages
       ~constraints
+      ~selected_depopts
   =
   let pinned_package_names = Package_name.Set.of_keys pinned_packages in
   let stats_updater = Solver_stats.Updater.init () in
@@ -1638,8 +1639,8 @@ let solve_lock_dir
     in
     Lazy.force context
   in
-  Package_name.Map.to_list_map local_packages ~f:(fun name _ ->
-    Package_name.to_opam_package_name name)
+  Package_name.Map.keys local_packages @ selected_depopts
+  |> List.map ~f:Package_name.to_opam_package_name
   |> solve_package_list ~context
   >>= function
   | Error _ as e -> Fiber.return e

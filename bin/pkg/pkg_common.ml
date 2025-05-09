@@ -58,6 +58,12 @@ let constraints_of_workspace (workspace : Workspace.t) ~lock_dir_path =
   | Some lock_dir -> lock_dir.constraints
 ;;
 
+let depopts_of_workspace (workspace : Workspace.t) ~lock_dir_path =
+  match Workspace.find_lock_dir workspace lock_dir_path with
+  | None -> []
+  | Some lock_dir -> lock_dir.depopts |> List.map ~f:snd
+;;
+
 let repositories_of_lock_dir workspace ~lock_dir_path =
   match Workspace.find_lock_dir workspace lock_dir_path with
   | Some lock_dir -> lock_dir.repositories

@@ -50,6 +50,7 @@
   dune_rpc_client
   dune_spawn
   opam_format
+  source
   xdg)
  (bootstrap_info bootstrap-info))
 

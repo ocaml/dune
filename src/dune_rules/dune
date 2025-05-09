@@ -37,6 +37,7 @@
   dune_config_file
   dune_findlib
   dune_patch
+  source
   scheme
   fs
   unix

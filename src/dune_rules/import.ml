@@ -102,6 +102,7 @@ include struct
   module Dune_project_name = Dune_project_name
   module Package = Package
   module Dialect = Dialect
+  module Lib_mode = Lib_mode
 end
 
 include Dune_engine.No_io

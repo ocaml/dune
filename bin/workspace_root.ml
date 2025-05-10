@@ -17,7 +17,7 @@ module Kind = struct
   let lowest_priority = max_int
 
   let of_dir_contents files =
-    if String.Set.mem files Dune_rules.Workspace.filename
+    if String.Set.mem files Source.Workspace.filename
     then Some Dune_workspace
     else if Filename.Set.mem files Dune_lang.Dune_project.filename
     then Some Dune_project

@@ -10,6 +10,9 @@ include struct
   module Source_tree = Source_tree
   module Cram_test = Cram_test
   module Only_packages = Only_packages
+  module Workspace = Workspace
+  module Opam_switch = Opam_switch
+  module Blang_expand = Blang_expand
 end
 
 include struct

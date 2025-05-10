@@ -1,6 +1,7 @@
 open Import
 open Memo.O
 open Ocamldep.Modules_data
+module Parallel_map = Memo.Make_parallel_map (Module_name.Unique.Map)
 
 let transitive_deps_contents modules =
   List.map modules ~f:(fun m ->
@@ -164,8 +165,7 @@ let rules md =
     dict_of_func_concurrently (fun ~ml_kind ->
       let+ per_module =
         Modules.With_vlib.obj_map modules
-        |> Module_name.Unique.Parallel_map.parallel_map ~f:(fun _obj_name m ->
-          deps_of md ~ml_kind m)
+        |> Parallel_map.parallel_map ~f:(fun _obj_name m -> deps_of md ~ml_kind m)
       in
       Dep_graph.make ~dir:md.dir ~per_module)
 ;;

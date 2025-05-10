@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 type t =
   { name : Package_name.t
@@ -28,13 +28,13 @@ module Well_formed_name = struct
   module TT = Dune_util.Stringlike.Make (T)
 
   let decode =
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     TT.decode >>| T.to_package_name
   ;;
 end
 
 let encode { name; constraint_ } =
-  let open Dune_sexp.Encoder in
+  let open Encoder in
   match constraint_ with
   | None -> Package_name.encode name
   | Some c -> pair Package_name.encode Package_constraint.encode (name, c)
@@ -82,7 +82,7 @@ let check_for_typo ~loc { name; constraint_ } =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let constrained =
     let+ loc = loc
     and+ name = Package_name.decode

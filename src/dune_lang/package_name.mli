@@ -1,4 +1,4 @@
-open Stdune
+open Import
 open Dune_util
 
 type t
@@ -8,7 +8,7 @@ val equal : t -> t -> bool
 val hash : t -> int
 
 include Comparable_intf.S with type key := t
-include Dune_sexp.Conv.S with type t := t
+include Conv.S with type t := t
 include Stringlike with type t := t
 
 module Opam_compatible : sig
@@ -27,6 +27,6 @@ module Opam_compatible : sig
 
 val is_opam_compatible : t -> bool
 val file : t -> dir:Path.Source.t -> Path.Source.t
-val decode_opam_compatible : t Dune_sexp.Decoder.t
+val decode_opam_compatible : t Decoder.t
 val opam_fn : t -> Filename.t
 val of_opam_file_basename : Filename.t -> t option

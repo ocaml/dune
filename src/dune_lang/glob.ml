@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_sexp
+open Import
 include Dune_glob.V1
 
 let to_dyn t = Dyn.variant "Glob" [ Dyn.string (to_string t) ]

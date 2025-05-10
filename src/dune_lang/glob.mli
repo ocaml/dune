@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_sexp
+open Import
 
 type t = Dune_glob.V1.t
 

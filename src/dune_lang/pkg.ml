@@ -1,5 +1,7 @@
+open Import
+
 let syntax =
-  Dune_sexp.Syntax.create
+  Syntax.create
     ~experimental:true
     ~name:"package"
     ~desc:"the package management language"

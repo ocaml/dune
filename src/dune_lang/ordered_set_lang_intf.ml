@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module type Key = sig
   type t
@@ -44,7 +44,7 @@ module type Action_builder = sig
 
   val return : 'a -> 'a t
   val all : 'a t list -> 'a list t
-  val read_sexp : Path.t -> Dune_sexp.Ast.t t
+  val read_sexp : Path.t -> Ast.t t
 
   val push_stack_frame
     :  human_readable_description:(unit -> User_message.Style.t Pp.t)

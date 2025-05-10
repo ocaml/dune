@@ -1,3 +1,5 @@
+open Import
+
 module Ppx_args : sig
   module Cookie : sig
     type t =
@@ -19,4 +21,4 @@ type t =
 val to_dyn : t Dyn.builder
 val equal : t -> t -> bool
 
-include Dune_sexp.Conv.S with type t := t
+include Conv.S with type t := t

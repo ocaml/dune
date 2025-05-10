@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 type part =
   | Text of string
@@ -441,9 +440,9 @@ let has_pforms t = Option.is_none (text_only t)
 
 let encode t =
   match text_only t with
-  | Some s -> atom_or_quoted_string s
+  | Some s -> Dune_sexp.atom_or_quoted_string s
   | None ->
-    Template
+    Dune_sexp.Template
       { loc = t.loc
       ; quoted = t.quoted
       ; parts =
@@ -464,7 +463,7 @@ let encode t =
       }
 ;;
 
-let to_dyn t = to_dyn (encode t)
+let to_dyn t = Dune_sexp.to_dyn (encode t)
 
 let remove_locs { quoted; loc = _; parts } =
   { quoted

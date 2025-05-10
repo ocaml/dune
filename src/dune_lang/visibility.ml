@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t =
   | Public
@@ -12,14 +12,14 @@ let to_string = function
 let to_dyn t = Dyn.string (to_string t)
 
 let encode =
-  let open Dune_sexp.Encoder in
+  let open Encoder in
   function
   | Public -> string "public"
   | Private -> string "private"
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   plain_string (fun ~loc -> function
     | "public" -> Public
     | "private" -> Private

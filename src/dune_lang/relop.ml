@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t =
   | Eq
@@ -41,7 +41,7 @@ let to_string x =
   List.find_exn ~f map |> fst
 ;;
 
-let encode x = to_string x |> Dune_sexp.Encoder.string
+let encode x = to_string x |> Encoder.string
 
 let eval t (x : Ordering.t) =
   match t, x with

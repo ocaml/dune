@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t =
   | Ocaml of Ocaml.Mode.t
@@ -12,7 +12,7 @@ let equal x y =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   enum [ "byte", Ocaml Byte; "native", Ocaml Native; "melange", Melange ]
 ;;
 
@@ -23,7 +23,7 @@ let choose byte native melange = function
 ;;
 
 let to_string = choose "byte" "native" "melange"
-let encode t = Dune_sexp.Encoder.string (to_string t)
+let encode t = Encoder.string (to_string t)
 
 module Cm_kind = struct
   type t =

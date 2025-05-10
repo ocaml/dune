@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_sexp
+open Import
 
 (** Slang (string-language) is a DSL for computing lists of strings. *)
 type t =

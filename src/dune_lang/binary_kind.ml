@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t =
   | C
@@ -25,7 +25,6 @@ let compare x y =
 ;;
 
 let decode =
-  let open Dune_sexp in
   let open Decoder in
   sum
     [ "c", Syntax.since Stanza.syntax (1, 2) >>> return C

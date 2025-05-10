@@ -1,4 +1,6 @@
-open Import
+open Stdune
+module Decoder = Dune_sexp.Decoder
+module Encoder = Dune_sexp.Encoder
 
 let valid_format_doc = Site.valid_format_doc
 
@@ -31,7 +33,7 @@ let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = struct
   include Per_item.Make (String)
-  open Dune_lang.Decoder
+  open Decoder
 
   let decode ~default a =
     peek_exn
@@ -83,13 +85,13 @@ module Unique = struct
       User_error.raise ~loc [ Pp.textf "%s corresponds to an invalid module name" t ]
   ;;
 
-  let encode = Dune_lang.Encoder.string
+  let encode = Encoder.string
   let of_string s = of_name_assuming_needs_no_mangling (of_string s)
   let to_string s = s
 
   let decode =
-    let open Dune_lang.Decoder in
-    let+ s = Dune_lang.Decoder.string in
+    let open Decoder in
+    let+ s = Decoder.string in
     of_string s
   ;;
 
@@ -135,7 +137,7 @@ module Path = struct
 
   let append_double_underscore t = t @ [ "" ]
   let encode (t : t) = List.map t ~f:encode
-  let decode = Dune_lang.Decoder.(repeat decode)
+  let decode = Decoder.(repeat decode)
 end
 
 let wrap t ~with_ = Path.wrap (t :: with_)

@@ -54,10 +54,6 @@ module Unique : sig
 
   include Dune_lang.Conv.S with type t := t
   include Comparable_intf.S with type key := t
-
-  module Parallel_map : sig
-    val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
-  end
 end
 
 module Path : sig
@@ -81,9 +77,5 @@ end
 val wrap : t -> with_:Path.t -> Unique.t
 
 include Comparable_intf.S with type key := t
-
-module Parallel_map : sig
-  val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
-end
 
 val of_string_allow_invalid : Loc.t * string -> t

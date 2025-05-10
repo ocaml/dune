@@ -1,5 +1,6 @@
 open Import
 open Memo.O
+module Parallel_map = Memo.Make_parallel_map (Module_name.Map)
 
 module Common = struct
   module Encode = struct
@@ -73,7 +74,7 @@ module Stdlib = struct
   let map t ~f = { t with modules = Module_name.Map.map t.modules ~f }
 
   let traverse t ~f =
-    let+ modules = Module_name.Parallel_map.parallel_map t.modules ~f:(fun _ -> f) in
+    let+ modules = Parallel_map.parallel_map t.modules ~f:(fun _ -> f) in
     { t with modules }
   ;;
 
@@ -427,7 +428,7 @@ module Group = struct
       { t with alias; modules }
 
     and parallel_map_modules modules ~f =
-      Module_name.Parallel_map.parallel_map modules ~f:(fun _ n ->
+      Parallel_map.parallel_map modules ~f:(fun _ n ->
         match n with
         | Module m ->
           let+ m = f m in

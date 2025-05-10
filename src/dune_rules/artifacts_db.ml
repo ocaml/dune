@@ -28,6 +28,7 @@ let available_exes ~dir (exes : Executables.t) =
       ~forbidden_libraries:exes.forbidden_libraries
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
   in
+  (* CR-someday rgrinberg: what if a preprocessor is unavailable? *)
   let+ available = Lib.Compile.direct_requires compile_info in
   Resolve.is_ok available
 ;;
@@ -73,7 +74,7 @@ let get_installed_binaries ~(context : Context.t) stanzas =
         else None)
       >>| List.filter_opt
       >>| Filename.Map.of_list_reduce ~f:(fun _ y ->
-        (* CR-rgrinberg: we shouldn't allow duplicate bindings, but where's the
+        (* CR-someday rgrinberg: we shouldn't allow duplicate bindings, but where's the
            correct place for this validation? *)
         y)
       >>| Filename.Map.map ~f:Appendable_list.singleton

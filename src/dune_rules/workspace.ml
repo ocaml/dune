@@ -168,7 +168,8 @@ let env_field, env_field_lazy =
          else (
            match List.find_map s.rules ~f:(fun (_, config) -> config.binaries) with
            | None -> s
-           | Some _ (* CR-rgrinberg: the location should come from this field *) ->
+           | Some _ (* CR-someday rgrinberg: the location should come from this field *)
+             ->
              let message =
                User_message.make
                  ~loc
@@ -187,7 +188,7 @@ let env_field, env_field_lazy =
        with
        | None -> Some s
        | Some loc ->
-         (* CR-rgrinberg: why do we forbid variables here?. *)
+         (* CR-someday rgrinberg: why do we forbid variables here?. *)
          User_error.raise
            ~loc
            [ Pp.text
@@ -828,7 +829,7 @@ let step1 clflags =
       (match Path.Outside_build_dir.parent file with
        | None -> assert false
        | Some (External _) ->
-         (* CR-rgrinberg: not really correct, but we don't support lock
+         (* CR-someday rgrinberg: not really correct, but we don't support lock
             directories outside the workspace (for now) *)
          Path.Source.root
        | Some (In_source_dir s) -> s)

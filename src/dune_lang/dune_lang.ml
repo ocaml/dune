@@ -48,3 +48,5 @@ module Module_name = Module_name
 module Pin_stanza = Pin_stanza
 module Preprocess = Preprocess
 module Link_flags = Link_flags
+module Dune_project = Dune_project
+module File_binding = File_binding

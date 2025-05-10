@@ -4,6 +4,10 @@ module Dep_conf = Dune_lang.Dep_conf
 include struct
   open Source
   module Source_tree = Source_tree
+end
+
+include struct
+  open Dune_lang
   module Dune_project = Dune_project
 end
 

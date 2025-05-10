@@ -1,4 +1,3 @@
-module Dune_project = Dune_project
 module Source_dir_status = Source_dir_status
 module Dune_file0 = Dune_file0
 module Include_stanza = Include_stanza

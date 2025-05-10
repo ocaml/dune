@@ -67,7 +67,12 @@ let resolve_project_pins project_pins =
     let read file = Memo.of_reproducible_fiber (read file) in
     let open Memo.O in
     (* Opam files may never contain recursive pins, so don't both reading them *)
-    Dune_project.gen_load ~read ~files ~dir:Path.Source.root ~infer_from_opam_files:false
+    Dune_project.gen_load
+      ~read
+      ~files
+      ~dir:Path.Source.root
+      ~infer_from_opam_files:false
+      ~load_opam_file_with_contents:Dune_pkg.Opam_file.load_opam_file_with_contents
     >>| Option.map ~f:(fun project ->
       let packages = Dune_project.packages project in
       let pins = project_and_package_pins project in

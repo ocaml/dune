@@ -9,6 +9,9 @@
   opam_format
   opam_core
   ocaml
+  ;; temporarily here
+  dune_engine
+  memo
   dune_util
   dyn
   ordering

@@ -5,7 +5,6 @@ module Digest = Dune_digest
 
 include struct
   open Source
-  module Dune_project = Dune_project
   module Source_dir_status = Source_dir_status
   module Dune_file0 = Dune_file0
   module Include_stanza = Include_stanza
@@ -116,6 +115,8 @@ include struct
   module Lib_mode = Lib_mode
   module Module_name = Module_name
   module Preprocess = Preprocess
+  module Dune_project = Dune_project
+  module File_binding = File_binding
 end
 
 include Dune_engine.No_io

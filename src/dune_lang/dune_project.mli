@@ -1,7 +1,7 @@
-(** dune-project files *)
-
-module Pin_stanza := Dune_lang.Pin_stanza
 open Import
+open Dune_config
+module Pin_stanza := Pin_stanza
+module Execution_parameters := Dune_engine.Execution_parameters
 
 type t
 
@@ -10,7 +10,7 @@ val packages : t -> Package.t Package.Name.Map.t
 val name : t -> Dune_project_name.t
 val version : t -> Package_version.t option
 val root : t -> Path.Source.t
-val stanza_parser : t -> Dune_lang.Stanza.t list Dune_lang.Decoder.t
+val stanza_parser : t -> Stanza.t list Decoder.t
 val generate_opam_files : t -> bool
 val set_generate_opam_files : bool -> t -> t
 
@@ -40,7 +40,8 @@ module Lang : sig
 
       as the first line of their [dune-project] file. [stanza_parsers] defines
       what stanzas the user can write in [dune] files. *)
-  val register : Dune_lang.Syntax.t -> Dune_lang.Stanza.Parser.t list -> unit
+
+  val register : Syntax.t -> Stanza.Parser.t list -> unit
 end
 
 module Extension : sig
@@ -56,40 +57,18 @@ module Extension : sig
       in their [dune-project] file. [parser] is used to describe what [<args>]
       might be. *)
   val register
-    :  Dune_lang.Syntax.t
-    -> ('a * Dune_lang.Stanza.Parser.t list) Dune_lang.Decoder.t
+    :  Syntax.t
+    -> ('a * Stanza.Parser.t list) Decoder.t
     -> ('a -> Dyn.t)
     -> 'a t
 
   (** A simple version where the arguments are not used through
       [find_extension_args]. *)
-  val register_simple
-    :  Dune_lang.Syntax.t
-    -> Dune_lang.Stanza.Parser.t list Dune_lang.Decoder.t
-    -> unit
+  val register_simple : Syntax.t -> Stanza.Parser.t list Decoder.t -> unit
 
   (** Register experimental extensions that were deleted *)
-  val register_deleted : name:string -> deleted_in:Dune_lang.Syntax.Version.t -> unit
+  val register_deleted : name:string -> deleted_in:Syntax.Version.t -> unit
 end
-
-(** Load a project description from the following directory. [files] is the set
-    of files in this directory.
-
-    If [infer_from_opam_files] is true and the directory contains no
-    [dune-project] file but contains at least one [<package>.opam] files, then a
-    project description is inferred from the opam files. *)
-val load
-  :  dir:Path.Source.t
-  -> files:Filename.Set.t
-  -> infer_from_opam_files:bool
-  -> t option Memo.t
-
-val gen_load
-  :  read:(Path.Source.t -> string Memo.t)
-  -> dir:Path.Source.t
-  -> files:Filename.Set.t
-  -> infer_from_opam_files:bool
-  -> t option Memo.t
 
 (** Create an anonymous project at the given directory
 
@@ -105,19 +84,19 @@ val filename : Filename.t
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
     language. *)
-val default_dune_language_version : Dune_lang.Syntax.Version.t ref
+val default_dune_language_version : Syntax.Version.t ref
 
-val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
-val get : unit -> (t option, 'k) Dune_lang.Decoder.parser
+val get_exn : unit -> (t, 'k) Decoder.parser
+val get : unit -> (t option, 'k) Decoder.parser
 
 (** Find arguments passed to (using). [None] means that the extension was not
     written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val is_extension_set : t -> 'a Extension.t -> bool
-val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
+val set_parsing_context : t -> 'a Decoder.t -> 'a Decoder.t
 val implicit_transitive_deps : t -> bool
-val dune_version : t -> Dune_lang.Syntax.Version.t
+val dune_version : t -> Syntax.Version.t
 val wrapped_executables : t -> bool
 val map_workspace_root : t -> bool
 val executables_implicit_empty_intf : t -> bool
@@ -132,7 +111,7 @@ val pins : t -> Pin_stanza.Project.t
     [dune-project] file. *)
 val update_execution_parameters : t -> Execution_parameters.t -> Execution_parameters.t
 
-val encode : t -> Dune_lang.t list
+val encode : t -> Dune_sexp.t list
 val dune_site_extension : unit Extension.t
 val opam_file_location : t -> [ `Relative_to_project | `Inside_opam_directory ]
 val allow_approximate_merlin : t -> Loc.t option
@@ -142,3 +121,27 @@ val including_hidden_packages : t -> Package.t Package.Name.Map.t
 module Melange_syntax : sig
   val name : string
 end
+
+(** Load a project description from the following directory. [files] is the set
+    of files in this directory.
+
+    If [infer_from_opam_files] is true and the directory contains no
+    [dune-project] file but contains at least one [<package>.opam] files, then a
+    project description is inferred from the opam files. *)
+
+val load
+  :  dir:Path.Source.t
+  -> files:Filename.Set.t
+  -> infer_from_opam_files:bool
+  -> load_opam_file_with_contents:
+       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+  -> t option Memo.t
+
+val gen_load
+  :  read:(Path.Source.t -> string Memo.t)
+  -> dir:Path.Source.t
+  -> files:Filename.Set.t
+  -> infer_from_opam_files:bool
+  -> load_opam_file_with_contents:
+       (contents:string -> Path.Source.t -> Package_name.t -> Package.t)
+  -> t option Memo.t

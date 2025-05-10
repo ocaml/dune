@@ -12,7 +12,7 @@ val equal : t -> t -> bool
 
 (** [Md5.file path] returns the [Md5.t] digest of the contents of the given file at
     [path]. *)
-val file : Path.t -> t
+val file : Path.t -> t Or_exn.t
 
 (** [Md5.string s] returns the [Md5.t] digest of the string [s]. *)
 val string : string -> t

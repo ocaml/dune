@@ -179,7 +179,7 @@ let to_dyn = Dyn.opaque
 
 let find_stanzas t key =
   let+ stanzas = Memo.Lazy.force t.stanzas in
-  (* CR-rgrinberg: save a map to represent the stanzas to make this fast. *)
+  (* CR-someday rgrinberg: save a map to represent the stanzas to make this fast. *)
   List.filter_map stanzas ~f:(Stanza.Key.get key)
 ;;
 
@@ -306,7 +306,7 @@ module Script = struct
     ; from_parent : Dune_lang.Ast.t list
     }
 
-  (* CR-rgrinberg: context handling code should be aware of this special
+  (* CR-someday rgrinberg: context handling code should be aware of this special
      directory *)
   let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
 
@@ -355,7 +355,7 @@ module Script = struct
 end
 
 let check_dynamic_stanza =
-  (* CR-rgrinberg: unfortunately this needs to kept in sync with the rules
+  (* CR-someday rgrinberg: unfortunately this needs to kept in sync with the rules
      manually *)
   let err = [ Pp.text "This stanza cannot be generated dynamically" ] in
   fun stanza ->
@@ -443,7 +443,7 @@ module Eval = struct
 
   let eval dune_files mask =
     let mask = Mask.of_only_packages_mask mask in
-    (* CR-rgrinberg: all this evaluation complexity is to share
+    (* CR-someday rgrinberg: all this evaluation complexity is to share
        some work in multi context builds. Is it worth it? *)
     let+ dune_syntax, ocaml_syntax =
       Appendable_list.to_list_rev dune_files

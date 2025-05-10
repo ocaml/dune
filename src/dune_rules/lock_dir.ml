@@ -75,7 +75,7 @@ module Load = Make_load (struct
       Fs_memo.dir_contents (In_source_dir path)
       >>| function
       | Error _ ->
-        (* CR-rgrinberg: add some proper message here *)
+        (* CR-someday rgrinberg: add some proper message here *)
         User_error.raise [ Pp.text "" ]
       | Ok content -> Fs_cache.Dir_contents.to_list content
     ;;

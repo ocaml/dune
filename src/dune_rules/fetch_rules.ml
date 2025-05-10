@@ -229,7 +229,7 @@ let gen_rules_for_checksum_or_url (loc_url, (url : OpamUrl.t)) checksum =
     Rules.collect_unit
     @@ fun () ->
     let* url = resolve_url url in
-    (* CR-rgrinberg: it's possible to share the downloading step between the
+    (* CR-someday rgrinberg: it's possible to share the downloading step between the
        directory and file actions. Though it's unlikely to be of any use in real
        world situations. *)
     let rule =

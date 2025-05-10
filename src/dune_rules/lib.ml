@@ -931,7 +931,7 @@ end = struct
           instrumentation_backend db.instrument_with resolve_forbid_ignore
         in
         Lib_info.preprocess info
-        |> Preprocess.Per_module.with_instrumentation ~instrumentation_backend
+        |> Instrumentation.with_instrumentation ~instrumentation_backend
         >>| Preprocess.Per_module.pps
       in
       let dune_version = Lib_info.dune_version info in

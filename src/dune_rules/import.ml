@@ -115,6 +115,7 @@ include struct
   module Dialect = Dialect
   module Lib_mode = Lib_mode
   module Module_name = Module_name
+  module Preprocess = Preprocess
 end
 
 include Dune_engine.No_io

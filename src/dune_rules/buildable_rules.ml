@@ -62,6 +62,32 @@ type kind =
       ; empty_module_interface_if_absent : bool
       }
 
+let fold_resolve (t : _ Preprocess.t) ~init ~f =
+  match t with
+  | Pps t -> Resolve.Memo.List.fold_left t.pps ~init ~f
+  | No_preprocessing | Action _ | Future_syntax _ -> Resolve.Memo.return init
+;;
+
+let instrumentation_deps t ~instrumentation_backend =
+  let open Resolve.Memo.O in
+  let f = function
+    | Preprocess.With_instrumentation.Ordinary _ -> Resolve.Memo.return []
+    | Instrumentation_backend { libname; deps; flags = _ } ->
+      instrumentation_backend libname
+      >>| (function
+       | Some _ -> deps
+       | None -> [])
+  in
+  Instrumentation.fold t ~init:[] ~f:(fun t init ->
+    let f acc t =
+      let+ x = f t in
+      x :: acc
+    in
+    fold_resolve t ~init ~f)
+  >>| List.rev
+  >>| List.flatten
+;;
+
 let modules_rules
       ~preprocess
       ~preprocessor_deps
@@ -80,12 +106,11 @@ let modules_rules
     let* preprocess_with_instrumentation =
       (* TODO wrong and blocks loading all the rules in this directory *)
       Resolve.Memo.read_memo
-        (Preprocess.Per_module.with_instrumentation preprocess ~instrumentation_backend)
+        (Instrumentation.with_instrumentation preprocess ~instrumentation_backend)
     in
     let* instrumentation_deps =
       (* TODO wrong and blocks loading all the rules in this directory *)
-      Resolve.Memo.read_memo
-        (Preprocess.Per_module.instrumentation_deps preprocess ~instrumentation_backend)
+      Resolve.Memo.read_memo (instrumentation_deps preprocess ~instrumentation_backend)
     in
     Pp_spec_rules.make
       sctx

@@ -13,7 +13,7 @@ let available_exes ~dir (exes : Executables.t) =
       (* Instead of making the binary unavailable, this will just
          fail when loading artifacts. This is clearly bad but
          "optional" executables shouldn't be used. *)
-      Preprocess.Per_module.with_instrumentation
+      Instrumentation.with_instrumentation
         exes.buildable.preprocess
         ~instrumentation_backend:(Lib.DB.instrumentation_backend libs)
       |> Resolve.Memo.read_memo

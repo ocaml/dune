@@ -413,7 +413,8 @@ module Crawl = struct
         in
         Staged.unstage
         @@ Pp_spec.pped_modules_map
-             (Preprocess.Per_module.without_instrumentation exes.buildable.preprocess)
+             (Dune_lang.Preprocess.Per_module.without_instrumentation
+                exes.buildable.preprocess)
              version
       in
       let deps_of module_ =
@@ -481,7 +482,7 @@ module Crawl = struct
             in
             Staged.unstage
             @@ Pp_spec.pped_modules_map
-                 (Preprocess.Per_module.without_instrumentation
+                 (Dune_lang.Preprocess.Per_module.without_instrumentation
                     (Lib_info.preprocess info))
                  version
           in

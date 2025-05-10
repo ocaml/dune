@@ -42,7 +42,7 @@ let find_cram_test path ~parent_dir =
   >>| List.filter_map ~f:Result.to_option
   (* We search our list of known cram tests for the test we are looking
      for. *)
-  >>| List.find ~f:(fun (test : Dune_rules.Cram_test.t) ->
+  >>| List.find ~f:(fun (test : Source.Cram_test.t) ->
     let src =
       match test with
       | File src -> src
@@ -94,7 +94,7 @@ let disambiguate_test_name path =
     >>= (function
      | Some test ->
        (* If we find the cram test, then we request that is run. *)
-       Memo.return (`Test (parent_dir, Dune_rules.Cram_test.name test))
+       Memo.return (`Test (parent_dir, Source.Cram_test.name test))
      | None ->
        (* If we don't find it, then we assume the user intended a directory for
           @runtest to be used. *)

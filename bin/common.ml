@@ -1260,7 +1260,7 @@ let init (builder : Builder.t) =
   Dune_engine.Clflags.always_show_command_line := c.builder.always_show_command_line;
   Dune_rules.Clflags.ignore_promoted_rules := c.builder.ignore_promoted_rules;
   Dune_rules.Clflags.ignore_lock_dir := c.builder.ignore_lock_dir;
-  Dune_rules.Clflags.on_missing_dune_project_file
+  Source.Clflags.on_missing_dune_project_file
   := if c.builder.require_dune_project_file then Error else Warn;
   (Dune_engine.Clflags.can_go_in_shared_cache_default
    := match config.cache_enabled with

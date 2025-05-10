@@ -340,18 +340,6 @@ let add_warning t ~message =
   map_configs t ~f:(fun c -> { c with warn_on_load = Some message })
 ;;
 
-let fire_hooks t ~profile =
-  let current_config = find t ~profile in
-  let message_contents (msg : User_message.t) = msg.loc, msg.paragraphs in
-  Option.iter current_config.error_on_use ~f:(fun msg ->
-    let loc, paragraphs = message_contents msg in
-    User_error.raise ?loc paragraphs);
-  List.iter t.rules ~f:(fun (_, config) ->
-    Option.iter config.warn_on_load ~f:(fun msg ->
-      let loc, paragraphs = message_contents msg in
-      User_warning.emit ?loc paragraphs))
-;;
-
 include Stanza.Make (struct
     type nonrec t = t
 

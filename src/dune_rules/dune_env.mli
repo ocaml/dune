@@ -61,6 +61,5 @@ val find_opt : t -> profile:Profile.t -> config option
 val find : t -> profile:Profile.t -> config
 val add_error : t -> message:User_message.t -> t
 val add_warning : t -> message:User_message.t -> t
-val fire_hooks : t -> profile:Profile.t -> unit
 
 include Stanza.S with type t := t

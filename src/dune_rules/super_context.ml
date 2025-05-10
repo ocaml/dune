@@ -188,6 +188,18 @@ let resolve_program t ~dir ?where ?hint ~loc bin =
   Action_builder.of_memo @@ resolve_program_memo t ~dir ?where ?hint ~loc bin
 ;;
 
+let fire_hooks env ~profile =
+  let current_config = Dune_env.find env ~profile in
+  let message_contents (msg : User_message.t) = msg.loc, msg.paragraphs in
+  Option.iter current_config.error_on_use ~f:(fun msg ->
+    let loc, paragraphs = message_contents msg in
+    User_error.raise ?loc paragraphs);
+  List.iter env.rules ~f:(fun (_, (config : Dune_env.config)) ->
+    Option.iter config.warn_on_load ~f:(fun msg ->
+      let loc, paragraphs = message_contents msg in
+      User_warning.emit ?loc paragraphs))
+;;
+
 let make_default_env_node
       (context : Build_context.t)
       profile
@@ -202,7 +214,7 @@ let make_default_env_node
       let* () = Memo.return () in
       Code_error.raise "[expander_for_artifacts] in [default_env] is undefined" []
     in
-    Dune_env.fire_hooks config_stanza ~profile;
+    fire_hooks config_stanza ~profile;
     Env_node.make
       ~dir
       ~inherit_from

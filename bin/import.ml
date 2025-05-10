@@ -24,15 +24,19 @@ module Cached_digest = Dune_digest.Cached_digest
 module Execution_env = Dune_util.Execution_env
 
 include struct
+  open Source
+  module Source_tree = Source_tree
+  module Source_dir_status = Source_dir_status
+  module Dune_project = Dune_project
+end
+
+include struct
   open Dune_rules
   module Super_context = Super_context
   module Context = Context
   module Workspace = Workspace
-  module Dune_project = Dune_project
   module Dune_package = Dune_package
   module Resolve = Resolve
-  module Source_dir_status = Source_dir_status
-  module Source_tree = Source_tree
   module Dune_file = Dune_file
   module Library = Library
   module Melange = Melange

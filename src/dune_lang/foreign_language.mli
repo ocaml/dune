@@ -7,6 +7,10 @@ type t =
   ]
 
 val equal : t -> t -> bool
+
+(** Compares the proper names. *)
+val compare : t -> t -> Ordering.t
+
 val to_dyn : t -> Dyn.t
 val decode : t Decoder.t
 

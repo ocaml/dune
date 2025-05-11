@@ -1,11 +1,9 @@
 open Import
 
 type kind =
-  | Stubs of Foreign_stubs.t
+  | Stubs of Foreign_language.t * Foreign_stubs.t
   | Ctypes of Ctypes_field.t
 
-(* we store the entire [stubs] record even though [t] only describes an
-     individual source file *)
 type t =
   { kind : kind
   ; path : Path.Build.t
@@ -13,7 +11,7 @@ type t =
 
 let language t =
   match t.kind with
-  | Stubs stubs -> stubs.language
+  | Stubs (language, _) -> language
   | Ctypes _ -> `C
 ;;
 
@@ -22,7 +20,7 @@ let kind t = t.kind
 
 let mode t =
   match t.kind with
-  | Stubs s -> s.mode
+  | Stubs (_, { mode; _ }) -> mode
   | Ctypes _ -> All
 ;;
 

@@ -35,6 +35,7 @@ let to_string : t -> string = function
   | `Asm -> "asm"
 ;;
 
+let compare t1 t2 = String.compare (proper_name t1) (proper_name t2)
 let all = [ `C; `Cxx; `Asm ]
 let decode = all |> List.map ~f:(fun x -> to_string x, x) |> Decoder.enum
 

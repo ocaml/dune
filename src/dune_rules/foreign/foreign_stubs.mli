@@ -25,7 +25,7 @@ end
 
 type t =
   { loc : Loc.t
-  ; language : Foreign_language.t
+  ; languages : Foreign_language.t Nonempty_list.t
   ; names : Ordered_set_lang.t
   ; mode : Mode.Select.t
   ; flags : Ordered_set_lang.Unexpanded.t
@@ -36,7 +36,7 @@ type t =
 (** Construct foreign library stubs with some fields set to default values. *)
 val make
   :  loc:Loc.t
-  -> language:Foreign_language.t
+  -> languages:Foreign_language.t Nonempty_list.t
   -> names:Ordered_set_lang.t
   -> flags:Ordered_set_lang.Unexpanded.t
   -> t

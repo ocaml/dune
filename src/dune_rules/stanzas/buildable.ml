@@ -36,13 +36,13 @@ let decode (for_ : for_) =
     | Executable -> false
   in
   let only_in_library decode = if in_library then decode else return None in
-  let add_stubs language ~loc ~names ~flags foreign_stubs =
+  let add_stubs languages ~loc ~names ~flags foreign_stubs =
     match names with
     | None -> foreign_stubs
     | Some names ->
       let names = Ordered_set_lang.replace_standard_with_empty names in
       let flags = Option.value ~default:Ordered_set_lang.Unexpanded.standard flags in
-      Foreign_stubs.make ~loc ~language ~names ~flags :: foreign_stubs
+      Foreign_stubs.make ~loc ~languages ~names ~flags :: foreign_stubs
   in
   let+ loc = loc
   and+ preprocess, preprocessor_deps = Preprocess.preprocess_fields
@@ -120,8 +120,8 @@ let decode (for_ : for_) =
   in
   let foreign_stubs =
     foreign_stubs
-    |> add_stubs `C ~loc:c_names_loc ~names:c_names ~flags:c_flags
-    |> add_stubs `Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
+    |> add_stubs [ `C ] ~loc:c_names_loc ~names:c_names ~flags:c_flags
+    |> add_stubs [ `Cxx ] ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
   in
   let libraries =
     let ctypes_libraries =
@@ -182,9 +182,13 @@ let has_foreign t =
   || Option.is_some t.ctypes
 ;;
 
+(** TODO: this is incorrect, there may be no foreign sources *)
 let has_foreign_cxx t =
   List.exists
-    ~f:(fun stub -> Foreign_language.(equal `Cxx stub.Foreign_stubs.language))
+    ~f:(fun stub ->
+      stub.Foreign_stubs.languages
+      |> Nonempty_list.to_list
+      |> List.exists ~f:Foreign_language.(equal `Cxx))
     t.foreign_stubs
 ;;
 

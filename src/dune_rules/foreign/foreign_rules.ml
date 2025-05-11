@@ -256,7 +256,7 @@ let build_c
             Pkg_config.Query.read ~dir (Cflags lib) sctx
           in
           default_flags @ pkg_config_flags)
-    | Stubs { Foreign_stubs.flags; _ } ->
+    | Stubs (_, { flags; _ }) ->
       (* DUNE3 will have [use_standard_c_and_cxx_flags] enabled by default. To
          guide users toward this change we emit a warning when dune_lang is >=
          1.8, [use_standard_c_and_cxx_flags] is not specified in the
@@ -389,7 +389,7 @@ let build_o_files
           let extra_deps =
             let extra_deps, sandbox =
               match Foreign_source.kind src with
-              | Stubs stubs -> Dep_conf_eval.unnamed stubs.extra_deps ~expander
+              | Stubs (_, { extra_deps; _ }) -> Dep_conf_eval.unnamed extra_deps ~expander
               | Ctypes _ -> Action_builder.return (), Sandbox_config.default
             in
             (* We don't sandbox the C compiler, see comment in [build_file] about
@@ -403,7 +403,7 @@ let build_o_files
               ~dir
               ~include_dirs:
                 (match Foreign_source.kind src with
-                 | Stubs stubs -> stubs.include_dirs
+                 | Stubs (_, { Foreign_stubs.include_dirs; _ }) -> include_dirs
                  | Ctypes _ -> [])
           in
           Command.Args.S [ includes; extra_flags; Dyn extra_deps ]

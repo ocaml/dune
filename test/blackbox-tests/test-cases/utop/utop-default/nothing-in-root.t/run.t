@@ -1,7 +1,7 @@
 Utop will load libs recursively:
 
-  $ echo 'exit 0;;' | dune utop . -- -init "" | grep -v 'version'
-  Enter #help;; for help.
+  $ echo 'Stdlib.exit 0;;' | dune utop . -- -init "" | grep -v 'version'
+  Enter "#help;;" for help.
   
   Init file not found: "".
   # 

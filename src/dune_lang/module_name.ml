@@ -24,7 +24,6 @@ module Set = struct
 end
 
 module Map = String.Map
-module Parallel_map = Memo.Make_parallel_map (Map)
 module Infix = Comparator.Operators (String)
 
 let of_local_lib_name (loc, s) = parse_string_exn (loc, Lib_name.Local.to_string s)
@@ -32,7 +31,7 @@ let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = struct
   include Per_item.Make (String)
-  open Dune_lang.Decoder
+  open Decoder
 
   let decode ~default a =
     peek_exn
@@ -84,13 +83,13 @@ module Unique = struct
       User_error.raise ~loc [ Pp.textf "%s corresponds to an invalid module name" t ]
   ;;
 
-  let encode = Dune_lang.Encoder.string
+  let encode = Encoder.string
   let of_string s = of_name_assuming_needs_no_mangling (of_string s)
   let to_string s = s
 
   let decode =
-    let open Dune_lang.Decoder in
-    let+ s = Dune_lang.Decoder.string in
+    let open Decoder in
+    let+ s = Decoder.string in
     of_string s
   ;;
 
@@ -110,7 +109,6 @@ module Unique = struct
 
   module Map = Map
   module Set = Set
-  module Parallel_map = Parallel_map
 end
 
 module Path = struct
@@ -137,7 +135,7 @@ module Path = struct
 
   let append_double_underscore t = t @ [ "" ]
   let encode (t : t) = List.map t ~f:encode
-  let decode = Dune_lang.Decoder.(repeat decode)
+  let decode = Decoder.(repeat decode)
 end
 
 let wrap t ~with_ = Path.wrap (t :: with_)

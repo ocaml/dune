@@ -40,7 +40,6 @@ module All_targets = struct
     end)
 end
 
-module Source_tree = Dune_rules.Source_tree
 module Source_tree_map_reduce = Source_tree.Dir.Make_map_reduce (Memo) (All_targets)
 
 let all_direct_targets dir =

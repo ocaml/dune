@@ -1,4 +1,4 @@
-open Stdune
+open Import
 include String
 
 include (

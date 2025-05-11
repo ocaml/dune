@@ -6,7 +6,7 @@ type t
 (** Description of valid module names *)
 val valid_format_doc : User_message.Style.t Pp.t
 
-include Stringlike with type t := t
+include Dune_util.Stringlike with type t := t
 
 val add_suffix : t -> string -> t
 val equal : t -> t -> bool
@@ -17,7 +17,7 @@ val pp_quote : Format.formatter -> t -> unit
 module Per_item : sig
   include Per_item with type key = t
 
-  val decode : default:'a -> 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+  val decode : default:'a -> 'a Decoder.t -> 'a t Decoder.t
 end
 
 module Infix : Comparator.OPS with type t = t
@@ -52,12 +52,8 @@ module Unique : sig
   val equal : t -> t -> bool
   val artifact_filename : t -> ext:string -> string
 
-  include Dune_lang.Conv.S with type t := t
+  include Conv.S with type t := t
   include Comparable_intf.S with type key := t
-
-  module Parallel_map : sig
-    val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
-  end
 end
 
 module Path : sig
@@ -73,17 +69,13 @@ module Path : sig
   module Set : Stdune.Set.S with type elt = t and type 'a map = 'a Map.t
 
   val wrap : t -> Unique.t
-  val encode : t -> Dune_lang.t list
-  val decode : t Dune_lang.Decoder.t
+  val encode : t -> Dune_sexp.t list
+  val decode : t Decoder.t
   val append_double_underscore : t -> t
 end
 
 val wrap : t -> with_:Path.t -> Unique.t
 
 include Comparable_intf.S with type key := t
-
-module Parallel_map : sig
-  val parallel_map : 'a Map.t -> f:(t -> 'a -> 'b Memo.t) -> 'b Map.t Memo.t
-end
 
 val of_string_allow_invalid : Loc.t * string -> t

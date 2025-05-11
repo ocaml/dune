@@ -70,11 +70,10 @@ let add_stanza db ~dir (acc, pps) stanza =
           Dune_project.dune_version project
         in
         let+ pps =
-          Resolve.Memo.read_memo
-            (Preprocess.Per_module.with_instrumentation
-               exes.buildable.preprocess
-               ~instrumentation_backend:
-                 (Lib.DB.instrumentation_backend (Scope.libs scope)))
+          Instrumentation.with_instrumentation
+            exes.buildable.preprocess
+            ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+          |> Resolve.Memo.read_memo
           >>| Preprocess.Per_module.pps
         in
         Lib.DB.resolve_user_written_deps

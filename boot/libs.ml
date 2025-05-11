@@ -369,6 +369,11 @@ let local_libraries =
     ; include_subdirs_unqualified = false
     ; special_builtin_support = None
     }
+  ; { path = "src/source"
+    ; main_module_name = Some "Source"
+    ; include_subdirs_unqualified = false
+    ; special_builtin_support = None
+    }
   ; { path = "src/scheme"
     ; main_module_name = Some "Scheme"
     ; include_subdirs_unqualified = false

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Multiplicity = struct
   type t =
@@ -63,14 +63,14 @@ let decode_target ~allow_directory_targets =
 
 let decode_static ~allow_directory_targets =
   let open Dune_sexp.Decoder in
-  let+ syntax_version = Dune_sexp.Syntax.get_exn Stanza.syntax
+  let+ syntax_version = Syntax.get_exn Stanza.syntax
   and+ targets = repeat (decode_target ~allow_directory_targets) in
   if syntax_version < (1, 3)
   then
     List.iter targets ~f:(fun (target, (_ : Kind.t)) ->
       if String_with_vars.has_pforms target
       then
-        Dune_sexp.Syntax.Error.since
+        Syntax.Error.since
           (String_with_vars.loc target)
           Stanza.syntax
           (1, 3)
@@ -79,14 +79,14 @@ let decode_static ~allow_directory_targets =
 ;;
 
 let decode_one_static ~allow_directory_targets =
-  let open Dune_sexp.Decoder in
-  let+ () = Dune_sexp.Syntax.since Stanza.syntax (1, 11)
+  let open Decoder in
+  let+ () = Syntax.since Stanza.syntax (1, 11)
   and+ target = decode_target ~allow_directory_targets in
   Static { targets = [ target ]; multiplicity = One }
 ;;
 
 let field ~allow_directory_targets =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   fields_mutually_exclusive
     ~default:Infer
     [ "target", decode_one_static ~allow_directory_targets

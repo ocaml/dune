@@ -4,6 +4,17 @@ module Console = Dune_console
 module Digest = Dune_digest
 
 include struct
+  open Source
+  module Dune_project = Dune_project
+  module Source_dir_status = Source_dir_status
+  module Dune_file0 = Dune_file0
+  module Include_stanza = Include_stanza
+  module Source_tree = Source_tree
+  module Cram_test = Cram_test
+  module Only_packages = Only_packages
+end
+
+include struct
   open Dune_findlib.Findlib
   module Dune_findlib = Dune_findlib.Findlib
   module Findlib_config = Config
@@ -102,6 +113,9 @@ include struct
   module Dune_project_name = Dune_project_name
   module Package = Package
   module Dialect = Dialect
+  module Lib_mode = Lib_mode
+  module Module_name = Module_name
+  module Preprocess = Preprocess
 end
 
 include Dune_engine.No_io

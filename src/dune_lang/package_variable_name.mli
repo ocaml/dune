@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type t
 
@@ -6,8 +6,8 @@ val to_opam : t -> OpamVariable.t
 val of_opam : OpamVariable.t -> t
 val compare : t -> t -> Ordering.t
 val to_dyn : t -> Dyn.t
-val encode : t Dune_sexp.Encoder.t
-val decode : t Dune_sexp.Decoder.t
+val encode : t Encoder.t
+val decode : t Decoder.t
 val equal : t -> t -> bool
 
 module Map : Map.S with type key = t
@@ -33,6 +33,6 @@ val dev : t
 val one_of : t -> t list -> bool
 
 module Project : sig
-  val encode : t Dune_sexp.Encoder.t
-  val decode : t Dune_sexp.Decoder.t
+  val encode : t Encoder.t
+  val decode : t Decoder.t
 end

@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Select : sig
   module Choice : sig
@@ -27,16 +27,12 @@ val equal : t -> t -> bool
 val to_dyn : t -> Dyn.t
 val direct : Loc.t * Lib_name.t -> t
 val re_export : Loc.t * Lib_name.t -> t
-val decode : allow_re_export:bool -> t Dune_sexp.Decoder.t
+val decode : allow_re_export:bool -> t Decoder.t
 
 module L : sig
   type nonrec t = t list
 
-  val field_encode : t -> name:string -> Dune_sexp.Encoder.field
-
-  val decode
-    :  allow_re_export:bool
-    -> (t, Dune_sexp.Decoder.values) Dune_sexp.Decoder.parser
-
+  val field_encode : t -> name:string -> Encoder.field
+  val decode : allow_re_export:bool -> (t, Decoder.values) Decoder.parser
   val of_pps : Lib_name.t list -> t
 end

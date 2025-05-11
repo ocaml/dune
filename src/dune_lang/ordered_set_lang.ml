@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 include Ordered_set_lang_intf
 
 module Ast = struct

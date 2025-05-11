@@ -317,10 +317,10 @@ let compile_info ~scope (exes : Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let+ pps =
     (* TODO resolution should be delayed *)
-    Resolve.Memo.read_memo
-      (Preprocess.Per_module.with_instrumentation
-         exes.buildable.preprocess
-         ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope)))
+    Instrumentation.with_instrumentation
+      exes.buildable.preprocess
+      ~instrumentation_backend:(Lib.DB.instrumentation_backend (Scope.libs scope))
+    |> Resolve.Memo.read_memo
     >>| Preprocess.Per_module.pps
   in
   Lib.DB.resolve_user_written_deps

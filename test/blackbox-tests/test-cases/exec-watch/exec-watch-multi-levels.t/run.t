@@ -30,5 +30,5 @@ Perform the same test above but first enter the "bin" directory.
 Test that the behaviour is the same when not running with "--watch"
   $ cd bin && dune exec --root .. ./bin/main.exe
   Entering directory '..'
-  Leaving directory '..'
   foo
+  Leaving directory '..'

@@ -13,7 +13,7 @@ end
 
 type 'a t =
   | No_preprocessing
-  | Action of Loc.t * Dune_lang.Action.t
+  | Action of Loc.t * Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
@@ -38,12 +38,12 @@ module With_instrumentation : sig
   val equal : t -> t -> bool
 end
 
-val decode : Without_instrumentation.t t Dune_lang.Decoder.t
+val decode : Without_instrumentation.t t Decoder.t
 
 module Without_future_syntax : sig
   type 'a t =
     | No_preprocessing
-    | Action of Loc.t * Dune_lang.Action.t
+    | Action of Loc.t * Action.t
     | Pps of 'a Pps.t
 end
 
@@ -70,7 +70,7 @@ module Instrumentation : sig
     }
 
   (** [instrumentation] multi field *)
-  val instrumentation : t list Dune_lang.Decoder.fields_parser
+  val instrumentation : t list Decoder.fields_parser
 end
 
 module Per_module : sig
@@ -78,7 +78,7 @@ module Per_module : sig
   type 'a t = 'a preprocess Module_name.Per_item.t
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
-  val decode : Without_instrumentation.t t Dune_lang.Decoder.t
+  val decode : Without_instrumentation.t t Decoder.t
   val no_preprocessing : unit -> 'a t
   val default : unit -> 'a t
 
@@ -96,21 +96,8 @@ module Per_module : sig
     -> With_instrumentation.t t
 
   val without_instrumentation : With_instrumentation.t t -> Without_instrumentation.t t
-
-  val with_instrumentation
-    :  With_instrumentation.t t
-    -> instrumentation_backend:
-         (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
-    -> Without_instrumentation.t t Resolve.Memo.t
-
-  val instrumentation_deps
-    :  With_instrumentation.t t
-    -> instrumentation_backend:
-         (Loc.t * Lib_name.t -> Without_instrumentation.t option Resolve.Memo.t)
-    -> Dep_conf.t list Resolve.Memo.t
 end
 
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields
-  : (Without_instrumentation.t Per_module.t * Dep_conf.t list)
-      Dune_lang.Decoder.fields_parser
+  : (Without_instrumentation.t Per_module.t * Dep_conf.t list) Decoder.fields_parser

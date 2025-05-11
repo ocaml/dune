@@ -85,14 +85,12 @@ let resolve_lib db name kind =
 
 let resolve_lib_pps db preprocess =
   let open Memo.O in
-  let* pps =
-    Resolve.Memo.read_memo
-      (Dune_rules.Preprocess.Per_module.with_instrumentation
-         preprocess
-         ~instrumentation_backend:(Dune_rules.Lib.DB.instrumentation_backend db))
-    >>| Dune_rules.Preprocess.Per_module.pps
-  in
-  Memo.parallel_map ~f:(fun (_, name) -> resolve_lib db name Kind.Required) pps
+  Dune_rules.Instrumentation.with_instrumentation
+    preprocess
+    ~instrumentation_backend:(Dune_rules.Lib.DB.instrumentation_backend db)
+  |> Resolve.Memo.read_memo
+  >>| Dune_lang.Preprocess.Per_module.pps
+  >>= Memo.parallel_map ~f:(fun (_, name) -> resolve_lib db name Kind.Required)
 ;;
 
 let resolve_lib_deps db lib_deps =

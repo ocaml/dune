@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 module Ml_kind = Ocaml.Ml_kind
 module Cm_kind = Ocaml.Cm_kind
 module Mode = Ocaml.Mode
@@ -10,7 +9,7 @@ module Format = struct
     | Ocamlformat
 
   let decode =
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     map ~f:(fun (loc, x) -> Action (loc, x)) (located Action.decode_dune_file)
   ;;
 
@@ -105,7 +104,7 @@ let encode { name; file_kinds } =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let kind kind =
     let+ loc, extension = field "extension" (located extension)
     and+ preprocess = field_o "preprocess" (located Action.decode_dune_file)

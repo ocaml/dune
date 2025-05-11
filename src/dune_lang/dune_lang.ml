@@ -43,3 +43,7 @@ module Package = Package
 module Dune_project_name = Dune_project_name
 module Dialect = Dialect
 module Synopsis = Synopsis
+module Lib_mode = Lib_mode
+module Melange = Melange
+module Module_name = Module_name
+module Preprocess = Preprocess

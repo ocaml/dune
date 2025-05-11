@@ -1,11 +1,11 @@
 open! Stdune
 
 include struct
-  open Dune_rules
-  module Dune_project = Dune_project
+  open Source
   module Source_tree = Source_tree
   module Source_dir_status = Source_dir_status
   module Dune_file0 = Dune_file0
+  module Dune_project = Dune_project
 end
 
 include struct

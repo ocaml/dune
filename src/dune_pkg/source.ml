@@ -42,7 +42,14 @@ let fetch_and_hash_archive_cached (url_loc, url) =
   let open Fiber.O in
   fetch_archive_cached (url_loc, url)
   >>| function
-  | Ok target -> Some (Md5.file target |> Checksum.of_md5)
+  | Ok target ->
+    Some
+      (match Md5.file target with
+       | Ok digest -> Checksum.of_md5 digest
+       | Error exn ->
+         User_error.raise
+           ~loc:url_loc
+           [ Pp.textf "failed to fetch %s" (OpamUrl.to_string url); Exn.pp exn ])
   | Error message_opt ->
     let message =
       Option.value

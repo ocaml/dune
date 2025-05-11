@@ -1,5 +1,5 @@
 open Import
-open Dune_lang.Decoder
+open Decoder
 
 module Pps_and_flags = struct
   let decode =
@@ -9,7 +9,7 @@ module Pps_and_flags = struct
         "--"
         ~before:String_with_vars.decode
         ~after:(repeat String_with_vars.decode)
-    and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    and+ syntax_version = Syntax.get_exn Stanza.syntax in
     let pps, more_flags =
       List.partition_map l ~f:(fun s ->
         match
@@ -42,7 +42,7 @@ module Pps_and_flags = struct
         ~f:(fun flag ->
           if String_with_vars.has_pforms flag
           then
-            Dune_lang.Syntax.Error.since
+            Syntax.Error.since
               (String_with_vars.loc flag)
               Stanza.syntax
               (1, 10)
@@ -79,15 +79,14 @@ end
 
 type 'a t =
   | No_preprocessing
-  | Action of Loc.t * Dune_lang.Action.t
+  | Action of Loc.t * Action.t
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
 let equal f x y =
   match x, y with
   | No_preprocessing, No_preprocessing -> true
-  | Action (x, y), Action (x', y') ->
-    Tuple.T2.equal Loc.equal Dune_lang.Action.equal (x, y) (x', y')
+  | Action (x, y), Action (x', y') -> Tuple.T2.equal Loc.equal Action.equal (x, y) (x', y')
   | Pps x, Pps y -> Pps.equal f x y
   | Future_syntax x, Future_syntax y -> Loc.equal x y
   | _, _ -> false
@@ -105,24 +104,6 @@ let filter_map t ~f =
     let pps = List.filter_map t.pps ~f in
     if pps = [] then No_preprocessing else Pps { t with pps }
   | (No_preprocessing | Action _ | Future_syntax _) as t -> t
-;;
-
-let filter_map_resolve t ~f =
-  let open Resolve.Memo.O in
-  match t with
-  | Pps t ->
-    let+ pps = Resolve.Memo.List.filter_map t.pps ~f in
-    let pps, flags = List.split pps in
-    if pps = []
-    then No_preprocessing
-    else Pps { t with pps; flags = t.flags @ List.flatten flags }
-  | (No_preprocessing | Action _ | Future_syntax _) as t -> Resolve.Memo.return t
-;;
-
-let fold_resolve t ~init ~f =
-  match t with
-  | Pps t -> Resolve.Memo.List.fold_left t.pps ~init ~f
-  | No_preprocessing | Action _ | Future_syntax _ -> Resolve.Memo.return init
 ;;
 
 module Without_instrumentation = struct
@@ -154,7 +135,7 @@ let decode =
                ~f:(fun env ->
                  let env = Option.value_exn env in
                  Some (Pform.Env.lt_renamed_input_file env))
-               Dune_lang.Action.decode_dune_file)
+               Action.decode_dune_file)
         in
         Action (loc, x) )
     ; ( "pps"
@@ -162,12 +143,12 @@ let decode =
         and+ pps, flags = Pps_and_flags.decode in
         Pps { loc; pps; flags; staged = false } )
     ; ( "staged_pps"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
+      , let+ () = Syntax.since Stanza.syntax (1, 1)
         and+ loc = loc
         and+ pps, flags = Pps_and_flags.decode in
         Pps { loc; pps; flags; staged = true } )
     ; ( "future_syntax"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
+      , let+ () = Syntax.since Stanza.syntax (1, 8)
         and+ loc = loc in
         Future_syntax loc )
     ]
@@ -186,7 +167,7 @@ let pps = function
 module Without_future_syntax = struct
   type 'a t =
     | No_preprocessing
-    | Action of Loc.t * Dune_lang.Action.t
+    | Action of Loc.t * Action.t
     | Pps of 'a Pps.t
 end
 
@@ -211,7 +192,7 @@ let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v
     else
       Action
         ( loc
-        , Dune_lang.Action.run
+        , Action.run
             (String_with_vars.make_pform
                loc
                (Macro
@@ -246,14 +227,14 @@ module Instrumentation = struct
   let instrumentation =
     multi_field
       "instrumentation"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 7)
+      (Syntax.since Stanza.syntax (2, 7)
        >>> fields
            @@
            let+ backend, flags =
              field "backend"
              @@ let+ libname = located Lib_name.decode
                 and+ flags =
-                  let* current_ver = Dune_lang.Syntax.get_exn Stanza.syntax in
+                  let* current_ver = Syntax.get_exn Stanza.syntax in
                   let version_check flag =
                     let ver = 2, 8 in
                     if current_ver >= ver
@@ -262,7 +243,7 @@ module Instrumentation = struct
                       let what =
                         "The possibility to pass arguments to instrumentation backends"
                       in
-                      Dune_lang.Syntax.Error.since
+                      Syntax.Error.since
                         (String_with_vars.loc flag)
                         Stanza.syntax
                         ver
@@ -275,8 +256,8 @@ module Instrumentation = struct
              field
                "deps"
                ~default:[]
-               (Dune_lang.Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
-           and+ loc = Dune_lang.Decoder.loc in
+               (Syntax.since Stanza.syntax (2, 9) >>> repeat Dep_conf.decode)
+           and+ loc = Decoder.loc in
            { backend; deps; flags; loc })
   ;;
 end
@@ -338,43 +319,10 @@ module Per_module = struct
     in
     Per_module.map t ~f:(filter_map ~f)
   ;;
-
-  module Resolve_traversals = Per_module.Make_monad_traversals (Resolve.Memo)
-
-  let with_instrumentation t ~instrumentation_backend =
-    let f = function
-      | With_instrumentation.Ordinary libname -> Resolve.Memo.return (Some (libname, []))
-      | Instrumentation_backend { libname; flags; _ } ->
-        Resolve.Memo.map
-          (instrumentation_backend libname)
-          ~f:(Option.map ~f:(fun backend -> backend, flags))
-    in
-    Resolve_traversals.map t ~f:(filter_map_resolve ~f)
-  ;;
-
-  let instrumentation_deps t ~instrumentation_backend =
-    let open Resolve.Memo.O in
-    let f = function
-      | With_instrumentation.Ordinary _ -> Resolve.Memo.return []
-      | Instrumentation_backend { libname; deps; flags = _ } ->
-        instrumentation_backend libname
-        >>| (function
-         | Some _ -> deps
-         | None -> [])
-    in
-    Resolve_traversals.fold t ~init:[] ~f:(fun t init ->
-      let f acc t =
-        let+ x = f t in
-        x :: acc
-      in
-      fold_resolve t ~init ~f)
-    >>| List.rev
-    >>| List.flatten
-  ;;
 end
 
 let preprocess_fields =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let+ preprocess = field "preprocess" Per_module.decode ~default:(Per_module.default ())
   and+ preprocessor_deps =
     field_o
@@ -382,7 +330,7 @@ let preprocess_fields =
       (let+ loc = loc
        and+ l = repeat Dep_conf.decode in
        loc, l)
-  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+  and+ syntax = Syntax.get_exn Stanza.syntax in
   let preprocessor_deps =
     match preprocessor_deps with
     | None -> []

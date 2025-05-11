@@ -217,7 +217,7 @@ let with_config ~dir f =
   let* config = format_config ~dir in
   if Format_config.is_empty config
   then
-    (* CR-rgrinberg: this [is_empty] check is weird. We should use [None]
+    (* CR-someday rgrinberg: this [is_empty] check is weird. We should use [None]
        to represent that no settings have been set. *)
     Memo.return ()
   else f config

@@ -4,8 +4,6 @@ type t
 
 val url : t -> Loc.t * OpamUrl.t
 
-module Package : sig end
-
 module DB : sig
   type t
 

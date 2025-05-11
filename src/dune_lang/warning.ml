@@ -1,7 +1,6 @@
-open Stdune
+open Import
 open Dune_config
 module Stringlike = Dune_util.Stringlike
-module Syntax = Dune_sexp.Syntax
 
 module Name = struct
   include String
@@ -51,13 +50,13 @@ module Settings = struct
   let empty = []
   let to_dyn = Dyn.opaque
 
-  let decode : t Dune_sexp.Decoder.t =
+  let decode : t Decoder.t =
     let all_warnings =
       lazy
         (frozen := true;
          Table.values all)
     in
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     let warning w =
       Syntax.since Stanza.syntax w.since
       >>> string

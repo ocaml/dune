@@ -1,6 +1,6 @@
 (** Represent the [(formatting)] field in [dune-project] files *)
 
-open Stdune
+open Import
 
 module Language : sig
   (** Dune can format either source files through external programs (ocaml and
@@ -12,14 +12,10 @@ end
 
 type t
 
-val of_config
-  :  ext:t option
-  -> dune_lang:t option
-  -> version:Dune_sexp.Syntax.Version.t
-  -> t
+val of_config : ext:t option -> dune_lang:t option -> version:Syntax.Version.t -> t
 
 (** The syntax corresponding to the dune 1.x [(using fmt)] extension. *)
-val syntax : Dune_sexp.Syntax.t
+val syntax : Syntax.t
 
 (** Where the configuration was defined. Can be [Loc.none] if formatting is done
     by default. *)
@@ -31,12 +27,12 @@ val includes : t -> Language.t -> bool
 val is_empty : t -> bool
 
 (** Parse arguments for the 1.x extension. *)
-val dparse_args : (t * Stanza.Parser.t list) Dune_sexp.Decoder.t
+val dparse_args : (t * Stanza.Parser.t list) Decoder.t
 
 val to_dyn : t -> Dyn.t
 
 (** Parse the contents of the dune2 [(formatting)] option.*)
-val field : since:Dune_sexp.Syntax.Version.t -> t option Dune_sexp.Decoder.fields_parser
+val field : since:Syntax.Version.t -> t option Decoder.fields_parser
 
 val encode_opt : t -> Dune_sexp.t option
 val equal : t -> t -> bool

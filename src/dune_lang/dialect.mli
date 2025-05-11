@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 open Ocaml
 
 (** Dialects

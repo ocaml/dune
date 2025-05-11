@@ -1,7 +1,7 @@
 (** General warning mechanism for dune rules *)
 
+open Import
 open Dune_config
-module Syntax := Dune_sexp.Syntax
 
 type t
 
@@ -21,6 +21,6 @@ module Settings : sig
 
   val to_dyn : t -> Dyn.t
   val empty : t
-  val decode : t Dune_sexp.Decoder.t
+  val decode : t Decoder.t
   val active : t -> warning -> Syntax.Version.t -> Config.Toggle.t
 end

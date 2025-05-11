@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 
 module Glob_files : sig
   (** A glob stored in a [String_with_vars.t] and functions for expanding the

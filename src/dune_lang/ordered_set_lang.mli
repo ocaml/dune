@@ -1,8 +1,7 @@
 (** [Ordered_set_lang.t] is a sexp-based representation for an ordered list of
     strings, with some set like operations. *)
 
-open Stdune
-open Dune_sexp
+open Import
 
 type t
 
@@ -47,7 +46,7 @@ module Unexpanded : sig
   val loc : t -> Loc.t option
   val equal : t -> t -> bool
 
-  include Dune_sexp.Conv.S with type t := t
+  include Conv.S with type t := t
 
   val encode : t -> Dune_sexp.t list
   val standard : t

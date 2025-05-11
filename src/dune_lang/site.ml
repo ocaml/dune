@@ -1,4 +1,4 @@
-open Stdune
+open Import
 module Stringlike = Dune_util.Stringlike
 
 module type Stringlike = Dune_util.Stringlike
@@ -72,7 +72,7 @@ include (
 module Infix = Comparator.Operators (String)
 
 let dune_site_syntax =
-  Dune_sexp.Syntax.create
+  Syntax.create
     ~name:"dune_site"
     ~experimental:true
     ~desc:"the sites locations extension (experimental)"

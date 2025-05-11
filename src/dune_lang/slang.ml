@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 open Dune_sexp
 
 type t =

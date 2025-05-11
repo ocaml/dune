@@ -1,6 +1,4 @@
-open Stdune
-module Decoder = Dune_sexp.Decoder
-module Encoder = Dune_sexp.Encoder
+open Import
 
 let valid_format_doc = Site.valid_format_doc
 

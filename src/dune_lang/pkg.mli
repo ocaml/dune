@@ -1,1 +1,3 @@
-val syntax : Dune_sexp.Syntax.t
+open Import
+
+val syntax : Syntax.t

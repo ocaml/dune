@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Value = struct
   type t =
@@ -19,12 +19,12 @@ module Value = struct
   ;;
 
   let encode = function
-    | String_literal s -> Dune_sexp.Encoder.string s
+    | String_literal s -> Encoder.string s
     | Variable v -> Package_variable_name.Project.encode v
   ;;
 
   let decode =
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     (let+ variable = Package_variable_name.Project.decode in
      Variable variable)
     <|> let+ s = string in
@@ -83,7 +83,7 @@ include T
 include Comparable.Make (T)
 
 let rec encode c =
-  let open Dune_sexp.Encoder in
+  let open Encoder in
   match c with
   | Bvar x -> Package_variable_name.Project.encode x
   | Uop (op, x) -> pair Relop.encode Value.encode (op, x)
@@ -94,14 +94,14 @@ let rec encode c =
 ;;
 
 let logical_op t =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let+ x = repeat t
-  and+ version = Dune_sexp.Syntax.get_exn Stanza.syntax
+  and+ version = Syntax.get_exn Stanza.syntax
   and+ loc = loc in
   let empty_list_rejected_since = 3, 9 in
   if List.is_empty x && version >= empty_list_rejected_since
   then
-    Dune_sexp.Syntax.Error.deleted_in
+    Syntax.Error.deleted_in
       loc
       Stanza.syntax
       empty_list_rejected_since
@@ -110,20 +110,20 @@ let logical_op t =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   let ops =
     List.map Relop.map ~f:(fun (name, op) ->
       ( name
       , let+ x = Value.decode
         and+ y = maybe Value.decode
         and+ loc = loc
-        and+ version = Dune_sexp.Syntax.get_exn Stanza.syntax in
+        and+ version = Syntax.get_exn Stanza.syntax in
         match y with
         | None -> Uop (op, x)
         | Some y ->
           if version < (2, 1)
           then
-            Dune_sexp.Syntax.Error.since
+            Syntax.Error.since
               loc
               Stanza.syntax
               (2, 1)
@@ -146,7 +146,7 @@ let decode =
           Or x )
       ; ( "not"
         , let+ x = t
-          and+ () = Dune_sexp.Syntax.since Stanza.syntax (3, 18) ~what:"Not operator" in
+          and+ () = Syntax.since Stanza.syntax (3, 18) ~what:"Not operator" in
           Not x )
       ]
     in

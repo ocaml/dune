@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Ppx_args = struct
   module Cookie = struct
@@ -13,8 +13,8 @@ module Ppx_args = struct
     ;;
 
     let decode =
-      let open Dune_sexp.Decoder in
-      let* () = Dune_sexp.Syntax.since Stanza.syntax (1, 10) in
+      let open Decoder in
+      let* () = Syntax.since Stanza.syntax (1, 10) in
       enter
         (let+ name =
            plain_string (fun ~loc str ->
@@ -44,7 +44,7 @@ module Ppx_args = struct
   ;;
 
   let decode =
-    let open Dune_sexp.Decoder in
+    let open Decoder in
     let args =
       let+ cookies = field "cookies" (repeat Cookie.decode) ~default:[] in
       { cookies }
@@ -53,7 +53,7 @@ module Ppx_args = struct
   ;;
 
   let encode { cookies } =
-    let open Dune_sexp.Encoder in
+    let open Encoder in
     record_fields [ field_l "cookies" Cookie.encode cookies ]
   ;;
 end
@@ -74,7 +74,7 @@ let to_dyn x =
 ;;
 
 let decode =
-  let open Dune_sexp.Decoder in
+  let open Decoder in
   sum
     [ "normal", return Normal
     ; ( "ppx_deriver"

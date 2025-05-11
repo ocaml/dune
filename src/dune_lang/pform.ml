@@ -1,5 +1,4 @@
-open Stdune
-open Dune_sexp
+open Import
 module Payload = Template.Pform.Payload
 
 module Var = struct

@@ -1,5 +1,4 @@
-open! Stdune
-open Dune_sexp
+open Import
 
 (** A cond statement *)
 type t =

@@ -105,12 +105,12 @@ let modules_rules
     let instrumentation_backend = Lib.DB.instrumentation_backend (Scope.libs scope) in
     let* preprocess_with_instrumentation =
       (* TODO wrong and blocks loading all the rules in this directory *)
-      Resolve.Memo.read_memo
-        (Instrumentation.with_instrumentation preprocess ~instrumentation_backend)
+      Instrumentation.with_instrumentation preprocess ~instrumentation_backend
+      |> Resolve.Memo.read_memo
     in
     let* instrumentation_deps =
       (* TODO wrong and blocks loading all the rules in this directory *)
-      Resolve.Memo.read_memo (instrumentation_deps preprocess ~instrumentation_backend)
+      instrumentation_deps preprocess ~instrumentation_backend |> Resolve.Memo.read_memo
     in
     Pp_spec_rules.make
       sctx

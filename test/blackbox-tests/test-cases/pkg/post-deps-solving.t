@@ -5,6 +5,13 @@ Solving for post dependencies:
 
   $ mkpkg bar
 
+  $ barfile="bar.file"
+  $ bardir="$mock_packages/bar/bar.0.0.1"
+  $ mkdir -p $bardir/files/dir
+  $ cat >$bardir/files/$barfile <<EOF
+  > foo patch
+  > EOF
+
   $ mkpkg foo <<EOF
   > depends: [ "bar" {post} ]
   > EOF
@@ -17,6 +24,11 @@ We don't need bar, so we skip it
 
   $ cat dune.lock/foo.pkg
   (version 0.0.1)
+
+We should also skip any artifacts that bar references:
+
+  $ [ -d dune.lock/bar.files ] && ls -1 -x dune.lock/bar.files
+  bar.file
 
 Self dependency
 
